@@ -34,6 +34,7 @@ DEPLOYMENT_RECOMMENDATION_TAG = "PythonSDK-DeploymentRecommendation"
 
 RIGHT_SIZE_TAG = "PythonSDK-RightSize"
 
+
 class Phase:
     """Used to store phases of a traffic pattern to perform endpoint load testing.
 
@@ -615,9 +616,6 @@ class InferenceRecommenderMixin:
         )
 
     def _add_client_type_tag(self, tags, client_type):
-        client_type_tag = {
-            "Key": "ClientType",
-            "Value": client_type
-        }
+        client_type_tag = {"Key": "ClientType", "Value": client_type}
         tags = tags.append(client_type_tag) if tags else [client_type_tag]
         return tags

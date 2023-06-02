@@ -633,7 +633,9 @@ def test_deploy_with_recommendation_id_with_model_pkg_arn(name_from_base, sagema
     )
     sagemaker_session.sagemaker_client.describe_model.return_value = None
 
-    model_package = ModelPackage(role=ROLE, model_data=IR_MODEL_DATA, model_package_arn=IR_MODEL_PACKAGE_VERSION_ARN)
+    model_package = ModelPackage(
+        role=ROLE, model_data=IR_MODEL_DATA, model_package_arn=IR_MODEL_PACKAGE_VERSION_ARN
+    )
 
     model_package.sagemaker_session = sagemaker_session
 
@@ -659,7 +661,6 @@ def test_deploy_with_recommendation_id_with_model_pkg_arn(name_from_base, sagema
 def mock_describe_model(ModelName):
     if ModelName == IR_MODEL_NAME:
         return DESCRIBE_MODEL_RESPONSE
-
 
 
 @patch("sagemaker.utils.name_from_base", return_value=MODEL_IMAGE)
@@ -690,7 +691,9 @@ def test_deploy_with_recommendation_id_with_model_name(name_from_base, sagemaker
 
 
 @patch("sagemaker.utils.name_from_base", return_value=IR_COMPILATION_IMAGE)
-def test_deploy_with_recommendation_id_with_model_pkg_arn_and_compilation(name_from_base, sagemaker_session):
+def test_deploy_with_recommendation_id_with_model_pkg_arn_and_compilation(
+    name_from_base, sagemaker_session
+):
     sagemaker_session.sagemaker_client.describe_inference_recommendations_job.return_value = (
         create_inference_recommendations_job_default_with_model_package_arn_and_compilation()
     )
@@ -699,7 +702,9 @@ def test_deploy_with_recommendation_id_with_model_pkg_arn_and_compilation(name_f
     )
     sagemaker_session.sagemaker_client.describe_model.return_value = None
 
-    model_package = ModelPackage(role=ROLE, model_data=MODEL_DATA, model_package_arn=IR_MODEL_PACKAGE_VERSION_ARN)
+    model_package = ModelPackage(
+        role=ROLE, model_data=MODEL_DATA, model_package_arn=IR_MODEL_PACKAGE_VERSION_ARN
+    )
 
     model_package.sagemaker_session = sagemaker_session
 
@@ -721,7 +726,9 @@ def test_deploy_with_recommendation_id_with_model_pkg_arn_and_compilation(name_f
 
 
 @patch("sagemaker.utils.name_from_base", return_value=MODEL_IMAGE)
-def test_deploy_with_recommendation_id_with_model_name_and_compilation(name_from_base, sagemaker_session):
+def test_deploy_with_recommendation_id_with_model_name_and_compilation(
+    name_from_base, sagemaker_session
+):
     def mock_describe_compilation_job(CompilationJobName):
         if CompilationJobName == IR_COMPILATION_JOB_NAME:
             return DESCRIBE_COMPILATION_JOB_RESPONSE
