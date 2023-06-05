@@ -33,6 +33,7 @@ from sagemaker.config import (
     COMPILATION_JOB_ROLE_ARN_PATH,
     EDGE_PACKAGING_KMS_KEY_ID_PATH,
     EDGE_PACKAGING_ROLE_ARN_PATH,
+    EDGE_PACKAGING_RESOURCE_KEY_PATH,
     MODEL_VPC_CONFIG_PATH,
     MODEL_ENABLE_NETWORK_ISOLATION_PATH,
     MODEL_EXECUTION_ROLE_ARN_PATH,
@@ -940,6 +941,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         role = resolve_value_from_config(
             role, EDGE_PACKAGING_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
         )
+        resource_key = resolve_value_from_config(resource_key, EDGE_PACKAGING_RESOURCE_KEY_PATH, sagemaker_session=self)
         if role is not None:
             role = self.sagemaker_session.expand_role(role)
         config = self._edge_packaging_job_config(
