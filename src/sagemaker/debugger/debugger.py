@@ -678,7 +678,9 @@ class DebuggerHookConfig(object):
 
         if self.collection_configs is not None:
             debugger_hook_config_request["CollectionConfigurations"] = [
-                collection_config._to_request_dict()
+                collection_config
+                if isinstance(collection_config, dict)
+                else collection_config._to_request_dict()
                 for collection_config in self.collection_configs
             ]
 

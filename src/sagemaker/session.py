@@ -22,7 +22,7 @@ import time
 import typing
 import warnings
 import uuid
-from typing import List, Dict, Any, Sequence, Optional
+from typing import List, Dict, Any, Sequence, Optional, Union
 
 import boto3
 import botocore
@@ -45,6 +45,11 @@ from sagemaker.config import (
     TRAINING_JOB_VPC_CONFIG_PATH,
     TRAINING_JOB_OUTPUT_DATA_CONFIG_PATH,
     TRAINING_JOB_RESOURCE_CONFIG_PATH,
+    TRAINING_JOB_DEBUG_HOOK_CONFIG_PATH,
+    TRAINING_JOB_COLLECTION_CONFIGURATIONS_PATH,
+    TRAINING_JOB_HOOK_PARAMETERS_PATH,
+    TRAINING_JOB_LOCAL_PATH_PATH,
+    TRAINING_JOB_S3_OUTPUT_PATH_PATH,
     PROCESSING_JOB_INPUTS_PATH,
     PROCESSING_JOB,
     PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
@@ -106,6 +111,7 @@ from sagemaker.config import (
     SESSION_DEFAULT_S3_BUCKET_PATH,
     SESSION_DEFAULT_S3_OBJECT_KEY_PREFIX_PATH,
 )
+from sagemaker.debugger import DebuggerHookConfig
 from sagemaker.config.config_utils import _log_sagemaker_config_merge
 from sagemaker.deprecations import deprecated_class
 from sagemaker.inputs import ShuffleConfig, TrainingInput, BatchDataCaptureConfig
@@ -680,7 +686,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         checkpoint_local_path=None,
         experiment_config=None,
         debugger_rule_configs=None,
-        debugger_hook_config=None,
+        debugger_hook_config: Optional[Union[bool, DebuggerHookConfig]] = None,
         tensorboard_output_config=None,
         enable_sagemaker_metrics=None,
         profiler_rule_configs=None,
@@ -782,6 +788,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 will be unassociated.
                 * `TrialComponentDisplayName` is used for display in Studio.
                 * `RunName` is used to record an experiment run.
+            debugger_hook_config (:class:`~sagemaker.debugger.DebuggerHookConfig` or bool):
+                Configuration for how debugging information is emitted with
+                SageMaker Debugger. If not specified, a default one is created using
+                the estimator's ``output_path``, unless the region does not
+                support SageMaker Debugger. To disable SageMaker Debugger,
+                set this parameter to ``False``.
             enable_sagemaker_metrics (bool): enable SageMaker Metrics Time
                 Series. For more information see:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
@@ -840,6 +852,51 @@ class Session(object):  # pylint: disable=too-many-public-methods
             default_value=None,
             sagemaker_session=self,
         )
+        # First get the config value provided for debugger_hook_config
+        # If debugger_hook_config is provided as a dict in the sagemaker config,
+        # then resolve it from the config,
+        # else resolve in the priority sequence as 1. the provided value,
+        # 2. boolean value from config
+        debugger_hook_config_from_sagemaker_config = get_sagemaker_config_value(
+            self, TRAINING_JOB_DEBUG_HOOK_CONFIG_PATH
+        )
+        if isinstance(debugger_hook_config_from_sagemaker_config, dict):
+            debugger_hook_config = resolve_class_attribute_from_config(
+                DebuggerHookConfig,
+                debugger_hook_config,
+                "collection_configs",
+                TRAINING_JOB_COLLECTION_CONFIGURATIONS_PATH,
+                sagemaker_session=self,
+            )
+            debugger_hook_config = resolve_class_attribute_from_config(
+                DebuggerHookConfig,
+                debugger_hook_config,
+                "hook_parameters",
+                TRAINING_JOB_HOOK_PARAMETERS_PATH,
+                sagemaker_session=self,
+            )
+            debugger_hook_config = resolve_class_attribute_from_config(
+                DebuggerHookConfig,
+                debugger_hook_config,
+                "container_local_output_path",
+                TRAINING_JOB_LOCAL_PATH_PATH,
+                sagemaker_session=self,
+            )
+            debugger_hook_config = resolve_class_attribute_from_config(
+                DebuggerHookConfig,
+                debugger_hook_config,
+                "s3_output_path",
+                TRAINING_JOB_S3_OUTPUT_PATH_PATH,
+                sagemaker_session=self,
+            )
+            inferred_debugger_hook_config = debugger_hook_config._to_request_dict()
+        else:
+            inferred_debugger_hook_config = resolve_value_from_config(
+                debugger_hook_config,
+                TRAINING_JOB_DEBUG_HOOK_CONFIG_PATH,
+                sagemaker_session=self,
+            )
+
         train_request = self._get_train_request(
             input_mode=input_mode,
             input_config=input_config,
@@ -862,7 +919,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             checkpoint_local_path=checkpoint_local_path,
             experiment_config=experiment_config,
             debugger_rule_configs=debugger_rule_configs,
-            debugger_hook_config=debugger_hook_config,
+            debugger_hook_config=inferred_debugger_hook_config,
             tensorboard_output_config=tensorboard_output_config,
             enable_sagemaker_metrics=enable_sagemaker_metrics,
             profiler_rule_configs=profiler_rule_configs,

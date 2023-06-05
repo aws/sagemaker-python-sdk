@@ -52,6 +52,7 @@ from tests.unit import (
     SAGEMAKER_CONFIG_FEATURE_GROUP,
     SAGEMAKER_CONFIG_PROCESSING_JOB,
     SAGEMAKER_CONFIG_TRAINING_JOB,
+    SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_BOOL,
     SAGEMAKER_CONFIG_TRANSFORM_JOB,
     SAGEMAKER_CONFIG_MODEL,
     SAGEMAKER_CONFIG_MODEL_WITH_PRIMARY_CONTAINER,
@@ -1694,6 +1695,9 @@ def test_train_with_sagemaker_config_injection(sagemaker_session):
     ]["EnableInterContainerTrafficEncryption"]
     expected_tags = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["Tags"]
     expected_environment = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["Environment"]
+    expected_debugger_hook_config = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "DebugHookConfig"
+    ]
 
     assert actual_train_args["VpcConfig"] == expected_vpc_config
     assert actual_train_args["HyperParameters"] == hyperparameters
@@ -1724,6 +1728,129 @@ def test_train_with_sagemaker_config_injection(sagemaker_session):
         "S3OutputPath": S3_OUTPUT,
         "KmsKeyId": expected_kms_key_id,
     }
+    assert actual_train_args["DebugHookConfig"] == expected_debugger_hook_config
+
+
+def test_train_with_sagemaker_config_injection_with_debugger_hook_config_as_bool(
+    sagemaker_session,
+):
+    sagemaker_session.sagemaker_config = (
+        SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_BOOL
+    )
+
+    in_config = [
+        {
+            "ChannelName": "training",
+            "DataSource": {
+                "S3DataSource": {
+                    "S3DataDistributionType": "FullyReplicated",
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": S3_INPUT_URI,
+                }
+            },
+        }
+    ]
+
+    out_config = {"S3OutputPath": S3_OUTPUT}
+
+    resource_config = {
+        "InstanceCount": INSTANCE_COUNT,
+        "InstanceType": INSTANCE_TYPE,
+        "VolumeSizeInGB": MAX_SIZE,
+    }
+
+    stop_cond = {"MaxRuntimeInSeconds": MAX_TIME}
+    RETRY_STRATEGY = {"MaximumRetryAttempts": 2}
+    hyperparameters = {"foo": "bar"}
+    TRAINING_IMAGE_CONFIG = {
+        "TrainingRepositoryAccessMode": "Vpc",
+        "TrainingRepositoryAuthConfig": {
+            "TrainingRepositoryCredentialsProviderArn": "arn:aws:lambda:us-west-2:1234567897:function:test"
+        },
+    }
+
+    sagemaker_session.train(
+        image_uri=IMAGE,
+        input_mode="File",
+        input_config=in_config,
+        job_name=JOB_NAME,
+        output_config=out_config,
+        resource_config=resource_config,
+        hyperparameters=hyperparameters,
+        stop_condition=stop_cond,
+        metric_definitions=METRIC_DEFINITONS,
+        use_spot_instances=True,
+        checkpoint_s3_uri="s3://mybucket/checkpoints/",
+        checkpoint_local_path="/tmp/checkpoints",
+        enable_sagemaker_metrics=True,
+        retry_strategy=RETRY_STRATEGY,
+        training_image_config=TRAINING_IMAGE_CONFIG,
+    )
+
+    _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
+
+    expected_volume_kms_key_id = SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_BOOL[
+        "SageMaker"
+    ]["TrainingJob"]["ResourceConfig"]["VolumeKmsKeyId"]
+    expected_role_arn = SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_BOOL["SageMaker"][
+        "TrainingJob"
+    ]["RoleArn"]
+    expected_kms_key_id = SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_BOOL["SageMaker"][
+        "TrainingJob"
+    ]["OutputDataConfig"]["KmsKeyId"]
+    expected_vpc_config = SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_BOOL["SageMaker"][
+        "TrainingJob"
+    ]["VpcConfig"]
+    expected_enable_network_isolation = (
+        SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_BOOL["SageMaker"]["TrainingJob"][
+            "EnableNetworkIsolation"
+        ]
+    )
+    expected_enable_inter_container_traffic_encryption = (
+        SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_BOOL["SageMaker"]["TrainingJob"][
+            "EnableInterContainerTrafficEncryption"
+        ]
+    )
+    expected_tags = SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_BOOL["SageMaker"][
+        "TrainingJob"
+    ]["Tags"]
+    expected_environment = SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_BOOL[
+        "SageMaker"
+    ]["TrainingJob"]["Environment"]
+    expected_debugger_hook_config = SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_BOOL[
+        "SageMaker"
+    ]["TrainingJob"]["DebugHookConfig"]
+
+    assert actual_train_args["VpcConfig"] == expected_vpc_config
+    assert actual_train_args["HyperParameters"] == hyperparameters
+    assert actual_train_args["Tags"] == expected_tags
+    assert actual_train_args["AlgorithmSpecification"]["MetricDefinitions"] == METRIC_DEFINITONS
+    assert actual_train_args["AlgorithmSpecification"]["EnableSageMakerMetricsTimeSeries"] is True
+    assert (
+        actual_train_args["EnableInterContainerTrafficEncryption"]
+        == expected_enable_inter_container_traffic_encryption
+    )
+    assert actual_train_args["EnableNetworkIsolation"] == expected_enable_network_isolation
+    assert actual_train_args["EnableManagedSpotTraining"] is True
+    assert actual_train_args["CheckpointConfig"]["S3Uri"] == "s3://mybucket/checkpoints/"
+    assert actual_train_args["CheckpointConfig"]["LocalPath"] == "/tmp/checkpoints"
+    assert actual_train_args["Environment"] == expected_environment
+    assert actual_train_args["RetryStrategy"] == RETRY_STRATEGY
+    assert (
+        actual_train_args["AlgorithmSpecification"]["TrainingImageConfig"] == TRAINING_IMAGE_CONFIG
+    )
+    assert actual_train_args["RoleArn"] == expected_role_arn
+    assert actual_train_args["ResourceConfig"] == {
+        "InstanceCount": INSTANCE_COUNT,
+        "InstanceType": INSTANCE_TYPE,
+        "VolumeSizeInGB": MAX_SIZE,
+        "VolumeKmsKeyId": expected_volume_kms_key_id,
+    }
+    assert actual_train_args["OutputDataConfig"] == {
+        "S3OutputPath": S3_OUTPUT,
+        "KmsKeyId": expected_kms_key_id,
+    }
+    assert actual_train_args["DebugHookConfig"] == expected_debugger_hook_config
 
 
 def test_train_with_sagemaker_config_injection_no_kms_support(sagemaker_session):

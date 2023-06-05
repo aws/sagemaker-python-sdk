@@ -38,6 +38,11 @@ from sagemaker.config import (
     TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
     TRAINING_JOB_ENVIRONMENT_PATH,
     TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
+    TRAINING_JOB_DEBUG_HOOK_CONFIG_PATH,
+    TRAINING_JOB_COLLECTION_CONFIGURATIONS_PATH,
+    TRAINING_JOB_HOOK_PARAMETERS_PATH,
+    TRAINING_JOB_LOCAL_PATH_PATH,
+    TRAINING_JOB_S3_OUTPUT_PATH_PATH,
 )
 from sagemaker.debugger import (  # noqa: F401 # pylint: disable=unused-import
     DEBUGGER_FLAG,
@@ -92,8 +97,10 @@ from sagemaker.utils import (
     get_config_value,
     name_from_base,
     to_string,
+    get_sagemaker_config_value,
     check_and_get_run_experiment_config,
     resolve_value_from_config,
+    resolve_class_attribute_from_config,
 )
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
@@ -660,7 +667,52 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.checkpoint_local_path = checkpoint_local_path
 
         self.rules = rules
-        self.debugger_hook_config = debugger_hook_config
+
+        # First get the config value provided for debugger_hook_config
+        # If debugger_hook_config is provided as a dict in the sagemaker config,
+        # then resolve it from the config,
+        # else resolve in the priority sequence as 1. the provided value,
+        # 2. boolean value from config
+        inferred_debugger_hook_config = get_sagemaker_config_value(
+            self.sagemaker_session, TRAINING_JOB_DEBUG_HOOK_CONFIG_PATH
+        )
+        if isinstance(inferred_debugger_hook_config, dict):
+            self.debugger_hook_config = resolve_class_attribute_from_config(
+                DebuggerHookConfig,
+                debugger_hook_config,
+                "collection_configs",
+                TRAINING_JOB_COLLECTION_CONFIGURATIONS_PATH,
+                sagemaker_session=self.sagemaker_session,
+            )
+            self.debugger_hook_config = resolve_class_attribute_from_config(
+                DebuggerHookConfig,
+                self.debugger_hook_config,
+                "hook_parameters",
+                TRAINING_JOB_HOOK_PARAMETERS_PATH,
+                sagemaker_session=self.sagemaker_session,
+            )
+            self.debugger_hook_config = resolve_class_attribute_from_config(
+                DebuggerHookConfig,
+                self.debugger_hook_config,
+                "container_local_output_path",
+                TRAINING_JOB_LOCAL_PATH_PATH,
+                sagemaker_session=self.sagemaker_session,
+            )
+            self.debugger_hook_config = resolve_class_attribute_from_config(
+                DebuggerHookConfig,
+                self.debugger_hook_config,
+                "s3_output_path",
+                TRAINING_JOB_S3_OUTPUT_PATH_PATH,
+                sagemaker_session=self.sagemaker_session,
+            )
+            self.debugger_hook_config = self.debugger_hook_config._to_request_dict()
+        else:
+            self.debugger_hook_config = resolve_value_from_config(
+                debugger_hook_config,
+                TRAINING_JOB_DEBUG_HOOK_CONFIG_PATH,
+                sagemaker_session=self.sagemaker_session,
+            )
+
         self.tensorboard_output_config = tensorboard_output_config
 
         self.debugger_rule_configs = None

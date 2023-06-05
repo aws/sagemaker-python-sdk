@@ -61,6 +61,8 @@ from sagemaker.workflow.pipeline_context import PipelineSession, _PipelineConfig
 from sagemaker.xgboost.estimator import XGBoost
 from tests.unit import (
     SAGEMAKER_CONFIG_TRAINING_JOB,
+    SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_BOOL,
+    SAGEMAKER_CONFIG_TRAINING_JOB_WITHOUT_DEBUG_HOOK_CONFIG,
     _test_default_bucket_and_prefix_combinations,
     DEFAULT_S3_BUCKET_NAME,
     DEFAULT_S3_OBJECT_KEY_PREFIX_NAME,
@@ -405,6 +407,10 @@ def test_framework_initialization_with_sagemaker_config_injection(sagemaker_sess
         "TrainingJob"
     ]["EnableInterContainerTrafficEncryption"]
     expected_environment = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["Environment"]
+    expected_debugger_hook_config = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "DebugHookConfig"
+    ]
+
     assert framework.role == expected_role_arn
     assert framework.enable_network_isolation() == expected_enable_network_isolation
     assert (
@@ -416,6 +422,183 @@ def test_framework_initialization_with_sagemaker_config_injection(sagemaker_sess
     assert framework.security_group_ids == expected_security_groups
     assert framework.subnets == expected_subnets
     assert framework.environment == expected_environment
+    assert framework.debugger_hook_config == expected_debugger_hook_config
+
+
+def test_framework_initialization_with_sagemaker_config_injection_partial_debugger_hook_config_as_dict_from_user_input(
+    sagemaker_session,
+):
+
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
+
+    framework = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+        debugger_hook_config=DebuggerHookConfig(
+            s3_output_path="s3://my-bucket",
+            container_local_output_path="/opt/ml/output/tensors",
+        ),
+    )
+    expected_volume_kms_key_id = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "ResourceConfig"
+    ]["VolumeKmsKeyId"]
+    expected_role_arn = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["RoleArn"]
+    expected_kms_key_id = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "OutputDataConfig"
+    ]["KmsKeyId"]
+    expected_subnets = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["VpcConfig"][
+        "Subnets"
+    ]
+    expected_security_groups = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "VpcConfig"
+    ]["SecurityGroupIds"]
+    expected_enable_network_isolation = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "EnableNetworkIsolation"
+    ]
+    expected_enable_inter_container_traffic_encryption = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"][
+        "TrainingJob"
+    ]["EnableInterContainerTrafficEncryption"]
+    expected_environment = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["Environment"]
+    expected_debugger_hook_config = {
+        "CollectionConfigurations": [
+            {
+                "CollectionName": "testCollectionName",
+                "CollectionParameters": {
+                    "testParameter1": "testValue1",
+                    "testParameter2": "testValue2",
+                },
+            }
+        ],
+        "HookParameters": {"hookParameter1": "testValue1", "hookParameter2": "testValue2"},
+        "LocalPath": "/opt/ml/output/tensors",
+        "S3OutputPath": "s3://my-bucket",
+    }
+
+    assert framework.role == expected_role_arn
+    assert framework.enable_network_isolation() == expected_enable_network_isolation
+    assert (
+        framework.encrypt_inter_container_traffic
+        == expected_enable_inter_container_traffic_encryption
+    )
+    assert framework.output_kms_key == expected_kms_key_id
+    assert framework.volume_kms_key == expected_volume_kms_key_id
+    assert framework.security_group_ids == expected_security_groups
+    assert framework.subnets == expected_subnets
+    assert framework.environment == expected_environment
+    assert framework.debugger_hook_config == expected_debugger_hook_config
+
+
+def test_framework_initialization_with_sagemaker_config_injection_with_debugger_hook_config_as_bool(
+    sagemaker_session,
+):
+
+    sagemaker_session.sagemaker_config = (
+        SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_BOOL
+    )
+
+    framework = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+    )
+    expected_volume_kms_key_id = SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_BOOL[
+        "SageMaker"
+    ]["TrainingJob"]["ResourceConfig"]["VolumeKmsKeyId"]
+    expected_role_arn = SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_BOOL["SageMaker"][
+        "TrainingJob"
+    ]["RoleArn"]
+    expected_kms_key_id = SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_BOOL["SageMaker"][
+        "TrainingJob"
+    ]["OutputDataConfig"]["KmsKeyId"]
+    expected_subnets = SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_BOOL["SageMaker"][
+        "TrainingJob"
+    ]["VpcConfig"]["Subnets"]
+    expected_security_groups = SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_BOOL[
+        "SageMaker"
+    ]["TrainingJob"]["VpcConfig"]["SecurityGroupIds"]
+    expected_enable_network_isolation = (
+        SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_BOOL["SageMaker"]["TrainingJob"][
+            "EnableNetworkIsolation"
+        ]
+    )
+    expected_enable_inter_container_traffic_encryption = (
+        SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_BOOL["SageMaker"]["TrainingJob"][
+            "EnableInterContainerTrafficEncryption"
+        ]
+    )
+    expected_debugger_hook_config = SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_BOOL[
+        "SageMaker"
+    ]["TrainingJob"]["DebugHookConfig"]
+
+    assert framework.role == expected_role_arn
+    assert framework.enable_network_isolation() == expected_enable_network_isolation
+    assert (
+        framework.encrypt_inter_container_traffic
+        == expected_enable_inter_container_traffic_encryption
+    )
+    assert framework.output_kms_key == expected_kms_key_id
+    assert framework.volume_kms_key == expected_volume_kms_key_id
+    assert framework.security_group_ids == expected_security_groups
+    assert framework.subnets == expected_subnets
+    assert framework.debugger_hook_config == expected_debugger_hook_config
+
+
+def test_framework_initialization_with_sagemaker_config_injection_without_debugger_hook_config(
+    sagemaker_session,
+):
+
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB_WITHOUT_DEBUG_HOOK_CONFIG
+
+    framework = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+    )
+    expected_volume_kms_key_id = SAGEMAKER_CONFIG_TRAINING_JOB_WITHOUT_DEBUG_HOOK_CONFIG[
+        "SageMaker"
+    ]["TrainingJob"]["ResourceConfig"]["VolumeKmsKeyId"]
+    expected_role_arn = SAGEMAKER_CONFIG_TRAINING_JOB_WITHOUT_DEBUG_HOOK_CONFIG["SageMaker"][
+        "TrainingJob"
+    ]["RoleArn"]
+    expected_kms_key_id = SAGEMAKER_CONFIG_TRAINING_JOB_WITHOUT_DEBUG_HOOK_CONFIG["SageMaker"][
+        "TrainingJob"
+    ]["OutputDataConfig"]["KmsKeyId"]
+    expected_subnets = SAGEMAKER_CONFIG_TRAINING_JOB_WITHOUT_DEBUG_HOOK_CONFIG["SageMaker"][
+        "TrainingJob"
+    ]["VpcConfig"]["Subnets"]
+    expected_security_groups = SAGEMAKER_CONFIG_TRAINING_JOB_WITHOUT_DEBUG_HOOK_CONFIG["SageMaker"][
+        "TrainingJob"
+    ]["VpcConfig"]["SecurityGroupIds"]
+    expected_enable_network_isolation = SAGEMAKER_CONFIG_TRAINING_JOB_WITHOUT_DEBUG_HOOK_CONFIG[
+        "SageMaker"
+    ]["TrainingJob"]["EnableNetworkIsolation"]
+    expected_enable_inter_container_traffic_encryption = (
+        SAGEMAKER_CONFIG_TRAINING_JOB_WITHOUT_DEBUG_HOOK_CONFIG["SageMaker"]["TrainingJob"][
+            "EnableInterContainerTrafficEncryption"
+        ]
+    )
+
+    assert framework.role == expected_role_arn
+    assert framework.enable_network_isolation() == expected_enable_network_isolation
+    assert (
+        framework.encrypt_inter_container_traffic
+        == expected_enable_inter_container_traffic_encryption
+    )
+    assert framework.output_kms_key == expected_kms_key_id
+    assert framework.volume_kms_key == expected_volume_kms_key_id
+    assert framework.security_group_ids == expected_security_groups
+    assert framework.subnets == expected_subnets
+    assert framework.debugger_hook_config is None
 
 
 def test_estimator_initialization_with_sagemaker_config_injection(sagemaker_session):
@@ -451,6 +634,10 @@ def test_estimator_initialization_with_sagemaker_config_injection(sagemaker_sess
         "TrainingJob"
     ]["EnableInterContainerTrafficEncryption"]
     expected_environment = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["Environment"]
+    expected_debugger_hook_config = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "DebugHookConfig"
+    ]
+
     assert estimator.role == expected_role_arn
     assert estimator.enable_network_isolation() == expected_enable_network_isolation
     assert (
@@ -462,6 +649,66 @@ def test_estimator_initialization_with_sagemaker_config_injection(sagemaker_sess
     assert estimator.security_group_ids == expected_security_groups
     assert estimator.subnets == expected_subnets
     assert estimator.environment == expected_environment
+    assert estimator.debugger_hook_config == expected_debugger_hook_config
+
+
+def test_estimator_initialization_with_sagemaker_config_injection_with_debugger_hook_config_as_bool(
+    sagemaker_session,
+):
+
+    sagemaker_session.sagemaker_config = (
+        SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_BOOL
+    )
+
+    estimator = Estimator(
+        image_uri="some-image",
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.p3.16xlarge", 2),
+        ],
+        sagemaker_session=sagemaker_session,
+        base_job_name="base_job_name",
+    )
+    expected_volume_kms_key_id = SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_BOOL[
+        "SageMaker"
+    ]["TrainingJob"]["ResourceConfig"]["VolumeKmsKeyId"]
+    expected_role_arn = SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_BOOL["SageMaker"][
+        "TrainingJob"
+    ]["RoleArn"]
+    expected_kms_key_id = SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_BOOL["SageMaker"][
+        "TrainingJob"
+    ]["OutputDataConfig"]["KmsKeyId"]
+    expected_subnets = SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_BOOL["SageMaker"][
+        "TrainingJob"
+    ]["VpcConfig"]["Subnets"]
+    expected_security_groups = SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_BOOL[
+        "SageMaker"
+    ]["TrainingJob"]["VpcConfig"]["SecurityGroupIds"]
+    expected_enable_network_isolation = (
+        SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_BOOL["SageMaker"]["TrainingJob"][
+            "EnableNetworkIsolation"
+        ]
+    )
+    expected_enable_inter_container_traffic_encryption = (
+        SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_BOOL["SageMaker"]["TrainingJob"][
+            "EnableInterContainerTrafficEncryption"
+        ]
+    )
+    expected_debugger_hook_config = SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_BOOL[
+        "SageMaker"
+    ]["TrainingJob"]["DebugHookConfig"]
+
+    assert estimator.role == expected_role_arn
+    assert estimator.enable_network_isolation() == expected_enable_network_isolation
+    assert (
+        estimator.encrypt_inter_container_traffic
+        == expected_enable_inter_container_traffic_encryption
+    )
+    assert estimator.output_kms_key == expected_kms_key_id
+    assert estimator.volume_kms_key == expected_volume_kms_key_id
+    assert estimator.security_group_ids == expected_security_groups
+    assert estimator.subnets == expected_subnets
+    assert estimator.debugger_hook_config == expected_debugger_hook_config
 
 
 def test_estimator_initialization_with_sagemaker_config_injection_no_kms_supported(

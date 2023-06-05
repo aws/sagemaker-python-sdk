@@ -158,6 +158,7 @@ SageMaker:
         VolumeKmsKeyId: 'volumekmskeyid1'
     RoleArn: 'arn:aws:iam::555555555555:role/IMRole'
   TrainingJob:
+    DebugHookConfig: false
     EnableNetworkIsolation: true
     Environment:
       'var1': 'value1'

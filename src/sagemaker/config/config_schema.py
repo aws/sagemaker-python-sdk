@@ -98,6 +98,13 @@ ENVIRONMENT = "Environment"
 CONTAINERS = "Containers"
 PRIMARY_CONTAINER = "PrimaryContainer"
 INFERENCE_SPECIFICATION = "InferenceSpecification"
+DEBUG_HOOK_CONFIG = "DebugHookConfig"
+COLLECTION_CONFIGURATIONS = "CollectionConfigurations"
+COLLECTION_NAME = "CollectionName"
+COLLECTION_PARAMETERS = "CollectionParameters"
+HOOK_PARAMETERS = "HookParameters"
+LOCAL_PATH = "LocalPath"
+S3_OUTPUT_PATH = "S3OutputPath"
 
 
 def _simple_path(*args: str):
@@ -116,6 +123,15 @@ TRAINING_JOB_ENVIRONMENT_PATH = _simple_path(SAGEMAKER, TRAINING_JOB, ENVIRONMEN
 TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH = _simple_path(
     SAGEMAKER, TRAINING_JOB, ENABLE_NETWORK_ISOLATION
 )
+TRAINING_JOB_DEBUG_HOOK_CONFIG_PATH = _simple_path(SAGEMAKER, TRAINING_JOB, DEBUG_HOOK_CONFIG)
+TRAINING_JOB_COLLECTION_CONFIGURATIONS_PATH = _simple_path(
+    TRAINING_JOB_DEBUG_HOOK_CONFIG_PATH, COLLECTION_CONFIGURATIONS
+)
+TRAINING_JOB_HOOK_PARAMETERS_PATH = _simple_path(
+    TRAINING_JOB_DEBUG_HOOK_CONFIG_PATH, HOOK_PARAMETERS
+)
+TRAINING_JOB_LOCAL_PATH_PATH = _simple_path(TRAINING_JOB_DEBUG_HOOK_CONFIG_PATH, LOCAL_PATH)
+TRAINING_JOB_S3_OUTPUT_PATH_PATH = _simple_path(TRAINING_JOB_DEBUG_HOOK_CONFIG_PATH, S3_OUTPUT_PATH)
 TRAINING_JOB_KMS_KEY_ID_PATH = _simple_path(SAGEMAKER, TRAINING_JOB, OUTPUT_DATA_CONFIG, KMS_KEY_ID)
 TRAINING_JOB_RESOURCE_CONFIG_PATH = _simple_path(SAGEMAKER, TRAINING_JOB, RESOURCE_CONFIG)
 TRAINING_JOB_OUTPUT_DATA_CONFIG_PATH = _simple_path(SAGEMAKER, TRAINING_JOB, OUTPUT_DATA_CONFIG)
@@ -586,6 +602,55 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
             "minItems": 1,
             "maxItems": 15,
         },
+        # Regex is taken from https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_DebugHookConfig.html
+        "collectionName": {
+            TYPE: "string",
+            "pattern": r".*",
+            "minLength": 1,
+            "maxLength": 256,
+        },
+        "collectionParameters": {
+            TYPE: OBJECT,
+            ADDITIONAL_PROPERTIES: False,
+            PATTERN_PROPERTIES: {
+                r"(.*){1,256}": {
+                    TYPE: "string",
+                    "pattern": r".*",
+                    "maxLength": 256,
+                }
+            },
+            "maxProperties": 20,
+        },
+        "collectionConfiguration": {
+            TYPE: OBJECT,
+            ADDITIONAL_PROPERTIES: False,
+            PROPERTIES: {
+                COLLECTION_NAME: {"$ref": "#/definitions/collectionName"},
+                COLLECTION_PARAMETERS: {"$ref": "#/definitions/collectionParameters"},
+            },
+        },
+        "hookParameters": {
+            TYPE: OBJECT,
+            ADDITIONAL_PROPERTIES: False,
+            PATTERN_PROPERTIES: {
+                r"(.*){1,256}": {
+                    TYPE: "string",
+                    "pattern": r".*",
+                    "maxLength": 256,
+                }
+            },
+            "maxProperties": 20,
+        },
+        "localPath": {
+            TYPE: "string",
+            "pattern": r".*",
+            "maxLength": 4096,
+        },
+        "s3OutputPath": {
+            TYPE: "string",
+            "pattern": r"^(https|s3)://([^/]+)/?(.*)$",
+            "maxLength": 1024,
+        },
     },
     PROPERTIES: {
         SCHEMA_VERSION: {
@@ -988,6 +1053,31 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                     TYPE: OBJECT,
                     ADDITIONAL_PROPERTIES: False,
                     PROPERTIES: {
+                        DEBUG_HOOK_CONFIG: {
+                            "anyOf": [
+                                {TYPE: "boolean"},
+                                {
+                                    TYPE: OBJECT,
+                                    ADDITIONAL_PROPERTIES: False,
+                                    PROPERTIES: {
+                                        COLLECTION_CONFIGURATIONS: {
+                                            TYPE: "array",
+                                            "items": {
+                                                "$ref": "#/definitions/collectionConfiguration"
+                                            },
+                                            # https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CollectionConfiguration.html
+                                            # According to the API docs
+                                            # This array can have maximum number of 20 items.
+                                            "minItems": 0,
+                                            "maxItems": 20,
+                                        },
+                                        HOOK_PARAMETERS: {"$ref": "#/definitions/hookParameters"},
+                                        LOCAL_PATH: {"$ref": "#/definitions/localPath"},
+                                        S3_OUTPUT_PATH: {"$ref": "#/definitions/s3OutputPath"},
+                                    },
+                                },
+                            ]
+                        },
                         ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION: {TYPE: "boolean"},
                         ENABLE_NETWORK_ISOLATION: {TYPE: "boolean"},
                         ENVIRONMENT: {"$ref": "#/definitions/environment-Length512-Properties48"},

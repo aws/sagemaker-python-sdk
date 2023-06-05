@@ -138,6 +138,7 @@ def valid_processing_job_config(valid_iam_role_arn, valid_vpc_config, valid_envi
 @pytest.fixture()
 def valid_training_job_config(valid_iam_role_arn, valid_vpc_config, valid_environment_config):
     return {
+        "DebugHookConfig": False,
         "EnableNetworkIsolation": True,
         "Environment": valid_environment_config,
         "OutputDataConfig": {"KmsKeyId": "kmskeyid1"},

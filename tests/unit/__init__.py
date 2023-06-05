@@ -83,6 +83,13 @@ from sagemaker.config import (
     CONTAINERS,
     PRIMARY_CONTAINER,
     INFERENCE_SPECIFICATION,
+    DEBUG_HOOK_CONFIG,
+    COLLECTION_CONFIGURATIONS,
+    COLLECTION_NAME,
+    COLLECTION_PARAMETERS,
+    HOOK_PARAMETERS,
+    LOCAL_PATH,
+    S3_OUTPUT_PATH,
 )
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
@@ -319,6 +326,56 @@ SAGEMAKER_CONFIG_PROCESSING_JOB = {
 }
 
 SAGEMAKER_CONFIG_TRAINING_JOB = {
+    SCHEMA_VERSION: "1.0",
+    SAGEMAKER: {
+        TRAINING_JOB: {
+            DEBUG_HOOK_CONFIG: {
+                COLLECTION_CONFIGURATIONS: [
+                    {
+                        COLLECTION_NAME: "testCollectionName",
+                        COLLECTION_PARAMETERS: {
+                            "testParameter1": "testValue1",
+                            "testParameter2": "testValue2",
+                        },
+                    },
+                ],
+                HOOK_PARAMETERS: {
+                    "hookParameter1": "testValue1",
+                    "hookParameter2": "testValue2",
+                },
+                LOCAL_PATH: "/local/path/for/data/emission/testLocalPath",
+                S3_OUTPUT_PATH: "s3://path/for/data/emission/testS3OutputPath",
+            },
+            ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION: True,
+            ENABLE_NETWORK_ISOLATION: True,
+            ENVIRONMENT: {"configEnvVar1": "value1", "configEnvVar2": "value2"},
+            OUTPUT_DATA_CONFIG: {KMS_KEY_ID: "TestKms"},
+            RESOURCE_CONFIG: {VOLUME_KMS_KEY_ID: "volumekey"},
+            ROLE_ARN: "arn:aws:iam::111111111111:role/ConfigRole",
+            VPC_CONFIG: {SUBNETS: ["subnets-123"], SECURITY_GROUP_IDS: ["sg-123"]},
+            TAGS: [{KEY: "some-tag", VALUE: "value-for-tag"}],
+        },
+    },
+}
+
+SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_BOOL = {
+    SCHEMA_VERSION: "1.0",
+    SAGEMAKER: {
+        TRAINING_JOB: {
+            DEBUG_HOOK_CONFIG: False,
+            ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION: True,
+            ENABLE_NETWORK_ISOLATION: True,
+            ENVIRONMENT: {"configEnvVar1": "value1", "configEnvVar2": "value2"},
+            OUTPUT_DATA_CONFIG: {KMS_KEY_ID: "TestKms"},
+            RESOURCE_CONFIG: {VOLUME_KMS_KEY_ID: "volumekey"},
+            ROLE_ARN: "arn:aws:iam::111111111111:role/ConfigRole",
+            VPC_CONFIG: {SUBNETS: ["subnets-123"], SECURITY_GROUP_IDS: ["sg-123"]},
+            TAGS: [{KEY: "some-tag", VALUE: "value-for-tag"}],
+        },
+    },
+}
+
+SAGEMAKER_CONFIG_TRAINING_JOB_WITHOUT_DEBUG_HOOK_CONFIG = {
     SCHEMA_VERSION: "1.0",
     SAGEMAKER: {
         TRAINING_JOB: {
