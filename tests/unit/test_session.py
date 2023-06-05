@@ -45,6 +45,7 @@ from tests.unit import (
     SAGEMAKER_CONFIG_COMPILATION_JOB,
     SAGEMAKER_CONFIG_EDGE_PACKAGING_JOB,
     SAGEMAKER_CONFIG_ENDPOINT_CONFIG,
+    SAGEMAKER_CONFIG_ENDPOINT,
     SAGEMAKER_CONFIG_AUTO_ML,
     SAGEMAKER_CONFIG_MODEL_PACKAGE,
     SAGEMAKER_CONFIG_FEATURE_GROUP,
@@ -493,8 +494,8 @@ def test_get_execution_role_works_with_service_role():
 
     actual = get_execution_role(session)
     assert (
-        actual
-        == "arn:aws:iam::369233609183:role/service-role/AmazonSageMaker-ExecutionRole-20171129T072388"
+            actual
+            == "arn:aws:iam::369233609183:role/service-role/AmazonSageMaker-ExecutionRole-20171129T072388"
     )
 
 
@@ -538,8 +539,8 @@ def test_get_caller_identity_arn_from_describe_notebook_instance(boto_session):
     "six.moves.builtins.open",
     mock_open(
         read_data='{"ResourceName": "SageMakerInstance", '
-        '"DomainId": "d-kbnw5yk6tg8j", '
-        '"UserProfileName": "default-1617915559064"}'
+                  '"DomainId": "d-kbnw5yk6tg8j", '
+                  '"UserProfileName": "default-1617915559064"}'
     ),
 )
 @patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, True))
@@ -563,8 +564,8 @@ def test_get_caller_identity_arn_from_describe_user_profile(boto_session):
     "six.moves.builtins.open",
     mock_open(
         read_data='{"ResourceName": "SageMakerInstance", '
-        '"DomainId": "d-kbnw5yk6tg8j", '
-        '"UserProfileName": "default-1617915559064"}'
+                  '"DomainId": "d-kbnw5yk6tg8j", '
+                  '"UserProfileName": "default-1617915559064"}'
     ),
 )
 @patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, True))
@@ -590,8 +591,8 @@ def test_get_caller_identity_arn_from_describe_domain_if_no_user_settings(boto_s
     "six.moves.builtins.open",
     mock_open(
         read_data='{"ResourceName": "SageMakerInstance", '
-        '"DomainId": "d-kbnw5yk6tg8j", '
-        '"UserProfileName": "default-1617915559064"}'
+                  '"DomainId": "d-kbnw5yk6tg8j", '
+                  '"UserProfileName": "default-1617915559064"}'
     ),
 )
 @patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, True))
@@ -624,8 +625,8 @@ def test_fallback_to_domain_if_role_unavailable_in_user_settings(boto_session):
     "six.moves.builtins.open",
     mock_open(
         read_data='{"ResourceName": "SageMakerInstance", '
-        '"DomainId": "d-kbnw5yk6tg8j", '
-        '"SpaceName": "space_name"}'
+                  '"DomainId": "d-kbnw5yk6tg8j", '
+                  '"SpaceName": "space_name"}'
     ),
 )
 @patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, True))
@@ -649,7 +650,7 @@ def test_get_caller_identity_arn_from_describe_domain_for_space(boto_session):
 @patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, True))
 @patch("sagemaker.session.sts_regional_endpoint", return_value=STS_ENDPOINT)
 def test_get_caller_identity_arn_from_a_role_after_describe_notebook_exception(
-    sts_regional_endpoint, boto_session
+        sts_regional_endpoint, boto_session
 ):
     sess = Session(boto_session)
     exception = ClientError(
@@ -695,7 +696,7 @@ def test_get_caller_identity_arn_from_a_user(sts_regional_endpoint, boto_session
 @patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, False))
 @patch("sagemaker.session.sts_regional_endpoint", return_value=STS_ENDPOINT)
 def test_get_caller_identity_arn_from_an_user_without_permissions(
-    sts_regional_endpoint, boto_session
+        sts_regional_endpoint, boto_session
 ):
     sess = Session(boto_session)
     arn = "arn:aws:iam::369233609183:user/mia"
@@ -746,7 +747,7 @@ def test_get_caller_identity_arn_from_an_execution_role(sts_regional_endpoint, b
 @patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, False))
 @patch("sagemaker.session.sts_regional_endpoint", return_value=STS_ENDPOINT)
 def test_get_caller_identity_arn_from_a_sagemaker_execution_role_with_iam_client_error(
-    sts_regional_endpoint, boto_session
+        sts_regional_endpoint, boto_session
 ):
     sess = Session(boto_session)
     arn = "arn:aws:sts::369233609183:assumed-role/AmazonSageMaker-ExecutionRole-20171129T072388/SageMaker"
@@ -758,8 +759,8 @@ def test_get_caller_identity_arn_from_a_sagemaker_execution_role_with_iam_client
 
     actual = sess.get_caller_identity_arn()
     assert (
-        actual
-        == "arn:aws:iam::369233609183:role/service-role/AmazonSageMaker-ExecutionRole-20171129T072388"
+            actual
+            == "arn:aws:iam::369233609183:role/service-role/AmazonSageMaker-ExecutionRole-20171129T072388"
     )
 
 
@@ -808,7 +809,7 @@ def test_delete_model(boto_session):
 
 def test_user_agent_injected(boto_session):
     assert (
-        "AWS-SageMaker-Python-SDK" not in boto_session.client("sagemaker")._client_config.user_agent
+            "AWS-SageMaker-Python-SDK" not in boto_session.client("sagemaker")._client_config.user_agent
     )
 
     sess = Session(boto_session)
@@ -818,18 +819,18 @@ def test_user_agent_injected(boto_session):
     assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_metrics_client._client_config.user_agent
     assert "AWS-SageMaker-Notebook-Instance" not in sess.sagemaker_client._client_config.user_agent
     assert (
-        "AWS-SageMaker-Notebook-Instance"
-        not in sess.sagemaker_runtime_client._client_config.user_agent
+            "AWS-SageMaker-Notebook-Instance"
+            not in sess.sagemaker_runtime_client._client_config.user_agent
     )
     assert (
-        "AWS-SageMaker-Notebook-Instance"
-        not in sess.sagemaker_metrics_client._client_config.user_agent
+            "AWS-SageMaker-Notebook-Instance"
+            not in sess.sagemaker_metrics_client._client_config.user_agent
     )
 
 
 def test_user_agent_injected_with_nbi(boto_session):
     assert (
-        "AWS-SageMaker-Python-SDK" not in boto_session.client("sagemaker")._client_config.user_agent
+            "AWS-SageMaker-Python-SDK" not in boto_session.client("sagemaker")._client_config.user_agent
     )
 
     with patch("six.moves.builtins.open", mock_open(read_data="120.0-0")) as mo:
@@ -842,16 +843,16 @@ def test_user_agent_injected_with_nbi(boto_session):
     assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_metrics_client._client_config.user_agent
     assert "AWS-SageMaker-Notebook-Instance" in sess.sagemaker_client._client_config.user_agent
     assert (
-        "AWS-SageMaker-Notebook-Instance" in sess.sagemaker_runtime_client._client_config.user_agent
+            "AWS-SageMaker-Notebook-Instance" in sess.sagemaker_runtime_client._client_config.user_agent
     )
     assert (
-        "AWS-SageMaker-Notebook-Instance" in sess.sagemaker_metrics_client._client_config.user_agent
+            "AWS-SageMaker-Notebook-Instance" in sess.sagemaker_metrics_client._client_config.user_agent
     )
 
 
 def test_user_agent_injected_with_nbi_ioerror(boto_session):
     assert (
-        "AWS-SageMaker-Python-SDK" not in boto_session.client("sagemaker")._client_config.user_agent
+            "AWS-SageMaker-Python-SDK" not in boto_session.client("sagemaker")._client_config.user_agent
     )
 
     with patch("six.moves.builtins.open", MagicMock(side_effect=IOError("File not found"))) as mo:
@@ -864,12 +865,12 @@ def test_user_agent_injected_with_nbi_ioerror(boto_session):
     assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_metrics_client._client_config.user_agent
     assert "AWS-SageMaker-Notebook-Instance" not in sess.sagemaker_client._client_config.user_agent
     assert (
-        "AWS-SageMaker-Notebook-Instance"
-        not in sess.sagemaker_runtime_client._client_config.user_agent
+            "AWS-SageMaker-Notebook-Instance"
+            not in sess.sagemaker_runtime_client._client_config.user_agent
     )
     assert (
-        "AWS-SageMaker-Notebook-Instance"
-        not in sess.sagemaker_metrics_client._client_config.user_agent
+            "AWS-SageMaker-Notebook-Instance"
+            not in sess.sagemaker_metrics_client._client_config.user_agent
     )
 
 
@@ -1219,8 +1220,8 @@ SAMPLE_HYPERBAND_STRATEGY_CONFIG = {
 def test_tune_warm_start(sagemaker_session, warm_start_type, parents):
     def assert_create_tuning_job_request(**kwrags):
         assert (
-            kwrags["HyperParameterTuningJobConfig"]
-            == SAMPLE_TUNING_JOB_REQUEST["HyperParameterTuningJobConfig"]
+                kwrags["HyperParameterTuningJobConfig"]
+                == SAMPLE_TUNING_JOB_REQUEST["HyperParameterTuningJobConfig"]
         )
         assert kwrags["HyperParameterTuningJobName"] == "dummy-tuning-1"
         assert kwrags["TrainingJobDefinition"] == SAMPLE_TUNING_JOB_REQUEST["TrainingJobDefinition"]
@@ -1262,8 +1263,8 @@ def test_tune_warm_start(sagemaker_session, warm_start_type, parents):
 
 def test_create_tuning_job_without_training_config_or_list(sagemaker_session):
     with pytest.raises(
-        ValueError,
-        match="Either training_config or training_config_list should be provided.",
+            ValueError,
+            match="Either training_config or training_config_list should be provided.",
     ):
         sagemaker_session.create_tuning_job(
             job_name="dummy-tuning-1",
@@ -1280,8 +1281,8 @@ def test_create_tuning_job_without_training_config_or_list(sagemaker_session):
 
 def test_create_tuning_job_with_both_training_config_and_list(sagemaker_session):
     with pytest.raises(
-        ValueError,
-        match="Only one of training_config and training_config_list should be provided.",
+            ValueError,
+            match="Only one of training_config and training_config_list should be provided.",
     ):
         sagemaker_session.create_tuning_job(
             job_name="dummy-tuning-1",
@@ -1315,8 +1316,8 @@ def test_create_tuning_job_with_both_training_config_and_list(sagemaker_session)
 def test_create_tuning_job(sagemaker_session):
     def assert_create_tuning_job_request(**kwrags):
         assert (
-            kwrags["HyperParameterTuningJobConfig"]
-            == SAMPLE_TUNING_JOB_REQUEST["HyperParameterTuningJobConfig"]
+                kwrags["HyperParameterTuningJobConfig"]
+                == SAMPLE_TUNING_JOB_REQUEST["HyperParameterTuningJobConfig"]
         )
         assert kwrags["HyperParameterTuningJobName"] == "dummy-tuning-1"
         assert kwrags["TrainingJobDefinition"] == SAMPLE_TUNING_JOB_REQUEST["TrainingJobDefinition"]
@@ -1363,8 +1364,8 @@ def test_create_tuning_job_multi_algo(sagemaker_session):
         assert kwrags["HyperParameterTuningJobName"] == "dummy-tuning-1"
         assert "TrainingJobDefinition" not in kwrags
         assert (
-            kwrags["TrainingJobDefinitions"]
-            == SAMPLE_MULTI_ALGO_TUNING_JOB_REQUEST["TrainingJobDefinitions"]
+                kwrags["TrainingJobDefinitions"]
+                == SAMPLE_MULTI_ALGO_TUNING_JOB_REQUEST["TrainingJobDefinitions"]
         )
         assert kwrags.get("WarmStartConfig", None) is None
 
@@ -1416,8 +1417,8 @@ def test_create_tuning_job_multi_algo(sagemaker_session):
 def test_tune(sagemaker_session):
     def assert_create_tuning_job_request(**kwrags):
         assert (
-            kwrags["HyperParameterTuningJobConfig"]
-            == SAMPLE_TUNING_JOB_REQUEST["HyperParameterTuningJobConfig"]
+                kwrags["HyperParameterTuningJobConfig"]
+                == SAMPLE_TUNING_JOB_REQUEST["HyperParameterTuningJobConfig"]
         )
         assert kwrags["HyperParameterTuningJobName"] == "dummy-tuning-1"
         assert kwrags["TrainingJobDefinition"] == SAMPLE_TUNING_JOB_REQUEST["TrainingJobDefinition"]
@@ -1453,16 +1454,16 @@ def test_tune(sagemaker_session):
 def test_tune_with_strategy_config(sagemaker_session):
     def assert_create_tuning_job_request(**kwrags):
         assert (
-            kwrags["HyperParameterTuningJobConfig"]["StrategyConfig"]["HyperbandStrategyConfig"][
-                "MinResource"
-            ]
-            == SAMPLE_HYPERBAND_STRATEGY_CONFIG["HyperbandStrategyConfig"]["MinResource"]
+                kwrags["HyperParameterTuningJobConfig"]["StrategyConfig"]["HyperbandStrategyConfig"][
+                    "MinResource"
+                ]
+                == SAMPLE_HYPERBAND_STRATEGY_CONFIG["HyperbandStrategyConfig"]["MinResource"]
         )
         assert (
-            kwrags["HyperParameterTuningJobConfig"]["StrategyConfig"]["HyperbandStrategyConfig"][
-                "MaxResource"
-            ]
-            == SAMPLE_HYPERBAND_STRATEGY_CONFIG["HyperbandStrategyConfig"]["MaxResource"]
+                kwrags["HyperParameterTuningJobConfig"]["StrategyConfig"]["HyperbandStrategyConfig"][
+                    "MaxResource"
+                ]
+                == SAMPLE_HYPERBAND_STRATEGY_CONFIG["HyperbandStrategyConfig"]["MaxResource"]
         )
 
     sagemaker_session.sagemaker_client.create_hyper_parameter_tuning_job.side_effect = (
@@ -1495,8 +1496,8 @@ def test_tune_with_strategy_config(sagemaker_session):
 def test_tune_with_encryption_flag(sagemaker_session):
     def assert_create_tuning_job_request(**kwrags):
         assert (
-            kwrags["HyperParameterTuningJobConfig"]
-            == SAMPLE_TUNING_JOB_REQUEST["HyperParameterTuningJobConfig"]
+                kwrags["HyperParameterTuningJobConfig"]
+                == SAMPLE_TUNING_JOB_REQUEST["HyperParameterTuningJobConfig"]
         )
         assert kwrags["HyperParameterTuningJobName"] == "dummy-tuning-1"
         assert kwrags["TrainingJobDefinition"]["EnableInterContainerTrafficEncryption"] is True
@@ -1532,17 +1533,17 @@ def test_tune_with_encryption_flag(sagemaker_session):
 def test_tune_with_spot_and_checkpoints(sagemaker_session):
     def assert_create_tuning_job_request(**kwargs):
         assert (
-            kwargs["HyperParameterTuningJobConfig"]
-            == SAMPLE_TUNING_JOB_REQUEST["HyperParameterTuningJobConfig"]
+                kwargs["HyperParameterTuningJobConfig"]
+                == SAMPLE_TUNING_JOB_REQUEST["HyperParameterTuningJobConfig"]
         )
         assert kwargs["HyperParameterTuningJobName"] == "dummy-tuning-1"
         assert kwargs["TrainingJobDefinition"]["EnableManagedSpotTraining"] is True
         assert (
-            kwargs["TrainingJobDefinition"]["CheckpointConfig"]["S3Uri"]
-            == "s3://mybucket/checkpoints/"
+                kwargs["TrainingJobDefinition"]["CheckpointConfig"]["S3Uri"]
+                == "s3://mybucket/checkpoints/"
         )
         assert (
-            kwargs["TrainingJobDefinition"]["CheckpointConfig"]["LocalPath"] == "/tmp/checkpoints"
+                kwargs["TrainingJobDefinition"]["CheckpointConfig"]["LocalPath"] == "/tmp/checkpoints"
         )
         assert kwargs.get("WarmStartConfig", None) is None
 
@@ -1617,8 +1618,8 @@ def test_stop_tuning_job_client_error(sagemaker_session):
         HyperParameterTuningJobName=JOB_NAME
     )
     assert (
-        "An error occurred (MockException) when calling the Operation operation: MockMessage"
-        in str(e)
+            "An error occurred (MockException) when calling the Operation operation: MockMessage"
+            in str(e)
     )
 
 
@@ -1699,8 +1700,8 @@ def test_train_with_sagemaker_config_injection(sagemaker_session):
     assert actual_train_args["AlgorithmSpecification"]["MetricDefinitions"] == METRIC_DEFINITONS
     assert actual_train_args["AlgorithmSpecification"]["EnableSageMakerMetricsTimeSeries"] is True
     assert (
-        actual_train_args["EnableInterContainerTrafficEncryption"]
-        == expected_enable_inter_container_traffic_encryption
+            actual_train_args["EnableInterContainerTrafficEncryption"]
+            == expected_enable_inter_container_traffic_encryption
     )
     assert actual_train_args["EnableNetworkIsolation"] == expected_enable_network_isolation
     assert actual_train_args["EnableManagedSpotTraining"] is True
@@ -1709,7 +1710,7 @@ def test_train_with_sagemaker_config_injection(sagemaker_session):
     assert actual_train_args["Environment"] == expected_environment
     assert actual_train_args["RetryStrategy"] == RETRY_STRATEGY
     assert (
-        actual_train_args["AlgorithmSpecification"]["TrainingImageConfig"] == TRAINING_IMAGE_CONFIG
+            actual_train_args["AlgorithmSpecification"]["TrainingImageConfig"] == TRAINING_IMAGE_CONFIG
     )
     assert actual_train_args["RoleArn"] == expected_role_arn
     assert actual_train_args["ResourceConfig"] == {
@@ -1891,7 +1892,7 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
     assert actual_train_args["Environment"] == ENV_INPUT
     assert actual_train_args["RetryStrategy"] == RETRY_STRATEGY
     assert (
-        actual_train_args["AlgorithmSpecification"]["TrainingImageConfig"] == TRAINING_IMAGE_CONFIG
+            actual_train_args["AlgorithmSpecification"]["TrainingImageConfig"] == TRAINING_IMAGE_CONFIG
     )
 
 
@@ -2268,8 +2269,8 @@ def test_logs_for_job_full_lifecycle(time, cw, sagemaker_session_full_lifecycle)
     ims = sagemaker_session_full_lifecycle
     ims.logs_for_job(JOB_NAME, wait=True, poll=0)
     assert (
-        ims.boto_session.client.return_value.describe_training_job.call_args_list
-        == [call(TrainingJobName=JOB_NAME)] * 3
+            ims.boto_session.client.return_value.describe_training_job.call_args_list
+            == [call(TrainingJobName=JOB_NAME)] * 3
     )
     assert cw().call_args_list == [
         call(0, "hi there #1"),
@@ -2331,8 +2332,8 @@ def test_logs_for_transform_job_full_lifecycle(time, cw, sagemaker_session_full_
     ims = sagemaker_session_full_lifecycle
     ims.logs_for_transform_job(JOB_NAME, wait=True, poll=0)
     assert (
-        ims.sagemaker_client.describe_transform_job.call_args_list
-        == [call(TransformJobName=JOB_NAME)] * 3
+            ims.sagemaker_client.describe_transform_job.call_args_list
+            == [call(TransformJobName=JOB_NAME)] * 3
     )
     assert cw().call_args_list == [
         call(0, "hi there #1"),
@@ -2552,7 +2553,7 @@ def test_create_model_from_job(sagemaker_session):
     ims.create_model_from_job(JOB_NAME)
 
     assert (
-        call(TrainingJobName=JOB_NAME) in ims.sagemaker_client.describe_training_job.call_args_list
+            call(TrainingJobName=JOB_NAME) in ims.sagemaker_client.describe_training_job.call_args_list
     )
     ims.sagemaker_client.create_model.assert_called_with(
         ExecutionRoleArn=EXPANDED_ROLE,
@@ -2568,7 +2569,7 @@ def test_create_model_from_job_with_tags(sagemaker_session):
     ims.create_model_from_job(JOB_NAME, tags=TAGS)
 
     assert (
-        call(TrainingJobName=JOB_NAME) in ims.sagemaker_client.describe_training_job.call_args_list
+            call(TrainingJobName=JOB_NAME) in ims.sagemaker_client.describe_training_job.call_args_list
     )
     ims.sagemaker_client.create_model.assert_called_with(
         ExecutionRoleArn=EXPANDED_ROLE,
@@ -2594,6 +2595,7 @@ def test_create_edge_packaging_with_sagemaker_config_injection(sagemaker_session
         "OutputConfig"
     ]["KmsKeyId"]
     expected_tags = SAGEMAKER_CONFIG_EDGE_PACKAGING_JOB["SageMaker"]["EdgePackagingJob"]["Tags"]
+    expected_resource_key = SAGEMAKER_CONFIG_EDGE_PACKAGING_JOB["SageMaker"]["EdgePackagingJob"]["ResourceKey"]
     sagemaker_session.sagemaker_client.create_edge_packaging_job.assert_called_with(
         RoleArn=expected_role_arn,  # provided from config
         OutputConfig={
@@ -2604,6 +2606,7 @@ def test_create_edge_packaging_with_sagemaker_config_injection(sagemaker_session
         ModelVersion=None,
         EdgePackagingJobName=None,
         CompilationJobName=None,
+        ResourceKey=expected_resource_key,
         Tags=expected_tags,
     )
 
@@ -2863,7 +2866,7 @@ def test_create_endpoint_config_with_sagemaker_config_injection_no_kms_support(s
 
 
 def test_create_endpoint_config_from_existing_with_sagemaker_config_injection(
-    sagemaker_session,
+        sagemaker_session,
 ):
     sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_ENDPOINT_CONFIG
 
@@ -3045,7 +3048,7 @@ def test_create_endpoint_config_from_existing_with_sagemaker_config_injection_no
 
 
 def test_endpoint_from_production_variants_with_sagemaker_config_injection(
-    sagemaker_session,
+        sagemaker_session,
 ):
     sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_ENDPOINT_CONFIG
 
@@ -3287,6 +3290,35 @@ def test_endpoint_from_production_variants_with_tags(sagemaker_session):
     )
 
 
+def test_endpoint_from_production_variants_with_sagemaker_config_injection_tags(sagemaker_session):
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_ENDPOINT
+
+    ims = sagemaker_session
+    ims.sagemaker_client.describe_endpoint = Mock(return_value={"EndpointStatus": "InService"})
+    pvs = [
+        sagemaker.production_variant("A", "ml.p2.xlarge"),
+        sagemaker.production_variant("B", "p299.4096xlarge"),
+    ]
+    ex = ClientError(
+        {
+            "Error": {
+                "Code": "ValidationException",
+                "Message": "Could not find your thing",
+            }
+        },
+        "b",
+    )
+    ims.sagemaker_client.describe_endpoint_config = Mock(side_effect=ex)
+    expected_tags = SAGEMAKER_CONFIG_ENDPOINT["SageMaker"]["Endpoint"]["Tags"]
+    sagemaker_session.endpoint_from_production_variants("some-endpoint", pvs)
+    sagemaker_session.sagemaker_client.create_endpoint.assert_called_with(
+        EndpointConfigName="some-endpoint", EndpointName="some-endpoint", Tags=expected_tags
+    )
+    sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
+        EndpointConfigName="some-endpoint", ProductionVariants=pvs, Tags=[]
+    )
+
+
 def test_endpoint_from_production_variants_with_accelerator_type(sagemaker_session):
     ims = sagemaker_session
     ims.sagemaker_client.describe_endpoint = Mock(return_value={"EndpointStatus": "InService"})
@@ -3314,8 +3346,36 @@ def test_endpoint_from_production_variants_with_accelerator_type(sagemaker_sessi
     )
 
 
+def test_endpoint_from_production_variants_with_accelerator_type_sagemaker_config_injection_tags(sagemaker_session):
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_ENDPOINT
+
+    ims = sagemaker_session
+    ims.sagemaker_client.describe_endpoint = Mock(return_value={"EndpointStatus": "InService"})
+    pvs = [
+        sagemaker.production_variant("A", "ml.p2.xlarge", accelerator_type=ACCELERATOR_TYPE),
+        sagemaker.production_variant("B", "p299.4096xlarge", accelerator_type=ACCELERATOR_TYPE),
+    ]
+    ex = ClientError(
+        {
+            "Error": {
+                "Code": "ValidationException",
+                "Message": "Could not find your thing",
+            }
+        },
+        "b",
+    )
+    ims.sagemaker_client.describe_endpoint_config = Mock(side_effect=ex)
+    expected_tags = SAGEMAKER_CONFIG_ENDPOINT["SageMaker"]["Endpoint"]["Tags"]
+    sagemaker_session.sagemaker_client.create_endpoint.assert_called_with(
+        EndpointConfigName="some-endpoint", EndpointName="some-endpoint", Tags=expected_tags
+    )
+    sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
+        EndpointConfigName="some-endpoint", ProductionVariants=pvs, Tags=[]
+    )
+
+
 def test_endpoint_from_production_variants_with_serverless_inference_config(
-    sagemaker_session,
+        sagemaker_session,
 ):
     ims = sagemaker_session
     ims.sagemaker_client.describe_endpoint = Mock(return_value={"EndpointStatus": "InService"})
@@ -3346,6 +3406,43 @@ def test_endpoint_from_production_variants_with_serverless_inference_config(
     )
     sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
         EndpointConfigName="some-endpoint", ProductionVariants=pvs, Tags=tags
+    )
+
+
+def test_endpoint_from_production_variants_with_serverless_inference_config_sagemaker_config_injection_tags(
+        sagemaker_session,
+):
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_ENDPOINT
+
+    ims = sagemaker_session
+    ims.sagemaker_client.describe_endpoint = Mock(return_value={"EndpointStatus": "InService"})
+    pvs = [
+        sagemaker.production_variant(
+            "A", "ml.p2.xlarge", serverless_inference_config=SERVERLESS_INFERENCE_CONFIG
+        ),
+        sagemaker.production_variant(
+            "B",
+            "p299.4096xlarge",
+            serverless_inference_config=SERVERLESS_INFERENCE_CONFIG,
+        ),
+    ]
+    ex = ClientError(
+        {
+            "Error": {
+                "Code": "ValidationException",
+                "Message": "Could not find your thing",
+            }
+        },
+        "b",
+    )
+    ims.sagemaker_client.describe_endpoint_config = Mock(side_effect=ex)
+    expected_tags = SAGEMAKER_CONFIG_ENDPOINT["SageMaker"]["Endpoint"]["Tags"]
+    sagemaker_session.endpoint_from_production_variants("some-endpoint", pvs)
+    sagemaker_session.sagemaker_client.create_endpoint.assert_called_with(
+        EndpointConfigName="some-endpoint", EndpointName="some-endpoint", Tags=expected_tags
+    )
+    sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
+        EndpointConfigName="some-endpoint", ProductionVariants=pvs, Tags=[]
     )
 
 
@@ -3380,6 +3477,39 @@ def test_endpoint_from_production_variants_with_async_config(sagemaker_session):
         AsyncInferenceConfig=AsyncInferenceConfig()._to_request_dict(),
     )
 
+def test_endpoint_from_production_variants_with_async_config_with_serverless_inference_config_sagemaker_config_injection_tags(sagemaker_session):
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_ENDPOINT
+
+    ims = sagemaker_session
+    ims.sagemaker_client.describe_endpoint = Mock(return_value={"EndpointStatus": "InService"})
+    pvs = [
+        sagemaker.production_variant("A", "ml.p2.xlarge"),
+        sagemaker.production_variant("B", "p299.4096xlarge"),
+    ]
+    ex = ClientError(
+        {
+            "Error": {
+                "Code": "ValidationException",
+                "Message": "Could not find your thing",
+            }
+        },
+        "b",
+    )
+    ims.sagemaker_client.describe_endpoint_config = Mock(side_effect=ex)
+    expected_tags = SAGEMAKER_CONFIG_ENDPOINT["SageMaker"]["Endpoint"]["Tags"]
+    sagemaker_session.endpoint_from_production_variants(
+        "some-endpoint",
+        pvs,
+        async_inference_config_dict=AsyncInferenceConfig()._to_request_dict(),
+    )
+    sagemaker_session.sagemaker_client.create_endpoint.assert_called_with(
+        EndpointConfigName="some-endpoint", EndpointName="some-endpoint", Tags=expected_tags
+    )
+    sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
+        EndpointConfigName="some-endpoint",
+        ProductionVariants=pvs,
+        AsyncInferenceConfig=AsyncInferenceConfig()._to_request_dict(),
+    )
 
 def test_endpoint_from_production_variants_with_clarify_explainer_config(sagemaker_session):
     ims = sagemaker_session
@@ -3562,7 +3692,7 @@ def test_wait_for_transform_job_in_progress(sleep, sagemaker_session):
     )
 
     assert (
-        sagemaker_session.wait_for_transform_job(JOB_NAME, 1)["TransformJobStatus"] == "Completed"
+            sagemaker_session.wait_for_transform_job(JOB_NAME, 1)["TransformJobStatus"] == "Completed"
     )
     assert 2 == sagemaker_session.sagemaker_client.describe_transform_job.call_count
 
@@ -4010,8 +4140,8 @@ def test_create_mpg_from_containers_cross_account_mpg_name(sagemaker_session):
         )
         sagemaker_session.sagemaker_client.create_model_package_group.assert_called_once()
         assert (
-            "Expected 'create_model_package_group' to have been called once. "
-            "Called 0 times." == str(error)
+                "Expected 'create_model_package_group' to have been called once. "
+                "Called 0 times." == str(error)
         )
 
 
@@ -4024,8 +4154,8 @@ def test_create_model_package_from_containers_name_conflict(sagemaker_session):
             model_package_group_name=model_package_group_name,
         )
         assert (
-            "model_package_name and model_package_group_name cannot be present at the same "
-            "time." == str(error)
+                "model_package_name and model_package_group_name cannot be present at the same "
+                "time." == str(error)
         )
 
 
@@ -4038,13 +4168,13 @@ def test_create_model_package_from_containers_incomplete_args(sagemaker_session)
             containers=containers,
         )
         assert (
-            "content_types and response_types "
-            "must be provided if containers is present." == str(error)
+                "content_types and response_types "
+                "must be provided if containers is present." == str(error)
         )
 
 
 def test_create_model_package_from_containers_without_model_package_group_name(
-    sagemaker_session,
+        sagemaker_session,
 ):
     model_package_name = "sagemaker-model-package"
     containers = ["dummy-container"]
@@ -4058,8 +4188,8 @@ def test_create_model_package_from_containers_without_model_package_group_name(
             response_types=response_types,
         )
         assert (
-            "inference_inferences and transform_instances "
-            "must be provided if model_package_group_name is not present." == str(error)
+                "inference_inferences and transform_instances "
+                "must be provided if model_package_group_name is not present." == str(error)
         )
 
 
@@ -4319,7 +4449,7 @@ def test_create_model_package_from_containers_without_instance_types(sagemaker_s
 
 
 def test_create_model_package_from_containers_with_one_instance_types(
-    sagemaker_session,
+        sagemaker_session,
 ):
     model_package_group_name = "sagemaker-model-package-group-name-1.0"
     containers = ["dummy-container"]
@@ -4390,7 +4520,7 @@ def feature_group_dummy_definitions():
 
 
 def test_feature_group_create_with_sagemaker_config_injection(
-    sagemaker_session, feature_group_dummy_definitions
+        sagemaker_session, feature_group_dummy_definitions
 ):
     sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_FEATURE_GROUP
 
@@ -4918,8 +5048,8 @@ def test_create_inference_recommendations_job_advanced_model_name_happy(sagemake
 
 def test_create_inference_recommendations_job_missing_model_name_and_pkg(sagemaker_session):
     with pytest.raises(
-        ValueError,
-        match="Please provide either model_name or model_package_version_arn.",
+            ValueError,
+            match="Please provide either model_name or model_package_version_arn.",
     ):
         sagemaker_session.create_inference_recommendations_job(
             role=IR_ROLE_ARN,
@@ -4937,8 +5067,8 @@ def test_create_inference_recommendations_job_missing_model_name_and_pkg(sagemak
 
 def test_create_inference_recommendations_job_provided_model_name_and_pkg(sagemaker_session):
     with pytest.raises(
-        ValueError,
-        match="Please provide either model_name or model_package_version_arn.",
+            ValueError,
+            match="Please provide either model_name or model_package_version_arn.",
     ):
         sagemaker_session.create_inference_recommendations_job(
             role=IR_ROLE_ARN,
@@ -5072,15 +5202,15 @@ def sm_session_inference_recommender_flush():
 @patch("time.sleep")
 def test_wait_for_inference_recommendations_job_completed(sleep, sm_session_inference_recommender):
     assert (
-        sm_session_inference_recommender.wait_for_inference_recommendations_job(
-            JOB_NAME, log_level="Quiet"
-        )["Status"]
-        == "COMPLETED"
+            sm_session_inference_recommender.wait_for_inference_recommendations_job(
+                JOB_NAME, log_level="Quiet"
+            )["Status"]
+            == "COMPLETED"
     )
 
     assert (
-        4
-        == sm_session_inference_recommender.sagemaker_client.describe_inference_recommendations_job.call_count
+            4
+            == sm_session_inference_recommender.sagemaker_client.describe_inference_recommendations_job.call_count
     )
     assert 3 == sleep.call_count
     sleep.assert_has_calls([call(120), call(120), call(120)])
@@ -5106,21 +5236,21 @@ def test_wait_for_inference_recommendations_job_failed(sagemaker_session):
 @patch("builtins.print")
 @patch("time.sleep")
 def test_wait_for_inference_recommendations_job_completed_verbose(
-    sleep, mock_print, sm_session_inference_recommender
+        sleep, mock_print, sm_session_inference_recommender
 ):
     assert (
-        sm_session_inference_recommender.wait_for_inference_recommendations_job(
-            JOB_NAME, log_level="Verbose"
-        )["Status"]
-        == "COMPLETED"
+            sm_session_inference_recommender.wait_for_inference_recommendations_job(
+                JOB_NAME, log_level="Verbose"
+            )["Status"]
+            == "COMPLETED"
     )
     assert (
-        4
-        == sm_session_inference_recommender.sagemaker_client.describe_inference_recommendations_job.call_count
+            4
+            == sm_session_inference_recommender.sagemaker_client.describe_inference_recommendations_job.call_count
     )
 
     assert (
-        5 == sm_session_inference_recommender.boto_session.client("logs").get_log_events.call_count
+            5 == sm_session_inference_recommender.boto_session.client("logs").get_log_events.call_count
     )
 
     assert 3 == sleep.call_count
@@ -5132,24 +5262,24 @@ def test_wait_for_inference_recommendations_job_completed_verbose(
 @patch("builtins.print")
 @patch("time.sleep")
 def test_wait_for_inference_recommendations_job_flush_completed(
-    sleep, mock_print, sm_session_inference_recommender_flush
+        sleep, mock_print, sm_session_inference_recommender_flush
 ):
     assert (
-        sm_session_inference_recommender_flush.wait_for_inference_recommendations_job(
-            JOB_NAME, log_level="Verbose"
-        )["Status"]
-        == "COMPLETED"
+            sm_session_inference_recommender_flush.wait_for_inference_recommendations_job(
+                JOB_NAME, log_level="Verbose"
+            )["Status"]
+            == "COMPLETED"
     )
     assert (
-        6
-        == sm_session_inference_recommender_flush.sagemaker_client.describe_inference_recommendations_job.call_count
+            6
+            == sm_session_inference_recommender_flush.sagemaker_client.describe_inference_recommendations_job.call_count
     )
 
     assert (
-        7
-        == sm_session_inference_recommender_flush.boto_session.client(
-            "logs"
-        ).get_log_events.call_count
+            7
+            == sm_session_inference_recommender_flush.boto_session.client(
+        "logs"
+    ).get_log_events.call_count
     )
 
     assert 5 == sleep.call_count

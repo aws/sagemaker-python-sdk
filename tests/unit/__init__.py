@@ -39,6 +39,8 @@ from sagemaker.config import (
     COMPILATION_JOB,
     OUTPUT_CONFIG,
     EDGE_PACKAGING_JOB,
+    RESOURCE_KEY,
+    ENDPOINT,
     ENDPOINT_CONFIG,
     DATA_CAPTURE_CONFIG,
     PRODUCTION_VARIANTS,
@@ -145,6 +147,7 @@ SAGEMAKER_CONFIG_EDGE_PACKAGING_JOB = {
             OUTPUT_CONFIG: {
                 KMS_KEY_ID: "configKmsKeyId",
             },
+            RESOURCE_KEY: "kmskeyid1",
             ROLE_ARN: "arn:aws:iam::111111111111:role/ConfigRole",
             TAGS: [{KEY: "some-tag", VALUE: "value-for-tag"}],
         },
@@ -171,6 +174,15 @@ SAGEMAKER_CONFIG_ENDPOINT_CONFIG = {
             TAGS: [{KEY: "some-tag", VALUE: "value-for-tag"}],
         },
     },
+}
+
+SAGEMAKER_CONFIG_ENDPOINT = {
+    SCHEMA_VERSION: "1.0",
+    SAGEMAKER: {
+        ENDPOINT: {
+            TAGS: [{KEY: "some-tag", VALUE: "value-for-tag"}],
+        }
+    }
 }
 
 SAGEMAKER_CONFIG_AUTO_ML = {
