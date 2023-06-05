@@ -303,7 +303,7 @@ class HuggingFaceModel(FrameworkModel):
         """
 
         if not self.image_uri and instance_type is not None and instance_type.startswith("ml.inf"):
-            inference_tool = "neuron" if string.startswith("inf1") else "neuronx"
+            inference_tool = "neuron" if instance_type.startswith("ml.inf1") else "neuronx"
             self.image_uri = self.serving_image_uri(
                 region_name=self.sagemaker_session.boto_session.region_name,
                 instance_type=instance_type,
