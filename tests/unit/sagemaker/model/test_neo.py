@@ -382,3 +382,39 @@ def test_compile_validates_framework_version(sagemaker_session):
     )
 
     assert model.image_uri is None
+
+    sagemaker_session.wait_for_compilation_job = Mock(
+        return_value={
+            "CompilationJobStatus": "Completed",
+            "ModelArtifacts": {"S3ModelArtifacts": "s3://output-path/model.tar.gz"},
+            "InferenceImage": None,
+        }
+    )
+
+    config = model._compilation_job_config(
+        "rasp3b",
+        {"data": [1, 3, 1024, 1024]},
+        "s3://output",
+        "role",
+        900,
+        "compile-model",
+        "pytorch",
+        None,
+        framework_version="1.6.1",
+    )
+
+    assert config["input_model_config"]["FrameworkVersion"] == "1.6"
+
+    config = model._compilation_job_config(
+        "amba_cv2",
+        {"data": [1, 3, 1024, 1024]},
+        "s3://output",
+        "role",
+        900,
+        "compile-model",
+        "pytorch",
+        None,
+        framework_version="1.6.1",
+    )
+
+    assert config["input_model_config"].get("FrameworkVersion", None) is None

@@ -29,6 +29,7 @@ import botocore
 import botocore.config
 from botocore.exceptions import ClientError
 import six
+from sagemaker.utils import instance_supports_kms
 
 import sagemaker.logs
 from sagemaker import vpc_utils, s3_utils
@@ -811,9 +812,17 @@ class Session(object):  # pylint: disable=too-many-public-methods
         inferred_output_config = update_nested_dictionary_with_values_from_config(
             output_config, TRAINING_JOB_OUTPUT_DATA_CONFIG_PATH, sagemaker_session=self
         )
+        customer_supplied_kms_key = "VolumeKmsKeyId" in resource_config
         inferred_resource_config = update_nested_dictionary_with_values_from_config(
             resource_config, TRAINING_JOB_RESOURCE_CONFIG_PATH, sagemaker_session=self
         )
+        if (
+            not customer_supplied_kms_key
+            and "InstanceType" in inferred_resource_config
+            and not instance_supports_kms(inferred_resource_config["InstanceType"])
+            and "VolumeKmsKeyId" in inferred_resource_config
+        ):
+            del inferred_resource_config["VolumeKmsKeyId"]
         train_request = self._get_train_request(
             input_mode=input_mode,
             input_config=input_config,
@@ -2512,6 +2521,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         random_seed=None,
         environment=None,
         hpo_resource_config=None,
+        autotune=False,
+        auto_parameters=None,
     ):
         """Create an Amazon SageMaker hyperparameter tuning job.
 
@@ -2617,6 +2628,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 * volume_kms_key_id: The AWS Key Management Service (AWS KMS) key
                 that Amazon SageMaker uses to encrypt data on the storage
                 volume attached to the ML compute instance(s) that run the training job.
+            autotune (bool): Whether the parameter ranges or other unset settings of a tuning job
+                should be chosen automatically (default: False).
+            auto_parameters (dict[str, str]): Dictionary of auto parameters. The keys are names
+                of auto parameters and values are example values of auto parameters
+                (default: ``None``).
         """
 
         tune_request = {
@@ -2633,6 +2649,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 random_seed=random_seed,
                 strategy_config=strategy_config,
                 completion_criteria_config=completion_criteria_config,
+                auto_parameters=auto_parameters,
             ),
             "TrainingJobDefinition": self._map_training_config(
                 static_hyperparameters=static_hyperparameters,
@@ -2659,6 +2676,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if warm_start_config is not None:
             tune_request["WarmStartConfig"] = warm_start_config
 
+        if autotune:
+            tune_request["Autotune"] = {"Mode": "Enabled"}
+
         tags = _append_project_tags(tags)
         if tags is not None:
             tune_request["Tags"] = tags
@@ -2675,6 +2695,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         training_config_list=None,
         warm_start_config=None,
         tags=None,
+        autotune=False,
     ):
         """Create an Amazon SageMaker hyperparameter tuning job.
 
@@ -2694,6 +2715,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 other required configurations.
             tags (list[dict]): List of tags for labeling the tuning job. For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            autotune (bool): Whether the parameter ranges or other unset settings of a tuning job
+                should be chosen automatically.
         """
 
         if training_config is None and training_config_list is None:
@@ -2710,6 +2733,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             training_config_list=training_config_list,
             warm_start_config=warm_start_config,
             tags=tags,
+            autotune=autotune,
         )
 
         def submit(request):
@@ -2727,6 +2751,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         training_config_list=None,
         warm_start_config=None,
         tags=None,
+        autotune=False,
     ):
         """Construct CreateHyperParameterTuningJob request
 
@@ -2742,6 +2767,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 other required configurations.
             tags (list[dict]): List of tags for labeling the tuning job. For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            autotune (bool): Whether the parameter ranges or other unset settings of a tuning job
+                should be chosen automatically.
         Returns:
             dict: A dictionary for CreateHyperParameterTuningJob request
         """
@@ -2749,6 +2776,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             "HyperParameterTuningJobName": job_name,
             "HyperParameterTuningJobConfig": self._map_tuning_config(**tuning_config),
         }
+        if autotune:
+            tune_request["Autotune"] = {"Mode": "Enabled"}
 
         if training_config is not None:
             tune_request["TrainingJobDefinition"] = self._map_training_config(**training_config)
@@ -2794,6 +2823,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         random_seed=None,
         strategy_config=None,
         completion_criteria_config=None,
+        auto_parameters=None,
     ):
         """Construct tuning job configuration dictionary.
 
@@ -2820,6 +2850,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 strategy.
             completion_criteria_config (dict): A configuration
                 for the completion criteria.
+            auto_parameters (dict): Dictionary of auto parameters. The keys are names of auto
+                parameters and valeus are example values of auto parameters.
 
         Returns:
             A dictionary of tuning job configuration. For format details, please refer to
@@ -2848,6 +2880,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if parameter_ranges is not None:
             tuning_config["ParameterRanges"] = parameter_ranges
+
+        if auto_parameters is not None:
+            if parameter_ranges is None:
+                tuning_config["ParameterRanges"] = {}
+            tuning_config["ParameterRanges"]["AutoParameters"] = [
+                {"Name": name, "ValueHint": value} for name, value in auto_parameters.items()
+            ]
 
         if strategy_config is not None:
             tuning_config["StrategyConfig"] = strategy_config
@@ -2910,6 +2949,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         checkpoint_local_path=None,
         max_retry_attempts=None,
         environment=None,
+        auto_parameters=None,
     ):
         """Construct a dictionary of training job configuration from the arguments.
 
@@ -3029,6 +3069,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if parameter_ranges is not None:
             training_job_definition["HyperParameterRanges"] = parameter_ranges
+
+        if auto_parameters is not None:
+            if parameter_ranges is None:
+                training_job_definition["HyperParameterRanges"] = {}
+            training_job_definition["HyperParameterRanges"]["AutoParameters"] = [
+                {"Name": name, "ValueHint": value} for name, value in auto_parameters.items()
+            ]
 
         if max_retry_attempts is not None:
             training_job_definition["RetryStrategy"] = {"MaximumRetryAttempts": max_retry_attempts}
@@ -3750,8 +3797,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
         )
         if tags is not None:
             request["Tags"] = tags
-        kms_key = resolve_value_from_config(
-            kms_key, ENDPOINT_CONFIG_KMS_KEY_ID_PATH, sagemaker_session=self
+        kms_key = (
+            resolve_value_from_config(
+                kms_key, ENDPOINT_CONFIG_KMS_KEY_ID_PATH, sagemaker_session=self
+            )
+            if instance_supports_kms(instance_type)
+            else kms_key
         )
         if kms_key is not None:
             request["KmsKeyId"] = kms_key
@@ -3844,7 +3895,16 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if new_kms_key is not None or existing_endpoint_config_desc.get("KmsKeyId") is not None:
             request["KmsKeyId"] = new_kms_key or existing_endpoint_config_desc.get("KmsKeyId")
-        if KMS_KEY_ID not in request:
+
+        supports_kms = any(
+            [
+                instance_supports_kms(production_variant["InstanceType"])
+                for production_variant in production_variants
+                if "InstanceType" in production_variant
+            ]
+        )
+
+        if KMS_KEY_ID not in request and supports_kms:
             kms_key_from_config = resolve_value_from_config(
                 config_path=ENDPOINT_CONFIG_KMS_KEY_ID_PATH, sagemaker_session=self
             )
@@ -4465,6 +4525,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             str: The name of the created ``Endpoint``.
         """
+
+        supports_kms = any(
+            [
+                instance_supports_kms(production_variant["InstanceType"])
+                for production_variant in production_variants
+                if "InstanceType" in production_variant
+            ]
+        )
+
         update_list_of_dicts_with_values_from_config(
             production_variants,
             ENDPOINT_CONFIG_PRODUCTION_VARIANTS_PATH,
@@ -4472,8 +4541,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
             sagemaker_session=self,
         )
         config_options = {"EndpointConfigName": name, "ProductionVariants": production_variants}
-        kms_key = resolve_value_from_config(
-            kms_key, ENDPOINT_CONFIG_KMS_KEY_ID_PATH, sagemaker_session=self
+        kms_key = (
+            resolve_value_from_config(
+                kms_key, ENDPOINT_CONFIG_KMS_KEY_ID_PATH, sagemaker_session=self
+            )
+            if supports_kms
+            else kms_key
         )
         tags = _append_project_tags(tags)
         tags = self._append_sagemaker_config_tags(
@@ -5240,6 +5313,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         framework: str,
         sample_payload_url: str,
         supported_content_types: List[str],
+        tags: Dict[str, str],
         model_name: str = None,
         model_package_version_arn: str = None,
         job_duration_in_seconds: int = None,
@@ -5275,6 +5349,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 benchmarked by Amazon SageMaker Inference Recommender that matches your model.
             supported_instance_types (List[str]): A list of the instance types that are used
                 to generate inferences in real-time.
+            tags (Dict[str, str]): Tags used to identify where the Inference Recommendatons Call
+                was made from.
             endpoint_configurations (List[Dict[str, any]]): Specifies the endpoint configurations
                 to use for a job. Will be used for `Advanced` jobs.
             traffic_pattern (Dict[str, any]): Specifies the traffic pattern for the job.
@@ -5313,6 +5389,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             "InputConfig": {
                 "ContainerConfig": containerConfig,
             },
+            "Tags": tags,
         }
 
         request.get("InputConfig").update(
@@ -5404,6 +5481,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             job_name = "SMPYTHONSDK-" + str(unique_tail)
         job_description = "#python-sdk-create"
 
+        tags = [{"Key": "ClientType", "Value": "PythonSDK-RightSize"}]
+
         create_inference_recommendations_job_request = (
             self._create_inference_recommendations_job_request(
                 role=role,
@@ -5423,6 +5502,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 traffic_pattern=traffic_pattern,
                 stopping_conditions=stopping_conditions,
                 resource_limit=resource_limit,
+                tags=tags,
             )
         )
 

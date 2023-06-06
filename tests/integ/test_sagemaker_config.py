@@ -344,6 +344,7 @@ def test_sagemaker_config_cross_context_injection(
             "InferenceExecutionConfig": {"Mode": "Serial"},
             "ExecutionRoleArn": role_arn,  # from sagemaker_config
             "EnableNetworkIsolation": True,  # from sagemaker_config
+            "DeploymentRecommendation": {"RecommendationStatus": "NOT_APPLICABLE"},
         }
 
         expected_endpoint_1 = {

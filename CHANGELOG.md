@@ -1,5 +1,48 @@
 # Changelog
 
+## v2.162.0 (2023-06-06)
+
+### Features
+
+ * Add tagging support for create ir job
+ * Selective Step Execution feature in Pipelines
+ * Add Neuronx Image uri - Transformers 4.28 - PyTorch 1.13
+
+### Bug Fixes and Other Changes
+
+ * skip pipelines abalone notebook test
+ * Update neo multiversion support to include edge devices
+
+### Documentation Changes
+
+ * JumpStart Utility Doc Update
+
+## v2.161.0 (2023-06-01)
+
+### Features
+
+ * Add huggingface-llm 0.6.0 dlc images
+ * Add autotune for HyperparameterTuner
+
+### Bug Fixes and Other Changes
+
+ * Remove release tag from non-global test
+ * SDK defaults for volume size, JS Estimator image uri region, Predictor str method
+
+## v2.160.0 (2023-05-31)
+
+### Features
+
+ * PyTorch 2.0 release
+ * Add TFS 2.12.1 Graviton image
+
+### Bug Fixes and Other Changes
+
+ * Fix failing integ test
+ * remove unnecessary log messages for loading existing experiment runs
+ * build(deps): bump requests from 2.27.1 to 2.31.0 in /requirements/extras
+ * SDK Defaults - switch from config printing to logging
+
 ## v2.159.0 (2023-05-23)
 
 ### Features
