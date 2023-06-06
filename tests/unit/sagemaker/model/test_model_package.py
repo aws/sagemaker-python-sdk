@@ -115,6 +115,7 @@ def test_create_sagemaker_model_uses_model_name(name_from_base, sagemaker_sessio
         {"ModelPackageName": model_package_name},
         vpc_config=None,
         enable_network_isolation=False,
+        tags=None,
     )
 
 
@@ -141,6 +142,7 @@ def test_create_sagemaker_model_include_environment_variable(sagemaker_session):
         {"ModelPackageName": model_package_name, "Environment": environment},
         vpc_config=None,
         enable_network_isolation=False,
+        tags=None,
     )
 
 
