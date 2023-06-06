@@ -4704,6 +4704,7 @@ def create_inference_recommendations_job_default_happy_response():
             "ModelPackageVersionArn": IR_MODEL_PACKAGE_VERSION_ARN,
         },
         "JobDescription": "#python-sdk-create",
+        "Tags": [{"Key": "ClientType", "Value": "PythonSDK-RightSize"}],
     }
 
 
@@ -4728,6 +4729,7 @@ def create_inference_recommendations_job_default_model_name_happy_response():
             "ModelName": IR_MODEL_NAME,
         },
         "JobDescription": "#python-sdk-create",
+        "Tags": [{"Key": "ClientType", "Value": "PythonSDK-RightSize"}],
     }
 
 

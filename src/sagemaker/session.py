@@ -5313,6 +5313,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         framework: str,
         sample_payload_url: str,
         supported_content_types: List[str],
+        tags: Dict[str, str],
         model_name: str = None,
         model_package_version_arn: str = None,
         job_duration_in_seconds: int = None,
@@ -5348,6 +5349,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 benchmarked by Amazon SageMaker Inference Recommender that matches your model.
             supported_instance_types (List[str]): A list of the instance types that are used
                 to generate inferences in real-time.
+            tags (Dict[str, str]): Tags used to identify where the Inference Recommendatons Call
+                was made from.
             endpoint_configurations (List[Dict[str, any]]): Specifies the endpoint configurations
                 to use for a job. Will be used for `Advanced` jobs.
             traffic_pattern (Dict[str, any]): Specifies the traffic pattern for the job.
@@ -5386,6 +5389,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             "InputConfig": {
                 "ContainerConfig": containerConfig,
             },
+            "Tags": tags,
         }
 
         request.get("InputConfig").update(
@@ -5477,6 +5481,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             job_name = "SMPYTHONSDK-" + str(unique_tail)
         job_description = "#python-sdk-create"
 
+        tags = [{"Key": "ClientType", "Value": "PythonSDK-RightSize"}]
+
         create_inference_recommendations_job_request = (
             self._create_inference_recommendations_job_request(
                 role=role,
@@ -5496,6 +5502,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 traffic_pattern=traffic_pattern,
                 stopping_conditions=stopping_conditions,
                 resource_limit=resource_limit,
+                tags=tags,
             )
         )
 
