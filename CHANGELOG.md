@@ -1,5 +1,22 @@
 # Changelog
 
+## v2.162.0 (2023-06-06)
+
+### Features
+
+ * Add tagging support for create ir job
+ * Selective Step Execution feature in Pipelines
+ * Add Neuronx Image uri - Transformers 4.28 - PyTorch 1.13
+
+### Bug Fixes and Other Changes
+
+ * skip pipelines abalone notebook test
+ * Update neo multiversion support to include edge devices
+
+### Documentation Changes
+
+ * JumpStart Utility Doc Update
+
 ## v2.161.0 (2023-06-01)
 
 ### Features

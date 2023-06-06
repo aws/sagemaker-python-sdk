@@ -13,9 +13,11 @@
 from __future__ import absolute_import
 
 import os
+import time
 
 import pytest
 
+from botocore.exceptions import ClientError
 from sagemaker import image_uris
 from sagemaker.model import Model
 from sagemaker.sklearn.model import SKLearnModel, SKLearnPredictor
@@ -38,6 +40,18 @@ IR_SKLEARN_DATA = os.path.join(IR_DIR, "sample.csv")
 IR_SKLEARN_CONTENT_TYPE = ["text/csv"]
 IR_SKLEARN_FRAMEWORK = "SAGEMAKER-SCIKIT-LEARN"
 IR_SKLEARN_FRAMEWORK_VERSION = "1.0-1"
+
+
+def retry_and_back_off(right_size_fn):
+    tot_retries = 3
+    retries = 1
+    while retries <= tot_retries:
+        try:
+            return right_size_fn
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "ThrottlingException":
+                retries += 1
+                time.sleep(5 * retries)
 
 
 @pytest.fixture(scope="module")
@@ -68,13 +82,15 @@ def default_right_sized_model(sagemaker_session, cpu_instance_type):
             )
 
             return (
-                sklearn_model_package.right_size(
-                    job_name=ir_job_name,
-                    sample_payload_url=payload_data,
-                    supported_content_types=IR_SKLEARN_CONTENT_TYPE,
-                    supported_instance_types=[cpu_instance_type],
-                    framework=IR_SKLEARN_FRAMEWORK,
-                    log_level="Quiet",
+                retry_and_back_off(
+                    sklearn_model_package.right_size(
+                        job_name=ir_job_name,
+                        sample_payload_url=payload_data,
+                        supported_content_types=IR_SKLEARN_CONTENT_TYPE,
+                        supported_instance_types=[cpu_instance_type],
+                        framework=IR_SKLEARN_FRAMEWORK,
+                        log_level="Quiet",
+                    )
                 ),
                 model_package_group_name,
                 ir_job_name,
@@ -133,17 +149,19 @@ def advanced_right_sized_model(sagemaker_session, cpu_instance_type):
             ]
 
             return (
-                sklearn_model_package.right_size(
-                    sample_payload_url=payload_data,
-                    supported_content_types=IR_SKLEARN_CONTENT_TYPE,
-                    framework=IR_SKLEARN_FRAMEWORK,
-                    job_duration_in_seconds=3600,
-                    hyperparameter_ranges=hyperparameter_ranges,
-                    phases=phases,
-                    model_latency_thresholds=model_latency_thresholds,
-                    max_invocations=100,
-                    max_tests=5,
-                    max_parallel_tests=5,
+                retry_and_back_off(
+                    sklearn_model_package.right_size(
+                        sample_payload_url=payload_data,
+                        supported_content_types=IR_SKLEARN_CONTENT_TYPE,
+                        framework=IR_SKLEARN_FRAMEWORK,
+                        job_duration_in_seconds=3600,
+                        hyperparameter_ranges=hyperparameter_ranges,
+                        phases=phases,
+                        model_latency_thresholds=model_latency_thresholds,
+                        max_invocations=100,
+                        max_tests=5,
+                        max_parallel_tests=5,
+                    )
                 ),
                 model_package_group_name,
             )
@@ -175,13 +193,15 @@ def default_right_sized_unregistered_model(sagemaker_session, cpu_instance_type)
             )
 
             return (
-                sklearn_model.right_size(
-                    job_name=ir_job_name,
-                    sample_payload_url=payload_data,
-                    supported_content_types=IR_SKLEARN_CONTENT_TYPE,
-                    supported_instance_types=[cpu_instance_type],
-                    framework=IR_SKLEARN_FRAMEWORK,
-                    log_level="Quiet",
+                retry_and_back_off(
+                    sklearn_model.right_size(
+                        job_name=ir_job_name,
+                        sample_payload_url=payload_data,
+                        supported_content_types=IR_SKLEARN_CONTENT_TYPE,
+                        supported_instance_types=[cpu_instance_type],
+                        framework=IR_SKLEARN_FRAMEWORK,
+                        log_level="Quiet",
+                    )
                 ),
                 ir_job_name,
             )
@@ -224,18 +244,20 @@ def advanced_right_sized_unregistered_model(sagemaker_session, cpu_instance_type
                 ModelLatencyThreshold(percentile="P95", value_in_milliseconds=100)
             ]
 
-            return sklearn_model.right_size(
-                sample_payload_url=payload_data,
-                supported_content_types=IR_SKLEARN_CONTENT_TYPE,
-                framework=IR_SKLEARN_FRAMEWORK,
-                job_duration_in_seconds=3600,
-                hyperparameter_ranges=hyperparameter_ranges,
-                phases=phases,
-                model_latency_thresholds=model_latency_thresholds,
-                max_invocations=100,
-                max_tests=5,
-                max_parallel_tests=5,
-                log_level="Quiet",
+            return retry_and_back_off(
+                sklearn_model.right_size(
+                    sample_payload_url=payload_data,
+                    supported_content_types=IR_SKLEARN_CONTENT_TYPE,
+                    framework=IR_SKLEARN_FRAMEWORK,
+                    job_duration_in_seconds=3600,
+                    hyperparameter_ranges=hyperparameter_ranges,
+                    phases=phases,
+                    model_latency_thresholds=model_latency_thresholds,
+                    max_invocations=100,
+                    max_tests=5,
+                    max_parallel_tests=5,
+                    log_level="Quiet",
+                )
             )
 
         except Exception:
@@ -265,13 +287,15 @@ def default_right_sized_unregistered_base_model(sagemaker_session, cpu_instance_
             )
 
             return (
-                model.right_size(
-                    job_name=ir_job_name,
-                    sample_payload_url=payload_data,
-                    supported_content_types=IR_SKLEARN_CONTENT_TYPE,
-                    supported_instance_types=[cpu_instance_type],
-                    framework=IR_SKLEARN_FRAMEWORK,
-                    log_level="Quiet",
+                retry_and_back_off(
+                    model.right_size(
+                        job_name=ir_job_name,
+                        sample_payload_url=payload_data,
+                        supported_content_types=IR_SKLEARN_CONTENT_TYPE,
+                        supported_instance_types=[cpu_instance_type],
+                        framework=IR_SKLEARN_FRAMEWORK,
+                        log_level="Quiet",
+                    )
                 ),
                 ir_job_name,
             )
