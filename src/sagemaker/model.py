@@ -1757,10 +1757,10 @@ class ModelPackage(Model):
 
         Args:
             args: Positional arguments coming from the caller. This class does not require
-                any but will specifically look for Tags (3rd arg positionally) if specified
+                any but will look for tags in the 3rd parameter.
 
             kwargs: Keyword arguments coming from the caller. This class does not require
-                any so they are ignored.
+                any but will search for tags if not in args.
         """
         if self.algorithm_arn:
             # When ModelPackage is created using an algorithm_arn we need to first
@@ -1782,13 +1782,17 @@ class ModelPackage(Model):
         self._ensure_base_name_if_needed(model_package_name.split("/")[-1])
         self._set_model_name_if_needed()
 
+        # If tags are in args, it must be the 3rd param
+        # If not, then check kwargs and set to either tags or None
+        tags = args[2] if len(args) >= 3 else kwargs.get('tags')
+
         self.sagemaker_session.create_model(
             self.name,
             self.role,
             container_def,
             vpc_config=self.vpc_config,
             enable_network_isolation=self.enable_network_isolation(),
-            tags=args[2],
+            tags=tags,
         )
 
     def _ensure_base_name_if_needed(self, base_name):

@@ -616,6 +616,7 @@ class InferenceRecommenderMixin:
         )
 
     def _add_client_type_tag(self, tags, client_type):
+        """Tagging for Inference Recommender and Deployment Recommendations"""
         client_type_tag = {"Key": "ClientType", "Value": client_type}
         tags = tags.append(client_type_tag) if tags else [client_type_tag]
         return tags
