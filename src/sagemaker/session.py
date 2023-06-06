@@ -96,6 +96,7 @@ from sagemaker.config import (
     ENDPOINT_CONFIG,
     ENDPOINT_CONFIG_DATA_CAPTURE_PATH,
     ENDPOINT_CONFIG_ASYNC_INFERENCE_PATH,
+    ENDPOINT,
     ENDPOINT_TAGS_PATH,
     SAGEMAKER,
     FEATURE_GROUP,
@@ -4032,7 +4033,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         tags = tags or []
         tags = _append_project_tags(tags)
         tags = self._append_sagemaker_config_tags(
-            tags, "{}.{}.{}".format(SAGEMAKER, ENDPOINT_TAGS_PATH, TAGS)
+            tags, "{}.{}.{}".format(SAGEMAKER, ENDPOINT, TAGS)
         )
 
         self.sagemaker_client.create_endpoint(
@@ -4532,9 +4533,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
         model_vpc_config = vpc_utils.sanitize(model_vpc_config)
         endpoint_config_tags = _append_project_tags(tags)
         endpoint_tags = _append_project_tags(tags)
-        endpoint_tags = self._append_sagemaker_config_tags(
-            endpoint_tags, "{}.{}.{}".format(SAGEMAKER, ENDPOINT_TAGS_PATH, TAGS)
-        )
         endpoint_config_tags = self._append_sagemaker_config_tags(
             endpoint_config_tags, "{}.{}.{}".format(SAGEMAKER, ENDPOINT_CONFIG, TAGS)
         )
@@ -4635,9 +4633,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
         endpoint_config_tags = _append_project_tags(tags)
         endpoint_tags = _append_project_tags(tags)
 
-        endpoint_tags = self._append_sagemaker_config_tags(
-            endpoint_tags, "{}.{}.{}".format(SAGEMAKER, ENDPOINT_TAGS_PATH, TAGS)
-        )
         endpoint_config_tags = self._append_sagemaker_config_tags(
             endpoint_config_tags, "{}.{}.{}".format(SAGEMAKER, ENDPOINT_CONFIG, TAGS)
         )

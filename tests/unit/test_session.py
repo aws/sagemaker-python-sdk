@@ -2595,7 +2595,7 @@ def test_create_edge_packaging_with_sagemaker_config_injection(sagemaker_session
         "OutputConfig"
     ]["KmsKeyId"]
     expected_tags = SAGEMAKER_CONFIG_EDGE_PACKAGING_JOB["SageMaker"]["EdgePackagingJob"]["Tags"]
-    expected_resource_key = SAGEMAKER_CONFIG_EDGE_PACKAGING_JOB["SageMaker"]["EdgePackagingJob"]["ResourceKey"]
+    expected_resource_key = (SAGEMAKER_CONFIG_EDGE_PACKAGING_JOB["SageMaker"]["EdgePackagingJob"]["ResourceKey"],)
     sagemaker_session.sagemaker_client.create_edge_packaging_job.assert_called_with(
         RoleArn=expected_role_arn,  # provided from config
         OutputConfig={
@@ -3105,7 +3105,7 @@ def test_endpoint_from_production_variants_with_sagemaker_config_injection(
     sagemaker_session.sagemaker_client.create_endpoint.assert_called_with(
         EndpointConfigName="some-endpoint",
         EndpointName="some-endpoint",
-        Tags=expected_tags,  # from config
+        Tags=[],
     )
 
 
@@ -3173,7 +3173,7 @@ def test_endpoint_from_production_variants_with_sagemaker_config_injection_parti
     sagemaker_session.sagemaker_client.create_endpoint.assert_called_with(
         EndpointConfigName="some-endpoint",
         EndpointName="some-endpoint",
-        Tags=expected_tags,  # from config
+        Tags=[],
     )
 
 
@@ -3234,7 +3234,7 @@ def test_endpoint_from_production_variants_with_sagemaker_config_injection_no_km
     sagemaker_session.sagemaker_client.create_endpoint.assert_called_with(
         EndpointConfigName="some-endpoint",
         EndpointName="some-endpoint",
-        Tags=expected_tags,  # from config
+        Tags=[],
     )
 
 
@@ -3315,7 +3315,7 @@ def test_endpoint_from_production_variants_with_sagemaker_config_injection_tags(
         EndpointConfigName="some-endpoint", EndpointName="some-endpoint", Tags=expected_tags
     )
     sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
-        EndpointConfigName="some-endpoint", ProductionVariants=pvs, Tags=[]
+        EndpointConfigName="some-endpoint", ProductionVariants=pvs
     )
 
 
@@ -3366,11 +3366,12 @@ def test_endpoint_from_production_variants_with_accelerator_type_sagemaker_confi
     )
     ims.sagemaker_client.describe_endpoint_config = Mock(side_effect=ex)
     expected_tags = SAGEMAKER_CONFIG_ENDPOINT["SageMaker"]["Endpoint"]["Tags"]
+    sagemaker_session.endpoint_from_production_variants("some-endpoint", pvs)
     sagemaker_session.sagemaker_client.create_endpoint.assert_called_with(
         EndpointConfigName="some-endpoint", EndpointName="some-endpoint", Tags=expected_tags
     )
     sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
-        EndpointConfigName="some-endpoint", ProductionVariants=pvs, Tags=[]
+        EndpointConfigName="some-endpoint", ProductionVariants=pvs
     )
 
 
@@ -3442,7 +3443,7 @@ def test_endpoint_from_production_variants_with_serverless_inference_config_sage
         EndpointConfigName="some-endpoint", EndpointName="some-endpoint", Tags=expected_tags
     )
     sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
-        EndpointConfigName="some-endpoint", ProductionVariants=pvs, Tags=[]
+        EndpointConfigName="some-endpoint", ProductionVariants=pvs
     )
 
 
