@@ -844,15 +844,20 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         ):
             if target_instance_type and framework and framework_version:
                 framework = framework.lower()
+
                 multi_version_frameworks_support_mapping = {
-                    "inferentia": ["pytorch", "tensorflow", "mxnet"],
+                    "ml_inf1": ["pytorch", "tensorflow", "mxnet"],
+                    "ml_inf2": ["pytorch", "tensorflow"],
+                    "ml_trn1": ["pytorch", "tensorflow"],
                     "neo_ioc_targets": ["pytorch", "tensorflow"],
                     "neo_edge_targets": ["pytorch", "tensorflow"],
                 }
                 if target_instance_type in NEO_IOC_TARGET_DEVICES:
                     return framework in multi_version_frameworks_support_mapping["neo_ioc_targets"]
-                if target_instance_type == "ml_inf1":
-                    return framework in multi_version_frameworks_support_mapping["inferentia"]
+                if target_instance_type in ["ml_inf1", "ml_inf2", "ml_trn1"]:
+                    return (
+                        framework in multi_version_frameworks_support_mapping[target_instance_type]
+                    )
                 if target_instance_type not in NEO_MULTIVERSION_UNSUPPORTED:
                     return framework in multi_version_frameworks_support_mapping["neo_edge_targets"]
             return False
