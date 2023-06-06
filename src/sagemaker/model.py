@@ -1784,7 +1784,7 @@ class ModelPackage(Model):
 
         # If tags are in args, it must be the 3rd param
         # If not, then check kwargs and set to either tags or None
-        tags = args[2] if len(args) >= 3 else kwargs.get('tags')
+        tags = args[2] if len(args) >= 3 else kwargs.get("tags")
 
         self.sagemaker_session.create_model(
             self.name,
