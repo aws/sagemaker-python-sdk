@@ -487,7 +487,7 @@ def test_deploy_deployment_recommendation_id_with_model(created_base_model, sage
                 created_base_model, sagemaker_session
             )
 
-            assert deployment_recommendation != None
+            assert deployment_recommendation is not None
 
             real_time_recommendations = deployment_recommendation.get(
                 "RealTimeInferenceRecommendations"
