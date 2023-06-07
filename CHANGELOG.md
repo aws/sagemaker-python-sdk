@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.163.0 (2023-06-07)
+
+### Features
+
+ * Add huggingface-llm 0.8.2 dlc images
+
+### Bug Fixes and Other Changes
+
+ * Update to more actionable error message
+ * Loosen local reqs for PyYAML
+
 ## v2.162.0 (2023-06-06)
 
 ### Features
