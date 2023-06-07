@@ -61,7 +61,9 @@ class _MetaData:
 
         if not sha256_hash:
             raise DeserializationError(
-                "Corrupt metadata file. SHA256 hash for the serialized data does not exist"
+                "Corrupt metadata file. SHA256 hash for the serialized data does not exist. "
+                "Please make sure to install SageMaker SDK version >= 2.156.0 on the client side "
+                "and try again."
             )
 
         if not (
