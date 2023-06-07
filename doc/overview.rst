@@ -1551,8 +1551,7 @@ managed training or hosting environments. Local Mode is supported for frameworks
 and Scikit-Learn) and images you supply yourself.
 
 You can install necessary dependencies for this feature using pip; local mode also requires docker-compose which you can
-install using curl. (These instructions are for Linux. For Windows/MacOS docker-compose is installed with Docker Desktop.
-See more `here <https://github.com/docker/compose#where-to-get-docker-compose>`_):
+install using the following steps (More info - https://github.com/docker/compose#where-to-get-docker-compose ):
 
 ::
 
