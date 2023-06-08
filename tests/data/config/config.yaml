@@ -37,6 +37,9 @@ SageMaker:
   MonitoringSchedule:
     MonitoringScheduleConfig:
       MonitoringJobDefinition:
+        Environment:
+          'var1': 'value1'
+          'var2': 'value2'
         MonitoringOutputConfig:
           KmsKeyId: 'kmskeyid1'
         MonitoringResources:
@@ -75,6 +78,9 @@ SageMaker:
   TransformJob:
     DataCaptureConfig:
       KmsKeyId: 'kmskeyid1'
+    Environment:
+      'var1': 'value1'
+      'var2': 'value2'
     TransformOutput:
       KmsKeyId: 'kmskeyid2'
     TransformResources:
@@ -91,23 +97,42 @@ SageMaker:
   Pipeline:
     RoleArn: 'arn:aws:iam::555555555555:role/IMRole'
   Model:
+    Containers:
+      - Environment:
+          'var1': 'value1'
+          'var2': 'value2'
     EnableNetworkIsolation: true
     ExecutionRoleArn: 'arn:aws:iam::555555555555:role/IMRole'
+    PrimaryContainer:
+      Environment:
+        'var1': 'value1'
+        'var2': 'value2'
     VpcConfig:
       SecurityGroupIds:
         - 'sg123'
       Subnets:
         - 'subnet-1234'
   ModelPackage:
+    InferenceSpecification:
+      Containers:
+        - Environment:
+            'var1': 'value1'
+            'var2': 'value2'
     ValidationSpecification:
       ValidationProfiles:
         - TransformJobDefinition:
+            Environment:
+              'var1': 'value1'
+              'var2': 'value2'
             TransformOutput:
               KmsKeyId: 'kmskeyid1'
             TransformResources:
               VolumeKmsKeyId: 'volumekmskeyid1'
       ValidationRole: 'arn:aws:iam::555555555555:role/IMRole'
   ProcessingJob:
+    Environment:
+      'var1': 'value1'
+      'var2': 'value2'
     NetworkConfig:
       EnableNetworkIsolation: true
       VpcConfig:
@@ -130,6 +155,9 @@ SageMaker:
     RoleArn: 'arn:aws:iam::555555555555:role/IMRole'
   TrainingJob:
     EnableNetworkIsolation: true
+    Environment:
+      'var1': 'value1'
+      'var2': 'value2'
     OutputDataConfig:
       KmsKeyId: 'kmskeyid1'
     ResourceConfig:

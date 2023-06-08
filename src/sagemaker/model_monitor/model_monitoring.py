@@ -37,6 +37,7 @@ from sagemaker.config.config_schema import (
     TAGS,
     MONITORING_JOB_SUBNETS_PATH,
     MONITORING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
+    MONITORING_JOB_ENVIRONMENT_PATH,
     MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION_PATH,
     MONITORING_JOB_VOLUME_KMS_KEY_ID_PATH,
     MONITORING_JOB_SECURITY_GROUP_IDS_PATH,
@@ -171,7 +172,6 @@ class ModelMonitor(object):
         self.max_runtime_in_seconds = max_runtime_in_seconds
         self.base_job_name = base_job_name
         self.sagemaker_session = sagemaker_session or Session()
-        self.env = env
         self.tags = tags
 
         self.baselining_jobs = []
@@ -225,6 +225,12 @@ class ModelMonitor(object):
             self.network_config,
             "encrypt_inter_container_traffic",
             MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION_PATH,
+            sagemaker_session=self.sagemaker_session,
+        )
+        self.env = resolve_value_from_config(
+            env,
+            MONITORING_JOB_ENVIRONMENT_PATH,
+            default_value=None,
             sagemaker_session=self.sagemaker_session,
         )
 

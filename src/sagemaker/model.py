@@ -33,9 +33,11 @@ from sagemaker.config import (
     COMPILATION_JOB_ROLE_ARN_PATH,
     EDGE_PACKAGING_KMS_KEY_ID_PATH,
     EDGE_PACKAGING_ROLE_ARN_PATH,
+    MODEL_CONTAINERS_PATH,
     MODEL_VPC_CONFIG_PATH,
     MODEL_ENABLE_NETWORK_ISOLATION_PATH,
     MODEL_EXECUTION_ROLE_ARN_PATH,
+    MODEL_PRIMARY_CONTAINER_ENVIRONMENT_PATH,
     ENDPOINT_CONFIG_ASYNC_KMS_KEY_ID_PATH,
 )
 from sagemaker.session import Session
@@ -53,6 +55,7 @@ from sagemaker.utils import (
     update_container_with_inference_params,
     to_string,
     resolve_value_from_config,
+    resolve_nested_dict_value_from_config,
 )
 from sagemaker.async_inference import AsyncInferenceConfig
 from sagemaker.predictor_async import AsyncPredictor
@@ -292,7 +295,6 @@ class Model(ModelBase, InferenceRecommenderMixin):
         self.model_data = model_data
         self.image_uri = image_uri
         self.predictor_cls = predictor_cls
-        self.env = env or {}
         self.name = name
         self._base_name = None
         self.sagemaker_session = sagemaker_session
@@ -311,6 +313,12 @@ class Model(ModelBase, InferenceRecommenderMixin):
         self._enable_network_isolation = resolve_value_from_config(
             enable_network_isolation,
             MODEL_ENABLE_NETWORK_ISOLATION_PATH,
+            sagemaker_session=self.sagemaker_session,
+        )
+        self.env = resolve_value_from_config(
+            env,
+            MODEL_PRIMARY_CONTAINER_ENVIRONMENT_PATH,
+            default_value={},
             sagemaker_session=self.sagemaker_session,
         )
         if self._enable_network_isolation is None:
@@ -733,6 +741,12 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         self._enable_network_isolation = resolve_value_from_config(
             self._enable_network_isolation,
             MODEL_ENABLE_NETWORK_ISOLATION_PATH,
+            sagemaker_session=self.sagemaker_session,
+        )
+        self.env = resolve_nested_dict_value_from_config(
+            self.env,
+            ["Environment"],
+            MODEL_CONTAINERS_PATH,
             sagemaker_session=self.sagemaker_session,
         )
         create_model_args = dict(

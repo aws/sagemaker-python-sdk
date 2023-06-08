@@ -134,6 +134,10 @@ def test_transform_with_sagemaker_config_injection(start_new_job, sagemaker_sess
             "KmsKeyId"
         ]
     )
+    assert (
+        transformer.env
+        == SAGEMAKER_CONFIG_TRANSFORM_JOB["SageMaker"]["TransformJob"]["Environment"]
+    )
 
     content_type = "text/csv"
     compression = "Gzip"
