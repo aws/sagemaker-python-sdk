@@ -179,17 +179,3 @@ IR_MODEL_PACKAGE_CONTAINER_DEF = {
 IR_COMPILATION_MODEL_PACKAGE_CONTAINER_DEF = {
     "ModelPackageName": IR_MODEL_PACKAGE_VERSION_ARN,
 }
-
-IR_TAGS = [
-    {
-        "Key": "ClientType",
-        "Value": "PythonSDK-RightSize",
-    }
-]
-
-DEPLOYMENT_RECOMMENDATION_TAGS = [
-    {
-        "Key": "ClientType",
-        "Value": "PythonSDK-DeploymentRecommendation",
-    }
-]
