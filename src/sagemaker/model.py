@@ -1767,7 +1767,7 @@ class ModelPackage(Model):
                 # model_package_arn can be just the name if your account owns the Model Package
                 model_package_name = self.model_package_arn
 
-        container_def = {"ModelPackageName": model_package_name}
+        container_def = {"ModelPackageName": self.model_package_arn}
 
         if self.env != {}:
             container_def["Environment"] = self.env

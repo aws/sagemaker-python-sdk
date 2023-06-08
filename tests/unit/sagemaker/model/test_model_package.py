@@ -147,7 +147,7 @@ def test_create_sagemaker_model_uses_model_package_arn(
     sagemaker_session.create_model.assert_called_with(
         model_name,
         "role",
-        {"ModelPackageName": "my-model-package-arn"},
+        {"ModelPackageName": model_package_arn},
         vpc_config=None,
         enable_network_isolation=False,
         tags=None,
