@@ -279,7 +279,7 @@ def huggingface_pytorch_training_version(huggingface_training_version):
 def huggingface_pytorch_training_py_version(huggingface_pytorch_training_version):
     if Version(huggingface_pytorch_training_version) >= Version("2.0"):
         return "py310"
-    if Version(huggingface_pytorch_training_version) >= Version("1.13"):
+    elif Version(huggingface_pytorch_training_version) >= Version("1.13"):
         return "py39"
     elif Version(huggingface_pytorch_training_version) >= Version("1.9"):
         return "py38"
