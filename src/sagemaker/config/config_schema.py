@@ -171,14 +171,20 @@ AUTO_ML_VPC_CONFIG_PATH = _simple_path(
 )
 AUTO_ML_JOB_CONFIG_PATH = _simple_path(SAGEMAKER, AUTO_ML_JOB, AUTO_ML_JOB_CONFIG)
 MONITORING_JOB_DEFINITION_PREFIX = _simple_path(
-    SAGEMAKER, MONITORING_SCHEDULE, MONITORING_SCHEDULE_CONFIG, MONITORING_JOB_DEFINITION
+    SAGEMAKER,
+    MONITORING_SCHEDULE,
+    MONITORING_SCHEDULE_CONFIG,
+    MONITORING_JOB_DEFINITION,
 )
 MONITORING_JOB_ENVIRONMENT_PATH = _simple_path(MONITORING_JOB_DEFINITION_PREFIX, ENVIRONMENT)
 MONITORING_JOB_OUTPUT_KMS_KEY_ID_PATH = _simple_path(
     MONITORING_JOB_DEFINITION_PREFIX, MONITORING_OUTPUT_CONFIG, KMS_KEY_ID
 )
 MONITORING_JOB_VOLUME_KMS_KEY_ID_PATH = _simple_path(
-    MONITORING_JOB_DEFINITION_PREFIX, MONITORING_RESOURCES, CLUSTER_CONFIG, VOLUME_KMS_KEY_ID
+    MONITORING_JOB_DEFINITION_PREFIX,
+    MONITORING_RESOURCES,
+    CLUSTER_CONFIG,
+    VOLUME_KMS_KEY_ID,
 )
 MONITORING_JOB_NETWORK_CONFIG_PATH = _simple_path(MONITORING_JOB_DEFINITION_PREFIX, NETWORK_CONFIG)
 MONITORING_JOB_ENABLE_NETWORK_ISOLATION_PATH = _simple_path(
@@ -292,7 +298,11 @@ REMOTE_FUNCTION_VPC_CONFIG_SECURITY_GROUP_IDS = _simple_path(
     SAGEMAKER, PYTHON_SDK, MODULES, REMOTE_FUNCTION, VPC_CONFIG, SECURITY_GROUP_IDS
 )
 REMOTE_FUNCTION_ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION = _simple_path(
-    SAGEMAKER, PYTHON_SDK, MODULES, REMOTE_FUNCTION, ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION
+    SAGEMAKER,
+    PYTHON_SDK,
+    MODULES,
+    REMOTE_FUNCTION,
+    ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION,
 )
 MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION_PATH = _simple_path(
     SAGEMAKER,
@@ -472,7 +482,11 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
             "maxProperties": 48,
         },
         # Regex is taken from https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_S3DataSource.html#sagemaker-Type-S3DataSource-S3Uri
-        "s3Uri": {TYPE: "string", "pattern": "^(https|s3)://([^/]+)/?(.*)$", "maxLength": 1024},
+        "s3Uri": {
+            TYPE: "string",
+            "pattern": "^(https|s3)://([^/]+)/?(.*)$",
+            "maxLength": 1024,
+        },
         # Regex is taken from https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_AlgorithmSpecification.html#sagemaker-Type-AlgorithmSpecification-ContainerEntrypoint
         "preExecutionCommand": {TYPE: "string", "pattern": r".*"},
         # Regex based on https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_PipelineDefinitionS3Location.html
@@ -755,9 +769,7 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                 ENDPOINT: {
                     TYPE: OBJECT,
                     ADDITIONAL_PROPERTIES: False,
-                    PROPERTIES: {
-                        TAGS: {"$ref": "#/definitions/tags"}
-                    }
+                    PROPERTIES: {TAGS: {"$ref": "#/definitions/tags"}},
                 },
                 # Endpoint Config
                 # https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateEndpointConfig.html

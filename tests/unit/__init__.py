@@ -118,7 +118,10 @@ SAGEMAKER_CONFIG_MONITORING_SCHEDULE = {
                     NETWORK_CONFIG: {
                         ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION: False,
                         ENABLE_NETWORK_ISOLATION: True,
-                        VPC_CONFIG: {SUBNETS: ["subnets-123"], SECURITY_GROUP_IDS: ["sg-123"]},
+                        VPC_CONFIG: {
+                            SUBNETS: ["subnets-123"],
+                            SECURITY_GROUP_IDS: ["sg-123"],
+                        },
                     },
                     ROLE_ARN: "arn:aws:iam::111111111111:role/ConfigRole",
                 }
@@ -182,7 +185,7 @@ SAGEMAKER_CONFIG_ENDPOINT = {
         ENDPOINT: {
             TAGS: [{KEY: "some-tag", VALUE: "value-for-tag"}],
         }
-    }
+    },
 }
 
 SAGEMAKER_CONFIG_AUTO_ML = {
@@ -193,7 +196,10 @@ SAGEMAKER_CONFIG_AUTO_ML = {
                 SECURITY_CONFIG: {
                     ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION: True,
                     VOLUME_KMS_KEY_ID: "TestKmsKeyId",
-                    VPC_CONFIG: {SUBNETS: ["subnets-123"], SECURITY_GROUP_IDS: ["sg-123"]},
+                    VPC_CONFIG: {
+                        SUBNETS: ["subnets-123"],
+                        SECURITY_GROUP_IDS: ["sg-123"],
+                    },
                 },
             },
             OUTPUT_DATA_CONFIG: {KMS_KEY_ID: "configKmsKeyId"},
