@@ -45,8 +45,6 @@ from tests.unit.sagemaker.inference_recommender.constants import (
     IR_COMPILATION_CONTAINER_DEF,
     IR_MODEL_PACKAGE_CONTAINER_DEF,
     IR_COMPILATION_MODEL_PACKAGE_CONTAINER_DEF,
-    IR_TAGS,
-    DEPLOYMENT_RECOMMENDATION_TAGS,
 )
 from tests.unit.sagemaker.inference_recommender.constructs import (
     create_inference_recommendations_job_default_with_model_name,
@@ -649,7 +647,6 @@ def test_deploy_with_recommendation_id_with_model_pkg_arn(name_from_base, sagema
         IR_MODEL_PACKAGE_CONTAINER_DEF,
         vpc_config=None,
         enable_network_isolation=False,
-        tags=IR_TAGS,
     )
 
     assert model_package.model_package_arn == IR_MODEL_PACKAGE_VERSION_ARN
@@ -682,7 +679,7 @@ def test_deploy_with_recommendation_id_with_model_name(name_from_base, sagemaker
         container_defs=IR_CONTAINER_DEF,
         vpc_config=None,
         enable_network_isolation=False,
-        tags=IR_TAGS,
+        tags=None,
     )
 
     assert model.model_data == IR_MODEL_DATA
@@ -718,7 +715,6 @@ def test_deploy_with_recommendation_id_with_model_pkg_arn_and_compilation(
         IR_COMPILATION_MODEL_PACKAGE_CONTAINER_DEF,
         vpc_config=None,
         enable_network_isolation=False,
-        tags=IR_TAGS,
     )
 
     assert model_package.model_data == IR_COMPILATION_MODEL_DATA
@@ -753,7 +749,7 @@ def test_deploy_with_recommendation_id_with_model_name_and_compilation(
         container_defs=IR_COMPILATION_CONTAINER_DEF,
         vpc_config=None,
         enable_network_isolation=False,
-        tags=IR_TAGS,
+        tags=None,
     )
 
     assert model.model_data == IR_COMPILATION_MODEL_DATA
@@ -812,7 +808,7 @@ def test_deploy_with_valid_model_recommendation_id(name_from_base, sagemaker_ses
         container_defs=DEPLOYMENT_RECOMMENDATION_CONTAINER_DEF,
         vpc_config=None,
         enable_network_isolation=False,
-        tags=DEPLOYMENT_RECOMMENDATION_TAGS,
+        tags=None,
     )
 
     assert model.model_data == IR_MODEL_DATA

@@ -30,10 +30,6 @@ INFERENCE_RECOMMENDER_FRAMEWORK_MAPPING = {
 
 LOGGER = logging.getLogger("sagemaker")
 
-DEPLOYMENT_RECOMMENDATION_TAG = "PythonSDK-DeploymentRecommendation"
-
-RIGHT_SIZE_TAG = "PythonSDK-RightSize"
-
 
 class Phase:
     """Used to store phases of a traffic pattern to perform endpoint load testing.
@@ -222,7 +218,6 @@ class InferenceRecommenderMixin:
         explainer_config = kwargs["explainer_config"]
         inference_recommendation_id = kwargs["inference_recommendation_id"]
         inference_recommender_job_results = kwargs["inference_recommender_job_results"]
-        tags = kwargs["tags"]
         if inference_recommendation_id is not None:
             inference_recommendation = self._update_params_for_recommendation_id(
                 instance_type=instance_type,
@@ -243,10 +238,11 @@ class InferenceRecommenderMixin:
                 explainer_config,
             )
 
-        if inference_recommendation:
-            tags = self._add_client_type_tag(tags, inference_recommendation[2])
-            return (inference_recommendation[0], inference_recommendation[1], tags)
-        return (instance_type, initial_instance_count, tags)
+        return (
+            inference_recommendation
+            if inference_recommendation
+            else (instance_type, initial_instance_count)
+        )
 
     def _update_params_for_right_size(
         self,
@@ -310,7 +306,7 @@ class InferenceRecommenderMixin:
         initial_instance_count = self.inference_recommendations[0]["EndpointConfiguration"][
             "InitialInstanceCount"
         ]
-        return (instance_type, initial_instance_count, RIGHT_SIZE_TAG)
+        return (instance_type, initial_instance_count)
 
     def _update_params_for_recommendation_id(
         self,
@@ -410,7 +406,7 @@ class InferenceRecommenderMixin:
                 raise ValueError("Must specify model recommendation id and instance count.")
             self.env.update(model_recommendation["Environment"])
             instance_type = model_recommendation["InstanceType"]
-            return (instance_type, initial_instance_count, DEPLOYMENT_RECOMMENDATION_TAG)
+            return (instance_type, initial_instance_count)
 
         # Update params based on default inference recommendation
         if bool(instance_type) != bool(initial_instance_count):
@@ -474,7 +470,7 @@ class InferenceRecommenderMixin:
             "InitialInstanceCount"
         ]
 
-        return (instance_type, initial_instance_count, RIGHT_SIZE_TAG)
+        return (instance_type, initial_instance_count)
 
     def _convert_to_endpoint_configurations_json(
         self, hyperparameter_ranges: List[Dict[str, CategoricalParameter]]
@@ -614,9 +610,3 @@ class InferenceRecommenderMixin:
             ),
             None,
         )
-
-    def _add_client_type_tag(self, tags, client_type):
-        """Tagging for Inference Recommender and Deployment Recommendations"""
-        client_type_tag = {"Key": "ClientType", "Value": client_type}
-        tags = tags.append(client_type_tag) if tags else [client_type_tag]
-        return tags
