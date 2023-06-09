@@ -17,6 +17,7 @@ import abc
 import json
 import logging
 import os
+import re
 import copy
 from typing import List, Dict, Optional, Union
 
@@ -1662,6 +1663,10 @@ class FrameworkModel(Model):
         )
 
 
+# works for MODEL_PACKAGE_ARN with or without version info.
+MODEL_PACKAGE_ARN_PATTERN = r"arn:aws:sagemaker:(.*?):(.*?):model-package/(.*?)(?:/(\d+))?$"
+
+
 class ModelPackage(Model):
     """A SageMaker ``Model`` that can be deployed to an ``Endpoint``."""
 
@@ -1769,14 +1774,19 @@ class ModelPackage(Model):
             model_package_name = self._created_model_package_name
         else:
             # When a ModelPackageArn is provided we just create the Model
-            model_package_name = self.model_package_arn
+            match = re.match(MODEL_PACKAGE_ARN_PATTERN, self.model_package_arn)
+            if match:
+                model_package_name = match.group(3)
+            else:
+                # model_package_arn can be just the name if your account owns the Model Package
+                model_package_name = self.model_package_arn
 
-        container_def = {"ModelPackageName": model_package_name}
+        container_def = {"ModelPackageName": self.model_package_arn}
 
         if self.env != {}:
             container_def["Environment"] = self.env
 
-        self._ensure_base_name_if_needed(model_package_name.split("/")[-1])
+        self._ensure_base_name_if_needed(model_package_name)
         self._set_model_name_if_needed()
 
         self.sagemaker_session.create_model(
@@ -1785,6 +1795,7 @@ class ModelPackage(Model):
             container_def,
             vpc_config=self.vpc_config,
             enable_network_isolation=self.enable_network_isolation(),
+            tags=kwargs.get("tags"),
         )
 
     def _ensure_base_name_if_needed(self, base_name):
