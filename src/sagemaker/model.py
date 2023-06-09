@@ -1210,6 +1210,8 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             inference_recommendation_id (str): The recommendation id which specifies the
                 recommendation you picked from inference recommendation job results and
                 would like to deploy the model and endpoint with recommended parameters.
+                This can also be a recommendation id returned from ``DescribeModel`` contained in
+                a list of ``RealtimeInferenceRecommendations`` within ``DeploymentRecommendation``
             explainer_config (sagemaker.explainer.ExplainerConfig): Specifies online explainability
                 configuration for use with Amazon SageMaker Clarify. Default: None.
         Raises:
