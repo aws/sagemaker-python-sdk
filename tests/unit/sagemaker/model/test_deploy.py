@@ -647,6 +647,7 @@ def test_deploy_with_recommendation_id_with_model_pkg_arn(name_from_base, sagema
         IR_MODEL_PACKAGE_CONTAINER_DEF,
         vpc_config=None,
         enable_network_isolation=False,
+        tags=None,
     )
 
     assert model_package.model_package_arn == IR_MODEL_PACKAGE_VERSION_ARN
@@ -715,6 +716,7 @@ def test_deploy_with_recommendation_id_with_model_pkg_arn_and_compilation(
         IR_COMPILATION_MODEL_PACKAGE_CONTAINER_DEF,
         vpc_config=None,
         enable_network_isolation=False,
+        tags=None,
     )
 
     assert model_package.model_data == IR_COMPILATION_MODEL_DATA
