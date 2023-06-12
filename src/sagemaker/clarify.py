@@ -339,7 +339,7 @@ class SegmentationConfig:
         """Initializes SegmentationConfig object
         Args:
             name_or_index (str or int): The name or index of the column in the dataset on which
-                this segment is defined.
+                the segment(s) is defined.
             segments (List[List[str or int]]): Each List of values represents one segment. If N
                 Lists are provided, we generate N+1 segments - the additional segment, denoted as
                 the '__default__' segment, is for the rest of the values that are not covered by
@@ -410,7 +410,7 @@ class DataConfig:
         predicted_label_headers: Optional[List[str]] = None,
         predicted_label: Optional[Union[str, int]] = None,
         excluded_columns: Optional[Union[List[int], List[str]]] = None,
-        segmentation_config: List[SegmentationConfig] = None,
+        segmentation_config: Optional[List[SegmentationConfig]] = None,
     ):
         """Initializes a configuration of both input and output datasets.
 
@@ -477,7 +477,7 @@ class DataConfig:
                 Only a single predicted label per sample is supported at this time.
             excluded_columns (list[int] or list[str]): A list of names or indices of the columns
                 which are to be excluded from making model inference API calls.
-            segmentation_config (list[SegmentationConfig]): A list of SegmentationConfig objects
+            segmentation_config (list[SegmentationConfig]): A list of SegmentationConfig objects.
 
         Raises:
             ValueError: when the ``dataset_type`` is invalid, predicted label dataset parameters
