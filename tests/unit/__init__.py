@@ -188,6 +188,31 @@ SAGEMAKER_CONFIG_ENDPOINT = {
     },
 }
 
+SAGEMAKER_CONFIG_ENDPOINT_ENDPOINT_CONFIG_COMBINED = {
+    SCHEMA_VERSION: "1.0",
+    SAGEMAKER: {
+        ENDPOINT_CONFIG: {
+            ASYNC_INFERENCE_CONFIG: {
+                OUTPUT_CONFIG: {
+                    KMS_KEY_ID: "testOutputKmsKeyId",
+                }
+            },
+            DATA_CAPTURE_CONFIG: {
+                KMS_KEY_ID: "testDataCaptureKmsKeyId",
+            },
+            KMS_KEY_ID: "ConfigKmsKeyId",
+            PRODUCTION_VARIANTS: [
+                {"CoreDumpConfig": {"KmsKeyId": "testCoreKmsKeyId"}},
+                {"CoreDumpConfig": {"KmsKeyId": "testCoreKmsKeyId2"}},
+            ],
+            TAGS: [{KEY: "some-tag", VALUE: "value-for-tag"}],
+        },
+        ENDPOINT: {
+            TAGS: [{KEY: "some-tag1", VALUE: "value-for-tag1"}],
+        },
+    },
+}
+
 SAGEMAKER_CONFIG_AUTO_ML = {
     SCHEMA_VERSION: "1.0",
     SAGEMAKER: {

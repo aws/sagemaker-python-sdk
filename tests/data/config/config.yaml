@@ -177,26 +177,3 @@ SageMaker:
       KmsKeyId: 'kmskeyid1'
     RoleArn: 'arn:aws:iam::555555555555:role/IMRole'
     ResourceKey: 'kmskeyid1'
-  PythonSDK:
-    Modules:
-      RemoteFunction:
-        Dependencies: "./requirements.txt"
-        EnvironmentVariables:
-          "var1": "value1"
-          "var2": "value2"
-        ImageUri: "123456789012.dkr.ecr.us-west-2.amazonaws.com/myimage:latest"
-        IncludeLocalWorkDir: true
-        InstanceType: "ml.m5.xlarge"
-        JobCondaEnvironment: "some_conda_env"
-        RoleArn: "arn:aws:iam::555555555555:role/IMRole"
-        S3KmsKeyId: "kmskeyid1"
-        S3RootUri: "s3://my-bucket/key"
-        Tags:
-          - Key: "tag1"
-            Value: "tagValue1"
-        VolumeKmsKeyId: "kmskeyid2"
-        VpcConfig:
-          SecurityGroupIds:
-            - 'sg123'
-          Subnets:
-            - 'subnet-1234'

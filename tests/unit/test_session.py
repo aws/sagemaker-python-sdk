@@ -45,6 +45,7 @@ from tests.unit import (
     SAGEMAKER_CONFIG_COMPILATION_JOB,
     SAGEMAKER_CONFIG_EDGE_PACKAGING_JOB,
     SAGEMAKER_CONFIG_ENDPOINT_CONFIG,
+    SAGEMAKER_CONFIG_ENDPOINT_ENDPOINT_CONFIG_COMBINED,
     SAGEMAKER_CONFIG_ENDPOINT,
     SAGEMAKER_CONFIG_AUTO_ML,
     SAGEMAKER_CONFIG_MODEL_PACKAGE,
@@ -3295,6 +3296,50 @@ def test_endpoint_from_production_variants_with_tags(sagemaker_session):
     )
     sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
         EndpointConfigName="some-endpoint", ProductionVariants=pvs, Tags=tags
+    )
+
+
+def test_endpoint_from_production_variants_with_combined_sagemaker_config_injection_tags(
+    sagemaker_session,
+):
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_ENDPOINT_ENDPOINT_CONFIG_COMBINED
+
+    ims = sagemaker_session
+    ims.sagemaker_client.describe_endpoint = Mock(return_value={"EndpointStatus": "InService"})
+    pvs = [
+        sagemaker.production_variant("A", "ml.p2.xlarge"),
+        sagemaker.production_variant("B", "p299.4096xlarge"),
+    ]
+    ex = ClientError(
+        {
+            "Error": {
+                "Code": "ValidationException",
+                "Message": "Could not find your thing",
+            }
+        },
+        "b",
+    )
+    ims.sagemaker_client.describe_endpoint_config = Mock(side_effect=ex)
+    expected_endpoint_tags = SAGEMAKER_CONFIG_ENDPOINT_ENDPOINT_CONFIG_COMBINED["SageMaker"][
+        "Endpoint"
+    ]["Tags"]
+    expected_endpoint_config_tags = SAGEMAKER_CONFIG_ENDPOINT_ENDPOINT_CONFIG_COMBINED["SageMaker"][
+        "EndpointConfig"
+    ]["Tags"]
+    expected_endpoint_config_kms_key_id = SAGEMAKER_CONFIG_ENDPOINT_ENDPOINT_CONFIG_COMBINED[
+        "SageMaker"
+    ]["EndpointConfig"]["KmsKeyId"]
+    sagemaker_session.endpoint_from_production_variants("some-endpoint", pvs)
+    sagemaker_session.sagemaker_client.create_endpoint.assert_called_with(
+        EndpointConfigName="some-endpoint",
+        EndpointName="some-endpoint",
+        Tags=expected_endpoint_tags,
+    )
+    sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
+        EndpointConfigName="some-endpoint",
+        ProductionVariants=pvs,
+        Tags=expected_endpoint_config_tags,
+        KmsKeyId=expected_endpoint_config_kms_key_id,
     )
 
 

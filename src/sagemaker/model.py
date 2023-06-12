@@ -990,7 +990,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             role, EDGE_PACKAGING_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
         )
         resource_key = resolve_value_from_config(
-            resource_key, EDGE_PACKAGING_RESOURCE_KEY_PATH, sagemaker_session=self
+            resource_key, EDGE_PACKAGING_RESOURCE_KEY_PATH, sagemaker_session=self.sagemaker_session
         )
         if role is not None:
             role = self.sagemaker_session.expand_role(role)

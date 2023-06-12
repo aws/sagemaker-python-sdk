@@ -460,9 +460,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             contents = response.get("Contents", None)
             if not contents:
                 LOGGER.info(
-                    "Nothing to download from bucket: %s, key_prefix: %s.",
-                    bucket,
-                    key_prefix,
+                    "Nothing to download from bucket: %s, key_prefix: %s.", bucket, key_prefix
                 )
                 return []
             # For each object, save its key or directory.
@@ -1265,9 +1263,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             role_arn, PROCESSING_JOB_ROLE_ARN_PATH, sagemaker_session=self
         )
         inferred_network_config_from_config = update_nested_dictionary_with_values_from_config(
-            network_config,
-            PROCESSING_JOB_NETWORK_CONFIG_PATH,
-            sagemaker_session=self,
+            network_config, PROCESSING_JOB_NETWORK_CONFIG_PATH, sagemaker_session=self
         )
         inferred_output_config = update_nested_dictionary_with_values_from_config(
             output_config, PROCESSING_OUTPUT_CONFIG_PATH, sagemaker_session=self
@@ -1453,14 +1449,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
             role_arn, MONITORING_JOB_ROLE_ARN_PATH, sagemaker_session=self
         )
         volume_kms_key = resolve_value_from_config(
-            volume_kms_key,
-            MONITORING_JOB_VOLUME_KMS_KEY_ID_PATH,
-            sagemaker_session=self,
+            volume_kms_key, MONITORING_JOB_VOLUME_KMS_KEY_ID_PATH, sagemaker_session=self
         )
         inferred_network_config_from_config = update_nested_dictionary_with_values_from_config(
-            network_config,
-            MONITORING_JOB_NETWORK_CONFIG_PATH,
-            sagemaker_session=self,
+            network_config, MONITORING_JOB_NETWORK_CONFIG_PATH, sagemaker_session=self
         )
         environment = resolve_value_from_config(
             direct_input=environment,
@@ -1494,8 +1486,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if monitoring_output_config is not None:
             kms_key_from_config = resolve_value_from_config(
-                config_path=MONITORING_JOB_OUTPUT_KMS_KEY_ID_PATH,
-                sagemaker_session=self,
+                config_path=MONITORING_JOB_OUTPUT_KMS_KEY_ID_PATH, sagemaker_session=self
             )
             if KMS_KEY_ID not in monitoring_output_config and kms_key_from_config:
                 monitoring_output_config[KMS_KEY_ID] = kms_key_from_config
@@ -1567,8 +1558,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         LOGGER.info("Creating monitoring schedule name %s.", monitoring_schedule_name)
         LOGGER.debug(
-            "monitoring_schedule_request= %s",
-            json.dumps(monitoring_schedule_request, indent=4),
+            "monitoring_schedule_request= %s", json.dumps(monitoring_schedule_request, indent=4)
         )
         self.sagemaker_client.create_monitoring_schedule(**monitoring_schedule_request)
 
@@ -1852,8 +1842,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         LOGGER.info("Updating monitoring schedule with name: %s .", monitoring_schedule_name)
         LOGGER.debug(
-            "monitoring_schedule_request= %s",
-            json.dumps(monitoring_schedule_request, indent=4),
+            "monitoring_schedule_request= %s", json.dumps(monitoring_schedule_request, indent=4)
         )
         self.sagemaker_client.update_monitoring_schedule(**monitoring_schedule_request)
 
@@ -1939,11 +1928,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         return response
 
     def list_monitoring_schedules(
-        self,
-        endpoint_name=None,
-        sort_by="CreationTime",
-        sort_order="Descending",
-        max_results=100,
+        self, endpoint_name=None, sort_by="CreationTime", sort_order="Descending", max_results=100
     ):
         """Lists the monitoring executions associated with the given monitoring_schedule_name.
 
@@ -2366,15 +2351,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         description = _wait_until(lambda: self.describe_auto_ml_job(job_name), poll)
 
-        (
-            instance_count,
-            stream_names,
-            positions,
-            client,
-            log_group,
-            dot,
-            color_wrap,
-        ) = _logs_init(self.boto_session, description, job="AutoML")
+        instance_count, stream_names, positions, client, log_group, dot, color_wrap = _logs_init(
+            self.boto_session, description, job="AutoML"
+        )
 
         state = _get_initial_job_state(description, "AutoMLJobStatus", wait)
 
@@ -2464,9 +2443,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             role, COMPILATION_JOB_ROLE_ARN_PATH, sagemaker_session=self
         )
         inferred_output_model_config = update_nested_dictionary_with_values_from_config(
-            output_model_config,
-            COMPILATION_JOB_OUTPUT_CONFIG_PATH,
-            sagemaker_session=self,
+            output_model_config, COMPILATION_JOB_OUTPUT_CONFIG_PATH, sagemaker_session=self
         )
         vpc_config = resolve_value_from_config(
             config_path=COMPILATION_JOB_VPC_CONFIG_PATH, sagemaker_session=self
@@ -2518,9 +2495,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """
         role = resolve_value_from_config(role, EDGE_PACKAGING_ROLE_ARN_PATH, sagemaker_session=self)
         inferred_output_model_config = update_nested_dictionary_with_values_from_config(
-            output_model_config,
-            EDGE_PACKAGING_OUTPUT_CONFIG_PATH,
-            sagemaker_session=self,
+            output_model_config, EDGE_PACKAGING_OUTPUT_CONFIG_PATH, sagemaker_session=self
         )
         edge_packaging_job_request = {
             "OutputConfig": inferred_output_model_config,
@@ -3327,10 +3302,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             sagemaker_session=self,
         )
         output_config = resolve_nested_dict_value_from_config(
-            output_config,
-            [KMS_KEY_ID],
-            TRANSFORM_OUTPUT_KMS_KEY_ID_PATH,
-            sagemaker_session=self,
+            output_config, [KMS_KEY_ID], TRANSFORM_OUTPUT_KMS_KEY_ID_PATH, sagemaker_session=self
         )
         resource_config = resolve_nested_dict_value_from_config(
             resource_config,
@@ -3751,9 +3723,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             return self.sagemaker_client.create_model_package(**request)
 
         return self._intercept_create_request(
-            model_pkg_request,
-            submit,
-            self.create_model_package_from_containers.__name__,
+            model_pkg_request, submit, self.create_model_package_from_containers.__name__
         )
 
     def wait_for_model_package(self, model_package_name, poll=5):
@@ -3771,8 +3741,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             exceptions.UnexpectedStatusException: If waiting and the Model Package job fails.
         """
         desc = _wait_until(
-            lambda: _create_model_package_status(self.sagemaker_client, model_package_name),
-            poll,
+            lambda: _create_model_package_status(self.sagemaker_client, model_package_name), poll
         )
         status = desc["ModelPackageStatus"]
 
@@ -3909,9 +3878,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if data_capture_config_dict is not None:
             inferred_data_capture_config_dict = update_nested_dictionary_with_values_from_config(
-                data_capture_config_dict,
-                ENDPOINT_CONFIG_DATA_CAPTURE_PATH,
-                sagemaker_session=self,
+                data_capture_config_dict, ENDPOINT_CONFIG_DATA_CAPTURE_PATH, sagemaker_session=self
             )
             request["DataCaptureConfig"] = inferred_data_capture_config_dict
 
@@ -4242,9 +4209,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             next_token = list_tags_response.get("nextToken")
             while next_token is not None:
                 list_tags_response = self.sagemaker_client.list_tags(
-                    ResourceArn=resource_arn,
-                    MaxResults=max_results,
-                    NextToken=next_token,
+                    ResourceArn=resource_arn, MaxResults=max_results, NextToken=next_token
                 )
                 tags_list = tags_list + list_tags_response["Tags"]
                 next_token = list_tags_response.get("nextToken")
@@ -4273,9 +4238,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             exceptions.UnexpectedStatusException: If the training job fails.
         """
         desc = _wait_until_training_done(
-            lambda last_desc: _train_done(self.sagemaker_client, job, last_desc),
-            None,
-            poll,
+            lambda last_desc: _train_done(self.sagemaker_client, job, last_desc), None, poll
         )
         _check_job_status(job, desc, "TrainingJobStatus")
         return desc
@@ -4581,10 +4544,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         )
 
         self.create_model(
-            name=name,
-            role=role,
-            container_defs=primary_container,
-            vpc_config=model_vpc_config,
+            name=name, role=role, container_defs=primary_container, vpc_config=model_vpc_config
         )
 
         data_capture_config_dict = None
@@ -4664,10 +4624,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             required_key_paths=["CoreDumpConfig.DestinationS3Uri"],
             sagemaker_session=self,
         )
-        config_options = {
-            "EndpointConfigName": name,
-            "ProductionVariants": production_variants,
-        }
+        config_options = {"EndpointConfigName": name, "ProductionVariants": production_variants}
         kms_key = (
             resolve_value_from_config(
                 kms_key, ENDPOINT_CONFIG_KMS_KEY_ID_PATH, sagemaker_session=self
@@ -4688,9 +4645,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             config_options["KmsKeyId"] = kms_key
         if data_capture_config_dict is not None:
             inferred_data_capture_config_dict = update_nested_dictionary_with_values_from_config(
-                data_capture_config_dict,
-                ENDPOINT_CONFIG_DATA_CAPTURE_PATH,
-                sagemaker_session=self,
+                data_capture_config_dict, ENDPOINT_CONFIG_DATA_CAPTURE_PATH, sagemaker_session=self
             )
             config_options["DataCaptureConfig"] = inferred_data_capture_config_dict
         if async_inference_config_dict is not None:
@@ -4775,11 +4730,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             endpoint_url=sts_regional_endpoint(self.boto_region_name),
         ).get_caller_identity()["Arn"]
 
-        role = re.sub(
-            r"^(.+)sts::(\d+):assumed-role/(.+?)/.*$",
-            r"\1iam::\2:role/\3",
-            assumed_role,
-        )
+        role = re.sub(r"^(.+)sts::(\d+):assumed-role/(.+?)/.*$", r"\1iam::\2:role/\3", assumed_role)
 
         # Call IAM to get the role's path
         role_name = role[role.rfind("/") + 1 :]
@@ -4850,15 +4801,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         description = _wait_until(lambda: self.describe_processing_job(job_name), poll)
 
-        (
-            instance_count,
-            stream_names,
-            positions,
-            client,
-            log_group,
-            dot,
-            color_wrap,
-        ) = _logs_init(self.boto_session, description, job="Processing")
+        instance_count, stream_names, positions, client, log_group, dot, color_wrap = _logs_init(
+            self.boto_session, description, job="Processing"
+        )
 
         state = _get_initial_job_state(description, "ProcessingJobStatus", wait)
 
@@ -4937,15 +4882,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         description = _wait_until(lambda: self.describe_transform_job(job_name), poll)
 
-        (
-            instance_count,
-            stream_names,
-            positions,
-            client,
-            log_group,
-            dot,
-            color_wrap,
-        ) = _logs_init(self.boto_session, description, job="Transform")
+        instance_count, stream_names, positions, client, log_group, dot, color_wrap = _logs_init(
+            self.boto_session, description, job="Transform"
+        )
 
         state = _get_initial_job_state(description, "TransformJobStatus", wait)
 
@@ -5051,18 +4990,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
             role_arn, FEATURE_GROUP_ROLE_ARN_PATH, sagemaker_session=self
         )
         inferred_online_store_from_config = update_nested_dictionary_with_values_from_config(
-            online_store_config,
-            FEATURE_GROUP_ONLINE_STORE_CONFIG_PATH,
-            sagemaker_session=self,
+            online_store_config, FEATURE_GROUP_ONLINE_STORE_CONFIG_PATH, sagemaker_session=self
         )
         if inferred_online_store_from_config is not None:
             # OnlineStore should be handled differently because if you set KmsKeyId, then you
             # need to set EnableOnlineStore key as well
             inferred_online_store_from_config["EnableOnlineStore"] = True
         inferred_offline_store_from_config = update_nested_dictionary_with_values_from_config(
-            offline_store_config,
-            FEATURE_GROUP_OFFLINE_STORE_CONFIG_PATH,
-            sagemaker_session=self,
+            offline_store_config, FEATURE_GROUP_OFFLINE_STORE_CONFIG_PATH, sagemaker_session=self
         )
         kwargs = dict(
             FeatureGroupName=feature_group_name,
@@ -5356,8 +5291,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             Response dict from the service.
         """
         kwargs = dict(
-            QueryString=query_string,
-            QueryExecutionContext=dict(Catalog=catalog, Database=database),
+            QueryString=query_string, QueryExecutionContext=dict(Catalog=catalog, Database=database)
         )
         result_config = dict(OutputLocation=output_location)
         if kms_key:
@@ -6150,10 +6084,7 @@ def _create_resource(create_fn):
         error_code = ce.response["Error"]["Code"]
         error_message = ce.response["Error"]["Message"]
         already_exists_exceptions = ["ValidationException", "ResourceInUse"]
-        already_exists_msg_patterns = [
-            "Cannot create already existing",
-            "already exists",
-        ]
+        already_exists_msg_patterns = ["Cannot create already existing", "already exists"]
         if not (
             error_code in already_exists_exceptions
             and any(p in error_message for p in already_exists_msg_patterns)
@@ -6409,10 +6340,7 @@ def _display_inference_recommendations_job_steps_status(
     initial_logs_batch = get_log_events_for_inference_recommender(
         cloudwatch_client, log_group_name, log_stream_name
     )
-    print(
-        f"Retrieved logStream: {log_stream_name} from logGroup: {log_group_name}",
-        flush=True,
-    )
+    print(f"Retrieved logStream: {log_stream_name} from logGroup: {log_group_name}", flush=True)
     events = initial_logs_batch["events"]
     print(*[event["message"] for event in events], sep="\n", flush=True)
 
@@ -6625,15 +6553,9 @@ def _logs_for_job(  # noqa: C901 - suppress complexity warning for this method
     description = sagemaker_client.describe_training_job(TrainingJobName=job_name)
     print(secondary_training_status_message(description, None), end="")
 
-    (
-        instance_count,
-        stream_names,
-        positions,
-        client,
-        log_group,
-        dot,
-        color_wrap,
-    ) = _logs_init(boto_session, description, job="Training")
+    instance_count, stream_names, positions, client, log_group, dot, color_wrap = _logs_init(
+        boto_session, description, job="Training"
+    )
 
     state = _get_initial_job_state(description, "TrainingJobStatus", wait)
 
@@ -6690,10 +6612,7 @@ def _logs_for_job(  # noqa: C901 - suppress complexity warning for this method
 
             if secondary_training_status_changed(description, last_description):
                 print()
-                print(
-                    secondary_training_status_message(description, last_description),
-                    end="",
-                )
+                print(secondary_training_status_message(description, last_description), end="")
                 last_description = description
 
             status = description["TrainingJobStatus"]
@@ -6826,14 +6745,7 @@ def _logs_init(boto_session, description, job):
 
 
 def _flush_log_streams(
-    stream_names,
-    instance_count,
-    client,
-    log_group,
-    job_name,
-    positions,
-    dot,
-    color_wrap,
+    stream_names, instance_count, client, log_group, job_name, positions, dot, color_wrap
 ):
     """Placeholder docstring"""
     if len(stream_names) < instance_count:
