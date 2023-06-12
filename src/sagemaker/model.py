@@ -1774,6 +1774,7 @@ class ModelPackage(Model):
                 self.sagemaker_session.wait_for_model_package(model_package_name)
                 self._created_model_package_name = model_package_name
             model_package_name = self._created_model_package_name
+            container_def = {"ModelPackageName": model_package_name}
         else:
             # When a ModelPackageArn is provided we just create the Model
             match = re.match(MODEL_PACKAGE_ARN_PATTERN, self.model_package_arn)
@@ -1782,8 +1783,7 @@ class ModelPackage(Model):
             else:
                 # model_package_arn can be just the name if your account owns the Model Package
                 model_package_name = self.model_package_arn
-
-        container_def = {"ModelPackageName": self.model_package_arn}
+            container_def = {"ModelPackageName": self.model_package_arn}
 
         if self.env != {}:
             container_def["Environment"] = self.env
