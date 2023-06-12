@@ -98,6 +98,8 @@ ENVIRONMENT = "Environment"
 CONTAINERS = "Containers"
 PRIMARY_CONTAINER = "PrimaryContainer"
 INFERENCE_SPECIFICATION = "InferenceSpecification"
+PROFILER_CONFIG = "ProfilerConfig"
+DISABLE_PROFILER = "DisableProfiler"
 
 
 def _simple_path(*args: str):
@@ -128,6 +130,10 @@ TRAINING_JOB_SECURITY_GROUP_IDS_PATH = _simple_path(
     TRAINING_JOB_VPC_CONFIG_PATH, SECURITY_GROUP_IDS
 )
 TRAINING_JOB_SUBNETS_PATH = _simple_path(TRAINING_JOB_VPC_CONFIG_PATH, SUBNETS)
+TRAINING_JOB_PROFILE_CONFIG_PATH = _simple_path(SAGEMAKER, TRAINING_JOB, PROFILER_CONFIG)
+TRAINING_JOB_PROFILE_CONFIG_DISABLE_PROFILER_PATH = _simple_path(
+    SAGEMAKER, TRAINING_JOB, PROFILER_CONFIG, DISABLE_PROFILER
+)
 EDGE_PACKAGING_KMS_KEY_ID_PATH = _simple_path(
     SAGEMAKER, EDGE_PACKAGING_JOB, OUTPUT_CONFIG, KMS_KEY_ID
 )
@@ -1000,6 +1006,11 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                             TYPE: OBJECT,
                             ADDITIONAL_PROPERTIES: False,
                             PROPERTIES: {VOLUME_KMS_KEY_ID: {"$ref": "#/definitions/kmsKeyId"}},
+                        },
+                        PROFILER_CONFIG: {
+                            TYPE: OBJECT,
+                            ADDITIONAL_PROPERTIES: False,
+                            PROPERTIES: {DISABLE_PROFILER: {TYPE: "boolean"}},
                         },
                         ROLE_ARN: {"$ref": "#/definitions/roleArn"},
                         VPC_CONFIG: {"$ref": "#/definitions/vpcConfig"},

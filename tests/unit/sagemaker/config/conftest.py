@@ -142,6 +142,7 @@ def valid_training_job_config(valid_iam_role_arn, valid_vpc_config, valid_enviro
         "Environment": valid_environment_config,
         "OutputDataConfig": {"KmsKeyId": "kmskeyid1"},
         "ResourceConfig": {"VolumeKmsKeyId": "volumekmskeyid1"},
+        "ProfilerConfig": {"DisableProfiler": False},
         "RoleArn": valid_iam_role_arn,
         "VpcConfig": valid_vpc_config,
     }
