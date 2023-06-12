@@ -336,29 +336,32 @@ class SegmentationConfig:
         config_name: Optional[str] = None,
         display_aliases: Optional[List[str]] = None,
     ):
-        """Initializes SegmentationConfig object
+        """Initializes a segmentation configuration for a dataset column
+
         Args:
             name_or_index (str or int): The name or index of the column in the dataset on which
                 the segment(s) is defined.
             segments (List[List[str or int]]): Each List of values represents one segment. If N
                 Lists are provided, we generate N+1 segments - the additional segment, denoted as
                 the '__default__' segment, is for the rest of the values that are not covered by
-                these lists.
-                For continuous columns, a segment must be given as strings in interval notation
-                (eg.: ["[1, 4]"] or ["(2, 5]"]). A segment can also be composed of multiple intervals
-                (eg.: ["[1, 4]", "(5, 6]"] is one segment). For categorical columns, each segment
-                should contain one or more of the categorical values for the categorical column,
-                which may be strings or integers.
-                Eg,: For a continuous column, `segments` could be
-                [["[1, 4]", "(5, 6]"], ["(7, 9)"]] - this generates 3 segments including the
-                default segment. For a categorical columns with values ("A", "B", "C", "D"),
-                `segments` could be [["A", "B"]]. This generate 2 segments, including the default
-                segment.
+                these lists. For continuous columns, a segment must be given as strings in interval
+                notation (eg.: ["[1, 4]"] or ["(2, 5]"]). A segment can also be composed of
+                multiple intervals (eg.: ["[1, 4]", "(5, 6]"] is one segment). For categorical
+                columns, each segment should contain one or more of the categorical values for
+                the categorical column, which may be strings or integers.
+                Eg,: For a continuous column, ``segments`` could be
+                [["[1, 4]", "(5, 6]"], ["(7, 9)"]] - this generates 3 segments including the default
+                 segment. For a categorical columns with values ("A", "B", "C", "D"), ``segments``
+                 could be [["A", "B"]]. This generate 2 segments, including the default segment.
             config_name (str) - Optional name for the segment config to identify the config.
-            display_aliases (List[str]) - Optional list of display names for the segments for the
-                analysis output and report. This list should be the same length as the number of
-                lists provided in `segments` or with one additional display alias for the default
+            display_aliases (List[str]) - Optional list of display names for the ``segments`` for
+                the analysis output and report. This list should be the same length as the number of
+                lists provided in ``segments`` or with one additional display alias for the default
                 segment.
+
+        Raises:
+            ValueError: when the ``name_or_index`` is None, ``segments`` is invalid, or a wrong
+                number of ``display_aliases`` are specified.
         """
         if name_or_index is None:
             raise ValueError("`name_or_index` cannot be None")
@@ -477,7 +480,8 @@ class DataConfig:
                 Only a single predicted label per sample is supported at this time.
             excluded_columns (list[int] or list[str]): A list of names or indices of the columns
                 which are to be excluded from making model inference API calls.
-            segmentation_config (list[SegmentationConfig]): A list of SegmentationConfig objects.
+            segmentation_config (list[SegmentationConfig]): A list of ``SegmentationConfig``
+                objects.
 
         Raises:
             ValueError: when the ``dataset_type`` is invalid, predicted label dataset parameters
