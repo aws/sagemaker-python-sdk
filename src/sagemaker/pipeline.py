@@ -94,9 +94,8 @@ class PipelineModel(object):
         self.endpoint_name = None
         self.sagemaker_session = sagemaker_session
 
-        # Workaround for config injection if sagemaker_session is None, since in
-        # that case sagemaker_session will not be initialized until
-        # `_init_sagemaker_session_if_does_not_exist` is called later
+        # In case, sagemaker_session is None, get sagemaker_config from load_sagemaker_config()
+        # to resolve value from config for the respective parameter
         self._sagemaker_config = (
             load_sagemaker_config() if (self.sagemaker_session is None) else None
         )

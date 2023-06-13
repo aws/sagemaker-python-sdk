@@ -1106,10 +1106,9 @@ def get_sagemaker_config_value(sagemaker_session, key, sagemaker_config: dict = 
         sagemaker_config (dict): The sdk defaults config that is normally accessed through a
             Session object by doing `session.sagemaker_config`. (default: None) This parameter will
             be checked for the config value if (and only if) sagemaker_session is None. This
-            parameter exists for the rare cases where no Session provided no Session but a default
-            Session cannot be initialized before config injection is needed. In that case,
-            the config dictionary may be loaded and passed here before a default Session object
-            is created.
+            parameter exists for the rare cases where no Session provided but a default Session
+            cannot be initialized before config injection is needed. In that case, the config
+            dictionary may be loaded and passed here before a default Session object is created.
 
     Returns:
         object: The corresponding default value in the configuration file.

@@ -456,9 +456,8 @@ def resolve_model_intelligent_default_field(
     over intelligent defaults. For all other fields, intelligent defaults takes precedence
     over the JumpStart default fields.
     """
-    # Workaround for config injection if sagemaker_session is None, since in
-    # that case sagemaker_session will not be initialized until
-    # `_init_sagemaker_session_if_does_not_exist` is called later
+    # In case, sagemaker_session is None, get sagemaker_config from load_sagemaker_config()
+    # to resolve value from config for the respective field_name parameter
     _sagemaker_config = load_sagemaker_config() if (sagemaker_session is None) else None
 
     # We allow customers to define a role which takes precedence
