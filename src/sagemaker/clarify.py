@@ -325,9 +325,7 @@ class DatasetType(Enum):
 
 
 class SegmentationConfig:
-    """Config object that defines segment(s) of the dataset on which bias and explainability metrics
-    must be computed. SegmentationConfig can only be defined on numerical or categorical columns.
-    """
+    """Config object that defines segment(s) of the dataset on which metrics are computed."""
 
     def __init__(
         self,
@@ -336,7 +334,7 @@ class SegmentationConfig:
         config_name: Optional[str] = None,
         display_aliases: Optional[List[str]] = None,
     ):
-        """Initializes a segmentation configuration for a dataset column
+        """Initializes a segmentation configuration for a dataset column.
 
         Args:
             name_or_index (str or int): The name or index of the column in the dataset on which

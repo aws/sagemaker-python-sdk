@@ -279,7 +279,7 @@ def test_invalid_segmentation_config(
     name_or_index, segments, config_name, display_aliases, error_msg
 ):
     with pytest.raises(ValueError, match=error_msg):
-        segmentation_config = SegmentationConfig(
+        SegmentationConfig(
             name_or_index=name_or_index,
             segments=segments,
             config_name=config_name,
