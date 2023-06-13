@@ -71,7 +71,7 @@ WARM_START_TYPE = "WarmStartType"
 HYPERBAND_STRATEGY_CONFIG = "HyperbandStrategyConfig"
 HYPERBAND_MIN_RESOURCE = "MinResource"
 HYPERBAND_MAX_RESOURCE = "MaxResource"
-GRID_SEARCH = "GridSearch"
+GRID_SEARCH = "Grid"
 MAX_NUMBER_OF_TRAINING_JOBS_NOT_IMPROVING = "MaxNumberOfTrainingJobsNotImproving"
 BEST_OBJECTIVE_NOT_IMPROVING = "BestObjectiveNotImproving"
 CONVERGENCE_DETECTED = "ConvergenceDetected"
@@ -645,7 +645,7 @@ class HyperparameterTuner(object):
                 evaluating training jobs. This value can be either 'Minimize' or
                 'Maximize' (default: 'Maximize').
             max_jobs (int or PipelineVariable): Maximum total number of training jobs to start for
-                the hyperparameter tuning job. The default value is unspecified fot the GridSearch
+                the hyperparameter tuning job. The default value is unspecified fot the 'Grid'
                 strategy and the default value is 1 for all others strategies (default: None).
             max_parallel_jobs (int or PipelineVariable): Maximum number of parallel training jobs to
                 start (default: 1).
@@ -1917,7 +1917,7 @@ class HyperparameterTuner(object):
             objective_type (str): The type of the objective metric for evaluating training jobs.
                 This value can be either 'Minimize' or 'Maximize' (default: 'Maximize').
             max_jobs (int): Maximum total number of training jobs to start for the hyperparameter
-                tuning job. The default value is unspecified fot the GridSearch strategy
+                tuning job. The default value is unspecified fot the 'Grid' strategy
                 and the value is 1 for all others strategies (default: None).
             max_parallel_jobs (int): Maximum number of parallel training jobs to start
                 (default: 1).
