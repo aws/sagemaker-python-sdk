@@ -60,12 +60,14 @@ def test_data_config(dataset_type, features, excluded_columns, predicted_label):
     s3_output_path = "s3://path/to/output"
     label_name = "Label"
     headers = ["Label", "F1", "F2", "F3", "F4", "Predicted Label"]
-    segment_config = [SegmentationConfig(
-        name_or_index='F1',
-        segments=[[0]],
-        config_name="c1",
-        display_aliases=['a1'],
-    )]
+    segment_config = [
+        SegmentationConfig(
+            name_or_index="F1",
+            segments=[[0]],
+            config_name="c1",
+            display_aliases=["a1"],
+        )
+    ]
 
     data_config = DataConfig(
         s3_data_input_path=s3_data_input_path,
@@ -83,7 +85,14 @@ def test_data_config(dataset_type, features, excluded_columns, predicted_label):
         "dataset_type": dataset_type,
         "headers": headers,
         "label": "Label",
-        'segment_config': [{'config_name': 'c1', 'display_aliases': ['a1'], 'name_or_index': 'F1', 'segments': [[0]]}],
+        "segment_config": [
+            {
+                "config_name": "c1",
+                "display_aliases": ["a1"],
+                "name_or_index": "F1",
+                "segments": [[0]],
+            }
+        ],
     }
     if features:
         expected_config["features"] = features
@@ -249,18 +258,26 @@ def test_segmentation_config(name_or_index, segments, config_name, display_alias
     ("name_or_index", "segments", "config_name", "display_aliases", "error_msg"),
     [
         (None, [[0]], "config1", None, "`name_or_index` cannot be None"),
-        ("feature1", "0", "config1", ["seg1"], "`segments` must be a list of lists of values or intervals."),
+        (
+            "feature1",
+            "0",
+            "config1",
+            ["seg1"],
+            "`segments` must be a list of lists of values or intervals.",
+        ),
         (
             "feature1",
             [[0]],
             "config1",
             ["seg1", "seg2", "seg3"],
             "Number of `display_aliases` must equal the number of segments specified or with one "
-            "additional default segment display alias."
+            "additional default segment display alias.",
         ),
     ],
 )
-def test_invalid_segmentation_config(name_or_index, segments, config_name, display_aliases, error_msg):
+def test_invalid_segmentation_config(
+    name_or_index, segments, config_name, display_aliases, error_msg
+):
     with pytest.raises(ValueError, match=error_msg):
         segmentation_config = SegmentationConfig(
             name_or_index=name_or_index,

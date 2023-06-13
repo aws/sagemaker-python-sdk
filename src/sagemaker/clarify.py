@@ -350,9 +350,10 @@ class SegmentationConfig:
                 columns, each segment should contain one or more of the categorical values for
                 the categorical column, which may be strings or integers.
                 Eg,: For a continuous column, ``segments`` could be
-                [["[1, 4]", "(5, 6]"], ["(7, 9)"]] - this generates 3 segments including the default
-                 segment. For a categorical columns with values ("A", "B", "C", "D"), ``segments``
-                 could be [["A", "B"]]. This generate 2 segments, including the default segment.
+                [["[1, 4]", "(5, 6]"], ["(7, 9)"]] - this generates 3 segments including the
+                default segment. For a categorical columns with values ("A", "B", "C", "D"),
+                ``segments``,could be [["A", "B"]]. This generate 2 segments, including the default
+                segment.
             config_name (str) - Optional name for the segment config to identify the config.
             display_aliases (List[str]) - Optional list of display names for the ``segments`` for
                 the analysis output and report. This list should be the same length as the number of
@@ -374,13 +375,13 @@ class SegmentationConfig:
             raise ValueError("`segments` must be a list of lists of values or intervals.")
         self.segments = segments
         self.config_name = config_name
-        if (
-            display_aliases is not None
-            and not (len(display_aliases) == len(segments)
-                     or len(display_aliases) == len(segments) + 1)
+        if display_aliases is not None and not (
+            len(display_aliases) == len(segments) or len(display_aliases) == len(segments) + 1
         ):
-            raise ValueError("Number of `display_aliases` must equal the number of segments"
-                             " specified or with one additional default segment display alias.")
+            raise ValueError(
+                "Number of `display_aliases` must equal the number of segments"
+                " specified or with one additional default segment display alias."
+            )
         self.display_aliases = display_aliases
 
     def to_dict(self) -> Dict[str, Any]:  # pragma: no cover
