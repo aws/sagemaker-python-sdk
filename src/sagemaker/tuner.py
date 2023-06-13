@@ -741,7 +741,7 @@ class HyperparameterTuner(object):
         # For all other strategies for the backward compatibility we keep
         # the default value as 1 (previous default value).
         self.max_jobs = max_jobs
-        if max_jobs is None and strategy is not GRID_SEARCH:
+        if max_jobs is None and strategy != GRID_SEARCH:
             self.max_jobs = 1
         self.max_parallel_jobs = max_parallel_jobs
         self.max_runtime_in_seconds = max_runtime_in_seconds
