@@ -1,5 +1,34 @@
 # Changelog
 
+## v2.165.0 (2023-06-13)
+
+### Features
+
+ * Add support for Deployment Recommendation ID in model.deploy(). No tagging support
+
+### Bug Fixes and Other Changes
+
+ * maketplace integs
+ * Add tagging assert to inference recommender integ tests
+ * breaking deviations in _create_sagemaker_model call
+
+### Documentation Changes
+
+ * Add missing quotation mark
+
+## v2.164.0 (2023-06-08)
+
+### Features
+
+ * SDK Defaults - Environment Variables
+ * Update Transformers 4.28 - PyTorch 2.0.0 Training and Inference Image URI
+
+### Bug Fixes and Other Changes
+
+ * tag more integs as flaky for auto-retry
+ * Remove docker-compose from local requirements
+ * enable neo framework version support on ml_inf2 and ml_trn1
+
 ## v2.163.0 (2023-06-07)
 
 ### Features

@@ -18,6 +18,7 @@ SUBNETS = "Subnets"
 ENABLE_NETWORK_ISOLATION = "EnableNetworkIsolation"
 VOLUME_KMS_KEY_ID = "VolumeKmsKeyId"
 KMS_KEY_ID = "KmsKeyId"
+RESOURCE_KEY = "ResourceKey"
 ROLE_ARN = "RoleArn"
 TAGS = "Tags"
 KEY = "Key"
@@ -78,6 +79,7 @@ MODEL_PACKAGE = "ModelPackage"
 MODEL = "Model"
 MONITORING_SCHEDULE = "MonitoringSchedule"
 ENDPOINT_CONFIG = "EndpointConfig"
+ENDPOINT = "Endpoint"
 AUTO_ML_JOB = "AutoMLJob"
 COMPILATION_JOB = "CompilationJob"
 CUSTOM_PARAMETERS = "CustomParameters"
@@ -131,6 +133,7 @@ EDGE_PACKAGING_KMS_KEY_ID_PATH = _simple_path(
 )
 EDGE_PACKAGING_OUTPUT_CONFIG_PATH = _simple_path(SAGEMAKER, EDGE_PACKAGING_JOB, OUTPUT_CONFIG)
 EDGE_PACKAGING_ROLE_ARN_PATH = _simple_path(SAGEMAKER, EDGE_PACKAGING_JOB, ROLE_ARN)
+EDGE_PACKAGING_RESOURCE_KEY_PATH = _simple_path(SAGEMAKER, EDGE_PACKAGING_JOB, RESOURCE_KEY)
 ENDPOINT_CONFIG_DATA_CAPTURE_KMS_KEY_ID_PATH = _simple_path(
     SAGEMAKER, ENDPOINT_CONFIG, DATA_CAPTURE_CONFIG, KMS_KEY_ID
 )
@@ -145,6 +148,7 @@ ENDPOINT_CONFIG_ASYNC_KMS_KEY_ID_PATH = _simple_path(
     SAGEMAKER, ENDPOINT_CONFIG, ASYNC_INFERENCE_CONFIG, OUTPUT_CONFIG, KMS_KEY_ID
 )
 ENDPOINT_CONFIG_KMS_KEY_ID_PATH = _simple_path(SAGEMAKER, ENDPOINT_CONFIG, KMS_KEY_ID)
+ENDPOINT_TAGS_PATH = _simple_path(SAGEMAKER, ENDPOINT, TAGS)
 FEATURE_GROUP_ONLINE_STORE_CONFIG_PATH = _simple_path(SAGEMAKER, FEATURE_GROUP, ONLINE_STORE_CONFIG)
 FEATURE_GROUP_OFFLINE_STORE_CONFIG_PATH = _simple_path(
     SAGEMAKER, FEATURE_GROUP, OFFLINE_STORE_CONFIG
@@ -167,14 +171,20 @@ AUTO_ML_VPC_CONFIG_PATH = _simple_path(
 )
 AUTO_ML_JOB_CONFIG_PATH = _simple_path(SAGEMAKER, AUTO_ML_JOB, AUTO_ML_JOB_CONFIG)
 MONITORING_JOB_DEFINITION_PREFIX = _simple_path(
-    SAGEMAKER, MONITORING_SCHEDULE, MONITORING_SCHEDULE_CONFIG, MONITORING_JOB_DEFINITION
+    SAGEMAKER,
+    MONITORING_SCHEDULE,
+    MONITORING_SCHEDULE_CONFIG,
+    MONITORING_JOB_DEFINITION,
 )
 MONITORING_JOB_ENVIRONMENT_PATH = _simple_path(MONITORING_JOB_DEFINITION_PREFIX, ENVIRONMENT)
 MONITORING_JOB_OUTPUT_KMS_KEY_ID_PATH = _simple_path(
     MONITORING_JOB_DEFINITION_PREFIX, MONITORING_OUTPUT_CONFIG, KMS_KEY_ID
 )
 MONITORING_JOB_VOLUME_KMS_KEY_ID_PATH = _simple_path(
-    MONITORING_JOB_DEFINITION_PREFIX, MONITORING_RESOURCES, CLUSTER_CONFIG, VOLUME_KMS_KEY_ID
+    MONITORING_JOB_DEFINITION_PREFIX,
+    MONITORING_RESOURCES,
+    CLUSTER_CONFIG,
+    VOLUME_KMS_KEY_ID,
 )
 MONITORING_JOB_NETWORK_CONFIG_PATH = _simple_path(MONITORING_JOB_DEFINITION_PREFIX, NETWORK_CONFIG)
 MONITORING_JOB_ENABLE_NETWORK_ISOLATION_PATH = _simple_path(
@@ -288,7 +298,11 @@ REMOTE_FUNCTION_VPC_CONFIG_SECURITY_GROUP_IDS = _simple_path(
     SAGEMAKER, PYTHON_SDK, MODULES, REMOTE_FUNCTION, VPC_CONFIG, SECURITY_GROUP_IDS
 )
 REMOTE_FUNCTION_ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION = _simple_path(
-    SAGEMAKER, PYTHON_SDK, MODULES, REMOTE_FUNCTION, ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION
+    SAGEMAKER,
+    PYTHON_SDK,
+    MODULES,
+    REMOTE_FUNCTION,
+    ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION,
 )
 MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION_PATH = _simple_path(
     SAGEMAKER,
@@ -468,7 +482,11 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
             "maxProperties": 48,
         },
         # Regex is taken from https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_S3DataSource.html#sagemaker-Type-S3DataSource-S3Uri
-        "s3Uri": {TYPE: "string", "pattern": "^(https|s3)://([^/]+)/?(.*)$", "maxLength": 1024},
+        "s3Uri": {
+            TYPE: "string",
+            "pattern": "^(https|s3)://([^/]+)/?(.*)$",
+            "maxLength": 1024,
+        },
         # Regex is taken from https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_AlgorithmSpecification.html#sagemaker-Type-AlgorithmSpecification-ContainerEntrypoint
         "preExecutionCommand": {TYPE: "string", "pattern": r".*"},
         # Regex based on https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_PipelineDefinitionS3Location.html
@@ -746,6 +764,13 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                         TAGS: {"$ref": "#/definitions/tags"},
                     },
                 },
+                # Endpoint
+                # https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateEndpoint.html
+                ENDPOINT: {
+                    TYPE: OBJECT,
+                    ADDITIONAL_PROPERTIES: False,
+                    PROPERTIES: {TAGS: {"$ref": "#/definitions/tags"}},
+                },
                 # Endpoint Config
                 # https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateEndpointConfig.html
                 # Note: there is a separate API for creating Endpoints.
@@ -992,6 +1017,7 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                             ADDITIONAL_PROPERTIES: False,
                             PROPERTIES: {KMS_KEY_ID: {"$ref": "#/definitions/kmsKeyId"}},
                         },
+                        RESOURCE_KEY: {"$ref": "#/definitions/kmsKeyId"},
                         ROLE_ARN: {"$ref": "#/definitions/roleArn"},
                         TAGS: {"$ref": "#/definitions/tags"},
                     },

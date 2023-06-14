@@ -32,10 +32,12 @@ from tests.unit import (
     _test_default_bucket_and_prefix_combinations,
     DEFAULT_S3_BUCKET_NAME,
     DEFAULT_S3_OBJECT_KEY_PREFIX_NAME,
+    SAGEMAKER_CONFIG_EDGE_PACKAGING_JOB,
 )
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
+MODEL_VERSION = "1.0"
 TIMESTAMP = "2017-10-10-14-14-15"
 MODEL_NAME = "{}-{}".format(MODEL_IMAGE, TIMESTAMP)
 
@@ -921,3 +923,27 @@ def test__build_default_async_inference_config__default_bucket_and_prefix_combin
         ),
     )
     assert actual == expected
+
+
+def test_package_for_edge_with_sagemaker_config_injection(sagemaker_session):
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_EDGE_PACKAGING_JOB
+    sagemaker_session.wait_for_edge_packaging_job.return_value = {"ModelArtifact": "TestArtifact"}
+    sagemaker_session.expand_role.return_value = SAGEMAKER_CONFIG_EDGE_PACKAGING_JOB["SageMaker"][
+        "EdgePackagingJob"
+    ]["RoleArn"]
+    model = Model(MODEL_DATA, MODEL_IMAGE, name=MODEL_NAME, sagemaker_session=sagemaker_session)
+    model._compilation_job_name = "compiledModel"
+    model.package_for_edge(output_path="", model_name=MODEL_NAME, model_version=MODEL_VERSION)
+    sagemaker_session.expand_role.assert_called_with(
+        SAGEMAKER_CONFIG_EDGE_PACKAGING_JOB["SageMaker"]["EdgePackagingJob"]["RoleArn"]
+    )
+    sagemaker_session.package_model_for_edge.assert_called_with(
+        compilation_job_name="compiledModel",
+        job_name="packagingel",
+        model_name=MODEL_NAME,
+        model_version=MODEL_VERSION,
+        output_model_config={"S3OutputLocation": "", "KmsKeyId": "configKmsKeyId"},
+        resource_key="kmskeyid1",
+        role=SAGEMAKER_CONFIG_EDGE_PACKAGING_JOB["SageMaker"]["EdgePackagingJob"]["RoleArn"],
+        tags=None,
+    )
