@@ -80,6 +80,7 @@ def mock_session():
     session.boto_region_name = TEST_REGION
     session.sagemaker_config = None
     session._append_sagemaker_config_tags.return_value = []
+    session.default_bucket_prefix = None
     return session
 
 

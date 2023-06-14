@@ -19,7 +19,6 @@ import pytest
 from mock import patch, Mock, ANY
 
 from sagemaker.config import load_sagemaker_config
-
 from sagemaker.session_settings import SessionSettings
 
 from sagemaker.remote_function.spark_config import SparkConfig
@@ -175,6 +174,26 @@ def test_sagemaker_config_job_settings_with_spark_config_and_image_uri(get_execu
         ValueError, match="spark_config and image_uri cannot be specified at the same time!"
     ):
         _JobSettings(image_uri="image_uri", instance_type="ml.m5.xlarge", spark_config=spark_config)
+
+
+def test_sagemaker_config_job_settings_with_not_supported_param_by_spark():
+    spark_config = SparkConfig()
+
+    with pytest.raises(ValueError, match="Remote Spark jobs do not support job_conda_env."):
+        _JobSettings(
+            instance_type="ml.m5.xlarge",
+            spark_config=spark_config,
+            job_conda_env="conda_env",
+        )
+
+    with pytest.raises(
+        ValueError, match="Remote Spark jobs do not support automatically capturing dependencies."
+    ):
+        _JobSettings(
+            instance_type="ml.m5.xlarge",
+            spark_config=spark_config,
+            dependencies="auto_capture",
+        )
 
 
 @patch("secrets.token_hex", return_value=HMAC_KEY)
@@ -556,6 +575,7 @@ def test_start_with_spark(
         role=ROLE_ARN,
         include_local_workdir=True,
         instance_type="ml.m5.large",
+        instance_count=2,
         encrypt_inter_container_traffic=True,
     )
 
@@ -588,6 +608,7 @@ def test_start_with_spark(
                     "S3DataSource": {
                         "S3Uri": mock_script_upload.return_value,
                         "S3DataType": "S3Prefix",
+                        "S3DataDistributionType": "FullyReplicated",
                     }
                 },
             ),
@@ -597,6 +618,7 @@ def test_start_with_spark(
                     "S3DataSource": {
                         "S3Uri": f"{S3_URI}/{job.job_name}/sm_rf_user_ws",
                         "S3DataType": "S3Prefix",
+                        "S3DataDistributionType": "FullyReplicated",
                     }
                 },
             ),
@@ -606,6 +628,7 @@ def test_start_with_spark(
                     "S3DataSource": {
                         "S3Uri": "config_file_s3_uri",
                         "S3DataType": "S3Prefix",
+                        "S3DataDistributionType": "FullyReplicated",
                     }
                 },
             ),
@@ -638,7 +661,7 @@ def test_start_with_spark(
         ),
         ResourceConfig=dict(
             VolumeSizeInGB=30,
-            InstanceCount=1,
+            InstanceCount=2,
             InstanceType="ml.m5.large",
             KeepAlivePeriodInSeconds=0,
         ),
@@ -941,7 +964,11 @@ def test_extend_spark_config_to_request(
             {
                 "ChannelName": "conf",
                 "DataSource": {
-                    "S3DataSource": {"S3DataType": "S3Prefix", "S3Uri": "config_file_s3_uri"}
+                    "S3DataSource": {
+                        "S3DataType": "S3Prefix",
+                        "S3Uri": "config_file_s3_uri",
+                        "S3DataDistributionType": "FullyReplicated",
+                    }
                 },
             }
         ],

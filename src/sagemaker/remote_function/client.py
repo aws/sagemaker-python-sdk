@@ -192,7 +192,7 @@ def remote(
           methods that are not available via PyPI or conda. Default value is ``False``.
 
         instance_count (int): The number of instances to use. Defaults to 1.
-          NOTE: Remote function does not support instance_count > 1
+          NOTE: Remote function does not support instance_count > 1 for non Spark jobs.
 
         instance_type (str): The Amazon Elastic Compute Cloud (EC2) instance type to use to run
           the SageMaker job. e.g. ml.c4.xlarge. If not provided, a ValueError is thrown.
@@ -207,7 +207,7 @@ def remote(
           warm pools. The use of warmpools reduces the latency time spent to provision new
           resources. The default value for ``keep_alive_period_in_seconds`` is 0.
           NOTE: Additional charges associated with warm pools may apply. Using this parameter also
-          activates a new pesistent cache feature, which will further reduce job start up
+          activates a new persistent cache feature, which will further reduce job start up
           latency than over using SageMaker managed warm pools alone by caching the package source
           downloaded in the previous runs.
 
@@ -293,7 +293,7 @@ def remote(
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
 
-            if instance_count > 1:
+            if instance_count > 1 and not spark_config:
                 raise ValueError(
                     "Remote function do not support training on multi instances. "
                     + "Please provide instance_count = 1"
@@ -601,7 +601,7 @@ class RemoteExecutor(object):
               and methods that are not available via PyPI or conda. Default value is ``False``.
 
             instance_count (int): The number of instances to use. Defaults to 1.
-              NOTE: Remote function does not support instance_count > 1
+              NOTE: Remote function does not support instance_count > 1 for non Spark jobs.
 
             instance_type (str): The Amazon Elastic Compute Cloud (EC2) instance type to use to run
               the SageMaker job. e.g. ml.c4.xlarge. If not provided, a ValueError is thrown.
@@ -680,7 +680,7 @@ class RemoteExecutor(object):
         if self.max_parallel_jobs <= 0:
             raise ValueError("max_parallel_jobs must be greater than 0.")
 
-        if instance_count > 1:
+        if instance_count > 1 and not spark_config:
             raise ValueError(
                 "Remote function do not support training on multi instances. "
                 + "Please provide instance_count = 1"

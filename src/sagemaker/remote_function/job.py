@@ -377,6 +377,15 @@ class _JobSettings:
 
         if spark_config and image_uri:
             raise ValueError("spark_config and image_uri cannot be specified at the same time!")
+
+        if spark_config and job_conda_env:
+            raise ValueError("Remote Spark jobs do not support job_conda_env.")
+
+        if spark_config and dependencies == "auto_capture":
+            raise ValueError(
+                "Remote Spark jobs do not support automatically capturing dependencies."
+            )
+
         self.environment_variables.update({"REMOTE_FUNCTION_SECRET_KEY": secrets.token_hex(32)})
 
         _image_uri = resolve_value_from_config(
@@ -1141,6 +1150,11 @@ def _extend_spark_config_to_request(
                 },
             )
         )
+
+    for input_channel in extended_request["InputDataConfig"]:
+        s3_data_source = input_channel["DataSource"].get("S3DataSource", None)
+        if s3_data_source:
+            s3_data_source["S3DataDistributionType"] = "FullyReplicated"
 
     if spark_config.spark_event_logs_uri:
         container_entrypoint.extend(
