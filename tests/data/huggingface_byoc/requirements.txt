@@ -1,2 +1,2 @@
-transformers<=4.30.0
+transformers<=4.30.1
 datasets<=2.12.0
