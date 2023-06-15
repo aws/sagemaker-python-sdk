@@ -42,7 +42,6 @@ class FeatureProcessorConfig:
     mode: FeatureProcessorMode = attr.ib()
     target_stores: Optional[List[str]] = attr.ib()
     parameters: Optional[Dict[str, Union[str, Dict]]] = attr.ib()
-    enable_data_load: bool = attr.ib()
     enable_ingestion: bool = attr.ib()
 
     @staticmethod
@@ -52,7 +51,6 @@ class FeatureProcessorConfig:
         mode: FeatureProcessorMode,
         target_stores: Optional[List[str]],
         parameters: Optional[Dict[str, Union[str, Dict]]],
-        enable_data_load: bool,
         enable_ingestion: bool,
     ) -> "FeatureProcessorConfig":
         """Static initializer."""
@@ -62,6 +60,5 @@ class FeatureProcessorConfig:
             mode=mode,
             target_stores=target_stores,
             parameters=parameters,
-            enable_data_load=enable_data_load,
             enable_ingestion=enable_ingestion,
         )

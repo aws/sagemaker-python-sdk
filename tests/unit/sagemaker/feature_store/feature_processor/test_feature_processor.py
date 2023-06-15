@@ -20,13 +20,18 @@ import test_data_helpers as tdh
 from mock import Mock, patch
 
 from sagemaker.feature_store.feature_processor._enums import FeatureProcessorMode
-from sagemaker.feature_store.feature_processor._factory import UDFWrapperFactory, ValidatorFactory
+from sagemaker.feature_store.feature_processor._factory import (
+    UDFWrapperFactory,
+    ValidatorFactory,
+)
 from sagemaker.feature_store.feature_processor._feature_processor_config import (
     FeatureProcessorConfig,
 )
 from sagemaker.feature_store.feature_processor._udf_wrapper import UDFWrapper
 from sagemaker.feature_store.feature_processor._validation import ValidatorChain
-from sagemaker.feature_store.feature_processor.feature_processor import feature_processor
+from sagemaker.feature_store.feature_processor.feature_processor import (
+    feature_processor,
+)
 
 
 @pytest.fixture
@@ -66,7 +71,9 @@ def test_feature_processor(udf, udf_wrapper, validator_chain, fp_config, wrapped
             UDFWrapperFactory, "get_udf_wrapper", return_value=udf_wrapper
         ) as get_udf_wrapper:
             with patch.object(
-                ValidatorFactory, "get_validation_chain", return_value=validator_chain
+                ValidatorFactory,
+                "get_validation_chain",
+                return_value=validator_chain,
             ) as get_validation_chain:
                 decorated_udf = feature_processor(
                     inputs=[tdh.FEATURE_GROUP_DATA_SOURCE],
@@ -93,7 +100,9 @@ def test_feature_processor_validation_fails(udf, udf_wrapper, validator_chain, f
             UDFWrapperFactory, "get_udf_wrapper", return_value=udf_wrapper
         ) as get_udf_wrapper:
             with patch.object(
-                ValidatorFactory, "get_validation_chain", return_value=validator_chain
+                ValidatorFactory,
+                "get_validation_chain",
+                return_value=validator_chain,
             ) as get_validation_chain:
                 validator_chain.validate.side_effect = ValueError()
 

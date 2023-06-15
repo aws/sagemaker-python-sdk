@@ -15,7 +15,7 @@ from __future__ import absolute_import
 
 import feature_store_pyspark
 import pytest
-from mock import Mock, call, patch
+from mock import Mock, patch, call
 
 from sagemaker.feature_store.feature_processor._spark_factory import (
     FeatureStoreManagerFactory,
@@ -153,15 +153,16 @@ def test_spark_session_factory_get_spark_session_with_iceberg_config(env_helper)
     iceberg_configs = dict(spark_session_factory._get_iceberg_configs("s3://test/path", "Catalog"))
 
     assert (
-        iceberg_configs.get("spark.sql.catalog.catalog") == "org.apache.iceberg.spark.SparkCatalog"
+        iceberg_configs.get("spark.sql.catalog.catalog")
+        == "smfs.shaded.org.apache.iceberg.spark.SparkCatalog"
     )
     assert iceberg_configs.get("spark.sql.catalog.catalog.warehouse") == "s3://test/path"
     assert (
         iceberg_configs.get("spark.sql.catalog.catalog.catalog-impl")
-        == "org.apache.iceberg.aws.glue.GlueCatalog"
+        == "smfs.shaded.org.apache.iceberg.aws.glue.GlueCatalog"
     )
     assert (
         iceberg_configs.get("spark.sql.catalog.catalog.io-impl")
-        == "org.apache.iceberg.aws.s3.S3FileIO"
+        == "smfs.shaded.org.apache.iceberg.aws.s3.S3FileIO"
     )
     assert iceberg_configs.get("spark.sql.catalog.catalog.glue.skip-name-validation") == "true"

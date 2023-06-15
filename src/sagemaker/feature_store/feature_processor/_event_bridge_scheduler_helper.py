@@ -43,7 +43,7 @@ class EventBridgeSchedulerHelper:
         state: str,
         start_date: datetime,
         role: str,
-    ) -> str:
+    ) -> Dict:
         """Creates or updates a Schedule for the given pipeline_arn and schedule_expression.
 
         Args:
@@ -60,7 +60,10 @@ class EventBridgeSchedulerHelper:
         """
         pipeline_parameter = dict(
             PipelineParameterList=[
-                dict(Name=EXECUTION_TIME_PIPELINE_PARAMETER, Value=EVENT_BRIDGE_INVOCATION_TIME)
+                dict(
+                    Name=EXECUTION_TIME_PIPELINE_PARAMETER,
+                    Value=EVENT_BRIDGE_INVOCATION_TIME,
+                )
             ]
         )
         create_or_update_schedule_request_dict = dict(
@@ -68,7 +71,9 @@ class EventBridgeSchedulerHelper:
             ScheduleExpression=schedule_expression,
             FlexibleTimeWindow=NO_FLEXIBLE_TIME_WINDOW,
             Target=dict(
-                Arn=pipeline_arn, SageMakerPipelineParameters=pipeline_parameter, RoleArn=role
+                Arn=pipeline_arn,
+                SageMakerPipelineParameters=pipeline_parameter,
+                RoleArn=role,
             ),
             State=state,
             StartDate=start_date,

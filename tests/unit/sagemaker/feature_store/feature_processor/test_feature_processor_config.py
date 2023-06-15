@@ -29,7 +29,6 @@ def test_feature_processor_config_is_immutable():
         output=tdh.OUTPUT_FEATURE_GROUP_ARN,
         mode=FeatureProcessorMode.PYSPARK,
         target_stores=None,
-        enable_data_load=True,
         enable_ingestion=True,
         parameters=None,
     )
@@ -40,6 +39,7 @@ def test_feature_processor_config_is_immutable():
         fp_config.inputs = []
 
     with pytest.raises(
-        TypeError, match="'FeatureProcessorConfig' object does not support item assignment"
+        TypeError,
+        match="'FeatureProcessorConfig' object does not support item assignment",
     ):
         fp_config["inputs"] = []

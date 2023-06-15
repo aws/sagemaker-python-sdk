@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 import datetime
+import json
 
 from dateutil.tz import tzlocal
 from sagemaker.feature_store.feature_processor._data_source import (
@@ -45,12 +46,7 @@ FEATURE_GROUP_SYSTEM_PARAMS = {
     "offline_store_enabled": False,
     "offline_store_resolved_s3_uri": None,
 }
-SYSTEM_PARAMS = {
-    "system": {
-        "inputs": {INPUT_FEATURE_GROUP_ARN: FEATURE_GROUP_SYSTEM_PARAMS},
-        "execution": {"scheduled_start_time": "2023-03-25T02:01:26Z"},
-    }
-}
+SYSTEM_PARAMS = {"system": {"scheduled_time": "2023-03-25T02:01:26Z"}}
 USER_INPUT_PARAMS = {
     "some-key": "some-value",
     "some-other-key": {"some-key": "some-value"},
@@ -101,13 +97,44 @@ DESCRIBE_FEATURE_GROUP_RESPONSE = {
     },
 }
 
+PIPELINE = {
+    "PipelineArn": "some_pipeline_arn",
+    "RoleArn": "some_execution_role_arn",
+    "CreationTime": datetime.datetime(2023, 3, 29, 19, 15, 47, 20000, tzinfo=tzlocal()),
+    "PipelineDefinition": json.dumps(
+        {
+            "Steps": [
+                {
+                    "RetryPolicies": [
+                        {
+                            "BackoffRate": 2.0,
+                            "IntervalSeconds": 1,
+                            "MaxAttempts": 5,
+                            "ExceptionType": ["Step.SERVICE_FAULT", "Step.THROTTLING"],
+                        },
+                        {
+                            "BackoffRate": 2.0,
+                            "IntervalSeconds": 1,
+                            "MaxAttempts": 5,
+                            "ExceptionType": [
+                                "SageMaker.JOB_INTERNAL_ERROR",
+                                "SageMaker.CAPACITY_ERROR",
+                                "SageMaker.RESOURCE_LIMIT",
+                            ],
+                        },
+                    ]
+                }
+            ]
+        }
+    ),
+}
+
 
 def create_fp_config(
     inputs=None,
     output=OUTPUT_FEATURE_GROUP_ARN,
     mode=FeatureProcessorMode.PYSPARK,
     target_stores=None,
-    enable_data_load=True,
     enable_ingestion=True,
     parameters=None,
 ):
@@ -118,7 +145,6 @@ def create_fp_config(
         output=output,
         mode=mode,
         target_stores=target_stores,
-        enable_data_load=enable_data_load,
         enable_ingestion=enable_ingestion,
         parameters=parameters,
     )

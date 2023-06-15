@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 """Contains classes for preparing and uploading configs for a scheduled feature processor."""
 from __future__ import absolute_import
-from typing import Callable, Dict, Tuple
+from typing import Callable, Dict, Tuple, List
 
 import attr
 
@@ -66,6 +66,8 @@ class ConfigUploader:
         user_dependencies_s3uri = self._prepare_and_upload_dependencies(
             dependencies_list_path,
             self.remote_decorator_config.include_local_workdir,
+            self.remote_decorator_config.pre_execution_commands,
+            self.remote_decorator_config.pre_execution_script,
             s3_base_uri,
             self.remote_decorator_config.s3_kms_key,
             sagemaker_session,
@@ -135,6 +137,8 @@ class ConfigUploader:
         self,
         local_dependencies_path: str,
         include_local_workdir: bool,
+        pre_execution_commands: List[str],
+        pre_execution_script_local_path: str,
         s3_base_uri: str,
         s3_kms_key: str,
         sagemaker_session: Session,
@@ -143,8 +147,8 @@ class ConfigUploader:
         return _prepare_and_upload_dependencies(
             local_dependencies_path=local_dependencies_path,
             include_local_workdir=include_local_workdir,
-            pre_execution_script_local_path=None,
-            pre_execution_commands=None,
+            pre_execution_commands=pre_execution_commands,
+            pre_execution_script_local_path=pre_execution_script_local_path,
             s3_base_uri=s3_base_uri,
             s3_kms_key=s3_kms_key,
             sagemaker_session=sagemaker_session,

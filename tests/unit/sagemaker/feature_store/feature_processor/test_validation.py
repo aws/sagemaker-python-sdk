@@ -16,14 +16,11 @@ from __future__ import absolute_import
 from typing import Callable
 
 import pytest
+
 import test_data_helpers as tdh
 from mock import Mock
 
-from sagemaker.feature_store.feature_processor._data_source import (
-    FeatureGroupDataSource,
-)
 from sagemaker.feature_store.feature_processor._validation import (
-    InputValidator,
     SparkUDFSignatureValidator,
     Validator,
     ValidatorChain,
@@ -54,32 +51,6 @@ def test_validator_chain_validation_fails():
 
     with pytest.raises(ValueError):
         validator_chain.validate(udf, fp_config)
-
-
-@pytest.mark.parametrize(
-    "fp_config",
-    [
-        tdh.create_fp_config(
-            inputs=[
-                FeatureGroupDataSource(
-                    name=tdh.INPUT_FEATURE_GROUP_NAME, input_start_offset="one week"
-                )
-            ]
-        ),
-        tdh.create_fp_config(
-            inputs=[
-                FeatureGroupDataSource(
-                    name=tdh.INPUT_FEATURE_GROUP_NAME, input_start_offset="two weeks"
-                )
-            ]
-        ),
-    ],
-)
-def test_input_validator(fp_config):
-    udf = Mock(Callable)
-
-    with pytest.raises(ValueError, match=r"input_.*_offset is not supported\."):
-        InputValidator().validate(udf, fp_config)
 
 
 def test_spark_udf_signature_validator_valid():

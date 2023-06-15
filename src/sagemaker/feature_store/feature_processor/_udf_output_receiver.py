@@ -25,7 +25,9 @@ from sagemaker.feature_store.feature_processor import IngestionError
 from sagemaker.feature_store.feature_processor._feature_processor_config import (
     FeatureProcessorConfig,
 )
-from sagemaker.feature_store.feature_processor._spark_factory import FeatureStoreManagerFactory
+from sagemaker.feature_store.feature_processor._spark_factory import (
+    FeatureStoreManagerFactory,
+)
 
 T = TypeVar("T")
 

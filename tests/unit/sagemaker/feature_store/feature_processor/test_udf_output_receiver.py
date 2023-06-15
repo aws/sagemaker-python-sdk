@@ -21,8 +21,12 @@ from py4j.protocol import Py4JJavaError
 from pyspark.sql import DataFrame
 
 from sagemaker.feature_store.feature_processor import IngestionError
-from sagemaker.feature_store.feature_processor._spark_factory import FeatureStoreManagerFactory
-from sagemaker.feature_store.feature_processor._udf_output_receiver import SparkOutputReceiver
+from sagemaker.feature_store.feature_processor._spark_factory import (
+    FeatureStoreManagerFactory,
+)
+from sagemaker.feature_store.feature_processor._udf_output_receiver import (
+    SparkOutputReceiver,
+)
 
 
 @pytest.fixture

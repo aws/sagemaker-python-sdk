@@ -18,7 +18,10 @@ import test_data_helpers as tdh
 from mock import Mock, patch
 
 from sagemaker.feature_store.feature_processor._enums import FeatureProcessorMode
-from sagemaker.feature_store.feature_processor._factory import UDFWrapperFactory, ValidatorFactory
+from sagemaker.feature_store.feature_processor._factory import (
+    UDFWrapperFactory,
+    ValidatorFactory,
+)
 from sagemaker.feature_store.feature_processor._feature_processor_config import (
     FeatureProcessorConfig,
 )
@@ -27,6 +30,7 @@ from sagemaker.feature_store.feature_processor._validation import (
     FeatureProcessorArgValidator,
     InputValidator,
     SparkUDFSignatureValidator,
+    InputOffsetValidator,
 )
 from sagemaker.session import Session
 
@@ -39,6 +43,7 @@ def test_get_validation_chain():
     assert {
         InputValidator,
         FeatureProcessorArgValidator,
+        InputOffsetValidator,
         SparkUDFSignatureValidator,
     } == {type(instance) for instance in result.validators}
 
@@ -62,6 +67,7 @@ def test_get_udf_wrapper_invalid_mode():
     fp_config.sagemaker_session = Mock(Session)
 
     with pytest.raises(
-        ValueError, match=r"FeatureProcessorMode FeatureProcessorMode.PYTHON is not supported\."
+        ValueError,
+        match=r"FeatureProcessorMode FeatureProcessorMode.PYTHON is not supported\.",
     ):
         UDFWrapperFactory.get_udf_wrapper(fp_config)

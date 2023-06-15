@@ -22,7 +22,9 @@ from sagemaker.feature_store.feature_processor._feature_processor_config import 
     FeatureProcessorConfig,
 )
 from sagemaker.feature_store.feature_processor._udf_arg_provider import UDFArgProvider
-from sagemaker.feature_store.feature_processor._udf_output_receiver import UDFOutputReceiver
+from sagemaker.feature_store.feature_processor._udf_output_receiver import (
+    UDFOutputReceiver,
+)
 from sagemaker.feature_store.feature_processor._udf_wrapper import UDFWrapper
 
 
@@ -59,7 +61,6 @@ def udf(udf_output):
 @pytest.fixture
 def fp_config():
     fp_config = Mock(FeatureProcessorConfig)
-    fp_config.enable_data_load = True
     return fp_config
 
 
@@ -82,22 +83,3 @@ def test_wrap(fp_config, udf_output, udf_arg_provider, udf_output_receiver):
     udf_arg_provider.provide_params_arg.assert_called_with(test_udf, fp_config)
     udf_arg_provider.provide_additional_kwargs.assert_called_with(test_udf)
     udf_output_receiver.ingest_udf_output.assert_called_with(udf_output, fp_config)
-
-
-def test_wrap_enable_data_load_false(fp_config, udf, udf_arg_provider, udf_output_receiver):
-    fp_config.enable_data_load = False
-    udf_wrapper = UDFWrapper(udf_arg_provider, udf_output_receiver)
-
-    # Execute decorator function
-    wrapped_udf = udf_wrapper.wrap(udf, fp_config)
-
-    # Execute the wrapped function
-    positional_arg = Mock()
-    kw_arg = Mock()
-    wrapped_udf(positional_arg, kw_arg=kw_arg)
-
-    # Verify that the args to the wrapper function are passed to the wrapped function.
-    udf.assert_called_with(positional_arg, kw_arg=kw_arg)
-    udf_arg_provider.provide_input_args.assert_not_called()
-    udf_arg_provider.provide_params_arg.assert_not_called()
-    udf_arg_provider.provide_additional_kwargs.assert_not_called()

@@ -21,7 +21,10 @@ from sagemaker.feature_store.feature_processor import (
     ParquetDataSource,
 )
 from sagemaker.feature_store.feature_processor._enums import FeatureProcessorMode
-from sagemaker.feature_store.feature_processor._factory import UDFWrapperFactory, ValidatorFactory
+from sagemaker.feature_store.feature_processor._factory import (
+    UDFWrapperFactory,
+    ValidatorFactory,
+)
 from sagemaker.feature_store.feature_processor._feature_processor_config import (
     FeatureProcessorConfig,
 )
@@ -32,7 +35,6 @@ def feature_processor(
     output: str,
     target_stores: Optional[List[str]] = None,
     parameters: Optional[Dict[str, Union[str, Dict]]] = None,
-    enable_data_load: bool = True,
     enable_ingestion: bool = True,
 ) -> Callable:
     """Decorator to facilitate feature engineering for Feature Groups.
@@ -49,8 +51,8 @@ def feature_processor(
 
     Example:
         @feature_processor(
-            inputs: [FeatureGroupDataSource("input-fg"), CSVDataSource("s3://bucket/prefix)],
-            output: 'arn:aws:sagemaker:us-west-2:123456789012:feature-group/output-fg'
+            inputs=[FeatureGroupDataSource("input-fg"), CSVDataSource("s3://bucket/prefix)],
+            output='arn:aws:sagemaker:us-west-2:123456789012:feature-group/output-fg'
         )
         def transform(
             input_feature_group: DataFrame, input_csv: DataFrame, params: Dict[str, Any],
@@ -60,8 +62,8 @@ def feature_processor(
 
     More concisely:
         @feature_processor(
-            inputs: [FeatureGroupDataSource("input-fg"), CSVDataSource("s3://bucket/prefix)],
-            output: 'arn:aws:sagemaker:us-west-2:123456789012:feature-group/output-fg'
+            inputs=[FeatureGroupDataSource("input-fg"), CSVDataSource("s3://bucket/prefix)],
+            output='arn:aws:sagemaker:us-west-2:123456789012:feature-group/output-fg'
         )
         def transform(input_feature_group, input_csv):
             return ...
@@ -76,11 +78,9 @@ def feature_processor(
         parameters (Optional[Dict[str, Union[str, Dict]]], optional): Parameters to be provided to
             the decorated function, available as the 'params' argument. Useful for parameterized
             functions. The params argument also contains the set of system provided parameters
-            under the key 'system'. 'scheduled_start_time': the scheduled start time, if the
-            execution is created by a Schedule, otherwise None. 'input_details': additional details
-            for the inputs specified in inputs. Defaults to None. TODO: the remaining system params.
-        enable_data_load (bool, optional): A boolean indicating whether data from inputs should be
-            automatically loaded when the function is executed. Defaults to True.
+            under the key 'system'. E.g. 'scheduled_time': a timestamp representing the time that
+            the execution was scheduled to execute at, if triggered by a Scheduler, otherwise, the
+            current time.
         enable_ingestion (bool, optional): A boolean indicating whether the decorated function's
             return value is ingested to the 'output' Feature Group. This flag is useful during the
             development phase to ensure that data is not used until the function is ready. It also
@@ -101,7 +101,6 @@ def feature_processor(
             mode=FeatureProcessorMode.PYSPARK,
             target_stores=target_stores,
             parameters=parameters,
-            enable_data_load=enable_data_load,
             enable_ingestion=enable_ingestion,
         )
 

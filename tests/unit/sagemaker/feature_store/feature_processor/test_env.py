@@ -16,7 +16,7 @@ from __future__ import absolute_import
 import json
 
 from mock import mock_open, patch
-
+import pytest
 from sagemaker.feature_store.feature_processor._env import EnvironmentHelper
 
 SINGLE_NODE_RESOURCE_CONFIG = {
@@ -102,3 +102,21 @@ def test_load_training_resource_config_none(mocked_open):
     mocked_open.side_effect = FileNotFoundError()
 
     assert EnvironmentHelper().load_training_resource_config() is None
+
+
+@pytest.mark.parametrize(
+    "is_training_result",
+    [(True), (False)],
+)
+@patch("datetime.now.strftime", return_value="test_current_time")
+@patch("sagemaker.feature_store.feature_processor._env.EnvironmentHelper.is_training_job")
+@patch("os.environ", return_value={"scheduled_time": "test_time"})
+def get_job_scheduled_time(mock_env, mock_is_training, mock_datetime, is_training_result):
+
+    mock_is_training.return_value = is_training_result
+    output_time = EnvironmentHelper().get_job_scheduled_time
+
+    if is_training_result:
+        assert output_time == "test_scheduled_time"
+    else:
+        assert output_time == "test_current_time"

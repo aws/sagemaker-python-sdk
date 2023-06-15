@@ -22,7 +22,9 @@ from sagemaker.feature_store.feature_processor._feature_processor_config import 
     FeatureProcessorConfig,
 )
 from sagemaker.feature_store.feature_processor._udf_arg_provider import UDFArgProvider
-from sagemaker.feature_store.feature_processor._udf_output_receiver import UDFOutputReceiver
+from sagemaker.feature_store.feature_processor._udf_output_receiver import (
+    UDFOutputReceiver,
+)
 
 T = TypeVar("T")
 
@@ -49,10 +51,8 @@ class UDFWrapper(Generic[T]):
         """
 
         @functools.wraps(udf)
-        def wrapper(*args, **kwargs) -> None:
+        def wrapper() -> None:
             udf_args, udf_kwargs = self._prepare_udf_args(
-                invocation_args=args,
-                invocation_kwargs=kwargs,
                 udf=udf,
                 fp_config=fp_config,
             )
@@ -65,18 +65,12 @@ class UDFWrapper(Generic[T]):
 
     def _prepare_udf_args(
         self,
-        invocation_args: Tuple[Any, ...],
-        invocation_kwargs: Dict[str, Any],
         udf: Callable[..., T],
         fp_config: FeatureProcessorConfig,
     ) -> Tuple[Tuple[Any, ...], Dict[str, Any]]:
         """Generate the arguments for the user defined function, provided by the wrapper function.
 
         Args:
-            invocation_args (Tuple[Any, ...]): Positional arguments for the wrapper function
-                to provide to the user defined function.
-            invocation_kwargs (Dict[str, Any]): Keyword arguments for the wrapper function
-                to provide to the user defined function.
             udf (Callable[..., T]): The feature_processor wrapped user function.
             fp_config (FeatureProcessorConfig): The configuration for the feature_processor.
 
@@ -84,15 +78,11 @@ class UDFWrapper(Generic[T]):
             Tuple[Tuple[Any, ...], Dict[str, Any]]: A tuple positional arguments and keyword
                 arguments for the UDF.
         """
-        if fp_config.enable_data_load:
-            args = ()
-            kwargs = {
-                **self.udf_arg_provider.provide_input_args(udf, fp_config),
-                **self.udf_arg_provider.provide_params_arg(udf, fp_config),
-                **self.udf_arg_provider.provide_additional_kwargs(udf),
-            }
-        else:
-            args = invocation_args
-            kwargs = invocation_kwargs
+        args = ()
+        kwargs = {
+            **self.udf_arg_provider.provide_input_args(udf, fp_config),
+            **self.udf_arg_provider.provide_params_arg(udf, fp_config),
+            **self.udf_arg_provider.provide_additional_kwargs(udf),
+        }
 
         return (args, kwargs)

@@ -17,7 +17,6 @@ from typing import Dict, Union
 
 import attr
 
-from sagemaker.feature_store.feature_processor._data_source import FeatureGroupDataSource
 from sagemaker.feature_store.feature_processor._env import EnvironmentHelper
 from sagemaker.feature_store.feature_processor._feature_processor_config import (
     FeatureProcessorConfig,
@@ -33,12 +32,10 @@ class SystemParamsLoader:
     """
 
     _SYSTEM_PARAMS_KEY = "system"
-    _SYSTEM_PARAMS_INPUTS_KEY = "inputs"
-    _SYSTEM_PARAMS_EXECUTION_KEY = "execution"
 
     environment_helper: EnvironmentHelper = attr.ib()
 
-    def get_system_args(self, fp_config: FeatureProcessorConfig) -> Dict[str, Union[str, Dict]]:
+    def get_system_args(self) -> Dict[str, Union[str, Dict]]:
         """Generates the system generated parameters for the feature_processor wrapped function.
 
         Args:
@@ -48,54 +45,12 @@ class SystemParamsLoader:
         Returns:
             Dict[str, Union[str, Dict]]: The system parameters.
         """
+
         return {
             self._SYSTEM_PARAMS_KEY: {
-                **self._get_input_details(fp_config),
-                **self._get_execution_details(),
+                "scheduled_time": self.environment_helper.get_job_scheduled_time(),
             }
         }
-
-    def _get_input_details(self, fp_config: FeatureProcessorConfig) -> Dict[str, Dict]:
-        """Load additional details for FeatureGroupDataSources.
-
-        Args:
-            fp_config (FeatureProcessorConfig): The configuration values for the
-                feature_processor decorator.
-
-        Returns:
-            Dict[str, Dict]: The details of the FeatureGroupDataSources.
-        """
-
-        def get_input_details():
-            # TODO: Populate the fields.
-            return {}
-
-        feature_group_data_sources = [
-            ds for ds in fp_config.inputs if isinstance(ds, FeatureGroupDataSource)
-        ]
-
-        return {
-            self._SYSTEM_PARAMS_INPUTS_KEY: dict(
-                zip(
-                    [ds.name for ds in feature_group_data_sources],
-                    [get_input_details() for ds in feature_group_data_sources],
-                )
-            )
-        }
-
-    def _get_execution_details(self) -> Dict[str, Union[str, Dict]]:
-        """Loads additional details about the execution environment and pipeline."""
-        # TODO: Populate the fields.
-        execution_details: Dict[str, Union[str, Dict]] = {
-            self._SYSTEM_PARAMS_EXECUTION_KEY: {
-                "training_job_arn": "",
-                "pipeline_arn": "",
-                "pipeline_execution_arn": "",
-                "scheduled_start_time": "",
-            }
-        }
-
-        return execution_details
 
 
 @attr.s
@@ -123,6 +78,6 @@ class ParamsLoader:
         return {
             self._PARAMS_KEY: {
                 **(fp_config.parameters or {}),
-                **self.system_parameters_arg_provider.get_system_args(fp_config),
+                **self.system_parameters_arg_provider.get_system_args(),
             }
         }

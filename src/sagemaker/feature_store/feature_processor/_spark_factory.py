@@ -87,7 +87,10 @@ class SparkSessionFactory:
             ),
             # spark-3.3.1#recommended-settings-for-writing-to-object-stores - https://tinyurl.com/54rkhef6
             ("spark.hadoop.mapreduce.fileoutputcommitter.algorithm.version", "2"),
-            ("spark.hadoop.mapreduce.fileoutputcommitter.cleanup-failures.ignored", "true"),
+            (
+                "spark.hadoop.mapreduce.fileoutputcommitter.cleanup-failures.ignored",
+                "true",
+            ),
             ("spark.hadoop.parquet.enable.summary-metadata", "false"),
             # spark-3.3.1#parquet-io-settings https://tinyurl.com/59a7uhwu
             ("spark.sql.parquet.mergeSchema", "false"),
@@ -140,13 +143,16 @@ class SparkSessionFactory:
         """
         catalog = catalog.lower()
         return [
-            (f"spark.sql.catalog.{catalog}", "org.apache.iceberg.spark.SparkCatalog"),
+            (f"spark.sql.catalog.{catalog}", "smfs.shaded.org.apache.iceberg.spark.SparkCatalog"),
             (f"spark.sql.catalog.{catalog}.warehouse", warehouse_s3_uri),
             (
                 f"spark.sql.catalog.{catalog}.catalog-impl",
-                "org.apache.iceberg.aws.glue.GlueCatalog",
+                "smfs.shaded.org.apache.iceberg.aws.glue.GlueCatalog",
             ),
-            (f"spark.sql.catalog.{catalog}.io-impl", "org.apache.iceberg.aws.s3.S3FileIO"),
+            (
+                f"spark.sql.catalog.{catalog}.io-impl",
+                "smfs.shaded.org.apache.iceberg.aws.s3.S3FileIO",
+            ),
             (f"spark.sql.catalog.{catalog}.glue.skip-name-validation", "true"),
         ]
 

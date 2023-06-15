@@ -19,9 +19,14 @@ from typing import Any, Callable, List
 
 import attr
 
-from sagemaker.feature_store.feature_processor._data_source import FeatureGroupDataSource
+from sagemaker.feature_store.feature_processor._data_source import (
+    FeatureGroupDataSource,
+)
 from sagemaker.feature_store.feature_processor._feature_processor_config import (
     FeatureProcessorConfig,
+)
+from sagemaker.feature_store.feature_processor._input_offset_parser import (
+    InputOffsetParser,
 )
 
 
@@ -85,15 +90,6 @@ class InputValidator(Validator):
         if inputs is None or len(inputs) == 0:
             raise ValueError("At least one input is required.")
 
-        for ds in inputs:
-            if isinstance(ds, FeatureGroupDataSource):
-                if ds.input_start_offset:
-                    # TODO: Remove after the functionality is implemented.
-                    raise ValueError("input_start_offset is not supported.")
-                if ds.input_end_offset:
-                    # TODO: Remove after the functionality is implemented.
-                    raise ValueError("input_end_offset is not supported.")
-
 
 class SparkUDFSignatureValidator(Validator):
     """A validator for PySpark UDF signatures."""
@@ -104,6 +100,11 @@ class SparkUDFSignatureValidator(Validator):
         Args:
             udf (Callable[..., T]): The feature_processor wrapped user function.
             fp_config (FeatureProcessorConfig): The configuration for the feature_processor.
+
+        Raises (ValueError): raises ValueError when any of the following scenario happen:
+           1. No input provided to feature_processor.
+           2. Number of provided parameters does not match with that of provided inputs.
+           3. Required parameters are not provided in the right order.
         """
         parameters = list(inspect.signature(udf).parameters.keys())
         input_parameters = self._get_input_params(udf)
@@ -147,3 +148,27 @@ class SparkUDFSignatureValidator(Validator):
             parameters.remove("spark")
 
         return parameters
+
+
+class InputOffsetValidator(Validator):
+    """An Validator for input offset."""
+
+    def validate(self, udf: Callable[..., Any], fp_config: FeatureProcessorConfig) -> None:
+        """Validate the start and end input offset provided to the decorator.
+
+        Args:
+            udf (Callable[..., T]): The feature_processor wrapped user function.
+            fp_config (FeatureProcessorConfig): The configuration for the feature_processor.
+
+        Raises (ValueError): raises ValueError when input_start_offset is later than
+            input_end_offset.
+        """
+
+        for config_input in fp_config.inputs:
+            if isinstance(input, FeatureGroupDataSource):
+                input_start_offset = config_input.input_start_offset
+                input_end_offset = config_input.input_end_offset
+                start_td = InputOffsetParser.parse_offset_to_timedelta(input_start_offset)
+                end_td = InputOffsetParser.parse_offset_to_timedelta(input_end_offset)
+                if start_td and end_td and start_td > end_td:
+                    raise ValueError("input_start_offset should be always before input_end_offset.")

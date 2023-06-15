@@ -20,7 +20,9 @@ from sagemaker.feature_store.feature_processor._env import EnvironmentHelper
 from sagemaker.feature_store.feature_processor._feature_processor_config import (
     FeatureProcessorConfig,
 )
-from sagemaker.feature_store.feature_processor._input_loader import SparkDataFrameInputLoader
+from sagemaker.feature_store.feature_processor._input_loader import (
+    SparkDataFrameInputLoader,
+)
 from sagemaker.feature_store.feature_processor._params_loader import (
     ParamsLoader,
     SystemParamsLoader,
@@ -30,12 +32,15 @@ from sagemaker.feature_store.feature_processor._spark_factory import (
     SparkSessionFactory,
 )
 from sagemaker.feature_store.feature_processor._udf_arg_provider import SparkArgProvider
-from sagemaker.feature_store.feature_processor._udf_output_receiver import SparkOutputReceiver
+from sagemaker.feature_store.feature_processor._udf_output_receiver import (
+    SparkOutputReceiver,
+)
 from sagemaker.feature_store.feature_processor._udf_wrapper import UDFWrapper
 from sagemaker.feature_store.feature_processor._validation import (
     FeatureProcessorArgValidator,
     InputValidator,
     SparkUDFSignatureValidator,
+    InputOffsetValidator,
     ValidatorChain,
 )
 
@@ -46,7 +51,11 @@ class ValidatorFactory:
     @staticmethod
     def get_validation_chain(fp_config: FeatureProcessorConfig) -> ValidatorChain:
         """Instantiate a ValidationChain"""
-        base_validators = [InputValidator(), FeatureProcessorArgValidator()]
+        base_validators = [
+            InputValidator(),
+            FeatureProcessorArgValidator(),
+            InputOffsetValidator(),
+        ]
 
         mode = fp_config.mode
         if FeatureProcessorMode.PYSPARK == mode:
@@ -92,7 +101,9 @@ class UDFWrapperFactory:
         return UDFWrapper[DataFrame](arg_provider, output_manager)
 
     @staticmethod
-    def _get_spark_arg_provider(spark_session_factory: SparkSessionFactory) -> SparkArgProvider:
+    def _get_spark_arg_provider(
+        spark_session_factory: SparkSessionFactory,
+    ) -> SparkArgProvider:
         """Instantiate a new SparkArgProvider for PySpark functions.
 
         Args:
@@ -108,7 +119,7 @@ class UDFWrapperFactory:
 
         system_parameters_arg_provider = SystemParamsLoader(environment_helper)
         params_arg_provider = ParamsLoader(system_parameters_arg_provider)
-        input_loader = SparkDataFrameInputLoader(spark_session_factory)
+        input_loader = SparkDataFrameInputLoader(spark_session_factory, environment_helper)
 
         return SparkArgProvider(params_arg_provider, input_loader, spark_session_factory)
 

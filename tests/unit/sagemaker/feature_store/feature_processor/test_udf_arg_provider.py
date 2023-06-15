@@ -219,7 +219,8 @@ def test_provide_input_args_with_optional_args_out_of_order(spark_arg_provider):
 
     for udf in [udf_spark_params, udf_params_spark, udf_spark, udf_params]:
         with pytest.raises(
-            ValueError, match="Expected at least one input to the user defined function."
+            ValueError,
+            match="Expected at least one input to the user defined function.",
         ):
             spark_arg_provider.provide_input_args(udf, fp_config)
 

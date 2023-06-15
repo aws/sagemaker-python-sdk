@@ -18,7 +18,9 @@ from sagemaker.feature_store.feature_processor._data_source import (  # noqa: F4
     FeatureGroupDataSource,
     ParquetDataSource,
 )
-from sagemaker.feature_store.feature_processor._exceptions import IngestionError  # noqa: F401
+from sagemaker.feature_store.feature_processor._exceptions import (  # noqa: F401
+    IngestionError,
+)
 from sagemaker.feature_store.feature_processor.feature_processor import (  # noqa: F401
     feature_processor,
 )
@@ -27,6 +29,7 @@ from sagemaker.feature_store.feature_processor.feature_scheduler import (  # noq
     schedule,
     describe,
     delete_schedule,
-    list_schedules,
+    list_pipelines,
     execute,
+    TransformationCode,
 )

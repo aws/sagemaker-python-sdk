@@ -18,7 +18,12 @@ from typing import Callable
 import pytest
 import json
 from botocore.exceptions import ClientError
-from mock import Mock, patch
+from mock import Mock, patch, call
+
+from sagemaker.feature_store.feature_processor.feature_scheduler import (
+    FeatureProcessorLineageHandler,
+)
+from sagemaker.lineage.context import Context
 from sagemaker.remote_function.spark_config import SparkConfig
 
 from sagemaker import Session
@@ -27,6 +32,7 @@ from sagemaker.feature_store.feature_processor._constants import (
     FEATURE_PROCESSOR_TAG_KEY,
     FEATURE_PROCESSOR_TAG_VALUE,
     EXECUTION_TIME_PIPELINE_PARAMETER_FORMAT,
+    PIPELINE_NAME_MAXIMUM_LENGTH,
 )
 from sagemaker.feature_store.feature_processor.feature_scheduler import (
     schedule,
@@ -34,7 +40,9 @@ from sagemaker.feature_store.feature_processor.feature_scheduler import (
     execute,
     delete_schedule,
     describe,
-    list_schedules,
+    list_pipelines,
+    _validate_fg_lineage_resources,
+    _validate_pipeline_lineage_resources,
 )
 from sagemaker.remote_function.job import (
     _JobSettings,
@@ -52,10 +60,12 @@ from sagemaker.workflow.retry import (
     SageMakerJobStepRetryPolicy,
     SageMakerJobExceptionTypeEnum,
 )
+import test_data_helpers as tdh
 
 REGION = "us-west-2"
 IMAGE = "image_uri"
 BUCKET = "my-s3-bucket"
+DEFAULT_BUCKET_PREFIX = "default_bucket_prefix"
 S3_URI = f"s3://{BUCKET}/keyprefix"
 DEFAULT_IMAGE = (
     "153931337802.dkr.ecr.us-west-2.amazonaws.com/sagemaker-spark-processing:3.2-cpu-py39-v1.1"
@@ -70,12 +80,21 @@ TEST_REGION = "us-west-2"
 SAGEMAKER_SDK_WHL_FILE = (
     "s3://sagemaker-pathways/beta/pysdk/sagemaker-2.132.1.dev0-py2.py3-none-any.whl"
 )
+PIPELINE_CONTEXT_NAME_TAG_KEY = "sm-fs-fe:feature-engineering-pipeline-context-name"
+PIPELINE_VERSION_CONTEXT_NAME_TAG_KEY = "sm-fs-fe:feature-engineering-pipeline-version-context-name"
 NOW = datetime.now()
+SAGEMAKER_SESSION_MOCK = Mock(Session)
+CONTEXT_MOCK_01 = Mock(Context)
+CONTEXT_MOCK_02 = Mock(Context)
+CONTEXT_MOCK_03 = Mock(Context)
+FEATURE_GROUP = tdh.DESCRIBE_FEATURE_GROUP_RESPONSE.copy()
+PIPELINE = tdh.PIPELINE.copy()
 
 
 def mock_session():
     session = Mock()
     session.default_bucket.return_value = BUCKET
+    session.default_bucket_prefix = DEFAULT_BUCKET_PREFIX
     session.expand_role.return_value = EXECUTION_ROLE_ARN
     session.boto_region_name = TEST_REGION
     session.sagemaker_config = None
@@ -93,7 +112,7 @@ def mock_pipeline():
 
 def mock_event_bridge_scheduler_helper():
     helper = Mock()
-    helper.upsert_schedule.return_value = SCHEDULE_ARN
+    helper.upsert_schedule.return_value = dict(ScheduleArn=SCHEDULE_ARN)
     helper.delete_schedule.return_value = None
     helper.describe_schedule.return_value = {
         "Arn": "some_schedule_arn",
@@ -103,6 +122,10 @@ def mock_event_bridge_scheduler_helper():
         "Target": {"Arn": "some_pipeline_arn", "RoleArn": "some_schedule_role_arn"},
     }
     return helper
+
+
+def mock_feature_processor_lineage():
+    return Mock(FeatureProcessorLineageHandler)
 
 
 @pytest.fixture
@@ -118,6 +141,10 @@ def config_uploader():
     return uploader
 
 
+@patch(
+    "sagemaker.feature_store.feature_processor.feature_scheduler._validate_fg_lineage_resources",
+    return_value=None,
+)
 @patch(
     "sagemaker.feature_store.feature_processor.feature_scheduler.Pipeline",
     return_value=mock_pipeline(),
@@ -146,11 +173,25 @@ def config_uploader():
 @patch(
     "sagemaker.feature_store.feature_processor._config_uploader.ConfigUploader._prepare_and_upload_callable"
 )
+@patch(
+    "sagemaker.feature_store.feature_processor.lineage."
+    "_feature_processor_lineage.FeatureProcessorLineageHandler.create_lineage"
+)
+@patch(
+    "sagemaker.feature_store.feature_processor.lineage."
+    "_feature_processor_lineage.FeatureProcessorLineageHandler.get_pipeline_lineage_names",
+    return_value=dict(
+        pipeline_context_name="pipeline-context-name",
+        pipeline_version_context_name="pipeline-version-context-name",
+    ),
+)
 @patch("sagemaker.remote_function.job.Session", return_value=mock_session())
 @patch("sagemaker.remote_function.job.get_execution_role", return_value=EXECUTION_ROLE_ARN)
 def test_to_pipeline(
     get_execution_role,
     session,
+    mock_get_pipeline_lineage_names,
+    mock_create_lineage,
     mock_upload_callable,
     mock_runtime_manager,
     mock_script_upload,
@@ -161,6 +202,7 @@ def test_to_pipeline(
     mock_training_input,
     mock_spark_image,
     pipeline,
+    lineage_validator,
 ):
     session.sagemaker_config = None
     session.boto_region_name = TEST_REGION
@@ -186,7 +228,9 @@ def test_to_pipeline(
     container_args = ["--s3_base_uri", f"{S3_URI}/pipeline_name"]
     container_args.extend(["--region", session.boto_region_name])
 
-    mock_feature_processor_config = Mock(mode=FeatureProcessorMode.PYSPARK)
+    mock_feature_processor_config = Mock(
+        mode=FeatureProcessorMode.PYSPARK, inputs=[tdh.FEATURE_PROCESSOR_INPUTS], output="some_fg"
+    )
     mock_feature_processor_config.mode.return_value = FeatureProcessorMode.PYSPARK
 
     wrapped_func = Mock(
@@ -223,6 +267,8 @@ def test_to_pipeline(
     mock_dependency_upload.assert_called_once_with(
         local_dependencies_path,
         True,
+        None,
+        None,
         f"{S3_URI}/pipeline_name",
         None,
         session,
@@ -303,9 +349,26 @@ def test_to_pipeline(
         parameters=[Parameter(name="scheduled_time", parameter_type=ParameterTypeEnum.STRING)],
     )
 
-    pipeline().upsert.assert_called_once_with(
-        role_arn=EXECUTION_ROLE_ARN,
-        tags=[dict(Key=FEATURE_PROCESSOR_TAG_KEY, Value=FEATURE_PROCESSOR_TAG_VALUE)],
+    pipeline().upsert.assert_has_calls(
+        [
+            call(
+                role_arn=EXECUTION_ROLE_ARN,
+                tags=[dict(Key=FEATURE_PROCESSOR_TAG_KEY, Value=FEATURE_PROCESSOR_TAG_VALUE)],
+            ),
+            call(
+                role_arn=EXECUTION_ROLE_ARN,
+                tags=[
+                    {
+                        "Key": PIPELINE_CONTEXT_NAME_TAG_KEY,
+                        "Value": "pipeline-context-name",
+                    },
+                    {
+                        "Key": PIPELINE_VERSION_CONTEXT_NAME_TAG_KEY,
+                        "Value": "pipeline-version-context-name",
+                    },
+                ],
+            ),
+        ]
     )
 
 
@@ -333,7 +396,34 @@ def test_to_pipeline_not_wrapped_by_feature_processor(get_execution_role, sessio
         match="Please wrap step parameter with feature_processor decorator in order to use to_pipeline API.",
     ):
         to_pipeline(
-            pipeline_name="pipeline_name", step=wrapped_func, role=EXECUTION_ROLE_ARN, max_retries=1
+            pipeline_name="pipeline_name",
+            step=wrapped_func,
+            role=EXECUTION_ROLE_ARN,
+            max_retries=1,
+        )
+
+
+@patch("sagemaker.remote_function.job.Session", return_value=mock_session())
+@patch("sagemaker.remote_function.job.get_execution_role", return_value=EXECUTION_ROLE_ARN)
+def test_to_pipeline_not_wrapped_by_remote(get_execution_role, session):
+    mock_feature_processor_config = Mock(mode=FeatureProcessorMode.PYTHON)
+    wrapped_func = Mock(
+        Callable,
+        feature_processor_config=mock_feature_processor_config,
+        job_settings=None,
+        wrapped_func=job_function,
+    )
+    wrapped_func.wrapped_func.return_value = job_function
+
+    with pytest.raises(
+        ValueError,
+        match="Please wrap step parameter with remote decorator in order to use to_pipeline API.",
+    ):
+        to_pipeline(
+            pipeline_name="pipeline_name",
+            step=wrapped_func,
+            role=EXECUTION_ROLE_ARN,
+            max_retries=1,
         )
 
 
@@ -382,17 +472,85 @@ def test_to_pipeline_wrong_mode(get_execution_role, mock_spark_image, session):
         match="Mode FeatureProcessorMode.PYTHON is not supported by to_pipeline API.",
     ):
         to_pipeline(
-            pipeline_name="pipeline_name", step=wrapped_func, role=EXECUTION_ROLE_ARN, max_retries=1
+            pipeline_name="pipeline_name",
+            step=wrapped_func,
+            role=EXECUTION_ROLE_ARN,
+            max_retries=1,
+        )
+
+
+@patch("sagemaker.remote_function.job.Session", return_value=mock_session())
+@patch(
+    "sagemaker.remote_function.job._JobSettings._get_default_spark_image",
+    return_value="some_image_uri",
+)
+@patch("sagemaker.remote_function.job.get_execution_role", return_value=EXECUTION_ROLE_ARN)
+def test_to_pipeline_pipeline_name_length_limit_exceeds(
+    get_execution_role, mock_spark_image, session
+):
+    spark_config = SparkConfig(submit_files=["file_a", "file_b", "file_c"])
+    job_settings = _JobSettings(
+        spark_config=spark_config,
+        s3_root_uri=S3_URI,
+        role=EXECUTION_ROLE_ARN,
+        include_local_workdir=True,
+        instance_type="ml.m5.large",
+        encrypt_inter_container_traffic=True,
+    )
+    jobs_container_entrypoint = [
+        "/bin/bash",
+        f"/opt/ml/input/data/{RUNTIME_SCRIPTS_CHANNEL_NAME}/{ENTRYPOINT_SCRIPT_NAME}",
+    ]
+    jobs_container_entrypoint.extend(["--jars", "path_a"])
+    jobs_container_entrypoint.extend(["--py-files", "path_b"])
+    jobs_container_entrypoint.extend(["--files", "path_c"])
+    jobs_container_entrypoint.extend([SPARK_APP_SCRIPT_PATH])
+    container_args = ["--s3_base_uri", f"{S3_URI}/pipeline_name"]
+    container_args.extend(["--region", TEST_REGION])
+
+    mock_feature_processor_config = Mock(mode=FeatureProcessorMode.PYSPARK)
+    mock_feature_processor_config.mode.return_value = FeatureProcessorMode.PYSPARK
+
+    wrapped_func = Mock(
+        Callable,
+        feature_processor_config=mock_feature_processor_config,
+        job_settings=job_settings,
+        wrapped_func=job_function,
+    )
+    wrapped_func.feature_processor_config.return_value = mock_feature_processor_config
+    wrapped_func.job_settings.return_value = job_settings
+    wrapped_func.wrapped_func.return_value = job_function
+
+    with pytest.raises(
+        ValueError,
+        match="Pipeline name used by feature processor should be less than 80 "
+        "characters. Please choose another pipeline name.",
+    ):
+        to_pipeline(
+            pipeline_name="".join(["a" for _ in range(PIPELINE_NAME_MAXIMUM_LENGTH + 1)]),
+            step=wrapped_func,
+            role=EXECUTION_ROLE_ARN,
+            max_retries=1,
         )
 
 
 @patch(
+    "sagemaker.feature_store.feature_processor.feature_scheduler._validate_pipeline_lineage_resources",
+    return_value=None,
+)
+@patch(
     "sagemaker.feature_store.feature_processor.feature_scheduler.EventBridgeSchedulerHelper",
     return_value=mock_event_bridge_scheduler_helper(),
 )
-def test_schedule(helper):
+@patch(
+    "sagemaker.feature_store.feature_processor.feature_scheduler.FeatureProcessorLineageHandler",
+    return_value=mock_feature_processor_lineage(),
+)
+def test_schedule(lineage, helper, validation):
     session = Mock(Session, sagemaker_client=Mock(), boto_session=Mock())
-    session.sagemaker_client.describe_pipeline = Mock(return_value={"PipelineArn": "my:arn"})
+    session.sagemaker_client.describe_pipeline = Mock(
+        return_value={"PipelineArn": "my:arn", "CreationTime": NOW}
+    )
 
     schedule_arn = schedule(
         schedule_expression="some_schedule",
@@ -412,13 +570,7 @@ def test_schedule(helper):
 )
 def test_describe_both_exist(helper):
     session = Mock(Session, sagemaker_client=Mock(), boto_session=Mock())
-    session.sagemaker_client.describe_pipeline.return_value = {
-        "PipelineArn": "some_pipeline_arn",
-        "RoleArn": "some_execution_role_arn",
-        "PipelineDefinition": json.dumps(
-            {"Steps": [{"Arguments": {"RetryStrategy": {"MaximumRetryAttempts": 5}}}]}
-        ),
-    }
+    session.sagemaker_client.describe_pipeline.return_value = PIPELINE
     describe_schedule_response = describe(
         pipeline_name="some_pipeline_arn", sagemaker_session=session
     )
@@ -455,13 +607,19 @@ def test_describe_only_pipeline_exist(helper):
     )
 
 
-def test_list_schedules():
+def test_list_pipelines():
     session = Mock(Session, sagemaker_client=Mock(), boto_session=Mock())
     session.sagemaker_client.list_contexts.return_value = {
-        "ContextSummaries": [{"Source": {"SourceUri": "some_pipeline_arn"}}]
+        "ContextSummaries": [
+            {
+                "Source": {
+                    "SourceUri": "arn:aws:sagemaker:us-west-2:12345789012:pipeline/some_pipeline_name"
+                }
+            }
+        ]
     }
-    pipeline_arns = list_schedules(session)
-    assert pipeline_arns == ["some_pipeline_arn"]
+    list_response = list_pipelines(session)
+    assert list_response == [dict(pipeline_name="some_pipeline_name")]
 
 
 @patch(
@@ -490,8 +648,15 @@ def test_delete_schedule_not_exist(helper):
     helper().delete_schedule.assert_called_once_with(PIPELINE_ARN)
 
 
-def test_execute():
+@patch(
+    "sagemaker.feature_store.feature_processor.feature_scheduler._validate_pipeline_lineage_resources",
+    return_value=None,
+)
+def test_execute(validation):
     session = Mock(Session, sagemaker_client=Mock(), boto_session=Mock())
+    session.sagemaker_client.describe_pipeline = Mock(
+        return_value={"PipelineArn": "my:arn", "CreationTime": NOW}
+    )
     session.sagemaker_client.start_pipeline_execution = Mock(
         return_value={"PipelineExecutionArn": "my:arn"}
     )
@@ -499,6 +664,121 @@ def test_execute():
         pipeline_name="some_pipeline", execution_time=NOW, sagemaker_session=session
     )
     assert execution_arn == "my:arn"
+
+
+def test_validate_fg_lineage_resources_happy_case():
+    with patch.object(
+        SAGEMAKER_SESSION_MOCK, "describe_feature_group", return_value=FEATURE_GROUP
+    ) as fg_describe_method:
+        with patch.object(
+            Context, "load", side_effect=[CONTEXT_MOCK_01, CONTEXT_MOCK_02, CONTEXT_MOCK_03]
+        ) as context_load:
+            type(CONTEXT_MOCK_01).context_arn = "context-arn"
+            type(CONTEXT_MOCK_02).context_arn = "context-arn-fep"
+            type(CONTEXT_MOCK_03).context_arn = "context-arn-fep-ver"
+            _validate_fg_lineage_resources(
+                feature_group_name="some_fg",
+                sagemaker_session=SAGEMAKER_SESSION_MOCK,
+            )
+    fg_describe_method.assert_called_once_with(feature_group_name="some_fg")
+    context_load.assert_has_calls(
+        [
+            call(
+                context_name=f'{"some_fg"}-{FEATURE_GROUP["CreationTime"].strftime("%s")}'
+                f"-feature-group-pipeline",
+                sagemaker_session=SAGEMAKER_SESSION_MOCK,
+            ),
+            call(
+                context_name=f'{"some_fg"}-{FEATURE_GROUP["CreationTime"].strftime("%s")}'
+                f"-feature-group-pipeline-version",
+                sagemaker_session=SAGEMAKER_SESSION_MOCK,
+            ),
+        ]
+    )
+    assert 3 == context_load.call_count
+
+
+def test_validete_fg_lineage_resources_rnf():
+    with patch.object(SAGEMAKER_SESSION_MOCK, "describe_feature_group", return_value=FEATURE_GROUP):
+        with patch.object(
+            Context,
+            "load",
+            side_effect=ClientError(
+                error_response={"Error": {"Code": "ResourceNotFound"}},
+                operation_name="describe_context",
+            ),
+        ):
+            feature_group_name = "some_fg"
+            feature_group_creation_time = FEATURE_GROUP["CreationTime"].strftime("%s")
+            context_name = f"{feature_group_name}-{feature_group_creation_time}"
+            with pytest.raises(
+                ValueError,
+                match=f"Lineage resource {context_name} has not yet been created for feature group"
+                f" {feature_group_name} or has already been deleted. Please try again later.",
+            ):
+                _validate_fg_lineage_resources(
+                    feature_group_name="some_fg",
+                    sagemaker_session=SAGEMAKER_SESSION_MOCK,
+                )
+
+
+def test_validate_pipeline_lineage_resources_happy_case():
+    session = Mock(Session, sagemaker_client=Mock(), boto_session=Mock())
+    session.sagemaker_client.return_value = Mock()
+    pipeline_name = "some_pipeline"
+    with patch.object(
+        session.sagemaker_client, "describe_pipeline", return_value=PIPELINE
+    ) as pipeline_describe_method:
+        with patch.object(
+            Context, "load", side_effect=[CONTEXT_MOCK_01, CONTEXT_MOCK_02]
+        ) as context_load:
+            type(CONTEXT_MOCK_01).context_arn = "context-arn"
+            type(CONTEXT_MOCK_01).properties = {"LastUpdateTime": NOW.strftime("%s")}
+            type(CONTEXT_MOCK_02).context_arn = "context-arn-fep"
+            _validate_pipeline_lineage_resources(
+                pipeline_name=pipeline_name,
+                sagemaker_session=session,
+            )
+    pipeline_describe_method.assert_called_once_with(PipelineName=pipeline_name)
+    pipeline_creation_time = PIPELINE["CreationTime"].strftime("%s")
+    last_updated_time = NOW.strftime("%s")
+    context_load.assert_has_calls(
+        [
+            call(
+                context_name=f"sm-fs-fe-{pipeline_name}-{pipeline_creation_time}-fep",
+                sagemaker_session=session,
+            ),
+            call(
+                context_name=f"sm-fs-fe-{pipeline_name}-{last_updated_time}-fep-ver",
+                sagemaker_session=session,
+            ),
+        ]
+    )
+    assert 2 == context_load.call_count
+
+
+def test_validate_pipeline_lineage_resources_rnf():
+    session = Mock(Session, sagemaker_client=Mock(), boto_session=Mock())
+    session.sagemaker_client.return_value = Mock()
+    pipeline_name = "some_pipeline"
+    with patch.object(session.sagemaker_client, "describe_pipeline", return_value=PIPELINE):
+        with patch.object(
+            Context,
+            "load",
+            side_effect=ClientError(
+                error_response={"Error": {"Code": "ResourceNotFound"}},
+                operation_name="describe_context",
+            ),
+        ):
+            with pytest.raises(
+                ValueError,
+                match="Pipeline lineage resources have not been created yet or have"
+                " already been deleted. Please try again later.",
+            ):
+                _validate_pipeline_lineage_resources(
+                    pipeline_name=pipeline_name,
+                    sagemaker_session=session,
+                )
 
 
 @patch("sagemaker.remote_function.job.Session", return_value=mock_session())

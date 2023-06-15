@@ -13,15 +13,31 @@
 """Contains class that determines the current execution environment."""
 from __future__ import absolute_import
 
+
 from typing import Dict, Optional
+from datetime import datetime, timezone
 import json
 import logging
+import os
+import attr
+from sagemaker.feature_store.feature_processor._constants import (
+    EXECUTION_TIME_PIPELINE_PARAMETER,
+    EXECUTION_TIME_PIPELINE_PARAMETER_FORMAT,
+)
+
 
 logger = logging.getLogger("sagemaker")
 
 
+@attr.s
 class EnvironmentHelper:
-    """Helper class to check if the current environment is a training job."""
+    """Helper class to retrieve info from environment.
+
+    Attributes:
+        current_time (datetime): The current datetime.
+    """
+
+    current_time = attr.ib(default=datetime.now(timezone.utc))
 
     def is_training_job(self) -> bool:
         """Determine if the current execution environment is inside a SageMaker Training Job"""
@@ -46,3 +62,17 @@ class EnvironmentHelper:
                 return resource_config
         except FileNotFoundError:
             return None
+
+    def get_job_scheduled_time(self) -> str:
+        """Get the job scheduled time.
+
+        Returns:
+            str: Timestamp when the job is scheduled.
+        """
+
+        scheduled_time = self.current_time.strftime(EXECUTION_TIME_PIPELINE_PARAMETER_FORMAT)
+        if self.is_training_job():
+            envs = dict(os.environ)
+            return envs.get(EXECUTION_TIME_PIPELINE_PARAMETER, scheduled_time)
+
+        return scheduled_time

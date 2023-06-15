@@ -28,7 +28,9 @@ from sagemaker.feature_store.feature_processor._data_source import (
 from sagemaker.feature_store.feature_processor._feature_processor_config import (
     FeatureProcessorConfig,
 )
-from sagemaker.feature_store.feature_processor._input_loader import SparkDataFrameInputLoader
+from sagemaker.feature_store.feature_processor._input_loader import (
+    SparkDataFrameInputLoader,
+)
 from sagemaker.feature_store.feature_processor._params_loader import ParamsLoader
 from sagemaker.feature_store.feature_processor._spark_factory import SparkSessionFactory
 
@@ -179,7 +181,8 @@ class SparkArgProvider(UDFArgProvider[DataFrame]):
 
         if self.SPARK_SESSION_ARG_NAME in udf_parameter_names:
             inputs_end_index = min(
-                inputs_end_index, udf_parameter_names.index(self.SPARK_SESSION_ARG_NAME) - 1
+                inputs_end_index,
+                udf_parameter_names.index(self.SPARK_SESSION_ARG_NAME) - 1,
             )
 
         return udf_parameter_names[: inputs_end_index + 1]

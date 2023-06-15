@@ -13,6 +13,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+
 import pytest
 import test_data_helpers as tdh
 from mock import Mock
@@ -35,6 +36,7 @@ def system_params_loader_mock():
 def environment_checker():
     environment_checker = Mock(EnvironmentHelper)
     environment_checker.is_training_job.return_value = False
+    environment_checker.get_job_scheduled_time = Mock(return_value="2023-05-05T15:22:57Z")
     return environment_checker
 
 
@@ -57,7 +59,7 @@ def test_get_parameter_args(params_loader, system_params_loader_mock):
 
     params = params_loader.get_parameter_args(fp_config)
 
-    system_params_loader_mock.get_system_args.assert_called_with(fp_config)
+    system_params_loader_mock.get_system_args.assert_called_once()
     assert params == {"params": {**tdh.USER_INPUT_PARAMS, **tdh.SYSTEM_PARAMS}}
 
 
@@ -70,26 +72,15 @@ def test_get_parameter_args_with_no_user_params(params_loader, system_params_loa
 
     params = params_loader.get_parameter_args(fp_config)
 
+    system_params_loader_mock.get_system_args.assert_called_once()
     assert params == {"params": {**tdh.SYSTEM_PARAMS}}
-    system_params_loader_mock.get_system_args.assert_called_with(fp_config)
 
 
-def test_get_system_args(system_params_loader):
-    fp_config = tdh.create_fp_config(
-        inputs=[tdh.FEATURE_GROUP_DATA_SOURCE, tdh.S3_DATA_SOURCE],
-        output=tdh.OUTPUT_FEATURE_GROUP_ARN,
-    )
-
-    system_params = system_params_loader.get_system_args(fp_config)
+def test_get_system_arg_from_pipeline_execution(system_params_loader):
+    system_params = system_params_loader.get_system_args()
 
     assert system_params == {
         "system": {
-            "inputs": {tdh.FEATURE_GROUP_DATA_SOURCE.name: {}},
-            "execution": {
-                "training_job_arn": "",
-                "pipeline_arn": "",
-                "pipeline_execution_arn": "",
-                "scheduled_start_time": "",
-            },
+            "scheduled_time": "2023-05-05T15:22:57Z",
         }
     }
