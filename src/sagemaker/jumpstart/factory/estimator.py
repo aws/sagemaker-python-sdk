@@ -55,7 +55,7 @@ from sagemaker.jumpstart.types import (
 )
 from sagemaker.jumpstart.utils import (
     update_dict_if_key_not_present,
-    resolve_estimator_intelligent_default_field,
+    resolve_estimator_sagemaker_config_field,
 )
 
 
@@ -386,7 +386,7 @@ def _add_model_version_to_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwargs:
 def _add_role_to_kwargs(kwargs: JumpStartEstimatorInitKwargs) -> JumpStartEstimatorInitKwargs:
     """Sets role based on default or override, returns full kwargs."""
 
-    kwargs.role = resolve_estimator_intelligent_default_field(
+    kwargs.role = resolve_estimator_sagemaker_config_field(
         field_name="role",
         field_val=kwargs.role,
         sagemaker_session=kwargs.sagemaker_session,
@@ -604,7 +604,7 @@ def _add_estimator_extra_kwargs(
 
     for key, value in estimator_kwargs_to_add.items():
         if getattr(kwargs, key) is None:
-            resolved_value = resolve_estimator_intelligent_default_field(
+            resolved_value = resolve_estimator_sagemaker_config_field(
                 field_name=key,
                 field_val=value,
                 sagemaker_session=kwargs.sagemaker_session,

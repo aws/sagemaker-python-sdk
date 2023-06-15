@@ -34,7 +34,7 @@ from sagemaker.jumpstart.factory.estimator import get_deploy_kwargs, get_fit_kwa
 from sagemaker.jumpstart.factory.model import get_default_predictor
 from sagemaker.jumpstart.utils import (
     is_valid_model_id,
-    resolve_model_intelligent_default_field,
+    resolve_model_sagemaker_config_field,
 )
 from sagemaker.jumpstart.utils import stringify_object
 from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
@@ -920,7 +920,7 @@ class JumpStartEstimator(Estimator):
         self.orig_predictor_cls = predictor_cls
 
         sagemaker_session = sagemaker_session or self.sagemaker_session
-        role = resolve_model_intelligent_default_field(
+        role = resolve_model_sagemaker_config_field(
             field_name="role",
             field_val=role,
             sagemaker_session=sagemaker_session,
