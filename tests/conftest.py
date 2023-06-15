@@ -277,7 +277,9 @@ def huggingface_pytorch_training_version(huggingface_training_version):
 
 @pytest.fixture(scope="module")
 def huggingface_pytorch_training_py_version(huggingface_pytorch_training_version):
-    if Version(huggingface_pytorch_training_version) >= Version("1.13"):
+    if Version(huggingface_pytorch_training_version) >= Version("2.0"):
+        return "py310"
+    elif Version(huggingface_pytorch_training_version) >= Version("1.13"):
         return "py39"
     elif Version(huggingface_pytorch_training_version) >= Version("1.9"):
         return "py38"
@@ -337,7 +339,9 @@ def huggingface_training_compiler_pytorch_py_version(
 def huggingface_pytorch_latest_training_py_version(
     huggingface_training_pytorch_latest_version,
 ):
-    if Version(huggingface_training_pytorch_latest_version) >= Version("1.13"):
+    if Version(huggingface_training_pytorch_latest_version) >= Version("2.0"):
+        return "py310"
+    elif Version(huggingface_training_pytorch_latest_version) >= Version("1.13"):
         return "py39"
     elif Version(huggingface_training_pytorch_latest_version) >= Version("1.9"):
         return "py38"
@@ -359,7 +363,9 @@ def pytorch_training_compiler_py_version(
 def huggingface_pytorch_latest_inference_py_version(
     huggingface_inference_pytorch_latest_version,
 ):
-    if Version(huggingface_inference_pytorch_latest_version) >= Version("1.13"):
+    if Version(huggingface_inference_pytorch_latest_version) >= Version("2.0"):
+        return "py310"
+    elif Version(huggingface_inference_pytorch_latest_version) >= Version("1.13"):
         return "py39"
     elif Version(huggingface_inference_pytorch_latest_version) >= Version("1.9"):
         return "py38"
@@ -408,13 +414,43 @@ def huggingface_neuron_latest_inference_pytorch_version():
 
 
 @pytest.fixture(scope="module")
+def huggingface_neuronx_latest_inference_pytorch_version():
+    return "1.13"
+
+
+@pytest.fixture(scope="module")
+def huggingface_neuronx_latest_training_pytorch_version():
+    return "1.13"
+
+
+@pytest.fixture(scope="module")
 def huggingface_neuron_latest_inference_transformer_version():
     return "4.12"
 
 
 @pytest.fixture(scope="module")
+def huggingface_neuronx_latest_inference_transformer_version():
+    return "4.28"
+
+
+@pytest.fixture(scope="module")
+def huggingface_neuronx_latest_training_transformer_version():
+    return "4.28"
+
+
+@pytest.fixture(scope="module")
 def huggingface_neuron_latest_inference_py_version():
     return "py37"
+
+
+@pytest.fixture(scope="module")
+def huggingface_neuronx_latest_inference_py_version():
+    return "py38"
+
+
+@pytest.fixture(scope="module")
+def huggingface_neuronx_latest_training_py_version():
+    return "py38"
 
 
 @pytest.fixture(scope="module")

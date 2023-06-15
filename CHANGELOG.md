@@ -1,5 +1,88 @@
 # Changelog
 
+## v2.165.0 (2023-06-13)
+
+### Features
+
+ * Add support for Deployment Recommendation ID in model.deploy(). No tagging support
+
+### Bug Fixes and Other Changes
+
+ * maketplace integs
+ * Add tagging assert to inference recommender integ tests
+ * breaking deviations in _create_sagemaker_model call
+
+### Documentation Changes
+
+ * Add missing quotation mark
+
+## v2.164.0 (2023-06-08)
+
+### Features
+
+ * SDK Defaults - Environment Variables
+ * Update Transformers 4.28 - PyTorch 2.0.0 Training and Inference Image URI
+
+### Bug Fixes and Other Changes
+
+ * tag more integs as flaky for auto-retry
+ * Remove docker-compose from local requirements
+ * enable neo framework version support on ml_inf2 and ml_trn1
+
+## v2.163.0 (2023-06-07)
+
+### Features
+
+ * Add huggingface-llm 0.8.2 dlc images
+
+### Bug Fixes and Other Changes
+
+ * Update to more actionable error message
+ * Loosen local reqs for PyYAML
+
+## v2.162.0 (2023-06-06)
+
+### Features
+
+ * Add tagging support for create ir job
+ * Selective Step Execution feature in Pipelines
+ * Add Neuronx Image uri - Transformers 4.28 - PyTorch 1.13
+
+### Bug Fixes and Other Changes
+
+ * skip pipelines abalone notebook test
+ * Update neo multiversion support to include edge devices
+
+### Documentation Changes
+
+ * JumpStart Utility Doc Update
+
+## v2.161.0 (2023-06-01)
+
+### Features
+
+ * Add huggingface-llm 0.6.0 dlc images
+ * Add autotune for HyperparameterTuner
+
+### Bug Fixes and Other Changes
+
+ * Remove release tag from non-global test
+ * SDK defaults for volume size, JS Estimator image uri region, Predictor str method
+
+## v2.160.0 (2023-05-31)
+
+### Features
+
+ * PyTorch 2.0 release
+ * Add TFS 2.12.1 Graviton image
+
+### Bug Fixes and Other Changes
+
+ * Fix failing integ test
+ * remove unnecessary log messages for loading existing experiment runs
+ * build(deps): bump requests from 2.27.1 to 2.31.0 in /requirements/extras
+ * SDK Defaults - switch from config printing to logging
+
 ## v2.159.0 (2023-05-23)
 
 ### Features

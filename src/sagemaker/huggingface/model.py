@@ -448,7 +448,11 @@ class HuggingFaceModel(FrameworkModel):
         )
 
     def prepare_container_def(
-        self, instance_type=None, accelerator_type=None, serverless_inference_config=None
+        self,
+        instance_type=None,
+        accelerator_type=None,
+        serverless_inference_config=None,
+        inference_tool=None,
     ):
         """A container definition with framework configuration set in model environment variables.
 
@@ -461,6 +465,8 @@ class HuggingFaceModel(FrameworkModel):
             serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
                 Specifies configuration related to serverless endpoint. Instance type is
                 not provided in serverless inference. So this is used to find image URIs.
+            inference_tool (str): the tool that will be used to aid in the inference.
+                Valid values: "neuron, neuronx, None" (default: None).
 
         Returns:
             dict[str, str]: A container definition object usable with the
@@ -479,6 +485,7 @@ class HuggingFaceModel(FrameworkModel):
                 instance_type,
                 accelerator_type=accelerator_type,
                 serverless_inference_config=serverless_inference_config,
+                inference_tool=inference_tool,
             )
 
         deploy_key_prefix = model_code_key_prefix(self.key_prefix, self.name, deploy_image)
@@ -500,6 +507,7 @@ class HuggingFaceModel(FrameworkModel):
         instance_type=None,
         accelerator_type=None,
         serverless_inference_config=None,
+        inference_tool=None,
     ):
         """Create a URI for the serving image.
 
@@ -513,6 +521,8 @@ class HuggingFaceModel(FrameworkModel):
             serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
                 Specifies configuration related to serverless endpoint. Instance type is
                 not provided in serverless inference. So this is used used to determine device type.
+            inference_tool (str): the tool that will be used to aid in the inference.
+                Valid values: "neuron, neuronx, None" (default: None).
 
         Returns:
             str: The appropriate image URI based on the given parameters.
@@ -534,4 +544,5 @@ class HuggingFaceModel(FrameworkModel):
             image_scope="inference",
             base_framework_version=base_framework_version,
             serverless_inference_config=serverless_inference_config,
+            inference_tool=inference_tool,
         )

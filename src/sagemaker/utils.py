@@ -25,11 +25,11 @@ import shutil
 import tarfile
 import tempfile
 import time
+from typing import Any, List, Optional
 import json
 import abc
 import uuid
 from datetime import datetime
-from typing import List, Optional
 
 from importlib import import_module
 import botocore
@@ -44,7 +44,6 @@ from sagemaker.config.config_utils import (
 )
 from sagemaker.session_settings import SessionSettings
 from sagemaker.workflow import is_pipeline_variable, is_pipeline_parameter_string
-
 
 ECR_URI_PATTERN = r"^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(.*)(/)(.*:.*)$"
 MAX_BUCKET_PATHS_COUNT = 5
@@ -1070,6 +1069,7 @@ def resolve_value_from_config(
     Returns:
         The value that should be used by the caller
     """
+
     config_value = (
         get_sagemaker_config_value(sagemaker_session, config_path) if config_path else None
     )
@@ -1097,6 +1097,7 @@ def get_sagemaker_config_value(sagemaker_session, key):
     """
     if not sagemaker_session:
         return None
+
     if sagemaker_session.sagemaker_config:
         validate_sagemaker_config(sagemaker_session.sagemaker_config)
     config_value = get_config_value(key, sagemaker_session.sagemaker_config)
@@ -1362,3 +1363,47 @@ def update_nested_dictionary_with_values_from_config(
     )
 
     return inferred_config_dict
+
+
+def stringify_object(obj: Any) -> str:
+    """Returns string representation of object, returning only non-None fields."""
+    non_none_atts = {key: value for key, value in obj.__dict__.items() if value is not None}
+    return f"{type(obj).__name__}: {str(non_none_atts)}"
+
+
+def volume_size_supported(instance_type: str) -> bool:
+    """Returns True if SageMaker allows volume_size to be used for the instance type.
+
+    Raises:
+        ValueError: If the instance type is improperly formatted.
+    """
+
+    try:
+
+        # local mode does not support volume size
+        if instance_type.startswith("local"):
+            return False
+
+        parts: List[str] = instance_type.split(".")
+
+        if len(parts) == 3 and parts[0] == "ml":
+            parts = parts[1:]
+
+        if len(parts) != 2:
+            raise ValueError(f"Failed to parse instance type '{instance_type}'")
+
+        # Any instance type with a "d" in the instance family (i.e. c5d, p4d, etc) + g5
+        # does not support attaching an EBS volume.
+        family = parts[0]
+        return "d" not in family and not family.startswith("g5")
+    except Exception as e:
+        raise ValueError(f"Failed to parse instance type '{instance_type}': {str(e)}")
+
+
+def instance_supports_kms(instance_type: str) -> bool:
+    """Returns True if SageMaker allows KMS keys to be attached to the instance.
+
+    Raises:
+        ValueError: If the instance type is improperly formatted.
+    """
+    return volume_size_supported(instance_type)

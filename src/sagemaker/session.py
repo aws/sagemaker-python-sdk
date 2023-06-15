@@ -29,6 +29,7 @@ import botocore
 import botocore.config
 from botocore.exceptions import ClientError
 import six
+from sagemaker.utils import instance_supports_kms
 
 import sagemaker.logs
 from sagemaker import vpc_utils, s3_utils
@@ -40,16 +41,19 @@ from sagemaker.config import (
     TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
     TRAINING_JOB_ROLE_ARN_PATH,
     TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
+    TRAINING_JOB_ENVIRONMENT_PATH,
     TRAINING_JOB_VPC_CONFIG_PATH,
     TRAINING_JOB_OUTPUT_DATA_CONFIG_PATH,
     TRAINING_JOB_RESOURCE_CONFIG_PATH,
     PROCESSING_JOB_INPUTS_PATH,
     PROCESSING_JOB,
     PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
+    PROCESSING_JOB_ENVIRONMENT_PATH,
     PROCESSING_JOB_ROLE_ARN_PATH,
     PROCESSING_JOB_NETWORK_CONFIG_PATH,
     PROCESSING_OUTPUT_CONFIG_PATH,
     PROCESSING_JOB_PROCESSING_RESOURCES_PATH,
+    MONITORING_JOB_ENVIRONMENT_PATH,
     MONITORING_JOB_ROLE_ARN_PATH,
     MONITORING_JOB_VOLUME_KMS_KEY_ID_PATH,
     MONITORING_JOB_NETWORK_CONFIG_PATH,
@@ -66,19 +70,25 @@ from sagemaker.config import (
     COMPILATION_JOB,
     EDGE_PACKAGING_ROLE_ARN_PATH,
     EDGE_PACKAGING_OUTPUT_CONFIG_PATH,
+    EDGE_PACKAGING_RESOURCE_KEY_PATH,
     EDGE_PACKAGING_JOB,
     TRANSFORM_JOB,
+    TRANSFORM_JOB_ENVIRONMENT_PATH,
     TRANSFORM_JOB_KMS_KEY_ID_PATH,
     TRANSFORM_OUTPUT_KMS_KEY_ID_PATH,
     VOLUME_KMS_KEY_ID,
     TRANSFORM_JOB_VOLUME_KMS_KEY_ID_PATH,
     MODEL,
+    MODEL_CONTAINERS_PATH,
     MODEL_EXECUTION_ROLE_ARN_PATH,
     MODEL_ENABLE_NETWORK_ISOLATION_PATH,
+    MODEL_PRIMARY_CONTAINER_PATH,
+    MODEL_PRIMARY_CONTAINER_ENVIRONMENT_PATH,
     MODEL_VPC_CONFIG_PATH,
     MODEL_PACKAGE_VALIDATION_ROLE_PATH,
     VALIDATION_ROLE,
     VALIDATION_PROFILES,
+    MODEL_PACKAGE_INFERENCE_SPECIFICATION_CONTAINERS_PATH,
     MODEL_PACKAGE_VALIDATION_PROFILES_PATH,
     ENDPOINT_CONFIG_PRODUCTION_VARIANTS_PATH,
     KMS_KEY_ID,
@@ -86,6 +96,7 @@ from sagemaker.config import (
     ENDPOINT_CONFIG,
     ENDPOINT_CONFIG_DATA_CAPTURE_PATH,
     ENDPOINT_CONFIG_ASYNC_INFERENCE_PATH,
+    ENDPOINT,
     SAGEMAKER,
     FEATURE_GROUP,
     TAGS,
@@ -674,7 +685,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         enable_sagemaker_metrics=None,
         profiler_rule_configs=None,
         profiler_config=None,
-        environment=None,
+        environment: Optional[Dict[str, str]] = None,
         retry_strategy=None,
     ):
         """Create an Amazon SageMaker training job.
@@ -811,8 +822,23 @@ class Session(object):  # pylint: disable=too-many-public-methods
         inferred_output_config = update_nested_dictionary_with_values_from_config(
             output_config, TRAINING_JOB_OUTPUT_DATA_CONFIG_PATH, sagemaker_session=self
         )
+        customer_supplied_kms_key = "VolumeKmsKeyId" in resource_config
         inferred_resource_config = update_nested_dictionary_with_values_from_config(
             resource_config, TRAINING_JOB_RESOURCE_CONFIG_PATH, sagemaker_session=self
+        )
+        if (
+            not customer_supplied_kms_key
+            and "InstanceType" in inferred_resource_config
+            and not instance_supports_kms(inferred_resource_config["InstanceType"])
+            and "VolumeKmsKeyId" in inferred_resource_config
+        ):
+            del inferred_resource_config["VolumeKmsKeyId"]
+
+        environment = resolve_value_from_config(
+            direct_input=environment,
+            config_path=TRAINING_JOB_ENVIRONMENT_PATH,
+            default_value=None,
+            sagemaker_session=self,
         )
         train_request = self._get_train_request(
             input_mode=input_mode,
@@ -1159,7 +1185,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         resources,
         stopping_condition,
         app_specification,
-        environment,
+        environment: Optional[Dict[str, str]] = None,
         network_config=None,
         role_arn=None,
         tags=None,
@@ -1244,6 +1270,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
         )
         inferred_resources_config = update_nested_dictionary_with_values_from_config(
             resources, PROCESSING_JOB_PROCESSING_RESOURCES_PATH, sagemaker_session=self
+        )
+        environment = resolve_value_from_config(
+            direct_input=environment,
+            config_path=PROCESSING_JOB_ENVIRONMENT_PATH,
+            default_value=None,
+            sagemaker_session=self,
         )
         process_request = self._get_process_request(
             inputs=inputs,
@@ -1422,10 +1454,17 @@ class Session(object):  # pylint: disable=too-many-public-methods
         inferred_network_config_from_config = update_nested_dictionary_with_values_from_config(
             network_config, MONITORING_JOB_NETWORK_CONFIG_PATH, sagemaker_session=self
         )
+        environment = resolve_value_from_config(
+            direct_input=environment,
+            config_path=MONITORING_JOB_ENVIRONMENT_PATH,
+            default_value=None,
+            sagemaker_session=self,
+        )
         monitoring_schedule_request = {
             "MonitoringScheduleName": monitoring_schedule_name,
             "MonitoringScheduleConfig": {
                 "MonitoringJobDefinition": {
+                    "Environment": environment,
                     "MonitoringInputs": monitoring_inputs,
                     "MonitoringResources": {
                         "ClusterConfig": {
@@ -2466,6 +2505,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             "EdgePackagingJobName": job_name,
             "CompilationJobName": compilation_job_name,
         }
+        resource_key = resolve_value_from_config(
+            resource_key, EDGE_PACKAGING_RESOURCE_KEY_PATH, sagemaker_session=self
+        )
         tags = _append_project_tags(tags)
         tags = self._append_sagemaker_config_tags(
             tags, "{}.{}.{}".format(SAGEMAKER, EDGE_PACKAGING_JOB, TAGS)
@@ -2512,6 +2554,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         random_seed=None,
         environment=None,
         hpo_resource_config=None,
+        autotune=False,
+        auto_parameters=None,
     ):
         """Create an Amazon SageMaker hyperparameter tuning job.
 
@@ -2617,6 +2661,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 * volume_kms_key_id: The AWS Key Management Service (AWS KMS) key
                 that Amazon SageMaker uses to encrypt data on the storage
                 volume attached to the ML compute instance(s) that run the training job.
+            autotune (bool): Whether the parameter ranges or other unset settings of a tuning job
+                should be chosen automatically (default: False).
+            auto_parameters (dict[str, str]): Dictionary of auto parameters. The keys are names
+                of auto parameters and values are example values of auto parameters
+                (default: ``None``).
         """
 
         tune_request = {
@@ -2633,6 +2682,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 random_seed=random_seed,
                 strategy_config=strategy_config,
                 completion_criteria_config=completion_criteria_config,
+                auto_parameters=auto_parameters,
             ),
             "TrainingJobDefinition": self._map_training_config(
                 static_hyperparameters=static_hyperparameters,
@@ -2659,6 +2709,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if warm_start_config is not None:
             tune_request["WarmStartConfig"] = warm_start_config
 
+        if autotune:
+            tune_request["Autotune"] = {"Mode": "Enabled"}
+
         tags = _append_project_tags(tags)
         if tags is not None:
             tune_request["Tags"] = tags
@@ -2675,6 +2728,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         training_config_list=None,
         warm_start_config=None,
         tags=None,
+        autotune=False,
     ):
         """Create an Amazon SageMaker hyperparameter tuning job.
 
@@ -2694,6 +2748,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 other required configurations.
             tags (list[dict]): List of tags for labeling the tuning job. For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            autotune (bool): Whether the parameter ranges or other unset settings of a tuning job
+                should be chosen automatically.
         """
 
         if training_config is None and training_config_list is None:
@@ -2710,6 +2766,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             training_config_list=training_config_list,
             warm_start_config=warm_start_config,
             tags=tags,
+            autotune=autotune,
         )
 
         def submit(request):
@@ -2727,6 +2784,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         training_config_list=None,
         warm_start_config=None,
         tags=None,
+        autotune=False,
     ):
         """Construct CreateHyperParameterTuningJob request
 
@@ -2742,6 +2800,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 other required configurations.
             tags (list[dict]): List of tags for labeling the tuning job. For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            autotune (bool): Whether the parameter ranges or other unset settings of a tuning job
+                should be chosen automatically.
         Returns:
             dict: A dictionary for CreateHyperParameterTuningJob request
         """
@@ -2749,6 +2809,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             "HyperParameterTuningJobName": job_name,
             "HyperParameterTuningJobConfig": self._map_tuning_config(**tuning_config),
         }
+        if autotune:
+            tune_request["Autotune"] = {"Mode": "Enabled"}
 
         if training_config is not None:
             tune_request["TrainingJobDefinition"] = self._map_training_config(**training_config)
@@ -2794,6 +2856,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         random_seed=None,
         strategy_config=None,
         completion_criteria_config=None,
+        auto_parameters=None,
     ):
         """Construct tuning job configuration dictionary.
 
@@ -2820,6 +2883,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 strategy.
             completion_criteria_config (dict): A configuration
                 for the completion criteria.
+            auto_parameters (dict): Dictionary of auto parameters. The keys are names of auto
+                parameters and valeus are example values of auto parameters.
 
         Returns:
             A dictionary of tuning job configuration. For format details, please refer to
@@ -2848,6 +2913,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if parameter_ranges is not None:
             tuning_config["ParameterRanges"] = parameter_ranges
+
+        if auto_parameters is not None:
+            if parameter_ranges is None:
+                tuning_config["ParameterRanges"] = {}
+            tuning_config["ParameterRanges"]["AutoParameters"] = [
+                {"Name": name, "ValueHint": value} for name, value in auto_parameters.items()
+            ]
 
         if strategy_config is not None:
             tuning_config["StrategyConfig"] = strategy_config
@@ -2910,6 +2982,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         checkpoint_local_path=None,
         max_retry_attempts=None,
         environment=None,
+        auto_parameters=None,
     ):
         """Construct a dictionary of training job configuration from the arguments.
 
@@ -3029,6 +3102,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if parameter_ranges is not None:
             training_job_definition["HyperParameterRanges"] = parameter_ranges
+
+        if auto_parameters is not None:
+            if parameter_ranges is None:
+                training_job_definition["HyperParameterRanges"] = {}
+            training_job_definition["HyperParameterRanges"]["AutoParameters"] = [
+                {"Name": name, "ValueHint": value} for name, value in auto_parameters.items()
+            ]
 
         if max_retry_attempts is not None:
             training_job_definition["RetryStrategy"] = {"MaximumRetryAttempts": max_retry_attempts}
@@ -3163,11 +3243,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
         strategy,
         max_concurrent_transforms,
         max_payload,
-        env,
         input_config,
         output_config,
         resource_config,
         experiment_config,
+        env: Optional[Dict[str, str]] = None,
         tags=None,
         data_processing=None,
         model_client_config=None,
@@ -3230,6 +3310,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
             TRANSFORM_JOB_VOLUME_KMS_KEY_ID_PATH,
             sagemaker_session=self,
         )
+        env = resolve_value_from_config(
+            direct_input=env,
+            config_path=TRANSFORM_JOB_ENVIRONMENT_PATH,
+            default_value=None,
+            sagemaker_session=self,
+        )
 
         transform_request = self._get_transform_request(
             job_name=job_name,
@@ -3266,6 +3352,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         tags=None,
     ):  # pylint: disable=redefined-outer-name
         """Placeholder docstring"""
+
         if container_defs and primary_container:
             raise ValueError("Both container_defs and primary_container can not be passed as input")
 
@@ -3280,9 +3367,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
         role = self.expand_role(role)
 
         if isinstance(container_defs, list):
+            update_list_of_dicts_with_values_from_config(
+                container_defs, MODEL_CONTAINERS_PATH, sagemaker_session=self
+            )
             container_definition = container_defs
         else:
             container_definition = _expand_container_def(container_defs)
+            container_definition = update_nested_dictionary_with_values_from_config(
+                container_definition, MODEL_PRIMARY_CONTAINER_PATH, sagemaker_session=self
+            )
 
         request = {"ModelName": name, "ExecutionRoleArn": role}
         if isinstance(container_definition, list):
@@ -3369,6 +3462,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
             default_value=False,
             sagemaker_session=self,
         )
+
+        # Due to ambuiguity in container_defs which accepts both a single
+        # container definition(dtype: dict) and a list of container definitions (dtype: list),
+        # we need to inject environment variables into the container_defs in the helper function
+        # _create_model_request.
         create_model_request = self._create_model_request(
             name=name,
             role=role,
@@ -3450,7 +3548,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
             default_value=False,
             sagemaker_session=self,
         )
-        env = env or {}
+        env = resolve_value_from_config(
+            env,
+            MODEL_PRIMARY_CONTAINER_ENVIRONMENT_PATH,
+            default_value={},
+            sagemaker_session=self,
+        )
         primary_container = container_def(
             image_uri or training_job["AlgorithmSpecification"]["TrainingImage"],
             model_data_url=model_data_url or training_job["ModelArtifacts"]["S3ModelArtifacts"],
@@ -3552,6 +3655,19 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 "IMAGE_CLASSIFICATION", "OBJECT_DETECTION", "TEXT_GENERATION", "IMAGE_SEGMENTATION",
                 "CLASSIFICATION", "REGRESSION", "OTHER" (default: None).
         """
+        if containers:
+            # Containers are provided. Now we can merge missing entries from config.
+            # If Containers are not provided, it is safe to ignore. This is because,
+            # if this object is provided to the API, then Image is required for Containers.
+            # That is not supported by the config now. So if we merge values from config,
+            # then API will throw an exception. In the future, when SageMaker Config starts
+            # supporting other parameters we can add that.
+            update_list_of_dicts_with_values_from_config(
+                containers,
+                MODEL_PACKAGE_INFERENCE_SPECIFICATION_CONTAINERS_PATH,
+                required_key_paths=["Image"],
+                sagemaker_session=self,
+            )
 
         if validation_specification:
             # ValidationSpecification is provided. Now we can merge missing entries from config.
@@ -3750,8 +3866,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
         )
         if tags is not None:
             request["Tags"] = tags
-        kms_key = resolve_value_from_config(
-            kms_key, ENDPOINT_CONFIG_KMS_KEY_ID_PATH, sagemaker_session=self
+        kms_key = (
+            resolve_value_from_config(
+                kms_key, ENDPOINT_CONFIG_KMS_KEY_ID_PATH, sagemaker_session=self
+            )
+            if instance_supports_kms(instance_type)
+            else kms_key
         )
         if kms_key is not None:
             request["KmsKeyId"] = kms_key
@@ -3844,7 +3964,16 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if new_kms_key is not None or existing_endpoint_config_desc.get("KmsKeyId") is not None:
             request["KmsKeyId"] = new_kms_key or existing_endpoint_config_desc.get("KmsKeyId")
-        if KMS_KEY_ID not in request:
+
+        supports_kms = any(
+            [
+                instance_supports_kms(production_variant["InstanceType"])
+                for production_variant in production_variants
+                if "InstanceType" in production_variant
+            ]
+        )
+
+        if KMS_KEY_ID not in request and supports_kms:
             kms_key_from_config = resolve_value_from_config(
                 config_path=ENDPOINT_CONFIG_KMS_KEY_ID_PATH, sagemaker_session=self
             )
@@ -3894,6 +4023,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             config_name (str): Name of the Amazon SageMaker endpoint configuration to deploy.
             wait (bool): Whether to wait for the endpoint deployment to complete before returning
                 (default: True).
+            tags (list[dict[str, str]]): A list of key-value pairs for tagging the endpoint
+                (default: None).
 
         Returns:
             str: Name of the Amazon SageMaker ``Endpoint`` created.
@@ -3902,6 +4033,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         tags = tags or []
         tags = _append_project_tags(tags)
+        tags = self._append_sagemaker_config_tags(
+            tags, "{}.{}.{}".format(SAGEMAKER, ENDPOINT, TAGS)
+        )
 
         self.sagemaker_client.create_endpoint(
             EndpointName=endpoint_name, EndpointConfigName=config_name, Tags=tags
@@ -4357,6 +4491,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         model_vpc_config=None,
         accelerator_type=None,
         data_capture_config=None,
+        tags=None,
     ):
         """Create and deploy to an ``Endpoint`` using existing model data stored in S3.
 
@@ -4388,6 +4523,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             data_capture_config (sagemaker.model_monitor.DataCaptureConfig): Specifies
                 configuration related to Endpoint data capture for use with
                 Amazon SageMaker Model Monitoring. Default: None.
+            tags (list[dict[str, str]]): A list of key-value pairs for tagging the endpoint
+                (default: None).
 
         Returns:
             str: Name of the ``Endpoint`` that is created.
@@ -4395,7 +4532,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
         model_environment_vars = model_environment_vars or {}
         name = name or name_from_image(image_uri)
         model_vpc_config = vpc_utils.sanitize(model_vpc_config)
-
+        endpoint_config_tags = _append_project_tags(tags)
+        endpoint_tags = _append_project_tags(tags)
+        endpoint_config_tags = self._append_sagemaker_config_tags(
+            endpoint_config_tags, "{}.{}.{}".format(SAGEMAKER, ENDPOINT_CONFIG, TAGS)
+        )
         primary_container = container_def(
             image_uri=image_uri,
             model_data_url=model_s3_location,
@@ -4418,12 +4559,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 instance_type=instance_type,
                 accelerator_type=accelerator_type,
                 data_capture_config_dict=data_capture_config_dict,
+                tags=endpoint_config_tags,
             )
         )
 
         # to make change backwards compatible
         response = _create_resource(
-            lambda: self.create_endpoint(endpoint_name=name, config_name=name, wait=wait)
+            lambda: self.create_endpoint(
+                endpoint_name=name, config_name=name, tags=endpoint_tags, wait=wait
+            )
         )
         if not response:
             raise ValueError(
@@ -4465,6 +4609,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             str: The name of the created ``Endpoint``.
         """
+
+        supports_kms = any(
+            [
+                instance_supports_kms(production_variant["InstanceType"])
+                for production_variant in production_variants
+                if "InstanceType" in production_variant
+            ]
+        )
+
         update_list_of_dicts_with_values_from_config(
             production_variants,
             ENDPOINT_CONFIG_PRODUCTION_VARIANTS_PATH,
@@ -4472,15 +4625,22 @@ class Session(object):  # pylint: disable=too-many-public-methods
             sagemaker_session=self,
         )
         config_options = {"EndpointConfigName": name, "ProductionVariants": production_variants}
-        kms_key = resolve_value_from_config(
-            kms_key, ENDPOINT_CONFIG_KMS_KEY_ID_PATH, sagemaker_session=self
+        kms_key = (
+            resolve_value_from_config(
+                kms_key, ENDPOINT_CONFIG_KMS_KEY_ID_PATH, sagemaker_session=self
+            )
+            if supports_kms
+            else kms_key
         )
-        tags = _append_project_tags(tags)
-        tags = self._append_sagemaker_config_tags(
-            tags, "{}.{}.{}".format(SAGEMAKER, ENDPOINT_CONFIG, TAGS)
+
+        endpoint_config_tags = _append_project_tags(tags)
+        endpoint_tags = _append_project_tags(tags)
+
+        endpoint_config_tags = self._append_sagemaker_config_tags(
+            endpoint_config_tags, "{}.{}.{}".format(SAGEMAKER, ENDPOINT_CONFIG, TAGS)
         )
-        if tags:
-            config_options["Tags"] = tags
+        if endpoint_config_tags:
+            config_options["Tags"] = endpoint_config_tags
         if kms_key:
             config_options["KmsKeyId"] = kms_key
         if data_capture_config_dict is not None:
@@ -4501,7 +4661,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         LOGGER.info("Creating endpoint-config with name %s", name)
         self.sagemaker_client.create_endpoint_config(**config_options)
 
-        return self.create_endpoint(endpoint_name=name, config_name=name, tags=tags, wait=wait)
+        return self.create_endpoint(
+            endpoint_name=name, config_name=name, tags=endpoint_tags, wait=wait
+        )
 
     def expand_role(self, role):
         """Expand an IAM role name into an ARN.
@@ -5240,6 +5402,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         framework: str,
         sample_payload_url: str,
         supported_content_types: List[str],
+        tags: Dict[str, str],
         model_name: str = None,
         model_package_version_arn: str = None,
         job_duration_in_seconds: int = None,
@@ -5275,6 +5438,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 benchmarked by Amazon SageMaker Inference Recommender that matches your model.
             supported_instance_types (List[str]): A list of the instance types that are used
                 to generate inferences in real-time.
+            tags (Dict[str, str]): Tags used to identify where the Inference Recommendatons Call
+                was made from.
             endpoint_configurations (List[Dict[str, any]]): Specifies the endpoint configurations
                 to use for a job. Will be used for `Advanced` jobs.
             traffic_pattern (Dict[str, any]): Specifies the traffic pattern for the job.
@@ -5313,6 +5478,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             "InputConfig": {
                 "ContainerConfig": containerConfig,
             },
+            "Tags": tags,
         }
 
         request.get("InputConfig").update(
@@ -5404,6 +5570,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             job_name = "SMPYTHONSDK-" + str(unique_tail)
         job_description = "#python-sdk-create"
 
+        tags = [{"Key": "ClientType", "Value": "PythonSDK-RightSize"}]
+
         create_inference_recommendations_job_request = (
             self._create_inference_recommendations_job_request(
                 role=role,
@@ -5423,6 +5591,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 traffic_pattern=traffic_pattern,
                 stopping_conditions=stopping_conditions,
                 resource_limit=resource_limit,
+                tags=tags,
             )
         )
 

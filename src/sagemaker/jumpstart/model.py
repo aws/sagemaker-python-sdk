@@ -28,7 +28,7 @@ from sagemaker.jumpstart.factory.model import (
     get_init_kwargs,
 )
 from sagemaker.jumpstart.utils import is_valid_model_id
-from sagemaker.jumpstart.utils import stringify_object
+from sagemaker.utils import stringify_object
 from sagemaker.model import Model
 from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
 from sagemaker.predictor import PredictorBase
@@ -138,7 +138,7 @@ class JumpStartModel(Model):
                 when training on Amazon SageMaker. If 'git_config' is provided,
                 'source_dir' should be a relative location to a directory in the Git repo.
                 If the directory points to S3, no code is uploaded and the S3 location
-                is used instead.
+                is used instead. (Default: None).
 
                 .. admonition:: Example
 
@@ -150,7 +150,6 @@ class JumpStartModel(Model):
                     >>>         |----- test.py
 
                     You can assign entry_point='inference.py', source_dir='src'.
-                (Default: None).
             code_location (Optional[str]): Name of the S3 bucket where custom code is
                 uploaded (Default: None). If not specified, the default bucket
                 created by ``sagemaker.session.Session`` is used. (Default: None).
@@ -159,9 +158,9 @@ class JumpStartModel(Model):
                 model hosting. (Default: None). If ``source_dir`` is specified, then ``entry_point``
                 must point to a file located at the root of ``source_dir``.
                 If 'git_config' is provided, 'entry_point' should be
-                a relative location to the Python source file in the Git repo.
+                a relative location to the Python source file in the Git repo. (Default: None).
 
-                Example:
+                .. admonition:: Example
                     With the following GitHub repo directory structure:
 
                     >>> |----- README.md
@@ -170,8 +169,6 @@ class JumpStartModel(Model):
                     >>>         |----- test.py
 
                     You can assign entry_point='src/inference.py'.
-
-                (Default: None).
             container_log_level (Optional[Union[int, PipelineVariable]]): Log level to use
                 within the container. Valid values are defined in the Python
                 logging module. (Default: None).
@@ -183,7 +180,8 @@ class JumpStartModel(Model):
                 list of relative locations to directories with any additional
                 libraries needed in the Git repo. If the ```source_dir``` points
                 to S3, code will be uploaded and the S3 location will be used
-                instead.
+                instead. This is not supported with "local code" in Local Mode.
+                (Default: None).
 
                 .. admonition:: Example
 
@@ -200,9 +198,6 @@ class JumpStartModel(Model):
                     >>>     |------ inference.py
                     >>>     |------ common
                     >>>     |------ virtual-env
-
-                This is not supported with "local code" in Local Mode.
-                (Default: None).
             git_config (Optional[dict[str, str]]): Git configurations used for cloning
                 files, including ``repo``, ``branch``, ``commit``,
                 ``2FA_enabled``, ``username``, ``password`` and ``token``. The
@@ -211,18 +206,6 @@ class JumpStartModel(Model):
                 is stored. If you don't provide ``branch``, the default value
                 'master' is used. If you don't provide ``commit``, the latest
                 commit in the specified branch is used.
-
-                .. admonition:: Example
-
-                    The following config:
-
-                    >>> git_config = {'repo': 'https://github.com/aws/sagemaker-python-sdk.git',
-                    >>>               'branch': 'test-branch-git-config',
-                    >>>               'commit': '329bfcf884482002c05ff7f44f62599ebc9f445a'}
-
-                    results in cloning the repo specified in 'repo', then
-                    checking out the 'master' branch, and checking out the specified
-                    commit.
 
                 ``2FA_enabled``, ``username``, ``password`` and ``token`` are
                 used for authentication. For GitHub (or other Git) accounts, set
@@ -254,6 +237,16 @@ class JumpStartModel(Model):
                 the SageMaker Python SDK attempts to use either the CodeCommit
                 credential helper or local credential storage for authentication.
                 (Default: None).
+
+                .. admonition:: Example
+
+                    The following config results in cloning the repo specified in 'repo', then
+                    checking out the 'master' branch, and checking out the specified
+                    commit.
+
+                    >>> git_config = {'repo': 'https://github.com/aws/sagemaker-python-sdk.git',
+                    >>>               'branch': 'test-branch-git-config',
+                    >>>               'commit': '329bfcf884482002c05ff7f44f62599ebc9f445a'}
 
         Raises:
             ValueError: If the model ID is not recognized by JumpStart.

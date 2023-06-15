@@ -36,6 +36,7 @@ from sagemaker.config import (
     TRAINING_JOB_KMS_KEY_ID_PATH,
     TRAINING_JOB_ROLE_ARN_PATH,
     TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
+    TRAINING_JOB_ENVIRONMENT_PATH,
     TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
 )
 from sagemaker.debugger import (  # noqa: F401 # pylint: disable=unused-import
@@ -63,6 +64,7 @@ from sagemaker.fw_utils import (
 )
 from sagemaker.inputs import TrainingInput, FileSystemInput
 from sagemaker.instance_group import InstanceGroup
+from sagemaker.utils import instance_supports_kms
 from sagemaker.job import _Job
 from sagemaker.jumpstart.utils import (
     add_jumpstart_tags,
@@ -95,6 +97,7 @@ from sagemaker.utils import (
 )
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.pipeline_context import PipelineSession, runnable_by_pipeline
 
 logger = logging.getLogger(__name__)
@@ -599,10 +602,33 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.output_kms_key = resolve_value_from_config(
             output_kms_key, TRAINING_JOB_KMS_KEY_ID_PATH, sagemaker_session=self.sagemaker_session
         )
-        self.volume_kms_key = resolve_value_from_config(
-            volume_kms_key,
-            TRAINING_JOB_VOLUME_KMS_KEY_ID_PATH,
-            sagemaker_session=self.sagemaker_session,
+        if instance_type is None or isinstance(instance_type, str):
+            instance_type_for_volume_kms = instance_type
+        elif isinstance(instance_type, ParameterString):
+            instance_type_for_volume_kms = instance_type.default_value
+        else:
+            raise ValueError(f"Bad value for instance type: '{instance_type}'")
+
+        # KMS can only be attached to supported instances
+        use_volume_kms_config = (
+            (instance_type_for_volume_kms and instance_supports_kms(instance_type_for_volume_kms))
+            or instance_groups is not None
+            and any(
+                [
+                    instance_supports_kms(instance_group.instance_type)
+                    for instance_group in instance_groups
+                ]
+            )
+        )
+
+        self.volume_kms_key = (
+            resolve_value_from_config(
+                volume_kms_key,
+                TRAINING_JOB_VOLUME_KMS_KEY_ID_PATH,
+                sagemaker_session=self.sagemaker_session,
+            )
+            if use_volume_kms_config
+            else volume_kms_key
         )
 
         # VPC configurations
@@ -652,7 +678,12 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.profiler_config = profiler_config
         self.disable_profiler = disable_profiler
 
-        self.environment = environment
+        self.environment = resolve_value_from_config(
+            direct_input=environment,
+            config_path=TRAINING_JOB_ENVIRONMENT_PATH,
+            default_value=None,
+            sagemaker_session=self.sagemaker_session,
+        )
 
         self.max_retry_attempts = max_retry_attempts
 

@@ -110,6 +110,12 @@ Pipeline Experiment Config
 
 .. autoclass:: sagemaker.workflow.pipeline_experiment_config.PipelineExperimentConfigProperty
 
+Selective Execution Config
+--------------------------
+
+.. autoclass:: sagemaker.workflow.selective_execution_config.SelectiveExecutionConfig
+
+
 Properties
 ----------
 

@@ -188,9 +188,7 @@ class Run(object):
         )
         if is_existed:
             logger.info(
-                "The run (%s) under experiment (%s) already exists. Loading it. "
-                "Note: sagemaker.experiments.load_run is recommended to use when "
-                "the desired run already exists.",
+                "The run (%s) under experiment (%s) already exists. Loading it.",
                 self.run_name,
                 self.experiment_name,
             )

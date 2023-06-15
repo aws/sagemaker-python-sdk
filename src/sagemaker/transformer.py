@@ -22,6 +22,7 @@ from botocore import exceptions
 
 from sagemaker import s3
 from sagemaker.config import (
+    TRANSFORM_JOB_ENVIRONMENT_PATH,
     TRANSFORM_OUTPUT_KMS_KEY_ID_PATH,
     TRANSFORM_JOB_KMS_KEY_ID_PATH,
     TRANSFORM_RESOURCES_VOLUME_KMS_KEY_ID_PATH,
@@ -110,7 +111,6 @@ class Transformer(object):
         """
         self.model_name = model_name
         self.strategy = strategy
-        self.env = env
 
         self.output_path = output_path
         self.accept = accept
@@ -137,6 +137,11 @@ class Transformer(object):
         self.output_kms_key = resolve_value_from_config(
             output_kms_key,
             TRANSFORM_OUTPUT_KMS_KEY_ID_PATH,
+            sagemaker_session=self.sagemaker_session,
+        )
+        self.env = resolve_value_from_config(
+            env,
+            TRANSFORM_JOB_ENVIRONMENT_PATH,
             sagemaker_session=self.sagemaker_session,
         )
 

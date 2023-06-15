@@ -10,12 +10,18 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Placeholder docstring"""
+"""Unit tests for SelectiveExecutionConfig module"""
+
 from __future__ import absolute_import
 
-from sagemaker.huggingface.estimator import HuggingFace  # noqa: F401
-from sagemaker.huggingface.model import HuggingFaceModel, HuggingFacePredictor  # noqa: F401
-from sagemaker.huggingface.processing import HuggingFaceProcessor  # noqa:F401
-from sagemaker.huggingface.llm_utils import get_huggingface_llm_image_uri  # noqa: F401
+from sagemaker.workflow.selective_execution_config import SelectiveExecutionConfig
 
-from sagemaker.huggingface.training_compiler.config import TrainingCompilerConfig  # noqa: F401
+
+def test_SelectiveExecutionConfig():
+    selective_execution_config = SelectiveExecutionConfig(
+        source_pipeline_execution_arn="foo-arn", selected_steps=["step-1", "step-2", "step-3"]
+    )
+    assert selective_execution_config.to_request() == {
+        "SelectedSteps": [{"StepName": "step-1"}, {"StepName": "step-2"}, {"StepName": "step-3"}],
+        "SourcePipelineExecutionArn": "foo-arn",
+    }

@@ -505,6 +505,8 @@ class LocalSagemakerClient(object):  # pylint: disable=too-many-public-methods
         """
         if "ParallelismConfiguration" in kwargs:
             logger.warning("Parallelism configuration is not supported in local mode.")
+        if "SelectiveExecutionConfig" in kwargs:
+            raise ValueError("SelectiveExecutionConfig is not supported in local mode.")
         if PipelineName not in LocalSagemakerClient._pipelines:
             error_response = {
                 "Error": {

@@ -425,7 +425,7 @@ def _add_image_uri_to_kwargs(kwargs: JumpStartEstimatorInitKwargs) -> JumpStartE
     """Sets image uri in kwargs based on default or override, returns full kwargs."""
 
     kwargs.image_uri = kwargs.image_uri or image_uris.retrieve(
-        region=None,
+        region=kwargs.region,
         framework=None,
         image_scope=JumpStartScriptScope.TRAINING,
         model_id=kwargs.model_id,

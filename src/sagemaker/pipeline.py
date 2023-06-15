@@ -34,6 +34,7 @@ from sagemaker.utils import (
 from sagemaker.transformer import Transformer
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.pipeline_context import runnable_by_pipeline
+from sagemaker.utils import instance_supports_kms
 
 
 class PipelineModel(object):
@@ -235,8 +236,12 @@ class PipelineModel(object):
             container_startup_health_check_timeout=container_startup_health_check_timeout,
         )
         self.endpoint_name = endpoint_name or self.name
-        kms_key = resolve_value_from_config(
-            kms_key, ENDPOINT_CONFIG_KMS_KEY_ID_PATH, sagemaker_session=self.sagemaker_session
+        kms_key = (
+            resolve_value_from_config(
+                kms_key, ENDPOINT_CONFIG_KMS_KEY_ID_PATH, sagemaker_session=self.sagemaker_session
+            )
+            if instance_supports_kms(instance_type)
+            else kms_key
         )
 
         data_capture_config_dict = None

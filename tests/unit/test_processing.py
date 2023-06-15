@@ -668,7 +668,6 @@ def test_script_processor_with_sagemaker_config_injection(
         volume_size_in_gb=100,
         max_runtime_in_seconds=3600,
         base_job_name="my_sklearn_processor",
-        env={"my_env_variable": "my_env_variable_value"},
         tags=[{"Key": "my-tag", "Value": "my-tag-value"}],
         sagemaker_session=sagemaker_session,
     )
@@ -699,6 +698,9 @@ def test_script_processor_with_sagemaker_config_injection(
     expected_enable_inter_containter_traffic_encryption = SAGEMAKER_CONFIG_PROCESSING_JOB[
         "SageMaker"
     ]["ProcessingJob"]["NetworkConfig"]["EnableInterContainerTrafficEncryption"]
+    expected_environment = SAGEMAKER_CONFIG_PROCESSING_JOB["SageMaker"]["ProcessingJob"][
+        "Environment"
+    ]
 
     expected_args["resources"]["ClusterConfig"]["VolumeKmsKeyId"] = expected_volume_kms_key_id
     expected_args["output_config"]["KmsKeyId"] = expected_output_kms_key_id
@@ -708,6 +710,7 @@ def test_script_processor_with_sagemaker_config_injection(
     expected_args["network_config"][
         "EnableInterContainerTrafficEncryption"
     ] = expected_enable_inter_containter_traffic_encryption
+    expected_args["environment"] = expected_environment
 
     sagemaker_session.process.assert_called_with(**expected_args)
     assert "my_job_name" in processor._current_job_name

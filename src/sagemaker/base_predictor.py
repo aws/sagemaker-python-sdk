@@ -47,7 +47,7 @@ from sagemaker.serializers import (
     NumpySerializer,
 )
 from sagemaker.session import production_variant, Session
-from sagemaker.utils import name_from_base
+from sagemaker.utils import name_from_base, stringify_object
 
 from sagemaker.model_monitor.model_monitoring import DEFAULT_REPOSITORY_NAME
 
@@ -74,6 +74,10 @@ class PredictorBase(abc.ABC):
     @abc.abstractmethod
     def accept(self) -> Tuple[str]:
         """The content type(s) that are expected from the inference server."""
+
+    def __str__(self) -> str:
+        """Overriding str(*) method to make more human-readable."""
+        return stringify_object(self)
 
 
 class Predictor(PredictorBase):

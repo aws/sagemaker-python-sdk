@@ -40,6 +40,7 @@ from sagemaker.workflow.parameters import Parameter
 from sagemaker.workflow.pipeline_experiment_config import PipelineExperimentConfig
 from sagemaker.workflow.parallelism_config import ParallelismConfiguration
 from sagemaker.workflow.properties import Properties
+from sagemaker.workflow.selective_execution_config import SelectiveExecutionConfig
 from sagemaker.workflow.steps import Step, StepTypeEnum
 from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.condition_step import ConditionStep
@@ -312,6 +313,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         execution_display_name: str = None,
         execution_description: str = None,
         parallelism_config: ParallelismConfiguration = None,
+        selective_execution_config: SelectiveExecutionConfig = None,
     ):
         """Starts a Pipeline execution in the Workflow service.
 
@@ -323,16 +325,26 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             parallelism_config (Optional[ParallelismConfiguration]): Parallelism configuration
                 that is applied to each of the executions of the pipeline. It takes precedence
                 over the parallelism configuration of the parent pipeline.
+            selective_execution_config (Optional[SelectiveExecutionConfig]): The configuration for
+                selective step execution.
 
         Returns:
             A `_PipelineExecution` instance, if successful.
         """
+        if selective_execution_config is not None:
+            if selective_execution_config.source_pipeline_execution_arn is None:
+                selective_execution_config.source_pipeline_execution_arn = (
+                    self._get_latest_execution_arn()
+                )
+            selective_execution_config = selective_execution_config.to_request()
+
         kwargs = dict(PipelineName=self.name)
         update_args(
             kwargs,
             PipelineExecutionDescription=execution_description,
             PipelineExecutionDisplayName=execution_display_name,
             ParallelismConfiguration=parallelism_config,
+            SelectiveExecutionConfig=selective_execution_config,
         )
         if self.sagemaker_session.local_mode:
             update_args(kwargs, PipelineParameters=parameters)
@@ -387,6 +399,57 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
                     step_request["Arguments"]["IfSteps"] + step_request["Arguments"]["ElseSteps"]
                 )
                 self._interpolate_step_collection_name_in_depends_on(sub_step_requests)
+
+    def list_executions(
+        self,
+        sort_by: str = None,
+        sort_order: str = None,
+        max_results: int = None,
+        next_token: str = None,
+    ) -> Dict[str, Any]:
+        """Lists a pipeline's executions.
+
+        Args:
+            sort_by (str): The field by which to sort results(CreationTime/PipelineExecutionArn).
+            sort_order (str): The sort order for results (Ascending/Descending).
+            max_results (int): The maximum number of pipeline executions to return in the response.
+            next_token (str):  If the result of the previous ListPipelineExecutions request was
+                truncated, the response includes a NextToken. To retrieve the next set of pipeline
+                executions, use the token in the next request.
+
+        Returns:
+            List of Pipeline Execution Summaries. See
+            boto3 client list_pipeline_executions
+            https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker.html#SageMaker.Client.list_pipeline_executions
+        """
+        kwargs = dict(PipelineName=self.name)
+        update_args(
+            kwargs,
+            SortBy=sort_by,
+            SortOrder=sort_order,
+            NextToken=next_token,
+            MaxResults=max_results,
+        )
+        response = self.sagemaker_session.sagemaker_client.list_pipeline_executions(**kwargs)
+
+        # Return only PipelineExecutionSummaries and NextToken from the list_pipeline_executions
+        # response
+        return {
+            key: response[key]
+            for key in ["PipelineExecutionSummaries", "NextToken"]
+            if key in response
+        }
+
+    def _get_latest_execution_arn(self):
+        """Retrieves the latest execution of this pipeline"""
+        response = self.list_executions(
+            sort_by="CreationTime",
+            sort_order="Descending",
+            max_results=1,
+        )
+        if response["PipelineExecutionSummaries"]:
+            return response["PipelineExecutionSummaries"][0]["PipelineExecutionArn"]
+        return None
 
 
 def format_start_parameters(parameters: Dict[str, Any]) -> List[Dict[str, Any]]:
