@@ -38,6 +38,7 @@ from sagemaker.jumpstart.types import (
     JumpStartVersionedModelId,
 )
 from sagemaker.session import Session
+from sagemaker.config import load_sagemaker_config
 from sagemaker.utils import resolve_value_from_config
 from sagemaker.workflow import is_pipeline_variable
 
@@ -455,6 +456,9 @@ def resolve_model_sagemaker_config_field(
     over sagemaker config values. For all other fields, sagemaker config values take precedence
     over the JumpStart default fields.
     """
+    # In case, sagemaker_session is None, get sagemaker_config from load_sagemaker_config()
+    # to resolve value from config for the respective field_name parameter
+    _sagemaker_config = load_sagemaker_config() if (sagemaker_session is None) else None
 
     # We allow customers to define a role which takes precedence
     # over the one defined in sagemaker config
@@ -464,6 +468,7 @@ def resolve_model_sagemaker_config_field(
             config_path=MODEL_EXECUTION_ROLE_ARN_PATH,
             default_value=default_value or sagemaker_session.get_caller_identity_arn(),
             sagemaker_session=sagemaker_session,
+            sagemaker_config=_sagemaker_config,
         )
 
     # JumpStart Models have certain default field values. We want
@@ -474,6 +479,7 @@ def resolve_model_sagemaker_config_field(
             config_path=MODEL_ENABLE_NETWORK_ISOLATION_PATH,
             sagemaker_session=sagemaker_session,
             default_value=default_value,
+            sagemaker_config=_sagemaker_config,
         )
         return resolved_val if resolved_val is not None else field_val
 
@@ -494,6 +500,11 @@ def resolve_estimator_sagemaker_config_field(
     over the JumpStart default fields.
     """
 
+    # Workaround for config injection if sagemaker_session is None, since in
+    # that case sagemaker_session will not be initialized until
+    # `_init_sagemaker_session_if_does_not_exist` is called later
+    _sagemaker_config = load_sagemaker_config() if (sagemaker_session is None) else None
+
     # We allow customers to define a role which takes precedence
     # over the one defined in sagemaker config
     if field_name == "role":
@@ -502,6 +513,7 @@ def resolve_estimator_sagemaker_config_field(
             config_path=TRAINING_JOB_ROLE_ARN_PATH,
             default_value=default_value or sagemaker_session.get_caller_identity_arn(),
             sagemaker_session=sagemaker_session,
+            sagemaker_config=_sagemaker_config,
         )
 
     # JumpStart Estimators have certain default field values. We want
@@ -513,6 +525,7 @@ def resolve_estimator_sagemaker_config_field(
             config_path=TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
             sagemaker_session=sagemaker_session,
             default_value=default_value,
+            sagemaker_config=_sagemaker_config,
         )
         return resolved_val if resolved_val is not None else field_val
 
@@ -523,6 +536,7 @@ def resolve_estimator_sagemaker_config_field(
             config_path=TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
             sagemaker_session=sagemaker_session,
             default_value=default_value,
+            sagemaker_config=_sagemaker_config,
         )
         return resolved_val if resolved_val is not None else field_val
 

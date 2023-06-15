@@ -42,7 +42,7 @@ config_enable_network_isolation = random.choice([True, False])
 metadata_enable_network_isolation = random.choice([True, False])
 
 
-def config_value_impl(sagemaker_session: Session, config_path: str):
+def config_value_impl(sagemaker_session: Session, config_path: str, sagemaker_config: dict):
     if config_path == MODEL_EXECUTION_ROLE_ARN_PATH:
         return config_role
 
