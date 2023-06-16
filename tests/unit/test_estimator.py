@@ -405,9 +405,6 @@ def test_framework_initialization_with_sagemaker_config_injection(sagemaker_sess
         "TrainingJob"
     ]["EnableInterContainerTrafficEncryption"]
     expected_environment = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["Environment"]
-    expected_profiler_config = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
-        "ProfilerConfig"
-    ]
     expected_disable_profiler_attribute = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
         "ProfilerConfig"
     ]["DisableProfiler"]
@@ -422,7 +419,6 @@ def test_framework_initialization_with_sagemaker_config_injection(sagemaker_sess
     assert framework.security_group_ids == expected_security_groups
     assert framework.subnets == expected_subnets
     assert framework.environment == expected_environment
-    assert framework.profiler_config == expected_profiler_config
     assert framework.disable_profiler == expected_disable_profiler_attribute
 
 
@@ -459,9 +455,6 @@ def test_estimator_initialization_with_sagemaker_config_injection(sagemaker_sess
         "TrainingJob"
     ]["EnableInterContainerTrafficEncryption"]
     expected_environment = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["Environment"]
-    expected_profiler_config = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
-        "ProfilerConfig"
-    ]
     expected_disable_profiler_attribute = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
         "ProfilerConfig"
     ]["DisableProfiler"]
@@ -476,7 +469,6 @@ def test_estimator_initialization_with_sagemaker_config_injection(sagemaker_sess
     assert estimator.security_group_ids == expected_security_groups
     assert estimator.subnets == expected_subnets
     assert estimator.environment == expected_environment
-    assert estimator.profiler_config == expected_profiler_config
     assert estimator.disable_profiler == expected_disable_profiler_attribute
 
 
@@ -512,9 +504,6 @@ def test_estimator_initialization_with_sagemaker_config_injection_no_kms_support
     expected_enable_inter_container_traffic_encryption = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"][
         "TrainingJob"
     ]["EnableInterContainerTrafficEncryption"]
-    expected_profiler_config = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
-        "ProfilerConfig"
-    ]
     expected_disable_profiler_attribute = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
         "ProfilerConfig"
     ]["DisableProfiler"]
@@ -528,7 +517,6 @@ def test_estimator_initialization_with_sagemaker_config_injection_no_kms_support
     assert estimator.volume_kms_key is None
     assert estimator.security_group_ids == expected_security_groups
     assert estimator.subnets == expected_subnets
-    assert estimator.profiler_config == expected_profiler_config
     assert estimator.disable_profiler == expected_disable_profiler_attribute
 
 
@@ -567,9 +555,6 @@ def test_estimator_initialization_with_sagemaker_config_injection_partial_kms_su
     expected_enable_inter_container_traffic_encryption = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"][
         "TrainingJob"
     ]["EnableInterContainerTrafficEncryption"]
-    expected_profiler_config = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
-        "ProfilerConfig"
-    ]
     expected_disable_profiler_attribute = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
         "ProfilerConfig"
     ]["DisableProfiler"]
@@ -583,7 +568,6 @@ def test_estimator_initialization_with_sagemaker_config_injection_partial_kms_su
     assert estimator.volume_kms_key == expected_volume_kms_key_id
     assert estimator.security_group_ids == expected_security_groups
     assert estimator.subnets == expected_subnets
-    assert estimator.profiler_config == expected_profiler_config
     assert estimator.disable_profiler == expected_disable_profiler_attribute
 
 

@@ -1623,6 +1623,75 @@ def test_stop_tuning_job_client_error(sagemaker_session):
         in str(e)
     )
 
+def test_train_with_sagemaker_config_injection_custom_profiler_config(sagemaker_session):
+    """
+    Tests disableProfiler property is overridden by custom profiler_config with property set
+    :param sagemaker_session:
+    :return: None
+    """
+    custom_config = copy.deepcopy(SAGEMAKER_CONFIG_TRAINING_JOB)
+    custom_config["SageMaker"]["TrainingJob"]["ProfilerConfig"]["DisableProfiler"] = True
+
+    sagemaker_session.sagemaker_config = custom_config
+    in_config = [
+        {
+            "ChannelName": "training",
+            "DataSource": {
+                "S3DataSource": {
+                    "S3DataDistributionType": "FullyReplicated",
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": S3_INPUT_URI,
+                }
+            },
+        }
+    ]
+
+    out_config = {"S3OutputPath": S3_OUTPUT}
+
+    resource_config = {
+        "InstanceCount": INSTANCE_COUNT,
+        "InstanceType": INSTANCE_TYPE,
+        "VolumeSizeInGB": MAX_SIZE,
+    }
+
+    stop_cond = {"MaxRuntimeInSeconds": MAX_TIME}
+    RETRY_STRATEGY = {"MaximumRetryAttempts": 2}
+    hyperparameters = {"foo": "bar"}
+    TRAINING_IMAGE_CONFIG = {
+        "TrainingRepositoryAccessMode": "Vpc",
+        "TrainingRepositoryAuthConfig": {
+            "TrainingRepositoryCredentialsProviderArn": "arn:aws:lambda:us-west-2:1234567897:function:test"
+        },
+    }
+
+    profiler_config = {
+        "DisableProfiler": False
+    }
+    sagemaker_session.train(
+        image_uri=IMAGE,
+        input_mode="File",
+        input_config=in_config,
+        job_name=JOB_NAME,
+        output_config=out_config,
+        resource_config=resource_config,
+        profiler_config=profiler_config,
+        hyperparameters=hyperparameters,
+        stop_condition=stop_cond,
+        metric_definitions=METRIC_DEFINITONS,
+        use_spot_instances=True,
+        checkpoint_s3_uri="s3://mybucket/checkpoints/",
+        checkpoint_local_path="/tmp/checkpoints",
+        enable_sagemaker_metrics=True,
+        retry_strategy=RETRY_STRATEGY,
+        training_image_config=TRAINING_IMAGE_CONFIG,
+    )
+
+    _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
+
+    assert (
+            actual_train_args["ProfilerConfig"]["DisableProfiler"]
+            == False
+    )
 
 def test_train_with_sagemaker_config_injection_empty_profiler_config(sagemaker_session):
     """

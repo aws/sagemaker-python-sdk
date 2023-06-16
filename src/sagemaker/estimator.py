@@ -38,7 +38,7 @@ from sagemaker.config import (
     TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
     TRAINING_JOB_ENVIRONMENT_PATH,
     TRAINING_JOB_PROFILE_CONFIG_PATH,
-    TRAINING_JOB_PROFILE_CONFIG_DISABLE_PROFILER_PATH,
+    TRAINING_JOB_DISABLE_PROFILER_PATH,
     TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
 )
 from sagemaker.debugger import (  # noqa: F401 # pylint: disable=unused-import
@@ -159,7 +159,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         enable_sagemaker_metrics: Optional[Union[bool, PipelineVariable]] = None,
         enable_network_isolation: Union[bool, PipelineVariable] = None,
         profiler_config: Optional[ProfilerConfig] = None,
-        disable_profiler: bool = False,
+        disable_profiler: bool = None,
         environment: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
         max_retry_attempts: Optional[Union[int, PipelineVariable]] = None,
         source_dir: Optional[Union[str, PipelineVariable]] = None,
@@ -357,7 +357,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 monitoring and profiling, set the
                 ``disable_profiler`` parameter to ``True``.
             disable_profiler (bool): Specifies whether Debugger monitoring and profiling
-                will be disabled (default: ``False``).
+                will be disabled (default: ``None``).
             environment (dict[str, str] or dict[str, PipelineVariable]) : Environment variables
                 to be set for use during training job (default: None)
             max_retry_attempts (int or PipelineVariable): The number of times to move a job
@@ -677,16 +677,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             sagemaker_session=self.sagemaker_session,
         )
 
-        self.profiler_config = resolve_value_from_config(
-            direct_input=profiler_config,
-            config_path=TRAINING_JOB_PROFILE_CONFIG_PATH,
-            default_value=None,
-            sagemaker_session=self.sagemaker_session,
-        )
+        self.profiler_config = profiler_config
         self.disable_profiler = resolve_value_from_config(
             direct_input=disable_profiler,
-            config_path=TRAINING_JOB_PROFILE_CONFIG_DISABLE_PROFILER_PATH,
-            default_value=None,
+            config_path=TRAINING_JOB_DISABLE_PROFILER_PATH,
+            default_value=False,
             sagemaker_session=self.sagemaker_session,
         )
 
