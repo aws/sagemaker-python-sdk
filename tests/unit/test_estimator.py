@@ -155,7 +155,7 @@ DISTRIBUTION_SM_DDP_ENABLED = {
 }
 MOCKED_S3_URI = "s3://mocked_s3_uri_from_source_dir"
 MOCKED_PIPELINE_CONFIG = _PipelineConfig(
-    "test-pipeline", "test-training-step", "code-hash-0123456789", "config-hash-0123456789"
+    "test-pipeline", "test-training-step", "code-hash-0123456789", "config-hash-0123456789", False
 )
 
 

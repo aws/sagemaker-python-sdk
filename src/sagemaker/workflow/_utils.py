@@ -412,6 +412,8 @@ class _RegisterModelStep(ConfigurableRetryStep):
     @property
     def arguments(self) -> RequestType:
         """The arguments dict that are used to call `create_model_package`."""
+        from sagemaker.workflow.utilities import _pipeline_config
+
         model_name = self.name
 
         if self.step_args:
@@ -493,8 +495,9 @@ class _RegisterModelStep(ConfigurableRetryStep):
             request_dict.pop("Description")
             logger.warning(warn_msg_template, "Description")
         if "ModelPackageName" in request_dict:
-            request_dict.pop("ModelPackageName")
-            logger.warning(warn_msg_template, "ModelPackageName")
+            if not _pipeline_config or not _pipeline_config.use_custom_job_prefix:
+                request_dict.pop("ModelPackageName", None)
+                logger.warning(warn_msg_template, "ModelPackageName")
 
         return request_dict
 

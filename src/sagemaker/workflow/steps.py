@@ -18,6 +18,7 @@ import warnings
 
 from enum import Enum
 from typing import Dict, List, Set, Union, Optional, Any, TYPE_CHECKING
+import re
 from urllib.parse import urlparse
 
 import attr
@@ -471,9 +472,10 @@ class TrainingStep(ConfigurableRetryStep):
         """The arguments dictionary that is used to call `create_training_job`.
 
         NOTE: The `CreateTrainingJob` request is not quite the args list that workflow needs.
-        The `TrainingJobName` and `ExperimentConfig` attributes cannot be included.
+        `ExperimentConfig` attribute cannot be included.
         """
         from sagemaker.workflow.utilities import execute_job_functions
+        from sagemaker.workflow.utilities import _pipeline_config
 
         if self.step_args:
             # execute fit function with saved parameters,
@@ -493,7 +495,17 @@ class TrainingStep(ConfigurableRetryStep):
         if "HyperParameters" in request_dict:
             request_dict["HyperParameters"].pop("sagemaker_job_name", None)
 
-        request_dict.pop("TrainingJobName", None)
+        # Continue to pop custom prefix if not explicitly opted-in
+        if not _pipeline_config or not _pipeline_config.use_custom_job_prefix:
+            request_dict.pop("TrainingJobName", None)
+        else:
+            # Strip timestamp -- workflow will use only the base-job name for name generation
+            if "TrainingJobName" in request_dict.keys():
+                job_name = request_dict["TrainingJobName"]
+                match = re.search("-([0-9]+(-[0-9]+)+)", job_name)
+                if match:
+                    request_dict["TrainingJobName"] = job_name[: match.start()]
+
         Step._trim_experiment_config(request_dict)
 
         return request_dict
@@ -595,8 +607,8 @@ class CreateModelStep(ConfigurableRetryStep):
         """The arguments dictionary that is used to call `create_model`.
 
         NOTE: The `CreateModelRequest` is not quite the args list that workflow needs.
-        `ModelName` cannot be included in the arguments.
         """
+        from sagemaker.workflow.utilities import _pipeline_config
 
         if self.step_args:
             request_dict = self.step_args
@@ -620,7 +632,17 @@ class CreateModelStep(ConfigurableRetryStep):
                     vpc_config=self.model.vpc_config,
                     enable_network_isolation=self.model.enable_network_isolation(),
                 )
-        request_dict.pop("ModelName", None)
+
+        # Continue to pop custom prefix if not explicitly opted-in
+        if not _pipeline_config or not _pipeline_config.use_custom_job_prefix:
+            request_dict.pop("ModelName", None)
+        else:
+            # Strip timestamp -- workflow will use only the base-job name for name generation
+            if "ModelName" in request_dict.keys():
+                job_name = request_dict["ModelName"]
+                match = re.search("-([0-9]+(-[0-9]+)+)", job_name)
+                if match:
+                    request_dict["ModelName"] = job_name[: match.start()]
 
         return request_dict
 
@@ -702,9 +724,10 @@ class TransformStep(ConfigurableRetryStep):
         """The arguments dictionary that is used to call `create_transform_job`.
 
         NOTE: The `CreateTransformJob` request is not quite the args list that workflow needs.
-        `TransformJobName` and `ExperimentConfig` cannot be included in the arguments.
+        `ExperimentConfig` cannot be included in the arguments.
         """
         from sagemaker.workflow.utilities import execute_job_functions
+        from sagemaker.workflow.utilities import _pipeline_config
 
         if self.step_args:
             # execute transform function with saved parameters,
@@ -733,7 +756,16 @@ class TransformStep(ConfigurableRetryStep):
                 **transform_args
             )
 
-        request_dict.pop("TransformJobName", None)
+        print(request_dict)
+        # Continue to pop custom prefix if not explicitly opted-in
+        if not _pipeline_config or not _pipeline_config.use_custom_job_prefix:
+            request_dict.pop("TransformJobName", None)
+        else:
+            if "TransformJobName" in request_dict.keys():
+                job_name = request_dict["TransformJobName"]
+                match = re.search("-([0-9]+(-[0-9]+)+)", job_name)
+                if match:
+                    request_dict["TransformJobName"] = job_name[: match.start()]
         Step._trim_experiment_config(request_dict)
 
         return request_dict
@@ -864,9 +896,10 @@ class ProcessingStep(ConfigurableRetryStep):
         """The arguments dictionary that is used to call `create_processing_job`.
 
         NOTE: The `CreateProcessingJob` request is not quite the args list that workflow needs.
-        `ProcessingJobName` and `ExperimentConfig` cannot be included in the arguments.
+        `ExperimentConfig` cannot be included in the arguments.
         """
         from sagemaker.workflow.utilities import execute_job_functions
+        from sagemaker.workflow.utilities import _pipeline_config
 
         if self.step_args:
             # execute run function with saved parameters,
@@ -890,7 +923,17 @@ class ProcessingStep(ConfigurableRetryStep):
             )
             request_dict = self.processor.sagemaker_session._get_process_request(**process_args)
 
-        request_dict.pop("ProcessingJobName", None)
+        # Continue to pop custom prefix if not explicitly opted-in
+        if not _pipeline_config or not _pipeline_config.use_custom_job_prefix:
+            request_dict.pop("ProcessingJobName", None)
+        else:
+            # Strip timestamp -- workflow will use only the base-job name for name generation
+            if "ProcessingJobName" in request_dict.keys():
+                job_name = request_dict["ProcessingJobName"]
+                match = re.search("-([0-9]+(-[0-9]+)+)", job_name)
+                if match:
+                    request_dict["ProcessingJobName"] = job_name[: match.start()]
+
         Step._trim_experiment_config(request_dict)
 
         return request_dict
@@ -1025,9 +1068,9 @@ class TuningStep(ConfigurableRetryStep):
 
         NOTE: The `CreateHyperParameterTuningJob` request is not quite the
             args list that workflow needs.
-        The `HyperParameterTuningJobName` attribute cannot be included.
         """
         from sagemaker.workflow.utilities import execute_job_functions
+        from sagemaker.workflow.utilities import _pipeline_config
 
         if self.step_args:
             # execute fit function with saved parameters,
@@ -1048,7 +1091,17 @@ class TuningStep(ConfigurableRetryStep):
             tuner_args = _TuningJob._get_tuner_args(self.tuner, self.inputs)
             request_dict = self.tuner.sagemaker_session._get_tuning_request(**tuner_args)
 
-        request_dict.pop("HyperParameterTuningJobName", None)
+        # Continue to pop custom prefix if not explicitly opted-in
+        if not _pipeline_config or not _pipeline_config.use_custom_job_prefix:
+            request_dict.pop("HyperParameterTuningJobName", None)
+        else:
+            # Strip timestamp -- workflow will use only the base-job name for name generation
+            if "HyperParameterTuningJobName" in request_dict.keys():
+                job_name = request_dict["HyperParameterTuningJobName"]
+                match = re.search("-([0-9]+(-[0-9]+)+)", job_name)
+                if match:
+                    request_dict["HyperParameterTuningJobName"] = job_name[: match.start()]
+
         return request_dict
 
     @property

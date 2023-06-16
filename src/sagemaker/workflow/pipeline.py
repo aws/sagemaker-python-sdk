@@ -37,6 +37,7 @@ from sagemaker.workflow.entities import (
 )
 from sagemaker.workflow.execution_variables import ExecutionVariables
 from sagemaker.workflow.parameters import Parameter
+from sagemaker.workflow.pipeline_definition_config import PipelineDefinitionConfig
 from sagemaker.workflow.pipeline_experiment_config import PipelineExperimentConfig
 from sagemaker.workflow.parallelism_config import ParallelismConfiguration
 from sagemaker.workflow.properties import Properties
@@ -52,6 +53,8 @@ _DEFAULT_EXPERIMENT_CFG = PipelineExperimentConfig(
     ExecutionVariables.PIPELINE_NAME, ExecutionVariables.PIPELINE_EXECUTION_ID
 )
 
+_DEFAULT_DEFINITION_CFG = PipelineDefinitionConfig(use_custom_job_prefix=False)
+
 
 class Pipeline(Entity):
     """Pipeline for workflow."""
@@ -61,6 +64,7 @@ class Pipeline(Entity):
         name: str = "",
         parameters: Optional[Sequence[Parameter]] = None,
         pipeline_experiment_config: Optional[PipelineExperimentConfig] = _DEFAULT_EXPERIMENT_CFG,
+        pipeline_definition_config: Optional[PipelineDefinitionConfig] = _DEFAULT_DEFINITION_CFG,
         steps: Optional[Sequence[Union[Step, StepCollection]]] = None,
         sagemaker_session: Optional[Session] = None,
     ):
@@ -88,6 +92,7 @@ class Pipeline(Entity):
         self.name = name
         self.parameters = parameters if parameters else []
         self.pipeline_experiment_config = pipeline_experiment_config
+        self.pipeline_definition_config = pipeline_definition_config
         self.steps = steps if steps else []
         self.sagemaker_session = sagemaker_session if sagemaker_session else Session()
 
@@ -105,7 +110,9 @@ class Pipeline(Entity):
             "PipelineExperimentConfig": self.pipeline_experiment_config.to_request()
             if self.pipeline_experiment_config is not None
             else None,
-            "Steps": build_steps(self.steps, self.name),
+            "Steps": build_steps(
+                self.steps, self.name, self.pipeline_definition_config.use_custom_job_prefix
+            ),
         }
 
     def create(

@@ -225,6 +225,8 @@ class QualityCheckStep(Step):
     @property
     def arguments(self) -> RequestType:
         """The arguments dict that is used to define the QualityCheck step."""
+        from sagemaker.workflow.utilities import _pipeline_config
+
         normalized_inputs, normalized_outputs = self._baselining_processor._normalize_args(
             inputs=self._baseline_job_inputs,
             outputs=[self._baseline_output],
@@ -238,8 +240,9 @@ class QualityCheckStep(Step):
         request_dict = self._baselining_processor.sagemaker_session._get_process_request(
             **process_args
         )
-        if "ProcessingJobName" in request_dict:
-            request_dict.pop("ProcessingJobName")
+        if not _pipeline_config or not _pipeline_config.use_custom_job_prefix:
+            if "ProcessingJobName" in request_dict:
+                request_dict.pop("ProcessingJobName")
 
         return request_dict
 

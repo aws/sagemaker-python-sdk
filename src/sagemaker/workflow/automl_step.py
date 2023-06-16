@@ -93,6 +93,7 @@ class AutoMLStep(ConfigurableRetryStep):
             attribute cannot be included.
         """
         from sagemaker.workflow.utilities import execute_job_functions
+        from sagemaker.workflow.utilities import _pipeline_config
 
         # execute fit function in AutoML with saved parameters,
         # and store args in PipelineSession's _context
@@ -114,7 +115,9 @@ class AutoMLStep(ConfigurableRetryStep):
             request_dict.pop("ModelDeployConfig", None)
         if "GenerateCandidateDefinitionsOnly" in request_dict:
             request_dict.pop("GenerateCandidateDefinitionsOnly", None)
-        request_dict.pop("AutoMLJobName", None)
+        if not _pipeline_config or not _pipeline_config.use_custom_job_prefix:
+            request_dict.pop("AutoMLJobName", None)
+
         return request_dict
 
     @property

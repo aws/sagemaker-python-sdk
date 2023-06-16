@@ -59,7 +59,13 @@ def list_to_request(entities: Sequence[Union[Entity, "StepCollection"]]) -> List
 
 
 @contextmanager
-def _pipeline_config_manager(pipeline_name: str, step_name: str, code_hash: str, config_hash: str):
+def _pipeline_config_manager(
+    pipeline_name: str,
+    step_name: str,
+    code_hash: str,
+    config_hash: str,
+    use_custom_job_prefix: bool,
+):
     """Expose static _pipeline_config variable to other modules
 
     Args:
@@ -71,19 +77,22 @@ def _pipeline_config_manager(pipeline_name: str, step_name: str, code_hash: str,
 
     # pylint: disable=W0603
     global _pipeline_config
-    _pipeline_config = _PipelineConfig(pipeline_name, step_name, code_hash, config_hash)
+    _pipeline_config = _PipelineConfig(
+        pipeline_name, step_name, code_hash, config_hash, use_custom_job_prefix
+    )
     try:
         yield
     finally:
         _pipeline_config = None
 
 
-def build_steps(steps: Sequence[Entity], pipeline_name: str):
+def build_steps(steps: Sequence[Entity], pipeline_name: str, use_custom_job_prefix: bool):
     """Get the request structure for list of steps, with _pipeline_config_manager
 
     Args:
         steps (Sequence[Entity]): A list of steps, (Entity type because Step causes circular import)
         pipeline_name (str): The name of the pipeline, passed down from pipeline.to_request()
+        use_custom_job_prefix (bool): The feature flag to toggle on/off custom job prefixing in a pipeline execution
     Returns:
         list: A request structure object for a service call for the list of pipeline steps
     """
@@ -95,7 +104,11 @@ def build_steps(steps: Sequence[Entity], pipeline_name: str):
             request_dicts.extend(step.request_dicts())
         else:
             with _pipeline_config_manager(
-                pipeline_name, step.name, get_code_hash(step), get_config_hash(step)
+                pipeline_name,
+                step.name,
+                get_code_hash(step),
+                get_config_hash(step),
+                use_custom_job_prefix,
             ):
                 request_dicts.append(step.to_request())
     return request_dicts

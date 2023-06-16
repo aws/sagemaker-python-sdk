@@ -45,6 +45,7 @@ from sagemaker.spark.processing import SparkJarProcessor, PySparkProcessor
 
 from sagemaker.workflow.steps import CacheConfig, ProcessingStep
 from sagemaker.workflow.pipeline import Pipeline, PipelineGraph
+from sagemaker.workflow.pipeline_definition_config import PipelineDefinitionConfig
 from sagemaker.workflow.pipeline_context import _PipelineConfig
 from sagemaker.workflow.properties import PropertyFile
 from sagemaker.workflow.parameters import ParameterString
@@ -80,7 +81,14 @@ SPARK_PY_FILE2 = os.path.join(DATA_DIR, "spark/code/python/hello_py_spark/hello_
 SPARK_SUBMIT_FILE1 = os.path.join(DATA_DIR, "spark/files/data.jsonl")
 SPARK_SUBMIT_FILE2 = os.path.join(DATA_DIR, "spark/files/sample_spark_event_logs")
 MOCKED_PIPELINE_CONFIG = _PipelineConfig(
-    "MyPipeline", "MyProcessingStep", hash_files_or_dirs([LOCAL_SCRIPT_PATH]), "config-hash-abcdefg"
+    "MyPipeline",
+    "MyProcessingStep",
+    hash_files_or_dirs([LOCAL_SCRIPT_PATH]),
+    "config-hash-abcdefg",
+    False,
+)
+MOCKED_PIPELINE_CONFIG_WITH_CUSTOM_PREFIX = _PipelineConfig(
+    "MyPipelineWithCustomPrefix", "MyProcessingStep", None, None, True
 )
 
 FRAMEWORK_PROCESSOR = [
@@ -1115,3 +1123,61 @@ def test_processor_with_role_as_pipeline_parameter(
 
     step_def = json.loads(pipeline.definition())["Steps"][0]
     assert step_def["Arguments"]["RoleArn"] == {"Get": f"Parameters.{_PARAM_ROLE_NAME}"}
+
+
+@patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG_WITH_CUSTOM_PREFIX)
+def test_processing_step_with_custom_job_prefixes(
+    pipeline_session, processing_input, network_config
+):
+
+    processor = Processor(
+        instance_type=INSTANCE_TYPE,
+        instance_count=1,
+        role=ROLE,
+        base_job_name="ProcessingJobPrefix-2023-06-20-20-42-13-030",
+    )
+    processor.sagemaker_session = pipeline_session
+    processor.role = ROLE
+    processor.volume_kms_key = "volume-kms-key"
+    processor.network_config = network_config
+
+    processor_args = processor.run(inputs=processing_input)
+
+    step = ProcessingStep(
+        name="MyProcessingStep",
+        step_args=processor_args,
+    )
+
+    # Toggle the custom prefixing feature ON for this pipeline
+    definition_config = PipelineDefinitionConfig(use_custom_job_prefix=True)
+
+    pipeline = Pipeline(
+        name="MyPipelineWithCustomPrefix",
+        steps=[step],
+        sagemaker_session=pipeline_session,
+        pipeline_definition_config=definition_config,
+    )
+
+    # ProcessingJobPrefix-2023-06-20-20-42-13-030 trimmed to ProcessingJobPrefix
+    step_args = get_step_args_helper(processor_args, "Processing", True)
+    step_def = json.loads(pipeline.definition())["Steps"][0]
+
+    assert step_def["Arguments"]["ProcessingJobName"] == "ProcessingJobPrefix"
+    assert step_def == {
+        "Name": "MyProcessingStep",
+        "Type": "Processing",
+        "Arguments": step_args,
+    }
+
+    # Toggle the custom prefixing feature OFF for this pipeline, JobName now not present in step_args
+    pipeline.pipeline_definition_config.use_custom_job_prefix = False
+
+    step_args2 = get_step_args_helper(processor_args, "Processing", False)
+    step_def2 = json.loads(pipeline.definition())["Steps"][0]
+
+    assert "ProcessingJobName" not in step_def2["Arguments"]
+    assert step_def2 == {
+        "Name": "MyProcessingStep",
+        "Type": "Processing",
+        "Arguments": step_args2,
+    }

@@ -54,7 +54,7 @@ ECR_HOSTNAME = "ecr.us-west-2.amazonaws.com"
 CUSTOM_IMAGE_URI = "012345678901.dkr.ecr.us-west-2.amazonaws.com/my-custom-image-uri"
 MOCKED_S3_URI = "s3://mocked_s3_uri_from_upload_data"
 MOCKED_PIPELINE_CONFIG = _PipelineConfig(
-    "test-pipeline", "test-processing-step", "code-hash-abcdefg", "config-hash-abcdefg"
+    "test-pipeline", "test-processing-step", "code-hash-abcdefg", "config-hash-abcdefg", False
 )
 
 

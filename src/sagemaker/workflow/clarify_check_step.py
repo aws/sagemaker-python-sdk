@@ -253,6 +253,8 @@ class ClarifyCheckStep(Step):
     @property
     def arguments(self) -> RequestType:
         """The arguments dict that is used to define the ClarifyCheck step."""
+        from sagemaker.workflow.utilities import _pipeline_config
+
         normalized_inputs, normalized_outputs = self._baselining_processor._normalize_args(
             inputs=[self._processing_params["config_input"], self._processing_params["data_input"]],
             outputs=[self._processing_params["result_output"]],
@@ -266,8 +268,9 @@ class ClarifyCheckStep(Step):
         request_dict = self._baselining_processor.sagemaker_session._get_process_request(
             **process_args
         )
-        if "ProcessingJobName" in request_dict:
-            request_dict.pop("ProcessingJobName")
+        if not _pipeline_config or not _pipeline_config.use_custom_job_prefix:
+            if "ProcessingJobName" in request_dict:
+                request_dict.pop("ProcessingJobName")
 
         return request_dict
 

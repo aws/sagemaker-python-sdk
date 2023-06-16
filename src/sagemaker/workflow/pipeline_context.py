@@ -89,11 +89,12 @@ class _PipelineConfig:
         config_hash (str): a hash of the config artifact for the particular step (Processing)
     """
 
-    def __init__(self, pipeline_name, step_name, code_hash, config_hash):
+    def __init__(self, pipeline_name, step_name, code_hash, config_hash, use_custom_job_prefix):
         self.pipeline_name = pipeline_name
         self.step_name = step_name
         self.code_hash = code_hash
         self.config_hash = config_hash
+        self.use_custom_job_prefix = use_custom_job_prefix
 
 
 class PipelineSession(Session):
