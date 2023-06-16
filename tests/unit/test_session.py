@@ -1623,6 +1623,7 @@ def test_stop_tuning_job_client_error(sagemaker_session):
         in str(e)
     )
 
+
 def test_train_with_sagemaker_config_injection_custom_profiler_config(sagemaker_session):
     """
     Tests disableProfiler property is overridden by custom profiler_config with property set
@@ -1664,9 +1665,7 @@ def test_train_with_sagemaker_config_injection_custom_profiler_config(sagemaker_
         },
     }
 
-    profiler_config = {
-        "DisableProfiler": False
-    }
+    profiler_config = {"DisableProfiler": False}
     sagemaker_session.train(
         image_uri=IMAGE,
         input_mode="File",
@@ -1688,10 +1687,8 @@ def test_train_with_sagemaker_config_injection_custom_profiler_config(sagemaker_
 
     _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
 
-    assert (
-            actual_train_args["ProfilerConfig"]["DisableProfiler"]
-            == False
-    )
+    assert actual_train_args["ProfilerConfig"]["DisableProfiler"] is False
+
 
 def test_train_with_sagemaker_config_injection_empty_profiler_config(sagemaker_session):
     """
