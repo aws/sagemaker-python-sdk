@@ -444,16 +444,16 @@ def update_dict_if_key_not_present(
     return dict_to_update
 
 
-def resolve_model_intelligent_default_field(
+def resolve_model_sagemaker_config_field(
     field_name: str,
     field_val: Optional[Any],
     sagemaker_session: Session,
     default_value: Optional[str] = None,
 ) -> Any:
-    """Given a field name, checks if there are intelligent defaults to set.
+    """Given a field name, checks if there is a sagemaker config value to set.
 
     For the role field, which is customer-supplied, we allow ``field_val`` to take precedence
-    over intelligent defaults. For all other fields, intelligent defaults takes precedence
+    over sagemaker config values. For all other fields, sagemaker config values take precedence
     over the JumpStart default fields.
     """
     # In case, sagemaker_session is None, get sagemaker_config from load_sagemaker_config()
@@ -461,7 +461,7 @@ def resolve_model_intelligent_default_field(
     _sagemaker_config = load_sagemaker_config() if (sagemaker_session is None) else None
 
     # We allow customers to define a role which takes precedence
-    # over intelligent defaults
+    # over the one defined in sagemaker config
     if field_name == "role":
         return resolve_value_from_config(
             direct_input=field_val,
@@ -472,7 +472,7 @@ def resolve_model_intelligent_default_field(
         )
 
     # JumpStart Models have certain default field values. We want
-    # intelligent defaults to take priority over the model-specific defaults.
+    # sagemaker config values to take priority over the model-specific defaults.
     if field_name == "enable_network_isolation":
         resolved_val = resolve_value_from_config(
             direct_input=None,
@@ -483,20 +483,20 @@ def resolve_model_intelligent_default_field(
         )
         return resolved_val if resolved_val is not None else field_val
 
-    # field is not covered by intelligent defaults so return as is
+    # field is not covered by sagemaker config so return as is
     return field_val
 
 
-def resolve_estimator_intelligent_default_field(
+def resolve_estimator_sagemaker_config_field(
     field_name: str,
     field_val: Optional[Any],
     sagemaker_session: Session,
     default_value: Optional[str] = None,
 ) -> Any:
-    """Given a field name, checks if there are intelligent defaults to set.
+    """Given a field name, checks if there is a sagemaker config value to set.
 
     For the role field, which is customer-supplied, we allow ``field_val`` to take precedence
-    over intelligent defaults. For all other fields, intelligent defaults takes precedence
+    over sagemaker config values. For all other fields, sagemaker config values take precedence
     over the JumpStart default fields.
     """
 
@@ -506,7 +506,7 @@ def resolve_estimator_intelligent_default_field(
     _sagemaker_config = load_sagemaker_config() if (sagemaker_session is None) else None
 
     # We allow customers to define a role which takes precedence
-    # over intelligent defaults
+    # over the one defined in sagemaker config
     if field_name == "role":
         return resolve_value_from_config(
             direct_input=field_val,
@@ -517,7 +517,7 @@ def resolve_estimator_intelligent_default_field(
         )
 
     # JumpStart Estimators have certain default field values. We want
-    # intelligent defaults to take priority over the model-specific defaults.
+    # sagemaker config values to take priority over the model-specific defaults.
     if field_name == "enable_network_isolation":
 
         resolved_val = resolve_value_from_config(
@@ -540,7 +540,7 @@ def resolve_estimator_intelligent_default_field(
         )
         return resolved_val if resolved_val is not None else field_val
 
-    # field is not covered by intelligent defaults so return as is
+    # field is not covered by sagemaker config so return as is
     return field_val
 
 
