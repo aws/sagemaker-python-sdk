@@ -1,5 +1,19 @@
 # Changelog
 
+## v2.166.0 (2023-06-19)
+
+### Features
+
+ * Add `inf2` support to `HuggingFaceModel`
+ * adding resourcekey and tags for api in config for SDK defaults
+
+### Bug Fixes and Other Changes
+
+ * Remove deprecated option.s3url in favor of option.model_id
+ * Use sagemaker config keyword
+ * SDK Defaults Config - Handle config injection for None Sessions
+ * Fix HPO Grid Search comparison and name
+
 ## v2.165.0 (2023-06-13)
 
 ### Features
