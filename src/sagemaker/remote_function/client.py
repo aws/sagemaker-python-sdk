@@ -83,8 +83,6 @@ def remote(
     volume_size: int = 30,
     encrypt_inter_container_traffic: bool = None,
     spark_config: SparkConfig = None,
-    # TODO: For dev test purpose only, this will be removed after GA
-    python_sdk_whl_s3_uri: str = None,
 ):
     """Decorator for running the annotated function as a SageMaker training job.
 
@@ -286,8 +284,6 @@ def remote(
             volume_size=volume_size,
             encrypt_inter_container_traffic=encrypt_inter_container_traffic,
             spark_config=spark_config,
-            # TODO: For dev test purpose only, this will be removed after GA
-            python_sdk_whl_s3_uri=python_sdk_whl_s3_uri,
         )
 
         @functools.wraps(func)

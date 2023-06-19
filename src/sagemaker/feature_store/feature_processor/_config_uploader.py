@@ -31,7 +31,6 @@ from sagemaker.remote_function.job import (
     _JobSettings,
     RUNTIME_SCRIPTS_CHANNEL_NAME,
     REMOTE_FUNCTION_WORKSPACE,
-    SAGEMAKER_WHL_CHANNEL_NAME,
     SPARK_CONF_WORKSPACE,
     _prepare_and_upload_spark_dependent_files,
 )
@@ -105,13 +104,6 @@ class ConfigUploader:
                 s3_data_type="S3Prefix",
                 distribution=S3_DATA_DISTRIBUTION_TYPE,
             )
-
-        # TODO: remove this after pathways GA
-        input_data_config[SAGEMAKER_WHL_CHANNEL_NAME] = TrainingInput(
-            s3_data=self.remote_decorator_config.python_sdk_whl_s3_uri,
-            s3_data_type="S3Prefix",
-            distribution=S3_DATA_DISTRIBUTION_TYPE,
-        )
 
         return input_data_config, {
             SPARK_JAR_FILES_PATH: submit_jars_s3_paths,

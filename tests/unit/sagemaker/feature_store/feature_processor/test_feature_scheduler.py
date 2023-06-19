@@ -49,7 +49,6 @@ from sagemaker.remote_function.job import (
     SPARK_APP_SCRIPT_PATH,
     RUNTIME_SCRIPTS_CHANNEL_NAME,
     REMOTE_FUNCTION_WORKSPACE,
-    SAGEMAKER_WHL_CHANNEL_NAME,
     SPARK_CONF_WORKSPACE,
     ENTRYPOINT_SCRIPT_NAME,
 )
@@ -77,9 +76,6 @@ EXECUTION_ROLE_ARN = "my_execution_role_arn"
 VALID_SCHEDULE_STATE = "ENABLED"
 INVALID_SCHEDULE_STATE = "invalid"
 TEST_REGION = "us-west-2"
-SAGEMAKER_SDK_WHL_FILE = (
-    "s3://sagemaker-pathways/beta/pysdk/sagemaker-2.132.1.dev0-py2.py3-none-any.whl"
-)
 PIPELINE_CONTEXT_NAME_TAG_KEY = "sm-fs-fe:feature-engineering-pipeline-context-name"
 PIPELINE_VERSION_CONTEXT_NAME_TAG_KEY = "sm-fs-fe:feature-engineering-pipeline-version-context-name"
 NOW = datetime.now()
@@ -319,9 +315,6 @@ def test_to_pipeline(
                 s3_data=f"{S3_URI}/pipeline_name/sm_rf_user_ws", s3_data_type="S3Prefix"
             ),
             SPARK_CONF_WORKSPACE: mock_training_input(s3_data="path_d", s3_data_type="S3Prefix"),
-            SAGEMAKER_WHL_CHANNEL_NAME: mock_training_input(
-                s3_data=SAGEMAKER_SDK_WHL_FILE, s3_data_type="S3Prefix"
-            ),
         },
         retry_policies=[
             StepRetryPolicy(
@@ -786,7 +779,6 @@ def test_validate_pipeline_lineage_resources_rnf():
 def test_remote_decorator_fields_consistency(get_execution_role, session):
     expected_remote_decorator_attributes = {
         "sagemaker_session",
-        "python_sdk_whl_s3_uri",
         "environment_variables",
         "image_uri",
         "dependencies",

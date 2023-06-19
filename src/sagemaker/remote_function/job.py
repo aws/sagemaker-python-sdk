@@ -74,10 +74,6 @@ JOB_REMOTE_FUNCTION_WORKSPACE = "sagemaker_remote_function_workspace"
 SPARK_CONF_CHANNEL_NAME = "conf"
 SPARK_CONF_FILE_NAME = "configuration.json"
 
-# TODO: SageMaker python SDK wheel file and channel name, remove after GA
-SAGEMAKER_WHL_CHANNEL_NAME = "sagemaker_whl_file"
-SAGEMAKER_WHL_FILE_NAME = "sagemaker-2.163.1.dev0-py2.py3-none-any.whl"
-
 # Spark submitted files workspace names on S3
 SPARK_SUBMIT_JARS_WORKSPACE = "sm_rf_spark_jars"
 SPARK_SUBMIT_PY_FILES_WORKSPACE = "sm_rf_spark_py_files"
@@ -155,9 +151,6 @@ printf "INFO: Bootstraping Spark runtime environment.\\n"
 
 python3 /opt/ml/input/data/{RUNTIME_SCRIPTS_CHANNEL_NAME}/{BOOTSTRAP_SCRIPT_NAME} "$@"
 
-# TODO: Remove this installation after GA
-python3 -m pip install /opt/ml/input/data/{SAGEMAKER_WHL_CHANNEL_NAME}/{SAGEMAKER_WHL_FILE_NAME}
-
 # Spark Container entry point script to initiate the spark application
 smspark-submit "$@"
 """
@@ -198,8 +191,6 @@ class _JobSettings:
         volume_size: int = 30,
         encrypt_inter_container_traffic: bool = None,
         spark_config: SparkConfig = None,
-        # TODO: For dev test purpose only, this will be removed after GA
-        python_sdk_whl_s3_uri: str = None,
     ):
         """Initialize a _JobSettings instance which configures the remote job.
 
@@ -364,7 +355,6 @@ class _JobSettings:
               same time otherwise a ``ValueError`` is thrown. Defaults to ``None``.
         """
         self.sagemaker_session = sagemaker_session or Session()
-        self.python_sdk_whl_s3_uri = python_sdk_whl_s3_uri
         self.environment_variables = resolve_value_from_config(
             direct_input=environment_variables,
             config_path=REMOTE_FUNCTION_ENVIRONMENT_VARIABLES,
@@ -681,19 +671,6 @@ class _Job:
                 },
             )
         ]
-
-        if job_settings.python_sdk_whl_s3_uri:
-            input_data_config.append(
-                dict(
-                    ChannelName=SAGEMAKER_WHL_CHANNEL_NAME,
-                    DataSource={
-                        "S3DataSource": {
-                            "S3Uri": job_settings.python_sdk_whl_s3_uri,
-                            "S3DataType": "S3Prefix",
-                        }
-                    },
-                )
-            )
 
         if user_dependencies_s3uri:
             input_data_config.append(
