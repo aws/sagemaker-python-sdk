@@ -1134,11 +1134,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
         # No injections from sagemaker_config because the UpdateTrainingJob API's resource_config
         # object accepts fewer parameters than the CreateTrainingJob API, and none that the
         # sagemaker_config currently supports
-
+        inferred_profiler_config = update_nested_dictionary_with_values_from_config(
+            profiler_config, TRAINING_JOB_PROFILE_CONFIG_PATH, sagemaker_session=self
+        )
         update_training_job_request = self._get_update_training_job_request(
             job_name=job_name,
             profiler_rule_configs=profiler_rule_configs,
-            profiler_config=profiler_config,
+            profiler_config=inferred_profiler_config,
             resource_config=resource_config,
         )
         LOGGER.info("Updating training job with name %s", job_name)

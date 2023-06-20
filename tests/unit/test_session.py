@@ -1832,6 +1832,27 @@ def test_train_with_sagemaker_config_injection_partial_profiler_config(sagemaker
         actual_train_args["ProfilerConfig"]["DisableProfiler"]
         == expected_disable_profiler_attribute
     )
+    assert actual_train_args["ProfilerConfig"]["ProfilingIntervalInMilliseconds"] == 1000
+    assert actual_train_args["ProfilerConfig"]["S3OutputPath"] == "s3://mybucket/myoutputbucket"
+
+
+def test_update_training_job_without_sagemaker_config_injection(sagemaker_session):
+    sagemaker_session.update_training_job(job_name="MyTestJob")
+    _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
+    assert actual_train_args["TrainingJobName"] == "MyTestJob"
+
+
+def test_update_training_job_with_sagemaker_config_injection(sagemaker_session):
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
+    sagemaker_session.update_training_job(job_name="MyTestJob")
+    _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
+    expected_disable_profiler_attribute = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "ProfilerConfig"
+    ]["DisableProfiler"]
+    assert (
+        actual_train_args["ProfilerConfig"]["DisableProfiler"]
+        == expected_disable_profiler_attribute
+    )
 
 
 def test_train_with_sagemaker_config_injection(sagemaker_session):

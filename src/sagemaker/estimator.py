@@ -356,7 +356,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 monitoring and profiling, set the
                 ``disable_profiler`` parameter to ``True``.
             disable_profiler (bool): Specifies whether Debugger monitoring and profiling
-                will be disabled (default: ``None``).
+                will be disabled (default: ``False``).
             environment (dict[str, str] or dict[str, PipelineVariable]) : Environment variables
                 to be set for use during training job (default: None)
             max_retry_attempts (int or PipelineVariable): The number of times to move a job
