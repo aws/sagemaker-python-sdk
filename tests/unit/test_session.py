@@ -1784,8 +1784,6 @@ def test_train_with_sagemaker_config_injection_no_kms_support(sagemaker_session)
         environment=ENV_INPUT,
         retry_strategy=RETRY_STRATEGY,
         training_image_config=TRAINING_IMAGE_CONFIG,
-        container_entry_point=CONTAINER_ENTRY_POINT,
-        container_arguments=CONTAINER_ARGUMENTS,
     )
 
     _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
