@@ -100,6 +100,8 @@ PRIMARY_CONTAINER = "PrimaryContainer"
 INFERENCE_SPECIFICATION = "InferenceSpecification"
 PROFILER_CONFIG = "ProfilerConfig"
 DISABLE_PROFILER = "DisableProfiler"
+ESTIMATOR = "Estimator"
+DEBUG_HOOK_CONFIG = "DebugHookConfig"
 
 
 def _simple_path(*args: str):
@@ -337,6 +339,9 @@ SESSION_DEFAULT_S3_BUCKET_PATH = _simple_path(
 )
 SESSION_DEFAULT_S3_OBJECT_KEY_PREFIX_PATH = _simple_path(
     SAGEMAKER, PYTHON_SDK, MODULES, SESSION, DEFAULT_S3_OBJECT_KEY_PREFIX
+)
+ESTIMATOR_DEBUG_HOOK_CONFIG_PATH = _simple_path(
+    SAGEMAKER, PYTHON_SDK, MODULES, ESTIMATOR, DEBUG_HOOK_CONFIG
 )
 
 
@@ -642,6 +647,24 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                             # (even though S3 allows multiple "/" in a row)
                                             "minLength": 1,
                                             "maxLength": 1024,
+                                        },
+                                    },
+                                },
+                                ESTIMATOR: {
+                                    TYPE: OBJECT,
+                                    ADDITIONAL_PROPERTIES: False,
+                                    PROPERTIES: {
+                                        DEBUG_HOOK_CONFIG: {
+                                            TYPE: "boolean",
+                                            "description": (
+                                                "Sets a boolean for `debugger_hook_config` of"
+                                                "Estimator which will be then used for training job"
+                                                "API call. As of today, config_schema does not"
+                                                "support the dict as a valid value to be provided."
+                                                "In case, we decide to support it in the future,"
+                                                "we can add a new schema for it under"
+                                                "`SageMaker.TrainingJob` config path."
+                                            ),
                                         },
                                     },
                                 },
@@ -990,6 +1013,11 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                 },
                 # Training Job
                 # https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateTrainingJob.html
+                # Please note that we currently support 'DebugHookConfig' as a boolean value
+                # which can be provided under [SageMaker.PythonSDK.Modules.Estimator] config path.
+                # As of today, config_schema does not support the dict as a valid value to be
+                # provided. In case, we decide to support it in the future, we can add a new schema
+                # for it under [SageMaker.TrainingJob] config path.
                 TRAINING_JOB: {
                     TYPE: OBJECT,
                     ADDITIONAL_PROPERTIES: False,

@@ -30,6 +30,7 @@ import sagemaker
 from sagemaker import git_utils, image_uris, vpc_utils, s3
 from sagemaker.analytics import TrainingJobAnalytics
 from sagemaker.config import (
+    ESTIMATOR_DEBUG_HOOK_CONFIG_PATH,
     TRAINING_JOB_VOLUME_KMS_KEY_ID_PATH,
     TRAINING_JOB_SECURITY_GROUP_IDS_PATH,
     TRAINING_JOB_SUBNETS_PATH,
@@ -675,7 +676,18 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.checkpoint_local_path = checkpoint_local_path
 
         self.rules = rules
-        self.debugger_hook_config = debugger_hook_config
+
+        self.debugger_hook_config = resolve_value_from_config(
+            direct_input=debugger_hook_config,
+            config_path=ESTIMATOR_DEBUG_HOOK_CONFIG_PATH,
+            sagemaker_session=sagemaker_session,
+        )
+        # If customer passes True from either direct_input or sagemaker_config, we will
+        # create a default hook config as an empty dict which will later be populated
+        # with default s3_output_path from _prepare_debugger_for_training function
+        if self.debugger_hook_config is True:
+            self.debugger_hook_config = {}
+
         self.tensorboard_output_config = tensorboard_output_config
 
         self.debugger_rule_configs = None
