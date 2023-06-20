@@ -594,7 +594,6 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             is_repack = (
                 self.source_dir
                 and self.entry_point
-                and self.model_data
                 and not (
                     (self.key_prefix and issubclass(type(self), FrameworkModel)) or self.git_config
                 )
