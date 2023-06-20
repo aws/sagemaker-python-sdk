@@ -592,7 +592,12 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         deploy_env = copy.deepcopy(self.env)
         if self.source_dir or self.dependencies or self.entry_point or self.git_config:
             is_repack = (
-                self.source_dir and self.entry_point and not (self.key_prefix or self.git_config)
+                self.source_dir
+                and self.entry_point
+                and self.model_data
+                and not (
+                    (self.key_prefix and issubclass(type(self), FrameworkModel)) or self.git_config
+                )
             )
             self._upload_code(deploy_key_prefix, repack=is_repack)
             deploy_env.update(self._script_mode_env_vars())
