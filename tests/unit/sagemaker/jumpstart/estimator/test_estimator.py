@@ -947,9 +947,9 @@ class EstimatorTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.factory.estimator._retrieve_estimator_init_kwargs")
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.reset_cache")
+    @mock.patch("sagemaker.jumpstart.estimator.JumpStartModelsAccessor.reset_cache")
     @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
-    def test_model_id_not_found_refeshes_cache(
+    def test_model_id_not_found_refeshes_cache_training(
         self,
         mock_reset_cache: mock.Mock,
         mock_get_model_specs: mock.Mock,
