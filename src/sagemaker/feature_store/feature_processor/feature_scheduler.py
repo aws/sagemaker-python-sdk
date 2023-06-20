@@ -455,6 +455,7 @@ def list_pipelines(sagemaker_session: Optional[Session] = None) -> List[Dict[str
     _sagemaker_session = sagemaker_session or Session()
     next_token = None
     list_response = []
+    pipeline_names_so_far = set([])
     while True:
         list_contexts_request = dict(ContextType=PIPELINE_CONTEXT_TYPE)
         if next_token:
@@ -463,9 +464,10 @@ def list_pipelines(sagemaker_session: Optional[Session] = None) -> List[Dict[str
             **list_contexts_request
         )
         for _context in list_contexts_response["ContextSummaries"]:
-            list_response.append(
-                dict(pipeline_name=get_resource_name_from_arn(_context["Source"]["SourceUri"]))
-            )
+            pipeline_name = get_resource_name_from_arn(_context["Source"]["SourceUri"])
+            if pipeline_name not in pipeline_names_so_far:
+                list_response.append(dict(pipeline_name=pipeline_name))
+                pipeline_names_so_far.add(pipeline_name)
         next_token = list_contexts_response.get("NextToken")
         if not next_token:
             break

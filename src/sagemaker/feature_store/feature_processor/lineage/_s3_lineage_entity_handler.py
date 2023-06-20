@@ -103,15 +103,19 @@ class S3LineageEntityHandler:
         if transformation_code is None:
             return None
 
+        properties = dict(
+            state=TRANSFORMATION_CODE_STATUS_ACTIVE,
+            inclusive_start_date=pipeline_last_update_time,
+        )
+        if transformation_code.name is not None:
+            properties["name"] = transformation_code.name
+        if transformation_code.author is not None:
+            properties["author"] = transformation_code.author
+
         return S3LineageEntityHandler._create_artifact(
             s3_uri=transformation_code.s3_uri,
             source_types=[dict(SourceIdType="Custom", Value=pipeline_last_update_time)],
-            properties=dict(
-                name=transformation_code.name,
-                author=transformation_code.author,
-                state=TRANSFORMATION_CODE_STATUS_ACTIVE,
-                inclusive_start_date=pipeline_last_update_time,
-            ),
+            properties=properties,
             artifact_type="TransformationCode",
             artifact_name=f"{FEP_LINEAGE_PREFIX}-"
             f"{TRANSFORMATION_CODE_ARTIFACT_NAME}-"

@@ -142,8 +142,6 @@ def test_create_transformation_code_artifact_when_no_author_or_name():
         artifact_type="TransformationCode",
         artifact_name=f"sm-fs-fe-transformation-code-{LAST_UPDATE_TIME}",
         properties=dict(
-            name=None,
-            author=None,
             state="Active",
             inclusive_start_date=LAST_UPDATE_TIME,
         ),
