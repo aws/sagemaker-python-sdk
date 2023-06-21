@@ -521,7 +521,9 @@ class EstimatorTest(unittest.TestCase):
         Please add the new argument to the skip set below,
         and cut a ticket sev-3 to JumpStart team: AWS > SageMaker > JumpStart"""
 
-        init_args_to_skip: Set[str] = set(["kwargs"])
+        init_args_to_skip: Set[str] = set(
+            ["container_entry_point", "container_arguments", "kwargs"]
+        )
         fit_args_to_skip: Set[str] = set()
         deploy_args_to_skip: Set[str] = set(["kwargs"])
 
@@ -530,7 +532,6 @@ class EstimatorTest(unittest.TestCase):
 
         js_class_init = JumpStartEstimator.__init__
         js_class_init_args = set(signature(js_class_init).parameters.keys())
-
         assert js_class_init_args - parent_class_init_args == {
             "model_id",
             "model_version",

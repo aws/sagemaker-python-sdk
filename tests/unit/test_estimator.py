@@ -100,6 +100,8 @@ REPO_DIR = "/tmp/repo_dir"
 ENV_INPUT = {"env_key1": "env_val1", "env_key2": "env_val2", "env_key3": "env_val3"}
 TRAINING_REPOSITORY_ACCESS_MODE = "VPC"
 TRAINING_REPOSITORY_CREDENTIALS_PROVIDER_ARN = "arn:aws:lambda:us-west-2:1234567890:function:test"
+CONTAINER_ENTRY_POINT = ["entry_point1", "entry_point2"]
+CONTAINER_ARGUMENTS = ["container_arg1", "container_arg2"]
 
 DESCRIBE_TRAINING_JOB_RESULT = {"ModelArtifacts": {"S3ModelArtifacts": MODEL_DATA}}
 
@@ -659,6 +661,40 @@ def test_framework_without_training_repository_config(sagemaker_session):
     sagemaker_session.train.assert_called_once()
     _, args = sagemaker_session.train.call_args
     assert args.get("training_image_config") is None
+
+
+def test_framework_with_container_entry_point(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+        container_entry_point=CONTAINER_ENTRY_POINT,
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args["container_entry_point"] == CONTAINER_ENTRY_POINT
+
+
+def test_framework_with_container_arguments(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+        container_arguments=CONTAINER_ARGUMENTS,
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args["container_arguments"] == CONTAINER_ARGUMENTS
 
 
 def test_framework_with_debugger_and_built_in_rule(sagemaker_session):
@@ -4004,6 +4040,21 @@ def test_prepare_init_params_from_job_description_with_training_image_config():
         init_params["training_repository_credentials_provider_arn"]
         == "arn:aws:lambda:us-west-2:1234567890:function:test"
     )
+
+
+def test_prepare_init_params_from_job_description_with_container_entry_point_and_args():
+    job_description = RETURNED_JOB_DESCRIPTION.copy()
+    job_description["AlgorithmSpecification"]["ContainerEntrypoint"] = CONTAINER_ENTRY_POINT
+    job_description["AlgorithmSpecification"]["ContainerArguments"] = CONTAINER_ARGUMENTS
+
+    init_params = EstimatorBase._prepare_init_params_from_job_description(
+        job_details=job_description
+    )
+
+    assert init_params["role"] == "arn:aws:iam::366:role/SageMakerRole"
+    assert init_params["instance_count"] == 1
+    assert init_params["container_entry_point"] == CONTAINER_ENTRY_POINT
+    assert init_params["container_arguments"] == CONTAINER_ARGUMENTS
 
 
 def test_prepare_init_params_from_job_description_with_invalid_training_job():

@@ -170,6 +170,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         instance_groups: Optional[List[InstanceGroup]] = None,
         training_repository_access_mode: Optional[Union[str, PipelineVariable]] = None,
         training_repository_credentials_provider_arn: Optional[Union[str, PipelineVariable]] = None,
+        container_entry_point: Optional[List[str]] = None,
+        container_arguments: Optional[List[str]] = None,
         **kwargs,
     ):
         """Initialize an ``EstimatorBase`` instance.
@@ -523,6 +525,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 private Docker registry where your training image is hosted (default: None).
                 When it's set to None, SageMaker will not do authentication before pulling the image
                 in the private Docker registry.
+            container_entry_point (List[str]): Optional. The entrypoint script for a Docker
+                container used to run a training job. This script takes precedence over
+                the default train processing instructions.
+            container_arguments (List[str]): Optional. The arguments for a container used to run
+                a training job.
         """
         instance_count = renamed_kwargs(
             "train_instance_count", "instance_count", instance_count, kwargs
@@ -646,6 +653,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.training_repository_credentials_provider_arn = (
             training_repository_credentials_provider_arn
         )
+
+        # container entry point / arguments configs
+        self.container_entry_point = container_entry_point
+        self.container_arguments = container_arguments
 
         self.encrypt_inter_container_traffic = resolve_value_from_config(
             direct_input=encrypt_inter_container_traffic,
@@ -1786,6 +1797,16 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 "MetricsDefinition"
             ]
 
+        if "ContainerEntrypoint" in job_details["AlgorithmSpecification"]:
+            init_params["container_entry_point"] = job_details["AlgorithmSpecification"][
+                "ContainerEntrypoint"
+            ]
+
+        if "ContainerArguments" in job_details["AlgorithmSpecification"]:
+            init_params["container_arguments"] = job_details["AlgorithmSpecification"][
+                "ContainerArguments"
+            ]
+
         if "EnableInterContainerTrafficEncryption" in job_details:
             init_params["encrypt_inter_container_traffic"] = job_details[
                 "EnableInterContainerTrafficEncryption"
@@ -2266,6 +2287,12 @@ class _TrainingJob(_Job):
                 ] = estimator.training_repository_credentials_provider_arn
             train_args["training_image_config"] = training_image_config
 
+        if estimator.container_entry_point is not None:
+            train_args["container_entry_point"] = estimator.container_entry_point
+
+        if estimator.container_arguments is not None:
+            train_args["container_arguments"] = estimator.container_arguments
+
         # encrypt_inter_container_traffic may be a pipeline variable place holder object
         # which is parsed in execution time
         # This does not check config because the EstimatorBase constuctor already did that check
@@ -2472,6 +2499,8 @@ class Estimator(EstimatorBase):
         instance_groups: Optional[List[InstanceGroup]] = None,
         training_repository_access_mode: Optional[Union[str, PipelineVariable]] = None,
         training_repository_credentials_provider_arn: Optional[Union[str, PipelineVariable]] = None,
+        container_entry_point: Optional[List[str]] = None,
+        container_arguments: Optional[List[str]] = None,
         **kwargs,
     ):
         """Initialize an ``Estimator`` instance.
@@ -2824,6 +2853,11 @@ class Estimator(EstimatorBase):
                 private Docker registry where your training image is hosted (default: None).
                 When it's set to None, SageMaker will not do authentication before pulling the image
                 in the private Docker registry.
+            container_entry_point (List[str]): Optional. The entrypoint script for a Docker
+                container used to run a training job. This script takes precedence over
+                the default train processing instructions.
+            container_arguments (List[str]): Optional. The arguments for a container used to run
+                a training job.
         """
         self.image_uri = image_uri
         self._hyperparameters = hyperparameters.copy() if hyperparameters else {}
@@ -2871,6 +2905,8 @@ class Estimator(EstimatorBase):
             instance_groups=instance_groups,
             training_repository_access_mode=training_repository_access_mode,
             training_repository_credentials_provider_arn=training_repository_credentials_provider_arn,  # noqa: E501 # pylint: disable=line-too-long
+            container_entry_point=container_entry_point,
+            container_arguments=container_arguments,
             **kwargs,
         )
 
