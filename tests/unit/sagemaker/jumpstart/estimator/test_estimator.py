@@ -22,6 +22,7 @@ import pytest
 from sagemaker.debugger.profiler_config import ProfilerConfig
 from sagemaker.estimator import Estimator
 from sagemaker.instance_group import InstanceGroup
+from sagemaker.jumpstart.enums import JumpStartScriptScope
 
 from sagemaker.jumpstart.estimator import JumpStartEstimator
 
@@ -520,7 +521,9 @@ class EstimatorTest(unittest.TestCase):
         Please add the new argument to the skip set below,
         and cut a ticket sev-3 to JumpStart team: AWS > SageMaker > JumpStart"""
 
-        init_args_to_skip: Set[str] = set(["kwargs"])
+        init_args_to_skip: Set[str] = set(
+            ["container_entry_point", "container_arguments", "kwargs"]
+        )
         fit_args_to_skip: Set[str] = set()
         deploy_args_to_skip: Set[str] = set(["kwargs"])
 
@@ -529,7 +532,6 @@ class EstimatorTest(unittest.TestCase):
 
         js_class_init = JumpStartEstimator.__init__
         js_class_init_args = set(signature(js_class_init).parameters.keys())
-
         assert js_class_init_args - parent_class_init_args == {
             "model_id",
             "model_version",
@@ -938,6 +940,85 @@ class EstimatorTest(unittest.TestCase):
             enable_network_isolation=False,
             model_name="blahblahblah-3456",
             endpoint_name="blahblahblah-3456",
+        )
+
+    @mock.patch("sagemaker.jumpstart.estimator.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.deploy")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
+    @mock.patch("sagemaker.jumpstart.factory.estimator._retrieve_estimator_init_kwargs")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.estimator.JumpStartModelsAccessor.reset_cache")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_model_id_not_found_refeshes_cache_training(
+        self,
+        mock_reset_cache: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_retrieve_kwargs: mock.Mock,
+        mock_estimator_init: mock.Mock,
+        mock_estimator_deploy: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
+    ):
+        mock_estimator_deploy.return_value = default_predictor
+
+        mock_is_valid_model_id.side_effect = [False, False]
+
+        model_id, _ = "js-trainable-model", "*"
+
+        mock_retrieve_kwargs.return_value = {}
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        mock_session.return_value = sagemaker_session
+
+        with pytest.raises(ValueError):
+            JumpStartEstimator(
+                model_id=model_id,
+            )
+
+        mock_reset_cache.assert_called_once_with()
+        mock_is_valid_model_id.assert_has_calls(
+            calls=[
+                mock.call(
+                    model_id="js-trainable-model",
+                    model_version=None,
+                    region=None,
+                    script=JumpStartScriptScope.TRAINING,
+                ),
+                mock.call(
+                    model_id="js-trainable-model",
+                    model_version=None,
+                    region=None,
+                    script=JumpStartScriptScope.TRAINING,
+                ),
+            ]
+        )
+
+        mock_is_valid_model_id.reset_mock()
+        mock_reset_cache.reset_mock()
+
+        mock_is_valid_model_id.side_effect = [False, True]
+        JumpStartEstimator(
+            model_id=model_id,
+        )
+
+        mock_reset_cache.assert_called_once_with()
+        mock_is_valid_model_id.assert_has_calls(
+            calls=[
+                mock.call(
+                    model_id="js-trainable-model",
+                    model_version=None,
+                    region=None,
+                    script=JumpStartScriptScope.TRAINING,
+                ),
+                mock.call(
+                    model_id="js-trainable-model",
+                    model_version=None,
+                    region=None,
+                    script=JumpStartScriptScope.TRAINING,
+                ),
+            ]
         )
 
 

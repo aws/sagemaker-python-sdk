@@ -27,6 +27,7 @@ from sagemaker.estimator import Estimator
 from sagemaker.explainer.explainer_config import ExplainerConfig
 from sagemaker.inputs import FileSystemInput, TrainingInput
 from sagemaker.instance_group import InstanceGroup
+from sagemaker.jumpstart.accessors import JumpStartModelsAccessor
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.exceptions import INVALID_MODEL_ID_ERROR_MSG
 
@@ -488,13 +489,18 @@ class JumpStartEstimator(Estimator):
             ValueError: If the model ID is not recognized by JumpStart.
         """
 
-        if not is_valid_model_id(
-            model_id=model_id,
-            model_version=model_version,
-            region=region,
-            script=JumpStartScriptScope.TRAINING,
-        ):
-            raise ValueError(INVALID_MODEL_ID_ERROR_MSG.format(model_id=model_id))
+        def _is_valid_model_id_hook():
+            return is_valid_model_id(
+                model_id=model_id,
+                model_version=model_version,
+                region=region,
+                script=JumpStartScriptScope.TRAINING,
+            )
+
+        if not _is_valid_model_id_hook():
+            JumpStartModelsAccessor.reset_cache()
+            if not _is_valid_model_id_hook():
+                raise ValueError(INVALID_MODEL_ID_ERROR_MSG.format(model_id=model_id))
 
         estimator_init_kwargs = get_init_kwargs(
             model_id=model_id,

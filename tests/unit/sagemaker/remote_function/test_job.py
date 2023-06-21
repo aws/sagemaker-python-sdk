@@ -20,6 +20,9 @@ from mock import patch, Mock, ANY
 
 from sagemaker.config import load_sagemaker_config
 from sagemaker.session_settings import SessionSettings
+
+from sagemaker.remote_function.spark_config import SparkConfig
+
 from tests.unit import DATA_DIR
 from sagemaker.remote_function.job import (
     _JobSettings,
@@ -27,7 +30,11 @@ from sagemaker.remote_function.job import (
     _convert_run_to_json,
     _prepare_and_upload_runtime_scripts,
     _prepare_and_upload_dependencies,
+    _prepare_and_upload_spark_dependent_files,
+    _upload_spark_submit_deps,
+    _upload_serialized_spark_configuration,
     _filter_non_python_files,
+    _extend_spark_config_to_request,
 )
 
 
@@ -129,6 +136,64 @@ def test_sagemaker_config_job_settings(get_execution_role, session, secret_token
     }
     assert job_settings.include_local_workdir is False
     assert job_settings.instance_type == "ml.m5.xlarge"
+
+
+@patch("secrets.token_hex", return_value=HMAC_KEY)
+@patch(
+    "sagemaker.remote_function.job._JobSettings._get_default_spark_image",
+    return_value="some_image_uri",
+)
+@patch("sagemaker.remote_function.job.Session", return_value=mock_session())
+@patch("sagemaker.remote_function.job.get_execution_role", return_value=DEFAULT_ROLE_ARN)
+def test_sagemaker_config_job_settings_with_spark_config(
+    get_execution_role, session, mock_get_default_spark_image, secret_token
+):
+
+    spark_config = SparkConfig()
+    job_settings = _JobSettings(instance_type="ml.m5.xlarge", spark_config=spark_config)
+
+    assert job_settings.image_uri == "some_image_uri"
+    assert job_settings.s3_root_uri == f"s3://{BUCKET}"
+    assert job_settings.role == DEFAULT_ROLE_ARN
+    assert job_settings.environment_variables == {
+        "AWS_DEFAULT_REGION": "us-west-2",
+        "REMOTE_FUNCTION_SECRET_KEY": HMAC_KEY,
+    }
+    assert job_settings.include_local_workdir is False
+    assert job_settings.instance_type == "ml.m5.xlarge"
+    assert job_settings.spark_config == spark_config
+
+
+@patch("sagemaker.remote_function.job.Session", return_value=mock_session())
+@patch("sagemaker.remote_function.job.get_execution_role", return_value=DEFAULT_ROLE_ARN)
+def test_sagemaker_config_job_settings_with_spark_config_and_image_uri(get_execution_role, session):
+
+    spark_config = SparkConfig()
+
+    with pytest.raises(
+        ValueError, match="spark_config and image_uri cannot be specified at the same time!"
+    ):
+        _JobSettings(image_uri="image_uri", instance_type="ml.m5.xlarge", spark_config=spark_config)
+
+
+def test_sagemaker_config_job_settings_with_not_supported_param_by_spark():
+    spark_config = SparkConfig()
+
+    with pytest.raises(ValueError, match="Remote Spark jobs do not support job_conda_env."):
+        _JobSettings(
+            instance_type="ml.m5.xlarge",
+            spark_config=spark_config,
+            job_conda_env="conda_env",
+        )
+
+    with pytest.raises(
+        ValueError, match="Remote Spark jobs do not support automatically capturing dependencies."
+    ):
+        _JobSettings(
+            instance_type="ml.m5.xlarge",
+            spark_config=spark_config,
+            dependencies="auto_capture",
+        )
 
 
 @patch("secrets.token_hex", return_value=HMAC_KEY)
@@ -279,6 +344,7 @@ def test_start(
     mock_python_version = mock_runtime_manager()._current_python_version()
 
     mock_script_upload.assert_called_once_with(
+        spark_config=None,
         s3_base_uri=f"{S3_URI}/{job.job_name}",
         s3_kms_key=None,
         sagemaker_session=session(),
@@ -399,6 +465,7 @@ def test_start_with_complete_job_settings(
     mock_python_version = mock_runtime_manager()._current_python_version()
 
     mock_script_upload.assert_called_once_with(
+        spark_config=None,
         s3_base_uri=f"{S3_URI}/{job.job_name}",
         s3_kms_key=job_settings.s3_kms_key,
         sagemaker_session=session(),
@@ -474,6 +541,136 @@ def test_start_with_complete_job_settings(
     )
 
 
+@patch("secrets.token_hex", return_value=HMAC_KEY)
+@patch(
+    "sagemaker.remote_function.job._JobSettings._get_default_spark_image",
+    return_value="some_image_uri",
+)
+@patch(
+    "sagemaker.remote_function.job._prepare_and_upload_spark_dependent_files",
+    return_value=tuple(["jars_s3_uri", "py_files_s3_uri", "files_s3_uri", "config_file_s3_uri"]),
+)
+@patch("sagemaker.experiments._run_context._RunContext.get_current_run", new=mock_get_current_run)
+@patch("sagemaker.remote_function.job._prepare_and_upload_dependencies", return_value="some_s3_uri")
+@patch(
+    "sagemaker.remote_function.job._prepare_and_upload_runtime_scripts", return_value="some_s3_uri"
+)
+@patch("sagemaker.remote_function.job.RuntimeEnvironmentManager")
+@patch("sagemaker.remote_function.job.StoredFunction")
+@patch("sagemaker.remote_function.job.Session", return_value=mock_session())
+def test_start_with_spark(
+    session,
+    mock_stored_function,
+    mock_runtime_manager,
+    mock_script_upload,
+    mock_dependency_upload,
+    mock_spark_dependency_upload,
+    mock_get_default_spark_image,
+    secrete_token,
+):
+    spark_config = SparkConfig()
+    job_settings = _JobSettings(
+        spark_config=spark_config,
+        s3_root_uri=S3_URI,
+        role=ROLE_ARN,
+        include_local_workdir=True,
+        instance_type="ml.m5.large",
+        instance_count=2,
+        encrypt_inter_container_traffic=True,
+    )
+
+    job = _Job.start(job_settings, job_function, func_args=(1, 2), func_kwargs={"c": 3, "d": 4})
+
+    mock_python_version = mock_runtime_manager()._current_python_version()
+
+    assert job.job_name.startswith("job-function")
+
+    assert mock_stored_function.called_once_with(
+        sagemaker_session=session(), s3_base_uri=f"{S3_URI}/{job.job_name}", s3_kms_key=None
+    )
+
+    mock_script_upload.assert_called_once_with(
+        spark_config=spark_config,
+        s3_base_uri=f"{S3_URI}/{job.job_name}",
+        s3_kms_key=None,
+        sagemaker_session=session(),
+    )
+
+    session().sagemaker_client.create_training_job.assert_called_once_with(
+        TrainingJobName=job.job_name,
+        RoleArn=ROLE_ARN,
+        StoppingCondition={"MaxRuntimeInSeconds": 86400},
+        RetryStrategy={"MaximumRetryAttempts": 1},
+        InputDataConfig=[
+            dict(
+                ChannelName=RUNTIME_SCRIPTS_CHANNEL_NAME,
+                DataSource={
+                    "S3DataSource": {
+                        "S3Uri": mock_script_upload.return_value,
+                        "S3DataType": "S3Prefix",
+                        "S3DataDistributionType": "FullyReplicated",
+                    }
+                },
+            ),
+            dict(
+                ChannelName=REMOTE_FUNCTION_WORKSPACE,
+                DataSource={
+                    "S3DataSource": {
+                        "S3Uri": f"{S3_URI}/{job.job_name}/sm_rf_user_ws",
+                        "S3DataType": "S3Prefix",
+                        "S3DataDistributionType": "FullyReplicated",
+                    }
+                },
+            ),
+            dict(
+                ChannelName="conf",
+                DataSource={
+                    "S3DataSource": {
+                        "S3Uri": "config_file_s3_uri",
+                        "S3DataType": "S3Prefix",
+                        "S3DataDistributionType": "FullyReplicated",
+                    }
+                },
+            ),
+        ],
+        OutputDataConfig={"S3OutputPath": f"{S3_URI}/{job.job_name}"},
+        AlgorithmSpecification=dict(
+            TrainingImage="some_image_uri",
+            TrainingInputMode="File",
+            ContainerEntrypoint=[
+                "/bin/bash",
+                "/opt/ml/input/data/sagemaker_remote_function_bootstrap/job_driver.sh",
+                "--jars",
+                "jars_s3_uri",
+                "--py-files",
+                "py_files_s3_uri",
+                "--files",
+                "files_s3_uri",
+                "/opt/ml/input/data/sagemaker_remote_function_bootstrap/spark_app.py",
+            ],
+            ContainerArguments=[
+                "--s3_base_uri",
+                f"{S3_URI}/{job.job_name}",
+                "--region",
+                TEST_REGION,
+                "--client_python_version",
+                mock_python_version,
+                "--run_in_context",
+                '{"experiment_name": "my-exp-name", "run_name": "my-run-name"}',
+            ],
+        ),
+        ResourceConfig=dict(
+            VolumeSizeInGB=30,
+            InstanceCount=2,
+            InstanceType="ml.m5.large",
+            KeepAlivePeriodInSeconds=0,
+        ),
+        EnableNetworkIsolation=False,
+        EnableInterContainerTrafficEncryption=True,
+        Environment={"AWS_DEFAULT_REGION": "us-west-2", "REMOTE_FUNCTION_SECRET_KEY": HMAC_KEY},
+    )
+
+
 @patch("sagemaker.remote_function.job._prepare_and_upload_runtime_scripts")
 @patch("sagemaker.remote_function.job._prepare_and_upload_dependencies")
 @patch("sagemaker.remote_function.job.StoredFunction")
@@ -542,6 +739,7 @@ def test_wait(session, mock_stored_function, mock_logs_for_job, *args):
 @patch("sagemaker.remote_function.job.Session", return_value=mock_session())
 def test_prepare_and_upload_runtime_scripts(session, mock_copy, mock_s3_upload):
     s3_path = _prepare_and_upload_runtime_scripts(
+        spark_config=None,
         s3_base_uri=S3_URI,
         s3_kms_key=KMS_KEY_ARN,
         sagemaker_session=session(),
@@ -577,6 +775,122 @@ def test_prepare_and_upload_dependencies(session, mock_copytree, mock_copy, mock
     )
 
 
+@patch("sagemaker.remote_function.job.Session", return_value=mock_session())
+def test_prepare_and_upload_spark_dependent_file_without_spark_config(session):
+    assert _prepare_and_upload_spark_dependent_files(
+        spark_config=None, s3_base_uri="s3://test-uri", s3_kms_key=None, sagemaker_session=session
+    ) == tuple([None, None, None, None])
+
+
+@patch("sagemaker.remote_function.job.Session", return_value=mock_session())
+@patch("sagemaker.remote_function.job._upload_serialized_spark_configuration")
+@patch("sagemaker.remote_function.job._upload_spark_submit_deps")
+def test_prepare_and_upload_spark_dependent_file(
+    mock_upload_spark_submit_deps, mock_upload_serialized_spark_configuration, session
+):
+    spark_config = SparkConfig(
+        submit_jars="path_to_jar/foo.jar",
+        submit_py_files="path_to_py_file/bar.py",
+        submit_files="path_to_file/data.csv",
+        spark_event_logs_uri="s3://event_logs_bucket",
+        configuration={},
+    )
+
+    _prepare_and_upload_spark_dependent_files(
+        spark_config=spark_config,
+        s3_base_uri=S3_URI,
+        s3_kms_key=KMS_KEY_ARN,
+        sagemaker_session=session,
+    )
+    mock_upload_spark_submit_deps.assert_any_call(
+        "path_to_jar/foo.jar", "sm_rf_spark_jars", S3_URI, KMS_KEY_ARN, session
+    )
+    mock_upload_spark_submit_deps.assert_any_call(
+        "path_to_py_file/bar.py", "sm_rf_spark_py_files", S3_URI, KMS_KEY_ARN, session
+    )
+    mock_upload_spark_submit_deps.assert_any_call(
+        "path_to_file/data.csv", "sm_rf_spark_data_files", S3_URI, KMS_KEY_ARN, session
+    )
+    mock_upload_serialized_spark_configuration.assert_any_call(S3_URI, KMS_KEY_ARN, {}, session)
+
+
+@patch("sagemaker.remote_function.job.Session", return_value=mock_session())
+def test_upload_spark_submit_deps_with_empty_dependencies(session):
+    assert (
+        _upload_spark_submit_deps(
+            submit_deps=None,
+            workspace_name="workspace",
+            s3_base_uri=S3_URI,
+            s3_kms_key=KMS_KEY_ARN,
+            sagemaker_session=session,
+        )
+        is None
+    )
+
+
+@patch("sagemaker.remote_function.job.Session", return_value=mock_session())
+def test_upload_spark_submit_deps_with_invalid_input(session):
+    with pytest.raises(ValueError, match="workspace_name or s3_base_uri may not be empty."):
+        _upload_spark_submit_deps(
+            submit_deps="path/to/deps",
+            workspace_name=None,
+            s3_base_uri=S3_URI,
+            s3_kms_key=KMS_KEY_ARN,
+            sagemaker_session=session,
+        )
+
+    with pytest.raises(ValueError, match="workspace_name or s3_base_uri may not be empty."):
+        _upload_spark_submit_deps(
+            submit_deps="path/to/deps",
+            workspace_name="workspace",
+            s3_base_uri=None,
+            s3_kms_key=KMS_KEY_ARN,
+            sagemaker_session=session,
+        )
+
+
+@patch("os.path.isfile", return_value=False)
+@patch("sagemaker.remote_function.job.Session", return_value=mock_session())
+def test_upload_spark_submit_deps_with_invalid_file(session, mock_is_file):
+    with pytest.raises(
+        ValueError, match="submit_deps path path/to/deps is not a valid local file."
+    ):
+        _upload_spark_submit_deps(
+            submit_deps=["path/to/deps"],
+            workspace_name="workspace",
+            s3_base_uri=S3_URI,
+            s3_kms_key=KMS_KEY_ARN,
+            sagemaker_session=session,
+        )
+
+
+@patch("sagemaker.s3.S3Uploader.upload", return_value="some_uri")
+@patch("os.path.isfile", return_value=True)
+@patch("sagemaker.remote_function.job.Session", return_value=mock_session())
+def test_upload_spark_submit_deps(session, mock_is_file, mock_s3_uploader_load):
+    assert (
+        _upload_spark_submit_deps(
+            submit_deps=["path/to/deps.jar", "s3://bucket/test.jar"],
+            workspace_name="spark_jars",
+            s3_base_uri=S3_URI,
+            s3_kms_key=KMS_KEY_ARN,
+            sagemaker_session=session,
+        )
+        == "some_uri,s3://bucket/test.jar"
+    )
+    mock_s3_uploader_load.assert_called_with(
+        local_path="path/to/deps.jar",
+        desired_s3_uri="s3://my-s3-bucket/keyprefix/spark_jars",
+        kms_key="kms-key-arn",
+        sagemaker_session=session,
+    )
+
+
+@patch("sagemaker.remote_function.job.Session", return_value=mock_session())
+def test_upload_serialized_spark_configuration_without_input(session):
+    assert _upload_serialized_spark_configuration(S3_URI, KMS_KEY_ARN, None, session) is None
+
+
 def test_convert_run_to_json():
     run = Mock()
     run.experiment_name = TEST_EXP_NAME
@@ -584,4 +898,78 @@ def test_convert_run_to_json():
 
     assert _convert_run_to_json(run) == (
         '{"experiment_name": "my-exp-name", "run_name": "my-run-name"}'
+    )
+
+
+@patch("sagemaker.remote_function.job.Session", return_value=mock_session())
+@patch(
+    "sagemaker.remote_function.job._JobSettings._get_default_spark_image",
+    return_value="some_image_uri",
+)
+@patch(
+    "sagemaker.remote_function.job._prepare_and_upload_spark_dependent_files",
+    return_value=tuple(["jars_s3_uri", "py_files_s3_uri", "files_s3_uri", "config_file_s3_uri"]),
+)
+def test_extend_spark_config_to_request(
+    mock_upload_spark_files, mock_get_default_image, mocked_session
+):
+    test_request_dict = dict(
+        InputDataConfig=[],
+        AlgorithmSpecification=dict(
+            TrainingImage=IMAGE,
+            TrainingInputMode="File",
+            ContainerEntrypoint=[
+                "/bin/bash",
+                "/opt/ml/input/data/sagemaker_remote_function_bootstrap/job_driver.sh",
+            ],
+        ),
+    )
+
+    job_settings = _JobSettings(
+        spark_config=SparkConfig(
+            submit_jars=["path/to/jar"],
+            submit_py_files=["path/to/py/file"],
+            submit_files=["path/to/file"],
+            configuration=[],
+            spark_event_logs_uri="s3://event/log",
+        ),
+        s3_root_uri=S3_URI,
+        role=ROLE_ARN,
+        instance_type="ml.m5.large",
+    )
+
+    extended_request = _extend_spark_config_to_request(
+        test_request_dict, job_settings, "s3://test/base/path"
+    )
+
+    assert extended_request == dict(
+        AlgorithmSpecification={
+            "ContainerEntrypoint": [
+                "/bin/bash",
+                "/opt/ml/input/data/sagemaker_remote_function_bootstrap/job_driver.sh",
+                "--spark-event-logs-s3-uri",
+                "s3://event/log",
+                "--jars",
+                "jars_s3_uri",
+                "--py-files",
+                "py_files_s3_uri",
+                "--files",
+                "files_s3_uri",
+                "/opt/ml/input/data/sagemaker_remote_function_bootstrap/spark_app.py",
+            ],
+            "TrainingImage": "image_uri",
+            "TrainingInputMode": "File",
+        },
+        InputDataConfig=[
+            {
+                "ChannelName": "conf",
+                "DataSource": {
+                    "S3DataSource": {
+                        "S3DataType": "S3Prefix",
+                        "S3Uri": "config_file_s3_uri",
+                        "S3DataDistributionType": "FullyReplicated",
+                    }
+                },
+            }
+        ],
     )

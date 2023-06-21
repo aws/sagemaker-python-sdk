@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.167.0 (2023-06-21)
+
+### Features
+
+ * add SageMaker FeatureStore feature processing
+
+### Bug Fixes and Other Changes
+
+ * Chore/reset cache if js model not found
+
 ## v2.166.0 (2023-06-19)
 
 ### Features
