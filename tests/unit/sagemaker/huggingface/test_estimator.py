@@ -291,6 +291,7 @@ def test_huggingface_neuronx(
     )
     container = huggingface_model.prepare_container_def("ml.inf2.xlarge", inference_tool="neuronx")
     assert container["Image"]
+    assert "sdk" in container["Image"] and "py" in container["Image"]
 
 
 def test_attach(
