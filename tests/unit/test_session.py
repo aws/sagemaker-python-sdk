@@ -1624,6 +1624,237 @@ def test_stop_tuning_job_client_error(sagemaker_session):
     )
 
 
+def test_train_with_sagemaker_config_injection_custom_profiler_config(sagemaker_session):
+    """
+    Tests disableProfiler property is overridden by custom profiler_config with property set
+    :param sagemaker_session:
+    :return: None
+    """
+    custom_config = copy.deepcopy(SAGEMAKER_CONFIG_TRAINING_JOB)
+    custom_config["SageMaker"]["TrainingJob"]["ProfilerConfig"]["DisableProfiler"] = True
+
+    sagemaker_session.sagemaker_config = custom_config
+    in_config = [
+        {
+            "ChannelName": "training",
+            "DataSource": {
+                "S3DataSource": {
+                    "S3DataDistributionType": "FullyReplicated",
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": S3_INPUT_URI,
+                }
+            },
+        }
+    ]
+
+    out_config = {"S3OutputPath": S3_OUTPUT}
+
+    resource_config = {
+        "InstanceCount": INSTANCE_COUNT,
+        "InstanceType": INSTANCE_TYPE,
+        "VolumeSizeInGB": MAX_SIZE,
+    }
+
+    stop_cond = {"MaxRuntimeInSeconds": MAX_TIME}
+    RETRY_STRATEGY = {"MaximumRetryAttempts": 2}
+    hyperparameters = {"foo": "bar"}
+    TRAINING_IMAGE_CONFIG = {
+        "TrainingRepositoryAccessMode": "Vpc",
+        "TrainingRepositoryAuthConfig": {
+            "TrainingRepositoryCredentialsProviderArn": "arn:aws:lambda:us-west-2:1234567897:function:test"
+        },
+    }
+
+    profiler_config = {"DisableProfiler": False}
+    sagemaker_session.train(
+        image_uri=IMAGE,
+        input_mode="File",
+        input_config=in_config,
+        job_name=JOB_NAME,
+        output_config=out_config,
+        resource_config=resource_config,
+        profiler_config=profiler_config,
+        hyperparameters=hyperparameters,
+        stop_condition=stop_cond,
+        metric_definitions=METRIC_DEFINITONS,
+        use_spot_instances=True,
+        checkpoint_s3_uri="s3://mybucket/checkpoints/",
+        checkpoint_local_path="/tmp/checkpoints",
+        enable_sagemaker_metrics=True,
+        retry_strategy=RETRY_STRATEGY,
+        training_image_config=TRAINING_IMAGE_CONFIG,
+    )
+
+    _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
+
+    assert actual_train_args["ProfilerConfig"]["DisableProfiler"] is False
+
+
+def test_train_with_sagemaker_config_injection_empty_profiler_config(sagemaker_session):
+    """
+    Tests disableProfiler property is injected into a profiler_config object when the property does not exist explicitly
+    :param sagemaker_session:
+    :return: None
+    """
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
+
+    in_config = [
+        {
+            "ChannelName": "training",
+            "DataSource": {
+                "S3DataSource": {
+                    "S3DataDistributionType": "FullyReplicated",
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": S3_INPUT_URI,
+                }
+            },
+        }
+    ]
+
+    out_config = {"S3OutputPath": S3_OUTPUT}
+
+    resource_config = {
+        "InstanceCount": INSTANCE_COUNT,
+        "InstanceType": INSTANCE_TYPE,
+        "VolumeSizeInGB": MAX_SIZE,
+    }
+
+    stop_cond = {"MaxRuntimeInSeconds": MAX_TIME}
+    RETRY_STRATEGY = {"MaximumRetryAttempts": 2}
+    hyperparameters = {"foo": "bar"}
+    TRAINING_IMAGE_CONFIG = {
+        "TrainingRepositoryAccessMode": "Vpc",
+        "TrainingRepositoryAuthConfig": {
+            "TrainingRepositoryCredentialsProviderArn": "arn:aws:lambda:us-west-2:1234567897:function:test"
+        },
+    }
+
+    profiler_config = {}
+    sagemaker_session.train(
+        image_uri=IMAGE,
+        input_mode="File",
+        input_config=in_config,
+        job_name=JOB_NAME,
+        output_config=out_config,
+        resource_config=resource_config,
+        profiler_config=profiler_config,
+        hyperparameters=hyperparameters,
+        stop_condition=stop_cond,
+        metric_definitions=METRIC_DEFINITONS,
+        use_spot_instances=True,
+        checkpoint_s3_uri="s3://mybucket/checkpoints/",
+        checkpoint_local_path="/tmp/checkpoints",
+        enable_sagemaker_metrics=True,
+        retry_strategy=RETRY_STRATEGY,
+        training_image_config=TRAINING_IMAGE_CONFIG,
+    )
+
+    _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
+
+    expected_disable_profiler_attribute = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "ProfilerConfig"
+    ]["DisableProfiler"]
+    assert (
+        actual_train_args["ProfilerConfig"]["DisableProfiler"]
+        == expected_disable_profiler_attribute
+    )
+
+
+def test_train_with_sagemaker_config_injection_partial_profiler_config(sagemaker_session):
+    """
+    Tests disableProfiler property is injected into a profiler_config object when the property does not exist explicitly
+    :param sagemaker_session:
+    :return: None
+    """
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
+
+    in_config = [
+        {
+            "ChannelName": "training",
+            "DataSource": {
+                "S3DataSource": {
+                    "S3DataDistributionType": "FullyReplicated",
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": S3_INPUT_URI,
+                }
+            },
+        }
+    ]
+
+    out_config = {"S3OutputPath": S3_OUTPUT}
+
+    resource_config = {
+        "InstanceCount": INSTANCE_COUNT,
+        "InstanceType": INSTANCE_TYPE,
+        "VolumeSizeInGB": MAX_SIZE,
+    }
+
+    stop_cond = {"MaxRuntimeInSeconds": MAX_TIME}
+    RETRY_STRATEGY = {"MaximumRetryAttempts": 2}
+    hyperparameters = {"foo": "bar"}
+    TRAINING_IMAGE_CONFIG = {
+        "TrainingRepositoryAccessMode": "Vpc",
+        "TrainingRepositoryAuthConfig": {
+            "TrainingRepositoryCredentialsProviderArn": "arn:aws:lambda:us-west-2:1234567897:function:test"
+        },
+    }
+
+    profiler_config = {
+        "ProfilingIntervalInMilliseconds": 1000,
+        "S3OutputPath": "s3://mybucket/myoutputbucket",
+        "ProfilingParameters": {},
+    }
+    sagemaker_session.train(
+        image_uri=IMAGE,
+        input_mode="File",
+        input_config=in_config,
+        job_name=JOB_NAME,
+        output_config=out_config,
+        resource_config=resource_config,
+        profiler_config=profiler_config,
+        hyperparameters=hyperparameters,
+        stop_condition=stop_cond,
+        metric_definitions=METRIC_DEFINITONS,
+        use_spot_instances=True,
+        checkpoint_s3_uri="s3://mybucket/checkpoints/",
+        checkpoint_local_path="/tmp/checkpoints",
+        enable_sagemaker_metrics=True,
+        retry_strategy=RETRY_STRATEGY,
+        training_image_config=TRAINING_IMAGE_CONFIG,
+    )
+
+    _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
+
+    expected_disable_profiler_attribute = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "ProfilerConfig"
+    ]["DisableProfiler"]
+    assert (
+        actual_train_args["ProfilerConfig"]["DisableProfiler"]
+        == expected_disable_profiler_attribute
+    )
+    assert actual_train_args["ProfilerConfig"]["ProfilingIntervalInMilliseconds"] == 1000
+    assert actual_train_args["ProfilerConfig"]["S3OutputPath"] == "s3://mybucket/myoutputbucket"
+
+
+def test_update_training_job_without_sagemaker_config_injection(sagemaker_session):
+    sagemaker_session.update_training_job(job_name="MyTestJob")
+    _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
+    assert actual_train_args["TrainingJobName"] == "MyTestJob"
+
+
+def test_update_training_job_with_sagemaker_config_injection(sagemaker_session):
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
+    sagemaker_session.update_training_job(job_name="MyTestJob")
+    _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
+    expected_disable_profiler_attribute = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "ProfilerConfig"
+    ]["DisableProfiler"]
+    assert (
+        actual_train_args["ProfilerConfig"]["DisableProfiler"]
+        == expected_disable_profiler_attribute
+    )
+
+
 def test_train_with_sagemaker_config_injection(sagemaker_session):
     sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
 
@@ -1698,6 +1929,9 @@ def test_train_with_sagemaker_config_injection(sagemaker_session):
     ]["EnableInterContainerTrafficEncryption"]
     expected_tags = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["Tags"]
     expected_environment = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["Environment"]
+    expected_profiler_config = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "ProfilerConfig"
+    ]
 
     assert actual_train_args["VpcConfig"] == expected_vpc_config
     assert actual_train_args["HyperParameters"] == hyperparameters
@@ -1728,6 +1962,7 @@ def test_train_with_sagemaker_config_injection(sagemaker_session):
         "VolumeSizeInGB": MAX_SIZE,
         "VolumeKmsKeyId": expected_volume_kms_key_id,
     }
+    assert actual_train_args["ProfilerConfig"] == expected_profiler_config
     assert actual_train_args["OutputDataConfig"] == {
         "S3OutputPath": S3_OUTPUT,
         "KmsKeyId": expected_kms_key_id,
@@ -1802,6 +2037,9 @@ def test_train_with_sagemaker_config_injection_no_kms_support(sagemaker_session)
         "TrainingJob"
     ]["EnableInterContainerTrafficEncryption"]
     expected_tags = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["Tags"]
+    expected_profiler_config = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "ProfilerConfig"
+    ]
 
     assert actual_train_args["VpcConfig"] == expected_vpc_config
     assert actual_train_args["HyperParameters"] == hyperparameters
@@ -1826,6 +2064,7 @@ def test_train_with_sagemaker_config_injection_no_kms_support(sagemaker_session)
         "InstanceCount": INSTANCE_COUNT,
         "InstanceType": "ml.g5.12xlarge",
     }
+    assert actual_train_args["ProfilerConfig"] == expected_profiler_config
     assert actual_train_args["OutputDataConfig"] == {
         "S3OutputPath": S3_OUTPUT,
         "KmsKeyId": expected_kms_key_id,

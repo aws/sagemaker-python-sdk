@@ -37,6 +37,7 @@ from sagemaker.config import (
     TRAINING_JOB_ROLE_ARN_PATH,
     TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
     TRAINING_JOB_ENVIRONMENT_PATH,
+    TRAINING_JOB_DISABLE_PROFILER_PATH,
     TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
 )
 from sagemaker.debugger import (  # noqa: F401 # pylint: disable=unused-import
@@ -157,7 +158,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         enable_sagemaker_metrics: Optional[Union[bool, PipelineVariable]] = None,
         enable_network_isolation: Union[bool, PipelineVariable] = None,
         profiler_config: Optional[ProfilerConfig] = None,
-        disable_profiler: bool = False,
+        disable_profiler: bool = None,
         environment: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
         max_retry_attempts: Optional[Union[int, PipelineVariable]] = None,
         source_dir: Optional[Union[str, PipelineVariable]] = None,
@@ -687,7 +688,12 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         )
 
         self.profiler_config = profiler_config
-        self.disable_profiler = disable_profiler
+        self.disable_profiler = resolve_value_from_config(
+            direct_input=disable_profiler,
+            config_path=TRAINING_JOB_DISABLE_PROFILER_PATH,
+            default_value=False,
+            sagemaker_session=self.sagemaker_session,
+        )
 
         self.environment = resolve_value_from_config(
             direct_input=environment,

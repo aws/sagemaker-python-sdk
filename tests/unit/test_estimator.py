@@ -407,6 +407,9 @@ def test_framework_initialization_with_sagemaker_config_injection(sagemaker_sess
         "TrainingJob"
     ]["EnableInterContainerTrafficEncryption"]
     expected_environment = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["Environment"]
+    expected_disable_profiler_attribute = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "ProfilerConfig"
+    ]["DisableProfiler"]
     assert framework.role == expected_role_arn
     assert framework.enable_network_isolation() == expected_enable_network_isolation
     assert (
@@ -418,6 +421,7 @@ def test_framework_initialization_with_sagemaker_config_injection(sagemaker_sess
     assert framework.security_group_ids == expected_security_groups
     assert framework.subnets == expected_subnets
     assert framework.environment == expected_environment
+    assert framework.disable_profiler == expected_disable_profiler_attribute
 
 
 def test_estimator_initialization_with_sagemaker_config_injection(sagemaker_session):
@@ -453,6 +457,9 @@ def test_estimator_initialization_with_sagemaker_config_injection(sagemaker_sess
         "TrainingJob"
     ]["EnableInterContainerTrafficEncryption"]
     expected_environment = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["Environment"]
+    expected_disable_profiler_attribute = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "ProfilerConfig"
+    ]["DisableProfiler"]
     assert estimator.role == expected_role_arn
     assert estimator.enable_network_isolation() == expected_enable_network_isolation
     assert (
@@ -464,6 +471,7 @@ def test_estimator_initialization_with_sagemaker_config_injection(sagemaker_sess
     assert estimator.security_group_ids == expected_security_groups
     assert estimator.subnets == expected_subnets
     assert estimator.environment == expected_environment
+    assert estimator.disable_profiler == expected_disable_profiler_attribute
 
 
 def test_estimator_initialization_with_sagemaker_config_injection_no_kms_supported(
@@ -498,6 +506,9 @@ def test_estimator_initialization_with_sagemaker_config_injection_no_kms_support
     expected_enable_inter_container_traffic_encryption = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"][
         "TrainingJob"
     ]["EnableInterContainerTrafficEncryption"]
+    expected_disable_profiler_attribute = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "ProfilerConfig"
+    ]["DisableProfiler"]
     assert estimator.role == expected_role_arn
     assert estimator.enable_network_isolation() == expected_enable_network_isolation
     assert (
@@ -508,6 +519,7 @@ def test_estimator_initialization_with_sagemaker_config_injection_no_kms_support
     assert estimator.volume_kms_key is None
     assert estimator.security_group_ids == expected_security_groups
     assert estimator.subnets == expected_subnets
+    assert estimator.disable_profiler == expected_disable_profiler_attribute
 
 
 def test_estimator_initialization_with_sagemaker_config_injection_partial_kms_support(
@@ -545,6 +557,9 @@ def test_estimator_initialization_with_sagemaker_config_injection_partial_kms_su
     expected_enable_inter_container_traffic_encryption = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"][
         "TrainingJob"
     ]["EnableInterContainerTrafficEncryption"]
+    expected_disable_profiler_attribute = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "ProfilerConfig"
+    ]["DisableProfiler"]
     assert estimator.role == expected_role_arn
     assert estimator.enable_network_isolation() == expected_enable_network_isolation
     assert (
@@ -555,6 +570,7 @@ def test_estimator_initialization_with_sagemaker_config_injection_partial_kms_su
     assert estimator.volume_kms_key == expected_volume_kms_key_id
     assert estimator.security_group_ids == expected_security_groups
     assert estimator.subnets == expected_subnets
+    assert estimator.disable_profiler == expected_disable_profiler_attribute
 
 
 def test_framework_with_heterogeneous_cluster(sagemaker_session):
