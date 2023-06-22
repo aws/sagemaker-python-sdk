@@ -1,5 +1,18 @@
 # Changelog
 
+## v2.168.0 (2023-06-22)
+
+### Features
+
+ * Support uncompressed model upload
+ * Add optional monitoring_config_override parameter in suggest_baseline API
+ * SDK defaults add disable profiler to createTrainingJob
+
+### Bug Fixes and Other Changes
+
+ * Enable spark processing container in KIX
+ * Fix key prefix preventing jumpstart model repack
+
 ## v2.167.0 (2023-06-21)
 
 ### Features

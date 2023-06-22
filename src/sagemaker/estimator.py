@@ -37,6 +37,7 @@ from sagemaker.config import (
     TRAINING_JOB_ROLE_ARN_PATH,
     TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
     TRAINING_JOB_ENVIRONMENT_PATH,
+    TRAINING_JOB_DISABLE_PROFILER_PATH,
     TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
 )
 from sagemaker.debugger import (  # noqa: F401 # pylint: disable=unused-import
@@ -157,7 +158,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         enable_sagemaker_metrics: Optional[Union[bool, PipelineVariable]] = None,
         enable_network_isolation: Union[bool, PipelineVariable] = None,
         profiler_config: Optional[ProfilerConfig] = None,
-        disable_profiler: bool = False,
+        disable_profiler: bool = None,
         environment: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
         max_retry_attempts: Optional[Union[int, PipelineVariable]] = None,
         source_dir: Optional[Union[str, PipelineVariable]] = None,
@@ -172,6 +173,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         training_repository_credentials_provider_arn: Optional[Union[str, PipelineVariable]] = None,
         container_entry_point: Optional[List[str]] = None,
         container_arguments: Optional[List[str]] = None,
+        disable_output_compression: bool = False,
         **kwargs,
     ):
         """Initialize an ``EstimatorBase`` instance.
@@ -530,6 +532,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 the default train processing instructions.
             container_arguments (List[str]): Optional. The arguments for a container used to run
                 a training job.
+            disable_output_compression (bool): Optional. When set to true, Model is uploaded
+                to Amazon S3 without compression after training finishes.
         """
         instance_count = renamed_kwargs(
             "train_instance_count", "instance_count", instance_count, kwargs
@@ -687,7 +691,12 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         )
 
         self.profiler_config = profiler_config
-        self.disable_profiler = disable_profiler
+        self.disable_profiler = resolve_value_from_config(
+            direct_input=disable_profiler,
+            config_path=TRAINING_JOB_DISABLE_PROFILER_PATH,
+            default_value=False,
+            sagemaker_session=self.sagemaker_session,
+        )
 
         self.environment = resolve_value_from_config(
             direct_input=environment,
@@ -706,7 +715,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.profiler_rule_configs = None
         self.profiler_rules = None
         self.debugger_rules = None
-
+        self.disable_output_compression = disable_output_compression
         validate_source_code_input_against_pipeline_variables(
             entry_point=entry_point,
             source_dir=source_dir,
@@ -2501,6 +2510,7 @@ class Estimator(EstimatorBase):
         training_repository_credentials_provider_arn: Optional[Union[str, PipelineVariable]] = None,
         container_entry_point: Optional[List[str]] = None,
         container_arguments: Optional[List[str]] = None,
+        disable_output_compression: bool = False,
         **kwargs,
     ):
         """Initialize an ``Estimator`` instance.
@@ -2858,6 +2868,8 @@ class Estimator(EstimatorBase):
                 the default train processing instructions.
             container_arguments (List[str]): Optional. The arguments for a container used to run
                 a training job.
+            disable_output_compression (bool): Optional. When set to true, Model is uploaded
+                to Amazon S3 without compression after training finishes.
         """
         self.image_uri = image_uri
         self._hyperparameters = hyperparameters.copy() if hyperparameters else {}
@@ -2907,6 +2919,7 @@ class Estimator(EstimatorBase):
             training_repository_credentials_provider_arn=training_repository_credentials_provider_arn,  # noqa: E501 # pylint: disable=line-too-long
             container_entry_point=container_entry_point,
             container_arguments=container_arguments,
+            disable_output_compression=disable_output_compression,
             **kwargs,
         )
 
