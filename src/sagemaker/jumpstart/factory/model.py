@@ -38,7 +38,7 @@ from sagemaker.jumpstart.types import (
 )
 from sagemaker.jumpstart.utils import (
     update_dict_if_key_not_present,
-    resolve_model_intelligent_default_field,
+    resolve_model_sagemaker_config_field,
 )
 
 from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
@@ -123,7 +123,7 @@ def _add_sagemaker_session_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpSt
 def _add_role_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelInitKwargs:
     """Sets role based on default or override, returns full kwargs."""
 
-    kwargs.role = resolve_model_intelligent_default_field(
+    kwargs.role = resolve_model_sagemaker_config_field(
         field_name="role",
         field_val=kwargs.role,
         sagemaker_session=kwargs.sagemaker_session,
@@ -301,7 +301,7 @@ def _add_extra_model_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelI
 
     for key, value in model_kwargs_to_add.items():
         if getattr(kwargs, key) is None:
-            resolved_value = resolve_model_intelligent_default_field(
+            resolved_value = resolve_model_sagemaker_config_field(
                 field_name=key,
                 field_val=value,
                 sagemaker_session=kwargs.sagemaker_session,

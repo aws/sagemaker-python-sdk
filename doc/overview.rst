@@ -1659,7 +1659,7 @@ Here is an end-to-end example:
 
     mxnet_estimator.fit('file:///tmp/my_training_data')
     transformer = mxnet_estimator.transformer(1, 'local', assemble_with='Line', max_payload=1)
-    transformer.transform('s3://my/transform/data, content_type='text/csv', split_type='Line')
+    transformer.transform('s3://my/transform/data', content_type='text/csv', split_type='Line')
     transformer.wait()
 
     # Deletes the SageMaker model

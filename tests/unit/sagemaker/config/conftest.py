@@ -76,6 +76,7 @@ def valid_edge_packaging_config(valid_iam_role_arn):
     return {
         "OutputConfig": {"KmsKeyId": "kmskeyid1"},
         "RoleArn": valid_iam_role_arn,
+        "ResourceKey": "kmskeyid1",
     }
 
 
@@ -141,6 +142,7 @@ def valid_training_job_config(valid_iam_role_arn, valid_vpc_config, valid_enviro
         "Environment": valid_environment_config,
         "OutputDataConfig": {"KmsKeyId": "kmskeyid1"},
         "ResourceConfig": {"VolumeKmsKeyId": "volumekmskeyid1"},
+        "ProfilerConfig": {"DisableProfiler": False},
         "RoleArn": valid_iam_role_arn,
         "VpcConfig": valid_vpc_config,
     }
@@ -192,6 +194,11 @@ def valid_endpointconfig_config():
 
 
 @pytest.fixture()
+def valid_endpoint_config(valid_tags):
+    return {"Tags": valid_tags}
+
+
+@pytest.fixture()
 def valid_monitoring_schedule_config(
     valid_iam_role_arn, valid_vpc_config, valid_environment_config
 ):
@@ -232,6 +239,7 @@ def valid_config_with_all_the_scopes(
     valid_session_config,
     valid_feature_group_config,
     valid_monitoring_schedule_config,
+    valid_endpoint_config,
     valid_endpointconfig_config,
     valid_automl_config,
     valid_transform_job_config,
@@ -253,6 +261,7 @@ def valid_config_with_all_the_scopes(
         },
         "FeatureGroup": valid_feature_group_config,
         "MonitoringSchedule": valid_monitoring_schedule_config,
+        "Endpoint": valid_endpoint_config,
         "EndpointConfig": valid_endpointconfig_config,
         "AutoMLJob": valid_automl_config,
         "TransformJob": valid_transform_job_config,

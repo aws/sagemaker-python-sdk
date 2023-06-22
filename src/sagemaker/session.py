@@ -45,6 +45,7 @@ from sagemaker.config import (
     TRAINING_JOB_VPC_CONFIG_PATH,
     TRAINING_JOB_OUTPUT_DATA_CONFIG_PATH,
     TRAINING_JOB_RESOURCE_CONFIG_PATH,
+    TRAINING_JOB_PROFILE_CONFIG_PATH,
     PROCESSING_JOB_INPUTS_PATH,
     PROCESSING_JOB,
     PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
@@ -70,6 +71,7 @@ from sagemaker.config import (
     COMPILATION_JOB,
     EDGE_PACKAGING_ROLE_ARN_PATH,
     EDGE_PACKAGING_OUTPUT_CONFIG_PATH,
+    EDGE_PACKAGING_RESOURCE_KEY_PATH,
     EDGE_PACKAGING_JOB,
     TRANSFORM_JOB,
     TRANSFORM_JOB_ENVIRONMENT_PATH,
@@ -95,6 +97,7 @@ from sagemaker.config import (
     ENDPOINT_CONFIG,
     ENDPOINT_CONFIG_DATA_CAPTURE_PATH,
     ENDPOINT_CONFIG_ASYNC_INFERENCE_PATH,
+    ENDPOINT,
     SAGEMAKER,
     FEATURE_GROUP,
     TAGS,
@@ -671,6 +674,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         enable_network_isolation=None,
         image_uri=None,
         training_image_config=None,
+        container_entry_point=None,
+        container_arguments=None,
         algorithm_arn=None,
         encrypt_inter_container_traffic=None,
         use_spot_instances=False,
@@ -753,6 +758,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 authenticate to the private Docker registry will be retrieved from this AWS Lambda
                 function. (default: ``None``). When it's set to None, SageMaker will not do
                 authentication before pulling the image in the private Docker registry.
+            container_entry_point (List[str]): Optional. The entrypoint script for a Docker
+                container used to run a training job. This script takes precedence over
+                the default train processing instructions.
+            container_arguments (List[str]): Optional. The arguments for a container used to run
+                a training job.
             algorithm_arn (str): Algorithm Arn from Marketplace.
             encrypt_inter_container_traffic (bool): Specifies whether traffic between training
                 containers is encrypted for the training job (default: ``False``).
@@ -824,6 +834,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         inferred_resource_config = update_nested_dictionary_with_values_from_config(
             resource_config, TRAINING_JOB_RESOURCE_CONFIG_PATH, sagemaker_session=self
         )
+        inferred_profiler_config = update_nested_dictionary_with_values_from_config(
+            profiler_config, TRAINING_JOB_PROFILE_CONFIG_PATH, sagemaker_session=self
+        )
         if (
             not customer_supplied_kms_key
             and "InstanceType" in inferred_resource_config
@@ -853,6 +866,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             enable_network_isolation=enable_network_isolation,
             image_uri=image_uri,
             training_image_config=training_image_config,
+            container_entry_point=container_entry_point,
+            container_arguments=container_arguments,
             algorithm_arn=algorithm_arn,
             encrypt_inter_container_traffic=_encrypt_inter_container_traffic,
             use_spot_instances=use_spot_instances,
@@ -864,7 +879,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             tensorboard_output_config=tensorboard_output_config,
             enable_sagemaker_metrics=enable_sagemaker_metrics,
             profiler_rule_configs=profiler_rule_configs,
-            profiler_config=profiler_config,
+            profiler_config=inferred_profiler_config,
             environment=environment,
             retry_strategy=retry_strategy,
         )
@@ -892,6 +907,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         enable_network_isolation=False,
         image_uri=None,
         training_image_config=None,
+        container_entry_point=None,
+        container_arguments=None,
         algorithm_arn=None,
         encrypt_inter_container_traffic=False,
         use_spot_instances=False,
@@ -974,6 +991,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 authenticate to the private Docker registry will be retrieved from this AWS Lambda
                 function. (default: ``None``). When it's set to None, SageMaker will not do
                 authentication before pulling the image in the private Docker registry.
+            container_entry_point (List[str]): Optional. The entrypoint script for a Docker
+                container used to run a training job. This script takes precedence over
+                the default train processing instructions.
+            container_arguments (List[str]): Optional. The arguments for a container used to run
+                a training job.
             algorithm_arn (str): Algorithm Arn from Marketplace.
             encrypt_inter_container_traffic (bool): Specifies whether traffic between training
                 containers is encrypted for the training job (default: ``False``).
@@ -1040,6 +1062,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if training_image_config is not None:
             train_request["AlgorithmSpecification"]["TrainingImageConfig"] = training_image_config
+
+        if container_entry_point is not None:
+            train_request["AlgorithmSpecification"]["ContainerEntrypoint"] = container_entry_point
+
+        if container_arguments is not None:
+            train_request["AlgorithmSpecification"]["ContainerArguments"] = container_arguments
 
         if algorithm_arn is not None:
             train_request["AlgorithmSpecification"]["AlgorithmName"] = algorithm_arn
@@ -1128,11 +1156,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
         # No injections from sagemaker_config because the UpdateTrainingJob API's resource_config
         # object accepts fewer parameters than the CreateTrainingJob API, and none that the
         # sagemaker_config currently supports
-
+        inferred_profiler_config = update_nested_dictionary_with_values_from_config(
+            profiler_config, TRAINING_JOB_PROFILE_CONFIG_PATH, sagemaker_session=self
+        )
         update_training_job_request = self._get_update_training_job_request(
             job_name=job_name,
             profiler_rule_configs=profiler_rule_configs,
-            profiler_config=profiler_config,
+            profiler_config=inferred_profiler_config,
             resource_config=resource_config,
         )
         LOGGER.info("Updating training job with name %s", job_name)
@@ -2503,6 +2533,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             "EdgePackagingJobName": job_name,
             "CompilationJobName": compilation_job_name,
         }
+        resource_key = resolve_value_from_config(
+            resource_key, EDGE_PACKAGING_RESOURCE_KEY_PATH, sagemaker_session=self
+        )
         tags = _append_project_tags(tags)
         tags = self._append_sagemaker_config_tags(
             tags, "{}.{}.{}".format(SAGEMAKER, EDGE_PACKAGING_JOB, TAGS)
@@ -4018,6 +4051,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             config_name (str): Name of the Amazon SageMaker endpoint configuration to deploy.
             wait (bool): Whether to wait for the endpoint deployment to complete before returning
                 (default: True).
+            tags (list[dict[str, str]]): A list of key-value pairs for tagging the endpoint
+                (default: None).
 
         Returns:
             str: Name of the Amazon SageMaker ``Endpoint`` created.
@@ -4026,6 +4061,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         tags = tags or []
         tags = _append_project_tags(tags)
+        tags = self._append_sagemaker_config_tags(
+            tags, "{}.{}.{}".format(SAGEMAKER, ENDPOINT, TAGS)
+        )
 
         self.sagemaker_client.create_endpoint(
             EndpointName=endpoint_name, EndpointConfigName=config_name, Tags=tags
@@ -4481,6 +4519,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         model_vpc_config=None,
         accelerator_type=None,
         data_capture_config=None,
+        tags=None,
     ):
         """Create and deploy to an ``Endpoint`` using existing model data stored in S3.
 
@@ -4512,6 +4551,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             data_capture_config (sagemaker.model_monitor.DataCaptureConfig): Specifies
                 configuration related to Endpoint data capture for use with
                 Amazon SageMaker Model Monitoring. Default: None.
+            tags (list[dict[str, str]]): A list of key-value pairs for tagging the endpoint
+                (default: None).
 
         Returns:
             str: Name of the ``Endpoint`` that is created.
@@ -4519,7 +4560,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
         model_environment_vars = model_environment_vars or {}
         name = name or name_from_image(image_uri)
         model_vpc_config = vpc_utils.sanitize(model_vpc_config)
-
+        endpoint_config_tags = _append_project_tags(tags)
+        endpoint_tags = _append_project_tags(tags)
+        endpoint_config_tags = self._append_sagemaker_config_tags(
+            endpoint_config_tags, "{}.{}.{}".format(SAGEMAKER, ENDPOINT_CONFIG, TAGS)
+        )
         primary_container = container_def(
             image_uri=image_uri,
             model_data_url=model_s3_location,
@@ -4542,12 +4587,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 instance_type=instance_type,
                 accelerator_type=accelerator_type,
                 data_capture_config_dict=data_capture_config_dict,
+                tags=endpoint_config_tags,
             )
         )
 
         # to make change backwards compatible
         response = _create_resource(
-            lambda: self.create_endpoint(endpoint_name=name, config_name=name, wait=wait)
+            lambda: self.create_endpoint(
+                endpoint_name=name, config_name=name, tags=endpoint_tags, wait=wait
+            )
         )
         if not response:
             raise ValueError(
@@ -4612,12 +4660,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
             if supports_kms
             else kms_key
         )
-        tags = _append_project_tags(tags)
-        tags = self._append_sagemaker_config_tags(
-            tags, "{}.{}.{}".format(SAGEMAKER, ENDPOINT_CONFIG, TAGS)
+
+        endpoint_config_tags = _append_project_tags(tags)
+        endpoint_tags = _append_project_tags(tags)
+
+        endpoint_config_tags = self._append_sagemaker_config_tags(
+            endpoint_config_tags, "{}.{}.{}".format(SAGEMAKER, ENDPOINT_CONFIG, TAGS)
         )
-        if tags:
-            config_options["Tags"] = tags
+        if endpoint_config_tags:
+            config_options["Tags"] = endpoint_config_tags
         if kms_key:
             config_options["KmsKeyId"] = kms_key
         if data_capture_config_dict is not None:
@@ -4638,7 +4689,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         LOGGER.info("Creating endpoint-config with name %s", name)
         self.sagemaker_client.create_endpoint_config(**config_options)
 
-        return self.create_endpoint(endpoint_name=name, config_name=name, tags=tags, wait=wait)
+        return self.create_endpoint(
+            endpoint_name=name, config_name=name, tags=endpoint_tags, wait=wait
+        )
 
     def expand_role(self, role):
         """Expand an IAM role name into an ARN.

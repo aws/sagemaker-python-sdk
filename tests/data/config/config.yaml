@@ -53,6 +53,10 @@ SageMaker:
             Subnets:
               - 'subnet-1234'
         RoleArn: 'arn:aws:iam::555555555555:role/IMRole'
+  Endpoint:
+    Tags:
+      - Key: "tag1"
+        Value: "tagValue1"
   EndpointConfig:
     AsyncInferenceConfig:
       OutputConfig:
@@ -163,6 +167,8 @@ SageMaker:
     ResourceConfig:
       VolumeKmsKeyId: 'volumekmskeyid1'
     RoleArn: 'arn:aws:iam::555555555555:role/IMRole'
+    ProfilerConfig:
+      DisableProfiler: false
     VpcConfig:
       SecurityGroupIds:
         - 'sg123'
@@ -172,3 +178,4 @@ SageMaker:
     OutputConfig:
       KmsKeyId: 'kmskeyid1'
     RoleArn: 'arn:aws:iam::555555555555:role/IMRole'
+    ResourceKey: 'kmskeyid1'

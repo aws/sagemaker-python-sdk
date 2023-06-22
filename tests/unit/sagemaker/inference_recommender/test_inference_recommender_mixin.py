@@ -585,6 +585,7 @@ def test_deploy_right_size_with_model_package_succeeds(
         IR_MODEL_PACKAGE_CONTAINER_DEF,
         vpc_config=None,
         enable_network_isolation=False,
+        tags=None,
     )
 
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
@@ -615,6 +616,7 @@ def test_deploy_right_size_with_both_overrides_succeeds(
         IR_MODEL_PACKAGE_CONTAINER_DEF,
         vpc_config=None,
         enable_network_isolation=False,
+        tags=None,
     )
 
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
@@ -671,6 +673,7 @@ def test_deploy_right_size_serverless_override(sagemaker_session, default_right_
         IR_MODEL_PACKAGE_CONTAINER_DEF,
         vpc_config=None,
         enable_network_isolation=False,
+        tags=None,
     )
 
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
@@ -703,6 +706,7 @@ def test_deploy_right_size_async_override(sagemaker_session, default_right_sized
         IR_MODEL_PACKAGE_CONTAINER_DEF,
         vpc_config=None,
         enable_network_isolation=False,
+        tags=None,
     )
 
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
@@ -745,6 +749,7 @@ def test_deploy_right_size_explainer_config_override(sagemaker_session, default_
         IR_MODEL_PACKAGE_CONTAINER_DEF,
         vpc_config=None,
         enable_network_isolation=False,
+        tags=None,
     )
 
     sagemaker_session.endpoint_from_production_variants.assert_called_with(

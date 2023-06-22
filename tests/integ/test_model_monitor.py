@@ -33,6 +33,8 @@ from sagemaker.model_monitor import DefaultModelMonitor
 from sagemaker.model_monitor import MonitoringOutput
 from sagemaker.model_monitor import DataCaptureConfig
 from sagemaker.model_monitor import BatchTransformInput
+from sagemaker.model_monitor import DataQualityMonitoringConfig
+from sagemaker.model_monitor import DataQualityDistributionConstraints
 from sagemaker.model_monitor.data_capture_config import _MODEL_MONITOR_S3_PATH
 from sagemaker.model_monitor.data_capture_config import _DATA_CAPTURE_S3_PATH
 from sagemaker.model_monitor import CronExpressionGenerator
@@ -422,6 +424,7 @@ def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_with_cu
     assert baselining_job_description["ProcessingOutputConfig"]["KmsKeyId"] == output_kms_key
     assert baselining_job_description["Environment"][ENV_KEY_1] == ENV_VALUE_1
     assert baselining_job_description["Environment"]["output_path"] == "/opt/ml/processing/output"
+    assert "categorical_drift_method" not in baselining_job_description["Environment"]
     assert (
         baselining_job_description["Environment"]["dataset_source"]
         == "/opt/ml/processing/input/baseline_dataset_input"
@@ -440,6 +443,18 @@ def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_with_cu
 
     constraints = my_default_monitor.suggested_constraints()
     assert constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Enabled"
+    assert (
+        constraints.body_dict["monitoring_config"]["distribution_constraints"][
+            "categorical_drift_method"
+        ]
+        == "LInfinity"
+    )
+    assert (
+        constraints.body_dict["monitoring_config"]["distribution_constraints"][
+            "categorical_comparison_threshold"
+        ]
+        == 0.1
+    )
 
     constraints.set_monitoring(enable_monitoring=False)
 
@@ -469,6 +484,280 @@ def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_with_cu
 
     summary = sagemaker_session.list_monitoring_schedules()
     assert len(summary["MonitoringScheduleSummaries"]) > 0
+
+
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
+    reason="ModelMonitoring is not yet supported in this region.",
+)
+def test_default_monitor_suggest_baseline_with_chisquared_categorical_drift_method(
+    sagemaker_session, output_kms_key, volume_kms_key
+):
+    baseline_dataset = os.path.join(DATA_DIR, "monitor/baseline_dataset.csv")
+
+    my_default_monitor = DefaultModelMonitor(
+        role=ROLE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        volume_size_in_gb=VOLUME_SIZE_IN_GB,
+        volume_kms_key=volume_kms_key,
+        output_kms_key=output_kms_key,
+        max_runtime_in_seconds=MAX_RUNTIME_IN_SECONDS,
+        sagemaker_session=sagemaker_session,
+        env=ENVIRONMENT,
+        tags=TAGS,
+        network_config=NETWORK_CONFIG,
+    )
+
+    output_s3_uri = os.path.join(
+        "s3://",
+        sagemaker_session.default_bucket(),
+        INTEG_TEST_MONITORING_OUTPUT_BUCKET,
+        str(uuid.uuid4()),
+    )
+
+    distribution_constraints_with_chisquared_categorical_drift_method = (
+        DataQualityDistributionConstraints(categorical_drift_method="ChiSquared")
+    )
+    monitoring_config_with_chisquared_categorical_drift_method = DataQualityMonitoringConfig(
+        distribution_constraints=distribution_constraints_with_chisquared_categorical_drift_method
+    )
+
+    my_default_monitor.suggest_baseline(
+        baseline_dataset=baseline_dataset,
+        dataset_format=DatasetFormat.csv(header=False),
+        output_s3_uri=output_s3_uri,
+        wait=True,
+        logs=False,
+        monitoring_config_override=monitoring_config_with_chisquared_categorical_drift_method,
+    )
+
+    baselining_job_description = my_default_monitor.latest_baselining_job.describe()
+
+    assert (
+        baselining_job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"]
+        == INSTANCE_TYPE
+    )
+    assert (
+        baselining_job_description["ProcessingResources"]["ClusterConfig"]["InstanceCount"]
+        == INSTANCE_COUNT
+    )
+    assert (
+        baselining_job_description["ProcessingResources"]["ClusterConfig"]["VolumeSizeInGB"]
+        == VOLUME_SIZE_IN_GB
+    )
+    assert (
+        baselining_job_description["ProcessingResources"]["ClusterConfig"]["VolumeKmsKeyId"]
+        == volume_kms_key
+    )
+    assert DEFAULT_IMAGE_SUFFIX in baselining_job_description["AppSpecification"]["ImageUri"]
+    assert ROLE in baselining_job_description["RoleArn"]
+    assert (
+        baselining_job_description["ProcessingInputs"][0]["InputName"] == "baseline_dataset_input"
+    )
+    assert (
+        baselining_job_description["ProcessingOutputConfig"]["Outputs"][0]["OutputName"]
+        == "monitoring_output"
+    )
+    assert baselining_job_description["ProcessingOutputConfig"]["KmsKeyId"] == output_kms_key
+    assert baselining_job_description["Environment"][ENV_KEY_1] == ENV_VALUE_1
+    assert baselining_job_description["Environment"]["output_path"] == "/opt/ml/processing/output"
+    assert baselining_job_description["Environment"]["categorical_drift_method"] == "ChiSquared"
+    assert (
+        baselining_job_description["Environment"]["dataset_source"]
+        == "/opt/ml/processing/input/baseline_dataset_input"
+    )
+    assert (
+        baselining_job_description["StoppingCondition"]["MaxRuntimeInSeconds"]
+        == MAX_RUNTIME_IN_SECONDS
+    )
+    assert (
+        baselining_job_description["NetworkConfig"]["EnableNetworkIsolation"]
+        == NETWORK_CONFIG.enable_network_isolation
+    )
+
+    statistics = my_default_monitor.baseline_statistics()
+    assert statistics.body_dict["dataset"]["item_count"] == 418
+
+    constraints = my_default_monitor.suggested_constraints()
+    assert constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Enabled"
+    assert (
+        constraints.body_dict["monitoring_config"]["distribution_constraints"][
+            "categorical_drift_method"
+        ]
+        == "ChiSquared"
+    )
+    assert (
+        constraints.body_dict["monitoring_config"]["distribution_constraints"][
+            "categorical_comparison_threshold"
+        ]
+        == 0.1
+    )
+
+    constraints.set_monitoring(enable_monitoring=False)
+
+    assert constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Disabled"
+
+    constraints.save()
+
+
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
+    reason="ModelMonitoring is not yet supported in this region.",
+)
+def test_default_monitor_suggest_baseline_with_linfinity_categorical_drift_method(
+    sagemaker_session, output_kms_key, volume_kms_key
+):
+    baseline_dataset = os.path.join(DATA_DIR, "monitor/baseline_dataset.csv")
+
+    my_default_monitor = DefaultModelMonitor(
+        role=ROLE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        volume_size_in_gb=VOLUME_SIZE_IN_GB,
+        volume_kms_key=volume_kms_key,
+        output_kms_key=output_kms_key,
+        max_runtime_in_seconds=MAX_RUNTIME_IN_SECONDS,
+        sagemaker_session=sagemaker_session,
+        env=ENVIRONMENT,
+        tags=TAGS,
+        network_config=NETWORK_CONFIG,
+    )
+
+    output_s3_uri = os.path.join(
+        "s3://",
+        sagemaker_session.default_bucket(),
+        INTEG_TEST_MONITORING_OUTPUT_BUCKET,
+        str(uuid.uuid4()),
+    )
+    monitoring_config_with_linfinity_categorical_drift_method = DataQualityMonitoringConfig(
+        distribution_constraints=DataQualityDistributionConstraints(
+            categorical_drift_method="LInfinity"
+        )
+    )
+    my_default_monitor.suggest_baseline(
+        baseline_dataset=baseline_dataset,
+        dataset_format=DatasetFormat.csv(header=False),
+        output_s3_uri=output_s3_uri,
+        wait=True,
+        logs=False,
+        monitoring_config_override=monitoring_config_with_linfinity_categorical_drift_method,
+    )
+
+    baselining_job_description = my_default_monitor.latest_baselining_job.describe()
+
+    assert (
+        baselining_job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"]
+        == INSTANCE_TYPE
+    )
+    assert (
+        baselining_job_description["ProcessingResources"]["ClusterConfig"]["InstanceCount"]
+        == INSTANCE_COUNT
+    )
+    assert (
+        baselining_job_description["ProcessingResources"]["ClusterConfig"]["VolumeSizeInGB"]
+        == VOLUME_SIZE_IN_GB
+    )
+    assert (
+        baselining_job_description["ProcessingResources"]["ClusterConfig"]["VolumeKmsKeyId"]
+        == volume_kms_key
+    )
+    assert DEFAULT_IMAGE_SUFFIX in baselining_job_description["AppSpecification"]["ImageUri"]
+    assert ROLE in baselining_job_description["RoleArn"]
+    assert (
+        baselining_job_description["ProcessingInputs"][0]["InputName"] == "baseline_dataset_input"
+    )
+    assert (
+        baselining_job_description["ProcessingOutputConfig"]["Outputs"][0]["OutputName"]
+        == "monitoring_output"
+    )
+    assert baselining_job_description["ProcessingOutputConfig"]["KmsKeyId"] == output_kms_key
+    assert baselining_job_description["Environment"][ENV_KEY_1] == ENV_VALUE_1
+    assert baselining_job_description["Environment"]["output_path"] == "/opt/ml/processing/output"
+    assert baselining_job_description["Environment"]["categorical_drift_method"] == "LInfinity"
+    assert (
+        baselining_job_description["Environment"]["dataset_source"]
+        == "/opt/ml/processing/input/baseline_dataset_input"
+    )
+    assert (
+        baselining_job_description["StoppingCondition"]["MaxRuntimeInSeconds"]
+        == MAX_RUNTIME_IN_SECONDS
+    )
+    assert (
+        baselining_job_description["NetworkConfig"]["EnableNetworkIsolation"]
+        == NETWORK_CONFIG.enable_network_isolation
+    )
+
+    statistics = my_default_monitor.baseline_statistics()
+    assert statistics.body_dict["dataset"]["item_count"] == 418
+
+    constraints = my_default_monitor.suggested_constraints()
+    assert constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Enabled"
+    assert (
+        constraints.body_dict["monitoring_config"]["distribution_constraints"][
+            "categorical_drift_method"
+        ]
+        == "LInfinity"
+    )
+    assert (
+        constraints.body_dict["monitoring_config"]["distribution_constraints"][
+            "categorical_comparison_threshold"
+        ]
+        == 0.1
+    )
+
+    constraints.set_monitoring(enable_monitoring=False)
+
+    assert constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Disabled"
+
+    constraints.save()
+
+
+def test_default_monitor_suggest_baseline_with_invalid_categorical_drift_method(
+    sagemaker_session, output_kms_key, volume_kms_key
+):
+    baseline_dataset = os.path.join(DATA_DIR, "monitor/baseline_dataset.csv")
+
+    my_default_monitor = DefaultModelMonitor(
+        role=ROLE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        volume_size_in_gb=VOLUME_SIZE_IN_GB,
+        volume_kms_key=volume_kms_key,
+        output_kms_key=output_kms_key,
+        max_runtime_in_seconds=MAX_RUNTIME_IN_SECONDS,
+        sagemaker_session=sagemaker_session,
+        env=ENVIRONMENT,
+        tags=TAGS,
+        network_config=NETWORK_CONFIG,
+    )
+
+    output_s3_uri = os.path.join(
+        "s3://",
+        sagemaker_session.default_bucket(),
+        INTEG_TEST_MONITORING_OUTPUT_BUCKET,
+        str(uuid.uuid4()),
+    )
+
+    distribution_constraints_with_invalid_categorical_drift_method = (
+        DataQualityDistributionConstraints(
+            categorical_drift_method="INVALID_CATEGORICAL_DRIFT_METHOD"
+        )
+    )
+    monitoring_config_with_invalid_categorical_drift_method = DataQualityMonitoringConfig(
+        distribution_constraints=distribution_constraints_with_invalid_categorical_drift_method
+    )
+
+    with pytest.raises(RuntimeError) as error:
+        my_default_monitor.suggest_baseline(
+            baseline_dataset=baseline_dataset,
+            dataset_format=DatasetFormat.csv(header=False),
+            output_s3_uri=output_s3_uri,
+            wait=True,
+            logs=False,
+            monitoring_config_override=monitoring_config_with_invalid_categorical_drift_method,
+        )
+    assert "Invalid value for monitoring_config_override." in str(error)
 
 
 @pytest.mark.skipif(
