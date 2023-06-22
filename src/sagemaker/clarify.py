@@ -259,6 +259,7 @@ ANALYSIS_CONFIG_SCHEMA_V1_0 = Schema(
                     },
                 },
                 SchemaOptional("seed"): int,
+                SchemaOptional("features_to_explain"): [Or(int, str)],
             },
             SchemaOptional("pre_training_bias"): {"methods": Or(str, [str])},
             SchemaOptional("post_training_bias"): {"methods": Or(str, [str])},
