@@ -522,7 +522,7 @@ class EstimatorTest(unittest.TestCase):
         and cut a ticket sev-3 to JumpStart team: AWS > SageMaker > JumpStart"""
 
         init_args_to_skip: Set[str] = set(
-            ["container_entry_point", "container_arguments", "kwargs"]
+            ["container_entry_point", "container_arguments", "disable_output_compression", "kwargs"]
         )
         fit_args_to_skip: Set[str] = set()
         deploy_args_to_skip: Set[str] = set(["kwargs"])
