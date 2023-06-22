@@ -2448,7 +2448,7 @@ configuration file.
 -  Model: ``CreateModel``, ``UpdateModel``
 -  Model Package: ``CreateModelPackage``, ``UpdateModelPackage``
 -  Processing Jobs: ``CreateProcessingJob``, ``UpdateProcessingJob``
--  Training Job: ``CreateTrainingJob``
+-  Training Job: ``CreateTrainingJob``, ``UpdateTrainingJob``
 -  Edge Packaging Job: ``CreateEdgePackagingJob``
 
 Hyperparameter Tuning Job: Supported indirectly via ``TrainingJob`` API. While this API is not directly supported, it includes the training job definition as a parameter.
