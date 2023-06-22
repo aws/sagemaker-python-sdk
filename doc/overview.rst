@@ -2401,7 +2401,7 @@ The following sections give information about the APIs and parameters
 that the SageMaker Python SDK supports setting defaults for. To set
 defaults for these parameters, create key/value pairs in your
 configuration file as shown in `Configuration file structure`_.
-For the full schema, see ``sagemaker.config.config_schema.SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA``.
+For the full schema, see `sagemaker.config.config_schema.SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA <https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/config/config_schema.py>`_.
 
 List of parameters supported
 ----------------------------
