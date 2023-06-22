@@ -330,7 +330,7 @@ class SegmentationConfig:
     def __init__(
         self,
         name_or_index: Union[str, int],
-        segments: [[str, int]],
+        segments: List[List[Union[str, int]]],
         config_name: Optional[str] = None,
         display_aliases: Optional[List[str]] = None,
     ):
