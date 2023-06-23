@@ -28,6 +28,7 @@ from sagemaker.experiments.trial_component import _TrialComponent
 from sagemaker.experiments._api_types import _TrialComponentStatusType
 
 from sagemaker.remote_function import remote
+from sagemaker.remote_function.spark_config import SparkConfig
 from sagemaker.remote_function.runtime_environment.runtime_environment_manager import (
     RuntimeEnvironmentError,
 )
@@ -598,6 +599,32 @@ def test_decorator_pre_execution_script_error(
     with pytest.raises(RuntimeEnvironmentError) as e:
         get_file_content(["test_file_1", "test_file_2", "test_file_3"])
         assert "line 2: bws: command not found" in str(e)
+
+
+@pytest.mark.skip
+def test_decorator_with_spark_job(sagemaker_session, cpu_instance_type):
+    @remote(
+        role=ROLE,
+        instance_type=cpu_instance_type,
+        sagemaker_session=sagemaker_session,
+        keep_alive_period_in_seconds=60,
+        spark_config=SparkConfig(
+            configuration=[
+                {
+                    "Classification": "spark-defaults",
+                    "Properties": {"spark.app.name", "remote-spark-test"},
+                }
+            ]
+        ),
+    )
+    def test_spark_transform():
+        from pyspark.sql import SparkSession
+
+        spark = SparkSession.builder.getOrCreate()
+
+        assert spark.conf.get(spark.app.name) == "remote-spark-test"
+
+    test_spark_transform()
 
 
 @pytest.mark.skip

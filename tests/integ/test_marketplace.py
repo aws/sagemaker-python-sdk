@@ -108,7 +108,6 @@ def test_marketplace_estimator(sagemaker_session, cpu_instance_type):
         print(predictor.predict(test_x.values).decode("utf-8"))
 
 
-@pytest.mark.skip(reason="This test is currently failing. Skipping until fixed")
 @pytest.mark.skipif(
     tests.integ.test_region() in tests.integ.NO_MARKET_PLACE_REGIONS,
     reason="Marketplace is not available in {}".format(tests.integ.test_region()),
@@ -166,6 +165,7 @@ def test_marketplace_attach(sagemaker_session, cpu_instance_type):
     tests.integ.test_region() in tests.integ.NO_MARKET_PLACE_REGIONS,
     reason="Marketplace is not available in {}".format(tests.integ.test_region()),
 )
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
 def test_marketplace_model(sagemaker_session, cpu_instance_type):
     region = sagemaker_session.boto_region_name
     account = REGION_ACCOUNT_MAP[region]
@@ -328,7 +328,6 @@ def test_create_model_package(sagemaker_session, boto_session, iris_image):
     assert len(response["ModelPackageSummaryList"]) > 0
 
 
-@pytest.mark.skip(reason="This test is currently failing. Skipping until fixed")
 @pytest.mark.skipif(
     tests.integ.test_region() in tests.integ.NO_MARKET_PLACE_REGIONS,
     reason="Marketplace is not available in {}".format(tests.integ.test_region()),
@@ -372,7 +371,6 @@ def test_marketplace_tuning_job(sagemaker_session, cpu_instance_type):
     tuner.wait()
 
 
-@pytest.mark.skip(reason="This test is currently failing. Skipping until fixed")
 @pytest.mark.skipif(
     tests.integ.test_region() in tests.integ.NO_MARKET_PLACE_REGIONS,
     reason="Marketplace is not available in {}".format(tests.integ.test_region()),

@@ -57,7 +57,7 @@ metadata_inference_enable_network_isolation = random.choice([True, False])
 metadata_inference_role = "th1234567iant role"
 
 
-def config_value_impl(sagemaker_session: Session, config_path: str):
+def config_value_impl(sagemaker_session: Session, config_path: str, sagemaker_config: dict):
     if config_path == TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH:
         return config_enable_network_isolation
 

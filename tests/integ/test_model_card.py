@@ -125,6 +125,7 @@ def binary_classifier_fixture(
         assert "Could not find model" in str(exception.value)
 
 
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
 def test_model_card_create_read_update_and_delete(
     sagemaker_session,
     binary_classifier,

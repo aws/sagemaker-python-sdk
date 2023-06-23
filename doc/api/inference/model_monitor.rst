@@ -41,3 +41,8 @@ Model Monitor
     :members:
     :undoc-members:
     :show-inheritance:
+
+.. automodule:: sagemaker.model_monitor.data_quality_monitoring_config
+    :members:
+    :undoc-members:
+    :show-inheritance:

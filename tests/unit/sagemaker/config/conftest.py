@@ -46,6 +46,19 @@ def valid_session_config():
 
 
 @pytest.fixture()
+def valid_environment_config():
+    return {
+        "var1": "value1",
+        "var2": "value2",
+    }
+
+
+@pytest.fixture()
+def valid_containers_config(valid_environment_config):
+    return [{"Environment": valid_environment_config}]
+
+
+@pytest.fixture()
 def valid_feature_group_config(valid_iam_role_arn):
     security_storage_config = {"KmsKeyId": "kmskeyid1"}
     s3_storage_config = {"KmsKeyId": "kmskeyid2"}
@@ -63,21 +76,32 @@ def valid_edge_packaging_config(valid_iam_role_arn):
     return {
         "OutputConfig": {"KmsKeyId": "kmskeyid1"},
         "RoleArn": valid_iam_role_arn,
+        "ResourceKey": "kmskeyid1",
     }
 
 
 @pytest.fixture()
-def valid_model_config(valid_iam_role_arn, valid_vpc_config):
+def valid_model_config(
+    valid_iam_role_arn, valid_vpc_config, valid_environment_config, valid_containers_config
+):
     return {
+        "Containers": valid_containers_config,
         "EnableNetworkIsolation": True,
         "ExecutionRoleArn": valid_iam_role_arn,
+        "PrimaryContainer": {"Environment": valid_environment_config},
         "VpcConfig": valid_vpc_config,
     }
 
 
 @pytest.fixture()
-def valid_model_package_config(valid_iam_role_arn):
+def valid_model_package_config(
+    valid_iam_role_arn, valid_environment_config, valid_containers_config
+):
+    inference_specification = {
+        "Containers": valid_containers_config,
+    }
     transform_job_definition = {
+        "Environment": valid_environment_config,
         "TransformOutput": {"KmsKeyId": "kmskeyid1"},
         "TransformResources": {"VolumeKmsKeyId": "volumekmskeyid1"},
     }
@@ -85,11 +109,14 @@ def valid_model_package_config(valid_iam_role_arn):
         "ValidationProfiles": [{"TransformJobDefinition": transform_job_definition}],
         "ValidationRole": valid_iam_role_arn,
     }
-    return {"ValidationSpecification": validation_specification}
+    return {
+        "InferenceSpecification": inference_specification,
+        "ValidationSpecification": validation_specification,
+    }
 
 
 @pytest.fixture()
-def valid_processing_job_config(valid_iam_role_arn, valid_vpc_config):
+def valid_processing_job_config(valid_iam_role_arn, valid_vpc_config, valid_environment_config):
     network_config = {"EnableNetworkIsolation": True, "VpcConfig": valid_vpc_config}
     dataset_definition = {
         "AthenaDatasetDefinition": {"KmsKeyId": "kmskeyid1"},
@@ -99,6 +126,7 @@ def valid_processing_job_config(valid_iam_role_arn, valid_vpc_config):
         },
     }
     return {
+        "Environment": valid_environment_config,
         "NetworkConfig": network_config,
         "ProcessingInputs": [{"DatasetDefinition": dataset_definition}],
         "ProcessingOutputConfig": {"KmsKeyId": "kmskeyid3"},
@@ -108,11 +136,13 @@ def valid_processing_job_config(valid_iam_role_arn, valid_vpc_config):
 
 
 @pytest.fixture()
-def valid_training_job_config(valid_iam_role_arn, valid_vpc_config):
+def valid_training_job_config(valid_iam_role_arn, valid_vpc_config, valid_environment_config):
     return {
         "EnableNetworkIsolation": True,
+        "Environment": valid_environment_config,
         "OutputDataConfig": {"KmsKeyId": "kmskeyid1"},
         "ResourceConfig": {"VolumeKmsKeyId": "volumekmskeyid1"},
+        "ProfilerConfig": {"DisableProfiler": False},
         "RoleArn": valid_iam_role_arn,
         "VpcConfig": valid_vpc_config,
     }
@@ -133,9 +163,10 @@ def valid_compilation_job_config(valid_iam_role_arn, valid_vpc_config):
 
 
 @pytest.fixture()
-def valid_transform_job_config():
+def valid_transform_job_config(valid_environment_config):
     return {
         "DataCaptureConfig": {"KmsKeyId": "kmskeyid1"},
+        "Environment": valid_environment_config,
         "TransformOutput": {"KmsKeyId": "kmskeyid2"},
         "TransformResources": {"VolumeKmsKeyId": "volumekmskeyid1"},
     }
@@ -163,11 +194,19 @@ def valid_endpointconfig_config():
 
 
 @pytest.fixture()
-def valid_monitoring_schedule_config(valid_iam_role_arn, valid_vpc_config):
+def valid_endpoint_config(valid_tags):
+    return {"Tags": valid_tags}
+
+
+@pytest.fixture()
+def valid_monitoring_schedule_config(
+    valid_iam_role_arn, valid_vpc_config, valid_environment_config
+):
     network_config = {"EnableNetworkIsolation": True, "VpcConfig": valid_vpc_config}
     return {
         "MonitoringScheduleConfig": {
             "MonitoringJobDefinition": {
+                "Environment": valid_environment_config,
                 "MonitoringOutputConfig": {"KmsKeyId": "kmskeyid1"},
                 "MonitoringResources": {"ClusterConfig": {"VolumeKmsKeyId": "volumekmskeyid1"}},
                 "NetworkConfig": network_config,
@@ -200,6 +239,7 @@ def valid_config_with_all_the_scopes(
     valid_session_config,
     valid_feature_group_config,
     valid_monitoring_schedule_config,
+    valid_endpoint_config,
     valid_endpointconfig_config,
     valid_automl_config,
     valid_transform_job_config,
@@ -221,6 +261,7 @@ def valid_config_with_all_the_scopes(
         },
         "FeatureGroup": valid_feature_group_config,
         "MonitoringSchedule": valid_monitoring_schedule_config,
+        "Endpoint": valid_endpoint_config,
         "EndpointConfig": valid_endpointconfig_config,
         "AutoMLJob": valid_automl_config,
         "TransformJob": valid_transform_job_config,

@@ -27,3 +27,5 @@ scipy==1.7.3
 urllib3>=1.26.8,<1.26.15
 docker>=5.0.2,<7.0.0
 PyYAML==6.0
+pyspark==3.3.1
+sagemaker-feature-store-pyspark-3.3

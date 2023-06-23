@@ -115,6 +115,42 @@ def test_create_sagemaker_model_uses_model_name(name_from_base, sagemaker_sessio
         {"ModelPackageName": model_package_name},
         vpc_config=None,
         enable_network_isolation=False,
+        tags=None,
+    )
+
+
+@pytest.mark.parametrize(
+    "model_package_arn",
+    [
+        "arn:aws:sagemaker:us-east-2:123:model-package/my-model-package-arn",
+        "arn:aws:sagemaker:us-east-2:123:model-package/my-model-package-arn/12",
+    ],
+)
+@patch("sagemaker.utils.name_from_base")
+def test_create_sagemaker_model_uses_model_package_arn(
+    name_from_base, sagemaker_session, model_package_arn
+):
+    model_name = "my-model"
+
+    model_package = ModelPackage(
+        role="role",
+        name=model_name,
+        model_package_arn=model_package_arn,
+        sagemaker_session=sagemaker_session,
+    )
+
+    model_package._create_sagemaker_model()
+
+    assert model_name == model_package.name
+    name_from_base.assert_not_called()
+
+    sagemaker_session.create_model.assert_called_with(
+        model_name,
+        "role",
+        {"ModelPackageName": model_package_arn},
+        vpc_config=None,
+        enable_network_isolation=False,
+        tags=None,
     )
 
 
@@ -141,6 +177,35 @@ def test_create_sagemaker_model_include_environment_variable(sagemaker_session):
         {"ModelPackageName": model_package_name, "Environment": environment},
         vpc_config=None,
         enable_network_isolation=False,
+        tags=None,
+    )
+
+
+def test_create_sagemaker_model_include_tags(sagemaker_session):
+    model_name = "my-model"
+    model_package_name = "my-model-package"
+    env_key = "env_key"
+    env_value = "env_value"
+    environment = {env_key: env_value}
+    tags = {"Key": "foo", "Value": "bar"}
+
+    model_package = ModelPackage(
+        role="role",
+        name=model_name,
+        model_package_arn=model_package_name,
+        env=environment,
+        sagemaker_session=sagemaker_session,
+    )
+
+    model_package._create_sagemaker_model(tags=tags)
+
+    sagemaker_session.create_model.assert_called_with(
+        model_name,
+        "role",
+        {"ModelPackageName": model_package_name, "Environment": environment},
+        vpc_config=None,
+        enable_network_isolation=False,
+        tags=tags,
     )
 
 
