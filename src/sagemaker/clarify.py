@@ -1264,8 +1264,8 @@ class SHAPConfig(ExplainabilityConfig):
                 Currently only supported for tabular datasets.
 
         Raises:
-            ValueError: when ``agg_method`` is invalid, ``baseline`` and ``num_clusters`` are provided 
-                together, or ``features_to_explain`` is specified when ``text_config`` or 
+            ValueError: when ``agg_method`` is invalid, ``baseline`` and ``num_clusters`` are provided
+                together, or ``features_to_explain`` is specified when ``text_config`` or
                 ``image_config`` is provided
         """  # noqa E501  # pylint: disable=c0301
         if agg_method is not None and agg_method not in [
