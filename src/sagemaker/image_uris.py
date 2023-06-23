@@ -210,7 +210,10 @@ def retrieve(
             "huggingface-tensorflow-trcomp-training",
         ]:
             _version = version
-        if repo in ["huggingface-pytorch-inference-neuron"]:
+        if repo in [
+            "huggingface-pytorch-inference-neuron",
+            "huggingface-pytorch-inference-neuronx",
+        ]:
             if not sdk_version:
                 sdk_version = _get_latest_versions(version_config["sdk_versions"])
             container_version = sdk_version + "-" + container_version
