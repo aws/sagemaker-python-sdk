@@ -32,6 +32,7 @@ from sagemaker.clarify import (
     _AnalysisConfigGenerator,
     DatasetType,
     ProcessingOutputHandler,
+    SegmentationConfig,
 )
 
 JOB_NAME_PREFIX = "my-prefix"
@@ -59,6 +60,15 @@ def test_data_config(dataset_type, features, excluded_columns, predicted_label):
     s3_output_path = "s3://path/to/output"
     label_name = "Label"
     headers = ["Label", "F1", "F2", "F3", "F4", "Predicted Label"]
+    segment_config = [
+        SegmentationConfig(
+            name_or_index="F1",
+            segments=[[0]],
+            config_name="c1",
+            display_aliases=["a1"],
+        )
+    ]
+
     data_config = DataConfig(
         s3_data_input_path=s3_data_input_path,
         s3_output_path=s3_output_path,
@@ -68,12 +78,21 @@ def test_data_config(dataset_type, features, excluded_columns, predicted_label):
         dataset_type=dataset_type,
         excluded_columns=excluded_columns,
         predicted_label=predicted_label,
+        segmentation_config=segment_config,
     )
 
     expected_config = {
         "dataset_type": dataset_type,
         "headers": headers,
         "label": "Label",
+        "segment_config": [
+            {
+                "config_name": "c1",
+                "display_aliases": ["a1"],
+                "name_or_index": "F1",
+                "segments": [[0]],
+            }
+        ],
     }
     if features:
         expected_config["features"] = features
@@ -206,6 +225,65 @@ def test_invalid_data_config():
             dataset_type="application/jsonlines",
             predicted_label_dataset_uri="pred_dataset/URI",
             predicted_label_headers="prediction",
+        )
+
+
+@pytest.mark.parametrize(
+    ("name_or_index", "segments", "config_name", "display_aliases"),
+    [
+        ("feature1", [[0]], None, None),
+        ("feature1", [[0], ["[1, 3)", "(5, 10]"]], None, None),
+        ("feature1", [[0], ["[1, 3)", "(5, 10]"]], "config1", None),
+        ("feature1", [["A", "B"]], "config1", ["seg1"]),
+        ("feature1", [["A", "B"]], "config1", ["seg1", "default_seg"]),
+    ],
+)
+def test_segmentation_config(name_or_index, segments, config_name, display_aliases):
+    segmentation_config = SegmentationConfig(
+        name_or_index=name_or_index,
+        segments=segments,
+        config_name=config_name,
+        display_aliases=display_aliases,
+    )
+
+    assert segmentation_config.name_or_index == name_or_index
+    assert segmentation_config.segments == segments
+    if segmentation_config.config_name:
+        assert segmentation_config.config_name == config_name
+    if segmentation_config.display_aliases:
+        assert segmentation_config.display_aliases == display_aliases
+
+
+@pytest.mark.parametrize(
+    ("name_or_index", "segments", "config_name", "display_aliases", "error_msg"),
+    [
+        (None, [[0]], "config1", None, "`name_or_index` cannot be None"),
+        (
+            "feature1",
+            "0",
+            "config1",
+            ["seg1"],
+            "`segments` must be a list of lists of values or intervals.",
+        ),
+        (
+            "feature1",
+            [[0]],
+            "config1",
+            ["seg1", "seg2", "seg3"],
+            "Number of `display_aliases` must equal the number of segments specified or with one "
+            "additional default segment display alias.",
+        ),
+    ],
+)
+def test_invalid_segmentation_config(
+    name_or_index, segments, config_name, display_aliases, error_msg
+):
+    with pytest.raises(ValueError, match=error_msg):
+        SegmentationConfig(
+            name_or_index=name_or_index,
+            segments=segments,
+            config_name=config_name,
+            display_aliases=display_aliases,
         )
 
 
