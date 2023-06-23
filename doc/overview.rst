@@ -2546,6 +2546,29 @@ in the configuration dictionary, the user tag is used and the config tag is
 skipped. This behavior applies to all config keys that follow
 the ``SageMaker.*.Tags`` pattern.
 
+DebuggerHookConfig
+------------------
+
+The SageMaker Python SDK only supports setting a boolean value as the default for the
+``debugger_hook_config parameter`` in the configuration dictionary. The SageMaker Python SDK does
+not support setting a dictionary as the default value for this parameter.
+
+If the user doesn’t manually specify a value for `DebuggerHookConfig <https://sagemaker.readthedocs.io/en/stable/api/training/debugger.html#sagemaker.debugger.DebuggerHookConfig>`__,
+the default value specified in the configuration dictionary is used.
+
+If the user manually specifies one of the following values for ``DebuggerHookConfig`` without
+passing a value for ``s3_output_path`` and there is no default value for the ``s3_output_path``
+parameter specified in the configuration dictionary, the SageMaker Python SDK sets the value of
+the ``s3_output_path`` parameter to the value specified as part of
+``SageMaker.Modules.Session.DefaultS3Bucket`` in the configuration dictionary.
+
+-  dictionary
+-  True
+-  None
+
+Users can change the default ``s3_output_path`` by specifying a value for that parameter in the
+input dictionary for ``DebuggerHookConfig``.
+
 Object Arrays
 -------------
 
@@ -2565,7 +2588,8 @@ existing configuration dictionary, then the size of the array is increased.
 
 When a user passes values for these keys, the behavior depends on the
 size of the array. If values are not explicitly defined inside the
-user input array but are defined inside the config array, then those values from the config array are added to the user array. If the user input array
+user input array but are defined inside the config array, then those values from the config array
+are added to the user array. If the user input array
 contains more elements than the config array, the extra elements of
 the user input array are not substituted with values from the config.
 Alternatively, if the config array contains more elements than the
