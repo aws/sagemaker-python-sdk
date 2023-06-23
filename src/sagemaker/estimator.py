@@ -677,6 +677,14 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
         self.rules = rules
 
+        # Today, we ONLY support debugger_hook_config to be provided as a boolean value
+        # from sagemaker_config. We resolve value for this parameter as per the order
+        # 1. value from direct_input which can be a boolean or a dictionary
+        # 2. value from sagemaker_config which can be a boolean
+        # In future, if we support debugger_hook_config to be provided as a dictionary
+        # from sagemaker_config [SageMaker.TrainingJob] then we will need to update the
+        # logic below to resolve the values as per the type of value received from
+        # direct_input and sagemaker_config
         self.debugger_hook_config = resolve_value_from_config(
             direct_input=debugger_hook_config,
             config_path=ESTIMATOR_DEBUG_HOOK_CONFIG_PATH,

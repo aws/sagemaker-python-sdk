@@ -61,6 +61,8 @@ from sagemaker.workflow.pipeline_context import PipelineSession, _PipelineConfig
 from sagemaker.xgboost.estimator import XGBoost
 from tests.unit import (
     SAGEMAKER_CONFIG_TRAINING_JOB,
+    SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_FALSE,
+    SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_TRUE,
     _test_default_bucket_and_prefix_combinations,
     DEFAULT_S3_BUCKET_NAME,
     DEFAULT_S3_OBJECT_KEY_PREFIX_NAME,
@@ -159,9 +161,14 @@ MOCKED_S3_URI = "s3://mocked_s3_uri_from_source_dir"
 MOCKED_PIPELINE_CONFIG = _PipelineConfig(
     "test-pipeline", "test-training-step", "code-hash-0123456789", "config-hash-0123456789"
 )
-HOOK_CONFIG = DebuggerHookConfig(
+HOOK_CONFIG_WITHOUT_S3_PATH = DebuggerHookConfig(
     hook_parameters={"save_interval": "1"},
 )
+HOOK_CONFIG = DebuggerHookConfig(
+    hook_parameters={"save_interval": "1"},
+    s3_output_path="s3://mytestbucket/testpath/",
+)
+S3_OUTPUT_PATH_FROM_SESSION_S3_DEFAULT_CONFIG = "s3://mybucket/"
 
 
 class DummyFramework(Framework):
@@ -2219,72 +2226,75 @@ def test_fit_verify_job_name(strftime, sagemaker_session):
     assert fw.latest_training_job.name == JOB_NAME
 
 
-def test_prepare_for_training_with_sagemaker_config_injection_for_partial_debug_hook_config_provided_from_direct_input(
+@pytest.mark.parametrize(
+    "debugger_hook_config_direct_input, sagemaker_config, expected_debugger_hook_config_output",
+    [
+        (None, None, S3_OUTPUT_PATH_FROM_SESSION_S3_DEFAULT_CONFIG),
+        (True, None, S3_OUTPUT_PATH_FROM_SESSION_S3_DEFAULT_CONFIG),
+        (False, None, False),
+        (HOOK_CONFIG, None, HOOK_CONFIG.s3_output_path),
+        (HOOK_CONFIG_WITHOUT_S3_PATH, None, S3_OUTPUT_PATH_FROM_SESSION_S3_DEFAULT_CONFIG),
+        (None, SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_FALSE, False),
+        (
+            True,
+            SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_FALSE,
+            S3_OUTPUT_PATH_FROM_SESSION_S3_DEFAULT_CONFIG,
+        ),
+        (False, SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_FALSE, False),
+        (
+            HOOK_CONFIG,
+            SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_FALSE,
+            HOOK_CONFIG.s3_output_path,
+        ),
+        (
+            HOOK_CONFIG_WITHOUT_S3_PATH,
+            SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_FALSE,
+            S3_OUTPUT_PATH_FROM_SESSION_S3_DEFAULT_CONFIG,
+        ),
+        (
+            None,
+            SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_TRUE,
+            S3_OUTPUT_PATH_FROM_SESSION_S3_DEFAULT_CONFIG,
+        ),
+        (
+            True,
+            SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_TRUE,
+            S3_OUTPUT_PATH_FROM_SESSION_S3_DEFAULT_CONFIG,
+        ),
+        (False, SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_TRUE, False),
+        (
+            HOOK_CONFIG,
+            SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_TRUE,
+            HOOK_CONFIG.s3_output_path,
+        ),
+        (
+            HOOK_CONFIG_WITHOUT_S3_PATH,
+            SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_TRUE,
+            S3_OUTPUT_PATH_FROM_SESSION_S3_DEFAULT_CONFIG,
+        ),
+    ],
+)
+def test_prepare_for_training_for_debugger_hook_config_value_combinations(
     sagemaker_session,
+    sagemaker_config,
+    debugger_hook_config_direct_input,
+    expected_debugger_hook_config_output,
 ):
-    """
-    Tests that the default_bucket from sagemaker_config is injected into the debugger_hook_config.s3_output_path
-    when only partial debugger_hook_config is provided from direct input
-    """
-    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
+    sagemaker_session.sagemaker_config = sagemaker_config
     fw = DummyFramework(
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
         instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
-        debugger_hook_config=HOOK_CONFIG,
+        debugger_hook_config=debugger_hook_config_direct_input,
     )
     fw._prepare_for_training()
-    assert fw.debugger_hook_config.hook_parameters == HOOK_CONFIG.hook_parameters
-    assert fw.debugger_hook_config.s3_output_path == f"s3://{sagemaker_session.default_bucket()}/"
 
-
-def test_prepare_for_training_with_sagemaker_config_injection_for_full_debug_hook_config_provided_from_direct_input(
-    sagemaker_session,
-):
-    """
-    Tests that the default_bucket from sagemaker_config is NOT injected into the debugger_hook_config.s3_output_path
-    when full debugger_hook_config is provided from direct input
-    """
-    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
-    debugger_hook_config_input = DebuggerHookConfig(
-        hook_parameters={
-            "save_interval": "100",
-        },
-        s3_output_path="s3://mytestbucket/testpath/",
-    )
-    fw = DummyFramework(
-        entry_point=SCRIPT_PATH,
-        role=ROLE,
-        sagemaker_session=sagemaker_session,
-        instance_count=INSTANCE_COUNT,
-        instance_type=INSTANCE_TYPE,
-        debugger_hook_config=debugger_hook_config_input,
-    )
-    fw._prepare_for_training()
-    assert fw.debugger_hook_config.hook_parameters == debugger_hook_config_input.hook_parameters
-    assert fw.debugger_hook_config.s3_output_path == debugger_hook_config_input.s3_output_path
-
-
-def test_prepare_for_training_with_sagemaker_config_injection_for_debug_hook_config_provided_from_direct_input_as_true(
-    sagemaker_session,
-):
-    """
-    Tests that the default_bucket from sagemaker_config is injected into the debugger_hook_config.s3_output_path
-    when debugger_hook_config is provided from direct input as True
-    """
-    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
-    fw = DummyFramework(
-        entry_point=SCRIPT_PATH,
-        role=ROLE,
-        sagemaker_session=sagemaker_session,
-        instance_count=INSTANCE_COUNT,
-        instance_type=INSTANCE_TYPE,
-        debugger_hook_config=True,
-    )
-    fw._prepare_for_training()
-    assert fw.debugger_hook_config.s3_output_path == f"s3://{sagemaker_session.default_bucket()}/"
+    if expected_debugger_hook_config_output is False:
+        assert fw.debugger_hook_config == expected_debugger_hook_config_output
+    else:
+        assert fw.debugger_hook_config.s3_output_path == expected_debugger_hook_config_output
 
 
 def test_prepare_for_training_unique_job_name_generation(sagemaker_session):

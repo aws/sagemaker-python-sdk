@@ -346,6 +346,32 @@ SAGEMAKER_CONFIG_TRAINING_JOB = {
     },
 }
 
+SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_FALSE = {
+    SCHEMA_VERSION: "1.0",
+    SAGEMAKER: {
+        PYTHON_SDK: {
+            MODULES: {
+                ESTIMATOR: {
+                    DEBUG_HOOK_CONFIG: False,
+                },
+            },
+        },
+    },
+}
+
+SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_TRUE = {
+    SCHEMA_VERSION: "1.0",
+    SAGEMAKER: {
+        PYTHON_SDK: {
+            MODULES: {
+                ESTIMATOR: {
+                    DEBUG_HOOK_CONFIG: True,
+                },
+            },
+        },
+    },
+}
+
 SAGEMAKER_CONFIG_TRANSFORM_JOB = {
     SCHEMA_VERSION: "1.0",
     SAGEMAKER: {

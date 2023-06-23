@@ -659,11 +659,14 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                             "description": (
                                                 "Sets a boolean for `debugger_hook_config` of"
                                                 "Estimator which will be then used for training job"
-                                                "API call. As of today, config_schema does not"
-                                                "support the dict as a valid value to be provided."
-                                                "In case, we decide to support it in the future,"
-                                                "we can add a new schema for it under"
-                                                "`SageMaker.TrainingJob` config path."
+                                                "API call. Today, the config_schema doesn't support"
+                                                "a dictionary as a valid value to be provided."
+                                                "In the future to add support for DebugHookConfig"
+                                                "as a dictionary, schema should be added under"
+                                                "the config path `SageMaker.TrainingJob` instead of"
+                                                "here, since the TrainingJob API supports"
+                                                "DebugHookConfig as a dictionary, we can add"
+                                                "a schema for it at API level."
                                             ),
                                         },
                                     },
