@@ -18,6 +18,7 @@ import logging
 from functools import wraps
 from pathlib import Path
 from typing import List, Sequence, Union, Set, TYPE_CHECKING
+import re
 import hashlib
 from urllib.parse import unquote, urlparse
 from contextlib import contextmanager
@@ -92,7 +93,8 @@ def build_steps(steps: Sequence[Entity], pipeline_name: str, use_custom_job_pref
     Args:
         steps (Sequence[Entity]): A list of steps, (Entity type because Step causes circular import)
         pipeline_name (str): The name of the pipeline, passed down from pipeline.to_request()
-        use_custom_job_prefix (bool): The feature flag to toggle on/off custom job prefixing in a pipeline execution
+        use_custom_job_prefix (bool): The feature flag to toggle on/off custom job prefixing during
+            a pipeline execution
     Returns:
         list: A request structure object for a service call for the list of pipeline steps
     """
@@ -421,3 +423,28 @@ def execute_job_functions(step_args: _StepArguments):
     chained_args = step_args.func(*step_args.func_args, **step_args.func_kwargs)
     if isinstance(chained_args, _StepArguments):
         execute_job_functions(chained_args)
+
+
+def strip_timestamp_from_job_name(request_dict, job_key):
+    """A utility method to strip off time stamp from job name
+
+    Performs a regex match on the timestamp that job classes (Estimator,Processor,etc)
+    will append when the base_job_name is provided. We plan to strip this value off
+    such that we can pass the raw data, the base_job_name, to the pipeline definition
+    to be used directly in name-generation during orchestration.
+
+    Args:
+        request_dict (dict): The request dictionary being built for a pipeline step
+        job_key (str): The job field that we search for in the request dictionary for
+            the current pipeline step. In the example of a Processor, this would be
+            "ProcessingJobName"
+    Returns:
+        dict: the updated request_dict with the job name updated if present
+    """
+    if job_key in request_dict:
+        job_name = request_dict[job_key]
+        match = re.search("-([0-9]+(-[0-9]+)+)", job_name)
+        if match:
+            request_dict[job_key] = job_name[: match.start()]
+
+    return request_dict

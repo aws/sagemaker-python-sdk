@@ -34,6 +34,7 @@ from sagemaker.workflow.steps import (
 )
 from sagemaker.utils import _save_model, download_file_from_url
 from sagemaker.workflow.retry import RetryPolicy
+from sagemaker.workflow.utilities import strip_timestamp_from_job_name
 
 if TYPE_CHECKING:
     from sagemaker.workflow.step_collections import StepCollection
@@ -498,6 +499,10 @@ class _RegisterModelStep(ConfigurableRetryStep):
             if not _pipeline_config or not _pipeline_config.use_custom_job_prefix:
                 request_dict.pop("ModelPackageName", None)
                 logger.warning(warn_msg_template, "ModelPackageName")
+            else:
+                request_dict = strip_timestamp_from_job_name(
+                    request_dict, job_key="ModelPackageName"
+                )
 
         return request_dict
 

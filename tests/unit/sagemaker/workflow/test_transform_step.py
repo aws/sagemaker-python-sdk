@@ -23,6 +23,7 @@ from sagemaker import Model, Processor
 from sagemaker.estimator import Estimator
 from sagemaker.parameter import IntegerParameter
 from sagemaker.tuner import HyperparameterTuner
+from sagemaker.workflow.pipeline_definition_config import PipelineDefinitionConfig
 from tests.unit.sagemaker.workflow.helpers import CustomStep, get_step_args_helper
 
 from sagemaker.workflow.steps import TransformStep, TransformInput
@@ -76,6 +77,7 @@ def test_transform_step_with_transformer(model_name, data, output_path, pipeline
         instance_count=1,
         output_path=output_path,
         sagemaker_session=pipeline_session,
+        base_transform_job_name="TestTransformJobPrefix",
     )
     transform_inputs = TransformInput(data=data)
 
@@ -102,14 +104,17 @@ def test_transform_step_with_transformer(model_name, data, output_path, pipeline
         )
         assert len(w) == 0
 
+    definition_config = PipelineDefinitionConfig(use_custom_job_prefix=True)
+
     pipeline = Pipeline(
         name="MyPipeline",
         steps=[step, custom_step],
         parameters=[model_name, data],
         sagemaker_session=pipeline_session,
+        pipeline_definition_config=definition_config,
     )
 
-    step_args = get_step_args_helper(step_args, "Transform")
+    step_args = get_step_args_helper(step_args, "Transform", True)
     expected_step_arguments = deepcopy(step_args)
     expected_step_arguments["ModelName"] = (
         model_name.expr if is_pipeline_variable(model_name) else model_name
@@ -122,6 +127,7 @@ def test_transform_step_with_transformer(model_name, data, output_path, pipeline
     )
 
     step_def = json.loads(pipeline.definition())["Steps"][0]
+    assert step_def["Arguments"]["TransformJobName"] == "TestTransformJobPrefix"
     assert step_def == {
         "Name": "MyTransformStep",
         "Type": "Transform",

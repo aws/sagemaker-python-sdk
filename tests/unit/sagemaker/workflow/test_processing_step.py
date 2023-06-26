@@ -1126,7 +1126,7 @@ def test_processor_with_role_as_pipeline_parameter(
 
 
 @patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG_WITH_CUSTOM_PREFIX)
-def test_processing_step_with_custom_job_prefixes(
+def test_processing_step_with_processor_using_custom_job_prefixes(
     pipeline_session, processing_input, network_config
 ):
 

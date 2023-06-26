@@ -23,7 +23,7 @@ from sagemaker.workflow.pipeline_context import _JobStepArguments
 from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.retry import RetryPolicy
 from sagemaker.workflow.steps import ConfigurableRetryStep, CacheConfig, Step, StepTypeEnum
-from sagemaker.workflow.utilities import validate_step_args_input
+from sagemaker.workflow.utilities import validate_step_args_input, strip_timestamp_from_job_name
 from sagemaker.workflow.step_collections import StepCollection
 
 
@@ -89,7 +89,7 @@ class AutoMLStep(ConfigurableRetryStep):
         NOTE: The `CreateAutoMLJob` request is not quite the
             args list that workflow needs.
 
-        The `AutoMLJobName`, `ModelDeployConfig` and `GenerateCandidateDefinitionsOnly`
+        `ModelDeployConfig` and `GenerateCandidateDefinitionsOnly`
             attribute cannot be included.
         """
         from sagemaker.workflow.utilities import execute_job_functions
@@ -117,6 +117,9 @@ class AutoMLStep(ConfigurableRetryStep):
             request_dict.pop("GenerateCandidateDefinitionsOnly", None)
         if not _pipeline_config or not _pipeline_config.use_custom_job_prefix:
             request_dict.pop("AutoMLJobName", None)
+        else:
+            # AutoML Trims to AutoMLJo-2023-06-23-22-57-39-083
+            request_dict = strip_timestamp_from_job_name(request_dict, job_key="AutoMLJobName")
 
         return request_dict
 

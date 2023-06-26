@@ -14,7 +14,11 @@
 from __future__ import absolute_import
 
 import tempfile
-from sagemaker.workflow.utilities import hash_file, hash_files_or_dirs
+from sagemaker.workflow.utilities import (
+    hash_file,
+    hash_files_or_dirs,
+    strip_timestamp_from_job_name,
+)
 from pathlib import Path
 
 
@@ -97,3 +101,28 @@ def test_hash_files_or_dirs_unsorted_input_list():
             hash1 = hash_files_or_dirs([tmp1.name, tmp2.name])
             hash2 = hash_files_or_dirs([tmp2.name, tmp1.name])
             assert hash1 == hash2
+
+
+def test_strip_timestamp_from_job_name():
+    custom_job_prefix = "MyTrainingJobNamePrefix"
+    sample_training_job_name = f"{custom_job_prefix}-2023-06-22-23-39-36-766"
+    request_dict = {"TrainingJobName": sample_training_job_name}
+    assert (
+        custom_job_prefix
+        == strip_timestamp_from_job_name(request_dict=request_dict, job_key="TrainingJobName")[
+            "TrainingJobName"
+        ]
+    )
+    request_dict = {"TrainingJobName": custom_job_prefix}
+    assert (
+        custom_job_prefix
+        == strip_timestamp_from_job_name(request_dict=request_dict, job_key="TrainingJobName")[
+            "TrainingJobName"
+        ]
+    )
+    request_dict = {
+        "NotSupportedJobName": custom_job_prefix
+    }  # do nothing in the case our jobKey is invalid
+    assert request_dict == strip_timestamp_from_job_name(
+        request_dict=request_dict, job_key="NotSupportedJobName"
+    )

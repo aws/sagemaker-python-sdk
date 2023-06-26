@@ -18,7 +18,6 @@ import warnings
 
 from enum import Enum
 from typing import Dict, List, Set, Union, Optional, Any, TYPE_CHECKING
-import re
 from urllib.parse import urlparse
 
 import attr
@@ -51,6 +50,7 @@ from sagemaker.workflow.properties import (
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.functions import Join, JsonGet
 from sagemaker.workflow.retry import RetryPolicy
+from sagemaker.workflow.utilities import strip_timestamp_from_job_name
 
 if TYPE_CHECKING:
     from sagemaker.workflow.step_collections import StepCollection
@@ -499,12 +499,7 @@ class TrainingStep(ConfigurableRetryStep):
         if not _pipeline_config or not _pipeline_config.use_custom_job_prefix:
             request_dict.pop("TrainingJobName", None)
         else:
-            # Strip timestamp -- workflow will use only the base-job name for name generation
-            if "TrainingJobName" in request_dict.keys():
-                job_name = request_dict["TrainingJobName"]
-                match = re.search("-([0-9]+(-[0-9]+)+)", job_name)
-                if match:
-                    request_dict["TrainingJobName"] = job_name[: match.start()]
+            request_dict = strip_timestamp_from_job_name(request_dict, job_key="TrainingJobName")
 
         Step._trim_experiment_config(request_dict)
 
@@ -637,12 +632,7 @@ class CreateModelStep(ConfigurableRetryStep):
         if not _pipeline_config or not _pipeline_config.use_custom_job_prefix:
             request_dict.pop("ModelName", None)
         else:
-            # Strip timestamp -- workflow will use only the base-job name for name generation
-            if "ModelName" in request_dict.keys():
-                job_name = request_dict["ModelName"]
-                match = re.search("-([0-9]+(-[0-9]+)+)", job_name)
-                if match:
-                    request_dict["ModelName"] = job_name[: match.start()]
+            request_dict = strip_timestamp_from_job_name(request_dict, job_key="ModelName")
 
         return request_dict
 
@@ -756,16 +746,12 @@ class TransformStep(ConfigurableRetryStep):
                 **transform_args
             )
 
-        print(request_dict)
         # Continue to pop custom prefix if not explicitly opted-in
         if not _pipeline_config or not _pipeline_config.use_custom_job_prefix:
             request_dict.pop("TransformJobName", None)
         else:
-            if "TransformJobName" in request_dict.keys():
-                job_name = request_dict["TransformJobName"]
-                match = re.search("-([0-9]+(-[0-9]+)+)", job_name)
-                if match:
-                    request_dict["TransformJobName"] = job_name[: match.start()]
+            request_dict = strip_timestamp_from_job_name(request_dict, job_key="TransformJobName")
+
         Step._trim_experiment_config(request_dict)
 
         return request_dict
@@ -927,12 +913,7 @@ class ProcessingStep(ConfigurableRetryStep):
         if not _pipeline_config or not _pipeline_config.use_custom_job_prefix:
             request_dict.pop("ProcessingJobName", None)
         else:
-            # Strip timestamp -- workflow will use only the base-job name for name generation
-            if "ProcessingJobName" in request_dict.keys():
-                job_name = request_dict["ProcessingJobName"]
-                match = re.search("-([0-9]+(-[0-9]+)+)", job_name)
-                if match:
-                    request_dict["ProcessingJobName"] = job_name[: match.start()]
+            request_dict = strip_timestamp_from_job_name(request_dict, job_key="ProcessingJobName")
 
         Step._trim_experiment_config(request_dict)
 
@@ -1095,12 +1076,9 @@ class TuningStep(ConfigurableRetryStep):
         if not _pipeline_config or not _pipeline_config.use_custom_job_prefix:
             request_dict.pop("HyperParameterTuningJobName", None)
         else:
-            # Strip timestamp -- workflow will use only the base-job name for name generation
-            if "HyperParameterTuningJobName" in request_dict.keys():
-                job_name = request_dict["HyperParameterTuningJobName"]
-                match = re.search("-([0-9]+(-[0-9]+)+)", job_name)
-                if match:
-                    request_dict["HyperParameterTuningJobName"] = job_name[: match.start()]
+            request_dict = strip_timestamp_from_job_name(
+                request_dict, job_key="HyperParameterTuningJobName"
+            )
 
         return request_dict
 

@@ -31,6 +31,7 @@ from sagemaker.workflow.properties import (
 from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.steps import Step, StepTypeEnum, CacheConfig
 from sagemaker.workflow.check_job_config import CheckJobConfig
+from sagemaker.workflow.utilities import strip_timestamp_from_job_name
 
 _CONTAINER_BASE_PATH = "/opt/ml/processing"
 _CONTAINER_INPUT_PATH = "input"
@@ -243,6 +244,8 @@ class QualityCheckStep(Step):
         if not _pipeline_config or not _pipeline_config.use_custom_job_prefix:
             if "ProcessingJobName" in request_dict:
                 request_dict.pop("ProcessingJobName")
+        else:
+            request_dict = strip_timestamp_from_job_name(request_dict, job_key="ProcessingJobName")
 
         return request_dict
 
