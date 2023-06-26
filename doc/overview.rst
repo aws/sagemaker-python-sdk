@@ -2550,21 +2550,24 @@ DebuggerHookConfig
 ------------------
 
 The SageMaker Python SDK only supports setting a boolean value as the default for the
-``debugger_hook_config parameter`` in the configuration dictionary. The SageMaker Python SDK does
+``debugger_hook_config`` parameter in the configuration dictionary and does
 not support setting a dictionary as the default value for this parameter.
 
 If the user doesn’t manually specify a value for `DebuggerHookConfig <https://sagemaker.readthedocs.io/en/stable/api/training/debugger.html#sagemaker.debugger.DebuggerHookConfig>`__,
 the default value specified in the configuration dictionary is used.
 
 If the user manually specifies one of the following values for ``DebuggerHookConfig`` without
-passing a value for ``s3_output_path`` and there is no default value for the ``s3_output_path``
-parameter specified in the configuration dictionary, the SageMaker Python SDK sets the value of
-the ``s3_output_path`` parameter to the value specified as part of
+passing a value for the ``s3_output_path`` parameter, the SageMaker Python SDK sets the value
+of ``s3_output_path`` to the value specified as part of
 ``SageMaker.Modules.Session.DefaultS3Bucket`` in the configuration dictionary.
 
 -  dictionary
 -  True
--  None
+
+If the user doesn't provide any value for ``DebuggerHookConfig`` from function input or in the
+configuration dictionary, then the SageMaker Python SDK also sets the value of ``s3_output_path``
+to the value specified as part of ``SageMaker.Modules.Session.DefaultS3Bucket`` in the
+configuration dictionary.
 
 Users can change the default ``s3_output_path`` by specifying a value for that parameter in the
 input dictionary for ``DebuggerHookConfig``.
