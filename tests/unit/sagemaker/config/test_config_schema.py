@@ -102,6 +102,25 @@ def test_valid_remote_function_schema(base_config_with_schema, valid_remote_func
     )
 
 
+def test_valid_estimator_schema(base_config_with_schema, valid_estimator_config):
+    _validate_config(
+        base_config_with_schema,
+        {"PythonSDK": {"Modules": {"Estimator": valid_estimator_config}}},
+    )
+
+
+def test_invalid_estimator_schema(base_config_with_schema, valid_estimator_config):
+    invalid_estimator_config = {
+        "DebugHookConfig": {
+            "S3OutputPath": "s3://somepath",
+        }
+    }
+    config = base_config_with_schema
+    config["SageMaker"] = {"PythonSDK": {"Modules": {"Estimator": invalid_estimator_config}}}
+    with pytest.raises(exceptions.ValidationError):
+        validate(config, SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA)
+
+
 def test_tags_with_invalid_schema(base_config_with_schema, valid_edge_packaging_config):
     edge_packaging_config = valid_edge_packaging_config.copy()
     edge_packaging_config["Tags"] = [{"Key": "somekey"}]
