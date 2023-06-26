@@ -378,7 +378,6 @@ def test_model_card_create_read_update_and_delete(
         assert "The specified key does not exist" in str(exception.value)
 
 
-@pytest.mark.flaky(reruns=5, reruns_delay=2)
 def test_model_card_create_read_and_delete_with_model_package(
     sagemaker_session,
     business_details,

@@ -366,6 +366,9 @@ class ModelPackage(_DefaultToRequestDict, _DefaultFromDict):
                 object, used for SageMaker interactions (default: None). If not
                 specified, a SageMaker Session is created using the default AWS configuration
                 chain.
+
+        Raises:
+            ValueError: A model package with this name or ARN is not valid or does not exist.
         """
 
         if not sagemaker_session:
@@ -402,6 +405,8 @@ class ModelPackage(_DefaultToRequestDict, _DefaultFromDict):
                 object, used for SageMaker interactions (default: None). If not
                 specified, a SageMaker Session is created using the default AWS configuration
                 chain.
+        Raises:
+            ValueError: The identity does not have permission to perform sagemaker search operation.
         """
 
         if not sagemaker_session:
@@ -971,6 +976,8 @@ class TrainingDetails(_DefaultToRequestDict, _DefaultFromDict):
                 object, used for SageMaker interactions (default: None). If not
                 specified, a SageMaker Session is created using the default AWS configuration
                 chain.
+        Raises:
+            ValueError: The identity does not have permission to perform sagemaker search operation.
         """  # noqa E501 # pylint: disable=line-too-long
 
         if not sagemaker_session:
@@ -1395,8 +1402,8 @@ class ModelCard(object):
         training_details: Optional[TrainingDetails] = None,
         evaluation_details: Optional[List[EvaluationJob]] = None,
         additional_information: Optional[AdditionalInformation] = None,
-        model_package_details: Optional[ModelPackage] = None,
         sagemaker_session: Optional[Session] = None,
+        model_package_details: Optional[ModelPackage] = None,
     ):
         """Initialize an Amazon SageMaker Model Card.
 
@@ -1415,8 +1422,8 @@ class ModelCard(object):
             training_details (TrainingDetails, optional): The training details of the model (default: None).
             evaluation_details (List[EvaluationJob], optional): The evaluation details of the model (default: None).
             additional_information (AdditionalInformation, optional): Additional information about the model (default: None).
-            model_package_details (ModelPackage, optional): Model package version metadata information (default: None).
             sagemaker_session (Session, optional): A SageMaker Session object, used for SageMaker interactions (default: None). If not specified, a SageMaker Session is created using the default AWS configuration chain.
+            model_package_details (ModelPackage, optional): Model package version metadata information (default: None).
         """  # noqa E501 # pylint: disable=line-too-long
         self.sagemaker_session = sagemaker_session or Session()
         self.name = name
@@ -1445,6 +1452,8 @@ class ModelCard(object):
         """Setter method for model_package_details.
 
         When this is set, it should call _from_model_package private method for auto discovery of training, evaluation details and additional information.
+        Raises:
+            ValueError: The model card has already been associated with a different model entity.
         """  # noqa E501  # pylint: disable=c0301
         if value is not None:
             # Check if model card already has a model id associated with it
