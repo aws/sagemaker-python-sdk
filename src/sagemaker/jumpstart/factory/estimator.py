@@ -390,6 +390,7 @@ def _add_role_to_kwargs(kwargs: JumpStartEstimatorInitKwargs) -> JumpStartEstima
         field_name="role",
         field_val=kwargs.role,
         sagemaker_session=kwargs.sagemaker_session,
+        default_value=kwargs.role,
     )
 
     return kwargs
