@@ -64,6 +64,7 @@ required_packages = [
     "jsonschema",
     "platformdirs",
     "tblib==1.7.0",
+    "pigar==2.1.0"
 ]
 
 # Specific use case dependencies
