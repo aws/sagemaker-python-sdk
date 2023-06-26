@@ -113,6 +113,7 @@ def run_obj(sagemaker_session):
                 "sagemaker.experiments.run._Trial._load_or_create",
                 MagicMock(side_effect=mock_trial_load_or_create_func),
             ):
+                sagemaker_session.sagemaker_client.search.return_value = {"Results": []}
                 run = Run(
                     experiment_name="test-exp",
                     sagemaker_session=sagemaker_session,

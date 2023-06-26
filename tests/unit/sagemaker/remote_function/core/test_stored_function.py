@@ -109,6 +109,7 @@ def test_save_with_parameter_of_run_type(
 ):
     session = Mock()
     s3_base_uri = random_s3_uri()
+    session.sagemaker_client.search.return_value = {"Results": []}
 
     run = Run(
         experiment_name=TEST_EXP_NAME,

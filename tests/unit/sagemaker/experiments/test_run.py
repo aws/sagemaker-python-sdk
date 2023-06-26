@@ -70,6 +70,7 @@ from tests.unit.sagemaker.experiments.helpers import (
 )
 @patch.object(_TrialComponent, "save")
 def test_run_init(mock_tc_save, sagemaker_session):
+    sagemaker_session.sagemaker_client.search.return_value = {"Results": []}
     with Run(
         experiment_name=TEST_EXP_NAME, run_name=TEST_RUN_NAME, sagemaker_session=sagemaker_session
     ) as run_obj:
@@ -93,6 +94,7 @@ def test_run_init(mock_tc_save, sagemaker_session):
 
     # trail_component.save is called when entering/ exiting the with block
     mock_tc_save.assert_called()
+    run_obj._trial.add_trial_component.assert_called()
 
 
 def test_run_init_name_length_exceed_limit(sagemaker_session):
@@ -158,6 +160,18 @@ def test_run_load_no_run_name_and_in_train_job(mock_run_env, sagemaker_session):
         # The Run object has been created else where
         "ExperimentConfig": exp_config,
     }
+    sagemaker_session.sagemaker_client.search.return_value = {
+        "Results": [
+            {
+                "TrialComponent": {
+                    "Parents": [
+                        {"ExperimentName": TEST_EXP_NAME, "TrialName": exp_config[TRIAL_NAME]}
+                    ],
+                    "TrialComponentName": expected_tc_name,
+                }
+            }
+        ]
+    }
     with load_run(sagemaker_session=sagemaker_session) as run_obj:
         assert run_obj._in_load
         assert not run_obj._inside_init_context
@@ -171,6 +185,7 @@ def test_run_load_no_run_name_and_in_train_job(mock_run_env, sagemaker_session):
         assert run_obj.experiment_config == exp_config
 
     client.describe_training_job.assert_called_once_with(TrainingJobName=job_name)
+    run_obj._trial.add_trial_component.assert_not_called()
 
 
 @patch("sagemaker.experiments.run._RunEnvironment")
@@ -230,6 +245,7 @@ def test_run_load_no_run_name_and_not_in_train_job_but_no_obj_in_context(sagemak
     MagicMock(side_effect=mock_tc_load_or_create_func),
 )
 def test_run_load_with_run_name_and_exp_name(sagemaker_session):
+    sagemaker_session.sagemaker_client.search.return_value = {"Results": []}
     with load_run(
         run_name=TEST_RUN_NAME,
         experiment_name=TEST_EXP_NAME,
@@ -249,6 +265,8 @@ def test_run_load_with_run_name_and_exp_name(sagemaker_session):
         assert run_obj._trial
         assert run_obj._experiment
         assert run_obj.experiment_config == expected_exp_config
+
+    run_obj._trial.add_trial_component.assert_called()
 
 
 def test_run_load_with_run_name_but_no_exp_name(sagemaker_session):
@@ -296,11 +314,24 @@ def test_run_load_in_sm_processing_job(mock_run_env, sagemaker_session):
         # The Run object has been created else where
         "ExperimentConfig": exp_config,
     }
+    sagemaker_session.sagemaker_client.search.return_value = {
+        "Results": [
+            {
+                "TrialComponent": {
+                    "Parents": [
+                        {"ExperimentName": TEST_EXP_NAME, "TrialName": exp_config[TRIAL_NAME]}
+                    ],
+                    "TrialComponentName": expected_tc_name,
+                }
+            }
+        ]
+    }
 
     with load_run(sagemaker_session=sagemaker_session):
         pass
 
     client.describe_processing_job.assert_called_once_with(ProcessingJobName=job_name)
+    mock_run_env._trial.add_trial_component.assert_not_called()
 
 
 @patch(
@@ -337,11 +368,24 @@ def test_run_load_in_sm_transform_job(mock_run_env, sagemaker_session):
         # The Run object has been created else where
         "ExperimentConfig": exp_config,
     }
+    sagemaker_session.sagemaker_client.search.return_value = {
+        "Results": [
+            {
+                "TrialComponent": {
+                    "Parents": [
+                        {"ExperimentName": TEST_EXP_NAME, "TrialName": exp_config[TRIAL_NAME]}
+                    ],
+                    "TrialComponentName": expected_tc_name,
+                }
+            }
+        ]
+    }
 
     with load_run(sagemaker_session=sagemaker_session):
         pass
 
     client.describe_transform_job.assert_called_once_with(TransformJobName=job_name)
+    mock_run_env._trial.add_trial_component.assert_not_called()
 
 
 @patch(
@@ -359,6 +403,7 @@ def test_run_load_in_sm_transform_job(mock_run_env, sagemaker_session):
 )
 @patch.object(_TrialComponent, "save")
 def test_run_object_serialize_deserialize(mock_tc_save, sagemaker_session):
+    sagemaker_session.sagemaker_client.search.return_value = {"Results": []}
     run_obj = Run(
         experiment_name=TEST_EXP_NAME,
         run_name=TEST_RUN_NAME,
