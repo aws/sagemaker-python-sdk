@@ -16,7 +16,7 @@ import logging
 import json
 import re
 from datetime import datetime
-from typing import Callable, List, Optional, Dict, Sequence, Union, Any
+from typing import Callable, List, Optional, Dict, Sequence, Union, Any, Tuple
 
 import pytz
 from botocore.exceptions import ClientError
@@ -58,6 +58,7 @@ from sagemaker.feature_store.feature_processor._constants import (
     PIPELINE_NAME_MAXIMUM_LENGTH,
     RESOURCE_NOT_FOUND,
     FEATURE_GROUP_ARN_REGEX_PATTERN,
+    TO_PIPELINE_RESERVED_TAG_KEYS,
 )
 from sagemaker.feature_store.feature_processor._feature_processor_config import (
     FeatureProcessorConfig,
@@ -107,6 +108,7 @@ def to_pipeline(
     role: Optional[str] = None,
     transformation_code: Optional[TransformationCode] = None,
     max_retries: Optional[int] = None,
+    tags: Optional[List[Tuple[str, str]]] = None,
     sagemaker_session: Optional[Session] = None,
 ) -> str:
     """Creates a sagemaker pipeline that takes in a callable as a training step.
@@ -127,6 +129,8 @@ def to_pipeline(
             code for Lineage tracking. This code is not used for actual transformation.
         max_retries (Optional[int]): The number of times to retry sagemaker pipeline step.
             If not specified, sagemaker pipline step will not retry.
+        tags (List[Tuple[str, str]): A list of tags attached to the pipeline. If not specified,
+            no custom tags will be attached to the pipeline.
         sagemaker_session (Optional[Session]): Session object which manages interactions
             with Amazon SageMaker APIs and any other AWS services needed. If not specified, the
             function creates one using the default AWS configuration chain.
@@ -135,6 +139,7 @@ def to_pipeline(
     """
 
     _validate_input_for_to_pipeline_api(pipeline_name, step)
+    _validate_tags_for_to_pipeline_api(tags)
 
     _sagemaker_session = sagemaker_session or Session()
 
@@ -200,12 +205,15 @@ def to_pipeline(
         sagemaker_session=_sagemaker_session,
         parameters=[SCHEDULED_TIME_PIPELINE_PARAMETER],
     )
+    pipeline_tags = [dict(Key=FEATURE_PROCESSOR_TAG_KEY, Value=FEATURE_PROCESSOR_TAG_VALUE)]
+    if tags:
+        pipeline_tags.extend([dict(Key=k, Value=v) for k, v in tags])
 
     pipeline = Pipeline(**pipeline_request_dict)
     logger.info("Creating/Updating sagemaker pipeline %s", pipeline_name)
     pipeline.upsert(
         role_arn=_role,
-        tags=[dict(Key=FEATURE_PROCESSOR_TAG_KEY, Value=FEATURE_PROCESSOR_TAG_VALUE)],
+        tags=pipeline_tags,
     )
     logger.info("Created sagemaker pipeline %s", pipeline_name)
 
@@ -512,6 +520,28 @@ def _validate_input_for_to_pipeline_api(pipeline_name: str, step: Callable) -> N
         raise ValueError(
             f"Mode {step.feature_processor_config.mode} is not supported by to_pipeline API."
         )
+
+
+def _validate_tags_for_to_pipeline_api(tags: List[Tuple[str, str]]) -> None:
+    """Validate tags provided to to_pipeline API.
+
+    Args:
+        tags (List[Tuple[str, str]]): A list of tags attached to the pipeline.
+
+    Raises (ValueError): raises ValueError when any of the following scenario happen:
+           1. more than 47 tags are provided to API.
+           2. reserved tag keys are provided to API.
+    """
+    if len(tags) > 48:
+        raise ValueError(
+            "to_pipeline can only accept up to 47 tags. Please reduce the number of tags provided."
+        )
+    provided_tag_keys = [tag_key_value_pair[0] for tag_key_value_pair in tags]
+    for reserved_tag_key in TO_PIPELINE_RESERVED_TAG_KEYS:
+        if reserved_tag_key in provided_tag_keys:
+            raise ValueError(
+                f"{reserved_tag_key} is a reserved tag key for to_pipeline API. Please choose another tag."
+            )
 
 
 def _validate_lineage_resources_for_to_pipeline_api(

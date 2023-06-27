@@ -40,3 +40,8 @@ SAGEMAKER_WHL_FILE_S3_PATH = "s3://ada-private-beta/sagemaker-2.151.1.dev0-py2.p
 S3_DATA_DISTRIBUTION_TYPE = "FullyReplicated"
 PIPELINE_CONTEXT_NAME_TAG_KEY = "sm-fs-fe:feature-engineering-pipeline-context-name"
 PIPELINE_VERSION_CONTEXT_NAME_TAG_KEY = "sm-fs-fe:feature-engineering-pipeline-version-context-name"
+TO_PIPELINE_RESERVED_TAG_KEYS = [
+    FEATURE_PROCESSOR_TAG_KEY,
+    PIPELINE_CONTEXT_NAME_TAG_KEY,
+    PIPELINE_VERSION_CONTEXT_NAME_TAG_KEY,
+]
