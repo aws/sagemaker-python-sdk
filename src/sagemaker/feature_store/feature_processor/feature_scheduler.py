@@ -139,7 +139,8 @@ def to_pipeline(
     """
 
     _validate_input_for_to_pipeline_api(pipeline_name, step)
-    _validate_tags_for_to_pipeline_api(tags)
+    if tags:
+        _validate_tags_for_to_pipeline_api(tags)
 
     _sagemaker_session = sagemaker_session or Session()
 
@@ -529,13 +530,8 @@ def _validate_tags_for_to_pipeline_api(tags: List[Tuple[str, str]]) -> None:
         tags (List[Tuple[str, str]]): A list of tags attached to the pipeline.
 
     Raises (ValueError): raises ValueError when any of the following scenario happen:
-           1. more than 47 tags are provided to API.
-           2. reserved tag keys are provided to API.
+           1. reserved tag keys are provided to API.
     """
-    if len(tags) > 48:
-        raise ValueError(
-            "to_pipeline can only accept up to 47 tags. Please reduce the number of tags provided."
-        )
     provided_tag_keys = [tag_key_value_pair[0] for tag_key_value_pair in tags]
     for reserved_tag_key in TO_PIPELINE_RESERVED_TAG_KEYS:
         if reserved_tag_key in provided_tag_keys:
