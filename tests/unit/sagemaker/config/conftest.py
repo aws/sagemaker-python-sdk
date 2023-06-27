@@ -46,6 +46,13 @@ def valid_session_config():
 
 
 @pytest.fixture()
+def valid_estimator_config():
+    return {
+        "DebugHookConfig": False,
+    }
+
+
+@pytest.fixture()
 def valid_environment_config():
     return {
         "var1": "value1",
@@ -142,6 +149,7 @@ def valid_training_job_config(valid_iam_role_arn, valid_vpc_config, valid_enviro
         "Environment": valid_environment_config,
         "OutputDataConfig": {"KmsKeyId": "kmskeyid1"},
         "ResourceConfig": {"VolumeKmsKeyId": "volumekmskeyid1"},
+        "ProfilerConfig": {"DisableProfiler": False},
         "RoleArn": valid_iam_role_arn,
         "VpcConfig": valid_vpc_config,
     }
@@ -250,10 +258,12 @@ def valid_config_with_all_the_scopes(
     valid_training_job_config,
     valid_edge_packaging_config,
     valid_remote_function_config,
+    valid_estimator_config,
 ):
     return {
         "PythonSDK": {
             "Modules": {
+                "Estimator": valid_estimator_config,
                 "RemoteFunction": valid_remote_function_config,
                 "Session": valid_session_config,
             }

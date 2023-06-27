@@ -46,7 +46,7 @@ ENV = {"ENV_VAR": "env_value"}
 ROLE = "dummy_role"
 REGION = "us-west-2"
 BUCKET = "mybucket"
-IMAGE_URI = "763104351884.dkr.ecr.us-west-2.amazon.com/djl-inference:0.20.0-deepspeed0.7.5-cu116"
+IMAGE_URI = "763104351884.dkr.ecr.us-west-2.amazon.com/djl-inference:0.22.1-deepspeed0.9.2-cu118"
 GPU_INSTANCE = "ml.g5.12xlarge"
 
 
@@ -111,7 +111,6 @@ def test_create_model_valid_hf_hub_model_id(
 
     serving_properties = model.generate_serving_properties()
     assert serving_properties["option.model_id"] == HF_MODEL_ID
-    assert "option.s3url" not in serving_properties
 
 
 @patch("json.load")
@@ -396,7 +395,7 @@ def test_generate_serving_properties_with_valid_configurations(
     expected_dict = {
         "engine": "Python",
         "option.entryPoint": ENTRY_POINT,
-        "option.s3url": VALID_UNCOMPRESSED_MODEL_DATA,
+        "option.model_id": VALID_UNCOMPRESSED_MODEL_DATA,
         "option.tensor_parallel_degree": 4,
         "option.task": "text-classification",
         "option.dtype": "fp16",
@@ -431,7 +430,7 @@ def test_generate_serving_properties_with_valid_configurations(
     expected_dict = {
         "engine": "DeepSpeed",
         "option.entryPoint": "djl_python.deepspeed",
-        "option.s3url": VALID_UNCOMPRESSED_MODEL_DATA,
+        "option.model_id": VALID_UNCOMPRESSED_MODEL_DATA,
         "option.tensor_parallel_degree": 1,
         "option.task": "text-generation",
         "option.dtype": "bf16",
@@ -459,7 +458,7 @@ def test_generate_serving_properties_with_valid_configurations(
     expected_dict = {
         "engine": "Python",
         "option.entryPoint": "djl_python.huggingface",
-        "option.s3url": VALID_UNCOMPRESSED_MODEL_DATA,
+        "option.model_id": VALID_UNCOMPRESSED_MODEL_DATA,
         "option.tensor_parallel_degree": 1,
         "option.dtype": "fp32",
         "option.device_id": 4,

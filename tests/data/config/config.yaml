@@ -5,6 +5,8 @@ SageMaker:
       Session:
         DefaultS3Bucket: 'sagemaker-python-sdk-test-bucket'
         DefaultS3ObjectKeyPrefix: 'test-prefix'
+      Estimator:
+        DebugHookConfig: false
       RemoteFunction:
         Dependencies: "./requirements.txt"
         EnvironmentVariables:
@@ -167,6 +169,8 @@ SageMaker:
     ResourceConfig:
       VolumeKmsKeyId: 'volumekmskeyid1'
     RoleArn: 'arn:aws:iam::555555555555:role/IMRole'
+    ProfilerConfig:
+      DisableProfiler: false
     VpcConfig:
       SecurityGroupIds:
         - 'sg123'

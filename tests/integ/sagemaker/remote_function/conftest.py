@@ -112,6 +112,12 @@ def auto_capture_test_container(sagemaker_session):
 
 
 @pytest.fixture(scope="package")
+def spark_test_container(sagemaker_session):
+    ecr_uri = _build_container("3.9", DOCKERFILE_TEMPLATE)
+    return ecr_uri
+
+
+@pytest.fixture(scope="package")
 def conda_env_yml():
     """Write conda yml file needed for tests"""
 

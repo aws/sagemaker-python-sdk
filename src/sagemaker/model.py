@@ -41,6 +41,7 @@ from sagemaker.config import (
     MODEL_EXECUTION_ROLE_ARN_PATH,
     MODEL_PRIMARY_CONTAINER_ENVIRONMENT_PATH,
     ENDPOINT_CONFIG_ASYNC_KMS_KEY_ID_PATH,
+    load_sagemaker_config,
 )
 from sagemaker.session import Session
 from sagemaker.model_metrics import ModelMetrics
@@ -313,13 +314,25 @@ class Model(ModelBase, InferenceRecommenderMixin):
         self.name = name
         self._base_name = None
         self.sagemaker_session = sagemaker_session
+
+        # Workaround for config injection if sagemaker_session is None, since in
+        # that case sagemaker_session will not be initialized until
+        # `_init_sagemaker_session_if_does_not_exist` is called later
+        self._sagemaker_config = (
+            load_sagemaker_config() if (self.sagemaker_session is None) else None
+        )
+
         self.role = resolve_value_from_config(
             role,
             MODEL_EXECUTION_ROLE_ARN_PATH,
             sagemaker_session=self.sagemaker_session,
+            sagemaker_config=self._sagemaker_config,
         )
         self.vpc_config = resolve_value_from_config(
-            vpc_config, MODEL_VPC_CONFIG_PATH, sagemaker_session=self.sagemaker_session
+            vpc_config,
+            MODEL_VPC_CONFIG_PATH,
+            sagemaker_session=self.sagemaker_session,
+            sagemaker_config=self._sagemaker_config,
         )
         self.endpoint_name = None
         self._is_compiled_model = False
@@ -330,16 +343,17 @@ class Model(ModelBase, InferenceRecommenderMixin):
         self._enable_network_isolation = resolve_value_from_config(
             enable_network_isolation,
             MODEL_ENABLE_NETWORK_ISOLATION_PATH,
+            default_value=False,
             sagemaker_session=self.sagemaker_session,
+            sagemaker_config=self._sagemaker_config,
         )
         self.env = resolve_value_from_config(
             env,
             MODEL_PRIMARY_CONTAINER_ENVIRONMENT_PATH,
             default_value={},
             sagemaker_session=self.sagemaker_session,
+            sagemaker_config=self._sagemaker_config,
         )
-        if self._enable_network_isolation is None:
-            self._enable_network_isolation = False
         self.model_kms_key = model_kms_key
         self.image_config = image_config
         self.entry_point = entry_point
@@ -542,9 +556,9 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             return
 
         if instance_type in ("local", "local_gpu"):
-            self.sagemaker_session = local.LocalSession()
+            self.sagemaker_session = local.LocalSession(sagemaker_config=self._sagemaker_config)
         else:
-            self.sagemaker_session = session.Session()
+            self.sagemaker_session = session.Session(sagemaker_config=self._sagemaker_config)
 
     def prepare_container_def(
         self,
@@ -578,7 +592,11 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         deploy_env = copy.deepcopy(self.env)
         if self.source_dir or self.dependencies or self.entry_point or self.git_config:
             is_repack = (
-                self.source_dir and self.entry_point and not (self.key_prefix or self.git_config)
+                self.source_dir
+                and self.entry_point
+                and not (
+                    (self.key_prefix and issubclass(type(self), FrameworkModel)) or self.git_config
+                )
             )
             self._upload_code(deploy_key_prefix, repack=is_repack)
             deploy_env.update(self._script_mode_env_vars())

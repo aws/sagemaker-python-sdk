@@ -687,6 +687,25 @@ def test_script_mode_model_uses_jumpstart_base_name(repack_model, sagemaker_sess
 
 
 @patch("sagemaker.utils.repack_model")
+def test_repack_code_location_with_key_prefix(repack_model, sagemaker_session):
+
+    code_location = "s3://my-bucket/code/location/"
+
+    t = Model(
+        entry_point=ENTRY_POINT_INFERENCE,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        source_dir=SCRIPT_URI,
+        image_uri=IMAGE_URI,
+        model_data=MODEL_DATA,
+        code_location=code_location,
+    )
+    t.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=INSTANCE_COUNT)
+
+    repack_model.assert_called_once()
+
+
+@patch("sagemaker.utils.repack_model")
 @patch("sagemaker.fw_utils.tar_and_upload_dir")
 def test_all_framework_models_add_jumpstart_base_name(
     repack_model, tar_and_uload_dir, sagemaker_session

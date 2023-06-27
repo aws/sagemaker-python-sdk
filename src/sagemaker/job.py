@@ -71,7 +71,11 @@ class _Job(object):
             if (expand_role and not is_pipeline_variable(estimator.role))
             else estimator.role
         )
-        output_config = _Job._prepare_output_config(estimator.output_path, estimator.output_kms_key)
+        output_config = _Job._prepare_output_config(
+            estimator.output_path,
+            estimator.output_kms_key,
+            disable_output_compression=estimator.disable_output_compression,
+        )
         resource_config = _Job._prepare_resource_config(
             estimator.instance_count,
             estimator.instance_type,
@@ -273,11 +277,13 @@ class _Job(object):
         return input_dict
 
     @staticmethod
-    def _prepare_output_config(s3_path, kms_key_id):
+    def _prepare_output_config(s3_path, kms_key_id, disable_output_compression=False):
         """Placeholder docstring"""
         config = {"S3OutputPath": s3_path}
         if kms_key_id is not None:
             config["KmsKeyId"] = kms_key_id
+        if disable_output_compression:
+            config["CompressionType"] = "NONE"
         return config
 
     @staticmethod

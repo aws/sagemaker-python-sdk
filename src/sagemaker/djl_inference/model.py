@@ -739,10 +739,7 @@ class DJLModel(FrameworkModel):
             serving_properties = {}
         serving_properties["engine"] = self.engine.value[0]  # pylint: disable=E1101
         serving_properties["option.entryPoint"] = self.engine.value[1]  # pylint: disable=E1101
-        if self.model_id.startswith("s3://"):
-            serving_properties["option.s3url"] = self.model_id
-        else:
-            serving_properties["option.model_id"] = self.model_id
+        serving_properties["option.model_id"] = self.model_id
         if self.number_of_partitions:
             serving_properties["option.tensor_parallel_degree"] = self.number_of_partitions
         if self.entry_point:

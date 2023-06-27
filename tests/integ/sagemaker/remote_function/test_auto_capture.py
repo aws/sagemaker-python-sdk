@@ -17,23 +17,22 @@ import pandas as pd
 from sagemaker.remote_function import remote
 
 
-@remote(
-    role="SageMakerRole",
-    instance_type="ml.m5.xlarge",
-    dependencies="auto_capture",
-)
-def multiply(dataframe: pd.DataFrame, factor: float):
-    return dataframe * factor
-
-
-df = pd.DataFrame(
-    {
-        "A": [14, 4, 5, 4, 1],
-        "B": [5, 2, 54, 3, 2],
-        "C": [20, 20, 7, 3, 8],
-        "D": [14, 3, 6, 2, 6],
-    }
-)
-
 if __name__ == "__main__":
+
+    @remote(
+        role="SageMakerRole",
+        instance_type="ml.m5.xlarge",
+        dependencies="auto_capture",
+    )
+    def multiply(dataframe: pd.DataFrame, factor: float):
+        return dataframe * factor
+
+    df = pd.DataFrame(
+        {
+            "A": [14, 4, 5, 4, 1],
+            "B": [5, 2, 54, 3, 2],
+            "C": [20, 20, 7, 3, 8],
+            "D": [14, 3, 6, 2, 6],
+        }
+    )
     multiply(df, 10.0)

@@ -71,6 +71,9 @@ required_packages = [
 extras = {
     "local": read_requirements("requirements/extras/local_requirements.txt"),
     "scipy": read_requirements("requirements/extras/scipy_requirements.txt"),
+    "feature-processor": read_requirements(
+        "requirements/extras/feature-processor_requirements.txt"
+    ),
 }
 # Meta dependency groups
 extras["all"] = [item for group in extras.values() for item in group]

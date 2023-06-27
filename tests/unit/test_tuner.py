@@ -2171,7 +2171,7 @@ def test_create_tuner_with_grid_search_strategy():
         objective_metric_name_dict={ESTIMATOR_NAME: OBJECTIVE_METRIC_NAME},
         hyperparameter_ranges_dict={ESTIMATOR_NAME: HYPERPARAMETER_RANGES},
         metric_definitions_dict={ESTIMATOR_NAME: METRIC_DEFINITIONS},
-        strategy="GridSearch",
+        strategy="Grid",
         objective_type="Minimize",
         max_parallel_jobs=1,
         tags=TAGS,
