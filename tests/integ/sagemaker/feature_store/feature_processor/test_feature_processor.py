@@ -550,10 +550,17 @@ def test_to_pipeline_and_execute(
             step=transform,
             role=get_execution_role(sagemaker_session),
             max_retries=2,
+            tags=[("integ_test_tag_key_1", "integ_test_tag_key_2")],
             sagemaker_session=sagemaker_session,
         )
+        _sagemaker_client = get_sagemaker_client(sagemaker_session=sagemaker_session)
 
         assert pipeline_arn is not None
+
+        tags = _sagemaker_client.list_tags(ResourceArn=pipeline_arn)["Tags"]
+
+        tag_keys = [tag["Key"] for tag in tags]
+        assert "integ_test_tag_key_1" in tag_keys
 
         pipeline_description = Pipeline(name=pipeline_name).describe()
         assert pipeline_arn == pipeline_description["PipelineArn"]
@@ -570,7 +577,7 @@ def test_to_pipeline_and_execute(
 
         status = _wait_for_pipeline_execution_to_reach_terminal_state(
             pipeline_execution_arn=pipeline_execution_arn,
-            sagemaker_client=get_sagemaker_client(sagemaker_session=sagemaker_session),
+            sagemaker_client=_sagemaker_client,
         )
         assert status == "Succeeded"
 

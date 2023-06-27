@@ -244,6 +244,7 @@ def test_to_pipeline(
         step=wrapped_func,
         role=EXECUTION_ROLE_ARN,
         max_retries=1,
+        tags=[("tag_key_1", "tag_value_1"), ("tag_key_2", "tag_value_2")],
         sagemaker_session=session,
     )
     assert pipeline_arn == PIPELINE_ARN
@@ -346,7 +347,11 @@ def test_to_pipeline(
         [
             call(
                 role_arn=EXECUTION_ROLE_ARN,
-                tags=[dict(Key=FEATURE_PROCESSOR_TAG_KEY, Value=FEATURE_PROCESSOR_TAG_VALUE)],
+                tags=[
+                    dict(Key=FEATURE_PROCESSOR_TAG_KEY, Value=FEATURE_PROCESSOR_TAG_VALUE),
+                    dict(Key="tag_key_1", Value="tag_value_1"),
+                    dict(Key="tag_key_2", Value="tag_value_2"),
+                ],
             ),
             call(
                 role_arn=EXECUTION_ROLE_ARN,
@@ -524,6 +529,66 @@ def test_to_pipeline_pipeline_name_length_limit_exceeds(
             step=wrapped_func,
             role=EXECUTION_ROLE_ARN,
             max_retries=1,
+        )
+
+
+@patch("sagemaker.remote_function.job.Session", return_value=mock_session())
+@patch(
+    "sagemaker.remote_function.job._JobSettings._get_default_spark_image",
+    return_value="some_image_uri",
+)
+@patch("sagemaker.remote_function.job.get_execution_role", return_value=EXECUTION_ROLE_ARN)
+def test_to_pipeline_used_reserved_tags(get_execution_role, mock_spark_image, session):
+    session.sagemaker_config = None
+    session.boto_region_name = TEST_REGION
+    session.expand_role.return_value = EXECUTION_ROLE_ARN
+    spark_config = SparkConfig(submit_files=["file_a", "file_b", "file_c"])
+    job_settings = _JobSettings(
+        spark_config=spark_config,
+        s3_root_uri=S3_URI,
+        role=EXECUTION_ROLE_ARN,
+        include_local_workdir=True,
+        instance_type="ml.m5.large",
+        encrypt_inter_container_traffic=True,
+        sagemaker_session=session,
+    )
+    jobs_container_entrypoint = [
+        "/bin/bash",
+        f"/opt/ml/input/data/{RUNTIME_SCRIPTS_CHANNEL_NAME}/{ENTRYPOINT_SCRIPT_NAME}",
+    ]
+    jobs_container_entrypoint.extend(["--jars", "path_a"])
+    jobs_container_entrypoint.extend(["--py-files", "path_b"])
+    jobs_container_entrypoint.extend(["--files", "path_c"])
+    jobs_container_entrypoint.extend([SPARK_APP_SCRIPT_PATH])
+    container_args = ["--s3_base_uri", f"{S3_URI}/pipeline_name"]
+    container_args.extend(["--region", session.boto_region_name])
+
+    mock_feature_processor_config = Mock(
+        mode=FeatureProcessorMode.PYSPARK, inputs=[tdh.FEATURE_PROCESSOR_INPUTS], output="some_fg"
+    )
+    mock_feature_processor_config.mode.return_value = FeatureProcessorMode.PYSPARK
+
+    wrapped_func = Mock(
+        Callable,
+        feature_processor_config=mock_feature_processor_config,
+        job_settings=job_settings,
+        wrapped_func=job_function,
+    )
+    wrapped_func.feature_processor_config.return_value = mock_feature_processor_config
+    wrapped_func.job_settings.return_value = job_settings
+    wrapped_func.wrapped_func.return_value = job_function
+
+    with pytest.raises(
+        ValueError,
+        match="sm-fs-fe:created-from is a reserved tag key for to_pipeline API. Please choose another tag.",
+    ):
+        to_pipeline(
+            pipeline_name="pipeline_name",
+            step=wrapped_func,
+            role=EXECUTION_ROLE_ARN,
+            max_retries=1,
+            tags=[("sm-fs-fe:created-from", "random")],
+            sagemaker_session=session,
         )
 
 
