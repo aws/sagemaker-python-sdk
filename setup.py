@@ -53,7 +53,6 @@ required_packages = [
     "google-pasta",
     "numpy>=1.9.0,<2.0",
     "protobuf>=3.1,<4.0",
-    "protobuf3-to-dict>=0.1.5,<1.0",
     "smdebug_rulesconfig==1.0.1",
     "importlib-metadata>=1.4.0,<5.0",
     "packaging>=20.0",
