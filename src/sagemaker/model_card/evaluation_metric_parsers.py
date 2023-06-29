@@ -31,6 +31,7 @@ class EvaluationMetricTypeEnum(str, Enum):
     MODEL_CARD_METRIC_SCHEMA = "Model Card Metric Schema"
     CLARIFY_BIAS = "Clarify Bias"
     CLARIFY_EXPLAINABILITY = "Clarify Explainability"
+    MODEL_MONITOR_MODEL_QUALITY = "Model Monitor Model Quality"
     REGRESSION = "Model Monitor Model Quality Regression"
     BINARY_CLASSIFICATION = "Model Monitor Model Quality Binary Classification"
     MULTICLASS_CLASSIFICATION = "Model Monitor Model Quality Multiclass Classification"
@@ -138,6 +139,7 @@ class ClarifyBiasParser(ParserBase):
                             [
                                 {"name": i["name"], "value": i["value"], "type": "number"}
                                 for i in item["metrics"]
+                                if i["value"] is not None
                             ]
                         )
                     for group_name, metric_data in group_data.items():
@@ -368,9 +370,10 @@ class RegressionParser(ModelMonitorModelQualityParserBase):
         result = {"metric_groups": []}
         for group_name, group_data in json_data.items():
             metric_data = []
-            for metric_name, raw_data in group_data.item():
-                metric_data.extend(self._parse_basic_metric(metric_name, raw_data))
-            result["metric_groups"].append({"name": group_name, "metric_data": metric_data})
+            if group_name == "regression_metrics":
+                for metric_name, raw_data in group_data.items():
+                    metric_data.extend(self._parse_basic_metric(metric_name, raw_data))
+                result["metric_groups"].append({"name": group_name, "metric_data": metric_data})
         return result
 
 
@@ -388,7 +391,7 @@ class ClassificationParser(ModelMonitorModelQualityParserBase):
         """
         if (
             "binary_classification_metrics" not in json_data
-            and "multiclass_classification_metrics" in json_data
+            and "multiclass_classification_metrics" not in json_data
         ):
             raise ValueError("Missing *_classification_metrics from the metric data.")
 
@@ -401,6 +404,11 @@ class ClassificationParser(ModelMonitorModelQualityParserBase):
         result = {"metric_groups": []}
         for group_name, group_data in json_data.items():
             metric_data = []
+            if group_name not in (
+                "binary_classification_metrics",
+                "multiclass_classification_metrics",
+            ):
+                continue
             for metric_name, raw_data in group_data.items():
                 metric_data.extend(self._parse_confusion_matrix(metric_name, raw_data))
                 metric_data.extend(
@@ -506,6 +514,39 @@ class ClassificationParser(ModelMonitorModelQualityParserBase):
         return metric_data
 
 
+class ModelMonitorModelQualityParser(ParserBase):
+    """Top level parser for model monitor model quality metric type"""
+
+    def _validate(self, json_data: dict):
+        """Implement ParserBase._validate.
+
+        Args:
+            json_data (dict): Metric data to be validated.
+
+        Raises:
+            ValueError: missing model monitor model quality metrics.
+        """
+        if len(json_data) == 0:
+            raise ValueError("Missing model monitor model quality metrics from the metric data.")
+
+    def _parse(self, json_data: dict):
+        """Implement ParserBase._parse.
+
+        Args:
+            json_data (dict): Raw metric data.
+        """
+        result = {"metric_groups": []}
+        if "regression_metrics" in json_data:
+            result = RegressionParser().run(json_data)
+        elif (
+            "binary_classification_metrics" in json_data
+            or "multiclass_classification_metrics" in json_data
+        ):
+            result = ClassificationParser().run(json_data)
+
+        return result
+
+
 EVALUATION_METRIC_PARSERS = {
     EvaluationMetricTypeEnum.MODEL_CARD_METRIC_SCHEMA: DefaultParser(),
     EvaluationMetricTypeEnum.CLARIFY_BIAS: ClarifyBiasParser(),
@@ -513,4 +554,5 @@ EVALUATION_METRIC_PARSERS = {
     EvaluationMetricTypeEnum.REGRESSION: RegressionParser(),
     EvaluationMetricTypeEnum.BINARY_CLASSIFICATION: ClassificationParser(),
     EvaluationMetricTypeEnum.MULTICLASS_CLASSIFICATION: ClassificationParser(),
+    EvaluationMetricTypeEnum.MODEL_MONITOR_MODEL_QUALITY: ModelMonitorModelQualityParser(),
 }
