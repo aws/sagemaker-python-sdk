@@ -62,7 +62,14 @@ from tests.unit.sagemaker.experiments.helpers import (
     ("kwargs", "expected_artifact_bucket", "expected_artifact_prefix"),
     [
         ({}, None, _DEFAULT_ARTIFACT_PREFIX),
-        ({"artifact_bucket": TEST_ARTIFACT_BUCKET, "artifact_prefix": TEST_ARTIFACT_PREFIX}, TEST_ARTIFACT_BUCKET, TEST_ARTIFACT_PREFIX),
+        (
+            {
+                "artifact_bucket": TEST_ARTIFACT_BUCKET,
+                "artifact_prefix": TEST_ARTIFACT_PREFIX,
+            },
+            TEST_ARTIFACT_BUCKET,
+            TEST_ARTIFACT_PREFIX,
+        ),
     ],
 )
 @patch(
@@ -79,9 +86,18 @@ from tests.unit.sagemaker.experiments.helpers import (
     MagicMock(side_effect=mock_tc_load_or_create_func),
 )
 @patch.object(_TrialComponent, "save")
-def test_run_init(mock_tc_save, sagemaker_session, kwargs, expected_artifact_bucket, expected_artifact_prefix):
+def test_run_init(
+    mock_tc_save,
+    sagemaker_session,
+    kwargs,
+    expected_artifact_bucket,
+    expected_artifact_prefix,
+):
     with Run(
-        experiment_name=TEST_EXP_NAME, run_name=TEST_RUN_NAME, sagemaker_session=sagemaker_session, **kwargs
+        experiment_name=TEST_EXP_NAME,
+        run_name=TEST_RUN_NAME,
+        sagemaker_session=sagemaker_session,
+        **kwargs,
     ) as run_obj:
         assert not run_obj._in_load
         assert not run_obj._inside_load_context
@@ -135,11 +151,19 @@ def test_run_init_name_length_exceed_limit(sagemaker_session):
         err
     )
 
+
 @pytest.mark.parametrize(
     ("kwargs", "expected_artifact_bucket", "expected_artifact_prefix"),
     [
         ({}, None, _DEFAULT_ARTIFACT_PREFIX),
-        ({"artifact_bucket": TEST_ARTIFACT_BUCKET, "artifact_prefix": TEST_ARTIFACT_PREFIX}, TEST_ARTIFACT_BUCKET, TEST_ARTIFACT_PREFIX),
+        (
+            {
+                "artifact_bucket": TEST_ARTIFACT_BUCKET,
+                "artifact_prefix": TEST_ARTIFACT_PREFIX,
+            },
+            TEST_ARTIFACT_BUCKET,
+            TEST_ARTIFACT_PREFIX,
+        ),
     ],
 )
 @patch.object(_TrialComponent, "save", MagicMock(return_value=None))
@@ -157,7 +181,13 @@ def test_run_init_name_length_exceed_limit(sagemaker_session):
     MagicMock(side_effect=mock_tc_load_or_create_func),
 )
 @patch("sagemaker.experiments.run._RunEnvironment")
-def test_run_load_no_run_name_and_in_train_job(mock_run_env, sagemaker_session, kwargs, expected_artifact_bucket, expected_artifact_prefix):
+def test_run_load_no_run_name_and_in_train_job(
+    mock_run_env,
+    sagemaker_session,
+    kwargs,
+    expected_artifact_bucket,
+    expected_artifact_prefix,
+):
     client = sagemaker_session.sagemaker_client
     job_name = "my-train-job"
     rv = Mock()
@@ -234,11 +264,19 @@ def test_run_load_no_run_name_and_not_in_train_job_but_no_obj_in_context(sagemak
 
     assert "Failed to load a Run object" in str(err)
 
+
 @pytest.mark.parametrize(
     ("kwargs", "expected_artifact_bucket", "expected_artifact_prefix"),
     [
         ({}, None, _DEFAULT_ARTIFACT_PREFIX),
-        ({"artifact_bucket": TEST_ARTIFACT_BUCKET, "artifact_prefix": TEST_ARTIFACT_PREFIX}, TEST_ARTIFACT_BUCKET, TEST_ARTIFACT_PREFIX),
+        (
+            {
+                "artifact_bucket": TEST_ARTIFACT_BUCKET,
+                "artifact_prefix": TEST_ARTIFACT_PREFIX,
+            },
+            TEST_ARTIFACT_BUCKET,
+            TEST_ARTIFACT_PREFIX,
+        ),
     ],
 )
 @patch.object(_TrialComponent, "save", MagicMock(return_value=None))
@@ -255,7 +293,9 @@ def test_run_load_no_run_name_and_not_in_train_job_but_no_obj_in_context(sagemak
     "sagemaker.experiments.run._TrialComponent._load_or_create",
     MagicMock(side_effect=mock_tc_load_or_create_func),
 )
-def test_run_load_with_run_name_and_exp_name(sagemaker_session, kwargs, expected_artifact_bucket, expected_artifact_prefix):
+def test_run_load_with_run_name_and_exp_name(
+    sagemaker_session, kwargs, expected_artifact_bucket, expected_artifact_prefix
+):
     with load_run(
         run_name=TEST_RUN_NAME,
         experiment_name=TEST_EXP_NAME,
