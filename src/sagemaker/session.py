@@ -2543,7 +2543,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if tags is not None:
             edge_packaging_job_request["Tags"] = tags
         if resource_key is not None:
-            edge_packaging_job_request["ResourceKey"] = (resource_key,)
+            edge_packaging_job_request["ResourceKey"] = resource_key
 
         LOGGER.info("Creating edge-packaging-job with name: %s", job_name)
         self.sagemaker_client.create_edge_packaging_job(**edge_packaging_job_request)
