@@ -111,7 +111,9 @@ class Pipeline(Entity):
             if self.pipeline_experiment_config is not None
             else None,
             "Steps": build_steps(
-                self.steps, self.name, self.pipeline_definition_config.use_custom_job_prefix
+                self.steps,
+                self.name,
+                self.pipeline_definition_config,
             ),
         }
 

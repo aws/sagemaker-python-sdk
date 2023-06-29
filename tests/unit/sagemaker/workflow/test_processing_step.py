@@ -85,10 +85,16 @@ MOCKED_PIPELINE_CONFIG = _PipelineConfig(
     "MyProcessingStep",
     hash_files_or_dirs([LOCAL_SCRIPT_PATH]),
     "config-hash-abcdefg",
-    False,
+    None,
 )
+
+_DEFINITION_CONFIG = PipelineDefinitionConfig(use_custom_job_prefix=True)
 MOCKED_PIPELINE_CONFIG_WITH_CUSTOM_PREFIX = _PipelineConfig(
-    "MyPipelineWithCustomPrefix", "MyProcessingStep", None, None, True
+    "MyPipelineWithCustomPrefix",
+    "MyProcessingStep",
+    None,
+    None,
+    _DEFINITION_CONFIG,
 )
 
 FRAMEWORK_PROCESSOR = [
@@ -1129,12 +1135,13 @@ def test_processor_with_role_as_pipeline_parameter(
 def test_processing_step_with_processor_using_custom_job_prefixes(
     pipeline_session, processing_input, network_config
 ):
+    custom_job_prefix = "ProcessingJobPrefix-2023-06-22"
 
     processor = Processor(
         instance_type=INSTANCE_TYPE,
         instance_count=1,
         role=ROLE,
-        base_job_name="ProcessingJobPrefix-2023-06-20-20-42-13-030",
+        base_job_name=custom_job_prefix,
     )
     processor.sagemaker_session = pipeline_session
     processor.role = ROLE
@@ -1148,34 +1155,34 @@ def test_processing_step_with_processor_using_custom_job_prefixes(
         step_args=processor_args,
     )
 
-    # Toggle the custom prefixing feature ON for this pipeline
-    definition_config = PipelineDefinitionConfig(use_custom_job_prefix=True)
-
     pipeline = Pipeline(
         name="MyPipelineWithCustomPrefix",
         steps=[step],
         sagemaker_session=pipeline_session,
-        pipeline_definition_config=definition_config,
     )
 
-    # ProcessingJobPrefix-2023-06-20-20-42-13-030 trimmed to ProcessingJobPrefix
-    step_args = get_step_args_helper(processor_args, "Processing", True)
+    # Default the custom-prefixing feature is OFF for this pipeline
+    # JobName not present in step_args
+    step_args = get_step_args_helper(processor_args, "Processing", False)
     step_def = json.loads(pipeline.definition())["Steps"][0]
 
-    assert step_def["Arguments"]["ProcessingJobName"] == "ProcessingJobPrefix"
+    assert "ProcessingJobName" not in step_def["Arguments"]
     assert step_def == {
         "Name": "MyProcessingStep",
         "Type": "Processing",
         "Arguments": step_args,
     }
 
-    # Toggle the custom prefixing feature OFF for this pipeline, JobName now not present in step_args
-    pipeline.pipeline_definition_config.use_custom_job_prefix = False
+    # Toggle on the custom-prefixing feature, and update the pipeline
+    definition_config = PipelineDefinitionConfig(use_custom_job_prefix=True)
+    pipeline.pipeline_definition_config = definition_config
+    pipeline.upsert(role_arn=ROLE)
 
-    step_args2 = get_step_args_helper(processor_args, "Processing", False)
+    # ProcessingJobPrefix-2023-06-20-20-42-13-030 trimmed to ProcessingJobPrefix-2023-06-22
+    step_args2 = get_step_args_helper(processor_args, "Processing", True)
     step_def2 = json.loads(pipeline.definition())["Steps"][0]
 
-    assert "ProcessingJobName" not in step_def2["Arguments"]
+    assert step_def2["Arguments"]["ProcessingJobName"] == custom_job_prefix
     assert step_def2 == {
         "Name": "MyProcessingStep",
         "Type": "Processing",

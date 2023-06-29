@@ -18,20 +18,28 @@ import logging
 from functools import wraps
 from pathlib import Path
 from typing import List, Sequence, Union, Set, TYPE_CHECKING
-import re
 import hashlib
 from urllib.parse import unquote, urlparse
 from contextlib import contextmanager
 from _hashlib import HASH as Hash
 
+from sagemaker.utils import base_from_name
 from sagemaker.workflow.parameters import Parameter
 from sagemaker.workflow.pipeline_context import _StepArguments, _PipelineConfig
 from sagemaker.workflow.entities import (
     Entity,
     RequestType,
 )
+from sagemaker.workflow.pipeline_definition_config import PipelineDefinitionConfig
 
 logger = logging.getLogger(__name__)
+
+DEF_CONFIG_WARN_MSG_TEMPLATE = (
+    "Popping out '%s' from the pipeline definition by default "
+    "since it will be overridden at pipeline execution time. Please utilize "
+    "the PipelineDefinitionConfig to persist this field in the pipeline definition "
+    "if desired."
+)
 
 if TYPE_CHECKING:
     from sagemaker.workflow.step_collections import StepCollection
@@ -65,7 +73,7 @@ def _pipeline_config_manager(
     step_name: str,
     code_hash: str,
     config_hash: str,
-    use_custom_job_prefix: bool,
+    pipeline_definition_config: PipelineDefinitionConfig,
 ):
     """Expose static _pipeline_config variable to other modules
 
@@ -79,7 +87,7 @@ def _pipeline_config_manager(
     # pylint: disable=W0603
     global _pipeline_config
     _pipeline_config = _PipelineConfig(
-        pipeline_name, step_name, code_hash, config_hash, use_custom_job_prefix
+        pipeline_name, step_name, code_hash, config_hash, pipeline_definition_config
     )
     try:
         yield
@@ -87,14 +95,18 @@ def _pipeline_config_manager(
         _pipeline_config = None
 
 
-def build_steps(steps: Sequence[Entity], pipeline_name: str, use_custom_job_prefix: bool):
+def build_steps(
+    steps: Sequence[Entity],
+    pipeline_name: str,
+    pipeline_definition_config: PipelineDefinitionConfig,
+):
     """Get the request structure for list of steps, with _pipeline_config_manager
 
     Args:
         steps (Sequence[Entity]): A list of steps, (Entity type because Step causes circular import)
         pipeline_name (str): The name of the pipeline, passed down from pipeline.to_request()
-        use_custom_job_prefix (bool): The feature flag to toggle on/off custom job prefixing during
-            a pipeline execution
+        pipeline_definition_config (PipelineDefinitionConfig): A pipeline definition configuration
+            for a pipeline containing feature flag toggles
     Returns:
         list: A request structure object for a service call for the list of pipeline steps
     """
@@ -102,16 +114,16 @@ def build_steps(steps: Sequence[Entity], pipeline_name: str, use_custom_job_pref
 
     request_dicts = []
     for step in steps:
-        if isinstance(step, StepCollection):
-            request_dicts.extend(step.request_dicts())
-        else:
-            with _pipeline_config_manager(
-                pipeline_name,
-                step.name,
-                get_code_hash(step),
-                get_config_hash(step),
-                use_custom_job_prefix,
-            ):
+        with _pipeline_config_manager(
+            pipeline_name,
+            step.name,
+            get_code_hash(step),
+            get_config_hash(step),
+            pipeline_definition_config,
+        ):
+            if isinstance(step, StepCollection):
+                request_dicts.extend(step.request_dicts())
+            else:
                 request_dicts.append(step.to_request())
     return request_dicts
 
@@ -425,26 +437,26 @@ def execute_job_functions(step_args: _StepArguments):
         execute_job_functions(chained_args)
 
 
-def strip_timestamp_from_job_name(request_dict, job_key):
-    """A utility method to strip off time stamp from job name
+def trim_request_dict(request_dict, job_key, config):
+    """Trim request_dict for unwanted fields to not persist them in step arguments
 
-    Performs a regex match on the timestamp that job classes (Estimator,Processor,etc)
-    will append when the base_job_name is provided. We plan to strip this value off
-    such that we can pass the raw data, the base_job_name, to the pipeline definition
-    to be used directly in name-generation during orchestration.
+    Trim the job_name field off request_dict in cases where we do not want to include it
+    in the pipeline definition.
 
     Args:
-        request_dict (dict): The request dictionary being built for a pipeline step
-        job_key (str): The job field that we search for in the request dictionary for
-            the current pipeline step. In the example of a Processor, this would be
-            "ProcessingJobName"
-    Returns:
-        dict: the updated request_dict with the job name updated if present
+        request_dict (dict): A dictionary used to build the arguments for a pipeline step,
+            containing fields that will be passed to job client during orchestration.
+        job_key (str): The key in a step's arguments to look up the base_job_name if it
+            exists
+        config (_pipeline_config) The config intercepted and set for a pipeline via the
+            context manager
     """
-    if job_key in request_dict:
-        job_name = request_dict[job_key]
-        match = re.search("-([0-9]+(-[0-9]+)+)", job_name)
-        if match:
-            request_dict[job_key] = job_name[: match.start()]
+
+    if not config or not config.pipeline_definition_config.use_custom_job_prefix:
+        logger.warning(DEF_CONFIG_WARN_MSG_TEMPLATE, job_key)
+        request_dict.pop(job_key, None)  # safely return null in case of KeyError
+    else:
+        if job_key in request_dict:
+            request_dict[job_key] = base_from_name(request_dict[job_key])  # trim timestamp
 
     return request_dict

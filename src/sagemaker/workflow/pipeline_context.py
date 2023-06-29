@@ -20,6 +20,7 @@ from typing import Dict, Optional, Callable
 
 from sagemaker.session import Session, SessionSettings
 from sagemaker.local import LocalSession
+from sagemaker.workflow.pipeline_definition_config import PipelineDefinitionConfig
 
 
 class _StepArguments:
@@ -87,14 +88,23 @@ class _PipelineConfig:
         step_name (str): step name
         code_hash (str): a hash of the code artifact for the particular step
         config_hash (str): a hash of the config artifact for the particular step (Processing)
+        pipeline_definition_config (PipelineDefinitionConfig): a configuration used to toggle
+            feature flags persistent in a pipeline definition
     """
 
-    def __init__(self, pipeline_name, step_name, code_hash, config_hash, use_custom_job_prefix):
+    def __init__(
+        self,
+        pipeline_name: str,
+        step_name: str,
+        code_hash: str,
+        config_hash: str,
+        pipeline_definition_config: PipelineDefinitionConfig,
+    ):
         self.pipeline_name = pipeline_name
         self.step_name = step_name
         self.code_hash = code_hash
         self.config_hash = config_hash
-        self.use_custom_job_prefix = use_custom_job_prefix
+        self.pipeline_definition_config = pipeline_definition_config
 
 
 class PipelineSession(Session):

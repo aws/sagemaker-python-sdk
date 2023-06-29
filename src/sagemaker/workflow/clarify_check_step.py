@@ -44,7 +44,7 @@ from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.steps import Step, StepTypeEnum, CacheConfig
 from sagemaker.workflow.check_job_config import CheckJobConfig
-from sagemaker.workflow.utilities import strip_timestamp_from_job_name
+from sagemaker.workflow.utilities import trim_request_dict
 
 _DATA_BIAS_TYPE = "DATA_BIAS"
 _MODEL_BIAS_TYPE = "MODEL_BIAS"
@@ -269,13 +269,8 @@ class ClarifyCheckStep(Step):
         request_dict = self._baselining_processor.sagemaker_session._get_process_request(
             **process_args
         )
-        # Continue to pop custom prefix if not explicitly opted-in
-        if not _pipeline_config or not _pipeline_config.use_custom_job_prefix:
-            if "ProcessingJobName" in request_dict:
-                request_dict.pop("ProcessingJobName")
-        else:
-            print(request_dict["ProcessingJobName"])
-            request_dict = strip_timestamp_from_job_name(request_dict, job_key="ProcessingJobName")
+        # Continue to pop job name if not explicitly opted-in via config
+        request_dict = trim_request_dict(request_dict, "ProcessingJobName", _pipeline_config)
 
         return request_dict
 

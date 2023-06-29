@@ -14,6 +14,8 @@
 from __future__ import absolute_import
 
 import re
+
+from sagemaker.utils import base_from_name
 from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.steps import ConfigurableRetryStep, StepTypeEnum
 from sagemaker.workflow.step_collections import StepCollection
@@ -75,10 +77,7 @@ def get_step_args_helper(step_args, step_type, use_custom_job_prefix=False):
 
 
 def strip_timestamp(job_name):
-    match = re.search(
-        "-([0-9]+(-[0-9]+)+)", job_name
-    )  # pop timestamp so we can simply retrieve the base_job_name
-    return job_name[: match.start()] if match else job_name
+    return base_from_name(job_name)
 
 
 class CustomStep(ConfigurableRetryStep):

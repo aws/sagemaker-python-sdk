@@ -50,7 +50,7 @@ from sagemaker.workflow.properties import (
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.functions import Join, JsonGet
 from sagemaker.workflow.retry import RetryPolicy
-from sagemaker.workflow.utilities import strip_timestamp_from_job_name
+from sagemaker.workflow.utilities import trim_request_dict
 
 if TYPE_CHECKING:
     from sagemaker.workflow.step_collections import StepCollection
@@ -495,11 +495,8 @@ class TrainingStep(ConfigurableRetryStep):
         if "HyperParameters" in request_dict:
             request_dict["HyperParameters"].pop("sagemaker_job_name", None)
 
-        # Continue to pop custom prefix if not explicitly opted-in
-        if not _pipeline_config or not _pipeline_config.use_custom_job_prefix:
-            request_dict.pop("TrainingJobName", None)
-        else:
-            request_dict = strip_timestamp_from_job_name(request_dict, job_key="TrainingJobName")
+        # Continue to pop job name if not explicitly opted-in via config
+        request_dict = trim_request_dict(request_dict, "TrainingJobName", _pipeline_config)
 
         Step._trim_experiment_config(request_dict)
 
@@ -628,11 +625,8 @@ class CreateModelStep(ConfigurableRetryStep):
                     enable_network_isolation=self.model.enable_network_isolation(),
                 )
 
-        # Continue to pop custom prefix if not explicitly opted-in
-        if not _pipeline_config or not _pipeline_config.use_custom_job_prefix:
-            request_dict.pop("ModelName", None)
-        else:
-            request_dict = strip_timestamp_from_job_name(request_dict, job_key="ModelName")
+        # Continue to pop job name if not explicitly opted-in via config
+        request_dict = trim_request_dict(request_dict, "ModelName", _pipeline_config)
 
         return request_dict
 
@@ -746,11 +740,8 @@ class TransformStep(ConfigurableRetryStep):
                 **transform_args
             )
 
-        # Continue to pop custom prefix if not explicitly opted-in
-        if not _pipeline_config or not _pipeline_config.use_custom_job_prefix:
-            request_dict.pop("TransformJobName", None)
-        else:
-            request_dict = strip_timestamp_from_job_name(request_dict, job_key="TransformJobName")
+        # Continue to pop job name if not explicitly opted-in via config
+        request_dict = trim_request_dict(request_dict, "TransformJobName", _pipeline_config)
 
         Step._trim_experiment_config(request_dict)
 
@@ -909,11 +900,8 @@ class ProcessingStep(ConfigurableRetryStep):
             )
             request_dict = self.processor.sagemaker_session._get_process_request(**process_args)
 
-        # Continue to pop custom prefix if not explicitly opted-in
-        if not _pipeline_config or not _pipeline_config.use_custom_job_prefix:
-            request_dict.pop("ProcessingJobName", None)
-        else:
-            request_dict = strip_timestamp_from_job_name(request_dict, job_key="ProcessingJobName")
+        # Continue to pop job name if not explicitly opted-in via config
+        request_dict = trim_request_dict(request_dict, "ProcessingJobName", _pipeline_config)
 
         Step._trim_experiment_config(request_dict)
 
@@ -1072,13 +1060,10 @@ class TuningStep(ConfigurableRetryStep):
             tuner_args = _TuningJob._get_tuner_args(self.tuner, self.inputs)
             request_dict = self.tuner.sagemaker_session._get_tuning_request(**tuner_args)
 
-        # Continue to pop custom prefix if not explicitly opted-in
-        if not _pipeline_config or not _pipeline_config.use_custom_job_prefix:
-            request_dict.pop("HyperParameterTuningJobName", None)
-        else:
-            request_dict = strip_timestamp_from_job_name(
-                request_dict, job_key="HyperParameterTuningJobName"
-            )
+        # Continue to pop job name if not explicitly opted-in via config
+        request_dict = trim_request_dict(
+            request_dict, "HyperParameterTuningJobName", _pipeline_config
+        )
 
         return request_dict
 

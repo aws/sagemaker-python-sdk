@@ -23,7 +23,7 @@ from sagemaker.workflow.pipeline_context import _JobStepArguments
 from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.retry import RetryPolicy
 from sagemaker.workflow.steps import ConfigurableRetryStep, CacheConfig, Step, StepTypeEnum
-from sagemaker.workflow.utilities import validate_step_args_input, strip_timestamp_from_job_name
+from sagemaker.workflow.utilities import validate_step_args_input, trim_request_dict
 from sagemaker.workflow.step_collections import StepCollection
 
 
@@ -115,11 +115,9 @@ class AutoMLStep(ConfigurableRetryStep):
             request_dict.pop("ModelDeployConfig", None)
         if "GenerateCandidateDefinitionsOnly" in request_dict:
             request_dict.pop("GenerateCandidateDefinitionsOnly", None)
-        if not _pipeline_config or not _pipeline_config.use_custom_job_prefix:
-            request_dict.pop("AutoMLJobName", None)
-        else:
-            # AutoML Trims to AutoMLJo-2023-06-23-22-57-39-083
-            request_dict = strip_timestamp_from_job_name(request_dict, job_key="AutoMLJobName")
+        # Continue to pop job name if not explicitly opted-in via config
+        # AutoML Trims to AutoMLJo-2023-06-23-22-57-39-083
+        request_dict = trim_request_dict(request_dict, "AutoMLJobName", _pipeline_config)
 
         return request_dict
 

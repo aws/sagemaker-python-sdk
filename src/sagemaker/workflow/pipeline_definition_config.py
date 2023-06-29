@@ -22,9 +22,9 @@ class PipelineDefinitionConfig:
 
         Examples:
         Use a PipelineDefinitionConfig to specify pipeline specific configurations.
-        We will use this as a feature flag grab bag for creating pipeline definitions.
+        Think of this as a feature flag grab bag for creating pipeline definitions.
 
-            PipelineDefinitionConfig(use_custom_job_prefix=true)
+            PipelineDefinitionConfig(use_custom_job_prefix=True)
 
         Args:
             use_custom_job_prefix (bool): feature flag to toggle on/off custom name prefixing

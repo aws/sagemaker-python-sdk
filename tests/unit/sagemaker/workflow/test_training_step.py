@@ -75,10 +75,16 @@ MOCKED_PIPELINE_CONFIG = _PipelineConfig(
     "MyTrainingStep",
     hash_files_or_dirs([LOCAL_SOURCE_DIR] + LOCAL_DEPS),
     "config-hash-abcdefg",
-    False,
+    None,
 )
+
+_DEFINITION_CONFIG = PipelineDefinitionConfig(use_custom_job_prefix=True)
 MOCKED_PIPELINE_CONFIG_WITH_CUSTOM_PREFIX = _PipelineConfig(
-    "MyPipelineWithCustomPrefix", "MyTrainingStep", None, None, True
+    "MyPipelineWithCustomPrefix",
+    "MyProcessingStep",
+    None,
+    None,
+    _DEFINITION_CONFIG,
 )
 
 ESTIMATOR_LISTS = [

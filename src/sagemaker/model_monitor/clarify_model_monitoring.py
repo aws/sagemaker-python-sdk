@@ -175,6 +175,7 @@ class ClarifyModelMonitor(mm.ModelMonitor):
             network_config=self.network_config,
         )
         baselining_processor.image_uri = self.image_uri
+        baselining_processor.base_job_name = self.base_job_name
         return baselining_processor
 
     def _upload_analysis_config(self, analysis_config, output_s3_uri, job_definition_name):
