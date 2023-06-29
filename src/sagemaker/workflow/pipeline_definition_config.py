@@ -18,15 +18,14 @@ class PipelineDefinitionConfig:
     """Pipeline Definition Configuration for SageMaker pipeline."""
 
     def __init__(self, use_custom_job_prefix: bool):
-        """Create a PipelineDefinitionConfiga
+        """Create a `PipelineDefinitionConfig`.
 
-        Examples:
-        Use a PipelineDefinitionConfig to specify pipeline specific configurations.
+        Examples: Use a `PipelineDefinitionConfig` to turn on custom job prefixing::
 
             PipelineDefinitionConfig(use_custom_job_prefix=True)
 
         Args:
-            use_custom_job_prefix (bool): feature flag to toggle on/off custom name prefixing
-                during pipeline orchestration
+            use_custom_job_prefix (bool): A feature flag to toggle on/off custom name prefixing
+                during pipeline orchestration.
         """
         self.use_custom_job_prefix = use_custom_job_prefix
