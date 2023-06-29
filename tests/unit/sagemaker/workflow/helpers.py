@@ -13,8 +13,6 @@
 """Helper methods for testing."""
 from __future__ import absolute_import
 
-import re
-
 from sagemaker.utils import base_from_name
 from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.steps import ConfigurableRetryStep, StepTypeEnum

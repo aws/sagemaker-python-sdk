@@ -79,6 +79,9 @@ class Pipeline(Entity):
                 the same name already exists. By default, pipeline name is used as
                 experiment name and execution id is used as the trial name.
                 If set to None, no experiment or trial will be created automatically.
+            pipeline_definition_config (Optional[PipelineDefinitionConfig]): If set,
+                the workflow customizes the pipeline definition using the configurations
+                specified. By default, custom job-prefixing is turned off.
             steps (Sequence[Union[Step, StepCollection]]): The list of the non-conditional steps
                 associated with the pipeline. Any steps that are within the
                 `if_steps` or `else_steps` of a `ConditionStep` cannot be listed in the steps of a
