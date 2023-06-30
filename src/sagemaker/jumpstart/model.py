@@ -432,7 +432,7 @@ class JumpStartModel(Model):
         predictor = super(JumpStartModel, self).deploy(**deploy_kwargs.to_kwargs_dict())
 
         # If no predictor class was passed, add defaults to predictor
-        if self.orig_predictor_cls is None:
+        if self.orig_predictor_cls is None and async_inference_config is None:
             return get_default_predictor(
                 predictor=predictor,
                 model_id=self.model_id,
