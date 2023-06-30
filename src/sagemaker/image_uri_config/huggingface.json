@@ -22,6 +22,7 @@
                     "py_versions": ["py36"],
                     "registries": {
                         "af-south-1": "626614931356",
+                        "il-central-1": "780543022126",
                         "ap-east-1": "871362719292",
                         "ap-northeast-1": "763104351884",
                         "ap-northeast-2": "763104351884",
@@ -61,6 +62,7 @@
                     "py_versions": ["py37"],
                     "registries": {
                         "af-south-1": "626614931356",
+                        "il-central-1": "780543022126",
                         "ap-east-1": "871362719292",
                         "ap-northeast-1": "763104351884",
                         "ap-northeast-2": "763104351884",
@@ -106,6 +108,7 @@
                     "py_versions": ["py36"],
                     "registries": {
                         "af-south-1": "626614931356",
+                        "il-central-1": "780543022126",
                         "ap-east-1": "871362719292",
                         "ap-northeast-1": "763104351884",
                         "ap-northeast-2": "763104351884",
@@ -145,6 +148,7 @@
                     "py_versions": ["py37"],
                     "registries": {
                         "af-south-1": "626614931356",
+                        "il-central-1": "780543022126",
                         "ap-east-1": "871362719292",
                         "ap-northeast-1": "763104351884",
                         "ap-northeast-2": "763104351884",
@@ -192,6 +196,7 @@
                     "py_versions": ["py36"],
                     "registries": {
                         "af-south-1": "626614931356",
+                        "il-central-1": "780543022126",
                         "ap-east-1": "871362719292",
                         "ap-northeast-1": "763104351884",
                         "ap-northeast-2": "763104351884",
@@ -232,6 +237,7 @@
                     "py_versions": ["py36"],
                     "registries": {
                         "af-south-1": "626614931356",
+                        "il-central-1": "780543022126",
                         "ap-east-1": "871362719292",
                         "ap-northeast-1": "763104351884",
                         "ap-northeast-2": "763104351884",
@@ -272,6 +278,7 @@
                     "py_versions": ["py36"],
                     "registries": {
                         "af-south-1": "626614931356",
+                        "il-central-1": "780543022126",
                         "ap-east-1": "871362719292",
                         "ap-northeast-1": "763104351884",
                         "ap-northeast-2": "763104351884",
@@ -312,6 +319,7 @@
                     "py_versions": ["py37"],
                     "registries": {
                         "af-south-1": "626614931356",
+                        "il-central-1": "780543022126",
                         "ap-east-1": "871362719292",
                         "ap-northeast-1": "763104351884",
                         "ap-northeast-2": "763104351884",
@@ -360,6 +368,7 @@
                     "py_versions": ["py36"],
                     "registries": {
                         "af-south-1": "626614931356",
+                        "il-central-1": "780543022126",
                         "ap-east-1": "871362719292",
                         "ap-northeast-1": "763104351884",
                         "ap-northeast-2": "763104351884",
@@ -400,6 +409,7 @@
                     "py_versions": ["py38"],
                     "registries": {
                         "af-south-1": "626614931356",
+                        "il-central-1": "780543022126",
                         "ap-east-1": "871362719292",
                         "ap-northeast-1": "763104351884",
                         "ap-northeast-2": "763104351884",
@@ -440,6 +450,7 @@
                     "py_versions": ["py37"],
                     "registries": {
                         "af-south-1": "626614931356",
+                        "il-central-1": "780543022126",
                         "ap-east-1": "871362719292",
                         "ap-northeast-1": "763104351884",
                         "ap-northeast-2": "763104351884",
@@ -480,6 +491,7 @@
                     "py_versions": ["py37"],
                     "registries": {
                         "af-south-1": "626614931356",
+                        "il-central-1": "780543022126",
                         "ap-east-1": "871362719292",
                         "ap-northeast-1": "763104351884",
                         "ap-northeast-2": "763104351884",
@@ -526,6 +538,7 @@
                     "py_versions": ["py38"],
                     "registries": {
                         "af-south-1": "626614931356",
+                        "il-central-1": "780543022126",
                         "ap-east-1": "871362719292",
                         "ap-northeast-1": "763104351884",
                         "ap-northeast-2": "763104351884",
@@ -566,6 +579,7 @@
                     "py_versions": ["py37"],
                     "registries": {
                         "af-south-1": "626614931356",
+                        "il-central-1": "780543022126",
                         "ap-east-1": "871362719292",
                         "ap-northeast-1": "763104351884",
                         "ap-northeast-2": "763104351884",
@@ -612,6 +626,7 @@
                     "py_versions": ["py38"],
                     "registries": {
                         "af-south-1": "626614931356",
+                        "il-central-1": "780543022126",
                         "ap-east-1": "871362719292",
                         "ap-northeast-1": "763104351884",
                         "ap-northeast-2": "763104351884",
@@ -652,6 +667,7 @@
                     "py_versions": ["py37"],
                     "registries": {
                         "af-south-1": "626614931356",
+                        "il-central-1": "780543022126",
                         "ap-east-1": "871362719292",
                         "ap-northeast-1": "763104351884",
                         "ap-northeast-2": "763104351884",
@@ -698,6 +714,7 @@
                     "py_versions": ["py38"],
                     "registries": {
                         "af-south-1": "626614931356",
+                        "il-central-1": "780543022126",
                         "ap-east-1": "871362719292",
                         "ap-northeast-1": "763104351884",
                         "ap-northeast-2": "763104351884",
@@ -738,6 +755,7 @@
                     "py_versions": ["py38"],
                     "registries": {
                         "af-south-1": "626614931356",
+                        "il-central-1": "780543022126",
                         "ap-east-1": "871362719292",
                         "ap-northeast-1": "763104351884",
                         "ap-northeast-2": "763104351884",
@@ -783,6 +801,7 @@
                     "py_versions": ["py39"],
                     "registries": {
                         "af-south-1": "626614931356",
+                        "il-central-1": "780543022126",
                         "ap-east-1": "871362719292",
                         "ap-northeast-1": "763104351884",
                         "ap-northeast-2": "763104351884",
@@ -824,6 +843,7 @@
                     "py_versions": ["py310"],
                     "registries": {
                         "af-south-1": "626614931356",
+                        "il-central-1": "780543022126",
                         "ap-east-1": "871362719292",
                         "ap-northeast-1": "763104351884",
                         "ap-northeast-2": "763104351884",
@@ -881,6 +901,7 @@
                     "py_versions": ["py36"],
                     "registries": {
                         "af-south-1": "626614931356",
+                        "il-central-1": "780543022126",
                         "ap-east-1": "871362719292",
                         "ap-northeast-1": "763104351884",
                         "ap-northeast-2": "763104351884",
@@ -921,6 +942,7 @@
                     "py_versions": ["py36"],
                     "registries": {
                         "af-south-1": "626614931356",
+                        "il-central-1": "780543022126",
                         "ap-east-1": "871362719292",
                         "ap-northeast-1": "763104351884",
                         "ap-northeast-2": "763104351884",
@@ -961,6 +983,7 @@
                     "py_versions": ["py37"],
                     "registries": {
                         "af-south-1": "626614931356",
+                        "il-central-1": "780543022126",
                         "ap-east-1": "871362719292",
                         "ap-northeast-1": "763104351884",
                         "ap-northeast-2": "763104351884",
@@ -1009,6 +1032,7 @@
                     "py_versions": ["py36"],
                     "registries": {
                         "af-south-1": "626614931356",
+                        "il-central-1": "780543022126",
                         "ap-east-1": "871362719292",
                         "ap-northeast-1": "763104351884",
                         "ap-northeast-2": "763104351884",
@@ -1049,6 +1073,7 @@
                     "py_versions": ["py38"],
                     "registries": {
                         "af-south-1": "626614931356",
+                        "il-central-1": "780543022126",
                         "ap-east-1": "871362719292",
                         "ap-northeast-1": "763104351884",
                         "ap-northeast-2": "763104351884",
@@ -1089,6 +1114,7 @@
                     "py_versions": ["py37"],
                     "registries": {
                         "af-south-1": "626614931356",
+                        "il-central-1": "780543022126",
                         "ap-east-1": "871362719292",
                         "ap-northeast-1": "763104351884",
                         "ap-northeast-2": "763104351884",
@@ -1129,6 +1155,7 @@
                     "py_versions": ["py37"],
                     "registries": {
                         "af-south-1": "626614931356",
+                        "il-central-1": "780543022126",
                         "ap-east-1": "871362719292",
                         "ap-northeast-1": "763104351884",
                         "ap-northeast-2": "763104351884",
@@ -1175,6 +1202,7 @@
                     "py_versions": ["py38"],
                     "registries": {
                         "af-south-1": "626614931356",
+                        "il-central-1": "780543022126",
                         "ap-east-1": "871362719292",
                         "ap-northeast-1": "763104351884",
                         "ap-northeast-2": "763104351884",
@@ -1215,6 +1243,7 @@
                     "py_versions": ["py37"],
                     "registries": {
                         "af-south-1": "626614931356",
+                        "il-central-1": "780543022126",
                         "ap-east-1": "871362719292",
                         "ap-northeast-1": "763104351884",
                         "ap-northeast-2": "763104351884",
@@ -1261,6 +1290,7 @@
                     "py_versions": ["py38"],
                     "registries": {
                         "af-south-1": "626614931356",
+                        "il-central-1": "780543022126",
                         "ap-east-1": "871362719292",
                         "ap-northeast-1": "763104351884",
                         "ap-northeast-2": "763104351884",
@@ -1301,6 +1331,7 @@
                     "py_versions": ["py37"],
                     "registries": {
                         "af-south-1": "626614931356",
+                        "il-central-1": "780543022126",
                         "ap-east-1": "871362719292",
                         "ap-northeast-1": "763104351884",
                         "ap-northeast-2": "763104351884",
@@ -1347,6 +1378,7 @@
                     "py_versions": ["py38"],
                     "registries": {
                         "af-south-1": "626614931356",
+                        "il-central-1": "780543022126",
                         "ap-east-1": "871362719292",
                         "ap-northeast-1": "763104351884",
                         "ap-northeast-2": "763104351884",
@@ -1387,6 +1419,7 @@
                     "py_versions": ["py38"],
                     "registries": {
                         "af-south-1": "626614931356",
+                        "il-central-1": "780543022126",
                         "ap-east-1": "871362719292",
                         "ap-northeast-1": "763104351884",
                         "ap-northeast-2": "763104351884",
@@ -1433,6 +1466,7 @@
                     "py_versions": ["py39"],
                     "registries": {
                         "af-south-1": "626614931356",
+                        "il-central-1": "780543022126",
                         "ap-east-1": "871362719292",
                         "ap-northeast-1": "763104351884",
                         "ap-northeast-2": "763104351884",
@@ -1473,6 +1507,7 @@
                     "py_versions": ["py39"],
                     "registries": {
                         "af-south-1": "626614931356",
+                        "il-central-1": "780543022126",
                         "ap-east-1": "871362719292",
                         "ap-northeast-1": "763104351884",
                         "ap-northeast-2": "763104351884",
@@ -1518,6 +1553,7 @@
                     "py_versions": ["py310"],
                     "registries": {
                         "af-south-1": "626614931356",
+                        "il-central-1": "780543022126",
                         "ap-east-1": "871362719292",
                         "ap-northeast-1": "763104351884",
                         "ap-northeast-2": "763104351884",

@@ -87,6 +87,8 @@ def _ecr_image_uri(sagemaker_session, algorithm_name):
     account_id = sts_client.get_caller_identity()["Account"]
 
     endpoint_data = utils._botocore_resolver().construct_endpoint("ecr", region)
+    if region == "il-central-1" and not endpoint_data:
+        endpoint_data = {"hostname": "ecr.{}.amazonaws.com".format(region)}
     return "{}.dkr.{}/{}:latest".format(account_id, endpoint_data["hostname"], algorithm_name)
 
 
