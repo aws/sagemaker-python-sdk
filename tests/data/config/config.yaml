@@ -5,6 +5,8 @@ SageMaker:
       Session:
         DefaultS3Bucket: 'sagemaker-python-sdk-test-bucket'
         DefaultS3ObjectKeyPrefix: 'test-prefix'
+      Estimator:
+        DebugHookConfig: false
       RemoteFunction:
         Dependencies: "./requirements.txt"
         EnvironmentVariables:

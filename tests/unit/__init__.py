@@ -85,6 +85,8 @@ from sagemaker.config import (
     CONTAINERS,
     PRIMARY_CONTAINER,
     INFERENCE_SPECIFICATION,
+    ESTIMATOR,
+    DEBUG_HOOK_CONFIG,
 )
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
@@ -323,6 +325,13 @@ SAGEMAKER_CONFIG_PROCESSING_JOB = {
 SAGEMAKER_CONFIG_TRAINING_JOB = {
     SCHEMA_VERSION: "1.0",
     SAGEMAKER: {
+        PYTHON_SDK: {
+            MODULES: {
+                ESTIMATOR: {
+                    DEBUG_HOOK_CONFIG: False,
+                },
+            },
+        },
         TRAINING_JOB: {
             ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION: True,
             ENABLE_NETWORK_ISOLATION: True,
@@ -333,6 +342,32 @@ SAGEMAKER_CONFIG_TRAINING_JOB = {
             ROLE_ARN: "arn:aws:iam::111111111111:role/ConfigRole",
             VPC_CONFIG: {SUBNETS: ["subnets-123"], SECURITY_GROUP_IDS: ["sg-123"]},
             TAGS: [{KEY: "some-tag", VALUE: "value-for-tag"}],
+        },
+    },
+}
+
+SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_FALSE = {
+    SCHEMA_VERSION: "1.0",
+    SAGEMAKER: {
+        PYTHON_SDK: {
+            MODULES: {
+                ESTIMATOR: {
+                    DEBUG_HOOK_CONFIG: False,
+                },
+            },
+        },
+    },
+}
+
+SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_TRUE = {
+    SCHEMA_VERSION: "1.0",
+    SAGEMAKER: {
+        PYTHON_SDK: {
+            MODULES: {
+                ESTIMATOR: {
+                    DEBUG_HOOK_CONFIG: True,
+                },
+            },
         },
     },
 }

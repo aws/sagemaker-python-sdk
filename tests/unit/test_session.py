@@ -2851,9 +2851,9 @@ def test_create_edge_packaging_with_sagemaker_config_injection(sagemaker_session
         "OutputConfig"
     ]["KmsKeyId"]
     expected_tags = SAGEMAKER_CONFIG_EDGE_PACKAGING_JOB["SageMaker"]["EdgePackagingJob"]["Tags"]
-    expected_resource_key = (
-        SAGEMAKER_CONFIG_EDGE_PACKAGING_JOB["SageMaker"]["EdgePackagingJob"]["ResourceKey"],
-    )
+    expected_resource_key = SAGEMAKER_CONFIG_EDGE_PACKAGING_JOB["SageMaker"]["EdgePackagingJob"][
+        "ResourceKey"
+    ]
     sagemaker_session.sagemaker_client.create_edge_packaging_job.assert_called_with(
         RoleArn=expected_role_arn,  # provided from config
         OutputConfig={
