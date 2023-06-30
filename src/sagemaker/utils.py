@@ -1403,7 +1403,7 @@ def volume_size_supported(instance_type: str) -> bool:
     try:
 
         # local mode does not support volume size
-        if instance_type.startswith("local"):
+        if instance_type.startswith("local") or is_pipeline_variable(instance_type):
             return False
 
         parts: List[str] = instance_type.split(".")
