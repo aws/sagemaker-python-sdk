@@ -650,6 +650,8 @@ def sts_regional_endpoint(region):
         str: AWS STS regional endpoint
     """
     endpoint_data = _botocore_resolver().construct_endpoint("sts", region)
+    if region == "il-central-1" and not endpoint_data:
+        endpoint_data = {"hostname": "sts.{}.amazonaws.com".format(region)}
     return "https://{}".format(endpoint_data["hostname"])
 
 
@@ -735,6 +737,8 @@ def _aws_partition(region):
         str: partition corresponding to the region name passed in. Ex: "aws-cn"
     """
     endpoint_data = _botocore_resolver().construct_endpoint("sts", region)
+    if region == "il-central-1" and not endpoint_data:
+        endpoint_data = {"hostname": "sts.{}.amazonaws.com".format(region)}
     return endpoint_data["partition"]
 
 
