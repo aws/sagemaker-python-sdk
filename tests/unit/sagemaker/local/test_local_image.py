@@ -599,6 +599,21 @@ def test_container_has_gpu_support(tmpdir, sagemaker_session):
     }
 
 
+@pytest.mark.parametrize("count",[ "all", 1, 4 ])
+def test_container_has_nvidia_support(tmpdir, sagemaker_session, count):
+    instance_count = 1
+    image = "my-image"
+    sagemaker_container = _SageMakerContainer(
+        f"local_nvidia.{count}", instance_count, image, sagemaker_session=sagemaker_session
+    )
+
+    docker_host = sagemaker_container._create_docker_host("host-1", {}, set(), "train", [])
+    assert "deploy" in docker_host
+    assert docker_host["deploy"] == {
+        "resources": {"reservations": {"devices": [{"driver": "nvidia", "count": count, "capabilities": ["gpu"]}]}}
+    }
+
+
 def test_container_does_not_enable_nvidia_docker_for_cpu_containers(sagemaker_session):
     instance_count = 1
     image = "my-image"
