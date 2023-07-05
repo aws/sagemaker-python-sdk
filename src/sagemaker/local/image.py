@@ -764,11 +764,20 @@ class _SageMakerContainer(object):
             if self.container_arguments:
                 host_config["entrypoint"] = host_config["entrypoint"] + self.container_arguments
 
-        # for GPU support pass in nvidia as the runtime, this is equivalent
-        # to setting --runtime=nvidia in the docker commandline.
-        if self.instance_type == "local_gpu":
+        # Check if the instance type is GPU (legacy) or NVIDIA.
+        # If the type is nvidia, then we also require the GPU count or all.
+        m = re.search(r'local_(?:(?P<legacy>gpu)|(?P<driver>nvidia)\.(?P<count>all|\d+))', self.instance_type)
+        if m and m["legacy"] == "gpu":
+            # for GPU support pass in nvidia as the runtime, this is equivalent
+            # to setting --runtime=nvidia in the docker commandline.
             host_config["deploy"] = {
                 "resources": {"reservations": {"devices": [{"capabilities": ["gpu"]}]}}
+            }
+        elif m and m["driver"] == "nvidia":
+            # This is the newer syntax for docker compose nvidia runtime support
+            count = int(m["count"]) if m["count"] != "all" else m["count"]
+            host_config["deploy"] = {
+                "resources": {"reservations": {"devices": [{"driver": "nvidia", "count": count, "capabilities": ["gpu"]}]}}
             }
 
         if command == "serve":
