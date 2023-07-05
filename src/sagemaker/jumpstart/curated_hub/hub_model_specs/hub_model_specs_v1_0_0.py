@@ -21,8 +21,8 @@ class DatasetConfig:
 
 @dataclass
 class Metric:
-    name: str
-    regex: str
+    Name: str
+    Regex: str
 
 @dataclass
 class SdkEstimatorArgs:
@@ -33,63 +33,62 @@ class SdkEstimatorArgs:
         OutputPath: Optional[str]
 
 @dataclass
-class SdkArgs
+class SdkArgs:
       MinSdkVersion: Optional[str]
-      SdkEstimatorArgs?: {
-          EntryPoint?: string,
-          EnableNetworkIsolation?: boolean,
-          Environment?: {<key>: <value>},
-          Metrics?: {"Name": str, "Regex": str}[],
-          OutputPath?: string,
-      }, 
+      SdkEstimatorArgs: Optional[SdkEstimatorArgs]
+
+@dataclass
+class CustomImageConfig:
+    ImageLocation: str # ecr address
+
+@dataclass
+class FrameworkImageConfig:
+    Framework: str
+    FrameworkVersion: str
+    PythonVersion: str
+    TransformersVersion: Optional[str]
+    BaseFramework: Optional[str]
+
+@dataclass
+class ModelArtifactConfig:
+    ArtifactLocation: str # s3 address
+
+@dataclass
+class ScriptConfig: 
+    ScriptLocation: str #s3 address
+
+@dataclass
+class InstanceConfig: 
+            DefaultInstanceType: str
+            InstanceTypeOptions: List[str]
+
+@dataclass
+class Hyperparameters:
+            Name: str
+            DefaultValue: Optional[str]
+            Type: str #enum
+            Options: List[Optional[str]]
+            Label: Optional[str]
+            Description: Optional[str]
+            Regex: Optional[str]
+            Min: Optional[str]
+            Max: Optional[str]
+
+@dataclass
+class ExtraChannels:
+    ChannelName: str
+    ChannelDataLocation: str # s3 uri (prefix or key)
 
 @dataclass
 class DefaultTrainingConfig:
-        SdkArgs?: {
-            MinSdkVersion?: string,
-            SdkEstimatorArgs?: {
-                EntryPoint?: string,
-                EnableNetworkIsolation?: boolean,
-                Environment?: {<key>: <value>},
-                Metrics?: {"Name": str, "Regex": str}[],
-                OutputPath?: string,
-            }, 
-        },
-        CustomImageConfig?: {
-            ImageLocation: string, // ecr address
-        },
-        FrameworkImageConfig?: {
-            Framework: string,
-            FrameworkVersion: string,
-            PythonVersion: string,
-            TransformersVersion?: string,
-            BaseFramework?: string,
-        },
-        ModelArtifactConfig?: {
-            ArtifactLocation: string, // s3 address
-        },
-        ScriptConfig?: {
-            ScriptLocation: string, //s3 address
-        },
-        InstanceConfig?: {
-            DefaultInstanceType: string,
-            InstanceTypeOptions: string[],
-        },
-        Hyperparameters: {
-            Name: string,
-            DefaultValue?: string,
-            Type: [TEXT | INTEGER | FLOAT | LIST],
-            Options?: string[],
-            Label?: string,
-            Description?: string,
-            Regex?: string,
-            Min?: string,
-            Max?: string,
-        }[],
-        ExtraChannels: {
-            ChannelName: string,
-            ChannelDataLocation: string, // s3 uri (prefix or key)
-        }[]
+        SdkArgs: Optional[SdkArgs]
+        CustomImageConfig: Optional[CustomImageConfig]
+        FrameworkImageConfig: Optional[FrameworkImageConfig]
+        ModelArtifactConfig: Optional[ModelArtifactConfig]
+        ScriptConfig: Optional[ScriptConfig]
+        InstanceConfig: Optional[InstanceConfig]
+        Hyperparameters: List[Hyperparameters]
+        ExtraChannels: List[ExtraChannels]
 
 @dataclass
 class HubModelSpec_v1_0_0:
