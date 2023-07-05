@@ -91,6 +91,20 @@ class DefaultTrainingConfig:
         ExtraChannels: List[ExtraChannels]
 
 @dataclass
+class InferenceNotebookConfig:
+      NotebookLocation: str # s3 uri,
+
+@dataclass
+class DefaultDeploymentConfig:
+    SdkArgs: Optional[SdkArgs]
+    CustomImageConfig: Optional[CustomImageConfig]
+    FrameworkImageConfig: Optional[FrameworkImageConfig]
+    ModelArtifactConfig: Optional[ModelArtifactConfig]
+    ScriptConfig: Optional[ScriptConfig]
+    InstanceConfig: Optional[InstanceConfig]
+    InferenceNotebookConfig: Optional[InferenceNotebookConfig]
+
+@dataclass
 class HubModelSpec_v1_0_0:
     capabilities: List[str] #enum?
     DataType: str
@@ -100,3 +114,5 @@ class HubModelSpec_v1_0_0:
     Dependencies: List[Dependencies]
     DatasetConfig: Optional[DatasetConfig]
     DefaultTrainingConfig: Optional[DefaultTrainingConfig]
+    DefaultDeploymentConfig: Optional[DefaultDeploymentConfig]
+    }
