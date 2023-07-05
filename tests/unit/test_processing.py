@@ -37,6 +37,7 @@ from sagemaker.spark.processing import PySparkProcessor
 from sagemaker.sklearn.processing import SKLearnProcessor
 from sagemaker.pytorch.processing import PyTorchProcessor
 from sagemaker.tensorflow.processing import TensorFlowProcessor
+from sagemaker.workflow.pipeline_definition_config import PipelineDefinitionConfig
 from sagemaker.xgboost.processing import XGBoostProcessor
 from sagemaker.mxnet.processing import MXNetProcessor
 from sagemaker.network import NetworkConfig
@@ -53,8 +54,13 @@ ROLE = "arn:aws:iam::012345678901:role/SageMakerRole"
 ECR_HOSTNAME = "ecr.us-west-2.amazonaws.com"
 CUSTOM_IMAGE_URI = "012345678901.dkr.ecr.us-west-2.amazonaws.com/my-custom-image-uri"
 MOCKED_S3_URI = "s3://mocked_s3_uri_from_upload_data"
+_DEFINITION_CONFIG = PipelineDefinitionConfig(use_custom_job_prefix=False)
 MOCKED_PIPELINE_CONFIG = _PipelineConfig(
-    "test-pipeline", "test-processing-step", "code-hash-abcdefg", "config-hash-abcdefg", False
+    "test-pipeline",
+    "test-processing-step",
+    "code-hash-abcdefg",
+    "config-hash-abcdefg",
+    _DEFINITION_CONFIG,
 )
 
 

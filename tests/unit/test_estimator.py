@@ -58,6 +58,7 @@ from sagemaker.transformer import Transformer
 from sagemaker.workflow.execution_variables import ExecutionVariable
 from sagemaker.workflow.parameters import ParameterString, ParameterBoolean
 from sagemaker.workflow.pipeline_context import PipelineSession, _PipelineConfig
+from sagemaker.workflow.pipeline_definition_config import PipelineDefinitionConfig
 from sagemaker.xgboost.estimator import XGBoost
 from tests.unit import (
     SAGEMAKER_CONFIG_TRAINING_JOB,
@@ -154,8 +155,13 @@ DISTRIBUTION_SM_DDP_ENABLED = {
     "smdistributed": {"dataparallel": {"enabled": True, "custom_mpi_options": "options"}}
 }
 MOCKED_S3_URI = "s3://mocked_s3_uri_from_source_dir"
+_DEFINITION_CONFIG = PipelineDefinitionConfig(use_custom_job_prefix=False)
 MOCKED_PIPELINE_CONFIG = _PipelineConfig(
-    "test-pipeline", "test-training-step", "code-hash-0123456789", "config-hash-0123456789", False
+    "test-pipeline",
+    "test-training-step",
+    "code-hash-0123456789",
+    "config-hash-0123456789",
+    _DEFINITION_CONFIG,
 )
 
 
