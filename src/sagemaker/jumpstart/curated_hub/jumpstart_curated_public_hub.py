@@ -169,7 +169,7 @@ class JumpStartCuratedPublicHub:
             Dependencies=[],  # TODO add references to copied artifacts
             DatasetConfig=None,  # Out of scope in p0
             DefaultTrainingConfig=None,  # Out of scope in p0
-            DefaultDeploymentConfig=self._make_hub_content_deployment_config(
+            DefaultDeploymentConfig=self.make_hub_content_deployment_config(
                 model_specs=model_specs,
             )
         )
