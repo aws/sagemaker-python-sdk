@@ -777,6 +777,9 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         "training_repository_credentials_provider_arn",
         "tolerate_deprecated_model",
         "tolerate_vulnerable_model",
+        "container_entry_point",
+        "container_arguments",
+        "disable_output_compression",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -837,6 +840,9 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         training_repository_credentials_provider_arn: Optional[Union[str, Any]] = None,
         tolerate_vulnerable_model: Optional[bool] = None,
         tolerate_deprecated_model: Optional[bool] = None,
+        container_entry_point: Optional[List[str]] = None,
+        container_arguments: Optional[List[str]] = None,
+        disable_output_compression: Optional[bool] = None,
     ) -> None:
         """Instantiates JumpStartEstimatorInitKwargs object."""
 
@@ -890,6 +896,9 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         )
         self.tolerate_vulnerable_model = tolerate_vulnerable_model
         self.tolerate_deprecated_model = tolerate_deprecated_model
+        self.container_entry_point = container_entry_point
+        self.container_arguments = container_arguments
+        self.disable_output_compression = disable_output_compression
 
 
 class JumpStartEstimatorFitKwargs(JumpStartKwargs):
