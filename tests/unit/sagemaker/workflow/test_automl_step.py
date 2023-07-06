@@ -22,6 +22,7 @@ from sagemaker.workflow import ParameterString
 from sagemaker.workflow.automl_step import AutoMLStep
 from sagemaker.workflow.model_step import ModelStep
 from sagemaker.workflow.pipeline import Pipeline
+from sagemaker.workflow.pipeline_definition_config import PipelineDefinitionConfig
 from tests.unit.sagemaker.workflow.conftest import ROLE
 
 
@@ -50,6 +51,7 @@ def test_single_automl_step(pipeline_session):
         mode="ENSEMBLING",
         auto_generate_endpoint_name=False,
         endpoint_name="EndpointName",
+        base_job_name="AutoMLJobPrefix",
     )
     input_training = AutoMLInput(
         inputs="s3://bucket/data",
@@ -76,17 +78,22 @@ def test_single_automl_step(pipeline_session):
         step_args=step_args,
     )
 
+    definition_config = PipelineDefinitionConfig(use_custom_job_prefix=True)
+
     pipeline = Pipeline(
         name="MyPipeline",
         steps=[automl_step],
         sagemaker_session=pipeline_session,
+        pipeline_definition_config=definition_config,
     )
 
+    # AutoMLJobName trimmed to 8 char + timestamp :: "AutoMLJo-2023-06-23-22-57-39-083"
     step_dsl_list = json.loads(pipeline.definition())["Steps"]
     assert step_dsl_list[0] == {
         "Name": "MyAutoMLStep",
         "Type": "AutoML",
         "Arguments": {
+            "AutoMLJobName": "AutoMLJo",
             "AutoMLJobConfig": {
                 "CandidateGenerationConfig": {
                     "FeatureSpecificationS3Uri": "s3://bucket/features.json"
