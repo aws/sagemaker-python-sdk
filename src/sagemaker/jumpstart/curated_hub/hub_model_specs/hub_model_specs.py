@@ -1,6 +1,8 @@
-from dataclasses import dataclass
-from typing import Any, Dict, Union, Optional, List, Mapping
+from __future__ import absolute_import
 
+from dataclasses import dataclass
+from typing import Optional, List, Mapping
+from enum import Enum
 
 @dataclass
 class Origin:
@@ -39,9 +41,15 @@ class SdkEstimatorArgs:
 
 
 @dataclass
-class SdkArgs:
+class DefaultTrainingSdkArgs:
     MinSdkVersion: Optional[str]
     SdkEstimatorArgs: Optional[SdkEstimatorArgs]
+
+
+@dataclass
+class DefaultDeploymentSdkArgs:
+    MinSdkVersion: Optional[str]
+    SdkModelArgs: Optional[SdkEstimatorArgs]
 
 
 @dataclass
@@ -95,7 +103,7 @@ class ExtraChannels:
 
 @dataclass
 class DefaultTrainingConfig:
-    SdkArgs: Optional[SdkArgs]
+    SdkArgs: Optional[DefaultTrainingSdkArgs]
     CustomImageConfig: Optional[CustomImageConfig]
     FrameworkImageConfig: Optional[FrameworkImageConfig]
     ModelArtifactConfig: Optional[ModelArtifactConfig]
@@ -112,7 +120,7 @@ class InferenceNotebookConfig:
 
 @dataclass
 class DefaultDeploymentConfig:
-    SdkArgs: Optional[SdkArgs]
+    SdkArgs: Optional[DefaultDeploymentSdkArgs]
     CustomImageConfig: Optional[CustomImageConfig]
     FrameworkImageConfig: Optional[FrameworkImageConfig]
     ModelArtifactConfig: Optional[ModelArtifactConfig]
@@ -121,9 +129,15 @@ class DefaultDeploymentConfig:
     InferenceNotebookConfig: Optional[InferenceNotebookConfig]
 
 
+class ModelCapabilities(str, Enum):
+    TRAINING = "Training"
+    INCREMENTAL_TRAINING = "IncrementalTraining"
+    VALIDATION = "Validation"
+
+
 @dataclass
 class HubModelSpec_v1_0_0:
-    capabilities: List[str]  # enum?
+    Capabilities: List[ModelCapabilities]  # enum?
     DataType: str
     MlTask: str
     Framework: Optional[str]
