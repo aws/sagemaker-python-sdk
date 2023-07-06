@@ -52,36 +52,48 @@ class JumpStartCuratedPublicHub:
         self._sagemaker_session = Session()
 
     def create(self):
+        """Creates a curated hub in the caller AWS account.
+        
+        If the S3 bucket does not exist, this will create a new one. 
+        If the curated hub does not exist, this will create a new one."""
         self._get_or_create_s3_bucket(self.curated_hub_name)
+        self._get_or_create_curated_hub()
 
-        hub_bucket_s3_uri = f"s3://{self.curated_hub_name}"
-        self._sm_client.create_hub(
-            HubName=self.curated_hub_name,
-            HubDescription="This is a curated hub.",  # TODO verify description
-            HubDisplayName=self.curated_hub_name,
-            HubSearchKeywords=[],
-            S3StorageConfig={
-                "S3OutputPath": hub_bucket_s3_uri,
-            },
-            Tags=[],
-        )
+
+    def _get_or_create_curated_hub(self):
+        try:
+            return self._create_curated_hub()
+        except ClientError as ex:
+            if ex.response['Error']['Code'] != 'ResourceLimitExceeded':
+              raise ex
+
+    def _create_curated_hub(self):
+      hub_bucket_s3_uri = f"s3://{self.curated_hub_name}"
+      self._sm_client.create_hub(
+          HubName=self.curated_hub_name,
+          HubDescription="This is a curated hub.",  # TODO verify description
+          HubDisplayName=self.curated_hub_name,
+          HubSearchKeywords=[],
+          S3StorageConfig={
+              "S3OutputPath": hub_bucket_s3_uri,
+          },
+          Tags=[],
+      )
 
     def _get_or_create_s3_bucket(self, bucket_name: str):
         try:
-            self._call_head_bucket(bucket_name)
+            return self._call_create_bucket(bucket_name)
         except ClientError as ex:
-            if ex.response['Error']['Code'] == 'NoSuchKey':
-                self._call_create_bucket(bucket_name)
-            else:
+            if ex.response['Error']['Code'] != 'BucketAlreadyExists':
                 raise ex
-
-    def _call_head_bucket(self, bucket_name: str):
-        self._s3_client.head_bucket(Bucket=bucket_name)
 
     def _call_create_bucket(self, bucket_name: str):
         self._s3_client.create_bucket(Bucket=bucket_name)
 
     def import_models(self, model_ids: List[PublicModelId]):
+        """Imports models in list to curated hub
+        
+        If the model already exists in the curated hub, it will skip the upload."""
         for model_id in model_ids:
             self._import_model(model_id)
 
