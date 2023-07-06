@@ -13,6 +13,7 @@
 """Helper methods for testing."""
 from __future__ import absolute_import
 
+from sagemaker.utils import base_from_name
 from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.steps import ConfigurableRetryStep, StepTypeEnum
 from sagemaker.workflow.step_collections import StepCollection
@@ -38,25 +39,43 @@ def ordered(obj):
         return obj
 
 
-def get_step_args_helper(step_args, step_type):
+def get_step_args_helper(step_args, step_type, use_custom_job_prefix=False):
     execute_job_functions(step_args)
     request_args = step_args.func_args[0].sagemaker_session.context.args
 
     if step_type == "Processing":
-        request_args.pop("ProcessingJobName", None)
+        if not use_custom_job_prefix:
+            request_args.pop("ProcessingJobName", None)
+        else:
+            request_args["ProcessingJobName"] = strip_timestamp(request_args["ProcessingJobName"])
         request_args.pop("ExperimentConfig", None)
     elif step_type == "Training":
         if "HyperParameters" in request_args:
             request_args["HyperParameters"].pop("sagemaker_job_name", None)
-        request_args.pop("TrainingJobName", None)
+        if not use_custom_job_prefix:
+            request_args.pop("TrainingJobName", None)
+        else:
+            request_args["TrainingJobName"] = strip_timestamp(request_args["TrainingJobName"])
         request_args.pop("ExperimentConfig", None)
     elif step_type == "Transform":
-        request_args.pop("TransformJobName", None)
+        if not use_custom_job_prefix:
+            request_args.pop("TransformJobName", None)
+        else:
+            request_args["TransformJobName"] = strip_timestamp(request_args["TransformJobName"])
         request_args.pop("ExperimentConfig", None)
     elif step_type == "HyperParameterTuning":
-        request_args.pop("HyperParameterTuningJobName", None)
+        if not use_custom_job_prefix:
+            request_args.pop("HyperParameterTuningJobName", None)
+        else:
+            request_args["HyperParameterTuningJobName"] = strip_timestamp(
+                request_args["HyperParameterTuningJobName"]
+            )
 
     return request_args
+
+
+def strip_timestamp(job_name):
+    return base_from_name(job_name)
 
 
 class CustomStep(ConfigurableRetryStep):

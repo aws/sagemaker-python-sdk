@@ -14,7 +14,10 @@
 from __future__ import absolute_import
 
 import tempfile
-from sagemaker.workflow.utilities import hash_file, hash_files_or_dirs
+
+from sagemaker.workflow.pipeline_context import _PipelineConfig
+from sagemaker.workflow.pipeline_definition_config import PipelineDefinitionConfig
+from sagemaker.workflow.utilities import hash_file, hash_files_or_dirs, trim_request_dict
 from pathlib import Path
 
 
@@ -97,3 +100,35 @@ def test_hash_files_or_dirs_unsorted_input_list():
             hash1 = hash_files_or_dirs([tmp1.name, tmp2.name])
             hash2 = hash_files_or_dirs([tmp2.name, tmp1.name])
             assert hash1 == hash2
+
+
+def test_trim_request_dict():
+    config = PipelineDefinitionConfig(use_custom_job_prefix=True)
+    _pipeline_config = _PipelineConfig(
+        pipeline_name="test",
+        step_name="test-step",
+        code_hash="123467890",
+        config_hash="123467890",
+        pipeline_definition_config=config,
+    )
+    custom_job_prefix = "MyTrainingJobNamePrefix"
+    sample_training_job_name = f"{custom_job_prefix}-2023-06-22-23-39-36-766"
+    request_dict = {"TrainingJobName": sample_training_job_name}
+    assert (
+        custom_job_prefix
+        == trim_request_dict(
+            request_dict=request_dict, job_key="TrainingJobName", config=_pipeline_config
+        )["TrainingJobName"]
+    )
+    request_dict = {"TrainingJobName": custom_job_prefix}
+    assert (
+        custom_job_prefix
+        == trim_request_dict(
+            request_dict=request_dict, job_key="TrainingJobName", config=_pipeline_config
+        )["TrainingJobName"]
+    )
+    request_dict = {"NotSupportedJobName": custom_job_prefix}
+    # noop in the case our job_key is invalid
+    assert request_dict == trim_request_dict(
+        request_dict=request_dict, job_key="NotSupportedJobName", config=_pipeline_config
+    )

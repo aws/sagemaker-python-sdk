@@ -19,6 +19,7 @@ from sagemaker.session_settings import SessionSettings
 from sagemaker.transformer import _TransformJob, Transformer
 from sagemaker.workflow.pipeline_context import PipelineSession, _PipelineConfig
 from sagemaker.inputs import BatchDataCaptureConfig
+from sagemaker.workflow.pipeline_definition_config import PipelineDefinitionConfig
 
 from tests.integ import test_local_mode
 from tests.unit import SAGEMAKER_CONFIG_TRANSFORM_JOB
@@ -52,8 +53,13 @@ MODEL_DESC_PRIMARY_CONTAINER = {"PrimaryContainer": {"Image": IMAGE_URI}}
 
 MODEL_DESC_CONTAINERS_ONLY = {"Containers": [{"Image": IMAGE_URI}]}
 
+_DEFINITION_CONFIG = PipelineDefinitionConfig(use_custom_job_prefix=False)
 MOCKED_PIPELINE_CONFIG = _PipelineConfig(
-    "test-pipeline", "test-training-step", "code-hash-0123456789", "config-hash-0123456789"
+    "test-pipeline",
+    "test-training-step",
+    "code-hash-0123456789",
+    "config-hash-0123456789",
+    _DEFINITION_CONFIG,
 )
 
 

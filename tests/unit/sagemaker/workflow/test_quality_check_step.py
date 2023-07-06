@@ -18,6 +18,7 @@ import pytest
 from sagemaker.model_monitor import DatasetFormat
 from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.pipeline import Pipeline
+from sagemaker.workflow.pipeline import PipelineDefinitionConfig
 from sagemaker.workflow.quality_check_step import (
     QualityCheckStep,
     DataQualityCheckConfig,
@@ -28,12 +29,14 @@ from sagemaker.workflow.steps import CacheConfig
 from sagemaker.workflow.check_job_config import CheckJobConfig
 
 _ROLE = "DummyRole"
+_CHECK_JOB_PREFIX = "CheckJobPrefix"
 
 
 _expected_data_quality_dsl = {
     "Name": "DataQualityCheckStep",
     "Type": "QualityCheck",
     "Arguments": {
+        "ProcessingJobName": _CHECK_JOB_PREFIX,
         "ProcessingResources": {
             "ClusterConfig": {
                 "InstanceType": "ml.m5.xlarge",
@@ -214,6 +217,7 @@ def check_job_config(sagemaker_session):
         volume_size_in_gb=60,
         max_runtime_in_seconds=1800,
         sagemaker_session=sagemaker_session,
+        base_job_name=_CHECK_JOB_PREFIX,
     )
 
 
@@ -243,6 +247,9 @@ def test_data_quality_check_step(
         supplied_baseline_constraints=supplied_baseline_constraints_uri,
         cache_config=CacheConfig(enable_caching=True, expire_after="PT1H"),
     )
+
+    definition_config = PipelineDefinitionConfig(use_custom_job_prefix=True)
+
     pipeline = Pipeline(
         name="MyPipeline",
         parameters=[
@@ -252,11 +259,13 @@ def test_data_quality_check_step(
         ],
         steps=[data_quality_check_step],
         sagemaker_session=sagemaker_session,
+        pipeline_definition_config=definition_config,
     )
     step_definition = _get_step_definition_for_test(
         pipeline, ["baseline_dataset_input", "quality_check_output"]
     )
 
+    assert step_definition["Arguments"]["ProcessingJobName"] == _CHECK_JOB_PREFIX
     assert step_definition == _expected_data_quality_dsl
 
 
