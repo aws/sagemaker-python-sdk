@@ -1,5 +1,17 @@
 # Changelog
 
+## v2.171.0 (2023-07-06)
+
+### Features
+
+ * Add PipelineDefinitionConfig to pipelines to toggle custom job …
+
+### Bug Fixes and Other Changes
+
+ * Upgrade DJL deepspeed versions
+ * Remove unused dependency `protobuf3-to-dict`
+ * skip intelligent volume_size allocation based on instance type if it is a pipeline parameter
+
 ## v2.170.0 (2023-07-05)
 
 ### Features

@@ -598,7 +598,7 @@ def test_partition(
             IMAGE_URI, model_data_url="s3prefix", env=expected_env
         )
 
-        assert model.model_id == f"{s3_output_uri}s3prefix/aot-partitioned-checkpoints"
+        assert model.model_id == f"{s3_output_uri}aot-partitioned-checkpoints"
 
 
 @patch("sagemaker.djl_inference.model.fw_utils.model_code_key_prefix")
@@ -741,15 +741,15 @@ def test__upload_model_to_s3__without_upload_as_tar__default_bucket_and_prefix_c
             "s3://code-test-bucket/code-test-prefix/code-test-prefix-2",
             "s3://code-test-bucket/code-test-prefix/code-test-prefix-2/image_uri",
             "s3://code-test-bucket/code-test-prefix/code-test-prefix-2/image_uri",
-            "s3://test-bucket/test-prefix/test-prefix-2/code-test-prefix/code-test-prefix-2/image_uri",
-            "s3://test-bucket/test-prefix/test-prefix-2/code-test-prefix/code-test-prefix-2/image_uri",
+            "s3://test-bucket/test-prefix/test-prefix-2",
+            "s3://test-bucket/test-prefix/test-prefix-2",
         ),
         (
             None,
             f"s3://{DEFAULT_S3_BUCKET_NAME}/{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/image_uri",
             f"s3://{DEFAULT_S3_BUCKET_NAME}/image_uri",
-            "s3://test-bucket/test-prefix/test-prefix-2/image_uri",
-            "s3://test-bucket/test-prefix/test-prefix-2/image_uri",
+            "s3://test-bucket/test-prefix/test-prefix-2",
+            "s3://test-bucket/test-prefix/test-prefix-2",
         ),
     ],
 )
