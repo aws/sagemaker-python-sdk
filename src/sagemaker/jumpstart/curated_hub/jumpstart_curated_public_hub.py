@@ -66,12 +66,15 @@ class JumpStartCuratedPublicHub:
         try:
             return self._create_curated_hub()
         except ClientError as ex:
-            if ex.response['Error']['Code'] != 'ResourceLimitExceeded':
+            if ex.response['Error']['Code'] != 'ResourceInUse':
               raise ex
+
+    def _get_curated_hub(self):
+        self._sm_client.describe_hub(HubName=self.curated_hub_name)
 
     def _create_curated_hub(self):
       hub_bucket_s3_uri = f"s3://{self.curated_hub_name}"
-      self._sm_client.create_hub(
+      response = self._sm_client.create_hub(
           HubName=self.curated_hub_name,
           HubDescription="This is a curated hub.",  # TODO verify description
           HubDisplayName=self.curated_hub_name,
@@ -86,11 +89,13 @@ class JumpStartCuratedPublicHub:
         try:
             return self._call_create_bucket(bucket_name)
         except ClientError as ex:
-            if ex.response['Error']['Code'] != 'BucketAlreadyExists':
+            if ex.response['Error']['Code'] != 'BucketAlreadyOwnedByYou':
                 raise ex
 
     def _call_create_bucket(self, bucket_name: str):
-        self._s3_client.create_bucket(Bucket=bucket_name)
+        self._s3_client.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={
+            'LocationConstraint':self._region
+        })
 
     def import_models(self, model_ids: List[PublicModelId]):
         """Imports models in list to curated hub
@@ -120,18 +125,19 @@ class JumpStartCuratedPublicHub:
         self._copy_hub_content_dependencies_to_hub_bucket(model_specs=model_specs)
 
         hub_content_document = self._make_hub_content_document(model_specs=model_specs)
+
         self._sm_client.import_hub_content(
-            HubName=self.curated_hub_name,
-            HubContentName=hub_content_name,
-            HubContentType="Model",
-            DocumentSchemaVersion="1.0.0",
-            HubContentDisplayName=hub_content_display_name,
-            HubContentDescription=hub_content_description,
-            HubContentMarkdown=hub_content_markdown,
-            HubContentDocument=hub_content_document,
-            HubContentSearchKeywords=[],
-            Tags=[],
-        )
+          HubName=self.curated_hub_name,
+          HubContentName=hub_content_name,
+          HubContentType="Model",
+          DocumentSchemaVersion="1.0.0",
+          HubContentDisplayName=hub_content_display_name,
+          HubContentDescription=hub_content_description,
+          HubContentMarkdown=hub_content_markdown,
+          HubContentDocument=hub_content_document,
+          HubContentSearchKeywords=[],
+          Tags=[],
+      )
 
     def _copy_hub_content_dependencies_to_hub_bucket(
         self, model_specs: JumpStartModelSpecs

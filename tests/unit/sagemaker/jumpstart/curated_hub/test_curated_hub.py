@@ -2,7 +2,7 @@ from __future__ import absolute_import
 import unittest
 
 from mock.mock import patch
-from mock import MagicMock
+import uuid
 
 from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec
 from botocore.client import ClientError
@@ -13,7 +13,7 @@ from sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub import PublicM
 
 TEST_S3_BUCKET_ALREADY_EXISTS_RESPONSE = {
     "Error": {
-        "Code": "BucketAlreadyExists",
+        "Code": "BucketAlreadyOwnedByYou",
         "Message": "Details/context around the exception or error",
     },
     "ResponseMetadata": {
@@ -31,7 +31,7 @@ TEST_S3_BUCKET_ALREADY_EXISTS_RESPONSE = {
 
 TEST_HUB_ALREADY_EXISTS_RESPONSE = {
     "Error": {
-        "Code": "ResourceLimitExceeded",
+        "Code": "ResourceInUse",
         "Message": "Details/context around the exception or error",
     },
     "ResponseMetadata": {
@@ -68,8 +68,8 @@ TEST_SERVICE_ERROR_RESPONSE = {
 
 class JumpStartCuratedPublicHubTest(unittest.TestCase):
 
-    test_s3_prefix = "testCuratedHub"
-    test_public_js_model = PublicModelId(id="pytorch", version="1.0.0")
+    test_s3_prefix = f"test-curated-hub-{uuid.uuid4()}"
+    test_public_js_model = PublicModelId(id="autogluon-classification-ensemble", version="1.1.1")
 
     def setUp(self):
         self.test_curated_hub = JumpStartCuratedPublicHub(self.test_s3_prefix)
@@ -123,28 +123,19 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
 
       mock_create_curated_hub.assert_called_once()
 
-    """Creating Curated Hub Tests"""
-
-    # @patch("boto3.client")
-    # def test_get_or_create_s3_bucket_s3_exists_should_noop(self, mock_boto3_client):
-    #    self.test_curated_hub.create()
-
-    # @patch("boto3.client")
-    # def test_create_curated_hub_valid_s3_prefix_should_succeed(self, mock_boto3_client):
-    #    self.test_curated_hub.create()
-
-    # def test_create_curated_hub_none_s3_prefix_should_fail(self):
-    #    null_s3_prefix_curated_hub = JumpStartCuratedPublicHub(None)
-    #    null_s3_prefix_curated_hub.create()
+    """S3 content copy tests"""
 
 
-    """
-    Successful tests
-    """
-
+    """ImportHubContent call tests"""
     # @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     # def test_import_model(self, patched_get_model_specs):
     #     patched_get_model_specs.side_effect = get_spec_from_base_spec
 
     #     self.test_curated_hub._import_model(public_js_model=self.test_public_js_model)
     #     pass
+
+
+    """Testing client calls"""
+    # def test_full_workflow(self):
+    #   self.test_curated_hub.create()
+    #   self.test_curated_hub.import_models([self.test_public_js_model])
