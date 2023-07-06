@@ -2,6 +2,8 @@ from __future__ import absolute_import
 
 import json
 from dataclasses import dataclass, asdict
+import time
+
 from typing import List
 
 import boto3
@@ -17,6 +19,7 @@ from sagemaker.jumpstart.curated_hub.hub_model_specs.hub_model_specs import (
     InstanceConfig,
     InferenceNotebookConfig,
 )
+from sagemaker import model_uris, script_uris
 from sagemaker.jumpstart.enums import (
     JumpStartScriptScope,
 )
@@ -137,14 +140,26 @@ class JumpStartCuratedPublicHub:
         """Copies artifact and script tarballs into the hub bucket.
 
         Unfortunately, this logic is duplicated/inconsistent with what is in Studio."""
-        pass  # TODO
+        src_inference_artifact_location = self._src_inference_artifact_location(model_specs=model_specs)
+        src_inference_script_location = self._src_inference_script_location(model_specs=model_specs)
+        dst_bucket = self._dst_bucket()
+
+        artifact_copy_source = {
+            'Bucket': src_inference_artifact_location.lstrip("s3://").split('/')[0],
+            'Key': '/'.join(src_inference_artifact_location.lstrip("s3://").split('/')[1:])
+        }
+        script_copy_source = {
+            'Bucket': src_inference_script_location.lstrip("s3://").split('/')[0],
+            'Key': '/'.join(src_inference_script_location.lstrip("s3://").split('/')[1:])
+        }
+        self._s3_client.copy(
+            artifact_copy_source, dst_bucket, self._dst_inference_artifact_key(model_specs=model_specs)
+        )
+        self._s3_client.copy(script_copy_source, dst_bucket, self._dst_inference_script_key(model_specs=model_specs))
+
 
     def _make_hub_content_document(self, model_specs: JumpStartModelSpecs) -> str:
         """Converts the provided JumpStartModelSpecs into a Hub Content Document."""
-        # TODO copy artifact and script tarballs
-        copied_inference_artifact_location = "s3://foo/artifact"
-        copied_inference_script_location = "s3://foo/script"
-
         hub_model_spec = HubModelSpec_v1_0_0(
             Capabilities=[ModelCapabilities.VALIDATION],  # TODO add inference if needed?
             DataType="",  # TODO not in SDK metadata
@@ -156,19 +171,12 @@ class JumpStartCuratedPublicHub:
             DefaultTrainingConfig=None,  # Out of scope in p0
             DefaultDeploymentConfig=self._make_hub_content_deployment_config(
                 model_specs=model_specs,
-                copied_artifact_location=copied_inference_artifact_location,
-                copied_script_location=copied_inference_script_location,
-            ),
+            )
         )
 
         return json.dumps(asdict(hub_model_spec))  # TODO verify/fix string representation
 
-    def _make_hub_content_deployment_config(
-        self,
-        model_specs: JumpStartModelSpecs,
-        copied_artifact_location: str,
-        copied_script_location: str,
-    ) -> DefaultDeploymentConfig:
+    def make_hub_content_deployment_config(self, model_specs: JumpStartModelSpecs) -> DefaultDeploymentConfig:
         """Creates a DefaultDeploymentConfig from the provided JumpStartModelSpecs."""
         return DefaultDeploymentConfig(
             SdkArgs=DefaultDeploymentSdkArgs(
@@ -185,10 +193,10 @@ class JumpStartCuratedPublicHub:
                 BaseFramework=None,  # TODO verify necessity
             ),
             ModelArtifactConfig=ModelArtifactConfig(
-                ArtifactLocation=copied_artifact_location,
+                ArtifactLocation=self._dst_inference_artifact_key(model_specs=model_specs),
             ),
             ScriptConfig=ScriptConfig(
-                ScriptLocation=copied_script_location,
+                ScriptLocation=self._dst_inference_script_key(model_specs=model_specs),
             ),
             InstanceConfig=InstanceConfig(
                 DefaultInstanceType=model_specs.default_inference_instance_type,
@@ -199,3 +207,35 @@ class JumpStartCuratedPublicHub:
             ),
             CustomImageConfig=None,
         )
+
+    def _src_inference_artifact_location(self, model_specs: JumpStartModelSpecs) -> str:
+        return model_uris.retrieve(
+            region=self._region,
+            model_id=model_specs.model_id,
+            model_version=model_specs.version,
+            model_scope="inference",
+            tolerate_vulnerable_model=True,
+            tolerate_deprecated_model=True,
+        )
+
+    def _src_inference_script_location(self, model_specs: JumpStartModelSpecs) -> str:
+        return script_uris.retrieve(
+            region=self._region,
+            model_id=model_specs.model_id,
+            model_version=model_specs.version,
+            script_scope="inference",
+            tolerate_vulnerable_model=True,
+            tolerate_deprecated_model=True,
+        )
+
+    def _dst_bucket(self) -> str:
+        # TODO sync with create hub bucket logic
+        return self.curated_hub_name
+
+    def _dst_inference_artifact_key(self, model_specs: JumpStartModelSpecs) -> str:
+        # TODO sync with Studio copy logic
+        return f"{model_specs.model_id}/{time.time()}/infer.tar.gz"
+
+    def _dst_inference_script_key(self, model_specs: JumpStartModelSpecs) -> str:
+        # TODO sync with Studio copy logic
+        return f"{model_specs.model_id}/{time.time()}/sourcedir.tar.gz"

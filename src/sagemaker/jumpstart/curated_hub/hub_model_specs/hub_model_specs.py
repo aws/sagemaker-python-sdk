@@ -11,7 +11,7 @@ class Origin:
 
 
 @dataclass
-class Dependencies:
+class Dependency:
     DependencyOriginPath: str
     DependencyCopyPath: str
     DependencyType: str  # enum?
@@ -142,7 +142,7 @@ class HubModelSpec_v1_0_0:
     MlTask: str
     Framework: Optional[str]
     Origin: Optional[Origin]
-    Dependencies: List[Dependencies]
+    Dependencies: List[Dependency]
     DatasetConfig: Optional[DatasetConfig]
     DefaultTrainingConfig: Optional[DefaultTrainingConfig]
     DefaultDeploymentConfig: Optional[DefaultDeploymentConfig]
