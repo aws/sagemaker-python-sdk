@@ -64,9 +64,9 @@ class Pipeline(Entity):
         name: str = "",
         parameters: Optional[Sequence[Parameter]] = None,
         pipeline_experiment_config: Optional[PipelineExperimentConfig] = _DEFAULT_EXPERIMENT_CFG,
-        pipeline_definition_config: Optional[PipelineDefinitionConfig] = _DEFAULT_DEFINITION_CFG,
         steps: Optional[Sequence[Union[Step, StepCollection]]] = None,
         sagemaker_session: Optional[Session] = None,
+        pipeline_definition_config: Optional[PipelineDefinitionConfig] = _DEFAULT_DEFINITION_CFG,
     ):
         """Initialize a Pipeline
 
@@ -79,9 +79,6 @@ class Pipeline(Entity):
                 the same name already exists. By default, pipeline name is used as
                 experiment name and execution id is used as the trial name.
                 If set to None, no experiment or trial will be created automatically.
-            pipeline_definition_config (Optional[PipelineDefinitionConfig]): If set,
-                the workflow customizes the pipeline definition using the configurations
-                specified. By default, custom job-prefixing is turned off.
             steps (Sequence[Union[Step, StepCollection]]): The list of the non-conditional steps
                 associated with the pipeline. Any steps that are within the
                 `if_steps` or `else_steps` of a `ConditionStep` cannot be listed in the steps of a
@@ -91,13 +88,16 @@ class Pipeline(Entity):
             sagemaker_session (sagemaker.session.Session): Session object that manages interactions
                 with Amazon SageMaker APIs and any other AWS services needed. If not specified, the
                 pipeline creates one using the default AWS configuration chain.
+            pipeline_definition_config (Optional[PipelineDefinitionConfig]): If set,
+                the workflow customizes the pipeline definition using the configurations
+                specified. By default, custom job-prefixing is turned off.
         """
         self.name = name
         self.parameters = parameters if parameters else []
         self.pipeline_experiment_config = pipeline_experiment_config
-        self.pipeline_definition_config = pipeline_definition_config
         self.steps = steps if steps else []
         self.sagemaker_session = sagemaker_session if sagemaker_session else Session()
+        self.pipeline_definition_config = pipeline_definition_config
 
         self._version = "2020-12-01"
         self._metadata = dict()
