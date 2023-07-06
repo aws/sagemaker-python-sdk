@@ -267,6 +267,7 @@ ANALYSIS_CONFIG_SCHEMA_V1_0 = Schema(
                     },
                 },
                 SchemaOptional("seed"): int,
+                SchemaOptional("features_to_explain"): [Or(int, str)],
             },
             SchemaOptional("pre_training_bias"): {"methods": Or(str, [str])},
             SchemaOptional("post_training_bias"): {"methods": Or(str, [str])},
@@ -1308,6 +1309,7 @@ class SHAPConfig(ExplainabilityConfig):
         num_clusters: Optional[int] = None,
         text_config: Optional[TextConfig] = None,
         image_config: Optional[ImageConfig] = None,
+        features_to_explain: Optional[List[Union[str, int]]] = None,
     ):
         """Initializes config for SHAP analysis.
 
@@ -1343,6 +1345,14 @@ class SHAPConfig(ExplainabilityConfig):
                 text features. Default is None.
             image_config (:class:`~sagemaker.clarify.ImageConfig`): Config for handling image
                 features. Default is None.
+            features_to_explain: A list of names or indices of dataset features to compute SHAP
+                values for. If not provided, SHAP values are computed for all features by default.
+                Currently only supported for tabular datasets.
+
+        Raises:
+            ValueError: when ``agg_method`` is invalid, ``baseline`` and ``num_clusters`` are provided
+                together, or ``features_to_explain`` is specified when ``text_config`` or
+                ``image_config`` is provided
         """  # noqa E501  # pylint: disable=c0301
         if agg_method is not None and agg_method not in [
             "mean_abs",
@@ -1376,6 +1386,13 @@ class SHAPConfig(ExplainabilityConfig):
                 )
         if image_config:
             _set(image_config.get_image_config(), "image_config", self.shap_config)
+        if features_to_explain is not None and (
+            text_config is not None or image_config is not None
+        ):
+            raise ValueError(
+                "`features_to_explain` is not supported for datasets containing text features or images."
+            )
+        _set(features_to_explain, "features_to_explain", self.shap_config)
 
     def get_explainability_config(self):
         """Returns a shap config dictionary."""
