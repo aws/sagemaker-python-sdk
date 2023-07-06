@@ -53,7 +53,7 @@ DJL_VERSIONS_TO_FRAMEWORK = {
         "djl-fastertransformer": "fastertransformer5.3.0-cu117",
     },
     "0.22.1": {
-        "djl-deepspeed": "deepspeed0.8.3-cu118",
+        "djl-deepspeed": "deepspeed0.9.2-cu118",
         "djl-fastertransformer": "fastertransformer5.3.0-cu118",
         "djl-neuronx": "neuronx-sdk2.10.0",
     },
