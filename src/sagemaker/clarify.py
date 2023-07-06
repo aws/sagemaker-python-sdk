@@ -63,6 +63,14 @@ ANALYSIS_CONFIG_SCHEMA_V1_0 = Schema(
         SchemaOptional("features"): str,
         SchemaOptional("label_values_or_threshold"): [Or(int, float, str)],
         SchemaOptional("probability_threshold"): float,
+        SchemaOptional("segment_config"): [
+            {
+                SchemaOptional("config_name"): str,
+                "name_or_index": Or(str, int),
+                "segments": [[Or(str, int)]],
+                SchemaOptional("display_aliases"): [str],
+            }
+        ],
         SchemaOptional("facet"): [
             {
                 "name_or_index": Or(str, int),
@@ -317,6 +325,74 @@ class DatasetType(Enum):
     IMAGE = "application/x-image"
 
 
+class SegmentationConfig:
+    """Config object that defines segment(s) of the dataset on which metrics are computed."""
+
+    def __init__(
+        self,
+        name_or_index: Union[str, int],
+        segments: List[List[Union[str, int]]],
+        config_name: Optional[str] = None,
+        display_aliases: Optional[List[str]] = None,
+    ):
+        """Initializes a segmentation configuration for a dataset column.
+
+        Args:
+            name_or_index (str or int): The name or index of the column in the dataset on which
+                the segment(s) is defined.
+            segments (List[List[str or int]]): Each List of values represents one segment. If N
+                Lists are provided, we generate N+1 segments - the additional segment, denoted as
+                the '__default__' segment, is for the rest of the values that are not covered by
+                these lists. For continuous columns, a segment must be given as strings in interval
+                notation (eg.: ["[1, 4]"] or ["(2, 5]"]). A segment can also be composed of
+                multiple intervals (eg.: ["[1, 4]", "(5, 6]"] is one segment). For categorical
+                columns, each segment should contain one or more of the categorical values for
+                the categorical column, which may be strings or integers.
+                Eg,: For a continuous column, ``segments`` could be
+                [["[1, 4]", "(5, 6]"], ["(7, 9)"]] - this generates 3 segments including the
+                default segment. For a categorical columns with values ("A", "B", "C", "D"),
+                ``segments``,could be [["A", "B"]]. This generate 2 segments, including the default
+                segment.
+            config_name (str) - Optional name for the segment config to identify the config.
+            display_aliases (List[str]) - Optional list of display names for the ``segments`` for
+                the analysis output and report. This list should be the same length as the number of
+                lists provided in ``segments`` or with one additional display alias for the default
+                segment.
+
+        Raises:
+            ValueError: when the ``name_or_index`` is None, ``segments`` is invalid, or a wrong
+                number of ``display_aliases`` are specified.
+        """
+        if name_or_index is None:
+            raise ValueError("`name_or_index` cannot be None")
+        self.name_or_index = name_or_index
+        if (
+            not segments
+            or not isinstance(segments, list)
+            or not all([isinstance(segment, list) for segment in segments])
+        ):
+            raise ValueError("`segments` must be a list of lists of values or intervals.")
+        self.segments = segments
+        self.config_name = config_name
+        if display_aliases is not None and not (
+            len(display_aliases) == len(segments) or len(display_aliases) == len(segments) + 1
+        ):
+            raise ValueError(
+                "Number of `display_aliases` must equal the number of segments"
+                " specified or with one additional default segment display alias."
+            )
+        self.display_aliases = display_aliases
+
+    def to_dict(self) -> Dict[str, Any]:  # pragma: no cover
+        """Returns SegmentationConfig as a dict."""
+        segment_config_dict = {"name_or_index": self.name_or_index, "segments": self.segments}
+        if self.config_name:
+            segment_config_dict["config_name"] = self.config_name
+        if self.display_aliases:
+            segment_config_dict["display_aliases"] = self.display_aliases
+        return segment_config_dict
+
+
 class DataConfig:
     """Config object related to configurations of the input and output dataset."""
 
@@ -337,6 +413,7 @@ class DataConfig:
         predicted_label_headers: Optional[List[str]] = None,
         predicted_label: Optional[Union[str, int]] = None,
         excluded_columns: Optional[Union[List[int], List[str]]] = None,
+        segmentation_config: Optional[List[SegmentationConfig]] = None,
     ):
         """Initializes a configuration of both input and output datasets.
 
@@ -403,6 +480,8 @@ class DataConfig:
                 Only a single predicted label per sample is supported at this time.
             excluded_columns (list[int] or list[str]): A list of names or indices of the columns
                 which are to be excluded from making model inference API calls.
+            segmentation_config (list[SegmentationConfig]): A list of ``SegmentationConfig``
+                objects.
 
         Raises:
             ValueError: when the ``dataset_type`` is invalid, predicted label dataset parameters
@@ -470,6 +549,7 @@ class DataConfig:
         self.predicted_label_headers = predicted_label_headers
         self.predicted_label = predicted_label
         self.excluded_columns = excluded_columns
+        self.segmentation_configs = segmentation_config
         self.analysis_config = {
             "dataset_type": dataset_type,
         }
@@ -487,6 +567,12 @@ class DataConfig:
         _set(predicted_label_headers, "predicted_label_headers", self.analysis_config)
         _set(predicted_label, "predicted_label", self.analysis_config)
         _set(excluded_columns, "excluded_columns", self.analysis_config)
+        if segmentation_config:
+            _set(
+                [item.to_dict() for item in segmentation_config],
+                "segment_config",
+                self.analysis_config,
+            )
 
     def get_config(self):
         """Returns part of an analysis config dictionary."""

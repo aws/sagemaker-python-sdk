@@ -1,5 +1,47 @@
 # Changelog
 
+## v2.170.0 (2023-07-05)
+
+### Features
+
+ * Enable customizing artifact output path
+
+### Bug Fixes and Other Changes
+
+ * Add il-central-1 support for all SM DLCs
+ * jumpstart async inference config predictor support
+ * Update CreateEdgePackagingJob resourceKey with type string
+
+## v2.169.0 (2023-06-29)
+
+### Features
+
+ * Add support for tags in to_pipeline API for feature processor
+ * model registry integration to model cards to support model packages
+ * SDK Defaults - DebugHookConfig defaults in TrainingJob API
+ * Add segment config for Clarify
+
+### Bug Fixes and Other Changes
+
+ * Neuronx image retrieval missing sdk information
+
+### Documentation Changes
+
+ * Doc updates for SDK defaults - S3 Params, Env Variables, Disable Profiler, and DebugHookConfig
+
+## v2.168.0 (2023-06-22)
+
+### Features
+
+ * Support uncompressed model upload
+ * Add optional monitoring_config_override parameter in suggest_baseline API
+ * SDK defaults add disable profiler to createTrainingJob
+
+### Bug Fixes and Other Changes
+
+ * Enable spark processing container in KIX
+ * Fix key prefix preventing jumpstart model repack
+
 ## v2.167.0 (2023-06-21)
 
 ### Features

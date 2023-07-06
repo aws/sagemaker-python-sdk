@@ -30,6 +30,7 @@ from sagemaker.workflow.parameters import ParameterString, ParameterBoolean
 
 from sagemaker.workflow.steps import TrainingStep
 from sagemaker.workflow.pipeline import Pipeline, PipelineGraph
+from sagemaker.workflow.pipeline_definition_config import PipelineDefinitionConfig
 from sagemaker.workflow.utilities import hash_files_or_dirs
 from sagemaker.workflow.functions import Join
 
@@ -74,6 +75,16 @@ MOCKED_PIPELINE_CONFIG = _PipelineConfig(
     "MyTrainingStep",
     hash_files_or_dirs([LOCAL_SOURCE_DIR] + LOCAL_DEPS),
     "config-hash-abcdefg",
+    None,
+)
+
+_DEFINITION_CONFIG = PipelineDefinitionConfig(use_custom_job_prefix=True)
+MOCKED_PIPELINE_CONFIG_WITH_CUSTOM_PREFIX = _PipelineConfig(
+    "MyPipelineWithCustomPrefix",
+    "MyProcessingStep",
+    None,
+    None,
+    _DEFINITION_CONFIG,
 )
 
 ESTIMATOR_LISTS = [
@@ -801,3 +812,62 @@ def test_insert_wrong_step_args_into_training_step(inputs, pipeline_session):
         )
 
     assert "The step_args of TrainingStep must be obtained from estimator.fit()" in str(error.value)
+
+
+@patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG_WITH_CUSTOM_PREFIX)
+def test_training_step_with_estimator_using_custom_prefixes(
+    pipeline_session, training_input, hyperparameters
+):
+    entry_point = ParameterString(name="EntryPoint")
+    source_dir = ParameterString(name="SourceDir")
+
+    custom_job_prefix = "TrainingJobPrefix"
+    estimator = Estimator(
+        role=ROLE,
+        instance_count=1,
+        instance_type=INSTANCE_TYPE,
+        sagemaker_session=pipeline_session,
+        image_uri=IMAGE_URI,
+        hyperparameters=hyperparameters,
+        entry_point=entry_point,
+        source_dir=source_dir,
+        base_job_name=custom_job_prefix,  # Include a custom prefix for the job
+    )
+
+    with warnings.catch_warnings(record=True) as w:
+        step_args = estimator.fit(inputs=training_input)
+        assert len(w) == 1
+        assert issubclass(w[-1].category, UserWarning)
+        assert "Running within a PipelineSession" in str(w[-1].message)
+
+    with warnings.catch_warnings(record=True) as w:
+        step = TrainingStep(
+            name="MyTrainingStep",
+            step_args=step_args,
+            description="TrainingStep description",
+            display_name="MyTrainingStep",
+        )
+        assert len(w) == 0
+
+    # Toggle the custom prefixing feature ON for this pipeline
+    definition_config = PipelineDefinitionConfig(use_custom_job_prefix=True)
+
+    pipeline = Pipeline(
+        name="MyPipeline",
+        steps=[step],
+        sagemaker_session=pipeline_session,
+        pipeline_definition_config=definition_config,
+    )
+    step_args = get_step_args_helper(step_args, "Training", True)
+    step_args["HyperParameters"]["sagemaker_program"] = {"Get": "Parameters.EntryPoint"}
+    step_args["HyperParameters"]["sagemaker_submit_directory"] = {"Get": "Parameters.SourceDir"}
+    step_def = json.loads(pipeline.definition())["Steps"][0]
+
+    assert step_def["Arguments"]["TrainingJobName"] == "TrainingJobPrefix"
+    assert step_def == {
+        "Name": "MyTrainingStep",
+        "Description": "TrainingStep description",
+        "DisplayName": "MyTrainingStep",
+        "Type": "Training",
+        "Arguments": step_args,
+    }

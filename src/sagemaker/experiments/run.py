@@ -29,6 +29,7 @@ from sagemaker.experiments._api_types import TrialComponentArtifact, _TrialCompo
 from sagemaker.experiments._helper import (
     _ArtifactUploader,
     _LineageArtifactTracker,
+    _DEFAULT_ARTIFACT_PREFIX,
 )
 from sagemaker.experiments._environment import _RunEnvironment
 from sagemaker.experiments._run_context import _RunContext
@@ -95,6 +96,8 @@ class Run(object):
         run_display_name: Optional[str] = None,
         tags: Optional[List[Dict[str, str]]] = None,
         sagemaker_session: Optional["Session"] = None,
+        artifact_bucket: Optional[str] = None,
+        artifact_prefix: Optional[str] = None,
     ):
         """Construct a `Run` instance.
 
@@ -152,6 +155,11 @@ class Run(object):
                 manages interactions with Amazon SageMaker APIs and any other
                 AWS services needed. If not specified, one is created using the
                 default AWS configuration chain.
+            artifact_bucket (str): The S3 bucket to upload the artifact to.
+                If not specified, the default bucket defined in `sagemaker_session`
+                will be used.
+            artifact_prefix (str): The S3 key prefix used to generate the S3 path
+                to upload the artifact to (default: "trial-component-artifacts").
         """
         # TODO: we should revert the lower casting once backend fix reaches prod
         self.experiment_name = experiment_name.lower()
@@ -197,6 +205,10 @@ class Run(object):
         self._artifact_uploader = _ArtifactUploader(
             trial_component_name=self._trial_component.trial_component_name,
             sagemaker_session=sagemaker_session,
+            artifact_bucket=artifact_bucket,
+            artifact_prefix=_DEFAULT_ARTIFACT_PREFIX
+            if artifact_prefix is None
+            else artifact_prefix,
         )
         self._lineage_artifact_tracker = _LineageArtifactTracker(
             trial_component_arn=self._trial_component.trial_component_arn,
@@ -729,6 +741,8 @@ def load_run(
     run_name: Optional[str] = None,
     experiment_name: Optional[str] = None,
     sagemaker_session: Optional["Session"] = None,
+    artifact_bucket: Optional[str] = None,
+    artifact_prefix: Optional[str] = None,
 ) -> Run:
     """Load an existing run.
 
@@ -792,6 +806,11 @@ def load_run(
             manages interactions with Amazon SageMaker APIs and any other
             AWS services needed. If not specified, one is created using the
             default AWS configuration chain.
+        artifact_bucket (str): The S3 bucket to upload the artifact to.
+                If not specified, the default bucket defined in `sagemaker_session`
+                will be used.
+        artifact_prefix (str): The S3 key prefix used to generate the S3 path
+            to upload the artifact to (default: "trial-component-artifacts").
 
     Returns:
         Run: The loaded Run object.
@@ -811,6 +830,8 @@ def load_run(
             experiment_name=experiment_name,
             run_name=run_name,
             sagemaker_session=sagemaker_session or _utils.default_session(),
+            artifact_bucket=artifact_bucket,
+            artifact_prefix=artifact_prefix,
         )
     elif _RunContext.get_current_run():
         run_instance = _RunContext.get_current_run()
@@ -827,6 +848,8 @@ def load_run(
             experiment_name=experiment_name,
             run_name=run_name,
             sagemaker_session=sagemaker_session or _utils.default_session(),
+            artifact_bucket=artifact_bucket,
+            artifact_prefix=artifact_prefix,
         )
     else:
         raise RuntimeError(

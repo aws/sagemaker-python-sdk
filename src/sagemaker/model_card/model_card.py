@@ -16,7 +16,7 @@ from __future__ import absolute_import, print_function
 import json
 import logging
 from datetime import datetime
-from typing import Optional, Union, List
+from typing import Optional, Union, List, Any
 from botocore.exceptions import ClientError
 from boto3.session import Session as boto3_Session
 from six.moves.urllib.parse import urlparse
@@ -28,6 +28,8 @@ from sagemaker.model_card.schema_constraints import (
     ObjectiveFunctionEnum,
     FacetEnum,
     MetricTypeEnum,
+    ModelPackageStatusEnum,
+    ModelApprovalStatusEnum,
     ENVIRONMENT_CONTAINER_IMAGES_MAX_SIZE,
     MODEL_ARTIFACT_MAX_SIZE,
     METRIC_VALUE_TYPE_MAP,
@@ -37,6 +39,7 @@ from sagemaker.model_card.schema_constraints import (
     HYPER_PARAMETERS_MAX_SIZE,
     USER_PROVIDED_HYPER_PARAMETERS_MAX_SIZE,
     EVALUATION_DATASETS_MAX_SIZE,
+    SOURCE_ALGORITHMS_MAX_SIZE,
 )
 from sagemaker.model_card.helpers import (
     _OneOf,
@@ -45,6 +48,7 @@ from sagemaker.model_card.helpers import (
     _JSONEncoder,
     _DefaultToRequestDict,
     _DefaultFromDict,
+    _SkipEncodingDecoding,
     _hash_content_str,
     _read_s3_json,
 )
@@ -206,6 +210,463 @@ class ModelOverview(_DefaultToRequestDict, _DefaultFromDict):
         )
 
         return cls(**kwargs)
+
+
+class ModelPackageCreator(_DefaultToRequestDict, _DefaultFromDict):
+    """Information about the user who created the model package"""
+
+    def __init__(self, user_profile_name: Optional[str] = None):
+        """Initialize the ModelPackageCreator object.
+
+        Args:
+            user_profile_name (str, optional): The name of the user's profile. (default: None)
+        """  # noqa E501 # pylint: disable=line-too-long
+        self.user_profile_name = user_profile_name
+
+
+class SourceAlgorithm(_DefaultToRequestDict, _DefaultFromDict):
+    """Source algorithm object"""
+
+    def __init__(self, algorithm_name: str, model_data_url: Optional[str] = None):
+        """Initialize source algorithm object
+
+        Args:
+            algorithm_name (str): The ARN of an algorithm resource that was used to create the model package.
+            model_data_url (str, optional): The Amazon S3 path where the model artifacts, which result from model training, are stored (default: None).
+        """  # noqa E501 # pylint: disable=line-too-long
+        self.algorithm_name = algorithm_name
+        self.model_data_url = model_data_url
+
+
+class Container(_DefaultToRequestDict, _DefaultFromDict):
+    """Inference container to store the information like model data urls, images and nearest model names"""  # noqa E501 # pylint: disable=line-too-long
+
+    def __init__(
+        self,
+        image: str,
+        model_data_url: Optional[str] = None,
+        nearest_model_name: Optional[str] = None,
+    ):
+        """Initialize inference container object.
+
+        Args:
+            image (str): The Amazon EC2 Container Registry (Amazon ECR) path where inference code is stored. Also known as inference environment.
+            model_data_url (str, optional): The Amazon S3 path where the model artifacts, which result from model training, are stored. Also known as model artifact (default: None).
+            nearest_model_name (str, optional): The name of a pre-trained machine learning benchmarked by Amazon SageMaker Inference Recommender model that matches your model (default: None).
+        """  # noqa E501 # pylint: disable=line-too-long
+        self.image = image
+        self.model_data_url = model_data_url
+        self.nearest_model_name = nearest_model_name
+
+
+class InferenceSpecification(_DefaultToRequestDict, _DefaultFromDict):
+    """Details about inference jobs that can be run with models based on this model package."""
+
+    containers = _IsList(Container, ENVIRONMENT_CONTAINER_IMAGES_MAX_SIZE)
+
+    def __init__(self, containers: List[Container]):
+        """Initialize Inference specification object.
+
+        Args:
+            containers (list[Containers]): The list of inference containers.
+        """
+        self.containers = containers
+
+
+class ModelPackage(_DefaultToRequestDict, _DefaultFromDict):
+    """Model package version details"""
+
+    model_package_status = _OneOf(ModelPackageStatusEnum)
+    model_approval_status = _OneOf(ModelApprovalStatusEnum)
+    created_by = _IsModelCardObject(ModelPackageCreator)
+    source_algorithms = _IsList(SourceAlgorithm, SOURCE_ALGORITHMS_MAX_SIZE)
+    inference_specification = _IsModelCardObject(InferenceSpecification)
+    model_metrics = _SkipEncodingDecoding(dict)
+
+    MODEL_PACKAGE_OPTIONAL_FIELDS_MAPPING = {
+        "ModelPackageName": "model_package_name",
+        "ModelPackageGroupName": "model_package_group_name",
+        "ModelPackageVersion": "model_package_version",
+        "ModelPackageStatus": "model_package_status",
+        "ModelApprovalStatus": "model_approval_status",
+        "ModelPackageDescription": "model_package_description",
+        "ApprovalDescription": "approval_description",
+        "Domain": "domain",
+        "Task": "task",
+    }
+
+    INFERENCE_SPECIFICATION_FIELDS_MAPPING = {
+        "NearestModelName": "nearest_model_name",
+        "ModelDataUrl": "model_data_url",
+    }
+
+    MODEL_CARD_CONTENT_TO_BE_INHERITED = [
+        "business_details",
+        "intended_uses",
+        "additional_information",
+    ]
+
+    def __init__(
+        self,
+        model_package_arn: Optional[str] = None,
+        model_package_description: Optional[str] = None,
+        model_package_status: Optional[Union[ModelPackageStatusEnum, str]] = None,
+        approval_description: Optional[str] = None,
+        model_approval_status: Optional[Union[ModelApprovalStatusEnum, str]] = None,
+        model_package_group_name: Optional[str] = None,
+        model_package_name: Optional[str] = None,
+        model_package_version: Optional[int] = None,
+        domain: Optional[str] = None,
+        task: Optional[str] = None,
+        created_by: Optional[ModelPackageCreator] = None,
+        source_algorithms: Optional[List[SourceAlgorithm]] = None,
+        inference_specification: Optional[InferenceSpecification] = None,
+        model_metrics: Optional[dict] = None,
+    ):
+        """Initialize the ModelPackage object.
+
+        Args:
+            model_package_arn (str, optional): Model package ARN (default: None).
+            model_package_description (str, optional): A brief summary of the model package (default: None).
+            model_package_status (ModelPackageStatusEnum or str, optional): Current status of model package (default: None).
+            approval_description (str, optional): A description provided for the model approval (default: None).
+            model_approval_status (ModelApprovalStatusEnum or str, optional): Current approval status of model package (default: None).
+            model_package_group_name (str, optional): If the model is a versioned model, the name of the model group that the versioned model belongs to (default: None).
+            model_package_name (str, optional): Name of the model package (default: None).
+            model_package_version (int, optional): Version of the model package (default: None).
+            domain (str, optional): The machine learning domain of the model package you specified. Common machine learning domains include computer vision and natural language processing (default: None).
+            task (str, optional): The machine learning task you specified that your model package accomplishes. Common machine learning tasks include object detection and image classification (default: None).
+            created_by (ModelPackageCreator, optional): Information about the user who created model package (default: None).
+            source_algorithms (SourceAlgorithms, optional):A list of algorithms that were used to create a model package (default: None).
+            inference_specification (InferenceSpecification, optional): Details about inference jobs that can be run with models based on this model package (default: None).
+            model_metrics (dict, optional): Temporary field to store model metrics that will be usd to auto discover evaluation details (default: None).
+        """  # noqa E501 # pylint: disable=line-too-long
+        self.model_package_arn = model_package_arn
+        self.model_package_description = model_package_description
+        self.model_package_status = model_package_status
+        self.model_approval_status = model_approval_status
+        self.approval_description = approval_description
+        self.model_package_group_name = model_package_group_name
+        self.model_package_name = model_package_name
+        self.model_package_version = model_package_version
+        self.domain = domain
+        self.task = task
+        self.created_by = created_by
+        self.source_algorithms = source_algorithms
+        self.inference_specification = inference_specification
+        self.model_metrics = model_metrics
+
+    @staticmethod
+    def call_describe_model_package(model_package_name: str, sagemaker_session: Session = None):
+        """Load existing model package.
+
+        Args:
+            model_package_name (str): Model package ARN.
+            sagemaker_session (Session, optional): A SageMaker Session
+                object, used for SageMaker interactions (default: None). If not
+                specified, a SageMaker Session is created using the default AWS configuration
+                chain.
+
+        Raises:
+            ValueError: A model package with this name or ARN is not valid or does not exist.
+        """
+
+        if not sagemaker_session:
+            sagemaker_session = Session()  # pylint: disable=W0106
+
+        try:
+            model_package_response = sagemaker_session.sagemaker_client.describe_model_package(
+                ModelPackageName=model_package_name
+            )
+        except ClientError as e:
+            if e.response["Error"]["Message"].startswith(  # pylint: disable=r1720
+                "Could not find model package"
+            ):
+                raise ValueError(
+                    (
+                        f"Model package details for {model_package_name} could not be found. "
+                        "Make sure the model package name or ARN is valid."
+                    )
+                )
+
+            raise e
+
+        return model_package_response
+
+    @staticmethod
+    def search_model_package_associated_model_cards(
+        model_package_arn: str, sagemaker_session: Session = None
+    ):
+        """Check if a model card already exists for this model package version.
+
+        Args:
+            model_package_arn (str): Model package version ARN.
+            sagemaker_session (Session, optional): A SageMaker Session
+                object, used for SageMaker interactions (default: None). If not
+                specified, a SageMaker Session is created using the default AWS configuration
+                chain.
+        Raises:
+            ValueError: The identity does not have permission to perform sagemaker search operation.
+        """
+
+        if not sagemaker_session:
+            sagemaker_session = Session()  # pylint: disable=W0106
+
+        try:
+            response = sagemaker_session.sagemaker_client.search(
+                Resource="ModelCard",
+                SearchExpression={
+                    "Filters": [
+                        {
+                            "Name": "ModelId",
+                            "Operator": "Equals",
+                            "Value": model_package_arn,
+                        }
+                    ]
+                },
+            )
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "AccessDeniedException":
+                raise ValueError(
+                    (
+                        "Received AccessDeniedException while calling SageMaker Search operation "
+                        "on resource ModelCard. This could mean the IAM role does not "
+                        "have the resource permissions, in which case please add resource access "
+                        "and retry. For cases where the role has tag based resource policy, "
+                        "continuing to wait for tag propagation.."
+                    )
+                )
+            raise e
+
+        return [c["ModelCard"]["ModelCardName"] for c in response["Results"]]
+
+    @classmethod
+    def from_model_package_arn(cls, model_package_arn: str, sagemaker_session: Session = None):
+        """Create model package details using the response from `describe_model_package` API
+
+        Args:
+            model_package_arn (str): The ARN of the model package version.
+            sagemaker_session (Session, optional): A SageMaker Session
+                object, used for SageMaker interactions (default: None). If not
+                specified, a SageMaker Session is created using the default AWS configuration
+                chain.
+        Raises:
+            ValueError: A model package with this name or ARN does not exist.
+            ValueError: A model card already exists for this model package.
+            ValueError: A model card already has a model associated with it.
+        """
+
+        if not sagemaker_session:
+            sagemaker_session = Session()  # pylint: disable=W0106
+
+        model_package_response = cls.call_describe_model_package(
+            model_package_name=model_package_arn, sagemaker_session=sagemaker_session
+        )
+
+        associated_model_cards = cls.search_model_package_associated_model_cards(
+            model_package_response["ModelPackageArn"],
+            sagemaker_session=sagemaker_session,
+        )
+        if associated_model_cards:
+            raise ValueError(
+                f"The model package has already been associated with {associated_model_cards} model cards."  # noqa E501  # pylint: disable=c0301
+            )
+
+        # To store all the necessary metadata information from model package response
+        model_package_details = {"model_package_arn": model_package_response["ModelPackageArn"]}
+
+        for key, field_name in cls.MODEL_PACKAGE_OPTIONAL_FIELDS_MAPPING.items():
+            if key in model_package_response:
+                model_package_details.update({field_name: model_package_response[key]})
+
+        if "UserProfileName" in model_package_response["CreatedBy"]:
+            model_package_creator = ModelPackageCreator(
+                user_profile_name=model_package_response["CreatedBy"]["UserProfileName"]
+            )
+            model_package_details.update({"created_by": model_package_creator})
+
+        if "InferenceSpecification" in model_package_response:
+            containers_response = model_package_response["InferenceSpecification"]["Containers"]
+            containers = []
+            for container in containers_response:
+                args = {"image": container["Image"]}
+                for (
+                    field,
+                    arg_key,
+                ) in cls.INFERENCE_SPECIFICATION_FIELDS_MAPPING.items():
+                    if field in container:
+                        args[arg_key] = container[field]
+                containers.append(Container(**args))
+
+            model_package_details.update(
+                {"inference_specification": InferenceSpecification(containers)}
+            )
+
+        if "SourceAlgorithmSpecification" in model_package_response:
+            source_algorithms_response = model_package_response["SourceAlgorithmSpecification"][
+                "SourceAlgorithms"
+            ]
+            source_algorithms = [
+                SourceAlgorithm(sa["AlgorithmName"], sa["ModelDataUrl"])
+                if "ModelDataUrl" in sa
+                else SourceAlgorithm(sa["AlgorithmName"])
+                for sa in source_algorithms_response
+            ]
+
+            model_package_details.update({"source_algorithms": source_algorithms})
+
+        if "ModelMetrics" in model_package_response:
+            model_package_details.update({"model_metrics": model_package_response["ModelMetrics"]})
+
+        return cls(**model_package_details)
+
+    def discover_training_details(self, sagemaker_session: Session = None):
+        """Auto discover training job details using model package response
+
+        Args:
+            sagemaker_session (Session, optional): A SageMaker Session object, used for SageMaker
+                interactions (default: None). If not specified, a SageMaker Session
+                is created using the default AWS configuration chain.
+        """
+
+        if not sagemaker_session:
+            sagemaker_session = Session()  # pylint: disable=W0106
+
+        training_details = None
+        if self.inference_specification:
+            containers = self.inference_specification.containers
+            model_artifacts = [c.model_data_url for c in containers if c.model_data_url is not None]
+            training_details = TrainingDetails.from_model_s3_artifacts(
+                model_artifacts=model_artifacts, sagemaker_session=sagemaker_session
+            )
+        else:
+            logger.info(
+                (
+                    "TrainingJobDetails auto-discovery was unsuccessful. "
+                    "No inference specification found for the given model package."
+                    "Please create one from scratch with TrainingJobDetails "
+                    "or use from_training_job_name() instead."
+                )
+            )
+
+        return training_details
+
+    def discover_evaluation_details(self, sagemaker_session: Session = None):
+        """Auto discover evaluation details from model package model metrics field
+
+        Args:
+            sagemaker_session (Session, optional): A SageMaker Session
+                object, used for SageMaker interactions (default: None). If not
+                specified, a SageMaker Session is created using the default AWS configuration
+                chain.
+        """
+
+        def get_evaluation_job(
+            name: str, s3_uri: str, metric_type: _OneOf(EvaluationMetricTypeEnum), session: Session
+        ):
+            evaluation_job = EvaluationJob(name=name)
+            evaluation_job.add_metric_group_from_s3(
+                s3_url=s3_uri, session=session, metric_type=metric_type
+            )
+
+            return evaluation_job
+
+        if not sagemaker_session:
+            sagemaker_session = Session()
+
+        evaluation_details = []
+
+        if self.model_metrics:
+            model_metrics = self.model_metrics
+
+            if "Bias" in model_metrics:
+                bias_report = model_metrics["Bias"]
+                for args_key in bias_report:
+                    evaluation_details.append(
+                        get_evaluation_job(
+                            name="Bias " + args_key,
+                            s3_uri=bias_report[args_key]["S3Uri"],
+                            metric_type=EvaluationMetricTypeEnum.CLARIFY_BIAS,
+                            session=sagemaker_session.boto_session,
+                        )
+                    )
+
+            if "Explainability" in model_metrics:
+                exp_report = model_metrics["Explainability"]
+
+                if "Report" in exp_report:
+                    evaluation_details.append(
+                        get_evaluation_job(
+                            name="Explainability report",
+                            s3_uri=exp_report["Report"]["S3Uri"],
+                            metric_type=EvaluationMetricTypeEnum.CLARIFY_EXPLAINABILITY,
+                            session=sagemaker_session.boto_session,
+                        )
+                    )
+
+            if "ModelQuality" in model_metrics:
+                model_quality_report = model_metrics["ModelQuality"]
+
+                if "Statistics" in model_quality_report:
+                    evaluation_details.append(
+                        get_evaluation_job(
+                            name="Model quality report",
+                            s3_uri=model_quality_report["Statistics"]["S3Uri"],
+                            metric_type=EvaluationMetricTypeEnum.MODEL_MONITOR_MODEL_QUALITY,
+                            session=sagemaker_session.boto_session,
+                        )
+                    )
+        else:
+            logger.info(
+                (
+                    "Evaluation details auto-discovery was unsuccessful. "
+                    "ModelMetrics was not found in the given model package. "
+                    "Please create one from scratch with EvaluationJob."
+                )
+            )
+
+        return evaluation_details
+
+    def get_latest_model_card_name_from_model_package_group(
+        self, session: Optional[Session] = None
+    ):
+        """Get the name of latest model card associated with model package.
+
+        Args:
+                session (Session, optional): A SageMaker Session
+                object, used for SageMaker interactions (default: None). If not
+                specified, a SageMaker Session is created using the default AWS configuration
+                chain.
+        """
+        latest_model_card_name = None
+
+        if self.model_package_group_name is None:
+            return latest_model_card_name
+
+        if not session:
+            session = Session()  # pylint: disable=W0106
+
+        response = session.sagemaker_client.search(
+            Resource="ModelCard",
+            SearchExpression={
+                "Filters": [
+                    {
+                        "Name": "ModelPackageGroupName",
+                        "Operator": "Equals",
+                        "Value": self.model_package_group_name,
+                    }
+                ]
+            },
+            SortBy="LastModifiedTime",
+            SortOrder="Descending",
+        )
+
+        if response and response.get("Results"):
+            latest_model_card = response["Results"][0]
+            if latest_model_card.get("ModelCard"):
+                latest_model_card_name = latest_model_card["ModelCard"]["ModelCardName"]
+
+        return latest_model_card_name
 
 
 class IntendedUses(_DefaultToRequestDict, _DefaultFromDict):
@@ -505,6 +966,99 @@ class TrainingDetails(_DefaultToRequestDict, _DefaultFromDict):
 
         return instance
 
+    @staticmethod
+    def call_search_training_job(model_data_url: str, sagemaker_session: Session = None):
+        """Search training job.
+
+        Args:
+            model_data_url (str): The Amazon S3 path where the model artifacts, which result from model training, are stored. It will be used to search training job.
+            sagemaker_session (Session, optional): A SageMaker Session
+                object, used for SageMaker interactions (default: None). If not
+                specified, a SageMaker Session is created using the default AWS configuration
+                chain.
+        Raises:
+            ValueError: The identity does not have permission to perform sagemaker search operation.
+        """  # noqa E501 # pylint: disable=line-too-long
+
+        if not sagemaker_session:
+            sagemaker_session = Session()  # pylint: disable=W0106
+
+        try:
+            res = sagemaker_session.sagemaker_client.search(
+                Resource="TrainingJob",
+                SearchExpression={
+                    "Filters": [
+                        {
+                            "Name": "ModelArtifacts.S3ModelArtifacts",
+                            "Operator": "Equals",
+                            "Value": model_data_url,
+                        }
+                    ]
+                },
+            )
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "AccessDeniedException":
+                raise ValueError(
+                    (
+                        "Received AccessDeniedException while calling SageMaker Search operation "
+                        "on resource TrainingJob. This could mean the IAM role does not "
+                        "have the resource permissions, in which case please add resource access "
+                        "and retry. For cases where the role has tag based resource policy, "
+                        "continuing to wait for tag propagation.."
+                    )
+                )
+            raise e
+
+        training_job_data = None
+        if len(res["Results"]) == 1:
+            training_job_data = res["Results"][0]["TrainingJob"]
+
+        return training_job_data
+
+    @staticmethod
+    def discover_training_job_details(
+        model_artifacts: List[str], sagemaker_session: Session = None
+    ):
+        """Find training job details using auto discovered model artifacts
+
+        Args:
+            model_artifacts (List[str]): List of model artifacts with S3 uri.
+            sagemaker_session (Session, optional): A SageMaker Session object, used for SageMaker
+                interactions (default: None). If not specified, a SageMaker Session
+                is created using the default AWS configuration chain.
+        """  # noqa E501 # pylint: disable=line-too-long
+
+        if not sagemaker_session:
+            sagemaker_session = Session()  # pylint: disable=W0106
+
+        training_job_details = None
+        if len(model_artifacts) == 1:
+            training_job_details = TrainingDetails.call_search_training_job(
+                model_artifacts[0], sagemaker_session
+            )
+        elif len(model_artifacts) == 0:
+            logger.warning(
+                (
+                    "TrainingJobDetails auto-discovery failed. "
+                    "No associated training job. "
+                    "Please create one from scratch with TrainingJobDetails "
+                    "or use from_training_job_name() instead."
+                )
+            )
+        else:
+            logger.warning(
+                (
+                    "TrainingJobDetails auto-discovery failed. "
+                    "There are %s associated training jobs. "
+                    "Further clarification is required. "
+                    "You could use TrainingDetails.training_job_name after "
+                    "which training job to use is decided."
+                ),
+                len(model_artifacts),
+            )
+
+        return training_job_details
+
     @classmethod
     def from_model_overview(
         cls, model_overview: ModelOverview, sagemaker_session: Session = None, **kwargs
@@ -517,53 +1071,35 @@ class TrainingDetails(_DefaultToRequestDict, _DefaultFromDict):
             **kwargs: Other arguments in TrainingDetails, i.e. objective_function, training_observations
         """  # noqa E501 # pylint: disable=line-too-long
 
-        def call_search_training_job():
-            """Search training job."""
-            res = sagemaker_session.sagemaker_client.search(
-                Resource="TrainingJob",
-                SearchExpression={
-                    "Filters": [
-                        {
-                            "Name": "ModelArtifacts.S3ModelArtifacts",
-                            "Operator": "Equals",
-                            "Value": model_overview.model_artifact[0],
-                        }
-                    ]
-                },
-            )
+        if not sagemaker_session:
+            sagemaker_session = Session()  # pylint: disable=W0106
 
-            training_job_data = None
-            if len(res["Results"]) == 1:
-                training_job_data = res["Results"][0]["TrainingJob"]
+        training_job_data = cls.discover_training_job_details(
+            model_artifacts=model_overview.model_artifact, sagemaker_session=sagemaker_session
+        )
 
-            return training_job_data
+        return cls._create_training_details(training_job_data=training_job_data, cls=cls, **kwargs)
+
+    @classmethod
+    def from_model_s3_artifacts(
+        cls, model_artifacts: List[str], sagemaker_session: Session = None, **kwargs
+    ):
+        """Initialize a Training Details object from auto-discovered model artifacts.
+
+        Args:
+            model_artifacts (List[str]): List of model artifacts with S3 uri.
+            sagemaker_session (Session, optional): A SageMaker Session object, used for SageMaker interactions (default: None). If not specified,
+                a SageMaker Session is created using the default AWS configuration chain.
+            **kwargs: Other arguments in TrainingDetails, i.e. objective_function, training_observations
+        """  # noqa E501 # pylint: disable=line-too-long
 
         if not sagemaker_session:
             sagemaker_session = Session()  # pylint: disable=W0106
 
-        training_job_data = None
-        if len(model_overview.model_artifact) == 1:  # unique training job name
-            training_job_data = call_search_training_job()
-        elif len(model_overview.model_artifact) == 0:
-            logger.warning(
-                (
-                    "TraininigJobDetails auto-discovery failed. "
-                    "No associated training job. "
-                    "Please create one from scrach with TrainingJobDetails "
-                    "or use from_training_job_name() instead."
-                )
-            )
-        else:
-            logger.warning(
-                (
-                    "TraininigJobDetails auto-discovery failed. "
-                    "There are %s associated training jobs. "
-                    "Further clarification is required. "
-                    "You could use TrainingDetails.training_job_name after "
-                    "which training job to use is decided."
-                ),
-                len(model_overview.model_artifact),
-            )
+        training_job_data = cls.discover_training_job_details(
+            model_artifacts=model_artifacts, sagemaker_session=sagemaker_session
+        )
+
         return cls._create_training_details(training_job_data=training_job_data, cls=cls, **kwargs)
 
     @classmethod
@@ -736,8 +1272,8 @@ class EvaluationJob(_DefaultToRequestDict, _DefaultFromDict):
             metric_type EvaluationMetricTypeEnum: The evaluation metric type
                 for the data in the evaluation metrics JSON file.
                 Possible values include: ``EvaluationMetricTypeEnum.MODEL_CARD_METRIC_SCHEMA``, ``EvaluationMetricTypeEnum.CLARIFY_BIAS``,
-                ``EvaluationMetricTypeEnum.CLARIFY_EXPLAINABILITY``, ``EvaluationMetricTypeEnum.REGRESSION``, ``EvaluationMetricTypeEnum.BINARY_CLASSIFICATION``,
-                or ``EvaluationMetricTypeEnum.MULTICLASS_CLASSIFICATION``.
+                ``EvaluationMetricTypeEnum.CLARIFY_EXPLAINABILITY``, ``EvaluationMetricTypeEnum.MODEL_MONITOR_MODEL_QUALITY``, ``EvaluationMetricTypeEnum.REGRESSION``,
+                ``EvaluationMetricTypeEnum.BINARY_CLASSIFICATION``, or ``EvaluationMetricTypeEnum.MULTICLASS_CLASSIFICATION``.
         """  # noqa E501 # pylint: disable=line-too-long
         if not isinstance(metric_type, EvaluationMetricTypeEnum):
             raise ValueError("Please use sagemaker.model_card.EvaluationMetricTypeEnum")
@@ -760,6 +1296,7 @@ class EvaluationJob(_DefaultToRequestDict, _DefaultFromDict):
                 ``EvaluationMetricTypeEnum.MODEL_CARD_METRIC_SCHEMA``,
                 ``EvaluationMetricTypeEnum.CLARIFY_BIAS``,
                 ``EvaluationMetricTypeEnum.CLARIFY_EXPLAINABILITY``,
+                ``EvaluationMetricTypeEnum.MODEL_MONITOR_MODEL_QUALITY``,
                 ``EvaluationMetricTypeEnum.REGRESSION``,
                 ``EvaluationMetricTypeEnum.BINARY_CLASSIFICATION``,
                 or `EvaluationMetricTypeEnum.MULTICLASS_CLASSIFICATION``
@@ -788,6 +1325,7 @@ class EvaluationJob(_DefaultToRequestDict, _DefaultFromDict):
                 ``EvaluationMetricTypeEnum.MODEL_CARD_METRIC_SCHEMA``,
                 ``EvaluationMetricTypeEnum.CLARIFY_BIAS``,
                 ``EvaluationMetricTypeEnum.CLARIFY_EXPLAINABILITY``,
+                ``EvaluationMetricTypeEnum.MODEL_MONITOR_MODEL_QUALITY``,
                 ``EvaluationMetricTypeEnum.REGRESSION``,
                 ``EvaluationMetricTypeEnum.BINARY_CLASSIFICATION``,
                 or ``EvaluationMetricTypeEnum.MULTICLASS_CLASSIFICATION``
@@ -846,6 +1384,7 @@ class ModelCard(object):
     training_details = _IsModelCardObject(TrainingDetails)
     evaluation_details = _IsList(EvaluationJob)
     additional_information = _IsModelCardObject(AdditionalInformation)
+    _model_package_details = _IsModelCardObject(ModelPackage)
 
     def __init__(
         self,
@@ -864,6 +1403,7 @@ class ModelCard(object):
         evaluation_details: Optional[List[EvaluationJob]] = None,
         additional_information: Optional[AdditionalInformation] = None,
         sagemaker_session: Optional[Session] = None,
+        model_package_details: Optional[ModelPackage] = None,
     ):
         """Initialize an Amazon SageMaker Model Card.
 
@@ -883,7 +1423,9 @@ class ModelCard(object):
             evaluation_details (List[EvaluationJob], optional): The evaluation details of the model (default: None).
             additional_information (AdditionalInformation, optional): Additional information about the model (default: None).
             sagemaker_session (Session, optional): A SageMaker Session object, used for SageMaker interactions (default: None). If not specified, a SageMaker Session is created using the default AWS configuration chain.
+            model_package_details (ModelPackage, optional): Model package version metadata information (default: None).
         """  # noqa E501 # pylint: disable=line-too-long
+        self.sagemaker_session = sagemaker_session or Session()
         self.name = name
         self.arn = arn
         self.status = status
@@ -898,7 +1440,75 @@ class ModelCard(object):
         self.training_details = training_details
         self.evaluation_details = evaluation_details
         self.additional_information = additional_information
-        self.sagemaker_session = sagemaker_session or Session()
+        self.model_package_details = model_package_details
+
+    @property
+    def model_package_details(self):
+        """Model package auto discovered information"""
+        return self._model_package_details
+
+    @model_package_details.setter
+    def model_package_details(self, value):
+        """Setter method for model_package_details.
+
+        When this is set, it should call _from_model_package private method for auto discovery of training, evaluation details and additional information.
+        Raises:
+            ValueError: The model card has already been associated with a different model entity.
+        """  # noqa E501  # pylint: disable=c0301
+        if value is not None:
+            # Check if model card already has a model id associated with it
+            if self.model_overview is not None and self.model_overview.model_id:
+                raise ValueError(
+                    f"The model card has already been associated with a model with model Id {self.model_overview.model_id}"  # noqa E501  # pylint: disable=c0301
+                )
+
+        self._model_package_details = value
+        self._from_model_package()
+
+    def _from_model_package(self):
+        """Auto discover training details, evaluation details and carry over information"""
+        if self.model_package_details:
+            # auto discover training details using information from model package
+            if self.training_details is None:
+                self.training_details = self.model_package_details.discover_training_details(
+                    self.sagemaker_session
+                )
+            elif (
+                self.training_details is not None
+                and self.training_details.training_job_details is None
+            ):
+                training_details = self.model_package_details.discover_training_details(
+                    self.sagemaker_session
+                )
+                self.training_details.training_job_details = training_details.training_job_details
+            else:
+                logger.info(
+                    (
+                        "Skipping training details auto discovery. "
+                        "Training details already exists for this model card."
+                    )
+                )
+
+            # auto discover evaluation details using information from model package
+            if not self.evaluation_details:
+                self.evaluation_details = self.model_package_details.discover_evaluation_details(
+                    self.sagemaker_session
+                )
+
+            # get the name of latest model card from model package group
+            latest_model_card_name = (
+                self.model_package_details.get_latest_model_card_name_from_model_package_group(
+                    self.sagemaker_session
+                )
+            )
+            # if found latest model card, carry over additional content to current model card
+            if latest_model_card_name is not None:
+                response = self.sagemaker_session.sagemaker_client.describe_model_card(
+                    ModelCardName=latest_model_card_name
+                )
+                self._inherit_from_other_model_card(
+                    json.loads(response["Content"]), ModelPackage.MODEL_CARD_CONTENT_TO_BE_INHERITED
+                )
 
     def create(self):
         """Create the model card"""
@@ -922,15 +1532,40 @@ class ModelCard(object):
 
         return self.arn
 
+    def _inherit_from_other_model_card(  # pylint: disable=redefined-builtin
+        self, other_content: dict, keys: List[str]
+    ):
+        """Update additonal content based on latest model card when the field is empty.
+
+        Args:
+            other_content (dict): The content of the other model card.
+            keys (list[str]): The list of keys.
+        """  # noqa E501 # pylint: disable=line-too-long
+
+        for key in keys:
+            if getattr(self, key) is None and key in other_content:
+                setattr(self, key, other_content[key])
+
     def _create_request_args(self):
         """Generate the request body for create model card call."""
+
+        def get_value_type(attr_val: Any, attr_name: str):
+            """Get the attribute value type"""
+            if isinstance(attr_val, property):
+                return type(self.__class__.__dict__[f"_{attr_name}"])
+
+            return type(attr_val)
+
         request_args = {}
         for arg in ModelCard.CREATE_MODEL_CARD_REQUIRED:
             request_args[arg] = getattr(self, ModelCard.DECODER_ATTRIBUTE_MAP[arg])
 
         content = {}
         for attr_name, attr_val in ModelCard.__dict__.items():
-            if type(attr_val) in [_IsModelCardObject, _IsList]:
+            if get_value_type(attr_val, attr_name) in [
+                _IsModelCardObject,
+                _IsList,
+            ] and not attr_name.startswith("_"):
                 object_val = getattr(self, attr_name)
                 if object_val:
                     content[attr_name] = object_val
@@ -977,7 +1612,10 @@ class ModelCard(object):
             request_args["ModelCardVersion"] = version
         response = sagemaker_session.sagemaker_client.describe_model_card(**request_args)
 
-        model_card_args = {"sagemaker_session": sagemaker_session, **decode_attributes(response)}
+        model_card_args = {
+            "sagemaker_session": sagemaker_session,
+            **decode_attributes(response),
+        }
 
         return cls(**model_card_args)
 
@@ -1019,7 +1657,8 @@ class ModelCard(object):
         if previous["ModelCardStatus"] != current["ModelCardStatus"]:
             logger.info("Update model card status")
             update_status_response = self.sagemaker_session.sagemaker_client.update_model_card(
-                ModelCardName=current["ModelCardName"], ModelCardStatus=current["ModelCardStatus"]
+                ModelCardName=current["ModelCardName"],
+                ModelCardStatus=current["ModelCardStatus"],
             )
             result["status"] = update_status_response
 
@@ -1080,7 +1719,9 @@ class ModelCard(object):
                 sagemaker_session.sagemaker_client.list_model_card_export_jobs.
         """
         return ModelCardExportJob.list_export_jobs(
-            model_card_name=self.name, sagemaker_session=self.sagemaker_session, **kwargs
+            model_card_name=self.name,
+            sagemaker_session=self.sagemaker_session,
+            **kwargs,
         )
 
     def get_version_history(self, **kwargs):
@@ -1163,7 +1804,9 @@ class ModelCardExportJob(object):
 
         if job.status == "Failed":
             logger.warning(
-                "Failed to export model card to %s. %s", job.s3_export_artifacts, job.failure_reason
+                "Failed to export model card to %s. %s",
+                job.s3_export_artifacts,
+                job.failure_reason,
             )
             output = None
         elif job.status == "Completed":

@@ -17,6 +17,7 @@ from sagemaker.config.config import load_sagemaker_config, validate_sagemaker_co
 from sagemaker.config.config_schema import (  # noqa: F401
     KEY,
     TRAINING_JOB,
+    ESTIMATOR_DEBUG_HOOK_CONFIG_PATH,
     TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
     TRAINING_JOB_ROLE_ARN_PATH,
     TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
@@ -158,4 +159,6 @@ from sagemaker.config.config_schema import (  # noqa: F401
     CONTAINERS,
     PRIMARY_CONTAINER,
     INFERENCE_SPECIFICATION,
+    ESTIMATOR,
+    DEBUG_HOOK_CONFIG,
 )

@@ -58,9 +58,12 @@ from sagemaker.transformer import Transformer
 from sagemaker.workflow.execution_variables import ExecutionVariable
 from sagemaker.workflow.parameters import ParameterString, ParameterBoolean
 from sagemaker.workflow.pipeline_context import PipelineSession, _PipelineConfig
+from sagemaker.workflow.pipeline_definition_config import PipelineDefinitionConfig
 from sagemaker.xgboost.estimator import XGBoost
 from tests.unit import (
     SAGEMAKER_CONFIG_TRAINING_JOB,
+    SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_FALSE,
+    SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_TRUE,
     _test_default_bucket_and_prefix_combinations,
     DEFAULT_S3_BUCKET_NAME,
     DEFAULT_S3_OBJECT_KEY_PREFIX_NAME,
@@ -156,9 +159,22 @@ DISTRIBUTION_SM_DDP_ENABLED = {
     "smdistributed": {"dataparallel": {"enabled": True, "custom_mpi_options": "options"}}
 }
 MOCKED_S3_URI = "s3://mocked_s3_uri_from_source_dir"
+_DEFINITION_CONFIG = PipelineDefinitionConfig(use_custom_job_prefix=False)
 MOCKED_PIPELINE_CONFIG = _PipelineConfig(
-    "test-pipeline", "test-training-step", "code-hash-0123456789", "config-hash-0123456789"
+    "test-pipeline",
+    "test-training-step",
+    "code-hash-0123456789",
+    "config-hash-0123456789",
+    _DEFINITION_CONFIG,
 )
+HOOK_CONFIG_WITHOUT_S3_PATH = DebuggerHookConfig(
+    hook_parameters={"save_interval": "1"},
+)
+HOOK_CONFIG = DebuggerHookConfig(
+    hook_parameters={"save_interval": "1"},
+    s3_output_path="s3://mytestbucket/testpath/",
+)
+S3_OUTPUT_PATH_FROM_SESSION_S3_DEFAULT_CONFIG = "s3://mybucket/"
 
 
 class DummyFramework(Framework):
@@ -410,6 +426,9 @@ def test_framework_initialization_with_sagemaker_config_injection(sagemaker_sess
     expected_disable_profiler_attribute = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
         "ProfilerConfig"
     ]["DisableProfiler"]
+    expected_debugger_hook_config = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["PythonSDK"][
+        "Modules"
+    ]["Estimator"]["DebugHookConfig"]
     assert framework.role == expected_role_arn
     assert framework.enable_network_isolation() == expected_enable_network_isolation
     assert (
@@ -422,10 +441,14 @@ def test_framework_initialization_with_sagemaker_config_injection(sagemaker_sess
     assert framework.subnets == expected_subnets
     assert framework.environment == expected_environment
     assert framework.disable_profiler == expected_disable_profiler_attribute
+    assert framework.debugger_hook_config == expected_debugger_hook_config
 
 
 def test_estimator_initialization_with_sagemaker_config_injection(sagemaker_session):
-
+    """
+    Tests that the estimator initialization works when all the supported defaults config params "
+    are provided from the sagemaker_config
+    """
     sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
 
     estimator = Estimator(
@@ -460,6 +483,9 @@ def test_estimator_initialization_with_sagemaker_config_injection(sagemaker_sess
     expected_disable_profiler_attribute = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
         "ProfilerConfig"
     ]["DisableProfiler"]
+    expected_debugger_hook_config = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["PythonSDK"][
+        "Modules"
+    ]["Estimator"]["DebugHookConfig"]
     assert estimator.role == expected_role_arn
     assert estimator.enable_network_isolation() == expected_enable_network_isolation
     assert (
@@ -472,6 +498,50 @@ def test_estimator_initialization_with_sagemaker_config_injection(sagemaker_sess
     assert estimator.subnets == expected_subnets
     assert estimator.environment == expected_environment
     assert estimator.disable_profiler == expected_disable_profiler_attribute
+    assert estimator.debugger_hook_config == expected_debugger_hook_config
+
+
+def test_estimator_with_debugger_hook_config_provided_as_bool_from_direct_input(
+    sagemaker_session,
+):
+    """
+    Tests that the estimator initialization works correctly with sagemaker_config injection
+    when debugger_hook_config is provided as True from direct input
+    """
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
+
+    estimator = Estimator(
+        image_uri="some-image",
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.p3.16xlarge", 2),
+        ],
+        sagemaker_session=sagemaker_session,
+        base_job_name="base_job_name",
+        debugger_hook_config=True,
+    )
+    assert estimator.debugger_hook_config == {}
+
+
+def test_estimator_with_debugger_hook_config_provided_as_dict_from_direct_input(
+    sagemaker_session,
+):
+    """
+    Tests that the estimator initialization works correctly with sagemaker_config injection
+    when debugger_hook_config is provided as dict from direct input
+    """
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
+    estimator = Estimator(
+        image_uri="some-image",
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.p3.16xlarge", 2),
+        ],
+        sagemaker_session=sagemaker_session,
+        base_job_name="base_job_name",
+        debugger_hook_config=HOOK_CONFIG,
+    )
+    assert estimator.debugger_hook_config == HOOK_CONFIG
 
 
 def test_estimator_initialization_with_sagemaker_config_injection_no_kms_supported(
@@ -509,6 +579,9 @@ def test_estimator_initialization_with_sagemaker_config_injection_no_kms_support
     expected_disable_profiler_attribute = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
         "ProfilerConfig"
     ]["DisableProfiler"]
+    expected_debugger_hook_config = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["PythonSDK"][
+        "Modules"
+    ]["Estimator"]["DebugHookConfig"]
     assert estimator.role == expected_role_arn
     assert estimator.enable_network_isolation() == expected_enable_network_isolation
     assert (
@@ -520,6 +593,7 @@ def test_estimator_initialization_with_sagemaker_config_injection_no_kms_support
     assert estimator.security_group_ids == expected_security_groups
     assert estimator.subnets == expected_subnets
     assert estimator.disable_profiler == expected_disable_profiler_attribute
+    assert estimator.debugger_hook_config == expected_debugger_hook_config
 
 
 def test_estimator_initialization_with_sagemaker_config_injection_partial_kms_support(
@@ -560,6 +634,9 @@ def test_estimator_initialization_with_sagemaker_config_injection_partial_kms_su
     expected_disable_profiler_attribute = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
         "ProfilerConfig"
     ]["DisableProfiler"]
+    expected_debugger_hook_config = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["PythonSDK"][
+        "Modules"
+    ]["Estimator"]["DebugHookConfig"]
     assert estimator.role == expected_role_arn
     assert estimator.enable_network_isolation() == expected_enable_network_isolation
     assert (
@@ -571,6 +648,7 @@ def test_estimator_initialization_with_sagemaker_config_injection_partial_kms_su
     assert estimator.security_group_ids == expected_security_groups
     assert estimator.subnets == expected_subnets
     assert estimator.disable_profiler == expected_disable_profiler_attribute
+    assert estimator.debugger_hook_config == expected_debugger_hook_config
 
 
 def test_framework_with_heterogeneous_cluster(sagemaker_session):
@@ -2152,6 +2230,77 @@ def test_fit_verify_job_name(strftime, sagemaker_session):
     assert train_kwargs["job_name"] == JOB_NAME
     assert train_kwargs["encrypt_inter_container_traffic"] is True
     assert fw.latest_training_job.name == JOB_NAME
+
+
+@pytest.mark.parametrize(
+    "debugger_hook_config_direct_input, sagemaker_config, expected_debugger_hook_config_output",
+    [
+        (None, None, S3_OUTPUT_PATH_FROM_SESSION_S3_DEFAULT_CONFIG),
+        (True, None, S3_OUTPUT_PATH_FROM_SESSION_S3_DEFAULT_CONFIG),
+        (False, None, False),
+        (HOOK_CONFIG, None, HOOK_CONFIG.s3_output_path),
+        (HOOK_CONFIG_WITHOUT_S3_PATH, None, S3_OUTPUT_PATH_FROM_SESSION_S3_DEFAULT_CONFIG),
+        (None, SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_FALSE, False),
+        (
+            True,
+            SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_FALSE,
+            S3_OUTPUT_PATH_FROM_SESSION_S3_DEFAULT_CONFIG,
+        ),
+        (False, SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_FALSE, False),
+        (
+            HOOK_CONFIG,
+            SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_FALSE,
+            HOOK_CONFIG.s3_output_path,
+        ),
+        (
+            HOOK_CONFIG_WITHOUT_S3_PATH,
+            SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_FALSE,
+            S3_OUTPUT_PATH_FROM_SESSION_S3_DEFAULT_CONFIG,
+        ),
+        (
+            None,
+            SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_TRUE,
+            S3_OUTPUT_PATH_FROM_SESSION_S3_DEFAULT_CONFIG,
+        ),
+        (
+            True,
+            SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_TRUE,
+            S3_OUTPUT_PATH_FROM_SESSION_S3_DEFAULT_CONFIG,
+        ),
+        (False, SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_TRUE, False),
+        (
+            HOOK_CONFIG,
+            SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_TRUE,
+            HOOK_CONFIG.s3_output_path,
+        ),
+        (
+            HOOK_CONFIG_WITHOUT_S3_PATH,
+            SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_TRUE,
+            S3_OUTPUT_PATH_FROM_SESSION_S3_DEFAULT_CONFIG,
+        ),
+    ],
+)
+def test_prepare_for_training_for_debugger_hook_config_value_combinations(
+    sagemaker_session,
+    sagemaker_config,
+    debugger_hook_config_direct_input,
+    expected_debugger_hook_config_output,
+):
+    sagemaker_session.sagemaker_config = sagemaker_config
+    fw = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        debugger_hook_config=debugger_hook_config_direct_input,
+    )
+    fw._prepare_for_training()
+
+    if expected_debugger_hook_config_output is False:
+        assert fw.debugger_hook_config == expected_debugger_hook_config_output
+    else:
+        assert fw.debugger_hook_config.s3_output_path == expected_debugger_hook_config_output
 
 
 def test_prepare_for_training_unique_job_name_generation(sagemaker_session):

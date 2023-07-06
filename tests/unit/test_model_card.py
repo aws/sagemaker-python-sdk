@@ -17,6 +17,7 @@ import os
 import json
 import datetime
 import re
+import logging
 import pytest
 from mock import patch, Mock
 from botocore.exceptions import ClientError
@@ -39,8 +40,15 @@ from sagemaker.model_card import (
     ModelCard,
     Function,
     TrainingJobDetails,
+    ModelPackage,
 )
-from sagemaker.model_card.model_card import ModelCardExportJob
+from sagemaker.model_card.model_card import (
+    ModelCardExportJob,
+    ModelPackageCreator,
+    SourceAlgorithm,
+    Container,
+    InferenceSpecification,
+)
 from sagemaker.model_card.helpers import (
     _MaxSizeArray,
     _IsList,
@@ -48,6 +56,8 @@ from sagemaker.model_card.helpers import (
     _IsModelCardObject,
     _JSONEncoder,
     _hash_content_str,
+    _DefaultToRequestDict,
+    _SkipEncodingDecoding,
 )
 from sagemaker.model_card.evaluation_metric_parsers import (
     EvaluationMetricTypeEnum,
@@ -69,6 +79,30 @@ MODEL_OWNER = "null owner"
 MODEL_ARTIFACT = ["s3://1", "s3://2"]
 MODEL_IMAGE = "test model container image"
 INFERENCE_ENVRIONMENT = Environment(container_image=[MODEL_IMAGE])
+
+# model package details arguments
+MODEL_PACKAGE_ARN = "arn:aws:sagemaker:us-west-2:001234567890:model-package/testmodelgroup/1"
+MODEL_PACKAGE_DESCRIPTION = "this is test model package"
+MODEL_PACKAGE_STATUS = "Pending"
+MODEL_APPROVAL_STATUS = "PendingManualApproval"
+APPROVAL_DESCRIPTION = "approval_description"
+MODEL_PACKAGE_GROUP_NAME = "testmodelgroup"
+MODEL_PACKAGE_NAME = "model_package_name"
+MODEL_PACKAGE_VERSION = 1
+DOMAIN = "domain"
+TASK = "task"
+USER_PROFILE_NAME = "test-user"
+CREATED_BY = ModelPackageCreator(USER_PROFILE_NAME)
+ALGORITHM_NAME = "test-algorithm-arn"
+MODEL_DATA_URL = "s3://test"
+SOURCE_ALGORITHMS = [SourceAlgorithm(ALGORITHM_NAME, MODEL_DATA_URL)]
+NEAREST_MODEL_NAME = "test-model"
+CONTAINERS = [Container(MODEL_IMAGE, MODEL_DATA_URL, NEAREST_MODEL_NAME)]
+INFERENCE_SPECIFICATION = InferenceSpecification(CONTAINERS)
+CLARIFY_BIAS_JSON_PATH = os.path.join(DATA_DIR, "evaluation_metrics/clarify_bias.json")
+MODEL_METRICS = {
+    "Bias": {"Report": {"ContentType": "application/json", "S3Uri": CLARIFY_BIAS_JSON_PATH}}
+}
 
 # intended uses auguments
 PURPOSE_OF_MODEL = "mock model for testing"
@@ -124,7 +158,13 @@ ETHICAL_CONSIDERATIONS = "there is no ethical consideration for this model card"
 CAVEATS_AND_RECOMMENDATIONS = "attention: this is a pure test model card"
 CUSTOM_DETAILS = {"custom details1": "details value"}
 MODEL_CARD_NAME = "test_model_card"
+MODEL_CARD_NAME_FOR_CARRY_OVER_ADDITIONAL_CONTENT = (
+    "test_model_card_for_carry_over_additional_content"
+)
 MODEL_CARD_ARN = "test_model_card_arn"
+MODEL_CARD_ARN_FOR_CARRY_OVER_ADDITIONAL_CONTENT = (
+    "test_model_card_arn_for_carry_over_additional_content"
+)
 MODEL_CARD_VERSION = 1
 CREATE_MODEL_CARD_RETURN_EXAMPLE = {
     "ModelCardArn": MODEL_CARD_ARN,
@@ -145,6 +185,61 @@ LOAD_MODEL_CARD_EXMPLE = {
     "ModelCardName": MODEL_CARD_NAME,
     "ModelCardVersion": MODEL_CARD_VERSION,
     "Content": "{}",
+    "ModelCardStatus": MODEL_CARD_STATUS,
+    "CreationTime": datetime.datetime(2022, 9, 17, 17, 15, 45, 672000),
+    "CreatedBy": {},
+    "LastModifiedTime": datetime.datetime(2022, 9, 17, 17, 15, 45, 672000),
+    "LastModifiedBy": {},
+    "ResponseMetadata": {
+        "RequestId": "7f317f47-a1e5-45dc-975a-fa4d9df81365",
+        "HTTPStatusCode": 200,
+        "HTTPHeaders": {
+            "x-amzn-requestid": "7f317f47-a1e5-45dc-975a-fa4d9df81365",
+            "content-type": "application/x-amz-json-1.1",
+            "content-length": "2429",
+            "date": "Mon, 19 Sep 2022 21:09:05 GMT",
+        },
+        "RetryAttempts": 0,
+    },
+}
+
+# sample response of model card with model package information in it
+MODEL_CARD_WITH_MODEL_PACKAGE_MOCK_RESPONSE = {
+    "ModelCardArn": MODEL_CARD_ARN,
+    "ModelCardName": MODEL_CARD_NAME,
+    "ModelCardVersion": MODEL_CARD_VERSION,
+    "Content": json.dumps(
+        {
+            "model_overview": {"model_id": MODEL_PACKAGE_ARN},
+            "model_package_details": {
+                "model_package_arn": MODEL_PACKAGE_ARN,
+                "model_package_name": MODEL_PACKAGE_NAME,
+                "model_package_group_name": MODEL_PACKAGE_GROUP_NAME,
+                "model_package_version": MODEL_PACKAGE_VERSION,
+                "model_package_description": MODEL_PACKAGE_DESCRIPTION,
+                "inference_specification": {
+                    "containers": [
+                        {
+                            "image": MODEL_IMAGE,
+                            "model_data_url": MODEL_DATA_URL,
+                            "nearest_model_name": NEAREST_MODEL_NAME,
+                        }
+                    ]
+                },
+                "model_package_status": MODEL_PACKAGE_STATUS,
+                "model_approval_status": MODEL_APPROVAL_STATUS,
+                "approval_description": APPROVAL_DESCRIPTION,
+                "created_by": {
+                    "user_profile_name": USER_PROFILE_NAME,
+                },
+                "domain": DOMAIN,
+                "task": TASK,
+                "source_algorithms": [
+                    {"algorithm_name": ALGORITHM_NAME, "model_data_url": MODEL_DATA_URL}
+                ],
+            },
+        }
+    ),
     "ModelCardStatus": MODEL_CARD_STATUS,
     "CreationTime": datetime.datetime(2022, 9, 17, 17, 15, 45, 672000),
     "CreatedBy": {},
@@ -271,6 +366,47 @@ DESCRIBE_MODEL_EXAMPLE = {
     },
 }
 
+DESCRIBE_MODEL_PACKAGE_EXAMPLE = {
+    "ModelPackageArn": MODEL_PACKAGE_ARN,
+    "ModelPackageName": MODEL_PACKAGE_NAME,
+    "ModelPackageGroupName": MODEL_PACKAGE_GROUP_NAME,
+    "ModelPackageVersion": MODEL_PACKAGE_VERSION,
+    "ModelPackageDescription": MODEL_PACKAGE_DESCRIPTION,
+    "CreationTime": datetime.datetime(2022, 9, 20, 13, 4, 9, 134000),
+    "InferenceSpecification": {
+        "Containers": [
+            {
+                "Image": MODEL_IMAGE,
+                "ImageDigest": "sha256:4814427c3e0a6cf99e637704da3ada04219ac7cd5727ff62284153761d36d7d3",
+                "ModelDataUrl": MODEL_DATA_URL,
+                "NearestModelName": NEAREST_MODEL_NAME,
+            }
+        ],
+        "SupportedContentTypes": [],
+        "SupportedResponseMIMETypes": [],
+    },
+    "ModelPackageStatus": MODEL_PACKAGE_STATUS,
+    "ModelApprovalStatus": MODEL_APPROVAL_STATUS,
+    "CreatedBy": {
+        "UserProfileArn": "arn:aws:sagemaker:us-west-2:001234567890:user-profile/d-crvaptvnkhbq/test",
+        "UserProfileName": USER_PROFILE_NAME,
+        "DomainId": "d-crvaptvnkhbq",
+    },
+    "Domain": DOMAIN,
+    "Task": TASK,
+    "ResponseMetadata": {
+        "RequestId": "43ff67e3-2ae5-479e-bed0-9caccc9e62f0",
+        "HTTPStatusCode": 200,
+        "HTTPHeaders": {
+            "x-amzn-requestid": "43ff67e3-2ae5-479e-bed0-9caccc9e62f0",
+            "content-type": "application/x-amz-json-1.1",
+            "content-length": "590",
+            "date": "Tue, 20 Sep 2022 19:55:36 GMT",
+        },
+        "RetryAttempts": 0,
+    },
+}
+
 SEARCH_MODEL_CARD_WITH_MODEL_ID_EXAMPLE = {
     "Results": [
         {
@@ -281,7 +417,10 @@ SEARCH_MODEL_CARD_WITH_MODEL_ID_EXAMPLE = {
                 "Content": json.dumps(
                     {
                         "intended_uses": {"risk_rating": RISK_RATING},
-                        "model_overview": {"model_id": MODEL_ID, "model_name": MODEL_NAME},
+                        "model_overview": {
+                            "model_id": MODEL_ID,
+                            "model_name": MODEL_NAME,
+                        },
                     }
                 ),
                 "ModelCardStatus": SIMPLE_MODEL_CARD_STATUS,
@@ -325,10 +464,35 @@ SEARCH_MODEL_CARD_WITH_MODEL_ID_EMPTY_EXAMPLE = {
 
 MISSING_MODEL_CLIENT_ERROR = ClientError(
     error_response={
-        "Error": {"Code": "BadRequest", "Message": f"Could not find model {MODEL_NAME}"},
+        "Error": {
+            "Code": "BadRequest",
+            "Message": f"Could not find model {MODEL_NAME}",
+        },
         "ResponseMetadata": {"MaxAttemptsReached": True, "RetryAttempts": 4},
     },
     operation_name="DescribeModel",
+)
+
+SEARCH_IAM_PERMISSION_CLIENT_ERROR = ClientError(
+    error_response={
+        "Error": {
+            "Code": "AccessDeniedException",
+            "Message": "An error occurred (AccessDenied) when calling the Search operation",
+        },
+        "ResponseMetadata": {"MaxAttemptsReached": True, "RetryAttempts": 4},
+    },
+    operation_name="Search",
+)
+
+MISSING_MODEL_PACKAGE_CLIENT_ERROR = ClientError(
+    error_response={
+        "Error": {
+            "Code": "BadRequest",
+            "Message": f"Could not find model package {MODEL_PACKAGE_ARN}",
+        },
+        "ResponseMetadata": {"MaxAttemptsReached": True, "RetryAttempts": 4},
+    },
+    operation_name="DescribeModelPackage",
 )
 
 TRAINING_JOB_NAME = MODEL_NAME
@@ -378,7 +542,7 @@ SEARCH_TRAINING_JOB_EXAMPLE = {
                     "subsample": "0.8828549481113146",
                 },
                 "CreatedBy": {},
-            }
+            },
         }
     ],
     "ResponseMetadata": {
@@ -577,6 +741,151 @@ LIST_MODEL_CARD_VERSION_HISTORY_EXAMPLE = {
         "RetryAttempts": 0,
     },
 }
+RESPONSE_CONTENT_EXAMPLE = {
+    "intended_uses": {"purpose_of_model": PURPOSE_OF_MODEL},
+    "business_details": {
+        "business_problem": BUSINESS_PROBLEM,
+        "business_stakeholders": BUSINESS_STAKEHOLDERS,
+        "line_of_business": LINE_OF_BUSINESS,
+    },
+    "additional_information": {
+        "ethical_considerations": ETHICAL_CONSIDERATIONS,
+        "caveats_and_recommendations": CAVEATS_AND_RECOMMENDATIONS,
+        "custom_details": CUSTOM_DETAILS,
+    },
+}
+ORIGINAL_MOCK_STRING = "Original mock string."
+SEARCH_LATEST_MODEL_CARD_EXAMPLE = {
+    "Results": [
+        {
+            "ModelCard": {
+                "ModelCardArn": MODEL_CARD_ARN_FOR_CARRY_OVER_ADDITIONAL_CONTENT,
+                "ModelCardName": MODEL_CARD_NAME_FOR_CARRY_OVER_ADDITIONAL_CONTENT,
+                "ModelCardVersion": MODEL_CARD_VERSION,
+                "Content": {
+                    "model_overview": {"model_id": MODEL_PACKAGE_ARN},
+                    "intended_uses": {
+                        "purpose_of_model": PURPOSE_OF_MODEL,
+                        "risk_rating": RISK_RATING,
+                        "factors_affecting_model_efficiency": FACTORS_AFFECTING_MODEL_EFFICIENCY,
+                    },
+                    "business_details": {
+                        "business_problem": BUSINESS_PROBLEM,
+                        "business_stakeholders": BUSINESS_STAKEHOLDERS,
+                        "line_of_business": LINE_OF_BUSINESS,
+                    },
+                    "additional_information": {
+                        "ethical_considerations": ETHICAL_CONSIDERATIONS,
+                        "caveats_and_recommendations": CAVEATS_AND_RECOMMENDATIONS,
+                        "custom_details": CUSTOM_DETAILS,
+                    },
+                },
+                "ModelCardStatus": MODEL_CARD_STATUS,
+                "CreationTime": datetime.datetime(2023, 4, 4, 15, 30, 3),
+                "CreatedBy": {},
+                "LastModifiedTime": datetime.datetime(2023, 4, 4, 15, 30, 3),
+                "LastModifiedBy": {},
+                "Tags": [],
+                "ModelId": MODEL_PACKAGE_ARN,
+            }
+        },
+    ],
+    "ResponseMetadata": {
+        "RequestId": "678b50e9-23a5-4ed4-a530-e0635e0fcffd",
+        "HTTPStatusCode": 200,
+        "HTTPHeaders": {
+            "x-amzn-requestid": "678b50e9-23a5-4ed4-a530-e0635e0fcffd",
+            "content-type": "application/x-amz-json-1.1",
+            "content-length": "1523",
+            "date": "Wed, 19 Apr 2023 03:32:28 GMT",
+        },
+        "RetryAttempts": 0,
+    },
+}
+SEARCH_LATEST_MODEL_CARD_WITH_EMPTY_RESULT_EXAMPLE = {
+    "Results": [],
+    "ResponseMetadata": {
+        "RequestId": "678b50e9-23a5-4ed4-a530-e0635e0fcffd",
+        "HTTPStatusCode": 200,
+        "HTTPHeaders": {
+            "x-amzn-requestid": "678b50e9-23a5-4ed4-a530-e0635e0fcffd",
+            "content-type": "application/x-amz-json-1.1",
+            "content-length": "1523",
+            "date": "Wed, 19 Apr 2023 03:32:28 GMT",
+        },
+        "RetryAttempts": 0,
+    },
+}
+CONTENT_FROM_DESCRIBE_MODEL_CARD = {
+    "model_overview": {
+        "model_id": MODEL_ID,
+        "model_name": MODEL_NAME,
+    },
+    "intended_uses": {
+        "purpose_of_model": PURPOSE_OF_MODEL,
+        "intended_uses": INTENDED_USES,
+        "factors_affecting_model_efficiency": FACTORS_AFFECTING_MODEL_EFFICIENCY,
+        "risk_rating": RISK_RATING,
+        "explanations_for_risk_rating": EXPLANATIONS_FOR_RISK_RATING,
+    },
+    "business_details": {
+        "business_problem": BUSINESS_PROBLEM,
+        "business_stakeholders": BUSINESS_STAKEHOLDERS,
+        "line_of_business": LINE_OF_BUSINESS,
+    },
+    "additional_information": {
+        "ethical_considerations": ETHICAL_CONSIDERATIONS,
+        "caveats_and_recommendations": CAVEATS_AND_RECOMMENDATIONS,
+        "custom_details": CUSTOM_DETAILS,
+    },
+    "model_package_details": {
+        "model_package_arn": MODEL_PACKAGE_ARN,
+        "model_package_name": MODEL_PACKAGE_NAME,
+        "model_package_group_name": MODEL_PACKAGE_GROUP_NAME,
+        "model_package_version": MODEL_PACKAGE_VERSION,
+        "model_package_description": MODEL_PACKAGE_DESCRIPTION,
+        "inference_specification": {
+            "containers": [
+                {
+                    "image": MODEL_IMAGE,
+                    "model_data_url": MODEL_DATA_URL,
+                    "nearest_model_name": NEAREST_MODEL_NAME,
+                }
+            ]
+        },
+        "model_package_status": MODEL_PACKAGE_STATUS,
+        "model_approval_status": MODEL_APPROVAL_STATUS,
+        "approval_description": APPROVAL_DESCRIPTION,
+        "created_by": {
+            "user_profile_name": USER_PROFILE_NAME,
+        },
+        "domain": DOMAIN,
+        "task": TASK,
+        "source_algorithms": [{"algorithm_name": ALGORITHM_NAME, "model_data_url": MODEL_DATA_URL}],
+    },
+}
+DESCRIBE_MODEL_CARD_WITH_ADDITONAL_CONTENT = {
+    "ModelCardArn": MODEL_CARD_ARN_FOR_CARRY_OVER_ADDITIONAL_CONTENT,
+    "ModelCardName": MODEL_CARD_NAME_FOR_CARRY_OVER_ADDITIONAL_CONTENT,
+    "ModelCardVersion": MODEL_CARD_VERSION,
+    "Content": json.dumps(CONTENT_FROM_DESCRIBE_MODEL_CARD),
+    "ModelCardStatus": MODEL_CARD_STATUS,
+    "CreationTime": datetime.datetime(2022, 9, 17, 17, 15, 45, 672000),
+    "CreatedBy": {},
+    "LastModifiedTime": datetime.datetime(2022, 9, 17, 17, 15, 45, 672000),
+    "LastModifiedBy": {},
+    "ResponseMetadata": {
+        "RequestId": "7f317f47-a1e5-45dc-975a-fa4d9df81365",
+        "HTTPStatusCode": 200,
+        "HTTPHeaders": {
+            "x-amzn-requestid": "7f317f47-a1e5-45dc-975a-fa4d9df81365",
+            "content-type": "application/x-amz-json-1.1",
+            "content-length": "2429",
+            "date": "Mon, 19 Sep 2022 21:09:05 GMT",
+        },
+        "RetryAttempts": 0,
+    },
+}
 
 
 @pytest.fixture(name="model_overview_example")
@@ -593,6 +902,27 @@ def fixture_model_overview_example():
         model_owner=MODEL_OWNER,
         model_artifact=MODEL_ARTIFACT,
         inference_environment=INFERENCE_ENVRIONMENT,
+    )
+    return test_example
+
+
+@pytest.fixture(name="model_package_example")
+def fixture_model_package_example():
+    """Example ModelPackage instance"""
+    test_example = ModelPackage(
+        model_package_arn=MODEL_PACKAGE_ARN,
+        model_package_description=MODEL_PACKAGE_DESCRIPTION,
+        model_package_group_name=MODEL_PACKAGE_GROUP_NAME,
+        model_package_name=MODEL_PACKAGE_NAME,
+        model_approval_status=MODEL_APPROVAL_STATUS,
+        model_package_status=MODEL_PACKAGE_STATUS,
+        model_package_version=MODEL_PACKAGE_VERSION,
+        approval_description=APPROVAL_DESCRIPTION,
+        domain=DOMAIN,
+        task=TASK,
+        created_by=CREATED_BY,
+        source_algorithms=SOURCE_ALGORITHMS,
+        inference_specification=INFERENCE_SPECIFICATION,
     )
     return test_example
 
@@ -702,6 +1032,72 @@ def test_create_model_card(
 
 
 @patch("sagemaker.Session")
+def test_create_model_card_with_model_package(
+    session, model_package_example, training_details_example, caplog
+):
+    session.sagemaker_client.create_model_card = Mock(return_value=CREATE_MODEL_CARD_RETURN_EXAMPLE)
+    session.sagemaker_client.describe_model_card = Mock(
+        return_value=MODEL_CARD_WITH_MODEL_PACKAGE_MOCK_RESPONSE
+    )
+
+    session.sagemaker_client.search.side_effect = [
+        SEARCH_TRAINING_JOB_EXAMPLE,
+        SEARCH_LATEST_MODEL_CARD_WITH_EMPTY_RESULT_EXAMPLE,
+        SEARCH_LATEST_MODEL_CARD_WITH_EMPTY_RESULT_EXAMPLE,
+    ]
+
+    card = ModelCard(
+        name=MODEL_CARD_NAME,
+        status=MODEL_CARD_STATUS,
+        model_package_details=model_package_example,
+        sagemaker_session=session,
+    )
+
+    card.create()
+
+    assert card.arn == MODEL_CARD_ARN
+    assert card.status == MODEL_CARD_STATUS
+    assert card.model_package_details.model_package_arn == MODEL_PACKAGE_ARN
+    assert card.model_package_details.model_approval_status == MODEL_APPROVAL_STATUS
+    assert card.model_package_details.created_by.user_profile_name == USER_PROFILE_NAME
+
+    # testing with existing training details
+    with caplog.at_level(logging.INFO):
+        ModelCard(
+            name=MODEL_CARD_NAME,
+            status=MODEL_CARD_STATUS,
+            training_details=training_details_example,
+            model_package_details=model_package_example,
+            sagemaker_session=session,
+        )
+        assert (
+            "Skipping training details auto discovery. "
+            "Training details already exists for this model card."
+        ) in caplog.text
+
+
+@patch("sagemaker.Session")
+def test_create_model_card_with_multiple_models(
+    session, model_package_example, model_overview_example
+):
+
+    card = ModelCard(
+        name=MODEL_CARD_NAME,
+        status=MODEL_CARD_STATUS,
+        model_overview=model_overview_example,
+        sagemaker_session=session,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            f"The model card has already been associated with a model with model Id {MODEL_ID}"  # noqa E501  # pylint: disable=c0301
+        ),
+    ):
+        card.model_package_details = model_package_example
+
+
+@patch("sagemaker.Session")
 def test_create_model_card_duplicate(session):
     session.sagemaker_client.create_model_card.side_effect = [
         CREATE_MODEL_CARD_RETURN_EXAMPLE,
@@ -739,7 +1135,9 @@ def test_create_multiple_model_cards_with_same_model(session, model_overview_exa
 
     with pytest.raises(ClientError):
         card2 = ModelCard(
-            name="test2", model_overview=model_overview_example, sagemaker_session=session
+            name="test2",
+            model_overview=model_overview_example,
+            sagemaker_session=session,
         )
         card2.create()
 
@@ -765,9 +1163,45 @@ def test_create_model_card_with_too_long_string(session, model_overview_example)
     with pytest.raises(ClientError):
         model_overview_example.name = "x" * 1025
         card = ModelCard(
-            name=MODEL_CARD_NAME, model_overview=model_overview_example, sagemaker_session=session
+            name=MODEL_CARD_NAME,
+            model_overview=model_overview_example,
+            sagemaker_session=session,
         )
         card.create()
+
+
+@patch("sagemaker.Session")
+def test_carry_over_additional_content_from_model_package_group(session, model_package_example):
+    session.sagemaker_client.describe_model_card = Mock(
+        return_value=DESCRIBE_MODEL_CARD_WITH_ADDITONAL_CONTENT
+    )
+
+    session.sagemaker_client.search.side_effect = [
+        SEARCH_TRAINING_JOB_EXAMPLE,
+        SEARCH_LATEST_MODEL_CARD_EXAMPLE,
+    ]
+
+    mc = ModelCard(
+        name=MODEL_CARD_NAME,
+        status=MODEL_CARD_STATUS,
+        sagemaker_session=session,
+        model_package_details=model_package_example,
+        business_details={
+            "business_problem": ORIGINAL_MOCK_STRING,
+            "business_stakeholders": ORIGINAL_MOCK_STRING,
+        },
+    )
+
+    assert mc.intended_uses.purpose_of_model == PURPOSE_OF_MODEL
+    assert mc.intended_uses.risk_rating == RISK_RATING
+    assert mc.intended_uses.factors_affecting_model_efficiency == FACTORS_AFFECTING_MODEL_EFFICIENCY
+
+    assert mc.business_details.business_problem == ORIGINAL_MOCK_STRING
+    assert mc.business_details.business_stakeholders == ORIGINAL_MOCK_STRING
+
+    assert mc.additional_information.ethical_considerations == ETHICAL_CONSIDERATIONS
+    assert mc.additional_information.caveats_and_recommendations == CAVEATS_AND_RECOMMENDATIONS
+    assert mc.additional_information.custom_details == CUSTOM_DETAILS
 
 
 def test_metric_type_value_mismatch():
@@ -778,7 +1212,9 @@ def test_metric_type_value_mismatch():
         ),
     ):
         Metric(
-            name="test_training_metric", type=schema_constraints.MetricTypeEnum.NUMBER, value="123"
+            name="test_training_metric",
+            type=schema_constraints.MetricTypeEnum.NUMBER,
+            value="123",
         )
 
 
@@ -890,6 +1326,22 @@ def test_one_of_descriptor():
         ExampleClass(attr1=schema_constraints.MetricTypeEnum.BAR_CHART)
 
 
+def test_skip_encoding_descriptor():
+    class ExampleClass:
+        attr1 = _SkipEncodingDecoding(dict)
+
+        def __init__(self, attr1):
+            self.attr1 = attr1
+
+    assert ExampleClass({"test": 1})
+
+    with pytest.raises(
+        ValueError,
+        match=re.escape("Please assign a <class 'dict'> to attr1"),
+    ):
+        ExampleClass(attr1="test1")
+
+
 def test_is_model_card_object_descriptor():
     class ExampleClass:  # pylint: disable=C0115
         attr1 = _IsModelCardObject(ModelOverview)
@@ -987,6 +1439,25 @@ def test_model_card_encoder():
     )
 
 
+def test_model_card_encoder_with_skip_encoding():
+    class ExampleClass(_DefaultToRequestDict):
+        """Example class"""
+
+        attr1 = _OneOf(schema_constraints.MetricTypeEnum)
+        attr2 = _SkipEncodingDecoding(dict)
+
+        def __init__(self, attr1: schema_constraints.MetricTypeEnum, attr2: dict):
+            """Initialize an example class"""
+            self.attr1 = attr1
+            self.attr2 = attr2
+
+    my_object = ExampleClass(
+        attr1=schema_constraints.MetricTypeEnum.LINEAR_GRAPH, attr2={"test": 1}
+    )
+
+    assert json.dumps(my_object, cls=_JSONEncoder, sort_keys=True) == '{"attr1": "linear_graph"}'
+
+
 def test_hash_content_str():
     content1 = json.dumps({"key": "value"})
     content2 = json.dumps({"key": "value2"})
@@ -1031,19 +1502,75 @@ def test_model_details_autodiscovery(session):
 
 
 @patch("sagemaker.Session")
+def test_model_package_autodiscovery(session, model_overview_example, training_details_example):
+    session.sagemaker_client.describe_model_package.side_effect = [
+        DESCRIBE_MODEL_PACKAGE_EXAMPLE,
+        DESCRIBE_MODEL_PACKAGE_EXAMPLE,
+        MISSING_MODEL_PACKAGE_CLIENT_ERROR,
+        DESCRIBE_MODEL_PACKAGE_EXAMPLE,
+        DESCRIBE_MODEL_PACKAGE_EXAMPLE,
+    ]
+
+    session.sagemaker_client.search.side_effect = [
+        SEARCH_MODEL_CARD_WITH_MODEL_ID_EMPTY_EXAMPLE,
+        SEARCH_MODEL_CARD_WITH_MODEL_ID_EXAMPLE,
+        SEARCH_IAM_PERMISSION_CLIENT_ERROR,
+        SEARCH_MODEL_CARD_WITH_MODEL_ID_EMPTY_EXAMPLE,
+    ]
+
+    model_package_details = ModelPackage.from_model_package_arn(
+        MODEL_PACKAGE_ARN, sagemaker_session=session
+    )
+    assert model_package_details.model_package_arn == MODEL_PACKAGE_ARN
+    assert model_package_details.model_package_group_name == MODEL_PACKAGE_GROUP_NAME
+    assert (
+        model_package_details.inference_specification.containers[0].model_data_url == MODEL_DATA_URL
+    )
+    assert model_package_details.created_by.user_profile_name == USER_PROFILE_NAME
+
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            f"The model package has already been associated with {[MODEL_CARD_NAME]} model cards."
+        ),
+    ):
+        ModelPackage.from_model_package_arn(MODEL_PACKAGE_ARN, sagemaker_session=session)
+
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            f"Model package details for {MODEL_PACKAGE_ARN} could not be found. Make sure the model package name or ARN is valid."  # noqa E501  # pylint: disable=c0301
+        ),
+    ):
+        ModelPackage.from_model_package_arn(MODEL_PACKAGE_ARN, sagemaker_session=session)
+
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            "Received AccessDeniedException while calling SageMaker Search operation "
+            "on resource ModelCard. This could mean the IAM role does not "
+            "have the resource permissions, in which case please add resource access "
+            "and retry. For cases where the role has tag based resource policy, "
+            "continuing to wait for tag propagation.."
+        ),
+    ):
+        ModelPackage.from_model_package_arn(MODEL_PACKAGE_ARN, sagemaker_session=session)
+
+
+@patch("sagemaker.Session")
 def test_training_details_autodiscovery_from_model_overview(
     session, model_overview_example, caplog
 ):
     session.sagemaker_client.search.side_effect = [
         SEARCH_TRAINING_JOB_EXAMPLE,
-        MISSING_TRAINING_JOB_CLIENT_ERROR,
+        SEARCH_IAM_PERMISSION_CLIENT_ERROR,
     ]
 
     TrainingDetails.from_model_overview(
         model_overview=model_overview_example, sagemaker_session=session
     )
     assert (
-        "TraininigJobDetails auto-discovery failed. "
+        "TrainingJobDetails auto-discovery failed. "
         "There are 2 associated training jobs. "
         "Further clarification is required. "
         "You could use TrainingDetails.training_job_name after "
@@ -1065,16 +1592,104 @@ def test_training_details_autodiscovery_from_model_overview(
         TRAINING_IMAGE
     ]
 
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            "Received AccessDeniedException while calling SageMaker Search operation "
+            "on resource TrainingJob. This could mean the IAM role does not "
+            "have the resource permissions, in which case please add resource access "
+            "and retry. For cases where the role has tag based resource policy, "
+            "continuing to wait for tag propagation.."
+        ),
+    ):
+        TrainingDetails.from_model_overview(
+            model_overview=model_overview_example, sagemaker_session=session
+        )
+
     model_overview_example.model_artifact = []
     TrainingDetails.from_model_overview(
         model_overview=model_overview_example, sagemaker_session=session
     )
     assert (
-        "TraininigJobDetails auto-discovery failed. "
+        "TrainingJobDetails auto-discovery failed. "
         "No associated training job. "
-        "Please create one from scrach with TrainingJobDetails "
+        "Please create one from scratch with TrainingJobDetails "
         "or use from_training_job_name() instead."
     ) in caplog.text
+
+
+@patch("sagemaker.Session")
+def test_training_details_autodiscovery_from_model_package_details(
+    session, model_package_example, caplog
+):
+    session.sagemaker_client.search.side_effect = [
+        SEARCH_TRAINING_JOB_EXAMPLE,
+    ]
+
+    training_details = model_package_example.discover_training_details(sagemaker_session=session)
+    assert training_details.training_job_details.training_arn == TRAINING_JOB_ARN
+    assert len(training_details.training_job_details.training_metrics) == len(
+        SEARCH_TRAINING_JOB_EXAMPLE["Results"][0]["TrainingJob"]["FinalMetricDataList"]
+    )
+    assert len(training_details.training_job_details.hyper_parameters) == len(
+        SEARCH_TRAINING_JOB_EXAMPLE["Results"][0]["TrainingJob"]["HyperParameters"]
+    )
+    assert training_details.training_job_details.training_environment.container_image == [
+        TRAINING_IMAGE
+    ]
+
+    model_package_example.inference_specification.containers = []
+    model_package_example.discover_training_details(sagemaker_session=session)
+    assert (
+        "TrainingJobDetails auto-discovery failed. "
+        "No associated training job. "
+        "Please create one from scratch with TrainingJobDetails "
+        "or use from_training_job_name() instead."
+    ) in caplog.text
+
+    model_package_example.inference_specification = None
+    with caplog.at_level(logging.INFO):
+        model_package_example.discover_training_details(sagemaker_session=session)
+        assert (
+            "TrainingJobDetails auto-discovery was unsuccessful. "
+            "No inference specification found for the given model package."
+            "Please create one from scratch with TrainingJobDetails "
+            "or use from_training_job_name() instead."
+        ) in caplog.text
+
+
+@patch("sagemaker.Session")
+def test_evaluation_details_autodiscovery_from_model_package_details(
+    session, model_package_example, caplog
+):
+    with open(CLARIFY_BIAS_JSON_PATH, "r", encoding="utf-8") as istr:
+        data = json.dumps(json.load(istr))
+        response = {
+            "Body": botocore.response.StreamingBody(
+                io.BytesIO(bytes(data, "utf-8")), content_length=len(data)
+            ),
+            "ContentType": "application/json",
+        }
+    session.boto_session.client.return_value.get_object.side_effect = [
+        response,
+    ]
+
+    with caplog.at_level(logging.INFO):
+        evaluation_details = model_package_example.discover_evaluation_details(
+            sagemaker_session=session
+        )
+        assert (
+            "Evaluation details auto-discovery was unsuccessful. "
+            "ModelMetrics was not found in the given model package. "
+            "Please create one from scratch with EvaluationJob."
+        ) in caplog.text
+
+    model_package_example.model_metrics = MODEL_METRICS
+    evaluation_details = model_package_example.discover_evaluation_details(
+        sagemaker_session=session
+    )
+
+    assert len(evaluation_details[0].metric_groups) == 3
 
 
 @patch("sagemaker.Session")
@@ -1226,7 +1841,9 @@ def test_add_evauation_metrics_from_s3(session, caplog):
 
 def test_metrics_clarify_bias():
     with open(
-        os.path.join(DATA_DIR, "evaluation_metrics/clarify_bias.json"), "r", encoding="utf-8"
+        os.path.join(DATA_DIR, "evaluation_metrics/clarify_bias.json"),
+        "r",
+        encoding="utf-8",
     ) as istr:
         json_data = json.load(istr)
 
@@ -1264,10 +1881,11 @@ def test_metrics_clarify_explanation():
     assert json.dumps(result, sort_keys=True) == json.dumps(expected_translation, sort_keys=True)
 
 
-def test_metrics_model_monitor_model_quality():
+def test_metrics_model_monitor_model_quality_binary_classification():
     with open(
         os.path.join(
-            DATA_DIR, "evaluation_metrics/model_monitor_model_quality_binary_classification.json"
+            DATA_DIR,
+            "evaluation_metrics/model_monitor_model_quality_binary_classification.json",
         ),
         "r",
         encoding="utf-8",
@@ -1284,7 +1902,34 @@ def test_metrics_model_monitor_model_quality():
     ) as istr:
         expected_translation = json.load(istr)
 
-    parser = EVALUATION_METRIC_PARSERS[EvaluationMetricTypeEnum.BINARY_CLASSIFICATION]
+    parser = EVALUATION_METRIC_PARSERS[EvaluationMetricTypeEnum.MODEL_MONITOR_MODEL_QUALITY]
+    result = parser.run(json_data)
+
+    assert json.dumps(result, sort_keys=True) == json.dumps(expected_translation, sort_keys=True)
+
+
+def test_metrics_model_monitor_model_quality_regression():
+    with open(
+        os.path.join(
+            DATA_DIR,
+            "evaluation_metrics/model_monitor_model_quality_regression.json",
+        ),
+        "r",
+        encoding="utf-8",
+    ) as istr:
+        json_data = json.load(istr)
+
+    with open(
+        os.path.join(
+            DATA_DIR,
+            "evaluation_metrics/translated_model_monitor_model_quality_regression.json",
+        ),
+        "r",
+        encoding="utf-8",
+    ) as istr:
+        expected_translation = json.load(istr)
+
+    parser = EVALUATION_METRIC_PARSERS[EvaluationMetricTypeEnum.MODEL_MONITOR_MODEL_QUALITY]
     result = parser.run(json_data)
 
     assert json.dumps(result, sort_keys=True) == json.dumps(expected_translation, sort_keys=True)

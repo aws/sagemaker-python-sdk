@@ -35,6 +35,7 @@ from sagemaker.workflow.clarify_check_step import (
 from sagemaker.model_monitor.model_monitoring import _MODEL_MONITOR_S3_PATH
 from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.pipeline import Pipeline
+from sagemaker.workflow.pipeline import PipelineDefinitionConfig
 from sagemaker.workflow.steps import CacheConfig
 from sagemaker.workflow.check_job_config import CheckJobConfig
 
@@ -44,12 +45,14 @@ _DEFAULT_BUCKET = "my-bucket"
 _S3_INPUT_PATH = "s3://my_bucket/input"
 _S3_OUTPUT_PATH = "s3://my_bucket/output"
 _S3_ANALYSIS_CONFIG_OUTPUT_PATH = "s3://my_bucket/analysis_cfg_output"
+_CHECK_JOB_PREFIX = "CheckJobPrefix"
 
 
 _expected_data_bias_dsl = {
     "Name": "DataBiasCheckStep",
     "Type": "ClarifyCheck",
     "Arguments": {
+        "ProcessingJobName": _CHECK_JOB_PREFIX,
         "ProcessingResources": {
             "ClusterConfig": {
                 "InstanceType": "ml.m5.xlarge",
@@ -255,6 +258,7 @@ def check_job_config(sagemaker_session):
         instance_count=1,
         sagemaker_session=sagemaker_session,
         output_kms_key="output_kms_key",
+        base_job_name=_CHECK_JOB_PREFIX,
     )
 
 
@@ -330,14 +334,18 @@ def test_data_bias_check_step(
         supplied_baseline_constraints="supplied_baseline_constraints",
         cache_config=CacheConfig(enable_caching=True, expire_after="PT1H"),
     )
+
+    definition_config = PipelineDefinitionConfig(use_custom_job_prefix=True)
     pipeline = Pipeline(
         name="MyPipeline",
         parameters=[model_package_group_name],
         steps=[data_bias_check_step],
         sagemaker_session=sagemaker_session,
+        pipeline_definition_config=definition_config,
     )
 
-    assert json.loads(pipeline.definition())["Steps"][0] == _expected_data_bias_dsl
+    step_def = json.loads(pipeline.definition())["Steps"][0]
+    assert step_def == _expected_data_bias_dsl
     assert re.match(
         f"{_S3_ANALYSIS_CONFIG_OUTPUT_PATH}/{_BIAS_MONITORING_CFG_BASE_NAME}-configuration"
         + f"/{_BIAS_MONITORING_CFG_BASE_NAME}-config.*/.*/analysis_config.json",
