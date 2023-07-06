@@ -68,10 +68,18 @@ class JumpStartCuratedPublicHub:
 
     def _get_or_create_s3_bucket(self, bucket_name: str):
         try:
-            self._s3_client.head_bucket(bucket=bucket_name)
-        except ClientError:
-            # The bucket does not exist or you have no access.
-            self._s3_client.create_bucket(bucket=bucket_name)
+            self._call_head_bucket(bucket_name)
+        except ClientError as ex:
+            if ex.response['Error']['Code'] == 'NoSuchKey':
+                self._call_create_bucket(bucket_name)
+            else:
+                raise ex
+
+    def _call_head_bucket(self, bucket_name: str):
+        self._s3_client.head_bucket(Bucket=bucket_name)
+
+    def _call_create_bucket(self, bucket_name: str):
+        self._s3_client.create_bucket(Bucket=bucket_name)
 
     def import_models(self, model_ids: List[PublicModelId]):
         for model_id in model_ids:
