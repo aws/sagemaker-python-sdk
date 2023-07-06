@@ -62,7 +62,6 @@ class JumpStartCuratedPublicHub:
         self._get_or_create_s3_bucket(self.curated_hub_name)
         self._get_or_create_curated_hub()
 
-
     def _get_or_create_curated_hub(self):
         try:
             return self._create_curated_hub()
@@ -156,7 +155,6 @@ class JumpStartCuratedPublicHub:
             artifact_copy_source, dst_bucket, self._dst_inference_artifact_key(model_specs=model_specs)
         )
         self._s3_client.copy(script_copy_source, dst_bucket, self._dst_inference_script_key(model_specs=model_specs))
-
 
     def _make_hub_content_document(self, model_specs: JumpStartModelSpecs) -> str:
         """Converts the provided JumpStartModelSpecs into a Hub Content Document."""
