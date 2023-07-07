@@ -52,7 +52,7 @@ required_packages = [
     "cloudpickle==2.2.1",
     "google-pasta",
     "numpy>=1.9.0,<2.0",
-    "protobuf>=3.1,<5.0",
+    "protobuf>=4,<5.0",
     "smdebug_rulesconfig==1.0.1",
     "importlib-metadata>=1.4.0,<7.0",
     "packaging>=20.0",
