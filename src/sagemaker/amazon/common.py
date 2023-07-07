@@ -20,7 +20,7 @@ import sys
 
 import numpy as np
 
-from sagemaker.amazon.record_pb2 import Record # pylint: disable=E0611
+from sagemaker.amazon.record_pb2 import Record  # pylint: disable=E0611
 from sagemaker.deprecations import deprecated_class
 from sagemaker.deserializers import SimpleBaseDeserializer
 from sagemaker.serializers import SimpleBaseSerializer
