@@ -520,11 +520,9 @@ class EstimatorTest(unittest.TestCase):
 
         """If you add arguments to <Estimator constructor>, this test will fail.
         Please add the new argument to the skip set below,
-        and cut a ticket sev-3 to JumpStart team: AWS > SageMaker > JumpStart"""
+        and reach out to JumpStart team."""
 
-        init_args_to_skip: Set[str] = set(
-            ["container_entry_point", "container_arguments", "disable_output_compression", "kwargs"]
-        )
+        init_args_to_skip: Set[str] = set(["kwargs"])
         fit_args_to_skip: Set[str] = set()
         deploy_args_to_skip: Set[str] = set(["kwargs"])
 
