@@ -67,23 +67,23 @@ class JumpStartCuratedPublicHub:
             return self._create_curated_hub()
         except ClientError as ex:
             if ex.response['Error']['Code'] != 'ResourceInUse':
-              raise ex
+                raise ex
 
     def _get_curated_hub(self):
         self._sm_client.describe_hub(HubName=self.curated_hub_name)
 
     def _create_curated_hub(self):
-      hub_bucket_s3_uri = f"s3://{self.curated_hub_name}"
-      response = self._sm_client.create_hub(
-          HubName=self.curated_hub_name,
-          HubDescription="This is a curated hub.",  # TODO verify description
-          HubDisplayName=self.curated_hub_name,
-          HubSearchKeywords=[],
-          S3StorageConfig={
-              "S3OutputPath": hub_bucket_s3_uri,
-          },
-          Tags=[],
-      )
+        hub_bucket_s3_uri = f"s3://{self.curated_hub_name}"
+        response = self._sm_client.create_hub(
+            HubName=self.curated_hub_name,
+            HubDescription="This is a curated hub.",  # TODO verify description
+            HubDisplayName=self.curated_hub_name,
+            HubSearchKeywords=[],
+            S3StorageConfig={
+                "S3OutputPath": hub_bucket_s3_uri,
+            },
+            Tags=[],
+        )
 
     def _get_or_create_s3_bucket(self, bucket_name: str):
         try:
@@ -94,7 +94,7 @@ class JumpStartCuratedPublicHub:
 
     def _call_create_bucket(self, bucket_name: str):
         self._s3_client.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={
-            'LocationConstraint':self._region
+            'LocationConstraint': self._region
         })
 
     def import_models(self, model_ids: List[PublicModelId]):
@@ -127,20 +127,20 @@ class JumpStartCuratedPublicHub:
         hub_content_document = self._make_hub_content_document(model_specs=model_specs)
 
         self._sm_client.import_hub_content(
-          HubName=self.curated_hub_name,
-          HubContentName=hub_content_name,
-          HubContentType="Model",
-          DocumentSchemaVersion="1.0.0",
-          HubContentDisplayName=hub_content_display_name,
-          HubContentDescription=hub_content_description,
-          HubContentMarkdown=hub_content_markdown,
-          HubContentDocument=hub_content_document,
-          HubContentSearchKeywords=[],
-          Tags=[],
-      )
+            HubName=self.curated_hub_name,
+            HubContentName=hub_content_name,
+            HubContentType="Model",
+            DocumentSchemaVersion="1.0.0",
+            HubContentDisplayName=hub_content_display_name,
+            HubContentDescription=hub_content_description,
+            HubContentMarkdown=hub_content_markdown,
+            HubContentDocument=hub_content_document,
+            HubContentSearchKeywords=[],
+            Tags=[],
+        )
 
     def _copy_hub_content_dependencies_to_hub_bucket(
-        self, model_specs: JumpStartModelSpecs
+            self, model_specs: JumpStartModelSpecs
     ) -> None:
         """Copies artifact and script tarballs into the hub bucket.
 
@@ -157,10 +157,23 @@ class JumpStartCuratedPublicHub:
             'Bucket': src_inference_script_location.lstrip("s3://").split('/')[0],
             'Key': '/'.join(src_inference_script_location.lstrip("s3://").split('/')[1:])
         }
+        extra_args = {"ACL": "bucket-owner-full-control"}
+
         self._s3_client.copy(
-            artifact_copy_source, dst_bucket, self._dst_inference_artifact_key(model_specs=model_specs)
+            artifact_copy_source,
+            dst_bucket,
+            self._dst_inference_artifact_key(model_specs=model_specs),
+            ExtraArgs=extra_args
         )
-        self._s3_client.copy(script_copy_source, dst_bucket, self._dst_inference_script_key(model_specs=model_specs))
+
+        if not model_specs.supports_prepacked_inference():
+            # Need to also copy script if prepack not enabled
+            self._s3_client.copy(
+                script_copy_source,
+                dst_bucket,
+                self._dst_inference_script_key(model_specs=model_specs),
+                ExtraArgs=extra_args
+            )
 
     def _make_hub_content_document(self, model_specs: JumpStartModelSpecs) -> str:
         """Converts the provided JumpStartModelSpecs into a Hub Content Document."""
@@ -182,6 +195,10 @@ class JumpStartCuratedPublicHub:
 
     def make_hub_content_deployment_config(self, model_specs: JumpStartModelSpecs) -> DefaultDeploymentConfig:
         """Creates a DefaultDeploymentConfig from the provided JumpStartModelSpecs."""
+        script_config = ScriptConfig(ScriptLocation=self._dst_inference_script_key(model_specs=model_specs))
+        if model_specs.supports_prepacked_inference():
+            script_config = None
+
         return DefaultDeploymentConfig(
             SdkArgs=DefaultDeploymentSdkArgs(
                 MinSdkVersion=model_specs.min_sdk_version,
@@ -199,9 +216,7 @@ class JumpStartCuratedPublicHub:
             ModelArtifactConfig=ModelArtifactConfig(
                 ArtifactLocation=self._dst_inference_artifact_key(model_specs=model_specs),
             ),
-            ScriptConfig=ScriptConfig(
-                ScriptLocation=self._dst_inference_script_key(model_specs=model_specs),
-            ),
+            ScriptConfig=script_config,
             InstanceConfig=InstanceConfig(
                 DefaultInstanceType=model_specs.default_inference_instance_type,
                 InstanceTypeOptions=model_specs.supported_inference_instance_types or [],
