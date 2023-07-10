@@ -1,14 +1,14 @@
 from __future__ import absolute_import
 
 import json
-from dataclasses import dataclass, asdict
 import time
-
-from typing import List, Tuple
+from dataclasses import dataclass, asdict
+from typing import List
 
 import boto3
 from botocore.client import ClientError
 
+from sagemaker import model_uris, script_uris
 from sagemaker.jumpstart.curated_hub.hub_model_specs.hub_model_specs import (
     HubModelSpec_v1_0_0,
     DefaultDeploymentConfig,
@@ -22,20 +22,17 @@ from sagemaker.jumpstart.curated_hub.hub_model_specs.hub_model_specs import (
     InferenceNotebookConfig,
     convert_public_model_hyperparameter_to_hub_hyperparameter,
 )
-import logging
-from sagemaker import model_uris, script_uris
+from sagemaker.jumpstart.curated_hub.hub_model_specs.hub_model_specs import ModelCapabilities
 from sagemaker.jumpstart.enums import (
     JumpStartScriptScope,
 )
 from sagemaker.jumpstart.types import (
-    JumpStartModelSpecs,
-    JumpStartHyperparameter
+    JumpStartModelSpecs
 )
 from sagemaker.jumpstart.utils import (
     verify_model_region_and_return_specs,
 )
 from sagemaker.session import Session
-from sagemaker.jumpstart.curated_hub.hub_model_specs.hub_model_specs import ModelCapabilities
 
 
 @dataclass
@@ -43,7 +40,6 @@ class PublicModelId:
     id: str
     version: str
 
-logger = logging.getLogger(__name__)
 
 class JumpStartCuratedPublicHub:
     """JumpStartCuratedPublicHub class.
@@ -80,17 +76,17 @@ class JumpStartCuratedPublicHub:
         self._sm_client.describe_hub(HubName=self.curated_hub_name)
 
     def _create_curated_hub(self):
-      hub_bucket_s3_uri = f"s3://{self.curated_hub_name}"
-      self._sm_client.create_hub(
-          HubName=self.curated_hub_name,
-          HubDescription="This is a curated hub.",  # TODO verify description
-          HubDisplayName=self.curated_hub_name,
-          HubSearchKeywords=[],
-          S3StorageConfig={
-              "S3OutputPath": hub_bucket_s3_uri,
-          },
-          Tags=[],
-      )
+        hub_bucket_s3_uri = f"s3://{self.curated_hub_name}"
+        self._sm_client.create_hub(
+            HubName=self.curated_hub_name,
+            HubDescription="This is a curated hub.",  # TODO verify description
+            HubDisplayName=self.curated_hub_name,
+            HubSearchKeywords=[],
+            S3StorageConfig={
+                "S3OutputPath": hub_bucket_s3_uri,
+            },
+            Tags=[],
+        )
 
     def _get_or_create_s3_bucket(self, bucket_name: str):
         try:
@@ -100,6 +96,7 @@ class JumpStartCuratedPublicHub:
                 raise ex
 
     def _call_create_bucket(self, bucket_name: str):
+        # TODO make sure bucket policy permits PutObjectTagging so bucket-to-bucket copy will work
         self._s3_client.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={
             'LocationConstraint': self._region
         })
@@ -125,7 +122,8 @@ class JumpStartCuratedPublicHub:
 
         # self._import_public_model_to_hub_no_overwrite(model_specs=model_specs)
         self._import_public_model_to_hub(model_specs=model_specs)
-        print(f"Importing model {public_js_model.id} version {public_js_model.version} to curated private hub complete!")
+        print(
+            f"Importing model {public_js_model.id} version {public_js_model.version} to curated private hub complete!")
 
     def _import_public_model_to_hub_no_overwrite(self, model_specs: JumpStartModelSpecs):
         try:
@@ -170,7 +168,8 @@ class JumpStartCuratedPublicHub:
         src_inference_script_location = self._src_inference_script_location(model_specs=model_specs)
         dst_bucket = self._dst_bucket()
 
-        print(f"Copying model {model_specs.model_id} version {model_specs.version} to curated hub bucket {dst_bucket}...")
+        print(
+            f"Copying model {model_specs.model_id} version {model_specs.version} to curated hub bucket {dst_bucket}...")
 
         artifact_copy_source = {
             'Bucket': src_inference_artifact_location.lstrip("s3://").split('/')[0],
@@ -206,7 +205,8 @@ class JumpStartCuratedPublicHub:
             'Bucket': src_training_artifact_location.lstrip("s3://").split('/')[0],
             'Key': '/'.join(src_training_artifact_location.lstrip("s3://").split('/')[1:])
         }
-        print(f"Copy artifact from {training_artifact_copy_source} to {dst_bucket} / {self._dst_training_artifact_key(model_specs=model_specs)}")
+        print(
+            f"Copy artifact from {training_artifact_copy_source} to {dst_bucket} / {self._dst_training_artifact_key(model_specs=model_specs)}")
         self._s3_client.copy(
             training_artifact_copy_source, dst_bucket, self._dst_training_artifact_key(model_specs=model_specs)
         )
@@ -215,13 +215,14 @@ class JumpStartCuratedPublicHub:
             'Bucket': src_training_script_location.lstrip("s3://").split('/')[0],
             'Key': '/'.join(src_training_script_location.lstrip("s3://").split('/')[1:])
         }
-        print(f"Copy artifact from {training_script_copy_source} to {dst_bucket} / {self._dst_training_script_key(model_specs=model_specs)}")
+        print(
+            f"Copy artifact from {training_script_copy_source} to {dst_bucket} / {self._dst_training_script_key(model_specs=model_specs)}")
         self._s3_client.copy(
             training_script_copy_source, dst_bucket, self._dst_training_script_key(model_specs=model_specs)
         )
 
-
-        print(f"Copy model {model_specs.model_id} version {model_specs.version} to curated hub bucket {dst_bucket} complete!")
+        print(
+            f"Copy model {model_specs.model_id} version {model_specs.version} to curated hub bucket {dst_bucket} complete!")
 
     def _make_hub_content_document(self, model_specs: JumpStartModelSpecs) -> str:
         """Converts the provided JumpStartModelSpecs into a Hub Content Document."""
@@ -239,42 +240,15 @@ class JumpStartCuratedPublicHub:
             )
         )
 
-        return json.dumps(asdict(hub_model_spec))  # TODO verify/fix string representation
+        hub_model_spec_dict = asdict(hub_model_spec)
+        if not model_specs.training_supported:
+            # Remove keys in the document that would be null and cause an FE validation failure
+            # Python dataclass forces us to add these kwargs initially
+            hub_model_spec_dict.pop("DefaultTrainingConfig")
+            hub_model_spec_dict.pop("DatasetConfig")
 
-    def make_hub_content_deployment_config(self, model_specs: JumpStartModelSpecs) -> DefaultDeploymentConfig:
-        """Creates a DefaultDeploymentConfig from the provided JumpStartModelSpecs."""
-        script_config = ScriptConfig(ScriptLocation=self._dst_inference_script_key(model_specs=model_specs))
-        if model_specs.supports_prepacked_inference():
-            script_config = None
+        return json.dumps(hub_model_spec_dict)
 
-        return DefaultDeploymentConfig(
-            SdkArgs=DefaultDeploymentSdkArgs(
-                MinSdkVersion=model_specs.min_sdk_version,
-                SdkModelArgs=None,  # Out of scope in p0
-            ),
-            FrameworkImageConfig=FrameworkImageConfig(
-                Framework=model_specs.hosting_ecr_specs.framework,
-                FrameworkVersion=model_specs.hosting_ecr_specs.framework_version,
-                PythonVersion=model_specs.hosting_ecr_specs.py_version,
-                TransformersVersion=getattr(
-                    model_specs.hosting_ecr_specs, "huggingface_transformers_version", None
-                ),
-                BaseFramework=None,  # TODO verify necessity
-            ),
-            ModelArtifactConfig=ModelArtifactConfig(
-                ArtifactLocation=self._dst_inference_artifact_key(model_specs=model_specs),
-            ),
-            ScriptConfig=script_config,
-            InstanceConfig=InstanceConfig(
-                DefaultInstanceType=model_specs.default_inference_instance_type,
-                InstanceTypeOptions=model_specs.supported_inference_instance_types or [],
-            ),
-            InferenceNotebookConfig=InferenceNotebookConfig(
-                NotebookLocation="s3://foo/notebook"  # TODO not present in SDK metadata
-            ),
-            CustomImageConfig=None,
-        )
-    
     def _src_training_artifact_location(self, model_specs: JumpStartModelSpecs) -> str:
         return self._src_artifact_location(JumpStartScriptScope.TRAINING, model_specs)
 
@@ -290,12 +264,12 @@ class JumpStartCuratedPublicHub:
             tolerate_vulnerable_model=True,
             tolerate_deprecated_model=True,
         )
-    
+
     def _src_training_script_location(self, model_specs: JumpStartModelSpecs) -> str:
         return self._src_script_location(JumpStartScriptScope.TRAINING, model_specs)
-    
+
     def _src_inference_script_location(self, model_specs: JumpStartModelSpecs) -> str:
-      return self._src_script_location(JumpStartScriptScope.INFERENCE, model_specs)
+        return self._src_script_location(JumpStartScriptScope.INFERENCE, model_specs)
 
     def _src_script_location(self, model_scope: str, model_specs: JumpStartModelSpecs) -> str:
         return script_uris.retrieve(
@@ -322,74 +296,76 @@ class JumpStartCuratedPublicHub:
     def _dst_inference_script_key(self, model_specs: JumpStartModelSpecs) -> str:
         # TODO sync with Studio copy logic
         return f"{model_specs.model_id}/{self._disambiguator}/sourcedir.tar.gz"
-    
+
     def _dst_training_script_key(self, model_specs: JumpStartModelSpecs) -> str:
         # TODO sync with Studio copy logic
         return f"{model_specs.model_id}/{self._disambiguator}/training-sourcedir.tar.gz"
-    
+
     def _construct_s3_uri(self, bucket: str, key: str) -> str:
         return f"s3://{bucket}/{key}"
 
     def _make_hub_content_default_deployment_config(self, model_specs: JumpStartModelSpecs) -> DefaultDeploymentConfig:
-      return DefaultDeploymentConfig(
-              SdkArgs=DefaultDeploymentSdkArgs(
-                  MinSdkVersion=model_specs.min_sdk_version,
-                  SdkModelArgs=None,  # Out of scope in p0
-              ),
-              FrameworkImageConfig=FrameworkImageConfig(
-                  Framework=model_specs.hosting_ecr_specs.framework,
-                  FrameworkVersion=model_specs.hosting_ecr_specs.framework_version,
-                  PythonVersion=model_specs.hosting_ecr_specs.py_version,
-                  TransformersVersion=getattr(
-                      model_specs.hosting_ecr_specs, "huggingface_transformers_version", None
-                  ),
-                  BaseFramework=None,  # TODO verify necessity
-              ),
-              ModelArtifactConfig=ModelArtifactConfig(
-                  ArtifactLocation=self._construct_s3_uri(self._dst_bucket(), self._dst_inference_artifact_key(model_specs=model_specs)),
-              ),
-              ScriptConfig=ScriptConfig(
-                  ScriptLocation=self._construct_s3_uri(self._dst_bucket(), self._dst_inference_script_key(model_specs=model_specs)),
-              ),
-              InstanceConfig=InstanceConfig(
-                  DefaultInstanceType=model_specs.default_inference_instance_type,
-                  InstanceTypeOptions=model_specs.supported_inference_instance_types or [],
-              ),
-              InferenceNotebookConfig=InferenceNotebookConfig(
-                  NotebookLocation="s3://foo/notebook"  # TODO not present in SDK metadata
-              ),
-              CustomImageConfig=None,
-          )
-    
-    
+        return DefaultDeploymentConfig(
+            SdkArgs=DefaultDeploymentSdkArgs(
+                MinSdkVersion=model_specs.min_sdk_version,
+                SdkModelArgs=None,  # Out of scope in p0
+            ),
+            FrameworkImageConfig=FrameworkImageConfig(
+                Framework=model_specs.hosting_ecr_specs.framework,
+                FrameworkVersion=model_specs.hosting_ecr_specs.framework_version,
+                PythonVersion=model_specs.hosting_ecr_specs.py_version,
+                TransformersVersion=getattr(
+                    model_specs.hosting_ecr_specs, "huggingface_transformers_version", None
+                ),
+                BaseFramework=None,  # TODO verify necessity
+            ),
+            ModelArtifactConfig=ModelArtifactConfig(
+                ArtifactLocation=self._construct_s3_uri(self._dst_bucket(),
+                                                        self._dst_inference_artifact_key(model_specs=model_specs)),
+            ),
+            ScriptConfig=ScriptConfig(
+                ScriptLocation=self._construct_s3_uri(self._dst_bucket(),
+                                                      self._dst_inference_script_key(model_specs=model_specs)),
+            ),
+            InstanceConfig=InstanceConfig(
+                DefaultInstanceType=model_specs.default_inference_instance_type,
+                InstanceTypeOptions=model_specs.supported_inference_instance_types or [],
+            ),
+            InferenceNotebookConfig=InferenceNotebookConfig(
+                NotebookLocation="s3://foo/notebook"  # TODO not present in SDK metadata
+            ),
+            CustomImageConfig=None,
+        )
+
     def _make_hub_content_default_training_config(self, model_specs: JumpStartModelSpecs) -> DefaultTrainingConfig:
         return DefaultTrainingConfig(
-                SdkArgs=DefaultTrainingSdkArgs(
-                    MinSdkVersion=model_specs.min_sdk_version,
-                    SdkEstimatorArgs=None,  # Out of scope in p0
+            SdkArgs=DefaultTrainingSdkArgs(
+                MinSdkVersion=model_specs.min_sdk_version,
+                SdkEstimatorArgs=None,  # Out of scope in p0
+            ),
+            CustomImageConfig=None,  # TODO
+            FrameworkImageConfig=FrameworkImageConfig(
+                Framework=model_specs.training_ecr_specs.framework,
+                FrameworkVersion=model_specs.training_ecr_specs.framework_version,
+                PythonVersion=model_specs.training_ecr_specs.py_version,
+                TransformersVersion=getattr(
+                    model_specs.training_ecr_specs, "huggingface_transformers_version", None
                 ),
-                CustomImageConfig=None, # TODO
-                FrameworkImageConfig=FrameworkImageConfig(
-                  Framework=model_specs.training_ecr_specs.framework,
-                  FrameworkVersion=model_specs.training_ecr_specs.framework_version,
-                  PythonVersion=model_specs.training_ecr_specs.py_version,
-                  TransformersVersion=getattr(
-                      model_specs.training_ecr_specs, "huggingface_transformers_version", None
-                  ),
-                  BaseFramework=None,  # TODO verify necessity
-                ),
-                  ModelArtifactConfig=ModelArtifactConfig(
-                    ArtifactLocation=self._construct_s3_uri(self._dst_bucket(), self._dst_training_artifact_key(model_specs=model_specs)),
-                ),
-                ScriptConfig=ScriptConfig(
-                  ScriptLocation=self._construct_s3_uri(self._dst_bucket(), self._dst_training_script_key(model_specs=model_specs)),
-                ),
-                InstanceConfig=InstanceConfig(
-                  DefaultInstanceType=model_specs.default_training_instance_type,
-                  InstanceTypeOptions=model_specs.supported_training_instance_types or [],
-                ),
-                Hyperparameters=list(map(convert_public_model_hyperparameter_to_hub_hyperparameter, model_specs.hyperparameters)),
-                ExtraChannels=None, # TODO: I can't seem to find these
-            )        
-
-
+                BaseFramework=None,  # TODO verify necessity, FE only validates for huggingface
+            ),
+            ModelArtifactConfig=ModelArtifactConfig(
+                ArtifactLocation=self._construct_s3_uri(self._dst_bucket(),
+                                                        self._dst_training_artifact_key(model_specs=model_specs)),
+            ),
+            ScriptConfig=ScriptConfig(
+                ScriptLocation=self._construct_s3_uri(self._dst_bucket(),
+                                                      self._dst_training_script_key(model_specs=model_specs)),
+            ),
+            InstanceConfig=InstanceConfig(
+                DefaultInstanceType=model_specs.default_training_instance_type,
+                InstanceTypeOptions=model_specs.supported_training_instance_types or [],
+            ),
+            Hyperparameters=list(
+                map(convert_public_model_hyperparameter_to_hub_hyperparameter, model_specs.hyperparameters)),
+            ExtraChannels=[],  # TODO: I can't seem to find these
+        )
