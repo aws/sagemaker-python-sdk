@@ -179,7 +179,7 @@ class JumpStartCuratedPublicHub:
             'Bucket': src_inference_script_location.lstrip("s3://").split('/')[0],
             'Key': '/'.join(src_inference_script_location.lstrip("s3://").split('/')[1:])
         }
-        extra_args = {"ACL": "bucket-owner-full-control"}
+        extra_args = {"ACL": "bucket-owner-full-control", "Tagging": "SageMaker=true"}
 
         self._s3_client.copy(
             artifact_copy_source,
