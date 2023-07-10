@@ -310,6 +310,12 @@ class JumpStartCuratedPublicHub:
         return None
 
     def _make_hub_content_default_deployment_config(self, model_specs: JumpStartModelSpecs) -> DefaultDeploymentConfig:
+        script_config = ScriptConfig(
+            ScriptLocation=self._construct_s3_uri(self._dst_bucket(), self._dst_inference_script_key(model_specs=model_specs)),
+        )
+        if model_specs.supports_prepacked_inference():
+            script_config = None
+
         return DefaultDeploymentConfig(
             SdkArgs=DefaultDeploymentSdkArgs(
                 MinSdkVersion=model_specs.min_sdk_version,
@@ -328,10 +334,7 @@ class JumpStartCuratedPublicHub:
                 ArtifactLocation=self._construct_s3_uri(self._dst_bucket(),
                                                         self._dst_inference_artifact_key(model_specs=model_specs)),
             ),
-            ScriptConfig=ScriptConfig(
-                ScriptLocation=self._construct_s3_uri(self._dst_bucket(),
-                                                      self._dst_inference_script_key(model_specs=model_specs)),
-            ),
+            ScriptConfig=script_config,
             InstanceConfig=InstanceConfig(
                 DefaultInstanceType=model_specs.default_inference_instance_type,
                 InstanceTypeOptions=model_specs.supported_inference_instance_types or [],
