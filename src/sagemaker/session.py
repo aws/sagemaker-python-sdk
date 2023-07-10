@@ -4398,7 +4398,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         Args:
             endpoint (str): Name of the ``Endpoint`` to wait for.
-            poll (int): Polling interval in seconds (default: 5).
+            poll (int): Polling interval in seconds (default: 30).
 
         Raises:
             exceptions.CapacityError: If the endpoint creation job fails with CapacityError.
