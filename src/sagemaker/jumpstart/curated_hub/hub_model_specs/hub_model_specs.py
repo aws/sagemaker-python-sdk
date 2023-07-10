@@ -3,6 +3,15 @@ from __future__ import absolute_import
 from dataclasses import dataclass
 from typing import Optional, List, Mapping
 from enum import Enum
+from sagemaker.jumpstart.types import (
+    JumpStartModelSpecs,
+)
+from sagemaker.jumpstart.types import (
+    JumpStartModelSpecs,
+    JumpStartHyperparameter
+)
+
+
 
 @dataclass
 class Origin:
@@ -83,7 +92,7 @@ class InstanceConfig:
 
 
 @dataclass
-class Hyperparameters:
+class Hyperparameter:
     Name: str
     DefaultValue: Optional[str]
     Type: str  # enum
@@ -109,7 +118,7 @@ class DefaultTrainingConfig:
     ModelArtifactConfig: Optional[ModelArtifactConfig]
     ScriptConfig: Optional[ScriptConfig]
     InstanceConfig: Optional[InstanceConfig]
-    Hyperparameters: List[Hyperparameters]
+    Hyperparameters: List[Hyperparameter]
     ExtraChannels: List[ExtraChannels]
 
 
@@ -146,3 +155,22 @@ class HubModelSpec_v1_0_0:
     DatasetConfig: Optional[DatasetConfig]
     DefaultTrainingConfig: Optional[DefaultTrainingConfig]
     DefaultDeploymentConfig: Optional[DefaultDeploymentConfig]
+
+def convert_public_model_hyperparameter_to_hub_hyperparameter(hyperparameter: JumpStartHyperparameter) -> Hyperparameter:
+        return Hyperparameter(
+            Name=hyperparameter.name,
+            DefaultValue=hyperparameter.default,
+            Type=_convert_type_to_valid_hub_type(hyperparameter.type),
+            Options=hyperparameter.options if hasattr(hyperparameter, 'options') else None,
+            Min=hyperparameter.min if hasattr(hyperparameter, 'min') else None,
+            Max=hyperparameter.max if hasattr(hyperparameter, 'max') else None,
+            Label=None,
+            Description=None,
+            Regex=None
+        )
+
+def _convert_type_to_valid_hub_type(type: str):
+    if type == "int":
+        return "Integer"
+    else:
+        return type.capitalize()

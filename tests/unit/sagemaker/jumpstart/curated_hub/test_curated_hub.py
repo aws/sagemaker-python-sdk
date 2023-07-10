@@ -68,8 +68,10 @@ TEST_SERVICE_ERROR_RESPONSE = {
 
 class JumpStartCuratedPublicHubTest(unittest.TestCase):
 
-    test_s3_prefix = f"test-curated-hub-{uuid.uuid4()}"
+    test_s3_prefix = f"test-curated-hub-chrstfu"
     test_public_js_model = PublicModelId(id="autogluon-classification-ensemble", version="1.1.1")
+    test_second_public_js_model = PublicModelId(id="catboost-classification-model", version="1.2.7")
+    test_nonexistent_public_js_model = PublicModelId(id="fail", version="1.0.0")
 
     def setUp(self):
         self.test_curated_hub = JumpStartCuratedPublicHub(self.test_s3_prefix)
@@ -136,6 +138,6 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
 
 
     """Testing client calls"""
-    # def test_full_workflow(self):
-    #   self.test_curated_hub.create()
-    #   self.test_curated_hub.import_models([self.test_public_js_model])
+    def test_full_workflow(self):
+      self.test_curated_hub.create()
+      self.test_curated_hub.import_models([self.test_public_js_model, self.test_second_public_js_model])
