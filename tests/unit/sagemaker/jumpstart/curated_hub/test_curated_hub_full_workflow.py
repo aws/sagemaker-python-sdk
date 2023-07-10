@@ -11,17 +11,27 @@ from botocore.client import ClientError
 from sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub import JumpStartCuratedPublicHub
 from sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub import PublicModelId
 
+
 class JumpStartCuratedPublicHubTest(unittest.TestCase):
 
     test_s3_prefix = f"test-curated-hub-chrstfu"
-    test_public_js_model = PublicModelId(id="autogluon-classification-ensemble", version="1.1.1")
-    test_second_public_js_model = PublicModelId(id="catboost-classification-model", version="1.2.7")
-    test_nonexistent_public_js_model = PublicModelId(id="fail", version="1.0.0")
+    tests_models = [
+        PublicModelId(
+            id="autogluon-classification-ensemble", version="1.1.1"
+        ),  # test base functionality (deploy + train)
+        PublicModelId(id="huggingface-translation-t5-small", version="1.1.0"),  # no training
+        PublicModelId(
+            id="huggingface-text2text-flan-t5-base", version="1.2.2"
+        ),  # test prepack + train
+    ]
 
     def setUp(self):
         self.test_curated_hub = JumpStartCuratedPublicHub(self.test_s3_prefix)
 
     """Testing client calls"""
+
     def test_full_workflow(self):
-      self.test_curated_hub.create()
-      self.test_curated_hub.import_models([self.test_public_js_model, self.test_second_public_js_model])
+        self.test_curated_hub.create()
+        # self.test_curated_hub.import_models(self.tests_models)
+
+        self.test_curated_hub.delete_models([PublicModelId(id="huggingface-translation-t5-small", version="1.1.0")])

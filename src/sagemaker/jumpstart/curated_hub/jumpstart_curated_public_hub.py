@@ -26,9 +26,7 @@ from sagemaker.jumpstart.curated_hub.hub_model_specs.hub_model_specs import Mode
 from sagemaker.jumpstart.enums import (
     JumpStartScriptScope,
 )
-from sagemaker.jumpstart.types import (
-    JumpStartModelSpecs
-)
+from sagemaker.jumpstart.types import JumpStartModelSpecs
 from sagemaker.jumpstart.utils import (
     verify_model_region_and_return_specs,
 )
@@ -59,8 +57,8 @@ class JumpStartCuratedPublicHub:
 
     def create(self):
         """Creates a curated hub in the caller AWS account.
-        
-        If the S3 bucket does not exist, this will create a new one. 
+
+        If the S3 bucket does not exist, this will create a new one.
         If the curated hub does not exist, this will create a new one."""
         self._get_or_create_s3_bucket(self.curated_hub_name)
         self._get_or_create_curated_hub()
@@ -69,7 +67,7 @@ class JumpStartCuratedPublicHub:
         try:
             return self._create_curated_hub()
         except ClientError as ex:
-            if ex.response['Error']['Code'] != 'ResourceInUse':
+            if ex.response["Error"]["Code"] != "ResourceInUse":
                 raise ex
 
     def _get_curated_hub(self):
@@ -92,25 +90,27 @@ class JumpStartCuratedPublicHub:
         try:
             return self._call_create_bucket(bucket_name)
         except ClientError as ex:
-            if ex.response['Error']['Code'] != 'BucketAlreadyOwnedByYou':
+            if ex.response["Error"]["Code"] != "BucketAlreadyOwnedByYou":
                 raise ex
 
     def _call_create_bucket(self, bucket_name: str):
         # TODO make sure bucket policy permits PutObjectTagging so bucket-to-bucket copy will work
-        self._s3_client.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={
-            'LocationConstraint': self._region
-        })
+        self._s3_client.create_bucket(
+            Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": self._region}
+        )
 
     def import_models(self, model_ids: List[PublicModelId]):
         """Imports models in list to curated hub
-        
+
         If the model already exists in the curated hub, it will skip the upload."""
         print(f"Importing {len(model_ids)} models to curated private hub...")
         for model_id in model_ids:
             self._import_model(model_id)
 
     def _import_model(self, public_js_model: PublicModelId) -> None:
-        print(f"Importing model {public_js_model.id} version {public_js_model.version} to curated private hub...")
+        print(
+            f"Importing model {public_js_model.id} version {public_js_model.version} to curated private hub..."
+        )
         model_specs = verify_model_region_and_return_specs(
             model_id=public_js_model.id,
             version=public_js_model.version,
@@ -123,19 +123,17 @@ class JumpStartCuratedPublicHub:
         # self._import_public_model_to_hub_no_overwrite(model_specs=model_specs)
         self._import_public_model_to_hub(model_specs=model_specs)
         print(
-            f"Importing model {public_js_model.id} version {public_js_model.version} to curated private hub complete!")
+            f"Importing model {public_js_model.id} version {public_js_model.version} to curated private hub complete!"
+        )
 
     def _import_public_model_to_hub_no_overwrite(self, model_specs: JumpStartModelSpecs):
         try:
             self._import_public_model_to_hub(model_specs)
         except ClientError as ex:
-            if ex.response['Error']['Code'] != 'ResourceInUse':
+            if ex.response["Error"]["Code"] != "ResourceInUse":
                 raise ex
 
     def _import_public_model_to_hub(self, model_specs: JumpStartModelSpecs):
-        # TODO verify ideal naming (not urgent)
-        hub_content_name = f"{model_specs.model_id}-copy"
-
         # TODO Several fields are not present in SDK specs as they are only in Studio specs right now (not urgent)
         hub_content_display_name = model_specs.model_id
         hub_content_description = f"This is the very informative {model_specs.model_id} description"
@@ -147,7 +145,7 @@ class JumpStartCuratedPublicHub:
 
         self._sm_client.import_hub_content(
             HubName=self.curated_hub_name,
-            HubContentName=hub_content_name,
+            HubContentName=model_specs.model_id,
             HubContentType="Model",
             DocumentSchemaVersion="1.0.0",
             HubContentDisplayName=hub_content_display_name,
@@ -159,25 +157,34 @@ class JumpStartCuratedPublicHub:
         )
 
     def _copy_hub_content_dependencies_to_hub_bucket(
-            self, model_specs: JumpStartModelSpecs
+        self, model_specs: JumpStartModelSpecs
     ) -> None:
         """Copies artifact and script tarballs into the hub bucket.
 
         Unfortunately, this logic is duplicated/inconsistent with what is in Studio."""
-        src_inference_artifact_location = self._src_inference_artifact_location(model_specs=model_specs)
+        self._copy_inference_dependencies(model_specs)
+
+        if model_specs.training_supported:
+            self._copy_training_dependencies(model_specs)
+
+    def _copy_inference_dependencies(self, model_specs: JumpStartModelSpecs) -> None:
+        src_inference_artifact_location = self._src_inference_artifact_location(
+            model_specs=model_specs
+        )
         src_inference_script_location = self._src_inference_script_location(model_specs=model_specs)
         dst_bucket = self._dst_bucket()
 
         print(
-            f"Copying model {model_specs.model_id} version {model_specs.version} to curated hub bucket {dst_bucket}...")
+            f"Copying model {model_specs.model_id} version {model_specs.version} to curated hub bucket {dst_bucket}..."
+        )
 
         artifact_copy_source = {
-            'Bucket': src_inference_artifact_location.lstrip("s3://").split('/')[0],
-            'Key': '/'.join(src_inference_artifact_location.lstrip("s3://").split('/')[1:])
+            "Bucket": src_inference_artifact_location.lstrip("s3://").split("/")[0],
+            "Key": "/".join(src_inference_artifact_location.lstrip("s3://").split("/")[1:]),
         }
         script_copy_source = {
-            'Bucket': src_inference_script_location.lstrip("s3://").split('/')[0],
-            'Key': '/'.join(src_inference_script_location.lstrip("s3://").split('/')[1:])
+            "Bucket": src_inference_script_location.lstrip("s3://").split("/")[0],
+            "Key": "/".join(src_inference_script_location.lstrip("s3://").split("/")[1:]),
         }
         extra_args = {"ACL": "bucket-owner-full-control", "Tagging": "SageMaker=true"}
 
@@ -185,7 +192,7 @@ class JumpStartCuratedPublicHub:
             artifact_copy_source,
             dst_bucket,
             self._dst_inference_artifact_key(model_specs=model_specs),
-            ExtraArgs=extra_args
+            ExtraArgs=extra_args,
         )
 
         if not model_specs.supports_prepacked_inference():
@@ -194,50 +201,68 @@ class JumpStartCuratedPublicHub:
                 script_copy_source,
                 dst_bucket,
                 self._dst_inference_script_key(model_specs=model_specs),
-                ExtraArgs=extra_args
+                ExtraArgs=extra_args,
             )
 
-        # Copying training artifacts
-        src_training_artifact_location = self._src_training_artifact_location(model_specs=model_specs)
+    def _copy_training_dependencies(self, model_specs: JumpStartModelSpecs) -> None:
+        src_training_artifact_location = self._src_training_artifact_location(
+            model_specs=model_specs
+        )
         src_training_script_location = self._src_training_script_location(model_specs=model_specs)
+        dst_bucket = self._dst_bucket()
 
         training_artifact_copy_source = {
-            'Bucket': src_training_artifact_location.lstrip("s3://").split('/')[0],
-            'Key': '/'.join(src_training_artifact_location.lstrip("s3://").split('/')[1:])
+            "Bucket": src_training_artifact_location.lstrip("s3://").split("/")[0],
+            "Key": "/".join(src_training_artifact_location.lstrip("s3://").split("/")[1:]),
         }
         print(
-            f"Copy artifact from {training_artifact_copy_source} to {dst_bucket} / {self._dst_training_artifact_key(model_specs=model_specs)}")
+            f"Copy artifact from {training_artifact_copy_source} to {dst_bucket} / {self._dst_training_artifact_key(model_specs=model_specs)}"
+        )
         self._s3_client.copy(
-            training_artifact_copy_source, dst_bucket, self._dst_training_artifact_key(model_specs=model_specs)
+            training_artifact_copy_source,
+            dst_bucket,
+            self._dst_training_artifact_key(model_specs=model_specs),
         )
 
         training_script_copy_source = {
-            'Bucket': src_training_script_location.lstrip("s3://").split('/')[0],
-            'Key': '/'.join(src_training_script_location.lstrip("s3://").split('/')[1:])
+            "Bucket": src_training_script_location.lstrip("s3://").split("/")[0],
+            "Key": "/".join(src_training_script_location.lstrip("s3://").split("/")[1:]),
         }
         print(
-            f"Copy artifact from {training_script_copy_source} to {dst_bucket} / {self._dst_training_script_key(model_specs=model_specs)}")
+            f"Copy artifact from {training_script_copy_source} to {dst_bucket} / {self._dst_training_script_key(model_specs=model_specs)}"
+        )
         self._s3_client.copy(
-            training_script_copy_source, dst_bucket, self._dst_training_script_key(model_specs=model_specs)
+            training_script_copy_source,
+            dst_bucket,
+            self._dst_training_script_key(model_specs=model_specs),
         )
 
         print(
-            f"Copy model {model_specs.model_id} version {model_specs.version} to curated hub bucket {dst_bucket} complete!")
+            f"Copy model {model_specs.model_id} version {model_specs.version} to curated hub bucket {dst_bucket} complete!"
+        )
 
     def _make_hub_content_document(self, model_specs: JumpStartModelSpecs) -> str:
         """Converts the provided JumpStartModelSpecs into a Hub Content Document."""
+        capabilities = []
+        if model_specs.training_supported:
+            capabilities.append(ModelCapabilities.TRAINING)
+        if model_specs.incremental_training_supported:
+            capabilities.append(ModelCapabilities.INCREMENTAL_TRAINING)
+
         hub_model_spec = HubModelSpec_v1_0_0(
-            Capabilities=[ModelCapabilities.VALIDATION],  # TODO add inference if needed?
+            Capabilities=capabilities,  # TODO add inference if needed?
             DataType="",  # TODO not in SDK metadata
             MlTask="",  # TODO not in SDK metadata
             Framework=model_specs.hosting_ecr_specs.framework,
             Origin=None,
             Dependencies=[],  # TODO add references to copied artifacts
             DatasetConfig=None,  # Out of scope in p0
-            DefaultTrainingConfig=self._make_hub_content_default_training_config(model_specs=model_specs),
+            DefaultTrainingConfig=self._make_hub_content_default_training_config(
+                model_specs=model_specs
+            ),
             DefaultDeploymentConfig=self._make_hub_content_default_deployment_config(
                 model_specs=model_specs,
-            )
+            ),
         )
 
         hub_model_spec_dict = asdict(hub_model_spec)
@@ -247,9 +272,12 @@ class JumpStartCuratedPublicHub:
             hub_model_spec_dict.pop("DefaultTrainingConfig")
             hub_model_spec_dict.pop("DatasetConfig")
 
+        if model_specs.supports_prepacked_inference():
+            hub_model_spec_dict["DefaultDeploymentConfig"].pop("ScriptConfig")
+
         return json.dumps(hub_model_spec_dict)
 
-    def _src_training_artifact_location(self, model_specs: JumpStartModelSpecs) -> str:
+    def _src_training_artifact_location(self, model_specs: JumpStartModelSpecs) -> Optional[str]:
         return self._src_artifact_location(JumpStartScriptScope.TRAINING, model_specs)
 
     def _src_inference_artifact_location(self, model_specs: JumpStartModelSpecs) -> str:
@@ -309,13 +337,9 @@ class JumpStartCuratedPublicHub:
             return f"pytorch{model_specs.hosting_ecr_specs.framework_version}"
         return None
 
-    def _make_hub_content_default_deployment_config(self, model_specs: JumpStartModelSpecs) -> DefaultDeploymentConfig:
-        script_config = ScriptConfig(
-            ScriptLocation=self._construct_s3_uri(self._dst_bucket(), self._dst_inference_script_key(model_specs=model_specs)),
-        )
-        if model_specs.supports_prepacked_inference():
-            script_config = None
-
+    def _make_hub_content_default_deployment_config(
+        self, model_specs: JumpStartModelSpecs
+    ) -> DefaultDeploymentConfig:
         return DefaultDeploymentConfig(
             SdkArgs=DefaultDeploymentSdkArgs(
                 MinSdkVersion=model_specs.min_sdk_version,
@@ -331,10 +355,15 @@ class JumpStartCuratedPublicHub:
                 BaseFramework=self._base_framework(model_specs=model_specs),
             ),
             ModelArtifactConfig=ModelArtifactConfig(
-                ArtifactLocation=self._construct_s3_uri(self._dst_bucket(),
-                                                        self._dst_inference_artifact_key(model_specs=model_specs)),
+                ArtifactLocation=self._construct_s3_uri(
+                    self._dst_bucket(), self._dst_inference_artifact_key(model_specs=model_specs)
+                ),
             ),
-            ScriptConfig=script_config,
+            ScriptConfig=ScriptConfig(
+                ScriptLocation=self._construct_s3_uri(
+                    self._dst_bucket(), self._dst_inference_script_key(model_specs=model_specs)
+                ),
+            ),
             InstanceConfig=InstanceConfig(
                 DefaultInstanceType=model_specs.default_inference_instance_type,
                 InstanceTypeOptions=model_specs.supported_inference_instance_types or [],
@@ -345,7 +374,12 @@ class JumpStartCuratedPublicHub:
             CustomImageConfig=None,
         )
 
-    def _make_hub_content_default_training_config(self, model_specs: JumpStartModelSpecs) -> DefaultTrainingConfig:
+    def _make_hub_content_default_training_config(
+        self, model_specs: JumpStartModelSpecs
+    ) -> Optional[DefaultTrainingConfig]:
+        if not model_specs.training_supported:
+            return None
+
         return DefaultTrainingConfig(
             SdkArgs=DefaultTrainingSdkArgs(
                 MinSdkVersion=model_specs.min_sdk_version,
@@ -362,18 +396,64 @@ class JumpStartCuratedPublicHub:
                 BaseFramework=self._base_framework(model_specs=model_specs),
             ),
             ModelArtifactConfig=ModelArtifactConfig(
-                ArtifactLocation=self._construct_s3_uri(self._dst_bucket(),
-                                                        self._dst_training_artifact_key(model_specs=model_specs)),
+                ArtifactLocation=self._construct_s3_uri(
+                    self._dst_bucket(), self._dst_training_artifact_key(model_specs=model_specs)
+                ),
             ),
             ScriptConfig=ScriptConfig(
-                ScriptLocation=self._construct_s3_uri(self._dst_bucket(),
-                                                      self._dst_training_script_key(model_specs=model_specs)),
+                ScriptLocation=self._construct_s3_uri(
+                    self._dst_bucket(), self._dst_training_script_key(model_specs=model_specs)
+                ),
             ),
             InstanceConfig=InstanceConfig(
                 DefaultInstanceType=model_specs.default_training_instance_type,
                 InstanceTypeOptions=model_specs.supported_training_instance_types or [],
             ),
             Hyperparameters=list(
-                map(convert_public_model_hyperparameter_to_hub_hyperparameter, model_specs.hyperparameters)),
+                map(
+                    convert_public_model_hyperparameter_to_hub_hyperparameter,
+                    model_specs.hyperparameters,
+                )
+            ),
             ExtraChannels=[],  # TODO: I can't seem to find these
         )
+
+    def delete_models(self, model_ids: List[PublicModelId]):
+        for model_id in model_ids:
+            self._delete_model(model_id)
+
+    def _delete_model(self, model_id: PublicModelId):
+        print(f"Deleting model {model_id.id} from curated hub...")
+        content_versions = self._list_hub_content_versions_no_content_noop(model_id.id)
+
+        print(
+            f"Found {len(content_versions)} versions of {model_id.id}. Deleting all versions..."
+        )
+
+        for content_version in content_versions:
+            self._sm_client.delete_hub_content(
+                HubName=self.curated_hub_name,
+                HubContentName=model_id.id,
+                HubContentType="Model",
+                HubContentVersion=content_version["HubContentVersion"],
+            )
+
+        print(f"Deleting model {model_id.id} from curated hub complete!")
+
+    def _list_hub_content_versions_no_content_noop(self, hub_content_name: str):
+        content_versions = []
+        try:
+            response = self._sm_client.list_hub_content_versions(
+                HubName=self.curated_hub_name,
+                HubContentName=hub_content_name,
+                HubContentType="Model",
+            )
+            content_versions = response.pop("HubContentSummaries")
+        except ClientError as ex:
+            if ex.response["Error"]["Code"] != "ResourceNotFound":
+                raise ex
+
+        return content_versions
+
+    def _generate_hub_content_name(self, model_id: str) -> str:
+        return f"{model_id}-copy"
