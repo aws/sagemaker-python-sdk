@@ -3,7 +3,7 @@ from __future__ import absolute_import
 import json
 import time
 from dataclasses import dataclass, asdict
-from typing import List
+from typing import List, Optional
 
 import boto3
 from botocore.client import ClientError
@@ -304,6 +304,11 @@ class JumpStartCuratedPublicHub:
     def _construct_s3_uri(self, bucket: str, key: str) -> str:
         return f"s3://{bucket}/{key}"
 
+    def _base_framework(self, model_specs: JumpStartModelSpecs) -> Optional[str]:
+        if model_specs.hosting_ecr_specs.framework == "huggingface":
+            return f"pytorch{model_specs.hosting_ecr_specs.framework_version}"
+        return None
+
     def _make_hub_content_default_deployment_config(self, model_specs: JumpStartModelSpecs) -> DefaultDeploymentConfig:
         return DefaultDeploymentConfig(
             SdkArgs=DefaultDeploymentSdkArgs(
@@ -317,7 +322,7 @@ class JumpStartCuratedPublicHub:
                 TransformersVersion=getattr(
                     model_specs.hosting_ecr_specs, "huggingface_transformers_version", None
                 ),
-                BaseFramework=None,  # TODO verify necessity
+                BaseFramework=self._base_framework(model_specs=model_specs),
             ),
             ModelArtifactConfig=ModelArtifactConfig(
                 ArtifactLocation=self._construct_s3_uri(self._dst_bucket(),
@@ -351,7 +356,7 @@ class JumpStartCuratedPublicHub:
                 TransformersVersion=getattr(
                     model_specs.training_ecr_specs, "huggingface_transformers_version", None
                 ),
-                BaseFramework=None,  # TODO verify necessity, FE only validates for huggingface
+                BaseFramework=self._base_framework(model_specs=model_specs),
             ),
             ModelArtifactConfig=ModelArtifactConfig(
                 ArtifactLocation=self._construct_s3_uri(self._dst_bucket(),
