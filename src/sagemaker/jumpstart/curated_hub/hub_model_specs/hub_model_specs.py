@@ -37,10 +37,14 @@ class Metric:
 
 
 @dataclass
-class SdkEstimatorArgs:
+class SdkArgs:
     EntryPoint: Optional[str]
     EnableNetworkIsolation: Optional[bool]
     Environment: Mapping[str, str]
+
+
+@dataclass
+class SdkEstimatorArgs(SdkArgs):
     Metrics: List[Metric]
     OutputPath: Optional[str]
 
@@ -54,7 +58,7 @@ class DefaultTrainingSdkArgs:
 @dataclass
 class DefaultDeploymentSdkArgs:
     MinSdkVersion: Optional[str]
-    SdkModelArgs: Optional[SdkEstimatorArgs]
+    SdkModelArgs: Optional[SdkArgs]
 
 
 @dataclass

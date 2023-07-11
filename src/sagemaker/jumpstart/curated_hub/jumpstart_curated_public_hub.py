@@ -9,6 +9,7 @@ import boto3
 from botocore.client import ClientError
 
 from sagemaker import model_uris, script_uris
+from sagemaker import environment_variables as env_vars
 from sagemaker.jumpstart.curated_hub.hub_model_specs.hub_model_specs import (
     HubModelSpec_v1_0_0,
     DefaultDeploymentConfig,
@@ -20,7 +21,7 @@ from sagemaker.jumpstart.curated_hub.hub_model_specs.hub_model_specs import (
     ScriptConfig,
     InstanceConfig,
     InferenceNotebookConfig,
-    convert_public_model_hyperparameter_to_hub_hyperparameter, )
+    convert_public_model_hyperparameter_to_hub_hyperparameter, SdkArgs, )
 from sagemaker.jumpstart.curated_hub.hub_model_specs.hub_model_specs import ModelCapabilities
 from sagemaker.jumpstart.curated_hub.utils import get_studio_model_metadata_map_from_region
 from sagemaker.jumpstart.enums import (
@@ -270,7 +271,6 @@ class JumpStartCuratedPublicHub:
             f"Copying notebook for {model_specs.model_id} at {artifact_copy_source} to curated hub bucket successful!"
         ) 
 
-
     def _make_hub_content_document(self, model_specs: JumpStartModelSpecs) -> str:
         """Converts the provided JumpStartModelSpecs into a Hub Content Document."""
         capabilities = []
@@ -381,10 +381,20 @@ class JumpStartCuratedPublicHub:
     def _make_hub_content_default_deployment_config(
         self, model_specs: JumpStartModelSpecs
     ) -> DefaultDeploymentConfig:
+        environment_variables = env_vars.retrieve_default(
+            region=self._region,
+            model_id=model_specs.model_id,
+            model_version=model_specs.version,
+            include_aws_sdk_env_vars=False,
+        )
         return DefaultDeploymentConfig(
             SdkArgs=DefaultDeploymentSdkArgs(
                 MinSdkVersion=model_specs.min_sdk_version,
-                SdkModelArgs=None,  # Out of scope in p0
+                SdkModelArgs=SdkArgs(
+                    EntryPoint=None,  # TODO check correct way to determine this
+                    EnableNetworkIsolation=model_specs.inference_enable_network_isolation,
+                    Environment=environment_variables
+                ),
             ),
             FrameworkImageConfig=FrameworkImageConfig(
                 Framework=model_specs.hosting_ecr_specs.framework,
@@ -424,7 +434,7 @@ class JumpStartCuratedPublicHub:
         return DefaultTrainingConfig(
             SdkArgs=DefaultTrainingSdkArgs(
                 MinSdkVersion=model_specs.min_sdk_version,
-                SdkEstimatorArgs=None,  # Out of scope in p0
+                SdkEstimatorArgs=None,  # TODO add env variables
             ),
             CustomImageConfig=None,
             FrameworkImageConfig=FrameworkImageConfig(
