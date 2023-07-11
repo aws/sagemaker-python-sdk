@@ -165,6 +165,7 @@ class JumpStartCuratedPublicHub:
 
         Unfortunately, this logic is duplicated/inconsistent with what is in Studio."""
         self._copy_inference_dependencies(model_specs)
+        self._copy_demo_notebook_dependencies(model_specs)
 
         if model_specs.training_supported:
             self._copy_training_dependencies(model_specs)
@@ -242,6 +243,33 @@ class JumpStartCuratedPublicHub:
         print(
             f"Copy model {model_specs.model_id} version {model_specs.version} to curated hub bucket {dst_bucket} complete!"
         )
+
+    def _copy_demo_notebook_dependencies(self, model_specs: JumpStartModelSpecs) -> None:
+        src_inference_artifact_location = self._src_inference_artifact_location(
+            model_specs=model_specs
+        )
+        artifact_copy_source = {
+            "Bucket": src_inference_artifact_location.lstrip("s3://").split("/")[0],
+            "Key": self._src_notebook_key(model_specs),
+        }
+        dst_bucket = self._dst_bucket()
+        extra_args = {"ACL": "bucket-owner-full-control", "Tagging": "SageMaker=true"}
+
+        print(
+            f"Copying notebook for {model_specs.model_id} at {artifact_copy_source} to curated hub bucket {dst_bucket}..."
+        ) 
+
+        self._s3_client.copy(
+            artifact_copy_source,
+            dst_bucket,
+            self._dst_notebook_key(model_specs=model_specs),
+            ExtraArgs=extra_args,
+        )
+
+        print(
+            f"Copying notebook for {model_specs.model_id} at {artifact_copy_source} to curated hub bucket successful!"
+        ) 
+
 
     def _make_hub_content_document(self, model_specs: JumpStartModelSpecs) -> str:
         """Converts the provided JumpStartModelSpecs into a Hub Content Document."""
@@ -330,6 +358,17 @@ class JumpStartCuratedPublicHub:
     def _dst_training_script_key(self, model_specs: JumpStartModelSpecs) -> str:
         # TODO sync with Studio copy logic
         return f"{model_specs.model_id}/{self._disambiguator}/training-sourcedir.tar.gz"
+    
+    def _src_notebook_key(self, model_specs: JumpStartModelSpecs) -> str:
+        framework = self._get_model_framework(model_specs)
+        
+        return f"{framework}-notebooks/{model_specs.model_id}-inference.ipynb"
+    
+    def _get_model_framework(self, model_specs: JumpStartModelSpecs) -> str:
+        return model_specs.model_id.split("-")[0]
+    
+    def _dst_notebook_key(self, model_specs: JumpStartModelSpecs) -> str:
+        return f"{model_specs.model_id}/{self._disambiguator}/demo-notebook.ipynb"
 
     def _construct_s3_uri(self, bucket: str, key: str) -> str:
         return f"s3://{bucket}/{key}"
@@ -371,7 +410,7 @@ class JumpStartCuratedPublicHub:
                 InstanceTypeOptions=model_specs.supported_inference_instance_types or [],
             ),
             InferenceNotebookConfig=InferenceNotebookConfig(
-                NotebookLocation="s3://foo/notebook"  # TODO not present in SDK metadata
+                NotebookLocation=self._construct_s3_uri(self._dst_bucket(), self._dst_notebook_key(model_specs=model_specs))
             ),
             CustomImageConfig=None,
         )
@@ -456,6 +495,3 @@ class JumpStartCuratedPublicHub:
                 raise ex
 
         return content_versions
-
-    def _generate_hub_content_name(self, model_id: str) -> str:
-        return f"{model_id}-copy"

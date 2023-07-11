@@ -32,6 +32,6 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
 
     def test_full_workflow(self):
         self.test_curated_hub.create()
-        # self.test_curated_hub.import_models(self.tests_models)
+        self.test_curated_hub.import_models(self.tests_models)
 
-        self.test_curated_hub.delete_models([PublicModelId(id="huggingface-translation-t5-small", version="1.1.0")])
+        # self.test_curated_hub.delete_models(self.tests_models)
