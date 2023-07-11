@@ -20,9 +20,9 @@ from sagemaker.jumpstart.curated_hub.hub_model_specs.hub_model_specs import (
     ScriptConfig,
     InstanceConfig,
     InferenceNotebookConfig,
-    convert_public_model_hyperparameter_to_hub_hyperparameter,
-)
+    convert_public_model_hyperparameter_to_hub_hyperparameter, )
 from sagemaker.jumpstart.curated_hub.hub_model_specs.hub_model_specs import ModelCapabilities
+from sagemaker.jumpstart.curated_hub.utils import get_studio_model_metadata_map_from_region
 from sagemaker.jumpstart.enums import (
     JumpStartScriptScope,
 )
@@ -54,6 +54,8 @@ class JumpStartCuratedPublicHub:
         self._sm_client = boto3.client("sagemaker", region_name=self._region)
         self._sagemaker_session = Session()
         self._disambiguator = time.time()
+
+        self.studio_metadata_map = get_studio_model_metadata_map_from_region(region=self._region)
 
     def create(self):
         """Creates a curated hub in the caller AWS account.
@@ -385,7 +387,7 @@ class JumpStartCuratedPublicHub:
                 MinSdkVersion=model_specs.min_sdk_version,
                 SdkEstimatorArgs=None,  # Out of scope in p0
             ),
-            CustomImageConfig=None,  # TODO
+            CustomImageConfig=None,
             FrameworkImageConfig=FrameworkImageConfig(
                 Framework=model_specs.training_ecr_specs.framework,
                 FrameworkVersion=model_specs.training_ecr_specs.framework_version,
