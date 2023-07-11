@@ -375,7 +375,7 @@ class JumpStartCuratedPublicHub:
 
     def _base_framework(self, model_specs: JumpStartModelSpecs) -> Optional[str]:
         if model_specs.hosting_ecr_specs.framework == "huggingface":
-            return f"pytorch{model_specs.hosting_ecr_specs.framework_version}"
+            return f"pytorch"
         return None
 
     def _make_hub_content_default_deployment_config(
