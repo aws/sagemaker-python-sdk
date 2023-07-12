@@ -37,10 +37,18 @@ class JumpStartCuratedPublicHub:
         # Finds the relevant hub and s3 locations
         self.curated_hub_name = curated_hub_name
         self.curated_hub_s3_bucket_name = curated_hub_name
+        self.using_preexisting_hub = False
         preexisting_hub = self._get_curated_hub_and_curated_hub_s3_bucket_names(import_to_preexisting_hub)
         if (preexisting_hub):
-            self.curated_hub_name = preexisting_hub[0]
+            name_of_hub_already_on_account = preexisting_hub[0]
+
+            if not import_to_preexisting_hub:
+                raise Exception(f"Hub with name {name_of_hub_already_on_account} detected on account. The limit of hubs per account is 1. If you wish to use this hub as the curated hub, please set the flag `import_to_preexisting_hub` to True.")
+            print(f"WARN: Hub with name {name_of_hub_already_on_account} detected on account. The limit of hubs per account is 1. `import_to_preexisting_hub` is set to true - defaulting to this hub.")
+
+            self.curated_hub_name = name_of_hub_already_on_account
             self.curated_hub_s3_bucket_name = preexisting_hub[1]
+            self.using_preexisting_hub = True
 
         self._hub_client = CuratedHubClient(curated_hub_name=self.curated_hub_name, region=self._region)
         self._sagemaker_session = Session()
@@ -59,19 +67,12 @@ class JumpStartCuratedPublicHub:
         res = self._sm_client.list_hubs().pop("HubSummaries")
         if (len(res) > 0):
             name_of_hub_already_on_account = res[0]["HubName"]
-
-            if not import_to_preexisting_hub:
-                raise Exception(f"Hub with name {name_of_hub_already_on_account} detected on account. The limit of hubs per account is 1. If you wish to use this hub as the curated hub, please set the flag `import_to_preexisting_hub` to True.")
-            print(f"WARN: Hub with name {name_of_hub_already_on_account} detected on account. The limit of hubs per account is 1. `import_to_preexisting_hub` is set to true - defaulting to this hub.")
-
             hub_res = self._sm_client.describe_hub(HubName=name_of_hub_already_on_account)
-
             curated_hub_name = hub_res["HubName"]
             curated_hub_s3_bucket_name = hub_res.pop("S3StorageConfig")["S3OutputPath"].replace("s3://", "", 1).split("/")[0]
             print(f"Hub found on account in region {self._region} with name {curated_hub_name} and s3Config {curated_hub_s3_bucket_name}")
             return (curated_hub_name, curated_hub_s3_bucket_name)
         return None
-        
 
     def get_or_create(self):
         """Creates a curated hub in the caller AWS account.
@@ -82,6 +83,8 @@ class JumpStartCuratedPublicHub:
         self._get_or_create_private_hub(self.curated_hub_name)
 
     def _get_or_create_private_hub(self, hub_name: str):
+        if self.using_preexisting_hub:
+            return
         try:
             return self._create_private_hub(hub_name)
         except ClientError as ex:
@@ -102,6 +105,8 @@ class JumpStartCuratedPublicHub:
         )
 
     def _get_or_create_s3_bucket(self, bucket_name: str):
+        if self.using_preexisting_hub:
+            return
         try:
             return self._call_create_bucket(bucket_name)
         except ClientError as ex:
