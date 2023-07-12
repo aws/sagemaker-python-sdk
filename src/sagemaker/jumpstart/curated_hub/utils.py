@@ -1,4 +1,7 @@
+from __future__ import absolute_import
+
 import json
+from dataclasses import dataclass
 from typing import Dict, Any, Set, List, Optional
 
 import boto3
@@ -85,3 +88,9 @@ def convert_s3_key_to_new_prefix(src_key: str, src_prefix: str, dst_prefix: str)
         return src_key
     key_without_prefix: str = src_key[len(src_prefix) :]
     return dst_prefix + key_without_prefix
+
+
+@dataclass
+class PublicModelId:
+    id: str
+    version: str

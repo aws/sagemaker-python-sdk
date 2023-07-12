@@ -9,7 +9,7 @@ from botocore.client import ClientError
 
 
 from sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub import JumpStartCuratedPublicHub
-from sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub import PublicModelId
+from sagemaker.jumpstart.curated_hub.utils import PublicModelId
 
 TEST_S3_BUCKET_ALREADY_EXISTS_RESPONSE = {
     "Error": {

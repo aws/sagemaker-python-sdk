@@ -2,8 +2,8 @@ from __future__ import absolute_import
 
 import json
 import time
-from dataclasses import dataclass, asdict
-from typing import List, Optional, Dict
+from dataclasses import asdict
+from typing import List, Optional
 
 import boto3
 from botocore.client import ClientError
@@ -23,8 +23,9 @@ from sagemaker.jumpstart.curated_hub.hub_model_specs.hub_model_specs import (
     InferenceNotebookConfig,
     convert_public_model_hyperparameter_to_hub_hyperparameter, SdkArgs, DatasetConfig, )
 from sagemaker.jumpstart.curated_hub.hub_model_specs.hub_model_specs import ModelCapabilities
+from sagemaker.jumpstart.curated_hub.hub_client import CuratedHubClient
 from sagemaker.jumpstart.curated_hub.utils import get_studio_model_metadata_map_from_region, find_objects_under_prefix, \
-    to_s3_folder_prefix, convert_s3_key_to_new_prefix
+    PublicModelId
 from sagemaker.jumpstart.enums import (
     JumpStartScriptScope,
 )
@@ -35,12 +36,6 @@ from sagemaker.jumpstart.utils import (
 from sagemaker.session import Session
 
 EXTRA_S3_COPY_ARGS = {"ACL": "bucket-owner-full-control", "Tagging": "SageMaker=true"}
-
-
-@dataclass
-class PublicModelId:
-    id: str
-    version: str
 
 
 class JumpStartCuratedPublicHub:
@@ -56,6 +51,7 @@ class JumpStartCuratedPublicHub:
         self._region = "us-west-2"
         self._s3_client = boto3.client("s3", region_name=self._region)
         self._sm_client = boto3.client("sagemaker", region_name=self._region)
+        self._hub_client = CuratedHubClient(curated_hub_name=self.curated_hub_name, region=self._region)
         self._sagemaker_session = Session()
         self._disambiguator = time.time()
 
@@ -172,7 +168,6 @@ class JumpStartCuratedPublicHub:
 
         if model_specs.training_supported:
             self._copy_training_dependencies(model_specs)
-
 
     def _copy_inference_dependencies(self, model_specs: JumpStartModelSpecs) -> None:
         src_inference_artifact_location = self._src_inference_artifact_location(
@@ -564,37 +559,4 @@ class JumpStartCuratedPublicHub:
 
     def delete_models(self, model_ids: List[PublicModelId]):
         for model_id in model_ids:
-            self._delete_model(model_id)
-
-    def _delete_model(self, model_id: PublicModelId):
-        print(f"Deleting model {model_id.id} from curated hub...")
-        content_versions = self._list_hub_content_versions_no_content_noop(model_id.id)
-
-        print(
-            f"Found {len(content_versions)} versions of {model_id.id}. Deleting all versions..."
-        )
-
-        for content_version in content_versions:
-            self._sm_client.delete_hub_content(
-                HubName=self.curated_hub_name,
-                HubContentName=model_id.id,
-                HubContentType="Model",
-                HubContentVersion=content_version["HubContentVersion"],
-            )
-
-        print(f"Deleting model {model_id.id} from curated hub complete!")
-
-    def _list_hub_content_versions_no_content_noop(self, hub_content_name: str):
-        content_versions = []
-        try:
-            response = self._sm_client.list_hub_content_versions(
-                HubName=self.curated_hub_name,
-                HubContentName=hub_content_name,
-                HubContentType="Model",
-            )
-            content_versions = response.pop("HubContentSummaries")
-        except ClientError as ex:
-            if ex.response["Error"]["Code"] != "ResourceNotFound":
-                raise ex
-
-        return content_versions
+            self._hub_client.delete_model(model_id)
