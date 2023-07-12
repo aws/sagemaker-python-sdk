@@ -1,6 +1,6 @@
 import json
 from dataclasses import asdict
-from typing import Optional
+from typing import Optional, Dict, Any
 
 from sagemaker import environment_variables as env_vars
 from sagemaker.jumpstart.curated_hub.content_copy import ContentCopier
@@ -24,10 +24,11 @@ from sagemaker.jumpstart.types import JumpStartModelSpecs
 class ModelDocumentCreator:
     """Makes HubContentDocument for Hub Models."""
 
-    def __init__(self, region: str, content_copier: ContentCopier) -> None:
+    def __init__(self, region: str, content_copier: ContentCopier, studio_metadata_map: Dict[str, Any]) -> None:
         """Sets up basic info."""
         self._region = region
         self._content_copier = content_copier
+        self.studio_metadata_map = studio_metadata_map
 
     def make_hub_content_document(self, model_specs: JumpStartModelSpecs) -> str:
         """Converts the provided JumpStartModelSpecs into a Hub Content Document."""
@@ -38,9 +39,9 @@ class ModelDocumentCreator:
             capabilities.append(ModelCapabilities.INCREMENTAL_TRAINING)
 
         hub_model_spec = HubModelSpec_v1_0_0(
-            Capabilities=capabilities,  # TODO add inference if needed?
-            DataType="",  # TODO not in SDK metadata
-            MlTask="",  # TODO not in SDK metadata
+            Capabilities=capabilities,
+            DataType=self.studio_metadata_map[model_specs.model_id]["dataType"],
+            MlTask=self.studio_metadata_map[model_specs.model_id]["problemType"],
             Framework=model_specs.hosting_ecr_specs.framework,
             Origin=None,
             Dependencies=[],  # TODO add references to copied artifacts

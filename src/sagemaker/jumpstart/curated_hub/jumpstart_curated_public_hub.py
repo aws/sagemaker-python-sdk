@@ -51,7 +51,9 @@ class JumpStartCuratedPublicHub:
             curated_hub_s3_bucket_name=self.curated_hub_s3_bucket_name,
             studio_metadata_map=self.studio_metadata_map,
         )
-        self._document_creator = ModelDocumentCreator(region=self._region, content_copier=self._content_copier)
+        self._document_creator = ModelDocumentCreator(
+            region=self._region, content_copier=self._content_copier, studio_metadata_map=self.studio_metadata_map
+        )
 
     def _get_curated_hub_and_curated_hub_s3_bucket_names(self, import_to_preexisting_hub: bool) -> Optional[Tuple[str, str]]:
         res = self._sm_client.list_hubs().pop("HubSummaries")
@@ -148,8 +150,8 @@ class JumpStartCuratedPublicHub:
 
     def _import_public_model_to_hub(self, model_specs: JumpStartModelSpecs):
         # TODO Several fields are not present in SDK specs as they are only in Studio specs right now (not urgent)
-        hub_content_display_name = model_specs.model_id
-        hub_content_description = f"This is the very informative {model_specs.model_id} description"
+        hub_content_display_name = self.studio_metadata_map[model_specs.model_id]["name"]
+        hub_content_description = self.studio_metadata_map[model_specs.model_id]["desc"]
         hub_content_markdown = construct_s3_uri(self._content_copier.dst_bucket(), dst_markdown_key(model_specs))
 
         hub_content_document = self._document_creator.make_hub_content_document(model_specs=model_specs)
