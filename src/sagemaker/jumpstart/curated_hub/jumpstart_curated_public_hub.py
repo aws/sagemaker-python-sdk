@@ -2,6 +2,7 @@ from __future__ import absolute_import
 
 import json
 import time
+from concurrent import futures
 from dataclasses import dataclass, asdict
 from typing import List, Optional, Tuple
 
@@ -33,6 +34,7 @@ class JumpStartCuratedPublicHub:
         self._region = region
         self._s3_client = boto3.client("s3", region_name=self._region)
         self._sm_client = boto3.client("sagemaker", region_name=self._region)
+        self._thread_pool_size = 20
 
         # Finds the relevant hub and s3 locations
         self.curated_hub_name = curated_hub_name
@@ -119,14 +121,38 @@ class JumpStartCuratedPublicHub:
             Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": self._region}
         )
 
-    def import_models(self, model_ids: List[PublicModelId]):
+    def import_models(self, model_ids: List[PublicModelId], parallel_import: bool = True):
         """Imports models in list to curated hub
 
-        If the model already exists in the curated hub, it will skip the upload."""
+        By default, this function imports models in parallel.
+        If the model already exists in the curated hub, it will remove the version and replace it with the latest version."""
+
+
         print(f"Importing {len(model_ids)} models to curated private hub...")
-        for model_id in model_ids:
-            self._hub_client.delete_model(model_id) # TODO: Figure out why Studio terminal is passing in tags to import call
-            self._import_model(model_id)
+        if not parallel_import:
+          for model_id in model_ids:
+              self._delete_and_import_model(model_id)
+        
+        tasks = []
+        with futures.ThreadPoolExecutor(
+            max_workers=self._thread_pool_size, thread_name_prefix="import-models-to-curated-hub"
+        ) as deploy_executor:
+            for model_id in model_ids:
+                task = deploy_executor.submit(self._delete_and_import_model, model_id)
+                tasks.append(task)
+
+        results = futures.wait(tasks)
+        failed_deployments: List[BaseException] = []
+        for result in results.done:
+            exception = result.exception()
+            if exception:
+                failed_deployments.append(exception)
+        if failed_deployments:
+            raise RuntimeError(f"Failures when importing models to curated hub in parallel: {failed_deployments}")
+
+    def _delete_and_import_model(self, model_id: PublicModelId):
+        self._hub_client.delete_model(model_id) # TODO: Figure out why Studio terminal is passing in tags to import call
+        self._import_model(model_id)
 
     def _import_model(self, public_js_model: PublicModelId) -> None:
         print(
