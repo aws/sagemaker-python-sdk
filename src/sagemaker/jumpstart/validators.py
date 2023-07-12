@@ -197,7 +197,7 @@ def validate_hyperparameters(
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
-        model_version=model_version,
+        version=model_version,
         region=region,
         scope=JumpStartScriptScope.TRAINING,
     )
