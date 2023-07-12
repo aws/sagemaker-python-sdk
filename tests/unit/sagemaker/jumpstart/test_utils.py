@@ -892,6 +892,7 @@ def test_jumpstart_deprecated_model(patched_get_model_specs):
     def make_deprecated_message_spec(*largs, **kwargs):
         spec = get_spec_from_base_spec(*largs, **kwargs)
         spec.deprecated_message = deprecated_message
+        spec.deprecated = True
         return spec
 
     patched_get_model_specs.side_effect = make_deprecated_message_spec
