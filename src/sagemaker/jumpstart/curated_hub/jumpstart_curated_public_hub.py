@@ -86,6 +86,8 @@ class JumpStartCuratedPublicHub:
         self._get_or_create_s3_bucket(self.curated_hub_s3_bucket_name)
         self._get_or_create_private_hub(self.curated_hub_name)
 
+        print(f"HUB_BUCKET_NAME={self.curated_hub_s3_bucket_name}")
+
     def _get_or_create_private_hub(self, hub_name: str):
         if self.using_preexisting_hub:
             return
