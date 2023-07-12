@@ -118,7 +118,7 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
     def test_get_or_create_curated_hub_does_not_exist_should_create_new(
         self, mock_create_curated_hub
     ):
-        self.test_curated_hub._get_or_create_curated_hub()
+        self.test_curated_hub._get_or_create_private_hub()
         mock_create_curated_hub.assert_called_once()
 
     @patch(
@@ -129,7 +129,7 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
             TEST_HUB_ALREADY_EXISTS_RESPONSE, "test_operation"
         )
 
-        self.test_curated_hub._get_or_create_curated_hub()
+        self.test_curated_hub._get_or_create_private_hub()
 
         mock_create_curated_hub.assert_called_once()
 
@@ -144,7 +144,7 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
         )
 
         with self.assertRaises(ClientError):
-            self.test_curated_hub._get_or_create_curated_hub()
+            self.test_curated_hub._get_or_create_private_hub()
 
         mock_create_curated_hub.assert_called_once()
 
@@ -161,7 +161,7 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
     """Testing client calls"""
 
     def test_full_workflow(self):
-        self.test_curated_hub.create()
+        self.test_curated_hub.get_or_create()
         self.test_curated_hub.import_models(
             [self.test_public_js_model, self.test_second_public_js_model]
         )

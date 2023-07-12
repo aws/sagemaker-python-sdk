@@ -33,12 +33,12 @@ class ContentCopier:
     """Copies content from JS source bucket to hub bucket."""
 
     def __init__(
-        self, region: str, s3_client: BaseClient, curated_hub_name: str, studio_metadata_map: Dict[str, Any]
+        self, region: str, s3_client: BaseClient, curated_hub_s3_bucket_name: str, studio_metadata_map: Dict[str, Any]
     ) -> None:
         """Sets up basic info."""
         self._region = region
         self._s3_client = s3_client
-        self._curated_hub_name = curated_hub_name
+        self._curated_hub_name = curated_hub_s3_bucket_name
         self.studio_metadata_map = studio_metadata_map
         self._disambiguator = time.time()
 

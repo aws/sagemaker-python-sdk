@@ -29,13 +29,17 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
         PublicModelId(
             id="autogluon-classification-ensemble", version="*"
         ),
+        PublicModelId(
+            id="autogluon-regression-ensemble", version="*"
+        ),
     ]
 
     def setUp(self):
-        self.test_curated_hub = JumpStartCuratedPublicHub(self.custom_hub_name)
+        self.test_curated_hub = JumpStartCuratedPublicHub(self.custom_hub_name, True)
 
     """Testing client calls"""
 
     def test_full_workflow(self):
-        self.test_curated_hub.create()
-        self.test_curated_hub.import_models(self.test_models)
+        self.test_curated_hub.get_or_create()
+        self.test_curated_hub.import_models(self.test_additional_models)
+        # self.test_curated_hub.delete_models(self.test_additional_models)

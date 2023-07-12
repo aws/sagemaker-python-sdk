@@ -1,6 +1,9 @@
 from __future__ import absolute_import
 
-from typing import List
+import json
+import time
+from dataclasses import dataclass, asdict
+from typing import List, Optional, Tuple
 
 import boto3
 from botocore.client import ClientError
@@ -25,49 +28,71 @@ class JumpStartCuratedPublicHub:
     This class helps users create a new curated hub.
     """
 
-    def __init__(self, curated_hub_s3_prefix: str):
-        self.curated_hub_s3_prefix = curated_hub_s3_prefix
-        self.curated_hub_name = f"{curated_hub_s3_prefix}"  # TODO verify name
-
+    def __init__(self, curated_hub_name: str, import_to_preexisting_hub: bool = False):
         self._region = "us-west-2"
         self._s3_client = boto3.client("s3", region_name=self._region)
         self._sm_client = boto3.client("sagemaker", region_name=self._region)
+
+        # Finds the relevant hub and s3 locations
+        self.curated_hub_name = curated_hub_name
+        self.curated_hub_s3_bucket_name = curated_hub_name
+        preexisting_hub = self._get_curated_hub_and_curated_hub_s3_bucket_names(import_to_preexisting_hub)
+        if (preexisting_hub):
+            self.curated_hub_name = preexisting_hub[0]
+            self.curated_hub_s3_bucket_name = preexisting_hub[1]
+
         self._hub_client = CuratedHubClient(curated_hub_name=self.curated_hub_name, region=self._region)
         self._sagemaker_session = Session()
-        # self.studio_metadata_map = {}
         self.studio_metadata_map = get_studio_model_metadata_map_from_region(region=self._region)
         self._content_copier = ContentCopier(
             region=self._region,
             s3_client=self._s3_client,
-            curated_hub_name=self.curated_hub_name,
+            curated_hub_s3_bucket_name=self.curated_hub_s3_bucket_name,
             studio_metadata_map=self.studio_metadata_map,
         )
         self._document_creator = ModelDocumentCreator(region=self._region, content_copier=self._content_copier)
 
-    def create(self):
+    def _get_curated_hub_and_curated_hub_s3_bucket_names(self, import_to_preexisting_hub: bool) -> Optional[Tuple[str, str]]:
+        res = self._sm_client.list_hubs().pop("HubSummaries")
+        if (len(res) > 0):
+            name_of_hub_already_on_account = res[0]["HubName"]
+
+            if not import_to_preexisting_hub:
+                raise Exception(f"Hub with name {name_of_hub_already_on_account} detected on account. The limit of hubs per account is 1. If you wish to use this hub as the curated hub, please set the flag `import_to_preexisting_hub` to True.")
+            print(f"WARN: Hub with name {name_of_hub_already_on_account} detected on account. The limit of hubs per account is 1. `import_to_preexisting_hub` is set to true - defaulting to this hub.")
+
+            hub_res = self._sm_client.describe_hub(HubName=name_of_hub_already_on_account)
+
+            curated_hub_name = hub_res["HubName"]
+            curated_hub_s3_bucket_name = hub_res.pop("S3StorageConfig")["S3OutputPath"].replace("s3://", "", 1).split("/")[0]
+            print(f"Hub found on account with name {curated_hub_name} and s3Config {curated_hub_s3_bucket_name}")
+            return (curated_hub_name, curated_hub_s3_bucket_name)
+        return None
+        
+
+    def get_or_create(self):
         """Creates a curated hub in the caller AWS account.
+
+        If a hub already exist on the account, this will use the preexisting hub
 
         If the S3 bucket does not exist, this will create a new one.
         If the curated hub does not exist, this will create a new one."""
-        self._get_or_create_s3_bucket(self.curated_hub_name)
-        self._get_or_create_curated_hub()
+        self._get_or_create_s3_bucket(self.curated_hub_s3_bucket_name)
+        self._get_or_create_private_hub(self.curated_hub_name)
 
-    def _get_or_create_curated_hub(self):
+    def _get_or_create_private_hub(self, hub_name: str):
         try:
-            return self._create_curated_hub()
+            return self._create_private_hub(hub_name)
         except ClientError as ex:
             if ex.response["Error"]["Code"] != "ResourceInUse":
                 raise ex
 
-    def _get_curated_hub(self):
-        self._sm_client.describe_hub(HubName=self.curated_hub_name)
-
-    def _create_curated_hub(self):
-        hub_bucket_s3_uri = f"s3://{self.curated_hub_name}"
+    def _create_private_hub(self, hub_name: str):
+        hub_bucket_s3_uri = f"s3://{hub_name}"
         self._sm_client.create_hub(
-            HubName=self.curated_hub_name,
+            HubName=hub_name,
             HubDescription="This is a curated hub.",  # TODO verify description
-            HubDisplayName=self.curated_hub_name,
+            HubDisplayName=hub_name,
             HubSearchKeywords=[],
             S3StorageConfig={
                 "S3OutputPath": hub_bucket_s3_uri,
