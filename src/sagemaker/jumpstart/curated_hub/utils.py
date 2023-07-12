@@ -7,6 +7,7 @@ from typing import Dict, Any, Set, List, Optional
 import boto3
 from botocore.client import BaseClient
 
+from sagemaker.jumpstart.types import JumpStartModelSpecs
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
 
 STUDIO_METADATA_FILENAME = "metadata-modelzoo_v6.json"
@@ -94,3 +95,17 @@ def convert_s3_key_to_new_prefix(src_key: str, src_prefix: str, dst_prefix: str)
 class PublicModelId:
     id: str
     version: str
+
+
+def construct_s3_uri(bucket: str, key: str) -> str:
+    return f"s3://{bucket}/{key}"
+
+
+def base_framework(model_specs: JumpStartModelSpecs) -> Optional[str]:
+    if model_specs.hosting_ecr_specs.framework == "huggingface":
+        return f"pytorch{model_specs.hosting_ecr_specs.framework_version}"
+    return None
+
+
+def get_model_framework(model_specs: JumpStartModelSpecs) -> str:
+    return model_specs.model_id.split("-")[0]
