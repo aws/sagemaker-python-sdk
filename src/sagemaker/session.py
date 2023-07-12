@@ -2639,7 +2639,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             warm_start_config (dict): Configuration defining the type of warm start and
                 other required configurations.
             max_runtime_in_seconds (int or PipelineVariable): The maximum time in seconds
-                that a training job launched by a hyperparameter tuning job can run.
+                that a hyperparameter tuning job can run.
             completion_criteria_config (sagemaker.tuner.TuningJobCompletionCriteriaConfig): A
                 configuration for the completion criteria.
             early_stopping_type (str): Specifies whether early stopping is enabled for the job.
@@ -2894,7 +2894,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 tuning job.
             max_parallel_jobs (int): Maximum number of parallel training jobs to start.
             max_runtime_in_seconds (int or PipelineVariable): The maximum time in seconds
-                that a training job launched by a hyperparameter tuning job can run.
+                that a hyperparameter tuning job can run.
             early_stopping_type (str): Specifies whether early stopping is enabled for the job.
                 Can be either 'Auto' or 'Off'. If set to 'Off', early stopping will not be
                 attempted. If set to 'Auto', early stopping of some training jobs may happen,
