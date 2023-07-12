@@ -59,7 +59,7 @@ class JumpStartCuratedPublicHub:
         self._sagemaker_session = Session()
         self._disambiguator = time.time()
 
-        # self.studio_metadata_map = get_studio_model_metadata_map_from_region(region=self._region)
+        self.studio_metadata_map = get_studio_model_metadata_map_from_region(region=self._region)
 
     def create(self):
         """Creates a curated hub in the caller AWS account.
