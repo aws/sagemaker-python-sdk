@@ -196,29 +196,9 @@ class Run(object):
                 self.experiment_name,
             )
 
-        def search_trial_component_associated_trial():
-            search_results = sagemaker_session.sagemaker_client.search(
-                Resource="ExperimentTrialComponent",
-                SearchExpression={
-                    "Filters": [
-                        {
-                            "Name": "TrialComponentName",
-                            "Operator": "Equals",
-                            "Value": str(self._trial_component.trial_component_name),
-                        },
-                        {
-                            "Name": "Parents.TrialName",
-                            "Operator": "Equals",
-                            "Value": str(self._trial.trial_name),
-                        },
-                    ]
-                },
-            )
-            if search_results["Results"]:
-                return True
-            return False
-
-        if not search_trial_component_associated_trial():
+        if not _TrialComponent._trial_component_is_associated_to_trial(
+            self._trial_component.trial_component_name, self._trial.trial_name, sagemaker_session
+        ):
             self._trial.add_trial_component(self._trial_component)
 
         self._artifact_uploader = _ArtifactUploader(
