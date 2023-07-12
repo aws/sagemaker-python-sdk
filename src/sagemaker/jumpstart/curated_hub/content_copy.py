@@ -94,19 +94,18 @@ class ContentCopier:
             model_specs=model_specs
         )
         src_training_script_location = self._src_training_script_location(model_specs=model_specs)
-        src_dep_bucket = self.src_bucket()
-        dst_dep_bucket = self.dst_bucket()
+        dst_bucket = self.dst_bucket()
 
         training_artifact_copy_source = {
             "Bucket": src_training_artifact_location.lstrip("s3://").split("/")[0],
             "Key": "/".join(src_training_artifact_location.lstrip("s3://").split("/")[1:]),
         }
         print(
-            f"Copy artifact from {training_artifact_copy_source} to {dst_dep_bucket} / {self.dst_training_artifact_key(model_specs=model_specs)}"
+            f"Copy artifact from {training_artifact_copy_source} to {dst_bucket} / {self.dst_training_artifact_key(model_specs=model_specs)}"
         )
         self._s3_client.copy(
             training_artifact_copy_source,
-            dst_dep_bucket,
+            dst_bucket,
             self.dst_training_artifact_key(model_specs=model_specs),
             ExtraArgs=EXTRA_S3_COPY_ARGS,
         )
@@ -116,39 +115,43 @@ class ContentCopier:
             "Key": "/".join(src_training_script_location.lstrip("s3://").split("/")[1:]),
         }
         print(
-            f"Copy script from {training_script_copy_source} to {dst_dep_bucket} / {self.dst_training_script_key(model_specs=model_specs)}"
+            f"Copy script from {training_script_copy_source} to {dst_bucket} / {self.dst_training_script_key(model_specs=model_specs)}"
         )
         self._s3_client.copy(
             training_script_copy_source,
-            dst_dep_bucket,
+            dst_bucket,
             self.dst_training_script_key(model_specs=model_specs),
             ExtraArgs=EXTRA_S3_COPY_ARGS,
         )
 
         print(
-            f"Copy model {model_specs.model_id} version {model_specs.version} to curated hub bucket {dst_dep_bucket} complete!"
+            f"Copy model {model_specs.model_id} version {model_specs.version} to curated hub bucket {dst_bucket} complete!"
         )
 
+        # TODO enable: self._copy_training_dataset_dependencies(model_specs=model_specs)
+
+    def _copy_training_dataset_dependencies(self, model_specs: JumpStartModelSpecs) -> None:
+        # TODO performance: copy in parallel
+        src_bucket = self.src_bucket()
+        dst_bucket = self.dst_bucket()
         src_dataset_prefix = self._src_training_dataset_prefix(model_specs=model_specs)
         training_dataset_keys = find_objects_under_prefix(
-            bucket=src_dep_bucket,
+            bucket=src_bucket,
             prefix=src_dataset_prefix,
             s3_client=self._s3_client,
         )
-
-        # TODO performance: copy in parallel
         for s3_key in training_dataset_keys:
             training_dataset_copy_source = {
-                "Bucket": src_dep_bucket,
+                "Bucket": src_bucket,
                 "Key": s3_key,
             }
             dst_key = s3_key  # Use same dataset key in the hub bucket as notebooks may expect this location
             print(
-                f"Copy dataset file from {training_dataset_copy_source} to {dst_dep_bucket} / {dst_key}"
+                f"Copy dataset file from {training_dataset_copy_source} to {dst_bucket} / {dst_key}"
             )
             self._s3_client.copy(
-                training_script_copy_source,
-                dst_dep_bucket,
+                training_dataset_copy_source,
+                dst_bucket,
                 dst_key,
                 ExtraArgs=EXTRA_S3_COPY_ARGS,
             )
