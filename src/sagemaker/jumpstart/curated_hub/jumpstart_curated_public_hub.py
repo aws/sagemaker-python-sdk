@@ -56,7 +56,7 @@ class JumpStartCuratedPublicHub:
         self._sagemaker_session = Session()
         self._disambiguator = time.time()
 
-        self.studio_metadata_map = get_studio_model_metadata_map_from_region(region=self._region)
+        # self.studio_metadata_map = get_studio_model_metadata_map_from_region(region=self._region)
 
     def create(self):
         """Creates a curated hub in the caller AWS account.
@@ -140,9 +140,7 @@ class JumpStartCuratedPublicHub:
         # TODO Several fields are not present in SDK specs as they are only in Studio specs right now (not urgent)
         hub_content_display_name = model_specs.model_id
         hub_content_description = f"This is the very informative {model_specs.model_id} description"
-        hub_content_markdown = (
-            f"This is the {model_specs.model_id} markdown"  # TODO markdown file needs loading
-        )
+        hub_content_markdown = self._construct_s3_uri(self._dst_bucket(), self._dst_markdown_key(model_specs))
 
         hub_content_document = self._make_hub_content_document(model_specs=model_specs)
 
@@ -167,6 +165,7 @@ class JumpStartCuratedPublicHub:
         Unfortunately, this logic is duplicated/inconsistent with what is in Studio."""
         self._copy_inference_dependencies(model_specs)
         self._copy_demo_notebook_dependencies(model_specs)
+        self._copy_markdown_dependencies(model_specs)
 
         if model_specs.training_supported:
             self._copy_training_dependencies(model_specs)
@@ -271,6 +270,32 @@ class JumpStartCuratedPublicHub:
             f"Copying notebook for {model_specs.model_id} at {artifact_copy_source} to curated hub bucket successful!"
         ) 
 
+    def _copy_markdown_dependencies(self, model_specs: JumpStartModelSpecs) -> None:
+        src_inference_artifact_location = self._src_inference_artifact_location(
+            model_specs=model_specs
+        )
+        artifact_copy_source = {
+            "Bucket": src_inference_artifact_location.lstrip("s3://").split("/")[0],
+            "Key": self._src_markdown_key(model_specs),
+        }
+        dst_bucket = self._dst_bucket()
+        extra_args = {"ACL": "bucket-owner-full-control", "Tagging": "SageMaker=true"}
+
+        print(
+            f"Copying notebook for {model_specs.model_id} at {artifact_copy_source} to curated hub bucket {dst_bucket}..."
+        ) 
+
+        self._s3_client.copy(
+            artifact_copy_source,
+            dst_bucket,
+            self._dst_markdown_key(model_specs=model_specs),
+            ExtraArgs=extra_args,
+        )
+
+        print(
+            f"Copying notebook for {model_specs.model_id} at {artifact_copy_source} to curated hub bucket successful!"
+        ) 
+
     def _make_hub_content_document(self, model_specs: JumpStartModelSpecs) -> str:
         """Converts the provided JumpStartModelSpecs into a Hub Content Document."""
         capabilities = []
@@ -364,11 +389,20 @@ class JumpStartCuratedPublicHub:
         
         return f"{framework}-notebooks/{model_specs.model_id}-inference.ipynb"
     
+    def _src_markdown_key(self, model_specs: JumpStartModelSpecs) -> str:
+        framework = self._get_model_framework(model_specs)
+
+        return f"{framework}-metadata/{model_specs.model_id}.md"
+    
     def _get_model_framework(self, model_specs: JumpStartModelSpecs) -> str:
         return model_specs.model_id.split("-")[0]
     
     def _dst_notebook_key(self, model_specs: JumpStartModelSpecs) -> str:
         return f"{model_specs.model_id}/{self._disambiguator}/demo-notebook.ipynb"
+    
+    def _dst_markdown_key(self, model_specs: JumpStartModelSpecs) -> str:
+        # Studio excepts the same key format as the bucket
+        return self._src_markdown_key(model_specs)
 
     def _construct_s3_uri(self, bucket: str, key: str) -> str:
         return f"s3://{bucket}/{key}"

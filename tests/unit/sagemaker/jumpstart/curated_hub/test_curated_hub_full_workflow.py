@@ -14,24 +14,28 @@ from sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub import PublicM
 
 class JumpStartCuratedPublicHubTest(unittest.TestCase):
 
-    test_s3_prefix = f"test-curated-hub-chrstfu"
-    tests_models = [
+    custom_hub_name = f"test-curated-hub-chrstfu"
+    test_models = [
         PublicModelId(
-            id="autogluon-classification-ensemble", version="1.1.1"
-        ),  # test base functionality (deploy + train)
-        PublicModelId(id="huggingface-translation-t5-small", version="1.1.0"),  # no training
+            id="huggingface-llm-falcon-7b-bf16", version="*"
+        ),  
+        PublicModelId(id="huggingface-textgeneration-open-llama", version="*"),  
         PublicModelId(
-            id="huggingface-text2text-flan-t5-base", version="1.2.2"
-        ),  # test prepack + train
+            id="huggingface-textgeneration1-redpajama-incite-base-3B-v1-fp16", version="*"
+        ),
+    ]
+
+    test_additional_models = [
+        PublicModelId(
+            id="autogluon-classification-ensemble", version="*"
+        ),
     ]
 
     def setUp(self):
-        self.test_curated_hub = JumpStartCuratedPublicHub(self.test_s3_prefix)
+        self.test_curated_hub = JumpStartCuratedPublicHub(self.custom_hub_name)
 
     """Testing client calls"""
 
     def test_full_workflow(self):
         self.test_curated_hub.create()
-        self.test_curated_hub.import_models(self.tests_models)
-
-        # self.test_curated_hub.delete_models(self.tests_models)
+        self.test_curated_hub.import_models(self.test_models)
