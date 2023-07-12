@@ -25,7 +25,7 @@ def _src_markdown_key(model_specs: JumpStartModelSpecs) -> str:
 
 
 def dst_markdown_key(model_specs: JumpStartModelSpecs) -> str:
-    # Studio excepts the same key format as the bucket
+    # Studio expects the same key format as the bucket
     return _src_markdown_key(model_specs)
 
 
@@ -61,7 +61,7 @@ class ContentCopier:
         dst_bucket = self.dst_bucket()
 
         print(
-            f"Copying model {model_specs.model_id} version {model_specs.version} to curated hub bucket {dst_bucket}..."
+            f"Copying inference artifact {model_specs.model_id} version {model_specs.version} to curated hub bucket {dst_bucket}..."
         )
 
         artifact_copy_source = {
@@ -73,6 +73,10 @@ class ContentCopier:
             "Key": "/".join(src_inference_script_location.lstrip("s3://").split("/")[1:]),
         }
 
+        print(
+            f"Copying inference artifact {artifact_copy_source} version {model_specs.version} to curated hub bucket {dst_bucket}..."
+        )
+
         self._s3_client.copy(
             artifact_copy_source,
             dst_bucket,
@@ -82,6 +86,9 @@ class ContentCopier:
 
         if not model_specs.supports_prepacked_inference():
             # Need to also copy script if prepack not enabled
+            print(
+                f"Copying inference script for {script_copy_source} version {model_specs.version} to curated hub bucket {dst_bucket}..."
+            )
             self._s3_client.copy(
                 script_copy_source,
                 dst_bucket,
@@ -101,7 +108,7 @@ class ContentCopier:
             "Key": "/".join(src_training_artifact_location.lstrip("s3://").split("/")[1:]),
         }
         print(
-            f"Copy artifact from {training_artifact_copy_source} to {dst_bucket} / {self.dst_training_artifact_key(model_specs=model_specs)}"
+            f"Copy training artifact from {training_artifact_copy_source} to {dst_bucket} / {self.dst_training_artifact_key(model_specs=model_specs)}"
         )
         self._s3_client.copy(
             training_artifact_copy_source,
@@ -115,7 +122,7 @@ class ContentCopier:
             "Key": "/".join(src_training_script_location.lstrip("s3://").split("/")[1:]),
         }
         print(
-            f"Copy script from {training_script_copy_source} to {dst_bucket} / {self.dst_training_script_key(model_specs=model_specs)}"
+            f"Copy training script from {training_script_copy_source} to {dst_bucket} / {self.dst_training_script_key(model_specs=model_specs)}"
         )
         self._s3_client.copy(
             training_script_copy_source,
@@ -125,7 +132,7 @@ class ContentCopier:
         )
 
         print(
-            f"Copy model {model_specs.model_id} version {model_specs.version} to curated hub bucket {dst_bucket} complete!"
+            f"Copy training dependencies for {model_specs.model_id} version {model_specs.version} to curated hub bucket {dst_bucket} complete!"
         )
 
         self._copy_training_dataset_dependencies(model_specs=model_specs)
@@ -157,54 +164,48 @@ class ContentCopier:
             )
 
     def _copy_demo_notebook_dependencies(self, model_specs: JumpStartModelSpecs) -> None:
-        src_inference_artifact_location = self._src_inference_artifact_location(
-            model_specs=model_specs
-        )
-        artifact_copy_source = {
-            "Bucket": src_inference_artifact_location.lstrip("s3://").split("/")[0],
+        notebook_copy_source = {
+            "Bucket": self.src_bucket(),
             "Key": _src_notebook_key(model_specs),
         }
 
         print(
-            f"Copying notebook for {model_specs.model_id} at {artifact_copy_source} "
+            f"Copying notebook for {model_specs.model_id} at {notebook_copy_source} "
             f"to curated hub bucket {self.dst_bucket()}..."
         )
 
         self._s3_client.copy(
-            artifact_copy_source,
+            notebook_copy_source,
             self.dst_bucket(),
             self.dst_notebook_key(model_specs=model_specs),
             ExtraArgs=EXTRA_S3_COPY_ARGS,
         )
 
         print(
-            f"Copying notebook for {model_specs.model_id} at {artifact_copy_source} to curated hub bucket successful!"
+            f"Copying notebook for {model_specs.model_id} at {notebook_copy_source} to curated hub bucket successful!"
         )
 
     def _copy_markdown_dependencies(self, model_specs: JumpStartModelSpecs) -> None:
-        src_inference_artifact_location = self._src_inference_artifact_location(
-            model_specs=model_specs
-        )
-        artifact_copy_source = {
-            "Bucket": src_inference_artifact_location.lstrip("s3://").split("/")[0],
+        markdown_copy_source = {
+            "Bucket": self.src_bucket(),
             "Key": _src_markdown_key(model_specs),
         }
         extra_args = {"ACL": "bucket-owner-full-control", "Tagging": "SageMaker=true"}
 
         print(
-            f"Copying notebook for {model_specs.model_id} at {artifact_copy_source} to"
+            f"Copying markdown for {model_specs.model_id} at {markdown_copy_source} to"
             f" curated hub bucket {self.dst_bucket()}..."
         )
 
         self._s3_client.copy(
-            artifact_copy_source,
+            markdown_copy_source,
             self.dst_bucket(),
             dst_markdown_key(model_specs=model_specs),
             ExtraArgs=extra_args,
         )
 
         print(
-            f"Copying notebook for {model_specs.model_id} at {artifact_copy_source} to curated hub bucket successful!"
+            f"Copying markdown for {model_specs.model_id} at {markdown_copy_source} to curated hub bucket successful!"
         )
 
     def _src_training_dataset_prefix(self, model_specs: JumpStartModelSpecs) -> str:
