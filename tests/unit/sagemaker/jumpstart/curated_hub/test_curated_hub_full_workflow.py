@@ -15,23 +15,23 @@ from sagemaker.jumpstart.curated_hub.utils import PublicModelId
 class JumpStartCuratedPublicHubTest(unittest.TestCase):
 
     custom_hub_name = f"test-curated-hub-chrstfu"
-    test_models = [
-        PublicModelId(
-            id="huggingface-llm-falcon-7b-bf16", version="*"
-        ),  
-        PublicModelId(id="huggingface-textgeneration-open-llama", version="*"),  
-        PublicModelId(
-            id="huggingface-textgeneration1-redpajama-incite-base-3B-v1-fp16", version="*"
-        ),
-    ]
 
-    test_additional_models = [
+    test_models = [
         PublicModelId(
             id="autogluon-classification-ensemble", version="*"
         ),
         PublicModelId(
             id="autogluon-regression-ensemble", version="*"
         ),
+        # PublicModelId(
+        #     id="huggingface-llm-falcon-7b-bf16", version="*"
+        # ),
+    ]
+
+    test_delete_models = [
+        PublicModelId(
+            id="autogluon-classification-ensemble", version="*"
+        )
     ]
 
     def setUp(self):
@@ -41,5 +41,5 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
 
     def test_full_workflow(self):
         self.test_curated_hub.get_or_create()
-        self.test_curated_hub.import_models(self.test_additional_models)
-        # self.test_curated_hub.delete_models(self.test_additional_models)
+        self.test_curated_hub.import_models(self.test_models)
+        # self.test_curated_hub.delete_models(self.test_delete_models)

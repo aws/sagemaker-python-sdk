@@ -26,6 +26,7 @@ class JumpStartCuratedPublicHub:
     """JumpStartCuratedPublicHub class.
 
     This class helps users create a new curated hub.
+    If a hub already exists on the account, it will attempt to use that hub.
     """
 
     def __init__(self, curated_hub_name: str, import_to_preexisting_hub: bool = False):
@@ -72,8 +73,6 @@ class JumpStartCuratedPublicHub:
 
     def get_or_create(self):
         """Creates a curated hub in the caller AWS account.
-
-        If a hub already exist on the account, this will use the preexisting hub
 
         If the S3 bucket does not exist, this will create a new one.
         If the curated hub does not exist, this will create a new one."""

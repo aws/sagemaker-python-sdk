@@ -128,7 +128,7 @@ class ContentCopier:
             f"Copy model {model_specs.model_id} version {model_specs.version} to curated hub bucket {dst_bucket} complete!"
         )
 
-        # TODO enable: self._copy_training_dataset_dependencies(model_specs=model_specs)
+        self._copy_training_dataset_dependencies(model_specs=model_specs)
 
     def _copy_training_dataset_dependencies(self, model_specs: JumpStartModelSpecs) -> None:
         # TODO performance: copy in parallel
