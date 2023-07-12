@@ -105,8 +105,8 @@ class JumpStartCuratedPublicHub:
         )
 
     def _get_or_create_s3_bucket(self, bucket_name: str):
-        if self.using_preexisting_hub:
-            return
+        # if self.using_preexisting_hub:
+        #     return
         try:
             return self._call_create_bucket(bucket_name)
         except ClientError as ex:
