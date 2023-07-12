@@ -15,10 +15,15 @@ from __future__ import absolute_import
 from typing import Any, Dict, List, Optional
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
 
-from sagemaker.jumpstart.enums import HyperparameterValidationMode, VariableScope, VariableTypes
-from sagemaker.jumpstart import accessors as jumpstart_accessors
+from sagemaker.jumpstart.enums import (
+    HyperparameterValidationMode,
+    JumpStartScriptScope,
+    VariableScope,
+    VariableTypes,
+)
 from sagemaker.jumpstart.exceptions import JumpStartHyperparametersError
 from sagemaker.jumpstart.types import JumpStartHyperparameter
+from sagemaker.jumpstart.utils import verify_model_region_and_return_specs
 
 
 def _validate_hyperparameter(
@@ -190,8 +195,11 @@ def validate_hyperparameters(
     if region is None:
         region = JUMPSTART_DEFAULT_REGION_NAME
 
-    model_specs = jumpstart_accessors.JumpStartModelsAccessor.get_model_specs(
-        region=region, model_id=model_id, version=model_version
+    model_specs = verify_model_region_and_return_specs(
+        model_id=model_id,
+        model_version=model_version,
+        region=region,
+        scope=JumpStartScriptScope.TRAINING,
     )
     hyperparameters_specs = model_specs.hyperparameters
 

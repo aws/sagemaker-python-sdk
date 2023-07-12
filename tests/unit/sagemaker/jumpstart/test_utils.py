@@ -887,6 +887,48 @@ def test_jumpstart_deprecated_model(patched_get_model_specs):
             "*",
         )
 
+    deprecated_message = "this model is deprecated"
+
+    def make_deprecated_message_spec(*largs, **kwargs):
+        spec = get_spec_from_base_spec(*largs, **kwargs)
+        spec.deprecated_message = deprecated_message
+        return spec
+
+    patched_get_model_specs.side_effect = make_deprecated_message_spec
+
+    with pytest.raises(DeprecatedJumpStartModelError) as e:
+        utils.verify_model_region_and_return_specs(
+            model_id="pytorch-eqa-bert-base-cased",
+            version="*",
+            scope=JumpStartScriptScope.INFERENCE.value,
+            region="us-west-2",
+        )
+    assert deprecated_message == str(e.value.message)
+
+    deprecate_warn_message = "warn-msg"
+
+    def make_deprecated_warning_message_spec(*largs, **kwargs):
+        spec = get_spec_from_base_spec(*largs, **kwargs)
+        spec.deprecate_warn_message = deprecate_warn_message
+        return spec
+
+    patched_get_model_specs.side_effect = make_deprecated_warning_message_spec
+
+    with patch("logging.Logger.warning") as mocked_warning_log:
+        assert (
+            utils.verify_model_region_and_return_specs(
+                model_id="pytorch-eqa-bert-base-cased",
+                version="*",
+                scope=JumpStartScriptScope.INFERENCE.value,
+                region="us-west-2",
+                tolerate_deprecated_model=True,
+            )
+            is not None
+        )
+        mocked_warning_log.assert_called_once_with(
+            deprecate_warn_message,
+        )
+
 
 def test_get_jumpstart_base_name_if_jumpstart_model():
     uris = [random_jumpstart_s3_uri("random_key") for _ in range(random.randint(1, 10))]
