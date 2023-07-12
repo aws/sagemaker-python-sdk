@@ -164,9 +164,8 @@ class JumpStartCuratedPublicHub:
             HubContentDisplayName=hub_content_display_name,
             HubContentDescription=hub_content_description,
             HubContentMarkdown=hub_content_markdown,
-            HubContentDocument=hub_content_document,
-            HubContentSearchKeywords=[]
-        )
+            HubContentDocument=hub_content_document
+    )
 
     def delete_models(self, model_ids: List[PublicModelId]):
         for model_id in model_ids:
