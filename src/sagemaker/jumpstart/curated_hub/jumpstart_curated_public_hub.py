@@ -29,8 +29,8 @@ class JumpStartCuratedPublicHub:
     If a hub already exists on the account, it will attempt to use that hub.
     """
 
-    def __init__(self, curated_hub_name: str, import_to_preexisting_hub: bool = False):
-        self._region = "us-west-2"
+    def __init__(self, curated_hub_name: str, import_to_preexisting_hub: bool = False, region: str = "us-west-2"):
+        self._region = region
         self._s3_client = boto3.client("s3", region_name=self._region)
         self._sm_client = boto3.client("sagemaker", region_name=self._region)
 
@@ -68,7 +68,7 @@ class JumpStartCuratedPublicHub:
 
             curated_hub_name = hub_res["HubName"]
             curated_hub_s3_bucket_name = hub_res.pop("S3StorageConfig")["S3OutputPath"].replace("s3://", "", 1).split("/")[0]
-            print(f"Hub found on account with name {curated_hub_name} and s3Config {curated_hub_s3_bucket_name}")
+            print(f"Hub found on account in region {self._region} with name {curated_hub_name} and s3Config {curated_hub_s3_bucket_name}")
             return (curated_hub_name, curated_hub_s3_bucket_name)
         return None
         
