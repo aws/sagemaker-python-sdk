@@ -25,7 +25,10 @@ from numpy import array
 
 from sagemaker.apiutils import _utils
 from sagemaker.experiments import _api_types
-from sagemaker.experiments._api_types import TrialComponentArtifact, _TrialComponentStatusType
+from sagemaker.experiments._api_types import (
+    TrialComponentArtifact,
+    _TrialComponentStatusType,
+)
 from sagemaker.experiments._helper import (
     _ArtifactUploader,
     _LineageArtifactTracker,
@@ -200,7 +203,11 @@ class Run(object):
                 self.run_name,
                 self.experiment_name,
             )
-        self._trial.add_trial_component(self._trial_component)
+
+        if not _TrialComponent._trial_component_is_associated_to_trial(
+            self._trial_component.trial_component_name, self._trial.trial_name, sagemaker_session
+        ):
+            self._trial.add_trial_component(self._trial_component)
 
         self._artifact_uploader = _ArtifactUploader(
             trial_component_name=self._trial_component.trial_component_name,
@@ -348,7 +355,10 @@ class Run(object):
             "noSkill": no_skill,
         }
         self._log_graph_artifact(
-            artifact_name=title, data=data, graph_type="PrecisionRecallCurve", is_output=is_output
+            artifact_name=title,
+            data=data,
+            graph_type="PrecisionRecallCurve",
+            is_output=is_output,
         )
 
     @validate_invoked_inside_run_context
@@ -381,7 +391,9 @@ class Run(object):
                 If set to False then represented as input association.
         """
         verify_length_of_true_and_predicted(
-            true_labels=y_true, predicted_attrs=y_score, predicted_attrs_name="predicted scores"
+            true_labels=y_true,
+            predicted_attrs=y_score,
+            predicted_attrs_name="predicted scores",
         )
 
         get_module("sklearn")
@@ -432,7 +444,9 @@ class Run(object):
                 If set to False then represented as input association.
         """
         verify_length_of_true_and_predicted(
-            true_labels=y_true, predicted_attrs=y_pred, predicted_attrs_name="predicted labels"
+            true_labels=y_true,
+            predicted_attrs=y_pred,
+            predicted_attrs_name="predicted labels",
         )
 
         get_module("sklearn")
@@ -447,12 +461,19 @@ class Run(object):
             "confusionMatrix": matrix.tolist(),
         }
         self._log_graph_artifact(
-            artifact_name=title, data=data, graph_type="ConfusionMatrix", is_output=is_output
+            artifact_name=title,
+            data=data,
+            graph_type="ConfusionMatrix",
+            is_output=is_output,
         )
 
     @validate_invoked_inside_run_context
     def log_artifact(
-        self, name: str, value: str, media_type: Optional[str] = None, is_output: bool = True
+        self,
+        name: str,
+        value: str,
+        media_type: Optional[str] = None,
+        is_output: bool = True,
     ):
         """Record a single artifact for this run.
 
@@ -575,11 +596,17 @@ class Run(object):
         # create an artifact and association for the table
         if is_output:
             self._lineage_artifact_tracker.add_output_artifact(
-                name=artifact_name, source_uri=s3_uri, etag=etag, artifact_type=graph_type
+                name=artifact_name,
+                source_uri=s3_uri,
+                etag=etag,
+                artifact_type=graph_type,
             )
         else:
             self._lineage_artifact_tracker.add_input_artifact(
-                name=artifact_name, source_uri=s3_uri, etag=etag, artifact_type=graph_type
+                name=artifact_name,
+                source_uri=s3_uri,
+                etag=etag,
+                artifact_type=graph_type,
             )
 
     def _verify_trial_component_artifacts_length(self, is_output):
@@ -719,7 +746,8 @@ class Run(object):
         self._trial_component.end_time = end_time
         if exc_value:
             self._trial_component.status = _api_types.TrialComponentStatus(
-                primary_status=_TrialComponentStatusType.Failed.value, message=str(exc_value)
+                primary_status=_TrialComponentStatusType.Failed.value,
+                message=str(exc_value),
             )
         else:
             self._trial_component.status = _api_types.TrialComponentStatus(
@@ -837,7 +865,8 @@ def load_run(
         run_instance = _RunContext.get_current_run()
     elif environment:
         exp_config = get_tc_and_exp_config_from_job_env(
-            environment=environment, sagemaker_session=sagemaker_session or _utils.default_session()
+            environment=environment,
+            sagemaker_session=sagemaker_session or _utils.default_session(),
         )
         run_name = Run._extract_run_name_from_tc_name(
             trial_component_name=exp_config[RUN_NAME],

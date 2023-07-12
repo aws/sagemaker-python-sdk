@@ -396,3 +396,26 @@ def test_search(sagemaker_session):
         ),
     ]
     assert expected == list(_TrialComponent.search(sagemaker_session=sagemaker_session))
+
+
+def test_trial_component_is_associated_to_trial(sagemaker_session):
+    obj = _TrialComponent(sagemaker_session, trial_component_name="tc-1")
+    sagemaker_session.sagemaker_client.search.return_value = {
+        "Results": [
+            {
+                "TrialComponent": {
+                    "Parents": [{"ExperimentName": "e-1", "TrialName": "t-1"}],
+                    "TrialComponentName": "tc-1",
+                }
+            }
+        ]
+    }
+
+    assert obj._trial_component_is_associated_to_trial("tc-1", "t-1", sagemaker_session) is True
+
+
+def test_trial_component_is_not_associated_to_trial(sagemaker_session):
+    obj = _TrialComponent(sagemaker_session, trial_component_name="tc-1")
+    sagemaker_session.sagemaker_client.search.return_value = {"Results": []}
+
+    assert obj._trial_component_is_associated_to_trial("tc-1", "t-1", sagemaker_session) is False
