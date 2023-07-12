@@ -12,6 +12,7 @@ from botocore.client import ClientError
 from sagemaker.jumpstart.curated_hub.content_copy import ContentCopier, dst_markdown_key
 from sagemaker.jumpstart.curated_hub.hub_client import CuratedHubClient
 from sagemaker.jumpstart.curated_hub.model_document import ModelDocumentCreator
+from sagemaker.jumpstart.curated_hub.stsClient import StsClient
 from sagemaker.jumpstart.curated_hub.utils import PublicModelId, \
     construct_s3_uri, get_studio_model_metadata_map_from_region
 from sagemaker.jumpstart.enums import (
@@ -35,10 +36,11 @@ class JumpStartCuratedPublicHub:
         self._s3_client = boto3.client("s3", region_name=self._region)
         self._sm_client = boto3.client("sagemaker", region_name=self._region)
         self._thread_pool_size = 20
+        self._account_id = StsClient().get_account_id()
 
         # Finds the relevant hub and s3 locations
         self.curated_hub_name = curated_hub_name
-        self.curated_hub_s3_bucket_name = curated_hub_name
+        self.curated_hub_s3_bucket_name = f"{curated_hub_name}-{self._region}-{self._account_id}"
         self.using_preexisting_hub = False
         preexisting_hub = self._get_curated_hub_and_curated_hub_s3_bucket_names(import_to_preexisting_hub)
         if (preexisting_hub):
