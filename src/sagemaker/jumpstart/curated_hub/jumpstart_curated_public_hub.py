@@ -3,7 +3,7 @@ from __future__ import absolute_import
 import json
 import time
 from dataclasses import dataclass, asdict
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 import boto3
 from botocore.client import ClientError
@@ -21,17 +21,20 @@ from sagemaker.jumpstart.curated_hub.hub_model_specs.hub_model_specs import (
     ScriptConfig,
     InstanceConfig,
     InferenceNotebookConfig,
-    convert_public_model_hyperparameter_to_hub_hyperparameter, SdkArgs, )
+    convert_public_model_hyperparameter_to_hub_hyperparameter, SdkArgs, DatasetConfig, )
 from sagemaker.jumpstart.curated_hub.hub_model_specs.hub_model_specs import ModelCapabilities
-from sagemaker.jumpstart.curated_hub.utils import get_studio_model_metadata_map_from_region
+from sagemaker.jumpstart.curated_hub.utils import get_studio_model_metadata_map_from_region, find_objects_under_prefix, \
+    to_s3_folder_prefix, convert_s3_key_to_new_prefix
 from sagemaker.jumpstart.enums import (
     JumpStartScriptScope,
 )
 from sagemaker.jumpstart.types import JumpStartModelSpecs
 from sagemaker.jumpstart.utils import (
-    verify_model_region_and_return_specs,
+    verify_model_region_and_return_specs, get_jumpstart_content_bucket,
 )
 from sagemaker.session import Session
+
+EXTRA_S3_COPY_ARGS = {"ACL": "bucket-owner-full-control", "Tagging": "SageMaker=true"}
 
 
 @dataclass
@@ -170,6 +173,7 @@ class JumpStartCuratedPublicHub:
         if model_specs.training_supported:
             self._copy_training_dependencies(model_specs)
 
+
     def _copy_inference_dependencies(self, model_specs: JumpStartModelSpecs) -> None:
         src_inference_artifact_location = self._src_inference_artifact_location(
             model_specs=model_specs
@@ -189,13 +193,12 @@ class JumpStartCuratedPublicHub:
             "Bucket": src_inference_script_location.lstrip("s3://").split("/")[0],
             "Key": "/".join(src_inference_script_location.lstrip("s3://").split("/")[1:]),
         }
-        extra_args = {"ACL": "bucket-owner-full-control", "Tagging": "SageMaker=true"}
 
         self._s3_client.copy(
             artifact_copy_source,
             dst_bucket,
             self._dst_inference_artifact_key(model_specs=model_specs),
-            ExtraArgs=extra_args,
+            ExtraArgs=EXTRA_S3_COPY_ARGS,
         )
 
         if not model_specs.supports_prepacked_inference():
@@ -204,7 +207,7 @@ class JumpStartCuratedPublicHub:
                 script_copy_source,
                 dst_bucket,
                 self._dst_inference_script_key(model_specs=model_specs),
-                ExtraArgs=extra_args,
+                ExtraArgs=EXTRA_S3_COPY_ARGS,
             )
 
     def _copy_training_dependencies(self, model_specs: JumpStartModelSpecs) -> None:
@@ -212,6 +215,7 @@ class JumpStartCuratedPublicHub:
             model_specs=model_specs
         )
         src_training_script_location = self._src_training_script_location(model_specs=model_specs)
+        src_bucket = self._src_bucket()
         dst_bucket = self._dst_bucket()
 
         training_artifact_copy_source = {
@@ -225,6 +229,7 @@ class JumpStartCuratedPublicHub:
             training_artifact_copy_source,
             dst_bucket,
             self._dst_training_artifact_key(model_specs=model_specs),
+            ExtraArgs=EXTRA_S3_COPY_ARGS,
         )
 
         training_script_copy_source = {
@@ -232,17 +237,42 @@ class JumpStartCuratedPublicHub:
             "Key": "/".join(src_training_script_location.lstrip("s3://").split("/")[1:]),
         }
         print(
-            f"Copy artifact from {training_script_copy_source} to {dst_bucket} / {self._dst_training_script_key(model_specs=model_specs)}"
+            f"Copy script from {training_script_copy_source} to {dst_bucket} / {self._dst_training_script_key(model_specs=model_specs)}"
         )
         self._s3_client.copy(
             training_script_copy_source,
             dst_bucket,
             self._dst_training_script_key(model_specs=model_specs),
+            ExtraArgs=EXTRA_S3_COPY_ARGS,
         )
 
         print(
             f"Copy model {model_specs.model_id} version {model_specs.version} to curated hub bucket {dst_bucket} complete!"
         )
+
+        src_dataset_prefix = self._src_training_dataset_prefix(model_specs=model_specs)
+        training_dataset_keys = find_objects_under_prefix(
+            bucket=src_bucket,
+            prefix=src_dataset_prefix,
+            s3_client=self._s3_client,
+        )
+
+        # TODO performance: copy in parallel
+        for s3_key in training_dataset_keys:
+            training_dataset_copy_source = {
+                "Bucket": src_bucket,
+                "Key": s3_key,
+            }
+            dst_key = s3_key  # Use same dataset key in the hub bucket as notebooks may expect this location
+            print(
+                f"Copy dataset file from {training_dataset_copy_source} to {dst_bucket} / {dst_key}"
+            )
+            self._s3_client.copy(
+                training_script_copy_source,
+                dst_bucket,
+                dst_key,
+                ExtraArgs=EXTRA_S3_COPY_ARGS,
+            )
 
     def _copy_demo_notebook_dependencies(self, model_specs: JumpStartModelSpecs) -> None:
         src_inference_artifact_location = self._src_inference_artifact_location(
@@ -253,7 +283,6 @@ class JumpStartCuratedPublicHub:
             "Key": self._src_notebook_key(model_specs),
         }
         dst_bucket = self._dst_bucket()
-        extra_args = {"ACL": "bucket-owner-full-control", "Tagging": "SageMaker=true"}
 
         print(
             f"Copying notebook for {model_specs.model_id} at {artifact_copy_source} to curated hub bucket {dst_bucket}..."
@@ -263,7 +292,7 @@ class JumpStartCuratedPublicHub:
             artifact_copy_source,
             dst_bucket,
             self._dst_notebook_key(model_specs=model_specs),
-            ExtraArgs=extra_args,
+            ExtraArgs=EXTRA_S3_COPY_ARGS,
         )
 
         print(
@@ -311,7 +340,7 @@ class JumpStartCuratedPublicHub:
             Framework=model_specs.hosting_ecr_specs.framework,
             Origin=None,
             Dependencies=[],  # TODO add references to copied artifacts
-            DatasetConfig=None,  # Out of scope in p0
+            DatasetConfig=self._dataset_config(model_specs=model_specs),
             DefaultTrainingConfig=self._make_hub_content_default_training_config(
                 model_specs=model_specs
             ),
@@ -332,6 +361,16 @@ class JumpStartCuratedPublicHub:
 
         return json.dumps(hub_model_spec_dict)
 
+    def _dataset_config(self, model_specs: JumpStartModelSpecs) -> Optional[DatasetConfig]:
+        if not model_specs.training_supported:
+            return None
+        return DatasetConfig(
+            TrainingDatasetLocation=self._dst_training_dataset_location(model_specs=model_specs),
+            ValidationDatasetLocation=None,
+            DataFormatLocation=None,
+            PredictColumn=None,
+        )
+
     def _src_training_artifact_location(self, model_specs: JumpStartModelSpecs) -> Optional[str]:
         return self._src_artifact_location(JumpStartScriptScope.TRAINING, model_specs)
 
@@ -346,6 +385,23 @@ class JumpStartCuratedPublicHub:
             model_scope=model_scope,
             tolerate_vulnerable_model=True,
             tolerate_deprecated_model=True,
+        )
+
+    def _src_training_dataset_prefix(self, model_specs: JumpStartModelSpecs) -> str:
+        studio_model_metadata = self.studio_metadata_map[model_specs.model_id]
+        return studio_model_metadata["defaultDataKey"]
+
+    def _src_training_dataset_location(self, model_specs: JumpStartModelSpecs) -> str:
+        return self._construct_s3_uri(
+            bucket=self._src_bucket(), key=self._src_training_dataset_prefix(model_specs=model_specs)
+        )
+
+    def _dst_training_dataset_prefix(self, model_specs: JumpStartModelSpecs) -> str:
+        return self._src_training_dataset_prefix(model_specs=model_specs)  # TODO determine best way to copy datasets
+
+    def _dst_training_dataset_location(self, model_specs: JumpStartModelSpecs) -> str:
+        return self._construct_s3_uri(
+            bucket=self._dst_bucket(), key=self._dst_training_dataset_prefix(model_specs=model_specs)
         )
 
     def _src_training_script_location(self, model_specs: JumpStartModelSpecs) -> str:
@@ -363,6 +419,9 @@ class JumpStartCuratedPublicHub:
             tolerate_vulnerable_model=True,
             tolerate_deprecated_model=True,
         )
+
+    def _src_bucket(self) -> str:
+        return get_jumpstart_content_bucket(self._region)
 
     def _dst_bucket(self) -> str:
         # TODO sync with create hub bucket logic
