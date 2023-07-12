@@ -27,6 +27,7 @@ from sagemaker.estimator import Estimator
 from sagemaker.explainer.explainer_config import ExplainerConfig
 from sagemaker.inputs import FileSystemInput, TrainingInput
 from sagemaker.instance_group import InstanceGroup
+from sagemaker.jumpstart.accessors import JumpStartModelsAccessor
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.exceptions import INVALID_MODEL_ID_ERROR_MSG
 
@@ -34,7 +35,7 @@ from sagemaker.jumpstart.factory.estimator import get_deploy_kwargs, get_fit_kwa
 from sagemaker.jumpstart.factory.model import get_default_predictor
 from sagemaker.jumpstart.utils import (
     is_valid_model_id,
-    resolve_model_intelligent_default_field,
+    resolve_model_sagemaker_config_field,
 )
 from sagemaker.utils import stringify_object
 from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
@@ -103,6 +104,9 @@ class JumpStartEstimator(Estimator):
         instance_groups: Optional[List[InstanceGroup]] = None,
         training_repository_access_mode: Optional[Union[str, PipelineVariable]] = None,
         training_repository_credentials_provider_arn: Optional[Union[str, PipelineVariable]] = None,
+        container_entry_point: Optional[List[str]] = None,
+        container_arguments: Optional[List[str]] = None,
+        disable_output_compression: Optional[bool] = None,
     ):
         """Initializes a ``JumpStartEstimator``.
 
@@ -483,18 +487,30 @@ class JumpStartEstimator(Estimator):
                 private Docker registry where your training image is hosted (Default: None).
                 When it's set to None, SageMaker will not do authentication before pulling the image
                 in the private Docker registry. (Default: None).
+            container_entry_point (Optional[List[str]]): The entrypoint script for a Docker
+                container used to run a training job. This script takes precedence over
+                the default train processing instructions.
+            container_arguments (Optional[List[str]]): The arguments for a container used to run
+                a training job.
+            disable_output_compression (Optional[bool]): When set to true, Model is uploaded
+                to Amazon S3 without compression after training finishes.
 
         Raises:
             ValueError: If the model ID is not recognized by JumpStart.
         """
 
-        if not is_valid_model_id(
-            model_id=model_id,
-            model_version=model_version,
-            region=region,
-            script=JumpStartScriptScope.TRAINING,
-        ):
-            raise ValueError(INVALID_MODEL_ID_ERROR_MSG.format(model_id=model_id))
+        def _is_valid_model_id_hook():
+            return is_valid_model_id(
+                model_id=model_id,
+                model_version=model_version,
+                region=region,
+                script=JumpStartScriptScope.TRAINING,
+            )
+
+        if not _is_valid_model_id_hook():
+            JumpStartModelsAccessor.reset_cache()
+            if not _is_valid_model_id_hook():
+                raise ValueError(INVALID_MODEL_ID_ERROR_MSG.format(model_id=model_id))
 
         estimator_init_kwargs = get_init_kwargs(
             model_id=model_id,
@@ -547,6 +563,9 @@ class JumpStartEstimator(Estimator):
                 training_repository_credentials_provider_arn
             ),
             image_uri=image_uri,
+            container_entry_point=container_entry_point,
+            container_arguments=container_arguments,
+            disable_output_compression=disable_output_compression,
         )
 
         self.model_id = estimator_init_kwargs.model_id
@@ -913,7 +932,7 @@ class JumpStartEstimator(Estimator):
         self.orig_predictor_cls = predictor_cls
 
         sagemaker_session = sagemaker_session or self.sagemaker_session
-        role = resolve_model_intelligent_default_field(
+        role = resolve_model_sagemaker_config_field(
             field_name="role",
             field_val=role,
             sagemaker_session=sagemaker_session,
@@ -967,7 +986,7 @@ class JumpStartEstimator(Estimator):
         )
 
         # If no predictor class was passed, add defaults to predictor
-        if self.orig_predictor_cls is None:
+        if self.orig_predictor_cls is None and async_inference_config is None:
             return get_default_predictor(
                 predictor=predictor,
                 model_id=self.model_id,

@@ -650,6 +650,8 @@ def sts_regional_endpoint(region):
         str: AWS STS regional endpoint
     """
     endpoint_data = _botocore_resolver().construct_endpoint("sts", region)
+    if region == "il-central-1" and not endpoint_data:
+        endpoint_data = {"hostname": "sts.{}.amazonaws.com".format(region)}
     return "https://{}".format(endpoint_data["hostname"])
 
 
@@ -735,6 +737,8 @@ def _aws_partition(region):
         str: partition corresponding to the region name passed in. Ex: "aws-cn"
     """
     endpoint_data = _botocore_resolver().construct_endpoint("sts", region)
+    if region == "il-central-1" and not endpoint_data:
+        endpoint_data = {"hostname": "sts.{}.amazonaws.com".format(region)}
     return endpoint_data["partition"]
 
 
@@ -1046,6 +1050,7 @@ def resolve_value_from_config(
     config_path: str = None,
     default_value=None,
     sagemaker_session=None,
+    sagemaker_config: dict = None,
 ):
     """Decides which value for the caller to use.
 
@@ -1059,19 +1064,30 @@ def resolve_value_from_config(
 
     Args:
         direct_input: The value that the caller of this method starts with. Usually this is an
-        input to the caller's class or method.
+            input to the caller's class or method.
         config_path (str): A string denoting the path used to lookup the value in the
-        sagemaker config.
+            sagemaker config.
         default_value: The value used if not present elsewhere.
         sagemaker_session (sagemaker.session.Session): A SageMaker Session object, used for
-        SageMaker interactions (default: None).
+            SageMaker interactions (default: None).
+        sagemaker_config (dict): The sdk defaults config that is normally accessed through a
+            Session object by doing `session.sagemaker_config`. (default: None) This parameter will
+            be checked for the config value if (and only if) sagemaker_session is None. This
+            parameter exists for the rare cases where the user provided no Session but a default
+            Session cannot be initialized before config injection is needed. In that case,
+            the config dictionary may be loaded and passed here before a default Session object
+            is created.
 
     Returns:
         The value that should be used by the caller
     """
 
     config_value = (
-        get_sagemaker_config_value(sagemaker_session, config_path) if config_path else None
+        get_sagemaker_config_value(
+            sagemaker_session, config_path, sagemaker_config=sagemaker_config
+        )
+        if config_path
+        else None
     )
     _log_sagemaker_config_single_substitution(direct_input, config_value, config_path)
 
@@ -1084,23 +1100,33 @@ def resolve_value_from_config(
     return default_value
 
 
-def get_sagemaker_config_value(sagemaker_session, key):
+def get_sagemaker_config_value(sagemaker_session, key, sagemaker_config: dict = None):
     """Returns the value that corresponds to the provided key from the configuration file.
 
     Args:
         key: Key Path of the config file entry.
         sagemaker_session (sagemaker.session.Session): A SageMaker Session object, used for
-        SageMaker interactions.
+            SageMaker interactions.
+        sagemaker_config (dict): The sdk defaults config that is normally accessed through a
+            Session object by doing `session.sagemaker_config`. (default: None) This parameter will
+            be checked for the config value if (and only if) sagemaker_session is None. This
+            parameter exists for the rare cases where no Session provided but a default Session
+            cannot be initialized before config injection is needed. In that case, the config
+            dictionary may be loaded and passed here before a default Session object is created.
 
     Returns:
         object: The corresponding default value in the configuration file.
     """
-    if not sagemaker_session:
+    if sagemaker_session:
+        config_to_check = sagemaker_session.sagemaker_config
+    else:
+        config_to_check = sagemaker_config
+
+    if not config_to_check:
         return None
 
-    if sagemaker_session.sagemaker_config:
-        validate_sagemaker_config(sagemaker_session.sagemaker_config)
-    config_value = get_config_value(key, sagemaker_session.sagemaker_config)
+    validate_sagemaker_config(config_to_check)
+    config_value = get_config_value(key, config_to_check)
     # Copy the value so any modifications to the output will not modify the source config
     return copy.deepcopy(config_value)
 
@@ -1381,7 +1407,9 @@ def volume_size_supported(instance_type: str) -> bool:
     try:
 
         # local mode does not support volume size
-        if instance_type.startswith("local"):
+        # instance type given as pipeline parameter does not support volume size
+        # do not change the if statement order below.
+        if is_pipeline_variable(instance_type) or instance_type.startswith("local"):
             return False
 
         parts: List[str] = instance_type.split(".")

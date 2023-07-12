@@ -1,5 +1,99 @@
 # Changelog
 
+## v2.171.0 (2023-07-06)
+
+### Features
+
+ * Add PipelineDefinitionConfig to pipelines to toggle custom job …
+
+### Bug Fixes and Other Changes
+
+ * Upgrade DJL deepspeed versions
+ * Remove unused dependency `protobuf3-to-dict`
+ * skip intelligent volume_size allocation based on instance type if it is a pipeline parameter
+
+## v2.170.0 (2023-07-05)
+
+### Features
+
+ * Enable customizing artifact output path
+
+### Bug Fixes and Other Changes
+
+ * Add il-central-1 support for all SM DLCs
+ * jumpstart async inference config predictor support
+ * Update CreateEdgePackagingJob resourceKey with type string
+
+## v2.169.0 (2023-06-29)
+
+### Features
+
+ * Add support for tags in to_pipeline API for feature processor
+ * model registry integration to model cards to support model packages
+ * SDK Defaults - DebugHookConfig defaults in TrainingJob API
+ * Add segment config for Clarify
+
+### Bug Fixes and Other Changes
+
+ * Neuronx image retrieval missing sdk information
+
+### Documentation Changes
+
+ * Doc updates for SDK defaults - S3 Params, Env Variables, Disable Profiler, and DebugHookConfig
+
+## v2.168.0 (2023-06-22)
+
+### Features
+
+ * Support uncompressed model upload
+ * Add optional monitoring_config_override parameter in suggest_baseline API
+ * SDK defaults add disable profiler to createTrainingJob
+
+### Bug Fixes and Other Changes
+
+ * Enable spark processing container in KIX
+ * Fix key prefix preventing jumpstart model repack
+
+## v2.167.0 (2023-06-21)
+
+### Features
+
+ * add SageMaker FeatureStore feature processing
+
+### Bug Fixes and Other Changes
+
+ * Chore/reset cache if js model not found
+
+## v2.166.0 (2023-06-19)
+
+### Features
+
+ * Add `inf2` support to `HuggingFaceModel`
+ * adding resourcekey and tags for api in config for SDK defaults
+
+### Bug Fixes and Other Changes
+
+ * Remove deprecated option.s3url in favor of option.model_id
+ * Use sagemaker config keyword
+ * SDK Defaults Config - Handle config injection for None Sessions
+ * Fix HPO Grid Search comparison and name
+
+## v2.165.0 (2023-06-13)
+
+### Features
+
+ * Add support for Deployment Recommendation ID in model.deploy(). No tagging support
+
+### Bug Fixes and Other Changes
+
+ * maketplace integs
+ * Add tagging assert to inference recommender integ tests
+ * breaking deviations in _create_sagemaker_model call
+
+### Documentation Changes
+
+ * Add missing quotation mark
+
 ## v2.164.0 (2023-06-08)
 
 ### Features

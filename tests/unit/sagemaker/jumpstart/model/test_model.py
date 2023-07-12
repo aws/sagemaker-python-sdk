@@ -16,6 +16,8 @@ from typing import Optional, Set
 from unittest import mock
 import unittest
 import pytest
+from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
+from sagemaker.jumpstart.enums import JumpStartScriptScope
 
 from sagemaker.jumpstart.model import JumpStartModel
 from sagemaker.model import Model
@@ -423,6 +425,42 @@ class ModelTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.model.Model.deploy")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_no_predictor_yes_async_inference_config(
+        self,
+        mock_model_deploy: mock.Mock,
+        mock_model_init: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
+        mock_get_default_predictor: mock.Mock,
+    ):
+        mock_get_default_predictor.return_value = default_predictor_with_presets
+
+        mock_model_deploy.return_value = default_predictor
+
+        mock_is_valid_model_id.return_value = True
+
+        model_id, _ = "js-model-class-model-prepacked", "*"
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        mock_session.return_value = sagemaker_session
+
+        model = JumpStartModel(
+            model_id=model_id,
+        )
+
+        model.deploy(async_inference_config=AsyncInferenceConfig())
+
+        mock_get_default_predictor.assert_not_called()
+
+    @mock.patch("sagemaker.jumpstart.model.get_default_predictor")
+    @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.model.Model.__init__")
+    @mock.patch("sagemaker.jumpstart.model.Model.deploy")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_yes_predictor_returns_default_predictor(
         self,
         mock_model_deploy: mock.Mock,
@@ -451,6 +489,82 @@ class ModelTest(unittest.TestCase):
         mock_get_default_predictor.assert_not_called()
         self.assertEqual(type(predictor), Predictor)
         self.assertEqual(predictor, default_predictor)
+
+    @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.model.Model.__init__")
+    @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_init_kwargs")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.model.JumpStartModelsAccessor.reset_cache")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_model_id_not_found_refeshes_cach_inference(
+        self,
+        mock_reset_cache: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_retrieve_kwargs: mock.Mock,
+        mock_model_init: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
+    ):
+
+        mock_is_valid_model_id.side_effect = [False, False]
+
+        model_id, _ = "js-trainable-model", "*"
+
+        mock_retrieve_kwargs.return_value = {}
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        mock_session.return_value = sagemaker_session
+
+        with pytest.raises(ValueError):
+            JumpStartModel(
+                model_id=model_id,
+            )
+
+        mock_reset_cache.assert_called_once_with()
+        mock_is_valid_model_id.assert_has_calls(
+            calls=[
+                mock.call(
+                    model_id="js-trainable-model",
+                    model_version=None,
+                    region=None,
+                    script=JumpStartScriptScope.INFERENCE,
+                ),
+                mock.call(
+                    model_id="js-trainable-model",
+                    model_version=None,
+                    region=None,
+                    script=JumpStartScriptScope.INFERENCE,
+                ),
+            ]
+        )
+
+        mock_is_valid_model_id.reset_mock()
+        mock_reset_cache.reset_mock()
+
+        mock_is_valid_model_id.side_effect = [False, True]
+        JumpStartModel(
+            model_id=model_id,
+        )
+
+        mock_reset_cache.assert_called_once_with()
+        mock_is_valid_model_id.assert_has_calls(
+            calls=[
+                mock.call(
+                    model_id="js-trainable-model",
+                    model_version=None,
+                    region=None,
+                    script=JumpStartScriptScope.INFERENCE,
+                ),
+                mock.call(
+                    model_id="js-trainable-model",
+                    model_version=None,
+                    region=None,
+                    script=JumpStartScriptScope.INFERENCE,
+                ),
+            ]
+        )
 
 
 def test_jumpstart_model_requires_model_id():

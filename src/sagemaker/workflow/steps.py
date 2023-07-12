@@ -50,6 +50,7 @@ from sagemaker.workflow.properties import (
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.functions import Join, JsonGet
 from sagemaker.workflow.retry import RetryPolicy
+from sagemaker.workflow.utilities import trim_request_dict
 
 if TYPE_CHECKING:
     from sagemaker.workflow.step_collections import StepCollection
@@ -471,9 +472,10 @@ class TrainingStep(ConfigurableRetryStep):
         """The arguments dictionary that is used to call `create_training_job`.
 
         NOTE: The `CreateTrainingJob` request is not quite the args list that workflow needs.
-        The `TrainingJobName` and `ExperimentConfig` attributes cannot be included.
+        `ExperimentConfig` attribute cannot be included.
         """
         from sagemaker.workflow.utilities import execute_job_functions
+        from sagemaker.workflow.utilities import _pipeline_config
 
         if self.step_args:
             # execute fit function with saved parameters,
@@ -493,7 +495,9 @@ class TrainingStep(ConfigurableRetryStep):
         if "HyperParameters" in request_dict:
             request_dict["HyperParameters"].pop("sagemaker_job_name", None)
 
-        request_dict.pop("TrainingJobName", None)
+        # Continue to pop job name if not explicitly opted-in via config
+        request_dict = trim_request_dict(request_dict, "TrainingJobName", _pipeline_config)
+
         Step._trim_experiment_config(request_dict)
 
         return request_dict
@@ -595,8 +599,8 @@ class CreateModelStep(ConfigurableRetryStep):
         """The arguments dictionary that is used to call `create_model`.
 
         NOTE: The `CreateModelRequest` is not quite the args list that workflow needs.
-        `ModelName` cannot be included in the arguments.
         """
+        from sagemaker.workflow.utilities import _pipeline_config
 
         if self.step_args:
             request_dict = self.step_args
@@ -620,7 +624,9 @@ class CreateModelStep(ConfigurableRetryStep):
                     vpc_config=self.model.vpc_config,
                     enable_network_isolation=self.model.enable_network_isolation(),
                 )
-        request_dict.pop("ModelName", None)
+
+        # Continue to pop job name if not explicitly opted-in via config
+        request_dict = trim_request_dict(request_dict, "ModelName", _pipeline_config)
 
         return request_dict
 
@@ -702,9 +708,10 @@ class TransformStep(ConfigurableRetryStep):
         """The arguments dictionary that is used to call `create_transform_job`.
 
         NOTE: The `CreateTransformJob` request is not quite the args list that workflow needs.
-        `TransformJobName` and `ExperimentConfig` cannot be included in the arguments.
+        `ExperimentConfig` cannot be included in the arguments.
         """
         from sagemaker.workflow.utilities import execute_job_functions
+        from sagemaker.workflow.utilities import _pipeline_config
 
         if self.step_args:
             # execute transform function with saved parameters,
@@ -733,7 +740,9 @@ class TransformStep(ConfigurableRetryStep):
                 **transform_args
             )
 
-        request_dict.pop("TransformJobName", None)
+        # Continue to pop job name if not explicitly opted-in via config
+        request_dict = trim_request_dict(request_dict, "TransformJobName", _pipeline_config)
+
         Step._trim_experiment_config(request_dict)
 
         return request_dict
@@ -864,9 +873,10 @@ class ProcessingStep(ConfigurableRetryStep):
         """The arguments dictionary that is used to call `create_processing_job`.
 
         NOTE: The `CreateProcessingJob` request is not quite the args list that workflow needs.
-        `ProcessingJobName` and `ExperimentConfig` cannot be included in the arguments.
+        `ExperimentConfig` cannot be included in the arguments.
         """
         from sagemaker.workflow.utilities import execute_job_functions
+        from sagemaker.workflow.utilities import _pipeline_config
 
         if self.step_args:
             # execute run function with saved parameters,
@@ -890,7 +900,9 @@ class ProcessingStep(ConfigurableRetryStep):
             )
             request_dict = self.processor.sagemaker_session._get_process_request(**process_args)
 
-        request_dict.pop("ProcessingJobName", None)
+        # Continue to pop job name if not explicitly opted-in via config
+        request_dict = trim_request_dict(request_dict, "ProcessingJobName", _pipeline_config)
+
         Step._trim_experiment_config(request_dict)
 
         return request_dict
@@ -1025,9 +1037,9 @@ class TuningStep(ConfigurableRetryStep):
 
         NOTE: The `CreateHyperParameterTuningJob` request is not quite the
             args list that workflow needs.
-        The `HyperParameterTuningJobName` attribute cannot be included.
         """
         from sagemaker.workflow.utilities import execute_job_functions
+        from sagemaker.workflow.utilities import _pipeline_config
 
         if self.step_args:
             # execute fit function with saved parameters,
@@ -1048,7 +1060,11 @@ class TuningStep(ConfigurableRetryStep):
             tuner_args = _TuningJob._get_tuner_args(self.tuner, self.inputs)
             request_dict = self.tuner.sagemaker_session._get_tuning_request(**tuner_args)
 
-        request_dict.pop("HyperParameterTuningJobName", None)
+        # Continue to pop job name if not explicitly opted-in via config
+        request_dict = trim_request_dict(
+            request_dict, "HyperParameterTuningJobName", _pipeline_config
+        )
+
         return request_dict
 
     @property

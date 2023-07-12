@@ -20,6 +20,7 @@ import warnings
 from sagemaker import Model, Processor
 from sagemaker.estimator import Estimator
 from sagemaker.transformer import Transformer
+from sagemaker.workflow.pipeline_definition_config import PipelineDefinitionConfig
 
 from sagemaker.workflow.steps import TuningStep
 from sagemaker.inputs import TrainingInput
@@ -301,3 +302,50 @@ def test_insert_wrong_step_args_into_tuning_step(inputs, pipeline_session):
         )
 
     assert "The step_args of TuningStep must be obtained from tuner.fit()" in str(error.value)
+
+
+def test_single_tuning_step_using_custom_job_prefixes(pipeline_session, entry_point):
+    pytorch_estimator = PyTorch(
+        entry_point=entry_point,
+        role=ROLE,
+        framework_version="1.5.0",
+        py_version="py3",
+        instance_count=1,
+        instance_type="ml.m5.xlarge",
+        sagemaker_session=pipeline_session,
+    )
+
+    hyperparameter_ranges = {
+        "batch-size": IntegerParameter(64, 128),
+    }
+
+    tuner = HyperparameterTuner(
+        estimator=pytorch_estimator,
+        base_tuning_job_name="MyTuningJobPrefix",  # custom-job-prefix
+        objective_metric_name="test:acc",
+        objective_type="Maximize",
+        hyperparameter_ranges=hyperparameter_ranges,
+        metric_definitions=[{"Name": "test:acc", "Regex": "Overall test accuracy: (.*?);"}],
+        max_jobs=2,
+        max_parallel_jobs=2,
+    )
+
+    inputs = TrainingInput(s3_data="s3://my-bucket/my-training-input")
+    step_args = tuner.fit(inputs=inputs)
+
+    step = TuningStep(
+        name="MyTuningStep",
+        step_args=step_args,
+    )
+
+    definition_config = PipelineDefinitionConfig(use_custom_job_prefix=True)
+
+    pipeline = Pipeline(
+        name="MyPipeline",
+        steps=[step],
+        sagemaker_session=pipeline_session,
+        pipeline_definition_config=definition_config,
+    )
+
+    step_def = json.loads(pipeline.definition())["Steps"][0]
+    assert step_def["Arguments"]["HyperParameterTuningJobName"] == "MyTuningJobPrefix"

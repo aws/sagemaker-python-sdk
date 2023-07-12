@@ -20,6 +20,7 @@ from sagemaker.async_inference.async_inference_config import AsyncInferenceConfi
 from sagemaker.base_deserializers import BaseDeserializer
 from sagemaker.base_serializers import BaseSerializer
 from sagemaker.explainer.explainer_config import ExplainerConfig
+from sagemaker.jumpstart.accessors import JumpStartModelsAccessor
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.exceptions import INVALID_MODEL_ID_ERROR_MSG
 from sagemaker.jumpstart.factory.model import (
@@ -252,13 +253,18 @@ class JumpStartModel(Model):
             ValueError: If the model ID is not recognized by JumpStart.
         """
 
-        if not is_valid_model_id(
-            model_id=model_id,
-            model_version=model_version,
-            region=region,
-            script=JumpStartScriptScope.INFERENCE,
-        ):
-            raise ValueError(INVALID_MODEL_ID_ERROR_MSG.format(model_id=model_id))
+        def _is_valid_model_id_hook():
+            return is_valid_model_id(
+                model_id=model_id,
+                model_version=model_version,
+                region=region,
+                script=JumpStartScriptScope.INFERENCE,
+            )
+
+        if not _is_valid_model_id_hook():
+            JumpStartModelsAccessor.reset_cache()
+            if not _is_valid_model_id_hook():
+                raise ValueError(INVALID_MODEL_ID_ERROR_MSG.format(model_id=model_id))
 
         model_init_kwargs = get_init_kwargs(
             model_id=model_id,
@@ -426,7 +432,7 @@ class JumpStartModel(Model):
         predictor = super(JumpStartModel, self).deploy(**deploy_kwargs.to_kwargs_dict())
 
         # If no predictor class was passed, add defaults to predictor
-        if self.orig_predictor_cls is None:
+        if self.orig_predictor_cls is None and async_inference_config is None:
             return get_default_predictor(
                 predictor=predictor,
                 model_id=self.model_id,

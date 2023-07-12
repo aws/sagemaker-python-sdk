@@ -53,7 +53,6 @@ required_packages = [
     "google-pasta",
     "numpy>=1.9.0,<2.0",
     "protobuf>=3.1,<4.0",
-    "protobuf3-to-dict>=0.1.5,<1.0",
     "smdebug_rulesconfig==1.0.1",
     "importlib-metadata>=1.4.0,<5.0",
     "packaging>=20.0",
@@ -71,6 +70,9 @@ required_packages = [
 extras = {
     "local": read_requirements("requirements/extras/local_requirements.txt"),
     "scipy": read_requirements("requirements/extras/scipy_requirements.txt"),
+    "feature-processor": read_requirements(
+        "requirements/extras/feature-processor_requirements.txt"
+    ),
 }
 # Meta dependency groups
 extras["all"] = [item for group in extras.values() for item in group]

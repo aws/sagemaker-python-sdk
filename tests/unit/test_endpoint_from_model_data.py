@@ -70,9 +70,10 @@ def test_all_defaults_no_existing_entities(name_from_image_mock, sagemaker_sessi
         instance_type=INSTANCE_TYPE,
         accelerator_type=None,
         data_capture_config_dict=None,
+        tags=None,
     )
     sagemaker_session.create_endpoint.assert_called_once_with(
-        endpoint_name=NAME_FROM_IMAGE, config_name=NAME_FROM_IMAGE, wait=False
+        endpoint_name=NAME_FROM_IMAGE, config_name=NAME_FROM_IMAGE, wait=False, tags=None
     )
     assert returned_name == NAME_FROM_IMAGE
 
@@ -107,9 +108,10 @@ def test_no_defaults_no_existing_entities(name_from_image_mock, sagemaker_sessio
         instance_type=INSTANCE_TYPE,
         accelerator_type=ACCELERATOR_TYPE,
         data_capture_config_dict=None,
+        tags=None,
     )
     sagemaker_session.create_endpoint.assert_called_once_with(
-        endpoint_name=ENDPOINT_NAME, config_name=ENDPOINT_NAME, wait=False
+        endpoint_name=ENDPOINT_NAME, config_name=ENDPOINT_NAME, wait=False, tags=None
     )
     assert returned_name == ENDPOINT_NAME
 
@@ -146,9 +148,10 @@ def test_model_and_endpoint_config_exist(name_from_image_mock, sagemaker_session
         instance_type=INSTANCE_TYPE,
         accelerator_type=None,
         data_capture_config_dict=None,
+        tags=None,
     )
     sagemaker_session.create_endpoint.assert_called_once_with(
-        endpoint_name=NAME_FROM_IMAGE, config_name=NAME_FROM_IMAGE, wait=False
+        endpoint_name=NAME_FROM_IMAGE, config_name=NAME_FROM_IMAGE, wait=False, tags=None
     )
 
 
@@ -182,6 +185,7 @@ def test_model_and_endpoint_config_raises_unexpected_error(name_from_image_mock,
         instance_type=INSTANCE_TYPE,
         accelerator_type=None,
         data_capture_config_dict=None,
+        tags=None,
     )
     sagemaker_session.create_endpoint.assert_not_called()
 

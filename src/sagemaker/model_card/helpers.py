@@ -62,13 +62,21 @@ class _DefaultToRequestDict(object):
 
         return name
 
+    def _skip_encoding(self, attr: str):
+        """Skip encoding if the attribute is an instance of _SkipEncodingDecoding descriptor"""
+        if attr in self.__class__.__dict__:
+            return isinstance(self.__class__.__dict__[attr], _SkipEncodingDecoding)
+
+        return False
+
     def _to_request_dict(self):
         """Implement this method in a subclass to return a custom request_dict."""
         request_data = {}
         for attr, value in self.__dict__.items():
             if value is not None:
                 name = self._clean_descriptor_name(attr)
-                request_data[name] = value
+                if not self._skip_encoding(name):
+                    request_data[name] = value
 
         return request_data
 
@@ -146,6 +154,38 @@ class _DescriptorBase(ABC):
         Args:
             value (dict): raw data to be decoded.
         """
+        pass  # pylint: disable=W0107
+
+
+class _SkipEncodingDecoding(_DescriptorBase):
+    """Object that skip the encoding/decoding in model card attributes."""
+
+    def __init__(self, value_type: Any):
+        """Initialize an SkipEncodingDecoding descriptor.
+
+        Args:
+            value_type (Any): Value type of the attribute.
+        """
+        self.value_type = value_type
+
+    def validate(self, value: Any):
+        """Check if value type is valid.
+
+        Args:
+            value (Any): value type depends on self.value_type
+
+        Raises:
+            ValueError: value is not a self.value_type.
+        """
+        if value is not None and not isinstance(value, self.value_type):
+            raise ValueError(f"Please assign a {self.value_type} to {self.private_name[1:]}")
+
+    def require_decode(self, value: Any):
+        """No decoding is required."""
+        return False
+
+    def decode(self, value: Any):
+        """No decoding is required. Required placeholder for abstractmethod"""
         pass  # pylint: disable=W0107
 
 
@@ -463,9 +503,12 @@ def _read_s3_json(session: Session, bucket: str, key: str):
             raise
 
     result = {}
-    if data["ContentType"] == "application/json":
+    if data["ContentType"] == "application/json" or data["ContentType"] == "binary/octet-stream":
         result = json.loads(data["Body"].read().decode("utf-8"))
     else:
-        logger.warning("Invalid file type %s. application/json is expected.", data["ContentType"])
+        logger.warning(
+            "Invalid file type %s. application/json or binary/octet-stream is expected.",
+            data["ContentType"],
+        )
 
     return result

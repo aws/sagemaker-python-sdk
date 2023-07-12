@@ -55,7 +55,7 @@ from sagemaker.jumpstart.types import (
 )
 from sagemaker.jumpstart.utils import (
     update_dict_if_key_not_present,
-    resolve_estimator_intelligent_default_field,
+    resolve_estimator_sagemaker_config_field,
 )
 
 
@@ -116,6 +116,9 @@ def get_init_kwargs(
     instance_groups: Optional[List[InstanceGroup]] = None,
     training_repository_access_mode: Optional[Union[str, PipelineVariable]] = None,
     training_repository_credentials_provider_arn: Optional[Union[str, PipelineVariable]] = None,
+    container_entry_point: Optional[List[str]] = None,
+    container_arguments: Optional[List[str]] = None,
+    disable_output_compression: Optional[bool] = None,
 ) -> JumpStartEstimatorInitKwargs:
     """Returns kwargs required to instantiate `sagemaker.estimator.Estimator` object."""
 
@@ -168,6 +171,9 @@ def get_init_kwargs(
         training_repository_access_mode=training_repository_access_mode,
         training_repository_credentials_provider_arn=training_repository_credentials_provider_arn,
         image_uri=image_uri,
+        container_entry_point=container_entry_point,
+        container_arguments=container_arguments,
+        disable_output_compression=disable_output_compression,
     )
 
     estimator_init_kwargs = _add_model_version_to_kwargs(estimator_init_kwargs)
@@ -386,10 +392,11 @@ def _add_model_version_to_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwargs:
 def _add_role_to_kwargs(kwargs: JumpStartEstimatorInitKwargs) -> JumpStartEstimatorInitKwargs:
     """Sets role based on default or override, returns full kwargs."""
 
-    kwargs.role = resolve_estimator_intelligent_default_field(
+    kwargs.role = resolve_estimator_sagemaker_config_field(
         field_name="role",
         field_val=kwargs.role,
         sagemaker_session=kwargs.sagemaker_session,
+        default_value=kwargs.role,
     )
 
     return kwargs
@@ -604,7 +611,7 @@ def _add_estimator_extra_kwargs(
 
     for key, value in estimator_kwargs_to_add.items():
         if getattr(kwargs, key) is None:
-            resolved_value = resolve_estimator_intelligent_default_field(
+            resolved_value = resolve_estimator_sagemaker_config_field(
                 field_name=key,
                 field_val=value,
                 sagemaker_session=kwargs.sagemaker_session,

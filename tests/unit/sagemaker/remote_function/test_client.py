@@ -30,6 +30,7 @@ from sagemaker.remote_function.client import (
     get_future,
     list_futures,
 )
+from sagemaker.remote_function.spark_config import SparkConfig
 from sagemaker.remote_function.errors import DeserializationError, RemoteFunctionError, ServiceError
 from sagemaker.remote_function.runtime_environment.runtime_environment_manager import (
     RuntimeEnvironmentError,
@@ -376,7 +377,8 @@ def test_decorator_underlying_job_stopped_somehow(mock_start, mock_job_settings)
         square(5)
 
 
-def test_decorator_instance_count_greater_than_one():
+@patch("sagemaker.remote_function.client._JobSettings")
+def test_decorator_instance_count_greater_than_one(mock_job_settings):
     @remote(image_uri=IMAGE, s3_root_uri=S3_URI, instance_count=2)
     def square(x):
         return x * x
@@ -430,6 +432,27 @@ def test_decorator_no_arguments(mock_start, mock_job_settings, mock_deserialize)
     result = square(5)
     assert result == EXPECTED_JOB_RESULT
     assert mock_job_settings.call_args.kwargs["image_uri"] is None
+
+
+@patch(
+    "sagemaker.remote_function.core.serialization.deserialize_obj_from_s3",
+    return_value=EXPECTED_JOB_RESULT,
+)
+@patch("sagemaker.remote_function.client._JobSettings")
+@patch("sagemaker.remote_function.client._Job.start")
+def test_decorator_with_spark_config(mock_start, mock_job_settings, mock_deserialize):
+    mock_job = Mock(job_name=TRAINING_JOB_NAME)
+    mock_job.describe.return_value = COMPLETED_TRAINING_JOB
+
+    mock_start.return_value = mock_job
+
+    spark_config = SparkConfig()
+
+    @remote(spark_config=spark_config)
+    def square(x):
+        pass
+
+    assert mock_job_settings.call_args.kwargs["spark_config"] == spark_config
 
 
 @pytest.mark.parametrize(

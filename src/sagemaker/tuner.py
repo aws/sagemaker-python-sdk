@@ -71,7 +71,7 @@ WARM_START_TYPE = "WarmStartType"
 HYPERBAND_STRATEGY_CONFIG = "HyperbandStrategyConfig"
 HYPERBAND_MIN_RESOURCE = "MinResource"
 HYPERBAND_MAX_RESOURCE = "MaxResource"
-GRID_SEARCH = "GridSearch"
+GRID_SEARCH = "Grid"
 MAX_NUMBER_OF_TRAINING_JOBS_NOT_IMPROVING = "MaxNumberOfTrainingJobsNotImproving"
 BEST_OBJECTIVE_NOT_IMPROVING = "BestObjectiveNotImproving"
 CONVERGENCE_DETECTED = "ConvergenceDetected"
@@ -645,12 +645,12 @@ class HyperparameterTuner(object):
                 evaluating training jobs. This value can be either 'Minimize' or
                 'Maximize' (default: 'Maximize').
             max_jobs (int or PipelineVariable): Maximum total number of training jobs to start for
-                the hyperparameter tuning job. The default value is unspecified fot the GridSearch
+                the hyperparameter tuning job. The default value is unspecified fot the 'Grid'
                 strategy and the default value is 1 for all others strategies (default: None).
             max_parallel_jobs (int or PipelineVariable): Maximum number of parallel training jobs to
                 start (default: 1).
             max_runtime_in_seconds (int or PipelineVariable): The maximum time in seconds
-                 that a training job launched by a hyperparameter tuning job can run.
+                 that a hyperparameter tuning job can run.
             tags (list[dict[str, str] or list[dict[str, PipelineVariable]]): List of tags for
                 labeling the tuning job (default: None). For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
@@ -741,7 +741,7 @@ class HyperparameterTuner(object):
         # For all other strategies for the backward compatibility we keep
         # the default value as 1 (previous default value).
         self.max_jobs = max_jobs
-        if max_jobs is None and strategy is not GRID_SEARCH:
+        if max_jobs is None and strategy != GRID_SEARCH:
             self.max_jobs = 1
         self.max_parallel_jobs = max_parallel_jobs
         self.max_runtime_in_seconds = max_runtime_in_seconds
@@ -1917,12 +1917,12 @@ class HyperparameterTuner(object):
             objective_type (str): The type of the objective metric for evaluating training jobs.
                 This value can be either 'Minimize' or 'Maximize' (default: 'Maximize').
             max_jobs (int): Maximum total number of training jobs to start for the hyperparameter
-                tuning job. The default value is unspecified fot the GridSearch strategy
+                tuning job. The default value is unspecified fot the 'Grid' strategy
                 and the value is 1 for all others strategies (default: None).
             max_parallel_jobs (int): Maximum number of parallel training jobs to start
                 (default: 1).
             max_runtime_in_seconds (int): The maximum time in seconds
-                 that a training job launched by a hyperparameter tuning job can run.
+                 that a hyperparameter tuning job can run.
             tags (list[dict]): List of tags for labeling the tuning job (default: None). For more,
                 see https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
             warm_start_config (sagemaker.tuner.WarmStartConfig): A ``WarmStartConfig`` object that

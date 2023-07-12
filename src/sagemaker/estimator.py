@@ -30,6 +30,7 @@ import sagemaker
 from sagemaker import git_utils, image_uris, vpc_utils, s3
 from sagemaker.analytics import TrainingJobAnalytics
 from sagemaker.config import (
+    ESTIMATOR_DEBUG_HOOK_CONFIG_PATH,
     TRAINING_JOB_VOLUME_KMS_KEY_ID_PATH,
     TRAINING_JOB_SECURITY_GROUP_IDS_PATH,
     TRAINING_JOB_SUBNETS_PATH,
@@ -37,6 +38,7 @@ from sagemaker.config import (
     TRAINING_JOB_ROLE_ARN_PATH,
     TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
     TRAINING_JOB_ENVIRONMENT_PATH,
+    TRAINING_JOB_DISABLE_PROFILER_PATH,
     TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
 )
 from sagemaker.debugger import (  # noqa: F401 # pylint: disable=unused-import
@@ -157,7 +159,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         enable_sagemaker_metrics: Optional[Union[bool, PipelineVariable]] = None,
         enable_network_isolation: Union[bool, PipelineVariable] = None,
         profiler_config: Optional[ProfilerConfig] = None,
-        disable_profiler: bool = False,
+        disable_profiler: bool = None,
         environment: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
         max_retry_attempts: Optional[Union[int, PipelineVariable]] = None,
         source_dir: Optional[Union[str, PipelineVariable]] = None,
@@ -170,6 +172,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         instance_groups: Optional[List[InstanceGroup]] = None,
         training_repository_access_mode: Optional[Union[str, PipelineVariable]] = None,
         training_repository_credentials_provider_arn: Optional[Union[str, PipelineVariable]] = None,
+        container_entry_point: Optional[List[str]] = None,
+        container_arguments: Optional[List[str]] = None,
+        disable_output_compression: bool = False,
         **kwargs,
     ):
         """Initialize an ``EstimatorBase`` instance.
@@ -523,6 +528,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 private Docker registry where your training image is hosted (default: None).
                 When it's set to None, SageMaker will not do authentication before pulling the image
                 in the private Docker registry.
+            container_entry_point (List[str]): Optional. The entrypoint script for a Docker
+                container used to run a training job. This script takes precedence over
+                the default train processing instructions.
+            container_arguments (List[str]): Optional. The arguments for a container used to run
+                a training job.
+            disable_output_compression (bool): Optional. When set to true, Model is uploaded
+                to Amazon S3 without compression after training finishes.
         """
         instance_count = renamed_kwargs(
             "train_instance_count", "instance_count", instance_count, kwargs
@@ -647,6 +659,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             training_repository_credentials_provider_arn
         )
 
+        # container entry point / arguments configs
+        self.container_entry_point = container_entry_point
+        self.container_arguments = container_arguments
+
         self.encrypt_inter_container_traffic = resolve_value_from_config(
             direct_input=encrypt_inter_container_traffic,
             config_path=TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
@@ -660,7 +676,26 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.checkpoint_local_path = checkpoint_local_path
 
         self.rules = rules
-        self.debugger_hook_config = debugger_hook_config
+
+        # Today, we ONLY support debugger_hook_config to be provided as a boolean value
+        # from sagemaker_config. We resolve value for this parameter as per the order
+        # 1. value from direct_input which can be a boolean or a dictionary
+        # 2. value from sagemaker_config which can be a boolean
+        # In future, if we support debugger_hook_config to be provided as a dictionary
+        # from sagemaker_config [SageMaker.TrainingJob] then we will need to update the
+        # logic below to resolve the values as per the type of value received from
+        # direct_input and sagemaker_config
+        self.debugger_hook_config = resolve_value_from_config(
+            direct_input=debugger_hook_config,
+            config_path=ESTIMATOR_DEBUG_HOOK_CONFIG_PATH,
+            sagemaker_session=sagemaker_session,
+        )
+        # If customer passes True from either direct_input or sagemaker_config, we will
+        # create a default hook config as an empty dict which will later be populated
+        # with default s3_output_path from _prepare_debugger_for_training function
+        if self.debugger_hook_config is True:
+            self.debugger_hook_config = {}
+
         self.tensorboard_output_config = tensorboard_output_config
 
         self.debugger_rule_configs = None
@@ -676,7 +711,12 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         )
 
         self.profiler_config = profiler_config
-        self.disable_profiler = disable_profiler
+        self.disable_profiler = resolve_value_from_config(
+            direct_input=disable_profiler,
+            config_path=TRAINING_JOB_DISABLE_PROFILER_PATH,
+            default_value=False,
+            sagemaker_session=self.sagemaker_session,
+        )
 
         self.environment = resolve_value_from_config(
             direct_input=environment,
@@ -695,7 +735,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.profiler_rule_configs = None
         self.profiler_rules = None
         self.debugger_rules = None
-
+        self.disable_output_compression = disable_output_compression
         validate_source_code_input_against_pipeline_variables(
             entry_point=entry_point,
             source_dir=source_dir,
@@ -1786,6 +1826,16 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 "MetricsDefinition"
             ]
 
+        if "ContainerEntrypoint" in job_details["AlgorithmSpecification"]:
+            init_params["container_entry_point"] = job_details["AlgorithmSpecification"][
+                "ContainerEntrypoint"
+            ]
+
+        if "ContainerArguments" in job_details["AlgorithmSpecification"]:
+            init_params["container_arguments"] = job_details["AlgorithmSpecification"][
+                "ContainerArguments"
+            ]
+
         if "EnableInterContainerTrafficEncryption" in job_details:
             init_params["encrypt_inter_container_traffic"] = job_details[
                 "EnableInterContainerTrafficEncryption"
@@ -2266,6 +2316,12 @@ class _TrainingJob(_Job):
                 ] = estimator.training_repository_credentials_provider_arn
             train_args["training_image_config"] = training_image_config
 
+        if estimator.container_entry_point is not None:
+            train_args["container_entry_point"] = estimator.container_entry_point
+
+        if estimator.container_arguments is not None:
+            train_args["container_arguments"] = estimator.container_arguments
+
         # encrypt_inter_container_traffic may be a pipeline variable place holder object
         # which is parsed in execution time
         # This does not check config because the EstimatorBase constuctor already did that check
@@ -2472,6 +2528,9 @@ class Estimator(EstimatorBase):
         instance_groups: Optional[List[InstanceGroup]] = None,
         training_repository_access_mode: Optional[Union[str, PipelineVariable]] = None,
         training_repository_credentials_provider_arn: Optional[Union[str, PipelineVariable]] = None,
+        container_entry_point: Optional[List[str]] = None,
+        container_arguments: Optional[List[str]] = None,
+        disable_output_compression: bool = False,
         **kwargs,
     ):
         """Initialize an ``Estimator`` instance.
@@ -2824,6 +2883,13 @@ class Estimator(EstimatorBase):
                 private Docker registry where your training image is hosted (default: None).
                 When it's set to None, SageMaker will not do authentication before pulling the image
                 in the private Docker registry.
+            container_entry_point (List[str]): Optional. The entrypoint script for a Docker
+                container used to run a training job. This script takes precedence over
+                the default train processing instructions.
+            container_arguments (List[str]): Optional. The arguments for a container used to run
+                a training job.
+            disable_output_compression (bool): Optional. When set to true, Model is uploaded
+                to Amazon S3 without compression after training finishes.
         """
         self.image_uri = image_uri
         self._hyperparameters = hyperparameters.copy() if hyperparameters else {}
@@ -2871,6 +2937,9 @@ class Estimator(EstimatorBase):
             instance_groups=instance_groups,
             training_repository_access_mode=training_repository_access_mode,
             training_repository_credentials_provider_arn=training_repository_credentials_provider_arn,  # noqa: E501 # pylint: disable=line-too-long
+            container_entry_point=container_entry_point,
+            container_arguments=container_arguments,
+            disable_output_compression=disable_output_compression,
             **kwargs,
         )
 

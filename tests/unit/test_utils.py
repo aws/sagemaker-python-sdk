@@ -35,6 +35,7 @@ from sagemaker.session_settings import SessionSettings
 from sagemaker.utils import (
     retry_with_backoff,
     check_and_get_run_experiment_config,
+    get_sagemaker_config_value,
     resolve_value_from_config,
     resolve_class_attribute_from_config,
     resolve_nested_dict_value_from_config,
@@ -1190,6 +1191,10 @@ def test_resolve_value_from_config():
     sagemaker_session.sagemaker_config.update(
         {"SageMaker": {"EndpointConfig": {"KmsKeyId": "CONFIG_VALUE"}}}
     )
+    sagemaker_config = {
+        "SchemaVersion": "1.0",
+        "SageMaker": {"EndpointConfig": {"KmsKeyId": "CONFIG_VALUE"}},
+    }
 
     # direct_input should be respected
     assert (
@@ -1223,6 +1228,13 @@ def test_resolve_value_from_config():
 
     assert resolve_value_from_config(None, None, None, sagemaker_session) is None
 
+    # Config value from sagemaker_config should be returned
+    # if no direct_input and sagemaker_session is None
+    assert (
+        resolve_value_from_config(None, config_key_path, None, None, sagemaker_config)
+        == "CONFIG_VALUE"
+    )
+
     # Different falsy direct_inputs
     assert resolve_value_from_config("", config_key_path, None, sagemaker_session) == ""
 
@@ -1237,6 +1249,58 @@ def test_resolve_value_from_config():
     assert resolve_value_from_config(None, config_key_path, None, sagemaker_session) == ""
 
     mock_info_logger.reset_mock()
+
+
+def test_get_sagemaker_config_value():
+    mock_config_logger = Mock()
+
+    mock_info_logger = Mock()
+    mock_config_logger.info = mock_info_logger
+    # using a shorter name for inside the test
+    sagemaker_session = MagicMock()
+    sagemaker_session.sagemaker_config = {"SchemaVersion": "1.0"}
+    config_key_path = "SageMaker.EndpointConfig.KmsKeyId"
+    sagemaker_session.sagemaker_config.update(
+        {"SageMaker": {"EndpointConfig": {"KmsKeyId": "CONFIG_VALUE"}}}
+    )
+    sagemaker_config = {
+        "SchemaVersion": "1.0",
+        "SageMaker": {"EndpointConfig": {"KmsKeyId": "CONFIG_VALUE"}},
+    }
+
+    # Tests that the function returns the correct value when the key exists in the sagemaker_session configuration.
+    assert (
+        get_sagemaker_config_value(
+            sagemaker_session=sagemaker_session, key=config_key_path, sagemaker_config=None
+        )
+        == "CONFIG_VALUE"
+    )
+
+    # Tests that the function correctly uses the sagemaker_config to get value for the requested
+    # config_key_path when sagemaker_session is None.
+    assert (
+        get_sagemaker_config_value(
+            sagemaker_session=None, key=config_key_path, sagemaker_config=sagemaker_config
+        )
+        == "CONFIG_VALUE"
+    )
+
+    # Tests that the function returns None when the key does not exist in the configuration.
+    invalid_key = "inavlid_key"
+    assert (
+        get_sagemaker_config_value(
+            sagemaker_session=sagemaker_session, key=invalid_key, sagemaker_config=sagemaker_config
+        )
+        is None
+    )
+
+    # Tests that the function returns None when sagemaker_session and sagemaker_config are None.
+    assert (
+        get_sagemaker_config_value(
+            sagemaker_session=None, key=config_key_path, sagemaker_config=None
+        )
+        is None
+    )
 
 
 @patch("jsonschema.validate")
@@ -1639,6 +1703,7 @@ class TestVolumeSizeSupported(TestCase):
             "g5.8xlarge",
             "local",
             "local_gpu",
+            ParameterString(name="InstanceType", default_value="ml.m4.xlarge"),
         ]
 
         for instance in instances_that_dont_support_volume_size:

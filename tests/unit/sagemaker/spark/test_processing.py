@@ -25,6 +25,7 @@ from sagemaker.spark.processing import (
     _SparkProcessorBase,
     _HistoryServer,
     FileType,
+    SparkConfigUtils,
 )
 
 SPARK_EVENT_LOGS_S3_URI = "s3://bucket/spark-events"
@@ -182,22 +183,11 @@ missing_properties_list = [missing_properties_dict]
     ],
 )
 def test_configuration_validation(config, expected, sagemaker_session) -> None:
-    # This just tests that the import is right and that the processor can be instantiated
-    # Functionality is tested in project root container directory.
-    spark = PySparkProcessor(
-        base_job_name="sm-spark",
-        role="AmazonSageMaker-ExecutionRole",
-        framework_version="2.4",
-        instance_count=1,
-        instance_type="ml.c5.xlarge",
-        sagemaker_session=sagemaker_session,
-    )
-
     if expected is None:
-        spark._validate_configuration(config)
+        SparkConfigUtils.validate_configuration(config)
     else:
         with pytest.raises(expected):
-            spark._validate_configuration(config)
+            SparkConfigUtils.validate_configuration(config)
 
 
 @patch("sagemaker.processing.ScriptProcessor.run")
@@ -810,7 +800,7 @@ def test_is_history_server_started(mock_urlopen, py_spark_processor, config, exp
 
 def test_validate_s3_uri(py_spark_processor):
     with pytest.raises(ValueError) as e:
-        py_spark_processor._validate_s3_uri("http")
+        SparkConfigUtils.validate_s3_uri("http")
 
     assert isinstance(e.value, ValueError)
 
