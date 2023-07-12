@@ -126,7 +126,6 @@ class JumpStartCuratedPublicHub:
         print(f"Importing {len(model_ids)} models to curated private hub...")
         for model_id in model_ids:
             self._hub_client.delete_model(model_id) # TODO: Figure out why Studio terminal is passing in tags to import call
-            time.sleep(2)
             self._import_model(model_id)
 
     def _import_model(self, public_js_model: PublicModelId) -> None:
