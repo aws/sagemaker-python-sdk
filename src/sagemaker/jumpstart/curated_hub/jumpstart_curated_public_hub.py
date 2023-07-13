@@ -87,10 +87,10 @@ class JumpStartCuratedPublicHub:
 
         If the S3 bucket does not exist, this will create a new one.
         If the curated hub does not exist, this will create a new one."""
+        print(f"HUB_BUCKET_NAME={self.curated_hub_s3_bucket_name}")
         self._get_or_create_s3_bucket(self.curated_hub_s3_bucket_name)
         self._get_or_create_private_hub(self.curated_hub_name)
 
-        print(f"HUB_BUCKET_NAME={self.curated_hub_s3_bucket_name}")
 
     def _get_or_create_private_hub(self, hub_name: str):
         try:
