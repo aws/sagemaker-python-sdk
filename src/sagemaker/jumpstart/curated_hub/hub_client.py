@@ -17,9 +17,7 @@ class CuratedHubClient:
         print(f"Deleting model {model_id.id} from curated hub...")
         content_versions = self._list_hub_content_versions_no_content_noop(model_id.id)
 
-        print(
-            f"Found {len(content_versions)} versions of {model_id.id}. Deleting all versions..."
-        )
+        print(f"Found {len(content_versions)} versions of {model_id.id}. Deleting all versions...")
 
         for content_version in content_versions:
             self._sm_client.delete_hub_content(

@@ -5,9 +5,11 @@ from datetime import datetime
 
 import boto3
 
+
 def convert_iso_to_yyyymmdd_hhmm(iso_time: str) -> str:
     """Convert iso time string (generated from assign_timestamp) to 'YYYYMMDD-HHMM'-formatted time."""
     return datetime.fromisoformat(iso_time.rstrip("Z")).strftime("%Y%m%d-%H%M")
+
 
 def assign_timestamp() -> str:
     """Return the current UTC timestamp in ISO Format."""
@@ -25,14 +27,16 @@ class StsClient:
         """Return the AWS region from the client meta information."""
         return self._client.meta.region_name
 
-    def get_account_id(self) -> str: # TODO: Verify this works in all cases
+    def get_account_id(self) -> str:  # TODO: Verify this works in all cases
         """Returns the AWS account id associated with the caller identity."""
         identity = self._client.get_caller_identity()
         caller_arn = identity["Arn"]
         role_arn_components = caller_arn.split(":")
         return role_arn_components[4]
-    
-    def get_boto3_session_from_role_arn(self, role_arn: str, **assume_role_kwargs: Any) -> boto3.Session:
+
+    def get_boto3_session_from_role_arn(
+        self, role_arn: str, **assume_role_kwargs: Any
+    ) -> boto3.Session:
         """Return boto3 session using sts.assume_role.
 
         kwarg arguments are passed to `assume_role` boto3 call.
@@ -41,7 +45,8 @@ class StsClient:
 
         kwargs = {
             "RoleArn": role_arn,
-            "RoleSessionName": "JumpStartModelHub-" + convert_iso_to_yyyymmdd_hhmm(assign_timestamp()),
+            "RoleSessionName": "JumpStartModelHub-"
+            + convert_iso_to_yyyymmdd_hhmm(assign_timestamp()),
         }
         kwargs.update(assume_role_kwargs)
 
@@ -54,8 +59,3 @@ class StsClient:
             aws_secret_access_key=credentials["SecretAccessKey"],
             aws_session_token=credentials["SessionToken"],
         )
-
-
-
-
-

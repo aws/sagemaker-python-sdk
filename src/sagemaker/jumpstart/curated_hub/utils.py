@@ -31,14 +31,14 @@ def find_objects_under_prefix(bucket: str, prefix: str, s3_client: BaseClient) -
     s3_objects_to_deploy: Set[str] = set()
     src_prefix = to_s3_folder_prefix(prefix=prefix)
     s3_object_list: List[Any] = list_objects_by_prefix(
-        bucket_name=bucket,
-        prefix=src_prefix,
-        s3_client=s3_client
+        bucket_name=bucket, prefix=src_prefix, s3_client=s3_client
     )
     for s3_object in s3_object_list:
         src_key = s3_object["Key"]
         if not src_key.startswith(src_prefix):
-            raise ValueError(f"{src_key} does not have the prefix used to list objects! ({src_prefix})")
+            raise ValueError(
+                f"{src_key} does not have the prefix used to list objects! ({src_prefix})"
+            )
         s3_objects_to_deploy.add(src_key)
     return s3_objects_to_deploy
 
@@ -65,7 +65,9 @@ def list_objects_by_prefix(
     all_content.extend(contents)
     token: Optional[str] = response.get("NextContinuationToken")
     while token:
-        response = s3_client.list_objects_v2(Bucket=bucket_name, Prefix=prefix, ContinuationToken=token)
+        response = s3_client.list_objects_v2(
+            Bucket=bucket_name, Prefix=prefix, ContinuationToken=token
+        )
         contents = response.get("Contents", [])
         all_content.extend(contents)
         token = response.get("NextContinuationToken")
@@ -99,6 +101,7 @@ class PublicModelId:
 
 def construct_s3_uri(bucket: str, key: str) -> str:
     return f"s3://{bucket}/{key}"
+
 
 def get_bucket_and_key_from_s3_uri(s3_uri: str) -> Dict[str, str]:
     uri_with_s3_prefix_removed = s3_uri.replace("s3://", "", 1)
