@@ -67,89 +67,33 @@ class ContentCopier:
             self._copy_s3_reference("inference script", src_inference_script_location, dst_inference_script_reference)
 
     def _copy_training_dependencies(self, model_specs: JumpStartModelSpecs) -> None:
-        dst_bucket = self.dst_bucket()
-
         src_training_artifact_location = self._src_s3_filesystem.get_training_artifact_s3_reference(model_specs)
-        print(
-            f"Copy training artifact from {src_training_artifact_location.key} to {dst_bucket} / {self.dst_training_artifact_key(model_specs=model_specs)}"
-        )
-        self._s3_client.copy(
-            src_training_artifact_location.format_for_s3_copy(),
-            dst_bucket,
-            self.dst_training_artifact_key(model_specs=model_specs),
-            ExtraArgs=EXTRA_S3_COPY_ARGS,
-        )
+        dst_artifact_reference = self._dst_s3_filesystem.get_training_artifact_s3_reference(model_specs)
+        self._copy_s3_reference("training artifact", src_training_artifact_location, dst_artifact_reference)
 
         src_training_script_location = self._src_s3_filesystem.get_training_script_s3_reference(model_specs)
-        print(
-            f"Copy training script from {src_training_script_location.key} to {dst_bucket} / {self.dst_training_script_key(model_specs=model_specs)}"
-        )
-        self._s3_client.copy(
-            src_training_script_location.format_for_s3_copy(),
-            dst_bucket,
-            self.dst_training_script_key(model_specs=model_specs),
-            ExtraArgs=EXTRA_S3_COPY_ARGS,
-        )
-
-        print(
-            f"Copy training dependencies for {model_specs.model_id} version {model_specs.version} to curated hub bucket {dst_bucket} complete!"
-        )
+        dst_training_script_reference = self._dst_s3_filesystem.get_training_script_s3_reference(model_specs)
+        self._copy_s3_reference("training script", src_training_script_location, dst_training_script_reference)
 
         self._copy_training_dataset_dependencies(model_specs=model_specs)
 
     def _copy_training_dataset_dependencies(self, model_specs: JumpStartModelSpecs) -> None:
-        # TODO performance: copy in parallel
-        training_dataset_s3_references = self._src_s3_filesystem.get_default_training_dataset_s3_reference(model_specs)
-        dst_bucket = self.dst_bucket()
-        for s3_reference in training_dataset_s3_references:
-            dst_key = s3_reference.key  # Use same dataset key in the hub bucket as notebooks may expect this location
-            print(
-                f"Copy dataset file from {s3_reference.key} to {dst_bucket} / {dst_key}"
-            )
-            self._s3_client.copy(
-                s3_reference.format_for_s3_copy(),
-                dst_bucket,
-                dst_key,
-                ExtraArgs=EXTRA_S3_COPY_ARGS,
-            )
+        training_dataset_s3_prefix_reference = self._src_s3_filesystem.get_default_training_dataset_s3_reference(model_specs)
+        training_dataset_s3_prefix_reference_dst = self._dst_s3_filesystem.get_default_training_dataset_s3_reference(model_specs)
+
+        self._copy_s3_dir("training dataset", training_dataset_s3_prefix_reference, training_dataset_s3_prefix_reference_dst)
 
     def _copy_demo_notebook_dependencies(self, model_specs: JumpStartModelSpecs) -> None:
         notebook_s3_reference = self._src_s3_filesystem.get_demo_notebook_s3_reference(model_specs)
+        notebook_s3_reference_dst = self._dst_s3_filesystem.get_demo_notebook_s3_reference(model_specs)
 
-        print(
-            f"Copying notebook for {model_specs.model_id} at {notebook_s3_reference.key} "
-            f"to curated hub bucket {self.dst_bucket()}..."
-        )
-
-        self._s3_client.copy(
-            notebook_s3_reference.format_for_s3_copy(),
-            self.dst_bucket(),
-            self.dst_notebook_key(model_specs=model_specs),
-            ExtraArgs=EXTRA_S3_COPY_ARGS,
-        )
-
-        print(
-            f"Copying notebook for {model_specs.model_id} at {notebook_s3_reference.key} to curated hub bucket successful!"
-        )
+        self._copy_s3_reference("demo notebook", notebook_s3_reference, notebook_s3_reference_dst)
 
     def _copy_markdown_dependencies(self, model_specs: JumpStartModelSpecs) -> None:
         markdown_s3_reference = self._src_s3_filesystem.get_markdown_s3_reference(model_specs)
+        markdown_s3_reference_dst = self._dst_s3_filesystem.get_markdown_s3_reference(model_specs)
 
-        print(
-            f"Copying markdown for {model_specs.model_id} at {markdown_s3_reference.key} to"
-            f" curated hub bucket {self.dst_bucket()}..."
-        )
-
-        self._s3_client.copy(
-            markdown_s3_reference.format_for_s3_copy(),
-            self.dst_bucket(),
-            markdown_s3_reference.key, # Studio expects the same key format as the bucket
-            ExtraArgs=EXTRA_S3_COPY_ARGS,
-        )
-
-        print(
-            f"Copying markdown for {model_specs.model_id} at {markdown_s3_reference.key} to curated hub bucket successful!"
-        )
+        self._copy_s3_reference("markdown", markdown_s3_reference, markdown_s3_reference_dst)
 
     # TODO: determine if safe to delete after refactor
     def _src_training_dataset_prefix(self, model_specs: JumpStartModelSpecs) -> str:
@@ -187,7 +131,19 @@ class ContentCopier:
 
     def dst_notebook_key(self, model_specs: JumpStartModelSpecs) -> str:
         return f"{model_specs.model_id}/{self._disambiguator}/demo-notebook.ipynb"
+    
+    def _copy_s3_dir(self, resource_name: str, src: S3ObjectReference, dst: S3ObjectReference):
+        keys_in_dir = find_objects_under_prefix(
+            bucket=src.bucket,
+            prefix=src.key,
+            s3_client=self._s3_client,
+        )
 
+        for key in keys_in_dir:
+          src_reference = create_s3_object_reference_from_bucket_and_key(src.bucket, key)
+          dst_reference = create_s3_object_reference_from_bucket_and_key(dst.bucket, key.replace(src.key, dst.key, 1))
+
+          self._copy_s3_reference(resource_name, src_reference, dst_reference)
 
     def _copy_s3_reference(self, resource_name: str, src: S3ObjectReference, dst: S3ObjectReference):
         print(

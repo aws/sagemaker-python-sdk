@@ -35,19 +35,12 @@ class PublicHubS3Filesystem:
     def get_training_script_s3_reference(self, model_specs: JumpStartModelSpecs) -> S3ObjectReference:
         return create_s3_object_reference_from_uri(self._jumpstart_script_s3_uri(JumpStartScriptScope.TRAINING, model_specs))
     
-    def get_default_training_dataset_s3_reference(self, model_specs: JumpStartModelSpecs) -> List[S3ObjectReference]:
+    def get_default_training_dataset_s3_reference(self, model_specs: JumpStartModelSpecs) -> S3ObjectReference:
+        return create_s3_object_reference_from_bucket_and_key(self.get_bucket(), self.get_training_dataset_prefix(model_specs))
+    
+    def get_training_dataset_prefix(self, model_specs: JumpStartModelSpecs) -> str:
         studio_model_metadata = self._studio_metadata_map[model_specs.model_id]
-        src_dataset_prefix = studio_model_metadata["defaultDataKey"]
-
-        s3_client = boto3.client("s3", region_name=self._region)
-
-        training_dataset_keys = find_objects_under_prefix(
-            bucket=self.get_bucket(),
-            prefix=src_dataset_prefix,
-            s3_client=s3_client,
-        )
-
-        return list(map(partial(create_s3_object_reference_from_bucket_and_key, self.get_bucket()), training_dataset_keys))
+        return studio_model_metadata["defaultDataKey"]
     
     def get_demo_notebook_s3_reference(self, model_specs: JumpStartModelSpecs) -> S3ObjectReference:
         framework = get_model_framework(model_specs)

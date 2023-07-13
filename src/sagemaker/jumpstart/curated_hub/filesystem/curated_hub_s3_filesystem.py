@@ -29,3 +29,25 @@ class CuratedHubS3Filesystem:
     
     def get_inference_script_s3_reference(self, model_specs: JumpStartModelSpecs) -> S3ObjectReference:
         return create_s3_object_reference_from_bucket_and_key(self.get_bucket(), f"{model_specs.model_id}/{self._disambiguator}/sourcedir.tar.gz")
+
+    def get_training_artifact_s3_reference(self, model_specs: JumpStartModelSpecs) -> S3ObjectReference:
+        return create_s3_object_reference_from_bucket_and_key(self.get_bucket(), f"{model_specs.model_id}/{self._disambiguator}/train.tar.gz")
+    
+    def get_training_script_s3_reference(self, model_specs: JumpStartModelSpecs) -> S3ObjectReference:
+        return create_s3_object_reference_from_bucket_and_key(self.get_bucket(), f"{model_specs.model_id}/{self._disambiguator}/training/sourcedir.tar.gz")
+    
+    def get_demo_notebook_s3_reference(self, model_specs: JumpStartModelSpecs) -> S3ObjectReference:
+        return create_s3_object_reference_from_bucket_and_key(self.get_bucket(), f"{model_specs.model_id}/{self._disambiguator}/demo-notebook.ipynb")
+    
+    def get_default_training_dataset_s3_reference(self, model_specs: JumpStartModelSpecs) -> S3ObjectReference:
+        return create_s3_object_reference_from_bucket_and_key(self.get_bucket(), self.get_training_dataset_prefix(model_specs))
+    
+    def get_training_dataset_prefix(self, model_specs: JumpStartModelSpecs) -> str: # Studio expects the same format as public hub bucket
+        studio_model_metadata = self._studio_metadata_map[model_specs.model_id]
+        return studio_model_metadata["defaultDataKey"]
+    
+    def get_markdown_s3_reference(self, model_specs: JumpStartModelSpecs) -> S3ObjectReference: # Studio expects the same format as public hub bucket
+        framework = get_model_framework(model_specs)
+        key = f"{framework}-metadata/{model_specs.model_id}.md"
+        return create_s3_object_reference_from_bucket_and_key(self.get_bucket(), key)
+    
