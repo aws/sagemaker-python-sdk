@@ -8,6 +8,12 @@ from sagemaker.jumpstart.types import (
 )
 from sagemaker.jumpstart.types import JumpStartModelSpecs, JumpStartHyperparameter
 
+class DependencyType(Enum):
+    SCRIPT = "SCRIPT"
+    ARTIFACT = "ARTIFACT"
+    DATASET = "DATASET"
+    NOTEBOOK = "NOTEBOOK"
+    OTHER = "OTHER"
 
 @dataclass
 class Origin:
@@ -19,7 +25,7 @@ class Origin:
 class Dependency:
     DependencyOriginPath: str
     DependencyCopyPath: str
-    DependencyType: str  # enum?
+    DependencyType: DependencyType  # enum?
 
 
 @dataclass

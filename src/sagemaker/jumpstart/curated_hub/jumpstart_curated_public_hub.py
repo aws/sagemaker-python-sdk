@@ -9,7 +9,7 @@ from typing import List, Optional, Tuple
 import boto3
 from botocore.client import ClientError
 
-from sagemaker.jumpstart.curated_hub.content_copy import ContentCopier, dst_markdown_key
+from sagemaker.jumpstart.curated_hub.content_copy import ContentCopier
 from sagemaker.jumpstart.curated_hub.hub_client import CuratedHubClient
 from sagemaker.jumpstart.curated_hub.model_document import ModelDocumentCreator
 from sagemaker.jumpstart.curated_hub.stsClient import StsClient
