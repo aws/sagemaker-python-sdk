@@ -20,15 +20,15 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
         PublicModelId(
             id="autogluon-classification-ensemble", version="*"
         ),
-        # PublicModelId(
-        #     id="autogluon-regression-ensemble", version="*"
-        # ),
-        # PublicModelId(
-        #     id="catboost-classification-model", version="*"
-        # ),
-        # PublicModelId(
-        #     id="catboost-regression-model", version="*"
-        # ),
+        PublicModelId(
+            id="autogluon-regression-ensemble", version="*"
+        ),
+        PublicModelId(
+            id="catboost-classification-model", version="*"
+        ),
+        PublicModelId(
+            id="catboost-regression-model", version="*"
+        ),
         # PublicModelId(
         #     id="huggingface-eqa-bert-base-cased", version="*"
         # ),

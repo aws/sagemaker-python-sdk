@@ -3,6 +3,7 @@ from typing import Optional, Dict, Any, List
 
 from botocore.client import BaseClient
 from dataclasses import dataclass
+from concurrent import futures
 
 from sagemaker import model_uris, script_uris
 from sagemaker.jumpstart.curated_hub.utils import get_model_framework, find_objects_under_prefix, construct_s3_uri, get_bucket_and_key_from_s3_uri
@@ -33,6 +34,7 @@ class ContentCopier:
         self._region = region
         self._s3_client = s3_client
         self._disambiguator = time.time()
+        self._thread_pool_size = 20
 
         self._src_s3_filesystem = src_s3_filesystem
         self._dst_s3_filesystem = dst_s3_filesystem
@@ -50,7 +52,7 @@ class ContentCopier:
         if model_specs.training_supported:
             copy_configs.extend(self._get_copy_configs_for_training_dependencies(model_specs))
 
-        self._execute_copy_on_all_copy_configs(copy_configs)
+        self._parallel_execute_copy_configs(copy_configs)
 
     def _get_copy_configs_for_inference_dependencies(self, model_specs: JumpStartModelSpecs) -> List[CopyContentConfig]:
         copy_configs = []
@@ -131,13 +133,26 @@ class ContentCopier:
         ))
 
         return copy_configs
+    
+    def _parallel_execute_copy_configs(self, copy_configs: List[CopyContentConfig]):
+        tasks = []
+        with futures.ThreadPoolExecutor(
+            max_workers=self._thread_pool_size, thread_name_prefix="import-models-to-curated-hub"
+        ) as deploy_executor:
+            for copy_config in copy_configs:
+              if copy_config.is_dir:
+                  tasks.append(deploy_executor.submit(self._copy_s3_dir, copy_config.display_name, copy_config.src, copy_config.dst))
+              else:
+                  tasks.append(deploy_executor.submit(self._copy_s3_reference, copy_config.display_name, copy_config.src, copy_config.dst))
 
-    def _execute_copy_on_all_copy_configs(self, copy_configs: List[CopyContentConfig]):
-        for copy_config in copy_configs:
-            if copy_config.is_dir:
-                self._copy_s3_dir(copy_config.display_name, copy_config.src, copy_config.dst)
-            else:
-                self._copy_s3_reference(copy_config.display_name, copy_config.src, copy_config.dst)
+        results = futures.wait(tasks)
+        failed_copies: List[BaseException] = []
+        for result in results.done:
+          exception = result.exception()
+          if exception:
+              failed_copies.append(exception)
+          if failed_copies:
+              raise RuntimeError(f"Failures when importing models to curated hub in parallel: {failed_copies}")
             
     def _copy_s3_dir(self, resource_name: str, src: S3ObjectReference, dst: S3ObjectReference):
         keys_in_dir = find_objects_under_prefix(
