@@ -41,7 +41,6 @@ class JumpStartCuratedPublicHub:
         # Finds the relevant hub and s3 locations
         self.curated_hub_name = curated_hub_name
         self.curated_hub_s3_bucket_name = f"{curated_hub_name}-{self._region}-{self._account_id}"
-        self.using_preexisting_hub = False
         preexisting_hub = self._get_curated_hub_and_curated_hub_s3_bucket_names(import_to_preexisting_hub)
         if (preexisting_hub):
             name_of_hub_already_on_account = preexisting_hub[0]
@@ -52,7 +51,6 @@ class JumpStartCuratedPublicHub:
 
             self.curated_hub_name = name_of_hub_already_on_account
             self.curated_hub_s3_bucket_name = preexisting_hub[1]
-            self.using_preexisting_hub = True
 
         self._hub_client = CuratedHubClient(curated_hub_name=self.curated_hub_name, region=self._region)
         self._sagemaker_session = Session()
@@ -89,12 +87,10 @@ class JumpStartCuratedPublicHub:
         print(f"HUB_BUCKET_NAME={self.curated_hub_s3_bucket_name}")
 
     def _get_or_create_private_hub(self, hub_name: str):
-        if self.using_preexisting_hub:
-            return
         try:
             return self._create_private_hub(hub_name)
         except ClientError as ex:
-            if ex.response["Error"]["Code"] != "ResourceInUse":
+            if ex.response["Error"]["Code"] not in ["ResourceLimitExceeded", "ResourceInUse"]:
                 raise ex
 
     def _create_private_hub(self, hub_name: str):
@@ -111,8 +107,6 @@ class JumpStartCuratedPublicHub:
         )
 
     def _get_or_create_s3_bucket(self, bucket_name: str):
-        # if self.using_preexisting_hub:
-        #     return
         try:
             return self._call_create_bucket(bucket_name)
         except ClientError as ex:

@@ -7,6 +7,8 @@ from sagemaker import model_uris, script_uris
 from sagemaker.jumpstart.curated_hub.utils import get_model_framework, find_objects_under_prefix, construct_s3_uri
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.types import JumpStartModelSpecs
+from sagemaker.jumpstart.curated_hub.jumpstart_s3_filesystem import JumpStartS3Filesystem
+
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
 
 EXTRA_S3_COPY_ARGS = {"ACL": "bucket-owner-full-control", "Tagging": "SageMaker=true"}
@@ -54,31 +56,17 @@ class ContentCopier:
             self._copy_training_dependencies(model_specs)
 
     def _copy_inference_dependencies(self, model_specs: JumpStartModelSpecs) -> None:
-        src_inference_artifact_location = self._src_inference_artifact_location(
-            model_specs=model_specs
-        )
-        src_inference_script_location = self._src_inference_script_location(model_specs=model_specs)
         dst_bucket = self.dst_bucket()
 
-        print(
-            f"Copying inference artifact {model_specs.model_id} version {model_specs.version} to curated hub bucket {dst_bucket}..."
-        )
-
-        artifact_copy_source = {
-            "Bucket": src_inference_artifact_location.lstrip("s3://").split("/")[0],
-            "Key": "/".join(src_inference_artifact_location.lstrip("s3://").split("/")[1:]),
-        }
-        script_copy_source = {
-            "Bucket": src_inference_script_location.lstrip("s3://").split("/")[0],
-            "Key": "/".join(src_inference_script_location.lstrip("s3://").split("/")[1:]),
-        }
+        src_inference_artifact_location = JumpStartS3Filesystem.get_inference_artifact_s3_uri(self._region, model_specs)
+        src_artifact_copy_source = JumpStartS3Filesystem.get_bucket_and_key_from_s3_uri(src_inference_artifact_location)
 
         print(
-            f"Copying inference artifact {artifact_copy_source} version {model_specs.version} to curated hub bucket {dst_bucket}..."
+            f"Copying inference artifact {src_artifact_copy_source} version {model_specs.version} to curated hub bucket {dst_bucket}..."
         )
 
         self._s3_client.copy(
-            artifact_copy_source,
+            src_artifact_copy_source,
             dst_bucket,
             self.dst_inference_artifact_key(model_specs=model_specs),
             ExtraArgs=EXTRA_S3_COPY_ARGS,
@@ -86,27 +74,24 @@ class ContentCopier:
 
         if not model_specs.supports_prepacked_inference():
             # Need to also copy script if prepack not enabled
+            src_inference_script_location = JumpStartS3Filesystem.get_inference_script_s3_uri(self._region, model_specs)
+            src_script_copy_source = JumpStartS3Filesystem.get_bucket_and_key_from_s3_uri(src_inference_script_location)
+
             print(
-                f"Copying inference script for {script_copy_source} version {model_specs.version} to curated hub bucket {dst_bucket}..."
+                f"Copying inference script for {src_script_copy_source} version {model_specs.version} to curated hub bucket {dst_bucket}..."
             )
             self._s3_client.copy(
-                script_copy_source,
+                src_script_copy_source,
                 dst_bucket,
                 self.dst_inference_script_key(model_specs=model_specs),
                 ExtraArgs=EXTRA_S3_COPY_ARGS,
             )
 
     def _copy_training_dependencies(self, model_specs: JumpStartModelSpecs) -> None:
-        src_training_artifact_location = self._src_training_artifact_location(
-            model_specs=model_specs
-        )
-        src_training_script_location = self._src_training_script_location(model_specs=model_specs)
         dst_bucket = self.dst_bucket()
 
-        training_artifact_copy_source = {
-            "Bucket": src_training_artifact_location.lstrip("s3://").split("/")[0],
-            "Key": "/".join(src_training_artifact_location.lstrip("s3://").split("/")[1:]),
-        }
+        src_training_artifact_location = JumpStartS3Filesystem.get_training_artifact_s3_uri(self._region, model_specs)
+        training_artifact_copy_source = JumpStartS3Filesystem.get_bucket_and_key_from_s3_uri(src_training_artifact_location)
         print(
             f"Copy training artifact from {training_artifact_copy_source} to {dst_bucket} / {self.dst_training_artifact_key(model_specs=model_specs)}"
         )
@@ -117,10 +102,8 @@ class ContentCopier:
             ExtraArgs=EXTRA_S3_COPY_ARGS,
         )
 
-        training_script_copy_source = {
-            "Bucket": src_training_script_location.lstrip("s3://").split("/")[0],
-            "Key": "/".join(src_training_script_location.lstrip("s3://").split("/")[1:]),
-        }
+        src_training_script_location = JumpStartS3Filesystem.get_training_script_s3_uri(self._region, model_specs)
+        training_script_copy_source = JumpStartS3Filesystem.get_bucket_and_key_from_s3_uri(src_training_script_location)
         print(
             f"Copy training script from {training_script_copy_source} to {dst_bucket} / {self.dst_training_script_key(model_specs=model_specs)}"
         )
@@ -139,20 +122,11 @@ class ContentCopier:
 
     def _copy_training_dataset_dependencies(self, model_specs: JumpStartModelSpecs) -> None:
         # TODO performance: copy in parallel
-        src_bucket = self.src_bucket()
+        training_dataset_s3_uris = JumpStartS3Filesystem.get_default_training_dataset_s3_uris(self._region, model_specs)
         dst_bucket = self.dst_bucket()
-        src_dataset_prefix = self._src_training_dataset_prefix(model_specs=model_specs)
-        training_dataset_keys = find_objects_under_prefix(
-            bucket=src_bucket,
-            prefix=src_dataset_prefix,
-            s3_client=self._s3_client,
-        )
-        for s3_key in training_dataset_keys:
-            training_dataset_copy_source = {
-                "Bucket": src_bucket,
-                "Key": s3_key,
-            }
-            dst_key = s3_key  # Use same dataset key in the hub bucket as notebooks may expect this location
+        for s3_uri in training_dataset_s3_uris:
+            training_dataset_copy_source = JumpStartS3Filesystem.get_bucket_and_key_from_s3_uri(s3_uri)
+            dst_key = training_dataset_copy_source["Key"]  # Use same dataset key in the hub bucket as notebooks may expect this location
             print(
                 f"Copy dataset file from {training_dataset_copy_source} to {dst_bucket} / {dst_key}"
             )
@@ -225,22 +199,6 @@ class ContentCopier:
             bucket=self.dst_bucket(), key=self._dst_training_dataset_prefix(model_specs=model_specs)
         )
 
-    def _src_training_script_location(self, model_specs: JumpStartModelSpecs) -> str:
-        return self._src_script_location(JumpStartScriptScope.TRAINING, model_specs)
-
-    def _src_inference_script_location(self, model_specs: JumpStartModelSpecs) -> str:
-        return self._src_script_location(JumpStartScriptScope.INFERENCE, model_specs)
-
-    def _src_script_location(self, model_scope: str, model_specs: JumpStartModelSpecs) -> str:
-        return script_uris.retrieve(
-            region=self._region,
-            model_id=model_specs.model_id,
-            model_version=model_specs.version,
-            script_scope=model_scope,
-            tolerate_vulnerable_model=True,
-            tolerate_deprecated_model=True,
-        )
-
     def src_bucket(self) -> str:
         return get_jumpstart_content_bucket(self._region)
 
@@ -267,18 +225,3 @@ class ContentCopier:
     def dst_notebook_key(self, model_specs: JumpStartModelSpecs) -> str:
         return f"{model_specs.model_id}/{self._disambiguator}/demo-notebook.ipynb"
 
-    def _src_training_artifact_location(self, model_specs: JumpStartModelSpecs) -> Optional[str]:
-        return self._src_artifact_location(JumpStartScriptScope.TRAINING, model_specs)
-
-    def _src_inference_artifact_location(self, model_specs: JumpStartModelSpecs) -> str:
-        return self._src_artifact_location(JumpStartScriptScope.INFERENCE, model_specs)
-
-    def _src_artifact_location(self, model_scope: str, model_specs: JumpStartModelSpecs) -> str:
-        return model_uris.retrieve(
-            region=self._region,
-            model_id=model_specs.model_id,
-            model_version=model_specs.version,
-            model_scope=model_scope,
-            tolerate_vulnerable_model=True,
-            tolerate_deprecated_model=True,
-        )
