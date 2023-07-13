@@ -158,23 +158,6 @@ class JumpStartCuratedPublicHub:
             Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": self._region}
         )
 
-    def sync(self, model_ids: List[PublicModelId], force_update_all: bool = True):
-        if not force_update_all:
-            model_ids = filter(self._does_model_need_update, model_ids)
-
-        self.import_models(model_ids, True)
-        
-    def _does_model_need_update(self, model_id: PublicModelId) -> bool:
-        try:
-          self._hub_client.desribe_model(model_id)
-          print(f"Model {model_id.id} version {model_id.version} is already in the curated hub. Skipping update.")
-          return False
-        except ClientError as ex:
-          if ex.response["Error"]["Code"] != "ResourceNotFound":
-              raise ex
-          else:
-              return True
-
     def import_models(self, model_ids: List[PublicModelId], parallel_import: bool = False):
         """Imports models in list to curated hub
 
@@ -246,7 +229,6 @@ class JumpStartCuratedPublicHub:
         self._sm_client.import_hub_content(
             HubName=self.curated_hub_name,
             HubContentName=model_specs.model_id,
-            HubContentVersion=model_specs.version,
             HubContentType="Model",
             DocumentSchemaVersion="1.0.0",
             HubContentDisplayName=hub_content_display_name,

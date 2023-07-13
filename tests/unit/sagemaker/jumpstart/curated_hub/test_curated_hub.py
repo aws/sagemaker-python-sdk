@@ -162,6 +162,6 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
 
     def test_full_workflow(self):
         self.test_curated_hub.get_or_create()
-        self.test_curated_hub.import_models(
+        self.test_curated_hub._import_models(
             [self.test_public_js_model, self.test_second_public_js_model]
         )

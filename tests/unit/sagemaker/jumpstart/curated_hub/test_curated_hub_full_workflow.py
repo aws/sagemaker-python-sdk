@@ -57,5 +57,5 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
 
     def test_full_workflow(self):
         self.test_curated_hub.get_or_create()
-        self.test_curated_hub.sync(self.test_models)
+        self.test_curated_hub.import_models(self.test_models)
         # self.test_curated_hub.delete_models(self.test_models)
