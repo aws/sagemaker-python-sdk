@@ -53,25 +53,7 @@ class JumpStartCuratedPublicHub:
         self._thread_pool_size = 20
         self._account_id = StsClient().get_account_id()
 
-        # Finds the relevant hub and s3 locations
-        self.curated_hub_name = curated_hub_name
-        self.curated_hub_s3_bucket_name = f"{curated_hub_name}-{self._region}-{self._account_id}"
-        preexisting_hub = self._get_curated_hub_and_curated_hub_s3_bucket_names(
-            import_to_preexisting_hub
-        )
-        if preexisting_hub:
-            name_of_hub_already_on_account = preexisting_hub[0]
-
-            if not import_to_preexisting_hub:
-                raise Exception(
-                    f"Hub with name {name_of_hub_already_on_account} detected on account. The limit of hubs per account is 1. If you wish to use this hub as the curated hub, please set the flag `import_to_preexisting_hub` to True."
-                )
-            print(
-                f"WARN: Hub with name {name_of_hub_already_on_account} detected on account. The limit of hubs per account is 1. `import_to_preexisting_hub` is set to true - defaulting to this hub."
-            )
-
-            self.curated_hub_name = name_of_hub_already_on_account
-            self.curated_hub_s3_bucket_name = preexisting_hub[1]
+        self.curated_hub_name, self.curated_hub_s3_bucket_name = self._get_curated_hub_and_curated_hub_s3_bucket_names(curated_hub_name, import_to_preexisting_hub)
 
         self._hub_client = CuratedHubClient(
             curated_hub_name=self.curated_hub_name, region=self._region
@@ -96,22 +78,43 @@ class JumpStartCuratedPublicHub:
             studio_metadata_map=self.studio_metadata_map,
         )
 
+    def _get_preexisting_hub_and_s3_bucket_names(self) -> Optional[Tuple[str, str]]:
+      res = self._sm_client.list_hubs().pop("HubSummaries")
+      if len(res) > 0:
+          name_of_hub_already_on_account = res[0]["HubName"]
+          hub_res = self._sm_client.describe_hub(HubName=name_of_hub_already_on_account)
+          curated_hub_name = hub_res["HubName"]
+          curated_hub_s3_bucket_name = (
+              hub_res.pop("S3StorageConfig")["S3OutputPath"].replace("s3://", "", 1).split("/")[0]
+          )
+          print(
+              f"Hub found on account in region {self._region} with name {curated_hub_name} and s3Config {curated_hub_s3_bucket_name}"
+          )
+          return (curated_hub_name, curated_hub_s3_bucket_name)
+      return None
+
     def _get_curated_hub_and_curated_hub_s3_bucket_names(
-        self, import_to_preexisting_hub: bool
-    ) -> Optional[Tuple[str, str]]:
-        res = self._sm_client.list_hubs().pop("HubSummaries")
-        if len(res) > 0:
-            name_of_hub_already_on_account = res[0]["HubName"]
-            hub_res = self._sm_client.describe_hub(HubName=name_of_hub_already_on_account)
-            curated_hub_name = hub_res["HubName"]
-            curated_hub_s3_bucket_name = (
-                hub_res.pop("S3StorageConfig")["S3OutputPath"].replace("s3://", "", 1).split("/")[0]
-            )
+        self, hub_name: str, import_to_preexisting_hub: bool
+    ) -> Tuple[str, str]:
+        # Finds the relevant hub and s3 locations
+        curated_hub_name = hub_name
+        curated_hub_s3_bucket_name = f"{curated_hub_name}-{self._region}-{self._account_id}"
+        preexisting_hub = self._get_preexisting_hub_and_s3_bucket_names()
+        if preexisting_hub:
+            name_of_hub_already_on_account = preexisting_hub[0]
+
+            if not import_to_preexisting_hub:
+                raise Exception(
+                    f"Hub with name {name_of_hub_already_on_account} detected on account. The limit of hubs per account is 1. If you wish to use this hub as the curated hub, please set the flag `import_to_preexisting_hub` to True."
+                )
             print(
-                f"Hub found on account in region {self._region} with name {curated_hub_name} and s3Config {curated_hub_s3_bucket_name}"
+                f"WARN: Hub with name {name_of_hub_already_on_account} detected on account. The limit of hubs per account is 1. `import_to_preexisting_hub` is set to true - defaulting to this hub."
             )
-            return (curated_hub_name, curated_hub_s3_bucket_name)
-        return None
+
+            curated_hub_name = name_of_hub_already_on_account
+            curated_hub_s3_bucket_name = preexisting_hub[1]
+
+        return (curated_hub_name, curated_hub_s3_bucket_name)
 
     def get_or_create(self):
         """Creates a curated hub in the caller AWS account.
@@ -154,6 +157,23 @@ class JumpStartCuratedPublicHub:
         self._s3_client.create_bucket(
             Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": self._region}
         )
+
+    def sync(self, model_ids: List[PublicModelId], force_update_all: bool = True):
+        if not force_update_all:
+            model_ids = filter(self._does_model_need_update, model_ids)
+
+        self.import_models(model_ids, True)
+        
+    def _does_model_need_update(self, model_id: PublicModelId) -> bool:
+        try:
+          self._hub_client.desribe_model(model_id)
+          print(f"Model {model_id.id} version {model_id.version} is already in the curated hub. Skipping update.")
+          return False
+        except ClientError as ex:
+          if ex.response["Error"]["Code"] != "ResourceNotFound":
+              raise ex
+          else:
+              return True
 
     def import_models(self, model_ids: List[PublicModelId], parallel_import: bool = False):
         """Imports models in list to curated hub
@@ -205,18 +225,11 @@ class JumpStartCuratedPublicHub:
 
         self._content_copier.copy_hub_content_dependencies_to_hub_bucket(model_specs=model_specs)
 
-        # self._import_public_model_to_hub_no_overwrite(model_specs=model_specs)
         self._import_public_model_to_hub(model_specs=model_specs)
         print(
             f"Importing model {public_js_model.id} version {public_js_model.version} to curated private hub complete!"
         )
 
-    def _import_public_model_to_hub_no_overwrite(self, model_specs: JumpStartModelSpecs):
-        try:
-            self._import_public_model_to_hub(model_specs)
-        except ClientError as ex:
-            if ex.response["Error"]["Code"] != "ResourceInUse":
-                raise ex
 
     def _import_public_model_to_hub(self, model_specs: JumpStartModelSpecs):
         # TODO Several fields are not present in SDK specs as they are only in Studio specs right now (not urgent)
@@ -233,6 +246,7 @@ class JumpStartCuratedPublicHub:
         self._sm_client.import_hub_content(
             HubName=self.curated_hub_name,
             HubContentName=model_specs.model_id,
+            HubContentVersion=model_specs.version,
             HubContentType="Model",
             DocumentSchemaVersion="1.0.0",
             HubContentDisplayName=hub_content_display_name,

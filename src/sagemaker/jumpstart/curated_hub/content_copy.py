@@ -14,12 +14,7 @@ from sagemaker.jumpstart.curated_hub.utils import (
 )
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.types import JumpStartModelSpecs
-from sagemaker.jumpstart.curated_hub.filesystem.public_hub_s3_filesystem import (
-    PublicHubS3Filesystem,
-)
-from sagemaker.jumpstart.curated_hub.filesystem.curated_hub_s3_filesystem import (
-    CuratedHubS3Filesystem,
-)
+from sagemaker.jumpstart.curated_hub.filesystem.jumpstart_s3_filesystem import JumpstartS3Filesystem
 from sagemaker.jumpstart.curated_hub.filesystem.s3_object_reference import (
     S3ObjectReference,
     create_s3_object_reference_from_bucket_and_key,
@@ -46,8 +41,8 @@ class ContentCopier:
         self,
         region: str,
         s3_client: BaseClient,
-        src_s3_filesystem: PublicHubS3Filesystem,
-        dst_s3_filesystem: CuratedHubS3Filesystem,  # TODO: abstract this
+        src_s3_filesystem: JumpstartS3Filesystem,
+        dst_s3_filesystem: JumpstartS3Filesystem,  # TODO: abstract this
     ) -> None:
         """Sets up basic info."""
         self._region = region
