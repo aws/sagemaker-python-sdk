@@ -4,6 +4,7 @@ from typing import Optional, Dict, Any
 
 from sagemaker import environment_variables as env_vars
 from sagemaker.jumpstart.curated_hub.filesystem.curated_hub_s3_filesystem import CuratedHubS3Filesystem
+from sagemaker.jumpstart.curated_hub.filesystem.public_hub_s3_filesystem import PublicHubS3Filesystem
 from sagemaker.jumpstart.curated_hub.hub_model_specs.hub_model_specs import (
     HubModelSpec_v1_0_0,
     DefaultDeploymentConfig,
@@ -15,6 +16,8 @@ from sagemaker.jumpstart.curated_hub.hub_model_specs.hub_model_specs import (
     ScriptConfig,
     InstanceConfig,
     InferenceNotebookConfig,
+    Dependency,
+    DependencyType,
     convert_public_model_hyperparameter_to_hub_hyperparameter, SdkArgs, DatasetConfig, )
 from sagemaker.jumpstart.curated_hub.hub_model_specs.hub_model_specs import ModelCapabilities
 from sagemaker.jumpstart.curated_hub.utils import construct_s3_uri, base_framework
@@ -24,9 +27,10 @@ from sagemaker.jumpstart.types import JumpStartModelSpecs
 class ModelDocumentCreator:
     """Makes HubContentDocument for Hub Models."""
 
-    def __init__(self, region: str, palatine_hub_s3_filesystem: CuratedHubS3Filesystem, studio_metadata_map: Dict[str, Any]) -> None:
+    def __init__(self, region: str, src_s3_filesystem: PublicHubS3Filesystem, palatine_hub_s3_filesystem: CuratedHubS3Filesystem, studio_metadata_map: Dict[str, Any]) -> None:
         """Sets up basic info."""
         self._region = region
+        self._src_s3_filesystem = src_s3_filesystem
         self._palatine_hub_s3_filesystem = palatine_hub_s3_filesystem
         self.studio_metadata_map = studio_metadata_map
 
@@ -44,7 +48,7 @@ class ModelDocumentCreator:
             MlTask=self.studio_metadata_map[model_specs.model_id]["problemType"],
             Framework=model_specs.hosting_ecr_specs.framework,
             Origin=None,
-            Dependencies=[],  # TODO add references to copied artifacts
+            Dependencies=self._make_hub_dependency_list(model_specs),  # TODO add references to copied artifacts
             DatasetConfig=self._dataset_config(model_specs=model_specs),
             DefaultTrainingConfig=self._make_hub_content_default_training_config(
                 model_specs=model_specs
@@ -65,6 +69,63 @@ class ModelDocumentCreator:
             hub_model_spec_dict["DefaultDeploymentConfig"].pop("ScriptConfig")
 
         return json.dumps(hub_model_spec_dict)
+
+    def _make_hub_dependency_list(self, model_specs: JumpStartModelSpecs):
+        dependencies = []
+
+        dependencies.append(
+            Dependency(
+              DependencyOriginPath=self._src_s3_filesystem.get_inference_artifact_s3_reference(model_specs).get_uri(),
+              DependencyCopyPath=self._palatine_hub_s3_filesystem.get_inference_artifact_s3_reference(model_specs).get_uri(),
+              DependencyType=DependencyType.ARTIFACT
+            )
+        )
+        dependencies.append(
+              Dependency(
+                DependencyOriginPath=self._src_s3_filesystem.get_inference_script_s3_reference(model_specs).get_uri(),
+                DependencyCopyPath=self._palatine_hub_s3_filesystem.get_inference_script_s3_reference(model_specs).get_uri(),
+                DependencyType=DependencyType.SCRIPT
+              )
+          )
+        dependencies.append(
+              Dependency(
+                DependencyOriginPath=self._src_s3_filesystem.get_demo_notebook_s3_reference(model_specs).get_uri(),
+                DependencyCopyPath=self._palatine_hub_s3_filesystem.get_demo_notebook_s3_reference(model_specs).get_uri(),
+                DependencyType=DependencyType.NOTEBOOK
+              )
+          )
+        dependencies.append(
+              Dependency(
+                DependencyOriginPath=self._src_s3_filesystem.get_markdown_s3_reference(model_specs).get_uri(),
+                DependencyCopyPath=self._palatine_hub_s3_filesystem.get_markdown_s3_reference(model_specs).get_uri(),
+                DependencyType=DependencyType.OTHER
+              )
+          )
+
+        if model_specs.training_supported:
+          dependencies.append(
+              Dependency(
+                DependencyOriginPath=self._src_s3_filesystem.get_training_artifact_s3_reference(model_specs).get_uri(),
+                DependencyCopyPath=self._palatine_hub_s3_filesystem.get_training_artifact_s3_reference(model_specs).get_uri(),
+                DependencyType=DependencyType.ARTIFACT
+              )
+          )
+          dependencies.append(
+              Dependency(
+                DependencyOriginPath=self._src_s3_filesystem.get_training_script_s3_reference(model_specs).get_uri(),
+                DependencyCopyPath=self._palatine_hub_s3_filesystem.get_training_script_s3_reference(model_specs).get_uri(),
+                DependencyType=DependencyType.SCRIPT
+              )
+          )
+          dependencies.append(
+              Dependency(
+                DependencyOriginPath=self._src_s3_filesystem.get_default_training_dataset_s3_reference(model_specs).get_uri(),
+                DependencyCopyPath=self._palatine_hub_s3_filesystem.get_default_training_dataset_s3_reference(model_specs).get_uri(),
+                DependencyType=DependencyType.DATASET
+              )
+          )
+
+        return dependencies
 
     def _make_hub_content_default_deployment_config(
         self, model_specs: JumpStartModelSpecs

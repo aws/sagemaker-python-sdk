@@ -55,7 +55,6 @@ class JumpStartCuratedPublicHub:
             self.curated_hub_s3_bucket_name = preexisting_hub[1]
 
         self._hub_client = CuratedHubClient(curated_hub_name=self.curated_hub_name, region=self._region)
-        self._sagemaker_session = Session()
         self.studio_metadata_map = get_studio_model_metadata_map_from_region(region=self._region)
 
         self._src_s3_filesystem = PublicHubS3Filesystem(self._region)
@@ -68,7 +67,7 @@ class JumpStartCuratedPublicHub:
             dst_s3_filesystem=self._dst_s3_filesystem
         )
         self._document_creator = ModelDocumentCreator(
-            region=self._region, palatine_hub_s3_filesystem=self._dst_s3_filesystem, studio_metadata_map=self.studio_metadata_map
+            region=self._region, src_s3_filesystem=self._src_s3_filesystem, palatine_hub_s3_filesystem=self._dst_s3_filesystem, studio_metadata_map=self.studio_metadata_map
         )
 
     def _get_curated_hub_and_curated_hub_s3_bucket_names(self, import_to_preexisting_hub: bool) -> Optional[Tuple[str, str]]:
@@ -121,7 +120,6 @@ class JumpStartCuratedPublicHub:
                 raise ex
 
     def _call_create_bucket(self, bucket_name: str):
-        # TODO make sure bucket policy permits PutObjectTagging so bucket-to-bucket copy will work
         self._s3_client.create_bucket(
             Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": self._region}
         )
