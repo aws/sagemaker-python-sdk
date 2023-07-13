@@ -100,6 +100,15 @@ class PublicModelId:
 def construct_s3_uri(bucket: str, key: str) -> str:
     return f"s3://{bucket}/{key}"
 
+def get_bucket_and_key_from_s3_uri(s3_uri: str) -> Dict[str, str]:
+    uri_with_s3_prefix_removed = s3_uri.replace("s3://", "", 1)
+    uri_split = uri_with_s3_prefix_removed.split("/")
+
+    return {
+        "Bucket": uri_split[0],
+        "Key": "/".join(uri_split[1:]),
+    }
+
 
 def base_framework(model_specs: JumpStartModelSpecs) -> Optional[str]:
     if model_specs.hosting_ecr_specs.framework == "huggingface":
