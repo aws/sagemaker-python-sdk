@@ -31,17 +31,15 @@ class ContentCopier:
     """Copies content from JS source bucket to hub bucket."""
 
     def __init__(
-        self, region: str, s3_client: BaseClient, curated_hub_s3_bucket_name: str, studio_metadata_map: Dict[str, Any]
+        self, region: str, s3_client: BaseClient, src_s3_filesystem: PublicHubS3Filesystem, dst_s3_filesystem: CuratedHubS3Filesystem # TODO: abstract this
     ) -> None:
         """Sets up basic info."""
         self._region = region
         self._s3_client = s3_client
-        self._curated_hub_name = curated_hub_s3_bucket_name
-        self.studio_metadata_map = studio_metadata_map
         self._disambiguator = time.time()
 
-        self._src_s3_filesystem = PublicHubS3Filesystem(region) # TODO: pass this one in
-        self._dst_s3_filesystem = CuratedHubS3Filesystem(region, curated_hub_s3_bucket_name) # TODO: only init once the actual destination is found
+        self._src_s3_filesystem = src_s3_filesystem
+        self._dst_s3_filesystem = dst_s3_filesystem
 
     def copy_hub_content_dependencies_to_hub_bucket(self, model_specs: JumpStartModelSpecs) -> None:
         """Copies artifact and script tarballs into the hub bucket.
@@ -94,44 +92,7 @@ class ContentCopier:
         markdown_s3_reference_dst = self._dst_s3_filesystem.get_markdown_s3_reference(model_specs)
 
         self._copy_s3_reference("markdown", markdown_s3_reference, markdown_s3_reference_dst)
-
-    # TODO: determine if safe to delete after refactor
-    def _src_training_dataset_prefix(self, model_specs: JumpStartModelSpecs) -> str:
-        studio_model_metadata = self.studio_metadata_map[model_specs.model_id]
-        return studio_model_metadata["defaultDataKey"]
-
-
-    def _dst_training_dataset_prefix(self, model_specs: JumpStartModelSpecs) -> str:
-        return self._src_training_dataset_prefix(model_specs=model_specs)  # TODO determine best way to copy datasets
-
-    def dst_training_dataset_location(self, model_specs: JumpStartModelSpecs) -> str:
-        return construct_s3_uri(
-            bucket=self.dst_bucket(), key=self._dst_training_dataset_prefix(model_specs=model_specs)
-        )
-    
-    def dst_bucket(self) -> str:
-        # TODO sync with create hub bucket logic
-        return self._curated_hub_name
-
-    def dst_inference_artifact_key(self, model_specs: JumpStartModelSpecs) -> str:
-        # TODO sync with Studio copy logic
-        return f"{model_specs.model_id}/{self._disambiguator}/infer.tar.gz"
-    
-    def dst_inference_script_key(self, model_specs: JumpStartModelSpecs) -> str:
-        # TODO sync with Studio copy logic
-        return f"{model_specs.model_id}/{self._disambiguator}/sourcedir.tar.gz"
-
-    def dst_training_artifact_key(self, model_specs: JumpStartModelSpecs) -> str:
-        # TODO sync with Studio copy logic
-        return f"{model_specs.model_id}/{self._disambiguator}/train.tar.gz"
-
-    def dst_training_script_key(self, model_specs: JumpStartModelSpecs) -> str:
-        # TODO sync with Studio copy logic
-        return f"{model_specs.model_id}/{self._disambiguator}/training/sourcedir.tar.gz"
-
-    def dst_notebook_key(self, model_specs: JumpStartModelSpecs) -> str:
-        return f"{model_specs.model_id}/{self._disambiguator}/demo-notebook.ipynb"
-    
+            
     def _copy_s3_dir(self, resource_name: str, src: S3ObjectReference, dst: S3ObjectReference):
         keys_in_dir = find_objects_under_prefix(
             bucket=src.bucket,
