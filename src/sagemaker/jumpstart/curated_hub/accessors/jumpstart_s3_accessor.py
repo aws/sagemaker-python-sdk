@@ -1,5 +1,5 @@
 from sagemaker.jumpstart.types import JumpStartModelSpecs
-from sagemaker.jumpstart.curated_hub.filesystem.s3_object_reference import (
+from sagemaker.jumpstart.curated_hub.accessors.s3_object_reference import (
     S3ObjectReference,
 )
 

@@ -19,12 +19,12 @@ from sagemaker.jumpstart.curated_hub.utils import (
     get_studio_model_metadata_map_from_region,
 )
 from functools import partial
-from sagemaker.jumpstart.curated_hub.filesystem.s3_object_reference import (
+from sagemaker.jumpstart.curated_hub.accessors.s3_object_reference import (
     S3ObjectReference,
     create_s3_object_reference_from_bucket_and_key,
     create_s3_object_reference_from_uri,
 )
-from sagemaker.jumpstart.curated_hub.filesystem.jumpstart_s3_accessor import JumpstartS3Accessor
+from sagemaker.jumpstart.curated_hub.accessors.jumpstart_s3_accessor import JumpstartS3Accessor
 
 
 class CuratedHubS3Accessor(JumpstartS3Accessor):
@@ -34,7 +34,6 @@ class CuratedHubS3Accessor(JumpstartS3Accessor):
         self._studio_metadata_map = get_studio_model_metadata_map_from_region(
             region
         )  # Necessary for SDK - Studio metadata drift
-        self._disambiguator = time.time()
 
     def get_bucket(self) -> str:
         return self._bucket
@@ -43,21 +42,21 @@ class CuratedHubS3Accessor(JumpstartS3Accessor):
         self, model_specs: JumpStartModelSpecs
     ) -> S3ObjectReference:
         return create_s3_object_reference_from_bucket_and_key(
-            self.get_bucket(), f"{model_specs.model_id}/{self._disambiguator}/infer.tar.gz"
+            self.get_bucket(), f"{model_specs.model_id}/{model_specs.version}/infer.tar.gz"
         )
 
     def get_inference_script_s3_reference(
         self, model_specs: JumpStartModelSpecs
     ) -> S3ObjectReference:
         return create_s3_object_reference_from_bucket_and_key(
-            self.get_bucket(), f"{model_specs.model_id}/{self._disambiguator}/sourcedir.tar.gz"
+            self.get_bucket(), f"{model_specs.model_id}/{model_specs.version}/sourcedir.tar.gz"
         )
 
     def get_training_artifact_s3_reference(
         self, model_specs: JumpStartModelSpecs
     ) -> S3ObjectReference:
         return create_s3_object_reference_from_bucket_and_key(
-            self.get_bucket(), f"{model_specs.model_id}/{self._disambiguator}/train.tar.gz"
+            self.get_bucket(), f"{model_specs.model_id}/{model_specs.version}/train.tar.gz"
         )
 
     def get_training_script_s3_reference(
@@ -65,12 +64,12 @@ class CuratedHubS3Accessor(JumpstartS3Accessor):
     ) -> S3ObjectReference:
         return create_s3_object_reference_from_bucket_and_key(
             self.get_bucket(),
-            f"{model_specs.model_id}/{self._disambiguator}/training/sourcedir.tar.gz",
+            f"{model_specs.model_id}/{model_specs.version}/training/sourcedir.tar.gz",
         )
 
     def get_demo_notebook_s3_reference(self, model_specs: JumpStartModelSpecs) -> S3ObjectReference:
         return create_s3_object_reference_from_bucket_and_key(
-            self.get_bucket(), f"{model_specs.model_id}/{self._disambiguator}/demo-notebook.ipynb"
+            self.get_bucket(), f"{model_specs.model_id}/{model_specs.version}/demo-notebook.ipynb"
         )
 
     def get_default_training_dataset_s3_reference(

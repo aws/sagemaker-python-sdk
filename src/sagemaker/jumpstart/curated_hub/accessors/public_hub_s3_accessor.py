@@ -19,12 +19,12 @@ from sagemaker.jumpstart.curated_hub.utils import (
     get_studio_model_metadata_map_from_region,
 )
 from functools import partial
-from sagemaker.jumpstart.curated_hub.filesystem.s3_object_reference import (
+from sagemaker.jumpstart.curated_hub.accessors.s3_object_reference import (
     S3ObjectReference,
     create_s3_object_reference_from_bucket_and_key,
     create_s3_object_reference_from_uri,
 )
-from sagemaker.jumpstart.curated_hub.filesystem.jumpstart_s3_accessor import JumpstartS3Accessor
+from sagemaker.jumpstart.curated_hub.accessors.jumpstart_s3_accessor import JumpstartS3Accessor
 
 
 class PublicHubS3Accessor(JumpstartS3Accessor):

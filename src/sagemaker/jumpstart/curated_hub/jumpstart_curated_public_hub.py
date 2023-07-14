@@ -10,10 +10,10 @@ from sagemaker.jumpstart.curated_hub.content_copy import ContentCopier
 from sagemaker.jumpstart.curated_hub.hub_client import CuratedHubClient
 from sagemaker.jumpstart.curated_hub.model_document import ModelDocumentCreator
 from sagemaker.jumpstart.curated_hub.stsClient import StsClient
-from sagemaker.jumpstart.curated_hub.filesystem.public_hub_s3_accessor import (
+from sagemaker.jumpstart.curated_hub.accessors.public_hub_s3_accessor import (
     PublicHubS3Accessor,
 )
-from sagemaker.jumpstart.curated_hub.filesystem.curated_hub_s3_accessor import (
+from sagemaker.jumpstart.curated_hub.accessors.curated_hub_s3_accessor import (
     CuratedHubS3Accessor,
 )
 from sagemaker.jumpstart.curated_hub.utils import (
@@ -149,7 +149,7 @@ class JumpStartCuratedPublicHub:
 
         try:
             self._hub_client.desribe_model(model_specs)
-            # If this call succeeds, we already have a HubContent entry with the same model id and version
+            print(f"The model {model_specs.model_id} already exists in the curated hub. If you still wish to update this model, set `force_update` to True")
             return False
         except ClientError as ex:
             if ex.response["Error"]["Code"] != "ResourceNotFound":

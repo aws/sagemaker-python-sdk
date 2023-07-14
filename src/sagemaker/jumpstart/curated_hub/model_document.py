@@ -3,7 +3,7 @@ from dataclasses import asdict
 from typing import Optional, Dict, Any
 
 from sagemaker import environment_variables as env_vars
-from sagemaker.jumpstart.curated_hub.filesystem.jumpstart_s3_accessor import JumpstartS3Accessor
+from sagemaker.jumpstart.curated_hub.accessors.jumpstart_s3_accessor import JumpstartS3Accessor
 from sagemaker.jumpstart.curated_hub.hub_model_specs.hub_model_specs import (
     HubModelSpec_v1_0_0,
     DefaultDeploymentConfig,

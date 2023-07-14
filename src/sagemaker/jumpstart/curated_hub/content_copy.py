@@ -9,8 +9,8 @@ from sagemaker.jumpstart.curated_hub.utils import (
     find_objects_under_prefix,
 )
 from sagemaker.jumpstart.types import JumpStartModelSpecs
-from sagemaker.jumpstart.curated_hub.filesystem.jumpstart_s3_accessor import JumpstartS3Accessor
-from sagemaker.jumpstart.curated_hub.filesystem.s3_object_reference import (
+from sagemaker.jumpstart.curated_hub.accessors.jumpstart_s3_accessor import JumpstartS3Accessor
+from sagemaker.jumpstart.curated_hub.accessors.s3_object_reference import (
     S3ObjectReference,
     create_s3_object_reference_from_bucket_and_key,
 )
@@ -223,9 +223,11 @@ class ContentCopier:
     def _copy_s3_reference(
         self, resource_name: str, src: S3ObjectReference, dst: S3ObjectReference
     ):
-        print(f"Copying {resource_name} from {src.bucket}/{src.key} to {dst.bucket}/{dst.key}...")
+        if self._is_s3_object_different(src, dst):
+            print(f"Detected that {resource_name} is the same in destination bucket. Skipping copy.")
 
-        self._s3_client.copy(
+        print(f"Copying {resource_name} from {src.bucket}/{src.key} to {dst.bucket}/{dst.key}...")
+        self._s3_client.copy( # TODO: do a md5 hash check to verify if the object is different
             src.format_for_s3_copy(),
             dst.bucket,
             dst.key,
@@ -234,4 +236,18 @@ class ContentCopier:
 
         print(
             f"Copying {resource_name} from {src.bucket}/{src.key} to {dst.bucket}/{dst.key} complete!"
-        )
+        )        
+
+
+    def _is_s3_object_different(self, src: S3ObjectReference, dst: S3ObjectReference) -> bool:
+        src_etag = self._get_s3_object_etag(src)
+        dst_etag = self._get_s3_object_etag(dst)
+
+        return src_etag != dst_etag
+
+    def _get_s3_object_etag(self, object: S3ObjectReference) -> str:
+        try:
+            response = self._s3_client.head_object(Bucket=object.bucket, Key=object.key)
+            return response.pop("ETag")
+        except Exception:
+            return ""
