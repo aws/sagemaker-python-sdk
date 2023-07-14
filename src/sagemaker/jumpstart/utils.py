@@ -402,6 +402,12 @@ def verify_model_region_and_return_specs(
             f"JumpStart model ID '{model_id}' and version '{version}' " "does not support training."
         )
 
+    if model_specs.eula_model:
+        LOGGER.info(
+            "Using model with end-user license agreement (EULA). "
+            "Deploying this model requires accepting EULA terms."
+        )
+
     if model_specs.deprecated:
         if not tolerate_deprecated_model:
             raise DeprecatedJumpStartModelError(model_id=model_id, version=version)
