@@ -24,10 +24,10 @@ from sagemaker.jumpstart.curated_hub.filesystem.s3_object_reference import (
     create_s3_object_reference_from_bucket_and_key,
     create_s3_object_reference_from_uri,
 )
-from sagemaker.jumpstart.curated_hub.filesystem.jumpstart_s3_filesystem import JumpstartS3Filesystem
+from sagemaker.jumpstart.curated_hub.filesystem.jumpstart_s3_accessor import JumpstartS3Accessor
 
 
-class PublicHubS3Filesystem(JumpstartS3Filesystem):
+class PublicHubS3Accessor(JumpstartS3Accessor):
     def __init__(self, region: str):
         self._region = region
         self._bucket = get_jumpstart_content_bucket(region)

@@ -9,10 +9,10 @@ from sagemaker.jumpstart.curated_hub.utils import (
     find_objects_under_prefix,
 )
 from sagemaker.jumpstart.types import JumpStartModelSpecs
-from sagemaker.jumpstart.curated_hub.filesystem.jumpstart_s3_filesystem import JumpstartS3Filesystem
+from sagemaker.jumpstart.curated_hub.filesystem.jumpstart_s3_accessor import JumpstartS3Accessor
 from sagemaker.jumpstart.curated_hub.filesystem.s3_object_reference import (
     S3ObjectReference,
-    create_s3_object_reference_from_bucket_and_key
+    create_s3_object_reference_from_bucket_and_key,
 )
 
 
@@ -24,7 +24,6 @@ class CopyContentConfig:
     src: S3ObjectReference
     dst: S3ObjectReference
     display_name: str
-    is_dir: bool = False
 
 
 class ContentCopier:
@@ -34,8 +33,8 @@ class ContentCopier:
         self,
         region: str,
         s3_client: BaseClient,
-        src_s3_filesystem: JumpstartS3Filesystem,
-        dst_s3_filesystem: JumpstartS3Filesystem,  # TODO: abstract this
+        src_s3_filesystem: JumpstartS3Accessor,
+        dst_s3_filesystem: JumpstartS3Accessor,  # TODO: abstract this
     ) -> None:
         """Sets up basic info."""
         self._region = region
@@ -132,20 +131,34 @@ class ContentCopier:
             )
         )
 
-        training_dataset_s3_prefix_reference = (
-            self._src_s3_filesystem.get_default_training_dataset_s3_reference(model_specs)
+        copy_configs.extend(self._get_copy_configs_for_training_dataset(model_specs))
+
+        return copy_configs
+
+    def _get_copy_configs_for_training_dataset(self, model_specs: JumpStartModelSpecs) -> None:
+        src_prefix = self._src_s3_filesystem.get_default_training_dataset_s3_reference(model_specs)
+        dst_prefix = self._dst_s3_filesystem.get_default_training_dataset_s3_reference(model_specs)
+
+        keys_in_src_dir = find_objects_under_prefix(
+            bucket=src_prefix.bucket,
+            prefix=src_prefix.key,
+            s3_client=self._s3_client,
         )
-        training_dataset_s3_prefix_reference_dst = (
-            self._dst_s3_filesystem.get_default_training_dataset_s3_reference(model_specs)
-        )
-        copy_configs.append(
-            CopyContentConfig(
-                src=training_dataset_s3_prefix_reference,
-                dst=training_dataset_s3_prefix_reference_dst,
-                display_name="training dataset",
-                is_dir=True,
+
+        copy_configs = []
+        for full_key in keys_in_src_dir:
+            src_reference = create_s3_object_reference_from_bucket_and_key(
+                src_prefix.bucket, full_key
             )
-        )
+            dst_reference = create_s3_object_reference_from_bucket_and_key(
+                dst_prefix.bucket, full_key.replace(src_prefix.key, dst_prefix.key, 1)
+            )  # Replacing s3 key prefix with expected destination prefix
+
+            copy_configs.append(
+                CopyContentConfig(
+                    src=src_reference, dst=dst_reference, display_name="training dataset"
+                )
+            )
 
         return copy_configs
 
@@ -187,24 +200,14 @@ class ContentCopier:
             max_workers=self._thread_pool_size, thread_name_prefix="import-models-to-curated-hub"
         ) as deploy_executor:
             for copy_config in copy_configs:
-                if copy_config.is_dir:
-                    tasks.append(
-                        deploy_executor.submit(
-                            self._copy_s3_dir,
-                            copy_config.display_name,
-                            copy_config.src,
-                            copy_config.dst,
-                        )
+                tasks.append(
+                    deploy_executor.submit(
+                        self._copy_s3_reference,
+                        copy_config.display_name,
+                        copy_config.src,
+                        copy_config.dst,
                     )
-                else:
-                    tasks.append(
-                        deploy_executor.submit(
-                            self._copy_s3_reference,
-                            copy_config.display_name,
-                            copy_config.src,
-                            copy_config.dst,
-                        )
-                    )
+                )
 
         results = futures.wait(tasks)
         failed_copies: List[BaseException] = []
@@ -216,21 +219,6 @@ class ContentCopier:
                 raise RuntimeError(
                     f"Failures when importing models to curated hub in parallel: {failed_copies}"
                 )
-
-    def _copy_s3_dir(self, resource_name: str, src: S3ObjectReference, dst: S3ObjectReference):
-        keys_in_dir = find_objects_under_prefix(
-            bucket=src.bucket,
-            prefix=src.key,
-            s3_client=self._s3_client,
-        )
-
-        for key in keys_in_dir:
-            src_reference = create_s3_object_reference_from_bucket_and_key(src.bucket, key)
-            dst_reference = create_s3_object_reference_from_bucket_and_key(
-                dst.bucket, key.replace(src.key, dst.key, 1)
-            )
-
-            self._copy_s3_reference(resource_name, src_reference, dst_reference)
 
     def _copy_s3_reference(
         self, resource_name: str, src: S3ObjectReference, dst: S3ObjectReference

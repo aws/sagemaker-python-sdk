@@ -14,6 +14,19 @@ class CuratedHubClient:
         self._region = region
         self._sm_client = boto3.client("sagemaker", region_name=self._region)
 
+    def create_hub(self, hub_name: str, hub_s3_bucket_name: str):
+        hub_bucket_s3_uri = f"s3://{hub_s3_bucket_name}"
+        self._sm_client.create_hub(
+            HubName=hub_name,
+            HubDescription="This is a curated hub.",  # TODO verify description
+            HubDisplayName=hub_name,
+            HubSearchKeywords=[],
+            S3StorageConfig={
+                "S3OutputPath": hub_bucket_s3_uri,
+            },
+            Tags=[],
+        )
+
     def desribe_model(self, model_specs: JumpStartModelSpecs):
         self._sm_client.describe_hub_content(
             HubName=self.curated_hub_name,

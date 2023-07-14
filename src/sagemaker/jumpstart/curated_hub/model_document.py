@@ -3,7 +3,7 @@ from dataclasses import asdict
 from typing import Optional, Dict, Any
 
 from sagemaker import environment_variables as env_vars
-from sagemaker.jumpstart.curated_hub.filesystem.jumpstart_s3_filesystem import JumpstartS3Filesystem
+from sagemaker.jumpstart.curated_hub.filesystem.jumpstart_s3_accessor import JumpstartS3Accessor
 from sagemaker.jumpstart.curated_hub.hub_model_specs.hub_model_specs import (
     HubModelSpec_v1_0_0,
     DefaultDeploymentConfig,
@@ -32,8 +32,8 @@ class ModelDocumentCreator:
     def __init__(
         self,
         region: str,
-        src_s3_filesystem: JumpstartS3Filesystem,
-        palatine_hub_s3_filesystem: JumpstartS3Filesystem,
+        src_s3_filesystem: JumpstartS3Accessor,
+        palatine_hub_s3_filesystem: JumpstartS3Accessor,
         studio_metadata_map: Dict[str, Any],
     ) -> None:
         """Sets up basic info."""

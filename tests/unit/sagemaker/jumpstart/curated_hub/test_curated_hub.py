@@ -161,7 +161,7 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
     """Testing client calls"""
 
     def test_full_workflow(self):
-        self.test_curated_hub.get_or_create()
+        self.test_curated_hub.create()
         self.test_curated_hub._import_models(
             [self.test_public_js_model, self.test_second_public_js_model]
         )
