@@ -1,9 +1,6 @@
 from __future__ import absolute_import
 
-import json
-import time
 from concurrent import futures
-from dataclasses import dataclass, asdict
 from typing import List, Optional, Tuple
 
 import boto3
@@ -21,7 +18,6 @@ from sagemaker.jumpstart.curated_hub.filesystem.curated_hub_s3_filesystem import
 )
 from sagemaker.jumpstart.curated_hub.utils import (
     PublicModelId,
-    construct_s3_uri,
     get_studio_model_metadata_map_from_region,
 )
 from sagemaker.jumpstart.enums import (
@@ -31,7 +27,6 @@ from sagemaker.jumpstart.types import JumpStartModelSpecs
 from sagemaker.jumpstart.utils import (
     verify_model_region_and_return_specs,
 )
-from sagemaker.session import Session
 
 
 class JumpStartCuratedPublicHub:
@@ -53,7 +48,12 @@ class JumpStartCuratedPublicHub:
         self._default_thread_pool_size = 20
         self._account_id = StsClient().get_account_id()
 
-        self.curated_hub_name, self.curated_hub_s3_bucket_name = self._get_curated_hub_and_curated_hub_s3_bucket_names(curated_hub_name, import_to_preexisting_hub)
+        (
+            self.curated_hub_name,
+            self.curated_hub_s3_bucket_name,
+        ) = self._get_curated_hub_and_curated_hub_s3_bucket_names(
+            curated_hub_name, import_to_preexisting_hub
+        )
 
         self._hub_client = CuratedHubClient(
             curated_hub_name=self.curated_hub_name, region=self._region
@@ -79,19 +79,19 @@ class JumpStartCuratedPublicHub:
         )
 
     def _get_preexisting_hub_and_s3_bucket_names(self) -> Optional[Tuple[str, str]]:
-      res = self._sm_client.list_hubs().pop("HubSummaries")
-      if len(res) > 0:
-          name_of_hub_already_on_account = res[0]["HubName"]
-          hub_res = self._sm_client.describe_hub(HubName=name_of_hub_already_on_account)
-          curated_hub_name = hub_res["HubName"]
-          curated_hub_s3_bucket_name = (
-              hub_res.pop("S3StorageConfig")["S3OutputPath"].replace("s3://", "", 1).split("/")[0]
-          )
-          print(
-              f"Hub found on account in region {self._region} with name {curated_hub_name} and s3Config {curated_hub_s3_bucket_name}"
-          )
-          return (curated_hub_name, curated_hub_s3_bucket_name)
-      return None
+        res = self._sm_client.list_hubs().pop("HubSummaries")
+        if len(res) > 0:
+            name_of_hub_already_on_account = res[0]["HubName"]
+            hub_res = self._sm_client.describe_hub(HubName=name_of_hub_already_on_account)
+            curated_hub_name = hub_res["HubName"]
+            curated_hub_s3_bucket_name = (
+                hub_res.pop("S3StorageConfig")["S3OutputPath"].replace("s3://", "", 1).split("/")[0]
+            )
+            print(
+                f"Hub found on account in region {self._region} with name {curated_hub_name} and s3Config {curated_hub_s3_bucket_name}"
+            )
+            return (curated_hub_name, curated_hub_s3_bucket_name)
+        return None
 
     def _get_curated_hub_and_curated_hub_s3_bucket_names(
         self, hub_name: str, import_to_preexisting_hub: bool
@@ -160,7 +160,7 @@ class JumpStartCuratedPublicHub:
 
     def sync(self, model_ids: List[PublicModelId], force_update: bool = False):
         if not force_update:
-          model_ids = list(filter(self._model_needs_update, model_ids))
+            model_ids = list(filter(self._model_needs_update, model_ids))
 
         self._import_models(model_ids, True)
 
@@ -179,7 +179,7 @@ class JumpStartCuratedPublicHub:
         except ClientError as ex:
             if ex.response["Error"]["Code"] != "ResourceNotFound":
                 raise ex
-            return True  
+            return True
 
     def _import_models(self, model_ids: List[PublicModelId], parallel_import: bool = False):
         """Imports models in list to curated hub
@@ -235,7 +235,6 @@ class JumpStartCuratedPublicHub:
         print(
             f"Importing model {public_js_model.id} version {public_js_model.version} to curated private hub complete!"
         )
-
 
     def _import_public_model_to_hub(self, model_specs: JumpStartModelSpecs):
         # TODO Several fields are not present in SDK specs as they are only in Studio specs right now (not urgent)

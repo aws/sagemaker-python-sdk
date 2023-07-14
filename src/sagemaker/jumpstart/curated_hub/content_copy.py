@@ -1,27 +1,20 @@
 import time
-from typing import Optional, Dict, Any, List
+from typing import List
 
 from botocore.client import BaseClient
 from dataclasses import dataclass
 from concurrent import futures
 
-from sagemaker import model_uris, script_uris
 from sagemaker.jumpstart.curated_hub.utils import (
-    get_model_framework,
     find_objects_under_prefix,
-    construct_s3_uri,
-    get_bucket_and_key_from_s3_uri,
 )
-from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.types import JumpStartModelSpecs
 from sagemaker.jumpstart.curated_hub.filesystem.jumpstart_s3_filesystem import JumpstartS3Filesystem
 from sagemaker.jumpstart.curated_hub.filesystem.s3_object_reference import (
     S3ObjectReference,
-    create_s3_object_reference_from_bucket_and_key,
-    create_s3_object_reference_from_uri,
+    create_s3_object_reference_from_bucket_and_key
 )
 
-from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
 
 EXTRA_S3_COPY_ARGS = {"ACL": "bucket-owner-full-control", "Tagging": "SageMaker=true"}
 

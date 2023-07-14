@@ -16,11 +16,11 @@ class CuratedHubClient:
 
     def desribe_model(self, model_specs: JumpStartModelSpecs):
         self._sm_client.describe_hub_content(
-                HubName=self.curated_hub_name,
-                HubContentName=model_specs.model_id,
-                HubContentType="Model",
-                HubContentVersion=model_specs.version,
-            )
+            HubName=self.curated_hub_name,
+            HubContentName=model_specs.model_id,
+            HubContentType="Model",
+            HubContentVersion=model_specs.version,
+        )
 
     def delete_model(self, model_id: PublicModelId):
         print(f"Deleting model {model_id.id} from curated hub...")

@@ -2,11 +2,6 @@ from __future__ import absolute_import
 import unittest
 
 from mock.mock import patch
-import uuid
-
-from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec
-from botocore.client import ClientError
-
 
 from sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub import JumpStartCuratedPublicHub
 from sagemaker.jumpstart.curated_hub.utils import PublicModelId
@@ -19,33 +14,15 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
     test_models = [
         PublicModelId(id="autogluon-classification-ensemble", version="*"),
         PublicModelId(id="autogluon-regression-ensemble", version="*"),
-        PublicModelId(
-            id="catboost-classification-model", version="*"
-        ),
-        PublicModelId(
-            id="catboost-regression-model", version="*"
-        ),
-        PublicModelId(
-            id="huggingface-eqa-bert-base-cased", version="*"
-        ),
-        PublicModelId(
-            id="huggingface-eqa-bert-base-multilingual-cased", version="*"
-        ),
-        PublicModelId(
-            id="huggingface-eqa-bert-base-multilingual-uncased", version="*"
-        ),
-        PublicModelId(
-            id="huggingface-eqa-bert-base-uncased", version="*"
-        ),
-        PublicModelId(
-            id="huggingface-eqa-bert-large-cased", version="*"
-        ),
-        PublicModelId(
-            id="huggingface-eqa-bert-large-cased-whole-word-masking", version="*"
-        ),
-        PublicModelId(
-            id="huggingface-llm-falcon-7b-bf16", version="*"
-        ),
+        PublicModelId(id="catboost-classification-model", version="*"),
+        PublicModelId(id="catboost-regression-model", version="*"),
+        PublicModelId(id="huggingface-eqa-bert-base-cased", version="*"),
+        PublicModelId(id="huggingface-eqa-bert-base-multilingual-cased", version="*"),
+        PublicModelId(id="huggingface-eqa-bert-base-multilingual-uncased", version="*"),
+        PublicModelId(id="huggingface-eqa-bert-base-uncased", version="*"),
+        PublicModelId(id="huggingface-eqa-bert-large-cased", version="*"),
+        PublicModelId(id="huggingface-eqa-bert-large-cased-whole-word-masking", version="*"),
+        PublicModelId(id="huggingface-llm-falcon-7b-bf16", version="*"),
     ]
 
     test_delete_models = [PublicModelId(id="autogluon-classification-ensemble", version="*")]
