@@ -19,6 +19,9 @@ from sagemaker.jumpstart.constants import (
 from sagemaker.jumpstart.utils import (
     verify_model_region_and_return_specs,
 )
+from sagemaker.jumpstart.enums import (
+    JumpStartScriptScope,
+)
 
 
 def _retrieve_model_package_arn(
@@ -62,4 +65,7 @@ def _retrieve_model_package_arn(
         tolerate_deprecated_model=tolerate_deprecated_model,
     )
 
-    return model_specs.model_package_arn
+    if scope == JumpStartScriptScope.INFERENCE:
+        return model_specs.hosting_model_package_arn
+
+    raise NotImplementedError(f"Model Package ARN not supported for scope: '{scope}'")

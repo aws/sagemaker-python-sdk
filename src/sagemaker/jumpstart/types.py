@@ -351,8 +351,8 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         "inference_enable_network_isolation",
         "training_enable_network_isolation",
         "resource_name_base",
-        "eula_key",
-        "model_package_arn",
+        "hosting_eula_key",
+        "hosting_model_package_arn",
     ]
 
     def __init__(self, spec: Dict[str, Any]):
@@ -421,9 +421,9 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         )
         self.resource_name_base: bool = json_obj.get("resource_name_base")
 
-        self.eula_key: Optional[str] = json_obj.get("eula_key")
+        self.hosting_eula_key: Optional[str] = json_obj.get("hosting_eula_key")
 
-        self.model_package_arn: Optional[str] = json_obj.get("model_package_arn")
+        self.hosting_model_package_arn: Optional[str] = json_obj.get("hosting_model_package_arn")
 
         if self.training_supported:
             self.training_ecr_specs: JumpStartECRSpecs = JumpStartECRSpecs(

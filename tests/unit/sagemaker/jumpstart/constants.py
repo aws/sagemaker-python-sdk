@@ -2299,8 +2299,8 @@ BASE_SPEC = {
     "training_script_key": "source-directory-tarballs/pytorch/transfer_learning/ic/v1.0.0/sourcedir.tar.gz",
     "training_prepacked_script_key": None,
     "hosting_prepacked_artifact_key": None,
-    "model_package_arn": None,
-    "eula_key": False,
+    "hosting_model_package_arn": None,
+    "hosting_eula_key": False,
     "hyperparameters": [
         {
             "name": "epochs",

@@ -402,13 +402,13 @@ def verify_model_region_and_return_specs(
             f"JumpStart model ID '{model_id}' and version '{version}' " "does not support training."
         )
 
-    if model_specs.eula_key:
+    if model_specs.hosting_eula_key and scope == constants.JumpStartScriptScope.INFERENCE.value:
         LOGGER.info(
             "Using model with end-user license agreement (EULA). "
             "See https://%s.s3.%s.amazonaws.com/%s for terms of use.",
             get_jumpstart_content_bucket(region=region),
             region,
-            model_specs.eula_key,
+            model_specs.hosting_eula_key,
         )
 
     if model_specs.deprecated:
