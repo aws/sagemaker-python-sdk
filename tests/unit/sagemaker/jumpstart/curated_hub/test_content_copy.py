@@ -101,11 +101,40 @@ class ContentCopierTest(unittest.TestCase):
 
         self.assertIn(test_markdown_copy_config, copy_configs)
 
+    @patch("sagemaker.jumpstart.curated_hub.content_copy.ContentCopier._parallel_execute_copy_configs")
+    @patch("sagemaker.jumpstart.curated_hub.content_copy.ContentCopier._get_copy_configs_for_training_dependencies") 
+    @patch("sagemaker.jumpstart.curated_hub.content_copy.ContentCopier._get_copy_configs_for_markdown_dependencies") 
+    @patch("sagemaker.jumpstart.curated_hub.content_copy.ContentCopier._get_copy_configs_for_demo_notebook_dependencies") 
+    @patch("sagemaker.jumpstart.curated_hub.content_copy.ContentCopier._get_copy_configs_for_inference_dependencies") 
+    @patch("sagemaker.jumpstart.types.JumpStartModelSpecs")
+    def test_copy_hub_content_dependencies_to_hub_bucket_no_training(self, mock_model_specs, mock_inference_dep, mock_demo_notebook_deps, mock_markdown_deps, mock_training_deps, mock_copy):
+      mock_model_specs.training_supported = False
+      
+      self.test_content_copier.copy_hub_content_dependencies_to_hub_bucket(mock_model_specs)
 
+      mock_inference_dep.assert_called_once()
+      mock_demo_notebook_deps.assert_called_once()
+      mock_markdown_deps.assert_called_once()
+      mock_copy.assert_called_once()
 
+      mock_training_deps.assert_not_called()
 
-        
+    @patch("sagemaker.jumpstart.curated_hub.content_copy.ContentCopier._parallel_execute_copy_configs")
+    @patch("sagemaker.jumpstart.curated_hub.content_copy.ContentCopier._get_copy_configs_for_training_dependencies") 
+    @patch("sagemaker.jumpstart.curated_hub.content_copy.ContentCopier._get_copy_configs_for_markdown_dependencies") 
+    @patch("sagemaker.jumpstart.curated_hub.content_copy.ContentCopier._get_copy_configs_for_demo_notebook_dependencies") 
+    @patch("sagemaker.jumpstart.curated_hub.content_copy.ContentCopier._get_copy_configs_for_inference_dependencies") 
+    @patch("sagemaker.jumpstart.types.JumpStartModelSpecs")
+    def test_copy_hub_content_dependencies_to_hub_bucket_training(self, mock_model_specs, mock_inference_dep, mock_demo_notebook_deps, mock_markdown_deps, mock_training_deps, mock_copy):
+      mock_model_specs.training_supported = True
+      
+      self.test_content_copier.copy_hub_content_dependencies_to_hub_bucket(mock_model_specs)
 
+      mock_inference_dep.assert_called_once()
+      mock_demo_notebook_deps.assert_called_once()
+      mock_markdown_deps.assert_called_once()
+      mock_copy.assert_called_once()
+      mock_training_deps.assert_called_once()
 
     def _generate_random_copy_config(self, display_name: str) -> CopyContentConfig:
         test_src = S3ObjectReference(
