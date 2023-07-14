@@ -50,7 +50,7 @@ def _retrieve_model_package_arn(
             an exception if the version of the model is deprecated. (Default: False).
 
     Returns:
-        list: the model package arn to use for the model or None.
+        str: the model package arn to use for the model or None.
     """
 
     if region is None:
@@ -66,6 +66,12 @@ def _retrieve_model_package_arn(
     )
 
     if scope == JumpStartScriptScope.INFERENCE:
-        return model_specs.hosting_model_package_arn
+
+        if model_specs.hosting_model_package_arns is None:
+            return None
+
+        regional_arn = model_specs.hosting_model_package_arns.get(region)
+
+        return regional_arn
 
     raise NotImplementedError(f"Model Package ARN not supported for scope: '{scope}'")
