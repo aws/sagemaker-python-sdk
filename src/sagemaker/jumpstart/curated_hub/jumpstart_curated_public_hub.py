@@ -50,7 +50,7 @@ class JumpStartCuratedPublicHub:
         self._region = region
         self._s3_client = boto3.client("s3", region_name=self._region)
         self._sm_client = boto3.client("sagemaker", region_name=self._region)
-        self._thread_pool_size = 20
+        self._default_thread_pool_size = 20
         self._account_id = StsClient().get_account_id()
 
         self.curated_hub_name, self.curated_hub_s3_bucket_name = self._get_curated_hub_and_curated_hub_s3_bucket_names(curated_hub_name, import_to_preexisting_hub)
@@ -158,36 +158,59 @@ class JumpStartCuratedPublicHub:
             Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": self._region}
         )
 
-    def import_models(self, model_ids: List[PublicModelId], parallel_import: bool = False):
+    def sync(self, model_ids: List[PublicModelId], force_update: bool = False):
+        if not force_update:
+          model_ids = list(filter(self._model_needs_update, model_ids))
+
+        self._import_models(model_ids, True)
+
+    def _model_needs_update(self, model_id: PublicModelId) -> bool:
+        model_specs = verify_model_region_and_return_specs(
+            model_id=model_id.id,
+            version=model_id.version,
+            scope=JumpStartScriptScope.INFERENCE,
+            region=self._region,
+        )
+
+        try:
+            self._hub_client.desribe_model(model_specs)
+            # If this call succeeds, we already have a HubContent entry with the same model id and version
+            return False
+        except ClientError as ex:
+            if ex.response["Error"]["Code"] != "ResourceNotFound":
+                raise ex
+            return True  
+
+    def _import_models(self, model_ids: List[PublicModelId], parallel_import: bool = False):
         """Imports models in list to curated hub
 
         By default, this function imports models in parallel.
         If the model already exists in the curated hub, it will remove the version and replace it with the latest version."""
 
         print(f"Importing {len(model_ids)} models to curated private hub...")
+        thread_pool_size = self._default_thread_pool_size
         if not parallel_import:
-            for model_id in model_ids:
-                self._delete_and_import_model(model_id)
-        else:
-            tasks = []
-            with futures.ThreadPoolExecutor(
-                max_workers=self._thread_pool_size,
-                thread_name_prefix="import-models-to-curated-hub",
-            ) as deploy_executor:
-                for model_id in model_ids:
-                    task = deploy_executor.submit(self._delete_and_import_model, model_id)
-                    tasks.append(task)
+            thread_pool_size = 1
 
-            results = futures.wait(tasks)
-            failed_deployments: List[BaseException] = []
-            for result in results.done:
-                exception = result.exception()
-                if exception:
-                    failed_deployments.append(exception)
-            if failed_deployments:
-                raise RuntimeError(
-                    f"Failures when importing models to curated hub in parallel: {failed_deployments}"
-                )
+        tasks = []
+        with futures.ThreadPoolExecutor(
+            max_workers=thread_pool_size,
+            thread_name_prefix="import-models-to-curated-hub",
+        ) as deploy_executor:
+            for model_id in model_ids:
+                task = deploy_executor.submit(self._delete_and_import_model, model_id)
+                tasks.append(task)
+
+        results = futures.wait(tasks)
+        failed_deployments: List[BaseException] = []
+        for result in results.done:
+            exception = result.exception()
+            if exception:
+                failed_deployments.append(exception)
+        if failed_deployments:
+            raise RuntimeError(
+                f"Failures when importing models to curated hub in parallel: {failed_deployments}"
+            )
 
     def _delete_and_import_model(self, model_id: PublicModelId):
         self._hub_client.delete_model(
@@ -229,6 +252,7 @@ class JumpStartCuratedPublicHub:
         self._sm_client.import_hub_content(
             HubName=self.curated_hub_name,
             HubContentName=model_specs.model_id,
+            HubContentVersion=model_specs.version,
             HubContentType="Model",
             DocumentSchemaVersion="1.0.0",
             HubContentDisplayName=hub_content_display_name,

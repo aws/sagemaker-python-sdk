@@ -2,6 +2,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 from sagemaker.jumpstart.curated_hub.utils import PublicModelId
+from sagemaker.jumpstart.types import JumpStartModelSpecs
 
 
 class CuratedHubClient:
@@ -13,12 +14,12 @@ class CuratedHubClient:
         self._region = region
         self._sm_client = boto3.client("sagemaker", region_name=self._region)
 
-    def desribe_model(self, model_id: PublicModelId):
+    def desribe_model(self, model_specs: JumpStartModelSpecs):
         self._sm_client.describe_hub_content(
                 HubName=self.curated_hub_name,
-                HubContentName=model_id.id,
+                HubContentName=model_specs.model_id,
                 HubContentType="Model",
-                HubContentVersion=model_id.version,
+                HubContentVersion=model_specs.version,
             )
 
     def delete_model(self, model_id: PublicModelId):
