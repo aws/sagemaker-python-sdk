@@ -16,9 +16,6 @@ from typing import Optional
 from sagemaker.jumpstart.constants import (
     JUMPSTART_DEFAULT_REGION_NAME,
 )
-from sagemaker.jumpstart.enums import (
-    JumpStartScriptScope,
-)
 from sagemaker.jumpstart.utils import (
     verify_model_region_and_return_specs,
 )
@@ -28,6 +25,7 @@ def _retrieve_model_package_arn(
     model_id: str,
     model_version: str,
     region: Optional[str],
+    scope: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
 ) -> Optional[str]:
@@ -39,6 +37,7 @@ def _retrieve_model_package_arn(
         model_version (str): Version of the JumpStart model for which to retrieve the
             model package arn.
         region (Optional[str]): Region for which to retrieve the model package arn.
+        scope (Optional[str]): Scope for which to retrieve the model package arn.
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
             specifications should be tolerated (exception not raised). If False, raises an
             exception if the script used by this version of the model has dependencies with known
@@ -57,7 +56,7 @@ def _retrieve_model_package_arn(
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
-        scope=JumpStartScriptScope.TRAINING,
+        scope=scope,
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,

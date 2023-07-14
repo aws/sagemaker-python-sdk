@@ -296,6 +296,7 @@ def _add_model_package_arn_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpSt
     model_package_arn = kwargs.model_package_arn or _retrieve_model_package_arn(
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
+        scope=JumpStartScriptScope.INFERENCE,
         region=kwargs.region,
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,

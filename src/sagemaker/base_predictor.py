@@ -157,15 +157,15 @@ class Predictor(PredictorBase):
             custom_attributes (str): Provides additional information about a request for an
                 inference submitted to a model hosted at an Amazon SageMaker endpoint.
                 The information is an opaque value that is forwarded verbatim. You could use this
-                value, for example, to provide an ID that you can use to track a request or to provide
-                other metadata that a service endpoint was programmed to process. The value must
-                consist of no more than 1024 visible US-ASCII characters.
+                value, for example, to provide an ID that you can use to track a request or to
+                provide other metadata that a service endpoint was programmed to process. The value
+                must consist of no more than 1024 visible US-ASCII characters.
 
-                The code in your model is responsible for setting or updating any custom attributes in
-                the response. If your code does not set this value in the response, an empty value is
-                returned. For example, if a custom attribute represents the trace ID, your model can
-                prepend the custom attribute with Trace ID: in your post-processing function
-                (Default: None).
+                The code in your model is responsible for setting or updating any custom attributes
+                in the response. If your code does not set this value in the response, an empty
+                value is returned. For example, if a custom attribute represents the trace ID, your
+                model can prepend the custom attribute with Trace ID: in your post-processing
+                function (Default: None).
 
         Returns:
             object: Inference for the given input. If a deserializer was specified when creating

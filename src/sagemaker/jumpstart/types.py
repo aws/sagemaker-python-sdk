@@ -351,7 +351,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         "inference_enable_network_isolation",
         "training_enable_network_isolation",
         "resource_name_base",
-        "eula_model",
+        "eula_key",
         "model_package_arn",
     ]
 
@@ -421,7 +421,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         )
         self.resource_name_base: bool = json_obj.get("resource_name_base")
 
-        self.eula_model: bool = json_obj.get("eula_model", False)
+        self.eula_key: Optional[str] = json_obj.get("eula_key")
 
         self.model_package_arn: Optional[str] = json_obj.get("model_package_arn")
 
