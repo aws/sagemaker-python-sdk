@@ -12,8 +12,7 @@
 # language governing permissions and limitations under the License.
 """This module contains functions for obtaining JumpStart model packages."""
 from __future__ import absolute_import
-from copy import deepcopy
-from typing import Dict, List, Optional
+from typing import Optional
 from sagemaker.jumpstart.constants import (
     JUMPSTART_DEFAULT_REGION_NAME,
 )

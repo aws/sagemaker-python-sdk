@@ -31,7 +31,7 @@ from sagemaker.jumpstart.factory.model import (
 )
 from sagemaker.jumpstart.utils import is_valid_model_id
 from sagemaker.utils import stringify_object
-from sagemaker.model import MODEL_PACKAGE_ARN_PATTERN, Model, ModelPackage
+from sagemaker.model import MODEL_PACKAGE_ARN_PATTERN, Model
 from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
 from sagemaker.predictor import PredictorBase
 from sagemaker.serverless.serverless_inference_config import ServerlessInferenceConfig
