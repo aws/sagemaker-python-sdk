@@ -135,7 +135,10 @@ class JumpStartCuratedPublicHub:
 
     def sync(self, model_ids: List[PublicModelId], force_update: bool = False):
         if not force_update:
+            print(f"INFO: Filtering out models that are already in hub. If you still wish to update this model, set `force_update` to True")
+            original_list_length = len(model_ids)
             model_ids = list(filter(self._model_needs_update, model_ids))
+            print(f"INFO: Filtered out {original_list_length - len(model_ids)} models.")
 
         self._import_models(model_ids, True)
 
@@ -149,7 +152,6 @@ class JumpStartCuratedPublicHub:
 
         try:
             self._hub_client.desribe_model(model_specs)
-            print(f"The model {model_specs.model_id} already exists in the curated hub. If you still wish to update this model, set `force_update` to True")
             return False
         except ClientError as ex:
             if ex.response["Error"]["Code"] != "ResourceNotFound":

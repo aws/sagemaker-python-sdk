@@ -1,5 +1,5 @@
 import time
-from typing import List
+from typing import List, Set
 
 from botocore.client import BaseClient
 from dataclasses import dataclass
@@ -139,11 +139,7 @@ class ContentCopier:
         src_prefix = self._src_s3_filesystem.get_default_training_dataset_s3_reference(model_specs)
         dst_prefix = self._dst_s3_filesystem.get_default_training_dataset_s3_reference(model_specs)
 
-        keys_in_src_dir = find_objects_under_prefix(
-            bucket=src_prefix.bucket,
-            prefix=src_prefix.key,
-            s3_client=self._s3_client,
-        )
+        keys_in_src_dir = self._get_s3_object_keys_under_prefix(src_prefix)
 
         copy_configs = []
         for full_key in keys_in_src_dir:
@@ -161,6 +157,17 @@ class ContentCopier:
             )
 
         return copy_configs
+    
+    def _get_s3_object_keys_under_prefix(self, prefix_reference: S3ObjectReference) -> Set[str]:
+        try:
+          return find_objects_under_prefix(
+              bucket=prefix_reference.bucket,
+              prefix=prefix_reference.key,
+              s3_client=self._s3_client,
+          )
+        except Exception as ex:
+            print(f"ERROR: encountered an exception when finding objects under prefix {prefix_reference.bucket}/{prefix_reference.key}: {str(ex)}")
+            raise ex
 
     def _get_copy_configs_for_demo_notebook_dependencies(
         self, model_specs: JumpStartModelSpecs
@@ -223,16 +230,21 @@ class ContentCopier:
     def _copy_s3_reference(
         self, resource_name: str, src: S3ObjectReference, dst: S3ObjectReference
     ):
-        if self._is_s3_object_different(src, dst):
+        if not self._is_s3_object_different(src, dst):
             print(f"Detected that {resource_name} is the same in destination bucket. Skipping copy.")
+            return
 
         print(f"Copying {resource_name} from {src.bucket}/{src.key} to {dst.bucket}/{dst.key}...")
-        self._s3_client.copy( # TODO: do a md5 hash check to verify if the object is different
-            src.format_for_s3_copy(),
-            dst.bucket,
-            dst.key,
-            ExtraArgs=EXTRA_S3_COPY_ARGS,
-        )
+        try:
+          self._s3_client.copy(
+              src.format_for_s3_copy(),
+              dst.bucket,
+              dst.key,
+              ExtraArgs=EXTRA_S3_COPY_ARGS,
+          )
+        except Exception as ex:
+            print(f"ERROR: encountered an exception when calling copy from {src.bucket}/{src.key} to {dst.bucket}/{dst.key}: {str(ex)}")
+            raise ex
 
         print(
             f"Copying {resource_name} from {src.bucket}/{src.key} to {dst.bucket}/{dst.key} complete!"
@@ -249,5 +261,6 @@ class ContentCopier:
         try:
             response = self._s3_client.head_object(Bucket=object.bucket, Key=object.key)
             return response.pop("ETag")
-        except Exception:
+        except Exception as ex:
+            print(f"WARN: encountered an exception when calling head_object on {object.bucket}/{object.key}: {str(ex)}")
             return ""
