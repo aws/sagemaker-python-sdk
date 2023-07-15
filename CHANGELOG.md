@@ -1,5 +1,24 @@
 # Changelog
 
+## v2.172.0 (2023-07-13)
+
+### Features
+
+ * Add check for if TrialComponent is already associated with a Trial in Run
+ * Add features_to_explain to shap config
+
+### Bug Fixes and Other Changes
+
+ * Support protobuf4
+ * Remove unnecessary get caller identity call
+ * Missing JumpStart estimator args
+ * Add volume to partition djl_inference
+
+### Documentation Changes
+
+ * Correct runtime param
+ * fix wait_for_endpoint docstring
+
 ## v2.171.0 (2023-07-06)
 
 ### Features
