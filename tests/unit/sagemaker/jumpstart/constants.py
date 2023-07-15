@@ -2300,7 +2300,7 @@ BASE_SPEC = {
     "training_prepacked_script_key": None,
     "hosting_prepacked_artifact_key": None,
     "hosting_model_package_arns": None,
-    "hosting_eula_key": False,
+    "hosting_eula_key": None,
     "hyperparameters": [
         {
             "name": "epochs",
