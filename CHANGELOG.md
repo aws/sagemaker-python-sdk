@@ -1,5 +1,17 @@
 # Changelog
 
+## v2.173.0 (2023-07-15)
+
+### Features
+
+ * jumpstart EULA models
+
+### Bug Fixes and Other Changes
+
+ * Update the apache airflow constraints
+ * Update apache airflow version
+ * bump up djl inference image uri versions
+
 ## v2.172.0 (2023-07-13)
 
 ### Features
