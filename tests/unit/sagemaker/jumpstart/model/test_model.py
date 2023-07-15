@@ -345,6 +345,7 @@ class ModelTest(unittest.TestCase):
             "tolerate_vulnerable_model",
             "tolerate_deprecated_model",
             "instance_type",
+            "model_package_arn",
         }
         assert parent_class_init_args - js_class_init_args == init_args_to_skip
 

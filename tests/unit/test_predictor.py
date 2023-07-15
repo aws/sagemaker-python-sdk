@@ -614,3 +614,22 @@ def test_setting_serializer_deserializer_atts_changes_content_accept_types():
     predictor.deserializer = PandasDeserializer()
     assert predictor.accept == ("text/csv", "application/json")
     assert predictor.content_type == "text/csv"
+
+
+def test_custom_attributes():
+    sagemaker_session = empty_sagemaker_session()
+    predictor = Predictor(ENDPOINT, sagemaker_session=sagemaker_session)
+
+    sagemaker_session.sagemaker_runtime_client.invoke_endpoint = Mock(
+        return_value={"Body": io.StringIO("response")}
+    )
+
+    predictor.predict("payload", custom_attributes="custom-attribute")
+
+    sagemaker_session.sagemaker_runtime_client.invoke_endpoint.assert_called_once_with(
+        EndpointName=ENDPOINT,
+        ContentType="application/octet-stream",
+        Accept="*/*",
+        CustomAttributes="custom-attribute",
+        Body="payload",
+    )
