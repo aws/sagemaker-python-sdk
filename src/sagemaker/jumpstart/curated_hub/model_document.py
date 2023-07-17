@@ -44,6 +44,10 @@ class ModelDocumentCreator:
 
     def make_hub_content_document(self, model_specs: JumpStartModelSpecs) -> str:
         """Converts the provided JumpStartModelSpecs into a Hub Content Document."""
+        hub_model_spec_dict = self._make_hub_content_document_json(model_specs)
+        return json.dumps(hub_model_spec_dict)
+    
+    def _make_hub_content_document_json(self, model_specs: JumpStartModelSpecs) -> Dict[str, Any]:
         capabilities = []
         if model_specs.training_supported:
             capabilities.append(ModelCapabilities.TRAINING)
@@ -78,7 +82,8 @@ class ModelDocumentCreator:
         if model_specs.supports_prepacked_inference():
             hub_model_spec_dict["DefaultDeploymentConfig"].pop("ScriptConfig")
 
-        return json.dumps(hub_model_spec_dict)
+        return hub_model_spec_dict
+        
 
     def _make_hub_dependency_list(self, model_specs: JumpStartModelSpecs):
         dependencies = []

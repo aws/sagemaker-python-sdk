@@ -262,5 +262,4 @@ class ContentCopier:
             response = self._s3_client.head_object(Bucket=object.bucket, Key=object.key)
             return response.pop("ETag")
         except Exception as ex:
-            print(f"WARN: encountered an exception when calling head_object on {object.bucket}/{object.key}: {str(ex)}")
             return ""
