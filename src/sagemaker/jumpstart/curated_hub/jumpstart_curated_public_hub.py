@@ -46,7 +46,7 @@ class JumpStartCuratedPublicHub:
         self._s3_client = boto3.client("s3", region_name=self._region)
         self._sm_client = boto3.client("sagemaker", region_name=self._region)
         self._default_thread_pool_size = 20
-        self._account_id = StsClient().get_account_id()
+        self._account_id = self._get_account_id()
 
         (
             self.curated_hub_name,
@@ -56,28 +56,8 @@ class JumpStartCuratedPublicHub:
             curated_hub_name, import_to_preexisting_hub
         )
 
-        self._hub_client = CuratedHubClient(
-            curated_hub_name=self.curated_hub_name, region=self._region
-        )
-        self.studio_metadata_map = get_studio_model_metadata_map_from_region(region=self._region)
-
-        self._src_s3_filesystem = PublicHubS3Accessor(self._region)
-        self._dst_s3_filesystem = CuratedHubS3Accessor(
-            self._region, self.curated_hub_s3_bucket_name
-        )
-
-        self._content_copier = ContentCopier(
-            region=self._region,
-            s3_client=self._s3_client,
-            src_s3_filesystem=self._src_s3_filesystem,
-            dst_s3_filesystem=self._dst_s3_filesystem,
-        )
-        self._document_creator = ModelDocumentCreator(
-            region=self._region,
-            src_s3_filesystem=self._src_s3_filesystem,
-            palatine_hub_s3_filesystem=self._dst_s3_filesystem,
-            studio_metadata_map=self.studio_metadata_map,
-        )
+        self.studio_metadata_map = self._get_studio_metadata(self._region)
+        self._init_clients()
 
     def _get_preexisting_hub_and_s3_bucket_names(self) -> Optional[Tuple[str, str]]:
         res = self._sm_client.list_hubs().pop("HubSummaries")
@@ -240,3 +220,33 @@ class JumpStartCuratedPublicHub:
     def delete_models(self, model_ids: List[PublicModelId]):
         for model_id in model_ids:
             self._hub_client.delete_model(model_id)
+
+
+    def _get_account_id(self) -> str:
+        StsClient().get_account_id()
+
+    def _get_studio_metadata(self, region):
+        return get_studio_model_metadata_map_from_region(region)
+
+    def _init_clients(self):
+        self._hub_client = CuratedHubClient(
+            curated_hub_name=self.curated_hub_name, region=self._region
+        )
+
+        self._src_s3_filesystem = PublicHubS3Accessor(self._region)
+        self._dst_s3_filesystem = CuratedHubS3Accessor(
+            self._region, self.curated_hub_s3_bucket_name
+        )
+
+        self._content_copier = ContentCopier(
+            region=self._region,
+            s3_client=self._s3_client,
+            src_s3_filesystem=self._src_s3_filesystem,
+            dst_s3_filesystem=self._dst_s3_filesystem,
+        )
+        self._document_creator = ModelDocumentCreator(
+            region=self._region,
+            src_s3_filesystem=self._src_s3_filesystem,
+            palatine_hub_s3_filesystem=self._dst_s3_filesystem,
+            studio_metadata_map=self.studio_metadata_map,
+        )

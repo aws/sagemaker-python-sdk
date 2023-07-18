@@ -4,9 +4,6 @@ import unittest
 from mock.mock import patch
 import uuid
 
-from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec
-from botocore.client import ClientError
-
 
 from sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub import JumpStartCuratedPublicHub
 from sagemaker.jumpstart.curated_hub.utils import PublicModelId
@@ -68,100 +65,36 @@ TEST_SERVICE_ERROR_RESPONSE = {
 
 class JumpStartCuratedPublicHubTest(unittest.TestCase):
 
-    test_s3_prefix = f"test-curated-hub-chrstfu"
+    test_hub_name = "test-curated-hub-chrstfu"
+    test_preexisting_hub_name = "test_preexisting_hub"
+    test_preexisting_bucket_name = "test_preexisting_bucket"
+    test_region = "us-east-2"
+    test_account_id = "123456789012"
     test_public_js_model = PublicModelId(id="autogluon-classification-ensemble", version="1.1.1")
     test_second_public_js_model = PublicModelId(id="catboost-classification-model", version="1.2.7")
     test_nonexistent_public_js_model = PublicModelId(id="fail", version="1.0.0")
 
-    def setUp(self):
-        self.test_curated_hub = JumpStartCuratedPublicHub(self.test_s3_prefix)
+    @patch("sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub.JumpStartCuratedPublicHub._init_clients")
+    @patch("sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub.JumpStartCuratedPublicHub._get_curated_hub_and_curated_hub_s3_bucket_names")
+    @patch("sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub.JumpStartCuratedPublicHub._get_studio_metadata")
+    @patch("sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub.JumpStartCuratedPublicHub._get_account_id")
+    def setUp(self, mock_account_id, mock_studio_metadata, mock_get_names, mock_init_clients):
+        mock_account_id.return_value = self.test_account_id
+        mock_studio_metadata.return_value = {}
+        mock_get_names.return_value = self.test_preexisting_hub_name, self.test_preexisting_hub_name, True
 
-    """Creating S3 bucket tests"""
+        self.test_curated_hub = JumpStartCuratedPublicHub(self.test_hub_name, False, self.test_region)
 
-    @patch(
-        "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub.JumpStartCuratedPublicHub._call_create_bucket"
-    )
-    def test_get_or_create_s3_bucket_s3_does_not_exist_should_create_new(self, mock_create_bucket):
-        self.test_curated_hub._get_or_create_s3_bucket("test_bucket")
-        mock_create_bucket.assert_called_once_with("test_bucket")
+    @patch("sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub.JumpStartCuratedPublicHub._get_preexisting_hub_and_s3_bucket_names")
+    def test_get_curated_hub_and_curated_hub_s3_bucket_names_hub_does_not_exist_uses_input_values(self, mock_get_preexisting):
+        mock_get_preexisting.return_value = None
 
-    @patch(
-        "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub.JumpStartCuratedPublicHub._call_create_bucket"
-    )
-    def test_get_or_create_s3_bucket_s3_exists_should_noop(self, mock_create_bucket):
-        mock_create_bucket.side_effect = ClientError(
-            TEST_S3_BUCKET_ALREADY_EXISTS_RESPONSE, "test_operation"
+        res_hub_name, res_hub_bucket_name, res_skip_create = self.test_curated_hub._get_curated_hub_and_curated_hub_s3_bucket_names(
+            self.test_hub_name, False
         )
 
-        self.test_curated_hub._get_or_create_s3_bucket("test_bucket")
+        self.assertFalse(res_skip_create)
+        self.assertEqual(self.test_hub_name, res_hub_name)
+        self.assertEqual(f"{self.test_hub_name}-{self.test_region}-{self.test_account_id}", res_hub_bucket_name)
 
-        mock_create_bucket.assert_called_once_with("test_bucket")
-
-    @patch(
-        "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub.JumpStartCuratedPublicHub._call_create_bucket"
-    )
-    def test_get_or_create_s3_bucket_s3_fails_for_generic_reason_should_fail(
-        self, mock_create_bucket
-    ):
-        mock_create_bucket.side_effect = ClientError(TEST_SERVICE_ERROR_RESPONSE, "test_operation")
-
-        with self.assertRaises(ClientError):
-            self.test_curated_hub._get_or_create_s3_bucket("test_bucket")
-
-        mock_create_bucket.assert_called_once_with("test_bucket")
-
-    """Creating Curated Hub Tests"""
-
-    @patch(
-        "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub.JumpStartCuratedPublicHub._create_curated_hub"
-    )
-    def test_get_or_create_curated_hub_does_not_exist_should_create_new(
-        self, mock_create_curated_hub
-    ):
-        self.test_curated_hub._get_or_create_private_hub()
-        mock_create_curated_hub.assert_called_once()
-
-    @patch(
-        "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub.JumpStartCuratedPublicHub._create_curated_hub"
-    )
-    def test_get_or_create_curated_hub_hub_exists_should_noop(self, mock_create_curated_hub):
-        mock_create_curated_hub.side_effect = ClientError(
-            TEST_HUB_ALREADY_EXISTS_RESPONSE, "test_operation"
-        )
-
-        self.test_curated_hub._get_or_create_private_hub()
-
-        mock_create_curated_hub.assert_called_once()
-
-    @patch(
-        "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub.JumpStartCuratedPublicHub._create_curated_hub"
-    )
-    def test_get_or_create_curated_hub_fails_for_generic_reason_should_fail(
-        self, mock_create_curated_hub
-    ):
-        mock_create_curated_hub.side_effect = ClientError(
-            TEST_SERVICE_ERROR_RESPONSE, "test_operation"
-        )
-
-        with self.assertRaises(ClientError):
-            self.test_curated_hub._get_or_create_private_hub()
-
-        mock_create_curated_hub.assert_called_once()
-
-    """S3 content copy tests"""
-
-    """ImportHubContent call tests"""
-    # @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-    # def test_import_model(self, patched_get_model_specs):
-    #     patched_get_model_specs.side_effect = get_spec_from_base_spec
-
-    #     self.test_curated_hub._import_model(public_js_model=self.test_public_js_model)
-    #     pass
-
-    """Testing client calls"""
-
-    def test_full_workflow(self):
-        self.test_curated_hub.create()
-        self.test_curated_hub._import_models(
-            [self.test_public_js_model, self.test_second_public_js_model]
-        )
+    
