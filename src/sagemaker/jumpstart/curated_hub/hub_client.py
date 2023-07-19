@@ -35,7 +35,7 @@ class CuratedHubClient:
             HubContentVersion=model_specs.version,
         )
 
-    def delete_model(self, model_specs: JumpStartModelSpecs):
+    def delete_all_versions_of_model(self, model_specs: JumpStartModelSpecs):
         print(f"Deleting model {model_specs.model_id} from curated hub...")
         content_versions = self._list_hub_content_versions_no_content_noop(model_specs.model_id)
 

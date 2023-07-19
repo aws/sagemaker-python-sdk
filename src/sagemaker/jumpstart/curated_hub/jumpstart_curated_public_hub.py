@@ -29,6 +29,12 @@ from sagemaker.jumpstart.types import JumpStartModelSpecs
 from sagemaker.jumpstart.utils import (
     verify_model_region_and_return_specs,
 )
+from sagemaker.jumpstart.curated_hub.accessors.s3_object_reference import (
+    create_s3_object_reference_from_uri,
+)
+from sagemaker.jumpstart.curated_hub.utils import (
+    find_objects_under_prefix,
+)
 
 
 class JumpStartCuratedPublicHub:
@@ -219,7 +225,7 @@ class JumpStartCuratedPublicHub:
     def _delete_model_from_curated_hub(self, model_specs: JumpStartModelSpecs, delete_dependencies: bool = True):
       if delete_dependencies:
         self._delete_model_dependencies_no_content_noop(model_specs)
-      self._hub_client.delete_model(model_specs)
+      self._hub_client.delete_all_versions_of_model(model_specs)
 
     def _delete_model_dependencies_no_content_noop(self, model_specs: JumpStartModelSpecs):
         try:
@@ -233,11 +239,14 @@ class JumpStartCuratedPublicHub:
             return
 
         dependencies = self._get_hub_content_dependencies_from_model_document(hub_content["HubContentDocument"])
-        dependency_s3_uris = list(map(self._format_dependency_dst_uris_for_delete_objects, dependencies))
+        dependency_s3_keys = []
+        for dependency in dependencies:
+            dependency_s3_keys.extend(self._format_dependency_dst_uris_for_delete_objects(dependency))
+        print(f"Deleting HubContent dependencies for {model_specs.model_id}: {dependency_s3_keys}")
         delete_response = self._s3_client.delete_objects(
             Bucket=self.curated_hub_s3_bucket_name,
             Delete={
-                'Objects': dependency_s3_uris,
+                'Objects': dependency_s3_keys,
                 'Quiet': True
             }
         )
@@ -256,10 +265,27 @@ class JumpStartCuratedPublicHub:
             DependencyType=dependency["DependencyType"]
         )
 
-    def _format_dependency_dst_uris_for_delete_objects(self, dependency: Dependency) -> Dict[str, str]:
-        return {
-            "Key": dependency.DependencyCopyPath
-        }
+    def _format_dependency_dst_uris_for_delete_objects(self, dependency: Dependency) -> List[Dict[str, str]]:
+        s3_keys = []
+        s3_object_reference = create_s3_object_reference_from_uri(dependency.DependencyCopyPath)
+
+        if s3_object_reference.key[-1] == '/': # Checks if this is a directory
+            keys = find_objects_under_prefix(
+              bucket=s3_object_reference.bucket,
+              prefix=s3_object_reference.key,
+              s3_client=self._s3_client,
+            )
+            s3_keys.extend(keys)
+        else:
+            s3_keys.append(s3_object_reference.key)
+
+        formatted_keys = []
+        for key in s3_keys:
+            formatted_keys.append(
+              { "Key": key }
+            )
+        
+        return formatted_keys
 
     def _get_account_id(self) -> str:
         StsClient().get_account_id()
