@@ -140,7 +140,6 @@ def get_tc_and_exp_config_from_job_env(
     if job_exp_config.get(RUN_NAME, None):
         return job_exp_config
     hpo_experiment_config = get_experiment_name_from_hpo_env(job_name, sagemaker_session)
-    logging.info(hpo_experiment_config)
     if hpo_experiment_config is not None:
         return hpo_experiment_config
     raise RuntimeError(
@@ -226,7 +225,8 @@ def get_experiment_name_from_hpo_env(
     training_job_name: str, sagemaker_session: Session
 ) -> dict:
     """Check if an experiment is running in a Training Job that is part
-       of a Hyperparameter Tuning Job
+       of a Hyperparameter Tuning Job and return an experiment configuration
+       if it is.
 
     Args:
         training_job_name (str): The name of the training job.

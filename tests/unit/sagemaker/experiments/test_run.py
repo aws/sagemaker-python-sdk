@@ -1094,7 +1094,9 @@ def test_append_run_tc_label_to_tags():
     assert len(ret) == 1
     assert expected_tc_tag in ret
 
-@patch("sagemaker.experiments.run._TrialComponent.load", MagicMock(return_value=_TrialComponent(trial_component_name=TEST_HPO_TC_NAME)))
+
+@patch("sagemaker.experiments.run._TrialComponent.load",
+       MagicMock(return_value=_TrialComponent(trial_component_name=TEST_HPO_TC_NAME)))
 @patch(
     "sagemaker.experiments.run.Experiment.load",
     MagicMock(return_value=Experiment(experiment_name=TEST_HPO_EXPERIMENT_NAME)),
@@ -1118,12 +1120,23 @@ def test_run_load_no_run_name_and_in_hpo_job(mock_run_env, sagemaker_session):
     }
     client.describe_trial.return_value = {
         "TrialName": TEST_HPO_TRIAL_NAME,
-        "ExperimentName" : TEST_HPO_EXPERIMENT_NAME
+        "ExperimentName": TEST_HPO_EXPERIMENT_NAME
     }
     client.describe_trial_component.return_value = {
         "TrialComponentName": TEST_HPO_TC_NAME
     }
-
+    client.search.return_value = {
+        "Results": [
+            {
+                "TrialComponent": {
+                    "Parents": [
+                        {"ExperimentName": TEST_HPO_EXPERIMENT_NAME, "TrialName": TEST_HPO_TRIAL_NAME}
+                    ],
+                    "TrialComponentName": TEST_HPO_TC_NAME,
+                }
+            }
+        ]
+    }
 
     with load_run(sagemaker_session=sagemaker_session) as run_obj:
         assert run_obj._in_load
