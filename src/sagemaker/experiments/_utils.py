@@ -28,6 +28,8 @@ from sagemaker.experiments.trial_component import _TrialComponent
 from sagemaker.utilities.search_expression import Filter, Operator, SearchExpression
 from sagemaker.utils import retry_with_backoff
 
+HPO_EXPERIMENT_SUFFIX = "-aws-tuning-job"
+HPO_TC_SUFFIX = "-aws-training-job"
 
 def resolve_artifact_name(file_path):
     """Resolve artifact name from given file path.
@@ -137,6 +139,10 @@ def get_tc_and_exp_config_from_job_env(
 
     if job_exp_config.get(RUN_NAME, None):
         return job_exp_config
+    hpo_experiment_config = get_experiment_name_from_hpo_env(job_name, sagemaker_session)
+    logging.info(hpo_experiment_config)
+    if hpo_experiment_config is not None:
+        return hpo_experiment_config
     raise RuntimeError(
         "Not able to fetch RunName in ExperimentConfig of the sagemaker job. "
         "Please make sure the ExperimentConfig is correctly set."
@@ -214,3 +220,47 @@ def is_run_trial_component(trial_component_name: str, sagemaker_session: Session
             str(ex),
         )
         return False
+
+
+def get_experiment_name_from_hpo_env(
+    training_job_name: str, sagemaker_session: Session
+) -> dict:
+    """Check if an experiment is running in a Training Job that is part
+       of a Hyperparameter Tuning Job
+
+    Args:
+        training_job_name (str): The name of the training job.
+        sagemaker_session (sagemaker.session.Session): Session object which
+            manages interactions with Amazon SageMaker APIs and any other
+            AWS services needed. If not specified, one is created using the
+            default AWS configuration chain.
+
+    Returns:
+        dict: experiment config from the job environment.
+    """
+    try:
+
+        describe_trial_response = retry_with_backoff(
+            callable_func=lambda: sagemaker_session.sagemaker_client.describe_trial(
+                TrialName=training_job_name
+            ),
+            num_attempts=4,
+        )
+        experiment_name = describe_trial_response.get("ExperimentName", None)
+
+        # Verify that TC was auto created for HPO.
+        describe_trial_component_response = retry_with_backoff(
+            callable_func=lambda: sagemaker_session.sagemaker_client.describe_trial_component(
+                TrialComponentName=f"{training_job_name}{HPO_TC_SUFFIX}"
+            ),
+            num_attempts=4,
+        )
+        if HPO_EXPERIMENT_SUFFIX in experiment_name:
+            return {
+                "ExperimentName": experiment_name,
+                "TrialName": training_job_name,
+                "RunName": describe_trial_component_response["TrialComponentName"],
+            }
+    except Exception as ex:  # pylint: disable=broad-except
+        logging.warning("Failed to find Hyperparameter tuning environments, due to (%s)", str(ex))
+    return None

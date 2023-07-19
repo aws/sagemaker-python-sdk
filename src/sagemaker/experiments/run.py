@@ -72,6 +72,8 @@ DELIMITER = "-"
 RUN_TC_TAG_KEY = "sagemaker:trial-component-source"
 RUN_TC_TAG_VALUE = "run"
 RUN_TC_TAG = {"Key": RUN_TC_TAG_KEY, "Value": RUN_TC_TAG_VALUE}
+HPO_TC_SUFFIX = "-aws-training-job"
+HPO_EXPERIMENT_SUFFIX = "-aws-tuning-job"
 
 
 class SortByType(Enum):
@@ -171,32 +173,49 @@ class Run(object):
 
         # avoid confusion due to mis-match in casing between run name and TC name
         self.run_name = self.run_name.lower()
+        in_hpo = HPO_EXPERIMENT_SUFFIX in experiment_name
 
-        trial_component_name = Run._generate_trial_component_name(
-            run_name=self.run_name, experiment_name=self.experiment_name
-        )
-        self.run_group_name = Run._generate_trial_name(self.experiment_name)
+        if not in_hpo:
+            trial_component_name = Run._generate_trial_component_name(
+                run_name=self.run_name, experiment_name=self.experiment_name
+            )
+            self.run_group_name = Run._generate_trial_name(self.experiment_name)
+            self._experiment = Experiment._load_or_create(
+                experiment_name=self.experiment_name,
+                display_name=experiment_display_name,
+                tags=tags,
+                sagemaker_session=sagemaker_session,
+            )
 
-        self._experiment = Experiment._load_or_create(
-            experiment_name=self.experiment_name,
-            display_name=experiment_display_name,
-            tags=tags,
-            sagemaker_session=sagemaker_session,
-        )
+            self._trial = _Trial._load_or_create(
+                experiment_name=self.experiment_name,
+                trial_name=self.run_group_name,
+                tags=tags,
+                sagemaker_session=sagemaker_session,
+            )
 
-        self._trial = _Trial._load_or_create(
-            experiment_name=self.experiment_name,
-            trial_name=self.run_group_name,
-            tags=tags,
-            sagemaker_session=sagemaker_session,
-        )
+            self._trial_component, is_existed = _TrialComponent._load_or_create(
+                trial_component_name=trial_component_name,
+                display_name=run_display_name,
+                tags=Run._append_run_tc_label_to_tags(tags),
+                sagemaker_session=sagemaker_session,
+            )
+        else:
+            trial_component_name = run_name
+            self.run_group_name = run_name.replace(HPO_TC_SUFFIX, "")
 
-        self._trial_component, is_existed = _TrialComponent._load_or_create(
-            trial_component_name=trial_component_name,
-            display_name=run_display_name,
-            tags=Run._append_run_tc_label_to_tags(tags),
-            sagemaker_session=sagemaker_session,
-        )
+            # Tags are not needed as there are no create calls
+            self._experiment = Experiment.load(
+                experiment_name=self.experiment_name, sagemaker_session=sagemaker_session
+            )
+            self._trial = _Trial.load(
+                trial_name=self.run_group_name, sagemaker_session=sagemaker_session
+            )
+            self._trial_component = _TrialComponent.load(
+                trial_component_name=trial_component_name, sagemaker_session=sagemaker_session
+            )
+            is_existed = True
+
         if is_existed:
             logger.info(
                 "The run (%s) under experiment (%s) already exists. Loading it.",
@@ -206,7 +225,7 @@ class Run(object):
 
         if not _TrialComponent._trial_component_is_associated_to_trial(
             self._trial_component.trial_component_name, self._trial.trial_name, sagemaker_session
-        ):
+        ) and not in_hpo:
             self._trial.add_trial_component(self._trial_component)
 
         self._artifact_uploader = _ArtifactUploader(

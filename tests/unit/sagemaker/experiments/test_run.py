@@ -55,6 +55,9 @@ from tests.unit.sagemaker.experiments.helpers import (
     TEST_RUN_DISPLAY_NAME,
     TEST_ARTIFACT_BUCKET,
     TEST_ARTIFACT_PREFIX,
+    TEST_HPO_TC_NAME,
+    TEST_HPO_TRIAL_NAME,
+    TEST_HPO_EXPERIMENT_NAME
 )
 
 
@@ -251,6 +254,8 @@ def test_run_load_no_run_name_and_in_train_job_but_fail_to_get_exp_cfg(
     sagemaker_session.sagemaker_client.describe_training_job.return_value = {
         "TrainingJobName": "train-job-experiments",
     }
+    sagemaker_session.sagemaker_client.describe_trial.return_value = {}
+    sagemaker_session.sagemaker_client.describe_trial_component.return_value = {}
 
     with pytest.raises(RuntimeError) as err:
         with load_run(sagemaker_session=sagemaker_session):
@@ -1088,6 +1093,51 @@ def test_append_run_tc_label_to_tags():
     ret = Run._append_run_tc_label_to_tags(tags)
     assert len(ret) == 1
     assert expected_tc_tag in ret
+
+@patch("sagemaker.experiments.run._TrialComponent.load", MagicMock(return_value=_TrialComponent(trial_component_name=TEST_HPO_TC_NAME)))
+@patch(
+    "sagemaker.experiments.run.Experiment.load",
+    MagicMock(return_value=Experiment(experiment_name=TEST_HPO_EXPERIMENT_NAME)),
+)
+@patch("sagemaker.experiments.run._RunEnvironment")
+@patch.object(_TrialComponent, "save", MagicMock(return_value=None))
+def test_run_load_no_run_name_and_in_hpo_job(mock_run_env, sagemaker_session):
+    client = sagemaker_session.sagemaker_client
+    rv = Mock()
+    rv.source_arn = f"arn:1234/{TEST_HPO_TRIAL_NAME}"
+    rv.environment_type = _environment._EnvironmentType.SageMakerTrainingJob
+    mock_run_env.load.return_value = rv
+
+    exp_config = {
+        EXPERIMENT_NAME: TEST_HPO_EXPERIMENT_NAME,
+        TRIAL_NAME: TEST_HPO_TRIAL_NAME,
+        RUN_NAME: TEST_HPO_TC_NAME,
+    }
+    client.describe_training_job.return_value = {
+        "TrainingJobName": "train-job-experiments",
+    }
+    client.describe_trial.return_value = {
+        "TrialName": TEST_HPO_TRIAL_NAME,
+        "ExperimentName" : TEST_HPO_EXPERIMENT_NAME
+    }
+    client.describe_trial_component.return_value = {
+        "TrialComponentName": TEST_HPO_TC_NAME
+    }
+
+
+    with load_run(sagemaker_session=sagemaker_session) as run_obj:
+        assert run_obj._in_load
+        assert not run_obj._inside_init_context
+        assert run_obj._inside_load_context
+        assert run_obj.run_name == TEST_HPO_TC_NAME
+        assert run_obj._trial_component.trial_component_name == TEST_HPO_TC_NAME
+        assert run_obj.run_group_name == TEST_HPO_TRIAL_NAME
+        assert run_obj._trial
+        assert run_obj.experiment_name == TEST_HPO_EXPERIMENT_NAME
+        assert run_obj._experiment
+        assert run_obj.experiment_config == exp_config
+
+    client.describe_training_job.assert_called_once_with(TrainingJobName=TEST_HPO_TRIAL_NAME)
 
 
 def _verify_tc_status_before_enter_init(trial_component):

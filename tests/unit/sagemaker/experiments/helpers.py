@@ -24,6 +24,9 @@ TEST_RUN_DISPLAY_NAME = "my-run-display-name"
 TEST_TAGS = [{"Key": "some-key", "Value": "some-value"}]
 TEST_ARTIFACT_BUCKET = "my-artifact-bucket"
 TEST_ARTIFACT_PREFIX = "my-artifact-prefix"
+TEST_HPO_TRIAL_NAME = f"{TEST_EXP_NAME}-abcd"
+TEST_HPO_TC_NAME = f"{TEST_HPO_TRIAL_NAME}-aws-training-job"
+TEST_HPO_EXPERIMENT_NAME = f"{TEST_EXP_NAME}-aws-tuning-job"
 
 
 def mock_tc_load_or_create_func(
