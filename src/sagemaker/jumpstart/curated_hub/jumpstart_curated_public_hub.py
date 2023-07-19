@@ -1,7 +1,8 @@
 from __future__ import absolute_import
 
+import json
 from concurrent import futures
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Dict
 
 import boto3
 from botocore.client import ClientError
@@ -10,6 +11,7 @@ from sagemaker.jumpstart.curated_hub.content_copy import ContentCopier
 from sagemaker.jumpstart.curated_hub.hub_client import CuratedHubClient
 from sagemaker.jumpstart.curated_hub.model_document import ModelDocumentCreator
 from sagemaker.jumpstart.curated_hub.stsClient import StsClient
+from sagemaker.jumpstart.curated_hub.hub_model_specs.hub_model_specs import Dependency
 from sagemaker.jumpstart.curated_hub.accessors.public_hub_s3_accessor import (
     PublicHubS3Accessor,
 )
@@ -50,11 +52,12 @@ class JumpStartCuratedPublicHub:
 
         (
             self.curated_hub_name,
-            self.curated_hub_s3_bucket_name,
-            self._skip_create,
+            self.curated_hub_s3_bucket_name
         ) = self._get_curated_hub_and_curated_hub_s3_bucket_names(
             curated_hub_name, import_to_preexisting_hub
         )
+
+        self._skip_create = self.curated_hub_name != curated_hub_name
 
         self.studio_metadata_map = self._get_studio_metadata(self._region)
         self._init_clients()
@@ -81,7 +84,6 @@ class JumpStartCuratedPublicHub:
         curated_hub_name = hub_name
         curated_hub_s3_bucket_name = f"{curated_hub_name}-{self._region}-{self._account_id}"
         preexisting_hub = self._get_preexisting_hub_and_s3_bucket_names()
-        skip_create = False
         if preexisting_hub:
             name_of_hub_already_on_account = preexisting_hub[0]
 
@@ -95,18 +97,20 @@ class JumpStartCuratedPublicHub:
 
             curated_hub_name = name_of_hub_already_on_account
             curated_hub_s3_bucket_name = preexisting_hub[1]
-            skip_create = True
 
         print(f"HUB_BUCKET_NAME={curated_hub_s3_bucket_name}")
         print(f"HUB_NAME={curated_hub_name}")
 
-        return (curated_hub_name, curated_hub_s3_bucket_name, skip_create)
+        return (curated_hub_name, curated_hub_s3_bucket_name)
 
     def create(self):
         """Creates a curated hub in the caller AWS account."""
-        if self._skip_create:
+        if self._should_skip_create():
             print(f"WARN: Skipping hub creation as hub {self.curated_hub_name} already exists.")
             return
+        self._create_hub_and_hub_bucket()
+
+    def _create_hub_and_hub_bucket(self):
         self._s3_client.create_bucket(
             Bucket=self.curated_hub_s3_bucket_name,
             CreateBucketConfiguration={"LocationConstraint": self._region},
@@ -120,7 +124,7 @@ class JumpStartCuratedPublicHub:
             model_ids = list(filter(self._model_needs_update, model_ids))
             print(f"INFO: Filtered out {original_list_length - len(model_ids)} models.")
 
-        self._import_models(model_ids, True)
+        self._import_models(model_ids, force_update)
 
     def _model_needs_update(self, model_id: PublicModelId) -> bool:
         model_specs = verify_model_region_and_return_specs(
@@ -138,25 +142,23 @@ class JumpStartCuratedPublicHub:
                 raise ex
             return True
 
-    def _import_models(self, model_ids: List[PublicModelId], parallel_import: bool = False):
+    def _import_models(self, model_ids: List[PublicModelId], replace_model_version_in_place: bool = True):
         """Imports models in list to curated hub
 
         By default, this function imports models in parallel.
         If the model already exists in the curated hub, it will remove the version and replace it with the latest version."""
 
         print(f"Importing {len(model_ids)} models to curated private hub...")
-        thread_pool_size = self._default_thread_pool_size
-        if not parallel_import:
-            thread_pool_size = 1
-
         tasks = []
         with futures.ThreadPoolExecutor(
-            max_workers=thread_pool_size,
+            max_workers=self._default_thread_pool_size,
             thread_name_prefix="import-models-to-curated-hub",
         ) as deploy_executor:
             for model_id in model_ids:
-                task = deploy_executor.submit(self._delete_and_import_model, model_id)
-                tasks.append(task)
+                if replace_model_version_in_place:
+                  tasks.append(deploy_executor.submit(self._delete_and_import_model, model_id))
+                else:
+                    tasks.append(deploy_executor.submit(self._import_model, model_id))
 
         results = futures.wait(tasks)
         failed_deployments: List[BaseException] = []
@@ -170,7 +172,7 @@ class JumpStartCuratedPublicHub:
             )
 
     def _delete_and_import_model(self, model_id: PublicModelId):
-        self._hub_client.delete_model(
+        self._delete_model_from_curated_hub(
             model_id
         )  # TODO: Figure out why Studio terminal is passing in tags to import call
         self._import_model(model_id)
@@ -219,8 +221,52 @@ class JumpStartCuratedPublicHub:
 
     def delete_models(self, model_ids: List[PublicModelId]):
         for model_id in model_ids:
-            self._hub_client.delete_model(model_id)
+            self._delete_model_from_curated_hub(model_id)
 
+    def _delete_model_from_curated_hub(self, model_id: PublicModelId, delete_dependencies: bool = True):
+      if delete_dependencies:
+        self._delete_model_dependencies_no_content_noop(model_id)
+      self._hub_client.delete_model(model_id)
+
+    def _delete_model_dependencies_no_content_noop(self, model_id: PublicModelId):
+        try:
+          hub_content = self._sm_client.describe_hub_content(
+              HubName=self.curated_hub_name,
+              HubContentName=model_id.id,
+              HubContentVersion=model_id.version,
+              HubContentType="Model"
+          )
+        except ClientError:
+            return
+
+        dependencies = self._get_hub_content_dependencies_from_model_document(hub_content["HubContentDocument"])
+        dependency_s3_uris = list(map(self._format_dependency_dst_uris_for_delete_objects, dependencies))
+        delete_response = self._s3_client.delete_objects(
+            Bucket=self.curated_hub_s3_bucket_name,
+            Delete={
+                'Objects': dependency_s3_uris,
+                'Quiet': True
+            }
+        )
+
+        if "Errors" in delete_response:
+            raise Exception(f"Failed to delete all dependencies of model {model_id.id}. : {delete_response['Errors']}")
+    
+    def _get_hub_content_dependencies_from_model_document(self, hub_content_document: str) -> List[Dependency]:
+        hub_content_document_json = json.loads(hub_content_document)
+        return list(map(self._cast_dict_to_dependency, hub_content_document_json["Dependencies"]))
+
+    def _cast_dict_to_dependency(self, dependency: Dict[str, str]) -> Dependency:
+        return Dependency(
+            DependencyOriginPath=dependency["DependencyOriginPath"],
+            DependencyCopyPath=dependency["DependencyCopyPath"],
+            DependencyType=dependency["DependencyType"]
+        )
+
+    def _format_dependency_dst_uris_for_delete_objects(self, dependency: Dependency) -> Dict[str, str]:
+        return {
+            "Key": dependency.DependencyCopyPath
+        }
 
     def _get_account_id(self) -> str:
         StsClient().get_account_id()
@@ -250,3 +296,6 @@ class JumpStartCuratedPublicHub:
             palatine_hub_s3_filesystem=self._dst_s3_filesystem,
             studio_metadata_map=self.studio_metadata_map,
         )
+
+    def _should_skip_create(self):
+        return self._skip_create
