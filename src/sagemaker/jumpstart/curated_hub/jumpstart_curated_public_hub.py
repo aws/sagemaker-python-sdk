@@ -118,47 +118,47 @@ class JumpStartCuratedPublicHub:
         self._hub_client.create_hub(self.curated_hub_name, self.curated_hub_s3_bucket_name)
 
     def sync(self, model_ids: List[PublicModelId], force_update: bool = False):
+        model_specs = map(self._cast_to_model_specs, model_ids)
+
         if not force_update:
             print(f"INFO: Filtering out models that are already in hub. If you still wish to update this model, set `force_update` to True")
-            original_list_length = len(model_ids)
-            model_ids = list(filter(self._model_needs_update, model_ids))
-            print(f"INFO: Filtered out {original_list_length - len(model_ids)} models.")
+            model_specs = list(filter(self._model_needs_update, model_specs))
 
-        self._import_models(model_ids, force_update)
+        self._import_models(model_specs)
 
-    def _model_needs_update(self, model_id: PublicModelId) -> bool:
-        model_specs = verify_model_region_and_return_specs(
+    def _cast_to_model_specs(self, model_id: PublicModelId) -> JumpStartModelSpecs:
+        return verify_model_region_and_return_specs(
             model_id=model_id.id,
             version=model_id.version,
             scope=JumpStartScriptScope.INFERENCE,
             region=self._region,
         )
 
+    def _model_needs_update(self, model_specs: JumpStartModelSpecs) -> bool:
         try:
             self._hub_client.desribe_model(model_specs)
+            print(f"INFO: Model {model_specs.model_id} found in hub.")
             return False
         except ClientError as ex:
             if ex.response["Error"]["Code"] != "ResourceNotFound":
                 raise ex
             return True
 
-    def _import_models(self, model_ids: List[PublicModelId], replace_model_version_in_place: bool = True):
+    def _import_models(self, model_specs: List[JumpStartModelSpecs]):
         """Imports models in list to curated hub
 
         By default, this function imports models in parallel.
         If the model already exists in the curated hub, it will remove the version and replace it with the latest version."""
 
-        print(f"Importing {len(model_ids)} models to curated private hub...")
+        print(f"Importing {len(model_specs)} models to curated private hub...")
         tasks = []
         with futures.ThreadPoolExecutor(
             max_workers=self._default_thread_pool_size,
             thread_name_prefix="import-models-to-curated-hub",
         ) as deploy_executor:
-            for model_id in model_ids:
-                if replace_model_version_in_place:
-                  tasks.append(deploy_executor.submit(self._delete_and_import_model, model_id))
-                else:
-                    tasks.append(deploy_executor.submit(self._import_model, model_id))
+            for model_spec in model_specs:
+                task = deploy_executor.submit(self._delete_and_import_model, model_spec)
+                tasks.append(task)
 
         results = futures.wait(tasks)
         failed_deployments: List[BaseException] = []
@@ -171,28 +171,20 @@ class JumpStartCuratedPublicHub:
                 f"Failures when importing models to curated hub in parallel: {failed_deployments}"
             )
 
-    def _delete_and_import_model(self, model_id: PublicModelId):
+    def _delete_and_import_model(self, model_spec: JumpStartModelSpecs):
         self._delete_model_from_curated_hub(
-            model_id
+            model_spec
         )  # TODO: Figure out why Studio terminal is passing in tags to import call
-        self._import_model(model_id)
+        self._import_model(model_spec)
 
-    def _import_model(self, public_js_model: PublicModelId) -> None:
+    def _import_model(self, public_js_model_specs: JumpStartModelSpecs) -> None:
         print(
-            f"Importing model {public_js_model.id} version {public_js_model.version} to curated private hub..."
+            f"Importing model {public_js_model_specs.model_id} version {public_js_model_specs.version} to curated private hub..."
         )
-        model_specs = verify_model_region_and_return_specs(
-            model_id=public_js_model.id,
-            version=public_js_model.version,
-            scope=JumpStartScriptScope.INFERENCE,
-            region=self._region,
-        )
-
-        self._content_copier.copy_hub_content_dependencies_to_hub_bucket(model_specs=model_specs)
-
-        self._import_public_model_to_hub(model_specs=model_specs)
+        self._content_copier.copy_hub_content_dependencies_to_hub_bucket(model_specs=public_js_model_specs)
+        self._import_public_model_to_hub(model_specs=public_js_model_specs)
         print(
-            f"Importing model {public_js_model.id} version {public_js_model.version} to curated private hub complete!"
+            f"Importing model {public_js_model_specs.model_id} version {public_js_model_specs.version} to curated private hub complete!"
         )
 
     def _import_public_model_to_hub(self, model_specs: JumpStartModelSpecs):
@@ -220,20 +212,21 @@ class JumpStartCuratedPublicHub:
         )
 
     def delete_models(self, model_ids: List[PublicModelId]):
-        for model_id in model_ids:
-            self._delete_model_from_curated_hub(model_id)
+        model_specs = map(self._cast_to_model_specs, model_ids)
+        for model_spec in model_specs:
+            self._delete_model_from_curated_hub(model_spec)
 
-    def _delete_model_from_curated_hub(self, model_id: PublicModelId, delete_dependencies: bool = True):
+    def _delete_model_from_curated_hub(self, model_specs: JumpStartModelSpecs, delete_dependencies: bool = True):
       if delete_dependencies:
-        self._delete_model_dependencies_no_content_noop(model_id)
-      self._hub_client.delete_model(model_id)
+        self._delete_model_dependencies_no_content_noop(model_specs)
+      self._hub_client.delete_model(model_specs)
 
-    def _delete_model_dependencies_no_content_noop(self, model_id: PublicModelId):
+    def _delete_model_dependencies_no_content_noop(self, model_specs: JumpStartModelSpecs):
         try:
           hub_content = self._sm_client.describe_hub_content(
               HubName=self.curated_hub_name,
-              HubContentName=model_id.id,
-              HubContentVersion=model_id.version,
+              HubContentName=model_specs.model_id,
+              HubContentVersion=model_specs.version,
               HubContentType="Model"
           )
         except ClientError:
@@ -250,7 +243,7 @@ class JumpStartCuratedPublicHub:
         )
 
         if "Errors" in delete_response:
-            raise Exception(f"Failed to delete all dependencies of model {model_id.id}. : {delete_response['Errors']}")
+            raise Exception(f"Failed to delete all dependencies of model {model_specs.model_id}. : {delete_response['Errors']}")
     
     def _get_hub_content_dependencies_from_model_document(self, hub_content_document: str) -> List[Dependency]:
         hub_content_document_json = json.loads(hub_content_document)
