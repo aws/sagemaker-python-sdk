@@ -497,15 +497,7 @@ smdistributed.modelparallel.torch.DistributedOptimizer
 smdistributed.modelparallel.torch.nn.FlashAttentionLayer
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. function:: class smdistributed.modelparallel.torch.nn.FlashAttentionLayer(
-   attention_dropout_prob=0.1,
-   attention_head_size=None,
-   scale_attention_scores=True,
-   scale_attn_by_layer_idx=False,
-   layer_idx=None,
-   scale=None,
-   triton_flash_attention=False,
-   use_alibi=False)
+.. function:: smdistributed.modelparallel.torch.nn.FlashAttentionLayer(attention_dropout_prob=0.1, attention_head_size=None, scale_attention_scores=True, scale_attn_by_layer_idx=False, layer_idx=None, scale=None, triton_flash_attention=False, use_alibi=False)
 
    This FlashAttentionLayer class supports
    `FlashAttention <https://github.com/HazyResearch/flash-attention>`_.
