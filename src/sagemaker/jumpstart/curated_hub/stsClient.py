@@ -34,7 +34,7 @@ class StsClient:
 
     def __init__(self, region: str = None) -> None:
         """Creates the boto3 client for STS."""
-        self._client = boto3.client(service_name="sts", region=region)
+        self._client = boto3.client(service_name="sts", region_name=region)
 
     def get_region(self) -> str:
         """Return the AWS region from the client meta information."""
