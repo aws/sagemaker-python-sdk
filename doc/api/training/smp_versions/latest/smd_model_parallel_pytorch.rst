@@ -499,34 +499,39 @@ smdistributed.modelparallel.torch.nn.FlashAttentionLayer
 
 .. function:: smdistributed.modelparallel.torch.nn.FlashAttentionLayer(attention_dropout_prob=0.1, attention_head_size=None, scale_attention_scores=True, scale_attn_by_layer_idx=False, layer_idx=None, scale=None, triton_flash_attention=False, use_alibi=False)
 
-   This FlashAttentionLayer class supports
-   `FlashAttention <https://github.com/HazyResearch/flash-attention>`_.
-   It takes the ``qkv`` matrix as argument, computes attention scores and probabilities,
-   and then does the matrix multiplication with value layer.
+   This class supports
+   `FlashAttention <https://github.com/HazyResearch/flash-attention>`_
+   for PyTorch 2.0.
+   It takes the ``qkv`` matrix as an argument through its ``forward`` class method, 
+   computes attention scores and probabilities,
+   and then operates the matrix multiplication with value layers.
 
-   Note that custom attention masks such as Attention with
-   Linear Biases (ALiBi) are only supported when
-   ``triton_flash_attention`` and ``use_alibi`` are set to ``True``.
+   Through this class, the smp library supports
+   custom attention masks such as Attention with
+   Linear Biases (ALiBi), and you can activate them by setting
+   ``triton_flash_attention`` and ``use_alibi`` to ``True``.
 
-   Note also that Triton flash attention does not support dropout
+   Note that the Triton flash attention does not support dropout
    on the attention probabilities. It uses standard lower triangular
    causal mask when causal mode is enabled. It also runs only
    on P4d and P4de instances, with fp16 or bf16.
 
    This class computes the scale factor to apply when computing attention.
-   By default, scale is ``None``, and it's automatically calculated.
-   When ``scale_attention_scores`` is ``True`` (which is default),
-   ``attention_head_size`` must be passed. When ``scale_attn_by_layer_idx`` is True,
-   then ``layer_idx`` must be passed. If both factors are used, they will
-   be multiplied ``(1/(sqrt(attention_head_size) * (layer_idx+1)))``.
-   This scale calculation can be bypassed by passing a custom scaling
-   factor if needed with ``scale`` parameter.
+   By default, ``scale`` is set to ``None``, and it's automatically calculated.
+   When ``scale_attention_scores`` is ``True`` (which is default), you must pass a value
+   to ``attention_head_size``. When ``scale_attn_by_layer_idx`` is ``True``,
+   you must pass a value to ``layer_idx``. If both factors are used, they are
+   multiplied as follows: ``(1/(sqrt(attention_head_size) * (layer_idx+1)))``.
+   This scale calculation can be bypassed if you specify a custom scaling
+   factor to ``scale``. In other words, if you specify a value to ``scale``, the set of parameters
+   (``scale_attention_scores``, ``attention_head_size``, ``scale_attn_by_layer_idx``, ``layer_idx``)
+   is overridden and ignored.
 
    **Parameters**
 
    * ``attention_dropout_prob`` (float): (default: 0.1) specifies dropout probability
      to apply to attention.
-   * ``attention_head_size`` (int): Required when scale_attention_scores is True.
+   * ``attention_head_size`` (int): Required when ``scale_attention_scores`` is True.
      When ``scale_attention_scores`` is passed, this contributes
      ``1/sqrt(attention_head_size)`` to the scale factor.
    * ``scale_attention_scores`` (boolean): (default: True) determines whether
@@ -537,7 +542,7 @@ smdistributed.modelparallel.torch.nn.FlashAttentionLayer
    * ``scale_attn_by_layer_idx`` (boolean): (default: False) determines whether
      to multiply 1/(layer_idx + 1) to the scale factor.
    * ``scale`` (float) (default: None): If passed, this scale factor will be
-     applied bypassing the above arguments.
+     applied bypassing the all of the previous arguments.
    * ``triton_flash_attention`` (bool): (default: False) If passed, Triton
      implementation of flash attention will be used. This is necessary to supports
      Attention with Linear Biases (ALiBi) (see next arg). Note that this version
