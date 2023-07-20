@@ -716,6 +716,37 @@ def test_valid_shap_config(baseline):
     assert expected_config == shap_config.get_explainability_config()
 
 
+def test_shap_config_features_to_explain():
+    baseline = [1, 2, 3]
+    num_samples = 100
+    agg_method = "mean_sq"
+    use_logit = True
+    save_local_shap_values = True
+    seed = 123
+    features_to_explain = [0, 1]
+    shap_config = SHAPConfig(
+        baseline=baseline,
+        num_samples=num_samples,
+        agg_method=agg_method,
+        use_logit=use_logit,
+        save_local_shap_values=save_local_shap_values,
+        seed=seed,
+        features_to_explain=features_to_explain,
+    )
+    expected_config = {
+        "shap": {
+            "baseline": baseline,
+            "num_samples": num_samples,
+            "agg_method": agg_method,
+            "use_logit": use_logit,
+            "save_local_shap_values": save_local_shap_values,
+            "seed": seed,
+            "features_to_explain": features_to_explain,
+        }
+    }
+    assert expected_config == shap_config.get_explainability_config()
+
+
 def test_shap_config_no_baseline():
     num_samples = 100
     agg_method = "mean_sq"
@@ -850,6 +881,17 @@ def test_invalid_shap_config():
         SHAPConfig(baseline=[[1]], num_samples=1, agg_method="mean_abs", num_clusters=2)
     assert (
         "Baseline and num_clusters cannot be provided together. Please specify one of the two."
+        in str(error.value)
+    )
+    with pytest.raises(ValueError) as error:
+        SHAPConfig(
+            baseline=[[1, 2]],
+            num_samples=1,
+            text_config=TextConfig(granularity="token", language="english"),
+            features_to_explain=[0],
+        )
+    assert (
+        "`features_to_explain` is not supported for datasets containing text features or images."
         in str(error.value)
     )
 

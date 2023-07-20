@@ -2543,7 +2543,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if tags is not None:
             edge_packaging_job_request["Tags"] = tags
         if resource_key is not None:
-            edge_packaging_job_request["ResourceKey"] = (resource_key,)
+            edge_packaging_job_request["ResourceKey"] = resource_key
 
         LOGGER.info("Creating edge-packaging-job with name: %s", job_name)
         self.sagemaker_client.create_edge_packaging_job(**edge_packaging_job_request)
@@ -2639,7 +2639,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             warm_start_config (dict): Configuration defining the type of warm start and
                 other required configurations.
             max_runtime_in_seconds (int or PipelineVariable): The maximum time in seconds
-                that a training job launched by a hyperparameter tuning job can run.
+                that a hyperparameter tuning job can run.
             completion_criteria_config (sagemaker.tuner.TuningJobCompletionCriteriaConfig): A
                 configuration for the completion criteria.
             early_stopping_type (str): Specifies whether early stopping is enabled for the job.
@@ -2894,7 +2894,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 tuning job.
             max_parallel_jobs (int): Maximum number of parallel training jobs to start.
             max_runtime_in_seconds (int or PipelineVariable): The maximum time in seconds
-                that a training job launched by a hyperparameter tuning job can run.
+                that a hyperparameter tuning job can run.
             early_stopping_type (str): Specifies whether early stopping is enabled for the job.
                 Can be either 'Auto' or 'Off'. If set to 'Off', early stopping will not be
                 attempted. If set to 'Auto', early stopping of some training jobs may happen,
@@ -4398,7 +4398,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         Args:
             endpoint (str): Name of the ``Endpoint`` to wait for.
-            poll (int): Polling interval in seconds (default: 5).
+            poll (int): Polling interval in seconds (default: 30).
 
         Raises:
             exceptions.CapacityError: If the endpoint creation job fails with CapacityError.

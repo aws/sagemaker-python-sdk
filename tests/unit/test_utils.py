@@ -1703,6 +1703,7 @@ class TestVolumeSizeSupported(TestCase):
             "g5.8xlarge",
             "local",
             "local_gpu",
+            ParameterString(name="InstanceType", default_value="ml.m4.xlarge"),
         ]
 
         for instance in instances_that_dont_support_volume_size:

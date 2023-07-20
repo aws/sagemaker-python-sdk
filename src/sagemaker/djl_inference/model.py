@@ -196,7 +196,7 @@ def _create_estimator(
     image_uri: str,
     role: str,
     sagemaker_session: Optional[Session],
-    volume_size: int = 30,
+    volume_size: int,
     vpc_config: Optional[
         Dict[
             str,
@@ -453,7 +453,9 @@ class DJLModel(FrameworkModel):
         self,
         instance_type: str,
         s3_output_uri: str = None,
+        s3_output_prefix: str = "aot-partitioned-checkpoints",
         job_name: Optional[str] = None,
+        volume_size: int = 30,
         volume_kms_key: Optional[str] = None,
         output_kms_key: Optional[str] = None,
         use_spot_instances: bool = False,
@@ -469,8 +471,13 @@ class DJLModel(FrameworkModel):
                     artifacts and output files). If not specified, results are
                     stored to a default bucket. If the bucket with the specific name
                     does not exist, it will be created.
+            s3_output_prefix (str): Name of the prefix where all the partitioned
+                    checkpoints to be uploaded. If not provided, the default value is
+                    aot-partitioned-checkpoints.
             job_name (str): Training job name. If not specified, a unique training job
                         name will be created.
+            volume_size (int): Size in GB of the storage volume to use for
+                storing input and output data during training (default: 30).
             volume_kms_key (str): Optional. KMS key ID for encrypting EBS
                 volume attached to the training instance (default: None).
             output_kms_key (str): Optional. KMS key ID for encrypting the
@@ -499,20 +506,19 @@ class DJLModel(FrameworkModel):
             region_name = self.sagemaker_session.boto_session.region_name
             self.image_uri = self.serving_image_uri(region_name)
 
-        deploy_key_prefix = fw_utils.model_code_key_prefix(
-            self.key_prefix, self.name, self.image_uri
-        )
         if s3_output_uri is None:
+            deploy_key_prefix = fw_utils.model_code_key_prefix(
+                self.key_prefix, self.name, self.image_uri
+            )
+
             bucket, deploy_key_prefix = s3.determine_bucket_and_prefix(
                 bucket=self.bucket,
                 key_prefix=deploy_key_prefix,
                 sagemaker_session=self.sagemaker_session,
             )
             s3_output_uri = s3_path_join("s3://", bucket, deploy_key_prefix)
-        else:
-            s3_output_uri = s3_path_join(s3_output_uri, deploy_key_prefix)
 
-        self.save_mp_checkpoint_path = s3_path_join(s3_output_uri, "aot-partitioned-checkpoints")
+        self.save_mp_checkpoint_path = s3_path_join(s3_output_uri, s3_output_prefix)
 
         container_def = self._upload_model_to_s3(upload_as_tar=False)
         estimator = _create_estimator(
@@ -521,6 +527,7 @@ class DJLModel(FrameworkModel):
             image_uri=self.image_uri,
             role=self.role,
             sagemaker_session=self.sagemaker_session,
+            volume_size=volume_size,
             vpc_config=self.vpc_config,
             volume_kms_key=volume_kms_key,
             output_kms_key=output_kms_key,
@@ -924,7 +931,9 @@ class DeepSpeedModel(DJLModel):
         self,
         instance_type: str,
         s3_output_uri: str = None,
+        s3_output_prefix: str = "aot-partitioned-checkpoints",
         job_name: Optional[str] = None,
+        volume_size: int = 30,
         volume_kms_key: Optional[str] = None,
         output_kms_key: Optional[str] = None,
         use_spot_instances: bool = False,
@@ -940,8 +949,13 @@ class DeepSpeedModel(DJLModel):
                     artifacts and output files). If not specified, results are
                     stored to a default bucket. If the bucket with the specific name
                     does not exist, it will be created.
+            s3_output_prefix (str): Name of the prefix where all the partitioned
+                    checkpoints to be uploaded. If not provided, the default value is
+                    aot-partitioned-checkpoints.
             job_name (str): Training job name. If not specified, a unique training job
                         name will be created.
+            volume_size (int): Size in GB of the storage volume to use for
+                storing input and output data during training (default: 30).
             volume_kms_key (str): Optional. KMS key ID for encrypting EBS
                 volume attached to the training instance (default: None).
             output_kms_key (str): Optional. KMS key ID for encrypting the
@@ -969,7 +983,9 @@ class DeepSpeedModel(DJLModel):
         super(DeepSpeedModel, self).partition(
             instance_type,
             s3_output_uri,
-            job_name,
+            s3_output_prefix=s3_output_prefix,
+            job_name=job_name,
+            volume_size=volume_size,
             volume_kms_key=volume_kms_key,
             output_kms_key=output_kms_key,
             use_spot_instances=use_spot_instances,
@@ -1096,7 +1112,9 @@ class HuggingFaceAccelerateModel(DJLModel):
         self,
         instance_type: str,
         s3_output_uri: str = None,
+        s3_output_prefix: str = "aot-partitioned-checkpoints",
         job_name: Optional[str] = None,
+        volume_size: int = 30,
         volume_kms_key: Optional[str] = None,
         output_kms_key: Optional[str] = None,
         use_spot_instances: bool = False,
@@ -1112,8 +1130,13 @@ class HuggingFaceAccelerateModel(DJLModel):
                     artifacts and output files). If not specified, results are
                     stored to a default bucket. If the bucket with the specific name
                     does not exist, it will be created.
+            s3_output_prefix (str): Name of the prefix where all the partitioned
+                    checkpoints to be uploaded. If not provided, the default value is
+                    aot-partitioned-checkpoints.
             job_name (str): Training job name. If not specified, a unique training job
                         name will be created.
+            volume_size (int): Size in GB of the storage volume to use for
+                storing input and output data during training (default: 30).
             volume_kms_key (str): Optional. KMS key ID for encrypting EBS
                 volume attached to the training instance (default: None).
             output_kms_key (str): Optional. KMS key ID for encrypting the

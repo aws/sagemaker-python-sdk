@@ -345,3 +345,42 @@ class _TrialComponent(_base_types.Record):
             run_tc = _TrialComponent.load(trial_component_name, sagemaker_session)
             is_existed = True
         return run_tc, is_existed
+
+    @classmethod
+    def _trial_component_is_associated_to_trial(
+        cls, trial_component_name, trial_name=None, sagemaker_session=None
+    ):
+        """Returns a bool based on if trial_component is already associated with the trial.
+
+        Args:
+            trial_component_name (str): The name of the trial component.
+            trial_name: (str): The name of the trial.
+            sagemaker_session (sagemaker.session.Session): Session object which
+                manages interactions with Amazon SageMaker APIs and any other
+                AWS services needed.
+
+        Returns:
+            bool: A boolean variable indicating whether the trial component is already
+                  associated with the trial.
+
+        """
+        search_results = sagemaker_session.sagemaker_client.search(
+            Resource="ExperimentTrialComponent",
+            SearchExpression={
+                "Filters": [
+                    {
+                        "Name": "TrialComponentName",
+                        "Operator": "Equals",
+                        "Value": str(trial_component_name),
+                    },
+                    {
+                        "Name": "Parents.TrialName",
+                        "Operator": "Equals",
+                        "Value": str(trial_name),
+                    },
+                ]
+            },
+        )
+        if search_results["Results"]:
+            return True
+        return False

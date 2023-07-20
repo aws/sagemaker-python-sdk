@@ -43,6 +43,7 @@ from sagemaker.workflow.model_step import (
 )
 from sagemaker.workflow.parameters import ParameterString, ParameterInteger
 from sagemaker.workflow.pipeline import Pipeline, PipelineGraph
+from sagemaker.workflow.pipeline_definition_config import PipelineDefinitionConfig
 from sagemaker.workflow.retry import (
     StepRetryPolicy,
     StepExceptionTypeEnum,
@@ -1072,7 +1073,9 @@ def test_pass_in_wrong_type_of_retry_policies(pipeline_session, model):
     assert "SageMakerJobStepRetryPolicy is not allowed for a create/registe" in str(error.value)
 
 
-def test_register_model_step_with_model_package_name(pipeline_session):
+def test_register_model_step_using_custom_model_package_name(pipeline_session):
+
+    custom_model_prefix = "custom-model-package-prefix"
     model = Model(
         name="MyModel",
         image_uri="my-image",
@@ -1084,17 +1087,65 @@ def test_register_model_step_with_model_package_name(pipeline_session):
         response_types=["text/csv"],
         inference_instances=["ml.t2.medium", "ml.m5.xlarge"],
         transform_instances=["ml.m5.xlarge"],
-        model_package_name="model-pkg-name-will-be-popped-out",
+        model_package_name=custom_model_prefix,
     )
     regis_model_step = ModelStep(
-        name="MyModelStep",
+        name="MyRegisterModelStep",
         step_args=step_args,
     )
+
+    # 1. Toggle on custom-prefixing model package name popped
+    config = PipelineDefinitionConfig(use_custom_job_prefix=True)
     pipeline = Pipeline(
         name="MyPipeline",
         steps=[regis_model_step],
         sagemaker_session=pipeline_session,
+        pipeline_definition_config=config,
     )
+
+    steps = json.loads(pipeline.definition())["Steps"]
+    assert len(steps) == 1
+    assert steps[0]["Arguments"]["ModelPackageName"] == custom_model_prefix
+
+    # 2. Toggle off custom-prefixing for this pipeline
+    pipeline.pipeline_definition_config.use_custom_job_prefix = False
+    pipeline.upsert(role_arn=ROLE)
+
     steps = json.loads(pipeline.definition())["Steps"]
     assert len(steps) == 1
     assert "ModelPackageName" not in steps[0]["Arguments"]
+
+
+def test_create_model_step_using_custom_model_name(pipeline_session):
+
+    custom_model_prefix = "custom-model-prefix"
+    model = Model(
+        name=custom_model_prefix,
+        image_uri="my-image",
+        sagemaker_session=pipeline_session,
+        model_data="s3://",
+        role=ROLE,
+    )
+    step_create_model = ModelStep(name="MyModelStep", step_args=model.create())
+
+    # 1. Toggle on custom-prefixing model package name popped
+    config = PipelineDefinitionConfig(use_custom_job_prefix=True)
+    pipeline = Pipeline(
+        name="MyPipeline",
+        steps=[step_create_model],
+        sagemaker_session=pipeline_session,
+        pipeline_definition_config=config,
+    )
+
+    steps = json.loads(pipeline.definition())["Steps"]
+
+    assert len(steps) == 1
+    assert steps[0]["Arguments"]["ModelName"] == custom_model_prefix
+
+    # 2. Toggle off custom-prefixing for this pipeline
+    pipeline.pipeline_definition_config.use_custom_job_prefix = False
+    pipeline.upsert(role_arn=ROLE)
+
+    steps = json.loads(pipeline.definition())["Steps"]
+    assert len(steps) == 1
+    assert "ModelName" not in steps[0]["Arguments"]

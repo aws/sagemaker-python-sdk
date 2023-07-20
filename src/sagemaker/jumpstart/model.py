@@ -14,6 +14,7 @@
 
 from __future__ import absolute_import
 import logging
+import re
 
 from typing import Dict, List, Optional, Union
 from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
@@ -30,7 +31,7 @@ from sagemaker.jumpstart.factory.model import (
 )
 from sagemaker.jumpstart.utils import is_valid_model_id
 from sagemaker.utils import stringify_object
-from sagemaker.model import Model
+from sagemaker.model import MODEL_PACKAGE_ARN_PATTERN, Model
 from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
 from sagemaker.predictor import PredictorBase
 from sagemaker.serverless.serverless_inference_config import ServerlessInferenceConfig
@@ -71,6 +72,7 @@ class JumpStartModel(Model):
         container_log_level: Optional[Union[int, PipelineVariable]] = None,
         dependencies: Optional[List[str]] = None,
         git_config: Optional[Dict[str, str]] = None,
+        model_package_arn: Optional[str] = None,
     ):
         """Initializes a ``JumpStartModel``.
 
@@ -249,6 +251,9 @@ class JumpStartModel(Model):
                     >>>               'branch': 'test-branch-git-config',
                     >>>               'commit': '329bfcf884482002c05ff7f44f62599ebc9f445a'}
 
+            model_package_arn (Optional[str]): An existing SageMaker Model Package arn,
+                can be just the name if your account owns the Model Package.
+                ``model_data`` is not required. (Default: None).
         Raises:
             ValueError: If the model ID is not recognized by JumpStart.
         """
@@ -291,6 +296,7 @@ class JumpStartModel(Model):
             container_log_level=container_log_level,
             dependencies=dependencies,
             git_config=git_config,
+            model_package_arn=model_package_arn,
         )
 
         self.orig_predictor_cls = predictor_cls
@@ -301,8 +307,48 @@ class JumpStartModel(Model):
         self.tolerate_vulnerable_model = model_init_kwargs.tolerate_vulnerable_model
         self.tolerate_deprecated_model = model_init_kwargs.tolerate_deprecated_model
         self.region = model_init_kwargs.region
+        self.model_package_arn = model_init_kwargs.model_package_arn
 
         super(JumpStartModel, self).__init__(**model_init_kwargs.to_kwargs_dict())
+
+    def _create_sagemaker_model(self, *args, **kwargs):  # pylint: disable=unused-argument
+        """Create a SageMaker Model Entity
+
+        Args:
+            args: Positional arguments coming from the caller. This class does not require
+                any so they are ignored.
+
+            kwargs: Keyword arguments coming from the caller. This class does not require
+                any so they are ignored.
+        """
+        if self.model_package_arn:
+            # When a ModelPackageArn is provided we just create the Model
+            match = re.match(MODEL_PACKAGE_ARN_PATTERN, self.model_package_arn)
+            if match:
+                model_package_name = match.group(3)
+            else:
+                # model_package_arn can be just the name if your account owns the Model Package
+                model_package_name = self.model_package_arn
+            container_def = {"ModelPackageName": self.model_package_arn}
+
+            if self.env != {}:
+                container_def["Environment"] = self.env
+
+            if self.name is None:
+                self._base_name = model_package_name
+
+            self._set_model_name_if_needed()
+
+            self.sagemaker_session.create_model(
+                self.name,
+                self.role,
+                container_def,
+                vpc_config=self.vpc_config,
+                enable_network_isolation=self.enable_network_isolation(),
+                tags=kwargs.get("tags"),
+            )
+        else:
+            super(JumpStartModel, self)._create_sagemaker_model(*args, **kwargs)
 
     def deploy(
         self,
@@ -432,7 +478,7 @@ class JumpStartModel(Model):
         predictor = super(JumpStartModel, self).deploy(**deploy_kwargs.to_kwargs_dict())
 
         # If no predictor class was passed, add defaults to predictor
-        if self.orig_predictor_cls is None:
+        if self.orig_predictor_cls is None and async_inference_config is None:
             return get_default_predictor(
                 predictor=predictor,
                 model_id=self.model_id,

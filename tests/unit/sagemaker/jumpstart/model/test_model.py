@@ -15,7 +15,9 @@ from inspect import signature
 from typing import Optional, Set
 from unittest import mock
 import unittest
+from mock import MagicMock
 import pytest
+from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 
 from sagemaker.jumpstart.model import JumpStartModel
@@ -344,6 +346,7 @@ class ModelTest(unittest.TestCase):
             "tolerate_vulnerable_model",
             "tolerate_deprecated_model",
             "instance_type",
+            "model_package_arn",
         }
         assert parent_class_init_args - js_class_init_args == init_args_to_skip
 
@@ -416,6 +419,42 @@ class ModelTest(unittest.TestCase):
         )
         self.assertEqual(type(predictor), Predictor)
         self.assertEqual(predictor, default_predictor_with_presets)
+
+    @mock.patch("sagemaker.jumpstart.model.get_default_predictor")
+    @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.model.Model.__init__")
+    @mock.patch("sagemaker.jumpstart.model.Model.deploy")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_no_predictor_yes_async_inference_config(
+        self,
+        mock_model_deploy: mock.Mock,
+        mock_model_init: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
+        mock_get_default_predictor: mock.Mock,
+    ):
+        mock_get_default_predictor.return_value = default_predictor_with_presets
+
+        mock_model_deploy.return_value = default_predictor
+
+        mock_is_valid_model_id.return_value = True
+
+        model_id, _ = "js-model-class-model-prepacked", "*"
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        mock_session.return_value = sagemaker_session
+
+        model = JumpStartModel(
+            model_id=model_id,
+        )
+
+        model.deploy(async_inference_config=AsyncInferenceConfig())
+
+        mock_get_default_predictor.assert_not_called()
 
     @mock.patch("sagemaker.jumpstart.model.get_default_predictor")
     @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
@@ -527,6 +566,79 @@ class ModelTest(unittest.TestCase):
                     script=JumpStartScriptScope.INFERENCE,
                 ),
             ]
+        )
+
+    @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_jumpstart_model_package_arn(
+        self,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
+    ):
+
+        mock_is_valid_model_id.return_value = True
+
+        model_id, _ = "js-model-package-arn", "*"
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        mock_session.return_value = MagicMock(sagemaker_config={})
+
+        model = JumpStartModel(model_id=model_id)
+
+        model.deploy()
+
+        self.assertEqual(
+            mock_session.return_value.create_model.call_args[0][2],
+            {
+                "ModelPackageName": "arn:aws:sagemaker:us-west-2:594846645681:model-package"
+                "/llama2-7b-f-e46eb8a833643ed58aaccd81498972c3"
+            },
+        )
+
+    @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_jumpstart_model_package_arn_override(
+        self,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
+    ):
+
+        mock_is_valid_model_id.return_value = True
+
+        # arbitrary model without model packarn arn
+        model_id, _ = "js-trainable-model", "*"
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        mock_session.return_value = MagicMock(sagemaker_config={})
+
+        model_package_arn = (
+            "arn:aws:sagemaker:us-west-2:867530986753:model-package/"
+            "llama2-ynnej-f-e46eb8a833643ed58aaccd81498972c3"
+        )
+        model = JumpStartModel(model_id=model_id, model_package_arn=model_package_arn)
+
+        model.deploy()
+
+        self.assertEqual(
+            mock_session.return_value.create_model.call_args[0][2],
+            {
+                "ModelPackageName": model_package_arn,
+                "Environment": {
+                    "ENDPOINT_SERVER_TIMEOUT": "3600",
+                    "MODEL_CACHE_ROOT": "/opt/ml/model",
+                    "SAGEMAKER_ENV": "1",
+                    "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+                    "SAGEMAKER_PROGRAM": "inference.py",
+                },
+            },
         )
 
 

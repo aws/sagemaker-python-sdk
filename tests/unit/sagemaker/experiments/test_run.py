@@ -44,6 +44,7 @@ from sagemaker.experiments.run import (
 from sagemaker.experiments import Run, load_run, list_runs
 from sagemaker.experiments.trial import _Trial
 from sagemaker.experiments.trial_component import _TrialComponent
+from sagemaker.experiments._helper import _DEFAULT_ARTIFACT_PREFIX
 from tests.unit.sagemaker.experiments.helpers import (
     mock_trial_load_or_create_func,
     mock_tc_load_or_create_func,
@@ -52,9 +53,25 @@ from tests.unit.sagemaker.experiments.helpers import (
     TEST_RUN_NAME,
     TEST_EXP_DISPLAY_NAME,
     TEST_RUN_DISPLAY_NAME,
+    TEST_ARTIFACT_BUCKET,
+    TEST_ARTIFACT_PREFIX,
 )
 
 
+@pytest.mark.parametrize(
+    ("kwargs", "expected_artifact_bucket", "expected_artifact_prefix"),
+    [
+        ({}, None, _DEFAULT_ARTIFACT_PREFIX),
+        (
+            {
+                "artifact_bucket": TEST_ARTIFACT_BUCKET,
+                "artifact_prefix": TEST_ARTIFACT_PREFIX,
+            },
+            TEST_ARTIFACT_BUCKET,
+            TEST_ARTIFACT_PREFIX,
+        ),
+    ],
+)
 @patch(
     "sagemaker.experiments.run.Experiment._load_or_create",
     MagicMock(return_value=Experiment(experiment_name=TEST_EXP_NAME)),
@@ -69,9 +86,19 @@ from tests.unit.sagemaker.experiments.helpers import (
     MagicMock(side_effect=mock_tc_load_or_create_func),
 )
 @patch.object(_TrialComponent, "save")
-def test_run_init(mock_tc_save, sagemaker_session):
+def test_run_init(
+    mock_tc_save,
+    sagemaker_session,
+    kwargs,
+    expected_artifact_bucket,
+    expected_artifact_prefix,
+):
+    sagemaker_session.sagemaker_client.search.return_value = {"Results": []}
     with Run(
-        experiment_name=TEST_EXP_NAME, run_name=TEST_RUN_NAME, sagemaker_session=sagemaker_session
+        experiment_name=TEST_EXP_NAME,
+        run_name=TEST_RUN_NAME,
+        sagemaker_session=sagemaker_session,
+        **kwargs,
     ) as run_obj:
         assert not run_obj._in_load
         assert not run_obj._inside_load_context
@@ -90,9 +117,12 @@ def test_run_init(mock_tc_save, sagemaker_session):
             TRIAL_NAME: run_obj.run_group_name,
             RUN_NAME: expected_tc_name,
         }
+        assert run_obj._artifact_uploader.artifact_bucket == expected_artifact_bucket
+        assert run_obj._artifact_uploader.artifact_prefix == expected_artifact_prefix
 
     # trail_component.save is called when entering/ exiting the with block
     mock_tc_save.assert_called()
+    run_obj._trial.add_trial_component.assert_called()
 
 
 def test_run_init_name_length_exceed_limit(sagemaker_session):
@@ -124,6 +154,20 @@ def test_run_init_name_length_exceed_limit(sagemaker_session):
     )
 
 
+@pytest.mark.parametrize(
+    ("kwargs", "expected_artifact_bucket", "expected_artifact_prefix"),
+    [
+        ({}, None, _DEFAULT_ARTIFACT_PREFIX),
+        (
+            {
+                "artifact_bucket": TEST_ARTIFACT_BUCKET,
+                "artifact_prefix": TEST_ARTIFACT_PREFIX,
+            },
+            TEST_ARTIFACT_BUCKET,
+            TEST_ARTIFACT_PREFIX,
+        ),
+    ],
+)
 @patch.object(_TrialComponent, "save", MagicMock(return_value=None))
 @patch(
     "sagemaker.experiments.run.Experiment._load_or_create",
@@ -139,7 +183,13 @@ def test_run_init_name_length_exceed_limit(sagemaker_session):
     MagicMock(side_effect=mock_tc_load_or_create_func),
 )
 @patch("sagemaker.experiments.run._RunEnvironment")
-def test_run_load_no_run_name_and_in_train_job(mock_run_env, sagemaker_session):
+def test_run_load_no_run_name_and_in_train_job(
+    mock_run_env,
+    sagemaker_session,
+    kwargs,
+    expected_artifact_bucket,
+    expected_artifact_prefix,
+):
     client = sagemaker_session.sagemaker_client
     job_name = "my-train-job"
     rv = Mock()
@@ -158,7 +208,19 @@ def test_run_load_no_run_name_and_in_train_job(mock_run_env, sagemaker_session):
         # The Run object has been created else where
         "ExperimentConfig": exp_config,
     }
-    with load_run(sagemaker_session=sagemaker_session) as run_obj:
+    sagemaker_session.sagemaker_client.search.return_value = {
+        "Results": [
+            {
+                "TrialComponent": {
+                    "Parents": [
+                        {"ExperimentName": TEST_EXP_NAME, "TrialName": exp_config[TRIAL_NAME]}
+                    ],
+                    "TrialComponentName": expected_tc_name,
+                }
+            }
+        ]
+    }
+    with load_run(sagemaker_session=sagemaker_session, **kwargs) as run_obj:
         assert run_obj._in_load
         assert not run_obj._inside_init_context
         assert run_obj._inside_load_context
@@ -169,8 +231,11 @@ def test_run_load_no_run_name_and_in_train_job(mock_run_env, sagemaker_session):
         assert run_obj.experiment_name == TEST_EXP_NAME
         assert run_obj._experiment
         assert run_obj.experiment_config == exp_config
+        assert run_obj._artifact_uploader.artifact_bucket == expected_artifact_bucket
+        assert run_obj._artifact_uploader.artifact_prefix == expected_artifact_prefix
 
     client.describe_training_job.assert_called_once_with(TrainingJobName=job_name)
+    run_obj._trial.add_trial_component.assert_not_called()
 
 
 @patch("sagemaker.experiments.run._RunEnvironment")
@@ -215,6 +280,20 @@ def test_run_load_no_run_name_and_not_in_train_job_but_no_obj_in_context(sagemak
     assert "Failed to load a Run object" in str(err)
 
 
+@pytest.mark.parametrize(
+    ("kwargs", "expected_artifact_bucket", "expected_artifact_prefix"),
+    [
+        ({}, None, _DEFAULT_ARTIFACT_PREFIX),
+        (
+            {
+                "artifact_bucket": TEST_ARTIFACT_BUCKET,
+                "artifact_prefix": TEST_ARTIFACT_PREFIX,
+            },
+            TEST_ARTIFACT_BUCKET,
+            TEST_ARTIFACT_PREFIX,
+        ),
+    ],
+)
 @patch.object(_TrialComponent, "save", MagicMock(return_value=None))
 @patch(
     "sagemaker.experiments.run.Experiment._load_or_create",
@@ -229,11 +308,15 @@ def test_run_load_no_run_name_and_not_in_train_job_but_no_obj_in_context(sagemak
     "sagemaker.experiments.run._TrialComponent._load_or_create",
     MagicMock(side_effect=mock_tc_load_or_create_func),
 )
-def test_run_load_with_run_name_and_exp_name(sagemaker_session):
+def test_run_load_with_run_name_and_exp_name(
+    sagemaker_session, kwargs, expected_artifact_bucket, expected_artifact_prefix
+):
+    sagemaker_session.sagemaker_client.search.return_value = {"Results": []}
     with load_run(
         run_name=TEST_RUN_NAME,
         experiment_name=TEST_EXP_NAME,
         sagemaker_session=sagemaker_session,
+        **kwargs,
     ) as run_obj:
         expected_tc_name = f"{TEST_EXP_NAME}{DELIMITER}{TEST_RUN_NAME}"
         expected_exp_config = {
@@ -249,6 +332,10 @@ def test_run_load_with_run_name_and_exp_name(sagemaker_session):
         assert run_obj._trial
         assert run_obj._experiment
         assert run_obj.experiment_config == expected_exp_config
+        assert run_obj._artifact_uploader.artifact_bucket == expected_artifact_bucket
+        assert run_obj._artifact_uploader.artifact_prefix == expected_artifact_prefix
+
+    run_obj._trial.add_trial_component.assert_called()
 
 
 def test_run_load_with_run_name_but_no_exp_name(sagemaker_session):
@@ -296,11 +383,24 @@ def test_run_load_in_sm_processing_job(mock_run_env, sagemaker_session):
         # The Run object has been created else where
         "ExperimentConfig": exp_config,
     }
+    sagemaker_session.sagemaker_client.search.return_value = {
+        "Results": [
+            {
+                "TrialComponent": {
+                    "Parents": [
+                        {"ExperimentName": TEST_EXP_NAME, "TrialName": exp_config[TRIAL_NAME]}
+                    ],
+                    "TrialComponentName": expected_tc_name,
+                }
+            }
+        ]
+    }
 
     with load_run(sagemaker_session=sagemaker_session):
         pass
 
     client.describe_processing_job.assert_called_once_with(ProcessingJobName=job_name)
+    mock_run_env._trial.add_trial_component.assert_not_called()
 
 
 @patch(
@@ -337,11 +437,24 @@ def test_run_load_in_sm_transform_job(mock_run_env, sagemaker_session):
         # The Run object has been created else where
         "ExperimentConfig": exp_config,
     }
+    sagemaker_session.sagemaker_client.search.return_value = {
+        "Results": [
+            {
+                "TrialComponent": {
+                    "Parents": [
+                        {"ExperimentName": TEST_EXP_NAME, "TrialName": exp_config[TRIAL_NAME]}
+                    ],
+                    "TrialComponentName": expected_tc_name,
+                }
+            }
+        ]
+    }
 
     with load_run(sagemaker_session=sagemaker_session):
         pass
 
     client.describe_transform_job.assert_called_once_with(TransformJobName=job_name)
+    mock_run_env._trial.add_trial_component.assert_not_called()
 
 
 @patch(
@@ -359,6 +472,7 @@ def test_run_load_in_sm_transform_job(mock_run_env, sagemaker_session):
 )
 @patch.object(_TrialComponent, "save")
 def test_run_object_serialize_deserialize(mock_tc_save, sagemaker_session):
+    sagemaker_session.sagemaker_client.search.return_value = {"Results": []}
     run_obj = Run(
         experiment_name=TEST_EXP_NAME,
         run_name=TEST_RUN_NAME,

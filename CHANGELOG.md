@@ -1,5 +1,60 @@
 # Changelog
 
+## v2.173.0 (2023-07-15)
+
+### Features
+
+ * jumpstart EULA models
+
+### Bug Fixes and Other Changes
+
+ * Update the apache airflow constraints
+ * Update apache airflow version
+ * bump up djl inference image uri versions
+
+## v2.172.0 (2023-07-13)
+
+### Features
+
+ * Add check for if TrialComponent is already associated with a Trial in Run
+ * Add features_to_explain to shap config
+
+### Bug Fixes and Other Changes
+
+ * Support protobuf4
+ * Remove unnecessary get caller identity call
+ * Missing JumpStart estimator args
+ * Add volume to partition djl_inference
+
+### Documentation Changes
+
+ * Correct runtime param
+ * fix wait_for_endpoint docstring
+
+## v2.171.0 (2023-07-06)
+
+### Features
+
+ * Add PipelineDefinitionConfig to pipelines to toggle custom job …
+
+### Bug Fixes and Other Changes
+
+ * Upgrade DJL deepspeed versions
+ * Remove unused dependency `protobuf3-to-dict`
+ * skip intelligent volume_size allocation based on instance type if it is a pipeline parameter
+
+## v2.170.0 (2023-07-05)
+
+### Features
+
+ * Enable customizing artifact output path
+
+### Bug Fixes and Other Changes
+
+ * Add il-central-1 support for all SM DLCs
+ * jumpstart async inference config predictor support
+ * Update CreateEdgePackagingJob resourceKey with type string
+
 ## v2.169.0 (2023-06-29)
 
 ### Features

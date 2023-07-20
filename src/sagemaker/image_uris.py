@@ -179,7 +179,10 @@ def retrieve(
     py_version = _validate_py_version_and_set_if_needed(py_version, version_config, framework)
     version_config = version_config.get(py_version) or version_config
     registry = _registry_from_region(region, version_config["registries"])
-    hostname = utils._botocore_resolver().construct_endpoint("ecr", region)["hostname"]
+    endpoint_data = utils._botocore_resolver().construct_endpoint("ecr", region)
+    if region == "il-central-1" and not endpoint_data:
+        endpoint_data = {"hostname": "ecr.{}.amazonaws.com".format(region)}
+    hostname = endpoint_data["hostname"]
 
     repo = version_config["repository"]
 
@@ -686,7 +689,10 @@ def get_base_python_image_uri(region, py_version="310") -> str:
 
     framework = "sagemaker-base-python"
     version = "1.0"
-    hostname = utils._botocore_resolver().construct_endpoint("ecr", region)["hostname"]
+    endpoint_data = utils._botocore_resolver().construct_endpoint("ecr", region)
+    if region == "il-central-1" and not endpoint_data:
+        endpoint_data = {"hostname": "ecr.{}.amazonaws.com".format(region)}
+    hostname = endpoint_data["hostname"]
     config = config_for_framework(framework)
     version_config = config["versions"][_version_for_config(version, config)]
 

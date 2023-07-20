@@ -103,6 +103,11 @@ Parallelism Configuration
 .. autoclass:: sagemaker.workflow.parallelism_config.ParallelismConfiguration
     :members:
 
+Pipeline Definition Config
+--------------------------
+
+.. autoclass:: sagemaker.workflow.pipeline_definition_config.PipelineDefinitionConfig
+
 Pipeline Experiment Config
 --------------------------
 
