@@ -65,7 +65,7 @@ class JumpStartCuratedPublicHub:
 
         self._skip_create = self.curated_hub_name != curated_hub_name
 
-        self.studio_metadata_map = self._get_studio_metadata(self._region)
+        self.studio_metadata_map = get_studio_model_metadata_map_from_region(self._region)
         self._init_clients()
 
     def _get_preexisting_hub_and_s3_bucket_names(self) -> Optional[Tuple[str, str]]:
@@ -124,7 +124,7 @@ class JumpStartCuratedPublicHub:
         self._hub_client.create_hub(self.curated_hub_name, self.curated_hub_s3_bucket_name)
 
     def sync(self, model_ids: List[PublicModelId], force_update: bool = False):
-        model_specs = map(self._cast_to_model_specs, model_ids)
+        model_specs = self._get_model_specs(model_ids)
 
         if not force_update:
             print(f"INFO: Filtering out models that are already in hub. If you still wish to update this model, set `force_update` to True")
@@ -132,7 +132,11 @@ class JumpStartCuratedPublicHub:
 
         self._import_models(model_specs)
 
+    def _get_model_specs(self, model_ids: List[PublicModelId]) -> List[JumpStartModelSpecs]:
+        return list(map(self._cast_to_model_specs, model_ids))
+
     def _cast_to_model_specs(self, model_id: PublicModelId) -> JumpStartModelSpecs:
+        
         return verify_model_region_and_return_specs(
             model_id=model_id.id,
             version=model_id.version,
@@ -218,7 +222,7 @@ class JumpStartCuratedPublicHub:
         )
 
     def delete_models(self, model_ids: List[PublicModelId]):
-        model_specs = map(self._cast_to_model_specs, model_ids)
+        model_specs = self._get_model_specs(model_ids)
         for model_spec in model_specs:
             self._delete_model_from_curated_hub(model_spec)
 
@@ -269,7 +273,7 @@ class JumpStartCuratedPublicHub:
         s3_keys = []
         s3_object_reference = create_s3_object_reference_from_uri(dependency.DependencyCopyPath)
 
-        if s3_object_reference.key[-1] == '/': # Checks if this is a directory
+        if self._is_s3_key_a_directory(s3_object_reference.key):
             keys = find_objects_under_prefix(
               bucket=s3_object_reference.bucket,
               prefix=s3_object_reference.key,
@@ -287,11 +291,11 @@ class JumpStartCuratedPublicHub:
         
         return formatted_keys
 
+    def _is_s3_key_a_directory(self, s3_key: str) -> bool:
+        return  s3_key[-1] == '/'
+
     def _get_account_id(self) -> str:
         StsClient().get_account_id()
-
-    def _get_studio_metadata(self, region):
-        return get_studio_model_metadata_map_from_region(region)
 
     def _init_clients(self):
         self._hub_client = CuratedHubClient(
