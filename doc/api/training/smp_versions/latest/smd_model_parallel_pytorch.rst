@@ -502,7 +502,7 @@ smdistributed.modelparallel.torch.nn.FlashAttentionLayer
    This class supports
    `FlashAttention <https://github.com/HazyResearch/flash-attention>`_
    for PyTorch 2.0.
-   It takes the ``qkv`` matrix as an argument through its ``forward`` class method, 
+   It takes the ``qkv`` matrix as an argument through its ``forward`` class method,
    computes attention scores and probabilities,
    and then operates the matrix multiplication with value layers.
 
