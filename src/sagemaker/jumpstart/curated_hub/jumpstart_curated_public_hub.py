@@ -1,3 +1,16 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
+"""This module provides the JumpStart Curated Hub class."""
 from __future__ import absolute_import
 
 import json
@@ -58,7 +71,7 @@ class JumpStartCuratedPublicHub:
 
         (
             self.curated_hub_name,
-            self.curated_hub_s3_bucket_name
+            self.curated_hub_s3_bucket_name,
         ) = self._get_curated_hub_and_curated_hub_s3_bucket_names(
             curated_hub_name, import_to_preexisting_hub
         )
@@ -78,7 +91,8 @@ class JumpStartCuratedPublicHub:
                 hub_res.pop("S3StorageConfig")["S3OutputPath"].replace("s3://", "", 1).split("/")[0]
             )
             print(
-                f"Hub found on account in region {self._region} with name {curated_hub_name} and s3Config {curated_hub_s3_bucket_name}"
+                f"Hub found on account in region {self._region} with name"
+                + f" {curated_hub_name} and s3Config {curated_hub_s3_bucket_name}"
             )
             return (curated_hub_name, curated_hub_s3_bucket_name)
         return None
@@ -95,10 +109,14 @@ class JumpStartCuratedPublicHub:
 
             if not import_to_preexisting_hub:
                 raise Exception(
-                    f"Hub with name {name_of_hub_already_on_account} detected on account. The limit of hubs per account is 1. If you wish to use this hub as the curated hub, please set the flag `import_to_preexisting_hub` to True."
+                    f"Hub with name {name_of_hub_already_on_account} detected on account."
+                    + " The limit of hubs per account is 1. If you wish to use this hub as the curated hub,"
+                    + " please set the flag `import_to_preexisting_hub` to True."
                 )
             print(
-                f"WARN: Hub with name {name_of_hub_already_on_account} detected on account. The limit of hubs per account is 1. `import_to_preexisting_hub` is set to true - defaulting to this hub."
+                f"WARN: Hub with name {name_of_hub_already_on_account} detected on account."
+                + " The limit of hubs per account is 1. `import_to_preexisting_hub`"
+                + " is set to true - defaulting to this hub."
             )
 
             curated_hub_name = name_of_hub_already_on_account
@@ -124,10 +142,21 @@ class JumpStartCuratedPublicHub:
         self._hub_client.create_hub(self.curated_hub_name, self.curated_hub_s3_bucket_name)
 
     def sync(self, model_ids: List[PublicModelId], force_update: bool = False):
+        """Syncs Curated Hub with the JumpStart Public Hub
+
+        If the model already exists in the curated hub,
+          it will skip the update.
+        If `force_update` is set to true or if a new version is passed in,
+          it will remove the version and replace it with the new version.
+        """
+
         model_specs = self._get_model_specs(model_ids)
 
         if not force_update:
-            print(f"INFO: Filtering out models that are already in hub. If you still wish to update this model, set `force_update` to True")
+            print(
+                "INFO: Filtering out models that are already in hub."
+                + " If you still wish to update this model, set `force_update` to True"
+            )
             model_specs = list(filter(self._model_needs_update, model_specs))
 
         self._import_models(model_specs)
@@ -136,7 +165,7 @@ class JumpStartCuratedPublicHub:
         return list(map(self._cast_to_model_specs, model_ids))
 
     def _cast_to_model_specs(self, model_id: PublicModelId) -> JumpStartModelSpecs:
-        
+
         return verify_model_region_and_return_specs(
             model_id=model_id.id,
             version=model_id.version,
@@ -155,11 +184,6 @@ class JumpStartCuratedPublicHub:
             return True
 
     def _import_models(self, model_specs: List[JumpStartModelSpecs]):
-        """Imports models in list to curated hub
-
-        By default, this function imports models in parallel.
-        If the model already exists in the curated hub, it will remove the version and replace it with the latest version."""
-
         print(f"Importing {len(model_specs)} models to curated private hub...")
         tasks = []
         with futures.ThreadPoolExecutor(
@@ -189,18 +213,24 @@ class JumpStartCuratedPublicHub:
 
     def _import_model(self, public_js_model_specs: JumpStartModelSpecs) -> None:
         print(
-            f"Importing model {public_js_model_specs.model_id} version {public_js_model_specs.version} to curated private hub..."
+            f"Importing model {public_js_model_specs.model_id}"
+            + " version {public_js_model_specs.version} to curated private hub..."
         )
-        self._content_copier.copy_hub_content_dependencies_to_hub_bucket(model_specs=public_js_model_specs)
+        self._content_copier.copy_hub_content_dependencies_to_hub_bucket(
+            model_specs=public_js_model_specs
+        )
         self._import_public_model_to_hub(model_specs=public_js_model_specs)
         print(
-            f"Importing model {public_js_model_specs.model_id} version {public_js_model_specs.version} to curated private hub complete!"
+            f"Importing model {public_js_model_specs.model_id}"
+            + " version {public_js_model_specs.version} to curated private hub complete!"
         )
 
     def _import_public_model_to_hub(self, model_specs: JumpStartModelSpecs):
         # TODO Several fields are not present in SDK specs as they are only in Studio specs right now (not urgent)
         hub_content_display_name = self.studio_metadata_map[model_specs.model_id]["name"]
-        hub_content_description = f"This is a curated model based off the public JumpStart model {hub_content_display_name}"  # TODO enable: self.studio_metadata_map[model_specs.model_id]["desc"]
+        # TODO enable: self.studio_metadata_map[model_specs.model_id]["desc"]
+        hub_content_description = "This is a curated model based "
+        +f"off the public JumpStart model {hub_content_display_name}"
         hub_content_markdown = self._dst_s3_filesystem.get_markdown_s3_reference(
             model_specs
         ).get_uri()
@@ -222,43 +252,51 @@ class JumpStartCuratedPublicHub:
         )
 
     def delete_models(self, model_ids: List[PublicModelId]):
+        """Deletes all versions of each model"""
         model_specs = self._get_model_specs(model_ids)
         for model_spec in model_specs:
             self._delete_model_from_curated_hub(model_spec)
 
-    def _delete_model_from_curated_hub(self, model_specs: JumpStartModelSpecs, delete_dependencies: bool = True):
-      if delete_dependencies:
-        self._delete_model_dependencies_no_content_noop(model_specs)
-      self._hub_client.delete_all_versions_of_model(model_specs)
+    def _delete_model_from_curated_hub(
+        self, model_specs: JumpStartModelSpecs, delete_dependencies: bool = True
+    ):
+        if delete_dependencies:
+            self._delete_model_dependencies_no_content_noop(model_specs)
+        self._hub_client.delete_all_versions_of_model(model_specs)
 
     def _delete_model_dependencies_no_content_noop(self, model_specs: JumpStartModelSpecs):
         try:
-          hub_content = self._sm_client.describe_hub_content(
-              HubName=self.curated_hub_name,
-              HubContentName=model_specs.model_id,
-              HubContentVersion=model_specs.version,
-              HubContentType="Model"
-          )
+            hub_content = self._sm_client.describe_hub_content(
+                HubName=self.curated_hub_name,
+                HubContentName=model_specs.model_id,
+                HubContentVersion=model_specs.version,
+                HubContentType="Model",
+            )
         except ClientError:
             return
 
-        dependencies = self._get_hub_content_dependencies_from_model_document(hub_content["HubContentDocument"])
+        dependencies = self._get_hub_content_dependencies_from_model_document(
+            hub_content["HubContentDocument"]
+        )
         dependency_s3_keys = []
         for dependency in dependencies:
-            dependency_s3_keys.extend(self._format_dependency_dst_uris_for_delete_objects(dependency))
+            dependency_s3_keys.extend(
+                self._format_dependency_dst_uris_for_delete_objects(dependency)
+            )
         print(f"Deleting HubContent dependencies for {model_specs.model_id}: {dependency_s3_keys}")
         delete_response = self._s3_client.delete_objects(
             Bucket=self.curated_hub_s3_bucket_name,
-            Delete={
-                'Objects': dependency_s3_keys,
-                'Quiet': True
-            }
+            Delete={"Objects": dependency_s3_keys, "Quiet": True},
         )
 
         if "Errors" in delete_response:
-            raise Exception(f"Failed to delete all dependencies of model {model_specs.model_id}. : {delete_response['Errors']}")
-    
-    def _get_hub_content_dependencies_from_model_document(self, hub_content_document: str) -> List[Dependency]:
+            raise Exception(
+                f"Failed to delete all dependencies of model {model_specs.model_id}. : {delete_response['Errors']}"
+            )
+
+    def _get_hub_content_dependencies_from_model_document(
+        self, hub_content_document: str
+    ) -> List[Dependency]:
         hub_content_document_json = json.loads(hub_content_document)
         return list(map(self._cast_dict_to_dependency, hub_content_document_json["Dependencies"]))
 
@@ -266,18 +304,20 @@ class JumpStartCuratedPublicHub:
         return Dependency(
             DependencyOriginPath=dependency["DependencyOriginPath"],
             DependencyCopyPath=dependency["DependencyCopyPath"],
-            DependencyType=dependency["DependencyType"]
+            DependencyType=dependency["DependencyType"],
         )
 
-    def _format_dependency_dst_uris_for_delete_objects(self, dependency: Dependency) -> List[Dict[str, str]]:
+    def _format_dependency_dst_uris_for_delete_objects(
+        self, dependency: Dependency
+    ) -> List[Dict[str, str]]:
         s3_keys = []
         s3_object_reference = create_s3_object_reference_from_uri(dependency.DependencyCopyPath)
 
         if self._is_s3_key_a_directory(s3_object_reference.key):
             keys = find_objects_under_prefix(
-              bucket=s3_object_reference.bucket,
-              prefix=s3_object_reference.key,
-              s3_client=self._s3_client,
+                bucket=s3_object_reference.bucket,
+                prefix=s3_object_reference.key,
+                s3_client=self._s3_client,
             )
             s3_keys.extend(keys)
         else:
@@ -285,14 +325,12 @@ class JumpStartCuratedPublicHub:
 
         formatted_keys = []
         for key in s3_keys:
-            formatted_keys.append(
-              { "Key": key }
-            )
-        
+            formatted_keys.append({"Key": key})
+
         return formatted_keys
 
     def _is_s3_key_a_directory(self, s3_key: str) -> bool:
-        return  s3_key[-1] == '/'
+        return s3_key[-1] == "/"
 
     def _get_account_id(self) -> str:
         StsClient().get_account_id()

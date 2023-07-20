@@ -1,3 +1,18 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
+"""This module contains helpers to generate Private Hub content documents."""
+from __future__ import absolute_import
+
 import json
 from dataclasses import asdict
 from typing import Optional, Dict, Any
@@ -22,7 +37,7 @@ from sagemaker.jumpstart.curated_hub.hub_model_specs.hub_model_specs import (
     DatasetConfig,
 )
 from sagemaker.jumpstart.curated_hub.hub_model_specs.hub_model_specs import ModelCapabilities
-from sagemaker.jumpstart.curated_hub.utils import construct_s3_uri, base_framework
+from sagemaker.jumpstart.curated_hub.utils import base_framework
 from sagemaker.jumpstart.types import JumpStartModelSpecs
 
 
@@ -46,7 +61,7 @@ class ModelDocumentCreator:
         """Converts the provided JumpStartModelSpecs into a Hub Content Document."""
         hub_model_spec_dict = self._make_hub_content_document_json(model_specs)
         return json.dumps(hub_model_spec_dict)
-    
+
     def _make_hub_content_document_json(self, model_specs: JumpStartModelSpecs) -> Dict[str, Any]:
         capabilities = []
         if model_specs.training_supported:
@@ -83,7 +98,6 @@ class ModelDocumentCreator:
             hub_model_spec_dict["DefaultDeploymentConfig"].pop("ScriptConfig")
 
         return hub_model_spec_dict
-        
 
     def _make_hub_dependency_list(self, model_specs: JumpStartModelSpecs):
         dependencies = []
@@ -123,10 +137,10 @@ class ModelDocumentCreator:
         )
         dependencies.append(
             Dependency(
-                DependencyOriginPath=self._src_s3_filesystem.get_markdown_s3_reference(
+                DependencyOriginPath=self._src_s3_filesystem._get_markdown_s3_reference(
                     model_specs
                 ).get_uri(),
-                DependencyCopyPath=self._palatine_hub_s3_filesystem.get_markdown_s3_reference(
+                DependencyCopyPath=self._palatine_hub_s3_filesystem._get_markdown_s3_reference(
                     model_specs
                 ).get_uri(),
                 DependencyType=DependencyType.OTHER,

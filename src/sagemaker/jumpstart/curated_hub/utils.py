@@ -1,3 +1,16 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
+"""This module contains utilities to assist the Curated Hub."""
 from __future__ import absolute_import
 
 import json
@@ -95,15 +108,19 @@ def convert_s3_key_to_new_prefix(src_key: str, src_prefix: str, dst_prefix: str)
 
 @dataclass
 class PublicModelId:
+    """Property class to assist identifying models in the Public Hub"""
+
     id: str
     version: str
 
 
 def construct_s3_uri(bucket: str, key: str) -> str:
+    """Constructs an s3 uri based off the bucket and key"""
     return f"s3://{bucket}/{key}"
 
 
 def get_bucket_and_key_from_s3_uri(s3_uri: str) -> Dict[str, str]:
+    """Retrieves the bucket and key from an s3 uri"""
     uri_with_s3_prefix_removed = s3_uri.replace("s3://", "", 1)
     uri_split = uri_with_s3_prefix_removed.split("/")
 
@@ -114,10 +131,12 @@ def get_bucket_and_key_from_s3_uri(s3_uri: str) -> Dict[str, str]:
 
 
 def base_framework(model_specs: JumpStartModelSpecs) -> Optional[str]:
+    """Retrieves the base framework from a model spec"""
     if model_specs.hosting_ecr_specs.framework == "huggingface":
         return f"pytorch{model_specs.hosting_ecr_specs.framework_version}"
     return None
 
 
 def get_model_framework(model_specs: JumpStartModelSpecs) -> str:
+    """Retrieves the model framework from a model spec"""
     return model_specs.model_id.split("-")[0]

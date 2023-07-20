@@ -1,24 +1,27 @@
-import time
-from typing import Optional, Dict, Any, List
-
-from botocore.client import BaseClient
-
-import boto3
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
+"""This module accessors for the SageMaker JumpStart Public Hub."""
+from __future__ import absolute_import
 from sagemaker import model_uris, script_uris
 from sagemaker.jumpstart.curated_hub.utils import (
     get_model_framework,
-    find_objects_under_prefix,
-    construct_s3_uri,
 )
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.types import JumpStartModelSpecs
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
 from sagemaker.jumpstart.curated_hub.utils import (
-    PublicModelId,
-    construct_s3_uri,
     get_studio_model_metadata_map_from_region,
 )
-from functools import partial
 from sagemaker.jumpstart.curated_hub.accessors.s3_object_reference import (
     S3ObjectReference,
     create_s3_object_reference_from_bucket_and_key,
@@ -28,6 +31,8 @@ from sagemaker.jumpstart.curated_hub.accessors.jumpstart_s3_accessor import Jump
 
 
 class PublicHubS3Accessor(JumpstartS3Accessor):
+    """Helper class to access Public Hub s3 bucket"""
+
     def __init__(self, region: str):
         self._region = region
         self._bucket = get_jumpstart_content_bucket(region)
@@ -36,11 +41,13 @@ class PublicHubS3Accessor(JumpstartS3Accessor):
         )  # Necessary for SDK - Studio metadata drift
 
     def get_bucket(self) -> str:
+        """Retrieves s3 bucket"""
         return self._bucket
 
     def get_inference_artifact_s3_reference(
         self, model_specs: JumpStartModelSpecs
     ) -> S3ObjectReference:
+        """Retrieves s3 reference for model inference artifact"""
         return create_s3_object_reference_from_uri(
             self._jumpstart_artifact_s3_uri(JumpStartScriptScope.INFERENCE, model_specs)
         )
@@ -48,6 +55,7 @@ class PublicHubS3Accessor(JumpstartS3Accessor):
     def get_training_artifact_s3_reference(
         self, model_specs: JumpStartModelSpecs
     ) -> S3ObjectReference:
+        """Retrieves s3 reference for model training artifact"""
         return create_s3_object_reference_from_uri(
             self._jumpstart_artifact_s3_uri(JumpStartScriptScope.TRAINING, model_specs)
         )
@@ -55,6 +63,7 @@ class PublicHubS3Accessor(JumpstartS3Accessor):
     def get_inference_script_s3_reference(
         self, model_specs: JumpStartModelSpecs
     ) -> S3ObjectReference:
+        """Retrieves s3 reference for model inference script"""
         return create_s3_object_reference_from_uri(
             self._jumpstart_script_s3_uri(JumpStartScriptScope.INFERENCE, model_specs)
         )
@@ -62,6 +71,7 @@ class PublicHubS3Accessor(JumpstartS3Accessor):
     def get_training_script_s3_reference(
         self, model_specs: JumpStartModelSpecs
     ) -> S3ObjectReference:
+        """Retrieves s3 reference for model training script"""
         return create_s3_object_reference_from_uri(
             self._jumpstart_script_s3_uri(JumpStartScriptScope.TRAINING, model_specs)
         )
@@ -69,6 +79,7 @@ class PublicHubS3Accessor(JumpstartS3Accessor):
     def get_default_training_dataset_s3_reference(
         self, model_specs: JumpStartModelSpecs
     ) -> S3ObjectReference:
+        """Retrieves s3 reference for s3 directory containing model training datasets"""
         return create_s3_object_reference_from_bucket_and_key(
             self.get_bucket(), self._get_training_dataset_prefix(model_specs)
         )
@@ -78,11 +89,13 @@ class PublicHubS3Accessor(JumpstartS3Accessor):
         return studio_model_metadata["defaultDataKey"]
 
     def get_demo_notebook_s3_reference(self, model_specs: JumpStartModelSpecs) -> S3ObjectReference:
+        """Retrieves s3 reference for model demo jupyter notebook"""
         framework = get_model_framework(model_specs)
         key = f"{framework}-notebooks/{model_specs.model_id}-inference.ipynb"
         return create_s3_object_reference_from_bucket_and_key(self.get_bucket(), key)
 
     def get_markdown_s3_reference(self, model_specs: JumpStartModelSpecs) -> S3ObjectReference:
+        """Retrieves s3 reference for model markdown"""
         framework = get_model_framework(model_specs)
         key = f"{framework}-metadata/{model_specs.model_id}.md"
         return create_s3_object_reference_from_bucket_and_key(self.get_bucket(), key)

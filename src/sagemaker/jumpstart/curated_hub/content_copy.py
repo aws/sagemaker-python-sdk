@@ -1,3 +1,17 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
+"""This module contains utilities related to SageMaker JumpStart."""
+from __future__ import absolute_import
 import time
 from typing import List, Set
 
@@ -21,6 +35,8 @@ EXTRA_S3_COPY_ARGS = {"ACL": "bucket-owner-full-control", "Tagging": "SageMaker=
 
 @dataclass
 class CopyContentConfig:
+    """Property class to assist S3 copy"""
+
     src: S3ObjectReference
     dst: S3ObjectReference
     display_name: str
@@ -48,7 +64,8 @@ class ContentCopier:
     def copy_hub_content_dependencies_to_hub_bucket(self, model_specs: JumpStartModelSpecs) -> None:
         """Copies artifact and script tarballs into the hub bucket.
 
-        Unfortunately, this logic is duplicated/inconsistent with what is in Studio."""
+        Unfortunately, this logic is duplicated/inconsistent with what is in Studio.
+        """
         copy_configs = []
 
         copy_configs.extend(self._get_copy_configs_for_inference_dependencies(model_specs))
@@ -157,16 +174,19 @@ class ContentCopier:
             )
 
         return copy_configs
-    
+
     def _get_s3_object_keys_under_prefix(self, prefix_reference: S3ObjectReference) -> Set[str]:
         try:
-          return find_objects_under_prefix(
-              bucket=prefix_reference.bucket,
-              prefix=prefix_reference.key,
-              s3_client=self._s3_client,
-          )
+            return find_objects_under_prefix(
+                bucket=prefix_reference.bucket,
+                prefix=prefix_reference.key,
+                s3_client=self._s3_client,
+            )
         except Exception as ex:
-            print(f"ERROR: encountered an exception when finding objects under prefix {prefix_reference.bucket}/{prefix_reference.key}: {str(ex)}")
+            print(
+                "ERROR: encountered an exception when finding objects"
+                + f" under prefix {prefix_reference.bucket}/{prefix_reference.key}: {str(ex)}"
+            )
             raise ex
 
     def _get_copy_configs_for_demo_notebook_dependencies(
@@ -231,25 +251,29 @@ class ContentCopier:
         self, resource_name: str, src: S3ObjectReference, dst: S3ObjectReference
     ):
         if not self._is_s3_object_different(src, dst):
-            print(f"Detected that {resource_name} is the same in destination bucket. Skipping copy.")
+            print(
+                f"Detected that {resource_name} is the same in destination bucket. Skipping copy."
+            )
             return
 
         print(f"Copying {resource_name} from {src.bucket}/{src.key} to {dst.bucket}/{dst.key}...")
         try:
-          self._s3_client.copy(
-              src.format_for_s3_copy(),
-              dst.bucket,
-              dst.key,
-              ExtraArgs=EXTRA_S3_COPY_ARGS,
-          )
+            self._s3_client.copy(
+                src.format_for_s3_copy(),
+                dst.bucket,
+                dst.key,
+                ExtraArgs=EXTRA_S3_COPY_ARGS,
+            )
         except Exception as ex:
-            print(f"ERROR: encountered an exception when calling copy from {src.bucket}/{src.key} to {dst.bucket}/{dst.key}: {str(ex)}")
+            print(
+                "ERROR: encountered an exception when calling copy from"
+                + f" {src.bucket}/{src.key} to {dst.bucket}/{dst.key}: {str(ex)}"
+            )
             raise ex
 
         print(
             f"Copying {resource_name} from {src.bucket}/{src.key} to {dst.bucket}/{dst.key} complete!"
-        )        
-
+        )
 
     def _is_s3_object_different(self, src: S3ObjectReference, dst: S3ObjectReference) -> bool:
         src_etag = self._get_s3_object_etag(src)
@@ -261,5 +285,5 @@ class ContentCopier:
         try:
             response = self._s3_client.head_object(Bucket=object.bucket, Key=object.key)
             return response.pop("ETag")
-        except Exception as ex:
+        except Exception:
             return ""

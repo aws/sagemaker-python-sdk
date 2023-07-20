@@ -1,7 +1,20 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
+"""This module contains a client with helpers to access the Private Hub."""
+from __future__ import absolute_import
 import boto3
 from botocore.exceptions import ClientError
 
-from sagemaker.jumpstart.curated_hub.utils import PublicModelId
 from sagemaker.jumpstart.types import JumpStartModelSpecs
 
 
@@ -15,6 +28,7 @@ class CuratedHubClient:
         self._sm_client = boto3.client("sagemaker", region_name=self._region)
 
     def create_hub(self, hub_name: str, hub_s3_bucket_name: str):
+        """Creates a Private Hub."""
         hub_bucket_s3_uri = f"s3://{hub_s3_bucket_name}"
         self._sm_client.create_hub(
             HubName=hub_name,
@@ -28,6 +42,7 @@ class CuratedHubClient:
         )
 
     def desribe_model(self, model_specs: JumpStartModelSpecs):
+        """Describes a version of a model in the Private Hub."""
         self._sm_client.describe_hub_content(
             HubName=self.curated_hub_name,
             HubContentName=model_specs.model_id,
@@ -36,10 +51,13 @@ class CuratedHubClient:
         )
 
     def delete_all_versions_of_model(self, model_specs: JumpStartModelSpecs):
+        """Deletes all versions of a model in the Private Hub."""
         print(f"Deleting model {model_specs.model_id} from curated hub...")
         content_versions = self._list_hub_content_versions_no_content_noop(model_specs.model_id)
 
-        print(f"Found {len(content_versions)} versions of {model_specs.model_id}. Deleting all versions...")
+        print(
+            f"Found {len(content_versions)} versions of {model_specs.model_id}. Deleting all versions..."
+        )
 
         for content_version in content_versions:
             self._sm_client.delete_hub_content(
