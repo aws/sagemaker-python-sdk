@@ -333,7 +333,7 @@ class JumpStartCuratedPublicHub:
         return s3_key[-1] == "/"
 
     def _get_account_id(self) -> str:
-        StsClient().get_account_id()
+        StsClient(self._region).get_account_id()
 
     def _init_clients(self):
         self._hub_client = CuratedHubClient(

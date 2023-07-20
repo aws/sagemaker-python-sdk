@@ -32,9 +32,9 @@ def assign_timestamp() -> str:
 class StsClient:
     """Boto3 client to access STS."""
 
-    def __init__(self) -> None:
+    def __init__(self, region: str = None) -> None:
         """Creates the boto3 client for STS."""
-        self._client = boto3.client(service_name="sts")
+        self._client = boto3.client(service_name="sts", region=region)
 
     def get_region(self) -> str:
         """Return the AWS region from the client meta information."""
