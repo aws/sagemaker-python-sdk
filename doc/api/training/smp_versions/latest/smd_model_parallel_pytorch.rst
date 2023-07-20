@@ -559,7 +559,7 @@ smdistributed.modelparallel.torch.nn.FlashAttentionLayer
       which represents the output of attention computation.
 
       **Parameters**
-      
+
       * ``qkv``: ``torch.Tensor`` in the form of ``(batch_size x seqlen x 3 x num_heads x head_size)``.
       * ``attn_mask``: ``torch.Tensor`` in the form of ``(batch_size x 1 x 1 x seqlen)``.
         By default it is ``None``, and usage of this mask needs ``triton_flash_attention``
@@ -570,9 +570,9 @@ smdistributed.modelparallel.torch.nn.FlashAttentionLayer
 
    .. code:: python
 
-      def generate_alibi_attn_mask(attention_mask, batch_size, seq_length, 
+      def generate_alibi_attn_mask(attention_mask, batch_size, seq_length,
          num_attention_heads, alibi_bias_max=8):
-         
+
          device, dtype = attention_mask.device, attention_mask.dtype
          alibi_attention_mask = torch.zeros(
             1, num_attention_heads, 1, seq_length, dtype=dtype, device=device
