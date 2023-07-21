@@ -322,8 +322,8 @@ def test_get_record(sagemaker_session_mock):
         feature_names=feature_names,
     )
     sagemaker_session_mock.get_record.assert_called_with(
-        feature_group_name=feature_group_name,
         record_identifier_value_as_string=record_identifier_value_as_string,
+        feature_group_name=feature_group_name,
         feature_names=feature_names,
         expiration_time_response=None,
     )

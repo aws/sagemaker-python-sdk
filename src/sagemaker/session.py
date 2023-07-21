@@ -5292,6 +5292,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             record_identifier_value_as_string (str): name of the record identifier.
             feature_group_name (str): name of the FeatureGroup.
             feature_names (Sequence[str]): list of feature names.
+            expiration_time_response (str): the field of expiration time response to toggle returning of expiresAt.
         """
         get_record_args = {
             "FeatureGroupName": feature_group_name,
@@ -5316,6 +5317,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Args:
             identifiers (Sequence[Dict[str, Any]]): list of identifiers to uniquely identify records
                 in FeatureStore.
+            expiration_time_response (str): the field of expiration time response to toggle returning of expiresAt.
 
         Returns:
             Response dict from service.
