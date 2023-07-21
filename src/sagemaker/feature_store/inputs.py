@@ -85,16 +85,42 @@ class OnlineStoreSecurityConfig(Config):
 
 
 @attr.s
+class TtlDuration(Config):
+    """TtlDuration for records in online FeatureStore.
+
+    Attributes:
+        unit (str): time unit.
+        value (int): time value.
+    """
+
+    unit: str = attr.ib()
+    value: int = attr.ib()
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Construct a dictionary based on the attributes.
+
+        Returns:
+            dict represents the attributes.
+        """
+        return Config.construct_dict(
+            Unit=self.unit,
+            Value=self.value,
+        )
+
+
+@attr.s
 class OnlineStoreConfig(Config):
     """OnlineStoreConfig for FeatureStore.
 
     Attributes:
         enable_online_store (bool): whether to enable the online store.
         online_store_security_config (OnlineStoreSecurityConfig): configuration of security setting.
+        ttl_duration (TtlDuration): Default time to live duration for records.
     """
 
     enable_online_store: bool = attr.ib(default=True)
     online_store_security_config: OnlineStoreSecurityConfig = attr.ib(default=None)
+    ttl_duration: TtlDuration = attr.ib(default=None)
 
     def to_dict(self) -> Dict[str, Any]:
         """Construct a dictionary based on the attributes.
@@ -105,6 +131,28 @@ class OnlineStoreConfig(Config):
         return Config.construct_dict(
             EnableOnlineStore=self.enable_online_store,
             SecurityConfig=self.online_store_security_config,
+            TtlDuration=self.ttl_duration,
+        )
+
+
+@attr.s
+class OnlineStoreConfigUpdate(Config):
+    """OnlineStoreConfigUpdate for FeatureStore.
+
+    Attributes:
+        ttl_duration (TtlDuration): Default time to live duration for records.
+    """
+
+    ttl_duration: TtlDuration = attr.ib(default=None)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Construct a dictionary based on the attributes.
+
+        Returns:
+            dict represents the attributes.
+        """
+        return Config.construct_dict(
+            TtlDuration=self.ttl_duration,
         )
 
 
@@ -379,3 +427,13 @@ class DeletionModeEnum(Enum):
 
     SOFT_DELETE = "SoftDelete"
     HARD_DELETE = "HardDelete"
+
+
+class ExpirationTimeResponseEnum(Enum):
+    """Enum of toggling the response of ExpiresAt.
+
+    The ExpirationTimeResponse for toggling the response of ExpiresAt can be Disabled or Enabled.
+    """
+
+    DISABLED = "Disabled"
+    ENABLED = "Enabled"
