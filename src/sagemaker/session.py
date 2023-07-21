@@ -2639,7 +2639,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             warm_start_config (dict): Configuration defining the type of warm start and
                 other required configurations.
             max_runtime_in_seconds (int or PipelineVariable): The maximum time in seconds
-                that a hyperparameter tuning job can run.
+                that a training job launched by a hyperparameter tuning job can run.
             completion_criteria_config (sagemaker.tuner.TuningJobCompletionCriteriaConfig): A
                 configuration for the completion criteria.
             early_stopping_type (str): Specifies whether early stopping is enabled for the job.
@@ -2894,7 +2894,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 tuning job.
             max_parallel_jobs (int): Maximum number of parallel training jobs to start.
             max_runtime_in_seconds (int or PipelineVariable): The maximum time in seconds
-                that a hyperparameter tuning job can run.
+                that a training job launched by a hyperparameter tuning job can run.
             early_stopping_type (str): Specifies whether early stopping is enabled for the job.
                 Can be either 'Auto' or 'Off'. If set to 'Off', early stopping will not be
                 attempted. If set to 'Auto', early stopping of some training jobs may happen,
@@ -5097,9 +5097,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
         return self.sagemaker_client.describe_feature_group(**kwargs)
 
     def update_feature_group(
-        self, feature_group_name: str, feature_additions: Sequence[Dict[str, str]]
+        self,
+        feature_group_name: str,
+        feature_additions: Sequence[Dict[str, str]] = None,
+        online_store_config: Dict[str, any] = None,
     ) -> Dict[str, Any]:
-        """Update a FeatureGroup and add new features from the given feature definitions.
+        """Update a FeatureGroup
+
+            either adding new features from the given feature definitions
+            or updating online store config
 
         Args:
             feature_group_name (str): name of the FeatureGroup to update.
@@ -5107,6 +5113,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             Response dict from service.
         """
+
+        if feature_additions is None:
+            return self.sagemaker_client.update_feature_group(
+                FeatureGroupName=feature_group_name,
+                OnlineStoreConfig=online_store_config,
+            )
 
         return self.sagemaker_client.update_feature_group(
             FeatureGroupName=feature_group_name, FeatureAdditions=feature_additions
@@ -5258,6 +5270,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         self,
         feature_group_name: str,
         record: Sequence[Dict[str, str]],
+        ttl_duration: Dict[str, str] = None,
     ):
         """Puts a single record in the FeatureGroup.
 
@@ -5266,6 +5279,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
             record (Sequence[Dict[str, str]]): list of FeatureValue dicts to be ingested
                 into FeatureStore.
         """
+
+        if ttl_duration:
+            return self.sagemaker_featurestore_runtime_client.put_record(
+                FeatureGroupName=feature_group_name,
+                Record=record,
+                TtlDuration=ttl_duration,
+            )
+
         return self.sagemaker_featurestore_runtime_client.put_record(
             FeatureGroupName=feature_group_name,
             Record=record,
@@ -5298,6 +5319,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         record_identifier_value_as_string: str,
         feature_group_name: str,
         feature_names: Sequence[str],
+        expiration_time_response: str = None,
     ) -> Dict[str, Sequence[Dict[str, str]]]:
         """Gets a single record in the FeatureGroup.
 
@@ -5305,28 +5327,42 @@ class Session(object):  # pylint: disable=too-many-public-methods
             record_identifier_value_as_string (str): name of the record identifier.
             feature_group_name (str): name of the FeatureGroup.
             feature_names (Sequence[str]): list of feature names.
+            expiration_time_response (str): the field of expiration time response
+                to toggle returning of expiresAt.
         """
         get_record_args = {
             "FeatureGroupName": feature_group_name,
             "RecordIdentifierValueAsString": record_identifier_value_as_string,
         }
 
+        if expiration_time_response:
+            get_record_args["ExpirationTimeResponse"] = expiration_time_response
+
         if feature_names:
             get_record_args["FeatureNames"] = feature_names
 
         return self.sagemaker_featurestore_runtime_client.get_record(**get_record_args)
 
-    def batch_get_record(self, identifiers: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
+    def batch_get_record(
+        self,
+        identifiers: Sequence[Dict[str, Any]],
+        expiration_time_response: str = None,
+    ) -> Dict[str, Any]:
         """Gets a batch of record from FeatureStore.
 
         Args:
             identifiers (Sequence[Dict[str, Any]]): list of identifiers to uniquely identify records
                 in FeatureStore.
+            expiration_time_response (str): the field of expiration time response
+                to toggle returning of expiresAt.
 
         Returns:
             Response dict from service.
         """
         batch_get_record_args = {"Identifiers": identifiers}
+
+        if expiration_time_response:
+            batch_get_record_args["ExpirationTimeResponse"] = expiration_time_response
 
         return self.sagemaker_featurestore_runtime_client.batch_get_record(**batch_get_record_args)
 
