@@ -31,7 +31,12 @@ from sagemaker.feature_store.feature_group import (
     AthenaQuery,
     IngestionError,
 )
-from sagemaker.feature_store.inputs import FeatureParameter, DeletionModeEnum
+from sagemaker.feature_store.inputs import (
+    FeatureParameter,
+    DeletionModeEnum,
+    TtlDuration,
+    OnlineStoreConfigUpdate,
+)
 
 from tests.unit import SAGEMAKER_CONFIG_FEATURE_GROUP
 
@@ -174,6 +179,39 @@ def test_feature_store_create(
     )
 
 
+def test_feature_store_create_with_ttl_duration(
+    sagemaker_session_mock, role_arn, feature_group_dummy_definitions, s3_uri
+):
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
+    feature_group.feature_definitions = feature_group_dummy_definitions
+    ttl_duration = TtlDuration(unit="Minutes", value=123)
+    feature_group.create(
+        s3_uri=s3_uri,
+        record_identifier_name="feature1",
+        event_time_feature_name="feature2",
+        role_arn=role_arn,
+        enable_online_store=True,
+        ttl_duration=ttl_duration,
+    )
+    sagemaker_session_mock.create_feature_group.assert_called_with(
+        feature_group_name="MyFeatureGroup",
+        record_identifier_name="feature1",
+        event_time_feature_name="feature2",
+        feature_definitions=[fd.to_dict() for fd in feature_group_dummy_definitions],
+        role_arn=role_arn,
+        description=None,
+        tags=None,
+        online_store_config={
+            "EnableOnlineStore": True,
+            "TtlDuration": ttl_duration.to_dict(),
+        },
+        offline_store_config={
+            "DisableGlueTableCreation": False,
+            "S3StorageConfig": {"S3Uri": s3_uri},
+        },
+    )
+
+
 def test_feature_store_create_online_only(
     sagemaker_session_mock, role_arn, feature_group_dummy_definitions
 ):
@@ -220,6 +258,20 @@ def test_feature_store_update(sagemaker_session_mock, feature_group_dummy_defini
     sagemaker_session_mock.update_feature_group.assert_called_with(
         feature_group_name="MyFeatureGroup",
         feature_additions=[fd.to_dict() for fd in feature_group_dummy_definitions],
+        online_store_config=None,
+    )
+
+
+def test_feature_store_update_with_ttl_duration(sagemaker_session_mock):
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
+    online_store_config = OnlineStoreConfigUpdate(
+        ttl_duration=TtlDuration(unit="Minutes", value=123)
+    )
+    feature_group.update(online_store_config=online_store_config)
+    sagemaker_session_mock.update_feature_group.assert_called_with(
+        feature_group_name="MyFeatureGroup",
+        feature_additions=None,
+        online_store_config=online_store_config.to_dict(),
     )
 
 
@@ -273,6 +325,25 @@ def test_get_record(sagemaker_session_mock):
         feature_group_name=feature_group_name,
         record_identifier_value_as_string=record_identifier_value_as_string,
         feature_names=feature_names,
+        expiration_time_response=None,
+    )
+
+
+def test_get_record_with_expiration_time_response(sagemaker_session_mock):
+    feature_group_name = "MyFeatureGroup"
+    feature_names = ["MyFeature1", "MyFeature2"]
+    record_identifier_value_as_string = "1.0"
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=sagemaker_session_mock)
+    feature_group.get_record(
+        record_identifier_value_as_string=record_identifier_value_as_string,
+        feature_names=feature_names,
+        expiration_time_response="Enabled",
+    )
+    sagemaker_session_mock.get_record.assert_called_with(
+        feature_group_name=feature_group_name,
+        record_identifier_value_as_string=record_identifier_value_as_string,
+        feature_names=feature_names,
+        expiration_time_response="Enabled",
     )
 
 
@@ -281,6 +352,15 @@ def test_put_record(sagemaker_session_mock):
     feature_group.put_record(record=[])
     sagemaker_session_mock.put_record.assert_called_with(
         feature_group_name="MyFeatureGroup", record=[]
+    )
+
+
+def test_put_record_ttl_duration(sagemaker_session_mock):
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
+    ttl_duration = TtlDuration(unit="Minutes", value=123)
+    feature_group.put_record(record=[], ttl_duration=ttl_duration)
+    sagemaker_session_mock.put_record.assert_called_with(
+        feature_group_name="MyFeatureGroup", record=[], ttl_duration=ttl_duration.to_dict()
     )
 
 

@@ -61,6 +61,8 @@ from sagemaker.feature_store.inputs import (
     FeatureParameter,
     TableFormatEnum,
     DeletionModeEnum,
+    TtlDuration,
+    OnlineStoreConfigUpdate,
 )
 from sagemaker.utils import resolve_value_from_config
 
@@ -523,6 +525,7 @@ class FeatureGroup:
         role_arn: str = None,
         online_store_kms_key_id: str = None,
         enable_online_store: bool = False,
+        ttl_duration: TtlDuration = None,
         offline_store_kms_key_id: str = None,
         disable_glue_table_creation: bool = False,
         data_catalog_config: DataCatalogConfig = None,
@@ -539,6 +542,7 @@ class FeatureGroup:
             event_time_feature_name (str): name of the event time feature.
             role_arn (str): ARN of the role used to call CreateFeatureGroup.
             online_store_kms_key_id (str): KMS key ARN for online store (default: None).
+            ttl_duration (TtlDuration): Default time to live duration for records (default: None).
             enable_online_store (bool): whether to enable online store or not (default: False).
             offline_store_kms_key_id (str): KMS key ARN for offline store (default: None).
                 If a KMS encryption key is not specified, SageMaker encrypts all data at
@@ -592,7 +596,10 @@ class FeatureGroup:
 
         # online store configuration
         if enable_online_store:
-            online_store_config = OnlineStoreConfig(enable_online_store=enable_online_store)
+            online_store_config = OnlineStoreConfig(
+                enable_online_store=enable_online_store,
+                ttl_duration=ttl_duration,
+            )
             if online_store_kms_key_id is not None:
                 online_store_config.online_store_security_config = OnlineStoreSecurityConfig(
                     kms_key_id=online_store_kms_key_id
@@ -633,7 +640,11 @@ class FeatureGroup:
             feature_group_name=self.name, next_token=next_token
         )
 
-    def update(self, feature_additions: Sequence[FeatureDefinition]) -> Dict[str, Any]:
+    def update(
+        self,
+        feature_additions: Sequence[FeatureDefinition] = None,
+        online_store_config: OnlineStoreConfigUpdate = None,
+    ) -> Dict[str, Any]:
         """Update a FeatureGroup and add new features from the given feature definitions.
 
         Args:
@@ -643,11 +654,22 @@ class FeatureGroup:
             Response dict from service.
         """
 
+        if feature_additions is None:
+            feature_additions_parameter = None
+        else:
+            feature_additions_parameter = [
+                feature_addition.to_dict() for feature_addition in feature_additions
+            ]
+
+        if online_store_config is None:
+            online_store_config_parameter = None
+        else:
+            online_store_config_parameter = online_store_config.to_dict()
+
         return self.sagemaker_session.update_feature_group(
             feature_group_name=self.name,
-            feature_additions=[
-                feature_addition.to_dict() for feature_addition in feature_additions
-            ],
+            feature_additions=feature_additions_parameter,
+            online_store_config=online_store_config_parameter,
         )
 
     def update_feature_metadata(
@@ -756,7 +778,10 @@ class FeatureGroup:
         return self.feature_definitions
 
     def get_record(
-        self, record_identifier_value_as_string: str, feature_names: Sequence[str] = None
+        self,
+        record_identifier_value_as_string: str,
+        feature_names: Sequence[str] = None,
+        expiration_time_response: str = None,
     ) -> Sequence[Dict[str, str]]:
         """Get a single record in a FeatureGroup
 
@@ -770,16 +795,26 @@ class FeatureGroup:
             record_identifier_value_as_string=record_identifier_value_as_string,
             feature_group_name=self.name,
             feature_names=feature_names,
+            expiration_time_response=expiration_time_response,
         ).get("Record")
 
-    def put_record(self, record: Sequence[FeatureValue]):
+    def put_record(self, record: Sequence[FeatureValue], ttl_duration: TtlDuration = None):
         """Put a single record in the FeatureGroup.
 
         Args:
             record (Sequence[FeatureValue]): a list contains feature values.
         """
+
+        if ttl_duration is not None:
+            return self.sagemaker_session.put_record(
+                feature_group_name=self.name,
+                record=[value.to_dict() for value in record],
+                ttl_duration=ttl_duration.to_dict(),
+            )
+
         return self.sagemaker_session.put_record(
-            feature_group_name=self.name, record=[value.to_dict() for value in record]
+            feature_group_name=self.name,
+            record=[value.to_dict() for value in record],
         )
 
     def delete_record(
