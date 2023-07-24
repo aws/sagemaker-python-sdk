@@ -77,7 +77,7 @@ def _retrieve_model_package_arn(
     raise NotImplementedError(f"Model Package ARN not supported for scope: '{scope}'")
 
 
-def _retrieve_model_package_artifact_uri(
+def _retrieve_model_package_model_artifact_s3_uri(
     model_id: str,
     model_version: str,
     region: Optional[str],

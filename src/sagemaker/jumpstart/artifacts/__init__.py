@@ -54,5 +54,5 @@ from sagemaker.jumpstart.artifacts.predictors import (  # noqa: F401
 )
 from sagemaker.jumpstart.artifacts.model_packages import (  # noqa: F401
     _retrieve_model_package_arn,
-    _retrieve_model_package_artifact_uri,
+    _retrieve_model_package_model_artifact_s3_uri,
 )

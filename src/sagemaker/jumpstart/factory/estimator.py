@@ -26,7 +26,7 @@ from sagemaker import (
 )
 from sagemaker.jumpstart.artifacts import (
     _model_supports_incremental_training,
-    _retrieve_model_package_artifact_uri,
+    _retrieve_model_package_model_artifact_s3_uri,
 )
 from sagemaker.jumpstart.artifacts.resource_names import _retrieve_resource_name_base
 from sagemaker.session import Session
@@ -513,7 +513,7 @@ def _add_env_to_kwargs(
 ) -> JumpStartEstimatorInitKwargs:
     """Sets environment in kwargs based on default or override, returns full kwargs."""
 
-    model_package_artifact_uri = _retrieve_model_package_artifact_uri(
+    model_package_artifact_uri = _retrieve_model_package_model_artifact_s3_uri(
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
         region=kwargs.region,
