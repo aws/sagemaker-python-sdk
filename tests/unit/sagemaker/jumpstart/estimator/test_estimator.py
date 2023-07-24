@@ -275,6 +275,34 @@ class EstimatorTest(unittest.TestCase):
         mock_session_estimator.return_value = sagemaker_session
         mock_session_model.return_value = sagemaker_session
 
+        JumpStartEstimator(
+            model_id=model_id,
+            environment={
+                "accept_eula": "false",
+                "what am i": "doing",
+                "SageMakerGatedModelS3Uri": "none of your business",
+            },
+        )
+
+        mock_estimator_init.assert_called_once_with(
+            instance_type="ml.g5.12xlarge",
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.12.0-gpu-py38",
+            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/meta/training/"
+            "textgeneration/v1.0.0/sourcedir.tar.gz",
+            instance_count=1,
+            entry_point="transfer_learning.py",
+            role=execution_role,
+            sagemaker_session=sagemaker_session,
+            enable_network_isolation=False,
+            environment={
+                "accept_eula": "false",
+                "what am i": "doing",
+                "SageMakerGatedModelS3Uri": "none of your business",
+            },
+        )
+
+        mock_estimator_init.reset_mock()
+
         estimator = JumpStartEstimator(model_id=model_id, environment={"accept_eula": "true"})
 
         mock_estimator_init.assert_called_once_with(

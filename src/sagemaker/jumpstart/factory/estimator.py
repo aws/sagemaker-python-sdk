@@ -534,8 +534,8 @@ def _add_env_to_kwargs(
         if kwargs.environment is None:
             kwargs.environment = {}
         kwargs.environment = {
-            **kwargs.environment,
             **{SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY: model_package_artifact_uri},
+            **kwargs.environment,
         }
 
     return kwargs
