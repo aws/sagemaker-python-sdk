@@ -522,16 +522,13 @@ def _add_env_to_kwargs(
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
     )
 
-    model_package_env_entry = (
-        {SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY: model_package_artifact_uri}
-        if model_package_artifact_uri
-        else {}
-    )
-
-    new_env = {**(kwargs.environment or {}), **model_package_env_entry}
-
-    if len(new_env) > 0:
-        kwargs.environment = new_env
+    if model_package_artifact_uri:
+        if kwargs.environment is None:
+            kwargs.environment = {}
+        kwargs.environment = {
+            **kwargs.environment,
+            **{SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY: model_package_artifact_uri},
+        }
 
     return kwargs
 
