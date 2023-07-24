@@ -241,6 +241,87 @@ class EstimatorTest(unittest.TestCase):
             enable_network_isolation=False,
         )
 
+    @mock.patch("sagemaker.utils.sagemaker_timestamp")
+    @mock.patch("sagemaker.jumpstart.estimator.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.fit")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.deploy")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_gated_model_s3_uri(
+        self,
+        mock_estimator_deploy: mock.Mock,
+        mock_estimator_fit: mock.Mock,
+        mock_estimator_init: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session_estimator: mock.Mock,
+        mock_session_model: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
+        mock_timestamp: mock.Mock,
+    ):
+        mock_estimator_deploy.return_value = default_predictor
+
+        mock_timestamp.return_value = "8675309"
+
+        mock_is_valid_model_id.return_value = True
+
+        model_id, _ = "js-gated-artifact-trainable-model", "*"
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        mock_session_estimator.return_value = sagemaker_session
+        mock_session_model.return_value = sagemaker_session
+
+        estimator = JumpStartEstimator(model_id=model_id, environment={"accept_eula": "true"})
+
+        mock_estimator_init.assert_called_once_with(
+            instance_type="ml.g5.12xlarge",
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.12.0-gpu-py38",
+            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/meta/training/"
+            "textgeneration/v1.0.0/sourcedir.tar.gz",
+            instance_count=1,
+            entry_point="transfer_learning.py",
+            role=execution_role,
+            sagemaker_session=sagemaker_session,
+            enable_network_isolation=False,
+            environment={
+                "accept_eula": "true",
+                "SageMakerGatedModelS3Uri": "https://s3-us-west-2.amazonaws.com/sagemaker-repository-pdx/"
+                "model-data-model-package_llama2-13b-f-a89b16af11d030a2bf619e40357eae32",
+            },
+        )
+
+        channels = {
+            "training": f"s3://{get_jumpstart_content_bucket(region)}/"
+            f"some-training-dataset-doesn't-matter",
+        }
+
+        estimator.fit(channels)
+
+        mock_estimator_fit.assert_called_once_with(
+            inputs=channels, wait=True, job_name="meta-textgeneration-llama-2-13b-f-8675309"
+        )
+
+        estimator.deploy()
+
+        mock_estimator_deploy.assert_called_once_with(
+            instance_type="ml.g5.12xlarge",
+            initial_instance_count=1,
+            predictor_cls=Predictor,
+            endpoint_name="meta-textgeneration-llama-2-13b-f-8675309",
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.12.0-gpu-py38",
+            wait=True,
+            model_data_download_timeout=3600,
+            container_startup_health_check_timeout=3600,
+            role=execution_role,
+            enable_network_isolation=True,
+            model_name="meta-textgeneration-llama-2-13b-f-8675309",
+            use_compiled_model=False,
+        )
+
     @mock.patch("sagemaker.jumpstart.estimator.is_valid_model_id")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")

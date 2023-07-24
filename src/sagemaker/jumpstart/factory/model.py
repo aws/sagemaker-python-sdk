@@ -22,7 +22,7 @@ from sagemaker.base_deserializers import BaseDeserializer
 from sagemaker.base_serializers import BaseSerializer
 from sagemaker.explainer.explainer_config import ExplainerConfig
 from sagemaker.jumpstart.artifacts import (
-    _model_supports_prepacked_inference,
+    _model_supports_inference_script_uri,
     _retrieve_model_init_kwargs,
     _retrieve_model_deploy_kwargs,
     _retrieve_model_package_arn,
@@ -217,7 +217,7 @@ def _add_source_dir_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartMode
 
     source_dir = kwargs.source_dir
 
-    if not _model_supports_prepacked_inference(
+    if _model_supports_inference_script_uri(
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
         region=kwargs.region,
@@ -243,7 +243,7 @@ def _add_entry_point_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartMod
 
     entry_point = kwargs.entry_point
 
-    if not _model_supports_prepacked_inference(
+    if _model_supports_inference_script_uri(
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
         region=kwargs.region,

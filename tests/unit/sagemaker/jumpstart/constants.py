@@ -641,6 +641,89 @@ SPECIAL_MODEL_SPECS_DICT = {
             "default_accept_type": "application/json",
         },
     },
+    "js-gated-artifact-trainable-model": {
+        "model_id": "meta-textgeneration-llama-2-13b-f",
+        "url": "https://ai.meta.com/resources/models-and-libraries/llama-downloads/",
+        "version": "1.0.1",
+        "min_sdk_version": "2.173.0",
+        "training_supported": True,
+        "incremental_training_supported": False,
+        "hosting_ecr_specs": {
+            "framework": "pytorch",
+            "framework_version": "1.12.0",
+            "py_version": "py38",
+        },
+        "training_ecr_specs": {
+            "framework": "pytorch",
+            "framework_version": "1.12.0",
+            "py_version": "py38",
+        },
+        "hosting_artifact_key": "meta-infer/infer-meta-textgeneration-llama-2-13b-f.tar.gz",
+        "hosting_script_key": "source-directory-tarballs/meta/inference/textgeneration/v1.0.0/sourcedir.tar.gz",
+        "training_script_key": "source-directory-tarballs/meta/training/textgeneration/v1.0.0/sourcedir.tar.gz",
+        "training_artifact_key": "source-directory-tarballs/meta/training/textgeneration/v1.0.0/model.tar.gz",
+        "hosting_use_script_uri": False,
+        "hosting_eula_key": "fmhMetadata/eula/llamaEula.txt",
+        "hosting_model_package_arns": {
+            "us-west-2": "arn:aws:sagemaker:us-west-2:594846645681:model-package/"
+            "llama2-13b-f-a89b16af11d030a2bf619e40357eae32",
+            "us-east-1": "arn:aws:sagemaker:us-east-1:865070037744:model-package/"
+            "llama2-13b-f-a89b16af11d030a2bf619e40357eae32",
+            "eu-west-1": "arn:aws:sagemaker:eu-west-1:985815980388:model-package/"
+            "llama2-13b-f-a89b16af11d030a2bf619e40357eae32",
+            "ap-southeast-1": "arn:aws:sagemaker:ap-southeast-1:192199979996:model-package/"
+            "llama2-13b-f-a89b16af11d030a2bf619e40357eae32",
+        },
+        "training_model_package_artifact_uris": {
+            "us-west-2": "https://s3-us-west-2.amazonaws.com/sagemaker-repository-pdx/"
+            "model-data-model-package_llama2-13b-f-a89b16af11d030a2bf619e40357eae32",
+            "us-east-1": "https://s3.amazonaws.com/sagemaker-repository-iad/"
+            "model-data-model-package_llama2-13b-f-a89b16af11d030a2bf619e40357eae32",
+            "eu-west-1": "https://s3-eu-west-1.amazonaws.com/sagemaker-repository-dub/"
+            "model-data-model-package_llama2-13b-f-a89b16af11d030a2bf619e40357eae32",
+            "ap-southeast-1": "https://s3-ap-southeast-1.amazonaws.com/sagemaker-repository-sin/"
+            "model-data-model-package_llama2-13b-f-a89b16af11d030a2bf619e40357eae32",
+        },
+        "inference_vulnerable": False,
+        "inference_dependencies": [],
+        "inference_vulnerabilities": [],
+        "training_vulnerable": False,
+        "training_dependencies": [],
+        "training_vulnerabilities": [],
+        "deprecated": False,
+        "inference_environment_variables": [],
+        "metrics": [],
+        "default_inference_instance_type": "ml.g5.12xlarge",
+        "supported_inference_instance_types": [
+            "ml.g5.12xlarge",
+            "ml.g5.24xlarge",
+            "ml.g5.48xlarge",
+            "ml.p4d.24xlarge",
+        ],
+        "default_training_instance_type": "ml.g5.12xlarge",
+        "supported_training_instance_types": [
+            "ml.g5.12xlarge",
+            "ml.g5.24xlarge",
+            "ml.g5.48xlarge",
+            "ml.p4d.24xlarge",
+        ],
+        "model_kwargs": {},
+        "deploy_kwargs": {
+            "model_data_download_timeout": 3600,
+            "container_startup_health_check_timeout": 3600,
+        },
+        "predictor_specs": {
+            "supported_content_types": ["application/json"],
+            "supported_accept_types": ["application/json"],
+            "default_content_type": "application/json",
+            "default_accept_type": "application/json",
+        },
+        "inference_volume_size": 256,
+        "inference_enable_network_isolation": True,
+        "validation_supported": False,
+        "fine_tuning_supported": True,
+        "resource_name_base": "meta-textgeneration-llama-2-13b-f",
+    },
     "js-trainable-model": {
         "model_id": "autogluon-classification-ensemble",
         "url": "https://auto.gluon.ai/stable/index.html",
@@ -2486,6 +2569,7 @@ BASE_SPEC = {
         "ml.m5.xlarge",
         "ml.c5.2xlarge",
     ],
+    "hosting_use_script_uri": True,
     "metrics": [{"Regex": "val_accuracy: ([0-9\\.]+)", "Name": "pytorch-ic:val-accuracy"}],
     "model_kwargs": {"some-model-kwarg-key": "some-model-kwarg-value"},
     "deploy_kwargs": {"some-model-deploy-kwarg-key": "some-model-deploy-kwarg-value"},

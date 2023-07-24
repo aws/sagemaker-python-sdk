@@ -41,6 +41,7 @@ from sagemaker.instance_group import InstanceGroup
 from sagemaker.jumpstart.artifacts import (
     _retrieve_estimator_init_kwargs,
     _retrieve_estimator_fit_kwargs,
+    _model_supports_training_model_uri,
 )
 from sagemaker.jumpstart.constants import (
     JUMPSTART_DEFAULT_REGION_NAME,
@@ -453,32 +454,39 @@ def _add_image_uri_to_kwargs(kwargs: JumpStartEstimatorInitKwargs) -> JumpStartE
 def _add_model_uri_to_kwargs(kwargs: JumpStartEstimatorInitKwargs) -> JumpStartEstimatorInitKwargs:
     """Sets model uri in kwargs based on default or override, returns full kwargs."""
 
-    default_model_uri = model_uris.retrieve(
-        model_scope=JumpStartScriptScope.TRAINING,
+    if _model_supports_training_model_uri(
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
+        region=kwargs.region,
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
-    )
-
-    if (
-        kwargs.model_uri is not None
-        and kwargs.model_uri != default_model_uri
-        and not _model_supports_incremental_training(
+    ):
+        default_model_uri = model_uris.retrieve(
+            model_scope=JumpStartScriptScope.TRAINING,
             model_id=kwargs.model_id,
             model_version=kwargs.model_version,
-            region=kwargs.region,
             tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
             tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
         )
-    ):
-        logger.warning(
-            "'%s' does not support incremental training but is being trained with"
-            " non-default model artifact.",
-            kwargs.model_id,
-        )
 
-    kwargs.model_uri = kwargs.model_uri or default_model_uri
+        if (
+            kwargs.model_uri is not None
+            and kwargs.model_uri != default_model_uri
+            and not _model_supports_incremental_training(
+                model_id=kwargs.model_id,
+                model_version=kwargs.model_version,
+                region=kwargs.region,
+                tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
+                tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
+            )
+        ):
+            logger.warning(
+                "'%s' does not support incremental training but is being trained with"
+                " non-default model artifact.",
+                kwargs.model_id,
+            )
+
+        kwargs.model_uri = kwargs.model_uri or default_model_uri
 
     return kwargs
 
