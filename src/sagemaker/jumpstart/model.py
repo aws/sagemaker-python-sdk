@@ -271,6 +271,8 @@ class JumpStartModel(Model):
             if not _is_valid_model_id_hook():
                 raise ValueError(INVALID_MODEL_ID_ERROR_MSG.format(model_id=model_id))
 
+        self._model_data_is_set = model_data is not None
+
         model_init_kwargs = get_init_kwargs(
             model_id=model_id,
             model_from_estimator=False,
@@ -321,7 +323,10 @@ class JumpStartModel(Model):
             kwargs: Keyword arguments coming from the caller. This class does not require
                 any so they are ignored.
         """
-        if self.model_package_arn:
+
+        # if the user inputs a model artifact uri, do not use model package arn to create
+        # inference endpoint.
+        if self.model_package_arn and not self._model_data_is_set:
             # When a ModelPackageArn is provided we just create the Model
             match = re.match(MODEL_PACKAGE_ARN_PATTERN, self.model_package_arn)
             if match:

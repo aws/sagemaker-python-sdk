@@ -24,7 +24,10 @@ from sagemaker import (
     model_uris,
     script_uris,
 )
-from sagemaker.jumpstart.artifacts import _model_supports_incremental_training
+from sagemaker.jumpstart.artifacts import (
+    _model_supports_incremental_training,
+    _retrieve_model_package_artifact_uri,
+)
 from sagemaker.jumpstart.artifacts.resource_names import _retrieve_resource_name_base
 from sagemaker.session import Session
 from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
@@ -42,6 +45,7 @@ from sagemaker.jumpstart.artifacts import (
 from sagemaker.jumpstart.constants import (
     JUMPSTART_DEFAULT_REGION_NAME,
     TRAINING_ENTRY_POINT_SCRIPT_NAME,
+    SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY,
 )
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.factory import model
@@ -189,6 +193,7 @@ def get_init_kwargs(
     estimator_init_kwargs = _add_metric_definitions_to_kwargs(estimator_init_kwargs)
     estimator_init_kwargs = _add_estimator_extra_kwargs(estimator_init_kwargs)
     estimator_init_kwargs = _add_role_to_kwargs(estimator_init_kwargs)
+    estimator_init_kwargs = _add_env_to_kwargs(estimator_init_kwargs)
 
     return estimator_init_kwargs
 
@@ -499,6 +504,34 @@ def _add_source_dir_to_kwargs(kwargs: JumpStartEstimatorInitKwargs) -> JumpStart
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
     )
+
+    return kwargs
+
+
+def _add_env_to_kwargs(
+    kwargs: JumpStartEstimatorInitKwargs,
+) -> JumpStartEstimatorInitKwargs:
+    """Sets environment in kwargs based on default or override, returns full kwargs."""
+
+    model_package_artifact_uri = _retrieve_model_package_artifact_uri(
+        model_id=kwargs.model_id,
+        model_version=kwargs.model_version,
+        region=kwargs.region,
+        scope=JumpStartScriptScope.TRAINING,
+        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
+        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
+    )
+
+    model_package_env_entry = (
+        {SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY: model_package_artifact_uri}
+        if model_package_artifact_uri
+        else {}
+    )
+
+    new_env = {**(kwargs.environment or {}), **model_package_env_entry}
+
+    if len(new_env) > 0:
+        kwargs.environment = new_env
 
     return kwargs
 

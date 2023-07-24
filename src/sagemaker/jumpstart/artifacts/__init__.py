@@ -52,4 +52,7 @@ from sagemaker.jumpstart.artifacts.predictors import (  # noqa: F401
     _retrieve_supported_accept_types,
     _retrieve_supported_content_types,
 )
-from sagemaker.jumpstart.artifacts.model_packages import _retrieve_model_package_arn  # noqa: F401
+from sagemaker.jumpstart.artifacts.model_packages import (  # noqa: F401
+    _retrieve_model_package_arn,
+    _retrieve_model_package_artifact_uri,
+)

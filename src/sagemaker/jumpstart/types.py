@@ -353,6 +353,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         "resource_name_base",
         "hosting_eula_key",
         "hosting_model_package_arns",
+        "training_model_package_artifact_uris",
     ]
 
     def __init__(self, spec: Dict[str, Any]):
@@ -441,6 +442,9 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
             self.training_volume_size: Optional[int] = json_obj.get("training_volume_size")
             self.training_enable_network_isolation: bool = json_obj.get(
                 "training_enable_network_isolation", False
+            )
+            self.training_model_package_artifact_uris: Optional[Dict] = json_obj.get(
+                "training_model_package_artifact_uris"
             )
 
     def to_json(self) -> Dict[str, Any]:
