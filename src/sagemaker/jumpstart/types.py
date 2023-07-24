@@ -481,9 +481,9 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
 
     def use_training_model_artifact(self) -> bool:
         """Returns True if the model should use a model uri when kicking off training job."""
-        return not (
-            self.training_model_package_artifact_uris is not None
-            and len(self.training_model_package_artifact_uris) > 0
+        return (
+            self.training_model_package_artifact_uris is None
+            or len(self.training_model_package_artifact_uris) == 0
         )
 
     def supports_incremental_training(self) -> bool:
