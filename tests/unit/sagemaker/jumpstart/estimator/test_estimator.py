@@ -742,7 +742,7 @@ class EstimatorTest(unittest.TestCase):
 
     @mock.patch("sagemaker.jumpstart.estimator.is_valid_model_id")
     @mock.patch("sagemaker.jumpstart.factory.estimator._model_supports_incremental_training")
-    @mock.patch("sagemaker.jumpstart.factory.estimator.logger.warning")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_LOGGER.warning")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -795,7 +795,7 @@ class EstimatorTest(unittest.TestCase):
 
     @mock.patch("sagemaker.jumpstart.estimator.is_valid_model_id")
     @mock.patch("sagemaker.jumpstart.factory.estimator._model_supports_incremental_training")
-    @mock.patch("sagemaker.jumpstart.factory.estimator.logger.warning")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_LOGGER.warning")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
