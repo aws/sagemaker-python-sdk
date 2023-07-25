@@ -104,6 +104,9 @@ def _retrieve_model_package_model_artifact_s3_uri(
 
     Returns:
         str: the model package artifact uri to use for the model or None.
+
+    Raises:
+        NotImplementedError: If an unsupported script is used.
     """
 
     if region is None:
@@ -123,8 +126,8 @@ def _retrieve_model_package_model_artifact_s3_uri(
         if model_specs.training_model_package_artifact_uris is None:
             return None
 
-        regional_arn = model_specs.training_model_package_artifact_uris.get(region)
+        model_s3_uri = model_specs.training_model_package_artifact_uris.get(region)
 
-        return regional_arn
+        return model_s3_uri
 
     raise NotImplementedError(f"Model Package Artifact URI not supported for scope: '{scope}'")
