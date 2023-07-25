@@ -1766,15 +1766,15 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                     "CompressionType": "None",
                 }
             }
-        else:
-            logger.warning(
-                "No finished training job found associated with this estimator. Please make sure "
-                "this estimator is only used for building workflow config"
-            )
-            model_uri = os.path.join(
-                self.output_path, self._current_job_name, "output", "model.tar.gz"
-            )
-            return model_uri
+
+        logger.warning(
+            "No finished training job found associated with this estimator. Please make sure "
+            "this estimator is only used for building workflow config"
+        )
+        model_uri = os.path.join(
+            self.output_path, self._current_job_name, "output", "model.tar.gz"
+        )
+        return model_uri
 
     @abstractmethod
     def create_model(self, **kwargs):
