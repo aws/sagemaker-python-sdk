@@ -42,8 +42,6 @@ from sagemaker.config import load_sagemaker_config
 from sagemaker.utils import resolve_value_from_config
 from sagemaker.workflow import is_pipeline_variable
 
-LOGGER = logging.getLogger(__name__)
-
 
 def get_jumpstart_launched_regions_message() -> str:
     """Returns formatted string indicating where JumpStart is launched."""
@@ -79,7 +77,7 @@ def get_jumpstart_content_bucket(
         and len(os.environ[constants.ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE]) > 0
     ):
         bucket_override = os.environ[constants.ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE]
-        LOGGER.info("Using JumpStart bucket override: '%s'", bucket_override)
+        constants.JUMPSTART_LOGGER.info("Using JumpStart bucket override: '%s'", bucket_override)
         return bucket_override
     try:
         return constants.JUMPSTART_REGION_NAME_TO_LAUNCHED_REGION_DICT[region].content_bucket
@@ -343,6 +341,39 @@ def update_inference_tags_with_jumpstart_training_tags(
     return inference_tags
 
 
+def emit_logs_based_on_model_specs(model_specs: JumpStartModelSpecs, region: str) -> None:
+    """Emits logs based on model specs and region."""
+
+    if model_specs.hosting_eula_key:
+        constants.JUMPSTART_LOGGER.info(
+            "Model '%s' requires accepting end-user license agreement (EULA). "
+            "See https://%s.s3.%s.amazonaws.com%s/%s for terms of use.",
+            model_specs.model_id,
+            get_jumpstart_content_bucket(region=region),
+            region,
+            ".cn" if region.startswith("cn-") else "",
+            model_specs.hosting_eula_key,
+        )
+
+    if model_specs.deprecated:
+        deprecated_message = model_specs.deprecated_message or (
+            "Using deprecated JumpStart model "
+            f"'{model_specs.model_id}' and version '{model_specs.version}'."
+        )
+
+        constants.JUMPSTART_LOGGER.warning(deprecated_message)
+
+    if model_specs.deprecate_warn_message:
+        constants.JUMPSTART_LOGGER.warning(model_specs.deprecate_warn_message)
+
+    if model_specs.inference_vulnerable or model_specs.training_vulnerable:
+        constants.JUMPSTART_LOGGER.warning(
+            "Using vulnerable JumpStart model '%s' and version '%s'.",
+            model_specs.model_id,
+            model_specs.version,
+        )
+
+
 def verify_model_region_and_return_specs(
     model_id: Optional[str],
     version: Optional[str],
@@ -402,21 +433,11 @@ def verify_model_region_and_return_specs(
             f"JumpStart model ID '{model_id}' and version '{version}' " "does not support training."
         )
 
-    if model_specs.hosting_eula_key and scope == constants.JumpStartScriptScope.INFERENCE.value:
-        LOGGER.info(
-            "Model '%s' requires accepting end-user license agreement (EULA). "
-            "See https://%s.s3.%s.amazonaws.com%s/%s for terms of use.",
-            model_id,
-            get_jumpstart_content_bucket(region=region),
-            region,
-            ".cn" if region.startswith("cn-") else "",
-            model_specs.hosting_eula_key,
-        )
-
     if model_specs.deprecated:
         if not tolerate_deprecated_model:
-            raise DeprecatedJumpStartModelError(model_id=model_id, version=version)
-        LOGGER.warning("Using deprecated JumpStart model '%s' and version '%s'.", model_id, version)
+            raise DeprecatedJumpStartModelError(
+                model_id=model_id, version=version, message=model_specs.deprecated_message
+            )
 
     if scope == constants.JumpStartScriptScope.INFERENCE.value and model_specs.inference_vulnerable:
         if not tolerate_vulnerable_model:
@@ -426,9 +447,6 @@ def verify_model_region_and_return_specs(
                 vulnerabilities=model_specs.inference_vulnerabilities,
                 scope=constants.JumpStartScriptScope.INFERENCE,
             )
-        LOGGER.warning(
-            "Using vulnerable JumpStart model '%s' and version '%s' (inference).", model_id, version
-        )
 
     if scope == constants.JumpStartScriptScope.TRAINING.value and model_specs.training_vulnerable:
         if not tolerate_vulnerable_model:
@@ -438,9 +456,6 @@ def verify_model_region_and_return_specs(
                 vulnerabilities=model_specs.training_vulnerabilities,
                 scope=constants.JumpStartScriptScope.TRAINING,
             )
-        LOGGER.warning(
-            "Using vulnerable JumpStart model '%s' and version '%s' (training).", model_id, version
-        )
 
     return model_specs
 

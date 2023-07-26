@@ -1,2 +1,2 @@
 doc8==0.10.1
-Pygments==2.11.2
+Pygments==2.15.0

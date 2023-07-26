@@ -12,7 +12,6 @@
 # language governing permissions and limitations under the License.
 """This module stores JumpStart Estimator factory methods."""
 from __future__ import absolute_import
-import logging
 
 
 from typing import Dict, List, Optional, Union
@@ -41,6 +40,7 @@ from sagemaker.jumpstart.artifacts import (
 )
 from sagemaker.jumpstart.constants import (
     JUMPSTART_DEFAULT_REGION_NAME,
+    JUMPSTART_LOGGER,
     TRAINING_ENTRY_POINT_SCRIPT_NAME,
 )
 from sagemaker.jumpstart.enums import JumpStartScriptScope
@@ -63,8 +63,6 @@ from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
 from sagemaker.serverless.serverless_inference_config import ServerlessInferenceConfig
 from sagemaker.utils import name_from_base
 from sagemaker.workflow.entities import PipelineVariable
-
-logger = logging.getLogger("sagemaker")
 
 
 def get_init_kwargs(
@@ -421,7 +419,7 @@ def _add_instance_type_and_count_to_kwargs(
     kwargs.instance_count = kwargs.instance_count or 1
 
     if orig_instance_type is None:
-        logger.info(
+        JUMPSTART_LOGGER.info(
             "No instance type selected for training job. Defaulting to %s.", kwargs.instance_type
         )
 
@@ -467,7 +465,7 @@ def _add_model_uri_to_kwargs(kwargs: JumpStartEstimatorInitKwargs) -> JumpStartE
             tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
         )
     ):
-        logger.warning(
+        JUMPSTART_LOGGER.warning(
             "'%s' does not support incremental training but is being trained with"
             " non-default model artifact.",
             kwargs.model_id,
