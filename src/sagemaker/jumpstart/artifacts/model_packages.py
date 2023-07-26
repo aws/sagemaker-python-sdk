@@ -93,7 +93,9 @@ def _retrieve_model_package_model_artifact_s3_uri(
         model_version (str): Version of the JumpStart model for which to retrieve the
             model package artifact.
         region (Optional[str]): Region for which to retrieve the model package artifact.
+            (Default: None).
         scope (Optional[str]): Scope for which to retrieve the model package artifact.
+            (Default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
             specifications should be tolerated (exception not raised). If False, raises an
             exception if the script used by this version of the model has dependencies with known
@@ -109,19 +111,19 @@ def _retrieve_model_package_model_artifact_s3_uri(
         NotImplementedError: If an unsupported script is used.
     """
 
-    if region is None:
-        region = JUMPSTART_DEFAULT_REGION_NAME
-
-    model_specs = verify_model_region_and_return_specs(
-        model_id=model_id,
-        version=model_version,
-        scope=scope,
-        region=region,
-        tolerate_vulnerable_model=tolerate_vulnerable_model,
-        tolerate_deprecated_model=tolerate_deprecated_model,
-    )
-
     if scope == JumpStartScriptScope.TRAINING:
+
+        if region is None:
+            region = JUMPSTART_DEFAULT_REGION_NAME
+
+        model_specs = verify_model_region_and_return_specs(
+            model_id=model_id,
+            version=model_version,
+            scope=scope,
+            region=region,
+            tolerate_vulnerable_model=tolerate_vulnerable_model,
+            tolerate_deprecated_model=tolerate_deprecated_model,
+        )
 
         if model_specs.training_model_package_artifact_uris is None:
             return None
