@@ -415,8 +415,13 @@ def verify_model_region_and_return_specs(
 
     if model_specs.deprecated:
         if not tolerate_deprecated_model:
-            raise DeprecatedJumpStartModelError(model_id=model_id, version=version)
+            raise DeprecatedJumpStartModelError(
+                model_id=model_id, version=version, message=model_specs.deprecated_message
+            )
         LOGGER.warning("Using deprecated JumpStart model '%s' and version '%s'.", model_id, version)
+
+    if model_specs.deprecate_warn_message:
+        LOGGER.warning(model_specs.deprecate_warn_message)
 
     if scope == constants.JumpStartScriptScope.INFERENCE.value and model_specs.inference_vulnerable:
         if not tolerate_vulnerable_model:

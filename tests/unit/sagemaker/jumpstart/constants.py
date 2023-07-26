@@ -2440,6 +2440,8 @@ BASE_SPEC = {
     "training_prepacked_script_key": None,
     "hosting_prepacked_artifact_key": None,
     "training_model_package_artifact_uris": None,
+    "deprecate_warn_message": None,
+    "deprecated_message": None,
     "hosting_model_package_arns": None,
     "hosting_eula_key": None,
     "hyperparameters": [
