@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 """This module stores constants related to SageMaker JumpStart."""
 from __future__ import absolute_import
+import logging
 from typing import Dict, Set, Type
 import boto3
 from sagemaker.base_deserializers import BaseDeserializer, JSONDeserializer
@@ -173,3 +174,5 @@ DESERIALIZER_TYPE_TO_CLASS_MAP: Dict[DeserializerType, Type[BaseDeserializer]] =
 }
 
 MODEL_ID_LIST_WEB_URL = "https://sagemaker.readthedocs.io/en/stable/doc_utils/pretrainedmodels.html"
+
+JUMPSTART_LOGGER = logging.getLogger("sagemaker.jumpstart")
