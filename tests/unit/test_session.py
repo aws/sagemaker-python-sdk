@@ -990,6 +990,13 @@ COMPLETED_DESCRIBE_JOB_RESULT.update(
     {"TrainingEndTime": datetime.datetime(2018, 2, 17, 7, 19, 34, 953000)}
 )
 
+COMPLETED_DESCRIBE_JOB_RESULT_UNCOMPRESSED_S3_MODEL = copy.deepcopy(COMPLETED_DESCRIBE_JOB_RESULT)
+COMPLETED_DESCRIBE_JOB_RESULT_UNCOMPRESSED_S3_MODEL["ModelArtifacts"]["S3ModelArtifacts"] = (
+    S3_OUTPUT + "/model/prefix"
+)
+COMPLETED_DESCRIBE_JOB_RESULT_UNCOMPRESSED_S3_MODEL["OutputDataConfig"]["CompressionType"] = "NONE"
+
+
 STOPPED_DESCRIBE_JOB_RESULT = dict(COMPLETED_DESCRIBE_JOB_RESULT)
 STOPPED_DESCRIBE_JOB_RESULT.update({"TrainingJobStatus": "Stopped"})
 
@@ -2618,6 +2625,29 @@ PRIMARY_CONTAINER = {
     "Image": IMAGE,
     "ModelDataUrl": "s3://sagemaker-123/output/jobname/model/model.tar.gz",
 }
+PRIMARY_CONTAINER_WITH_COMPRESSED_S3_MODEL = {
+    "Environment": {},
+    "Image": IMAGE,
+    "ModelDataSource": {
+        "S3DataSource": {
+            "S3Uri": "s3://sagemaker-123/output/jobname/model/model.tar.gz",
+            "S3DataType": "S3Object",
+            "CompressionType": "Gzip",
+        }
+    },
+}
+PRIMARY_CONTAINER_WITH_UNCOMPRESSED_S3_MODEL = {
+    "Environment": {},
+    "Image": IMAGE,
+    "ModelDataSource": {
+        "S3DataSource": {
+            # expect model data URI has trailing forward slash appended
+            "S3Uri": "s3://sagemaker-123/output/jobname/model/prefix/",
+            "S3DataType": "S3Prefix",
+            "CompressionType": "None",
+        }
+    },
+}
 
 
 def test_create_model_with_sagemaker_config_injection_with_primary_container(sagemaker_session):
@@ -2814,7 +2844,7 @@ def test_create_model_from_job(sagemaker_session):
     ims.sagemaker_client.create_model.assert_called_with(
         ExecutionRoleArn=EXPANDED_ROLE,
         ModelName=JOB_NAME,
-        PrimaryContainer=PRIMARY_CONTAINER,
+        PrimaryContainer=PRIMARY_CONTAINER_WITH_COMPRESSED_S3_MODEL,
         VpcConfig=VPC_CONFIG,
     )
 
@@ -2830,10 +2860,48 @@ def test_create_model_from_job_with_tags(sagemaker_session):
     ims.sagemaker_client.create_model.assert_called_with(
         ExecutionRoleArn=EXPANDED_ROLE,
         ModelName=JOB_NAME,
-        PrimaryContainer=PRIMARY_CONTAINER,
+        PrimaryContainer=PRIMARY_CONTAINER_WITH_COMPRESSED_S3_MODEL,
         VpcConfig=VPC_CONFIG,
         Tags=TAGS,
     )
+
+
+def test_create_model_from_job_uncompressed_s3_model(sagemaker_session):
+    ims = sagemaker_session
+    ims.sagemaker_client.describe_training_job.return_value = (
+        COMPLETED_DESCRIBE_JOB_RESULT_UNCOMPRESSED_S3_MODEL
+    )
+    ims.create_model_from_job(JOB_NAME)
+
+    assert (
+        call(TrainingJobName=JOB_NAME) in ims.sagemaker_client.describe_training_job.call_args_list
+    )
+    ims.sagemaker_client.create_model.assert_called_with(
+        ExecutionRoleArn=EXPANDED_ROLE,
+        ModelName=JOB_NAME,
+        PrimaryContainer=PRIMARY_CONTAINER_WITH_UNCOMPRESSED_S3_MODEL,
+        VpcConfig=VPC_CONFIG,
+    )
+
+
+def test_create_model_from_job_uncompressed_s3_model_unrecognized_compression_type(
+    sagemaker_session,
+):
+    ims = sagemaker_session
+    job_desc = copy.deepcopy(COMPLETED_DESCRIBE_JOB_RESULT_UNCOMPRESSED_S3_MODEL)
+    job_desc["OutputDataConfig"]["CompressionType"] = "JUNK"
+    ims.sagemaker_client.describe_training_job.return_value = job_desc
+
+    with pytest.raises(
+        ValueError, match='Unrecognized training job output data compression type "JUNK"'
+    ):
+        ims.create_model_from_job(JOB_NAME)
+
+    assert (
+        call(TrainingJobName=JOB_NAME) in ims.sagemaker_client.describe_training_job.call_args_list
+    )
+
+    ims.sagemaker_client.create_model.assert_not_called()
 
 
 def test_create_edge_packaging_with_sagemaker_config_injection(sagemaker_session):

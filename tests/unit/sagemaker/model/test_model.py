@@ -810,6 +810,39 @@ def test_register_calls_model_package_args(get_model_package_args, sagemaker_ses
          get_model_package_args"""
 
 
+def test_register_calls_model_data_source_not_supported(sagemaker_session):
+    source_dir = "s3://blah/blah/blah"
+    t = Model(
+        entry_point=ENTRY_POINT_INFERENCE,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        source_dir=source_dir,
+        image_uri=IMAGE_URI,
+        model_data={
+            "S3DataSource": {
+                "S3Uri": "s3://bucket/model/prefix/",
+                "S3DataType": "S3Prefix",
+                "CompressionType": "None",
+            }
+        },
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="SageMaker Model Package currently cannot be created with ModelDataSource.",
+    ):
+        t.register(
+            SUPPORTED_CONTENT_TYPES,
+            SUPPORTED_RESPONSE_MIME_TYPES,
+            SUPPORTED_REALTIME_INFERENCE_INSTANCE_TYPES,
+            SUPPORTED_BATCH_TRANSFORM_INSTANCE_TYPES,
+            marketplace_cert=True,
+            description=MODEL_DESCRIPTION,
+            model_package_name=MODEL_NAME,
+            validation_specification=VALIDATION_SPECIFICATION,
+        )
+
+
 @patch("sagemaker.utils.repack_model")
 def test_model_local_download_dir(repack_model, sagemaker_session):
 
