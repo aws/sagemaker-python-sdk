@@ -435,7 +435,7 @@ class ClarifyCheckStep(Step):
             job_definition_name = name_from_base(f"{_BIAS_MONITORING_CFG_BASE_NAME}-config")
 
         return self._model_monitor._upload_analysis_config(
-            analysis_config, output_s3_uri, job_definition_name
+            analysis_config, output_s3_uri, job_definition_name, self.clarify_check_config.kms_key
         )
 
     def _get_s3_base_uri_for_monitoring_analysis_config(self) -> str:
