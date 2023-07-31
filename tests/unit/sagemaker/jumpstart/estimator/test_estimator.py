@@ -285,15 +285,16 @@ class EstimatorTest(unittest.TestCase):
         )
 
         mock_estimator_init.assert_called_once_with(
-            instance_type="ml.g5.12xlarge",
-            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.12.0-gpu-py38",
-            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/meta/training/"
-            "textgeneration/v1.0.0/sourcedir.tar.gz",
+            instance_type="ml.p3.2xlarge",
             instance_count=1,
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.21.0-deepspeed0.8.3-cu117",
+            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/meta/transfer_learning/textgeneration/v1.0.0/sourcedir.tar.gz",
             entry_point="transfer_learning.py",
             role=execution_role,
             sagemaker_session=sagemaker_session,
-            enable_network_isolation=False,
+            max_run=360000,
+            enable_network_isolation=True,
+            encrypt_inter_container_traffic=True,
             environment={
                 "accept_eula": "false",
                 "what am i": "doing",
@@ -306,19 +307,19 @@ class EstimatorTest(unittest.TestCase):
         estimator = JumpStartEstimator(model_id=model_id, environment={"accept_eula": "true"})
 
         mock_estimator_init.assert_called_once_with(
-            instance_type="ml.g5.12xlarge",
-            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.12.0-gpu-py38",
-            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/meta/training/"
-            "textgeneration/v1.0.0/sourcedir.tar.gz",
+            instance_type="ml.p3.2xlarge",
             instance_count=1,
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.21.0-deepspeed0.8.3-cu117",
+            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/meta/transfer_learning/textgeneration/v1.0.0/sourcedir.tar.gz",
             entry_point="transfer_learning.py",
             role=execution_role,
             sagemaker_session=sagemaker_session,
-            enable_network_isolation=False,
+            max_run=360000,
+            enable_network_isolation=True,
+            encrypt_inter_container_traffic=True,
             environment={
                 "accept_eula": "true",
-                "SageMakerGatedModelS3Uri": "https://s3-us-west-2.amazonaws.com/sagemaker-repository-pdx/"
-                "model-data-model-package_llama2-13b-f-a89b16af11d030a2bf619e40357eae32",
+                "SageMakerGatedModelS3Uri": "s3://jumpstart-cache-alpha-us-west-2/dummy.tar.gz",
             },
         )
 
@@ -330,23 +331,23 @@ class EstimatorTest(unittest.TestCase):
         estimator.fit(channels)
 
         mock_estimator_fit.assert_called_once_with(
-            inputs=channels, wait=True, job_name="meta-textgeneration-llama-2-13b-f-8675309"
+            inputs=channels, wait=True, job_name="meta-textgeneration-llama-2-7b-f-8675309"
         )
 
         estimator.deploy()
 
         mock_estimator_deploy.assert_called_once_with(
-            instance_type="ml.g5.12xlarge",
+            instance_type="ml.g5.2xlarge",
             initial_instance_count=1,
             predictor_cls=Predictor,
-            endpoint_name="meta-textgeneration-llama-2-13b-f-8675309",
-            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.12.0-gpu-py38",
+            endpoint_name="meta-textgeneration-llama-2-7b-f-8675309",
+            image_uri='763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.21.0-deepspeed0.8.3-cu117',
             wait=True,
             model_data_download_timeout=3600,
             container_startup_health_check_timeout=3600,
             role=execution_role,
             enable_network_isolation=True,
-            model_name="meta-textgeneration-llama-2-13b-f-8675309",
+            model_name="meta-textgeneration-llama-2-7b-f-8675309",
             use_compiled_model=False,
         )
 
