@@ -108,6 +108,17 @@ CONTAINER_ARGUMENTS = ["container_arg1", "container_arg2"]
 
 DESCRIBE_TRAINING_JOB_RESULT = {"ModelArtifacts": {"S3ModelArtifacts": MODEL_DATA}}
 
+DESCRIBE_TRAINING_JOB_RESULT_UNCOMPRESSED_S3_MODEL = {
+    "ModelArtifacts": {
+        "S3ModelArtifacts": "s3://bucket/model/prefix",
+    },
+    "OutputDataConfig": {
+        "CompressionType": "NONE",
+        "KmsKeyId": "outputkms",
+        "S3OutputPath": "s3://path/to/model",
+    },
+}
+
 RETURNED_JOB_DESCRIPTION = {
     "AlgorithmSpecification": {
         "TrainingInputMode": "File",
@@ -3310,6 +3321,106 @@ def test_fit_deploy_tags(name_from_base, sagemaker_session):
         vpc_config=None,
         tags=tags,
     )
+
+
+@patch("sagemaker.estimator.name_from_base")
+def test_fit_deploy_uncompressed_s3_model(name_from_base, sagemaker_session):
+    sagemaker_session.sagemaker_client.describe_training_job = Mock(
+        name="describe_training_job",
+        return_value=DESCRIBE_TRAINING_JOB_RESULT_UNCOMPRESSED_S3_MODEL,
+    )
+    estimator = Estimator(
+        IMAGE_URI,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        sagemaker_session=sagemaker_session,
+    )
+
+    estimator.fit()
+
+    model_name = "model_name"
+    name_from_base.return_value = model_name
+
+    estimator.deploy(INSTANCE_COUNT, INSTANCE_TYPE)
+
+    variant = [
+        {
+            "InstanceType": "c4.4xlarge",
+            "VariantName": "AllTraffic",
+            "ModelName": model_name,
+            "InitialVariantWeight": 1,
+            "InitialInstanceCount": 1,
+        }
+    ]
+
+    name_from_base.assert_called_with(IMAGE_URI)
+
+    sagemaker_session.endpoint_from_production_variants.assert_called_with(
+        name=model_name,
+        production_variants=variant,
+        kms_key=None,
+        wait=True,
+        data_capture_config_dict=None,
+        async_inference_config_dict=None,
+        explainer_config_dict=None,
+        tags=None,
+    )
+
+    sagemaker_session.create_model.assert_called_with(
+        name=model_name,
+        role="DummyRole",
+        container_defs={
+            "ModelDataSource": {
+                "S3DataSource": {
+                    # S3 URI passed to Createmodel API should have trailing forward slash appeneded
+                    "S3Uri": "s3://bucket/model/prefix/",
+                    "S3DataType": "S3Prefix",
+                    "CompressionType": "None",
+                }
+            },
+            "Environment": {},
+            "Image": "fakeimage",
+        },
+        enable_network_isolation=False,
+        vpc_config=None,
+        tags=None,
+    )
+
+
+@patch("sagemaker.estimator.name_from_base")
+def test_fit_deploy_uncompressed_s3_model_unrecognized_compression_type(
+    name_from_base, sagemaker_session
+):
+    training_job_desc = deepcopy(DESCRIBE_TRAINING_JOB_RESULT_UNCOMPRESSED_S3_MODEL)
+    training_job_desc["OutputDataConfig"]["CompressionType"] = "JUNK"
+    sagemaker_session.sagemaker_client.describe_training_job = Mock(
+        name="describe_training_job",
+        return_value=training_job_desc,
+    )
+    estimator = Estimator(
+        IMAGE_URI,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        sagemaker_session=sagemaker_session,
+    )
+
+    estimator.fit()
+
+    model_name = "model_name"
+    name_from_base.return_value = model_name
+
+    with pytest.raises(
+        ValueError,
+        match='Unrecognized training job output data compression type "JUNK"',
+    ):
+        estimator.deploy(INSTANCE_COUNT, INSTANCE_TYPE)
+
+    name_from_base.assert_called_with(IMAGE_URI)
+
+    sagemaker_session.endpoint_from_production_variants.assert_not_called()
+    sagemaker_session.create_model.assert_not_called()
 
 
 @patch("time.time", return_value=TIME)

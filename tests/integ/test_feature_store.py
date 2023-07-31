@@ -15,6 +15,7 @@ from __future__ import absolute_import
 import json
 import time
 import datetime
+import dateutil.parser as date_parser
 from contextlib import contextmanager
 
 import boto3
@@ -34,6 +35,8 @@ from sagemaker.feature_store.inputs import (
     ResourceEnum,
     Identifier,
     DeletionModeEnum,
+    TtlDuration,
+    OnlineStoreConfigUpdate,
 )
 from sagemaker.feature_store.dataset_builder import (
     JoinTypeEnum,
@@ -341,6 +344,209 @@ def test_create_feature_group_glue_table_format(
 
         table_format = feature_group.describe().get("OfflineStoreConfig").get("TableFormat")
         assert table_format == "Glue"
+
+
+def test_ttl_duration(
+    feature_store_session,
+    role,
+    feature_group_name,
+    pandas_data_frame,
+    record,
+):
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
+    feature_group.load_feature_definitions(data_frame=pandas_data_frame)
+
+    record_identifier_value_as_string = record[0].value_as_string
+
+    ttl_duration = TtlDuration(unit="Seconds", value=30)
+
+    with cleanup_feature_group(feature_group):
+        output = feature_group.create(
+            s3_uri=False,
+            record_identifier_name="feature1",
+            event_time_feature_name="feature3",
+            role_arn=role,
+            enable_online_store=True,
+            ttl_duration=ttl_duration,
+        )
+        _wait_for_feature_group_create(feature_group)
+
+        feature_store = FeatureStore(sagemaker_session=feature_store_session)
+
+        describe = feature_group.describe()
+
+        assert ttl_duration.unit == (
+            describe.get("OnlineStoreConfig").get("TtlDuration").get("Unit")
+        )
+
+        assert ttl_duration.value == (
+            describe.get("OnlineStoreConfig").get("TtlDuration").get("Value")
+        )
+
+        record[2].value_as_string = (
+            datetime.datetime.now(datetime.timezone.utc)
+            .replace(microsecond=0)
+            .isoformat()
+            .split("+")[0]
+            + "Z"
+        )
+
+        feature_group.put_record(record=record)
+
+        sample_record = feature_store_session.get_record(
+            feature_group_name=feature_group_name,
+            record_identifier_value_as_string=record_identifier_value_as_string,
+            feature_names=None,
+            expiration_time_response="Enabled",
+        )
+        assert sample_record.get("Record") is not None
+        _verify_expires_at(sample_record.get("ExpiresAt"), record[2].value_as_string, ttl_duration)
+
+        batch_records = feature_store.batch_get_record(
+            identifiers=[
+                Identifier(
+                    feature_group_name=feature_group_name,
+                    record_identifiers_value_as_string=[record_identifier_value_as_string],
+                )
+            ],
+            expiration_time_response="Enabled",
+        ).get("Records")
+        assert len(batch_records) == 1
+        assert batch_records[0].get("Record") == sample_record.get("Record")
+        assert batch_records[0].get("ExpiresAt") == sample_record.get("ExpiresAt")
+
+        retrieved_record = feature_group.get_record(
+            record_identifier_value_as_string=record_identifier_value_as_string
+        )
+
+        assert sample_record.get("Record") == retrieved_record
+
+        sample_record = feature_store_session.get_record(
+            feature_group_name=feature_group_name,
+            record_identifier_value_as_string=record_identifier_value_as_string,
+            feature_names=None,
+        )
+
+        assert sample_record.get("Record") is not None
+        assert sample_record.get("ExpiresAt") is None
+
+        batch_records = feature_store.batch_get_record(
+            identifiers=[
+                Identifier(
+                    feature_group_name=feature_group_name,
+                    record_identifiers_value_as_string=[record_identifier_value_as_string],
+                )
+            ],
+            expiration_time_response="Disabled",
+        ).get("Records")
+
+        assert len(batch_records) == 1
+        assert batch_records[0].get("Record") == sample_record.get("Record")
+        assert batch_records[0].get("ExpiresAt") is None
+
+        time.sleep(35)
+
+        sample_record = feature_store_session.get_record(
+            feature_group_name=feature_group_name,
+            record_identifier_value_as_string=record_identifier_value_as_string,
+            feature_names=None,
+        )
+        assert sample_record.get("Record") is None
+
+        retrieved_record = feature_group.get_record(
+            record_identifier_value_as_string=record_identifier_value_as_string
+        )
+        assert retrieved_record is None
+
+        batch_records = feature_store.batch_get_record(
+            identifiers=[
+                Identifier(
+                    feature_group_name=feature_group_name,
+                    record_identifiers_value_as_string=[record_identifier_value_as_string],
+                )
+            ],
+            expiration_time_response="Enabled",
+        )["Records"]
+        assert len(batch_records) == 0
+
+        # customer record level ttl
+        ttl_duration = TtlDuration(unit="Seconds", value=15)
+
+        record[2].value_as_string = (
+            datetime.datetime.now(datetime.timezone.utc)
+            .replace(microsecond=0)
+            .isoformat()
+            .split("+")[0]
+            + "Z"
+        )
+
+        feature_group.put_record(record=record, ttl_duration=ttl_duration)
+
+        sample_record = feature_store_session.get_record(
+            feature_group_name=feature_group_name,
+            record_identifier_value_as_string=record_identifier_value_as_string,
+            feature_names=None,
+            expiration_time_response="Enabled",
+        )
+        assert sample_record.get("Record") is not None
+        _verify_expires_at(sample_record.get("ExpiresAt"), record[2].value_as_string, ttl_duration)
+
+        time.sleep(15)
+
+        sample_record = feature_store_session.get_record(
+            feature_group_name=feature_group_name,
+            record_identifier_value_as_string=record_identifier_value_as_string,
+            feature_names=None,
+        )
+        assert sample_record.get("Record") is None
+
+        # update default ttl for feature group
+        ttl_duration = TtlDuration(unit="Seconds", value=40)
+
+        online_store_config = OnlineStoreConfigUpdate(ttl_duration=ttl_duration)
+        feature_group.update(online_store_config=online_store_config)
+        # cache feature group for 5min, wait for new ttl to take effect
+        time.sleep(300)
+
+        describe = feature_group.describe()
+
+        assert ttl_duration.unit == (
+            describe.get("OnlineStoreConfig").get("TtlDuration").get("Unit")
+        )
+
+        assert ttl_duration.value == (
+            describe.get("OnlineStoreConfig").get("TtlDuration").get("Value")
+        )
+
+        record[2].value_as_string = (
+            datetime.datetime.now(datetime.timezone.utc)
+            .replace(microsecond=0)
+            .isoformat()
+            .split("+")[0]
+            + "Z"
+        )
+
+        feature_group.put_record(record=record)
+
+        sample_record = feature_store_session.get_record(
+            feature_group_name=feature_group_name,
+            record_identifier_value_as_string=record_identifier_value_as_string,
+            feature_names=None,
+            expiration_time_response="Enabled",
+        )
+        assert sample_record.get("Record") is not None
+        _verify_expires_at(sample_record.get("ExpiresAt"), record[2].value_as_string, ttl_duration)
+
+        time.sleep(40)
+
+        sample_record = feature_store_session.get_record(
+            feature_group_name=feature_group_name,
+            record_identifier_value_as_string=record_identifier_value_as_string,
+            feature_names=None,
+        )
+        assert sample_record.get("Record") is None
+
+    assert output["FeatureGroupArn"].endswith(f"feature-group/{feature_group_name}")
 
 
 def test_get_and_batch_get_record(
@@ -1043,6 +1249,25 @@ def test_create_dataset_with_feature_group_base_with_additional_params(
                 + ")\n"
                 + "WHERE row_recent <= 4"
             )
+
+
+def _verify_expires_at(expires_at: str, event_time: str, ttl_duration: TtlDuration):
+
+    if ttl_duration.unit == "Seconds":
+        ttl_duration_secs = ttl_duration.value
+    elif ttl_duration.unit == "Minutes":
+        ttl_duration_secs = ttl_duration.value * 60
+    elif ttl_duration.unit == "Hours":
+        ttl_duration_secs = ttl_duration.value * 60 * 60
+    elif ttl_duration.unit == "Days":
+        ttl_duration_secs = ttl_duration.value * 60 * 60 * 24
+    elif ttl_duration.unit == "Weeks":
+        ttl_duration_secs = ttl_duration.value * 60 * 60 * 24 * 7
+
+    expected_ttl_secs = date_parser.parse(event_time).timestamp() + ttl_duration_secs
+    actual_ttl_secs = date_parser.parse(expires_at).timestamp()
+
+    assert actual_ttl_secs == expected_ttl_secs
 
 
 def _create_feature_group_and_ingest_data(

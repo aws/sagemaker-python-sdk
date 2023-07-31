@@ -137,18 +137,27 @@ class FeatureStore:
             next_token=next_token,
         )
 
-    def batch_get_record(self, identifiers: Sequence[Identifier]) -> Dict[str, Any]:
+    def batch_get_record(
+        self,
+        identifiers: Sequence[Identifier],
+        expiration_time_response: str = None,
+    ) -> Dict[str, Any]:
         """Get record in batch from FeatureStore
 
         Args:
             identifiers (Sequence[Identifier]): A list of identifiers to uniquely identify records
                 in FeatureStore.
+            expiration_time_response (str): the field of expiration time response
+                to toggle returning of expiresAt.
 
         Returns:
             Response dict from service.
         """
         batch_get_record_identifiers = [identifier.to_dict() for identifier in identifiers]
-        return self.sagemaker_session.batch_get_record(identifiers=batch_get_record_identifiers)
+        return self.sagemaker_session.batch_get_record(
+            identifiers=batch_get_record_identifiers,
+            expiration_time_response=expiration_time_response,
+        )
 
     def search(
         self,

@@ -244,6 +244,31 @@ def test_compile_validates_model_data():
     assert "You must provide an S3 path to the compressed model artifacts." in str(e)
 
 
+def test_compile_validates_model_data_source():
+    model_data_src = {
+        "S3DataSource": {
+            "S3Uri": "s3://bucket/model/prefix",
+            "S3DataType": "S3Prefix",
+            "CompressionType": "None",
+        }
+    }
+    model = Model(MODEL_IMAGE, model_data=model_data_src)
+
+    with pytest.raises(
+        ValueError, match="Compiling model data from ModelDataSource is currently not supported"
+    ) as e:
+        model.compile(
+            target_instance_family="ml_c4",
+            input_shape={"data": [1, 3, 1024, 1024]},
+            output_path="s3://output",
+            role="role",
+            framework="tensorflow",
+            job_name="compile-model",
+        )
+
+    assert "Compiling model data from ModelDataSource is currently not supported" in str(e)
+
+
 def test_deploy_honors_provided_model_name(sagemaker_session):
     model = _create_model(sagemaker_session)
     model._is_compiled_model = True

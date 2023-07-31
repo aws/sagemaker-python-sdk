@@ -2639,7 +2639,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             warm_start_config (dict): Configuration defining the type of warm start and
                 other required configurations.
             max_runtime_in_seconds (int or PipelineVariable): The maximum time in seconds
-                that a hyperparameter tuning job can run.
+                that a training job launched by a hyperparameter tuning job can run.
             completion_criteria_config (sagemaker.tuner.TuningJobCompletionCriteriaConfig): A
                 configuration for the completion criteria.
             early_stopping_type (str): Specifies whether early stopping is enabled for the job.
@@ -2894,7 +2894,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 tuning job.
             max_parallel_jobs (int): Maximum number of parallel training jobs to start.
             max_runtime_in_seconds (int or PipelineVariable): The maximum time in seconds
-                that a hyperparameter tuning job can run.
+                that a training job launched by a hyperparameter tuning job can run.
             early_stopping_type (str): Specifies whether early stopping is enabled for the job.
                 Can be either 'Auto' or 'Off'. If set to 'Off', early stopping will not be
                 attempted. If set to 'Auto', early stopping of some training jobs may happen,
@@ -3584,7 +3584,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         )
         primary_container = container_def(
             image_uri or training_job["AlgorithmSpecification"]["TrainingImage"],
-            model_data_url=model_data_url or training_job["ModelArtifacts"]["S3ModelArtifacts"],
+            model_data_url=model_data_url or self._gen_s3_model_data_source(training_job),
             env=env,
         )
         vpc_config = _vpc_config_from_training_job(training_job, vpc_config_override)
@@ -4486,14 +4486,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
             str: Name of the ``Endpoint`` that is created.
         """
         job_desc = self.sagemaker_client.describe_training_job(TrainingJobName=job_name)
-        output_url = job_desc["ModelArtifacts"]["S3ModelArtifacts"]
+        model_s3_location = self._gen_s3_model_data_source(job_desc)
         image_uri = image_uri or job_desc["AlgorithmSpecification"]["TrainingImage"]
         role = role or job_desc["RoleArn"]
         name = name or job_name
         vpc_config_override = _vpc_config_from_training_job(job_desc, vpc_config_override)
 
         return self.endpoint_from_model_data(
-            model_s3_location=output_url,
+            model_s3_location=model_s3_location,
             image_uri=image_uri,
             initial_instance_count=initial_instance_count,
             instance_type=instance_type,
@@ -4505,6 +4505,40 @@ class Session(object):  # pylint: disable=too-many-public-methods
             accelerator_type=accelerator_type,
             data_capture_config=data_capture_config,
         )
+
+    def _gen_s3_model_data_source(self, training_job_spec):
+        """Generates ``ModelDataSource`` value from given DescribeTrainingJob API response.
+
+        Args:
+            training_job_spec (dict): SageMaker DescribeTrainingJob API response.
+
+        Returns:
+            dict: A ``ModelDataSource`` value.
+        """
+        model_data_s3_uri = training_job_spec["ModelArtifacts"]["S3ModelArtifacts"]
+        compression_type = training_job_spec.get("OutputDataConfig", {}).get(
+            "CompressionType", "GZIP"
+        )
+        # See https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_OutputDataConfig.html
+        # and https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_S3ModelDataSource.html
+        if compression_type in {"NONE", "GZIP"}:
+            model_compression_type = compression_type.title()
+        else:
+            raise ValueError(
+                f'Unrecognized training job output data compression type "{compression_type}"'
+            )
+        s3_model_data_type = "S3Object" if model_compression_type == "Gzip" else "S3Prefix"
+        # if model data is in S3Prefix type and has no trailing forward slash in its URI,
+        # append one so that it meets SageMaker Hosting's mandate for deploying uncompressed model.
+        if s3_model_data_type == "S3Prefix" and not model_data_s3_uri.endswith("/"):
+            model_data_s3_uri += "/"
+        return {
+            "S3DataSource": {
+                "S3Uri": model_data_s3_uri,
+                "S3DataType": s3_model_data_type,
+                "CompressionType": model_compression_type,
+            }
+        }
 
     def endpoint_from_model_data(
         self,
@@ -4524,7 +4558,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """Create and deploy to an ``Endpoint`` using existing model data stored in S3.
 
         Args:
-            model_s3_location (str): S3 URI of the model artifacts to use for the endpoint.
+            model_s3_location (str or dict): S3 location of the model artifacts
+                to use for the endpoint.
             image_uri (str): The Docker image URI which defines the runtime code to be
                 used as the entry point for accepting prediction requests.
             initial_instance_count (int): Minimum number of EC2 instances to launch. The actual
@@ -5062,9 +5097,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
         return self.sagemaker_client.describe_feature_group(**kwargs)
 
     def update_feature_group(
-        self, feature_group_name: str, feature_additions: Sequence[Dict[str, str]]
+        self,
+        feature_group_name: str,
+        feature_additions: Sequence[Dict[str, str]] = None,
+        online_store_config: Dict[str, any] = None,
     ) -> Dict[str, Any]:
-        """Update a FeatureGroup and add new features from the given feature definitions.
+        """Update a FeatureGroup
+
+            either adding new features from the given feature definitions
+            or updating online store config
 
         Args:
             feature_group_name (str): name of the FeatureGroup to update.
@@ -5072,6 +5113,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             Response dict from service.
         """
+
+        if feature_additions is None:
+            return self.sagemaker_client.update_feature_group(
+                FeatureGroupName=feature_group_name,
+                OnlineStoreConfig=online_store_config,
+            )
 
         return self.sagemaker_client.update_feature_group(
             FeatureGroupName=feature_group_name, FeatureAdditions=feature_additions
@@ -5223,6 +5270,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         self,
         feature_group_name: str,
         record: Sequence[Dict[str, str]],
+        ttl_duration: Dict[str, str] = None,
     ):
         """Puts a single record in the FeatureGroup.
 
@@ -5231,6 +5279,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
             record (Sequence[Dict[str, str]]): list of FeatureValue dicts to be ingested
                 into FeatureStore.
         """
+
+        if ttl_duration:
+            return self.sagemaker_featurestore_runtime_client.put_record(
+                FeatureGroupName=feature_group_name,
+                Record=record,
+                TtlDuration=ttl_duration,
+            )
+
         return self.sagemaker_featurestore_runtime_client.put_record(
             FeatureGroupName=feature_group_name,
             Record=record,
@@ -5263,6 +5319,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         record_identifier_value_as_string: str,
         feature_group_name: str,
         feature_names: Sequence[str],
+        expiration_time_response: str = None,
     ) -> Dict[str, Sequence[Dict[str, str]]]:
         """Gets a single record in the FeatureGroup.
 
@@ -5270,28 +5327,42 @@ class Session(object):  # pylint: disable=too-many-public-methods
             record_identifier_value_as_string (str): name of the record identifier.
             feature_group_name (str): name of the FeatureGroup.
             feature_names (Sequence[str]): list of feature names.
+            expiration_time_response (str): the field of expiration time response
+                to toggle returning of expiresAt.
         """
         get_record_args = {
             "FeatureGroupName": feature_group_name,
             "RecordIdentifierValueAsString": record_identifier_value_as_string,
         }
 
+        if expiration_time_response:
+            get_record_args["ExpirationTimeResponse"] = expiration_time_response
+
         if feature_names:
             get_record_args["FeatureNames"] = feature_names
 
         return self.sagemaker_featurestore_runtime_client.get_record(**get_record_args)
 
-    def batch_get_record(self, identifiers: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
+    def batch_get_record(
+        self,
+        identifiers: Sequence[Dict[str, Any]],
+        expiration_time_response: str = None,
+    ) -> Dict[str, Any]:
         """Gets a batch of record from FeatureStore.
 
         Args:
             identifiers (Sequence[Dict[str, Any]]): list of identifiers to uniquely identify records
                 in FeatureStore.
+            expiration_time_response (str): the field of expiration time response
+                to toggle returning of expiresAt.
 
         Returns:
             Response dict from service.
         """
         batch_get_record_args = {"Identifiers": identifiers}
+
+        if expiration_time_response:
+            batch_get_record_args["ExpirationTimeResponse"] = expiration_time_response
 
         return self.sagemaker_featurestore_runtime_client.batch_get_record(**batch_get_record_args)
 
@@ -5925,8 +5996,10 @@ def container_def(image_uri, model_data_url=None, env=None, container_mode=None,
 
     Args:
         image_uri (str): Docker image URI to run for this container.
-        model_data_url (str): S3 URI of data required by this container,
-            e.g. SageMaker training job model artifacts (default: None).
+        model_data_url (str or dict[str, Any]): S3 location of model data required by this
+            container, e.g. SageMaker training job model artifacts. It can either be a string
+            representing S3 URI of model data, or a dictionary representing a
+            ``ModelDataSource`` object. (default: None).
         env (dict[str, str]): Environment variables to set inside the container (default: None).
         container_mode (str): The model container mode. Valid modes:
                 * MultiModel: Indicates that model container can support hosting multiple models
@@ -5943,8 +6016,12 @@ def container_def(image_uri, model_data_url=None, env=None, container_mode=None,
     if env is None:
         env = {}
     c_def = {"Image": image_uri, "Environment": env}
-    if model_data_url:
+
+    if isinstance(model_data_url, dict):
+        c_def["ModelDataSource"] = model_data_url
+    elif model_data_url:
         c_def["ModelDataUrl"] = model_data_url
+
     if container_mode:
         c_def["Mode"] = container_mode
     if image_config:
