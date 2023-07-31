@@ -12,7 +12,6 @@
 # language governing permissions and limitations under the License.
 """This module stores JumpStart implementation of Estimator class."""
 from __future__ import absolute_import
-import logging
 
 
 from typing import Dict, List, Optional, Union
@@ -44,8 +43,6 @@ from sagemaker.predictor import PredictorBase
 
 from sagemaker.serverless.serverless_inference_config import ServerlessInferenceConfig
 from sagemaker.workflow.entities import PipelineVariable
-
-logger = logging.getLogger(__name__)
 
 
 class JumpStartEstimator(Estimator):

@@ -12,7 +12,6 @@
 # language governing permissions and limitations under the License.
 """This module stores JumpStart Model factory methods."""
 from __future__ import absolute_import
-import logging
 
 
 from typing import Any, Dict, List, Optional, Union
@@ -31,6 +30,7 @@ from sagemaker.jumpstart.artifacts.resource_names import _retrieve_resource_name
 from sagemaker.jumpstart.constants import (
     INFERENCE_ENTRY_POINT_SCRIPT_NAME,
     JUMPSTART_DEFAULT_REGION_NAME,
+    JUMPSTART_LOGGER,
 )
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.types import (
@@ -50,8 +50,6 @@ from sagemaker.serverless.serverless_inference_config import ServerlessInference
 from sagemaker.session import Session
 from sagemaker.utils import name_from_base
 from sagemaker.workflow.entities import PipelineVariable
-
-logger = logging.getLogger("sagemaker")
 
 
 def get_default_predictor(
@@ -170,7 +168,7 @@ def _add_instance_type_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartM
     )
 
     if orig_instance_type is None:
-        logger.info(
+        JUMPSTART_LOGGER.info(
             "No instance type selected for inference hosting endpoint. Defaulting to %s.",
             kwargs.instance_type,
         )

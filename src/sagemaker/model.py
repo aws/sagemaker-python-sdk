@@ -131,7 +131,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
     def __init__(
         self,
         image_uri: Union[str, PipelineVariable],
-        model_data: Optional[Union[str, PipelineVariable]] = None,
+        model_data: Optional[Union[str, PipelineVariable, dict]] = None,
         role: Optional[str] = None,
         predictor_cls: Optional[callable] = None,
         env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
@@ -152,8 +152,8 @@ class Model(ModelBase, InferenceRecommenderMixin):
 
         Args:
             image_uri (str or PipelineVariable): A Docker image URI.
-            model_data (str or PipelineVariable): The S3 location of a SageMaker
-                model data ``.tar.gz`` file (default: None).
+            model_data (str or PipelineVariable or dict): Location
+                of SageMaker model data (default: None).
             role (str): An AWS IAM role (either name or full ARN). The Amazon
                 SageMaker training jobs and APIs that create Amazon SageMaker
                 endpoints use this role to access training data and model
@@ -455,6 +455,11 @@ class Model(ModelBase, InferenceRecommenderMixin):
         """
         if self.model_data is None:
             raise ValueError("SageMaker Model Package cannot be created without model data.")
+        if isinstance(self.model_data, dict):
+            raise ValueError(
+                "SageMaker Model Package currently cannot be created with ModelDataSource."
+            )
+
         if image_uri is not None:
             self.image_uri = image_uri
 
@@ -600,6 +605,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             )
             self._upload_code(deploy_key_prefix, repack=is_repack)
             deploy_env.update(self._script_mode_env_vars())
+
         return sagemaker.container_def(
             self.image_uri,
             self.repacked_model_data or self.model_data,
@@ -639,6 +645,9 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             )
 
         if repack and self.model_data is not None and self.entry_point is not None:
+            if isinstance(self.model_data, dict):
+                logging.warning("ModelDataSource currently doesn't support model repacking")
+                return
             if is_pipeline_variable(self.model_data):
                 # model is not yet there, defer repacking to later during pipeline execution
                 if not isinstance(self.sagemaker_session, PipelineSession):
@@ -765,10 +774,16 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             # _base_name, model_name are not needed under PipelineSession.
             # the model_data may be Pipeline variable
             # which may break the _base_name generation
+            model_uri = None
+            if isinstance(self.model_data, (str, PipelineVariable)):
+                model_uri = self.model_data
+            elif isinstance(self.model_data, dict):
+                model_uri = self.model_data.get("S3DataSource", {}).get("S3Uri", None)
+
             self._ensure_base_name_if_needed(
                 image_uri=container_def["Image"],
                 script_uri=self.source_dir,
-                model_uri=self.model_data,
+                model_uri=model_uri,
             )
             self._set_model_name_if_needed()
 
@@ -1110,6 +1125,8 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             raise ValueError("You must provide a compilation job name")
         if self.model_data is None:
             raise ValueError("You must provide an S3 path to the compressed model artifacts.")
+        if isinstance(self.model_data, dict):
+            raise ValueError("Compiling model data from ModelDataSource is currently not supported")
 
         framework_version = framework_version or self._get_framework_version()
 
@@ -1301,7 +1318,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
 
         tags = add_jumpstart_tags(
             tags=tags,
-            inference_model_uri=self.model_data,
+            inference_model_uri=self.model_data if isinstance(self.model_data, str) else None,
             inference_script_uri=self.source_dir,
         )
 
@@ -1545,7 +1562,7 @@ class FrameworkModel(Model):
 
     def __init__(
         self,
-        model_data: Union[str, PipelineVariable],
+        model_data: Union[str, PipelineVariable, dict],
         image_uri: Union[str, PipelineVariable],
         role: Optional[str] = None,
         entry_point: Optional[str] = None,
@@ -1563,8 +1580,8 @@ class FrameworkModel(Model):
         """Initialize a ``FrameworkModel``.
 
         Args:
-            model_data (str or PipelineVariable): The S3 location of a SageMaker
-                model data ``.tar.gz`` file.
+            model_data (str or PipelineVariable or dict): The S3 location of
+                SageMaker model data.
             image_uri (str or PipelineVariable): A Docker image URI.
             role (str): An IAM role name or ARN for SageMaker to access AWS
                 resources on your behalf.
@@ -1758,6 +1775,11 @@ class ModelPackage(Model):
                 ``model_data`` is not required.
             **kwargs: Additional kwargs passed to the Model constructor.
         """
+        if isinstance(model_data, dict):
+            raise ValueError(
+                "Creating ModelPackage with ModelDataSource is currently not supported"
+            )
+
         super(ModelPackage, self).__init__(
             role=role, model_data=model_data, image_uri=None, **kwargs
         )

@@ -13,7 +13,6 @@
 """This module stores JumpStart implementation of Model class."""
 
 from __future__ import absolute_import
-import logging
 import re
 
 from typing import Dict, List, Optional, Union
@@ -37,8 +36,6 @@ from sagemaker.predictor import PredictorBase
 from sagemaker.serverless.serverless_inference_config import ServerlessInferenceConfig
 from sagemaker.session import Session
 from sagemaker.workflow.entities import PipelineVariable
-
-logger = logging.getLogger(__name__)
 
 
 class JumpStartModel(Model):

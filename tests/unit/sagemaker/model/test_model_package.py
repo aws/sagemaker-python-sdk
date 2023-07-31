@@ -209,6 +209,24 @@ def test_create_sagemaker_model_include_tags(sagemaker_session):
     )
 
 
+def test_model_package_model_data_source_not_supported(sagemaker_session):
+    with pytest.raises(
+        ValueError, match="Creating ModelPackage with ModelDataSource is currently not supported"
+    ):
+        ModelPackage(
+            role="role",
+            model_package_arn="my-model-package",
+            model_data={
+                "S3DataSource": {
+                    "S3Uri": "s3://bucket/model/prefix/",
+                    "S3DataType": "S3Prefix",
+                    "CompressionType": "None",
+                }
+            },
+            sagemaker_session=sagemaker_session,
+        )
+
+
 @patch("sagemaker.utils.name_from_base")
 def test_create_sagemaker_model_generates_model_name(name_from_base, sagemaker_session):
     model_package_name = "my-model-package"

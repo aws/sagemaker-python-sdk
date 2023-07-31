@@ -341,7 +341,7 @@ class EstimatorTest(unittest.TestCase):
             initial_instance_count=1,
             predictor_cls=Predictor,
             endpoint_name="meta-textgeneration-llama-2-7b-f-8675309",
-            image_uri='763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.21.0-deepspeed0.8.3-cu117',
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.21.0-deepspeed0.8.3-cu117",
             wait=True,
             model_data_download_timeout=3600,
             container_startup_health_check_timeout=3600,
@@ -852,7 +852,7 @@ class EstimatorTest(unittest.TestCase):
 
     @mock.patch("sagemaker.jumpstart.estimator.is_valid_model_id")
     @mock.patch("sagemaker.jumpstart.factory.estimator._model_supports_incremental_training")
-    @mock.patch("sagemaker.jumpstart.factory.estimator.logger.warning")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_LOGGER.warning")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -905,7 +905,7 @@ class EstimatorTest(unittest.TestCase):
 
     @mock.patch("sagemaker.jumpstart.estimator.is_valid_model_id")
     @mock.patch("sagemaker.jumpstart.factory.estimator._model_supports_incremental_training")
-    @mock.patch("sagemaker.jumpstart.factory.estimator.logger.warning")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_LOGGER.warning")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
