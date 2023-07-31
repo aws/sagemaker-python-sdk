@@ -40,12 +40,10 @@ class StsClient:
         """Return the AWS region from the client meta information."""
         return self._client.meta.region_name
 
-    def get_account_id(self) -> str:  # TODO: Verify this works in all cases
+    def get_account_id(self) -> str: 
         """Returns the AWS account id associated with the caller identity."""
         identity = self._client.get_caller_identity()
-        caller_arn = identity["Arn"]
-        role_arn_components = caller_arn.split(":")
-        return role_arn_components[4]
+        return identity["Account"]
 
     def get_boto3_session_from_role_arn(
         self, role_arn: str, **assume_role_kwargs: Any
