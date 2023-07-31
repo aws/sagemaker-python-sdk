@@ -658,10 +658,14 @@ SPECIAL_MODEL_SPECS_DICT = {
         "hosting_script_key": "source-directory-tarballs/meta/inference/textgeneration/v1.0.0/sourcedir.tar.gz",
         "hosting_eula_key": "fmhMetadata/eula/llamaEula.txt",
         "hosting_model_package_arns": {
-            "us-west-2": "arn:aws:sagemaker:us-west-2:594846645681:model-package/llama2-7b-f-e46eb8a833643ed58aaccd81498972c3",
-            "us-east-1": "arn:aws:sagemaker:us-east-1:865070037744:model-package/llama2-7b-f-e46eb8a833643ed58aaccd81498972c3",
-            "eu-west-1": "arn:aws:sagemaker:eu-west-1:985815980388:model-package/llama2-7b-f-e46eb8a833643ed58aaccd81498972c3",
-            "ap-southeast-1": "arn:aws:sagemaker:ap-southeast-1:192199979996:model-package/llama2-7b-f-e46eb8a833643ed58aaccd81498972c3",
+            "us-west-2": "arn:aws:sagemaker:us-west-2:594846645681:model-package/"
+            "llama2-7b-f-e46eb8a833643ed58aaccd81498972c3",
+            "us-east-1": "arn:aws:sagemaker:us-east-1:865070037744:model-package/"
+            "llama2-7b-f-e46eb8a833643ed58aaccd81498972c3",
+            "eu-west-1": "arn:aws:sagemaker:eu-west-1:985815980388:model-package/"
+            "llama2-7b-f-e46eb8a833643ed58aaccd81498972c3",
+            "ap-southeast-1": "arn:aws:sagemaker:ap-southeast-1:192199979996:model-package/"
+            "llama2-7b-f-e46eb8a833643ed58aaccd81498972c3",
         },
         "training_model_package_artifact_uris": {
             "us-west-2": "s3://jumpstart-cache-alpha-us-west-2/dummy.tar.gz",
@@ -696,7 +700,8 @@ SPECIAL_MODEL_SPECS_DICT = {
                 "scope": "container",
             },
         ],
-        "training_script_key": "source-directory-tarballs/meta/transfer_learning/textgeneration/v1.0.0/sourcedir.tar.gz",
+        "training_script_key": "source-directory-tarballs/meta/transfer_learning/"
+        "textgeneration/v1.0.0/sourcedir.tar.gz",
         "training_ecr_specs": {
             "framework": "djl-deepspeed",
             "framework_version": "0.21.0",

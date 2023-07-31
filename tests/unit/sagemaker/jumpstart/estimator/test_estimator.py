@@ -288,7 +288,8 @@ class EstimatorTest(unittest.TestCase):
             instance_type="ml.p3.2xlarge",
             instance_count=1,
             image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.21.0-deepspeed0.8.3-cu117",
-            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/meta/transfer_learning/textgeneration/v1.0.0/sourcedir.tar.gz",
+            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/"
+            "meta/transfer_learning/textgeneration/v1.0.0/sourcedir.tar.gz",
             entry_point="transfer_learning.py",
             role=execution_role,
             sagemaker_session=sagemaker_session,
@@ -310,7 +311,8 @@ class EstimatorTest(unittest.TestCase):
             instance_type="ml.p3.2xlarge",
             instance_count=1,
             image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.21.0-deepspeed0.8.3-cu117",
-            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/meta/transfer_learning/textgeneration/v1.0.0/sourcedir.tar.gz",
+            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/"
+            "meta/transfer_learning/textgeneration/v1.0.0/sourcedir.tar.gz",
             entry_point="transfer_learning.py",
             role=execution_role,
             sagemaker_session=sagemaker_session,
