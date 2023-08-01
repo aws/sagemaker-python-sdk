@@ -129,8 +129,8 @@ def to_pipeline(
             code for Lineage tracking. This code is not used for actual transformation.
         max_retries (Optional[int]): The number of times to retry sagemaker pipeline step.
             If not specified, sagemaker pipline step will not retry.
-        tags (List[Tuple[str, str]): A list of tags attached to the pipeline. If not specified,
-            no custom tags will be attached to the pipeline.
+        tags (List[Tuple[str, str]): A list of tags attached to the pipeline and all corresponding
+            lineage resources that support tags. If not specified, no custom tags will be attached.
         sagemaker_session (Optional[Session]): Session object which manages interactions
             with Amazon SageMaker APIs and any other AWS services needed. If not specified, the
             function creates one using the default AWS configuration chain.
@@ -220,6 +220,9 @@ def to_pipeline(
 
     describe_pipeline_response = pipeline.describe()
     pipeline_arn = describe_pipeline_response["PipelineArn"]
+    tags_propagate_to_lineage_resources = _get_tags_from_pipeline_to_propagate_to_lineage_resources(
+        pipeline_arn, _sagemaker_session
+    )
 
     lineage_handler = FeatureProcessorLineageHandler(
         pipeline_name=pipeline_name,
@@ -230,7 +233,8 @@ def to_pipeline(
         transformation_code=transformation_code,
         sagemaker_session=_sagemaker_session,
     )
-    lineage_handler.create_lineage()
+    lineage_handler.create_lineage(tags_propagate_to_lineage_resources)
+    lineage_handler.upsert_tags_for_lineage_resources(tags_propagate_to_lineage_resources)
 
     pipeline_lineage_names: Dict[str, str] = lineage_handler.get_pipeline_lineage_names()
 
@@ -299,15 +303,19 @@ def schedule(
     describe_pipeline_response = _sagemaker_session.sagemaker_client.describe_pipeline(
         PipelineName=pipeline_name
     )
+    pipeline_arn = describe_pipeline_response["PipelineArn"]
+    tags_propagate_to_lineage_resources = _get_tags_from_pipeline_to_propagate_to_lineage_resources(
+        pipeline_arn, _sagemaker_session
+    )
 
     logger.info("Creating/Updating EventBridge Schedule for pipeline %s.", pipeline_name)
     event_bridge_schedule_arn = event_bridge_scheduler_helper.upsert_schedule(
-        pipeline_name,
-        describe_pipeline_response["PipelineArn"],
-        schedule_expression,
-        state,
-        _start_date,
-        _role_arn,
+        schedule_name=pipeline_name,
+        pipeline_arn=pipeline_arn,
+        schedule_expression=schedule_expression,
+        state=state,
+        start_date=_start_date,
+        role=_role_arn,
     )
     logger.info("Created/Updated EventBridge Schedule for pipeline %s.", pipeline_name)
     lineage_handler = FeatureProcessorLineageHandler(
@@ -322,6 +330,7 @@ def schedule(
         schedule_expression=schedule_expression,
         state=state,
         start_date=_start_date,
+        tags=tags_propagate_to_lineage_resources,
     )
     return event_bridge_schedule_arn["ScheduleArn"]
 
@@ -805,7 +814,7 @@ def _get_feature_processor_outputs(
 def _parse_name_from_arn(fg_uri: str) -> str:
     """Parse the name from a string, if it's an ARN. Otherwise, return the string.
 
-    Attributes:
+    Args:
         fg_uri (str): The Feature Group Name or ARN.
 
     Returns:
@@ -816,3 +825,23 @@ def _parse_name_from_arn(fg_uri: str) -> str:
         feature_group_name = match.group(4)
         return feature_group_name
     return fg_uri
+
+
+def _get_tags_from_pipeline_to_propagate_to_lineage_resources(
+    pipeline_arn: str, sagemaker_session: Session
+) -> List[Dict[str, str]]:
+    """Retrieve custom tags attached to sagemakre pipeline
+
+    Args:
+        pipeline_arn (str): SageMaker Pipeline Arn.
+        sagemaker_session (Session): Session object which manages interactions
+            with Amazon SageMaker APIs and any other AWS services needed. If not specified, the
+            function creates one using the default AWS configuration chain.
+
+    Returns:
+        List[Dict[str, str]]: List of custom tags to be propagated to lineage resources.
+    """
+    tags_in_pipeline = sagemaker_session.sagemaker_client.list_tags(ResourceArn=pipeline_arn)[
+        "Tags"
+    ]
+    return [d for d in tags_in_pipeline if d["Key"] not in TO_PIPELINE_RESERVED_TAG_KEYS]

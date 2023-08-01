@@ -85,6 +85,7 @@ CONTEXT_MOCK_02 = Mock(Context)
 CONTEXT_MOCK_03 = Mock(Context)
 FEATURE_GROUP = tdh.DESCRIBE_FEATURE_GROUP_RESPONSE.copy()
 PIPELINE = tdh.PIPELINE.copy()
+TAGS = [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
 
 
 def mock_session():
@@ -593,6 +594,11 @@ def test_to_pipeline_used_reserved_tags(get_execution_role, mock_spark_image, se
 
 
 @patch(
+    "sagemaker.feature_store.feature_processor.feature_scheduler"
+    "._get_tags_from_pipeline_to_propagate_to_lineage_resources",
+    return_value=TAGS,
+)
+@patch(
     "sagemaker.feature_store.feature_processor.feature_scheduler._validate_pipeline_lineage_resources",
     return_value=None,
 )
@@ -604,7 +610,7 @@ def test_to_pipeline_used_reserved_tags(get_execution_role, mock_spark_image, se
     "sagemaker.feature_store.feature_processor.feature_scheduler.FeatureProcessorLineageHandler",
     return_value=mock_feature_processor_lineage(),
 )
-def test_schedule(lineage, helper, validation):
+def test_schedule(lineage, helper, validation, get_tags):
     session = Mock(Session, sagemaker_client=Mock(), boto_session=Mock())
     session.sagemaker_client.describe_pipeline = Mock(
         return_value={"PipelineArn": "my:arn", "CreationTime": NOW}

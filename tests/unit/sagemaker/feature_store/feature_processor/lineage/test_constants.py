@@ -313,7 +313,6 @@ PIPELINE = {
     },
 }
 
-
 PIPELINE_CONTEXT: Context = Context(
     context_arn=f"{PIPELINE_NAME}-context-arn",
     context_name=f"sm-fs-fe-{PIPELINE_NAME}-{CREATION_TIME}-fep",
@@ -340,7 +339,6 @@ TRANSFORMATION_CODE_INPUT_1: TransformationCode = TransformationCode(
     author="test-author",
     name="test-name",
 )
-
 
 TRANSFORMATION_CODE_INPUT_2: TransformationCode = TransformationCode(
     s3_uri="s3://sagemaker-us-west-2-789975069016/transform-2023-04-28-21-50-14-616/"
