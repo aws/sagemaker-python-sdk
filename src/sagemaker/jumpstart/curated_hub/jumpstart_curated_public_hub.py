@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 import json
+import uuid
 from concurrent import futures
 from typing import List, Optional, Tuple, Dict
 
@@ -67,7 +68,6 @@ class JumpStartCuratedPublicHub:
         self._s3_client = boto3.client("s3", region_name=self._region)
         self._sm_client = boto3.client("sagemaker", region_name=self._region)
         self._default_thread_pool_size = 20
-        self._account_id = self._get_account_id()
 
         (
             self.curated_hub_name,
@@ -102,7 +102,7 @@ class JumpStartCuratedPublicHub:
     ) -> Tuple[str, str, bool]:
         # Finds the relevant hub and s3 locations
         curated_hub_name = hub_name
-        curated_hub_s3_bucket_name = f"{curated_hub_name}-{self._region}-{self._account_id}"
+        curated_hub_s3_bucket_name = f"{curated_hub_name}-{self._region}-{uuid.uuid4()}"
         preexisting_hub = self._get_preexisting_hub_and_s3_bucket_names()
         if preexisting_hub:
             name_of_hub_already_on_account = preexisting_hub[0]
@@ -331,10 +331,7 @@ class JumpStartCuratedPublicHub:
 
     def _is_s3_key_a_directory(self, s3_key: str) -> bool:
         return s3_key[-1] == "/"
-
-    def _get_account_id(self) -> str:
-        StsClient(self._region).get_account_id()
-
+    
     def _init_clients(self):
         self._hub_client = CuratedHubClient(
             curated_hub_name=self.curated_hub_name, region=self._region
