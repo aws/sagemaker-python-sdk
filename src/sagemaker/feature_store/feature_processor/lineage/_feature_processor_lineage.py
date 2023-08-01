@@ -18,6 +18,9 @@ from typing import Optional, Iterator, List, Dict, Set, Sequence, Union
 import attr
 from botocore.exceptions import ClientError
 
+from sagemaker.feature_store.feature_processor._event_bridge_scheduler_helper import (
+    EventBridgeSchedulerHelper,
+)
 from sagemaker.feature_store.feature_processor.lineage._lineage_association_handler import (
     LineageAssociationHandler,
 )
@@ -102,7 +105,7 @@ class FeatureProcessorLineageHandler:
     output: str = attr.ib(default=None)
     transformation_code: TransformationCode = attr.ib(default=None)
 
-    def create_lineage(self) -> None:
+    def create_lineage(self, tags: Optional[List[Dict[str, str]]] = None) -> None:
         """Create and Update Feature Processor Lineage"""
         input_feature_group_contexts: List[
             FeatureGroupContexts
@@ -120,6 +123,8 @@ class FeatureProcessorLineageHandler:
         )
         if transformation_code_artifact is not None:
             logger.info("Created Transformation Code Artifact: %s", transformation_code_artifact)
+            if tags:
+                transformation_code_artifact.set_tags(tags)  # pylint: disable=E1101
         # Create the Pipeline Lineage for the first time
         if not self._check_if_pipeline_lineage_exists():
             self._create_new_pipeline_lineage(
@@ -160,6 +165,7 @@ class FeatureProcessorLineageHandler:
         schedule_expression,
         state,
         start_date: datetime,
+        tags: Optional[List[Dict[str, str]]] = None,
     ) -> None:
         """Class to Create and Update FeatureProcessor Lineage Entities.
 
@@ -171,10 +177,12 @@ class FeatureProcessorLineageHandler:
             state (str):Specifies whether the schedule is enabled or disabled. Valid values are
                 ENABLED and DISABLED. See https://docs.aws.amazon.com/scheduler/latest/APIReference/
                 API_CreateSchedule.html#scheduler-CreateSchedule-request-State for more details.
-                If not specified, it will default to DISABLED.
+                If not specified, it will default to ENABLED.
             start_date (Optional[datetime]): The date, in UTC, after which the schedule can begin
                 invoking its target. Depending on the schedule’s recurrence expression, invocations
                 might occur on, or after, the StartDate you specify.
+            tags (Optional[List[Dict[str, str]]]): Custom tags to be attached to schedule
+                lineage resource.
         """
         pipeline_context: Context = self._get_pipeline_context()
         pipeline_version_context: Context = self._get_pipeline_version_context(
@@ -192,12 +200,54 @@ class FeatureProcessorLineageHandler:
             pipeline_schedule=pipeline_schedule,
             sagemaker_session=self.sagemaker_session,
         )
+        if tags:
+            schedule_artifact.set_tags(tags)
 
         LineageAssociationHandler.add_upstream_schedule_associations(
             schedule_artifact=schedule_artifact,
             pipeline_version_context_arn=pipeline_version_context.context_arn,
             sagemaker_session=self.sagemaker_session,
         )
+
+    def upsert_tags_for_lineage_resources(self, tags: List[Dict[str, str]]) -> None:
+        """Add or update tags for lineage resources using tags attached to sagemaker pipeline as
+
+        source of truth.
+
+        Args:
+            tags (List[Dict[str, str]]): Custom tags to be attached to lineage resources.
+        """
+        if not tags:
+            return
+        pipeline_context: Context = self._get_pipeline_context()
+        current_pipeline_version_context: Context = self._get_pipeline_version_context(
+            last_update_time=pipeline_context.properties[LAST_UPDATE_TIME]
+        )
+        input_raw_data_artifacts: List[Artifact] = self._retrieve_input_raw_data_artifacts()
+        pipeline_context.set_tags(tags)
+        current_pipeline_version_context.set_tags(tags)
+        for input_raw_data_artifact in input_raw_data_artifacts:
+            input_raw_data_artifact.set_tags(tags)
+
+        event_bridge_scheduler_helper = EventBridgeSchedulerHelper(
+            self.sagemaker_session,
+            self.sagemaker_session.boto_session.client("scheduler"),
+        )
+        event_bridge_schedule = event_bridge_scheduler_helper.describe_schedule(self.pipeline_name)
+
+        if event_bridge_schedule:
+            schedule_artifact_summary = S3LineageEntityHandler._load_artifact_from_s3_uri(
+                s3_uri=event_bridge_schedule["Arn"],
+                sagemaker_session=self.sagemaker_session,
+            )
+            if schedule_artifact_summary is not None:
+                pipeline_schedule_artifact: Artifact = (
+                    S3LineageEntityHandler.load_artifact_from_arn(
+                        artifact_arn=schedule_artifact_summary.artifact_arn,
+                        sagemaker_session=self.sagemaker_session,
+                    )
+                )
+                pipeline_schedule_artifact.set_tags(tags)
 
     def _create_new_pipeline_lineage(
         self,
