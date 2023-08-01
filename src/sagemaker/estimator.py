@@ -1737,21 +1737,41 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
     @property
     def model_data(self):
-        """str: The model location in S3. Only set if Estimator has been ``fit()``."""
+        """Str or dict: The model location in S3. Only set if Estimator has been ``fit()``."""
         if self.latest_training_job is not None and not isinstance(
             self.sagemaker_session, PipelineSession
         ):
-            model_uri = self.sagemaker_session.sagemaker_client.describe_training_job(
+            job_details = self.sagemaker_session.sagemaker_client.describe_training_job(
                 TrainingJobName=self.latest_training_job.name
-            )["ModelArtifacts"]["S3ModelArtifacts"]
-        else:
-            logger.warning(
-                "No finished training job found associated with this estimator. Please make sure "
-                "this estimator is only used for building workflow config"
             )
-            model_uri = os.path.join(
-                self.output_path, self._current_job_name, "output", "model.tar.gz"
+            model_uri = job_details["ModelArtifacts"]["S3ModelArtifacts"]
+            compression_type = job_details.get("OutputDataConfig", {}).get(
+                "CompressionType", "GZIP"
             )
+            if compression_type == "GZIP":
+                return model_uri
+            # fail fast if we don't recognize training output compression type
+            if compression_type not in {"GZIP", "NONE"}:
+                raise ValueError(
+                    f'Unrecognized training job output data compression type "{compression_type}"'
+                )
+            # model data is in uncompressed form NOTE SageMaker Hosting mandates presence of
+            # trailing forward slash in S3 model data URI, so append one if necessary.
+            if not model_uri.endswith("/"):
+                model_uri += "/"
+            return {
+                "S3DataSource": {
+                    "S3Uri": model_uri,
+                    "S3DataType": "S3Prefix",
+                    "CompressionType": "None",
+                }
+            }
+
+        logger.warning(
+            "No finished training job found associated with this estimator. Please make sure "
+            "this estimator is only used for building workflow config"
+        )
+        model_uri = os.path.join(self.output_path, self._current_job_name, "output", "model.tar.gz")
         return model_uri
 
     @abstractmethod

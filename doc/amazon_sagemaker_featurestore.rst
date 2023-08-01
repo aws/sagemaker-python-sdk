@@ -202,6 +202,7 @@ location of your offline store.
        role_arn = role,
        s3_uri = offline_feature_store_bucket,
        enable_online_store = True,
+       ttl_duration = None,
        online_store_kms_key_id = None,
        offline_store_kms_key_id = None,
        disable_glue_table_creation = False,
