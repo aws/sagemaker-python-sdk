@@ -1,5 +1,27 @@
 # Changelog
 
+## v2.174.0 (2023-08-02)
+
+### Features
+
+ * meta llama fine tuning
+ * support online store ttl for records
+ * Deploy uncompressed ML model from S3 to SageMaker Hosting endpoints
+ * AutoGluon 0.8.2 image_uris update
+
+### Bug Fixes and Other Changes
+
+ * [Feature] Propagate tags to lineage resources
+ * excessive jumpstart logging
+ * chore: jumpstart deprecation messages
+ * build(deps): bump pygments from 2.11.2 to 2.15.0 in /requirements/tox
+ * Remove deleted notebook tests from test confg
+ * chore: add jumpstart llama 2 tests
+
+### Documentation Changes
+
+ * add smp class for supporting flash attn
+
 ## v2.173.0 (2023-07-15)
 
 ### Features
