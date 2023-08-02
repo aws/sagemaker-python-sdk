@@ -11,7 +11,6 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """This module imports all JumpStart artifact functions from the respective sub-module."""
-from sagemaker.jumpstart.artifacts.prepack import _model_supports_prepacked_inference  # noqa: F401
 from sagemaker.jumpstart.artifacts.resource_names import (  # noqa: F401
     _retrieve_resource_name_base,
 )
@@ -19,8 +18,14 @@ from sagemaker.jumpstart.artifacts.incremental_training import (  # noqa: F401
     _model_supports_incremental_training,
 )
 from sagemaker.jumpstart.artifacts.image_uris import _retrieve_image_uri  # noqa: F401
-from sagemaker.jumpstart.artifacts.script_uris import _retrieve_script_uri  # noqa: F401
-from sagemaker.jumpstart.artifacts.model_uris import _retrieve_model_uri  # noqa: F401
+from sagemaker.jumpstart.artifacts.script_uris import (  # noqa: F401
+    _retrieve_script_uri,
+    _model_supports_inference_script_uri,
+)
+from sagemaker.jumpstart.artifacts.model_uris import (  # noqa: F401
+    _retrieve_model_uri,
+    _model_supports_training_model_uri,
+)
 from sagemaker.jumpstart.artifacts.hyperparameters import (  # noqa: F401
     _retrieve_default_hyperparameters,
 )
@@ -52,4 +57,7 @@ from sagemaker.jumpstart.artifacts.predictors import (  # noqa: F401
     _retrieve_supported_accept_types,
     _retrieve_supported_content_types,
 )
-from sagemaker.jumpstart.artifacts.model_packages import _retrieve_model_package_arn  # noqa: F401
+from sagemaker.jumpstart.artifacts.model_packages import (  # noqa: F401
+    _retrieve_model_package_arn,
+    _retrieve_model_package_model_artifact_s3_uri,
+)
