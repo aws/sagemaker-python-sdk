@@ -28,6 +28,7 @@ from sagemaker.experiments.trial_component import _TrialComponent
 from sagemaker.experiments._api_types import _TrialComponentStatusType
 
 from sagemaker.remote_function import remote
+from sagemaker.remote_function.spark_config import SparkConfig
 from sagemaker.remote_function.runtime_environment.runtime_environment_manager import (
     RuntimeEnvironmentError,
 )
@@ -600,6 +601,33 @@ def test_decorator_pre_execution_script_error(
         assert "line 2: bws: command not found" in str(e)
 
 
+@pytest.mark.skip
+def test_decorator_with_spark_job(sagemaker_session, cpu_instance_type):
+    @remote(
+        role=ROLE,
+        instance_type=cpu_instance_type,
+        sagemaker_session=sagemaker_session,
+        keep_alive_period_in_seconds=60,
+        spark_config=SparkConfig(
+            configuration=[
+                {
+                    "Classification": "spark-defaults",
+                    "Properties": {"spark.app.name", "remote-spark-test"},
+                }
+            ]
+        ),
+    )
+    def test_spark_transform():
+        from pyspark.sql import SparkSession
+
+        spark = SparkSession.builder.getOrCreate()
+
+        assert spark.conf.get(spark.app.name) == "remote-spark-test"
+
+    test_spark_transform()
+
+
+@pytest.mark.skip
 def test_decorator_auto_capture(sagemaker_session, auto_capture_test_container):
     """
     This test runs a docker container. The Container invocation will execute a python script

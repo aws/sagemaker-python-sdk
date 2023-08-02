@@ -38,10 +38,9 @@ from sagemaker.jumpstart.types import (
     JumpStartVersionedModelId,
 )
 from sagemaker.session import Session
+from sagemaker.config import load_sagemaker_config
 from sagemaker.utils import resolve_value_from_config
 from sagemaker.workflow import is_pipeline_variable
-
-LOGGER = logging.getLogger(__name__)
 
 
 def get_jumpstart_launched_regions_message() -> str:
@@ -78,7 +77,7 @@ def get_jumpstart_content_bucket(
         and len(os.environ[constants.ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE]) > 0
     ):
         bucket_override = os.environ[constants.ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE]
-        LOGGER.info("Using JumpStart bucket override: '%s'", bucket_override)
+        constants.JUMPSTART_LOGGER.info("Using JumpStart bucket override: '%s'", bucket_override)
         return bucket_override
     try:
         return constants.JUMPSTART_REGION_NAME_TO_LAUNCHED_REGION_DICT[region].content_bucket
@@ -342,6 +341,39 @@ def update_inference_tags_with_jumpstart_training_tags(
     return inference_tags
 
 
+def emit_logs_based_on_model_specs(model_specs: JumpStartModelSpecs, region: str) -> None:
+    """Emits logs based on model specs and region."""
+
+    if model_specs.hosting_eula_key:
+        constants.JUMPSTART_LOGGER.info(
+            "Model '%s' requires accepting end-user license agreement (EULA). "
+            "See https://%s.s3.%s.amazonaws.com%s/%s for terms of use.",
+            model_specs.model_id,
+            get_jumpstart_content_bucket(region=region),
+            region,
+            ".cn" if region.startswith("cn-") else "",
+            model_specs.hosting_eula_key,
+        )
+
+    if model_specs.deprecated:
+        deprecated_message = model_specs.deprecated_message or (
+            "Using deprecated JumpStart model "
+            f"'{model_specs.model_id}' and version '{model_specs.version}'."
+        )
+
+        constants.JUMPSTART_LOGGER.warning(deprecated_message)
+
+    if model_specs.deprecate_warn_message:
+        constants.JUMPSTART_LOGGER.warning(model_specs.deprecate_warn_message)
+
+    if model_specs.inference_vulnerable or model_specs.training_vulnerable:
+        constants.JUMPSTART_LOGGER.warning(
+            "Using vulnerable JumpStart model '%s' and version '%s'.",
+            model_specs.model_id,
+            model_specs.version,
+        )
+
+
 def verify_model_region_and_return_specs(
     model_id: Optional[str],
     version: Optional[str],
@@ -403,8 +435,9 @@ def verify_model_region_and_return_specs(
 
     if model_specs.deprecated:
         if not tolerate_deprecated_model:
-            raise DeprecatedJumpStartModelError(model_id=model_id, version=version)
-        LOGGER.warning("Using deprecated JumpStart model '%s' and version '%s'.", model_id, version)
+            raise DeprecatedJumpStartModelError(
+                model_id=model_id, version=version, message=model_specs.deprecated_message
+            )
 
     if scope == constants.JumpStartScriptScope.INFERENCE.value and model_specs.inference_vulnerable:
         if not tolerate_vulnerable_model:
@@ -414,9 +447,6 @@ def verify_model_region_and_return_specs(
                 vulnerabilities=model_specs.inference_vulnerabilities,
                 scope=constants.JumpStartScriptScope.INFERENCE,
             )
-        LOGGER.warning(
-            "Using vulnerable JumpStart model '%s' and version '%s' (inference).", model_id, version
-        )
 
     if scope == constants.JumpStartScriptScope.TRAINING.value and model_specs.training_vulnerable:
         if not tolerate_vulnerable_model:
@@ -426,9 +456,6 @@ def verify_model_region_and_return_specs(
                 vulnerabilities=model_specs.training_vulnerabilities,
                 scope=constants.JumpStartScriptScope.TRAINING,
             )
-        LOGGER.warning(
-            "Using vulnerable JumpStart model '%s' and version '%s' (training).", model_id, version
-        )
 
     return model_specs
 
@@ -443,69 +470,80 @@ def update_dict_if_key_not_present(
     return dict_to_update
 
 
-def resolve_model_intelligent_default_field(
+def resolve_model_sagemaker_config_field(
     field_name: str,
     field_val: Optional[Any],
     sagemaker_session: Session,
     default_value: Optional[str] = None,
 ) -> Any:
-    """Given a field name, checks if there are intelligent defaults to set.
+    """Given a field name, checks if there is a sagemaker config value to set.
 
     For the role field, which is customer-supplied, we allow ``field_val`` to take precedence
-    over intelligent defaults. For all other fields, intelligent defaults takes precedence
+    over sagemaker config values. For all other fields, sagemaker config values take precedence
     over the JumpStart default fields.
     """
+    # In case, sagemaker_session is None, get sagemaker_config from load_sagemaker_config()
+    # to resolve value from config for the respective field_name parameter
+    _sagemaker_config = load_sagemaker_config() if (sagemaker_session is None) else None
 
     # We allow customers to define a role which takes precedence
-    # over intelligent defaults
+    # over the one defined in sagemaker config
     if field_name == "role":
         return resolve_value_from_config(
             direct_input=field_val,
             config_path=MODEL_EXECUTION_ROLE_ARN_PATH,
             default_value=default_value or sagemaker_session.get_caller_identity_arn(),
             sagemaker_session=sagemaker_session,
+            sagemaker_config=_sagemaker_config,
         )
 
     # JumpStart Models have certain default field values. We want
-    # intelligent defaults to take priority over the model-specific defaults.
+    # sagemaker config values to take priority over the model-specific defaults.
     if field_name == "enable_network_isolation":
         resolved_val = resolve_value_from_config(
             direct_input=None,
             config_path=MODEL_ENABLE_NETWORK_ISOLATION_PATH,
             sagemaker_session=sagemaker_session,
             default_value=default_value,
+            sagemaker_config=_sagemaker_config,
         )
         return resolved_val if resolved_val is not None else field_val
 
-    # field is not covered by intelligent defaults so return as is
+    # field is not covered by sagemaker config so return as is
     return field_val
 
 
-def resolve_estimator_intelligent_default_field(
+def resolve_estimator_sagemaker_config_field(
     field_name: str,
     field_val: Optional[Any],
     sagemaker_session: Session,
     default_value: Optional[str] = None,
 ) -> Any:
-    """Given a field name, checks if there are intelligent defaults to set.
+    """Given a field name, checks if there is a sagemaker config value to set.
 
     For the role field, which is customer-supplied, we allow ``field_val`` to take precedence
-    over intelligent defaults. For all other fields, intelligent defaults takes precedence
+    over sagemaker config values. For all other fields, sagemaker config values take precedence
     over the JumpStart default fields.
     """
 
+    # Workaround for config injection if sagemaker_session is None, since in
+    # that case sagemaker_session will not be initialized until
+    # `_init_sagemaker_session_if_does_not_exist` is called later
+    _sagemaker_config = load_sagemaker_config() if (sagemaker_session is None) else None
+
     # We allow customers to define a role which takes precedence
-    # over intelligent defaults
+    # over the one defined in sagemaker config
     if field_name == "role":
         return resolve_value_from_config(
             direct_input=field_val,
             config_path=TRAINING_JOB_ROLE_ARN_PATH,
             default_value=default_value or sagemaker_session.get_caller_identity_arn(),
             sagemaker_session=sagemaker_session,
+            sagemaker_config=_sagemaker_config,
         )
 
     # JumpStart Estimators have certain default field values. We want
-    # intelligent defaults to take priority over the model-specific defaults.
+    # sagemaker config values to take priority over the model-specific defaults.
     if field_name == "enable_network_isolation":
 
         resolved_val = resolve_value_from_config(
@@ -513,6 +551,7 @@ def resolve_estimator_intelligent_default_field(
             config_path=TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
             sagemaker_session=sagemaker_session,
             default_value=default_value,
+            sagemaker_config=_sagemaker_config,
         )
         return resolved_val if resolved_val is not None else field_val
 
@@ -523,17 +562,12 @@ def resolve_estimator_intelligent_default_field(
             config_path=TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
             sagemaker_session=sagemaker_session,
             default_value=default_value,
+            sagemaker_config=_sagemaker_config,
         )
         return resolved_val if resolved_val is not None else field_val
 
-    # field is not covered by intelligent defaults so return as is
+    # field is not covered by sagemaker config so return as is
     return field_val
-
-
-def stringify_object(obj: Any) -> str:
-    """Returns string representation of object, returning only non-None fields."""
-    non_none_atts = {key: value for key, value in obj.__dict__.items() if value is not None}
-    return f"{type(obj).__name__}: {str(non_none_atts)}"
 
 
 def is_valid_model_id(

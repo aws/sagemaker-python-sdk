@@ -38,6 +38,7 @@ def sagemaker_session():
         config=None,
         local_mode=False,
         settings=SessionSettings(),
+        default_bucket_prefix=None,
     )
     session_mock.expand_role.return_value = ROLE
 

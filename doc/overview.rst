@@ -579,14 +579,14 @@ Here is an example:
 Use Built-in Algorithms with Pre-trained Models in SageMaker Python SDK
 ***********************************************************************
 
-SageMaker Python SDK provides built-in algorithms with pre-trained models from popular open source model
-hubs, such as TensorFlow Hub, Pytorch Hub, and HuggingFace. Customer can deploy these pre-trained models
+The SageMaker Python SDK provides built-in algorithms with pre-trained models from popular open source model
+hubs, such as TensorFlow Hub, Pytorch Hub, and HuggingFace. You can deploy these pre-trained models
 as-is or first fine-tune them on a custom dataset and then deploy to a SageMaker endpoint for inference.
 
 
-SageMaker SDK built-in algorithms allow customers access pre-trained models using model ids and model
-versions. The ‘pre-trained model’ table below provides list of models with information useful in
-selecting the correct model id and corresponding parameters. These models are also available through
+SageMaker SDK built-in algorithms allow customers to access pre-trained models using model IDs and model
+versions. The ‘pre-trained model’ table below provides a list of models with useful information for
+selecting the correct model ID and corresponding parameters. These models are also available through
 the `JumpStart UI in SageMaker Studio <https://docs.aws.amazon.com/sagemaker/latest/dg/studio-jumpstart.html>`__.
 
 
@@ -598,6 +598,16 @@ the `JumpStart UI in SageMaker Studio <https://docs.aws.amazon.com/sagemaker/lat
 Example notebooks
 =================
 
+Explore example notebooks to get started with pretrained models using the SageMaker Python SDK.
+
+Example notebooks for foundation models
+---------------------------------------
+All JumpStart foundation models are available to use programmatically with the SageMaker Python SDK.
+For a list of available example notebooks related to JumpStart foundation models, see
+`JumpStart foundation models example notebooks <https://docs.aws.amazon.com/sagemaker/latest/dg/jumpstart-foundation-models.html#jumpstart-foundation-models-example-notebooks>`__.
+
+Example notebooks for task-based models
+---------------------------------------
 SageMaker built-in algorithms with pre-trained models support 15 different machine learning problem types.
 Below is a list of all the supported problem types with a link to a Jupyter notebook that provides example usage.
 
@@ -629,108 +639,97 @@ Tabular
     - `Tabular Regression (TabTransformer) <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/tabtransformer_tabular/Amazon_Tabular_Regression_TabTransformer.ipynb>`__
 
 
-The following topic give you information about JumpStart components,
-as well as how to use the SageMaker Python SDK for these workflows.
-
 Prerequisites
 =============
 
 .. container::
 
-   -  You must set up AWS credentials following the steps
-      in `Quick configuration with aws configure <https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-quickstart.html#cli-configure-quickstart-config>`__.
+   -  You must set up AWS credentials. For more information, see `Configuring the AWS CLI <https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-quickstart.html#cli-configure-quickstart-config>`__.
    -  Your IAM role must allow connection to Amazon SageMaker and
       Amazon S3. For more information about IAM role permissions,
       see `Policies and permissions in IAM <https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html>`__.
 
-Built-in Components
-===================
 
-The following sections give information about the main built-in
-components and their function.
-
-Pre-trained models
-------------------
-
-SageMaker maintains a model zoo of over 300 models from popular open source model hubs, such as
-TensorFlow Hub, Pytorch Hub, and HuggingFace. You can use the SageMaker Python SDK to fine-tune
-a model on your own dataset or deploy it directly to a SageMaker endpoint for inference.
-
-Model artifacts are stored as tarballs in a S3 bucket. Each model is versioned and contains a
-unique ID which can be used to retrieve the model URI. The following information describes the
-``model_id`` and ``model_version`` needed to retrieve the URI.
-
-.. container::
-
-   -  ``model_id``: A unique identifier for the JumpStart model.
-   -  ``model_version``: The version of the specifications for the
-      model. To use the latest version, enter ``"*"``. This is a
-      required parameter.
-
-To retrieve a model, first select a ``model ID`` and ``version`` from
-the :doc:`available models <./doc_utils/pretrainedmodels>`.
-
-.. code:: python
-
-   model_id, model_version = "huggingface-spc-bert-base-cased", "1.0.0"
-   scope = "training" # or "inference"
-
-Then use those values to retrieve the model as follows.
-
-.. code:: python
-
-   from sagemaker import model_uris
-
-   model_uri = model_uris.retrieve(
-       model_id=model_id, model_version=model_version, model_scope=scope
-   )
-
-Model scripts
--------------
-
-To adapt pre-trained models for SageMaker, a custom script is needed to perform training
-or inference. SageMaker maintains a suite of scripts used for each of the models in the
-S3 bucket, which can be accessed using the SageMaker Python SDK Use the ``model_id`` and
-``version`` of the corresponding model to retrieve the related script as follows.
-
-.. code:: python
-
-   from sagemaker import script_uris
-
-   script_uri = script_uris.retrieve(
-       model_id=model_id, model_version=model_version, script_scope=scope
-   )
-
-Model images
--------------
-
-A Docker image is required to perform training or inference on all
-SageMaker models. SageMaker relies on Docker images from the
-following repos https://github.com/aws/deep-learning-containers,
-https://github.com/aws/sagemaker-xgboost-container,
-and https://github.com/aws/sagemaker-scikit-learn-container. Use
-the ``model_id`` and ``version`` of the corresponding model to
-retrieve the related image as follows.
-
-.. code:: python
-
-   from sagemaker import image_uris
-
-   image_uri = image_uris.retrieve(
-       region=None,
-       framework=None,
-       image_scope=scope,
-       model_id=model_id,
-       model_version=model_version,
-       instance_type="ml.m5.xlarge",
-   )
-
-Deploy a  Pre-Trained Model Directly to a SageMaker Endpoint
+Deploy a Pre-Trained Model Directly to a SageMaker Endpoint
 ============================================================
 
+You can deploy a built-in algorithm or pre-trained model to a SageMaker endpoint in just a few lines of code using the SageMaker Python SDK.
+
+First, find the model ID for the model of your choice in the :doc:`Built-in Algorithms with pre-trained Model Table<./doc_utils/pretrainedmodels>`.
+
+Low-code deployment with the JumpStartModel class
+-------------------------------------------------
+
+Using the model ID, define your model as a JumpStart model. Use the ``deploy`` method to automatically deploy your model for inference.
+In this example, we use the FLAN-T5 XL model from HuggingFace.
+
+.. code:: python
+
+    from sagemaker.jumpstart.model import JumpStartModel
+
+    model_id = "huggingface-text2text-flan-t5-xl"
+    my_model = JumpStartModel(model_id=model_id)
+    predictor = my_model.deploy()
+
+You can then run inference with the deployed model using the ``predict`` method.
+
+.. code:: python
+
+    question = "What is Southern California often abbreviated as?"
+    response = predictor.predict(question)
+    print(response)
+
+.. note::
+   This example uses the foundation model FLAN-T5 XL, which is suitable for a wide range of text generation use cases including question answering,
+   summarization, chatbot creation, and more. For more information about model use cases, see
+   `Choose a foundation model <https://docs.aws.amazon.com/en_us/sagemaker/latest/dg/jumpstart-foundation-models-choose.html>`__ in the *Amazon SageMaker Developer Guide*.
+
+For more information about the ``JumpStartModel`` class and its parameters,
+see `JumpStartModel <https://sagemaker.readthedocs.io/en/stable/api/inference/model.html#sagemaker.jumpstart.model.JumpStartModel>`__.
+
+Additional low-code deployment utilities
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+You can optionally include specific model versions or instance types when deploying a pretrained model
+using the ``JumpStartModel`` class. All JumpStart models have a default instance type.
+Retrieve the default deployment instance type using the following code:
+
+.. code:: python
+
+    from sagemaker import instance_types
+
+    instance_type = instance_types.retrieve_default(
+        model_id=model_id,
+        model_version=model_version,
+        scope="inference")
+    print(instance_type)
+
+See all supported instance types for a given JumpStart model with the ``instance_types.retrieve()`` method.
+
+To check valid data input and output formats for inference, you can use the ``retrieve_options()`` method
+from the ``Serializers`` and ``Deserializers`` classes.
+
+.. code:: python
+
+    print(sagemaker.serializers.retrieve_options(model_id=model_id, model_version=model_version))
+    print(sagemaker.deserializers.retrieve_options(model_id=model_id, model_version=model_version))
+
+Similarly, you can use the ``retrieve_options()`` method
+to check the supported content and accept types for a model.
+
+.. code:: python
+
+    print(sagemaker.content_types.retrieve_options(model_id=model_id, model_version=model_version))
+    print(sagemaker.accept_types.retrieve_options(model_id=model_id, model_version=model_version))
+
+For more information about utilities, see `Utility APIs <https://sagemaker.readthedocs.io/en/stable/api/utility/index.html>`__.
+
+Deploy a pre-trained model using the SageMaker Model class
+----------------------------------------------------------
+
 In this section, you learn how to take a pre-trained model and deploy
-it directly to a SageMaker Endpoint. This is the fastest way to start
-machine learning with a pre-trained model. The following
+it directly to a SageMaker Endpoint and understand what happens behind
+the scenes if you deployed your model as a ``JumpStartModel``. The following
 assumes familiarity with `SageMaker
 models <https://sagemaker.readthedocs.io/en/stable/api/inference/model.html>`__
 and their deploy functions.
@@ -808,8 +807,8 @@ the endpoint, endpoint config and model resources will be prefixed with
 ``sagemaker-jumpstart``. Refer to the model ``Tags`` to inspect the
 model artifacts involved in the model creation.
 
-Perform Inference
------------------
+Perform inference
+^^^^^^^^^^^^^^^^^
 
 Finally, use the ``predictor`` instance to query your endpoint. For
 ``catboost-classification-model``, for example, the predictor accepts
@@ -830,8 +829,90 @@ tune the model for your use case with your custom dataset. The following assumes
 familiarity with `SageMaker training jobs and their
 architecture <https://docs.aws.amazon.com/sagemaker/latest/dg/how-it-works-training.html>`__.
 
-Fine-tune a Pre-trained Model on a Custom Dataset
--------------------------------------------------
+Low-code fine-tuning with the JumpStartEstimator class
+------------------------------------------------------
+
+You can fine-tune a built-in algorithm or pre-trained model in just a few lines of code using the SageMaker Python SDK.
+
+First, find the model ID for the model of your choice in the :doc:`Built-in Algorithms with pre-trained Model Table<./doc_utils/pretrainedmodels>`.
+
+Using the model ID, define your training job as a JumpStart estimator. Run ``estimator.fit()`` on your model, pointing to the training data to use for fine-tuning.
+Then, use the ``deploy`` method to automatically deploy your model for inference. In this example, we use the GPT-J 6B model from HuggingFace.
+
+.. code:: python
+
+    from sagemaker.jumpstart.estimator import JumpStartEstimator
+
+    model_id = "huggingface-textgeneration1-gpt-j-6b"
+    estimator = JumpStartEstimator(model_id=model_id)
+    estimator.fit(
+        {"train": training_dataset_s3_path, "validation": validation_dataset_s3_path}
+    )
+    predictor = estimator.deploy()
+
+You can then run inference with the deployed model using the ``predict`` method.
+
+.. code:: python
+
+    question = "What is Southern California often abbreviated as?"
+    response = predictor.predict(question)
+    print(response)
+
+.. note::
+   This example uses the foundation model GPT-J 6B, which is suitable for a wide range of text generation use cases including question answering,
+   named entity recognition, summarization, and more. For more information about model use cases, see
+   `Choose a foundation model <https://docs.aws.amazon.com/en_us/sagemaker/latest/dg/jumpstart-foundation-models-choose.html>`__ in the *Amazon SageMaker Developer Guide*.
+
+You can optionally specify model versions or instance types when creating your ``JumpStartEstimator``. For more information about the ``JumpStartEstimator`` class and its parameters,
+see `JumpStartEstimator <https://sagemaker.readthedocs.io/en/stable/api/inference/model.html#sagemaker.jumpstart.estimator.JumpStartEstimator>`__.
+
+Additional low-code training utilities
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+You can optionally include specific model versions or instance types when fine-tuning a pretrained model
+using the ``JumpStartEstimator`` class. All JumpStart models have a default instance type.
+Retrieve the default training instance type using the following code:
+
+.. code:: python
+
+    from sagemaker import instance_types
+
+    instance_type = instance_types.retrieve_default(
+        model_id=model_id,
+        model_version=model_version,
+        scope="training")
+    print(instance_type)
+
+See all supported instance types for a given JumpStart model with the ``instance_types.retrieve()`` method.
+
+To check the default hyperparameters used for training, you can use the ``retrieve_default()`` method
+from the ``hyperparameters`` class.
+
+.. code:: python
+
+    from sagemaker import hyperparameters
+
+    my_hyperparameters = hyperparameters.retrieve_default(model_id=model_id, model_version=model_version)
+    print(my_hyperparameters)
+
+    # Optionally override default hyperparameters for fine-tuning
+    my_hyperparameters["epoch"] = "3"
+    my_hyperparameters["per_device_train_batch_size"] = "4"
+
+    # Optionally validate hyperparameters for the model
+    hyperparameters.validate(model_id=model_id, model_version=model_version, hyperparameters=my_hyperparameters)
+
+You can also check the default metric definitions:
+
+.. code:: python
+
+    print(metric_definitions.retrieve_default(model_id=model_id, model_version=model_version))
+
+For more information about inference and utilities, see `Inference APIs <https://sagemaker.readthedocs.io/en/stable/api/inference/index.html>`__
+and `Utility APIs <https://sagemaker.readthedocs.io/en/stable/api/utility/index.html>`__.
+
+Fine-tune a pre-trained model on a custom dataset using the SageMaker Estimator class
+-------------------------------------------------------------------------------------
 
 To begin, select a ``model_id`` and ``version`` from the pre-trained
 models table, as well as a model scope. In this case, you begin by
@@ -921,9 +1002,8 @@ amount of time. The time that it takes varies depending on the
 hyperparameters, dataset, and model you use and can range from 15
 minutes to 12 hours.
 
-Deploy your Trained Model to a SageMaker Endpoint
--------------------------------------------------
-
+Deploy your trained model to a SageMaker Endpoint
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Now that you’ve created your training job, use your
 ``estimator`` instance to create a SageMaker Endpoint that you can
@@ -968,8 +1048,8 @@ took your model to train.
        enable_network_isolation=True,
    )
 
-Perform Inference on a SageMaker Endpoint
------------------------------------------
+Perform inference on a SageMaker Endpoint
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Finally, use the ``predictor`` instance to query your endpoint. For
 ``huggingface-spc-bert-base-cased``, the predictor accepts an array
@@ -984,6 +1064,95 @@ the
    data = ["this is the best day of my life", "i am tired"]
 
    predictor.predict(json.dumps(data).encode("utf-8"), {"ContentType": "application/list-text"})
+
+Built-in Components
+===================
+
+The following section provides information about the main components of built-in algorithms
+including pretrained models, model scripts, and model images.
+
+Pre-trained models
+------------------
+
+SageMaker maintains a model zoo of over 600 models from popular open source model hubs, such as
+TensorFlow Hub, Pytorch Hub, and HuggingFace. You can use the SageMaker Python SDK to fine-tune
+a model on your own dataset or deploy it directly to a SageMaker endpoint for inference.
+
+Model artifacts are stored as tarballs in an S3 bucket. Each model is versioned and contains a
+unique ID which can be used to retrieve the model URI. The following information describes the
+``model_id`` and ``model_version`` needed to retrieve the URI.
+
+.. container::
+
+   -  ``model_id``: A unique identifier for the JumpStart model.
+   -  ``model_version``: The version of the specifications for the
+      model. To use the latest version, enter ``"*"``. This is a
+      required parameter.
+
+To retrieve a model, first select a ``model ID`` and ``version`` from
+the :doc:`available models <./doc_utils/pretrainedmodels>`.
+
+.. code:: python
+
+   model_id, model_version = "huggingface-spc-bert-base-cased", "1.0.0"
+   scope = "training" # or "inference"
+
+Then use those values to retrieve the model as follows.
+
+.. code:: python
+
+   from sagemaker import model_uris
+
+   model_uri = model_uris.retrieve(
+       model_id=model_id, model_version=model_version, model_scope=scope
+   )
+
+Model scripts
+-------------
+
+To adapt pre-trained models for SageMaker, a custom script is needed to perform training
+or inference. SageMaker maintains a suite of scripts used for each of the models in the
+S3 bucket, which can be accessed using the SageMaker Python SDK Use the ``model_id`` and
+``version`` of the corresponding model to retrieve the related script as follows.
+
+.. code:: python
+
+   from sagemaker import script_uris
+
+   script_uri = script_uris.retrieve(
+       model_id=model_id, model_version=model_version, script_scope=scope
+   )
+
+Model images
+-------------
+
+A Docker image is required to perform training or inference on all
+SageMaker models. SageMaker relies on Docker images from the
+following repos https://github.com/aws/deep-learning-containers,
+https://github.com/aws/sagemaker-xgboost-container,
+and https://github.com/aws/sagemaker-scikit-learn-container. Use
+the ``model_id`` and ``version`` of the corresponding model to
+retrieve the related image as follows. You can also use the ``instance_types``
+utility to retrieve and use the default instance type for the model.
+
+.. code:: python
+
+   from sagemaker import image_uris, instance_types
+
+    instance_type = instance_types.retrieve_default(
+        model_id=model_id,
+        model_version=model_version,
+        scope=scope
+    )
+
+    image_uri = image_uris.retrieve(
+       region=None,
+       framework=None,
+       image_scope=scope,
+       model_id=model_id,
+       model_version=model_version,
+       instance_type=instance_type,
+    )
 
 Appendix
 ========
@@ -1381,11 +1550,14 @@ them to your local environment. This is a great way to test your deep learning s
 managed training or hosting environments. Local Mode is supported for frameworks images (TensorFlow, MXNet, Chainer, PyTorch,
 and Scikit-Learn) and images you supply yourself.
 
-You can install all necessary for this feature dependencies using pip:
+You can install necessary dependencies for this feature using pip; local mode also requires docker-compose which you can
+install using the following steps (More info - https://github.com/docker/compose#where-to-get-docker-compose ):
 
 ::
 
     pip install 'sagemaker[local]' --upgrade
+    curl -L "https://github.com/docker/compose/releases/download/v2.7.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+    chmod +x /usr/local/bin/docker-compose
 
 If you want to keep everything local, and not use Amazon S3 either, you can enable "local code" in one of two ways:
 
@@ -1487,7 +1659,7 @@ Here is an end-to-end example:
 
     mxnet_estimator.fit('file:///tmp/my_training_data')
     transformer = mxnet_estimator.transformer(1, 'local', assemble_with='Line', max_payload=1)
-    transformer.transform('s3://my/transform/data, content_type='text/csv', split_type='Line')
+    transformer.transform('s3://my/transform/data', content_type='text/csv', split_type='Line')
     transformer.wait()
 
     # Deletes the SageMaker model
@@ -1864,7 +2036,7 @@ create these configuration files and populate them with default
 values defined for their desired API parameters. Your configuration
 file should adhere to the structure outlined in the following sample
 config file. This config outlines some of the parameters that you can
-set default values for. For the full schema, see ``sagemaker.config.config_schema.SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA``.
+set default values for. For the full schema, see `sagemaker.config.config_schema.SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA <https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/config/config_schema.py>`_.
 
 ::
 
@@ -1872,6 +2044,37 @@ set default values for. For the full schema, see ``sagemaker.config.config_schem
     CustomParameters:
       AnyStringKey: 'AnyStringValue'
     SageMaker:
+      PythonSDK:
+        Modules:
+          Session:
+            DefaultS3Bucket: 'default_s3_bucket'
+            DefaultS3ObjectKeyPrefix: 'key_prefix'
+          Estimator:
+            DebugHookConfig: true
+          RemoteFunction:
+            Dependencies: 'path/to/requirements.txt'
+            EnableInterContainerTrafficEncryption: true
+            EnvironmentVariables: {'EnvVarKey': 'EnvVarValue'}
+            ImageUri: '555555555555.dkr.ecr.us-west-2.amazonaws.com/my-image:latest'
+            IncludeLocalWorkDir: true
+            InstanceType: 'ml.m5.large'
+            JobCondaEnvironment: 'your_conda_env'
+            PreExecutionCommands:
+              - 'command_1'
+              - 'command_2'
+            PreExecutionScript: 'path/to/script.sh'
+            RoleArn: 'arn:aws:iam::555555555555:role/MyRole'
+            S3KmsKeyId: 's3kmskeyid'
+            S3RootUri: 's3://my-bucket/my-project'
+            Tags:
+              - Key: 'tag_key'
+                Value: 'tag_value'
+            VolumeKmsKeyId: 'volumekmskeyid1'
+            VpcConfig:
+              SecurityGroupIds:
+                - 'sg123'
+              Subnets:
+                - 'subnet-1234'
       FeatureGroup:
         # https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateFeatureGroup.html
         OnlineStoreConfig:
@@ -1888,11 +2091,14 @@ set default values for. For the full schema, see ``sagemaker.config.config_schem
       # https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateMonitoringSchedule.html
         MonitoringScheduleConfig:
           MonitoringJobDefinition:
+            Environment:
+              'var1': 'value1'
+              'var2': 'value2'
             MonitoringOutputConfig:
               KmsKeyId: 'kmskeyid3'
             MonitoringResources:
               ClusterConfig:
-                VolumeKmsKeyId: 'volumekmskeyid1'
+                VolumeKmsKeyId: 'volumekmskeyid2'
             NetworkConfig:
               EnableNetworkIsolation: true
               VpcConfig:
@@ -1904,6 +2110,10 @@ set default values for. For the full schema, see ``sagemaker.config.config_schem
         Tags:
         - Key: 'tag_key'
           Value: 'tag_value'
+      Endpoint:
+        Tags:
+          - Key: "tag_key"
+            Value: "tag_value"
       EndpointConfig:
       # https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateEndpointConfig.html
         AsyncInferenceConfig:
@@ -1912,6 +2122,9 @@ set default values for. For the full schema, see ``sagemaker.config.config_schem
         DataCaptureConfig:
           KmsKeyId: 'kmskeyid5'
         KmsKeyId: 'kmskeyid6'
+        ProductionVariants:
+          - CoreDumpConfig:
+              KmsKeyId: 'kmskeyid7'
         Tags:
         - Key: 'tag_key'
           Value: 'tag_value'
@@ -1919,14 +2132,14 @@ set default values for. For the full schema, see ``sagemaker.config.config_schem
       # https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateAutoMLJob.html
         AutoMLJobConfig:
           SecurityConfig:
-            VolumeKmsKeyId: 'volumekmskeyid2'
+            VolumeKmsKeyId: 'volumekmskeyid3'
             VpcConfig:
               SecurityGroupIds:
                 - 'sg123'
               Subnets:
                 - 'subnet-1234'
         OutputDataConfig:
-          KmsKeyId: 'kmskeyid7'
+          KmsKeyId: 'kmskeyid8'
         RoleArn: 'arn:aws:iam::555555555555:role/IMRole'
         Tags:
         - Key: 'tag_key'
@@ -1934,16 +2147,19 @@ set default values for. For the full schema, see ``sagemaker.config.config_schem
       TransformJob:
       # https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateTransformJob.html
         DataCaptureConfig:
-          KmsKeyId: 'kmskeyid8'
-        TransformOutput:
           KmsKeyId: 'kmskeyid9'
+        Environment:
+          'var1': 'value1'
+          'var2': 'value2'
+        TransformOutput:
+          KmsKeyId: 'kmskeyid10'
         TransformResources:
-          VolumeKmsKeyId: 'volumekmskeyid3'
+          VolumeKmsKeyId: 'volumekmskeyid4'
       CompilationJob:
       # https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateCompilationJob.html
         OutputConfig:
           # Currently not supported by the SageMaker Python SDK
-          KmsKeyId: 'kmskeyid10'
+          KmsKeyId: 'kmskeyid11'
         RoleArn: 'arn:aws:iam::555555555555:role/IMRole'
         # Currently not supported by the SageMaker Python SDK
         VpcConfig:
@@ -1962,7 +2178,11 @@ set default values for. For the full schema, see ``sagemaker.config.config_schem
           Value: 'tag_value'
       Model:
       # https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateModel.html
-        EnableNetworkIsolation: true
+        Containers:
+          - Environment:
+              'var1': 'value1'
+              'var2': 'value2'
+        EnableNetworkIsolation: true
         ExecutionRoleArn: 'arn:aws:iam::555555555555:role/IMRole'
         VpcConfig:
           SecurityGroupIds:
@@ -1972,8 +2192,28 @@ set default values for. For the full schema, see ``sagemaker.config.config_schem
         Tags:
         - Key: 'tag_key'
           Value: 'tag_value'
+      ModelPackage:
+        InferenceSpecification:
+          Containers:
+            - Environment:
+                'var1': 'value1'
+                'var2': 'value2'
+        ValidationSpecification:
+          ValidationProfiles:
+            - TransformJobDefinition:
+                Environment:
+                  'var1': 'value1'
+                  'var2': 'value2'
+                TransformOutput:
+                  KmsKeyId: 'kmskeyid12'
+                TransformResources:
+                  VolumeKmsKeyId: 'volumekmskeyid5'
+          ValidationRole: 'arn:aws:iam::555555555555:role/IMRole'
       ProcessingJob:
       # https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateProcessingJob.html
+        Environment:
+          'var1': 'value1'
+          'var2': 'value2'
         NetworkConfig:
           EnableNetworkIsolation: true
           VpcConfig:
@@ -1984,15 +2224,15 @@ set default values for. For the full schema, see ``sagemaker.config.config_schem
         ProcessingInputs:
           - DatasetDefinition:
               AthenaDatasetDefinition:
-                KmsKeyId: 'kmskeyid11'
+                KmsKeyId: 'kmskeyid13'
               RedshiftDatasetDefinition:
-                KmsKeyId: 'kmskeyid12'
+                KmsKeyId: 'kmskeyid14'
                 ClusterRoleArn: 'arn:aws:iam::555555555555:role/IMRole'
         ProcessingOutputConfig:
           KmsKeyId: 'kmskeyid13'
         ProcessingResources:
           ClusterConfig:
-            VolumeKmsKeyId: 'volumekmskeyid4'
+            VolumeKmsKeyId: 'volumekmskeyid6'
         RoleArn: 'arn:aws:iam::555555555555:role/IMRole'
         Tags:
         - Key: 'tag_key'
@@ -2000,10 +2240,15 @@ set default values for. For the full schema, see ``sagemaker.config.config_schem
       TrainingJob:
       # https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateTrainingJob.html
         EnableNetworkIsolation: true
+        Environment:
+          'var1': 'value1'
+          'var2': 'value2'
         OutputDataConfig:
           KmsKeyId: 'kmskeyid14'
+        ProfilerConfig:
+          DisableProfiler: false
         ResourceConfig:
-          VolumeKmsKeyId: 'volumekmskeyid5'
+          VolumeKmsKeyId: 'volumekmskeyid7'
         RoleArn: 'arn:aws:iam::555555555555:role/IMRole'
         VpcConfig:
           SecurityGroupIds:
@@ -2018,35 +2263,10 @@ set default values for. For the full schema, see ``sagemaker.config.config_schem
         OutputConfig:
           KmsKeyId: 'kmskeyid15'
         RoleArn: 'arn:aws:iam::555555555555:role/IMRole'
+        ResourceKey: 'resourcekmskeyid'
         Tags:
         - Key: 'tag_key'
           Value: 'tag_value'
-      PythonSDK:
-        Modules:
-          RemoteFunction:
-            Dependencies: 'path/to/requirements.txt'
-            EnableInterContainerTrafficEncryption: true
-            EnvironmentVariables: {'EnvVarKey': 'EnvVarValue'}
-            ImageUri: '555555555555.dkr.ecr.us-west-2.amazonaws.com/my-image:latest'
-            IncludeLocalWorkDir: true
-            InstanceType: 'ml.m5.large'
-            JobCondaEnvironment: 'your_conda_env'
-            PreExecutionCommands:
-              - 'command_1'
-              - 'command_2'
-            PreExecutionScript: 'path/to/script.sh'
-            RoleArn: 'arn:aws:iam::555555555555:role/MyRole'
-            S3KmsKeyId: 'yourkmskeyid'
-            S3RootUri: 's3://my-bucket/my-project'
-            VpcConfig:
-              SecurityGroupIds:
-                - 'sg123'
-              Subnets:
-                - 'subnet-1234'
-            Tags:
-              - Key: 'tag_key'
-                Value: 'tag_value'
-            VolumeKmsKeyId: 'yourkmskeyid'
 
 Configuration file locations
 ============================
@@ -2181,7 +2401,7 @@ The following sections give information about the APIs and parameters
 that the SageMaker Python SDK supports setting defaults for. To set
 defaults for these parameters, create key/value pairs in your
 configuration file as shown in `Configuration file structure`_.
-For the full schema, see ``sagemaker.config.config_schema.SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA``.
+For the full schema, see `sagemaker.config.config_schema.SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA <https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/config/config_schema.py>`_.
 
 List of parameters supported
 ----------------------------
@@ -2189,12 +2409,17 @@ List of parameters supported
 In the supported APIs, only parameters for the following primitive
 types support setting defaults with a configuration file.
 
--  AWS IAM Role ARNs
--  Enable network isolation
 -  Amazon VPC subnets and security groups
+-  AWS IAM Role ARNs
 -  AWS KMS key IDs
--  Tags
+-  Debug Hook Config
+-  Disable Profiler
 -  Enable inter-container traffic encryption
+-  Enable network isolation
+-  Environment Variables
+-  SageMaker Session Default S3 Bucket and Default S3 ObjectKeyPrefix
+-  Tags
+
 
 List of APIs and SDK capabilities supported
 -------------------------------------------
@@ -2214,6 +2439,7 @@ configuration file.
 
 -  Feature Group: ``CreateFeatureGroup``, ``UpdateFeatureGroup``
 -  Monitoring Schedule: ``CreateMonitoringSchedule``, ``UpdateMonitoringSchedule``
+-  Endpoint: ``CreateEndpoint``
 -  Endpoint Config: ``CreateEndpointConfig``, ``UpdateEndpointConfig``
 -  Auto ML: ``CreateAutoMLJob``, ``UpdateAutoMLJob``
 -  Transform Job: ``CreateTransformJob``, ``UpdateTransformJob``
@@ -2223,14 +2449,14 @@ configuration file.
 -  Model Package: ``CreateModelPackage``, ``UpdateModelPackage``
 -  Processing Jobs: ``CreateProcessingJob``, ``UpdateProcessingJob``
 -  Training Job: ``CreateTrainingJob``, ``UpdateTrainingJob``
--  Edge Packaging Job: ``CreateEdgePackagingJob``, ``UpdateEdgePackagingJob``
+-  Edge Packaging Job: ``CreateEdgePackagingJob``
 
 Hyperparameter Tuning Job: Supported indirectly via ``TrainingJob`` API. While this API is not directly supported, it includes the training job definition as a parameter.
 If you provide defaults for this parameter as part of the ``TrainingJob`` API, these defaults are also used for Hyperparameter Tuning Job.
 
-The following goups of SDK capabilities support defaults with a configuration file.
+The following groups of SDK capabilities support defaults with a configuration file.
 
--  Remote Function ``@remote decorator``, ``RemoteExecutor```
+-  Remote Function ``@remote decorator``, ``RemoteExecutor``
 
 Configuration file resolution
 =============================
@@ -2320,6 +2546,32 @@ in the configuration dictionary, the user tag is used and the config tag is
 skipped. This behavior applies to all config keys that follow
 the ``SageMaker.*.Tags`` pattern.
 
+DebuggerHookConfig
+------------------
+
+The SageMaker Python SDK only supports setting a boolean value as the default for the
+``debugger_hook_config`` parameter in the configuration dictionary and does
+not support setting a dictionary as the default value for this parameter.
+
+If the user doesn’t manually specify a value for `DebuggerHookConfig <https://sagemaker.readthedocs.io/en/stable/api/training/debugger.html#sagemaker.debugger.DebuggerHookConfig>`__,
+the default value specified in the configuration dictionary is used.
+
+If the user manually specifies one of the following values for ``DebuggerHookConfig`` without
+passing a value for the ``s3_output_path`` parameter, the SageMaker Python SDK sets the value
+of ``s3_output_path`` to the value specified as part of
+``SageMaker.Modules.Session.DefaultS3Bucket`` in the configuration dictionary.
+
+-  dictionary
+-  True
+
+If the user doesn't provide any value for ``DebuggerHookConfig`` from function input or in the
+configuration dictionary, then the SageMaker Python SDK also sets the value of ``s3_output_path``
+to the value specified as part of ``SageMaker.Modules.Session.DefaultS3Bucket`` in the
+configuration dictionary.
+
+Users can change the default ``s3_output_path`` by specifying a value for that parameter in the
+input dictionary for ``DebuggerHookConfig``.
+
 Object Arrays
 -------------
 
@@ -2332,12 +2584,15 @@ If there are more elements in the array being merged than in the
 existing configuration dictionary, then the size of the array is increased.
 
 -  ``SageMaker.EndpointConfig.ProductionVariants``
+-  ``SageMaker.Model.Containers``
+-  ``SageMaker.ModelPackage.InferenceSpecification.Containers``
 -  ``SageMaker.ModelPackage.ValidationSpecification.ValidationProfiles``
 -  ``SageMaker.ProcessingJob.ProcessingInputs``
 
 When a user passes values for these keys, the behavior depends on the
 size of the array. If values are not explicitly defined inside the
-user input array but are defined inside the config array, then those values from the config array are added to the user array. If the user input array
+user input array but are defined inside the config array, then those values from the config array
+are added to the user array. If the user input array
 contains more elements than the config array, the extra elements of
 the user input array are not substituted with values from the config.
 Alternatively, if the config array contains more elements than the
@@ -2419,29 +2674,68 @@ specified as part of ``CustomParameters``.
 Debug default values
 --------------------
 
-When a default value is being used as part of an API call, the
-SageMaker Python SDK prints out information about the default value,
-the configuration dictionary that it came from, the keys that are being
-looked at, and whether they are used or skipped. To get information,
-enable Boto3 debug logging that shows the HTTP request info.
+The SageMaker Python SDK logs all events related to the defaults configuration.
+This logging happens with the ``sagemaker.config`` logger. If you don’t configure
+logging using the Python logging library for the ``sagemaker`` logger or the
+``sagemaker.config`` logger, the SDK also adds a logging handler that prints
+INFO level logs to stdout. If you’re running the SDK from a SageMaker notebook,
+these INFO level logs are printed to notebook cell output. The SDK emits INFO logs
+when config files are found and processed, and when config values are used. By default,
+the SDK does not log resource ARNs.
 
-To turn on this logging, run the following commands in the
-environment where you’re using the SageMaker PySDK.
+If you want to get more information or debug default value injection, enable DEBUG level
+logs for the ``sagemaker.config`` logger with the following commands. With DEBUG level logs,
+the SageMaker Python SDK prints out information about the default value, the configuration
+dictionary that it came from, the keys that are being looked at, and whether they are used
+or skipped.
 
 .. code:: python
 
-   import boto3
    import logging
-   boto3.set_stream_logger(name='botocore.endpoint', level=logging.DEBUG)
+   sagemaker_config_logger = logging.getLogger("sagemaker.config")
+   sagemaker_config_logger.setLevel(logging.DEBUG)
 
-The following log lines offer the most relevant information,
-specifically the contents of ``'body': b'{...}`` .
+Skip default values
+-------------------
 
-::
+If the admin configuration specifies default values that causes issues for your calls, you can
+temporarily or permanently override those default values.
 
-   <TIMESTAMP> botocore.endpoint [DEBUG] Making request for OperationModel(name=<OPERATION_NAME>) with params: {'url_path': ...,
-   'query_string': ..., 'method': 'POST', 'headers': {...}, 'body': b'{...}', 'url': 'https://api.sagemaker.us-west-2.amazonaws.com/',
-   'context': {...}}
+To temporarily test a configuration change or ignore a default value, modify the config dictionary
+from ``load_sagemaker_config()`` before passing it to your ``Session`` as follows.
+
+1. Create a configuration dictionary manually.
+
+.. code:: python
+
+   from sagemaker.session import Session
+   from sagemaker.config import load_sagemaker_config, validate_sagemaker_config
+
+   custom_sagemaker_config = load_sagemaker_config()
+
+2. Modify the configuration dictionary. For example, delete the ``RoleArn`` value passed as part
+   of ``TrainingJob`` calls.
+
+.. code:: python
+
+   del custom_sagemaker_config["SageMaker"]["TrainingJob"]["RoleArn"]
+
+3. Validate that the dictionary adheres to the configuration schema.
+
+.. code:: python
+
+   validate_sagemaker_config(custom_sagemaker_config)
+
+4. Initialize the Session object with the customized configuration dictionary.
+
+.. code:: python
+
+   sm_session = Session(
+       sagemaker_config = custom_sagemaker_config
+   )
+
+To permanently override a default value from the admin configuration, create a user configuration
+with a non-None value for the default that you want to override.
 
 
 ************************************************************

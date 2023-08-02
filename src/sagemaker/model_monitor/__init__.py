@@ -46,3 +46,10 @@ from sagemaker.model_monitor.dataset_format import DatasetFormat  # noqa: F401
 from sagemaker.model_monitor.dataset_format import MonitoringDatasetFormat  # noqa: F401
 
 from sagemaker.network import NetworkConfig  # noqa: F401
+
+from sagemaker.model_monitor.data_quality_monitoring_config import (  # noqa: F401
+    DataQualityMonitoringConfig,
+)
+from sagemaker.model_monitor.data_quality_monitoring_config import (  # noqa: F401
+    DataQualityDistributionConstraints,
+)

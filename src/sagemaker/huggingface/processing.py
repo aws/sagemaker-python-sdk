@@ -68,10 +68,10 @@ class HuggingFaceProcessor(FrameworkProcessor):
                 ``image_uri`` is provided. The current supported version is ``4.4.2``.
             tensorflow_version (str): TensorFlow version you want to use for
                 executing your model training code. Defaults to ``None``. Required unless
-                ``pytorch_version`` is provided. The current supported version is ``1.6.0``.
+                ``pytorch_version`` is provided. The current supported version is ``2.4.1``.
             pytorch_version (str): PyTorch version you want to use for
                 executing your model training code. Defaults to ``None``. Required unless
-                ``tensorflow_version`` is provided. The current supported version is ``2.4.1``.
+                ``tensorflow_version`` is provided. The current supported version is ``1.6.0``.
             py_version (str): Python version you want to use for executing your model training
                 code. Defaults to ``None``. Required unless ``image_uri`` is provided.  If
                 using PyTorch, the current supported version is ``py36``. If using TensorFlow,

@@ -44,6 +44,7 @@ from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.steps import Step, StepTypeEnum, CacheConfig
 from sagemaker.workflow.check_job_config import CheckJobConfig
+from sagemaker.workflow.utilities import trim_request_dict
 
 _DATA_BIAS_TYPE = "DATA_BIAS"
 _MODEL_BIAS_TYPE = "MODEL_BIAS"
@@ -253,6 +254,8 @@ class ClarifyCheckStep(Step):
     @property
     def arguments(self) -> RequestType:
         """The arguments dict that is used to define the ClarifyCheck step."""
+        from sagemaker.workflow.utilities import _pipeline_config
+
         normalized_inputs, normalized_outputs = self._baselining_processor._normalize_args(
             inputs=[self._processing_params["config_input"], self._processing_params["data_input"]],
             outputs=[self._processing_params["result_output"]],
@@ -266,8 +269,8 @@ class ClarifyCheckStep(Step):
         request_dict = self._baselining_processor.sagemaker_session._get_process_request(
             **process_args
         )
-        if "ProcessingJobName" in request_dict:
-            request_dict.pop("ProcessingJobName")
+        # Continue to pop job name if not explicitly opted-in via config
+        request_dict = trim_request_dict(request_dict, "ProcessingJobName", _pipeline_config)
 
         return request_dict
 
@@ -456,6 +459,7 @@ class ClarifyCheckStep(Step):
         return s3.s3_path_join(
             "s3://",
             self._model_monitor.sagemaker_session.default_bucket(),
+            self._model_monitor.sagemaker_session.default_bucket_prefix,
             _MODEL_MONITOR_S3_PATH,
             monitoring_cfg_base_name,
         )

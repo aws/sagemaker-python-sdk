@@ -18,7 +18,11 @@ from __future__ import absolute_import
 class SessionSettings(object):
     """Optional container class for settings to apply to a SageMaker session."""
 
-    def __init__(self, encrypt_repacked_artifacts=True, local_download_dir=None) -> None:
+    def __init__(
+        self,
+        encrypt_repacked_artifacts=True,
+        local_download_dir=None,
+    ) -> None:
         """Initialize the ``SessionSettings`` of a SageMaker ``Session``.
 
         Args:

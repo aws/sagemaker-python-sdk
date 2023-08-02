@@ -96,6 +96,16 @@ def sagemaker_session_with_dynamically_generated_sagemaker_config(
     config_as_dict = {
         "SchemaVersion": "1.0",
         "SageMaker": {
+            "PythonSDK": {
+                "Modules": {
+                    "Session": {
+                        "DefaultS3ObjectKeyPrefix": S3_KEY_PREFIX,
+                        # S3Bucket is omitted for now, because the tests support one S3 bucket at
+                        # the moment and it would be hard to validate injection of this parameter
+                        # if we use the same bucket that the rest of the tests are.
+                    },
+                },
+            },
             "EndpointConfig": {
                 "AsyncInferenceConfig": {"OutputConfig": {"KmsKeyId": kms_key_arn}},
                 "DataCaptureConfig": {"KmsKeyId": kms_key_arn},
@@ -216,11 +226,11 @@ def test_sagemaker_config_cross_context_injection(
     xgboost_data_path = os.path.join(DATA_DIR, "xgboost_model")
     sparkml_model_data = sagemaker_session.upload_data(
         path=os.path.join(sparkml_data_path, "mleap_model.tar.gz"),
-        key_prefix=S3_KEY_PREFIX + "/sparkml/model",
+        key_prefix="sparkml/model",
     )
     xgb_model_data = sagemaker_session.upload_data(
         path=os.path.join(xgboost_data_path, "xgb_model.tar.gz"),
-        key_prefix=S3_KEY_PREFIX + "/xgboost/model",
+        key_prefix="xgboost/model",
     )
 
     with timeout_and_delete_endpoint_by_name(name, sagemaker_session):
@@ -260,7 +270,8 @@ def test_sagemaker_config_cross_context_injection(
             sparkml_model.enable_network_isolation(),
             xgb_model.enable_network_isolation(),
             pipeline_model.enable_network_isolation,  # This is not a function in PipelineModel
-        ] == [role_arn, role_arn, role_arn, True, True, True]
+            sagemaker_session.default_bucket_prefix,
+        ] == [role_arn, role_arn, role_arn, True, True, True, S3_KEY_PREFIX]
 
         # First mutating API call where sagemaker_config values should be injected in
         predictor = pipeline_model.deploy(
@@ -269,7 +280,6 @@ def test_sagemaker_config_cross_context_injection(
             endpoint_name=name,
             data_capture_config=DataCaptureConfig(
                 True,
-                destination_s3_uri=data_capture_s3_uri,
                 sagemaker_session=sagemaker_session,
             ),
             tags=test_tags,
@@ -334,6 +344,7 @@ def test_sagemaker_config_cross_context_injection(
             "InferenceExecutionConfig": {"Mode": "Serial"},
             "ExecutionRoleArn": role_arn,  # from sagemaker_config
             "EnableNetworkIsolation": True,  # from sagemaker_config
+            "DeploymentRecommendation": {"RecommendationStatus": "NOT_APPLICABLE"},
         }
 
         expected_endpoint_1 = {

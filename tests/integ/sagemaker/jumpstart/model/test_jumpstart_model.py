@@ -14,6 +14,10 @@ from __future__ import absolute_import
 import os
 import time
 
+import pytest
+
+import tests.integ
+
 from sagemaker.jumpstart.model import JumpStartModel
 from tests.integ.sagemaker.jumpstart.constants import (
     ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID,
@@ -28,6 +32,8 @@ from tests.integ.sagemaker.jumpstart.utils import (
 
 
 MAX_INIT_TIME_SECONDS = 5
+
+MODEL_PACKAGE_ARN_SUPPORTED_REGIONS = {"us-west-2", "us-east-1"}
 
 
 def test_non_prepacked_jumpstart_model(setup):
@@ -69,6 +75,35 @@ def test_prepacked_jumpstart_model(setup):
     )
 
     response = predictor.predict("hello world!")
+
+    assert response is not None
+
+
+@pytest.mark.skipif(
+    tests.integ.test_region() not in MODEL_PACKAGE_ARN_SUPPORTED_REGIONS,
+    reason=f"JumpStart Model Package models unavailable in {tests.integ.test_region()}.",
+)
+def test_model_package_arn_jumpstart_model(setup):
+
+    model_id = "meta-textgeneration-llama-2-7b"
+
+    model = JumpStartModel(
+        model_id=model_id,
+        role=get_sm_session().get_caller_identity_arn(),
+        sagemaker_session=get_sm_session(),
+    )
+
+    # uses ml.g5.2xlarge instance
+    predictor = model.deploy(
+        tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
+    )
+
+    payload = {
+        "inputs": "some-payload",
+        "parameters": {"max_new_tokens": 256, "top_p": 0.9, "temperature": 0.6},
+    }
+
+    response = predictor.predict(payload, custom_attributes="accept_eula=true")
 
     assert response is not None
 

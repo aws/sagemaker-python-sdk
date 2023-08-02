@@ -24,11 +24,17 @@ from sagemaker.amazon.amazon_estimator import (
     FileSystemRecordSet,
 )
 from sagemaker.session_settings import SessionSettings
+from tests.unit import (
+    DEFAULT_S3_OBJECT_KEY_PREFIX_NAME,
+    DEFAULT_S3_BUCKET_NAME,
+    _test_default_bucket_and_prefix_combinations,
+)
 
 COMMON_ARGS = {"role": "myrole", "instance_count": 1, "instance_type": "ml.c4.xlarge"}
 
 REGION = "us-west-2"
 BUCKET_NAME = "Some-Bucket"
+DEFAULT_PREFIX_NAME = "Some-Prefix"
 TIMESTAMP = "2017-11-06-14:14:15.671"
 
 
@@ -42,6 +48,7 @@ def sagemaker_session():
         config=None,
         local_mode=False,
         settings=SessionSettings(),
+        default_bucket_prefix=None,
     )
     sms.boto_region_name = REGION
     sms.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
@@ -141,6 +148,29 @@ def test_data_location_does_not_call_default_bucket(sagemaker_session):
     )
     assert pca.data_location == data_location
     assert not sagemaker_session.default_bucket.called
+
+
+def test_data_location_default_bucket_and_prefix_combinations():
+    actual, expected = _test_default_bucket_and_prefix_combinations(
+        function_with_user_input=(
+            lambda sess: PCA(
+                num_components=2,
+                sagemaker_session=sess,
+                data_location="s3://test",
+                **COMMON_ARGS,
+            ).data_location
+        ),
+        function_without_user_input=(
+            lambda sess: PCA(num_components=2, sagemaker_session=sess, **COMMON_ARGS).data_location
+        ),
+        expected__without_user_input__with_default_bucket_and_default_prefix=(
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/sagemaker-record-sets/"
+        ),
+        expected__without_user_input__with_default_bucket_only=f"s3://{DEFAULT_S3_BUCKET_NAME}/sagemaker-record-sets/",
+        expected__with_user_input__with_default_bucket_and_prefix="s3://test",
+        expected__with_user_input__with_default_bucket_only="s3://test",
+    )
+    assert actual == expected
 
 
 def test_prepare_for_training(sagemaker_session):

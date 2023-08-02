@@ -34,7 +34,10 @@ DESCRIBE_COMPILATION_JOB_RESPONSE = {
 
 @pytest.fixture
 def sagemaker_session():
-    session = Mock(boto_region_name=REGION)
+    session = Mock(
+        boto_region_name=REGION,
+        default_bucket_prefix=None,
+    )
     # For tests which doesn't verify config file injection, operate with empty config
     session.sagemaker_config = {}
     return session
@@ -241,6 +244,31 @@ def test_compile_validates_model_data():
     assert "You must provide an S3 path to the compressed model artifacts." in str(e)
 
 
+def test_compile_validates_model_data_source():
+    model_data_src = {
+        "S3DataSource": {
+            "S3Uri": "s3://bucket/model/prefix",
+            "S3DataType": "S3Prefix",
+            "CompressionType": "None",
+        }
+    }
+    model = Model(MODEL_IMAGE, model_data=model_data_src)
+
+    with pytest.raises(
+        ValueError, match="Compiling model data from ModelDataSource is currently not supported"
+    ) as e:
+        model.compile(
+            target_instance_family="ml_c4",
+            input_shape={"data": [1, 3, 1024, 1024]},
+            output_path="s3://output",
+            role="role",
+            framework="tensorflow",
+            job_name="compile-model",
+        )
+
+    assert "Compiling model data from ModelDataSource is currently not supported" in str(e)
+
+
 def test_deploy_honors_provided_model_name(sagemaker_session):
     model = _create_model(sagemaker_session)
     model._is_compiled_model = True
@@ -359,23 +387,35 @@ def test_compile_with_tensorflow_neo_in_ml_inf(session):
     )
 
 
-def test_compile_validates_framework_version(sagemaker_session):
-    sagemaker_session.wait_for_compilation_job = Mock(
-        return_value={
-            "CompilationJobStatus": "Completed",
-            "ModelArtifacts": {"S3ModelArtifacts": "s3://output-path/model.tar.gz"},
-            "InferenceImage": None,
-        }
-    )
+@pytest.mark.parametrize(
+    "target,framework,fx_version,expected_fx_version",
+    [
+        ("ml_c4", "pytorch", "1.6", "1.6"),
+        ("rasp3b", "pytorch", "1.6.1", "1.6"),
+        ("amba_cv2", "pytorch", "1.6.1", None),
+        ("ml_c4", "tensorflow", "1.15.1", "1.15"),
+        ("ml_c4", "tensorflow", "2.15.1", "2.15"),
+        ("ml_inf1", "tensorflow", "2.15.1", "2.15"),
+        ("ml_inf2", "pytorch", "2.0", "2.0"),
+        ("ml_inf2", "pytorch", "2.0.1", "2.0"),
+        ("ml_trn1", "pytorch", "2.0.1", "2.0"),
+        ("ml_trn1", "tensorflow", "2.0.1", "2.0"),
+    ],
+)
+def test_compile_validates_framework_version(
+    sagemaker_session, target, framework, fx_version, expected_fx_version
+):
     model = _create_model(sagemaker_session)
-    model.compile(
-        target_instance_family="ml_c4",
-        input_shape={"data": [1, 3, 1024, 1024]},
-        output_path="s3://output",
-        role="role",
-        framework="pytorch",
-        framework_version="1.6.1",
-        job_name="compile-model",
+    config = model._compilation_job_config(
+        target,
+        {"data": [1, 3, 1024, 1024]},
+        "s3://output",
+        "role",
+        900,
+        "compile-model",
+        framework,
+        None,
+        framework_version=fx_version,
     )
 
-    assert model.image_uri is None
+    assert config["input_model_config"].get("FrameworkVersion", None) == expected_fx_version

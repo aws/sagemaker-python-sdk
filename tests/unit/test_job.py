@@ -38,6 +38,7 @@ ROLE = "DummyRole"
 REGION = "us-west-2"
 IMAGE_NAME = "fakeimage"
 SCRIPT_NAME = "script.py"
+NONE_COMPRESSION_TYPE = "NONE"
 JOB_NAME = "fakejob"
 VOLUME_KMS_KEY = "volkmskey"
 MODEL_CHANNEL_NAME = "testModelChannel"
@@ -77,7 +78,11 @@ def estimator(sagemaker_session):
 def sagemaker_session():
     boto_mock = Mock(name="boto_session")
     mock_session = Mock(
-        name="sagemaker_session", boto_session=boto_mock, s3_client=None, s3_resource=None
+        name="sagemaker_session",
+        boto_session=boto_mock,
+        s3_client=None,
+        s3_resource=None,
+        default_bucket_prefix=None,
     )
     mock_session.expand_role = Mock(name="expand_role", return_value=ROLE)
     # For tests which doesn't verify config file injection, operate with empty config
@@ -140,6 +145,23 @@ def test_load_config(estimator):
     assert config["role"] == ROLE
     assert config["output_config"]["S3OutputPath"] == S3_OUTPUT_PATH
     assert "KmsKeyId" not in config["output_config"]
+    assert "CompressionType" not in config["output_config"]
+    assert config["resource_config"]["InstanceCount"] == INSTANCE_COUNT
+    assert config["resource_config"]["InstanceType"] == INSTANCE_TYPE
+    assert config["resource_config"]["VolumeSizeInGB"] == VOLUME_SIZE
+    assert config["stop_condition"]["MaxRuntimeInSeconds"] == MAX_RUNTIME
+
+
+def test_load_config_with_output_compression_disabled(estimator):
+    inputs = TrainingInput(BUCKET_NAME)
+    estimator.disable_output_compression = True
+    config = _Job._load_config(inputs, estimator)
+
+    assert config["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] == BUCKET_NAME
+    assert config["role"] == ROLE
+    assert config["output_config"]["S3OutputPath"] == S3_OUTPUT_PATH
+    assert "KmsKeyId" not in config["output_config"]
+    assert config["output_config"]["CompressionType"] == NONE_COMPRESSION_TYPE
     assert config["resource_config"]["InstanceCount"] == INSTANCE_COUNT
     assert config["resource_config"]["InstanceType"] == INSTANCE_TYPE
     assert config["resource_config"]["VolumeSizeInGB"] == VOLUME_SIZE

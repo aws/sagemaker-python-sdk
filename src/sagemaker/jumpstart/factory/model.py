@@ -12,7 +12,6 @@
 # language governing permissions and limitations under the License.
 """This module stores JumpStart Model factory methods."""
 from __future__ import absolute_import
-import logging
 
 
 from typing import Any, Dict, List, Optional, Union
@@ -25,11 +24,13 @@ from sagemaker.jumpstart.artifacts import (
     _model_supports_prepacked_inference,
     _retrieve_model_init_kwargs,
     _retrieve_model_deploy_kwargs,
+    _retrieve_model_package_arn,
 )
 from sagemaker.jumpstart.artifacts.resource_names import _retrieve_resource_name_base
 from sagemaker.jumpstart.constants import (
     INFERENCE_ENTRY_POINT_SCRIPT_NAME,
     JUMPSTART_DEFAULT_REGION_NAME,
+    JUMPSTART_LOGGER,
 )
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.types import (
@@ -38,7 +39,7 @@ from sagemaker.jumpstart.types import (
 )
 from sagemaker.jumpstart.utils import (
     update_dict_if_key_not_present,
-    resolve_model_intelligent_default_field,
+    resolve_model_sagemaker_config_field,
 )
 
 from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
@@ -49,8 +50,6 @@ from sagemaker.serverless.serverless_inference_config import ServerlessInference
 from sagemaker.session import Session
 from sagemaker.utils import name_from_base
 from sagemaker.workflow.entities import PipelineVariable
-
-logger = logging.getLogger("sagemaker")
 
 
 def get_default_predictor(
@@ -123,10 +122,11 @@ def _add_sagemaker_session_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpSt
 def _add_role_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelInitKwargs:
     """Sets role based on default or override, returns full kwargs."""
 
-    kwargs.role = resolve_model_intelligent_default_field(
+    kwargs.role = resolve_model_sagemaker_config_field(
         field_name="role",
         field_val=kwargs.role,
         sagemaker_session=kwargs.sagemaker_session,
+        default_value=kwargs.role,
     )
 
     return kwargs
@@ -168,7 +168,7 @@ def _add_instance_type_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartM
     )
 
     if orig_instance_type is None:
-        logger.info(
+        JUMPSTART_LOGGER.info(
             "No instance type selected for inference hosting endpoint. Defaulting to %s.",
             kwargs.instance_type,
         )
@@ -288,6 +288,22 @@ def _add_env_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelInitKw
     return kwargs
 
 
+def _add_model_package_arn_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelInitKwargs:
+    """Sets model package arn based on default or override, returns full kwargs."""
+
+    model_package_arn = kwargs.model_package_arn or _retrieve_model_package_arn(
+        model_id=kwargs.model_id,
+        model_version=kwargs.model_version,
+        scope=JumpStartScriptScope.INFERENCE,
+        region=kwargs.region,
+        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
+        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
+    )
+
+    kwargs.model_package_arn = model_package_arn
+    return kwargs
+
+
 def _add_extra_model_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelInitKwargs:
     """Sets extra kwargs based on default or override, returns full kwargs."""
 
@@ -301,7 +317,7 @@ def _add_extra_model_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelI
 
     for key, value in model_kwargs_to_add.items():
         if getattr(kwargs, key) is None:
-            resolved_value = resolve_model_intelligent_default_field(
+            resolved_value = resolve_model_sagemaker_config_field(
                 field_name=key,
                 field_val=value,
                 sagemaker_session=kwargs.sagemaker_session,
@@ -470,6 +486,7 @@ def get_init_kwargs(
     container_log_level: Optional[Union[int, PipelineVariable]] = None,
     dependencies: Optional[List[str]] = None,
     git_config: Optional[Dict[str, str]] = None,
+    model_package_arn: Optional[str] = None,
 ) -> JumpStartModelInitKwargs:
     """Returns kwargs required to instantiate `sagemaker.estimator.Model` object."""
 
@@ -497,6 +514,7 @@ def get_init_kwargs(
         git_config=git_config,
         tolerate_deprecated_model=tolerate_deprecated_model,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
+        model_package_arn=model_package_arn,
     )
 
     model_init_kwargs = _add_model_version_to_kwargs(kwargs=model_init_kwargs)
@@ -524,5 +542,7 @@ def get_init_kwargs(
     model_init_kwargs = _add_predictor_cls_to_kwargs(kwargs=model_init_kwargs)
     model_init_kwargs = _add_extra_model_kwargs(kwargs=model_init_kwargs)
     model_init_kwargs = _add_role_to_kwargs(kwargs=model_init_kwargs)
+
+    model_init_kwargs = _add_model_package_arn_to_kwargs(kwargs=model_init_kwargs)
 
     return model_init_kwargs

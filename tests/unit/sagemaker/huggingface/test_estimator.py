@@ -66,6 +66,7 @@ def fixture_sagemaker_session():
         s3_resource=None,
         s3_client=None,
         settings=SessionSettings(),
+        default_bucket_prefix=None,
     )
 
     describe = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/m.tar.gz"}}
@@ -268,8 +269,29 @@ def test_huggingface_neuron(
         pytorch_version=huggingface_neuron_latest_inference_pytorch_version,
         py_version=huggingface_neuron_latest_inference_py_version,
     )
-    container = huggingface_model.prepare_container_def("ml.inf.xlarge")
+    container = huggingface_model.prepare_container_def("ml.inf1.xlarge", inference_tool="neuron")
     assert container["Image"]
+
+
+def test_huggingface_neuronx(
+    sagemaker_session,
+    huggingface_neuronx_latest_inference_pytorch_version,
+    huggingface_neuronx_latest_inference_transformer_version,
+    huggingface_neuronx_latest_inference_py_version,
+):
+
+    inputs = "s3://mybucket/train"
+    huggingface_model = HuggingFaceModel(
+        model_data=inputs,
+        transformers_version=huggingface_neuronx_latest_inference_transformer_version,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        pytorch_version=huggingface_neuronx_latest_inference_pytorch_version,
+        py_version=huggingface_neuronx_latest_inference_py_version,
+    )
+    container = huggingface_model.prepare_container_def("ml.inf2.xlarge", inference_tool="neuronx")
+    assert container["Image"]
+    assert "sdk" in container["Image"] and "py" in container["Image"]
 
 
 def test_attach(

@@ -28,6 +28,7 @@ from sagemaker.workflow.pipeline_context import PipelineSession, LocalPipelineSe
 
 DEFAULT_REGION = "us-west-2"
 CUSTOM_BUCKET_NAME_PREFIX = "sagemaker-custom-bucket"
+CUSTOM_S3_OBJECT_KEY_PREFIX = "session-default-prefix"
 
 NO_M4_REGIONS = [
     "eu-west-3",
@@ -164,6 +165,7 @@ def sagemaker_session(
         sagemaker_runtime_client=runtime_client,
         sagemaker_metrics_client=metrics_client,
         sagemaker_config={},
+        default_bucket_prefix=CUSTOM_S3_OBJECT_KEY_PREFIX,
     )
 
 
@@ -275,7 +277,9 @@ def huggingface_pytorch_training_version(huggingface_training_version):
 
 @pytest.fixture(scope="module")
 def huggingface_pytorch_training_py_version(huggingface_pytorch_training_version):
-    if Version(huggingface_pytorch_training_version) >= Version("1.13"):
+    if Version(huggingface_pytorch_training_version) >= Version("2.0"):
+        return "py310"
+    elif Version(huggingface_pytorch_training_version) >= Version("1.13"):
         return "py39"
     elif Version(huggingface_pytorch_training_version) >= Version("1.9"):
         return "py38"
@@ -335,7 +339,9 @@ def huggingface_training_compiler_pytorch_py_version(
 def huggingface_pytorch_latest_training_py_version(
     huggingface_training_pytorch_latest_version,
 ):
-    if Version(huggingface_training_pytorch_latest_version) >= Version("1.13"):
+    if Version(huggingface_training_pytorch_latest_version) >= Version("2.0"):
+        return "py310"
+    elif Version(huggingface_training_pytorch_latest_version) >= Version("1.13"):
         return "py39"
     elif Version(huggingface_training_pytorch_latest_version) >= Version("1.9"):
         return "py38"
@@ -357,7 +363,9 @@ def pytorch_training_compiler_py_version(
 def huggingface_pytorch_latest_inference_py_version(
     huggingface_inference_pytorch_latest_version,
 ):
-    if Version(huggingface_inference_pytorch_latest_version) >= Version("1.13"):
+    if Version(huggingface_inference_pytorch_latest_version) >= Version("2.0"):
+        return "py310"
+    elif Version(huggingface_inference_pytorch_latest_version) >= Version("1.13"):
         return "py39"
     elif Version(huggingface_inference_pytorch_latest_version) >= Version("1.9"):
         return "py38"
@@ -406,13 +414,43 @@ def huggingface_neuron_latest_inference_pytorch_version():
 
 
 @pytest.fixture(scope="module")
+def huggingface_neuronx_latest_inference_pytorch_version():
+    return "1.13"
+
+
+@pytest.fixture(scope="module")
+def huggingface_neuronx_latest_training_pytorch_version():
+    return "1.13"
+
+
+@pytest.fixture(scope="module")
 def huggingface_neuron_latest_inference_transformer_version():
     return "4.12"
 
 
 @pytest.fixture(scope="module")
+def huggingface_neuronx_latest_inference_transformer_version():
+    return "4.28"
+
+
+@pytest.fixture(scope="module")
+def huggingface_neuronx_latest_training_transformer_version():
+    return "4.28"
+
+
+@pytest.fixture(scope="module")
 def huggingface_neuron_latest_inference_py_version():
     return "py37"
+
+
+@pytest.fixture(scope="module")
+def huggingface_neuronx_latest_inference_py_version():
+    return "py38"
+
+
+@pytest.fixture(scope="module")
+def huggingface_neuronx_latest_training_py_version():
+    return "py38"
 
 
 @pytest.fixture(scope="module")
@@ -526,7 +564,9 @@ def tf_full_py_version(tf_full_version):
         return "py37"
     if version < Version("2.8"):
         return "py38"
-    return "py39"
+    if version < Version("2.12"):
+        return "py39"
+    return "py310"
 
 
 @pytest.fixture(scope="module")

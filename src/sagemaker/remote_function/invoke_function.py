@@ -17,6 +17,7 @@ from __future__ import absolute_import
 import argparse
 import sys
 import json
+import os
 
 import boto3
 from sagemaker.experiments.run import Run
@@ -61,11 +62,16 @@ def _load_run_object(run_in_context: str, sagemaker_session: Session) -> Run:
     )
 
 
-def _execute_remote_function(sagemaker_session, s3_base_uri, s3_kms_key, run_in_context):
+def _execute_remote_function(sagemaker_session, s3_base_uri, s3_kms_key, run_in_context, hmac_key):
     """Execute stored remote function"""
     from sagemaker.remote_function.core.stored_function import StoredFunction
 
-    stored_function = StoredFunction(sagemaker_session, s3_base_uri, s3_kms_key)
+    stored_function = StoredFunction(
+        sagemaker_session=sagemaker_session,
+        s3_base_uri=s3_base_uri,
+        s3_kms_key=s3_kms_key,
+        hmac_key=hmac_key,
+    )
 
     if run_in_context:
         run_obj = _load_run_object(run_in_context, sagemaker_session)
@@ -89,12 +95,26 @@ def main():
         s3_kms_key = args.s3_kms_key
         run_in_context = args.run_in_context
 
+        hmac_key = os.getenv("REMOTE_FUNCTION_SECRET_KEY")
+
         sagemaker_session = _get_sagemaker_session(region)
-        _execute_remote_function(sagemaker_session, s3_base_uri, s3_kms_key, run_in_context)
+        _execute_remote_function(
+            sagemaker_session=sagemaker_session,
+            s3_base_uri=s3_base_uri,
+            s3_kms_key=s3_kms_key,
+            run_in_context=run_in_context,
+            hmac_key=hmac_key,
+        )
 
     except Exception as e:  # pylint: disable=broad-except
         logger.exception("Error encountered while invoking the remote function.")
-        exit_code = handle_error(e, sagemaker_session, s3_base_uri, s3_kms_key)
+        exit_code = handle_error(
+            error=e,
+            sagemaker_session=sagemaker_session,
+            s3_base_uri=s3_base_uri,
+            s3_kms_key=s3_kms_key,
+            hmac_key=hmac_key,
+        )
     finally:
         sys.exit(exit_code)
 

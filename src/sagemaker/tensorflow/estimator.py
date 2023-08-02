@@ -426,8 +426,13 @@ class TensorFlow(Framework):
             return "/opt/ml/model"
         if self._current_job_name:
             if is_pipeline_variable(self.output_path):
-                output_path = "s3://{}".format(self.sagemaker_session.default_bucket())
-                return s3.s3_path_join(output_path, self._current_job_name, directory)
+                return s3.s3_path_join(
+                    "s3://",
+                    self.sagemaker_session.default_bucket(),
+                    self.sagemaker_session.default_bucket_prefix,
+                    self._current_job_name,
+                    directory,
+                )
             return s3.s3_path_join(self.output_path, self._current_job_name, directory)
         return None
 

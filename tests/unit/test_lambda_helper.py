@@ -42,6 +42,7 @@ def sagemaker_session():
         config=None,
         local_mode=False,
         # default_bucket=S3_BUCKET,
+        default_bucket_prefix=None,
     )
     return session_mock
 

@@ -17,6 +17,7 @@ import pytest
 from mock import Mock, patch
 
 import sagemaker
+from sagemaker.async_inference import AsyncInferenceConfig
 from sagemaker.model import FrameworkModel, Model
 from sagemaker.huggingface.model import HuggingFaceModel
 from sagemaker.jumpstart.constants import JUMPSTART_BUCKET_NAME_SET, JUMPSTART_RESOURCE_BASE_NAME
@@ -27,10 +28,16 @@ from sagemaker.sklearn.model import SKLearnModel
 from sagemaker.tensorflow.model import TensorFlowModel
 from sagemaker.xgboost.model import XGBoostModel
 from sagemaker.workflow.properties import Properties
-
+from tests.unit import (
+    _test_default_bucket_and_prefix_combinations,
+    DEFAULT_S3_BUCKET_NAME,
+    DEFAULT_S3_OBJECT_KEY_PREFIX_NAME,
+    SAGEMAKER_CONFIG_EDGE_PACKAGING_JOB,
+)
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
+MODEL_VERSION = "1.0"
 TIMESTAMP = "2017-10-10-14-14-15"
 MODEL_NAME = "{}-{}".format(MODEL_IMAGE, TIMESTAMP)
 
@@ -107,6 +114,7 @@ def sagemaker_session():
         local_mode=False,
         s3_client=None,
         s3_resource=None,
+        default_bucket_prefix=None,
     )
     sms.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     # For tests which doesn't verify config file injection, operate with empty config
@@ -679,6 +687,25 @@ def test_script_mode_model_uses_jumpstart_base_name(repack_model, sagemaker_sess
 
 
 @patch("sagemaker.utils.repack_model")
+def test_repack_code_location_with_key_prefix(repack_model, sagemaker_session):
+
+    code_location = "s3://my-bucket/code/location/"
+
+    t = Model(
+        entry_point=ENTRY_POINT_INFERENCE,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        source_dir=SCRIPT_URI,
+        image_uri=IMAGE_URI,
+        model_data=MODEL_DATA,
+        code_location=code_location,
+    )
+    t.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=INSTANCE_COUNT)
+
+    repack_model.assert_called_once()
+
+
+@patch("sagemaker.utils.repack_model")
 @patch("sagemaker.fw_utils.tar_and_upload_dir")
 def test_all_framework_models_add_jumpstart_base_name(
     repack_model, tar_and_uload_dir, sagemaker_session
@@ -783,6 +810,39 @@ def test_register_calls_model_package_args(get_model_package_args, sagemaker_ses
          get_model_package_args"""
 
 
+def test_register_calls_model_data_source_not_supported(sagemaker_session):
+    source_dir = "s3://blah/blah/blah"
+    t = Model(
+        entry_point=ENTRY_POINT_INFERENCE,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        source_dir=source_dir,
+        image_uri=IMAGE_URI,
+        model_data={
+            "S3DataSource": {
+                "S3Uri": "s3://bucket/model/prefix/",
+                "S3DataType": "S3Prefix",
+                "CompressionType": "None",
+            }
+        },
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="SageMaker Model Package currently cannot be created with ModelDataSource.",
+    ):
+        t.register(
+            SUPPORTED_CONTENT_TYPES,
+            SUPPORTED_RESPONSE_MIME_TYPES,
+            SUPPORTED_REALTIME_INFERENCE_INSTANCE_TYPES,
+            SUPPORTED_BATCH_TRANSFORM_INSTANCE_TYPES,
+            marketplace_cert=True,
+            description=MODEL_DESCRIPTION,
+            model_package_name=MODEL_NAME,
+            validation_specification=VALIDATION_SPECIFICATION,
+        )
+
+
 @patch("sagemaker.utils.repack_model")
 def test_model_local_download_dir(repack_model, sagemaker_session):
 
@@ -804,4 +864,138 @@ def test_model_local_download_dir(repack_model, sagemaker_session):
     assert (
         repack_model.call_args_list[0][1]["sagemaker_session"].settings.local_download_dir
         == local_download_dir
+    )
+
+
+@patch("sagemaker.model.fw_utils.tar_and_upload_dir")
+def test__upload_code__default_bucket_and_prefix_combinations(
+    tar_and_upload_dir,
+):
+    def with_user_input(sess):
+        model = Model(
+            entry_point=ENTRY_POINT_INFERENCE,
+            role=ROLE,
+            sagemaker_session=sess,
+            image_uri=IMAGE_URI,
+            model_data=MODEL_DATA,
+            code_location="s3://test-bucket/test-prefix/test-prefix-2",
+        )
+        model._upload_code("upload-prefix/upload-prefix-2", repack=False)
+        kwargs = tar_and_upload_dir.call_args.kwargs
+        return kwargs["bucket"], kwargs["s3_key_prefix"]
+
+    def without_user_input(sess):
+        model = Model(
+            entry_point=ENTRY_POINT_INFERENCE,
+            role=ROLE,
+            sagemaker_session=sess,
+            image_uri=IMAGE_URI,
+            model_data=MODEL_DATA,
+        )
+        model._upload_code("upload-prefix/upload-prefix-2", repack=False)
+        kwargs = tar_and_upload_dir.call_args.kwargs
+        return kwargs["bucket"], kwargs["s3_key_prefix"]
+
+    actual, expected = _test_default_bucket_and_prefix_combinations(
+        function_with_user_input=with_user_input,
+        function_without_user_input=without_user_input,
+        expected__without_user_input__with_default_bucket_and_default_prefix=(
+            DEFAULT_S3_BUCKET_NAME,
+            f"{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/upload-prefix/upload-prefix-2",
+        ),
+        expected__without_user_input__with_default_bucket_only=(
+            DEFAULT_S3_BUCKET_NAME,
+            "upload-prefix/upload-prefix-2",
+        ),
+        expected__with_user_input__with_default_bucket_and_prefix=(
+            "test-bucket",
+            "upload-prefix/upload-prefix-2",
+        ),
+        expected__with_user_input__with_default_bucket_only=(
+            "test-bucket",
+            "upload-prefix/upload-prefix-2",
+        ),
+    )
+    assert actual == expected
+
+
+@patch("sagemaker.model.unique_name_from_base")
+def test__build_default_async_inference_config__default_bucket_and_prefix_combinations(
+    unique_name_from_base,
+):
+    unique_name_from_base.return_value = "unique-name"
+
+    def with_user_input(sess):
+        model = Model(
+            entry_point=ENTRY_POINT_INFERENCE,
+            role=ROLE,
+            sagemaker_session=sess,
+            image_uri=IMAGE_URI,
+            model_data=MODEL_DATA,
+            code_location="s3://test-bucket/test-prefix/test-prefix-2",
+        )
+        async_config = AsyncInferenceConfig(
+            output_path="s3://output-bucket/output-prefix/output-prefix-2",
+            failure_path="s3://failure-bucket/failure-prefix/failure-prefix-2",
+        )
+        model._build_default_async_inference_config(async_config)
+        return async_config.output_path, async_config.failure_path
+
+    def without_user_input(sess):
+        model = Model(
+            entry_point=ENTRY_POINT_INFERENCE,
+            role=ROLE,
+            sagemaker_session=sess,
+            image_uri=IMAGE_URI,
+            model_data=MODEL_DATA,
+            code_location="s3://test-bucket/test-prefix/test-prefix-2",
+        )
+        async_config = AsyncInferenceConfig()
+        model._build_default_async_inference_config(async_config)
+        return async_config.output_path, async_config.failure_path
+
+    actual, expected = _test_default_bucket_and_prefix_combinations(
+        function_with_user_input=with_user_input,
+        function_without_user_input=without_user_input,
+        expected__without_user_input__with_default_bucket_and_default_prefix=(
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/async-endpoint-outputs/unique-name",
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/async-endpoint-failures/unique-name",
+        ),
+        expected__without_user_input__with_default_bucket_only=(
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/async-endpoint-outputs/unique-name",
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/async-endpoint-failures/unique-name",
+        ),
+        expected__with_user_input__with_default_bucket_and_prefix=(
+            "s3://output-bucket/output-prefix/output-prefix-2",
+            "s3://failure-bucket/failure-prefix/failure-prefix-2",
+        ),
+        expected__with_user_input__with_default_bucket_only=(
+            "s3://output-bucket/output-prefix/output-prefix-2",
+            "s3://failure-bucket/failure-prefix/failure-prefix-2",
+        ),
+    )
+    assert actual == expected
+
+
+def test_package_for_edge_with_sagemaker_config_injection(sagemaker_session):
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_EDGE_PACKAGING_JOB
+    sagemaker_session.wait_for_edge_packaging_job.return_value = {"ModelArtifact": "TestArtifact"}
+    sagemaker_session.expand_role.return_value = SAGEMAKER_CONFIG_EDGE_PACKAGING_JOB["SageMaker"][
+        "EdgePackagingJob"
+    ]["RoleArn"]
+    model = Model(MODEL_DATA, MODEL_IMAGE, name=MODEL_NAME, sagemaker_session=sagemaker_session)
+    model._compilation_job_name = "compiledModel"
+    model.package_for_edge(output_path="", model_name=MODEL_NAME, model_version=MODEL_VERSION)
+    sagemaker_session.expand_role.assert_called_with(
+        SAGEMAKER_CONFIG_EDGE_PACKAGING_JOB["SageMaker"]["EdgePackagingJob"]["RoleArn"]
+    )
+    sagemaker_session.package_model_for_edge.assert_called_with(
+        compilation_job_name="compiledModel",
+        job_name="packagingel",
+        model_name=MODEL_NAME,
+        model_version=MODEL_VERSION,
+        output_model_config={"S3OutputLocation": "", "KmsKeyId": "configKmsKeyId"},
+        resource_key="kmskeyid1",
+        role=SAGEMAKER_CONFIG_EDGE_PACKAGING_JOB["SageMaker"]["EdgePackagingJob"]["RoleArn"],
+        tags=None,
     )

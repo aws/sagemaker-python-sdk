@@ -185,6 +185,16 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             )
         self.framework_version = framework_version
 
+        # Inference framework version is being introduced to accomodate the mismatch between
+        # tensorflow and tensorflow serving releases, wherein the TF and TFS might have different
+        # patch versions, but end up hosting the model of same TF version. For eg., the upstream
+        # TFS-2.12.0 release was a bad release and hence a new TFS-2.12.1 release was made to host
+        # models from TF-2.12.0.
+        training_inference_version_mismatch_dict = {"2.12.0": "2.12.1"}
+        self.inference_framework_version = training_inference_version_mismatch_dict.get(
+            framework_version, framework_version
+        )
+
         super(TensorFlowModel, self).__init__(
             model_data=model_data,
             role=role,
@@ -387,8 +397,14 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             instance_type, accelerator_type, serverless_inference_config=serverless_inference_config
         )
         env = self._get_container_env()
-        key_prefix = sagemaker.fw_utils.model_code_key_prefix(self.key_prefix, self.name, image_uri)
-        bucket = self.bucket or self.sagemaker_session.default_bucket()
+
+        bucket, key_prefix = s3.determine_bucket_and_prefix(
+            bucket=self.bucket,
+            key_prefix=sagemaker.fw_utils.model_code_key_prefix(
+                self.key_prefix, self.name, image_uri
+            ),
+            sagemaker_session=self.sagemaker_session,
+        )
 
         if self.entry_point and not is_pipeline_variable(self.model_data):
             model_data = s3.s3_path_join("s3://", bucket, key_prefix, "model.tar.gz")
@@ -457,7 +473,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         return image_uris.retrieve(
             self._framework_name,
             region_name or self.sagemaker_session.boto_region_name,
-            version=self.framework_version,
+            version=self.inference_framework_version,
             instance_type=instance_type,
             accelerator_type=accelerator_type,
             image_scope="inference",

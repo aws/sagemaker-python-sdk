@@ -71,7 +71,7 @@ WARM_START_TYPE = "WarmStartType"
 HYPERBAND_STRATEGY_CONFIG = "HyperbandStrategyConfig"
 HYPERBAND_MIN_RESOURCE = "MinResource"
 HYPERBAND_MAX_RESOURCE = "MaxResource"
-GRID_SEARCH = "GridSearch"
+GRID_SEARCH = "Grid"
 MAX_NUMBER_OF_TRAINING_JOBS_NOT_IMPROVING = "MaxNumberOfTrainingJobsNotImproving"
 BEST_OBJECTIVE_NOT_IMPROVING = "BestObjectiveNotImproving"
 CONVERGENCE_DETECTED = "ConvergenceDetected"
@@ -611,6 +611,8 @@ class HyperparameterTuner(object):
         early_stopping_type: Union[str, PipelineVariable] = "Off",
         estimator_name: Optional[str] = None,
         random_seed: Optional[int] = None,
+        autotune: bool = False,
+        hyperparameters_to_keep_static: Optional[List[str]] = None,
     ):
         """Creates a ``HyperparameterTuner`` instance.
 
@@ -643,12 +645,12 @@ class HyperparameterTuner(object):
                 evaluating training jobs. This value can be either 'Minimize' or
                 'Maximize' (default: 'Maximize').
             max_jobs (int or PipelineVariable): Maximum total number of training jobs to start for
-                the hyperparameter tuning job. The default value is unspecified fot the GridSearch
+                the hyperparameter tuning job. The default value is unspecified fot the 'Grid'
                 strategy and the default value is 1 for all others strategies (default: None).
             max_parallel_jobs (int or PipelineVariable): Maximum number of parallel training jobs to
                 start (default: 1).
             max_runtime_in_seconds (int or PipelineVariable): The maximum time in seconds
-                 that a training job launched by a hyperparameter tuning job can run.
+                 that a hyperparameter tuning job can run.
             tags (list[dict[str, str] or list[dict[str, PipelineVariable]]): List of tags for
                 labeling the tuning job (default: None). For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
@@ -675,9 +677,26 @@ class HyperparameterTuner(object):
             random_seed (int): An initial value used to initialize a pseudo-random number generator.
                 Setting a random seed will make the hyperparameter tuning search strategies to
                 produce more consistent configurations for the same tuning job.
+            autotune (bool): Whether the parameter ranges or other unset settings of a tuning job
+                should be chosen automatically (default: False).
+            hyperparameters_to_keep_static: list[str]: Names of hyperparameters that will be kept
+                static and will not be assigned a tunable range with Autotune functionality.
+                (default: None).
         """
         if hyperparameter_ranges is None or len(hyperparameter_ranges) == 0:
-            raise ValueError("Need to specify hyperparameter ranges")
+            if not autotune:
+                raise ValueError("Need to specify hyperparameter ranges or set autotune=True.")
+
+        if not autotune and hyperparameters_to_keep_static is not None:
+            raise ValueError(
+                "hyperparameters_to_keep_static parameter is set, however Autotune mode is not "
+                "enabled. Either do not set value for hyperparameters_to_keep_static parameter, "
+                "or enable Autotune mode by setting autotune=True."
+            )
+
+        if hyperparameters_to_keep_static is not None:
+            if len(hyperparameters_to_keep_static) != len(set(hyperparameters_to_keep_static)):
+                raise ValueError("Please remove duplicate names in hyperparameters_to_keep_static.")
 
         if estimator_name is not None:
             self.estimator = None
@@ -691,6 +710,12 @@ class HyperparameterTuner(object):
                 {estimator_name: metric_definitions} if metric_definitions is not None else {}
             )
             self.static_hyperparameters = None
+            self.auto_parameters = None
+            self.auto_parameters_dict = None
+            self.hyperparameters_to_keep_static = None
+            self.hyperparameters_to_keep_static_dict = {
+                estimator_name: hyperparameters_to_keep_static
+            }
         else:
             self.estimator = estimator
             self.objective_metric_name = objective_metric_name
@@ -701,6 +726,10 @@ class HyperparameterTuner(object):
             self._hyperparameter_ranges_dict = None
             self.metric_definitions_dict = None
             self.static_hyperparameters_dict = None
+            self.auto_parameters = None
+            self.auto_parameters_dict = None
+            self.hyperparameters_to_keep_static = hyperparameters_to_keep_static
+            self.hyperparameters_to_keep_static_dict = None
 
         self._validate_parameter_ranges(estimator, hyperparameter_ranges)
 
@@ -712,7 +741,7 @@ class HyperparameterTuner(object):
         # For all other strategies for the backward compatibility we keep
         # the default value as 1 (previous default value).
         self.max_jobs = max_jobs
-        if max_jobs is None and strategy is not GRID_SEARCH:
+        if max_jobs is None and strategy != GRID_SEARCH:
             self.max_jobs = 1
         self.max_parallel_jobs = max_parallel_jobs
         self.max_runtime_in_seconds = max_runtime_in_seconds
@@ -726,6 +755,7 @@ class HyperparameterTuner(object):
         self.random_seed = random_seed
         self.instance_configs_dict = None
         self.instance_configs = None
+        self.autotune = autotune
 
     def override_resource_config(
         self, instance_configs: Union[List[InstanceConfig], Dict[str, List[InstanceConfig]]]
@@ -754,6 +784,7 @@ class HyperparameterTuner(object):
         """Prepare the tuner instance for tuning (fit)."""
         self._prepare_job_name_for_tuning(job_name=job_name)
         self._prepare_static_hyperparameters_for_tuning(include_cls_metadata=include_cls_metadata)
+        self._prepare_auto_parameters_for_tuning()
         self._prepare_tags_for_tuning()
 
     def _get_model_uri(
@@ -836,6 +867,35 @@ class HyperparameterTuner(object):
                 for (estimator_name, estimator) in self.estimator_dict.items()
             }
 
+    def _prepare_auto_parameters_for_tuning(self):
+        """Prepare auto parameters for all estimators before tuning."""
+        self.auto_parameters = None
+        if self.estimator is not None:
+            self.static_hyperparameters, self.auto_parameters = self._prepare_auto_parameters(
+                self.static_hyperparameters, self.hyperparameters_to_keep_static
+            )
+
+        self.auto_parameters_dict = None
+        if self.estimator_dict is not None:
+            static_auto_parameters_dict = {
+                estimator_name: self._prepare_auto_parameters(
+                    self.static_hyperparameters_dict[estimator_name],
+                    self.hyperparameters_to_keep_static_dict.get(estimator_name, None)
+                    if self.hyperparameters_to_keep_static_dict
+                    else None,
+                )
+                for estimator_name in sorted(self.estimator_dict.keys())
+            }
+
+            self.static_hyperparameters_dict = {}
+            self.auto_parameters_dict = {}
+            for estimator_name, (
+                static_hyperparameters,
+                auto_parameters,
+            ) in static_auto_parameters_dict.items():
+                self.static_hyperparameters_dict[estimator_name] = static_hyperparameters
+                self.auto_parameters_dict[estimator_name] = auto_parameters
+
     @classmethod
     def _prepare_static_hyperparameters(
         cls, estimator, hyperparameter_ranges, include_cls_metadata
@@ -845,8 +905,9 @@ class HyperparameterTuner(object):
         static_hyperparameters = {
             str(k): to_string(v) for (k, v) in estimator.hyperparameters().items()
         }
-        for hyperparameter_name in hyperparameter_ranges.keys():
-            static_hyperparameters.pop(hyperparameter_name, None)
+        if hyperparameter_ranges is not None:
+            for hyperparameter_name in hyperparameter_ranges.keys():
+                static_hyperparameters.pop(hyperparameter_name, None)
 
         # For attach() to know what estimator to use for frameworks
         # (other algorithms may not accept extra hyperparameters)
@@ -859,6 +920,31 @@ class HyperparameterTuner(object):
             )
 
         return static_hyperparameters
+
+    def _prepare_auto_parameters(self, static_hyperparameters, hyperparameters_to_keep_static):
+        """Prepare auto parameters for one estimator before tuning."""
+        if not self.autotune:
+            return static_hyperparameters, None
+
+        if hyperparameters_to_keep_static is None:
+            hyperparameters_to_keep_static = {}
+
+        if not set(hyperparameters_to_keep_static).issubset(set(static_hyperparameters.keys())):
+            raise ValueError(
+                "Names in hyperparameters_to_keep_static must be members of estimator's "
+                "hyperparameters."
+            )
+
+        new_static_hyperparameters = {
+            k: v for k, v in static_hyperparameters.items() if k in hyperparameters_to_keep_static
+        }
+        auto_parameters = {
+            k: v
+            for k, v in static_hyperparameters.items()
+            if k not in hyperparameters_to_keep_static
+        }
+
+        return new_static_hyperparameters, auto_parameters
 
     @runnable_by_pipeline
     def fit(
@@ -1781,6 +1867,8 @@ class HyperparameterTuner(object):
         warm_start_config=None,
         early_stopping_type="Off",
         random_seed=None,
+        autotune=False,
+        hyperparameters_to_keep_static_dict=None,
     ):
         """Factory method to create a ``HyperparameterTuner`` instance.
 
@@ -1829,12 +1917,12 @@ class HyperparameterTuner(object):
             objective_type (str): The type of the objective metric for evaluating training jobs.
                 This value can be either 'Minimize' or 'Maximize' (default: 'Maximize').
             max_jobs (int): Maximum total number of training jobs to start for the hyperparameter
-                tuning job. The default value is unspecified fot the GridSearch strategy
+                tuning job. The default value is unspecified fot the 'Grid' strategy
                 and the value is 1 for all others strategies (default: None).
             max_parallel_jobs (int): Maximum number of parallel training jobs to start
                 (default: 1).
             max_runtime_in_seconds (int): The maximum time in seconds
-                 that a training job launched by a hyperparameter tuning job can run.
+                 that a hyperparameter tuning job can run.
             tags (list[dict]): List of tags for labeling the tuning job (default: None). For more,
                 see https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
             warm_start_config (sagemaker.tuner.WarmStartConfig): A ``WarmStartConfig`` object that
@@ -1847,6 +1935,14 @@ class HyperparameterTuner(object):
             random_seed (int): An initial value used to initialize a pseudo-random number generator.
                 Setting a random seed will make the hyperparameter tuning search strategies to
                 produce more consistent configurations for the same tuning job.
+            autotune (bool): Whether the parameter ranges or other unset settings of a tuning job
+                should be chosen automatically (default: False).
+            hyperparameters_to_keep_static_dict (dict(str, list[str]]): Dictionary of
+                hyperparameter names that will be kept static. The keys are the same set or a subset
+                of estimator names as in estimator_dict, and there must be one entry for each
+                estimator in estimator_dict. Each value is a list of hyperparameter names that will
+                be kept static and will not be assigned a tunable range with Autotune functionality
+                (default: None).
 
         Returns:
             sagemaker.tuner.HyperparameterTuner: a new ``HyperparameterTuner`` object that can
@@ -1859,6 +1955,7 @@ class HyperparameterTuner(object):
             objective_metric_name_dict,
             hyperparameter_ranges_dict,
             metric_definitions_dict,
+            hyperparameters_to_keep_static_dict,
         )
 
         estimator_names = sorted(estimator_dict.keys())
@@ -1867,6 +1964,12 @@ class HyperparameterTuner(object):
         metric_definitions = (
             metric_definitions_dict.get(first_estimator_name, None)
             if metric_definitions_dict is not None
+            else None
+        )
+
+        hyperparameters_to_keep_static = (
+            hyperparameters_to_keep_static_dict.get(first_estimator_name, None)
+            if hyperparameters_to_keep_static_dict is not None
             else None
         )
 
@@ -1888,6 +1991,8 @@ class HyperparameterTuner(object):
             warm_start_config=warm_start_config,
             early_stopping_type=early_stopping_type,
             random_seed=random_seed,
+            autotune=autotune,
+            hyperparameters_to_keep_static=hyperparameters_to_keep_static,
         )
 
         for estimator_name in estimator_names[1:]:
@@ -1896,12 +2001,18 @@ class HyperparameterTuner(object):
                 if metric_definitions_dict is not None
                 else None
             )
+            hyperparameters_to_keep_static = (
+                hyperparameters_to_keep_static_dict.get(estimator_name, None)
+                if hyperparameters_to_keep_static_dict is not None
+                else None
+            )
             tuner._add_estimator(
                 estimator_name=estimator_name,
                 estimator=estimator_dict[estimator_name],
                 objective_metric_name=objective_metric_name_dict[estimator_name],
                 hyperparameter_ranges=hyperparameter_ranges_dict[estimator_name],
                 metric_definitions=metric_definitions,
+                hyperparameters_to_keep_static=hyperparameters_to_keep_static,
             )
         return tuner
 
@@ -1912,6 +2023,7 @@ class HyperparameterTuner(object):
         objective_metric_name_dict,
         hyperparameter_ranges_dict,
         metric_definitions_dict=None,
+        hyperparameters_to_keep_static_dict=None,
     ):
         """Validate inputs for ``HyperparameterTuner.create()``"""
         cls._validate_estimator_dict(estimator_dict)
@@ -1933,6 +2045,11 @@ class HyperparameterTuner(object):
         cls._validate_dict_argument(
             name="metric_definitions_dict",
             value=metric_definitions_dict,
+            allowed_keys=estimator_names,
+        )
+        cls._validate_dict_argument(
+            name="hyperparameters_to_keep_static_dict",
+            value=hyperparameters_to_keep_static_dict,
             allowed_keys=estimator_names,
         )
 
@@ -1975,6 +2092,7 @@ class HyperparameterTuner(object):
         objective_metric_name,
         hyperparameter_ranges,
         metric_definitions=None,
+        hyperparameters_to_keep_static=None,
     ):
         """Add an estimator with corresponding attributes, if applicable.
 
@@ -1984,6 +2102,10 @@ class HyperparameterTuner(object):
         self.estimator_dict[estimator_name] = estimator
         self.objective_metric_name_dict[estimator_name] = objective_metric_name
         self._hyperparameter_ranges_dict[estimator_name] = hyperparameter_ranges
+        if hyperparameters_to_keep_static is not None:
+            self.hyperparameters_to_keep_static_dict[
+                estimator_name
+            ] = hyperparameters_to_keep_static
         if metric_definitions is not None:
             self.metric_definitions_dict[estimator_name] = metric_definitions
 
@@ -2056,6 +2178,9 @@ class _TuningJob(_Job):
         if parameter_ranges is not None:
             tuning_config["parameter_ranges"] = parameter_ranges
 
+        if tuner.auto_parameters is not None:
+            tuning_config["auto_parameters"] = tuner.auto_parameters
+
         if tuner.completion_criteria_config is not None:
             tuning_config[
                 "completion_criteria_config"
@@ -2066,6 +2191,7 @@ class _TuningJob(_Job):
             "tuning_config": tuning_config,
             "tags": tuner.tags,
             "warm_start_config": warm_start_config_req,
+            "autotune": tuner.autotune,
         }
 
         if tuner.estimator is not None:
@@ -2090,6 +2216,9 @@ class _TuningJob(_Job):
                     tuner.hyperparameter_ranges_dict()[estimator_name],
                     tuner.instance_configs_dict.get(estimator_name, None)
                     if tuner.instance_configs_dict is not None
+                    else None,
+                    tuner.auto_parameters_dict.get(estimator_name, None)
+                    if tuner.auto_parameters_dict is not None
                     else None,
                 )
                 for estimator_name in sorted(tuner.estimator_dict.keys())
@@ -2135,6 +2264,7 @@ class _TuningJob(_Job):
         objective_metric_name=None,
         parameter_ranges=None,
         instance_configs=None,
+        auto_parameters=None,
     ):
         """Prepare training config for one estimator."""
         training_config = _Job._load_config(inputs, estimator)
@@ -2186,6 +2316,9 @@ class _TuningJob(_Job):
 
         if parameter_ranges is not None:
             training_config["parameter_ranges"] = parameter_ranges
+
+        if auto_parameters is not None:
+            training_config["auto_parameters"] = auto_parameters
 
         if estimator.max_retry_attempts is not None:
             training_config["max_retry_attempts"] = estimator.max_retry_attempts

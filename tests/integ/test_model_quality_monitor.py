@@ -458,6 +458,7 @@ def _upload_actual_data(sagemaker_session, endpoint_name, actuals_s3_uri_base):
     capture_s3_uri_base = os.path.join(
         "s3://",
         sagemaker_session.default_bucket(),
+        sagemaker_session.default_bucket_prefix,
         "model-monitor",
         "data-capture",
         endpoint_name,

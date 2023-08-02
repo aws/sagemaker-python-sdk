@@ -43,7 +43,10 @@ DEFAULT_WAITER_CONFIG = WaiterConfig(max_attempts=2, delay=2)  # set max_attempt
 
 
 def empty_sagemaker_session():
-    ims = Mock(name="sagemaker_session")
+    ims = Mock(
+        name="sagemaker_session",
+        default_bucket_prefix=None,
+    )
     ims.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     ims.sagemaker_runtime_client = Mock(name="sagemaker_runtime")
     ims.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
@@ -69,6 +72,37 @@ def empty_sagemaker_session():
     ims.s3_client.get_object = Mock(
         name="get_object",
         side_effect=[async_inference_model_error, polling_timeout_error],
+    )
+
+    ims.s3_client.put_object = Mock(name="put_object")
+
+    return ims
+
+
+def empty_sagemaker_session_with_null_failure_path():
+    ims = Mock(name="sagemaker_session")
+    ims.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
+    ims.sagemaker_runtime_client = Mock(name="sagemaker_runtime")
+    ims.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
+    ims.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
+
+    ims.sagemaker_runtime_client.invoke_endpoint_async = Mock(
+        name="invoke_endpoint_async",
+        return_value={
+            "OutputLocation": ASYNC_OUTPUT_LOCATION,
+        },
+    )
+
+    polling_timeout_error = PollingTimeoutError(
+        message="Inference could still be running",
+        output_path=ASYNC_OUTPUT_LOCATION,
+        seconds=DEFAULT_WAITER_CONFIG.delay * DEFAULT_WAITER_CONFIG.max_attempts,
+    )
+
+    ims.s3_client = Mock(name="s3_client")
+    ims.s3_client.get_object = Mock(
+        name="get_object",
+        side_effect=[polling_timeout_error],
     )
 
     ims.s3_client.put_object = Mock(name="put_object")
@@ -161,6 +195,31 @@ def test_async_predict_call_with_data_and_input_path():
     assert result.failure_path == ASYNC_FAILURE_LOCATION
 
 
+def test_async_predict_call_with_data_and_input_and_null_failure_path():
+    sagemaker_session = empty_sagemaker_session_with_null_failure_path()
+    predictor_async = AsyncPredictor(Predictor(ENDPOINT, sagemaker_session))
+    predictor_async.name = ASYNC_PREDICTOR
+    data = DUMMY_DATA
+
+    result = predictor_async.predict_async(data=data, input_path=ASYNC_INPUT_LOCATION)
+    assert sagemaker_session.s3_client.put_object.called
+
+    assert sagemaker_session.sagemaker_runtime_client.invoke_endpoint_async.called
+    assert sagemaker_session.sagemaker_client.describe_endpoint.not_called
+    assert sagemaker_session.sagemaker_client.describe_endpoint_config.not_called
+
+    expected_request_args = {
+        "Accept": DEFAULT_ACCEPT,
+        "InputLocation": ASYNC_INPUT_LOCATION,
+        "EndpointName": ENDPOINT,
+    }
+
+    call_args, kwargs = sagemaker_session.sagemaker_runtime_client.invoke_endpoint_async.call_args
+    assert kwargs == expected_request_args
+    assert result.output_path == ASYNC_OUTPUT_LOCATION
+    assert result.failure_path is None
+
+
 def test_async_predict_call_verify_exceptions():
     sagemaker_session = empty_sagemaker_session()
     predictor_async = AsyncPredictor(Predictor(ENDPOINT, sagemaker_session))
@@ -185,7 +244,27 @@ def test_async_predict_call_verify_exceptions():
     assert sagemaker_session.sagemaker_client.describe_endpoint_config.not_called
 
 
-def test_async_predict_call_pass_through_success():
+def test_async_predict_call_verify_exceptions_with_null_failure_path():
+    sagemaker_session = empty_sagemaker_session_with_null_failure_path()
+    predictor_async = AsyncPredictor(Predictor(ENDPOINT, sagemaker_session))
+
+    input_location = "s3://some-input-path"
+
+    with pytest.raises(
+        PollingTimeoutError,
+        match=f"No result at {ASYNC_OUTPUT_LOCATION} after polling for "
+        f"{DEFAULT_WAITER_CONFIG.delay*DEFAULT_WAITER_CONFIG.max_attempts}"
+        f" seconds. Inference could still be running",
+    ):
+        predictor_async.predict(input_path=input_location, waiter_config=DEFAULT_WAITER_CONFIG)
+
+    assert sagemaker_session.sagemaker_runtime_client.invoke_endpoint_async.called
+    assert sagemaker_session.s3_client.get_object.called
+    assert sagemaker_session.sagemaker_client.describe_endpoint.not_called
+    assert sagemaker_session.sagemaker_client.describe_endpoint_config.not_called
+
+
+def test_async_predict_call_pass_through_output_failure_paths():
     sagemaker_session = empty_sagemaker_session()
 
     response_body = Mock("body")
@@ -206,6 +285,42 @@ def test_async_predict_call_pass_through_success():
         return_value={
             "OutputLocation": ASYNC_OUTPUT_LOCATION,
             "FailureLocation": ASYNC_FAILURE_LOCATION,
+        },
+    )
+
+    input_location = "s3://some-input-path"
+
+    result = predictor_async.predict(
+        input_path=input_location,
+    )
+
+    assert result == RETURN_VALUE
+    assert sagemaker_session.sagemaker_runtime_client.invoke_endpoint_async.called
+    assert sagemaker_session.s3_client.get_waiter.called_with("object_exists")
+    assert sagemaker_session.sagemaker_client.describe_endpoint.not_called
+    assert sagemaker_session.sagemaker_client.describe_endpoint_config.not_called
+
+
+def test_async_predict_call_pass_through_with_null_failure_path():
+    sagemaker_session = empty_sagemaker_session_with_null_failure_path()
+
+    response_body = Mock("body")
+    response_body.read = Mock("read", return_value=RETURN_VALUE)
+    response_body.close = Mock("close", return_value=None)
+
+    sagemaker_session.s3_client = Mock(name="s3_client")
+    sagemaker_session.s3_client.get_object = Mock(
+        name="get_object",
+        return_value={"Body": response_body},
+    )
+    sagemaker_session.s3_client.put_object = Mock(name="put_object")
+
+    predictor_async = AsyncPredictor(Predictor(ENDPOINT, sagemaker_session))
+
+    sagemaker_session.sagemaker_runtime_client.invoke_endpoint_async = Mock(
+        name="invoke_endpoint_async",
+        return_value={
+            "OutputLocation": ASYNC_OUTPUT_LOCATION,
         },
     )
 

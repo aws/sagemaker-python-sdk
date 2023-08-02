@@ -73,6 +73,7 @@ class DataCaptureConfig(object):
             self.destination_s3_uri = s3.s3_path_join(
                 "s3://",
                 sagemaker_session.default_bucket(),
+                sagemaker_session.default_bucket_prefix,
                 _MODEL_MONITOR_S3_PATH,
                 _DATA_CAPTURE_S3_PATH,
             )

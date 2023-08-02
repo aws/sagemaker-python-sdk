@@ -221,6 +221,31 @@ see the `DJL Serving Documentation on Python Mode. <https://docs.djl.ai/docs/ser
 
 For more information about DJL Serving, see the `DJL Serving documentation. <https://docs.djl.ai/docs/serving/index.html>`_
 
+**************************
+Ahead of time partitioning
+**************************
+
+To optimize the deployment of large models that do not fit in a single GPU, the model’s tensor weights are partitioned at
+runtime and each partition is loaded in individual GPU. But runtime partitioning takes significant amount of time and
+memory on model loading. So, DJLModel offers an ahead of time partitioning capability for DeepSpeed and FasterTransformer
+engines, which lets you partition your model weights and save them before deployment. HuggingFace does not support
+tensor parallelism, so ahead of time partitioning cannot be done for it. In our experiment with GPT-J model, loading
+this model with partitioned checkpoints increased the model loading time by 40%.
+
+`partition` method invokes an Amazon SageMaker Training job to partition the model and upload those partitioned
+checkpoints to S3 bucket. You can either provide your desired S3 bucket to upload the partitioned checkpoints or it will be
+uploaded to the default SageMaker S3 bucket. Please note that this S3 bucket will be remembered for deployment. When you
+call `deploy` method after partition, DJLServing downloads the partitioned model checkpoints directly from the uploaded
+s3 url, if available.
+
+.. code::
+
+    # partitions the model using Amazon Sagemaker Training Job.
+    djl_model.partition("ml.g5.12xlarge")
+
+    predictor = deepspeed_model.deploy("ml.g5.12xlarge",
+                                        initial_instance_count=1)
+
 ***********************
 SageMaker DJL Classes
 ***********************

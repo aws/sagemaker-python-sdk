@@ -23,7 +23,7 @@ from sagemaker.workflow.pipeline_context import _JobStepArguments
 from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.retry import RetryPolicy
 from sagemaker.workflow.steps import ConfigurableRetryStep, CacheConfig, Step, StepTypeEnum
-from sagemaker.workflow.utilities import validate_step_args_input
+from sagemaker.workflow.utilities import validate_step_args_input, trim_request_dict
 from sagemaker.workflow.step_collections import StepCollection
 
 
@@ -89,10 +89,11 @@ class AutoMLStep(ConfigurableRetryStep):
         NOTE: The `CreateAutoMLJob` request is not quite the
             args list that workflow needs.
 
-        The `AutoMLJobName`, `ModelDeployConfig` and `GenerateCandidateDefinitionsOnly`
+        `ModelDeployConfig` and `GenerateCandidateDefinitionsOnly`
             attribute cannot be included.
         """
         from sagemaker.workflow.utilities import execute_job_functions
+        from sagemaker.workflow.utilities import _pipeline_config
 
         # execute fit function in AutoML with saved parameters,
         # and store args in PipelineSession's _context
@@ -114,7 +115,10 @@ class AutoMLStep(ConfigurableRetryStep):
             request_dict.pop("ModelDeployConfig", None)
         if "GenerateCandidateDefinitionsOnly" in request_dict:
             request_dict.pop("GenerateCandidateDefinitionsOnly", None)
-        request_dict.pop("AutoMLJobName", None)
+        # Continue to pop job name if not explicitly opted-in via config
+        # AutoML Trims to AutoMLJo-2023-06-23-22-57-39-083
+        request_dict = trim_request_dict(request_dict, "AutoMLJobName", _pipeline_config)
+
         return request_dict
 
     @property

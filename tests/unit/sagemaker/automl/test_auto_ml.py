@@ -21,7 +21,13 @@ from sagemaker import AutoML, AutoMLJob, AutoMLInput, CandidateEstimator, Pipeli
 from sagemaker.predictor import Predictor
 from sagemaker.session_settings import SessionSettings
 from sagemaker.workflow.functions import Join
-from tests.unit import SAGEMAKER_CONFIG_AUTO_ML, SAGEMAKER_CONFIG_TRAINING_JOB
+from tests.unit import (
+    SAGEMAKER_CONFIG_AUTO_ML,
+    SAGEMAKER_CONFIG_TRAINING_JOB,
+    _test_default_bucket_and_prefix_combinations,
+    DEFAULT_S3_BUCKET_NAME,
+    DEFAULT_S3_OBJECT_KEY_PREFIX_NAME,
+)
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
@@ -261,6 +267,7 @@ def sagemaker_session():
         config=None,
         local_mode=False,
         settings=SessionSettings(),
+        default_bucket_prefix=None,
     )
     sms.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     sms.upload_data = Mock(name="upload_data", return_value=DEFAULT_S3_INPUT_DATA)
@@ -984,3 +991,41 @@ def test_attach(sagemaker_session):
     assert aml.mode == "ENSEMBLING"
     assert aml.auto_generate_endpoint_name is False
     assert aml.endpoint_name == "EndpointName"
+
+
+@patch("sagemaker.automl.automl.AutoMLJob.start_new")
+def test_output_path_default_bucket_and_prefix_combinations(start_new):
+    def with_user_input(sess):
+        auto_ml = AutoML(
+            role=ROLE,
+            target_attribute_name=TARGET_ATTRIBUTE_NAME,
+            sagemaker_session=sess,
+            output_path="s3://test",
+        )
+        inputs = DEFAULT_S3_INPUT_DATA
+        auto_ml.fit(inputs, job_name=JOB_NAME, wait=False, logs=True)
+        start_new.assert_called()  # just to make sure this is patched with a mock
+        return auto_ml.output_path
+
+    def without_user_input(sess):
+        auto_ml = AutoML(
+            role=ROLE,
+            target_attribute_name=TARGET_ATTRIBUTE_NAME,
+            sagemaker_session=sess,
+        )
+        inputs = DEFAULT_S3_INPUT_DATA
+        auto_ml.fit(inputs, job_name=JOB_NAME, wait=False, logs=True)
+        start_new.assert_called()  # just to make sure this is patched with a mock
+        return auto_ml.output_path
+
+    actual, expected = _test_default_bucket_and_prefix_combinations(
+        function_with_user_input=with_user_input,
+        function_without_user_input=without_user_input,
+        expected__without_user_input__with_default_bucket_and_default_prefix=(
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/"
+        ),
+        expected__without_user_input__with_default_bucket_only=f"s3://{DEFAULT_S3_BUCKET_NAME}/",
+        expected__with_user_input__with_default_bucket_and_prefix="s3://test",
+        expected__with_user_input__with_default_bucket_only="s3://test",
+    )
+    assert actual == expected

@@ -30,6 +30,7 @@ DLC_ALTERNATE_REGION_ACCOUNTS = {
     "cn-north-1": "727897471807",
     "cn-northwest-1": "727897471807",
     "eu-south-1": "692866216735",
+    "il-central-1": "780543022126",
     "me-south-1": "217643126080",
     "us-gov-west-1": "442386744353",
     "us-iso-east-1": "886529160074",

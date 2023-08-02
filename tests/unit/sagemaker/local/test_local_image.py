@@ -30,7 +30,7 @@ import yaml
 from mock import patch, Mock, MagicMock
 
 import sagemaker
-from sagemaker.local.image import _SageMakerContainer, _aws_credentials
+from sagemaker.local.image import _SageMakerContainer, _Volume, _aws_credentials
 
 REGION = "us-west-2"
 BUCKET_NAME = "mybucket"
@@ -513,6 +513,7 @@ def test_train_local_code(get_data_source_instance, tmpdir, sagemaker_session):
             assert config["services"][h]["image"] == image
             assert config["services"][h]["command"] == "train"
             volumes = config["services"][h]["volumes"]
+            volumes = [v[:-2] if v.endswith(":z") else v for v in volumes]
             assert "%s:/opt/ml/code" % "/tmp/code" in volumes
             assert "%s:/opt/ml/shared" % shared_folder_path in volumes
 
@@ -564,7 +565,24 @@ def test_train_local_intermediate_output(get_data_source_instance, tmpdir, sagem
                 assert config["services"][h]["image"] == image
                 assert config["services"][h]["command"] == "train"
                 volumes = config["services"][h]["volumes"]
+                volumes = [v[:-2] if v.endswith(":z") else v for v in volumes]
                 assert "%s:/opt/ml/output/intermediate" % intermediate_folder_path in volumes
+
+
+@patch("platform.system", Mock(return_value="Linux"))
+@patch("sagemaker.local.image.SELINUX_ENABLED", Mock(return_value=True))
+def test_container_selinux_has_label(tmpdir):
+    volume = _Volume(str(tmpdir), "/opt/ml/model")
+
+    assert volume.map.endswith(":z")
+
+
+@patch("platform.system", Mock(return_value="Darwin"))
+@patch("sagemaker.local.image.SELINUX_ENABLED", Mock(return_value=True))
+def test_container_has_selinux_no_label(tmpdir):
+    volume = _Volume(str(tmpdir), "/opt/ml/model")
+
+    assert not volume.map.endswith(":z")
 
 
 def test_container_has_gpu_support(tmpdir, sagemaker_session):
@@ -650,6 +668,7 @@ def test_serve_local_code(tmpdir, sagemaker_session):
                 assert config["services"][h]["command"] == "serve"
 
                 volumes = config["services"][h]["volumes"]
+                volumes = [v[:-2] if v.endswith(":z") else v for v in volumes]
                 assert "%s:/opt/ml/code" % "/tmp/code" in volumes
                 assert (
                     "SAGEMAKER_SUBMIT_DIRECTORY=/opt/ml/code"

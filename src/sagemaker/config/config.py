@@ -19,7 +19,6 @@ The schema of the config file is dictated in config_schema.py in the same module
 from __future__ import absolute_import
 
 import pathlib
-import logging
 import os
 from typing import List
 import boto3
@@ -29,8 +28,9 @@ from platformdirs import site_config_dir, user_config_dir
 from botocore.utils import merge_dicts
 from six.moves.urllib.parse import urlparse
 from sagemaker.config.config_schema import SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA
+from sagemaker.config.config_utils import get_sagemaker_config_logger
 
-logger = logging.getLogger("sagemaker")
+logger = get_sagemaker_config_logger()
 
 _APP_NAME = "sagemaker"
 # The default config file location of the Administrator provided config file. This path can be
@@ -122,6 +122,9 @@ def load_sagemaker_config(additional_config_paths: List[str] = None, s3_resource
         if config_from_file:
             validate_sagemaker_config(config_from_file)
             merge_dicts(merged_config, config_from_file)
+            logger.info("Fetched defaults config from location: %s", file_path)
+        else:
+            logger.debug("Fetched defaults config from location: %s, but it was empty", file_path)
     return merged_config
 
 
@@ -148,7 +151,7 @@ def _load_config_from_file(file_path: str) -> dict:
             f"Unable to load the config file from the location: {file_path}"
             f"Provide a valid file path"
         )
-    logger.debug("Fetching config file from the path: %s", file_path)
+    logger.debug("Fetching defaults config from location: %s", file_path)
     return yaml.safe_load(open(inferred_file_path, "r"))
 
 
@@ -164,7 +167,7 @@ def _load_config_from_s3(s3_uri, s3_resource_for_config) -> dict:
             )
         s3_resource_for_config = boto_session.resource("s3", region_name=boto_region_name)
 
-    logger.debug("Fetching config file from the S3 URI: %s", s3_uri)
+    logger.debug("Fetching defaults config from location: %s", s3_uri)
     inferred_s3_uri = _get_inferred_s3_uri(s3_uri, s3_resource_for_config)
     parsed_url = urlparse(inferred_s3_uri)
     bucket, key_prefix = parsed_url.netloc, parsed_url.path.lstrip("/")

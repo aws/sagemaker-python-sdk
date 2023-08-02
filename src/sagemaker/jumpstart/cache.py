@@ -327,8 +327,10 @@ class JumpStartModelsCache:
             )
         if file_type == JumpStartS3FileType.SPECS:
             formatted_body, _ = self._get_json_file(s3_key, file_type)
+            model_specs = JumpStartModelSpecs(formatted_body)
+            utils.emit_logs_based_on_model_specs(model_specs, self.get_region())
             return JumpStartCachedS3ContentValue(
-                formatted_content=JumpStartModelSpecs(formatted_body)
+                formatted_content=model_specs
             )
         raise ValueError(
             f"Bad value for key '{key}': must be in {[JumpStartS3FileType.MANIFEST, JumpStartS3FileType.SPECS]}"

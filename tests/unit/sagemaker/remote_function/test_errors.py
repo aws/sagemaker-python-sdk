@@ -20,6 +20,7 @@ from sagemaker.remote_function.errors import SerializationError, handle_error
 
 TEST_S3_BASE_URI = "s3://my-bucket/"
 TEST_S3_KMS_KEY = "my-kms-key"
+TEST_HMAC_KEY = "some-hmac-key"
 
 
 class _InvalidErrorNumberException(Exception):
@@ -70,12 +71,22 @@ def test_handle_error(
     error_string,
 ):
     err = error
-    exit_code = handle_error(err, sagemaker_session, TEST_S3_BASE_URI, TEST_S3_KMS_KEY)
+    exit_code = handle_error(
+        error=err,
+        sagemaker_session=sagemaker_session,
+        s3_base_uri=TEST_S3_BASE_URI,
+        s3_kms_key=TEST_S3_KMS_KEY,
+        hmac_key=TEST_HMAC_KEY,
+    )
 
     assert exit_code == expected_exit_code
     exists.assert_called_once_with("/opt/ml/output/failure")
     mock_open_file.assert_called_with("/opt/ml/output/failure", "w")
     mock_open_file.return_value.__enter__().write.assert_called_with(error_string)
     serialize_exception_to_s3.assert_called_with(
-        err, sagemaker_session, TEST_S3_BASE_URI + "exception", TEST_S3_KMS_KEY
+        exc=err,
+        sagemaker_session=sagemaker_session,
+        s3_uri=TEST_S3_BASE_URI + "exception",
+        hmac_key=TEST_HMAC_KEY,
+        s3_kms_key=TEST_S3_KMS_KEY,
     )

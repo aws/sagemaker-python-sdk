@@ -14,6 +14,63 @@ from __future__ import absolute_import
 
 
 SPECIAL_MODEL_SPECS_DICT = {
+    "js-model-package-arn": {
+        "model_id": "meta-textgeneration-llama-2-7b-f",
+        "url": "https://ai.meta.com/resources/models-and-libraries/llama-downloads/",
+        "version": "1.0.0",
+        "min_sdk_version": "2.173.0",
+        "training_supported": False,
+        "incremental_training_supported": False,
+        "hosting_ecr_specs": {
+            "framework": "pytorch",
+            "framework_version": "1.12.0",
+            "py_version": "py38",
+        },
+        "hosting_artifact_key": "meta-infer/infer-meta-textgeneration-llama-2-7b-f.tar.gz",
+        "hosting_script_key": "source-directory-tarballs/meta/inference/textgeneration/v1.0.0/sourcedir.tar.gz",
+        "hosting_eula_key": "fmhMetadata/eula/llamaEula.txt",
+        "hosting_model_package_arns": {
+            "us-west-2": "arn:aws:sagemaker:us-west-2:594846645681:model-package/"
+            "llama2-7b-f-e46eb8a833643ed58aaccd81498972c3",
+            "us-east-1": "arn:aws:sagemaker:us-east-1:865070037744:model-package/"
+            "llama2-7b-f-e46eb8a833643ed58aaccd81498972c3",
+        },
+        "inference_vulnerable": False,
+        "inference_dependencies": [],
+        "inference_vulnerabilities": [],
+        "training_vulnerable": False,
+        "training_dependencies": [],
+        "training_vulnerabilities": [],
+        "deprecated": False,
+        "inference_environment_variables": [],
+        "metrics": [],
+        "default_inference_instance_type": "ml.g5.2xlarge",
+        "supported_inference_instance_types": [
+            "ml.g5.2xlarge",
+            "ml.g5.4xlarge",
+            "ml.g5.8xlarge",
+            "ml.g5.12xlarge",
+            "ml.g5.24xlarge",
+            "ml.g5.48xlarge",
+            "ml.p4d.24xlarge",
+        ],
+        "model_kwargs": {},
+        "deploy_kwargs": {
+            "model_data_download_timeout": 3600,
+            "container_startup_health_check_timeout": 3600,
+        },
+        "predictor_specs": {
+            "supported_content_types": ["application/json"],
+            "supported_accept_types": ["application/json"],
+            "default_content_type": "application/json",
+            "default_accept_type": "application/json",
+        },
+        "inference_volume_size": 256,
+        "inference_enable_network_isolation": True,
+        "validation_supported": False,
+        "fine_tuning_supported": False,
+        "resource_name_base": "meta-textgeneration-llama-2-7b-f",
+    },
     "js-trainable-model-prepacked": {
         "model_id": "huggingface-text2text-flan-t5-base",
         "url": "https://huggingface.co/google/flan-t5-base",
@@ -2299,6 +2356,10 @@ BASE_SPEC = {
     "training_script_key": "source-directory-tarballs/pytorch/transfer_learning/ic/v1.0.0/sourcedir.tar.gz",
     "training_prepacked_script_key": None,
     "hosting_prepacked_artifact_key": None,
+    "deprecate_warn_message": None,
+    "deprecated_message": None,
+    "hosting_model_package_arns": None,
+    "hosting_eula_key": None,
     "hyperparameters": [
         {
             "name": "epochs",

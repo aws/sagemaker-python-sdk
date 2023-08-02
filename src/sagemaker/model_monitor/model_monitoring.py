@@ -37,6 +37,7 @@ from sagemaker.config.config_schema import (
     TAGS,
     MONITORING_JOB_SUBNETS_PATH,
     MONITORING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
+    MONITORING_JOB_ENVIRONMENT_PATH,
     MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION_PATH,
     MONITORING_JOB_VOLUME_KMS_KEY_ID_PATH,
     MONITORING_JOB_SECURITY_GROUP_IDS_PATH,
@@ -51,6 +52,7 @@ from sagemaker.model_monitor.monitoring_alert import (
     MonitoringAlertActions,
     ModelDashboardIndicatorAction,
 )
+from sagemaker.model_monitor.data_quality_monitoring_config import DataQualityMonitoringConfig
 from sagemaker.model_monitor.dataset_format import MonitoringDatasetFormat
 from sagemaker.network import NetworkConfig
 from sagemaker.processing import Processor, ProcessingInput, ProcessingJob, ProcessingOutput
@@ -97,6 +99,7 @@ _GROUND_TRUTH_ATTRIBUTE_ENV_NAME = "ground_truth_attribute"
 _INFERENCE_ATTRIBUTE_ENV_NAME = "inference_attribute"
 _PROBABILITY_ATTRIBUTE_ENV_NAME = "probability_attribute"
 _PROBABILITY_THRESHOLD_ATTRIBUTE_ENV_NAME = "probability_threshold_attribute"
+_CATEGORICAL_DRIFT_METHOD_ENV_NAME = "categorical_drift_method"
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -171,7 +174,6 @@ class ModelMonitor(object):
         self.max_runtime_in_seconds = max_runtime_in_seconds
         self.base_job_name = base_job_name
         self.sagemaker_session = sagemaker_session or Session()
-        self.env = env
         self.tags = tags
 
         self.baselining_jobs = []
@@ -225,6 +227,12 @@ class ModelMonitor(object):
             self.network_config,
             "encrypt_inter_container_traffic",
             MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION_PATH,
+            sagemaker_session=self.sagemaker_session,
+        )
+        self.env = resolve_value_from_config(
+            env,
+            MONITORING_JOB_ENVIRONMENT_PATH,
+            default_value=None,
             sagemaker_session=self.sagemaker_session,
         )
 
@@ -1130,6 +1138,7 @@ class ModelMonitor(object):
         probability_attribute=None,
         ground_truth_attribute=None,
         probability_threshold_attribute=None,
+        categorical_drift_method=None,
     ):
         """Generate a list of environment variables from first-class parameters.
 
@@ -1151,6 +1160,9 @@ class ModelMonitor(object):
                 Only used for ModelQualityMonitor.
             probability_threshold_attribute (float): threshold to convert probabilities to binaries
                 Only used for ModelQualityMonitor.
+            categorical_drift_method (str): categorical_drift_method to override the
+                categorical_drift_method of global monitoring_config in constraints
+                suggested by Model Monitor container. Only used for DataQualityMonitor.
 
         Returns:
             dict: Dictionary of environment keys and values.
@@ -1199,6 +1211,9 @@ class ModelMonitor(object):
 
         if probability_threshold_attribute is not None:
             env[_PROBABILITY_THRESHOLD_ATTRIBUTE_ENV_NAME] = probability_threshold_attribute
+
+        if categorical_drift_method is not None:
+            env[_CATEGORICAL_DRIFT_METHOD_ENV_NAME] = categorical_drift_method
 
         return env
 
@@ -1287,6 +1302,7 @@ class ModelMonitor(object):
                     s3_uri = s3.s3_path_join(
                         "s3://",
                         self.sagemaker_session.default_bucket(),
+                        self.sagemaker_session.default_bucket_prefix,
                         self.latest_baselining_job_name,
                         file_input.input_name,
                     )
@@ -1312,6 +1328,7 @@ class ModelMonitor(object):
         s3_uri = output_s3_uri or s3.s3_path_join(
             "s3://",
             self.sagemaker_session.default_bucket(),
+            self.sagemaker_session.default_bucket_prefix,
             _MODEL_MONITOR_S3_PATH,
             _BASELINING_S3_PATH,
             self.latest_baselining_job_name,
@@ -1338,6 +1355,7 @@ class ModelMonitor(object):
             s3_uri = s3.s3_path_join(
                 "s3://",
                 self.sagemaker_session.default_bucket(),
+                self.sagemaker_session.default_bucket_prefix,
                 self.latest_baselining_job_name,
                 "output",
             )
@@ -1361,6 +1379,7 @@ class ModelMonitor(object):
         s3_uri = output_s3_uri or s3.s3_path_join(
             "s3://",
             self.sagemaker_session.default_bucket(),
+            self.sagemaker_session.default_bucket_prefix,
             _MODEL_MONITOR_S3_PATH,
             _MONITORING_S3_PATH,
             monitoring_schedule_name,
@@ -1387,6 +1406,7 @@ class ModelMonitor(object):
             output.destination = s3.s3_path_join(
                 "s3://",
                 self.sagemaker_session.default_bucket(),
+                self.sagemaker_session.default_bucket_prefix,
                 self.monitoring_schedule_name,
                 "output",
             )
@@ -1408,6 +1428,7 @@ class ModelMonitor(object):
             s3_uri = s3.s3_path_join(
                 "s3://",
                 self.sagemaker_session.default_bucket(),
+                self.sagemaker_session.default_bucket_prefix,
                 _MODEL_MONITOR_S3_PATH,
                 _MONITORING_S3_PATH,
                 self.monitoring_schedule_name,
@@ -1496,6 +1517,7 @@ class ModelMonitor(object):
             s3_uri = s3.s3_path_join(
                 "s3://",
                 self.sagemaker_session.default_bucket(),
+                self.sagemaker_session.default_bucket_prefix,
                 _MODEL_MONITOR_S3_PATH,
                 _BASELINING_S3_PATH,
                 self.latest_baselining_job_name,
@@ -1634,6 +1656,7 @@ class DefaultModelMonitor(ModelMonitor):
         wait=True,
         logs=True,
         job_name=None,
+        monitoring_config_override=None,
     ):
         """Suggest baselines for use with Amazon SageMaker Model Monitoring Schedules.
 
@@ -1653,12 +1676,18 @@ class DefaultModelMonitor(ModelMonitor):
                 Only meaningful when wait is True (default: True).
             job_name (str): Processing job name. If not specified, the processor generates
                 a default job name, based on the image name and current timestamp.
-
+            monitoring_config_override (DataQualityMonitoringConfig): monitoring_config object to
+                override the global monitoring_config parameter of constraints suggested by
+                Model Monitor Container. If not specified, the values suggested by container is
+                set.
         Returns:
             sagemaker.processing.ProcessingJob: The ProcessingJob object representing the
                 baselining job.
 
         """
+        if not DataQualityMonitoringConfig.valid_monitoring_config(monitoring_config_override):
+            raise RuntimeError("Invalid value for monitoring_config_override.")
+
         self.latest_baselining_job_name = self._generate_baselining_job_name(job_name=job_name)
 
         normalized_baseline_dataset_input = self._upload_and_convert_to_processing_input(
@@ -1718,6 +1747,11 @@ class DefaultModelMonitor(ModelMonitor):
 
         normalized_baseline_output = self._normalize_baseline_output(output_s3_uri=output_s3_uri)
 
+        categorical_drift_method = None
+        if monitoring_config_override and monitoring_config_override.distribution_constraints:
+            distribution_constraints = monitoring_config_override.distribution_constraints
+            categorical_drift_method = distribution_constraints.categorical_drift_method
+
         normalized_env = self._generate_env_map(
             env=self.env,
             dataset_format=dataset_format,
@@ -1726,6 +1760,7 @@ class DefaultModelMonitor(ModelMonitor):
             dataset_source_container_path=baseline_dataset_container_path,
             record_preprocessor_script_container_path=record_preprocessor_script_container_path,
             post_processor_script_container_path=post_processor_script_container_path,
+            categorical_drift_method=categorical_drift_method,
         )
 
         baselining_processor = Processor(

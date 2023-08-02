@@ -27,15 +27,18 @@ from six import string_types, with_metaclass
 from six.moves.urllib.parse import urlparse
 
 import sagemaker
-from sagemaker import git_utils, image_uris, vpc_utils
+from sagemaker import git_utils, image_uris, vpc_utils, s3
 from sagemaker.analytics import TrainingJobAnalytics
 from sagemaker.config import (
+    ESTIMATOR_DEBUG_HOOK_CONFIG_PATH,
     TRAINING_JOB_VOLUME_KMS_KEY_ID_PATH,
     TRAINING_JOB_SECURITY_GROUP_IDS_PATH,
     TRAINING_JOB_SUBNETS_PATH,
     TRAINING_JOB_KMS_KEY_ID_PATH,
     TRAINING_JOB_ROLE_ARN_PATH,
     TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
+    TRAINING_JOB_ENVIRONMENT_PATH,
+    TRAINING_JOB_DISABLE_PROFILER_PATH,
     TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
 )
 from sagemaker.debugger import (  # noqa: F401 # pylint: disable=unused-import
@@ -63,6 +66,7 @@ from sagemaker.fw_utils import (
 )
 from sagemaker.inputs import TrainingInput, FileSystemInput
 from sagemaker.instance_group import InstanceGroup
+from sagemaker.utils import instance_supports_kms
 from sagemaker.job import _Job
 from sagemaker.jumpstart.utils import (
     add_jumpstart_tags,
@@ -95,6 +99,7 @@ from sagemaker.utils import (
 )
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.pipeline_context import PipelineSession, runnable_by_pipeline
 
 logger = logging.getLogger(__name__)
@@ -154,7 +159,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         enable_sagemaker_metrics: Optional[Union[bool, PipelineVariable]] = None,
         enable_network_isolation: Union[bool, PipelineVariable] = None,
         profiler_config: Optional[ProfilerConfig] = None,
-        disable_profiler: bool = False,
+        disable_profiler: bool = None,
         environment: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
         max_retry_attempts: Optional[Union[int, PipelineVariable]] = None,
         source_dir: Optional[Union[str, PipelineVariable]] = None,
@@ -167,6 +172,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         instance_groups: Optional[List[InstanceGroup]] = None,
         training_repository_access_mode: Optional[Union[str, PipelineVariable]] = None,
         training_repository_credentials_provider_arn: Optional[Union[str, PipelineVariable]] = None,
+        container_entry_point: Optional[List[str]] = None,
+        container_arguments: Optional[List[str]] = None,
+        disable_output_compression: bool = False,
         **kwargs,
     ):
         """Initialize an ``EstimatorBase`` instance.
@@ -520,6 +528,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 private Docker registry where your training image is hosted (default: None).
                 When it's set to None, SageMaker will not do authentication before pulling the image
                 in the private Docker registry.
+            container_entry_point (List[str]): Optional. The entrypoint script for a Docker
+                container used to run a training job. This script takes precedence over
+                the default train processing instructions.
+            container_arguments (List[str]): Optional. The arguments for a container used to run
+                a training job.
+            disable_output_compression (bool): Optional. When set to true, Model is uploaded
+                to Amazon S3 without compression after training finishes.
         """
         instance_count = renamed_kwargs(
             "train_instance_count", "instance_count", instance_count, kwargs
@@ -556,7 +571,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.code_location = code_location
         self.entry_point = entry_point
         self.dependencies = dependencies or []
-        self.uploaded_code = None
+        self.uploaded_code: Optional[UploadedCode] = None
         self.tags = add_jumpstart_tags(
             tags=tags, training_model_uri=self.model_uri, training_script_uri=self.source_dir
         )
@@ -599,10 +614,33 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.output_kms_key = resolve_value_from_config(
             output_kms_key, TRAINING_JOB_KMS_KEY_ID_PATH, sagemaker_session=self.sagemaker_session
         )
-        self.volume_kms_key = resolve_value_from_config(
-            volume_kms_key,
-            TRAINING_JOB_VOLUME_KMS_KEY_ID_PATH,
-            sagemaker_session=self.sagemaker_session,
+        if instance_type is None or isinstance(instance_type, str):
+            instance_type_for_volume_kms = instance_type
+        elif isinstance(instance_type, ParameterString):
+            instance_type_for_volume_kms = instance_type.default_value
+        else:
+            raise ValueError(f"Bad value for instance type: '{instance_type}'")
+
+        # KMS can only be attached to supported instances
+        use_volume_kms_config = (
+            (instance_type_for_volume_kms and instance_supports_kms(instance_type_for_volume_kms))
+            or instance_groups is not None
+            and any(
+                [
+                    instance_supports_kms(instance_group.instance_type)
+                    for instance_group in instance_groups
+                ]
+            )
+        )
+
+        self.volume_kms_key = (
+            resolve_value_from_config(
+                volume_kms_key,
+                TRAINING_JOB_VOLUME_KMS_KEY_ID_PATH,
+                sagemaker_session=self.sagemaker_session,
+            )
+            if use_volume_kms_config
+            else volume_kms_key
         )
 
         # VPC configurations
@@ -621,6 +659,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             training_repository_credentials_provider_arn
         )
 
+        # container entry point / arguments configs
+        self.container_entry_point = container_entry_point
+        self.container_arguments = container_arguments
+
         self.encrypt_inter_container_traffic = resolve_value_from_config(
             direct_input=encrypt_inter_container_traffic,
             config_path=TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
@@ -634,7 +676,26 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.checkpoint_local_path = checkpoint_local_path
 
         self.rules = rules
-        self.debugger_hook_config = debugger_hook_config
+
+        # Today, we ONLY support debugger_hook_config to be provided as a boolean value
+        # from sagemaker_config. We resolve value for this parameter as per the order
+        # 1. value from direct_input which can be a boolean or a dictionary
+        # 2. value from sagemaker_config which can be a boolean
+        # In future, if we support debugger_hook_config to be provided as a dictionary
+        # from sagemaker_config [SageMaker.TrainingJob] then we will need to update the
+        # logic below to resolve the values as per the type of value received from
+        # direct_input and sagemaker_config
+        self.debugger_hook_config = resolve_value_from_config(
+            direct_input=debugger_hook_config,
+            config_path=ESTIMATOR_DEBUG_HOOK_CONFIG_PATH,
+            sagemaker_session=sagemaker_session,
+        )
+        # If customer passes True from either direct_input or sagemaker_config, we will
+        # create a default hook config as an empty dict which will later be populated
+        # with default s3_output_path from _prepare_debugger_for_training function
+        if self.debugger_hook_config is True:
+            self.debugger_hook_config = {}
+
         self.tensorboard_output_config = tensorboard_output_config
 
         self.debugger_rule_configs = None
@@ -650,9 +711,19 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         )
 
         self.profiler_config = profiler_config
-        self.disable_profiler = disable_profiler
+        self.disable_profiler = resolve_value_from_config(
+            direct_input=disable_profiler,
+            config_path=TRAINING_JOB_DISABLE_PROFILER_PATH,
+            default_value=False,
+            sagemaker_session=self.sagemaker_session,
+        )
 
-        self.environment = environment
+        self.environment = resolve_value_from_config(
+            direct_input=environment,
+            config_path=TRAINING_JOB_ENVIRONMENT_PATH,
+            default_value=None,
+            sagemaker_session=self.sagemaker_session,
+        )
 
         self.max_retry_attempts = max_retry_attempts
 
@@ -664,13 +735,16 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.profiler_rule_configs = None
         self.profiler_rules = None
         self.debugger_rules = None
-
+        self.disable_output_compression = disable_output_compression
         validate_source_code_input_against_pipeline_variables(
             entry_point=entry_point,
             source_dir=source_dir,
             git_config=git_config,
             enable_network_isolation=self._enable_network_isolation,
         )
+
+        # Internal flag
+        self._is_output_path_set_from_default_bucket_and_prefix = False
 
     @abstractmethod
     def training_image_uri(self):
@@ -772,7 +846,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             if self.sagemaker_session.local_mode and local_code:
                 self.output_path = ""
             else:
-                self.output_path = "s3://{}/".format(self.sagemaker_session.default_bucket())
+                self.output_path = s3.s3_path_join(
+                    "s3://",
+                    self.sagemaker_session.default_bucket(),
+                    self.sagemaker_session.default_bucket_prefix,
+                    with_end_slash=True,
+                )
+                self._is_output_path_set_from_default_bucket_and_prefix = True
 
         if self.git_config:
             updated_paths = git_utils.git_clone_repo(
@@ -839,7 +919,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
         self._hyperparameters.update(EstimatorBase._json_encode_hyperparameters(hyperparams))
 
-    def _stage_user_code_in_s3(self) -> str:
+    def _stage_user_code_in_s3(self) -> UploadedCode:
         """Uploads the user training script to S3 and returns the S3 URI.
 
         Returns: S3 URI
@@ -847,7 +927,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         if is_pipeline_variable(self.output_path):
             if self.code_location is None:
                 code_bucket = self.sagemaker_session.default_bucket()
-                code_s3_prefix = self._assign_s3_prefix()
+                key_prefix = self.sagemaker_session.default_bucket_prefix
+                code_s3_prefix = self._assign_s3_prefix(key_prefix)
                 kms_key = None
             else:
                 code_bucket, key_prefix = parse_s3_url(self.code_location)
@@ -860,7 +941,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             if local_mode:
                 if self.code_location is None:
                     code_bucket = self.sagemaker_session.default_bucket()
-                    code_s3_prefix = self._assign_s3_prefix()
+                    key_prefix = self.sagemaker_session.default_bucket_prefix
+                    code_s3_prefix = self._assign_s3_prefix(key_prefix)
                     kms_key = None
                 else:
                     code_bucket, key_prefix = parse_s3_url(self.code_location)
@@ -868,8 +950,21 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                     kms_key = None
             else:
                 if self.code_location is None:
-                    code_bucket, _ = parse_s3_url(self.output_path)
-                    code_s3_prefix = self._assign_s3_prefix()
+                    code_bucket, possible_key_prefix = parse_s3_url(self.output_path)
+
+                    if self._is_output_path_set_from_default_bucket_and_prefix:
+                        # Only include possible_key_prefix if the output_path was created from the
+                        # Session's default bucket and prefix. In that scenario, possible_key_prefix
+                        # will either be "" or Session.default_bucket_prefix.
+                        # Note: We cannot do `if (code_bucket == session.default_bucket() and
+                        # key_prefix == session.default_bucket_prefix)` instead because the user
+                        # could have passed in equivalent values themselves to output_path. And
+                        # including the prefix in that case could result in a potentially backwards
+                        # incompatible behavior change for the end user.
+                        code_s3_prefix = self._assign_s3_prefix(possible_key_prefix)
+                    else:
+                        code_s3_prefix = self._assign_s3_prefix()
+
                     kms_key = self.output_kms_key
                 else:
                     code_bucket, key_prefix = parse_s3_url(self.code_location)
@@ -905,18 +1000,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         """
         from sagemaker.workflow.utilities import _pipeline_config
 
-        code_s3_prefix = "/".join(filter(None, [key_prefix, self._current_job_name, "source"]))
+        code_s3_prefix = s3.s3_path_join(key_prefix, self._current_job_name, "source")
         if _pipeline_config and _pipeline_config.code_hash:
-            code_s3_prefix = "/".join(
-                filter(
-                    None,
-                    [
-                        key_prefix,
-                        _pipeline_config.pipeline_name,
-                        "code",
-                        _pipeline_config.code_hash,
-                    ],
-                )
+            code_s3_prefix = s3.s3_path_join(
+                key_prefix,
+                _pipeline_config.pipeline_name,
+                "code",
+                _pipeline_config.code_hash,
             )
         return code_s3_prefix
 
@@ -1060,8 +1150,12 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         if "source_s3_uri" in (rule.rule_parameters or {}):
             parse_result = urlparse(rule.rule_parameters["source_s3_uri"])
             if parse_result.scheme != "s3":
-                desired_s3_uri = os.path.join(
-                    "s3://", self.sagemaker_session.default_bucket(), rule.name, str(uuid.uuid4())
+                desired_s3_uri = s3.s3_path_join(
+                    "s3://",
+                    self.sagemaker_session.default_bucket(),
+                    self.sagemaker_session.default_bucket_prefix,
+                    rule.name,
+                    str(uuid.uuid4()),
                 )
                 s3_uri = S3Uploader.upload(
                     local_path=rule.rule_parameters["source_s3_uri"],
@@ -1643,21 +1737,41 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
     @property
     def model_data(self):
-        """str: The model location in S3. Only set if Estimator has been ``fit()``."""
+        """Str or dict: The model location in S3. Only set if Estimator has been ``fit()``."""
         if self.latest_training_job is not None and not isinstance(
             self.sagemaker_session, PipelineSession
         ):
-            model_uri = self.sagemaker_session.sagemaker_client.describe_training_job(
+            job_details = self.sagemaker_session.sagemaker_client.describe_training_job(
                 TrainingJobName=self.latest_training_job.name
-            )["ModelArtifacts"]["S3ModelArtifacts"]
-        else:
-            logger.warning(
-                "No finished training job found associated with this estimator. Please make sure "
-                "this estimator is only used for building workflow config"
             )
-            model_uri = os.path.join(
-                self.output_path, self._current_job_name, "output", "model.tar.gz"
+            model_uri = job_details["ModelArtifacts"]["S3ModelArtifacts"]
+            compression_type = job_details.get("OutputDataConfig", {}).get(
+                "CompressionType", "GZIP"
             )
+            if compression_type == "GZIP":
+                return model_uri
+            # fail fast if we don't recognize training output compression type
+            if compression_type not in {"GZIP", "NONE"}:
+                raise ValueError(
+                    f'Unrecognized training job output data compression type "{compression_type}"'
+                )
+            # model data is in uncompressed form NOTE SageMaker Hosting mandates presence of
+            # trailing forward slash in S3 model data URI, so append one if necessary.
+            if not model_uri.endswith("/"):
+                model_uri += "/"
+            return {
+                "S3DataSource": {
+                    "S3Uri": model_uri,
+                    "S3DataType": "S3Prefix",
+                    "CompressionType": "None",
+                }
+            }
+
+        logger.warning(
+            "No finished training job found associated with this estimator. Please make sure "
+            "this estimator is only used for building workflow config"
+        )
+        model_uri = os.path.join(self.output_path, self._current_job_name, "output", "model.tar.gz")
         return model_uri
 
     @abstractmethod
@@ -1730,6 +1844,16 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         if "MetricDefinitons" in job_details["AlgorithmSpecification"]:
             init_params["metric_definitions"] = job_details["AlgorithmSpecification"][
                 "MetricsDefinition"
+            ]
+
+        if "ContainerEntrypoint" in job_details["AlgorithmSpecification"]:
+            init_params["container_entry_point"] = job_details["AlgorithmSpecification"][
+                "ContainerEntrypoint"
+            ]
+
+        if "ContainerArguments" in job_details["AlgorithmSpecification"]:
+            init_params["container_arguments"] = job_details["AlgorithmSpecification"][
+                "ContainerArguments"
             ]
 
         if "EnableInterContainerTrafficEncryption" in job_details:
@@ -2212,6 +2336,12 @@ class _TrainingJob(_Job):
                 ] = estimator.training_repository_credentials_provider_arn
             train_args["training_image_config"] = training_image_config
 
+        if estimator.container_entry_point is not None:
+            train_args["container_entry_point"] = estimator.container_entry_point
+
+        if estimator.container_arguments is not None:
+            train_args["container_arguments"] = estimator.container_arguments
+
         # encrypt_inter_container_traffic may be a pipeline variable place holder object
         # which is parsed in execution time
         # This does not check config because the EstimatorBase constuctor already did that check
@@ -2418,6 +2548,9 @@ class Estimator(EstimatorBase):
         instance_groups: Optional[List[InstanceGroup]] = None,
         training_repository_access_mode: Optional[Union[str, PipelineVariable]] = None,
         training_repository_credentials_provider_arn: Optional[Union[str, PipelineVariable]] = None,
+        container_entry_point: Optional[List[str]] = None,
+        container_arguments: Optional[List[str]] = None,
+        disable_output_compression: bool = False,
         **kwargs,
     ):
         """Initialize an ``Estimator`` instance.
@@ -2770,6 +2903,13 @@ class Estimator(EstimatorBase):
                 private Docker registry where your training image is hosted (default: None).
                 When it's set to None, SageMaker will not do authentication before pulling the image
                 in the private Docker registry.
+            container_entry_point (List[str]): Optional. The entrypoint script for a Docker
+                container used to run a training job. This script takes precedence over
+                the default train processing instructions.
+            container_arguments (List[str]): Optional. The arguments for a container used to run
+                a training job.
+            disable_output_compression (bool): Optional. When set to true, Model is uploaded
+                to Amazon S3 without compression after training finishes.
         """
         self.image_uri = image_uri
         self._hyperparameters = hyperparameters.copy() if hyperparameters else {}
@@ -2817,6 +2957,9 @@ class Estimator(EstimatorBase):
             instance_groups=instance_groups,
             training_repository_access_mode=training_repository_access_mode,
             training_repository_credentials_provider_arn=training_repository_credentials_provider_arn,  # noqa: E501 # pylint: disable=line-too-long
+            container_entry_point=container_entry_point,
+            container_arguments=container_arguments,
+            disable_output_compression=disable_output_compression,
             **kwargs,
         )
 
@@ -3135,7 +3278,7 @@ class Framework(EstimatorBase):
         self.git_config = git_config
         self.source_dir = source_dir
         self.dependencies = dependencies or []
-        self.uploaded_code = None
+        self.uploaded_code: Optional[UploadedCode] = None
 
         self.container_log_level = container_log_level
         self.code_location = code_location

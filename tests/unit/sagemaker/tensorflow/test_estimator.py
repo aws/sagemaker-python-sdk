@@ -74,6 +74,7 @@ def sagemaker_session():
         s3_resource=None,
         s3_client=None,
         settings=SessionSettings(),
+        default_bucket_prefix=None,
     )
     session.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     session.expand_role = Mock(name="expand_role", return_value=ROLE)

@@ -19,6 +19,7 @@ from tests.unit.sagemaker.image_uris import expected_uris
 
 ACCOUNTS = {
     "af-south-1": "626614931356",
+    "il-central-1": "780543022126",
     "ap-east-1": "871362719292",
     "ap-northeast-1": "763104351884",
     "ap-northeast-2": "763104351884",
@@ -59,6 +60,8 @@ VERSIONS = [
     "0.6.2",
     "0.7.0",
     "0.7",
+    "0.8",
+    "0.8.2",
 ]
 
 SCOPES = ["training", "inference"]

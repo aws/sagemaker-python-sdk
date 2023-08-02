@@ -44,13 +44,29 @@ def test_serverless_walkthrough(sagemaker_session, cpu_instance_type, training_s
         pca.extra_components = 5
         pca.fit(pca.record_set(training_set[0][:100]), job_name=job_name)
 
-    with timeout_and_delete_endpoint_by_name(job_name, sagemaker_session):
+    serverless_name = unique_name_from_base("pca-serverless")
+    with timeout_and_delete_endpoint_by_name(serverless_name, sagemaker_session):
 
         predictor_serverless = pca.deploy(
-            endpoint_name=job_name, serverless_inference_config=ServerlessInferenceConfig()
+            endpoint_name=serverless_name, serverless_inference_config=ServerlessInferenceConfig()
         )
 
         result = predictor_serverless.predict(training_set[0][:5])
+
+        assert len(result) == 5
+        for record in result:
+            assert record.label["projection"] is not None
+
+    # Test out Serverless Provisioned Concurrency endpoint happy case
+    serverless_pc_name = unique_name_from_base("pca-serverless-pc")
+    with timeout_and_delete_endpoint_by_name(serverless_pc_name, sagemaker_session):
+
+        predictor_serverless_pc = pca.deploy(
+            endpoint_name=serverless_pc_name,
+            serverless_inference_config=ServerlessInferenceConfig(provisioned_concurrency=1),
+        )
+
+        result = predictor_serverless_pc.predict(training_set[0][:5])
 
         assert len(result) == 5
         for record in result:

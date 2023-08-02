@@ -25,10 +25,14 @@ from numpy import array
 
 from sagemaker.apiutils import _utils
 from sagemaker.experiments import _api_types
-from sagemaker.experiments._api_types import TrialComponentArtifact, _TrialComponentStatusType
+from sagemaker.experiments._api_types import (
+    TrialComponentArtifact,
+    _TrialComponentStatusType,
+)
 from sagemaker.experiments._helper import (
     _ArtifactUploader,
     _LineageArtifactTracker,
+    _DEFAULT_ARTIFACT_PREFIX,
 )
 from sagemaker.experiments._environment import _RunEnvironment
 from sagemaker.experiments._run_context import _RunContext
@@ -95,6 +99,8 @@ class Run(object):
         run_display_name: Optional[str] = None,
         tags: Optional[List[Dict[str, str]]] = None,
         sagemaker_session: Optional["Session"] = None,
+        artifact_bucket: Optional[str] = None,
+        artifact_prefix: Optional[str] = None,
     ):
         """Construct a `Run` instance.
 
@@ -152,6 +158,11 @@ class Run(object):
                 manages interactions with Amazon SageMaker APIs and any other
                 AWS services needed. If not specified, one is created using the
                 default AWS configuration chain.
+            artifact_bucket (str): The S3 bucket to upload the artifact to.
+                If not specified, the default bucket defined in `sagemaker_session`
+                will be used.
+            artifact_prefix (str): The S3 key prefix used to generate the S3 path
+                to upload the artifact to (default: "trial-component-artifacts").
         """
         # TODO: we should revert the lower casting once backend fix reaches prod
         self.experiment_name = experiment_name.lower()
@@ -188,17 +199,23 @@ class Run(object):
         )
         if is_existed:
             logger.info(
-                "The run (%s) under experiment (%s) already exists. Loading it. "
-                "Note: sagemaker.experiments.load_run is recommended to use when "
-                "the desired run already exists.",
+                "The run (%s) under experiment (%s) already exists. Loading it.",
                 self.run_name,
                 self.experiment_name,
             )
-        self._trial.add_trial_component(self._trial_component)
+
+        if not _TrialComponent._trial_component_is_associated_to_trial(
+            self._trial_component.trial_component_name, self._trial.trial_name, sagemaker_session
+        ):
+            self._trial.add_trial_component(self._trial_component)
 
         self._artifact_uploader = _ArtifactUploader(
             trial_component_name=self._trial_component.trial_component_name,
             sagemaker_session=sagemaker_session,
+            artifact_bucket=artifact_bucket,
+            artifact_prefix=_DEFAULT_ARTIFACT_PREFIX
+            if artifact_prefix is None
+            else artifact_prefix,
         )
         self._lineage_artifact_tracker = _LineageArtifactTracker(
             trial_component_arn=self._trial_component.trial_component_arn,
@@ -338,7 +355,10 @@ class Run(object):
             "noSkill": no_skill,
         }
         self._log_graph_artifact(
-            artifact_name=title, data=data, graph_type="PrecisionRecallCurve", is_output=is_output
+            artifact_name=title,
+            data=data,
+            graph_type="PrecisionRecallCurve",
+            is_output=is_output,
         )
 
     @validate_invoked_inside_run_context
@@ -371,7 +391,9 @@ class Run(object):
                 If set to False then represented as input association.
         """
         verify_length_of_true_and_predicted(
-            true_labels=y_true, predicted_attrs=y_score, predicted_attrs_name="predicted scores"
+            true_labels=y_true,
+            predicted_attrs=y_score,
+            predicted_attrs_name="predicted scores",
         )
 
         get_module("sklearn")
@@ -422,7 +444,9 @@ class Run(object):
                 If set to False then represented as input association.
         """
         verify_length_of_true_and_predicted(
-            true_labels=y_true, predicted_attrs=y_pred, predicted_attrs_name="predicted labels"
+            true_labels=y_true,
+            predicted_attrs=y_pred,
+            predicted_attrs_name="predicted labels",
         )
 
         get_module("sklearn")
@@ -437,12 +461,19 @@ class Run(object):
             "confusionMatrix": matrix.tolist(),
         }
         self._log_graph_artifact(
-            artifact_name=title, data=data, graph_type="ConfusionMatrix", is_output=is_output
+            artifact_name=title,
+            data=data,
+            graph_type="ConfusionMatrix",
+            is_output=is_output,
         )
 
     @validate_invoked_inside_run_context
     def log_artifact(
-        self, name: str, value: str, media_type: Optional[str] = None, is_output: bool = True
+        self,
+        name: str,
+        value: str,
+        media_type: Optional[str] = None,
+        is_output: bool = True,
     ):
         """Record a single artifact for this run.
 
@@ -565,11 +596,17 @@ class Run(object):
         # create an artifact and association for the table
         if is_output:
             self._lineage_artifact_tracker.add_output_artifact(
-                name=artifact_name, source_uri=s3_uri, etag=etag, artifact_type=graph_type
+                name=artifact_name,
+                source_uri=s3_uri,
+                etag=etag,
+                artifact_type=graph_type,
             )
         else:
             self._lineage_artifact_tracker.add_input_artifact(
-                name=artifact_name, source_uri=s3_uri, etag=etag, artifact_type=graph_type
+                name=artifact_name,
+                source_uri=s3_uri,
+                etag=etag,
+                artifact_type=graph_type,
             )
 
     def _verify_trial_component_artifacts_length(self, is_output):
@@ -633,7 +670,10 @@ class Run(object):
         Returns:
             str: The name of the Run object supplied by a user.
         """
-        return trial_component_name.replace("{}{}".format(experiment_name, DELIMITER), "", 1)
+        # TODO: we should revert the lower casting once backend fix reaches prod
+        return trial_component_name.replace(
+            "{}{}".format(experiment_name.lower(), DELIMITER), "", 1
+        )
 
     @staticmethod
     def _append_run_tc_label_to_tags(tags: Optional[List[Dict[str, str]]] = None) -> list:
@@ -706,7 +746,8 @@ class Run(object):
         self._trial_component.end_time = end_time
         if exc_value:
             self._trial_component.status = _api_types.TrialComponentStatus(
-                primary_status=_TrialComponentStatusType.Failed.value, message=str(exc_value)
+                primary_status=_TrialComponentStatusType.Failed.value,
+                message=str(exc_value),
             )
         else:
             self._trial_component.status = _api_types.TrialComponentStatus(
@@ -728,6 +769,8 @@ def load_run(
     run_name: Optional[str] = None,
     experiment_name: Optional[str] = None,
     sagemaker_session: Optional["Session"] = None,
+    artifact_bucket: Optional[str] = None,
+    artifact_prefix: Optional[str] = None,
 ) -> Run:
     """Load an existing run.
 
@@ -791,6 +834,11 @@ def load_run(
             manages interactions with Amazon SageMaker APIs and any other
             AWS services needed. If not specified, one is created using the
             default AWS configuration chain.
+        artifact_bucket (str): The S3 bucket to upload the artifact to.
+                If not specified, the default bucket defined in `sagemaker_session`
+                will be used.
+        artifact_prefix (str): The S3 key prefix used to generate the S3 path
+            to upload the artifact to (default: "trial-component-artifacts").
 
     Returns:
         Run: The loaded Run object.
@@ -810,12 +858,15 @@ def load_run(
             experiment_name=experiment_name,
             run_name=run_name,
             sagemaker_session=sagemaker_session or _utils.default_session(),
+            artifact_bucket=artifact_bucket,
+            artifact_prefix=artifact_prefix,
         )
     elif _RunContext.get_current_run():
         run_instance = _RunContext.get_current_run()
     elif environment:
         exp_config = get_tc_and_exp_config_from_job_env(
-            environment=environment, sagemaker_session=sagemaker_session or _utils.default_session()
+            environment=environment,
+            sagemaker_session=sagemaker_session or _utils.default_session(),
         )
         run_name = Run._extract_run_name_from_tc_name(
             trial_component_name=exp_config[RUN_NAME],
@@ -826,6 +877,8 @@ def load_run(
             experiment_name=experiment_name,
             run_name=run_name,
             sagemaker_session=sagemaker_session or _utils.default_session(),
+            artifact_bucket=artifact_bucket,
+            artifact_prefix=artifact_prefix,
         )
     else:
         raise RuntimeError(
@@ -869,6 +922,8 @@ def list_runs(
     Returns:
         list: A list of ``Run`` objects.
     """
+
+    # all trial components retrieved by default
     tc_summaries = _TrialComponent.list(
         experiment_name=experiment_name,
         created_before=created_before,

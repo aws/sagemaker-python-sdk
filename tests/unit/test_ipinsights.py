@@ -57,6 +57,7 @@ def sagemaker_session():
         config=None,
         local_mode=False,
         settings=SessionSettings(),
+        default_bucket_prefix=None,
     )
     sms.boto_region_name = REGION
     sms.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)

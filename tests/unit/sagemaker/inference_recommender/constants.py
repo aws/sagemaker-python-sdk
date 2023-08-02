@@ -37,7 +37,10 @@ IR_SUPPORTED_INSTANCE_TYPES = ["ml.c5.xlarge", "ml.c5.2xlarge"]
 
 INVALID_RECOMMENDATION_ID = "ir-job6ab0ff22"
 NOT_EXISTED_RECOMMENDATION_ID = IR_JOB_NAME + "/ad3ec9ee"
+NOT_EXISTED_MODEL_RECOMMENDATION_ID = IR_MODEL_NAME + "/ad3ec9ee"
 RECOMMENDATION_ID = IR_JOB_NAME + "/5bcee92e"
+MODEL_RECOMMENDATION_ID = IR_MODEL_NAME + "/v0KObO5d"
+MODEL_RECOMMENDATION_ENV = {"TS_DEFAULT_WORKERS_PER_MODEL": "4"}
 
 IR_CONTAINER_CONFIG = {
     "Domain": "MACHINE_LEARNING",
@@ -95,6 +98,21 @@ DESCRIBE_MODEL_RESPONSE = {
         "Image": IR_IMAGE,
         "ModelDataUrl": IR_MODEL_DATA,
     },
+    "DeploymentRecommendation": {
+        "RecommendationStatus": "COMPLETED",
+        "RealTimeInferenceRecommendations": [
+            {
+                "RecommendationId": MODEL_RECOMMENDATION_ID,
+                "InstanceType": "ml.g4dn.2xlarge",
+                "Environment": MODEL_RECOMMENDATION_ENV,
+            },
+            {
+                "RecommendationId": "test-model-name/d248qVYU",
+                "InstanceType": "ml.c6i.large",
+                "Environment": {},
+            },
+        ],
+    },
 }
 
 DESCRIBE_MODEL_PACKAGE_RESPONSE = {
@@ -133,4 +151,31 @@ DESCRIBE_COMPILATION_JOB_RESPONSE = {
     "CompilationJobStatus": "Completed",
     "ModelArtifacts": {"S3ModelArtifacts": IR_COMPILATION_MODEL_DATA},
     "InferenceImage": IR_COMPILATION_IMAGE,
+}
+
+IR_CONTAINER_DEF = {
+    "Image": IR_IMAGE,
+    "Environment": IR_ENV,
+    "ModelDataUrl": IR_MODEL_DATA,
+}
+
+DEPLOYMENT_RECOMMENDATION_CONTAINER_DEF = {
+    "Image": IR_IMAGE,
+    "Environment": MODEL_RECOMMENDATION_ENV,
+    "ModelDataUrl": IR_MODEL_DATA,
+}
+
+IR_COMPILATION_CONTAINER_DEF = {
+    "Image": IR_COMPILATION_IMAGE,
+    "Environment": {},
+    "ModelDataUrl": IR_COMPILATION_MODEL_DATA,
+}
+
+IR_MODEL_PACKAGE_CONTAINER_DEF = {
+    "ModelPackageName": IR_MODEL_PACKAGE_VERSION_ARN,
+    "Environment": IR_ENV,
+}
+
+IR_COMPILATION_MODEL_PACKAGE_CONTAINER_DEF = {
+    "ModelPackageName": IR_MODEL_PACKAGE_VERSION_ARN,
 }

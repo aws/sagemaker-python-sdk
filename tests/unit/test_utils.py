@@ -22,6 +22,7 @@ import os
 import re
 import time
 import json
+from unittest import TestCase
 
 from boto3 import exceptions
 import botocore
@@ -34,10 +35,12 @@ from sagemaker.session_settings import SessionSettings
 from sagemaker.utils import (
     retry_with_backoff,
     check_and_get_run_experiment_config,
+    get_sagemaker_config_value,
     resolve_value_from_config,
     resolve_class_attribute_from_config,
     resolve_nested_dict_value_from_config,
     update_list_of_dicts_with_values_from_config,
+    volume_size_supported,
 )
 from tests.unit.sagemaker.workflow.helpers import CustomStep
 from sagemaker.workflow.parameters import ParameterString, ParameterInteger
@@ -117,7 +120,7 @@ def test_update_list_of_dicts_with_values_from_config(mock_json_schema_validatio
         }
     ]
     # Using short form for sagemaker_session
-    ss = MagicMock()
+    ss = MagicMock(settings=SessionSettings())
 
     ss.sagemaker_config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
     config_path = "DUMMY.CONFIG.PATH"
@@ -1176,6 +1179,11 @@ def test_retry_with_backoff(patched_sleep):
 
 
 def test_resolve_value_from_config():
+
+    mock_config_logger = Mock()
+
+    mock_info_logger = Mock()
+    mock_config_logger.info = mock_info_logger
     # using a shorter name for inside the test
     sagemaker_session = MagicMock()
     sagemaker_session.sagemaker_config = {"SchemaVersion": "1.0"}
@@ -1183,6 +1191,10 @@ def test_resolve_value_from_config():
     sagemaker_session.sagemaker_config.update(
         {"SageMaker": {"EndpointConfig": {"KmsKeyId": "CONFIG_VALUE"}}}
     )
+    sagemaker_config = {
+        "SchemaVersion": "1.0",
+        "SageMaker": {"EndpointConfig": {"KmsKeyId": "CONFIG_VALUE"}},
+    }
 
     # direct_input should be respected
     assert (
@@ -1216,6 +1228,13 @@ def test_resolve_value_from_config():
 
     assert resolve_value_from_config(None, None, None, sagemaker_session) is None
 
+    # Config value from sagemaker_config should be returned
+    # if no direct_input and sagemaker_session is None
+    assert (
+        resolve_value_from_config(None, config_key_path, None, None, sagemaker_config)
+        == "CONFIG_VALUE"
+    )
+
     # Different falsy direct_inputs
     assert resolve_value_from_config("", config_key_path, None, sagemaker_session) == ""
 
@@ -1228,6 +1247,60 @@ def test_resolve_value_from_config():
     # Different falsy config_values
     sagemaker_session.sagemaker_config.update({"SageMaker": {"EndpointConfig": {"KmsKeyId": ""}}})
     assert resolve_value_from_config(None, config_key_path, None, sagemaker_session) == ""
+
+    mock_info_logger.reset_mock()
+
+
+def test_get_sagemaker_config_value():
+    mock_config_logger = Mock()
+
+    mock_info_logger = Mock()
+    mock_config_logger.info = mock_info_logger
+    # using a shorter name for inside the test
+    sagemaker_session = MagicMock()
+    sagemaker_session.sagemaker_config = {"SchemaVersion": "1.0"}
+    config_key_path = "SageMaker.EndpointConfig.KmsKeyId"
+    sagemaker_session.sagemaker_config.update(
+        {"SageMaker": {"EndpointConfig": {"KmsKeyId": "CONFIG_VALUE"}}}
+    )
+    sagemaker_config = {
+        "SchemaVersion": "1.0",
+        "SageMaker": {"EndpointConfig": {"KmsKeyId": "CONFIG_VALUE"}},
+    }
+
+    # Tests that the function returns the correct value when the key exists in the sagemaker_session configuration.
+    assert (
+        get_sagemaker_config_value(
+            sagemaker_session=sagemaker_session, key=config_key_path, sagemaker_config=None
+        )
+        == "CONFIG_VALUE"
+    )
+
+    # Tests that the function correctly uses the sagemaker_config to get value for the requested
+    # config_key_path when sagemaker_session is None.
+    assert (
+        get_sagemaker_config_value(
+            sagemaker_session=None, key=config_key_path, sagemaker_config=sagemaker_config
+        )
+        == "CONFIG_VALUE"
+    )
+
+    # Tests that the function returns None when the key does not exist in the configuration.
+    invalid_key = "inavlid_key"
+    assert (
+        get_sagemaker_config_value(
+            sagemaker_session=sagemaker_session, key=invalid_key, sagemaker_config=sagemaker_config
+        )
+        is None
+    )
+
+    # Tests that the function returns None when sagemaker_session and sagemaker_config are None.
+    assert (
+        get_sagemaker_config_value(
+            sagemaker_session=None, key=config_key_path, sagemaker_config=None
+        )
+        is None
+    )
 
 
 @patch("jsonschema.validate")
@@ -1244,7 +1317,7 @@ def test_resolve_class_attribute_from_config(
     mock_validate, existing_value, config_value, default_value
 ):
     # using a shorter name for inside the test
-    ss = MagicMock()
+    ss = MagicMock(settings=SessionSettings())
 
     class TestClass(object):
         def __init__(self, test_attribute=None, extra=None):
@@ -1351,7 +1424,7 @@ def test_resolve_class_attribute_from_config(
 @patch("jsonschema.validate")
 def test_resolve_nested_dict_value_from_config(mock_validate):
     # using a shorter name for inside the test
-    ss = MagicMock()
+    ss = MagicMock(settings=SessionSettings())
 
     dummy_config_path = "DUMMY.CONFIG.PATH"
     # happy cases: return existing dict with existing values
@@ -1507,3 +1580,144 @@ def test_check_and_get_run_experiment_config():
     finally:
         # Clean up the global static variable in case it affects other tests
         _RunContext.drop_current_run()
+
+
+def test_stringify_object():
+    class MyTestClass:
+        def __init__(self):
+            self.blah = "blah"
+            self.wtafigo = "eiifccreeeiuclkftdvttufbkhirtvvbhrieclghjiru"
+            self.none_field = None
+            self.dict_field = {"my": "dict"}
+            self.list_field = ["1", 2, 3.0]
+            self.list_dict_field = [{"hello": {"world": {"hello"}}}]
+
+    stringified_class = (
+        b"MyTestClass: {'blah': 'blah', 'wtafigo': 'eiifccreeeiuc"
+        b"lkftdvttufbkhirtvvbhrieclghjiru', 'dict_field': {'my': 'dict'}, 'list_field'"
+        b": ['1', 2, 3.0], 'list_dict_field': [{'hello': {'world': {'hello'}}}]}"
+    )
+
+    assert sagemaker.utils.stringify_object(MyTestClass()).encode() == stringified_class
+
+
+class TestVolumeSizeSupported(TestCase):
+    def test_volume_size_supported(self):
+        instances_that_support_volume_size = [
+            "ml.inf1.xlarge",
+            "ml.inf1.2xlarge",
+            "ml.inf1.6xlarge",
+            "ml.inf1.24xlarge",
+            "ml.inf2.xlarge",
+            "ml.inf2.8xlarge",
+            "ml.inf2.24xlarge",
+            "ml.inf2.48xlarge",
+            "ml.m5.large",
+            "ml.m5.xlarge",
+            "ml.m5.2xlarge",
+            "ml.m5.4xlarge",
+            "ml.m5.8xlarge",
+            "ml.m5.12xlarge",
+            "ml.m5.16xlarge",
+            "ml.m5.24xlarge",
+            "ml.m5.metal",
+            "ml.c5.large",
+            "ml.c5.xlarge",
+            "ml.c5.2xlarge",
+            "ml.c5.4xlarge",
+            "ml.c5.9xlarge",
+            "ml.c5.12xlarge",
+            "ml.c5.18xlarge",
+            "ml.c5.24xlarge",
+            "ml.c5.metal",
+            "ml.p3.2xlarge",
+            "ml.p3.8xlarge",
+            "ml.p3.16xlarge",
+            "inf1.xlarge",
+            "inf1.2xlarge",
+            "inf1.6xlarge",
+            "inf1.24xlarge",
+            "inf2.xlarge",
+            "inf2.8xlarge",
+            "inf2.24xlarge",
+            "inf2.48xlarge",
+            "m5.large",
+            "m5.xlarge",
+            "m5.2xlarge",
+            "m5.4xlarge",
+            "m5.8xlarge",
+            "m5.12xlarge",
+            "m5.16xlarge",
+            "m5.24xlarge",
+            "m5.metal",
+            "c5.large",
+            "c5.xlarge",
+            "c5.2xlarge",
+            "c5.4xlarge",
+            "c5.9xlarge",
+            "c5.12xlarge",
+            "c5.18xlarge",
+            "c5.24xlarge",
+            "c5.metal",
+            "p3.2xlarge",
+            "p3.8xlarge",
+            "p3.16xlarge",
+        ]
+
+        for instance in instances_that_support_volume_size:
+            self.assertTrue(volume_size_supported(instance))
+
+    def test_volume_size_not_supported(self):
+        instances_that_dont_support_volume_size = [
+            "ml.p4d.xlarge",
+            "ml.p4d.2xlarge",
+            "ml.p4d.4xlarge",
+            "ml.p4d.8xlarge",
+            "ml.p4de.xlarge",
+            "ml.p4de.2xlarge",
+            "ml.p4de.4xlarge",
+            "ml.p4de.8xlarge",
+            "ml.g4dn.xlarge",
+            "ml.g4dn.2xlarge",
+            "ml.g4dn.4xlarge",
+            "ml.g4dn.8xlarge",
+            "ml.g5.xlarge",
+            "ml.g5.2xlarge",
+            "ml.g5.4xlarge",
+            "ml.g5.8xlarge",
+            "p4d.xlarge",
+            "p4d.2xlarge",
+            "p4d.4xlarge",
+            "p4d.8xlarge",
+            "p4de.xlarge",
+            "p4de.2xlarge",
+            "p4de.4xlarge",
+            "p4de.8xlarge",
+            "g4dn.xlarge",
+            "g4dn.2xlarge",
+            "g4dn.4xlarge",
+            "g4dn.8xlarge",
+            "g5.xlarge",
+            "g5.2xlarge",
+            "g5.4xlarge",
+            "g5.8xlarge",
+            "local",
+            "local_gpu",
+            ParameterString(name="InstanceType", default_value="ml.m4.xlarge"),
+        ]
+
+        for instance in instances_that_dont_support_volume_size:
+            self.assertFalse(volume_size_supported(instance))
+
+    def test_volume_size_badly_formatted(self):
+        with pytest.raises(ValueError):
+            volume_size_supported("blah")
+
+        with pytest.raises(ValueError):
+            volume_size_supported(float("inf"))
+
+        with pytest.raises(ValueError):
+            volume_size_supported("p2")
+
+        with pytest.raises(ValueError):
+            volume_size_supported({})

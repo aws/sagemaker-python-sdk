@@ -26,6 +26,11 @@ from src.sagemaker.experiments._helper import (
 )
 from src.sagemaker.experiments._utils import resolve_artifact_name
 from src.sagemaker.session import Session
+from tests.unit import (
+    _test_default_bucket_and_prefix_combinations,
+    DEFAULT_S3_OBJECT_KEY_PREFIX_NAME,
+    DEFAULT_S3_BUCKET_NAME,
+)
 
 
 @pytest.fixture
@@ -193,3 +198,119 @@ def test_artifact_uploader_upload_object_artifact(tempdir, artifact_uploader):
 
     expected_uri = "s3://{}/{}".format(artifact_uploader.artifact_bucket, expected_key)
     assert expected_uri == s3_uri
+
+
+def test_upload_artifact__default_bucket_and_prefix_combinations(tempdir):
+    path = os.path.join(tempdir, "exists")
+    with open(path, "a") as f:
+        f.write("boo")
+
+    def with_user_input(sess):
+        artifact_uploader = _ArtifactUploader(
+            trial_component_name="trial_component_name",
+            artifact_bucket="artifact_bucket",
+            artifact_prefix="artifact_prefix",
+            sagemaker_session=sess,
+        )
+        artifact_uploader._s3_client.head_object.return_value = {"ETag": "etag_value"}
+        s3_uri, etag = artifact_uploader.upload_artifact(path)
+        s3_uri_2, etag_2 = artifact_uploader.upload_artifact(path)
+        return s3_uri, s3_uri_2
+
+    def without_user_input(sess):
+        artifact_uploader = _ArtifactUploader(
+            trial_component_name="trial_component_name",
+            sagemaker_session=sess,
+        )
+        artifact_uploader._s3_client.head_object.return_value = {"ETag": "etag_value"}
+        s3_uri, etag = artifact_uploader.upload_artifact(path)
+        s3_uri_2, etag_2 = artifact_uploader.upload_artifact(path)
+        return s3_uri, s3_uri_2
+
+    actual, expected = _test_default_bucket_and_prefix_combinations(
+        function_with_user_input=with_user_input,
+        function_without_user_input=without_user_input,
+        expected__without_user_input__with_default_bucket_and_default_prefix=(
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/"
+            + "trial-component-artifacts/trial_component_name/exists",
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/"
+            + "trial-component-artifacts/trial_component_name/exists",
+        ),
+        expected__without_user_input__with_default_bucket_only=(
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/trial-component-artifacts/trial_component_name/exists",
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/trial-component-artifacts/trial_component_name/exists",
+        ),
+        expected__with_user_input__with_default_bucket_and_prefix=(
+            "s3://artifact_bucket/artifact_prefix/trial_component_name/exists",
+            "s3://artifact_bucket/artifact_prefix/trial_component_name/exists",
+        ),
+        expected__with_user_input__with_default_bucket_only=(
+            "s3://artifact_bucket/artifact_prefix/trial_component_name/exists",
+            "s3://artifact_bucket/artifact_prefix/trial_component_name/exists",
+        ),
+    )
+    assert actual == expected
+
+
+def test_upload_object_artifact__default_bucket_and_prefix_combinations(tempdir):
+    path = os.path.join(tempdir, "exists")
+    with open(path, "a") as f:
+        f.write("boo")
+
+    artifact_name = "my-artifact"
+    artifact_object = {"key": "value"}
+    file_extension = ".csv"
+
+    def with_user_input(sess):
+        artifact_uploader = _ArtifactUploader(
+            trial_component_name="trial_component_name",
+            artifact_bucket="artifact_bucket",
+            artifact_prefix="artifact_prefix",
+            sagemaker_session=sess,
+        )
+        artifact_uploader._s3_client.head_object.return_value = {"ETag": "etag_value"}
+        s3_uri, etag = artifact_uploader.upload_object_artifact(
+            artifact_name, artifact_object, file_extension
+        )
+        s3_uri_2, etag_2 = artifact_uploader.upload_object_artifact(
+            artifact_name, artifact_object, file_extension
+        )
+        return s3_uri, s3_uri_2
+
+    def without_user_input(sess):
+        artifact_uploader = _ArtifactUploader(
+            trial_component_name="trial_component_name",
+            sagemaker_session=sess,
+        )
+        artifact_uploader._s3_client.head_object.return_value = {"ETag": "etag_value"}
+        s3_uri, etag = artifact_uploader.upload_object_artifact(
+            artifact_name, artifact_object, file_extension
+        )
+        s3_uri_2, etag_2 = artifact_uploader.upload_object_artifact(
+            artifact_name, artifact_object, file_extension
+        )
+        return s3_uri, s3_uri_2
+
+    actual, expected = _test_default_bucket_and_prefix_combinations(
+        function_with_user_input=with_user_input,
+        function_without_user_input=without_user_input,
+        expected__without_user_input__with_default_bucket_and_default_prefix=(
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/"
+            + "trial-component-artifacts/trial_component_name/my-artifact.csv",
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/"
+            + "trial-component-artifacts/trial_component_name/my-artifact.csv",
+        ),
+        expected__without_user_input__with_default_bucket_only=(
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/trial-component-artifacts/trial_component_name/my-artifact.csv",
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/trial-component-artifacts/trial_component_name/my-artifact.csv",
+        ),
+        expected__with_user_input__with_default_bucket_and_prefix=(
+            "s3://artifact_bucket/artifact_prefix/trial_component_name/my-artifact.csv",
+            "s3://artifact_bucket/artifact_prefix/trial_component_name/my-artifact.csv",
+        ),
+        expected__with_user_input__with_default_bucket_only=(
+            "s3://artifact_bucket/artifact_prefix/trial_component_name/my-artifact.csv",
+            "s3://artifact_bucket/artifact_prefix/trial_component_name/my-artifact.csv",
+        ),
+    )
+    assert actual == expected

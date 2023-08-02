@@ -87,7 +87,30 @@ class AsyncInferenceResponse(object):
         return self._result
 
     def _get_result_from_s3(self, output_path, failure_path):
+        """Retrieve output based on the presense of failure_path"""
+        if failure_path is not None:
+            return self._get_result_from_s3_output_failure_paths(output_path, failure_path)
+
+        return self._get_result_from_s3_output_path(output_path)
+
+    def _get_result_from_s3_output_path(self, output_path):
         """Get inference result from the output Amazon S3 path"""
+        bucket, key = parse_s3_url(output_path)
+        try:
+            response = self.predictor_async.s3_client.get_object(Bucket=bucket, Key=key)
+            return self.predictor_async.predictor._handle_response(response)
+        except ClientError as ex:
+            if ex.response["Error"]["Code"] == "NoSuchKey":
+                raise ObjectNotExistedError(
+                    message="Inference could still be running",
+                    output_path=output_path,
+                )
+            raise UnexpectedClientError(
+                message=ex.response["Error"]["Message"],
+            )
+
+    def _get_result_from_s3_output_failure_paths(self, output_path, failure_path):
+        """Get inference result from the output & failure Amazon S3 path"""
         bucket, key = parse_s3_url(output_path)
         try:
             response = self.predictor_async.s3_client.get_object(Bucket=bucket, Key=key)

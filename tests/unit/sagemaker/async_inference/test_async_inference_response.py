@@ -74,6 +74,32 @@ def empty_s3_client():
     return s3_client
 
 
+def empty_s3_client_to_verify_exceptions_for_null_failure_path():
+    """
+    Returns a mocked S3 client with the `get_object` method overridden
+    to raise different exceptions based on the input.
+
+    Exceptions raised:
+    - `ObjectNotExistedError`
+    - `UnexpectedClientError`
+
+    """
+    s3_client = Mock(name="s3-client")
+
+    object_error = ObjectNotExistedError("Inference could still be running", DEFAULT_OUTPUT_PATH)
+
+    unexpected_error = UnexpectedClientError("some error message")
+
+    s3_client.get_object = Mock(
+        name="get_object",
+        side_effect=[
+            object_error,
+            unexpected_error,
+        ],
+    )
+    return s3_client
+
+
 def mock_s3_client():
     """
     This function returns a mocked S3 client object that has a get_object method with a side_effect
@@ -164,6 +190,50 @@ def test_get_result_verify_exceptions():
     with pytest.raises(
         ObjectNotExistedError,
         match=f"Object not exist at {DEFAULT_OUTPUT_PATH}. some error message",
+    ):
+        async_inference_response.get_result()
+
+    # Test UnexpectedClientError
+    with pytest.raises(
+        UnexpectedClientError, match="Encountered unexpected client error: some error message"
+    ):
+        async_inference_response.get_result()
+
+
+def test_get_result_with_null_failure_path():
+    """
+    verifies that the result is returned correctly if no errors occur.
+    """
+    # Initialize AsyncInferenceResponse
+    predictor_async = AsyncPredictor(Predictor(ENDPOINT_NAME))
+    predictor_async.s3_client = mock_s3_client()
+    async_inference_response = AsyncInferenceResponse(
+        output_path=DEFAULT_OUTPUT_PATH, predictor_async=predictor_async, failure_path=None
+    )
+
+    result = async_inference_response.get_result()
+    assert async_inference_response._result == result
+    assert result == RETURN_VALUE
+
+
+def test_get_result_verify_exceptions_with_null_failure_path():
+    """
+    Verifies that get_result method raises the expected exception
+    when an error occurs while fetching the result.
+    """
+    # Initialize AsyncInferenceResponse
+    predictor_async = AsyncPredictor(Predictor(ENDPOINT_NAME))
+    predictor_async.s3_client = empty_s3_client_to_verify_exceptions_for_null_failure_path()
+    async_inference_response = AsyncInferenceResponse(
+        output_path=DEFAULT_OUTPUT_PATH,
+        predictor_async=predictor_async,
+        failure_path=None,
+    )
+
+    # Test ObjectNotExistedError
+    with pytest.raises(
+        ObjectNotExistedError,
+        match=f"Object not exist at {DEFAULT_OUTPUT_PATH}. Inference could still be running",
     ):
         async_inference_response.get_result()
 

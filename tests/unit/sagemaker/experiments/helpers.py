@@ -17,10 +17,13 @@ from sagemaker.experiments.trial_component import _TrialComponent
 
 
 TEST_EXP_NAME = "my-experiment"
+TEST_EXP_NAME_MIXED_CASE = "My-eXpeRiMeNt"
 TEST_RUN_NAME = "my-run"
 TEST_EXP_DISPLAY_NAME = "my-experiment-display-name"
 TEST_RUN_DISPLAY_NAME = "my-run-display-name"
 TEST_TAGS = [{"Key": "some-key", "Value": "some-value"}]
+TEST_ARTIFACT_BUCKET = "my-artifact-bucket"
+TEST_ARTIFACT_PREFIX = "my-artifact-prefix"
 
 
 def mock_tc_load_or_create_func(

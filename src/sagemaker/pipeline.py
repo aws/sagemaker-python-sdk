@@ -22,6 +22,7 @@ from sagemaker.config import (
     MODEL_VPC_CONFIG_PATH,
     MODEL_ENABLE_NETWORK_ISOLATION_PATH,
     MODEL_EXECUTION_ROLE_ARN_PATH,
+    load_sagemaker_config,
 )
 from sagemaker.drift_check_baselines import DriftCheckBaselines
 from sagemaker.metadata_properties import MetadataProperties
@@ -34,6 +35,7 @@ from sagemaker.utils import (
 from sagemaker.transformer import Transformer
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.pipeline_context import runnable_by_pipeline
+from sagemaker.utils import instance_supports_kms
 
 
 class PipelineModel(object):
@@ -89,19 +91,33 @@ class PipelineModel(object):
         self.models = models
         self.predictor_cls = predictor_cls
         self.name = name
-        self.sagemaker_session = sagemaker_session
         self.endpoint_name = None
+        self.sagemaker_session = sagemaker_session
+
+        # In case, sagemaker_session is None, get sagemaker_config from load_sagemaker_config()
+        # to resolve value from config for the respective parameter
+        self._sagemaker_config = (
+            load_sagemaker_config() if (self.sagemaker_session is None) else None
+        )
+
         self.role = resolve_value_from_config(
-            role, MODEL_EXECUTION_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
+            role,
+            MODEL_EXECUTION_ROLE_ARN_PATH,
+            sagemaker_session=self.sagemaker_session,
+            sagemaker_config=self._sagemaker_config,
         )
         self.vpc_config = resolve_value_from_config(
-            vpc_config, MODEL_VPC_CONFIG_PATH, sagemaker_session=self.sagemaker_session
+            vpc_config,
+            MODEL_VPC_CONFIG_PATH,
+            sagemaker_session=self.sagemaker_session,
+            sagemaker_config=self._sagemaker_config,
         )
         self.enable_network_isolation = resolve_value_from_config(
             direct_input=enable_network_isolation,
             config_path=MODEL_ENABLE_NETWORK_ISOLATION_PATH,
             default_value=False,
             sagemaker_session=self.sagemaker_session,
+            sagemaker_config=self._sagemaker_config,
         )
 
         if not self.role:
@@ -213,7 +229,7 @@ class PipelineModel(object):
             is not None. Otherwise, return None.
         """
         if not self.sagemaker_session:
-            self.sagemaker_session = Session()
+            self.sagemaker_session = Session(sagemaker_config=self._sagemaker_config)
 
         containers = self.pipeline_container_def(instance_type)
 
@@ -235,8 +251,12 @@ class PipelineModel(object):
             container_startup_health_check_timeout=container_startup_health_check_timeout,
         )
         self.endpoint_name = endpoint_name or self.name
-        kms_key = resolve_value_from_config(
-            kms_key, ENDPOINT_CONFIG_KMS_KEY_ID_PATH, sagemaker_session=self.sagemaker_session
+        kms_key = (
+            resolve_value_from_config(
+                kms_key, ENDPOINT_CONFIG_KMS_KEY_ID_PATH, sagemaker_session=self.sagemaker_session
+            )
+            if instance_supports_kms(instance_type)
+            else kms_key
         )
 
         data_capture_config_dict = None
@@ -298,7 +318,7 @@ class PipelineModel(object):
                 support or not.
         """
         if not self.sagemaker_session:
-            self.sagemaker_session = Session()
+            self.sagemaker_session = Session(sagemaker_config=self._sagemaker_config)
 
         containers = self.pipeline_container_def(instance_type)
 

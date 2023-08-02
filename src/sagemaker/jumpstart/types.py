@@ -334,6 +334,8 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         "training_dependencies",
         "training_vulnerabilities",
         "deprecated",
+        "deprecated_message",
+        "deprecate_warn_message",
         "default_inference_instance_type",
         "supported_inference_instance_types",
         "default_training_instance_type",
@@ -351,6 +353,8 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         "inference_enable_network_isolation",
         "training_enable_network_isolation",
         "resource_name_base",
+        "hosting_eula_key",
+        "hosting_model_package_arns",
     ]
 
     def __init__(self, spec: Dict[str, Any]):
@@ -387,6 +391,8 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         self.training_dependencies: List[str] = json_obj["training_dependencies"]
         self.training_vulnerabilities: List[str] = json_obj["training_vulnerabilities"]
         self.deprecated: bool = bool(json_obj["deprecated"])
+        self.deprecated_message: Optional[str] = json_obj.get("deprecated_message")
+        self.deprecate_warn_message: Optional[str] = json_obj.get("deprecate_warn_message")
         self.default_inference_instance_type: Optional[str] = json_obj.get(
             "default_inference_instance_type"
         )
@@ -418,6 +424,10 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
             "inference_enable_network_isolation", False
         )
         self.resource_name_base: bool = json_obj.get("resource_name_base")
+
+        self.hosting_eula_key: Optional[str] = json_obj.get("hosting_eula_key")
+
+        self.hosting_model_package_arns: Optional[Dict] = json_obj.get("hosting_model_package_arns")
 
         if self.training_supported:
             self.training_ecr_specs: JumpStartECRSpecs = JumpStartECRSpecs(
@@ -574,6 +584,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         "container_log_level",
         "dependencies",
         "git_config",
+        "model_package_arn",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -583,6 +594,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         "tolerate_vulnerable_model",
         "tolerate_deprecated_model",
         "region",
+        "model_package_arn",
     }
 
     def __init__(
@@ -610,6 +622,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         git_config: Optional[Dict[str, str]] = None,
         tolerate_vulnerable_model: Optional[bool] = None,
         tolerate_deprecated_model: Optional[bool] = None,
+        model_package_arn: Optional[str] = None,
     ) -> None:
         """Instantiates JumpStartModelInitKwargs object."""
 
@@ -636,6 +649,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         self.git_config = git_config
         self.tolerate_deprecated_model = tolerate_deprecated_model
         self.tolerate_vulnerable_model = tolerate_vulnerable_model
+        self.model_package_arn = model_package_arn
 
 
 class JumpStartModelDeployKwargs(JumpStartKwargs):
@@ -777,6 +791,9 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         "training_repository_credentials_provider_arn",
         "tolerate_deprecated_model",
         "tolerate_vulnerable_model",
+        "container_entry_point",
+        "container_arguments",
+        "disable_output_compression",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -837,6 +854,9 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         training_repository_credentials_provider_arn: Optional[Union[str, Any]] = None,
         tolerate_vulnerable_model: Optional[bool] = None,
         tolerate_deprecated_model: Optional[bool] = None,
+        container_entry_point: Optional[List[str]] = None,
+        container_arguments: Optional[List[str]] = None,
+        disable_output_compression: Optional[bool] = None,
     ) -> None:
         """Instantiates JumpStartEstimatorInitKwargs object."""
 
@@ -890,6 +910,9 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         )
         self.tolerate_vulnerable_model = tolerate_vulnerable_model
         self.tolerate_deprecated_model = tolerate_deprecated_model
+        self.container_entry_point = container_entry_point
+        self.container_arguments = container_arguments
+        self.disable_output_compression = disable_output_compression
 
 
 class JumpStartEstimatorFitKwargs(JumpStartKwargs):

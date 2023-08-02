@@ -17,7 +17,7 @@ import logging
 from typing import Optional, List, Dict
 from six import string_types
 
-from sagemaker import Model, PipelineModel
+from sagemaker import Model, PipelineModel, s3
 from sagemaker.automl.candidate_estimator import CandidateEstimator
 from sagemaker.config import (
     AUTO_ML_ROLE_ARN_PATH,
@@ -676,7 +676,12 @@ class AutoML(object):
             self.current_job_name = name_from_base(base_name, max_length=32)
 
         if self.output_path is None:
-            self.output_path = "s3://{}/".format(self.sagemaker_session.default_bucket())
+            self.output_path = s3.s3_path_join(
+                "s3://",
+                self.sagemaker_session.default_bucket(),
+                self.sagemaker_session.default_bucket_prefix,
+                with_end_slash=True,
+            )
 
     @classmethod
     def _get_supported_inference_keys(cls, container, default=None):

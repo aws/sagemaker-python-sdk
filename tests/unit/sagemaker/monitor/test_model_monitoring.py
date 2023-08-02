@@ -18,7 +18,7 @@ from typing import Union
 
 import sagemaker
 import pytest
-from mock import Mock, MagicMock
+from mock import Mock, patch, MagicMock
 
 from sagemaker.model_monitor import (
     ModelMonitor,
@@ -30,6 +30,8 @@ from sagemaker.model_monitor import (
     ModelQualityMonitor,
     Statistics,
     MonitoringOutput,
+    DataQualityMonitoringConfig,
+    DataQualityDistributionConstraints,
 )
 from sagemaker.model_monitor.monitoring_alert import (
     MonitoringAlertSummary,
@@ -66,6 +68,9 @@ NETWORK_CONFIG = NetworkConfig(enable_network_isolation=False, encrypt_inter_con
 ENABLE_CLOUDWATCH_METRICS = True
 PROBLEM_TYPE = "Regression"
 GROUND_TRUTH_ATTRIBUTE = "TestAttribute"
+_CATEGORICAL_DRIFT_METHOD_ENV_NAME = "categorical_drift_method"
+CHISQUARED_METHOD = "ChiSquared"
+LINFINITY_METHOD = "LInfinity"
 
 CRON_DAILY = CronExpressionGenerator.daily()
 BASELINING_JOB_NAME = "baselining-job"
@@ -434,6 +439,7 @@ def sagemaker_session():
         boto_region_name=REGION,
         config=None,
         local_mode=False,
+        default_bucket_prefix=None,
     )
     session_mock.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     session_mock.upload_data = Mock(
@@ -569,6 +575,159 @@ def test_default_model_monitor_suggest_baseline(sagemaker_session):
     assert my_default_monitor.latest_baselining_job_name != BASE_JOB_NAME
 
     assert my_default_monitor.env[ENV_KEY_1] == ENV_VALUE_1
+
+
+@patch("sagemaker.model_monitor.model_monitoring.Processor")
+def test_default_model_monitor_suggest_baseline_with_chisquared_categorical_drift_method(
+    processor_init, sagemaker_session
+):
+    my_default_monitor = DefaultModelMonitor(
+        role=ROLE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        volume_size_in_gb=VOLUME_SIZE_IN_GB,
+        volume_kms_key=VOLUME_KMS_KEY,
+        output_kms_key=OUTPUT_KMS_KEY,
+        max_runtime_in_seconds=MAX_RUNTIME_IN_SECONDS,
+        base_job_name=BASE_JOB_NAME,
+        sagemaker_session=sagemaker_session,
+        env=ENVIRONMENT,
+        tags=TAGS,
+        network_config=NETWORK_CONFIG,
+    )
+    distribution_constraints_with_chisquared_categorical_drift_method = (
+        DataQualityDistributionConstraints(categorical_drift_method=CHISQUARED_METHOD)
+    )
+    monitoring_config_with_chisquared_categorical_drift_method = DataQualityMonitoringConfig(
+        distribution_constraints=distribution_constraints_with_chisquared_categorical_drift_method
+    )
+    processor_init.return_value = Mock()
+    my_default_monitor.suggest_baseline(
+        baseline_dataset=BASELINE_DATASET_PATH,
+        dataset_format=DatasetFormat.csv(header=False),
+        record_preprocessor_script=PREPROCESSOR_PATH,
+        post_analytics_processor_script=POSTPROCESSOR_PATH,
+        output_s3_uri=OUTPUT_S3_URI,
+        wait=False,
+        logs=False,
+        monitoring_config_override=monitoring_config_with_chisquared_categorical_drift_method,
+    )
+
+    assert my_default_monitor.role == ROLE
+    assert my_default_monitor.instance_count == INSTANCE_COUNT
+    assert my_default_monitor.instance_type == INSTANCE_TYPE
+    assert my_default_monitor.volume_size_in_gb == VOLUME_SIZE_IN_GB
+    assert my_default_monitor.volume_kms_key == VOLUME_KMS_KEY
+    assert my_default_monitor.output_kms_key == OUTPUT_KMS_KEY
+    assert my_default_monitor.max_runtime_in_seconds == MAX_RUNTIME_IN_SECONDS
+    assert my_default_monitor.base_job_name == BASE_JOB_NAME
+    assert my_default_monitor.sagemaker_session == sagemaker_session
+    assert my_default_monitor.tags == TAGS
+    assert my_default_monitor.network_config == NETWORK_CONFIG
+    assert my_default_monitor.image_uri == DEFAULT_IMAGE_URI
+    assert BASE_JOB_NAME in my_default_monitor.latest_baselining_job_name
+    assert my_default_monitor.latest_baselining_job_name != BASE_JOB_NAME
+    assert my_default_monitor.env[ENV_KEY_1] == ENV_VALUE_1
+
+    assert (
+        processor_init.call_args.kwargs["env"][_CATEGORICAL_DRIFT_METHOD_ENV_NAME]
+        == CHISQUARED_METHOD
+    )
+
+
+@patch("sagemaker.model_monitor.model_monitoring.Processor")
+def test_default_model_monitor_suggest_baseline_with_linfinity_categorical_drift_method(
+    processor_init, sagemaker_session
+):
+    my_default_monitor = DefaultModelMonitor(
+        role=ROLE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        volume_size_in_gb=VOLUME_SIZE_IN_GB,
+        volume_kms_key=VOLUME_KMS_KEY,
+        output_kms_key=OUTPUT_KMS_KEY,
+        max_runtime_in_seconds=MAX_RUNTIME_IN_SECONDS,
+        base_job_name=BASE_JOB_NAME,
+        sagemaker_session=sagemaker_session,
+        env=ENVIRONMENT,
+        tags=TAGS,
+        network_config=NETWORK_CONFIG,
+    )
+    distribution_constraints_with_linfinity_categorical_drift_method = (
+        DataQualityDistributionConstraints(categorical_drift_method=LINFINITY_METHOD)
+    )
+    monitoring_config_with_linfinity_categorical_drift_method = DataQualityMonitoringConfig(
+        distribution_constraints=distribution_constraints_with_linfinity_categorical_drift_method
+    )
+    processor_init.return_value = Mock()
+    my_default_monitor.suggest_baseline(
+        baseline_dataset=BASELINE_DATASET_PATH,
+        dataset_format=DatasetFormat.csv(header=False),
+        record_preprocessor_script=PREPROCESSOR_PATH,
+        post_analytics_processor_script=POSTPROCESSOR_PATH,
+        output_s3_uri=OUTPUT_S3_URI,
+        wait=False,
+        logs=False,
+        monitoring_config_override=monitoring_config_with_linfinity_categorical_drift_method,
+    )
+
+    assert my_default_monitor.role == ROLE
+    assert my_default_monitor.instance_count == INSTANCE_COUNT
+    assert my_default_monitor.instance_type == INSTANCE_TYPE
+    assert my_default_monitor.volume_size_in_gb == VOLUME_SIZE_IN_GB
+    assert my_default_monitor.volume_kms_key == VOLUME_KMS_KEY
+    assert my_default_monitor.output_kms_key == OUTPUT_KMS_KEY
+    assert my_default_monitor.max_runtime_in_seconds == MAX_RUNTIME_IN_SECONDS
+    assert my_default_monitor.base_job_name == BASE_JOB_NAME
+    assert my_default_monitor.sagemaker_session == sagemaker_session
+    assert my_default_monitor.tags == TAGS
+    assert my_default_monitor.network_config == NETWORK_CONFIG
+    assert my_default_monitor.image_uri == DEFAULT_IMAGE_URI
+    assert BASE_JOB_NAME in my_default_monitor.latest_baselining_job_name
+    assert my_default_monitor.latest_baselining_job_name != BASE_JOB_NAME
+    assert my_default_monitor.env[ENV_KEY_1] == ENV_VALUE_1
+
+    assert (
+        processor_init.call_args.kwargs["env"][_CATEGORICAL_DRIFT_METHOD_ENV_NAME]
+        == LINFINITY_METHOD
+    )
+
+
+def test_default_model_monitor_suggest_baseline_with_invalid_categorical_drift_method(
+    sagemaker_session,
+):
+    my_default_monitor = DefaultModelMonitor(
+        role=ROLE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        volume_size_in_gb=VOLUME_SIZE_IN_GB,
+        volume_kms_key=VOLUME_KMS_KEY,
+        output_kms_key=OUTPUT_KMS_KEY,
+        max_runtime_in_seconds=MAX_RUNTIME_IN_SECONDS,
+        base_job_name=BASE_JOB_NAME,
+        sagemaker_session=sagemaker_session,
+        env=ENVIRONMENT,
+        tags=TAGS,
+        network_config=NETWORK_CONFIG,
+    )
+    distribution_constraints_with_invalid_categorical_drift_method = (
+        DataQualityDistributionConstraints(categorical_drift_method="Invalid")
+    )
+    monitoring_config_with_invalid_categorical_drift_method = DataQualityMonitoringConfig(
+        distribution_constraints=distribution_constraints_with_invalid_categorical_drift_method
+    )
+    with pytest.raises(RuntimeError) as error:
+        my_default_monitor.suggest_baseline(
+            baseline_dataset=BASELINE_DATASET_PATH,
+            dataset_format=DatasetFormat.csv(header=False),
+            record_preprocessor_script=PREPROCESSOR_PATH,
+            post_analytics_processor_script=POSTPROCESSOR_PATH,
+            output_s3_uri=OUTPUT_S3_URI,
+            wait=False,
+            logs=False,
+            monitoring_config_override=monitoring_config_with_invalid_categorical_drift_method,
+        )
+    assert "Invalid value for monitoring_config_override." in str(error)
 
 
 def test_data_quality_monitor_suggest_baseline(sagemaker_session, data_quality_monitor):

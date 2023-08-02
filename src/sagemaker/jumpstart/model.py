@@ -13,13 +13,14 @@
 """This module stores JumpStart implementation of Model class."""
 
 from __future__ import absolute_import
-import logging
+import re
 
 from typing import Dict, List, Optional, Union
 from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
 from sagemaker.base_deserializers import BaseDeserializer
 from sagemaker.base_serializers import BaseSerializer
 from sagemaker.explainer.explainer_config import ExplainerConfig
+from sagemaker.jumpstart.accessors import JumpStartModelsAccessor
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.exceptions import INVALID_MODEL_ID_ERROR_MSG
 from sagemaker.jumpstart.factory.model import (
@@ -28,15 +29,13 @@ from sagemaker.jumpstart.factory.model import (
     get_init_kwargs,
 )
 from sagemaker.jumpstart.utils import is_valid_model_id
-from sagemaker.jumpstart.utils import stringify_object
-from sagemaker.model import Model
+from sagemaker.utils import stringify_object
+from sagemaker.model import MODEL_PACKAGE_ARN_PATTERN, Model
 from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
 from sagemaker.predictor import PredictorBase
 from sagemaker.serverless.serverless_inference_config import ServerlessInferenceConfig
 from sagemaker.session import Session
 from sagemaker.workflow.entities import PipelineVariable
-
-logger = logging.getLogger(__name__)
 
 
 class JumpStartModel(Model):
@@ -70,6 +69,7 @@ class JumpStartModel(Model):
         container_log_level: Optional[Union[int, PipelineVariable]] = None,
         dependencies: Optional[List[str]] = None,
         git_config: Optional[Dict[str, str]] = None,
+        model_package_arn: Optional[str] = None,
     ):
         """Initializes a ``JumpStartModel``.
 
@@ -138,7 +138,7 @@ class JumpStartModel(Model):
                 when training on Amazon SageMaker. If 'git_config' is provided,
                 'source_dir' should be a relative location to a directory in the Git repo.
                 If the directory points to S3, no code is uploaded and the S3 location
-                is used instead.
+                is used instead. (Default: None).
 
                 .. admonition:: Example
 
@@ -150,7 +150,6 @@ class JumpStartModel(Model):
                     >>>         |----- test.py
 
                     You can assign entry_point='inference.py', source_dir='src'.
-                (Default: None).
             code_location (Optional[str]): Name of the S3 bucket where custom code is
                 uploaded (Default: None). If not specified, the default bucket
                 created by ``sagemaker.session.Session`` is used. (Default: None).
@@ -159,9 +158,9 @@ class JumpStartModel(Model):
                 model hosting. (Default: None). If ``source_dir`` is specified, then ``entry_point``
                 must point to a file located at the root of ``source_dir``.
                 If 'git_config' is provided, 'entry_point' should be
-                a relative location to the Python source file in the Git repo.
+                a relative location to the Python source file in the Git repo. (Default: None).
 
-                Example:
+                .. admonition:: Example
                     With the following GitHub repo directory structure:
 
                     >>> |----- README.md
@@ -170,8 +169,6 @@ class JumpStartModel(Model):
                     >>>         |----- test.py
 
                     You can assign entry_point='src/inference.py'.
-
-                (Default: None).
             container_log_level (Optional[Union[int, PipelineVariable]]): Log level to use
                 within the container. Valid values are defined in the Python
                 logging module. (Default: None).
@@ -183,7 +180,8 @@ class JumpStartModel(Model):
                 list of relative locations to directories with any additional
                 libraries needed in the Git repo. If the ```source_dir``` points
                 to S3, code will be uploaded and the S3 location will be used
-                instead.
+                instead. This is not supported with "local code" in Local Mode.
+                (Default: None).
 
                 .. admonition:: Example
 
@@ -200,9 +198,6 @@ class JumpStartModel(Model):
                     >>>     |------ inference.py
                     >>>     |------ common
                     >>>     |------ virtual-env
-
-                This is not supported with "local code" in Local Mode.
-                (Default: None).
             git_config (Optional[dict[str, str]]): Git configurations used for cloning
                 files, including ``repo``, ``branch``, ``commit``,
                 ``2FA_enabled``, ``username``, ``password`` and ``token``. The
@@ -211,18 +206,6 @@ class JumpStartModel(Model):
                 is stored. If you don't provide ``branch``, the default value
                 'master' is used. If you don't provide ``commit``, the latest
                 commit in the specified branch is used.
-
-                .. admonition:: Example
-
-                    The following config:
-
-                    >>> git_config = {'repo': 'https://github.com/aws/sagemaker-python-sdk.git',
-                    >>>               'branch': 'test-branch-git-config',
-                    >>>               'commit': '329bfcf884482002c05ff7f44f62599ebc9f445a'}
-
-                    results in cloning the repo specified in 'repo', then
-                    checking out the 'master' branch, and checking out the specified
-                    commit.
 
                 ``2FA_enabled``, ``username``, ``password`` and ``token`` are
                 used for authentication. For GitHub (or other Git) accounts, set
@@ -255,17 +238,35 @@ class JumpStartModel(Model):
                 credential helper or local credential storage for authentication.
                 (Default: None).
 
+                .. admonition:: Example
+
+                    The following config results in cloning the repo specified in 'repo', then
+                    checking out the 'master' branch, and checking out the specified
+                    commit.
+
+                    >>> git_config = {'repo': 'https://github.com/aws/sagemaker-python-sdk.git',
+                    >>>               'branch': 'test-branch-git-config',
+                    >>>               'commit': '329bfcf884482002c05ff7f44f62599ebc9f445a'}
+
+            model_package_arn (Optional[str]): An existing SageMaker Model Package arn,
+                can be just the name if your account owns the Model Package.
+                ``model_data`` is not required. (Default: None).
         Raises:
             ValueError: If the model ID is not recognized by JumpStart.
         """
 
-        if not is_valid_model_id(
-            model_id=model_id,
-            model_version=model_version,
-            region=region,
-            script=JumpStartScriptScope.INFERENCE,
-        ):
-            raise ValueError(INVALID_MODEL_ID_ERROR_MSG.format(model_id=model_id))
+        def _is_valid_model_id_hook():
+            return is_valid_model_id(
+                model_id=model_id,
+                model_version=model_version,
+                region=region,
+                script=JumpStartScriptScope.INFERENCE,
+            )
+
+        if not _is_valid_model_id_hook():
+            JumpStartModelsAccessor.reset_cache()
+            if not _is_valid_model_id_hook():
+                raise ValueError(INVALID_MODEL_ID_ERROR_MSG.format(model_id=model_id))
 
         model_init_kwargs = get_init_kwargs(
             model_id=model_id,
@@ -292,6 +293,7 @@ class JumpStartModel(Model):
             container_log_level=container_log_level,
             dependencies=dependencies,
             git_config=git_config,
+            model_package_arn=model_package_arn,
         )
 
         self.orig_predictor_cls = predictor_cls
@@ -302,8 +304,48 @@ class JumpStartModel(Model):
         self.tolerate_vulnerable_model = model_init_kwargs.tolerate_vulnerable_model
         self.tolerate_deprecated_model = model_init_kwargs.tolerate_deprecated_model
         self.region = model_init_kwargs.region
+        self.model_package_arn = model_init_kwargs.model_package_arn
 
         super(JumpStartModel, self).__init__(**model_init_kwargs.to_kwargs_dict())
+
+    def _create_sagemaker_model(self, *args, **kwargs):  # pylint: disable=unused-argument
+        """Create a SageMaker Model Entity
+
+        Args:
+            args: Positional arguments coming from the caller. This class does not require
+                any so they are ignored.
+
+            kwargs: Keyword arguments coming from the caller. This class does not require
+                any so they are ignored.
+        """
+        if self.model_package_arn:
+            # When a ModelPackageArn is provided we just create the Model
+            match = re.match(MODEL_PACKAGE_ARN_PATTERN, self.model_package_arn)
+            if match:
+                model_package_name = match.group(3)
+            else:
+                # model_package_arn can be just the name if your account owns the Model Package
+                model_package_name = self.model_package_arn
+            container_def = {"ModelPackageName": self.model_package_arn}
+
+            if self.env != {}:
+                container_def["Environment"] = self.env
+
+            if self.name is None:
+                self._base_name = model_package_name
+
+            self._set_model_name_if_needed()
+
+            self.sagemaker_session.create_model(
+                self.name,
+                self.role,
+                container_def,
+                vpc_config=self.vpc_config,
+                enable_network_isolation=self.enable_network_isolation(),
+                tags=kwargs.get("tags"),
+            )
+        else:
+            super(JumpStartModel, self)._create_sagemaker_model(*args, **kwargs)
 
     def deploy(
         self,
@@ -433,7 +475,7 @@ class JumpStartModel(Model):
         predictor = super(JumpStartModel, self).deploy(**deploy_kwargs.to_kwargs_dict())
 
         # If no predictor class was passed, add defaults to predictor
-        if self.orig_predictor_cls is None:
+        if self.orig_predictor_cls is None and async_inference_config is None:
             return get_default_predictor(
                 predictor=predictor,
                 model_id=self.model_id,

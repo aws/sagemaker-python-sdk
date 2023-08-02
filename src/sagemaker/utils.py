@@ -25,11 +25,11 @@ import shutil
 import tarfile
 import tempfile
 import time
+from typing import Any, List, Optional
 import json
 import abc
 import uuid
 from datetime import datetime
-from typing import List, Optional
 
 from importlib import import_module
 import botocore
@@ -38,9 +38,12 @@ from six.moves.urllib import parse
 
 from sagemaker import deprecations
 from sagemaker.config import validate_sagemaker_config
+from sagemaker.config.config_utils import (
+    _log_sagemaker_config_single_substitution,
+    _log_sagemaker_config_merge,
+)
 from sagemaker.session_settings import SessionSettings
 from sagemaker.workflow import is_pipeline_variable, is_pipeline_parameter_string
-
 
 ECR_URI_PATTERN = r"^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(.*)(/)(.*:.*)$"
 MAX_BUCKET_PATHS_COUNT = 5
@@ -647,6 +650,8 @@ def sts_regional_endpoint(region):
         str: AWS STS regional endpoint
     """
     endpoint_data = _botocore_resolver().construct_endpoint("sts", region)
+    if region == "il-central-1" and not endpoint_data:
+        endpoint_data = {"hostname": "sts.{}.amazonaws.com".format(region)}
     return "https://{}".format(endpoint_data["hostname"])
 
 
@@ -732,6 +737,8 @@ def _aws_partition(region):
         str: partition corresponding to the region name passed in. Ex: "aws-cn"
     """
     endpoint_data = _botocore_resolver().construct_endpoint("sts", region)
+    if region == "il-central-1" and not endpoint_data:
+        endpoint_data = {"hostname": "sts.{}.amazonaws.com".format(region)}
     return endpoint_data["partition"]
 
 
@@ -1043,6 +1050,7 @@ def resolve_value_from_config(
     config_path: str = None,
     default_value=None,
     sagemaker_session=None,
+    sagemaker_config: dict = None,
 ):
     """Decides which value for the caller to use.
 
@@ -1056,20 +1064,32 @@ def resolve_value_from_config(
 
     Args:
         direct_input: The value that the caller of this method starts with. Usually this is an
-        input to the caller's class or method.
+            input to the caller's class or method.
         config_path (str): A string denoting the path used to lookup the value in the
-        sagemaker config.
+            sagemaker config.
         default_value: The value used if not present elsewhere.
         sagemaker_session (sagemaker.session.Session): A SageMaker Session object, used for
-        SageMaker interactions (default: None).
+            SageMaker interactions (default: None).
+        sagemaker_config (dict): The sdk defaults config that is normally accessed through a
+            Session object by doing `session.sagemaker_config`. (default: None) This parameter will
+            be checked for the config value if (and only if) sagemaker_session is None. This
+            parameter exists for the rare cases where the user provided no Session but a default
+            Session cannot be initialized before config injection is needed. In that case,
+            the config dictionary may be loaded and passed here before a default Session object
+            is created.
 
     Returns:
         The value that should be used by the caller
     """
+
     config_value = (
-        get_sagemaker_config_value(sagemaker_session, config_path) if config_path else None
+        get_sagemaker_config_value(
+            sagemaker_session, config_path, sagemaker_config=sagemaker_config
+        )
+        if config_path
+        else None
     )
-    _print_message_on_sagemaker_config_usage(direct_input, config_value, config_path)
+    _log_sagemaker_config_single_substitution(direct_input, config_value, config_path)
 
     if direct_input is not None:
         return direct_input
@@ -1080,64 +1100,35 @@ def resolve_value_from_config(
     return default_value
 
 
-def get_sagemaker_config_value(sagemaker_session, key):
+def get_sagemaker_config_value(sagemaker_session, key, sagemaker_config: dict = None):
     """Returns the value that corresponds to the provided key from the configuration file.
 
     Args:
         key: Key Path of the config file entry.
         sagemaker_session (sagemaker.session.Session): A SageMaker Session object, used for
-        SageMaker interactions.
+            SageMaker interactions.
+        sagemaker_config (dict): The sdk defaults config that is normally accessed through a
+            Session object by doing `session.sagemaker_config`. (default: None) This parameter will
+            be checked for the config value if (and only if) sagemaker_session is None. This
+            parameter exists for the rare cases where no Session provided but a default Session
+            cannot be initialized before config injection is needed. In that case, the config
+            dictionary may be loaded and passed here before a default Session object is created.
 
     Returns:
         object: The corresponding default value in the configuration file.
     """
-    if not sagemaker_session:
+    if sagemaker_session:
+        config_to_check = sagemaker_session.sagemaker_config
+    else:
+        config_to_check = sagemaker_config
+
+    if not config_to_check:
         return None
-    if sagemaker_session.sagemaker_config:
-        validate_sagemaker_config(sagemaker_session.sagemaker_config)
-    config_value = get_config_value(key, sagemaker_session.sagemaker_config)
+
+    validate_sagemaker_config(config_to_check)
+    config_value = get_config_value(key, config_to_check)
     # Copy the value so any modifications to the output will not modify the source config
     return copy.deepcopy(config_value)
-
-
-def _print_message_on_sagemaker_config_usage(direct_input, config_value, config_path: str):
-    """Informs the SDK user whether a config value was present and automatically substituted
-
-    Args:
-        direct_input: The value that is used if no default values exist. Usually,
-        this is user-provided input to a Class or to a session.py method, or None if no input
-        was provided.
-        config_value: The value fetched from sagemaker_config. This is usually the value that
-        will be used if direct_input is None.
-        config_path: A string denoting the path of keys that point to the config value in the
-        sagemaker_config.
-
-    Returns:
-        None. Prints information.
-    """
-
-    if config_value is not None:
-
-        if direct_input is not None and config_value != direct_input:
-            # Sagemaker Config had a value defined that is NOT going to be used
-            # and the config value has not already been applied earlier
-            print(
-                "[Sagemaker Config - skipped value]\n",
-                "config key = {}\n".format(config_path),
-                "config value = {}\n".format(config_value),
-                "specified value that will be used = {}\n".format(direct_input),
-            )
-
-        elif direct_input is None:
-            # Sagemaker Config value is going to be used
-            print(
-                "[Sagemaker Config - applied value]\n",
-                "config key = {}\n".format(config_path),
-                "config value that will be used = {}\n".format(config_value),
-            )
-
-    # There is no print statement needed if nothing was specified in the config and nothing is
-    # being automatically applied
 
 
 def resolve_class_attribute_from_config(
@@ -1206,7 +1197,7 @@ def resolve_class_attribute_from_config(
         elif default_value is not None:
             setattr(instance, attribute, default_value)
 
-    _print_message_on_sagemaker_config_usage(current_value, config_value, config_path)
+    _log_sagemaker_config_single_substitution(current_value, config_value, config_path)
 
     return instance
 
@@ -1259,7 +1250,7 @@ def resolve_nested_dict_value_from_config(
         elif default_value is not None:
             dictionary = set_nested_value(dictionary, nested_keys, default_value)
 
-    _print_message_on_sagemaker_config_usage(current_nested_value, config_value, config_path)
+    _log_sagemaker_config_single_substitution(current_nested_value, config_value, config_path)
 
     return dictionary
 
@@ -1324,14 +1315,12 @@ def update_list_of_dicts_with_values_from_config(
             continue
         input_list[i] = dict_from_config
 
-    if unmodified_inputs_from_config:
-        print(
-            "[Sagemaker Config - applied value]\n",
-            "config key = {}\n".format(config_key_path),
-            "config value = {}\n".format(unmodified_inputs_from_config),
-            "source value = {}\n".format(inputs_copy),
-            "combined value that will be used = {}\n".format(input_list),
-        )
+    _log_sagemaker_config_merge(
+        source_value=inputs_copy,
+        config_value=unmodified_inputs_from_config,
+        merged_source_and_config_value=input_list,
+        config_key_path=config_key_path,
+    )
 
 
 def _validate_required_paths_in_a_dict(source_dict, required_key_paths: List[str] = None) -> bool:
@@ -1392,19 +1381,57 @@ def update_nested_dictionary_with_values_from_config(
         # Don't need to print because no config value was used or defined
         return source_dict
 
-    if source_dict == inferred_config_dict:
-        # We didn't use any values from the config, but we should print if any of the config
-        # values were defined
-        _print_message_on_sagemaker_config_usage(
-            source_dict, original_config_dict_value, config_key_path
-        )
-    else:
-        # Something from the config was merged in
-        print(
-            "[Sagemaker Config - applied value]\n",
-            "config key = {}\n".format(config_key_path),
-            "config value = {}\n".format(original_config_dict_value),
-            "source value = {}\n".format(source_dict),
-            "combined value that will be used = {}\n".format(inferred_config_dict),
-        )
+    _log_sagemaker_config_merge(
+        source_value=source_dict,
+        config_value=original_config_dict_value,
+        merged_source_and_config_value=inferred_config_dict,
+        config_key_path=config_key_path,
+    )
+
     return inferred_config_dict
+
+
+def stringify_object(obj: Any) -> str:
+    """Returns string representation of object, returning only non-None fields."""
+    non_none_atts = {key: value for key, value in obj.__dict__.items() if value is not None}
+    return f"{type(obj).__name__}: {str(non_none_atts)}"
+
+
+def volume_size_supported(instance_type: str) -> bool:
+    """Returns True if SageMaker allows volume_size to be used for the instance type.
+
+    Raises:
+        ValueError: If the instance type is improperly formatted.
+    """
+
+    try:
+
+        # local mode does not support volume size
+        # instance type given as pipeline parameter does not support volume size
+        # do not change the if statement order below.
+        if is_pipeline_variable(instance_type) or instance_type.startswith("local"):
+            return False
+
+        parts: List[str] = instance_type.split(".")
+
+        if len(parts) == 3 and parts[0] == "ml":
+            parts = parts[1:]
+
+        if len(parts) != 2:
+            raise ValueError(f"Failed to parse instance type '{instance_type}'")
+
+        # Any instance type with a "d" in the instance family (i.e. c5d, p4d, etc) + g5
+        # does not support attaching an EBS volume.
+        family = parts[0]
+        return "d" not in family and not family.startswith("g5")
+    except Exception as e:
+        raise ValueError(f"Failed to parse instance type '{instance_type}': {str(e)}")
+
+
+def instance_supports_kms(instance_type: str) -> bool:
+    """Returns True if SageMaker allows KMS keys to be attached to the instance.
+
+    Raises:
+        ValueError: If the instance type is improperly formatted.
+    """
+    return volume_size_supported(instance_type)

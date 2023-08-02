@@ -1,5 +1,267 @@
 # Changelog
 
+## v2.173.0 (2023-07-15)
+
+### Features
+
+ * jumpstart EULA models
+
+### Bug Fixes and Other Changes
+
+ * Update the apache airflow constraints
+ * Update apache airflow version
+ * bump up djl inference image uri versions
+
+## v2.172.0 (2023-07-13)
+
+### Features
+
+ * Add check for if TrialComponent is already associated with a Trial in Run
+ * Add features_to_explain to shap config
+
+### Bug Fixes and Other Changes
+
+ * Support protobuf4
+ * Remove unnecessary get caller identity call
+ * Missing JumpStart estimator args
+ * Add volume to partition djl_inference
+
+### Documentation Changes
+
+ * Correct runtime param
+ * fix wait_for_endpoint docstring
+
+## v2.171.0 (2023-07-06)
+
+### Features
+
+ * Add PipelineDefinitionConfig to pipelines to toggle custom job …
+
+### Bug Fixes and Other Changes
+
+ * Upgrade DJL deepspeed versions
+ * Remove unused dependency `protobuf3-to-dict`
+ * skip intelligent volume_size allocation based on instance type if it is a pipeline parameter
+
+## v2.170.0 (2023-07-05)
+
+### Features
+
+ * Enable customizing artifact output path
+
+### Bug Fixes and Other Changes
+
+ * Add il-central-1 support for all SM DLCs
+ * jumpstart async inference config predictor support
+ * Update CreateEdgePackagingJob resourceKey with type string
+
+## v2.169.0 (2023-06-29)
+
+### Features
+
+ * Add support for tags in to_pipeline API for feature processor
+ * model registry integration to model cards to support model packages
+ * SDK Defaults - DebugHookConfig defaults in TrainingJob API
+ * Add segment config for Clarify
+
+### Bug Fixes and Other Changes
+
+ * Neuronx image retrieval missing sdk information
+
+### Documentation Changes
+
+ * Doc updates for SDK defaults - S3 Params, Env Variables, Disable Profiler, and DebugHookConfig
+
+## v2.168.0 (2023-06-22)
+
+### Features
+
+ * Support uncompressed model upload
+ * Add optional monitoring_config_override parameter in suggest_baseline API
+ * SDK defaults add disable profiler to createTrainingJob
+
+### Bug Fixes and Other Changes
+
+ * Enable spark processing container in KIX
+ * Fix key prefix preventing jumpstart model repack
+
+## v2.167.0 (2023-06-21)
+
+### Features
+
+ * add SageMaker FeatureStore feature processing
+
+### Bug Fixes and Other Changes
+
+ * Chore/reset cache if js model not found
+
+## v2.166.0 (2023-06-19)
+
+### Features
+
+ * Add `inf2` support to `HuggingFaceModel`
+ * adding resourcekey and tags for api in config for SDK defaults
+
+### Bug Fixes and Other Changes
+
+ * Remove deprecated option.s3url in favor of option.model_id
+ * Use sagemaker config keyword
+ * SDK Defaults Config - Handle config injection for None Sessions
+ * Fix HPO Grid Search comparison and name
+
+## v2.165.0 (2023-06-13)
+
+### Features
+
+ * Add support for Deployment Recommendation ID in model.deploy(). No tagging support
+
+### Bug Fixes and Other Changes
+
+ * maketplace integs
+ * Add tagging assert to inference recommender integ tests
+ * breaking deviations in _create_sagemaker_model call
+
+### Documentation Changes
+
+ * Add missing quotation mark
+
+## v2.164.0 (2023-06-08)
+
+### Features
+
+ * SDK Defaults - Environment Variables
+ * Update Transformers 4.28 - PyTorch 2.0.0 Training and Inference Image URI
+
+### Bug Fixes and Other Changes
+
+ * tag more integs as flaky for auto-retry
+ * Remove docker-compose from local requirements
+ * enable neo framework version support on ml_inf2 and ml_trn1
+
+## v2.163.0 (2023-06-07)
+
+### Features
+
+ * Add huggingface-llm 0.8.2 dlc images
+
+### Bug Fixes and Other Changes
+
+ * Update to more actionable error message
+ * Loosen local reqs for PyYAML
+
+## v2.162.0 (2023-06-06)
+
+### Features
+
+ * Add tagging support for create ir job
+ * Selective Step Execution feature in Pipelines
+ * Add Neuronx Image uri - Transformers 4.28 - PyTorch 1.13
+
+### Bug Fixes and Other Changes
+
+ * skip pipelines abalone notebook test
+ * Update neo multiversion support to include edge devices
+
+### Documentation Changes
+
+ * JumpStart Utility Doc Update
+
+## v2.161.0 (2023-06-01)
+
+### Features
+
+ * Add huggingface-llm 0.6.0 dlc images
+ * Add autotune for HyperparameterTuner
+
+### Bug Fixes and Other Changes
+
+ * Remove release tag from non-global test
+ * SDK defaults for volume size, JS Estimator image uri region, Predictor str method
+
+## v2.160.0 (2023-05-31)
+
+### Features
+
+ * PyTorch 2.0 release
+ * Add TFS 2.12.1 Graviton image
+
+### Bug Fixes and Other Changes
+
+ * Fix failing integ test
+ * remove unnecessary log messages for loading existing experiment runs
+ * build(deps): bump requests from 2.27.1 to 2.31.0 in /requirements/extras
+ * SDK Defaults - switch from config printing to logging
+
+## v2.159.0 (2023-05-23)
+
+### Features
+
+ * Add TF Serving 2.12.1 images to the SM PySDK
+
+### Bug Fixes and Other Changes
+
+ * Update the list of extension packages pylint is allowed to load
+
+## v2.158.0 (2023-05-22)
+
+### Features
+
+ * Enable default role for Spark processors
+ * SDK Defaults - S3 Params for Session
+ * Bump up images for DJL transformers Neuronx DLCs
+
+### Bug Fixes and Other Changes
+
+ * Relax local-mode PyPI requirements on urllib3
+
+### Documentation Changes
+
+ * Fix Tensorflow and PyTorch supported version in HuggingFaceProcessor
+ * Update doc for model_server_workers param in PyTorchModel
+
+## v2.157.0 (2023-05-18)
+
+### Features
+
+ * Handle use case where endpoint is created outside of python …
+
+### Bug Fixes and Other Changes
+
+ * Make type annotation of UploadedCode consistent
+ * Add SELinux label to local docker volumes
+
+## v2.156.0 (2023-05-17)
+
+### Features
+
+ * Partition support for DJLModel using SM Training job
+ * Update run-notebook-test to consider skips failures
+
+### Bug Fixes and Other Changes
+
+ * Update apache airflow and update test requirements
+ * Perform integrity checks for remote function execution
+ * Add p2 instances to integ tests
+ * Fix typo in logging message within ir mixin
+ * double Run create on load_run
+ * Update dtype logic for huggingface backend for new containers
+
+### Documentation Changes
+
+ * Update container version for SKLearn
+ * Add description for parameters in TransformInput
+
+## v2.155.0 (2023-05-15)
+
+### Features
+
+ * Add support for SageMaker Serverless inference Provisioned Concurrency feature
+
+### Bug Fixes and Other Changes
+
+ * Revert "fix: make RemoteExecutor context manager non-blocking on pend…
+ * Add BOM to no No P2 Availability region list
+
 ## v2.154.0 (2023-05-11)
 
 ### Features

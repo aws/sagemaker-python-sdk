@@ -38,6 +38,7 @@ from sagemaker.config import (
     PROCESSING_JOB_VOLUME_KMS_KEY_ID_PATH,
     PROCESSING_JOB_ROLE_ARN_PATH,
     PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
+    PROCESSING_JOB_ENVIRONMENT_PATH,
 )
 from sagemaker.job import _Job
 from sagemaker.local import LocalSession
@@ -136,7 +137,6 @@ class Processor(object):
         self.volume_size_in_gb = volume_size_in_gb
         self.max_runtime_in_seconds = max_runtime_in_seconds
         self.base_job_name = base_job_name
-        self.env = env
         self.tags = tags
 
         self.jobs = []
@@ -195,6 +195,10 @@ class Processor(object):
             # Because of marking that parameter as optional, we should validate if it is None, even
             # after fetching the config.
             raise ValueError("An AWS IAM role is required to create a Processing job.")
+
+        self.env = resolve_value_from_config(
+            env, PROCESSING_JOB_ENVIRONMENT_PATH, sagemaker_session=self.sagemaker_session
+        )
 
     @runnable_by_pipeline
     def run(
@@ -402,6 +406,7 @@ class Processor(object):
                         desired_s3_uri = s3.s3_path_join(
                             "s3://",
                             self.sagemaker_session.default_bucket(),
+                            self.sagemaker_session.default_bucket_prefix,
                             _pipeline_config.pipeline_name,
                             _pipeline_config.step_name,
                             "input",
@@ -411,6 +416,7 @@ class Processor(object):
                         desired_s3_uri = s3.s3_path_join(
                             "s3://",
                             self.sagemaker_session.default_bucket(),
+                            self.sagemaker_session.default_bucket_prefix,
                             self._current_job_name,
                             "input",
                             file_input.input_name,
@@ -465,6 +471,12 @@ class Processor(object):
                             values=[
                                 "s3:/",
                                 self.sagemaker_session.default_bucket(),
+                                *(
+                                    # don't include default_bucket_prefix if it is None or ""
+                                    [self.sagemaker_session.default_bucket_prefix]
+                                    if self.sagemaker_session.default_bucket_prefix
+                                    else []
+                                ),
                                 _pipeline_config.pipeline_name,
                                 ExecutionVariables.PIPELINE_EXECUTION_ID,
                                 _pipeline_config.step_name,
@@ -476,6 +488,7 @@ class Processor(object):
                         s3_uri = s3.s3_path_join(
                             "s3://",
                             self.sagemaker_session.default_bucket(),
+                            self.sagemaker_session.default_bucket_prefix,
                             self._current_job_name,
                             "output",
                             output.output_name,
@@ -780,6 +793,7 @@ class ScriptProcessor(Processor):
             desired_s3_uri = s3.s3_path_join(
                 "s3://",
                 self.sagemaker_session.default_bucket(),
+                self.sagemaker_session.default_bucket_prefix,
                 _pipeline_config.pipeline_name,
                 self._CODE_CONTAINER_INPUT_NAME,
                 _pipeline_config.code_hash,
@@ -788,6 +802,7 @@ class ScriptProcessor(Processor):
             desired_s3_uri = s3.s3_path_join(
                 "s3://",
                 self.sagemaker_session.default_bucket(),
+                self.sagemaker_session.default_bucket_prefix,
                 self._current_job_name,
                 "input",
                 self._CODE_CONTAINER_INPUT_NAME,
@@ -1937,9 +1952,14 @@ class FrameworkProcessor(ScriptProcessor):
         if _pipeline_config and _pipeline_config.pipeline_name:
             runproc_file_str = self._generate_framework_script(user_script)
             runproc_file_hash = hash_object(runproc_file_str)
-            s3_uri = (
-                f"s3://{self.sagemaker_session.default_bucket()}/{_pipeline_config.pipeline_name}/"
-                f"code/{runproc_file_hash}/runproc.sh"
+            s3_uri = s3.s3_path_join(
+                "s3://",
+                self.sagemaker_session.default_bucket(),
+                self.sagemaker_session.default_bucket_prefix,
+                _pipeline_config.pipeline_name,
+                "code",
+                runproc_file_hash,
+                "runproc.sh",
             )
             s3_runproc_sh = S3Uploader.upload_string_as_file_body(
                 runproc_file_str,

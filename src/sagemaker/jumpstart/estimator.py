@@ -12,7 +12,6 @@
 # language governing permissions and limitations under the License.
 """This module stores JumpStart implementation of Estimator class."""
 from __future__ import absolute_import
-import logging
 
 
 from typing import Dict, List, Optional, Union
@@ -27,6 +26,7 @@ from sagemaker.estimator import Estimator
 from sagemaker.explainer.explainer_config import ExplainerConfig
 from sagemaker.inputs import FileSystemInput, TrainingInput
 from sagemaker.instance_group import InstanceGroup
+from sagemaker.jumpstart.accessors import JumpStartModelsAccessor
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.exceptions import INVALID_MODEL_ID_ERROR_MSG
 
@@ -34,17 +34,15 @@ from sagemaker.jumpstart.factory.estimator import get_deploy_kwargs, get_fit_kwa
 from sagemaker.jumpstart.factory.model import get_default_predictor
 from sagemaker.jumpstart.utils import (
     is_valid_model_id,
-    resolve_model_intelligent_default_field,
+    resolve_model_sagemaker_config_field,
 )
-from sagemaker.jumpstart.utils import stringify_object
+from sagemaker.utils import stringify_object
 from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
 from sagemaker.predictor import PredictorBase
 
 
 from sagemaker.serverless.serverless_inference_config import ServerlessInferenceConfig
 from sagemaker.workflow.entities import PipelineVariable
-
-logger = logging.getLogger(__name__)
 
 
 class JumpStartEstimator(Estimator):
@@ -103,6 +101,9 @@ class JumpStartEstimator(Estimator):
         instance_groups: Optional[List[InstanceGroup]] = None,
         training_repository_access_mode: Optional[Union[str, PipelineVariable]] = None,
         training_repository_credentials_provider_arn: Optional[Union[str, PipelineVariable]] = None,
+        container_entry_point: Optional[List[str]] = None,
+        container_arguments: Optional[List[str]] = None,
+        disable_output_compression: Optional[bool] = None,
     ):
         """Initializes a ``JumpStartEstimator``.
 
@@ -340,6 +341,7 @@ class JumpStartEstimator(Estimator):
                 when training on Amazon SageMaker. If 'git_config' is provided,
                 'source_dir' should be a relative location to a directory in the Git
                 repo.
+                (Default: None).
 
                 .. admonition:: Example
 
@@ -353,7 +355,6 @@ class JumpStartEstimator(Estimator):
                     if you need 'train.py'
                     as the entry point and 'test.py' as the training source code, you can assign
                     entry_point='train.py', source_dir='src'.
-                (Default: None).
             git_config (Optional[dict[str, str]]): Git configurations used for cloning
                 files, including ``repo``, ``branch``, ``commit``,
                 ``2FA_enabled``, ``username``, ``password`` and ``token``. The
@@ -362,18 +363,6 @@ class JumpStartEstimator(Estimator):
                 is stored. If you don't provide ``branch``, the default value
                 'master' is used. If you don't provide ``commit``, the latest
                 commit in the specified branch is used.
-
-                .. admonition:: Example
-
-                    The following config:
-
-                    >>> git_config = {'repo': 'https://github.com/aws/sagemaker-python-sdk.git',
-                    >>>               'branch': 'test-branch-git-config',
-                    >>>               'commit': '329bfcf884482002c05ff7f44f62599ebc9f445a'}
-
-                    results in cloning the repo specified in 'repo', then
-                    checking out the 'master' branch, and checking out the specified
-                    commit.
 
                 ``2FA_enabled``, ``username``, ``password`` and ``token`` are
                 used for authentication. For GitHub (or other Git) accounts, set
@@ -405,6 +394,17 @@ class JumpStartEstimator(Estimator):
                 the SageMaker Python SDK attempts to use either the CodeCommit
                 credential helper or local credential storage for authentication.
                 (Default: None).
+
+                .. admonition:: Example
+                    The following config:
+
+                    >>> git_config = {'repo': 'https://github.com/aws/sagemaker-python-sdk.git',
+                    >>>               'branch': 'test-branch-git-config',
+                    >>>               'commit': '329bfcf884482002c05ff7f44f62599ebc9f445a'}
+
+                    results in cloning the repo specified in 'repo', then
+                    checking out the 'master' branch, and checking out the specified
+                    commit.
             container_log_level (Optional[Union[int, PipelineVariable]]): The log level to use
                 within the container. Valid values are defined in the Python logging module.
                 (Default: None).
@@ -420,8 +420,9 @@ class JumpStartEstimator(Estimator):
                 must point to a file located at the root of ``source_dir``.
                 If 'git_config' is provided, 'entry_point' should be
                 a relative location to the Python source file in the Git repo.
+                (Default: None).
 
-                Example:
+                .. admonition:: Example
                     With the following GitHub repo directory structure:
 
                     >>> |----- README.md
@@ -430,18 +431,16 @@ class JumpStartEstimator(Estimator):
                     >>>         |----- test.py
 
                     You can assign entry_point='src/train.py'.
-
-                (Default: None).
             dependencies (Optional[list[str]]): A list of absolute or relative paths to directories
                 with any additional libraries that should be exported
                 to the container. The library folders are
                 copied to SageMaker in the same folder where the entrypoint is
                 copied. If 'git_config' is provided, 'dependencies' should be a
                 list of relative locations to directories with any additional
-                libraries needed in the Git repo.
+                libraries needed in the Git repo. This is not supported with "local code"
+                in Local Mode. (Default: None).
 
                 .. admonition:: Example
-
                     The following Estimator call:
 
                     >>> Estimator(entry_point='train.py',
@@ -455,9 +454,6 @@ class JumpStartEstimator(Estimator):
                     >>>     |------ train.py
                     >>>     |------ common
                     >>>     |------ virtual-env
-
-                This is not supported with "local code" in Local Mode.
-                (Default: None).
             instance_groups (Optional[list[:class:`sagemaker.instance_group.InstanceGroup`]]):
                 A list of ``InstanceGroup`` objects for launching a training job with a
                 heterogeneous cluster. For example:
@@ -475,8 +471,7 @@ class JumpStartEstimator(Estimator):
                 through the SageMaker generic and framework estimator classes, see
                 `Train Using a Heterogeneous Cluster
                 <https://docs.aws.amazon.com/sagemaker/latest/dg/train-heterogeneous-cluster.html>`_
-                in the *Amazon SageMaker developer guide*.
-                (Default: None).
+                in the *Amazon SageMaker developer guide*. (Default: None).
             training_repository_access_mode (Optional[str]): Specifies how SageMaker accesses the
                 Docker image that contains the training algorithm (Default: None).
                 Set this to one of the following values:
@@ -489,18 +484,30 @@ class JumpStartEstimator(Estimator):
                 private Docker registry where your training image is hosted (Default: None).
                 When it's set to None, SageMaker will not do authentication before pulling the image
                 in the private Docker registry. (Default: None).
+            container_entry_point (Optional[List[str]]): The entrypoint script for a Docker
+                container used to run a training job. This script takes precedence over
+                the default train processing instructions.
+            container_arguments (Optional[List[str]]): The arguments for a container used to run
+                a training job.
+            disable_output_compression (Optional[bool]): When set to true, Model is uploaded
+                to Amazon S3 without compression after training finishes.
 
         Raises:
             ValueError: If the model ID is not recognized by JumpStart.
         """
 
-        if not is_valid_model_id(
-            model_id=model_id,
-            model_version=model_version,
-            region=region,
-            script=JumpStartScriptScope.TRAINING,
-        ):
-            raise ValueError(INVALID_MODEL_ID_ERROR_MSG.format(model_id=model_id))
+        def _is_valid_model_id_hook():
+            return is_valid_model_id(
+                model_id=model_id,
+                model_version=model_version,
+                region=region,
+                script=JumpStartScriptScope.TRAINING,
+            )
+
+        if not _is_valid_model_id_hook():
+            JumpStartModelsAccessor.reset_cache()
+            if not _is_valid_model_id_hook():
+                raise ValueError(INVALID_MODEL_ID_ERROR_MSG.format(model_id=model_id))
 
         estimator_init_kwargs = get_init_kwargs(
             model_id=model_id,
@@ -553,6 +560,9 @@ class JumpStartEstimator(Estimator):
                 training_repository_credentials_provider_arn
             ),
             image_uri=image_uri,
+            container_entry_point=container_entry_point,
+            container_arguments=container_arguments,
+            disable_output_compression=disable_output_compression,
         )
 
         self.model_id = estimator_init_kwargs.model_id
@@ -797,7 +807,7 @@ class JumpStartEstimator(Estimator):
                 when training on Amazon SageMaker. If 'git_config' is provided,
                 'source_dir' should be a relative location to a directory in the Git repo.
                 If the directory points to S3, no code is uploaded and the S3 location
-                is used instead.
+                is used instead. (Default: None).
 
                 .. admonition:: Example
 
@@ -809,7 +819,6 @@ class JumpStartEstimator(Estimator):
                     >>>         |----- test.py
 
                     You can assign entry_point='inference.py', source_dir='src'.
-                (Default: None).
             code_location (Optional[str]): Name of the S3 bucket where custom code is
                 uploaded (Default: None). If not specified, the default bucket
                 created by ``sagemaker.session.Session`` is used. (Default: None).
@@ -920,7 +929,7 @@ class JumpStartEstimator(Estimator):
         self.orig_predictor_cls = predictor_cls
 
         sagemaker_session = sagemaker_session or self.sagemaker_session
-        role = resolve_model_intelligent_default_field(
+        role = resolve_model_sagemaker_config_field(
             field_name="role",
             field_val=role,
             sagemaker_session=sagemaker_session,
@@ -974,7 +983,7 @@ class JumpStartEstimator(Estimator):
         )
 
         # If no predictor class was passed, add defaults to predictor
-        if self.orig_predictor_cls is None:
+        if self.orig_predictor_cls is None and async_inference_config is None:
             return get_default_predictor(
                 predictor=predictor,
                 model_id=self.model_id,

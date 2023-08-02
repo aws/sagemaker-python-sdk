@@ -47,20 +47,19 @@ def read_requirements(filename):
 
 # Declare minimal set for installation
 required_packages = [
-    "attrs>=20.3.0,<23",
-    "boto3>=1.26.28,<2.0",
+    "attrs>=23.1.0,<24",
+    "boto3>=1.26.131,<2.0",
     "cloudpickle==2.2.1",
     "google-pasta",
     "numpy>=1.9.0,<2.0",
-    "protobuf>=3.1,<4.0",
-    "protobuf3-to-dict>=0.1.5,<1.0",
+    "protobuf>=3.12,<5.0",
     "smdebug_rulesconfig==1.0.1",
-    "importlib-metadata>=1.4.0,<5.0",
+    "importlib-metadata>=1.4.0,<7.0",
     "packaging>=20.0",
     "pandas",
     "pathos",
     "schema",
-    "PyYAML==5.4.1",
+    "PyYAML~=6.0",
     "jsonschema",
     "platformdirs",
     "tblib==1.7.0",
@@ -71,11 +70,14 @@ required_packages = [
 extras = {
     "local": read_requirements("requirements/extras/local_requirements.txt"),
     "scipy": read_requirements("requirements/extras/scipy_requirements.txt"),
+    "feature-processor": read_requirements(
+        "requirements/extras/feature-processor_requirements.txt"
+    ),
 }
 # Meta dependency groups
 extras["all"] = [item for group in extras.values() for item in group]
 # Tests specific dependencies (do not need to be included in 'all')
-extras["test"] = (extras["all"] + read_requirements("requirements/extras/test_requirements.txt"),)
+extras["test"] = (read_requirements("requirements/extras/test_requirements.txt"),)
 
 setup(
     name="sagemaker",

@@ -31,6 +31,7 @@ from sagemaker.workflow.properties import (
 from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.steps import Step, StepTypeEnum, CacheConfig
 from sagemaker.workflow.check_job_config import CheckJobConfig
+from sagemaker.workflow.utilities import trim_request_dict
 
 _CONTAINER_BASE_PATH = "/opt/ml/processing"
 _CONTAINER_INPUT_PATH = "input"
@@ -225,6 +226,8 @@ class QualityCheckStep(Step):
     @property
     def arguments(self) -> RequestType:
         """The arguments dict that is used to define the QualityCheck step."""
+        from sagemaker.workflow.utilities import _pipeline_config
+
         normalized_inputs, normalized_outputs = self._baselining_processor._normalize_args(
             inputs=self._baseline_job_inputs,
             outputs=[self._baseline_output],
@@ -238,8 +241,8 @@ class QualityCheckStep(Step):
         request_dict = self._baselining_processor.sagemaker_session._get_process_request(
             **process_args
         )
-        if "ProcessingJobName" in request_dict:
-            request_dict.pop("ProcessingJobName")
+        # Continue to pop job name if not explicitly opted-in via config
+        request_dict = trim_request_dict(request_dict, "ProcessingJobName", _pipeline_config)
 
         return request_dict
 
@@ -338,6 +341,7 @@ class QualityCheckStep(Step):
         s3_uri = self.quality_check_config.output_s3_uri or s3.s3_path_join(
             "s3://",
             self._model_monitor.sagemaker_session.default_bucket(),
+            self._model_monitor.sagemaker_session.default_bucket_prefix,
             _MODEL_MONITOR_S3_PATH,
             _BASELINING_S3_PATH,
             self._model_monitor.latest_baselining_job_name,

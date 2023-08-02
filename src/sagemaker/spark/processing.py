@@ -34,7 +34,7 @@ from copy import copy
 
 from typing import Union, List, Dict, Optional
 
-from sagemaker import image_uris
+from sagemaker import image_uris, s3
 from sagemaker.local.image import _ecr_login_if_needed, _pull_image
 from sagemaker.processing import ProcessingInput, ProcessingOutput, ScriptProcessor
 from sagemaker.s3 import S3Uploader
@@ -60,24 +60,6 @@ class _SparkProcessorBase(ScriptProcessor):
     _conf_container_base_path = "/opt/ml/processing/input/"
     _conf_container_input_name = "conf"
     _conf_file_name = "configuration.json"
-    _valid_configuration_keys = ["Classification", "Properties", "Configurations"]
-    _valid_configuration_classifications = [
-        "core-site",
-        "hadoop-env",
-        "hadoop-log4j",
-        "hive-env",
-        "hive-log4j",
-        "hive-exec-log4j",
-        "hive-site",
-        "spark-defaults",
-        "spark-env",
-        "spark-log4j",
-        "spark-hive-site",
-        "spark-metrics",
-        "yarn-env",
-        "yarn-site",
-        "export",
-    ]
 
     _submit_jars_input_channel_name = "jars"
     _submit_files_input_channel_name = "files"
@@ -122,11 +104,11 @@ class _SparkProcessorBase(ScriptProcessor):
             framework_version (str): The version of SageMaker PySpark.
             py_version (str): The version of python.
             container_version (str): The version of spark container.
-            role (str): An AWS IAM role name or ARN. The Amazon SageMaker training jobs
-                and APIs that create Amazon SageMaker endpoints use this role
-                to access training data and model artifacts. After the endpoint
-                is created, the inference code might use the IAM role, if it
-                needs to access an AWS resource.
+            role (str): An AWS IAM role name or ARN. Amazon SageMaker Processing
+                uses this role to access AWS resources, such as
+                data stored in Amazon S3 (default: None).
+                If not specified, the value from the defaults configuration file
+                will be used.
             instance_type (str): Type of EC2 instance to use for
                 processing, for example, 'ml.c4.xlarge'.
             instance_count (int): The number of instances to run
@@ -296,7 +278,7 @@ class _SparkProcessorBase(ScriptProcessor):
 
         if kwargs.get("spark_event_logs_s3_uri"):
             spark_event_logs_s3_uri = kwargs.get("spark_event_logs_s3_uri")
-            self._validate_s3_uri(spark_event_logs_s3_uri)
+            SparkConfigUtils.validate_s3_uri(spark_event_logs_s3_uri)
 
             self._spark_event_logs_s3_uri = spark_event_logs_s3_uri
             self.command.extend(
@@ -320,7 +302,7 @@ class _SparkProcessorBase(ScriptProcessor):
 
         if kwargs.get("configuration"):
             configuration = kwargs.get("configuration")
-            self._validate_configuration(configuration)
+            SparkConfigUtils.validate_configuration(configuration)
             extended_inputs.append(self._stage_configuration(configuration))
 
         return (
@@ -377,42 +359,6 @@ class _SparkProcessorBase(ScriptProcessor):
 
         return image_uri
 
-    def _validate_configuration(self, configuration):
-        """Validates the user-provided Hadoop/Spark/Hive configuration.
-
-        This ensures that the list or dictionary the user provides will serialize to
-        JSON matching the schema of EMR's application configuration:
-
-        https://docs.aws.amazon.com/emr/latest/ReleaseGuide/emr-configure-apps.html
-        """
-        emr_configure_apps_url = (
-            "https://docs.aws.amazon.com/emr/latest/ReleaseGuide/emr-configure-apps.html"
-        )
-        if isinstance(configuration, dict):
-            keys = configuration.keys()
-            if "Classification" not in keys or "Properties" not in keys:
-                raise ValueError(
-                    f"Missing one or more required keys in configuration dictionary "
-                    f"{configuration} Please see {emr_configure_apps_url} for more information"
-                )
-
-            for key in keys:
-                if key not in self._valid_configuration_keys:
-                    raise ValueError(
-                        f"Invalid key: {key}. Must be one of {self._valid_configuration_keys}. "
-                        f"Please see {emr_configure_apps_url} for more information."
-                    )
-                if key == "Classification":
-                    if configuration[key] not in self._valid_configuration_classifications:
-                        raise ValueError(
-                            f"Invalid classification: {key}. Must be one of "
-                            f"{self._valid_configuration_classifications}"
-                        )
-
-        if isinstance(configuration, list):
-            for item in configuration:
-                self._validate_configuration(item)
-
     def _stage_configuration(self, configuration):
         """Serializes and uploads the user-provided EMR application configuration to S3.
 
@@ -429,7 +375,11 @@ class _SparkProcessorBase(ScriptProcessor):
             else:
                 s3_prefix_uri = self.configuration_location
         else:
-            s3_prefix_uri = f"s3://{self.sagemaker_session.default_bucket()}"
+            s3_prefix_uri = s3.s3_path_join(
+                "s3://",
+                self.sagemaker_session.default_bucket(),
+                self.sagemaker_session.default_bucket_prefix,
+            )
 
         serialized_configuration = BytesIO(json.dumps(configuration).encode("utf-8"))
 
@@ -524,7 +474,11 @@ class _SparkProcessorBase(ScriptProcessor):
                     else:
                         s3_prefix_uri = self.dependency_location
                 else:
-                    s3_prefix_uri = f"s3://{self.sagemaker_session.default_bucket()}"
+                    s3_prefix_uri = s3.s3_path_join(
+                        "s3://",
+                        self.sagemaker_session.default_bucket(),
+                        self.sagemaker_session.default_bucket_prefix,
+                    )
 
                 if _pipeline_config and _pipeline_config.code_hash:
                     input_channel_s3_uri = (
@@ -733,9 +687,9 @@ class PySparkProcessor(_SparkProcessorBase):
 
     def __init__(
         self,
-        role: str,
-        instance_type: Union[str, PipelineVariable],
-        instance_count: Union[int, PipelineVariable],
+        role: str = None,
+        instance_type: Union[str, PipelineVariable] = None,
+        instance_count: Union[int, PipelineVariable] = None,
         framework_version: Optional[str] = None,
         py_version: Optional[str] = None,
         container_version: Optional[str] = None,
@@ -761,11 +715,11 @@ class PySparkProcessor(_SparkProcessorBase):
             framework_version (str): The version of SageMaker PySpark.
             py_version (str): The version of python.
             container_version (str): The version of spark container.
-            role (str): An AWS IAM role name or ARN. The Amazon SageMaker training jobs
-                and APIs that create Amazon SageMaker endpoints use this role
-                to access training data and model artifacts. After the endpoint
-                is created, the inference code might use the IAM role, if it
-                needs to access an AWS resource.
+            role (str): An AWS IAM role name or ARN. Amazon SageMaker Processing
+                uses this role to access AWS resources, such as
+                data stored in Amazon S3 (default: None).
+                If not specified, the value from the defaults configuration file
+                will be used.
             instance_type (str or PipelineVariable): Type of EC2 instance to use for
                 processing, for example, 'ml.c4.xlarge'.
             instance_count (int or PipelineVariable): The number of instances to run
@@ -1010,9 +964,9 @@ class SparkJarProcessor(_SparkProcessorBase):
 
     def __init__(
         self,
-        role: str,
-        instance_type: Union[str, PipelineVariable],
-        instance_count: Union[int, PipelineVariable],
+        role: str = None,
+        instance_type: Union[str, PipelineVariable] = None,
+        instance_count: Union[int, PipelineVariable] = None,
         framework_version: Optional[str] = None,
         py_version: Optional[str] = None,
         container_version: Optional[str] = None,
@@ -1038,11 +992,11 @@ class SparkJarProcessor(_SparkProcessorBase):
             framework_version (str): The version of SageMaker PySpark.
             py_version (str): The version of python.
             container_version (str): The version of spark container.
-            role (str): An AWS IAM role name or ARN. The Amazon SageMaker training jobs
-                and APIs that create Amazon SageMaker endpoints use this role
-                to access training data and model artifacts. After the endpoint
-                is created, the inference code might use the IAM role, if it
-                needs to access an AWS resource.
+            role (str): An AWS IAM role name or ARN. Amazon SageMaker Processing
+                uses this role to access AWS resources, such as
+                data stored in Amazon S3 (default: None).
+                If not specified, the value from the defaults configuration file
+                will be used.
             instance_type (str or PipelineVariable): Type of EC2 instance to use for
                 processing, for example, 'ml.c4.xlarge'.
             instance_count (int or PipelineVariable): The number of instances to run
@@ -1337,3 +1291,89 @@ class FileType(Enum):
     JAR = 1
     PYTHON = 2
     FILE = 3
+
+
+class SparkConfigUtils:
+    """Util class for spark configurations"""
+
+    _valid_configuration_keys = ["Classification", "Properties", "Configurations"]
+    _valid_configuration_classifications = [
+        "core-site",
+        "hadoop-env",
+        "hadoop-log4j",
+        "hive-env",
+        "hive-log4j",
+        "hive-exec-log4j",
+        "hive-site",
+        "spark-defaults",
+        "spark-env",
+        "spark-log4j",
+        "spark-hive-site",
+        "spark-metrics",
+        "yarn-env",
+        "yarn-site",
+        "export",
+    ]
+
+    @staticmethod
+    def validate_configuration(configuration: Dict):
+        """Validates the user-provided Hadoop/Spark/Hive configuration.
+
+        This ensures that the list or dictionary the user provides will serialize to
+        JSON matching the schema of EMR's application configuration
+
+        Args:
+            configuration (Dict): A dict that contains the configuration overrides to
+                the default values. For more information, please visit:
+                https://docs.aws.amazon.com/emr/latest/ReleaseGuide/emr-configure-apps.html
+        """
+        emr_configure_apps_url = (
+            "https://docs.aws.amazon.com/emr/latest/ReleaseGuide/emr-configure-apps.html"
+        )
+        if isinstance(configuration, dict):
+            keys = configuration.keys()
+            if "Classification" not in keys or "Properties" not in keys:
+                raise ValueError(
+                    f"Missing one or more required keys in configuration dictionary "
+                    f"{configuration} Please see {emr_configure_apps_url} for more information"
+                )
+
+            for key in keys:
+                if key not in SparkConfigUtils._valid_configuration_keys:
+                    raise ValueError(
+                        f"Invalid key: {key}. "
+                        f"Must be one of {SparkConfigUtils._valid_configuration_keys}. "
+                        f"Please see {emr_configure_apps_url} for more information."
+                    )
+                if key == "Classification":
+                    if (
+                        configuration[key]
+                        not in SparkConfigUtils._valid_configuration_classifications
+                    ):
+                        raise ValueError(
+                            f"Invalid classification: {key}. Must be one of "
+                            f"{SparkConfigUtils._valid_configuration_classifications}"
+                        )
+
+        if isinstance(configuration, list):
+            for item in configuration:
+                SparkConfigUtils.validate_configuration(item)
+
+    # TODO (guoqioa@): method only checks urlparse scheme, need to perform deep s3 validation
+    @staticmethod
+    def validate_s3_uri(spark_output_s3_path):
+        """Validate whether the URI uses an S3 scheme.
+
+        In the future, this validation will perform deeper S3 validation.
+
+        Args:
+            spark_output_s3_path (str): The URI of the Spark output S3 Path.
+        """
+        if is_pipeline_variable(spark_output_s3_path):
+            return
+
+        if urlparse(spark_output_s3_path).scheme != "s3":
+            raise ValueError(
+                f"Invalid s3 path: {spark_output_s3_path}. Please enter something like "
+                "s3://bucket-name/folder-name"
+            )

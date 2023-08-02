@@ -37,9 +37,11 @@ from sagemaker.workflow.entities import (
 )
 from sagemaker.workflow.execution_variables import ExecutionVariables
 from sagemaker.workflow.parameters import Parameter
+from sagemaker.workflow.pipeline_definition_config import PipelineDefinitionConfig
 from sagemaker.workflow.pipeline_experiment_config import PipelineExperimentConfig
 from sagemaker.workflow.parallelism_config import ParallelismConfiguration
 from sagemaker.workflow.properties import Properties
+from sagemaker.workflow.selective_execution_config import SelectiveExecutionConfig
 from sagemaker.workflow.steps import Step, StepTypeEnum
 from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.condition_step import ConditionStep
@@ -50,6 +52,8 @@ logger = logging.getLogger(__name__)
 _DEFAULT_EXPERIMENT_CFG = PipelineExperimentConfig(
     ExecutionVariables.PIPELINE_NAME, ExecutionVariables.PIPELINE_EXECUTION_ID
 )
+
+_DEFAULT_DEFINITION_CFG = PipelineDefinitionConfig(use_custom_job_prefix=False)
 
 
 class Pipeline(Entity):
@@ -62,6 +66,7 @@ class Pipeline(Entity):
         pipeline_experiment_config: Optional[PipelineExperimentConfig] = _DEFAULT_EXPERIMENT_CFG,
         steps: Optional[Sequence[Union[Step, StepCollection]]] = None,
         sagemaker_session: Optional[Session] = None,
+        pipeline_definition_config: Optional[PipelineDefinitionConfig] = _DEFAULT_DEFINITION_CFG,
     ):
         """Initialize a Pipeline
 
@@ -83,12 +88,16 @@ class Pipeline(Entity):
             sagemaker_session (sagemaker.session.Session): Session object that manages interactions
                 with Amazon SageMaker APIs and any other AWS services needed. If not specified, the
                 pipeline creates one using the default AWS configuration chain.
+            pipeline_definition_config (Optional[PipelineDefinitionConfig]): If set,
+                the workflow customizes the pipeline definition using the configurations
+                specified. By default, custom job-prefixing is turned off.
         """
         self.name = name
         self.parameters = parameters if parameters else []
         self.pipeline_experiment_config = pipeline_experiment_config
         self.steps = steps if steps else []
         self.sagemaker_session = sagemaker_session if sagemaker_session else Session()
+        self.pipeline_definition_config = pipeline_definition_config
 
         self._version = "2020-12-01"
         self._metadata = dict()
@@ -104,7 +113,11 @@ class Pipeline(Entity):
             "PipelineExperimentConfig": self.pipeline_experiment_config.to_request()
             if self.pipeline_experiment_config is not None
             else None,
-            "Steps": build_steps(self.steps, self.name),
+            "Steps": build_steps(
+                self.steps,
+                self.name,
+                self.pipeline_definition_config,
+            ),
         }
 
     def create(
@@ -176,17 +189,19 @@ class Pipeline(Entity):
         if len(pipeline_definition.encode("utf-8")) < 1024 * 100:
             kwargs["PipelineDefinition"] = pipeline_definition
         else:
-            desired_s3_uri = s3.s3_path_join(
-                "s3://", self.sagemaker_session.default_bucket(), self.name
+            bucket, object_key = s3.determine_bucket_and_prefix(
+                bucket=None, key_prefix=self.name, sagemaker_session=self.sagemaker_session
             )
+
+            desired_s3_uri = s3.s3_path_join("s3://", bucket, object_key)
             s3.S3Uploader.upload_string_as_file_body(
                 body=pipeline_definition,
                 desired_s3_uri=desired_s3_uri,
                 sagemaker_session=self.sagemaker_session,
             )
             kwargs["PipelineDefinitionS3Location"] = {
-                "Bucket": self.sagemaker_session.default_bucket(),
-                "ObjectKey": self.name,
+                "Bucket": bucket,
+                "ObjectKey": object_key,
             }
 
         update_args(
@@ -310,6 +325,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         execution_display_name: str = None,
         execution_description: str = None,
         parallelism_config: ParallelismConfiguration = None,
+        selective_execution_config: SelectiveExecutionConfig = None,
     ):
         """Starts a Pipeline execution in the Workflow service.
 
@@ -321,16 +337,26 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             parallelism_config (Optional[ParallelismConfiguration]): Parallelism configuration
                 that is applied to each of the executions of the pipeline. It takes precedence
                 over the parallelism configuration of the parent pipeline.
+            selective_execution_config (Optional[SelectiveExecutionConfig]): The configuration for
+                selective step execution.
 
         Returns:
             A `_PipelineExecution` instance, if successful.
         """
+        if selective_execution_config is not None:
+            if selective_execution_config.source_pipeline_execution_arn is None:
+                selective_execution_config.source_pipeline_execution_arn = (
+                    self._get_latest_execution_arn()
+                )
+            selective_execution_config = selective_execution_config.to_request()
+
         kwargs = dict(PipelineName=self.name)
         update_args(
             kwargs,
             PipelineExecutionDescription=execution_description,
             PipelineExecutionDisplayName=execution_display_name,
             ParallelismConfiguration=parallelism_config,
+            SelectiveExecutionConfig=selective_execution_config,
         )
         if self.sagemaker_session.local_mode:
             update_args(kwargs, PipelineParameters=parameters)
@@ -385,6 +411,57 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
                     step_request["Arguments"]["IfSteps"] + step_request["Arguments"]["ElseSteps"]
                 )
                 self._interpolate_step_collection_name_in_depends_on(sub_step_requests)
+
+    def list_executions(
+        self,
+        sort_by: str = None,
+        sort_order: str = None,
+        max_results: int = None,
+        next_token: str = None,
+    ) -> Dict[str, Any]:
+        """Lists a pipeline's executions.
+
+        Args:
+            sort_by (str): The field by which to sort results(CreationTime/PipelineExecutionArn).
+            sort_order (str): The sort order for results (Ascending/Descending).
+            max_results (int): The maximum number of pipeline executions to return in the response.
+            next_token (str):  If the result of the previous ListPipelineExecutions request was
+                truncated, the response includes a NextToken. To retrieve the next set of pipeline
+                executions, use the token in the next request.
+
+        Returns:
+            List of Pipeline Execution Summaries. See
+            boto3 client list_pipeline_executions
+            https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker.html#SageMaker.Client.list_pipeline_executions
+        """
+        kwargs = dict(PipelineName=self.name)
+        update_args(
+            kwargs,
+            SortBy=sort_by,
+            SortOrder=sort_order,
+            NextToken=next_token,
+            MaxResults=max_results,
+        )
+        response = self.sagemaker_session.sagemaker_client.list_pipeline_executions(**kwargs)
+
+        # Return only PipelineExecutionSummaries and NextToken from the list_pipeline_executions
+        # response
+        return {
+            key: response[key]
+            for key in ["PipelineExecutionSummaries", "NextToken"]
+            if key in response
+        }
+
+    def _get_latest_execution_arn(self):
+        """Retrieves the latest execution of this pipeline"""
+        response = self.list_executions(
+            sort_by="CreationTime",
+            sort_order="Descending",
+            max_results=1,
+        )
+        if response["PipelineExecutionSummaries"]:
+            return response["PipelineExecutionSummaries"][0]["PipelineExecutionArn"]
+        return None
 
 
 def format_start_parameters(parameters: Dict[str, Any]) -> List[Dict[str, Any]]:

@@ -25,7 +25,11 @@ ENV_INPUT = {"env_key1": "env_val1", "env_key2": "env_val2", "env_key3": "env_va
 
 @pytest.fixture()
 def sagemaker_session():
-    session_mock = Mock(name="sagemaker_session", boto_region_name=REGION)
+    session_mock = Mock(
+        name="sagemaker_session",
+        boto_region_name=REGION,
+        default_bucket_prefix=None,
+    )
     session_mock.sagemaker_config = {}
     return session_mock
 

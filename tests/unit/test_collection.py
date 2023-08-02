@@ -59,6 +59,7 @@ def sagemaker_session():
         boto_region_name=REGION,
         config=None,
         local_mode=False,
+        default_bucket_prefix=None,
     )
 
     session_mock.create_group = Mock(

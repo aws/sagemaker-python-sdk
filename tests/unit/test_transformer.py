@@ -14,10 +14,12 @@ from __future__ import absolute_import
 
 import pytest
 from mock import MagicMock, Mock, patch, PropertyMock
+from sagemaker.session_settings import SessionSettings
 
 from sagemaker.transformer import _TransformJob, Transformer
 from sagemaker.workflow.pipeline_context import PipelineSession, _PipelineConfig
 from sagemaker.inputs import BatchDataCaptureConfig
+from sagemaker.workflow.pipeline_definition_config import PipelineDefinitionConfig
 
 from tests.integ import test_local_mode
 from tests.unit import SAGEMAKER_CONFIG_TRANSFORM_JOB
@@ -51,8 +53,13 @@ MODEL_DESC_PRIMARY_CONTAINER = {"PrimaryContainer": {"Image": IMAGE_URI}}
 
 MODEL_DESC_CONTAINERS_ONLY = {"Containers": [{"Image": IMAGE_URI}]}
 
+_DEFINITION_CONFIG = PipelineDefinitionConfig(use_custom_job_prefix=False)
 MOCKED_PIPELINE_CONFIG = _PipelineConfig(
-    "test-pipeline", "test-training-step", "code-hash-0123456789", "config-hash-0123456789"
+    "test-pipeline",
+    "test-training-step",
+    "code-hash-0123456789",
+    "config-hash-0123456789",
+    _DEFINITION_CONFIG,
 )
 
 
@@ -65,7 +72,12 @@ def mock_create_tar_file():
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = Mock(name="boto_session")
-    session = Mock(name="sagemaker_session", boto_session=boto_mock, local_mode=False)
+    session = Mock(
+        name="sagemaker_session",
+        boto_session=boto_mock,
+        local_mode=False,
+        default_bucket_prefix=None,
+    )
     # For tests which doesn't verify config file injection, operate with empty config
     session.sagemaker_config = {}
     return session
@@ -106,6 +118,8 @@ def transformer(sagemaker_session):
 def test_transform_with_sagemaker_config_injection(start_new_job, sagemaker_session):
     sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRANSFORM_JOB
 
+    sagemaker_session.settings = SessionSettings()
+
     transformer = Transformer(
         MODEL_NAME,
         INSTANCE_COUNT,
@@ -125,6 +139,10 @@ def test_transform_with_sagemaker_config_injection(start_new_job, sagemaker_sess
         == SAGEMAKER_CONFIG_TRANSFORM_JOB["SageMaker"]["TransformJob"]["TransformOutput"][
             "KmsKeyId"
         ]
+    )
+    assert (
+        transformer.env
+        == SAGEMAKER_CONFIG_TRANSFORM_JOB["SageMaker"]["TransformJob"]["Environment"]
     )
 
     content_type = "text/csv"

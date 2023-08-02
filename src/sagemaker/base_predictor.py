@@ -47,7 +47,7 @@ from sagemaker.serializers import (
     NumpySerializer,
 )
 from sagemaker.session import production_variant, Session
-from sagemaker.utils import name_from_base
+from sagemaker.utils import name_from_base, stringify_object
 
 from sagemaker.model_monitor.model_monitoring import DEFAULT_REPOSITORY_NAME
 
@@ -74,6 +74,10 @@ class PredictorBase(abc.ABC):
     @abc.abstractmethod
     def accept(self) -> Tuple[str]:
         """The content type(s) that are expected from the inference server."""
+
+    def __str__(self) -> str:
+        """Overriding str(*) method to make more human-readable."""
+        return stringify_object(self)
 
 
 class Predictor(PredictorBase):
@@ -129,6 +133,7 @@ class Predictor(PredictorBase):
         target_model=None,
         target_variant=None,
         inference_id=None,
+        custom_attributes=None,
     ):
         """Return the inference from the specified endpoint.
 
@@ -149,6 +154,18 @@ class Predictor(PredictorBase):
                 model you want to host and the resources you want to deploy for hosting it.
             inference_id (str): If you provide a value, it is added to the captured data
                 when you enable data capture on the endpoint (Default: None).
+            custom_attributes (str): Provides additional information about a request for an
+                inference submitted to a model hosted at an Amazon SageMaker endpoint.
+                The information is an opaque value that is forwarded verbatim. You could use this
+                value, for example, to provide an ID that you can use to track a request or to
+                provide other metadata that a service endpoint was programmed to process. The value
+                must consist of no more than 1024 visible US-ASCII characters.
+
+                The code in your model is responsible for setting or updating any custom attributes
+                in the response. If your code does not set this value in the response, an empty
+                value is returned. For example, if a custom attribute represents the trace ID, your
+                model can prepend the custom attribute with Trace ID: in your post-processing
+                function (Default: None).
 
         Returns:
             object: Inference for the given input. If a deserializer was specified when creating
@@ -158,7 +175,12 @@ class Predictor(PredictorBase):
         """
 
         request_args = self._create_request_args(
-            data, initial_args, target_model, target_variant, inference_id
+            data,
+            initial_args,
+            target_model,
+            target_variant,
+            inference_id,
+            custom_attributes,
         )
         response = self.sagemaker_session.sagemaker_runtime_client.invoke_endpoint(**request_args)
         return self._handle_response(response)
@@ -176,6 +198,7 @@ class Predictor(PredictorBase):
         target_model=None,
         target_variant=None,
         inference_id=None,
+        custom_attributes=None,
     ):
         """Placeholder docstring"""
         args = dict(initial_args) if initial_args else {}
@@ -201,6 +224,9 @@ class Predictor(PredictorBase):
 
         if inference_id:
             args["InferenceId"] = inference_id
+
+        if custom_attributes:
+            args["CustomAttributes"] = custom_attributes
 
         data = self.serializer.serialize(data)
 

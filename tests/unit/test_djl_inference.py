@@ -29,7 +29,13 @@ from sagemaker.djl_inference import (
     DeepSpeedModel,
 )
 from sagemaker.djl_inference.model import DJLServingEngineEntryPointDefaults
+from sagemaker.s3_utils import s3_path_join
 from sagemaker.session_settings import SessionSettings
+from tests.unit import (
+    _test_default_bucket_and_prefix_combinations,
+    DEFAULT_S3_BUCKET_NAME,
+    DEFAULT_S3_OBJECT_KEY_PREFIX_NAME,
+)
 
 VALID_UNCOMPRESSED_MODEL_DATA = "s3://mybucket/model"
 INVALID_UNCOMPRESSED_MODEL_DATA = "s3://mybucket/model.tar.gz"
@@ -40,7 +46,7 @@ ENV = {"ENV_VAR": "env_value"}
 ROLE = "dummy_role"
 REGION = "us-west-2"
 BUCKET = "mybucket"
-IMAGE_URI = "763104351884.dkr.ecr.us-west-2.amazon.com/djl-inference:0.20.0-deepspeed0.7.5-cu116"
+IMAGE_URI = "763104351884.dkr.ecr.us-west-2.amazon.com/djl-inference:0.22.1-deepspeed0.9.2-cu118"
 GPU_INSTANCE = "ml.g5.12xlarge"
 
 
@@ -58,8 +64,9 @@ def sagemaker_session():
         settings=SessionSettings(),
         create_model=Mock(name="create_model"),
         endpoint_from_production_variants=Mock(name="endpoint_from_production_variants"),
+        default_bucket_prefix=None,
     )
-    session.default_bucket = Mock(name="default_bucket", return_valie=BUCKET)
+    session.default_bucket = Mock(name="default_bucket", return_value=BUCKET)
     # For tests which doesn't verify config file injection, operate with empty config
 
     session.sagemaker_config = {}
@@ -104,7 +111,6 @@ def test_create_model_valid_hf_hub_model_id(
 
     serving_properties = model.generate_serving_properties()
     assert serving_properties["option.model_id"] == HF_MODEL_ID
-    assert "option.s3url" not in serving_properties
 
 
 @patch("json.load")
@@ -389,7 +395,7 @@ def test_generate_serving_properties_with_valid_configurations(
     expected_dict = {
         "engine": "Python",
         "option.entryPoint": ENTRY_POINT,
-        "option.s3url": VALID_UNCOMPRESSED_MODEL_DATA,
+        "option.model_id": VALID_UNCOMPRESSED_MODEL_DATA,
         "option.tensor_parallel_degree": 4,
         "option.task": "text-classification",
         "option.dtype": "fp16",
@@ -424,7 +430,7 @@ def test_generate_serving_properties_with_valid_configurations(
     expected_dict = {
         "engine": "DeepSpeed",
         "option.entryPoint": "djl_python.deepspeed",
-        "option.s3url": VALID_UNCOMPRESSED_MODEL_DATA,
+        "option.model_id": VALID_UNCOMPRESSED_MODEL_DATA,
         "option.tensor_parallel_degree": 1,
         "option.task": "text-generation",
         "option.dtype": "bf16",
@@ -452,9 +458,9 @@ def test_generate_serving_properties_with_valid_configurations(
     expected_dict = {
         "engine": "Python",
         "option.entryPoint": "djl_python.huggingface",
-        "option.s3url": VALID_UNCOMPRESSED_MODEL_DATA,
+        "option.model_id": VALID_UNCOMPRESSED_MODEL_DATA,
         "option.tensor_parallel_degree": 1,
-        "option.dtype": "auto",
+        "option.dtype": "fp32",
         "option.device_id": 4,
         "option.device_map": "balanced",
     }
@@ -523,3 +529,288 @@ def test_deploy_model_no_local_code(
         mock_container_def.assert_called_once_with(
             IMAGE_URI, model_data_url="s3prefix", env=expected_env
         )
+
+
+@patch("sagemaker.image_uris.retrieve", return_value=IMAGE_URI)
+@patch("shutil.rmtree")
+@patch("sagemaker.utils.base_name_from_image")
+@patch("tempfile.mkdtemp")
+@patch("sagemaker.container_def")
+@patch("sagemaker.utils._tmpdir")
+@patch("sagemaker.utils._create_or_update_code_dir")
+@patch("os.mkdir")
+@patch("os.path.exists")
+@patch("sagemaker.s3.S3Downloader.read_file")
+@patch("sagemaker.s3.S3Downloader.list")
+@patch("sagemaker.s3.S3Uploader.upload")
+@patch("sagemaker.estimator.Estimator.fit")
+@patch("sagemaker.fw_utils.model_code_key_prefix")
+def test_partition(
+    mock_model_key_prefix,
+    mock_estimator_fit,
+    mock_upload,
+    mock_s3_list,
+    mock_read_file,
+    mock_path_exists,
+    mock_mkdir,
+    mock_create_code_dir,
+    mock_tmpdir,
+    mock_container_def,
+    mock_mktmp,
+    mock_name_from_base,
+    mock_shutil_rmtree,
+    mock_imguri_retrieve,
+    sagemaker_session,
+):
+    mock_s3_list.return_value = [VALID_UNCOMPRESSED_MODEL_DATA + "/config.json"]
+    model_config = {
+        "model_type": "bloom",
+        "n_heads": 120,
+    }
+    mock_read_file.return_value = json.dumps(model_config)
+    model = DJLModel(
+        VALID_UNCOMPRESSED_MODEL_DATA,
+        ROLE,
+        sagemaker_session=sagemaker_session,
+        number_of_partitions=4,
+        data_type="fp16",
+        container_log_level=logging.DEBUG,
+        env=ENV,
+    )
+
+    assert model.image_uri is None
+    mock_path_exists.side_effect = [True, False, True]
+    mock_mktmp.return_value = "/tmp/dir"
+    expected_env = {"ENV_VAR": "env_value", "SERVING_OPTS": '"-Dai.djl.logging.level=debug"'}
+    mock_upload.return_value = "s3prefix"
+
+    s3_output_uri = f"s3://{BUCKET}/partitions/"
+    mock_model_key_prefix.return_value = "s3prefix"
+    with patch("builtins.open", mock_open()) as fake_serving_properties:
+        model.partition(GPU_INSTANCE, s3_output_uri)
+
+        mock_mktmp.assert_called_once_with(prefix="tmp", suffix="", dir=None)
+        mock_mkdir.assert_called()
+        assert fake_serving_properties.call_count == 2
+        fake_serving_properties.assert_any_call("/tmp/dir/code/serving.properties", "w+")
+        fake_serving_properties.assert_any_call("/tmp/dir/code/serving.properties", "r")
+        mock_container_def.assert_called_once_with(
+            IMAGE_URI, model_data_url="s3prefix", env=expected_env
+        )
+
+        assert model.model_id == f"{s3_output_uri}aot-partitioned-checkpoints"
+
+
+@patch("sagemaker.djl_inference.model.fw_utils.model_code_key_prefix")
+@patch("sagemaker.djl_inference.model._get_model_config_properties_from_s3")
+@patch("sagemaker.djl_inference.model.fw_utils.tar_and_upload_dir")
+def test__upload_model_to_s3__with_upload_as_tar__default_bucket_and_prefix_combinations(
+    tar_and_upload_dir,
+    _get_model_config_properties_from_s3,
+    model_code_key_prefix,
+):
+    # Skip appending of timestamps that this normally does
+    model_code_key_prefix.side_effect = lambda a, b, c: s3_path_join(a, b, c)
+
+    def with_user_input(sess):
+        model = DJLModel(
+            VALID_UNCOMPRESSED_MODEL_DATA,
+            ROLE,
+            sagemaker_session=sess,
+            number_of_partitions=4,
+            data_type="fp16",
+            container_log_level=logging.DEBUG,
+            env=ENV,
+            code_location="s3://test-bucket/test-prefix/test-prefix-2",
+            image_uri="image_uri",
+        )
+        model._upload_model_to_s3(upload_as_tar=True)
+        args = tar_and_upload_dir.call_args.args
+        return "s3://%s/%s" % (args[1], args[2])
+
+    def without_user_input(sess):
+        model = DJLModel(
+            VALID_UNCOMPRESSED_MODEL_DATA,
+            ROLE,
+            sagemaker_session=sess,
+            number_of_partitions=4,
+            data_type="fp16",
+            container_log_level=logging.DEBUG,
+            env=ENV,
+            image_uri="image_uri",
+        )
+        model._upload_model_to_s3(upload_as_tar=True)
+        args = tar_and_upload_dir.call_args.args
+        return "s3://%s/%s" % (args[1], args[2])
+
+    actual, expected = _test_default_bucket_and_prefix_combinations(
+        function_with_user_input=with_user_input,
+        function_without_user_input=without_user_input,
+        expected__without_user_input__with_default_bucket_and_default_prefix=(
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/image_uri"
+        ),
+        expected__without_user_input__with_default_bucket_only=(
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/image_uri"
+        ),
+        expected__with_user_input__with_default_bucket_and_prefix=(
+            "s3://test-bucket/test-prefix/test-prefix-2/image_uri"
+        ),
+        expected__with_user_input__with_default_bucket_only=(
+            "s3://test-bucket/test-prefix/test-prefix-2/image_uri"
+        ),
+    )
+    assert actual == expected
+
+
+@patch("sagemaker.djl_inference.model.fw_utils.model_code_key_prefix")
+@patch("sagemaker.djl_inference.model._get_model_config_properties_from_s3")
+@patch("sagemaker.djl_inference.model.S3Uploader.upload")
+def test__upload_model_to_s3__without_upload_as_tar__default_bucket_and_prefix_combinations(
+    upload,
+    _get_model_config_properties_from_s3,
+    model_code_key_prefix,
+):
+    """This test is similar to test__upload_model_to_s3__with_upload_as_tar__default_bucket_and_prefix_combinations
+
+    except upload_as_tar is False and S3Uploader.upload is checked
+    """
+
+    # Skip appending of timestamps that this normally does
+    model_code_key_prefix.side_effect = lambda a, b, c: s3_path_join(a, b, c)
+
+    def with_user_input(sess):
+        model = DJLModel(
+            VALID_UNCOMPRESSED_MODEL_DATA,
+            ROLE,
+            sagemaker_session=sess,
+            number_of_partitions=4,
+            data_type="fp16",
+            container_log_level=logging.DEBUG,
+            env=ENV,
+            code_location="s3://test-bucket/test-prefix/test-prefix-2",
+            image_uri="image_uri",
+        )
+        model._upload_model_to_s3(upload_as_tar=False)
+        args = upload.call_args.args
+        return args[1]
+
+    def without_user_input(sess):
+        model = DJLModel(
+            VALID_UNCOMPRESSED_MODEL_DATA,
+            ROLE,
+            sagemaker_session=sess,
+            number_of_partitions=4,
+            data_type="fp16",
+            container_log_level=logging.DEBUG,
+            env=ENV,
+            image_uri="image_uri",
+        )
+        model._upload_model_to_s3(upload_as_tar=False)
+        args = upload.call_args.args
+        return args[1]
+
+    actual, expected = _test_default_bucket_and_prefix_combinations(
+        function_with_user_input=with_user_input,
+        function_without_user_input=without_user_input,
+        expected__without_user_input__with_default_bucket_and_default_prefix=(
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/image_uri/aot-model"
+        ),
+        expected__without_user_input__with_default_bucket_only=(
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/image_uri/aot-model"
+        ),
+        expected__with_user_input__with_default_bucket_and_prefix=(
+            "s3://test-bucket/test-prefix/test-prefix-2/image_uri/aot-model"
+        ),
+        expected__with_user_input__with_default_bucket_only=(
+            "s3://test-bucket/test-prefix/test-prefix-2/image_uri/aot-model"
+        ),
+    )
+    assert actual == expected
+
+
+@pytest.mark.parametrize(
+    (
+        "code_location,"
+        "expected__without_user_input__with_default_bucket_and_default_prefix, "
+        "expected__without_user_input__with_default_bucket_only, "
+        "expected__with_user_input__with_default_bucket_and_prefix, "
+        "expected__with_user_input__with_default_bucket_only"
+    ),
+    [
+        (
+            "s3://code-test-bucket/code-test-prefix/code-test-prefix-2",
+            "s3://code-test-bucket/code-test-prefix/code-test-prefix-2/image_uri",
+            "s3://code-test-bucket/code-test-prefix/code-test-prefix-2/image_uri",
+            "s3://test-bucket/test-prefix/test-prefix-2",
+            "s3://test-bucket/test-prefix/test-prefix-2",
+        ),
+        (
+            None,
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/image_uri",
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/image_uri",
+            "s3://test-bucket/test-prefix/test-prefix-2",
+            "s3://test-bucket/test-prefix/test-prefix-2",
+        ),
+    ],
+)
+@patch("sagemaker.djl_inference.model.fw_utils.model_code_key_prefix")
+@patch("sagemaker.djl_inference.model._get_model_config_properties_from_s3")
+@patch("sagemaker.djl_inference.model.fw_utils.tar_and_upload_dir")
+@patch("sagemaker.djl_inference.model._create_estimator")
+def test_partition_default_bucket_and_prefix_combinations(
+    _create_estimator,
+    tar_and_upload_dir,
+    _get_model_config_properties_from_s3,
+    model_code_key_prefix,
+    code_location,
+    expected__without_user_input__with_default_bucket_and_default_prefix,
+    expected__without_user_input__with_default_bucket_only,
+    expected__with_user_input__with_default_bucket_and_prefix,
+    expected__with_user_input__with_default_bucket_only,
+):
+    # Skip appending of timestamps that this normally does
+    model_code_key_prefix.side_effect = lambda a, b, c: s3_path_join(a, b, c)
+
+    def with_user_input(sess):
+        model = DeepSpeedModel(
+            VALID_UNCOMPRESSED_MODEL_DATA,
+            ROLE,
+            sagemaker_session=sess,
+            data_type="fp16",
+            container_log_level=logging.DEBUG,
+            env=ENV,
+            code_location=code_location,
+            image_uri="image_uri",
+        )
+        model.partition(GPU_INSTANCE, s3_output_uri="s3://test-bucket/test-prefix/test-prefix-2")
+        kwargs = _create_estimator.call_args.kwargs
+        return kwargs["s3_output_uri"]
+
+    def without_user_input(sess):
+        model = DeepSpeedModel(
+            VALID_UNCOMPRESSED_MODEL_DATA,
+            ROLE,
+            sagemaker_session=sess,
+            data_type="fp16",
+            container_log_level=logging.DEBUG,
+            env=ENV,
+            code_location=code_location,
+            image_uri="image_uri",
+        )
+        model.partition(GPU_INSTANCE)
+        kwargs = _create_estimator.call_args.kwargs
+        return kwargs["s3_output_uri"]
+
+    actual, expected = _test_default_bucket_and_prefix_combinations(
+        function_with_user_input=with_user_input,
+        function_without_user_input=without_user_input,
+        expected__without_user_input__with_default_bucket_and_default_prefix=(
+            expected__without_user_input__with_default_bucket_and_default_prefix
+        ),
+        expected__without_user_input__with_default_bucket_only=expected__without_user_input__with_default_bucket_only,
+        expected__with_user_input__with_default_bucket_and_prefix=(
+            expected__with_user_input__with_default_bucket_and_prefix
+        ),
+        expected__with_user_input__with_default_bucket_only=expected__with_user_input__with_default_bucket_only,
+    )
+    assert actual == expected

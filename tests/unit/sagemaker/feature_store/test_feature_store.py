@@ -218,5 +218,31 @@ def test_batch_get_record(sagemaker_session_mock):
                 "RecordIdentifiersValueAsString": ["identifier"],
                 "FeatureNames": ["feature_1"],
             }
-        ]
+        ],
+        expiration_time_response=None,
+    )
+
+
+def test_batch_get_record_with_expiration_time_response(sagemaker_session_mock):
+    feature_store = FeatureStore(sagemaker_session=sagemaker_session_mock)
+    feature_store.batch_get_record(
+        identifiers=[
+            Identifier(
+                feature_group_name="name",
+                record_identifiers_value_as_string=["identifier"],
+                feature_names=["feature_1"],
+            )
+        ],
+        expiration_time_response="Enabled",
+    )
+
+    sagemaker_session_mock.batch_get_record.assert_called_with(
+        identifiers=[
+            {
+                "FeatureGroupName": "name",
+                "RecordIdentifiersValueAsString": ["identifier"],
+                "FeatureNames": ["feature_1"],
+            }
+        ],
+        expiration_time_response="Enabled",
     )

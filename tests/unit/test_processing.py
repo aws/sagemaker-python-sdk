@@ -37,6 +37,7 @@ from sagemaker.spark.processing import PySparkProcessor
 from sagemaker.sklearn.processing import SKLearnProcessor
 from sagemaker.pytorch.processing import PyTorchProcessor
 from sagemaker.tensorflow.processing import TensorFlowProcessor
+from sagemaker.workflow.pipeline_definition_config import PipelineDefinitionConfig
 from sagemaker.xgboost.processing import XGBoostProcessor
 from sagemaker.mxnet.processing import MXNetProcessor
 from sagemaker.network import NetworkConfig
@@ -53,8 +54,13 @@ ROLE = "arn:aws:iam::012345678901:role/SageMakerRole"
 ECR_HOSTNAME = "ecr.us-west-2.amazonaws.com"
 CUSTOM_IMAGE_URI = "012345678901.dkr.ecr.us-west-2.amazonaws.com/my-custom-image-uri"
 MOCKED_S3_URI = "s3://mocked_s3_uri_from_upload_data"
+_DEFINITION_CONFIG = PipelineDefinitionConfig(use_custom_job_prefix=False)
 MOCKED_PIPELINE_CONFIG = _PipelineConfig(
-    "test-pipeline", "test-processing-step", "code-hash-abcdefg", "config-hash-abcdefg"
+    "test-pipeline",
+    "test-processing-step",
+    "code-hash-abcdefg",
+    "config-hash-abcdefg",
+    _DEFINITION_CONFIG,
 )
 
 
@@ -74,6 +80,7 @@ def sagemaker_session():
         config=None,
         local_mode=False,
         settings=SessionSettings(),
+        default_bucket_prefix=None,
     )
     session_mock.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
 
@@ -99,6 +106,7 @@ def pipeline_session():
         config=None,
         local_mode=False,
         settings=SessionSettings(),
+        default_bucket_prefix=None,
     )
     session_mock.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
 
@@ -666,7 +674,6 @@ def test_script_processor_with_sagemaker_config_injection(
         volume_size_in_gb=100,
         max_runtime_in_seconds=3600,
         base_job_name="my_sklearn_processor",
-        env={"my_env_variable": "my_env_variable_value"},
         tags=[{"Key": "my-tag", "Value": "my-tag-value"}],
         sagemaker_session=sagemaker_session,
     )
@@ -697,6 +704,9 @@ def test_script_processor_with_sagemaker_config_injection(
     expected_enable_inter_containter_traffic_encryption = SAGEMAKER_CONFIG_PROCESSING_JOB[
         "SageMaker"
     ]["ProcessingJob"]["NetworkConfig"]["EnableInterContainerTrafficEncryption"]
+    expected_environment = SAGEMAKER_CONFIG_PROCESSING_JOB["SageMaker"]["ProcessingJob"][
+        "Environment"
+    ]
 
     expected_args["resources"]["ClusterConfig"]["VolumeKmsKeyId"] = expected_volume_kms_key_id
     expected_args["output_config"]["KmsKeyId"] = expected_output_kms_key_id
@@ -706,6 +716,7 @@ def test_script_processor_with_sagemaker_config_injection(
     expected_args["network_config"][
         "EnableInterContainerTrafficEncryption"
     ] = expected_enable_inter_containter_traffic_encryption
+    expected_args["environment"] = expected_environment
 
     sagemaker_session.process.assert_called_with(**expected_args)
     assert "my_job_name" in processor._current_job_name
