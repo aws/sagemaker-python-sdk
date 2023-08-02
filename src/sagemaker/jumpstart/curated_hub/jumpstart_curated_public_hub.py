@@ -103,7 +103,7 @@ class JumpStartCuratedPublicHub:
     ) -> Tuple[str, str, bool]:
         # Finds the relevant hub and s3 locations
         curated_hub_name = hub_name
-        curated_hub_s3_bucket_name = f"{curated_hub_name}-{self._region}-{uuid.uuid4()}"
+        curated_hub_s3_bucket_name = self._create_unique_s3_bucket_name(curated_hub_name, self._region)
         preexisting_hub = self._get_preexisting_hub_and_s3_bucket_names()
         if preexisting_hub:
             name_of_hub_already_on_account = preexisting_hub[0]
@@ -127,6 +127,10 @@ class JumpStartCuratedPublicHub:
         print(f"HUB_NAME={curated_hub_name}")
 
         return (curated_hub_name, curated_hub_s3_bucket_name)
+
+    def _create_unique_s3_bucket_name(self, bucket_name: str, region: str) -> str:
+        unique_bucket_name =  f"{bucket_name}-{region}-{uuid.uuid4()}"
+        return unique_bucket_name[:63] # S3 bucket name size is limited to 63 characters
 
     def create(self):
         """Creates a curated hub in the caller AWS account."""
