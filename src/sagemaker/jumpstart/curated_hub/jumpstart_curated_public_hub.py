@@ -15,8 +15,9 @@ from __future__ import absolute_import
 
 import json
 import uuid
+import traceback
 from concurrent import futures
-from typing import List, Optional, Tuple, Dict
+from typing import List, Optional, Tuple, Dict, Any
 
 import boto3
 from botocore.client import ClientError
@@ -155,7 +156,7 @@ class JumpStartCuratedPublicHub:
         if not force_update:
             print(
                 "INFO: Filtering out models that are already in hub."
-                + " If you still wish to update this model, set `force_update` to True"
+                " If you still wish to update this model, set `force_update` to True"
             )
             model_specs = list(filter(self._model_needs_update, model_specs))
 
@@ -195,11 +196,14 @@ class JumpStartCuratedPublicHub:
                 tasks.append(task)
 
         results = futures.wait(tasks)
-        failed_deployments: List[BaseException] = []
+        failed_deployments: List[Dict[str, Any]] = []
         for result in results.done:
             exception = result.exception()
             if exception:
-                failed_deployments.append(exception)
+                failed_deployments.append({
+                    "Exception": exception,
+                    "Traceback": "".join(traceback.TracebackException.from_exception(exception).format())
+                })
         if failed_deployments:
             raise RuntimeError(
                 f"Failures when importing models to curated hub in parallel: {failed_deployments}"
@@ -214,7 +218,7 @@ class JumpStartCuratedPublicHub:
     def _import_model(self, public_js_model_specs: JumpStartModelSpecs) -> None:
         print(
             f"Importing model {public_js_model_specs.model_id}"
-            + " version {public_js_model_specs.version} to curated private hub..."
+            f" version {public_js_model_specs.version} to curated private hub..."
         )
         self._content_copier.copy_hub_content_dependencies_to_hub_bucket(
             model_specs=public_js_model_specs
@@ -222,15 +226,17 @@ class JumpStartCuratedPublicHub:
         self._import_public_model_to_hub(model_specs=public_js_model_specs)
         print(
             f"Importing model {public_js_model_specs.model_id}"
-            + " version {public_js_model_specs.version} to curated private hub complete!"
+            f" version {public_js_model_specs.version} to curated private hub complete!"
         )
 
     def _import_public_model_to_hub(self, model_specs: JumpStartModelSpecs):
         # TODO Several fields are not present in SDK specs as they are only in Studio specs right now (not urgent)
         hub_content_display_name = self.studio_metadata_map[model_specs.model_id]["name"]
         # TODO enable: self.studio_metadata_map[model_specs.model_id]["desc"]
-        hub_content_description = "This is a curated model based "
-        +f"off the public JumpStart model {hub_content_display_name}"
+        hub_content_description = (
+            "This is a curated model based "
+            f"off the public JumpStart model {hub_content_display_name}"
+        )
         hub_content_markdown = self._dst_s3_filesystem.get_markdown_s3_reference(
             model_specs
         ).get_uri()
@@ -291,7 +297,7 @@ class JumpStartCuratedPublicHub:
 
         if "Errors" in delete_response:
             raise Exception(
-                f"Failed to delete all dependencies of model {model_specs.model_id}. : {delete_response['Errors']}"
+                f"Failed to delete all dependencies of model {model_specs.model_id} : {delete_response['Errors']}"
             )
 
     def _get_hub_content_dependencies_from_model_document(

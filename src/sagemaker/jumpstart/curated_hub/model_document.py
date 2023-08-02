@@ -137,10 +137,10 @@ class ModelDocumentCreator:
         )
         dependencies.append(
             Dependency(
-                DependencyOriginPath=self._src_s3_filesystem._get_markdown_s3_reference(
+                DependencyOriginPath=self._src_s3_filesystem.get_markdown_s3_reference(
                     model_specs
                 ).get_uri(),
-                DependencyCopyPath=self._palatine_hub_s3_filesystem._get_markdown_s3_reference(
+                DependencyCopyPath=self._palatine_hub_s3_filesystem.get_markdown_s3_reference(
                     model_specs
                 ).get_uri(),
                 DependencyType=DependencyType.OTHER,
