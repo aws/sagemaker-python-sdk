@@ -16,11 +16,18 @@ import copy
 import datetime
 from typing import Iterator, List
 
-from mock import call, patch
+import pytest
+from mock import call, patch, Mock
 
+from sagemaker import Session
+from sagemaker.feature_store.feature_processor._event_bridge_scheduler_helper import (
+    EventBridgeSchedulerHelper,
+)
 from sagemaker.feature_store.feature_processor.lineage.constants import (
     TRANSFORMATION_CODE_STATUS_INACTIVE,
 )
+from sagemaker.lineage.context import Context
+from sagemaker.lineage.artifact import Artifact
 from test_constants import (
     FEATURE_GROUP_DATA_SOURCE,
     FEATURE_GROUP_INPUT,
@@ -39,6 +46,8 @@ from test_constants import (
     TRANSFORMATION_CODE_ARTIFACT_2,
     TRANSFORMATION_CODE_INPUT_1,
     TRANSFORMATION_CODE_INPUT_2,
+    ARTIFACT_SUMMARY,
+    ARTIFACT_RESULT,
 )
 
 from sagemaker.feature_store.feature_processor.lineage._feature_group_lineage_entity_handler import (
@@ -68,6 +77,21 @@ SCHEDULE_ARN = ""
 SCHEDULE_EXPRESSION = ""
 STATE = ""
 START_DATE = datetime.datetime(2023, 4, 28, 21, 53, 47, 912000)
+TAGS = [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
+
+
+@pytest.fixture
+def sagemaker_session():
+    boto_session = Mock()
+    boto_session.client("scheduler").return_value = Mock()
+    return Mock(Session, boto_session=boto_session)
+
+
+@pytest.fixture
+def event_bridge_scheduler_helper(sagemaker_session):
+    return EventBridgeSchedulerHelper(
+        sagemaker_session, sagemaker_session.boto_session.client("scheduler")
+    )
 
 
 def test_create_lineage_when_no_lineage_exists_with_fg_only():
@@ -286,8 +310,14 @@ def test_create_lineage_when_no_lineage_exists_with_raw_data_only():
         LineageAssociationHandler, "add_upstream_transformation_code_associations"
     ) as add_upstream_transformation_code_associations_method, patch.object(
         LineageAssociationHandler, "add_pipeline_and_pipeline_version_association"
-    ) as add_pipeline_and_pipeline_version_association_method:
-        lineage_handler.create_lineage()
+    ) as add_pipeline_and_pipeline_version_association_method, patch.object(
+        Artifact,
+        "set_tags",
+        return_value={
+            "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
+        },
+    ) as artifact_set_tags:
+        lineage_handler.create_lineage(TAGS)
 
     retrieve_feature_group_context_arns_method.assert_called_once_with(
         feature_group_name=FEATURE_GROUP_DATA_SOURCE[0].name,
@@ -353,8 +383,10 @@ def test_create_lineage_when_no_lineage_exists_with_raw_data_only():
         sagemaker_session=SAGEMAKER_SESSION_MOCK,
     )
 
+    artifact_set_tags.assert_called_once_with(TAGS)
 
-def test_create_lineage_when_no_lineage_exists_with_fg_and_raw_data():
+
+def test_create_lineage_when_no_lineage_exists_with_fg_and_raw_data_with_tags():
     lineage_handler = FeatureProcessorLineageHandler(
         pipeline_name=PIPELINE_NAME,
         pipeline_arn=PIPELINE_ARN,
@@ -425,8 +457,14 @@ def test_create_lineage_when_no_lineage_exists_with_fg_and_raw_data():
         LineageAssociationHandler, "add_upstream_transformation_code_associations"
     ) as add_upstream_transformation_code_associations_method, patch.object(
         LineageAssociationHandler, "add_pipeline_and_pipeline_version_association"
-    ) as add_pipeline_and_pipeline_version_association_method:
-        lineage_handler.create_lineage()
+    ) as add_pipeline_and_pipeline_version_association_method, patch.object(
+        Artifact,
+        "set_tags",
+        return_value={
+            "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
+        },
+    ) as artifact_set_tags:
+        lineage_handler.create_lineage(TAGS)
 
     retrieve_feature_group_context_arns_method.assert_has_calls(
         [
@@ -505,6 +543,8 @@ def test_create_lineage_when_no_lineage_exists_with_fg_and_raw_data():
         sagemaker_session=SAGEMAKER_SESSION_MOCK,
     )
 
+    artifact_set_tags.assert_called_once_with(TAGS)
+
 
 def test_create_lineage_when_no_lineage_exists_with_no_transformation_code():
     lineage_handler = FeatureProcessorLineageHandler(
@@ -576,8 +616,14 @@ def test_create_lineage_when_no_lineage_exists_with_no_transformation_code():
         LineageAssociationHandler, "add_upstream_transformation_code_associations"
     ) as add_upstream_transformation_code_associations_method, patch.object(
         LineageAssociationHandler, "add_pipeline_and_pipeline_version_association"
-    ) as add_pipeline_and_pipeline_version_association_method:
-        lineage_handler.create_lineage()
+    ) as add_pipeline_and_pipeline_version_association_method, patch.object(
+        Artifact,
+        "set_tags",
+        return_value={
+            "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
+        },
+    ) as artifact_set_tags:
+        lineage_handler.create_lineage(TAGS)
 
     retrieve_feature_group_context_arns_method.assert_has_calls(
         [
@@ -651,6 +697,8 @@ def test_create_lineage_when_no_lineage_exists_with_no_transformation_code():
         pipeline_version_context_arn=PIPELINE_VERSION_CONTEXT.context_arn,
         sagemaker_session=SAGEMAKER_SESSION_MOCK,
     )
+
+    artifact_set_tags.assert_not_called()
 
 
 def test_create_lineage_when_already_exist_with_no_version_change():
@@ -728,8 +776,14 @@ def test_create_lineage_when_already_exist_with_no_version_change():
         LineageAssociationHandler, "add_upstream_transformation_code_associations"
     ) as add_upstream_transformation_code_associations_method, patch.object(
         LineageAssociationHandler, "add_pipeline_and_pipeline_version_association"
-    ) as add_pipeline_and_pipeline_version_association_method:
-        lineage_handler.create_lineage()
+    ) as add_pipeline_and_pipeline_version_association_method, patch.object(
+        Artifact,
+        "set_tags",
+        return_value={
+            "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
+        },
+    ) as artifact_set_tags:
+        lineage_handler.create_lineage(TAGS)
 
     retrieve_feature_group_context_arns_method.assert_has_calls(
         [
@@ -838,6 +892,8 @@ def test_create_lineage_when_already_exist_with_no_version_change():
     add_upstream_raw_data_associations_method.assert_not_called()
     add_pipeline_and_pipeline_version_association_method.assert_not_called()
 
+    artifact_set_tags.assert_called_once_with(TAGS)
+
 
 def test_create_lineage_when_already_exist_with_changed_raw_data():
     transformation_code_1 = copy.deepcopy(TRANSFORMATION_CODE_ARTIFACT_1)
@@ -911,8 +967,14 @@ def test_create_lineage_when_already_exist_with_changed_raw_data():
         LineageAssociationHandler, "add_upstream_transformation_code_associations"
     ) as add_upstream_transformation_code_associations_method, patch.object(
         LineageAssociationHandler, "add_pipeline_and_pipeline_version_association"
-    ) as add_pipeline_and_pipeline_version_association_method:
-        lineage_handler.create_lineage()
+    ) as add_pipeline_and_pipeline_version_association_method, patch.object(
+        Artifact,
+        "set_tags",
+        return_value={
+            "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
+        },
+    ) as artifact_set_tags:
+        lineage_handler.create_lineage(TAGS)
 
     retrieve_feature_group_context_arns_method.assert_has_calls(
         [
@@ -1045,6 +1107,8 @@ def test_create_lineage_when_already_exist_with_changed_raw_data():
         sagemaker_session=SAGEMAKER_SESSION_MOCK,
     )
 
+    artifact_set_tags.assert_called_once_with(TAGS)
+
 
 def test_create_lineage_when_already_exist_with_changed_input_fg():
     transformation_code_1 = copy.deepcopy(TRANSFORMATION_CODE_ARTIFACT_1)
@@ -1118,8 +1182,14 @@ def test_create_lineage_when_already_exist_with_changed_input_fg():
         LineageAssociationHandler, "add_upstream_transformation_code_associations"
     ) as add_upstream_transformation_code_associations_method, patch.object(
         LineageAssociationHandler, "add_pipeline_and_pipeline_version_association"
-    ) as add_pipeline_and_pipeline_version_association_method:
-        lineage_handler.create_lineage()
+    ) as add_pipeline_and_pipeline_version_association_method, patch.object(
+        Artifact,
+        "set_tags",
+        return_value={
+            "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
+        },
+    ) as artifact_set_tags:
+        lineage_handler.create_lineage(TAGS)
 
     retrieve_feature_group_context_arns_method.assert_has_calls(
         [
@@ -1249,6 +1319,8 @@ def test_create_lineage_when_already_exist_with_changed_input_fg():
         sagemaker_session=SAGEMAKER_SESSION_MOCK,
     )
 
+    artifact_set_tags.assert_called_once_with(TAGS)
+
 
 def test_create_lineage_when_already_exist_with_changed_output_fg():
     transformation_code_1 = copy.deepcopy(TRANSFORMATION_CODE_ARTIFACT_1)
@@ -1326,8 +1398,14 @@ def test_create_lineage_when_already_exist_with_changed_output_fg():
         LineageAssociationHandler, "add_upstream_transformation_code_associations"
     ) as add_upstream_transformation_code_associations_method, patch.object(
         LineageAssociationHandler, "add_pipeline_and_pipeline_version_association"
-    ) as add_pipeline_and_pipeline_version_association_method:
-        lineage_handler.create_lineage()
+    ) as add_pipeline_and_pipeline_version_association_method, patch.object(
+        Artifact,
+        "set_tags",
+        return_value={
+            "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
+        },
+    ) as artifact_set_tags:
+        lineage_handler.create_lineage(TAGS)
 
     retrieve_feature_group_context_arns_method.assert_has_calls(
         [
@@ -1461,6 +1539,8 @@ def test_create_lineage_when_already_exist_with_changed_output_fg():
         sagemaker_session=SAGEMAKER_SESSION_MOCK,
     )
 
+    artifact_set_tags.assert_called_once_with(TAGS)
+
 
 def test_create_lineage_when_already_exist_with_changed_transformation_code():
     transformation_code_1 = copy.deepcopy(TRANSFORMATION_CODE_ARTIFACT_1)
@@ -1538,8 +1618,14 @@ def test_create_lineage_when_already_exist_with_changed_transformation_code():
         LineageAssociationHandler, "add_upstream_transformation_code_associations"
     ) as add_upstream_transformation_code_associations_method, patch.object(
         LineageAssociationHandler, "add_pipeline_and_pipeline_version_association"
-    ) as add_pipeline_and_pipeline_version_association_method:
-        lineage_handler.create_lineage()
+    ) as add_pipeline_and_pipeline_version_association_method, patch.object(
+        Artifact,
+        "set_tags",
+        return_value={
+            "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
+        },
+    ) as artifact_set_tags:
+        lineage_handler.create_lineage(TAGS)
 
     retrieve_feature_group_context_arns_method.assert_has_calls(
         [
@@ -1649,6 +1735,8 @@ def test_create_lineage_when_already_exist_with_changed_transformation_code():
         sagemaker_session=SAGEMAKER_SESSION_MOCK,
     )
 
+    artifact_set_tags.assert_called_once_with(TAGS)
+
 
 def test_create_lineage_when_already_exist_with_last_transformation_code_as_none():
     transformation_code_1 = copy.deepcopy(TRANSFORMATION_CODE_ARTIFACT_1)
@@ -1730,8 +1818,14 @@ def test_create_lineage_when_already_exist_with_last_transformation_code_as_none
         LineageAssociationHandler, "add_upstream_transformation_code_associations"
     ) as add_upstream_transformation_code_associations_method, patch.object(
         LineageAssociationHandler, "add_pipeline_and_pipeline_version_association"
-    ) as add_pipeline_and_pipeline_version_association_method:
-        lineage_handler.create_lineage()
+    ) as add_pipeline_and_pipeline_version_association_method, patch.object(
+        Artifact,
+        "set_tags",
+        return_value={
+            "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
+        },
+    ) as artifact_set_tags:
+        lineage_handler.create_lineage(TAGS)
 
     retrieve_feature_group_context_arns_method.assert_has_calls(
         [
@@ -1834,6 +1928,8 @@ def test_create_lineage_when_already_exist_with_last_transformation_code_as_none
         sagemaker_session=SAGEMAKER_SESSION_MOCK,
     )
 
+    artifact_set_tags.assert_called_once_with(TAGS)
+
 
 def test_create_lineage_when_already_exist_with_all_previous_transformation_code_as_none():
     pipeline_context = copy.deepcopy(PIPELINE_CONTEXT)
@@ -1909,8 +2005,14 @@ def test_create_lineage_when_already_exist_with_all_previous_transformation_code
         LineageAssociationHandler, "add_upstream_transformation_code_associations"
     ) as add_upstream_transformation_code_associations_method, patch.object(
         LineageAssociationHandler, "add_pipeline_and_pipeline_version_association"
-    ) as add_pipeline_and_pipeline_version_association_method:
-        lineage_handler.create_lineage()
+    ) as add_pipeline_and_pipeline_version_association_method, patch.object(
+        Artifact,
+        "set_tags",
+        return_value={
+            "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
+        },
+    ) as artifact_set_tags:
+        lineage_handler.create_lineage(TAGS)
 
     retrieve_feature_group_context_arns_method.assert_has_calls(
         [
@@ -2010,6 +2112,8 @@ def test_create_lineage_when_already_exist_with_all_previous_transformation_code
         sagemaker_session=SAGEMAKER_SESSION_MOCK,
     )
 
+    artifact_set_tags.assert_called_once_with(TAGS)
+
 
 def test_create_lineage_when_already_exist_with_removed_transformation_code():
     transformation_code_1 = copy.deepcopy(TRANSFORMATION_CODE_ARTIFACT_1)
@@ -2086,8 +2190,14 @@ def test_create_lineage_when_already_exist_with_removed_transformation_code():
         LineageAssociationHandler, "add_upstream_transformation_code_associations"
     ) as add_upstream_transformation_code_associations_method, patch.object(
         LineageAssociationHandler, "add_pipeline_and_pipeline_version_association"
-    ) as add_pipeline_and_pipeline_version_association_method:
-        lineage_handler.create_lineage()
+    ) as add_pipeline_and_pipeline_version_association_method, patch.object(
+        Artifact,
+        "set_tags",
+        return_value={
+            "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
+        },
+    ) as artifact_set_tags:
+        lineage_handler.create_lineage(TAGS)
 
     retrieve_feature_group_context_arns_method.assert_has_calls(
         [
@@ -2191,6 +2301,8 @@ def test_create_lineage_when_already_exist_with_removed_transformation_code():
     add_upstream_transformation_code_associations_method.assert_not_called()
     add_pipeline_and_pipeline_version_association_method.assert_not_called()
 
+    artifact_set_tags.assert_not_called()
+
 
 def test_get_pipeline_lineage_names_when_no_lineage_exists():
     lineage_handler = FeatureProcessorLineageHandler(
@@ -2289,13 +2401,20 @@ def test_create_schedule_lineage():
     ) as retrieve_pipeline_schedule_artifact_method, patch.object(
         LineageAssociationHandler,
         "add_upstream_schedule_associations",
-    ) as add_upstream_schedule_associations_method:
+    ) as add_upstream_schedule_associations_method, patch.object(
+        Artifact,
+        "set_tags",
+        return_value={
+            "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
+        },
+    ) as artifact_set_tags:
         lineage_handler.create_schedule_lineage(
             pipeline_name=PIPELINE_NAME,
             schedule_arn=SCHEDULE_ARN,
             schedule_expression=SCHEDULE_EXPRESSION,
             state=STATE,
             start_date=START_DATE,
+            tags=TAGS,
         )
 
         load_pipeline_context_method.assert_called_once_with(
@@ -2327,6 +2446,119 @@ def test_create_schedule_lineage():
             pipeline_version_context_arn=PIPELINE_VERSION_CONTEXT.context_arn,
             sagemaker_session=SAGEMAKER_SESSION_MOCK,
         )
+
+        artifact_set_tags.assert_called_once_with(TAGS)
+
+
+def test_upsert_tags_for_lineage_resources():
+    pipeline_context = copy.deepcopy(PIPELINE_CONTEXT)
+    mock_session = Mock(Session)
+    lineage_handler = FeatureProcessorLineageHandler(
+        pipeline_name=PIPELINE_NAME,
+        pipeline_arn=PIPELINE_ARN,
+        pipeline=PIPELINE,
+        inputs=RAW_DATA_INPUT + FEATURE_GROUP_DATA_SOURCE,
+        output=FEATURE_GROUP_DATA_SOURCE[0].name,
+        transformation_code=TRANSFORMATION_CODE_INPUT_2,
+        sagemaker_session=mock_session,
+    )
+    lineage_handler.sagemaker_session.boto_session = Mock()
+    lineage_handler.sagemaker_session.sagemaker_client = Mock()
+    with patch.object(
+        S3LineageEntityHandler,
+        "retrieve_raw_data_artifact",
+        side_effect=[
+            RAW_DATA_INPUT_ARTIFACTS[0],
+            RAW_DATA_INPUT_ARTIFACTS[1],
+            RAW_DATA_INPUT_ARTIFACTS[2],
+        ],
+    ) as retrieve_raw_data_artifact_method, patch.object(
+        PipelineLineageEntityHandler,
+        "load_pipeline_context",
+        return_value=pipeline_context,
+    ) as load_pipeline_context_method, patch.object(
+        PipelineVersionLineageEntityHandler,
+        "load_pipeline_version_context",
+        return_value=PIPELINE_VERSION_CONTEXT,
+    ) as load_pipeline_version_context_method, patch.object(
+        LineageAssociationHandler,
+        "list_upstream_associations",
+        side_effect=[
+            generate_pipeline_version_upstream_feature_group_list(),
+            generate_pipeline_version_upstream_raw_data_list(),
+            iter([]),
+        ],
+    ) as list_upstream_associations_method, patch.object(
+        LineageAssociationHandler,
+        "list_downstream_associations",
+        return_value=generate_pipeline_version_downstream_feature_group(),
+    ) as list_downstream_associations_method, patch.object(
+        S3LineageEntityHandler, "load_artifact_from_arn", return_value=ARTIFACT_RESULT
+    ) as load_artifact_from_arn_method, patch.object(
+        S3LineageEntityHandler, "_load_artifact_from_s3_uri", return_value=ARTIFACT_SUMMARY
+    ) as load_artifact_from_s3_uri_method, patch.object(
+        Artifact,
+        "set_tags",
+        return_value={
+            "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
+        },
+    ) as artifact_set_tags, patch.object(
+        Context,
+        "set_tags",
+        return_value={
+            "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
+        },
+    ) as context_set_tags, patch.object(
+        EventBridgeSchedulerHelper, "describe_schedule", return_value=dict(Arn="schedule_arn")
+    ) as get_event_bridge_schedule:
+        lineage_handler.upsert_tags_for_lineage_resources(TAGS)
+
+    retrieve_raw_data_artifact_method.assert_has_calls(
+        [
+            call(raw_data=RAW_DATA_INPUT[0], sagemaker_session=mock_session),
+            call(raw_data=RAW_DATA_INPUT[1], sagemaker_session=mock_session),
+            call(raw_data=RAW_DATA_INPUT[2], sagemaker_session=mock_session),
+        ]
+    )
+
+    load_pipeline_context_method.assert_called_once_with(
+        pipeline_name=PIPELINE_NAME,
+        creation_time=PIPELINE["CreationTime"].strftime("%s"),
+        sagemaker_session=mock_session,
+    )
+
+    load_pipeline_version_context_method.assert_called_once_with(
+        pipeline_name=PIPELINE_NAME,
+        last_update_time=LAST_UPDATE_TIME,
+        sagemaker_session=mock_session,
+    )
+
+    list_upstream_associations_method.assert_not_called()
+    list_downstream_associations_method.assert_not_called()
+    load_artifact_from_s3_uri_method.assert_called_once_with(
+        s3_uri="schedule_arn", sagemaker_session=mock_session
+    )
+    get_event_bridge_schedule.assert_called_once_with(PIPELINE_NAME)
+    load_artifact_from_arn_method.assert_called_once_with(
+        artifact_arn=ARTIFACT_SUMMARY.artifact_arn, sagemaker_session=mock_session
+    )
+
+    # three raw data artifact and one schedule artifact
+    artifact_set_tags.assert_has_calls(
+        [
+            call(TAGS),
+            call(TAGS),
+            call(TAGS),
+            call(TAGS),
+        ]
+    )
+    # pipeline context and current pipeline version context
+    context_set_tags.assert_has_calls(
+        [
+            call(TAGS),
+            call(TAGS),
+        ]
+    )
 
 
 def generate_pipeline_version_upstream_feature_group_list() -> Iterator[AssociationSummary]:
