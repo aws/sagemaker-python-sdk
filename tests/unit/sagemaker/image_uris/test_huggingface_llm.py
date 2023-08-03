@@ -44,11 +44,12 @@ ACCOUNTS = {
     "us-west-1": "763104351884",
     "us-west-2": "763104351884",
 }
-HF_VERSIONS = ["0.6.0", "0.8.2"]
+HF_VERSIONS = ["0.6.0", "0.8.2", "0.9.3"]
 LMI_VERSIONS = ["0.23.0"]
 HF_VERSIONS_MAPPING = {
     "0.6.0": "2.0.0-tgi0.6.0-gpu-py39-cu118-ubuntu20.04",
     "0.8.2": "2.0.0-tgi0.8.2-gpu-py39-cu118-ubuntu20.04",
+    "0.9.3": "2.0.1-tgi0.9.3-gpu-py39-cu118-ubuntu20.04",
 }
 LMI_VERSIONS_MAPPING = {"0.23.0": "deepspeed0.9.5-cu118"}
 
