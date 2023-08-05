@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.175.0 (2023-08-05)
+
+### Features
+
+ * Add huggingface-llm 0.9.3 dlc images
+
+### Bug Fixes and Other Changes
+
+ * Upgrade default version for djl to v0.23.0
+ * Pass kms_key to _upload_analysis_config when provided
+
 ## v2.174.0 (2023-08-02)
 
 ### Features
