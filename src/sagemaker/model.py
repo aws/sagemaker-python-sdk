@@ -19,7 +19,7 @@ import logging
 import os
 import re
 import copy
-from typing import List, Dict, Optional, Union
+from typing import List, Dict, TypedDict, Optional, Union
 
 import sagemaker
 from sagemaker import (
@@ -98,6 +98,11 @@ NEO_MULTIVERSION_UNSUPPORTED = [
     "amba_cv25",
     "lambda",
 ]
+
+
+class Tag(TypedDict):
+    Key: str
+    Value: str
 
 
 class ModelBase(abc.ABC):
@@ -390,6 +395,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
         marketplace_cert: bool = False,
         approval_status: Optional[Union[str, PipelineVariable]] = None,
         description: Optional[str] = None,
+        tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
         drift_check_baselines: Optional[DriftCheckBaselines] = None,
         customer_metadata_properties: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
         validation_specification: Optional[Union[str, PipelineVariable]] = None,
@@ -429,6 +435,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
                 "Approved", "Rejected", or "PendingManualApproval"
                 (default: "PendingManualApproval").
             description (str): Model Package description (default: None).
+            tags(list[dict[str, str or PipelineVariable]]): List of tags.
             drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
             customer_metadata_properties (dict[str, str] or dict[str, PipelineVariable]):
                 A dictionary of key-value paired metadata properties (default: None).
@@ -490,6 +497,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
             marketplace_cert=marketplace_cert,
             approval_status=approval_status,
             description=description,
+            tags=tags,
             container_def_list=[container_def],
             drift_check_baselines=drift_check_baselines,
             customer_metadata_properties=customer_metadata_properties,
