@@ -100,11 +100,6 @@ NEO_MULTIVERSION_UNSUPPORTED = [
 ]
 
 
-class Tag(TypedDict):
-    Key: str
-    Value: str
-
-
 class ModelBase(abc.ABC):
     """An object that encapsulates a trained model.
 
