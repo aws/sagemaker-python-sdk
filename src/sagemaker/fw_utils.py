@@ -327,9 +327,6 @@ def validate_mp_config(config):
         ValueError: If any of the keys have incorrect values.
     """
 
-    if "partitions" not in config:
-        raise ValueError("'partitions' is a required parameter.")
-
     def validate_positive(key):
         try:
             if not isinstance(config[key], int) or config[key] < 1:
