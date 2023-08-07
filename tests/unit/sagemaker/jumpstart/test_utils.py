@@ -57,10 +57,7 @@ def test_get_jumpstart_content_bucket_override():
         with patch("logging.Logger.info") as mocked_info_log:
             random_region = "random_region"
             assert "some-val" == utils.get_jumpstart_content_bucket(random_region)
-            mocked_info_log.assert_called_once_with(
-                "Using JumpStart bucket override: '%s'",
-                "some-val",
-            )
+            mocked_info_log.assert_called_once_with("Using JumpStart bucket override: 'some-val'")
 
 
 def test_get_jumpstart_launched_regions_message():
