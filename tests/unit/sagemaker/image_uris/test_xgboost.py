@@ -38,6 +38,7 @@ ALGO_REGISTRIES = {
     "eu-west-3": "749696950732",
     "eu-south-1": "257386234256",
     "eu-south-2": "104374241257",
+    "il-central-1": "898809789911",
     "me-south-1": "249704162688",
     "me-central-1": "272398656194",
     "sa-east-1": "855470959533",
@@ -77,6 +78,7 @@ FRAMEWORK_REGISTRIES = {
     "eu-west-3": "659782779980",
     "eu-south-1": "978288397137",
     "eu-south-2": "104374241257",
+    "il-central-1": "898809789911",
     "me-south-1": "801668240914",
     "me-central-1": "272398656194",
     "sa-east-1": "737474898029",
@@ -114,29 +116,33 @@ def test_xgboost_framework(xgboost_framework_version):
 @pytest.mark.parametrize("xgboost_framework_version", XGBOOST_FRAMEWORK_CPU_ONLY_VERSIONS)
 def test_xgboost_framework_cpu_only(xgboost_framework_version):
     for region in FRAMEWORK_REGISTRIES.keys():
-        uri = image_uris.retrieve(
-            framework="xgboost",
-            region=region,
-            version=xgboost_framework_version,
-        )
+        if not (xgboost_framework_version in ["0.90-2", "0.90-1"] and region == "il-central-1"):
+            uri = image_uris.retrieve(
+                framework="xgboost",
+                region=region,
+                version=xgboost_framework_version,
+            )
 
-        expected = expected_uris.framework_uri(
-            "sagemaker-xgboost",
-            xgboost_framework_version,
-            FRAMEWORK_REGISTRIES[region],
-            region=region,
-            py_version="py3",
-            processor="cpu",
-        )
-        assert expected == uri
+            expected = expected_uris.framework_uri(
+                "sagemaker-xgboost",
+                xgboost_framework_version,
+                FRAMEWORK_REGISTRIES[region],
+                region=region,
+                py_version="py3",
+                processor="cpu",
+            )
+            assert expected == uri
 
 
 @pytest.mark.parametrize("xgboost_algo_version", ALGO_VERSIONS)
 def test_xgboost_algo(xgboost_algo_version):
     for region in ALGO_REGISTRIES.keys():
-        uri = image_uris.retrieve(framework="xgboost", region=region, version=xgboost_algo_version)
+        if region != "il-central-1":
+            uri = image_uris.retrieve(
+                framework="xgboost", region=region, version=xgboost_algo_version
+            )
 
-        expected = expected_uris.algo_uri(
-            "xgboost", ALGO_REGISTRIES[region], region, version=xgboost_algo_version
-        )
-        assert expected == uri
+            expected = expected_uris.algo_uri(
+                "xgboost", ALGO_REGISTRIES[region], region, version=xgboost_algo_version
+            )
+            assert expected == uri
