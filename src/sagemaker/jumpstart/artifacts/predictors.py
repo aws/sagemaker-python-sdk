@@ -92,7 +92,7 @@ def _retrieve_default_deserializer(
             specifications should be tolerated (exception not raised). If False, raises
             an exception if the version of the model is deprecated. (Default: False).
         sagemaker_session (sagemaker.session.Session): A SageMaker Session
-            object, used for SageMaker interactions (Default: None). If not
+            object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: Session()).
 
@@ -136,7 +136,7 @@ def _retrieve_default_serializer(
             specifications should be tolerated (exception not raised). If False, raises
             an exception if the version of the model is deprecated. (Default: False).
         sagemaker_session (sagemaker.session.Session): A SageMaker Session
-            object, used for SageMaker interactions (Default: None). If not
+            object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: Session()).
     Returns:
@@ -179,7 +179,7 @@ def _retrieve_deserializer_options(
             specifications should be tolerated (exception not raised). If False, raises
             an exception if the version of the model is deprecated. (Default: False).
         sagemaker_session (sagemaker.session.Session): A SageMaker Session
-            object, used for SageMaker interactions (Default: None). If not
+            object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: Session()).
     Returns:
@@ -236,7 +236,7 @@ def _retrieve_serializer_options(
             specifications should be tolerated (exception not raised). If False, raises
             an exception if the version of the model is deprecated. (Default: False).
         sagemaker_session (sagemaker.session.Session): A SageMaker Session
-            object, used for SageMaker interactions (Default: None). If not
+            object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: Session()).
     Returns:
@@ -293,7 +293,7 @@ def _retrieve_default_content_type(
             specifications should be tolerated (exception not raised). If False, raises
             an exception if the version of the model is deprecated. (Default: False).
         sagemaker_session (sagemaker.session.Session): A SageMaker Session
-            object, used for SageMaker interactions (Default: None). If not
+            object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: Session()).
     Returns:
@@ -341,7 +341,7 @@ def _retrieve_default_accept_type(
             specifications should be tolerated (exception not raised). If False, raises
             an exception if the version of the model is deprecated. (Default: False).
         sagemaker_session (sagemaker.session.Session): A SageMaker Session
-            object, used for SageMaker interactions (Default: None). If not
+            object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: Session()).
     Returns:
@@ -390,7 +390,7 @@ def _retrieve_supported_accept_types(
             specifications should be tolerated (exception not raised). If False, raises
             an exception if the version of the model is deprecated. (Default: False).
         sagemaker_session (sagemaker.session.Session): A SageMaker Session
-            object, used for SageMaker interactions (Default: None). If not
+            object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: Session()).
     Returns:
@@ -439,7 +439,7 @@ def _retrieve_supported_content_types(
             specifications should be tolerated (exception not raised). If False, raises
             an exception if the version of the model is deprecated. (Default: False).
         sagemaker_session (sagemaker.session.Session): A SageMaker Session
-            object, used for SageMaker interactions (Default: None). If not
+            object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: Session()).
     Returns:

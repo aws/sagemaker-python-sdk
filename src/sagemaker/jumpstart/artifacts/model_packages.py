@@ -51,7 +51,7 @@ def _retrieve_model_package_arn(
             specifications should be tolerated (exception not raised). If False, raises
             an exception if the version of the model is deprecated. (Default: False).
         sagemaker_session (sagemaker.session.Session): A SageMaker Session
-            object, used for SageMaker interactions (Default: None). If not
+            object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: Session()).
 
@@ -112,7 +112,7 @@ def _retrieve_model_package_model_artifact_s3_uri(
             specifications should be tolerated (exception not raised). If False, raises
             an exception if the version of the model is deprecated. (Default: False).
         sagemaker_session (sagemaker.session.Session): A SageMaker Session
-            object, used for SageMaker interactions (Default: None). If not
+            object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: Session()).
     Returns:

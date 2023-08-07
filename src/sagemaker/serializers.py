@@ -59,7 +59,7 @@ def retrieve_options(
             (exception not raised). False if these models should raise an exception.
             (Default: False).
         sagemaker_session (sagemaker.session.Session): A SageMaker Session
-            object, used for SageMaker interactions (Default: None). If not
+            object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: Session()).
     Returns:
@@ -109,7 +109,7 @@ def retrieve_default(
             (exception not raised). False if these models should raise an exception.
             (Default: False).
         sagemaker_session (sagemaker.session.Session): A SageMaker Session
-            object, used for SageMaker interactions (Default: None). If not
+            object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: Session()).
     Returns:

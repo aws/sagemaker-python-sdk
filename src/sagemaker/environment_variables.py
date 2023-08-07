@@ -54,7 +54,7 @@ def retrieve_default(
             variables that would be required when making the low-level AWS API call.
             (Default: True).
         sagemaker_session (sagemaker.session.Session): A SageMaker Session
-            object, used for SageMaker interactions (Default: None). If not
+            object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: Session()).
     Returns:
