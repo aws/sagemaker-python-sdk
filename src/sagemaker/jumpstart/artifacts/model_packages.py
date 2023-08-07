@@ -22,6 +22,7 @@ from sagemaker.jumpstart.utils import (
 from sagemaker.jumpstart.enums import (
     JumpStartScriptScope,
 )
+from sagemaker.session import Session
 
 
 def _retrieve_model_package_arn(
@@ -31,6 +32,7 @@ def _retrieve_model_package_arn(
     scope: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
+    sagemaker_session: Session = Session(),
 ) -> Optional[str]:
     """Retrieves associated model pacakge arn for the model.
 
@@ -48,6 +50,10 @@ def _retrieve_model_package_arn(
         tolerate_deprecated_model (bool): True if deprecated versions of model
             specifications should be tolerated (exception not raised). If False, raises
             an exception if the version of the model is deprecated. (Default: False).
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions (Default: None). If not
+            specified, one is created using the default AWS configuration
+            chain. (Default: Session()).
 
     Returns:
         str: the model package arn to use for the model or None.
@@ -63,6 +69,7 @@ def _retrieve_model_package_arn(
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
+        sagemaker_session=sagemaker_session,
     )
 
     if scope == JumpStartScriptScope.INFERENCE:
@@ -84,6 +91,7 @@ def _retrieve_model_package_model_artifact_s3_uri(
     scope: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
+    sagemaker_session: Session = Session(),
 ) -> Optional[str]:
     """Retrieves s3 artifact uri associated with model package.
 
@@ -103,7 +111,10 @@ def _retrieve_model_package_model_artifact_s3_uri(
         tolerate_deprecated_model (bool): True if deprecated versions of model
             specifications should be tolerated (exception not raised). If False, raises
             an exception if the version of the model is deprecated. (Default: False).
-
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions (Default: None). If not
+            specified, one is created using the default AWS configuration
+            chain. (Default: Session()).
     Returns:
         str: the model package artifact uri to use for the model or None.
 
@@ -123,6 +134,7 @@ def _retrieve_model_package_model_artifact_s3_uri(
             region=region,
             tolerate_vulnerable_model=tolerate_vulnerable_model,
             tolerate_deprecated_model=tolerate_deprecated_model,
+            sagemaker_session=sagemaker_session,
         )
 
         if model_specs.training_model_package_artifact_uris is None:

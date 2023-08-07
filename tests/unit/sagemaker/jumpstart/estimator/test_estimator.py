@@ -747,6 +747,7 @@ class EstimatorTest(unittest.TestCase):
             region=region,
             tolerate_deprecated_model=False,
             tolerate_vulnerable_model=False,
+            sagemaker_session=estimator.sagemaker_session,
         )
         self.assertEqual(type(predictor), Predictor)
         self.assertEqual(predictor, default_predictor_with_presets)
@@ -903,6 +904,7 @@ class EstimatorTest(unittest.TestCase):
             region=region,
             tolerate_deprecated_model=False,
             tolerate_vulnerable_model=False,
+            sagemaker_session=sagemaker_session,
         )
 
     @mock.patch("sagemaker.jumpstart.estimator.is_valid_model_id")
@@ -953,6 +955,7 @@ class EstimatorTest(unittest.TestCase):
             region=region,
             tolerate_deprecated_model=False,
             tolerate_vulnerable_model=False,
+            sagemaker_session=sagemaker_session,
         )
 
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
@@ -1146,12 +1149,14 @@ class EstimatorTest(unittest.TestCase):
                     model_version=None,
                     region=None,
                     script=JumpStartScriptScope.TRAINING,
+                    sagemaker_session=None,
                 ),
                 mock.call(
                     model_id="js-trainable-model",
                     model_version=None,
                     region=None,
                     script=JumpStartScriptScope.TRAINING,
+                    sagemaker_session=None,
                 ),
             ]
         )
@@ -1172,12 +1177,14 @@ class EstimatorTest(unittest.TestCase):
                     model_version=None,
                     region=None,
                     script=JumpStartScriptScope.TRAINING,
+                    sagemaker_session=None,
                 ),
                 mock.call(
                     model_id="js-trainable-model",
                     model_version=None,
                     region=None,
                     script=JumpStartScriptScope.TRAINING,
+                    sagemaker_session=None,
                 ),
             ]
         )

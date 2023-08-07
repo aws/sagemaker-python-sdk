@@ -68,6 +68,7 @@ class JumpStartModelsCache:
         JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY,
         s3_bucket_name: Optional[str] = None,
         s3_client_config: Optional[botocore.config.Config] = None,
+        s3_client: Optional[boto3.client] = None,
     ) -> None:  # fmt: on
         """Initialize a ``JumpStartModelsCache`` instance.
 
@@ -88,6 +89,7 @@ class JumpStartModelsCache:
                 Default: JumpStart-hosted content bucket for region.
             s3_client_config (Optional[botocore.config.Config]): s3 client config to use for cache.
                 Default: None (no config).
+            s3_client (Optional[boto3.client]): s3 client to use. Default: None.
         """
 
         self._region = region
@@ -109,7 +111,7 @@ class JumpStartModelsCache:
             if s3_bucket_name is None
             else s3_bucket_name
         )
-        self._s3_client = (
+        self._s3_client = s3_client if s3_client else (
             boto3.client("s3", region_name=self._region, config=s3_client_config)
             if s3_client_config
             else boto3.client("s3", region_name=self._region)

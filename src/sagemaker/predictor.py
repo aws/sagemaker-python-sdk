@@ -32,7 +32,7 @@ from sagemaker.base_predictor import (  # noqa: F401 # pylint: disable=W0611
 
 def retrieve_default(
     endpoint_name: str,
-    sagemaker_session: Optional[Session] = None,
+    sagemaker_session: Session = Session(),
     region: Optional[str] = None,
     model_id: Optional[str] = None,
     model_version: Optional[str] = None,
@@ -44,7 +44,7 @@ def retrieve_default(
     Args:
         endpoint_name (str): Endpoint name for which to create a predictor.
         sagemaker_session (Session): The SageMaker Session to attach to the Predictor.
-            (Default: None).
+            (Default: Session()).
         region (str): The AWS Region for which to retrieve the default predictor.
             (Default: None).
         model_id (str): The model ID of the model for which to
@@ -80,4 +80,5 @@ def retrieve_default(
         region=region,
         tolerate_deprecated_model=tolerate_deprecated_model,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
+        sagemaker_session=sagemaker_session,
     )

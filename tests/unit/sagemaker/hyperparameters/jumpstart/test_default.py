@@ -12,13 +12,18 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import boto3
 
-from mock.mock import patch
+from mock.mock import patch, Mock
 import pytest
 
 from sagemaker import hyperparameters
 
 from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec
+
+
+mock_client = boto3.client("s3")
+mock_session = Mock(s3_client=mock_client)
 
 
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -33,10 +38,16 @@ def test_jumpstart_default_hyperparameters(patched_get_model_specs):
         region=region,
         model_id=model_id,
         model_version="*",
+        sagemaker_session=mock_session,
     )
     assert params == {"adam-learning-rate": "0.05", "batch-size": "4", "epochs": "3"}
 
-    patched_get_model_specs.assert_called_once_with(region=region, model_id=model_id, version="*")
+    patched_get_model_specs.assert_called_once_with(
+        region=region,
+        model_id=model_id,
+        version="*",
+        s3_client=mock_client,
+    )
 
     patched_get_model_specs.reset_mock()
 
@@ -44,10 +55,16 @@ def test_jumpstart_default_hyperparameters(patched_get_model_specs):
         region=region,
         model_id=model_id,
         model_version="1.*",
+        sagemaker_session=mock_session,
     )
     assert params == {"adam-learning-rate": "0.05", "batch-size": "4", "epochs": "3"}
 
-    patched_get_model_specs.assert_called_once_with(region=region, model_id=model_id, version="1.*")
+    patched_get_model_specs.assert_called_once_with(
+        region=region,
+        model_id=model_id,
+        version="1.*",
+        s3_client=mock_client,
+    )
 
     patched_get_model_specs.reset_mock()
 
@@ -56,6 +73,7 @@ def test_jumpstart_default_hyperparameters(patched_get_model_specs):
         model_id=model_id,
         model_version="1.*",
         include_container_hyperparameters=True,
+        sagemaker_session=mock_session,
     )
     assert params == {
         "adam-learning-rate": "0.05",
@@ -66,7 +84,12 @@ def test_jumpstart_default_hyperparameters(patched_get_model_specs):
         "sagemaker_submit_directory": "/opt/ml/input/data/code/sourcedir.tar.gz",
     }
 
-    patched_get_model_specs.assert_called_once_with(region=region, model_id=model_id, version="1.*")
+    patched_get_model_specs.assert_called_once_with(
+        region=region,
+        model_id=model_id,
+        version="1.*",
+        s3_client=mock_client,
+    )
 
     patched_get_model_specs.reset_mock()
 

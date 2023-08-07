@@ -416,6 +416,7 @@ class ModelTest(unittest.TestCase):
             region=region,
             tolerate_deprecated_model=False,
             tolerate_vulnerable_model=False,
+            sagemaker_session=model.sagemaker_session,
         )
         self.assertEqual(type(predictor), Predictor)
         self.assertEqual(predictor, default_predictor_with_presets)
@@ -532,12 +533,14 @@ class ModelTest(unittest.TestCase):
                     model_version=None,
                     region=None,
                     script=JumpStartScriptScope.INFERENCE,
+                    sagemaker_session=None,
                 ),
                 mock.call(
                     model_id="js-trainable-model",
                     model_version=None,
                     region=None,
                     script=JumpStartScriptScope.INFERENCE,
+                    sagemaker_session=None,
                 ),
             ]
         )
@@ -558,12 +561,14 @@ class ModelTest(unittest.TestCase):
                     model_version=None,
                     region=None,
                     script=JumpStartScriptScope.INFERENCE,
+                    sagemaker_session=None,
                 ),
                 mock.call(
                     model_id="js-trainable-model",
                     model_version=None,
                     region=None,
                     script=JumpStartScriptScope.INFERENCE,
+                    sagemaker_session=None,
                 ),
             ]
         )

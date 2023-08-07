@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 from copy import deepcopy
 from typing import Optional
+from sagemaker.session import Session
 from sagemaker.utils import volume_size_supported
 from sagemaker.jumpstart.constants import (
     JUMPSTART_DEFAULT_REGION_NAME,
@@ -32,6 +33,7 @@ def _retrieve_model_init_kwargs(
     region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
+    sagemaker_session: Session = Session(),
 ) -> dict:
     """Retrieves kwargs for `Model`.
 
@@ -49,7 +51,10 @@ def _retrieve_model_init_kwargs(
         tolerate_deprecated_model (bool): True if deprecated versions of model
             specifications should be tolerated (exception not raised). If False, raises
             an exception if the version of the model is deprecated. (Default: False).
-
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions (Default: None). If not
+            specified, one is created using the default AWS configuration
+            chain. (Default: Session()).
     Returns:
         dict: the kwargs to use for the use case.
     """
@@ -64,6 +69,7 @@ def _retrieve_model_init_kwargs(
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
+        sagemaker_session=sagemaker_session,
     )
 
     kwargs = deepcopy(model_specs.model_kwargs)
@@ -81,6 +87,7 @@ def _retrieve_model_deploy_kwargs(
     region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
+    sagemaker_session: Session = Session(),
 ) -> dict:
     """Retrieves kwargs for `Model.deploy`.
 
@@ -100,6 +107,10 @@ def _retrieve_model_deploy_kwargs(
         tolerate_deprecated_model (bool): True if deprecated versions of model
             specifications should be tolerated (exception not raised). If False, raises
             an exception if the version of the model is deprecated. (Default: False).
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions (Default: None). If not
+            specified, one is created using the default AWS configuration
+            chain. (Default: Session()).
 
     Returns:
         dict: the kwargs to use for the use case.
@@ -115,6 +126,7 @@ def _retrieve_model_deploy_kwargs(
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
+        sagemaker_session=sagemaker_session,
     )
 
     if volume_size_supported(instance_type) and model_specs.inference_volume_size is not None:
@@ -130,6 +142,7 @@ def _retrieve_estimator_init_kwargs(
     region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
+    sagemaker_session: Session = Session(),
 ) -> dict:
     """Retrieves kwargs for `Estimator`.
 
@@ -149,7 +162,10 @@ def _retrieve_estimator_init_kwargs(
         tolerate_deprecated_model (bool): True if deprecated versions of model
             specifications should be tolerated (exception not raised). If False, raises
             an exception if the version of the model is deprecated. (Default: False).
-
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions (Default: None). If not
+            specified, one is created using the default AWS configuration
+            chain. (Default: Session()).
     Returns:
         dict: the kwargs to use for the use case.
     """
@@ -164,6 +180,7 @@ def _retrieve_estimator_init_kwargs(
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
+        sagemaker_session=sagemaker_session,
     )
 
     kwargs = deepcopy(model_specs.estimator_kwargs)
@@ -183,6 +200,7 @@ def _retrieve_estimator_fit_kwargs(
     region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
+    sagemaker_session: Session = Session(),
 ) -> dict:
     """Retrieves kwargs for `Estimator.fit`.
 
@@ -200,6 +218,10 @@ def _retrieve_estimator_fit_kwargs(
         tolerate_deprecated_model (bool): True if deprecated versions of model
             specifications should be tolerated (exception not raised). If False, raises
             an exception if the version of the model is deprecated. (Default: False).
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions (Default: None). If not
+            specified, one is created using the default AWS configuration
+            chain. (Default: Session()).
 
     Returns:
         dict: the kwargs to use for the use case.
@@ -215,6 +237,7 @@ def _retrieve_estimator_fit_kwargs(
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
+        sagemaker_session=sagemaker_session,
     )
 
     return model_specs.fit_kwargs

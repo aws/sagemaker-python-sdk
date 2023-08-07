@@ -13,15 +13,18 @@
 from __future__ import absolute_import
 
 
-from mock.mock import patch
+from mock.mock import patch, Mock
 import pytest
-
+import boto3
 from sagemaker import hyperparameters
 from sagemaker.jumpstart.enums import HyperparameterValidationMode
 from sagemaker.jumpstart.exceptions import JumpStartHyperparametersError
 from sagemaker.jumpstart.types import JumpStartHyperparameter
 
 from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec
+
+mock_client = boto3.client("s3")
+mock_session = Mock(s3_client=mock_client)
 
 
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -129,10 +132,14 @@ def test_jumpstart_validate_provided_hyperparameters(patched_get_model_specs):
         model_id=model_id,
         model_version=model_version,
         hyperparameters=hyperparameter_to_test,
+        sagemaker_session=mock_session,
     )
 
     patched_get_model_specs.assert_called_once_with(
-        region=region, model_id=model_id, version=model_version
+        region=region,
+        model_id=model_id,
+        version=model_version,
+        s3_client=mock_client,
     )
 
     patched_get_model_specs.reset_mock()
@@ -144,6 +151,7 @@ def test_jumpstart_validate_provided_hyperparameters(patched_get_model_specs):
         model_id=model_id,
         model_version=model_version,
         hyperparameters=hyperparameter_to_test,
+        sagemaker_session=mock_session,
     )
 
     hyperparameter_to_test["batch-size"] = "0"
@@ -425,10 +433,11 @@ def test_jumpstart_validate_algorithm_hyperparameters(patched_get_model_specs):
         model_version=model_version,
         hyperparameters=hyperparameter_to_test,
         validation_mode=HyperparameterValidationMode.VALIDATE_ALGORITHM,
+        sagemaker_session=mock_session,
     )
 
     patched_get_model_specs.assert_called_once_with(
-        region=region, model_id=model_id, version=model_version
+        region=region, model_id=model_id, version=model_version, s3_client=mock_client
     )
 
     patched_get_model_specs.reset_mock()
@@ -440,6 +449,7 @@ def test_jumpstart_validate_algorithm_hyperparameters(patched_get_model_specs):
         model_version=model_version,
         hyperparameters=hyperparameter_to_test,
         validation_mode=HyperparameterValidationMode.VALIDATE_ALGORITHM,
+        sagemaker_session=mock_session,
     )
 
     del hyperparameter_to_test["adam-learning-rate"]
@@ -477,10 +487,11 @@ def test_jumpstart_validate_all_hyperparameters(patched_get_model_specs):
         model_version=model_version,
         hyperparameters=hyperparameter_to_test,
         validation_mode=HyperparameterValidationMode.VALIDATE_ALL,
+        sagemaker_session=mock_session,
     )
 
     patched_get_model_specs.assert_called_once_with(
-        region=region, model_id=model_id, version=model_version
+        region=region, model_id=model_id, version=model_version, s3_client=mock_client
     )
 
     patched_get_model_specs.reset_mock()

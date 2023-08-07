@@ -502,6 +502,7 @@ class JumpStartEstimator(Estimator):
                 model_version=model_version,
                 region=region,
                 script=JumpStartScriptScope.TRAINING,
+                sagemaker_session=sagemaker_session,
             )
 
         if not _is_valid_model_id_hook():
@@ -649,6 +650,7 @@ class JumpStartEstimator(Estimator):
             experiment_config=experiment_config,
             tolerate_vulnerable_model=self.tolerate_vulnerable_model,
             tolerate_deprecated_model=self.tolerate_deprecated_model,
+            sagemaker_session=self.sagemaker_session,
         )
 
         return super(JumpStartEstimator, self).fit(**estimator_fit_kwargs.to_kwargs_dict())
@@ -991,6 +993,7 @@ class JumpStartEstimator(Estimator):
                 region=self.region,
                 tolerate_deprecated_model=self.tolerate_deprecated_model,
                 tolerate_vulnerable_model=self.tolerate_vulnerable_model,
+                sagemaker_session=self.sagemaker_session,
             )
 
         # If a predictor class was passed, do not mutate predictor

@@ -16,6 +16,8 @@ from copy import deepcopy
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Union
 
+from sagemaker.session import Session
+
 
 class JumpStartDataHolderType:
     """Base class for many JumpStart types.
@@ -698,6 +700,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "explainer_config",
         "tolerate_vulnerable_model",
         "tolerate_deprecated_model",
+        "sagemaker_session",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -706,6 +709,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "region",
         "tolerate_deprecated_model",
         "tolerate_vulnerable_model",
+        "sagemaker_session",
     }
 
     def __init__(
@@ -732,6 +736,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         explainer_config: Optional[Any] = None,
         tolerate_deprecated_model: Optional[bool] = None,
         tolerate_vulnerable_model: Optional[bool] = None,
+        sagemaker_session: Optional[Session] = None,
     ) -> None:
         """Instantiates JumpStartModelDeployKwargs object."""
 
@@ -757,6 +762,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         self.explainer_config = explainer_config
         self.tolerate_vulnerable_model = tolerate_vulnerable_model
         self.tolerate_deprecated_model = tolerate_deprecated_model
+        self.sagemaker_session = sagemaker_session
 
 
 class JumpStartEstimatorInitKwargs(JumpStartKwargs):
@@ -949,6 +955,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         "experiment_config",
         "tolerate_deprecated_model",
         "tolerate_vulnerable_model",
+        "sagemaker_session",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -972,6 +979,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         experiment_config: Optional[Dict[str, str]] = None,
         tolerate_deprecated_model: Optional[bool] = None,
         tolerate_vulnerable_model: Optional[bool] = None,
+        sagemaker_session: Optional[Session] = None,
     ) -> None:
         """Instantiates JumpStartEstimatorInitKwargs object."""
 
@@ -985,6 +993,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         self.experiment_config = experiment_config
         self.tolerate_deprecated_model = tolerate_deprecated_model
         self.tolerate_vulnerable_model = tolerate_vulnerable_model
+        self.sagemaker_session = sagemaker_session
 
 
 class JumpStartEstimatorDeployKwargs(JumpStartKwargs):

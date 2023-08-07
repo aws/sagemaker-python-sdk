@@ -12,7 +12,8 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-from mock.mock import patch
+import boto3
+from mock.mock import patch, Mock
 import pytest
 
 from sagemaker import image_uris
@@ -31,6 +32,9 @@ def test_jumpstart_common_image_uri(
     patched_verify_model_region_and_return_specs.side_effect = verify_model_region_and_return_specs
     patched_get_model_specs.side_effect = get_spec_from_base_spec
 
+    mock_client = boto3.client("s3")
+    mock_session = Mock(s3_client=mock_client)
+
     image_uris.retrieve(
         framework=None,
         region="us-west-2",
@@ -38,9 +42,13 @@ def test_jumpstart_common_image_uri(
         model_id="pytorch-ic-mobilenet-v2",
         model_version="*",
         instance_type="ml.p2.xlarge",
+        sagemaker_session=mock_session,
     )
     patched_get_model_specs.assert_called_once_with(
-        region="us-west-2", model_id="pytorch-ic-mobilenet-v2", version="*"
+        region="us-west-2",
+        model_id="pytorch-ic-mobilenet-v2",
+        version="*",
+        s3_client=mock_client,
     )
     patched_verify_model_region_and_return_specs.assert_called_once()
 
@@ -54,9 +62,13 @@ def test_jumpstart_common_image_uri(
         model_id="pytorch-ic-mobilenet-v2",
         model_version="1.*",
         instance_type="ml.p2.xlarge",
+        sagemaker_session=mock_session,
     )
     patched_get_model_specs.assert_called_once_with(
-        region="us-west-2", model_id="pytorch-ic-mobilenet-v2", version="1.*"
+        region="us-west-2",
+        model_id="pytorch-ic-mobilenet-v2",
+        version="1.*",
+        s3_client=mock_client,
     )
     patched_verify_model_region_and_return_specs.assert_called_once()
 
@@ -70,11 +82,13 @@ def test_jumpstart_common_image_uri(
         model_id="pytorch-ic-mobilenet-v2",
         model_version="*",
         instance_type="ml.p2.xlarge",
+        sagemaker_session=mock_session,
     )
     patched_get_model_specs.assert_called_once_with(
         region=sagemaker_constants.JUMPSTART_DEFAULT_REGION_NAME,
         model_id="pytorch-ic-mobilenet-v2",
         version="*",
+        s3_client=mock_client,
     )
     patched_verify_model_region_and_return_specs.assert_called_once()
 
@@ -88,11 +102,13 @@ def test_jumpstart_common_image_uri(
         model_id="pytorch-ic-mobilenet-v2",
         model_version="1.*",
         instance_type="ml.p2.xlarge",
+        sagemaker_session=mock_session,
     )
     patched_get_model_specs.assert_called_once_with(
         region=sagemaker_constants.JUMPSTART_DEFAULT_REGION_NAME,
         model_id="pytorch-ic-mobilenet-v2",
         version="1.*",
+        s3_client=mock_client,
     )
     patched_verify_model_region_and_return_specs.assert_called_once()
 

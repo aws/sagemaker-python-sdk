@@ -19,6 +19,7 @@ from typing import Dict, Optional, List
 
 from sagemaker.jumpstart import utils as jumpstart_utils
 from sagemaker.jumpstart import artifacts
+from sagemaker.session import Session
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +30,7 @@ def retrieve_default(
     model_version: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
+    sagemaker_session: Session = Session(),
 ) -> Optional[List[Dict[str, str]]]:
     """Retrieves the default training metric definitions for the model matching the given arguments.
 
@@ -46,6 +48,10 @@ def retrieve_default(
         tolerate_deprecated_model (bool): True if deprecated models should be tolerated
             (exception not raised). False if these models should raise an exception.
             (Default: False).
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions (Default: None). If not
+            specified, one is created using the default AWS configuration
+            chain. (Default: Session()).
     Returns:
         list: The default metric definitions to use for the model or None.
 
@@ -59,5 +65,10 @@ def retrieve_default(
         )
 
     return artifacts._retrieve_default_training_metric_definitions(
-        model_id, model_version, region, tolerate_vulnerable_model, tolerate_deprecated_model
+        model_id,
+        model_version,
+        region,
+        tolerate_vulnerable_model,
+        tolerate_deprecated_model,
+        sagemaker_session=sagemaker_session,
     )

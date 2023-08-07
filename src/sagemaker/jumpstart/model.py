@@ -261,6 +261,7 @@ class JumpStartModel(Model):
                 model_version=model_version,
                 region=region,
                 script=JumpStartScriptScope.INFERENCE,
+                sagemaker_session=sagemaker_session,
             )
 
         if not _is_valid_model_id_hook():
@@ -307,6 +308,7 @@ class JumpStartModel(Model):
         self.tolerate_deprecated_model = model_init_kwargs.tolerate_deprecated_model
         self.region = model_init_kwargs.region
         self.model_package_arn = model_init_kwargs.model_package_arn
+        self.sagemaker_session = model_init_kwargs.sagemaker_session
 
         super(JumpStartModel, self).__init__(**model_init_kwargs.to_kwargs_dict())
 
@@ -488,6 +490,7 @@ class JumpStartModel(Model):
                 region=self.region,
                 tolerate_deprecated_model=self.tolerate_deprecated_model,
                 tolerate_vulnerable_model=self.tolerate_vulnerable_model,
+                sagemaker_session=self.sagemaker_session,
             )
 
         # If a predictor class was passed, do not mutate predictor

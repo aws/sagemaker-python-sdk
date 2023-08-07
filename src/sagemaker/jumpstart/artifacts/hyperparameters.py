@@ -23,6 +23,7 @@ from sagemaker.jumpstart.enums import (
 from sagemaker.jumpstart.utils import (
     verify_model_region_and_return_specs,
 )
+from sagemaker.session import Session
 
 
 def _retrieve_default_hyperparameters(
@@ -32,6 +33,7 @@ def _retrieve_default_hyperparameters(
     include_container_hyperparameters: bool = False,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
+    sagemaker_session: Session = Session(),
 ):
     """Retrieves the training hyperparameters for the model matching the given arguments.
 
@@ -56,6 +58,10 @@ def _retrieve_default_hyperparameters(
         tolerate_deprecated_model (bool): True if deprecated versions of model
             specifications should be tolerated (exception not raised). If False, raises
             an exception if the version of the model is deprecated. (Default: False).
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions (Default: None). If not
+            specified, one is created using the default AWS configuration
+            chain. (Default: Session()).
     Returns:
         dict: the hyperparameters to use for the model.
     """
@@ -70,6 +76,7 @@ def _retrieve_default_hyperparameters(
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
+        sagemaker_session=sagemaker_session,
     )
 
     default_hyperparameters: Dict[str, str] = {}
