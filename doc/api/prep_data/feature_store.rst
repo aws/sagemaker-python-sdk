@@ -120,3 +120,45 @@ Feature Store
 .. autoclass:: sagemaker.feature_store.feature_store.FeatureStore
     :members:
     :show-inheritance:
+
+
+@feature_processor decorator
+****************************
+
+.. automethod:: sagemaker.feature_store.feature_processor.feature_processor
+
+
+Feature Processor Data Source
+*****************************
+
+.. autoclass:: sagemaker.feature_store.feature_processor._data_source.FeatureGroupDataSource
+    :members:
+    :show-inheritance:
+
+.. autoclass:: sagemaker.feature_store.feature_processor._data_source.CSVDataSource
+    :members:
+    :show-inheritance:
+
+.. autoclass:: sagemaker.feature_store.feature_processor._data_source.ParquetDataSource
+    :members:
+    :show-inheritance:
+
+.. autoclass:: sagemaker.feature_store.feature_processor._data_source.IcebergTableDataSource
+    :members:
+    :show-inheritance:
+
+
+Feature Processor Scheduler
+***************************
+
+.. automethod:: sagemaker.feature_store.feature_processor.feature_scheduler.to_pipeline
+
+.. automethod:: sagemaker.feature_store.feature_processor.feature_scheduler.schedule
+
+.. automethod:: sagemaker.feature_store.feature_processor.feature_scheduler.execute
+
+.. automethod:: sagemaker.feature_store.feature_processor.feature_scheduler.delete_schedule
+
+.. automethod:: sagemaker.feature_store.feature_processor.feature_scheduler.describe
+
+.. automethod:: sagemaker.feature_store.feature_processor.feature_scheduler.list_pipelines
