@@ -15,6 +15,7 @@ from __future__ import absolute_import
 from typing import List, Optional
 
 from sagemaker.jumpstart import artifacts, utils as jumpstart_utils
+from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 from sagemaker.session import Session
 
 
@@ -24,7 +25,7 @@ def retrieve_options(
     model_version: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
-    sagemaker_session: Session = Session(),
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> List[str]:
     """Retrieves the supported accept types for the model matching the given arguments.
 
@@ -73,7 +74,7 @@ def retrieve_default(
     model_version: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
-    sagemaker_session: Session = Session(),
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> str:
     """Retrieves the default accept type for the model matching the given arguments.
 

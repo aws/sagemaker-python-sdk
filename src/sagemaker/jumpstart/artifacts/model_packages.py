@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 from typing import Optional
 from sagemaker.jumpstart.constants import (
+    DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     JUMPSTART_DEFAULT_REGION_NAME,
 )
 from sagemaker.jumpstart.utils import (
@@ -32,7 +33,7 @@ def _retrieve_model_package_arn(
     scope: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
-    sagemaker_session: Session = Session(),
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> Optional[str]:
     """Retrieves associated model pacakge arn for the model.
 
@@ -53,7 +54,7 @@ def _retrieve_model_package_arn(
         sagemaker_session (sagemaker.session.Session): A SageMaker Session
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
-            chain. (Default: Session()).
+            chain. (Default: DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
 
     Returns:
         str: the model package arn to use for the model or None.
@@ -91,7 +92,7 @@ def _retrieve_model_package_model_artifact_s3_uri(
     scope: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
-    sagemaker_session: Session = Session(),
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> Optional[str]:
     """Retrieves s3 artifact uri associated with model package.
 
@@ -114,7 +115,7 @@ def _retrieve_model_package_model_artifact_s3_uri(
         sagemaker_session (sagemaker.session.Session): A SageMaker Session
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
-            chain. (Default: Session()).
+            chain. (Default: DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     Returns:
         str: the model package artifact uri to use for the model or None.
 

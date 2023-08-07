@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 from typing import Dict, Optional
 from sagemaker.jumpstart.constants import (
+    DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     JUMPSTART_DEFAULT_REGION_NAME,
 )
 from sagemaker.jumpstart.enums import (
@@ -32,7 +33,7 @@ def _retrieve_default_environment_variables(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     include_aws_sdk_env_vars: bool = True,
-    sagemaker_session: Session = Session(),
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> Dict[str, str]:
     """Retrieves the inference environment variables for the model matching the given arguments.
 
@@ -57,7 +58,7 @@ def _retrieve_default_environment_variables(
         sagemaker_session (sagemaker.session.Session): A SageMaker Session
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
-            chain. (Default: Session()).
+            chain. (Default: DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     Returns:
         dict: the inference environment variables to use for the model.
     """

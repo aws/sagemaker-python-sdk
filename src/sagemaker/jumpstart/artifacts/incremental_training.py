@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 from typing import Optional
 from sagemaker.jumpstart.constants import (
+    DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     JUMPSTART_DEFAULT_REGION_NAME,
 )
 from sagemaker.jumpstart.enums import (
@@ -31,7 +32,7 @@ def _model_supports_incremental_training(
     region: Optional[str],
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
-    sagemaker_session: Session = Session(),
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> bool:
     """Returns True if the model supports incremental training.
 
@@ -52,7 +53,7 @@ def _model_supports_incremental_training(
         sagemaker_session (sagemaker.session.Session): A SageMaker Session
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
-            chain. (Default: Session()).
+            chain. (Default: DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     Returns:
         bool: the support status for incremental training.
     """

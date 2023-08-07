@@ -19,6 +19,7 @@ from typing import Dict, Optional
 
 from sagemaker.jumpstart import utils as jumpstart_utils
 from sagemaker.jumpstart import artifacts
+from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 from sagemaker.jumpstart.enums import HyperparameterValidationMode
 from sagemaker.jumpstart.validators import validate_hyperparameters
 from sagemaker.session import Session
@@ -33,7 +34,7 @@ def retrieve_default(
     include_container_hyperparameters: bool = False,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
-    sagemaker_session: Session = Session(),
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> Dict[str, str]:
     """Retrieves the default training hyperparameters for the model matching the given arguments.
 
@@ -92,7 +93,7 @@ def validate(
     validation_mode: HyperparameterValidationMode = HyperparameterValidationMode.VALIDATE_PROVIDED,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
-    sagemaker_session: Session = Session(),
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> None:
     """Validates hyperparameters for models.
 

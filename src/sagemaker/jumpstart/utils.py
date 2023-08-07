@@ -381,7 +381,7 @@ def verify_model_region_and_return_specs(
     region: str,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
-    sagemaker_session: Session = Session(),
+    sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> JumpStartModelSpecs:
     """Verifies that an acceptable model_id, version, scope, and region combination is provided.
 
@@ -403,7 +403,7 @@ def verify_model_region_and_return_specs(
         sagemaker_session (sagemaker.session.Session): A SageMaker Session
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
-            chain. (Default: Session()).
+            chain. (Default: DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
 
     Raises:
         NotImplementedError: If the scope is not supported.
@@ -582,7 +582,7 @@ def is_valid_model_id(
     region: Optional[str] = None,
     model_version: Optional[str] = None,
     script: enums.JumpStartScriptScope = enums.JumpStartScriptScope.INFERENCE,
-    sagemaker_session: Optional[Session] = Session(),
+    sagemaker_session: Optional[Session] = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> bool:
     """Returns True if the model ID is supported for the given script.
 

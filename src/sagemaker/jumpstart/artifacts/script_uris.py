@@ -15,6 +15,7 @@ from __future__ import absolute_import
 import os
 from typing import Optional
 from sagemaker.jumpstart.constants import (
+    DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     ENV_VARIABLE_JUMPSTART_SCRIPT_ARTIFACT_BUCKET_OVERRIDE,
     JUMPSTART_DEFAULT_REGION_NAME,
 )
@@ -35,7 +36,7 @@ def _retrieve_script_uri(
     region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
-    sagemaker_session: Session = Session(),
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ):
     """Retrieves the script S3 URI associated with the model matching the given arguments.
 
@@ -60,7 +61,7 @@ def _retrieve_script_uri(
         sagemaker_session (sagemaker.session.Session): A SageMaker Session
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
-            chain. (Default: Session()).
+            chain. (Default: DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     Returns:
         str: the model script URI for the corresponding model.
 
@@ -105,7 +106,7 @@ def _model_supports_inference_script_uri(
     region: Optional[str],
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
-    sagemaker_session: Session = Session(),
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> bool:
     """Returns True if the model supports inference with script uri field.
 
@@ -126,7 +127,7 @@ def _model_supports_inference_script_uri(
         sagemaker_session (sagemaker.session.Session): A SageMaker Session
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
-            chain. (Default: Session()).
+            chain. (Default: DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     Returns:
         bool: the support status for script uri with inference.
     """

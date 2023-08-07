@@ -19,6 +19,7 @@ from typing import Dict, Optional
 
 from sagemaker.jumpstart import utils as jumpstart_utils
 from sagemaker.jumpstart import artifacts
+from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 from sagemaker.session import Session
 
 logger = logging.getLogger(__name__)
@@ -31,7 +32,7 @@ def retrieve_default(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     include_aws_sdk_env_vars: bool = True,
-    sagemaker_session: Session = Session(),
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> Dict[str, str]:
     """Retrieves the default container environment variables for the model matching the arguments.
 

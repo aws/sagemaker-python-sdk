@@ -21,8 +21,8 @@ from typing import Optional
 from packaging.version import Version
 
 from sagemaker import utils
+from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 from sagemaker.jumpstart.utils import is_jumpstart_model_input
-from sagemaker.session import Session
 from sagemaker.spark import defaults
 from sagemaker.jumpstart import artifacts
 from sagemaker.workflow import is_pipeline_variable
@@ -61,7 +61,7 @@ def retrieve(
     sdk_version=None,
     inference_tool=None,
     serverless_inference_config=None,
-    sagemaker_session=Session(),
+    sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> str:
     """Retrieves the ECR URI for the Docker image matching the given arguments.
 
@@ -114,7 +114,7 @@ def retrieve(
         sagemaker_session (sagemaker.session.Session): A SageMaker Session
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
-            chain. (Default: Session()).
+            chain. (Default: DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
 
     Returns:
         str: The ECR URI for the corresponding SageMaker Docker image.

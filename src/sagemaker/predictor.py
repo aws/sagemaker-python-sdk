@@ -14,6 +14,7 @@
 from __future__ import print_function, absolute_import
 
 from typing import Optional
+from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 
 from sagemaker.jumpstart.factory.model import get_default_predictor
 from sagemaker.jumpstart.utils import is_jumpstart_model_input
@@ -32,7 +33,7 @@ from sagemaker.base_predictor import (  # noqa: F401 # pylint: disable=W0611
 
 def retrieve_default(
     endpoint_name: str,
-    sagemaker_session: Session = Session(),
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     region: Optional[str] = None,
     model_id: Optional[str] = None,
     model_version: Optional[str] = None,
@@ -44,7 +45,7 @@ def retrieve_default(
     Args:
         endpoint_name (str): Endpoint name for which to create a predictor.
         sagemaker_session (Session): The SageMaker Session to attach to the Predictor.
-            (Default: Session()).
+            (Default: DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
         region (str): The AWS Region for which to retrieve the default predictor.
             (Default: None).
         model_id (str): The model ID of the model for which to

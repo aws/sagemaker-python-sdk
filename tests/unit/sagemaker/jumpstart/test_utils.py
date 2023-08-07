@@ -18,6 +18,7 @@ import pytest
 import random
 from sagemaker.jumpstart import utils
 from sagemaker.jumpstart.constants import (
+    DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE,
     JUMPSTART_BUCKET_NAME_SET,
     JUMPSTART_DEFAULT_REGION_NAME,
@@ -33,7 +34,6 @@ from sagemaker.jumpstart.exceptions import (
     VulnerableJumpStartModelError,
 )
 from sagemaker.jumpstart.types import JumpStartModelHeader, JumpStartVersionedModelId
-from sagemaker.session import Session
 from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec
 
 
@@ -979,7 +979,7 @@ class TestIsValidModelId(TestCase):
             Mock(model_id="see"),
         ]
 
-        mock_session_value = Session()
+        mock_session_value = DEFAULT_JUMPSTART_SAGEMAKER_SESSION
         mock_s3_client_value = mock_session_value.s3_client
 
         patched = partial(utils.is_valid_model_id, sagemaker_session=mock_session_value)
@@ -1021,7 +1021,7 @@ class TestIsValidModelId(TestCase):
             Mock(model_id="see"),
         ]
 
-        mock_session_value = Session()
+        mock_session_value = DEFAULT_JUMPSTART_SAGEMAKER_SESSION
         mock_s3_client_value = mock_session_value.s3_client
 
         patched = partial(utils.is_valid_model_id, sagemaker_session=mock_session_value)

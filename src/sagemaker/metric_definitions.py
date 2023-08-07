@@ -19,6 +19,7 @@ from typing import Dict, Optional, List
 
 from sagemaker.jumpstart import utils as jumpstart_utils
 from sagemaker.jumpstart import artifacts
+from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 from sagemaker.session import Session
 
 logger = logging.getLogger(__name__)
@@ -30,7 +31,7 @@ def retrieve_default(
     model_version: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
-    sagemaker_session: Session = Session(),
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> Optional[List[Dict[str, str]]]:
     """Retrieves the default training metric definitions for the model matching the given arguments.
 
