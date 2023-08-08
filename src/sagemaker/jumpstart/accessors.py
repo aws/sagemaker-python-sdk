@@ -102,8 +102,6 @@ class JumpStartModelsAccessor(object):
             region (str): Optional. The region to use for the cache.
         """
 
-        old_cache_kwargs = JumpStartModelsAccessor._cache_kwargs.copy()
-
         additional_kwargs = {}
         if s3_client is not None:
             additional_kwargs.update({"s3_client": s3_client})
@@ -113,7 +111,6 @@ class JumpStartModelsAccessor(object):
         )
         JumpStartModelsAccessor._set_cache_and_region(region, cache_kwargs)
         manifest = JumpStartModelsAccessor._cache.get_manifest()  # type: ignore
-        JumpStartModelsAccessor._cache_kwargs = old_cache_kwargs
         return manifest
 
     @staticmethod
@@ -147,8 +144,6 @@ class JumpStartModelsAccessor(object):
                 If not set, a default client will be made.
         """
 
-        old_cache_kwargs = JumpStartModelsAccessor._cache_kwargs.copy()
-
         additional_kwargs = {}
         if s3_client is not None:
             additional_kwargs.update({"s3_client": s3_client})
@@ -160,7 +155,6 @@ class JumpStartModelsAccessor(object):
         specs = JumpStartModelsAccessor._cache.get_specs(  # type: ignore
             model_id=model_id, semantic_version_str=version
         )
-        JumpStartModelsAccessor._cache_kwargs = old_cache_kwargs
         return specs
 
     @staticmethod
