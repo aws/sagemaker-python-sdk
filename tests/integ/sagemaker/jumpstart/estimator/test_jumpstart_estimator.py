@@ -13,6 +13,8 @@
 from __future__ import absolute_import
 import os
 import time
+
+import pytest
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
 
 from sagemaker.jumpstart.estimator import JumpStartEstimator
@@ -59,6 +61,46 @@ def test_jumpstart_estimator(setup):
     )
 
     response = predictor.predict(["hello", "world"])
+
+    assert response is not None
+
+
+# instance capacity errors require retries
+@pytest.mark.flaky(reruns=5, reruns_delay=60)
+def test_gated_model_training(setup):
+
+    model_id, model_version = "meta-textgeneration-llama-2-7b", "*"
+
+    estimator = JumpStartEstimator(
+        model_id=model_id,
+        role=get_sm_session().get_caller_identity_arn(),
+        sagemaker_session=get_sm_session(),
+        tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
+        environment={"accept_eula": "true"},
+        max_run=259200,  # avoid exceeding resource limits
+    )
+
+    # uses ml.g5.12xlarge instance
+    estimator.fit(
+        {
+            "training": f"s3://{get_jumpstart_content_bucket(JUMPSTART_DEFAULT_REGION_NAME)}/"
+            f"{get_training_dataset_for_model_and_version(model_id, model_version)}",
+        }
+    )
+
+    # uses ml.g5.2xlarge instance
+    predictor = estimator.deploy(
+        tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
+        role=get_sm_session().get_caller_identity_arn(),
+        sagemaker_session=get_sm_session(),
+    )
+
+    payload = {
+        "inputs": "some-payload",
+        "parameters": {"max_new_tokens": 256, "top_p": 0.9, "temperature": 0.6},
+    }
+
+    response = predictor.predict(payload, custom_attributes="accept_eula=true")
 
     assert response is not None
 
