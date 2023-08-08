@@ -59,7 +59,7 @@ def _retrieve_default_instance_type(
         sagemaker_session (sagemaker.session.Session): A SageMaker Session
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
-            chain. (Default: DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     Returns:
         str: the default instance type to use for the model or None.
 
@@ -125,7 +125,7 @@ def _retrieve_instance_types(
         sagemaker_session (sagemaker.session.Session): A SageMaker Session
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
-            chain. (Default: DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     Returns:
         list: the supported instance types to use for the model or None.
 

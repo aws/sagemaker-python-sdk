@@ -45,7 +45,7 @@ def retrieve_default(
     Args:
         endpoint_name (str): Endpoint name for which to create a predictor.
         sagemaker_session (Session): The SageMaker Session to attach to the Predictor.
-            (Default: DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+            (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
         region (str): The AWS Region for which to retrieve the default predictor.
             (Default: None).
         model_id (str): The model ID of the model for which to

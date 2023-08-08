@@ -187,7 +187,7 @@ def validate_hyperparameters(
         region (str): Region for which to validate hyperparameters. (Default: JumpStart
           default region).
         sagemaker_session (Optional[Session]): Custom SageMaker Session to use.
-          (Default: DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+          (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
            specifications should be tolerated (exception not raised). If False, raises an
            exception if the script used by this version of the model has dependencies with known

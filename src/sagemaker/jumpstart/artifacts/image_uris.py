@@ -94,7 +94,7 @@ def _retrieve_image_uri(
         sagemaker_session (sagemaker.session.Session): A SageMaker Session
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
-            chain. (Default: DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     Returns:
         str: the ECR URI for the corresponding SageMaker Docker image.
 

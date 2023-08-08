@@ -55,7 +55,7 @@ def _retrieve_model_init_kwargs(
         sagemaker_session (sagemaker.session.Session): A SageMaker Session
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
-            chain. (Default: DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     Returns:
         dict: the kwargs to use for the use case.
     """
@@ -111,7 +111,7 @@ def _retrieve_model_deploy_kwargs(
         sagemaker_session (sagemaker.session.Session): A SageMaker Session
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
-            chain. (Default: DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
 
     Returns:
         dict: the kwargs to use for the use case.
@@ -166,7 +166,7 @@ def _retrieve_estimator_init_kwargs(
         sagemaker_session (sagemaker.session.Session): A SageMaker Session
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
-            chain. (Default: DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     Returns:
         dict: the kwargs to use for the use case.
     """
@@ -222,7 +222,7 @@ def _retrieve_estimator_fit_kwargs(
         sagemaker_session (sagemaker.session.Session): A SageMaker Session
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
-            chain. (Default: DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
 
     Returns:
         dict: the kwargs to use for the use case.

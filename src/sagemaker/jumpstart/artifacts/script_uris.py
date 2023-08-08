@@ -61,7 +61,7 @@ def _retrieve_script_uri(
         sagemaker_session (sagemaker.session.Session): A SageMaker Session
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
-            chain. (Default: DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     Returns:
         str: the model script URI for the corresponding model.
 
@@ -127,7 +127,7 @@ def _model_supports_inference_script_uri(
         sagemaker_session (sagemaker.session.Session): A SageMaker Session
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
-            chain. (Default: DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     Returns:
         bool: the support status for script uri with inference.
     """

@@ -61,7 +61,7 @@ def _retrieve_model_uri(
         sagemaker_session (sagemaker.session.Session): A SageMaker Session
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
-            chain. (Default: DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     Returns:
         str: the model artifact S3 URI for the corresponding model.
 
@@ -129,7 +129,7 @@ def _model_supports_training_model_uri(
         sagemaker_session (sagemaker.session.Session): A SageMaker Session
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
-            chain. (Default: DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     Returns:
         bool: the support status for model uri with training.
     """
