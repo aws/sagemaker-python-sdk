@@ -148,7 +148,9 @@ def test_fit_deploy(
 
 @pytest.mark.local_mode
 def test_local_fit_deploy(
-    sagemaker_local_session, pytorch_inference_latest_major_minor, pytorch_inference_latest_py_version
+    sagemaker_local_session,
+    pytorch_inference_latest_major_minor,
+    pytorch_inference_latest_py_version,
 ):
     pytorch = PyTorch(
         entry_point=MNIST_SCRIPT,
