@@ -144,7 +144,7 @@ class JumpStartCuratedPublicHub:
             Bucket=self.curated_hub_s3_bucket_name,
             CreateBucketConfiguration={"LocationConstraint": self._region},
         )
-        self._hub_client.create_hub(self.curated_hub_name, self.curated_hub_s3_bucket_name)
+        self._curated_hub_client.create_hub(self.curated_hub_name, self.curated_hub_s3_bucket_name)
 
     def sync(self, model_ids: List[PublicModelId], force_update: bool = False):
         """Syncs Curated Hub with the JumpStart Public Hub
@@ -180,7 +180,7 @@ class JumpStartCuratedPublicHub:
 
     def _model_needs_update(self, model_specs: JumpStartModelSpecs) -> bool:
         try:
-            self._hub_client.desribe_model(model_specs)
+            self._curated_hub_client.desribe_model(model_specs)
             print(f"INFO: Model {model_specs.model_id} found in hub.")
             return False
         except ClientError as ex:
@@ -268,18 +268,13 @@ class JumpStartCuratedPublicHub:
             self._delete_model_dependencies_no_content_noop(model_specs)
 
         if (delete_all_versions):
-          self._hub_client.delete_all_versions_of_model(model_specs)
+          self._curated_hub_client.delete_all_versions_of_model(model_specs)
         else:
-          self._hub_client.delete_version_of_model(model_specs)
+          self._curated_hub_client.delete_version_of_model(model_specs)
 
     def _delete_model_dependencies_no_content_noop(self, model_specs: JumpStartModelSpecs):
         try:
-            hub_content = self._sm_client.describe_hub_content(
-                HubName=self.curated_hub_name,
-                HubContentName=model_specs.model_id,
-                HubContentVersion=model_specs.version,
-                HubContentType="Model",
-            )
+            hub_content = self._curated_hub_client.desribe_model(model_specs)
         except ClientError:
             return
 
@@ -341,7 +336,7 @@ class JumpStartCuratedPublicHub:
         return s3_key[-1] == "/"
     
     def _init_clients(self):
-        self._hub_client = CuratedHubClient(
+        self._curated_hub_client = CuratedHubClient(
             curated_hub_name=self.curated_hub_name, region=self._region
         )
 

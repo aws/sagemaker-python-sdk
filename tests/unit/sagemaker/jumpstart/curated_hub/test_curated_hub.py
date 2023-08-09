@@ -255,7 +255,7 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
         self, mock_delete_model_deps
     ):
         mock_hub_client = Mock()
-        self.test_curated_hub._hub_client = mock_hub_client
+        self.test_curated_hub._curated_hub_client = mock_hub_client
 
         self.test_curated_hub._delete_model_from_curated_hub("test_spec", True)
 
@@ -271,7 +271,7 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
         self, mock_delete_model_deps
     ):
         mock_hub_client = Mock()
-        self.test_curated_hub._hub_client = mock_hub_client
+        self.test_curated_hub._curated_hub_client = mock_hub_client
 
         self.test_curated_hub._delete_model_from_curated_hub("test_spec", True, False)
 
@@ -287,7 +287,7 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
         self, mock_delete_model_deps
     ):
         mock_hub_client = Mock()
-        self.test_curated_hub._hub_client = mock_hub_client
+        self.test_curated_hub._curated_hub_client = mock_hub_client
 
         self.test_curated_hub._delete_model_from_curated_hub("test_spec", False)
 
@@ -369,11 +369,11 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
     ):
         mock_s3_client = Mock()
         self.test_curated_hub._s3_client = mock_s3_client
-        mock_sm_client = Mock()
-        self.test_curated_hub._sm_client = mock_sm_client
+        mock_hub_client = Mock()
+        self.test_curated_hub._curated_hub_client = mock_hub_client
         mock_format_deps.return_value = []
         mock_s3_client.delete_objects.return_value = {}
-        mock_sm_client.describe_hub_content.return_value = {
+        mock_hub_client.desribe_model.return_value = {
             "HubContentDocument": "mock"
         }
 
@@ -383,7 +383,7 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
 
         self.test_curated_hub._delete_model_dependencies_no_content_noop(test_spec)
 
-        mock_sm_client.describe_hub_content.assert_called_once()
+        mock_hub_client.desribe_model.assert_called_once()
         mock_s3_client.delete_objects.assert_called_once()
         mock_get_deps.assert_called_once()
 
