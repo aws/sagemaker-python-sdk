@@ -110,8 +110,7 @@ class JumpStartModelsAccessor(object):
             {**JumpStartModelsAccessor._cache_kwargs, **additional_kwargs}, region
         )
         JumpStartModelsAccessor._set_cache_and_region(region, cache_kwargs)
-        manifest = JumpStartModelsAccessor._cache.get_manifest()  # type: ignore
-        return manifest
+        return JumpStartModelsAccessor._cache.get_manifest()  # type: ignore
 
     @staticmethod
     def get_model_header(region: str, model_id: str, version: str) -> JumpStartModelHeader:
@@ -152,10 +151,9 @@ class JumpStartModelsAccessor(object):
             {**JumpStartModelsAccessor._cache_kwargs, **additional_kwargs}
         )
         JumpStartModelsAccessor._set_cache_and_region(region, cache_kwargs)
-        specs = JumpStartModelsAccessor._cache.get_specs(  # type: ignore
+        return JumpStartModelsAccessor._cache.get_specs(  # type: ignore
             model_id=model_id, semantic_version_str=version
         )
-        return specs
 
     @staticmethod
     def set_cache_kwargs(cache_kwargs: Dict[str, Any], region: str = None) -> None:
