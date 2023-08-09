@@ -18,6 +18,7 @@ import pytest
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
 
 from sagemaker.jumpstart.estimator import JumpStartEstimator
+import tests
 from tests.integ.sagemaker.jumpstart.constants import (
     ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID,
     JUMPSTART_TAG,
@@ -31,6 +32,15 @@ from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
 
 
 MAX_INIT_TIME_SECONDS = 5
+
+GATED_TRAINING_MODEL_SUPPORTED_REGIONS = {
+    "us-west-2",
+    "us-east-1",
+    "eu-west-1",
+    "ap-southeast-1",
+    "us-east-2",
+    "ap-southeast-2",
+}
 
 
 def test_jumpstart_estimator(setup):
@@ -67,6 +77,10 @@ def test_jumpstart_estimator(setup):
 
 # instance capacity errors require retries
 @pytest.mark.flaky(reruns=5, reruns_delay=60)
+@pytest.mark.skipif(
+    tests.integ.test_region() not in GATED_TRAINING_MODEL_SUPPORTED_REGIONS,
+    reason=f"JumpStart gated training models unavailable in {tests.integ.test_region()}.",
+)
 def test_gated_model_training(setup):
 
     model_id, model_version = "meta-textgeneration-llama-2-7b", "*"
