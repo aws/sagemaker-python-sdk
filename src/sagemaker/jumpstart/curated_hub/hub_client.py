@@ -43,7 +43,7 @@ class CuratedHubClient:
 
     def desribe_model(self, model_specs: JumpStartModelSpecs):
         """Describes a version of a model in the Private Hub."""
-        self._sm_client.describe_hub_content(
+        return self._sm_client.describe_hub_content(
             HubName=self.curated_hub_name,
             HubContentName=model_specs.model_id,
             HubContentType="Model",
