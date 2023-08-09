@@ -587,14 +587,14 @@ def test_xgboost_airflow_config_uploads_data_source_to_s3(
 def test_pytorch_airflow_config_uploads_data_source_to_s3_when_inputs_not_provided(
     sagemaker_session,
     cpu_instance_type,
-    pytorch_inference_latest_version,
+    pytorch_inference_latest_major_minor,
     pytorch_inference_latest_py_version,
 ):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         estimator = PyTorch(
             entry_point=PYTORCH_MNIST_SCRIPT,
             role=ROLE,
-            framework_version=pytorch_inference_latest_version,
+            framework_version=pytorch_inference_latest_major_minor,
             py_version=pytorch_inference_latest_py_version,
             instance_count=2,
             instance_type=cpu_instance_type,

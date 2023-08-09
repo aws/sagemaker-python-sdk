@@ -318,7 +318,7 @@ def test_attach_transform_kmeans(sagemaker_session, cpu_instance_type):
 
 def test_transform_pytorch_vpc_custom_model_bucket(
     sagemaker_session,
-    pytorch_inference_latest_version,
+    pytorch_inference_latest_major_minor,
     pytorch_inference_latest_py_version,
     cpu_instance_type,
     custom_bucket_name,
@@ -338,7 +338,7 @@ def test_transform_pytorch_vpc_custom_model_bucket(
         model_data=model_data,
         entry_point=os.path.join(data_dir, "mnist.py"),
         role="SageMakerRole",
-        framework_version=pytorch_inference_latest_version,
+        framework_version=pytorch_inference_latest_major_minor,
         py_version=pytorch_inference_latest_py_version,
         sagemaker_session=sagemaker_session,
         vpc_config={"Subnets": subnet_ids, "SecurityGroupIds": [security_group_id]},

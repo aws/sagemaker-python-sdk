@@ -268,6 +268,11 @@ def pytorch_inference_py_version(pytorch_inference_version, request):
         return request.param
 
 
+@pytest.fixture(scope="module", params=["py2", "py3"])
+def pytorch_inference_latest_major_minor(pytorch_inference_latest_version, request):
+    return f"{Version(pytorch_inference_latest_version).major}.{Version(pytorch_inference_latest_version).minor}"
+
+
 @pytest.fixture(scope="module")
 def huggingface_pytorch_training_version(huggingface_training_version):
     return _huggingface_base_fm_version(

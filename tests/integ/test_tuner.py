@@ -858,7 +858,7 @@ def test_tuning_chainer(
 def test_attach_tuning_pytorch(
     sagemaker_session,
     cpu_instance_type,
-    pytorch_inference_latest_version,
+    pytorch_inference_latest_major_minor,
     pytorch_inference_latest_py_version,
 ):
     mnist_dir = os.path.join(DATA_DIR, "pytorch_mnist")
@@ -868,7 +868,7 @@ def test_attach_tuning_pytorch(
         entry_point=mnist_script,
         role="SageMakerRole",
         instance_count=1,
-        framework_version=pytorch_inference_latest_version,
+        framework_version=pytorch_inference_latest_major_minor,
         py_version=pytorch_inference_latest_py_version,
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,

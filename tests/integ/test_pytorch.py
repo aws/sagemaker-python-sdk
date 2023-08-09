@@ -82,14 +82,14 @@ def fixture_training_job(
 @pytest.fixture(scope="module", name="pytorch_training_job_with_latest_infernce_version")
 def fixture_training_job_with_latest_inference_version(
     sagemaker_session,
-    pytorch_inference_latest_version,
+    pytorch_inference_latest_major_minor,
     pytorch_inference_latest_py_version,
     cpu_instance_type,
 ):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         pytorch = _get_pytorch_estimator(
             sagemaker_session,
-            pytorch_inference_latest_version,
+            pytorch_inference_latest_major_minor,
             pytorch_inference_latest_py_version,
             cpu_instance_type,
         )
@@ -148,12 +148,12 @@ def test_fit_deploy(
 
 @pytest.mark.local_mode
 def test_local_fit_deploy(
-    sagemaker_local_session, pytorch_inference_latest_version, pytorch_inference_latest_py_version
+    sagemaker_local_session, pytorch_inference_latest_major_minor, pytorch_inference_latest_py_version
 ):
     pytorch = PyTorch(
         entry_point=MNIST_SCRIPT,
         role="SageMakerRole",
-        framework_version=pytorch_inference_latest_version,
+        framework_version=pytorch_inference_latest_major_minor,
         py_version=pytorch_inference_latest_py_version,
         instance_count=1,
         instance_type="local",
@@ -177,7 +177,7 @@ def test_deploy_model(
     pytorch_training_job,
     sagemaker_session,
     cpu_instance_type,
-    pytorch_inference_latest_version,
+    pytorch_inference_latest_major_minor,
     pytorch_inference_latest_py_version,
 ):
     endpoint_name = unique_name_from_base("test-pytorch-deploy-model")
@@ -191,7 +191,7 @@ def test_deploy_model(
             model_data,
             "SageMakerRole",
             entry_point=MNIST_SCRIPT,
-            framework_version=pytorch_inference_latest_version,
+            framework_version=pytorch_inference_latest_major_minor,
             py_version=pytorch_inference_latest_py_version,
             sagemaker_session=sagemaker_session,
         )
@@ -207,7 +207,7 @@ def test_deploy_model(
 def test_deploy_packed_model_with_entry_point_name(
     sagemaker_session,
     cpu_instance_type,
-    pytorch_inference_latest_version,
+    pytorch_inference_latest_major_minor,
     pytorch_inference_latest_py_version,
 ):
     endpoint_name = unique_name_from_base("test-pytorch-deploy-model")
@@ -218,7 +218,7 @@ def test_deploy_packed_model_with_entry_point_name(
             model_data,
             "SageMakerRole",
             entry_point="mnist.py",
-            framework_version=pytorch_inference_latest_version,
+            framework_version=pytorch_inference_latest_major_minor,
             py_version=pytorch_inference_latest_py_version,
             sagemaker_session=sagemaker_session,
         )
@@ -269,7 +269,7 @@ def test_deploy_model_with_serverless_inference_config(
     pytorch_training_job,
     sagemaker_session,
     cpu_instance_type,
-    pytorch_inference_latest_version,
+    pytorch_inference_latest_major_minor,
     pytorch_inference_latest_py_version,
 ):
     endpoint_name = unique_name_from_base("test-pytorch-deploy-model-serverless")
@@ -283,7 +283,7 @@ def test_deploy_model_with_serverless_inference_config(
             model_data,
             "SageMakerRole",
             entry_point=MNIST_SCRIPT,
-            framework_version=pytorch_inference_latest_version,
+            framework_version=pytorch_inference_latest_major_minor,
             py_version=pytorch_inference_latest_py_version,
             sagemaker_session=sagemaker_session,
         )
