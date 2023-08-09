@@ -196,7 +196,7 @@ class JumpStartCuratedPublicHub:
             thread_name_prefix="import-models-to-curated-hub",
         ) as deploy_executor:
             for model_spec in model_specs:
-                task = deploy_executor.submit(self._delete_and_import_model, model_spec)
+                task = deploy_executor.submit(self._import_model, model_spec)
                 tasks.append(task)
 
         results = futures.wait(tasks)
@@ -212,12 +212,6 @@ class JumpStartCuratedPublicHub:
             raise RuntimeError(
                 f"Failures when importing models to curated hub in parallel: {failed_deployments}"
             )
-
-    def _delete_and_import_model(self, model_spec: JumpStartModelSpecs):
-        self._delete_model_from_curated_hub(
-            model_spec
-        )  # TODO: Figure out why Studio terminal is passing in tags to import call
-        self._import_model(model_spec)
 
     def _import_model(self, public_js_model_specs: JumpStartModelSpecs) -> None:
         print(
@@ -261,18 +255,22 @@ class JumpStartCuratedPublicHub:
             HubContentDocument=hub_content_document,
         )
 
-    def delete_models(self, model_ids: List[PublicModelId]):
+    def delete_models(self, model_ids: List[PublicModelId], delete_all_versions: bool = False):
         """Deletes all versions of each model"""
         model_specs = self._get_model_specs(model_ids)
         for model_spec in model_specs:
-            self._delete_model_from_curated_hub(model_spec)
+            self._delete_model_from_curated_hub(model_spec, delete_all_versions)
 
     def _delete_model_from_curated_hub(
-        self, model_specs: JumpStartModelSpecs, delete_dependencies: bool = True
+        self, model_specs: JumpStartModelSpecs, delete_all_versions: bool, delete_dependencies: bool = True
     ):
         if delete_dependencies:
             self._delete_model_dependencies_no_content_noop(model_specs)
-        self._hub_client.delete_all_versions_of_model(model_specs)
+
+        if (delete_all_versions):
+          self._hub_client.delete_all_versions_of_model(model_specs)
+        else:
+          self._hub_client.delete_version_of_model(model_specs)
 
     def _delete_model_dependencies_no_content_noop(self, model_specs: JumpStartModelSpecs):
         try:

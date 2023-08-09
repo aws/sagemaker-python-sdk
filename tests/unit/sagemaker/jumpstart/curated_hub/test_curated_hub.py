@@ -257,9 +257,10 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
         mock_hub_client = Mock()
         self.test_curated_hub._hub_client = mock_hub_client
 
-        self.test_curated_hub._delete_model_from_curated_hub("test_spec")
+        self.test_curated_hub._delete_model_from_curated_hub("test_spec", True)
 
         mock_delete_model_deps.assert_called_once_with("test_spec")
+        mock_hub_client.delete_version_of_model.assert_not_called()
         mock_hub_client.delete_all_versions_of_model.assert_called_once_with("test_spec")
 
     @patch(
@@ -272,10 +273,27 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
         mock_hub_client = Mock()
         self.test_curated_hub._hub_client = mock_hub_client
 
-        self.test_curated_hub._delete_model_from_curated_hub("test_spec", False)
+        self.test_curated_hub._delete_model_from_curated_hub("test_spec", True, False)
 
         mock_delete_model_deps.assert_not_called()
+        mock_hub_client.delete_version_of_model.assert_not_called()
         mock_hub_client.delete_all_versions_of_model.assert_called_once_with("test_spec")
+
+    @patch(
+        "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub."
+        + "JumpStartCuratedPublicHub._delete_model_dependencies_no_content_noop"
+    )
+    def test_delete_model_from_curated_hub_deletes_delete_single_vesion(
+        self, mock_delete_model_deps
+    ):
+        mock_hub_client = Mock()
+        self.test_curated_hub._hub_client = mock_hub_client
+
+        self.test_curated_hub._delete_model_from_curated_hub("test_spec", False)
+
+        mock_delete_model_deps.assert_called_once_with("test_spec")
+        mock_hub_client.delete_version_of_model.assert_called_once_with("test_spec")
+        mock_hub_client.delete_all_versions_of_model.assert_not_called()
 
     @patch("json.loads")
     def test_get_hub_content_dependencies_from_model_document(self, mock_json_loads):
