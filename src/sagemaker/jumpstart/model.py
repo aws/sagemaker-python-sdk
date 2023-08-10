@@ -321,21 +321,23 @@ class JumpStartModel(Model):
         """Create a SageMaker Model Entity
 
         Args:
-            instance_type (str): The EC2 instance type that this Model will be
+            instance_type (str): Optional. The EC2 instance type that this Model will be
                 used for, this is only used to determine if the image needs GPU
-                support or not.
-            accelerator_type (str): Type of Elastic Inference accelerator to
+                support or not. (Default: None).
+            accelerator_type (str): Optional. Type of Elastic Inference accelerator to
                 attach to an endpoint for model loading and inference, for
                 example, 'ml.eia1.medium'. If not specified, no Elastic
-                Inference accelerator will be attached to the endpoint.
+                Inference accelerator will be attached to the endpoint. (Default: None).
             tags (List[dict[str, str]]): Optional. The list of tags to add to
                 the model. Example: >>> tags = [{'Key': 'tagname', 'Value':
                 'tagvalue'}] For more information about tags, see
                 https://boto3.amazonaws.com/v1/documentation
                 /api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags
+                (Default: None).
             serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
-                Specifies configuration related to serverless endpoint. Instance type is
+                Optional. Specifies configuration related to serverless endpoint. Instance type is
                 not provided in serverless inference. So this is used to find image URIs.
+                (Default: None).
             kwargs: Keyword arguments coming from the caller. This class does not require
                 any so they are ignored.
         """
