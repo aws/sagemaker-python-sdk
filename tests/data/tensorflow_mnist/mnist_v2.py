@@ -126,8 +126,8 @@ def load_data(data_dir):
     print(vx.shape, vy.shape)
     # x.shape = (1000, 784), y.shape = (1000, )
 
-    x, y = x.astype(np.float32), y.astype(np.int)
-    vx, vy = vx.astype(np.float32), vy.astype(np.int)
+    x, y = x.astype(np.float32), y.astype(np.int32)
+    vx, vy = vx.astype(np.float32), vy.astype(np.int32)
     x /= 255.0
     vx /= 255.0
 
