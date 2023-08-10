@@ -124,9 +124,7 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
         )
 
         self.assertEqual(self.test_hub_name, res_hub_name)
-        self.assertIn(
-            f"{self.test_hub_name}-{self.test_region}", res_hub_bucket_name
-        )
+        self.assertIn(f"{self.test_hub_name}-{self.test_region}", res_hub_bucket_name)
 
     @patch(
         "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub."
@@ -372,9 +370,7 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
         self.test_curated_hub._curated_hub_client = mock_hub_client
         mock_format_deps.return_value = []
         mock_s3_client.delete_objects.return_value = {}
-        mock_hub_client.desribe_model.return_value = {
-            "HubContentDocument": "mock"
-        }
+        mock_hub_client.desribe_model.return_value = {"HubContentDocument": "mock"}
 
         test_spec = Mock()
         test_spec.model_id = "test_model_id"
@@ -403,9 +399,7 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
         self.test_curated_hub._sm_client = mock_sm_client
         mock_format_deps.return_value = []
         mock_s3_client.delete_objects.return_value = {"Errors": ["test_error"]}
-        mock_sm_client.describe_hub_content.return_value = {
-            "HubContentDocument": "mock"
-        }
+        mock_sm_client.describe_hub_content.return_value = {"HubContentDocument": "mock"}
 
         test_spec = Mock()
         test_spec.model_id = "test_model_id"

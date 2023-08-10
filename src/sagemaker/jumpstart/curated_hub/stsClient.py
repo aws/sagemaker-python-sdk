@@ -40,7 +40,7 @@ class StsClient:
         """Return the AWS region from the client meta information."""
         return self._client.meta.region_name
 
-    def get_account_id(self) -> str: 
+    def get_account_id(self) -> str:
         """Returns the AWS account id associated with the caller identity."""
         identity = self._client.get_caller_identity()
         return identity["Account"]

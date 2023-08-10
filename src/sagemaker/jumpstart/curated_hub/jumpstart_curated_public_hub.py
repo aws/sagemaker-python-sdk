@@ -103,7 +103,9 @@ class JumpStartCuratedPublicHub:
     ) -> Tuple[str, str, bool]:
         # Finds the relevant hub and s3 locations
         curated_hub_name = hub_name
-        curated_hub_s3_bucket_name = self._create_unique_s3_bucket_name(curated_hub_name, self._region)
+        curated_hub_s3_bucket_name = self._create_unique_s3_bucket_name(
+            curated_hub_name, self._region
+        )
         preexisting_hub = self._get_preexisting_hub_and_s3_bucket_names()
         if preexisting_hub:
             name_of_hub_already_on_account = preexisting_hub[0]
@@ -129,8 +131,8 @@ class JumpStartCuratedPublicHub:
         return (curated_hub_name, curated_hub_s3_bucket_name)
 
     def _create_unique_s3_bucket_name(self, bucket_name: str, region: str) -> str:
-        unique_bucket_name =  f"{bucket_name}-{region}-{uuid.uuid4()}"
-        return unique_bucket_name[:63] # S3 bucket name size is limited to 63 characters
+        unique_bucket_name = f"{bucket_name}-{region}-{uuid.uuid4()}"
+        return unique_bucket_name[:63]  # S3 bucket name size is limited to 63 characters
 
     def create(self):
         """Creates a curated hub in the caller AWS account."""
@@ -204,10 +206,14 @@ class JumpStartCuratedPublicHub:
         for result in results.done:
             exception = result.exception()
             if exception:
-                failed_deployments.append({
-                    "Exception": exception,
-                    "Traceback": "".join(traceback.TracebackException.from_exception(exception).format())
-                })
+                failed_deployments.append(
+                    {
+                        "Exception": exception,
+                        "Traceback": "".join(
+                            traceback.TracebackException.from_exception(exception).format()
+                        ),
+                    }
+                )
         if failed_deployments:
             raise RuntimeError(
                 f"Failures when importing models to curated hub in parallel: {failed_deployments}"
@@ -219,9 +225,7 @@ class JumpStartCuratedPublicHub:
             f" version {public_js_model_specs.version} to curated private hub..."
         )
         # Currently only able to support a single version of HubContent
-        self._curated_hub_client.delete_all_versions_of_model(
-            model_specs=public_js_model_specs
-        )
+        self._curated_hub_client.delete_all_versions_of_model(model_specs=public_js_model_specs)
 
         self._content_copier.copy_hub_content_dependencies_to_hub_bucket(
             model_specs=public_js_model_specs
@@ -269,15 +273,18 @@ class JumpStartCuratedPublicHub:
             self._delete_model_from_curated_hub(model_spec, delete_all_versions)
 
     def _delete_model_from_curated_hub(
-        self, model_specs: JumpStartModelSpecs, delete_all_versions: bool, delete_dependencies: bool = True
+        self,
+        model_specs: JumpStartModelSpecs,
+        delete_all_versions: bool,
+        delete_dependencies: bool = True,
     ):
         if delete_dependencies:
             self._delete_model_dependencies_no_content_noop(model_specs)
 
-        if (delete_all_versions):
-          self._curated_hub_client.delete_all_versions_of_model(model_specs)
+        if delete_all_versions:
+            self._curated_hub_client.delete_all_versions_of_model(model_specs)
         else:
-          self._curated_hub_client.delete_version_of_model(model_specs)
+            self._curated_hub_client.delete_version_of_model(model_specs)
 
     def _delete_model_dependencies_no_content_noop(self, model_specs: JumpStartModelSpecs):
         try:
@@ -341,7 +348,7 @@ class JumpStartCuratedPublicHub:
 
     def _is_s3_key_a_directory(self, s3_key: str) -> bool:
         return s3_key[-1] == "/"
-    
+
     def _init_clients(self):
         self._curated_hub_client = CuratedHubClient(
             curated_hub_name=self.curated_hub_name, region=self._region
