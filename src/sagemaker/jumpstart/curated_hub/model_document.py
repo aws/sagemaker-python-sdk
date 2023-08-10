@@ -53,8 +53,8 @@ class ModelDocumentCreator:
     ) -> None:
         """Sets up basic info."""
         self._region = region
-        self._src_s3_filesystem = src_s3_filesystem
-        self._palatine_hub_s3_filesystem = palatine_hub_s3_filesystem
+        self._src_s3 = src_s3_filesystem
+        self._hub_s3 = palatine_hub_s3_filesystem
         self.studio_metadata_map = studio_metadata_map
 
     def make_hub_content_document(self, model_specs: JumpStartModelSpecs) -> str:
@@ -63,6 +63,7 @@ class ModelDocumentCreator:
         return json.dumps(hub_model_spec_dict)
 
     def _make_hub_content_document_json(self, model_specs: JumpStartModelSpecs) -> Dict[str, Any]:
+        """Creates hub content document in json format"""
         capabilities = []
         if model_specs.training_supported:
             capabilities.append(ModelCapabilities.TRAINING)
@@ -100,14 +101,15 @@ class ModelDocumentCreator:
         return hub_model_spec_dict
 
     def _make_hub_dependency_list(self, model_specs: JumpStartModelSpecs):
+        """Creates hub content dependencies"""
         dependencies = []
 
         dependencies.append(
             Dependency(
-                DependencyOriginPath=self._src_s3_filesystem.get_inference_artifact_s3_reference(
+                DependencyOriginPath=self._src_s3.get_inference_artifact_s3_reference(
                     model_specs
                 ).get_uri(),
-                DependencyCopyPath=self._palatine_hub_s3_filesystem.get_inference_artifact_s3_reference(
+                DependencyCopyPath=self._hub_s3.get_inference_artifact_s3_reference(
                     model_specs
                 ).get_uri(),
                 DependencyType=DependencyType.ARTIFACT,
@@ -115,10 +117,10 @@ class ModelDocumentCreator:
         )
         dependencies.append(
             Dependency(
-                DependencyOriginPath=self._src_s3_filesystem.get_inference_script_s3_reference(
+                DependencyOriginPath=self._src_s3.get_inference_script_s3_reference(
                     model_specs
                 ).get_uri(),
-                DependencyCopyPath=self._palatine_hub_s3_filesystem.get_inference_script_s3_reference(
+                DependencyCopyPath=self._hub_s3.get_inference_script_s3_reference(
                     model_specs
                 ).get_uri(),
                 DependencyType=DependencyType.SCRIPT,
@@ -126,10 +128,10 @@ class ModelDocumentCreator:
         )
         dependencies.append(
             Dependency(
-                DependencyOriginPath=self._src_s3_filesystem.get_demo_notebook_s3_reference(
+                DependencyOriginPath=self._src_s3.get_demo_notebook_s3_reference(
                     model_specs
                 ).get_uri(),
-                DependencyCopyPath=self._palatine_hub_s3_filesystem.get_demo_notebook_s3_reference(
+                DependencyCopyPath=self._hub_s3.get_demo_notebook_s3_reference(
                     model_specs
                 ).get_uri(),
                 DependencyType=DependencyType.NOTEBOOK,
@@ -137,12 +139,8 @@ class ModelDocumentCreator:
         )
         dependencies.append(
             Dependency(
-                DependencyOriginPath=self._src_s3_filesystem.get_markdown_s3_reference(
-                    model_specs
-                ).get_uri(),
-                DependencyCopyPath=self._palatine_hub_s3_filesystem.get_markdown_s3_reference(
-                    model_specs
-                ).get_uri(),
+                DependencyOriginPath=self._src_s3.get_markdown_s3_reference(model_specs).get_uri(),
+                DependencyCopyPath=self._hub_s3.get_markdown_s3_reference(model_specs).get_uri(),
                 DependencyType=DependencyType.OTHER,
             )
         )
@@ -150,10 +148,10 @@ class ModelDocumentCreator:
         if model_specs.training_supported:
             dependencies.append(
                 Dependency(
-                    DependencyOriginPath=self._src_s3_filesystem.get_training_artifact_s3_reference(
+                    DependencyOriginPath=self._src_s3.get_training_artifact_s3_reference(
                         model_specs
                     ).get_uri(),
-                    DependencyCopyPath=self._palatine_hub_s3_filesystem.get_training_artifact_s3_reference(
+                    DependencyCopyPath=self._hub_s3.get_training_artifact_s3_reference(
                         model_specs
                     ).get_uri(),
                     DependencyType=DependencyType.ARTIFACT,
@@ -161,10 +159,10 @@ class ModelDocumentCreator:
             )
             dependencies.append(
                 Dependency(
-                    DependencyOriginPath=self._src_s3_filesystem.get_training_script_s3_reference(
+                    DependencyOriginPath=self._src_s3.get_training_script_s3_reference(
                         model_specs
                     ).get_uri(),
-                    DependencyCopyPath=self._palatine_hub_s3_filesystem.get_training_script_s3_reference(
+                    DependencyCopyPath=self._hub_s3.get_training_script_s3_reference(
                         model_specs
                     ).get_uri(),
                     DependencyType=DependencyType.SCRIPT,
@@ -172,10 +170,10 @@ class ModelDocumentCreator:
             )
             dependencies.append(
                 Dependency(
-                    DependencyOriginPath=self._src_s3_filesystem.get_default_training_dataset_s3_reference(
+                    DependencyOriginPath=self._src_s3.get_default_training_dataset_s3_reference(
                         model_specs
                     ).get_uri(),
-                    DependencyCopyPath=self._palatine_hub_s3_filesystem.get_default_training_dataset_s3_reference(
+                    DependencyCopyPath=self._hub_s3.get_default_training_dataset_s3_reference(
                         model_specs
                     ).get_uri(),
                     DependencyType=DependencyType.DATASET,
@@ -187,6 +185,7 @@ class ModelDocumentCreator:
     def _make_hub_content_default_deployment_config(
         self, model_specs: JumpStartModelSpecs
     ) -> DefaultDeploymentConfig:
+        """Creates deployment config for hub content"""
         environment_variables = env_vars.retrieve_default(
             region=self._region,
             model_id=model_specs.model_id,
@@ -212,23 +211,19 @@ class ModelDocumentCreator:
                 BaseFramework=base_framework(model_specs=model_specs),
             ),
             ModelArtifactConfig=ModelArtifactConfig(
-                ArtifactLocation=self._palatine_hub_s3_filesystem.get_inference_artifact_s3_reference(
+                ArtifactLocation=self._hub_s3.get_inference_artifact_s3_reference(
                     model_specs
                 ).get_uri()
             ),
             ScriptConfig=ScriptConfig(
-                ScriptLocation=self._palatine_hub_s3_filesystem.get_inference_script_s3_reference(
-                    model_specs
-                ).get_uri()
+                ScriptLocation=self._hub_s3.get_inference_script_s3_reference(model_specs).get_uri()
             ),
             InstanceConfig=InstanceConfig(
                 DefaultInstanceType=model_specs.default_inference_instance_type,
                 InstanceTypeOptions=model_specs.supported_inference_instance_types or [],
             ),
             InferenceNotebookConfig=InferenceNotebookConfig(
-                NotebookLocation=self._palatine_hub_s3_filesystem.get_demo_notebook_s3_reference(
-                    model_specs
-                ).get_uri()
+                NotebookLocation=self._hub_s3.get_demo_notebook_s3_reference(model_specs).get_uri()
             ),
             CustomImageConfig=None,
         )
@@ -236,6 +231,7 @@ class ModelDocumentCreator:
     def _make_hub_content_default_training_config(
         self, model_specs: JumpStartModelSpecs
     ) -> Optional[DefaultTrainingConfig]:
+        """Creates training config for hub content"""
         if not model_specs.training_supported:
             return None
 
@@ -255,14 +251,12 @@ class ModelDocumentCreator:
                 BaseFramework=base_framework(model_specs=model_specs),
             ),
             ModelArtifactConfig=ModelArtifactConfig(
-                ArtifactLocation=self._palatine_hub_s3_filesystem.get_training_artifact_s3_reference(
+                ArtifactLocation=self._hub_s3.get_training_artifact_s3_reference(
                     model_specs
                 ).get_uri()
             ),
             ScriptConfig=ScriptConfig(
-                ScriptLocation=self._palatine_hub_s3_filesystem.get_training_script_s3_reference(
-                    model_specs
-                ).get_uri()
+                ScriptLocation=self._hub_s3.get_training_script_s3_reference(model_specs).get_uri()
             ),
             InstanceConfig=InstanceConfig(
                 DefaultInstanceType=model_specs.default_training_instance_type,
@@ -278,10 +272,11 @@ class ModelDocumentCreator:
         )
 
     def _dataset_config(self, model_specs: JumpStartModelSpecs) -> Optional[DatasetConfig]:
+        """Retrieves the DatasetConfig for JumpStartModelSpecs"""
         if not model_specs.training_supported:
             return None
         return DatasetConfig(
-            TrainingDatasetLocation=self._palatine_hub_s3_filesystem.get_default_training_dataset_s3_reference(
+            TrainingDatasetLocation=self._hub_s3.get_default_training_dataset_s3_reference(
                 model_specs
             ).get_uri(),
             ValidationDatasetLocation=None,

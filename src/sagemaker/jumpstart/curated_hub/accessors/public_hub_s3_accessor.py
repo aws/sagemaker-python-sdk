@@ -85,6 +85,7 @@ class PublicHubS3Accessor(JumpstartS3Accessor):
         )
 
     def _get_training_dataset_prefix(self, model_specs: JumpStartModelSpecs) -> str:
+        """Retrieves training dataset location"""
         studio_model_metadata = self._studio_metadata_map[model_specs.model_id]
         return studio_model_metadata["defaultDataKey"]
 
@@ -101,6 +102,7 @@ class PublicHubS3Accessor(JumpstartS3Accessor):
         return create_s3_object_reference_from_bucket_and_key(self.get_bucket(), key)
 
     def _jumpstart_script_s3_uri(self, model_scope: str, model_specs: JumpStartModelSpecs) -> str:
+        """Retrieves JumpStart script s3 location"""
         return script_uris.retrieve(
             region=self._region,
             model_id=model_specs.model_id,
@@ -111,6 +113,7 @@ class PublicHubS3Accessor(JumpstartS3Accessor):
         )
 
     def _jumpstart_artifact_s3_uri(self, model_scope: str, model_specs: JumpStartModelSpecs) -> str:
+        """Retrieves JumpStart artifact s3 location"""
         return model_uris.retrieve(
             region=self._region,
             model_id=model_specs.model_id,

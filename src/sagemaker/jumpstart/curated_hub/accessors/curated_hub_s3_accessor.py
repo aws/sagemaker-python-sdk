@@ -90,6 +90,7 @@ class CuratedHubS3Accessor(JumpstartS3Accessor):
     def _get_training_dataset_prefix(
         self, model_specs: JumpStartModelSpecs
     ) -> str:  # Studio expects the same format as public hub bucket
+        """Retrieves training dataset"""
         studio_model_metadata = self._studio_metadata_map[model_specs.model_id]  # TODO: verify this
         return studio_model_metadata["defaultDataKey"]
 

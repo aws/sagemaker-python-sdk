@@ -89,7 +89,7 @@ def list_objects_by_prefix(
 
 
 def to_s3_folder_prefix(prefix: str) -> str:
-    """Removes any leading forward slashes and appends a forward slash to the prefix to match s3 folder conventions."""
+    """Modifies slashes in string match s3 folder prefix conventions."""
     if prefix == "":
         return prefix
     prefix = prefix.lstrip("/")

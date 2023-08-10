@@ -15,9 +15,10 @@ from __future__ import absolute_import
 import time
 from typing import List, Set
 
-from botocore.client import BaseClient
-from dataclasses import dataclass
 from concurrent import futures
+from dataclasses import dataclass
+from botocore.client import BaseClient
+from botocore.exceptions import ClientError
 
 from sagemaker.jumpstart.curated_hub.utils import (
     find_objects_under_prefix,
@@ -80,6 +81,7 @@ class ContentCopier:
     def _get_copy_configs_for_inference_dependencies(
         self, model_specs: JumpStartModelSpecs
     ) -> List[CopyContentConfig]:
+        """Creates copy configs for inference dependencies"""
         copy_configs = []
 
         src_inference_artifact_location = (
@@ -118,6 +120,7 @@ class ContentCopier:
     def _get_copy_configs_for_training_dependencies(
         self, model_specs: JumpStartModelSpecs
     ) -> List[CopyContentConfig]:
+        """Creates copy configurations for training dependencies"""
         copy_configs = []
 
         src_training_artifact_location = self._src_s3_filesystem.get_training_artifact_s3_reference(
@@ -153,6 +156,7 @@ class ContentCopier:
         return copy_configs
 
     def _get_copy_configs_for_training_dataset(self, model_specs: JumpStartModelSpecs) -> None:
+        """Creates copy configuration for training dataset"""
         src_prefix = self._src_s3_filesystem.get_default_training_dataset_s3_reference(model_specs)
         dst_prefix = self._dst_s3_filesystem.get_default_training_dataset_s3_reference(model_specs)
 
@@ -176,6 +180,7 @@ class ContentCopier:
         return copy_configs
 
     def _get_s3_object_keys_under_prefix(self, prefix_reference: S3ObjectReference) -> Set[str]:
+        """Get all s3 objects under a s3 folder"""
         try:
             return find_objects_under_prefix(
                 bucket=prefix_reference.bucket,
@@ -192,6 +197,7 @@ class ContentCopier:
     def _get_copy_configs_for_demo_notebook_dependencies(
         self, model_specs: JumpStartModelSpecs
     ) -> None:
+        """Returns copy configs for demo notebooks"""
         copy_configs = []
 
         notebook_s3_reference = self._src_s3_filesystem.get_demo_notebook_s3_reference(model_specs)
@@ -209,6 +215,7 @@ class ContentCopier:
         return copy_configs
 
     def _get_copy_configs_for_markdown_dependencies(self, model_specs: JumpStartModelSpecs) -> None:
+        """Returns copy configs for markdown"""
         copy_configs = []
 
         markdown_s3_reference = self._src_s3_filesystem.get_markdown_s3_reference(model_specs)
@@ -222,6 +229,7 @@ class ContentCopier:
         return copy_configs
 
     def _parallel_execute_copy_configs(self, copy_configs: List[CopyContentConfig]):
+        """Runs all copy configurations in parallel"""
         tasks = []
         with futures.ThreadPoolExecutor(
             max_workers=self._thread_pool_size, thread_name_prefix="import-models-to-curated-hub"
@@ -250,6 +258,7 @@ class ContentCopier:
     def _copy_s3_reference(
         self, resource_name: str, src: S3ObjectReference, dst: S3ObjectReference
     ):
+        """Copies src S3ObjectReference to dst S3ObjectReference"""
         if not self._is_s3_object_different(src, dst):
             print(
                 f"Detected that {resource_name} is the same in destination bucket. Skipping copy."
@@ -272,18 +281,21 @@ class ContentCopier:
             raise ex
 
         print(
-            f"Copying {resource_name} from {src.bucket}/{src.key} to {dst.bucket}/{dst.key} complete!"
+            f"Copying {resource_name} from"
+            f" {src.bucket}/{src.key} to {dst.bucket}/{dst.key} complete!"
         )
 
     def _is_s3_object_different(self, src: S3ObjectReference, dst: S3ObjectReference) -> bool:
+        """Compares S3ObjectReference"""
         src_etag = self._get_s3_object_etag(src)
         dst_etag = self._get_s3_object_etag(dst)
 
         return src_etag != dst_etag
 
-    def _get_s3_object_etag(self, object: S3ObjectReference) -> str:
+    def _get_s3_object_etag(self, s3_object: S3ObjectReference) -> str:
+        """Returns s3 object etag"""
         try:
-            response = self._s3_client.head_object(Bucket=object.bucket, Key=object.key)
+            response = self._s3_client.head_object(Bucket=s3_object.bucket, Key=s3_object.key)
             return response.pop("ETag")
-        except Exception:
+        except ClientError:
             return ""

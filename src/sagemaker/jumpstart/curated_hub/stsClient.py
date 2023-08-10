@@ -20,7 +20,7 @@ import boto3
 
 
 def convert_iso_to_yyyymmdd_hhmm(iso_time: str) -> str:
-    """Convert iso time string (generated from assign_timestamp) to 'YYYYMMDD-HHMM'-formatted time."""
+    """Convert iso time string to 'YYYYMMDD-HHMM'-formatted time."""
     return datetime.fromisoformat(iso_time.rstrip("Z")).strftime("%Y%m%d-%H%M")
 
 
