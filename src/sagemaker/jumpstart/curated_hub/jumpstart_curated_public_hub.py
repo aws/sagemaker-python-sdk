@@ -218,6 +218,11 @@ class JumpStartCuratedPublicHub:
             f"Importing model {public_js_model_specs.model_id}"
             f" version {public_js_model_specs.version} to curated private hub..."
         )
+        # Currently only able to support a single version of HubContent
+        self._curated_hub_client.delete_all_versions_of_model(
+            model_specs=public_js_model_specs
+        )
+
         self._content_copier.copy_hub_content_dependencies_to_hub_bucket(
             model_specs=public_js_model_specs
         )
@@ -255,8 +260,10 @@ class JumpStartCuratedPublicHub:
             HubContentDocument=hub_content_document,
         )
 
-    def delete_models(self, model_ids: List[PublicModelId], delete_all_versions: bool = False):
+    def delete_models(self, model_ids: List[PublicModelId]):
         """Deletes all versions of each model"""
+        # TODO: Add to flags when multiple versions per upload is possible
+        delete_all_versions = False
         model_specs = self._get_model_specs(model_ids)
         for model_spec in model_specs:
             self._delete_model_from_curated_hub(model_spec, delete_all_versions)
