@@ -1,5 +1,17 @@
 # Changelog
 
+## v2.176.0 (2023-08-10)
+
+### Features
+
+ * Add TF 2.13 Training and Inference SM images
+
+### Bug Fixes and Other Changes
+
+ * revert-PR_3903
+ * skip tensorflow local mode notebook test
+ * change instance type for huggingface test to ml.g5.8xlarge
+
 ## v2.175.0 (2023-08-05)
 
 ### Features

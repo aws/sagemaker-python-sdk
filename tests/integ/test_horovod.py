@@ -37,6 +37,8 @@ def test_hvd_cpu(
     cpu_instance_type,
     tmpdir,
 ):
+    if Version(tensorflow_training_latest_version) >= Version("2.13"):
+        pytest.skip("Horovod is deprecated in TensorFlow 2.13 and above")
     _create_and_fit_estimator(
         sagemaker_session,
         tensorflow_training_latest_version,
@@ -65,6 +67,8 @@ def test_hvd_gpu(
         and kwargs["instance_type"] == "ml.p2.xlarge"
     ):
         pytest.skip("P2 instances have been deprecated for sagemaker jobs starting TensorFlow 2.12")
+    if Version(tensorflow_training_latest_version) >= Version("2.13"):
+        pytest.skip("Horovod is deprecated in TensorFlow 2.13 and above")
 
     _create_and_fit_estimator(
         sagemaker_session,
