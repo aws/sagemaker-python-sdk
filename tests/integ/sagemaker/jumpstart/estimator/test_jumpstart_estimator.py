@@ -26,6 +26,7 @@ from tests.integ.sagemaker.jumpstart.constants import (
 from tests.integ.sagemaker.jumpstart.utils import (
     get_sm_session,
     get_training_dataset_for_model_and_version,
+    x_fail_if_ice,
 )
 
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
@@ -75,8 +76,7 @@ def test_jumpstart_estimator(setup):
     assert response is not None
 
 
-# instance capacity errors require retries
-@pytest.mark.flaky(reruns=5, reruns_delay=60)
+@x_fail_if_ice
 @pytest.mark.skipif(
     tests.integ.test_region() not in GATED_TRAINING_MODEL_SUPPORTED_REGIONS,
     reason=f"JumpStart gated training models unavailable in {tests.integ.test_region()}.",
