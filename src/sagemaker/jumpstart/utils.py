@@ -72,21 +72,37 @@ def get_jumpstart_content_bucket(
         RuntimeError: If JumpStart is not launched in ``region``.
     """
 
+    old_content_bucket: Optional[
+        str
+    ] = accessors.JumpStartModelsAccessor.get_jumpstart_content_bucket()
+
+    info_logs: List[str] = []
+
+    bucket_to_return: Optional[str] = None
     if (
         constants.ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE in os.environ
         and len(os.environ[constants.ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE]) > 0
     ):
-        bucket_override = os.environ[constants.ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE]
-        constants.JUMPSTART_LOGGER.info("Using JumpStart bucket override: '%s'", bucket_override)
-        return bucket_override
-    try:
-        return constants.JUMPSTART_REGION_NAME_TO_LAUNCHED_REGION_DICT[region].content_bucket
-    except KeyError:
-        formatted_launched_regions_str = get_jumpstart_launched_regions_message()
-        raise ValueError(
-            f"Unable to get content bucket for JumpStart in {region} region. "
-            f"{formatted_launched_regions_str}"
-        )
+        bucket_to_return = os.environ[constants.ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE]
+        info_logs.append(f"Using JumpStart bucket override: '{bucket_to_return}'")
+    else:
+        try:
+            bucket_to_return = constants.JUMPSTART_REGION_NAME_TO_LAUNCHED_REGION_DICT[
+                region
+            ].content_bucket
+        except KeyError:
+            formatted_launched_regions_str = get_jumpstart_launched_regions_message()
+            raise ValueError(
+                f"Unable to get content bucket for JumpStart in {region} region. "
+                f"{formatted_launched_regions_str}"
+            )
+
+    accessors.JumpStartModelsAccessor.set_jumpstart_content_bucket(bucket_to_return)
+
+    if bucket_to_return != old_content_bucket:
+        for info_log in info_logs:
+            constants.JUMPSTART_LOGGER.info(info_log)
+    return bucket_to_return
 
 
 def get_formatted_manifest(
