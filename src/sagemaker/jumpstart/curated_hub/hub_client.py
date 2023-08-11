@@ -47,7 +47,7 @@ class CuratedHubClient:
         return self._sm_client.describe_hub_content(
             HubName=self.curated_hub_name,
             HubContentName=model_specs.model_id,
-            HubContentType=PalatineContentType.MODEL,
+            HubContentType=PalatineContentType.MODEL.value,
             HubContentVersion=model_specs.version,
         )
 
@@ -75,7 +75,7 @@ class CuratedHubClient:
         self._sm_client.delete_hub_content(
             HubName=self.curated_hub_name,
             HubContentName=model_id,
-            HubContentType=PalatineContentType.MODEL,
+            HubContentType=PalatineContentType.MODEL.value,
             HubContentVersion=version,
         )
 
@@ -88,7 +88,7 @@ class CuratedHubClient:
             response = self._sm_client.list_hub_content_versions(
                 HubName=self.curated_hub_name,
                 HubContentName=hub_content_name,
-                HubContentType=PalatineContentType.MODEL,
+                HubContentType=PalatineContentType.MODEL.value,
             )
             content_versions = response.pop("HubContentSummaries")
         except ClientError as ex:

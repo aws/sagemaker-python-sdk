@@ -278,8 +278,8 @@ class JumpStartCuratedPublicHub:
     def delete_models(self, model_ids: List[PublicModelId]):
         """Deletes all versions of each model"""
         # TODO: Add to flags when multiple versions per upload is possible
-        delete_all_versions = False
-        model_specs = self._get_model_specs(model_ids)
+        delete_all_versions = True
+        model_specs = self._get_model_specs_for_list(model_ids)
         for model_spec in model_specs:
             self._delete_model_from_curated_hub(model_spec, delete_all_versions)
 

@@ -13,7 +13,6 @@
 """This module contains utilities related to SageMaker JumpStart."""
 from __future__ import absolute_import
 from typing import List, Set
-import traceback
 
 from concurrent import futures
 from dataclasses import dataclass
@@ -251,9 +250,9 @@ class ContentCopier:
                 failed_copies.append(
                     {
                         "Exception": exception,
-                        "Traceback": "".join(
-                            traceback.TracebackException.from_exception(exception).format()
-                        ),
+                        # "Traceback": "".join(
+                        #     traceback.TracebackException.from_exception(exception).format()
+                        # ),
                     }
                 )
         if failed_copies:

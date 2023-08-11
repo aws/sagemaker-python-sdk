@@ -53,7 +53,7 @@ class HubClientTest(unittest.TestCase):
         self.mock_curated_hub_client._sm_client.describe_hub_content.assert_called_with(
             HubName=self.mock_curated_hub_client.curated_hub_name,
             HubContentName=model_specs.model_id,
-            HubContentType=PalatineContentType.MODEL,
+            HubContentType=PalatineContentType.MODEL.value,
             HubContentVersion=model_specs.version,
         )
 
@@ -67,7 +67,7 @@ class HubClientTest(unittest.TestCase):
         self.mock_curated_hub_client._sm_client.delete_hub_content.assert_called_with(
             HubName=self.mock_curated_hub_client.curated_hub_name,
             HubContentName=model_id,
-            HubContentType=PalatineContentType.MODEL,
+            HubContentType=PalatineContentType.MODEL.value,
             HubContentVersion=version,
         )
 
@@ -80,5 +80,5 @@ class HubClientTest(unittest.TestCase):
         self.mock_curated_hub_client._sm_client.list_hub_content_versions.assert_called_with(
             HubName=self.mock_curated_hub_client.curated_hub_name,
             HubContentName=hub_content_name,
-            HubContentType=PalatineContentType.MODEL,
+            HubContentType=PalatineContentType.MODEL.value,
         )
