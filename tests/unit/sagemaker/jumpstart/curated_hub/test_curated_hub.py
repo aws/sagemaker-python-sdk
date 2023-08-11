@@ -285,11 +285,15 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
     ):
         mock_hub_client = Mock()
         self.test_curated_hub._curated_hub_client = mock_hub_client
+        test_spec = {
+            "model_id": "mock_model_id",
+            "version": "mock_version"
+        }
 
-        self.test_curated_hub._delete_model_from_curated_hub("test_spec", False)
+        self.test_curated_hub._delete_model_from_curated_hub(test_spec, False)
 
-        mock_delete_model_deps.assert_called_once_with("test_spec")
-        mock_hub_client.delete_version_of_model.assert_called_once_with("test_spec")
+        mock_delete_model_deps.assert_called_once_with(test_spec)
+        mock_hub_client.delete_version_of_model.assert_called_once_with(test_spec)
         mock_hub_client.delete_all_versions_of_model.assert_not_called()
 
     @patch("json.loads")
