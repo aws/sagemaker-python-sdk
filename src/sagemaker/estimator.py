@@ -614,16 +614,24 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.output_kms_key = resolve_value_from_config(
             output_kms_key, TRAINING_JOB_KMS_KEY_ID_PATH, sagemaker_session=self.sagemaker_session
         )
+        use_volume_kms_config: bool = False
         if instance_type is None or isinstance(instance_type, str):
             instance_type_for_volume_kms = instance_type
         elif isinstance(instance_type, ParameterString):
             instance_type_for_volume_kms = instance_type.default_value
         else:
-            raise ValueError(f"Bad value for instance type: '{instance_type}'")
+            # Always attach a KMS key if an instance type that isn't a string or parameter
+            # string is used.
+            use_volume_kms_config = True
+            if not isinstance(instance_type, PipelineVariable):
+                logger.warning("Unrecognized value for instance type: '%s'", instance_type)
 
         # KMS can only be attached to supported instances
         use_volume_kms_config = (
-            (instance_type_for_volume_kms and instance_supports_kms(instance_type_for_volume_kms))
+            use_volume_kms_config
+            or (
+                instance_type_for_volume_kms and instance_supports_kms(instance_type_for_volume_kms)
+            )
             or instance_groups is not None
             and any(
                 [
