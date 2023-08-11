@@ -25,7 +25,7 @@ from sagemaker.jumpstart.curated_hub.utils import (
 )
 
 
-class UtilsTest(unittest.TestCase):
+class CuratedHubUtilsTest(unittest.TestCase):
     def test_list_objects_by_prefix_invalid_bucket_name_fails(self):
         with self.assertRaises(ValueError):
             list_objects_by_prefix(None, "prefix", None)
