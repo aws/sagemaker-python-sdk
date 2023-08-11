@@ -12,8 +12,8 @@
 # language governing permissions and limitations under the License.
 """This module contains utilities related to SageMaker JumpStart."""
 from __future__ import absolute_import
-import time
 from typing import List, Set
+import traceback
 
 from concurrent import futures
 from dataclasses import dataclass
@@ -56,7 +56,6 @@ class ContentCopier:
         """Sets up basic info."""
         self._region = region
         self._s3_client = s3_client
-        self._disambiguator = time.time()
         self._thread_pool_size = 20
 
         self._src_s3_filesystem = src_s3_filesystem
@@ -249,17 +248,24 @@ class ContentCopier:
         for result in results.done:
             exception = result.exception()
             if exception:
-                failed_copies.append(exception)
-            if failed_copies:
-                raise RuntimeError(
-                    f"Failures when importing models to curated hub in parallel: {failed_copies}"
+                failed_copies.append(
+                    {
+                        "Exception": exception,
+                        "Traceback": "".join(
+                            traceback.TracebackException.from_exception(exception).format()
+                        ),
+                    }
                 )
+        if failed_copies:
+            raise RuntimeError(
+                f"Failures when importing models to curated hub in parallel: {failed_copies}"
+            )
 
     def _copy_s3_reference(
         self, resource_name: str, src: S3ObjectReference, dst: S3ObjectReference
     ):
         """Copies src S3ObjectReference to dst S3ObjectReference"""
-        if not self._is_s3_object_different(src, dst):
+        if not self.is_s3_object_etag_different(src, dst):
             print(
                 f"Detected that {resource_name} is the same in destination bucket. Skipping copy."
             )
@@ -285,7 +291,7 @@ class ContentCopier:
             f" {src.bucket}/{src.key} to {dst.bucket}/{dst.key} complete!"
         )
 
-    def _is_s3_object_different(self, src: S3ObjectReference, dst: S3ObjectReference) -> bool:
+    def is_s3_object_etag_different(self, src: S3ObjectReference, dst: S3ObjectReference) -> bool:
         """Compares S3ObjectReference"""
         src_etag = self._get_s3_object_etag(src)
         dst_etag = self._get_s3_object_etag(dst)
@@ -298,4 +304,4 @@ class ContentCopier:
             response = self._s3_client.head_object(Bucket=s3_object.bucket, Key=s3_object.key)
             return response.pop("ETag")
         except ClientError:
-            return ""
+            return None

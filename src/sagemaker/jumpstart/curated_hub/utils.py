@@ -20,8 +20,9 @@ from typing import Dict, Any, Set, List, Optional
 import boto3
 from botocore.client import BaseClient
 
-from sagemaker.jumpstart.types import JumpStartModelSpecs
+from sagemaker.jumpstart.types import JumpStartModelSpecs, JumpStartHyperparameter
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
+from sagemaker.jumpstart.curated_hub.hub_model_specs.hub_model_specs import Hyperparameter
 
 STUDIO_METADATA_FILENAME = "metadata-modelzoo_v6.json"
 
@@ -140,3 +141,26 @@ def base_framework(model_specs: JumpStartModelSpecs) -> Optional[str]:
 def get_model_framework(model_specs: JumpStartModelSpecs) -> str:
     """Retrieves the model framework from a model spec"""
     return model_specs.model_id.split("-")[0]
+
+def convert_public_model_hyperparameter_to_hub_hyperparameter(
+    hyperparameter: JumpStartHyperparameter,
+) -> Hyperparameter:
+    """Adapter function to format Public Hub hyperparmaters to Private Hub hyperparameter"""
+    return Hyperparameter(
+        Name=hyperparameter.name,
+        DefaultValue=hyperparameter.default,
+        Type=_convert_type_to_valid_hub_type(hyperparameter.type),
+        Options=hyperparameter.options if hasattr(hyperparameter, "options") else None,
+        Min=hyperparameter.min if hasattr(hyperparameter, "min") else None,
+        Max=hyperparameter.max if hasattr(hyperparameter, "max") else None,
+        Label=None,
+        Description=None,
+        Regex=None,
+    )
+
+
+def _convert_type_to_valid_hub_type(type: str):
+    if type == "int":
+        return "Integer"
+    else:
+        return type.capitalize()

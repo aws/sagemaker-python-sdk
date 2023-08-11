@@ -16,6 +16,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 from sagemaker.jumpstart.types import JumpStartModelSpecs
+from sagemaker.jumpstart.curated_hub.constants import CURATED_HUB_DESCRIPTION, PalatineContentType
 
 
 class CuratedHubClient:
@@ -32,7 +33,7 @@ class CuratedHubClient:
         hub_bucket_s3_uri = f"s3://{hub_s3_bucket_name}"
         self._sm_client.create_hub(
             HubName=hub_name,
-            HubDescription="This is a curated hub.",  # TODO verify description
+            HubDescription=CURATED_HUB_DESCRIPTION,
             HubDisplayName=hub_name,
             HubSearchKeywords=[],
             S3StorageConfig={
@@ -46,7 +47,7 @@ class CuratedHubClient:
         return self._sm_client.describe_hub_content(
             HubName=self.curated_hub_name,
             HubContentName=model_specs.model_id,
-            HubContentType="Model",
+            HubContentType=PalatineContentType.MODEL,
             HubContentVersion=model_specs.version,
         )
 
@@ -74,7 +75,7 @@ class CuratedHubClient:
         self._sm_client.delete_hub_content(
             HubName=self.curated_hub_name,
             HubContentName=model_id,
-            HubContentType="Model",
+            HubContentType=PalatineContentType.MODEL,
             HubContentVersion=version,
         )
 
@@ -87,7 +88,7 @@ class CuratedHubClient:
             response = self._sm_client.list_hub_content_versions(
                 HubName=self.curated_hub_name,
                 HubContentName=hub_content_name,
-                HubContentType="Model",
+                HubContentType=PalatineContentType.MODEL,
             )
             content_versions = response.pop("HubContentSummaries")
         except ClientError as ex:

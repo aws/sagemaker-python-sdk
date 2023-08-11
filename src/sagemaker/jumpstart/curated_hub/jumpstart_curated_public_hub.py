@@ -49,6 +49,7 @@ from sagemaker.jumpstart.curated_hub.accessors.s3_object_reference import (
 from sagemaker.jumpstart.curated_hub.utils import (
     find_objects_under_prefix,
 )
+from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
 
 
 class JumpStartCuratedPublicHub:
@@ -62,7 +63,7 @@ class JumpStartCuratedPublicHub:
         self,
         curated_hub_name: str,
         import_to_preexisting_hub: bool = False,
-        region: str = "us-west-2",
+        region: str = JUMPSTART_DEFAULT_REGION_NAME,
     ):
         self._region = region
         self._s3_client = boto3.client("s3", region_name=self._region)
@@ -112,7 +113,7 @@ class JumpStartCuratedPublicHub:
             name_of_hub_already_on_account = preexisting_hub[0]
 
             if not import_to_preexisting_hub:
-                raise Exception(
+                raise ValueError(
                     f"Hub with name {name_of_hub_already_on_account} detected on account."
                     " The limit of hubs per account is 1."
                     " If you wish to use this hub as the curated hub,"
@@ -174,9 +175,9 @@ class JumpStartCuratedPublicHub:
 
     def _get_model_specs(self, model_ids: List[PublicModelId]) -> List[JumpStartModelSpecs]:
         """Converts a list of PublicModelId to JumpStartModelSpecs"""
-        return list(map(self._cast_to_model_specs, model_ids))
+        return list(map(self._get_model_specs, model_ids))
 
-    def _cast_to_model_specs(self, model_id: PublicModelId) -> JumpStartModelSpecs:
+    def _get_model_specs(self, model_id: PublicModelId) -> JumpStartModelSpecs:
         """Converts PublicModelId to JumpStartModelSpecs."""
         return verify_model_region_and_return_specs(
             model_id=model_id.id,
@@ -209,11 +210,11 @@ class JumpStartCuratedPublicHub:
                 tasks.append(task)
 
         results = futures.wait(tasks)
-        failed_deployments: List[Dict[str, Any]] = []
+        failed_imports: List[Dict[str, Any]] = []
         for result in results.done:
             exception = result.exception()
             if exception:
-                failed_deployments.append(
+                failed_imports.append(
                     {
                         "Exception": exception,
                         "Traceback": "".join(
@@ -221,9 +222,9 @@ class JumpStartCuratedPublicHub:
                         ),
                     }
                 )
-        if failed_deployments:
+        if failed_imports:
             raise RuntimeError(
-                f"Failures when importing models to curated hub in parallel: {failed_deployments}"
+                f"Failures when importing models to curated hub in parallel: {failed_imports}"
             )
 
     def _import_model(self, public_js_model_specs: JumpStartModelSpecs) -> None:
