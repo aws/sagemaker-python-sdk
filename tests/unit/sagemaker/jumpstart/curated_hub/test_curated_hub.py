@@ -205,7 +205,8 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
         mock_create_hub_and_hub_bucket.assert_called_once()
 
     @patch(
-        "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub.JumpStartCuratedPublicHub._get_model_specs"
+        "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub."
+        "JumpStartCuratedPublicHub._get_model_specs_for_list"
     )
     @patch(
         "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub.JumpStartCuratedPublicHub._import_models"
@@ -214,10 +215,10 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
         "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub.JumpStartCuratedPublicHub._model_needs_update"
     )
     def test_sync_filters_models_that_dont_need_update(
-        self, mock_need_update, mock_import_models, mock_model_specs
+        self, mock_need_update, mock_import_models, mock_model_specs_for_list
     ):
         test_list = ["test_specs_1", "test_specs_2"]
-        mock_model_specs.return_value = test_list
+        mock_model_specs_for_list.return_value = test_list
         mock_need_update.side_effect = self._mock_should_update_model
 
         self.test_curated_hub.sync(test_list)
@@ -225,7 +226,8 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
         mock_import_models.assert_called_with(["test_specs_1"])
 
     @patch(
-        "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub.JumpStartCuratedPublicHub._get_model_specs"
+        "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub."
+        "JumpStartCuratedPublicHub._get_model_specs_for_list"
     )
     @patch(
         "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub.JumpStartCuratedPublicHub._import_models"
@@ -234,10 +236,10 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
         "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub.JumpStartCuratedPublicHub._model_needs_update"
     )
     def test_sync_force_update_true_updates_all_models(
-        self, mock_need_update, test_import_models, mock_model_specs
+        self, mock_need_update, test_import_models, mock_model_specs_for_list
     ):
         test_list = ["test_specs_1", "test_specs_2"]
-        mock_model_specs.return_value = test_list
+        mock_model_specs_for_list.return_value = test_list
         mock_need_update.side_effect = self._mock_should_update_model
 
         self.test_curated_hub.sync(test_list, True)

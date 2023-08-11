@@ -142,6 +142,7 @@ def get_model_framework(model_specs: JumpStartModelSpecs) -> str:
     """Retrieves the model framework from a model spec"""
     return model_specs.model_id.split("-")[0]
 
+
 def convert_public_model_hyperparameter_to_hub_hyperparameter(
     hyperparameter: JumpStartHyperparameter,
 ) -> Hyperparameter:
@@ -149,7 +150,7 @@ def convert_public_model_hyperparameter_to_hub_hyperparameter(
     return Hyperparameter(
         Name=hyperparameter.name,
         DefaultValue=hyperparameter.default,
-        Type=_convert_type_to_valid_hub_type(hyperparameter.type),
+        Type=_convert_hyperparameter_type_to_valid_hub_type(hyperparameter.type),
         Options=hyperparameter.options if hasattr(hyperparameter, "options") else None,
         Min=hyperparameter.min if hasattr(hyperparameter, "min") else None,
         Max=hyperparameter.max if hasattr(hyperparameter, "max") else None,
@@ -159,8 +160,8 @@ def convert_public_model_hyperparameter_to_hub_hyperparameter(
     )
 
 
-def _convert_type_to_valid_hub_type(type: str):
-    if type == "int":
+def _convert_hyperparameter_type_to_valid_hub_type(hyperparameter_type: str):
+    """Validates a JumpStartHyperparameter"""
+    if hyperparameter_type == "int":
         return "Integer"
-    else:
-        return type.capitalize()
+    return hyperparameter_type.capitalize()

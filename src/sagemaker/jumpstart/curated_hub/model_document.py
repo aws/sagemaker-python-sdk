@@ -36,7 +36,10 @@ from sagemaker.jumpstart.curated_hub.hub_model_specs.hub_model_specs import (
     DatasetConfig,
 )
 from sagemaker.jumpstart.curated_hub.hub_model_specs.hub_model_specs import ModelCapabilities
-from sagemaker.jumpstart.curated_hub.utils import base_framework, convert_public_model_hyperparameter_to_hub_hyperparameter
+from sagemaker.jumpstart.curated_hub.utils import (
+    base_framework,
+    convert_public_model_hyperparameter_to_hub_hyperparameter,
+)
 from sagemaker.jumpstart.types import JumpStartModelSpecs
 
 

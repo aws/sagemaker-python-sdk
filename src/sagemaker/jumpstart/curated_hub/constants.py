@@ -17,5 +17,8 @@ from enum import Enum
 
 CURATED_HUB_DESCRIPTION = "This is a curated hub."
 
+
 class PalatineContentType(Enum):
-  MODEL = "Model"
+    """Palatine hub content types"""
+
+    MODEL = "Model"

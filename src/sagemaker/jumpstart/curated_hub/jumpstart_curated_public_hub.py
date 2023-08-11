@@ -162,7 +162,7 @@ class JumpStartCuratedPublicHub:
           it will remove the version and replace it with the new version.
         """
 
-        model_specs = self._get_model_specs(model_ids)
+        model_specs = self._get_model_specs_for_list(model_ids)
 
         if not force_update:
             print(
@@ -173,7 +173,9 @@ class JumpStartCuratedPublicHub:
 
         self._import_models(model_specs)
 
-    def _get_model_specs(self, model_ids: List[PublicModelId]) -> List[JumpStartModelSpecs]:
+    def _get_model_specs_for_list(
+        self, model_ids: List[PublicModelId]
+    ) -> List[JumpStartModelSpecs]:
         """Converts a list of PublicModelId to JumpStartModelSpecs"""
         return list(map(self._get_model_specs, model_ids))
 
