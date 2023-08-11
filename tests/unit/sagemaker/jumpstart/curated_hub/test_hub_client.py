@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 import unittest
 
-from mock.mock import patch, Mock
+from mock.mock import Mock
 
 from sagemaker.jumpstart.curated_hub.hub_client import CuratedHubClient
 

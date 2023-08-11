@@ -14,18 +14,24 @@
 from __future__ import absolute_import
 import unittest
 
-from mock.mock import patch, Mock
+from mock.mock import Mock
 
-from sagemaker.jumpstart.curated_hub.utils import *
+from sagemaker.jumpstart.curated_hub.utils import (
+    list_objects_by_prefix,
+    to_s3_folder_prefix,
+    convert_s3_key_to_new_prefix,
+    base_framework,
+    get_model_framework,
+)
 
 
 class UtilsTest(unittest.TestCase):
     def test_list_objects_by_prefix_invalid_bucket_name_fails(self):
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(ValueError):
             list_objects_by_prefix(None, "prefix", None)
 
     def test_list_objects_by_prefix_invalid_prefix_fails(self):
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(ValueError):
             list_objects_by_prefix("bucket", None, None)
 
     def test_list_objects_by_prefix_no_content_empty(self):
