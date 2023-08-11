@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.177.0 (2023-08-11)
+
+### Features
+
+ * Add TLV accounts for 1P Algorithms
+
 ## v2.176.0 (2023-08-10)
 
 ### Features
