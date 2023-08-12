@@ -294,7 +294,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             if not (error_code == "ValidationException" and "already exists" in error_message):
                 raise ce
             # already exists
-            response = self.update(role_arn, description)
+            response = self.update(role_arn, description, parallelism_config=parallelism_config)
             # add new tags to existing resource
             if tags is not None:
                 old_tags = self.sagemaker_session.sagemaker_client.list_tags(
