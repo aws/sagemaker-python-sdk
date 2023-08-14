@@ -22,3 +22,4 @@ class PalatineContentType(Enum):
     """Palatine hub content types"""
 
     MODEL = "Model"
+    NOTEBOOK = "Notebook"

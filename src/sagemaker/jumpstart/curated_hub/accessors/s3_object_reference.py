@@ -17,7 +17,7 @@ from typing import Dict
 
 
 @dataclass
-class S3ObjectReference:
+class S3ObjectLocation:
     """Helper class for S3 object references"""
 
     bucket: str
@@ -34,18 +34,12 @@ class S3ObjectReference:
         """Returns a s3 URI"""
         return f"s3://{self.bucket}/{self.key}"
 
-
-def create_s3_object_reference_from_bucket_and_key(bucket: str, key: str) -> S3ObjectReference:
-    """Utiity to help generate an S3 object reference"""
-    return S3ObjectReference(bucket=bucket, key=key)
-
-
-def create_s3_object_reference_from_uri(s3_uri: str) -> S3ObjectReference:
+def create_s3_object_reference_from_uri(s3_uri: str) -> S3ObjectLocation:
     """Utiity to help generate an S3 object reference"""
     uri_with_s3_prefix_removed = s3_uri.replace("s3://", "", 1)
     uri_split = uri_with_s3_prefix_removed.split("/")
 
-    return S3ObjectReference(
+    return S3ObjectLocation(
         bucket=uri_split[0],
         key="/".join(uri_split[1:]),
     )

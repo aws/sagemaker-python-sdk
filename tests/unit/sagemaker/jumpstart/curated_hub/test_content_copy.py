@@ -5,7 +5,7 @@ from mock.mock import patch
 
 from sagemaker.jumpstart.curated_hub.content_copy import ContentCopier, CopyContentConfig
 from sagemaker.jumpstart.curated_hub.accessors.s3_object_reference import (
-    S3ObjectReference,
+    S3ObjectLocation,
 )
 import uuid
 
@@ -202,6 +202,6 @@ class ContentCopierTest(unittest.TestCase):
         mock_training_deps.assert_called_once()
 
     def _generate_random_copy_config(self, display_name: str) -> CopyContentConfig:
-        test_src = S3ObjectReference(bucket=str(uuid.uuid4()), key=str(uuid.uuid4()))
-        test_dst = S3ObjectReference(bucket=str(uuid.uuid4()), key=str(uuid.uuid4()))
-        return CopyContentConfig(src=test_src, dst=test_dst, display_name=display_name)
+        test_src = S3ObjectLocation(bucket=str(uuid.uuid4()), key=str(uuid.uuid4()))
+        test_dst = S3ObjectLocation(bucket=str(uuid.uuid4()), key=str(uuid.uuid4()))
+        return CopyContentConfig(src=test_src, dst=test_dst, logging_name=display_name)

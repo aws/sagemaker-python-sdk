@@ -23,8 +23,8 @@ from sagemaker.jumpstart.curated_hub.utils import (
     get_studio_model_metadata_map_from_region,
 )
 from sagemaker.jumpstart.curated_hub.accessors.s3_object_reference import (
-    S3ObjectReference,
-    create_s3_object_reference_from_bucket_and_key,
+    S3ObjectLocation,
+    S3ObjectLocation,
     create_s3_object_reference_from_uri,
 )
 from sagemaker.jumpstart.curated_hub.accessors.model_dependency_s3_accessor import ModoelDependencyS3Accessor
@@ -46,7 +46,7 @@ class PublicHubS3Accessor(ModoelDependencyS3Accessor):
 
     def get_inference_artifact_s3_reference(
         self, model_specs: JumpStartModelSpecs
-    ) -> S3ObjectReference:
+    ) -> S3ObjectLocation:
         """Retrieves s3 reference for model inference artifact"""
         return create_s3_object_reference_from_uri(
             self._jumpstart_artifact_s3_uri(JumpStartScriptScope.INFERENCE, model_specs)
@@ -54,7 +54,7 @@ class PublicHubS3Accessor(ModoelDependencyS3Accessor):
 
     def get_training_artifact_s3_reference(
         self, model_specs: JumpStartModelSpecs
-    ) -> S3ObjectReference:
+    ) -> S3ObjectLocation:
         """Retrieves s3 reference for model training artifact"""
         return create_s3_object_reference_from_uri(
             self._jumpstart_artifact_s3_uri(JumpStartScriptScope.TRAINING, model_specs)
@@ -62,7 +62,7 @@ class PublicHubS3Accessor(ModoelDependencyS3Accessor):
 
     def get_inference_script_s3_reference(
         self, model_specs: JumpStartModelSpecs
-    ) -> S3ObjectReference:
+    ) -> S3ObjectLocation:
         """Retrieves s3 reference for model inference script"""
         return create_s3_object_reference_from_uri(
             self._jumpstart_script_s3_uri(JumpStartScriptScope.INFERENCE, model_specs)
@@ -70,7 +70,7 @@ class PublicHubS3Accessor(ModoelDependencyS3Accessor):
 
     def get_training_script_s3_reference(
         self, model_specs: JumpStartModelSpecs
-    ) -> S3ObjectReference:
+    ) -> S3ObjectLocation:
         """Retrieves s3 reference for model training script"""
         return create_s3_object_reference_from_uri(
             self._jumpstart_script_s3_uri(JumpStartScriptScope.TRAINING, model_specs)
@@ -78,9 +78,9 @@ class PublicHubS3Accessor(ModoelDependencyS3Accessor):
 
     def get_default_training_dataset_s3_reference(
         self, model_specs: JumpStartModelSpecs
-    ) -> S3ObjectReference:
+    ) -> S3ObjectLocation:
         """Retrieves s3 reference for s3 directory containing model training datasets"""
-        return create_s3_object_reference_from_bucket_and_key(
+        return S3ObjectLocation(
             self.get_bucket(), self._get_training_dataset_prefix(model_specs)
         )
 
@@ -89,17 +89,17 @@ class PublicHubS3Accessor(ModoelDependencyS3Accessor):
         studio_model_metadata = self._studio_metadata_map[model_specs.model_id]
         return studio_model_metadata["defaultDataKey"]
 
-    def get_demo_notebook_s3_reference(self, model_specs: JumpStartModelSpecs) -> S3ObjectReference:
+    def get_demo_notebook_s3_reference(self, model_specs: JumpStartModelSpecs) -> S3ObjectLocation:
         """Retrieves s3 reference for model demo jupyter notebook"""
         framework = get_model_framework(model_specs)
         key = f"{framework}-notebooks/{model_specs.model_id}-inference.ipynb"
-        return create_s3_object_reference_from_bucket_and_key(self.get_bucket(), key)
+        return S3ObjectLocation(self.get_bucket(), key)
 
-    def get_markdown_s3_reference(self, model_specs: JumpStartModelSpecs) -> S3ObjectReference:
+    def get_markdown_s3_reference(self, model_specs: JumpStartModelSpecs) -> S3ObjectLocation:
         """Retrieves s3 reference for model markdown"""
         framework = get_model_framework(model_specs)
         key = f"{framework}-metadata/{model_specs.model_id}.md"
-        return create_s3_object_reference_from_bucket_and_key(self.get_bucket(), key)
+        return S3ObjectLocation(self.get_bucket(), key)
 
     def _jumpstart_script_s3_uri(self, model_scope: str, model_specs: JumpStartModelSpecs) -> str:
         """Retrieves JumpStart script s3 location"""

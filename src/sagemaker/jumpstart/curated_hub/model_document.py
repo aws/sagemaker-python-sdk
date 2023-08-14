@@ -49,13 +49,13 @@ class ModelDocumentCreator:
     def __init__(
         self,
         region: str,
-        src_s3_filesystem: ModoelDependencyS3Accessor,
+        src_s3_accessor: ModoelDependencyS3Accessor,
         palatine_hub_s3_filesystem: ModoelDependencyS3Accessor,
         studio_metadata_map: Dict[str, Any],
     ) -> None:
         """Sets up basic info."""
         self._region = region
-        self._src_s3 = src_s3_filesystem
+        self._src_s3 = src_s3_accessor
         self._hub_s3 = palatine_hub_s3_filesystem
         self.studio_metadata_map = studio_metadata_map
 

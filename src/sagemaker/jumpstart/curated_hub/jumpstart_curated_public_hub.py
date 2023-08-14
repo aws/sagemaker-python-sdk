@@ -375,7 +375,7 @@ class JumpStartCuratedPublicHub:
             curated_hub_name=self.curated_hub_name, region=self._region
         )
 
-        self._src_s3_filesystem = PublicHubS3Accessor(self._region)
+        self._src_s3_accessor = PublicHubS3Accessor(self._region)
         self._dst_s3_filesystem = CuratedHubS3Accessor(
             self._region, self.curated_hub_s3_bucket_name
         )
@@ -383,12 +383,12 @@ class JumpStartCuratedPublicHub:
         self._content_copier = ContentCopier(
             region=self._region,
             s3_client=self._s3_client,
-            src_s3_filesystem=self._src_s3_filesystem,
-            dst_s3_filesystem=self._dst_s3_filesystem,
+            src_s3_accessor=self._src_s3_accessor,
+            dst_s3_accessor=self._dst_s3_filesystem,
         )
         self._document_creator = ModelDocumentCreator(
             region=self._region,
-            src_s3_filesystem=self._src_s3_filesystem,
+            src_s3_accessor=self._src_s3_accessor,
             palatine_hub_s3_filesystem=self._dst_s3_filesystem,
             studio_metadata_map=self.studio_metadata_map,
         )

@@ -20,8 +20,8 @@ from sagemaker.jumpstart.curated_hub.utils import (
     get_studio_model_metadata_map_from_region,
 )
 from sagemaker.jumpstart.curated_hub.accessors.s3_object_reference import (
-    S3ObjectReference,
-    create_s3_object_reference_from_bucket_and_key,
+    S3ObjectLocation,
+    S3ObjectLocation,
 )
 from sagemaker.jumpstart.curated_hub.accessors.model_dependency_s3_accessor import ModoelDependencyS3Accessor
 
@@ -42,48 +42,48 @@ class CuratedHubS3Accessor(ModoelDependencyS3Accessor):
 
     def get_inference_artifact_s3_reference(
         self, model_specs: JumpStartModelSpecs
-    ) -> S3ObjectReference:
+    ) -> S3ObjectLocation:
         """Retrieves s3 reference for model inference artifact"""
-        return create_s3_object_reference_from_bucket_and_key(
+        return S3ObjectLocation(
             self.get_bucket(), f"{model_specs.model_id}/{model_specs.version}/infer.tar.gz"
         )
 
     def get_inference_script_s3_reference(
         self, model_specs: JumpStartModelSpecs
-    ) -> S3ObjectReference:
+    ) -> S3ObjectLocation:
         """Retrieves s3 reference for model traiing script"""
-        return create_s3_object_reference_from_bucket_and_key(
+        return S3ObjectLocation(
             self.get_bucket(), f"{model_specs.model_id}/{model_specs.version}/sourcedir.tar.gz"
         )
 
     def get_training_artifact_s3_reference(
         self, model_specs: JumpStartModelSpecs
-    ) -> S3ObjectReference:
+    ) -> S3ObjectLocation:
         """Retrieves s3 reference for model training artifact"""
-        return create_s3_object_reference_from_bucket_and_key(
+        return S3ObjectLocation(
             self.get_bucket(), f"{model_specs.model_id}/{model_specs.version}/train.tar.gz"
         )
 
     def get_training_script_s3_reference(
         self, model_specs: JumpStartModelSpecs
-    ) -> S3ObjectReference:
+    ) -> S3ObjectLocation:
         """Retrieves s3 reference for model training script"""
-        return create_s3_object_reference_from_bucket_and_key(
+        return S3ObjectLocation(
             self.get_bucket(),
             f"{model_specs.model_id}/{model_specs.version}/training/sourcedir.tar.gz",
         )
 
-    def get_demo_notebook_s3_reference(self, model_specs: JumpStartModelSpecs) -> S3ObjectReference:
+    def get_demo_notebook_s3_reference(self, model_specs: JumpStartModelSpecs) -> S3ObjectLocation:
         """Retrieves s3 reference for model jupyter notebook"""
-        return create_s3_object_reference_from_bucket_and_key(
+        return S3ObjectLocation(
             self.get_bucket(), f"{model_specs.model_id}/{model_specs.version}/demo-notebook.ipynb"
         )
 
     def get_default_training_dataset_s3_reference(
         self, model_specs: JumpStartModelSpecs
-    ) -> S3ObjectReference:
+    ) -> S3ObjectLocation:
         """Retrieves s3 reference for s3 directory containing training datasets"""
-        return create_s3_object_reference_from_bucket_and_key(
+        return S3ObjectLocation(
             self.get_bucket(), self._get_training_dataset_prefix(model_specs)
         )
 
@@ -96,8 +96,8 @@ class CuratedHubS3Accessor(ModoelDependencyS3Accessor):
 
     def get_markdown_s3_reference(
         self, model_specs: JumpStartModelSpecs
-    ) -> S3ObjectReference:  # Studio expects the same format as public hub bucket
+    ) -> S3ObjectLocation:  # Studio expects the same format as public hub bucket
         """Retrieves s3 reference for model markdown file"""
         framework = get_model_framework(model_specs)
         key = f"{framework}-metadata/{model_specs.model_id}.md"
-        return create_s3_object_reference_from_bucket_and_key(self.get_bucket(), key)
+        return S3ObjectLocation(self.get_bucket(), key)

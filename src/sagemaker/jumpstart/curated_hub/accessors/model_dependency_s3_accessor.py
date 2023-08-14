@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 from sagemaker.jumpstart.types import JumpStartModelSpecs
 from sagemaker.jumpstart.curated_hub.accessors.s3_object_reference import (
-    S3ObjectReference,
+    S3ObjectLocation,
 )
 
 
@@ -27,38 +27,38 @@ class ModoelDependencyS3Accessor:
 
     def get_inference_artifact_s3_reference(
         self, model_specs: JumpStartModelSpecs
-    ) -> S3ObjectReference:
+    ) -> S3ObjectLocation:
         """Retrieves s3 reference for model inference artifact"""
         raise Exception("Not implemented")
 
     def get_training_artifact_s3_reference(
         self, model_specs: JumpStartModelSpecs
-    ) -> S3ObjectReference:
+    ) -> S3ObjectLocation:
         """Retrieves s3 reference for model training artifact"""
         raise Exception("Not implemented")
 
     def get_inference_script_s3_reference(
         self, model_specs: JumpStartModelSpecs
-    ) -> S3ObjectReference:
+    ) -> S3ObjectLocation:
         """Retrieves s3 reference for model inference script"""
         raise Exception("Not implemented")
 
     def get_training_script_s3_reference(
         self, model_specs: JumpStartModelSpecs
-    ) -> S3ObjectReference:
+    ) -> S3ObjectLocation:
         """Retrieves s3 reference for model training script"""
         raise Exception("Not implemented")
 
     def get_default_training_dataset_s3_reference(
         self, model_specs: JumpStartModelSpecs
-    ) -> S3ObjectReference:
+    ) -> S3ObjectLocation:
         """Retrieves s3 reference for s3 directory containing training datasets"""
         raise Exception("Not implemented")
 
-    def get_demo_notebook_s3_reference(self, model_specs: JumpStartModelSpecs) -> S3ObjectReference:
+    def get_demo_notebook_s3_reference(self, model_specs: JumpStartModelSpecs) -> S3ObjectLocation:
         """Retrieves s3 reference for demo jupyter notebook"""
         raise Exception("Not implemented")
 
-    def get_markdown_s3_reference(self, model_specs: JumpStartModelSpecs) -> S3ObjectReference:
+    def get_markdown_s3_reference(self, model_specs: JumpStartModelSpecs) -> S3ObjectLocation:
         """Retrieves s3 reference for model markdown"""
         raise Exception("Not implemented")
