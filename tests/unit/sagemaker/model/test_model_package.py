@@ -197,7 +197,7 @@ def test_create_sagemaker_model_include_tags(sagemaker_session):
         sagemaker_session=sagemaker_session,
     )
 
-    model_package._create_sagemaker_model(tags=tags)
+    model_package.deploy(tags=tags, instance_type="ml.p2.xlarge", initial_instance_count=1)
 
     sagemaker_session.create_model.assert_called_with(
         model_name,

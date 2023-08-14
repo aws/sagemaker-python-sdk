@@ -221,6 +221,14 @@ EXPLAINABILITY__BATCH_TRANSFORM_JOB_DEFINITION = {
     "NetworkConfig": NETWORK_CONFIG._to_request_dict(),
 }
 
+MONITORING_EXECUTIONS_EMPTY = {
+    "MonitoringExecutionSummaries": [],
+}
+
+MONITORING_EXECUTIONS_NO_PROCESSING_JOB = {
+    "MonitoringExecutionSummaries": [{"MonitoringSchedule": "MonitoringSchedule"}],
+}
+
 # For update API
 NEW_ROLE_ARN = "arn:aws:iam::012345678902:role/{}".format(ROLE)
 NEW_INSTANCE_COUNT = 2
@@ -1716,3 +1724,20 @@ def _test_model_explainability_monitor_delete_schedule(
     sagemaker_session.sagemaker_client.delete_model_explainability_job_definition.assert_called_once_with(
         JobDefinitionName=job_definition_name
     )
+
+
+def test_model_explainability_monitor_logs_failure(model_explainability_monitor, sagemaker_session):
+    sagemaker_session.list_monitoring_executions = MagicMock(
+        return_value=MONITORING_EXECUTIONS_EMPTY
+    )
+    try:
+        model_explainability_monitor.get_latest_execution_logs()
+    except ValueError as ve:
+        assert "No execution jobs were kicked off." in str(ve)
+    sagemaker_session.list_monitoring_executions = MagicMock(
+        return_value=MONITORING_EXECUTIONS_NO_PROCESSING_JOB
+    )
+    try:
+        model_explainability_monitor.get_latest_execution_logs()
+    except ValueError as ve:
+        assert "Processing Job did not run for the last execution" in str(ve)
