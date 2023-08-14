@@ -365,7 +365,7 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
             return image_uri_alias
 
         if not image_uri_alias.startswith("$"):
-            raise TypeError("All image uris should map to an alias an start with '$'.")
+            raise TypeError("All image uris should map to an alias and start with '$'.")
 
         if region not in self.aliases:
             return None
