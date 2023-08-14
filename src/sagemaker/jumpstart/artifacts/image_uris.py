@@ -111,8 +111,30 @@ def _retrieve_image_uri(
     )
 
     if image_scope == JumpStartScriptScope.INFERENCE:
+        hosting_instance_type_variants = model_specs.hosting_instance_type_variants
+        if hosting_instance_type_variants:
+            image_uri = hosting_instance_type_variants.get_image_uri(
+                instance_type=instance_type, region=region
+            )
+            if image_uri is None:
+                raise ValueError(
+                    f"Inference image uri is unavailable for model id '{model_id}' "
+                    f"with '{instance_type}' instance type in '{region}' region."
+                )
+            return image_uri
         ecr_specs = model_specs.hosting_ecr_specs
     elif image_scope == JumpStartScriptScope.TRAINING:
+        training_instance_type_variants = model_specs.training_instance_type_variants
+        if training_instance_type_variants:
+            image_uri = training_instance_type_variants.get_image_uri(
+                instance_type=instance_type, region=region
+            )
+            if image_uri is None:
+                raise ValueError(
+                    f"Training image uri is unavailable for model id '{model_id}' "
+                    f"with '{instance_type}' instance type in '{region}' region."
+                )
+            return image_uri
         ecr_specs = model_specs.training_ecr_specs
 
     if framework is not None and framework != ecr_specs.framework:

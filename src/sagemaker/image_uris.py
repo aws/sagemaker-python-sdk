@@ -262,20 +262,6 @@ def retrieve(
     return ECR_URI_TEMPLATE.format(registry=registry, hostname=hostname, repository=repo)
 
 
-def _get_instance_type_family(instance_type):
-    """Return the family of the instance type.
-
-    Regex matches either "ml.<family>.<size>" or "ml_<family>. If input is None
-    or there is no match, return an empty string.
-    """
-    instance_type_family = ""
-    if isinstance(instance_type, str):
-        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
-        if match is not None:
-            instance_type_family = match[1]
-    return instance_type_family
-
-
 def _get_image_tag(
     container_version,
     distribution,
@@ -289,7 +275,7 @@ def _get_image_tag(
     version,
 ):
     """Return image tag based on framework, container, and compute configuration(s)."""
-    instance_type_family = _get_instance_type_family(instance_type)
+    instance_type_family = utils.get_instance_type_family(instance_type)
     if framework in (XGBOOST_FRAMEWORK, SKLEARN_FRAMEWORK):
         if instance_type_family and final_image_scope == INFERENCE_GRAVITON:
             _validate_arg(
@@ -377,7 +363,7 @@ def _config_for_framework_and_scope(framework, image_scope, accelerator_type=Non
 
 def _validate_instance_deprecation(framework, instance_type, version):
     """Check if instance type is deprecated for a certain framework with a certain version"""
-    if _get_instance_type_family(instance_type) == "p2":
+    if utils.get_instance_type_family(instance_type) == "p2":
         if (framework == "pytorch" and Version(version) >= Version("1.13")) or (
             framework == "tensorflow" and Version(version) >= Version("2.12")
         ):
@@ -401,7 +387,7 @@ def _validate_for_suppported_frameworks_and_instance_type(framework, instance_ty
     # Validate for Graviton allowed frameowrks
     if (
         instance_type is not None
-        and _get_instance_type_family(instance_type) in GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY
+        and utils.get_instance_type_family(instance_type) in GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY
         and framework not in GRAVITON_ALLOWED_FRAMEWORKS
     ):
         _validate_framework(framework, GRAVITON_ALLOWED_FRAMEWORKS, "framework", "Graviton")
@@ -418,7 +404,7 @@ def _get_final_image_scope(framework, instance_type, image_scope):
     """Return final image scope based on provided framework and instance type."""
     if (
         framework in GRAVITON_ALLOWED_FRAMEWORKS
-        and _get_instance_type_family(instance_type) in GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY
+        and utils.get_instance_type_family(instance_type) in GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY
     ):
         return INFERENCE_GRAVITON
     if image_scope is None and framework in (XGBOOST_FRAMEWORK, SKLEARN_FRAMEWORK):
@@ -433,7 +419,7 @@ def _get_final_image_scope(framework, instance_type, image_scope):
 def _get_inference_tool(inference_tool, instance_type):
     """Extract the inference tool name from instance type."""
     if not inference_tool:
-        instance_type_family = _get_instance_type_family(instance_type)
+        instance_type_family = utils.get_instance_type_family(instance_type)
         if instance_type_family.startswith("inf") or instance_type_family.startswith("trn"):
             return "neuron"
     return inference_tool
@@ -517,7 +503,7 @@ def _processor(instance_type, available_processors, serverless_inference_config=
         processor = "neuron"
     else:
         # looks for either "ml.<family>.<size>" or "ml_<family>"
-        family = _get_instance_type_family(instance_type)
+        family = utils.get_instance_type_family(instance_type)
         if family:
             # For some frameworks, we have optimized images for specific families, e.g c5 or p3.
             # In those cases, we use the family name in the image tag. In other cases, we use
@@ -547,7 +533,7 @@ def _should_auto_select_container_version(instance_type, distribution):
     p4d = False
     if instance_type:
         # looks for either "ml.<family>.<size>" or "ml_<family>"
-        family = _get_instance_type_family(instance_type)
+        family = utils.get_instance_type_family(instance_type)
         if family:
             p4d = family == "p4d"
 

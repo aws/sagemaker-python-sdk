@@ -15,6 +15,7 @@ import copy
 from sagemaker.jumpstart.types import (
     JumpStartECRSpecs,
     JumpStartHyperparameter,
+    JumpStartInstanceTypeVariants,
     JumpStartModelSpecs,
     JumpStartModelHeader,
 )
@@ -155,3 +156,62 @@ def test_jumpstart_model_specs():
 
     specs3 = copy.deepcopy(specs1)
     assert specs3 == specs1
+
+
+def test_jumpstart_instance_variants():
+    variant = JumpStartInstanceTypeVariants(
+        {
+            "aliases": {
+                "us-west-2": {
+                    "gpu_image_uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
+                    "huggingface-pytorch-inference:1.13.1-transformers4.26.0-gpu-py39-cu117-ubuntu20.04",
+                    "gpu_image_uri_2": "763104351884.dkr.ecr.us-west-2.amazonaws.com/stud-gpu",
+                    "cpu_image_uri": "867930986793.dkr.us-west-2.amazonaws.com/cpu-blah",
+                }
+            },
+            "variants": {
+                "p2": {"properties": {"image_uri": "$gpu_image_uri"}},
+                "p3": {"properties": {"image_uri": "$gpu_image_uri"}},
+                "ml.p3.200xlarge": {"properties": {"image_uri": "$gpu_image_uri_2"}},
+                "p4": {"properties": {"image_uri": "$gpu_image_uri"}},
+                "g4dn": {"properties": {"image_uri": "$gpu_image_uri"}},
+                "m2": {"properties": {"image_uri": "$cpu_image_uri"}},
+                "c2": {"properties": {"image_uri": "$cpu_image_uri"}},
+                "ml.g5.48xlarge": {
+                    "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "8"}}
+                },
+                "ml.g5.12xlarge": {
+                    "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"}}
+                },
+            },
+        }
+    )
+    assert (
+        variant.get_image_uri(instance_type="ml.p3.200xlarge", region="us-west-2")
+        == "763104351884.dkr.ecr.us-west-2.amazonaws.com/stud-gpu"
+    )
+
+    assert (
+        variant.get_image_uri(instance_type="ml.p3.2xlarge", region="us-west-2")
+        == "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-inference:"
+        "1.13.1-transformers4.26.0-gpu-py39-cu117-ubuntu20.04"
+    )
+
+    assert (
+        variant.get_image_uri(instance_type="ml.g4dn.2xlarge", region="us-west-2")
+        == "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-inference:"
+        "1.13.1-transformers4.26.0-gpu-py39-cu117-ubuntu20.04"
+    )
+
+    assert (
+        variant.get_image_uri(instance_type="ml.c2.xlarge", region="us-west-2")
+        == "867930986793.dkr.us-west-2.amazonaws.com/cpu-blah"
+    )
+
+    assert variant.get_image_uri(instance_type="ml.g5.12xlarge", region="us-west-2") is None
+
+    assert variant.get_image_uri(instance_type="ml.c3.xlarge", region="us-west-2") is None
+
+    assert variant.get_image_uri(instance_type="ml.c2.xlarge", region="us-east-2000") is None
+
+    assert variant.get_image_uri(instance_type="ml.c3.xlarge", region="us-east-2000") is None

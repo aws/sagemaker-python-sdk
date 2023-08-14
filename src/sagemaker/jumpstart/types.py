@@ -15,6 +15,7 @@ from __future__ import absolute_import
 from copy import deepcopy
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Union
+from sagemaker.utils import get_instance_type_family
 
 
 class JumpStartDataHolderType:
@@ -309,6 +310,69 @@ class JumpStartPredictorSpecs(JumpStartDataHolderType):
         return json_obj
 
 
+class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
+    """Data class for JumpStart instance type variants."""
+
+    __slots__ = [
+        "aliases",
+        "variants",
+    ]
+
+    def __init__(self, spec: Optional[Dict[str, Any]]):
+        """Initializes a JumpStartInstanceTypeVariants object from its json representation.
+
+        Args:
+            spec (Dict[str, Any]): Dictionary representation of instance type variants.
+        """
+        self.from_json(spec)
+
+    def from_json(self, json_obj: Optional[Dict[str, Any]]) -> None:
+        """Sets fields in object based on json.
+
+        Args:
+            json_obj (Dict[str, Any]): Dictionary representation of instance type variants.
+        """
+
+        if json_obj is None:
+            return
+
+        self.aliases: dict = json_obj["aliases"]
+        self.variant: dict = json_obj["variants"]
+
+    def to_json(self) -> Dict[str, Any]:
+        """Returns json representation of JumpStartPredictorSpecs object."""
+        json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
+        return json_obj
+
+    def get_image_uri(self, instance_type: str, region: str) -> Optional[str]:
+        """Returns image uri from instance type and region.
+
+        Returns None if no instance type is available or found.
+        """
+
+        image_uri_alias: Optional[str] = None
+        if instance_type in self.variants:
+            image_uri_alias = self.variants[instance_type]["properties"].get("image_uri")
+        else:
+            instance_type_family = get_instance_type_family(instance_type)
+            image_uri_alias = (
+                self.variants[instance_type_family]["properties"].get("image_uri")
+                if instance_type_family in self.variants
+                else None
+            )
+
+        if image_uri_alias is None:
+            return image_uri_alias
+
+        if not image_uri_alias.startswith("$"):
+            raise TypeError("All image uris should map to an alias an start with '$'.")
+
+        if region not in self.aliases:
+            return None
+        alias_value = self.aliases[region][image_uri_alias[1:]]
+        return alias_value
+
+
 class JumpStartModelSpecs(JumpStartDataHolderType):
     """Data class JumpStart model specs."""
 
@@ -357,6 +421,8 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         "hosting_model_package_arns",
         "training_model_package_artifact_uris",
         "hosting_use_script_uri",
+        "hosting_instance_type_variants",
+        "training_instance_type_variants",
     ]
 
     def __init__(self, spec: Dict[str, Any]):
@@ -432,6 +498,12 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         self.hosting_model_package_arns: Optional[Dict] = json_obj.get("hosting_model_package_arns")
         self.hosting_use_script_uri: bool = json_obj.get("hosting_use_script_uri", True)
 
+        self.hosting_instance_type_variants: Optional[JumpStartInstanceTypeVariants] = (
+            JumpStartInstanceTypeVariants(json_obj["hosting_instance_type_variants"])
+            if json_obj.get("hosting_instance_type_variants")
+            else None
+        )
+
         if self.training_supported:
             self.training_ecr_specs: JumpStartECRSpecs = JumpStartECRSpecs(
                 json_obj["training_ecr_specs"]
@@ -452,6 +524,11 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
             )
             self.training_model_package_artifact_uris: Optional[Dict] = json_obj.get(
                 "training_model_package_artifact_uris"
+            )
+            self.training_instance_type_variants: Optional[JumpStartInstanceTypeVariants] = (
+                JumpStartInstanceTypeVariants(json_obj["training_instance_type_variants"])
+                if json_obj.get("training_instance_type_variants")
+                else None
             )
 
     def to_json(self) -> Dict[str, Any]:

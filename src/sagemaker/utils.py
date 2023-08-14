@@ -1435,3 +1435,17 @@ def instance_supports_kms(instance_type: str) -> bool:
         ValueError: If the instance type is improperly formatted.
     """
     return volume_size_supported(instance_type)
+
+
+def get_instance_type_family(instance_type):
+    """Return the family of the instance type.
+
+    Regex matches either "ml.<family>.<size>" or "ml_<family>. If input is None
+    or there is no match, return an empty string.
+    """
+    instance_type_family = ""
+    if isinstance(instance_type, str):
+        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+        if match is not None:
+            instance_type_family = match[1]
+    return instance_type_family
