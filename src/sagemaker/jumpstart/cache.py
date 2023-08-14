@@ -111,7 +111,7 @@ class JumpStartModelsCache:
             if s3_bucket_name is None
             else s3_bucket_name
         )
-        self._s3_client = s3_client if s3_client else (
+        self._s3_client = s3_client or (
             boto3.client("s3", region_name=self._region, config=s3_client_config)
             if s3_client_config
             else boto3.client("s3", region_name=self._region)
