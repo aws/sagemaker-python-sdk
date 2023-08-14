@@ -33,7 +33,14 @@ from tests.integ.sagemaker.jumpstart.utils import (
 
 MAX_INIT_TIME_SECONDS = 5
 
-MODEL_PACKAGE_ARN_SUPPORTED_REGIONS = {"us-west-2", "us-east-1"}
+GATED_INFERENCE_MODEL_SUPPORTED_REGIONS = {
+    "us-west-2",
+    "us-east-1",
+    "eu-west-1",
+    "ap-southeast-1",
+    "us-east-2",
+    "ap-southeast-2",
+}
 
 
 def test_non_prepacked_jumpstart_model(setup):
@@ -80,8 +87,8 @@ def test_prepacked_jumpstart_model(setup):
 
 
 @pytest.mark.skipif(
-    tests.integ.test_region() not in MODEL_PACKAGE_ARN_SUPPORTED_REGIONS,
-    reason=f"JumpStart Model Package models unavailable in {tests.integ.test_region()}.",
+    tests.integ.test_region() not in GATED_INFERENCE_MODEL_SUPPORTED_REGIONS,
+    reason=f"JumpStart gated inference models unavailable in {tests.integ.test_region()}.",
 )
 def test_model_package_arn_jumpstart_model(setup):
 
