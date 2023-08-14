@@ -23,10 +23,10 @@ from sagemaker.jumpstart.curated_hub.accessors.s3_object_reference import (
     S3ObjectReference,
     create_s3_object_reference_from_bucket_and_key,
 )
-from sagemaker.jumpstart.curated_hub.accessors.jumpstart_s3_accessor import JumpstartS3Accessor
+from sagemaker.jumpstart.curated_hub.accessors.model_dependency_s3_accessor import ModoelDependencyS3Accessor
 
 
-class CuratedHubS3Accessor(JumpstartS3Accessor):
+class CuratedHubS3Accessor(ModoelDependencyS3Accessor):
     """Helper class to access Curated Hub s3 bucket"""
 
     def __init__(self, region: str, bucket: str):

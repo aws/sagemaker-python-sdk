@@ -23,7 +23,7 @@ from sagemaker.jumpstart.curated_hub.utils import (
     find_objects_under_prefix,
 )
 from sagemaker.jumpstart.types import JumpStartModelSpecs
-from sagemaker.jumpstart.curated_hub.accessors.jumpstart_s3_accessor import JumpstartS3Accessor
+from sagemaker.jumpstart.curated_hub.accessors.model_dependency_s3_accessor import ModoelDependencyS3Accessor
 from sagemaker.jumpstart.curated_hub.accessors.s3_object_reference import (
     S3ObjectReference,
     create_s3_object_reference_from_bucket_and_key,
@@ -49,8 +49,8 @@ class ContentCopier:
         self,
         region: str,
         s3_client: BaseClient,
-        src_s3_filesystem: JumpstartS3Accessor,
-        dst_s3_filesystem: JumpstartS3Accessor,  # TODO: abstract this
+        src_s3_filesystem: ModoelDependencyS3Accessor,
+        dst_s3_filesystem: ModoelDependencyS3Accessor,  # TODO: abstract this
     ) -> None:
         """Sets up basic info."""
         self._region = region

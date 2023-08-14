@@ -18,7 +18,7 @@ from sagemaker.jumpstart.curated_hub.accessors.s3_object_reference import (
 )
 
 
-class JumpstartS3Accessor:
+class ModoelDependencyS3Accessor:
     """Interface class to access JumpStart s3 buckets"""
 
     def get_bucket(self) -> str:
