@@ -112,8 +112,8 @@ class JumpStartModelsAccessor(object):
 
         Args:
             region (str): Optional. The region to use for the cache.
-            s3_client (boto3.client): Optional. Boto3 client to use for accessing JumpStart models s3
-                cache. If not set, a default client will be made.
+            s3_client (boto3.client): Optional. Boto3 client to use for accessing JumpStart models
+                s3 cache. If not set, a default client will be made.
         """
 
         additional_kwargs = {}
