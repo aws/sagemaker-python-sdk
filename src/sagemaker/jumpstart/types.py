@@ -337,7 +337,7 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
             return
 
         self.aliases: dict = json_obj["aliases"]
-        self.variant: dict = json_obj["variants"]
+        self.variants: dict = json_obj["variants"]
 
     def to_json(self) -> Dict[str, Any]:
         """Returns json representation of JumpStartPredictorSpecs object."""

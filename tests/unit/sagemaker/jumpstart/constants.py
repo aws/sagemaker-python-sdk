@@ -2646,29 +2646,7 @@ BASE_SPEC = {
         "framework_version": "1.5.0",
         "py_version": "py3",
     },
-    "hosting_instance_type_variants": {
-        "aliases": {
-            "us-west-2": {
-                "gpu_image_uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
-                "huggingface-pytorch-inference:1.13.1-transformers4.26.0-gpu-py39-cu117-ubuntu20.04",
-                "cpu_image_uri": "867930986793.dkr.us-west-2.amazonaws.com/cpu-blah",
-            }
-        },
-        "variants": {
-            "p2": {"properties": {"image_uri": "$gpu_image_uri"}},
-            "p3": {"properties": {"image_uri": "$gpu_image_uri"}},
-            "p4": {"properties": {"image_uri": "$gpu_image_uri"}},
-            "g4dn": {"properties": {"image_uri": "$gpu_image_uri"}},
-            "m2": {"properties": {"image_uri": "$cpu_image_uri"}},
-            "c2": {"properties": {"image_uri": "$cpu_image_uri"}},
-            "ml.g5.48xlarge": {
-                "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "8"}}
-            },
-            "ml.g5.12xlarge": {
-                "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"}}
-            },
-        },
-    },
+    "hosting_instance_type_variants": None,
     "training_ecr_specs": {
         "framework": "pytorch",
         "framework_version": "1.5.0",
