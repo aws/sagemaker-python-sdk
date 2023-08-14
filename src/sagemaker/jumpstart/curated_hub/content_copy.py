@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 """This module contains utilities related to SageMaker JumpStart."""
 from __future__ import absolute_import
+import traceback
 from typing import List, Set
 
 from concurrent import futures
@@ -50,21 +51,19 @@ class ContentCopier:
         region: str,
         s3_client: BaseClient,
         src_s3_accessor: ModoelDependencyS3Accessor,
-        dst_s3_accessor: ModoelDependencyS3Accessor,  # TODO: abstract this
+        dst_s3_accessor: ModoelDependencyS3Accessor,
+        thread_pool_size: int = 20
     ) -> None:
         """Sets up basic info."""
         self._region = region
         self._s3_client = s3_client
-        self._thread_pool_size = 20
+        self._thread_pool_size = thread_pool_size
 
         self._src_s3_accessor = src_s3_accessor
         self._dst_s3_accessor = dst_s3_accessor
 
     def copy_hub_content_dependencies_to_hub_bucket(self, model_specs: JumpStartModelSpecs) -> None:
-        """Copies artifact and script tarballs into the hub bucket.
-
-        Unfortunately, this logic is duplicated/inconsistent with what is in Studio.
-        """
+        """Copies artifact and script tarballs into the hub bucket."""
         copy_configs = []
 
         copy_configs.extend(self._get_copy_configs_for_inference_dependencies(model_specs))
@@ -250,9 +249,9 @@ class ContentCopier:
                 failed_copies.append(
                     {
                         "Exception": exception,
-                        # "Traceback": "".join(
-                        #     traceback.TracebackException.from_exception(exception).format()
-                        # ),
+                        "Traceback": "".join(
+                            traceback.TracebackException.from_exception(exception).format()
+                        ),
                     }
                 )
         if failed_copies:

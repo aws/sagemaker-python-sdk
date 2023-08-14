@@ -42,13 +42,13 @@ class HubClientTest(unittest.TestCase):
             Tags=[],
         )
 
-    def test_desribe_model(self):
+    def test_describe_model(self):
         model_specs = Mock()
         model_specs.model_id = "model_id"
         model_specs.version = "version"
         self.mock_curated_hub_client._sm_client = Mock()
 
-        self.mock_curated_hub_client.desribe_model(model_specs)
+        self.mock_curated_hub_client.describe_model(model_specs)
 
         self.mock_curated_hub_client._sm_client.describe_hub_content.assert_called_with(
             HubName=self.mock_curated_hub_client.curated_hub_name,

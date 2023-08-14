@@ -82,6 +82,30 @@ class JumpStartCuratedPublicHub:
         self.studio_metadata_map = get_studio_model_metadata_map_from_region(self._region)
         self._init_clients()
 
+    def _init_clients(self):
+        """Creates all clients for Curated Hub"""
+        self._curated_hub_client = CuratedHubClient(
+            curated_hub_name=self.curated_hub_name, region=self._region
+        )
+
+        self._src_s3_accessor = PublicHubS3Accessor(self._region)
+        self._dst_s3_filesystem = CuratedHubS3Accessor(
+            self._region, self.curated_hub_s3_bucket_name
+        )
+
+        self._content_copier = ContentCopier(
+            region=self._region,
+            s3_client=self._s3_client,
+            src_s3_accessor=self._src_s3_accessor,
+            dst_s3_accessor=self._dst_s3_filesystem,
+        )
+        self._document_creator = ModelDocumentCreator(
+            region=self._region,
+            src_s3_accessor=self._src_s3_accessor,
+            palatine_hub_s3_filesystem=self._dst_s3_filesystem,
+            studio_metadata_map=self.studio_metadata_map,
+        )
+
     def _get_preexisting_hub_and_s3_bucket_names(self) -> Optional[Tuple[str, str]]:
         """Finds preexisting hub and hub bucket names if applicable."""
         res = self._sm_client.list_hubs().pop("HubSummaries")
@@ -191,7 +215,7 @@ class JumpStartCuratedPublicHub:
     def _model_needs_update(self, model_specs: JumpStartModelSpecs) -> bool:
         """Checks if a new upload is necessary."""
         try:
-            self._curated_hub_client.desribe_model(model_specs)
+            self._curated_hub_client.describe_model(model_specs)
             print(f"INFO: Model {model_specs.model_id} found in hub.")
             return False
         except ClientError as ex:
@@ -303,7 +327,7 @@ class JumpStartCuratedPublicHub:
     def _delete_model_dependencies_no_content_noop(self, model_specs: JumpStartModelSpecs):
         """Deletes hub content dependencies. If there are no dependencies, it succeeds."""
         try:
-            hub_content = self._curated_hub_client.desribe_model(model_specs)
+            hub_content = self._curated_hub_client.describe_model(model_specs)
         except ClientError:
             return
 
@@ -367,31 +391,7 @@ class JumpStartCuratedPublicHub:
 
     def _is_s3_key_a_directory(self, s3_key: str) -> bool:
         """Checks of s3 key is a directory"""
-        return s3_key[-1] == "/"
-
-    def _init_clients(self):
-        """Creates all clients for Curated Hub"""
-        self._curated_hub_client = CuratedHubClient(
-            curated_hub_name=self.curated_hub_name, region=self._region
-        )
-
-        self._src_s3_accessor = PublicHubS3Accessor(self._region)
-        self._dst_s3_filesystem = CuratedHubS3Accessor(
-            self._region, self.curated_hub_s3_bucket_name
-        )
-
-        self._content_copier = ContentCopier(
-            region=self._region,
-            s3_client=self._s3_client,
-            src_s3_accessor=self._src_s3_accessor,
-            dst_s3_accessor=self._dst_s3_filesystem,
-        )
-        self._document_creator = ModelDocumentCreator(
-            region=self._region,
-            src_s3_accessor=self._src_s3_accessor,
-            palatine_hub_s3_filesystem=self._dst_s3_filesystem,
-            studio_metadata_map=self.studio_metadata_map,
-        )
+        return s3_key.endswith("/")
 
     def _should_skip_create(self):
         """Skips creating resources if true"""

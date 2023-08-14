@@ -377,7 +377,7 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
         self.test_curated_hub._curated_hub_client = mock_hub_client
         mock_format_deps.return_value = []
         mock_s3_client.delete_objects.return_value = {}
-        mock_hub_client.desribe_model.return_value = {"HubContentDocument": "mock"}
+        mock_hub_client.describe_model.return_value = {"HubContentDocument": "mock"}
 
         test_spec = Mock()
         test_spec.model_id = "test_model_id"
@@ -385,7 +385,7 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
 
         self.test_curated_hub._delete_model_dependencies_no_content_noop(test_spec)
 
-        mock_hub_client.desribe_model.assert_called_once()
+        mock_hub_client.describe_model.assert_called_once()
         mock_s3_client.delete_objects.assert_called_once()
         mock_get_deps.assert_called_once()
 

@@ -42,7 +42,7 @@ class CuratedHubClient:
             Tags=[],
         )
 
-    def desribe_model(self, model_specs: JumpStartModelSpecs):
+    def describe_model(self, model_specs: JumpStartModelSpecs):
         """Describes a version of a model in the Private Hub."""
         return self._sm_client.describe_hub_content(
             HubName=self.curated_hub_name,
