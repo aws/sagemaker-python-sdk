@@ -34,6 +34,7 @@ class S3ObjectLocation:
         """Returns a s3 URI"""
         return f"s3://{self.bucket}/{self.key}"
 
+
 def create_s3_object_reference_from_uri(s3_uri: str) -> S3ObjectLocation:
     """Utiity to help generate an S3 object reference"""
     uri_with_s3_prefix_removed = s3_uri.replace("s3://", "", 1)

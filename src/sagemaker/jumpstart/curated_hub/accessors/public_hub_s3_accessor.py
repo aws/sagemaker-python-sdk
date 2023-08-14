@@ -24,10 +24,11 @@ from sagemaker.jumpstart.curated_hub.utils import (
 )
 from sagemaker.jumpstart.curated_hub.accessors.s3_object_reference import (
     S3ObjectLocation,
-    S3ObjectLocation,
     create_s3_object_reference_from_uri,
 )
-from sagemaker.jumpstart.curated_hub.accessors.model_dependency_s3_accessor import ModoelDependencyS3Accessor
+from sagemaker.jumpstart.curated_hub.accessors.model_dependency_s3_accessor import (
+    ModoelDependencyS3Accessor,
+)
 
 
 class PublicHubS3Accessor(ModoelDependencyS3Accessor):
@@ -80,9 +81,7 @@ class PublicHubS3Accessor(ModoelDependencyS3Accessor):
         self, model_specs: JumpStartModelSpecs
     ) -> S3ObjectLocation:
         """Retrieves s3 reference for s3 directory containing model training datasets"""
-        return S3ObjectLocation(
-            self.get_bucket(), self._get_training_dataset_prefix(model_specs)
-        )
+        return S3ObjectLocation(self.get_bucket(), self._get_training_dataset_prefix(model_specs))
 
     def _get_training_dataset_prefix(self, model_specs: JumpStartModelSpecs) -> str:
         """Retrieves training dataset location"""

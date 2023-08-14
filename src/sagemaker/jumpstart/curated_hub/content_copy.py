@@ -24,9 +24,10 @@ from sagemaker.jumpstart.curated_hub.utils import (
     find_objects_under_prefix,
 )
 from sagemaker.jumpstart.types import JumpStartModelSpecs
-from sagemaker.jumpstart.curated_hub.accessors.model_dependency_s3_accessor import ModoelDependencyS3Accessor
+from sagemaker.jumpstart.curated_hub.accessors.model_dependency_s3_accessor import (
+    ModoelDependencyS3Accessor,
+)
 from sagemaker.jumpstart.curated_hub.accessors.s3_object_reference import (
-    S3ObjectLocation,
     S3ObjectLocation,
 )
 
@@ -52,7 +53,7 @@ class ContentCopier:
         s3_client: BaseClient,
         src_s3_accessor: ModoelDependencyS3Accessor,
         dst_s3_accessor: ModoelDependencyS3Accessor,
-        thread_pool_size: int = 20
+        thread_pool_size: int = 20,
     ) -> None:
         """Sets up basic info."""
         self._region = region
@@ -81,8 +82,8 @@ class ContentCopier:
         """Creates copy configs for inference dependencies"""
         copy_configs = []
 
-        src_inference_artifact_location = (
-            self._src_s3_accessor.get_inference_artifact_s3_reference(model_specs)
+        src_inference_artifact_location = self._src_s3_accessor.get_inference_artifact_s3_reference(
+            model_specs
         )
         dst_artifact_reference = self._dst_s3_accessor.get_inference_artifact_s3_reference(
             model_specs
@@ -97,8 +98,8 @@ class ContentCopier:
 
         if not model_specs.supports_prepacked_inference():
             # Need to also copy script if prepack not enabled
-            src_inference_script_location = (
-                self._src_s3_accessor.get_inference_script_s3_reference(model_specs)
+            src_inference_script_location = self._src_s3_accessor.get_inference_script_s3_reference(
+                model_specs
             )
             dst_inference_script_reference = (
                 self._dst_s3_accessor.get_inference_script_s3_reference(model_specs)
@@ -161,9 +162,7 @@ class ContentCopier:
 
         copy_configs = []
         for full_key in keys_in_src_dir:
-            src_reference = S3ObjectLocation(
-                src_prefix.bucket, full_key
-            )
+            src_reference = S3ObjectLocation(src_prefix.bucket, full_key)
             dst_reference = S3ObjectLocation(
                 dst_prefix.bucket, full_key.replace(src_prefix.key, dst_prefix.key, 1)
             )  # Replacing s3 key prefix with expected destination prefix
@@ -259,9 +258,7 @@ class ContentCopier:
                 f"Failures when importing models to curated hub in parallel: {failed_copies}"
             )
 
-    def _copy_s3_reference(
-        self, resource_name: str, src: S3ObjectLocation, dst: S3ObjectLocation
-    ):
+    def _copy_s3_reference(self, resource_name: str, src: S3ObjectLocation, dst: S3ObjectLocation):
         """Copies src S3ObjectReference to dst S3ObjectReference"""
         if not self.is_s3_object_etag_different(src, dst):
             print(

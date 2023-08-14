@@ -16,8 +16,12 @@ class ContentCopierTest(unittest.TestCase):
     test_region = "test_region"
 
     @patch("botocore.client.BaseClient")
-    @patch("sagemaker.jumpstart.curated_hub.accessors.model_dependency_s3_accessor.ModoelDependencyS3Accessor")
-    @patch("sagemaker.jumpstart.curated_hub.accessors.model_dependency_s3_accessor.ModoelDependencyS3Accessor")
+    @patch(
+        "sagemaker.jumpstart.curated_hub.accessors.model_dependency_s3_accessor.ModoelDependencyS3Accessor"
+    )
+    @patch(
+        "sagemaker.jumpstart.curated_hub.accessors.model_dependency_s3_accessor.ModoelDependencyS3Accessor"
+    )
     def setUp(self, mock_src, mock_dst, mock_client):
         self.mock_src = mock_src
         self.mock_dst = mock_dst
