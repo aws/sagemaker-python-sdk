@@ -73,6 +73,7 @@ class JumpStartCuratedPublicHub:
         (
             self.curated_hub_name,
             self.curated_hub_s3_bucket_name,
+            self.curated_hub_s3_key_prefix,
         ) = self._get_curated_hub_and_curated_hub_s3_bucket_names(
             curated_hub_name, import_to_preexisting_hub
         )
@@ -106,7 +107,7 @@ class JumpStartCuratedPublicHub:
             studio_metadata_map=self.studio_metadata_map,
         )
 
-    def _get_preexisting_hub_and_s3_bucket_names(self) -> Optional[Tuple[str, str]]:
+    def _get_preexisting_hub_and_s3_bucket_names(self) -> Optional[Tuple[str, str, str]]:
         """Finds preexisting hub and hub bucket names if applicable."""
         res = self._sm_client.list_hubs().pop("HubSummaries")
         if len(res) > 0:
@@ -118,13 +119,13 @@ class JumpStartCuratedPublicHub:
             s3_config_formatted = s3_config.replace("s3://", "", 1).split("/")
             curated_hub_s3_bucket_name = s3_config_formatted[0]
 
-            self.curated_hub_s3_key_prefix = s3_config_formatted[1:] if s3_config_formatted[1] else None
+            curated_hub_s3_key_prefix = s3_config_formatted[1:] if s3_config_formatted[1] else None
 
             print(
                 f"Hub found on account in region {self._region} with name"
                 f" {curated_hub_name} and bucket name {curated_hub_s3_bucket_name}"
             )
-            return (curated_hub_name, curated_hub_s3_bucket_name)
+            return (curated_hub_name, curated_hub_s3_bucket_name, curated_hub_s3_key_prefix)
         return None
 
     def _get_curated_hub_and_curated_hub_s3_bucket_names(
@@ -136,11 +137,13 @@ class JumpStartCuratedPublicHub:
         curated_hub_s3_bucket_name = self._create_unique_s3_bucket_name(
             curated_hub_name, self._region
         )
+        curated_hub_s3_key_prefix = None
 
         preexisting_hub = self._get_preexisting_hub_and_s3_bucket_names()
         if preexisting_hub:
             curated_hub_name = preexisting_hub[0]
             curated_hub_s3_bucket_name = preexisting_hub[1]
+            curated_hub_s3_key_prefix = preexisting_hub[2]
 
             if not import_to_preexisting_hub:
                 raise ValueError(
@@ -158,7 +161,7 @@ class JumpStartCuratedPublicHub:
         print(f"HUB_BUCKET_NAME={curated_hub_s3_bucket_name}")
         print(f"HUB_NAME={curated_hub_name}")
 
-        return (curated_hub_name, curated_hub_s3_bucket_name)
+        return (curated_hub_name, curated_hub_s3_bucket_name, curated_hub_s3_key_prefix)
 
     def _create_unique_s3_bucket_name(self, bucket_name: str, region: str) -> str:
         """Creates a unique s3 bucket name for the account"""

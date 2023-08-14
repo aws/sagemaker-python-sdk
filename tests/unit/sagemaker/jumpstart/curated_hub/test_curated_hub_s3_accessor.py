@@ -24,18 +24,17 @@ from sagemaker.jumpstart.curated_hub.accessors.constants import (
     PRIVATE_MODEL_HOSTING_ARTIFACT_TARBALL_SUFFIX,
 )
 
+
 class CuratedHubS3AccessorTest(unittest.TestCase):
-    @patch("sagemaker.jumpstart.curated_hub.accessors.curated_hub_s3_accessor.get_studio_model_metadata_map_from_region")
+    @patch(
+        "sagemaker.jumpstart.curated_hub.accessors.curated_hub_s3_accessor.get_studio_model_metadata_map_from_region"
+    )
     def test_no_prefix(self, mock_studio_metadata):
         test_bucket = "test_bucket"
         test_key_prefix = "test_key_prefix"
-        test_hub_accessor = CuratedHubS3Accessor(
-            "us-west-2",
-            test_bucket
-        )
+        test_hub_accessor = CuratedHubS3Accessor("us-west-2", test_bucket)
 
         test_specs = JumpStartModelSpecs(BASE_SPEC)
-        key = f"Model/{test_specs.model_id}/{test_specs.version}/{PRIVATE_MODEL_HOSTING_ARTIFACT_TARBALL_SUFFIX}"
 
         test_reference = test_hub_accessor.get_inference_artifact_s3_reference(test_specs)
         self.assertEqual(test_bucket, test_reference.bucket)
@@ -45,18 +44,15 @@ class CuratedHubS3AccessorTest(unittest.TestCase):
         self.assertIn(PRIVATE_MODEL_HOSTING_ARTIFACT_TARBALL_SUFFIX, test_reference.key)
         self.assertNotIn(test_key_prefix, test_reference.key)
 
-    @patch("sagemaker.jumpstart.curated_hub.accessors.curated_hub_s3_accessor.get_studio_model_metadata_map_from_region")
+    @patch(
+        "sagemaker.jumpstart.curated_hub.accessors.curated_hub_s3_accessor.get_studio_model_metadata_map_from_region"
+    )
     def test_with_prefix(self, mock_studio_metadata):
         test_bucket = "test_bucket"
         test_key_prefix = "test_key_prefix"
-        test_hub_accessor = CuratedHubS3Accessor(
-            "us-west-2",
-            test_bucket,
-            test_key_prefix
-        )
+        test_hub_accessor = CuratedHubS3Accessor("us-west-2", test_bucket, test_key_prefix)
 
         test_specs = JumpStartModelSpecs(BASE_SPEC)
-        key = f"Model/{test_specs.model_id}/{test_specs.version}/{PRIVATE_MODEL_HOSTING_ARTIFACT_TARBALL_SUFFIX}"
 
         test_reference = test_hub_accessor.get_inference_artifact_s3_reference(test_specs)
         self.assertEqual(test_bucket, test_reference.bucket)

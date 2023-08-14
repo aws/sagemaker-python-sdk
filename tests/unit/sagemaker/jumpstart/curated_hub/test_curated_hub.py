@@ -80,6 +80,7 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
     test_hub_name = "test-curated-hub-chrstfu"
     test_preexisting_hub_name = "test_preexisting_hub"
     test_preexisting_bucket_name = "test_preexisting_bucket"
+    test_preexisting_key_prefix = "test_prefix"
     test_region = "us-east-2"
     test_account_id = "123456789012"
 
@@ -99,7 +100,11 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
     )
     def setUp(self, mock_studio_metadata, mock_get_names, mock_init_clients):
         mock_studio_metadata.return_value = {}
-        mock_get_names.return_value = self.test_preexisting_hub_name, self.test_preexisting_hub_name
+        mock_get_names.return_value = (
+            self.test_preexisting_hub_name,
+            self.test_preexisting_hub_name,
+            self.test_preexisting_key_prefix,
+        )
 
         self.test_curated_hub = JumpStartCuratedPublicHub(
             self.test_hub_name, False, self.test_region
@@ -119,6 +124,7 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
         (
             res_hub_name,
             res_hub_bucket_name,
+            res_prefix,
         ) = self.test_curated_hub._get_curated_hub_and_curated_hub_s3_bucket_names(
             self.test_hub_name, False
         )
@@ -136,11 +142,13 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
         mock_get_preexisting.return_value = (
             self.test_preexisting_hub_name,
             self.test_preexisting_bucket_name,
+            self.test_preexisting_key_prefix,
         )
 
         (
             res_hub_name,
             res_hub_bucket_name,
+            res_prefix,
         ) = self.test_curated_hub._get_curated_hub_and_curated_hub_s3_bucket_names(
             self.test_hub_name, True
         )
@@ -158,6 +166,7 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
         mock_get_preexisting.return_value = (
             self.test_preexisting_hub_name,
             self.test_preexisting_bucket_name,
+            self.test_preexisting_key_prefix,
         )
 
         with self.assertRaises(Exception) as context:
