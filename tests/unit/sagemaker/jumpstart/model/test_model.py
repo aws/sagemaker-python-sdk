@@ -595,7 +595,10 @@ class ModelTest(unittest.TestCase):
 
         model = JumpStartModel(model_id=model_id, sagemaker_session=mock_session)
 
-        model.deploy()
+        tag = {"Key": "foo", "Value": "bar"}
+        tags = [tag]
+
+        model.deploy(tags=tags)
 
         self.assertEqual(
             mock_session.create_model.call_args[0][2],
@@ -604,6 +607,8 @@ class ModelTest(unittest.TestCase):
                 "/llama2-7b-f-e46eb8a833643ed58aaccd81498972c3"
             },
         )
+
+        self.assertIn(tag, mock_session.return_value.create_model.call_args[1]["tags"])
 
     @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")

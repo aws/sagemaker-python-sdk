@@ -312,13 +312,34 @@ class JumpStartModel(Model):
 
         super(JumpStartModel, self).__init__(**model_init_kwargs.to_kwargs_dict())
 
-    def _create_sagemaker_model(self, *args, **kwargs):  # pylint: disable=unused-argument
+    def _create_sagemaker_model(
+        self,
+        instance_type=None,
+        accelerator_type=None,
+        tags=None,
+        serverless_inference_config=None,
+        **kwargs,
+    ):
         """Create a SageMaker Model Entity
 
         Args:
-            args: Positional arguments coming from the caller. This class does not require
-                any so they are ignored.
-
+            instance_type (str): Optional. The EC2 instance type that this Model will be
+                used for, this is only used to determine if the image needs GPU
+                support or not. (Default: None).
+            accelerator_type (str): Optional. Type of Elastic Inference accelerator to
+                attach to an endpoint for model loading and inference, for
+                example, 'ml.eia1.medium'. If not specified, no Elastic
+                Inference accelerator will be attached to the endpoint. (Default: None).
+            tags (List[dict[str, str]]): Optional. The list of tags to add to
+                the model. Example: >>> tags = [{'Key': 'tagname', 'Value':
+                'tagvalue'}] For more information about tags, see
+                https://boto3.amazonaws.com/v1/documentation
+                /api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags
+                (Default: None).
+            serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
+                Optional. Specifies configuration related to serverless endpoint. Instance type is
+                not provided in serverless inference. So this is used to find image URIs.
+                (Default: None).
             kwargs: Keyword arguments coming from the caller. This class does not require
                 any so they are ignored.
         """
@@ -349,10 +370,16 @@ class JumpStartModel(Model):
                 container_def,
                 vpc_config=self.vpc_config,
                 enable_network_isolation=self.enable_network_isolation(),
-                tags=kwargs.get("tags"),
+                tags=tags,
             )
         else:
-            super(JumpStartModel, self)._create_sagemaker_model(*args, **kwargs)
+            super(JumpStartModel, self)._create_sagemaker_model(
+                instance_type=instance_type,
+                accelerator_type=accelerator_type,
+                tags=tags,
+                serverless_inference_config=serverless_inference_config,
+                **kwargs,
+            )
 
     def deploy(
         self,
