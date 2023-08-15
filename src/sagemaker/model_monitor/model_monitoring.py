@@ -63,6 +63,7 @@ from sagemaker.utils import (
     resolve_value_from_config,
     resolve_class_attribute_from_config,
 )
+from sagemaker.lineage._utils import get_resource_name_from_arn
 
 DEFAULT_REPOSITORY_NAME = "sagemaker-model-monitor-analyzer"
 
@@ -767,6 +768,29 @@ class ModelMonitor(object):
         monitoring_executions.reverse()
 
         return monitoring_executions
+
+    def get_latest_execution_logs(self, wait=False):
+        """Get the processing job logs for the most recent monitoring execution
+
+        Args:
+            wait (bool): Whether the call should wait until the job completes (default: False).
+
+        Raises:
+            ValueError: If no execution job or processing job for the last execution has run
+
+        Returns: None
+        """
+        monitoring_executions = self.sagemaker_session.list_monitoring_executions(
+            monitoring_schedule_name=self.monitoring_schedule_name
+        )
+        if len(monitoring_executions["MonitoringExecutionSummaries"]) == 0:
+            raise ValueError("No execution jobs were kicked off.")
+        if "ProcessingJobArn" not in monitoring_executions["MonitoringExecutionSummaries"][0]:
+            raise ValueError("Processing Job did not run for the last execution")
+        job_arn = monitoring_executions["MonitoringExecutionSummaries"][0]["ProcessingJobArn"]
+        self.sagemaker_session.logs_for_processing_job(
+            job_name=get_resource_name_from_arn(job_arn), wait=wait
+        )
 
     def update_monitoring_alert(
         self,
