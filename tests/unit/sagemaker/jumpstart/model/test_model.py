@@ -608,7 +608,7 @@ class ModelTest(unittest.TestCase):
             },
         )
 
-        self.assertIn(tag, mock_session.return_value.create_model.call_args[1]["tags"])
+        self.assertIn(tag, mock_session.create_model.call_args[1]["tags"])
 
     @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
