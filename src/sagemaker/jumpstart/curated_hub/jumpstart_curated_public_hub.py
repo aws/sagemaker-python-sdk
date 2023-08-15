@@ -119,7 +119,7 @@ class JumpStartCuratedPublicHub:
             s3_config_formatted = s3_config.replace("s3://", "", 1).split("/")
             curated_hub_s3_bucket_name = s3_config_formatted[0]
 
-            curated_hub_s3_key_prefix = s3_config_formatted[1:] if s3_config_formatted[1] else None
+            curated_hub_s3_key_prefix = s3_config_formatted[1:] if len(s3_config_formatted) > 1 else None
 
             print(
                 f"Hub found on account in region {self._region} with name"
