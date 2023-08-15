@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.177.1 (2023-08-14)
+
+### Bug Fixes and Other Changes
+
+ * chore: excessive jumpstart bucket logging
+
 ## v2.177.0 (2023-08-11)
 
 ### Features
