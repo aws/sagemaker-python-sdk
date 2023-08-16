@@ -19,6 +19,8 @@ from typing import List, Optional
 
 from sagemaker.jumpstart import utils as jumpstart_utils
 from sagemaker.jumpstart import artifacts
+from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+from sagemaker.session import Session
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +32,7 @@ def retrieve_default(
     scope: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> str:
     """Retrieves the default instance type for the model matching the given arguments.
 
@@ -49,6 +52,10 @@ def retrieve_default(
         tolerate_deprecated_model (bool): True if deprecated models should be tolerated
             (exception not raised). False if these models should raise an exception.
             (Default: False).
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions. If not
+            specified, one is created using the default AWS configuration
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     Returns:
         str: The default instance type to use for the model.
 
@@ -70,6 +77,7 @@ def retrieve_default(
         region,
         tolerate_vulnerable_model,
         tolerate_deprecated_model,
+        sagemaker_session=sagemaker_session,
     )
 
 
@@ -80,6 +88,7 @@ def retrieve(
     scope: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> List[str]:
     """Retrieves the supported training instance types for the model matching the given arguments.
 
@@ -97,6 +106,10 @@ def retrieve(
         tolerate_deprecated_model (bool): True if deprecated models should be tolerated
             (exception not raised). False if these models should raise an exception.
             (Default: False).
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions. If not
+            specified, one is created using the default AWS configuration
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     Returns:
         list: The supported instance types to use for the model.
 
@@ -118,4 +131,5 @@ def retrieve(
         region,
         tolerate_vulnerable_model,
         tolerate_deprecated_model,
+        sagemaker_session=sagemaker_session,
     )

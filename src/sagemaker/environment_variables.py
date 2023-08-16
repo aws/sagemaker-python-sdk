@@ -19,6 +19,8 @@ from typing import Dict, Optional
 
 from sagemaker.jumpstart import utils as jumpstart_utils
 from sagemaker.jumpstart import artifacts
+from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+from sagemaker.session import Session
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +32,7 @@ def retrieve_default(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     include_aws_sdk_env_vars: bool = True,
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> Dict[str, str]:
     """Retrieves the default container environment variables for the model matching the arguments.
 
@@ -51,6 +54,10 @@ def retrieve_default(
             should be included. The `Model` class of the SageMaker Python SDK inserts environment
             variables that would be required when making the low-level AWS API call.
             (Default: True).
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions. If not
+            specified, one is created using the default AWS configuration
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     Returns:
         dict: The variables to use for the model.
 
@@ -70,4 +77,5 @@ def retrieve_default(
         tolerate_vulnerable_model,
         tolerate_deprecated_model,
         include_aws_sdk_env_vars,
+        sagemaker_session=sagemaker_session,
     )

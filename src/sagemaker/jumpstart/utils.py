@@ -100,6 +100,7 @@ def get_jumpstart_content_bucket(
     accessors.JumpStartModelsAccessor.set_jumpstart_content_bucket(bucket_to_return)
 
     if bucket_to_return != old_content_bucket:
+        accessors.JumpStartModelsAccessor.reset_cache()
         for info_log in info_logs:
             constants.JUMPSTART_LOGGER.info(info_log)
     return bucket_to_return
@@ -397,6 +398,7 @@ def verify_model_region_and_return_specs(
     region: str,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
+    sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> JumpStartModelSpecs:
     """Verifies that an acceptable model_id, version, scope, and region combination is provided.
 
@@ -415,7 +417,10 @@ def verify_model_region_and_return_specs(
         tolerate_deprecated_model (bool): True if deprecated models should be tolerated
             (exception not raised). False if these models should raise an exception.
             (Default: False).
-
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions. If not
+            specified, one is created using the default AWS configuration
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
 
     Raises:
         NotImplementedError: If the scope is not supported.
@@ -437,8 +442,11 @@ def verify_model_region_and_return_specs(
             f"{', '.join(constants.SUPPORTED_JUMPSTART_SCOPES)}."
         )
 
-    model_specs = accessors.JumpStartModelsAccessor.get_model_specs(
-        region=region, model_id=model_id, version=version  # type: ignore
+    model_specs = accessors.JumpStartModelsAccessor.get_model_specs(  # type: ignore
+        region=region,
+        model_id=model_id,
+        version=version,
+        s3_client=sagemaker_session.s3_client,
     )
 
     if (
@@ -591,6 +599,7 @@ def is_valid_model_id(
     region: Optional[str] = None,
     model_version: Optional[str] = None,
     script: enums.JumpStartScriptScope = enums.JumpStartScriptScope.INFERENCE,
+    sagemaker_session: Optional[Session] = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> bool:
     """Returns True if the model ID is supported for the given script.
 
@@ -602,10 +611,13 @@ def is_valid_model_id(
     if not isinstance(model_id, str):
         return False
 
+    s3_client = sagemaker_session.s3_client if sagemaker_session else None
     region = region or constants.JUMPSTART_DEFAULT_REGION_NAME
     model_version = model_version or "*"
 
-    models_manifest_list = accessors.JumpStartModelsAccessor._get_manifest(region=region)
+    models_manifest_list = accessors.JumpStartModelsAccessor._get_manifest(
+        region=region, s3_client=s3_client
+    )
     model_id_set = {model.model_id for model in models_manifest_list}
     if script == enums.JumpStartScriptScope.INFERENCE:
         return model_id in model_id_set
@@ -616,6 +628,7 @@ def is_valid_model_id(
                 region=region,
                 model_id=model_id,
                 version=model_version,
+                s3_client=s3_client,
             ).training_supported
         )
     raise ValueError(f"Unsupported script: {script}")
