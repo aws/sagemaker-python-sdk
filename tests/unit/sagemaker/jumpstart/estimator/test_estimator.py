@@ -353,6 +353,49 @@ class EstimatorTest(unittest.TestCase):
             use_compiled_model=False,
         )
 
+    @mock.patch("sagemaker.utils.sagemaker_timestamp")
+    @mock.patch("sagemaker.jumpstart.estimator.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.fit")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.deploy")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_jumpstart_model_package_artifact_s3_uri_unsupported_region(
+        self,
+        mock_estimator_deploy: mock.Mock,
+        mock_estimator_fit: mock.Mock,
+        mock_estimator_init: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session_estimator: mock.Mock,
+        mock_session_model: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
+        mock_timestamp: mock.Mock,
+    ):
+        mock_estimator_deploy.return_value = default_predictor
+
+        mock_timestamp.return_value = "8675309"
+
+        mock_is_valid_model_id.return_value = True
+
+        model_id, _ = "js-gated-artifact-trainable-model", "*"
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        mock_session_estimator.return_value = sagemaker_session
+        mock_session_model.return_value = sagemaker_session
+
+        with pytest.raises(ValueError) as e:
+            JumpStartEstimator(model_id=model_id, region="eu-north-1")
+
+        assert (
+            str(e.value) == "Model package artifact s3 uri for 'js-gated-artifact-trainable-model' "
+            "not supported in eu-north-1. Please try one of the following regions: "
+            "us-west-2, us-east-1, eu-west-1, ap-southeast-1."
+        )
+
     @mock.patch("sagemaker.jumpstart.estimator.is_valid_model_id")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")

@@ -80,6 +80,13 @@ def _retrieve_model_package_arn(
 
         regional_arn = model_specs.hosting_model_package_arns.get(region)
 
+        if regional_arn is None:
+            raise ValueError(
+                f"Model package arn for '{model_id}' not supported in {region}. "
+                "Please try one of the following regions: "
+                f"{', '.join(model_specs.hosting_model_package_arns.keys())}."
+            )
+
         return regional_arn
 
     raise NotImplementedError(f"Model Package ARN not supported for scope: '{scope}'")
@@ -142,6 +149,13 @@ def _retrieve_model_package_model_artifact_s3_uri(
             return None
 
         model_s3_uri = model_specs.training_model_package_artifact_uris.get(region)
+
+        if model_s3_uri is None:
+            raise ValueError(
+                f"Model package artifact s3 uri for '{model_id}' not supported in {region}. "
+                "Please try one of the following regions: "
+                f"{', '.join(model_specs.training_model_package_artifact_uris.keys())}."
+            )
 
         return model_s3_uri
 

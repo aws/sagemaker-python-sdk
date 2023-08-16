@@ -652,6 +652,32 @@ class ModelTest(unittest.TestCase):
             },
         )
 
+    @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_jumpstart_model_package_arn_unsupported_region(
+        self,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
+    ):
+
+        mock_is_valid_model_id.return_value = True
+
+        model_id, _ = "js-model-package-arn", "*"
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        mock_session.return_value = MagicMock(sagemaker_config={})
+
+        with pytest.raises(ValueError) as e:
+            JumpStartModel(model_id=model_id, region="us-east-2")
+        assert (
+            str(e.value) == "Model package arn for 'js-model-package-arn' not supported in "
+            "us-east-2. Please try one of the following regions: us-west-2, us-east-1."
+        )
+
 
 def test_jumpstart_model_requires_model_id():
     with pytest.raises(ValueError):
