@@ -1,5 +1,21 @@
 # Changelog
 
+## v2.178.0 (2023-08-17)
+
+### Features
+
+ * Support to get latest monitoring execution processing logs
+
+### Bug Fixes and Other Changes
+
+ * Add context to predict_fn example
+ * gated models unsupported region
+ * jumpstart cache using sagemaker session s3 client
+ * add TFS 2.13 Graviton SM images
+ * pipeline variable kms key
+ * integration test for gated jumpstart training model
+ * tags for jumpstart model package models
+
 ## v2.177.1 (2023-08-14)
 
 ### Bug Fixes and Other Changes
