@@ -22,11 +22,12 @@ from sagemaker.base_serializers import BaseSerializer
 from sagemaker.debugger.debugger import DebuggerHookConfig, RuleBase, TensorBoardOutputConfig
 from sagemaker.debugger.profiler_config import ProfilerConfig
 
-from sagemaker.estimator import Estimator
+from sagemaker.estimator import _TrainingJob, Estimator
 from sagemaker.explainer.explainer_config import ExplainerConfig
 from sagemaker.inputs import FileSystemInput, TrainingInput
 from sagemaker.instance_group import InstanceGroup
 from sagemaker.jumpstart.accessors import JumpStartModelsAccessor
+from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.exceptions import INVALID_MODEL_ID_ERROR_MSG
 
@@ -654,6 +655,73 @@ class JumpStartEstimator(Estimator):
         )
 
         return super(JumpStartEstimator, self).fit(**estimator_fit_kwargs.to_kwargs_dict())
+
+    @classmethod
+    def attach(
+        cls,
+        training_job_name: str,
+        model_id: str,
+        model_version: str = "*",
+        sagemaker_session=None,
+        model_channel_name="model",
+    ):
+        """Attach to an existing training job.
+
+        Create an Estimator bound to an existing training job.
+        After attaching, if the training job has a Complete status,
+        it can be ``deploy()`` ed to create a SageMaker Endpoint and return
+        a ``Predictor``.
+
+        If the training job is in progress, attach will block until the training job
+        completes, but logs of the training job will not display. To see the logs
+        content, please call ``logs()``
+
+        Examples:
+            >>> my_estimator.fit(wait=False)
+            >>> training_job_name = my_estimator.latest_training_job.name
+            Later on:
+            >>> attached_estimator = JumpStartEstimator.attach(training_job_name, model_id)
+            >>> attached_estimator.logs()
+            >>> attached_estimator.deploy()
+
+        Args:
+            training_job_name (str): The name of the training job to attach to.
+            model_id (str): The name of the JumpStart model id associated with the
+                training job.
+            model_version (str): Optional. The version of the JumpStart model id
+                associated with the training job. (Default: "*").
+            sagemaker_session (sagemaker.session.Session): Optional. Session object which
+                manages interactions with Amazon SageMaker APIs and any other
+                AWS services needed. If not specified, the estimator creates one
+                using the default AWS configuration chain.
+            model_channel_name (str): Optional. Name of the channel where pre-trained
+                model data will be downloaded (default: 'model'). If no channel
+                with the same name exists in the training job, this option will
+                be ignored.
+
+        Returns:
+            Instance of the calling ``Estimator`` Class with the attached
+            training job.
+        """
+        sagemaker_session = sagemaker_session or DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+
+        job_details = sagemaker_session.sagemaker_client.describe_training_job(
+            TrainingJobName=training_job_name
+        )
+        init_params = cls._prepare_init_params_from_job_description(job_details, model_channel_name)
+        tags = sagemaker_session.sagemaker_client.list_tags(
+            ResourceArn=job_details["TrainingJobArn"]
+        )["Tags"]
+        init_params.update(tags=tags)
+        init_params.update(model_id=model_id, model_version=model_version)
+
+        estimator = cls(sagemaker_session=sagemaker_session, **init_params)
+        estimator.latest_training_job = _TrainingJob(
+            sagemaker_session=sagemaker_session, job_name=training_job_name
+        )
+        estimator._current_job_name = estimator.latest_training_job.name
+        estimator.latest_training_job.wait(logs="None")
+        return estimator
 
     def deploy(
         self,
