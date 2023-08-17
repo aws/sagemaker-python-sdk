@@ -69,6 +69,7 @@ from tests.unit.sagemaker.workflow.helpers import CustomStep, ordered, get_step_
 from tests.unit import DATA_DIR
 from tests.unit.sagemaker.workflow.conftest import ROLE, BUCKET, IMAGE_URI, INSTANCE_TYPE
 
+HF_INSTANCE_TYPE = "ml.p3.2xlarge"
 DUMMY_S3_SCRIPT_PATH = "s3://dummy-s3/dummy_script.py"
 LOCAL_SCRIPT_PATH = os.path.join(DATA_DIR, "workflow/abalone/preprocessing.py")
 SPARK_APP_JAR_PATH = os.path.join(
@@ -142,7 +143,7 @@ FRAMEWORK_PROCESSOR = [
             pytorch_version="1.7",
             role=ROLE,
             instance_count=1,
-            instance_type="ml.p3.2xlarge",
+            instance_type=HF_INSTANCE_TYPE,
         ),
         {"code": DUMMY_S3_SCRIPT_PATH},
     ),
@@ -446,8 +447,15 @@ def test_processing_step_with_framework_processor(
 ):
 
     processor, run_inputs = framework_processor
+    default_instance_type = (
+        HF_INSTANCE_TYPE if type(processor) is HuggingFaceProcessor else INSTANCE_TYPE
+    )
+    instance_type_param = ParameterString(
+        name="ProcessingInstanceType", default_value=default_instance_type
+    )
     processor.sagemaker_session = pipeline_session
     processor.role = ROLE
+    processor.instance_type = instance_type_param
 
     processor.volume_kms_key = "volume-kms-key"
     processor.network_config = network_config
@@ -465,6 +473,7 @@ def test_processing_step_with_framework_processor(
         name="MyPipeline",
         steps=[step],
         sagemaker_session=pipeline_session,
+        parameters=[instance_type_param],
     )
 
     step_args = get_step_args_helper(step_args, "Processing")
@@ -475,6 +484,12 @@ def test_processing_step_with_framework_processor(
         step_args["ProcessingOutputConfig"]["Outputs"][0]["S3Output"]["S3Uri"]
         == processing_output.destination
     )
+    assert (
+        type(step_args["ProcessingResources"]["ClusterConfig"]["InstanceType"]) is ParameterString
+    )
+    step_args["ProcessingResources"]["ClusterConfig"]["InstanceType"] = step_args[
+        "ProcessingResources"
+    ]["ClusterConfig"]["InstanceType"].expr
 
     del step_args["ProcessingInputs"][0]["S3Input"]["S3Uri"]
     del step_def["Arguments"]["ProcessingInputs"][0]["S3Input"]["S3Uri"]
