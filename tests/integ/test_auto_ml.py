@@ -22,6 +22,7 @@ from sagemaker import AutoML, AutoMLInput, CandidateEstimator
 from sagemaker.utils import unique_name_from_base
 from tests.integ import AUTO_ML_DEFAULT_TIMEMOUT_MINUTES, DATA_DIR, auto_ml_utils
 from tests.integ.timeout import timeout
+from tests.conftest import CUSTOM_S3_OBJECT_KEY_PREFIX
 
 ROLE = "SageMakerRole"
 PREFIX = "sagemaker/beta-automl-xgboost"
@@ -198,8 +199,8 @@ def test_auto_ml_describe_auto_ml_job(sagemaker_session):
             "DataSource": {
                 "S3DataSource": {
                     "S3DataType": "S3Prefix",
-                    "S3Uri": "s3://{}/{}/input/iris_training.csv".format(
-                        sagemaker_session.default_bucket(), PREFIX
+                    "S3Uri": "s3://{}/{}/{}/input/iris_training.csv".format(
+                        sagemaker_session.default_bucket(), CUSTOM_S3_OBJECT_KEY_PREFIX, PREFIX
                     ),
                 }
             },
@@ -209,7 +210,9 @@ def test_auto_ml_describe_auto_ml_job(sagemaker_session):
         }
     ]
     expected_default_output_config = {
-        "S3OutputPath": "s3://{}/".format(sagemaker_session.default_bucket())
+        "S3OutputPath": "s3://{}/{}/".format(
+            sagemaker_session.default_bucket(), CUSTOM_S3_OBJECT_KEY_PREFIX
+        )
     }
 
     auto_ml_utils.create_auto_ml_job_if_not_exist(sagemaker_session)
@@ -236,8 +239,8 @@ def test_auto_ml_attach(sagemaker_session):
             "DataSource": {
                 "S3DataSource": {
                     "S3DataType": "S3Prefix",
-                    "S3Uri": "s3://{}/{}/input/iris_training.csv".format(
-                        sagemaker_session.default_bucket(), PREFIX
+                    "S3Uri": "s3://{}/{}/{}/input/iris_training.csv".format(
+                        sagemaker_session.default_bucket(), CUSTOM_S3_OBJECT_KEY_PREFIX, PREFIX
                     ),
                 }
             },
@@ -247,7 +250,9 @@ def test_auto_ml_attach(sagemaker_session):
         }
     ]
     expected_default_output_config = {
-        "S3OutputPath": "s3://{}/".format(sagemaker_session.default_bucket())
+        "S3OutputPath": "s3://{}/{}/".format(
+            sagemaker_session.default_bucket(), CUSTOM_S3_OBJECT_KEY_PREFIX
+        )
     }
 
     auto_ml_utils.create_auto_ml_job_if_not_exist(sagemaker_session)
