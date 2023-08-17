@@ -355,6 +355,10 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
             image_uri_alias = self.variants[instance_type]["properties"].get("image_uri")
         else:
             instance_type_family = get_instance_type_family(instance_type)
+
+            if instance_type_family in {"", None}:
+                return None
+
             image_uri_alias = (
                 self.variants[instance_type_family]["properties"].get("image_uri")
                 if instance_type_family in self.variants

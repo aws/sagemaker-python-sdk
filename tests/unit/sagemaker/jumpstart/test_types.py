@@ -177,6 +177,7 @@ def test_jumpstart_instance_variants():
                 "g4dn": {"properties": {"image_uri": "$gpu_image_uri"}},
                 "m2": {"properties": {"image_uri": "$cpu_image_uri"}},
                 "c2": {"properties": {"image_uri": "$cpu_image_uri"}},
+                "local": {"properties": {"image_uri": "$cpu_image_uri"}},
                 "ml.g5.48xlarge": {
                     "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "8"}}
                 },
@@ -207,6 +208,13 @@ def test_jumpstart_instance_variants():
         variant.get_image_uri(instance_type="ml.c2.xlarge", region="us-west-2")
         == "867930986793.dkr.us-west-2.amazonaws.com/cpu-blah"
     )
+
+    assert (
+        variant.get_image_uri(instance_type="local", region="us-west-2")
+        == "867930986793.dkr.us-west-2.amazonaws.com/cpu-blah"
+    )
+
+    assert variant.get_image_uri(instance_type="local_gpu", region="us-west-2") is None
 
     assert variant.get_image_uri(instance_type="ml.g5.12xlarge", region="us-west-2") is None
 
