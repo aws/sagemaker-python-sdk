@@ -1435,6 +1435,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             model_channel_name=model_channel_name,
         )
 
+    @classmethod
     def _attach(
         cls,
         training_job_name: str,
@@ -1442,6 +1443,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         model_channel_name: str = "model",
         additional_kwargs: Optional[Dict[str, Any]] = None,
     ) -> "EstimatorBase":
+        """Creates an Estimator bound to an existing training job.
+
+        Additional kwargs are allowed for instantiating Estimator.
+        """
         sagemaker_session = sagemaker_session or Session()
 
         job_details = sagemaker_session.sagemaker_client.describe_training_job(
