@@ -64,6 +64,14 @@ def test_jumpstart_estimator(setup):
         }
     )
 
+    # test that we can create a JumpStartEstimator from existing job with `attach`
+    estimator = JumpStartEstimator.attach(
+        training_job_name=estimator.latest_training_job.name,
+        model_id=model_id,
+        model_version=model_version,
+        sagemaker_session=get_sm_session(),
+    )
+
     # uses ml.p3.2xlarge instance
     predictor = estimator.deploy(
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
