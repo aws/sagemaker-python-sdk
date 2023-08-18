@@ -1,5 +1,78 @@
 # Changelog
 
+## v2.178.0 (2023-08-17)
+
+### Features
+
+ * Support to get latest monitoring execution processing logs
+
+### Bug Fixes and Other Changes
+
+ * Add context to predict_fn example
+ * gated models unsupported region
+ * jumpstart cache using sagemaker session s3 client
+ * add TFS 2.13 Graviton SM images
+ * pipeline variable kms key
+ * integration test for gated jumpstart training model
+ * tags for jumpstart model package models
+
+## v2.177.1 (2023-08-14)
+
+### Bug Fixes and Other Changes
+
+ * chore: excessive jumpstart bucket logging
+
+## v2.177.0 (2023-08-11)
+
+### Features
+
+ * Add TLV accounts for 1P Algorithms
+
+## v2.176.0 (2023-08-10)
+
+### Features
+
+ * Add TF 2.13 Training and Inference SM images
+
+### Bug Fixes and Other Changes
+
+ * revert-PR_3903
+ * skip tensorflow local mode notebook test
+ * change instance type for huggingface test to ml.g5.8xlarge
+
+## v2.175.0 (2023-08-05)
+
+### Features
+
+ * Add huggingface-llm 0.9.3 dlc images
+
+### Bug Fixes and Other Changes
+
+ * Upgrade default version for djl to v0.23.0
+ * Pass kms_key to _upload_analysis_config when provided
+
+## v2.174.0 (2023-08-02)
+
+### Features
+
+ * meta llama fine tuning
+ * support online store ttl for records
+ * Deploy uncompressed ML model from S3 to SageMaker Hosting endpoints
+ * AutoGluon 0.8.2 image_uris update
+
+### Bug Fixes and Other Changes
+
+ * [Feature] Propagate tags to lineage resources
+ * excessive jumpstart logging
+ * chore: jumpstart deprecation messages
+ * build(deps): bump pygments from 2.11.2 to 2.15.0 in /requirements/tox
+ * Remove deleted notebook tests from test confg
+ * chore: add jumpstart llama 2 tests
+
+### Documentation Changes
+
+ * add smp class for supporting flash attn
+
 ## v2.173.0 (2023-07-15)
 
 ### Features

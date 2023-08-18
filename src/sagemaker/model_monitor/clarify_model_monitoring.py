@@ -27,6 +27,7 @@ from sagemaker import image_uris, s3
 from sagemaker.session import Session
 from sagemaker.utils import name_from_base
 from sagemaker.clarify import SageMakerClarifyProcessor, ModelPredictedLabelConfig
+from sagemaker.lineage._utils import get_resource_name_from_arn
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -154,6 +155,29 @@ class ClarifyModelMonitor(mm.ModelMonitor):
             for execution in executions
         ]
 
+    def get_latest_execution_logs(self, wait=False):
+        """Get the processing job logs for the most recent monitoring execution
+
+        Args:
+            wait (bool): Whether the call should wait until the job completes (default: False).
+
+        Raises:
+            ValueError: If no execution job or processing job for the last execution has run
+
+        Returns: None
+        """
+        monitoring_executions = self.sagemaker_session.list_monitoring_executions(
+            monitoring_schedule_name=self.monitoring_schedule_name
+        )
+        if len(monitoring_executions["MonitoringExecutionSummaries"]) == 0:
+            raise ValueError("No execution jobs were kicked off.")
+        if "ProcessingJobArn" not in monitoring_executions["MonitoringExecutionSummaries"][0]:
+            raise ValueError("Processing Job did not run for the last execution")
+        job_arn = monitoring_executions["MonitoringExecutionSummaries"][0]["ProcessingJobArn"]
+        self.sagemaker_session.logs_for_processing_job(
+            job_name=get_resource_name_from_arn(job_arn), wait=wait
+        )
+
     def _create_baselining_processor(self):
         """Create and return a SageMakerClarifyProcessor object which will run the baselining job.
 
@@ -178,7 +202,7 @@ class ClarifyModelMonitor(mm.ModelMonitor):
         baselining_processor.base_job_name = self.base_job_name
         return baselining_processor
 
-    def _upload_analysis_config(self, analysis_config, output_s3_uri, job_definition_name):
+    def _upload_analysis_config(self, analysis_config, output_s3_uri, job_definition_name, kms_key):
         """Upload analysis config to s3://<output path>/<job name>/analysis_config.json
 
         Args:
@@ -187,6 +211,8 @@ class ClarifyModelMonitor(mm.ModelMonitor):
                 Default: "s3://<default_session_bucket>/<job_name>/output"
             job_definition_name (str): Job definition name.
                 If not specified then a default one will be generated.
+            kms_key( str): The ARN of the KMS key that is used to encrypt the
+            user code file (default: None).
 
         Returns:
             str: The S3 uri of the uploaded file(s).
@@ -202,6 +228,7 @@ class ClarifyModelMonitor(mm.ModelMonitor):
             json.dumps(analysis_config),
             desired_s3_uri=s3_uri,
             sagemaker_session=self.sagemaker_session,
+            kms_key=kms_key,
         )
 
     def _build_create_job_definition_request(
@@ -323,7 +350,7 @@ class ClarifyModelMonitor(mm.ModelMonitor):
             analysis_config_uri = analysis_config
         else:
             analysis_config_uri = self._upload_analysis_config(
-                analysis_config._to_dict(), output_s3_uri, job_definition_name
+                analysis_config._to_dict(), output_s3_uri, job_definition_name, output_kms_key
             )
         app_specification["ConfigUri"] = analysis_config_uri
         app_specification["ImageUri"] = image_uri

@@ -15,6 +15,7 @@ from __future__ import absolute_import
 from copy import deepcopy
 from typing import Dict, List, Optional
 from sagemaker.jumpstart.constants import (
+    DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     JUMPSTART_DEFAULT_REGION_NAME,
 )
 from sagemaker.jumpstart.enums import (
@@ -23,6 +24,7 @@ from sagemaker.jumpstart.enums import (
 from sagemaker.jumpstart.utils import (
     verify_model_region_and_return_specs,
 )
+from sagemaker.session import Session
 
 
 def _retrieve_default_training_metric_definitions(
@@ -31,6 +33,7 @@ def _retrieve_default_training_metric_definitions(
     region: Optional[str],
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> Optional[List[Dict[str, str]]]:
     """Retrieves the default training metric definitions for the model.
 
@@ -48,7 +51,10 @@ def _retrieve_default_training_metric_definitions(
         tolerate_deprecated_model (bool): True if deprecated versions of model
             specifications should be tolerated (exception not raised). If False, raises
             an exception if the version of the model is deprecated. (Default: False).
-
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions. If not
+            specified, one is created using the default AWS configuration
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     Returns:
         list: the default training metric definitions to use for the model or None.
     """
@@ -63,6 +69,7 @@ def _retrieve_default_training_metric_definitions(
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
+        sagemaker_session=sagemaker_session,
     )
 
     return deepcopy(model_specs.metrics) if model_specs.metrics else None

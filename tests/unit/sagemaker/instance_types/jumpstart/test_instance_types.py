@@ -11,8 +11,9 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
+from unittest.mock import Mock
 
-
+import boto3
 from mock.mock import patch
 import pytest
 
@@ -29,30 +30,51 @@ def test_jumpstart_instance_types(patched_get_model_specs):
     model_id, model_version = "huggingface-eqa-bert-base-cased", "*"
     region = "us-west-2"
 
+    mock_client = boto3.client("s3")
+    mock_session = Mock(s3_client=mock_client)
+
     default_training_instance_types = instance_types.retrieve_default(
-        region=region, model_id=model_id, model_version=model_version, scope="training"
+        region=region,
+        model_id=model_id,
+        model_version=model_version,
+        scope="training",
+        sagemaker_session=mock_session,
     )
     assert default_training_instance_types == "ml.p3.2xlarge"
 
     patched_get_model_specs.assert_called_once_with(
-        region=region, model_id=model_id, version=model_version
+        region=region,
+        model_id=model_id,
+        version=model_version,
+        s3_client=mock_client,
     )
 
     patched_get_model_specs.reset_mock()
 
     default_inference_instance_types = instance_types.retrieve_default(
-        region=region, model_id=model_id, model_version=model_version, scope="inference"
+        region=region,
+        model_id=model_id,
+        model_version=model_version,
+        scope="inference",
+        sagemaker_session=mock_session,
     )
     assert default_inference_instance_types == "ml.p2.xlarge"
 
     patched_get_model_specs.assert_called_once_with(
-        region=region, model_id=model_id, version=model_version
+        region=region,
+        model_id=model_id,
+        version=model_version,
+        s3_client=mock_client,
     )
 
     patched_get_model_specs.reset_mock()
 
     default_training_instance_types = instance_types.retrieve(
-        region=region, model_id=model_id, model_version=model_version, scope="training"
+        region=region,
+        model_id=model_id,
+        model_version=model_version,
+        scope="training",
+        sagemaker_session=mock_session,
     )
     assert default_training_instance_types == [
         "ml.p3.2xlarge",
@@ -63,13 +85,20 @@ def test_jumpstart_instance_types(patched_get_model_specs):
     ]
 
     patched_get_model_specs.assert_called_once_with(
-        region=region, model_id=model_id, version=model_version
+        region=region,
+        model_id=model_id,
+        version=model_version,
+        s3_client=mock_client,
     )
 
     patched_get_model_specs.reset_mock()
 
     default_inference_instance_types = instance_types.retrieve(
-        region=region, model_id=model_id, model_version=model_version, scope="inference"
+        region=region,
+        model_id=model_id,
+        model_version=model_version,
+        scope="inference",
+        sagemaker_session=mock_session,
     )
     assert default_inference_instance_types == [
         "ml.p2.xlarge",
@@ -82,7 +111,7 @@ def test_jumpstart_instance_types(patched_get_model_specs):
     ]
 
     patched_get_model_specs.assert_called_once_with(
-        region=region, model_id=model_id, version=model_version
+        region=region, model_id=model_id, version=model_version, s3_client=mock_client
     )
 
     patched_get_model_specs.reset_mock()

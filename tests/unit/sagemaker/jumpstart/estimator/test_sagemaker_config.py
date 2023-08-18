@@ -22,6 +22,7 @@ from sagemaker.config.config_schema import (
     TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
     TRAINING_JOB_ROLE_ARN_PATH,
 )
+from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 
 from sagemaker.jumpstart.estimator import JumpStartEstimator
 from sagemaker.session import Session
@@ -32,7 +33,7 @@ from tests.unit.sagemaker.jumpstart.utils import get_special_model_spec
 
 execution_role = "fake role! do not use!"
 region = "us-west-2"
-sagemaker_session = Session()
+sagemaker_session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 sagemaker_session.get_caller_identity_arn = lambda: execution_role
 default_predictor = Predictor("eiifccreeeiujigjjdfgiujrcibigckbtregvkjeurru", sagemaker_session)
 

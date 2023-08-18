@@ -99,7 +99,6 @@ from sagemaker.utils import (
 )
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
-from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.pipeline_context import PipelineSession, runnable_by_pipeline
 
 logger = logging.getLogger(__name__)
@@ -614,16 +613,21 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.output_kms_key = resolve_value_from_config(
             output_kms_key, TRAINING_JOB_KMS_KEY_ID_PATH, sagemaker_session=self.sagemaker_session
         )
+        use_volume_kms_config: bool = False
         if instance_type is None or isinstance(instance_type, str):
             instance_type_for_volume_kms = instance_type
-        elif isinstance(instance_type, ParameterString):
-            instance_type_for_volume_kms = instance_type.default_value
+        elif isinstance(instance_type, PipelineVariable):
+            use_volume_kms_config = True
+            instance_type_for_volume_kms = instance_type
         else:
             raise ValueError(f"Bad value for instance type: '{instance_type}'")
 
         # KMS can only be attached to supported instances
         use_volume_kms_config = (
-            (instance_type_for_volume_kms and instance_supports_kms(instance_type_for_volume_kms))
+            use_volume_kms_config
+            or (
+                instance_type_for_volume_kms and instance_supports_kms(instance_type_for_volume_kms)
+            )
             or instance_groups is not None
             and any(
                 [
@@ -1425,6 +1429,24 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             Instance of the calling ``Estimator`` Class with the attached
             training job.
         """
+        return cls._attach(
+            training_job_name=training_job_name,
+            sagemaker_session=sagemaker_session,
+            model_channel_name=model_channel_name,
+        )
+
+    @classmethod
+    def _attach(
+        cls,
+        training_job_name: str,
+        sagemaker_session: Optional[str] = None,
+        model_channel_name: str = "model",
+        additional_kwargs: Optional[Dict[str, Any]] = None,
+    ) -> "EstimatorBase":
+        """Creates an Estimator bound to an existing training job.
+
+        Additional kwargs are allowed for instantiating Estimator.
+        """
         sagemaker_session = sagemaker_session or Session()
 
         job_details = sagemaker_session.sagemaker_client.describe_training_job(
@@ -1435,6 +1457,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             ResourceArn=job_details["TrainingJobArn"]
         )["Tags"]
         init_params.update(tags=tags)
+
+        if additional_kwargs:
+            init_params.update(additional_kwargs)
 
         estimator = cls(sagemaker_session=sagemaker_session, **init_params)
         estimator.latest_training_job = _TrainingJob(

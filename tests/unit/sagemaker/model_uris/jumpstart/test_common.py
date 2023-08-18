@@ -11,7 +11,9 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
+from unittest.mock import Mock
 
+import boto3
 from mock.mock import patch
 import pytest
 
@@ -31,15 +33,20 @@ def test_jumpstart_common_model_uri(
     patched_verify_model_region_and_return_specs.side_effect = verify_model_region_and_return_specs
     patched_get_model_specs.side_effect = get_spec_from_base_spec
 
+    mock_client = boto3.client("s3")
+    mock_session = Mock(s3_client=mock_client)
+
     model_uris.retrieve(
         model_scope="training",
         model_id="pytorch-ic-mobilenet-v2",
         model_version="*",
+        sagemaker_session=mock_session,
     )
     patched_get_model_specs.assert_called_once_with(
         region=sagemaker_constants.JUMPSTART_DEFAULT_REGION_NAME,
         model_id="pytorch-ic-mobilenet-v2",
         version="*",
+        s3_client=mock_client,
     )
     patched_verify_model_region_and_return_specs.assert_called_once()
 
@@ -50,11 +57,13 @@ def test_jumpstart_common_model_uri(
         model_scope="inference",
         model_id="pytorch-ic-mobilenet-v2",
         model_version="1.*",
+        sagemaker_session=mock_session,
     )
     patched_get_model_specs.assert_called_once_with(
         region=sagemaker_constants.JUMPSTART_DEFAULT_REGION_NAME,
         model_id="pytorch-ic-mobilenet-v2",
         version="1.*",
+        s3_client=mock_client,
     )
     patched_verify_model_region_and_return_specs.assert_called_once()
 
@@ -66,9 +75,13 @@ def test_jumpstart_common_model_uri(
         model_scope="training",
         model_id="pytorch-ic-mobilenet-v2",
         model_version="*",
+        sagemaker_session=mock_session,
     )
     patched_get_model_specs.assert_called_once_with(
-        region="us-west-2", model_id="pytorch-ic-mobilenet-v2", version="*"
+        region="us-west-2",
+        model_id="pytorch-ic-mobilenet-v2",
+        version="*",
+        s3_client=mock_client,
     )
     patched_verify_model_region_and_return_specs.assert_called_once()
 
@@ -80,9 +93,13 @@ def test_jumpstart_common_model_uri(
         model_scope="inference",
         model_id="pytorch-ic-mobilenet-v2",
         model_version="1.*",
+        sagemaker_session=mock_session,
     )
     patched_get_model_specs.assert_called_once_with(
-        region="us-west-2", model_id="pytorch-ic-mobilenet-v2", version="1.*"
+        region="us-west-2",
+        model_id="pytorch-ic-mobilenet-v2",
+        version="1.*",
+        s3_client=mock_client,
     )
     patched_verify_model_region_and_return_specs.assert_called_once()
 

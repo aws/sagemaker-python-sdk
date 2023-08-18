@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
+import functools
 import json
 
 import uuid
@@ -19,6 +20,7 @@ import boto3
 import pandas as pd
 import os
 from botocore.config import Config
+import pytest
 
 
 from tests.integ.sagemaker.jumpstart.constants import (
@@ -48,6 +50,19 @@ def get_sm_session() -> Session:
 
 def get_training_dataset_for_model_and_version(model_id: str, version: str) -> dict:
     return TRAINING_DATASET_MODEL_DICT[(model_id, version)]
+
+
+def x_fail_if_ice(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            if "CapacityError" in str(e):
+                pytest.xfail(str(e))
+            raise
+
+    return wrapper
 
 
 def download_inference_assets():

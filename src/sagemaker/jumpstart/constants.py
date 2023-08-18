@@ -30,6 +30,7 @@ from sagemaker.base_serializers import (
     IdentitySerializer,
     JSONSerializer,
 )
+from sagemaker.session import Session
 
 
 JUMPSTART_LAUNCHED_REGIONS: Set[JumpStartLaunchedRegionInfo] = set(
@@ -147,6 +148,7 @@ ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE = "AWS_JUMPSTART_SPECS_LOCA
 
 JUMPSTART_RESOURCE_BASE_NAME = "sagemaker-jumpstart"
 
+SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY = "SageMakerGatedModelS3Uri"
 
 CONTENT_TYPE_TO_SERIALIZER_TYPE_MAP: Dict[MIMEType, SerializerType] = {
     MIMEType.X_IMAGE: SerializerType.RAW_BYTES,
@@ -176,3 +178,7 @@ DESERIALIZER_TYPE_TO_CLASS_MAP: Dict[DeserializerType, Type[BaseDeserializer]] =
 MODEL_ID_LIST_WEB_URL = "https://sagemaker.readthedocs.io/en/stable/doc_utils/pretrainedmodels.html"
 
 JUMPSTART_LOGGER = logging.getLogger("sagemaker.jumpstart")
+
+DEFAULT_JUMPSTART_SAGEMAKER_SESSION = Session(
+    boto3.Session(region_name=JUMPSTART_DEFAULT_REGION_NAME)
+)

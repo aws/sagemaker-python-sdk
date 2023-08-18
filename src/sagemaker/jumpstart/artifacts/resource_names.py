@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 from typing import Optional
 from sagemaker.jumpstart.constants import (
+    DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     JUMPSTART_DEFAULT_REGION_NAME,
 )
 from sagemaker.jumpstart.enums import (
@@ -22,6 +23,7 @@ from sagemaker.jumpstart.enums import (
 from sagemaker.jumpstart.utils import (
     verify_model_region_and_return_specs,
 )
+from sagemaker.session import Session
 
 
 def _retrieve_resource_name_base(
@@ -30,6 +32,7 @@ def _retrieve_resource_name_base(
     region: Optional[str],
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> bool:
     """Returns default resource name.
 
@@ -47,6 +50,10 @@ def _retrieve_resource_name_base(
         tolerate_deprecated_model (bool): True if deprecated versions of model
             specifications should be tolerated (exception not raised). If False, raises
             an exception if the version of the model is deprecated. (Default: False).
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions. If not
+            specified, one is created using the default AWS configuration
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     Returns:
         str: the default resource name.
     """
@@ -61,6 +68,7 @@ def _retrieve_resource_name_base(
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
+        sagemaker_session=sagemaker_session,
     )
 
     return model_specs.resource_name_base

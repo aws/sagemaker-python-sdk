@@ -16,6 +16,8 @@ from copy import deepcopy
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Union
 
+from sagemaker.session import Session
+
 
 class JumpStartDataHolderType:
     """Base class for many JumpStart types.
@@ -355,6 +357,8 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         "resource_name_base",
         "hosting_eula_key",
         "hosting_model_package_arns",
+        "training_model_package_artifact_uris",
+        "hosting_use_script_uri",
     ]
 
     def __init__(self, spec: Dict[str, Any]):
@@ -428,6 +432,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         self.hosting_eula_key: Optional[str] = json_obj.get("hosting_eula_key")
 
         self.hosting_model_package_arns: Optional[Dict] = json_obj.get("hosting_model_package_arns")
+        self.hosting_use_script_uri: bool = json_obj.get("hosting_use_script_uri", True)
 
         if self.training_supported:
             self.training_ecr_specs: JumpStartECRSpecs = JumpStartECRSpecs(
@@ -436,15 +441,19 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
             self.training_artifact_key: str = json_obj["training_artifact_key"]
             self.training_script_key: str = json_obj["training_script_key"]
             hyperparameters: Any = json_obj.get("hyperparameters")
+            self.hyperparameters: List[JumpStartHyperparameter] = []
             if hyperparameters is not None:
-                self.hyperparameters = [
-                    JumpStartHyperparameter(hyperparameter) for hyperparameter in hyperparameters
-                ]
+                self.hyperparameters.extend(
+                    [JumpStartHyperparameter(hyperparameter) for hyperparameter in hyperparameters]
+                )
             self.estimator_kwargs = deepcopy(json_obj.get("estimator_kwargs", {}))
             self.fit_kwargs = deepcopy(json_obj.get("fit_kwargs", {}))
             self.training_volume_size: Optional[int] = json_obj.get("training_volume_size")
             self.training_enable_network_isolation: bool = json_obj.get(
                 "training_enable_network_isolation", False
+            )
+            self.training_model_package_artifact_uris: Optional[Dict] = json_obj.get(
+                "training_model_package_artifact_uris"
             )
 
     def to_json(self) -> Dict[str, Any]:
@@ -469,6 +478,19 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
     def supports_prepacked_inference(self) -> bool:
         """Returns True if the model has a prepacked inference artifact."""
         return getattr(self, "hosting_prepacked_artifact_key", None) is not None
+
+    def use_inference_script_uri(self) -> bool:
+        """Returns True if the model should use a script uri when deploying inference model."""
+        if self.supports_prepacked_inference():
+            return False
+        return self.hosting_use_script_uri
+
+    def use_training_model_artifact(self) -> bool:
+        """Returns True if the model should use a model uri when kicking off training job."""
+        return (
+            self.training_model_package_artifact_uris is None
+            or len(self.training_model_package_artifact_uris) == 0
+        )
 
     def supports_incremental_training(self) -> bool:
         """Returns True if the model supports incremental training."""
@@ -678,6 +700,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "explainer_config",
         "tolerate_vulnerable_model",
         "tolerate_deprecated_model",
+        "sagemaker_session",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -686,6 +709,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "region",
         "tolerate_deprecated_model",
         "tolerate_vulnerable_model",
+        "sagemaker_session",
     }
 
     def __init__(
@@ -712,6 +736,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         explainer_config: Optional[Any] = None,
         tolerate_deprecated_model: Optional[bool] = None,
         tolerate_vulnerable_model: Optional[bool] = None,
+        sagemaker_session: Optional[Session] = None,
     ) -> None:
         """Instantiates JumpStartModelDeployKwargs object."""
 
@@ -737,6 +762,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         self.explainer_config = explainer_config
         self.tolerate_vulnerable_model = tolerate_vulnerable_model
         self.tolerate_deprecated_model = tolerate_deprecated_model
+        self.sagemaker_session = sagemaker_session
 
 
 class JumpStartEstimatorInitKwargs(JumpStartKwargs):
@@ -929,6 +955,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         "experiment_config",
         "tolerate_deprecated_model",
         "tolerate_vulnerable_model",
+        "sagemaker_session",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -952,6 +979,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         experiment_config: Optional[Dict[str, str]] = None,
         tolerate_deprecated_model: Optional[bool] = None,
         tolerate_vulnerable_model: Optional[bool] = None,
+        sagemaker_session: Optional[Session] = None,
     ) -> None:
         """Instantiates JumpStartEstimatorInitKwargs object."""
 
@@ -965,6 +993,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         self.experiment_config = experiment_config
         self.tolerate_deprecated_model = tolerate_deprecated_model
         self.tolerate_vulnerable_model = tolerate_vulnerable_model
+        self.sagemaker_session = sagemaker_session
 
 
 class JumpStartEstimatorDeployKwargs(JumpStartKwargs):

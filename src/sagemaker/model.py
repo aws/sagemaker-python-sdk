@@ -1378,7 +1378,10 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 self._base_name = "-".join((self._base_name, compiled_model_suffix))
 
         self._create_sagemaker_model(
-            instance_type, accelerator_type, tags, serverless_inference_config
+            instance_type=instance_type,
+            accelerator_type=accelerator_type,
+            tags=tags,
+            serverless_inference_config=serverless_inference_config,
         )
 
         serverless_inference_config_dict = (
