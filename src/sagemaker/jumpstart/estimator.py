@@ -22,7 +22,7 @@ from sagemaker.base_serializers import BaseSerializer
 from sagemaker.debugger.debugger import DebuggerHookConfig, RuleBase, TensorBoardOutputConfig
 from sagemaker.debugger.profiler_config import ProfilerConfig
 
-from sagemaker.estimator import _TrainingJob, Estimator
+from sagemaker.estimator import Estimator
 from sagemaker.explainer.explainer_config import ExplainerConfig
 from sagemaker.inputs import FileSystemInput, TrainingInput
 from sagemaker.instance_group import InstanceGroup
@@ -664,10 +664,10 @@ class JumpStartEstimator(Estimator):
         model_version: str = "*",
         sagemaker_session: session.Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
         model_channel_name: str = "model",
-    ):
+    ) -> "JumpStartEstimator":
         """Attach to an existing training job.
 
-        Create an Estimator bound to an existing training job.
+        Create a JumpStartEstimator bound to an existing training job.
         After attaching, if the training job has a Complete status,
         it can be ``deploy()`` ed to create a SageMaker Endpoint and return
         a ``Predictor``.
@@ -705,23 +705,12 @@ class JumpStartEstimator(Estimator):
             training job.
         """
 
-        job_details = sagemaker_session.sagemaker_client.describe_training_job(
-            TrainingJobName=training_job_name
+        return cls._attach(
+            training_job_name=training_job_name,
+            sagemaker_session=sagemaker_session,
+            model_channel_name=model_channel_name,
+            additional_kwargs={"model_id": model_id, "model_version": model_version},
         )
-        init_params = cls._prepare_init_params_from_job_description(job_details, model_channel_name)
-        tags = sagemaker_session.sagemaker_client.list_tags(
-            ResourceArn=job_details["TrainingJobArn"]
-        )["Tags"]
-        init_params.update(tags=tags)
-        init_params.update(model_id=model_id, model_version=model_version)
-
-        estimator = cls(sagemaker_session=sagemaker_session, **init_params)
-        estimator.latest_training_job = _TrainingJob(
-            sagemaker_session=sagemaker_session, job_name=training_job_name
-        )
-        estimator._current_job_name = estimator.latest_training_job.name
-        estimator.latest_training_job.wait(logs="None")
-        return estimator
 
     def deploy(
         self,
