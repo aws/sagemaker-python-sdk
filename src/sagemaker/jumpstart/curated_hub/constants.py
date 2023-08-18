@@ -15,11 +15,11 @@ from __future__ import absolute_import
 from enum import Enum
 
 
-CURATED_HUB_DESCRIPTION = "This is a curated hub."
+CURATED_HUB_DEFAULT_DESCRIPTION = "This is a curated hub."
 
 
-class PalatineContentType(Enum):
-    """Palatine hub content types"""
+class HubContentType(str, Enum):
+    """Hub hub content types"""
 
     MODEL = "Model"
     NOTEBOOK = "Notebook"

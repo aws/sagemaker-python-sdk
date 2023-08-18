@@ -17,10 +17,10 @@ class ContentCopierTest(unittest.TestCase):
 
     @patch("botocore.client.BaseClient")
     @patch(
-        "sagemaker.jumpstart.curated_hub.accessors.model_dependency_s3_accessor.ModoelDependencyS3Accessor"
+        "sagemaker.jumpstart.curated_hub.accessors.model_dependency_s3_accessor.ModelDependencyS3Accessor"
     )
     @patch(
-        "sagemaker.jumpstart.curated_hub.accessors.model_dependency_s3_accessor.ModoelDependencyS3Accessor"
+        "sagemaker.jumpstart.curated_hub.accessors.model_dependency_s3_accessor.ModelDependencyS3Accessor"
     )
     def setUp(self, mock_src, mock_dst, mock_client):
         self.mock_src = mock_src
@@ -44,9 +44,9 @@ class ContentCopierTest(unittest.TestCase):
 
         mock_model_specs.supports_prepacked_inference.return_value = False
 
-        copy_configs = self.test_content_copier._get_copy_configs_for_inference_dependencies(
-            mock_model_specs
-        )
+        copy_configs: List[
+            CopyContentConfig
+        ] = self.test_content_copier._get_copy_configs_for_inference_dependencies(mock_model_specs)
 
         self.assertIn(test_artifact_copy_config, copy_configs)
         self.assertIn(test_script_copy_config, copy_configs)
@@ -67,9 +67,9 @@ class ContentCopierTest(unittest.TestCase):
 
         mock_model_specs.supports_prepacked_inference.return_value = True
 
-        copy_configs = self.test_content_copier._get_copy_configs_for_inference_dependencies(
-            mock_model_specs
-        )
+        copy_configs: List[
+            CopyContentConfig
+        ] = self.test_content_copier._get_copy_configs_for_inference_dependencies(mock_model_specs)
 
         self.assertIn(test_artifact_copy_config, copy_configs)
         self.assertNotIn(test_script_copy_config, copy_configs)
@@ -98,9 +98,9 @@ class ContentCopierTest(unittest.TestCase):
         test_dataset_copy_config = self._generate_random_copy_config("training dataset")
         mock_get_copy_configs_for_training_dataset.return_value = [test_dataset_copy_config]
 
-        copy_configs = self.test_content_copier._get_copy_configs_for_training_dependencies(
-            mock_model_specs
-        )
+        copy_configs: List[
+            CopyContentConfig
+        ] = self.test_content_copier._get_copy_configs_for_training_dependencies(mock_model_specs)
 
         self.assertIn(test_artifact_copy_config, copy_configs)
         self.assertIn(test_script_copy_config, copy_configs)
@@ -116,7 +116,9 @@ class ContentCopierTest(unittest.TestCase):
             test_demo_notebook_copy_config.dst
         )
 
-        copy_configs = self.test_content_copier._get_copy_configs_for_demo_notebook_dependencies(
+        copy_configs: List[
+            CopyContentConfig
+        ] = self.test_content_copier._get_copy_configs_for_demo_notebook_dependencies(
             mock_model_specs
         )
 
@@ -128,9 +130,9 @@ class ContentCopierTest(unittest.TestCase):
         self.mock_src.get_markdown_s3_reference.return_value = test_markdown_copy_config.src
         self.mock_dst.get_markdown_s3_reference.return_value = test_markdown_copy_config.dst
 
-        copy_configs = self.test_content_copier._get_copy_configs_for_markdown_dependencies(
-            mock_model_specs
-        )
+        copy_configs: List[
+            CopyContentConfig
+        ] = self.test_content_copier._get_copy_configs_for_markdown_dependencies(mock_model_specs)
 
         self.assertIn(test_markdown_copy_config, copy_configs)
 

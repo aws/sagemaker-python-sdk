@@ -27,11 +27,11 @@ from sagemaker.jumpstart.curated_hub.accessors.s3_object_reference import (
     create_s3_object_reference_from_uri,
 )
 from sagemaker.jumpstart.curated_hub.accessors.model_dependency_s3_accessor import (
-    ModoelDependencyS3Accessor,
+    ModelDependencyS3Accessor,
 )
 
 
-class PublicHubS3Accessor(ModoelDependencyS3Accessor):
+class PublicHubS3Accessor(ModelDependencyS3Accessor):
     """Helper class to access Public Hub s3 bucket"""
 
     def __init__(self, region: str):
@@ -41,7 +41,7 @@ class PublicHubS3Accessor(ModoelDependencyS3Accessor):
             region
         )  # Necessary for SDK - Studio metadata drift
 
-    def get_bucket(self) -> str:
+    def get_bucket_name(self) -> str:
         """Retrieves s3 bucket"""
         return self._bucket
 
@@ -81,7 +81,9 @@ class PublicHubS3Accessor(ModoelDependencyS3Accessor):
         self, model_specs: JumpStartModelSpecs
     ) -> S3ObjectLocation:
         """Retrieves s3 reference for s3 directory containing model training datasets"""
-        return S3ObjectLocation(self.get_bucket(), self._get_training_dataset_prefix(model_specs))
+        return S3ObjectLocation(
+            self.get_bucket_name(), self._get_training_dataset_prefix(model_specs)
+        )
 
     def _get_training_dataset_prefix(self, model_specs: JumpStartModelSpecs) -> str:
         """Retrieves training dataset location"""
@@ -92,13 +94,13 @@ class PublicHubS3Accessor(ModoelDependencyS3Accessor):
         """Retrieves s3 reference for model demo jupyter notebook"""
         framework = get_model_framework(model_specs)
         key = f"{framework}-notebooks/{model_specs.model_id}-inference.ipynb"
-        return S3ObjectLocation(self.get_bucket(), key)
+        return S3ObjectLocation(self.get_bucket_name(), key)
 
     def get_markdown_s3_reference(self, model_specs: JumpStartModelSpecs) -> S3ObjectLocation:
         """Retrieves s3 reference for model markdown"""
         framework = get_model_framework(model_specs)
         key = f"{framework}-metadata/{model_specs.model_id}.md"
-        return S3ObjectLocation(self.get_bucket(), key)
+        return S3ObjectLocation(self.get_bucket_name(), key)
 
     def _jumpstart_script_s3_uri(self, model_scope: str, model_specs: JumpStartModelSpecs) -> str:
         """Retrieves JumpStart script s3 location"""

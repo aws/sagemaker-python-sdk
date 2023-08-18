@@ -24,51 +24,51 @@ from sagemaker.jumpstart.curated_hub.accessors.s3_object_reference import (
     S3ObjectLocation,
 )
 from sagemaker.jumpstart.curated_hub.accessors.constants import (
-    PRIVATE_MODEL_TRAINING_ARTIFACT_TARBALL_SUFFIX,
-    PRIVATE_MODEL_TRAINING_SCRIPT_SUFFIX,
-    PRIVATE_MODEL_HOSTING_ARTIFACT_TARBALL_SUFFIX,
-    PRIVATE_MODEL_HOSTING_SCRIPT_SUFFIX,
-    PRIVATE_MODEL_INFERENCE_NOTEBOOK_SUFFIX,
+    PRIVATE_MODEL_TRAINING_ARTIFACT_TARBALL_S3_SUFFIX,
+    PRIVATE_MODEL_TRAINING_SCRIPT_S3_SUFFIX,
+    PRIVATE_MODEL_HOSTING_ARTIFACT_S3_TARBALL_SUFFIX,
+    PRIVATE_MODEL_HOSTING_SCRIPT_S3_SUFFIX,
+    PRIVATE_MODEL_INFERENCE_NOTEBOOK_S3_SUFFIX,
 )
 from sagemaker.jumpstart.curated_hub.accessors.model_dependency_s3_accessor import (
-    ModoelDependencyS3Accessor,
+    ModelDependencyS3Accessor,
 )
 
 
-class CuratedHubS3Accessor(ModoelDependencyS3Accessor):
+class CuratedHubS3Accessor(ModelDependencyS3Accessor):
     """Helper class to access Curated Hub s3 bucket"""
 
     def __init__(self, region: str, bucket: str, base_s3_key: str = ""):
         self._region = region
-        self._bucket = bucket
+        self._bucket_name = bucket
         self._studio_metadata_map = get_studio_model_metadata_map_from_region(
             region
         )  # Necessary for SDK - Studio metadata drift
         self._base_s3_key = base_s3_key
 
-    def get_bucket(self) -> str:
-        """Retrieves s3 bucket"""
-        return self._bucket
+    def get_bucket_name(self) -> str:
+        """Retrieves s3 bucket name."""
+        return self._bucket_name
 
     def get_inference_artifact_s3_reference(
         self, model_specs: JumpStartModelSpecs
     ) -> S3ObjectLocation:
-        """Retrieves s3 reference for model inference artifact"""
+        """Retrieves s3 reference for model inference artifact."""
         return S3ObjectLocation(
-            self.get_bucket(),
+            self.get_bucket_name(),
             (
                 f"{self._get_unique_s3_key_prefix(model_specs)}/"
-                f"{PRIVATE_MODEL_HOSTING_ARTIFACT_TARBALL_SUFFIX}"
+                f"{PRIVATE_MODEL_HOSTING_ARTIFACT_S3_TARBALL_SUFFIX}"
             ),
         )
 
     def get_inference_script_s3_reference(
         self, model_specs: JumpStartModelSpecs
     ) -> S3ObjectLocation:
-        """Retrieves s3 reference for model traiing script"""
+        """Retrieves s3 reference for model traiing script."""
         return S3ObjectLocation(
-            self.get_bucket(),
-            f"{self._get_unique_s3_key_prefix(model_specs)}/{PRIVATE_MODEL_HOSTING_SCRIPT_SUFFIX}",
+            self.get_bucket_name(),
+            f"{self._get_unique_s3_key_prefix(model_specs)}/{PRIVATE_MODEL_HOSTING_SCRIPT_S3_SUFFIX}",
         )
 
     def get_training_artifact_s3_reference(
@@ -76,10 +76,10 @@ class CuratedHubS3Accessor(ModoelDependencyS3Accessor):
     ) -> S3ObjectLocation:
         """Retrieves s3 reference for model training artifact"""
         return S3ObjectLocation(
-            self.get_bucket(),
+            self.get_bucket_name(),
             (
                 f"{self._get_unique_s3_key_prefix(model_specs)}/"
-                f"{PRIVATE_MODEL_TRAINING_ARTIFACT_TARBALL_SUFFIX}"
+                f"{PRIVATE_MODEL_TRAINING_ARTIFACT_TARBALL_S3_SUFFIX}"
             ),
         )
 
@@ -88,17 +88,17 @@ class CuratedHubS3Accessor(ModoelDependencyS3Accessor):
     ) -> S3ObjectLocation:
         """Retrieves s3 reference for model training script"""
         return S3ObjectLocation(
-            self.get_bucket(),
-            f"{self._get_unique_s3_key_prefix(model_specs)}/{PRIVATE_MODEL_TRAINING_SCRIPT_SUFFIX}",
+            self.get_bucket_name(),
+            f"{self._get_unique_s3_key_prefix(model_specs)}/{PRIVATE_MODEL_TRAINING_SCRIPT_S3_SUFFIX}",
         )
 
     def get_demo_notebook_s3_reference(self, model_specs: JumpStartModelSpecs) -> S3ObjectLocation:
         """Retrieves s3 reference for model jupyter notebook"""
         return S3ObjectLocation(
-            self.get_bucket(),
+            self.get_bucket_name(),
             (
                 f"{self._get_unique_s3_key_prefix(model_specs)}/"
-                f"{PRIVATE_MODEL_INFERENCE_NOTEBOOK_SUFFIX}"
+                f"{PRIVATE_MODEL_INFERENCE_NOTEBOOK_S3_SUFFIX}"
             ),
         )
 
@@ -106,7 +106,9 @@ class CuratedHubS3Accessor(ModoelDependencyS3Accessor):
         self, model_specs: JumpStartModelSpecs
     ) -> S3ObjectLocation:
         """Retrieves s3 reference for s3 directory containing training datasets"""
-        return S3ObjectLocation(self.get_bucket(), self._get_training_dataset_prefix(model_specs))
+        return S3ObjectLocation(
+            self.get_bucket_name(), self._get_training_dataset_prefix(model_specs)
+        )
 
     def _get_unique_s3_key_prefix(self, model_specs: JumpStartModelSpecs) -> str:
         """Creates a unique s3 key prefix based off S3 storage config"""
@@ -117,17 +119,17 @@ class CuratedHubS3Accessor(ModoelDependencyS3Accessor):
         )
         return key.lstrip("/")
 
-    def _get_training_dataset_prefix(
-        self, model_specs: JumpStartModelSpecs
-    ) -> str:  # Studio expects the same format as public hub bucket
-        """Retrieves training dataset"""
-        studio_model_metadata = self._studio_metadata_map[model_specs.model_id]  # TODO: verify this
+    def _get_training_dataset_prefix(self, model_specs: JumpStartModelSpecs) -> str:
+        """Retrieves s3 prefix for the training dataset.
+
+        Studio expects the same format as public hub bucket"""
+        studio_model_metadata = self._studio_metadata_map[model_specs.model_id]
         return studio_model_metadata["defaultDataKey"]
 
-    def get_markdown_s3_reference(
-        self, model_specs: JumpStartModelSpecs
-    ) -> S3ObjectLocation:  # Studio expects the same format as public hub bucket
-        """Retrieves s3 reference for model markdown file"""
+    def get_markdown_s3_reference(self, model_specs: JumpStartModelSpecs) -> S3ObjectLocation:
+        """Retrieves s3 reference for model markdown file.
+
+        Studio expects the same format as public hub bucket"""
         framework = get_model_framework(model_specs)
         key = f"{framework}-metadata/{model_specs.model_id}.md"
-        return S3ObjectLocation(self.get_bucket(), key)
+        return S3ObjectLocation(self.get_bucket_name(), key)

@@ -42,16 +42,16 @@ class Dependency:
 
     DependencyOriginPath: str
     DependencyCopyPath: str
-    DependencyType: DependencyType  # enum?
+    DependencyType: DependencyType
 
 
 @dataclass
 class DatasetConfig:
     """Dataset locations for Private Hub model"""
 
-    TrainingDatasetLocation: Optional[str]  # S3 validation?
-    ValidationDatasetLocation: Optional[str]  # S3 validation?
-    DataFormatLocation: Optional[str]  # S3 validation?
+    TrainingDatasetLocation: Optional[str]  
+    ValidationDatasetLocation: Optional[str]  
+    DataFormatLocation: Optional[str]  
     PredictColumn: Optional[str]
 
 
@@ -205,7 +205,7 @@ class ModelCapabilities(str, Enum):
 class HubModelSpec_v1_0_0:
     """Dataclass for Private Hub Model document"""
 
-    Capabilities: List[ModelCapabilities]  # enum?
+    Capabilities: List[ModelCapabilities]
     DataType: str
     MlTask: str
     Framework: Optional[str]

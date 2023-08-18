@@ -13,10 +13,15 @@
 """This module contains a client with helpers to access the Private Hub."""
 from __future__ import absolute_import
 import boto3
+import time
 from botocore.exceptions import ClientError
+from typing import Dict, Any, List
 
 from sagemaker.jumpstart.types import JumpStartModelSpecs
-from sagemaker.jumpstart.curated_hub.constants import CURATED_HUB_DESCRIPTION, PalatineContentType
+from sagemaker.jumpstart.curated_hub.constants import (
+    CURATED_HUB_DEFAULT_DESCRIPTION,
+    HubContentType,
+)
 
 
 class CuratedHubClient:
@@ -28,12 +33,17 @@ class CuratedHubClient:
         self._region = region
         self._sm_client = boto3.client("sagemaker", region_name=self._region)
 
-    def create_hub(self, hub_name: str, hub_s3_bucket_name: str):
+    def create_hub(
+        self,
+        hub_name: str,
+        hub_s3_bucket_name: str,
+        hub_description: str = CURATED_HUB_DEFAULT_DESCRIPTION,
+    ) -> None:
         """Creates a Private Hub."""
         hub_bucket_s3_uri = f"s3://{hub_s3_bucket_name}"
         self._sm_client.create_hub(
             HubName=hub_name,
-            HubDescription=CURATED_HUB_DESCRIPTION,
+            HubDescription=hub_description,
             HubDisplayName=hub_name,
             HubSearchKeywords=[],
             S3StorageConfig={
@@ -42,12 +52,12 @@ class CuratedHubClient:
             Tags=[],
         )
 
-    def describe_model(self, model_specs: JumpStartModelSpecs):
+    def describe_model_version(self, model_specs: JumpStartModelSpecs) -> Dict[str, Any]:
         """Describes a version of a model in the Private Hub."""
         return self._sm_client.describe_hub_content(
             HubName=self.curated_hub_name,
             HubContentName=model_specs.model_id,
-            HubContentType=PalatineContentType.MODEL.value,
+            HubContentType=HubContentType.MODEL,
             HubContentVersion=model_specs.version,
         )
 
@@ -68,31 +78,36 @@ class CuratedHubClient:
 
         print(f"Deleting all versions of model {model_specs.model_id} from curated hub complete!")
 
-    def delete_version_of_model(self, model_id: str, version: str):
+    def delete_version_of_model(self, model_id: str, version: str) -> None:
         """Deletes specific version of a model"""
         print(f"Deleting version {version} of" f" model {model_id} from curated hub...")
 
         self._sm_client.delete_hub_content(
             HubName=self.curated_hub_name,
             HubContentName=model_id,
-            HubContentType=PalatineContentType.MODEL.value,
+            HubContentType=HubContentType.MODEL,
             HubContentVersion=version,
         )
 
-        print(f"Deleting version {version} of" f" model {model_id} from curated hub complete!")
+        # Sleep for one second avoid being throttled
+        time.sleep(1)
 
-    def _list_hub_content_versions_no_content_noop(self, hub_content_name: str):
-        """Lists hub content versions. If the hub content does not exist, returns an empty list"""
+        print(f"Deleted version {version} of" f" model {model_id} from curated hub!")
+
+    def _list_hub_content_versions_no_content_noop(
+        self, hub_content_name: str
+    ) -> List[Dict[str, Any]]:
+        """Lists hub content versions, returns an empty list if the hub content does not exist."""
         content_versions = []
         try:
             response = self._sm_client.list_hub_content_versions(
                 HubName=self.curated_hub_name,
                 HubContentName=hub_content_name,
-                HubContentType=PalatineContentType.MODEL.value,
+                HubContentType=HubContentType.MODEL,
             )
-            content_versions = response.pop("HubContentSummaries")
+            content_versions = response["HubContentVersion"]
         except ClientError as ex:
             if ex.response["Error"]["Code"] != "ResourceNotFound":
-                raise ex
+                raise
 
         return content_versions

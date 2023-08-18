@@ -17,7 +17,10 @@ import unittest
 from mock.mock import Mock
 
 from sagemaker.jumpstart.curated_hub.hub_client import CuratedHubClient
-from sagemaker.jumpstart.curated_hub.constants import CURATED_HUB_DESCRIPTION, PalatineContentType
+from sagemaker.jumpstart.curated_hub.constants import (
+    CURATED_HUB_DEFAULT_DESCRIPTION,
+    HubContentType,
+)
 
 
 class HubClientTest(unittest.TestCase):
@@ -33,7 +36,7 @@ class HubClientTest(unittest.TestCase):
 
         self.mock_curated_hub_client._sm_client.create_hub.assert_called_with(
             HubName=hub_name,
-            HubDescription=CURATED_HUB_DESCRIPTION,  # TODO verify description
+            HubDescription=CURATED_HUB_DEFAULT_DESCRIPTION,  # TODO verify description
             HubDisplayName=hub_name,
             HubSearchKeywords=[],
             S3StorageConfig={
@@ -48,12 +51,12 @@ class HubClientTest(unittest.TestCase):
         model_specs.version = "version"
         self.mock_curated_hub_client._sm_client = Mock()
 
-        self.mock_curated_hub_client.describe_model(model_specs)
+        self.mock_curated_hub_client.describe_model_version(model_specs)
 
         self.mock_curated_hub_client._sm_client.describe_hub_content.assert_called_with(
             HubName=self.mock_curated_hub_client.curated_hub_name,
             HubContentName=model_specs.model_id,
-            HubContentType=PalatineContentType.MODEL.value,
+            HubContentType=HubContentType.MODEL,
             HubContentVersion=model_specs.version,
         )
 
@@ -67,7 +70,7 @@ class HubClientTest(unittest.TestCase):
         self.mock_curated_hub_client._sm_client.delete_hub_content.assert_called_with(
             HubName=self.mock_curated_hub_client.curated_hub_name,
             HubContentName=model_id,
-            HubContentType=PalatineContentType.MODEL.value,
+            HubContentType=HubContentType.MODEL,
             HubContentVersion=version,
         )
 
@@ -80,5 +83,5 @@ class HubClientTest(unittest.TestCase):
         self.mock_curated_hub_client._sm_client.list_hub_content_versions.assert_called_with(
             HubName=self.mock_curated_hub_client.curated_hub_name,
             HubContentName=hub_content_name,
-            HubContentType=PalatineContentType.MODEL.value,
+            HubContentType=HubContentType.MODEL,
         )

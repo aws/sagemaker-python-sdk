@@ -31,7 +31,7 @@ class S3ObjectLocation:
         }
 
     def get_uri(self) -> str:
-        """Returns a s3 URI"""
+        """Returns the s3 URI"""
         return f"s3://{self.bucket}/{self.key}"
 
 

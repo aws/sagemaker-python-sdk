@@ -81,10 +81,10 @@ class JumpStartCuratedPublicHub:
         self._skip_create = self.curated_hub_name != curated_hub_name
 
         self.studio_metadata_map = get_studio_model_metadata_map_from_region(self._region)
-        self._init_clients()
+        self._init_dependencies()
 
-    def _init_clients(self):
-        """Creates all clients for Curated Hub"""
+    def _init_dependencies(self):
+        """Creates all dependencies to run the Curated Hub"""
         self._curated_hub_client = CuratedHubClient(
             curated_hub_name=self.curated_hub_name, region=self._region
         )
@@ -103,7 +103,7 @@ class JumpStartCuratedPublicHub:
         self._document_creator = ModelDocumentCreator(
             region=self._region,
             src_s3_accessor=self._src_s3_accessor,
-            palatine_hub_s3_filesystem=self._dst_s3_filesystem,
+            hub_s3_accessor=self._dst_s3_filesystem,
             studio_metadata_map=self.studio_metadata_map,
         )
 
@@ -133,8 +133,12 @@ class JumpStartCuratedPublicHub:
     def _get_curated_hub_and_curated_hub_s3_bucket_names(
         self, hub_name: str, import_to_preexisting_hub: bool
     ) -> Tuple[str, str]:
-        """Creates both palatine hub and hub bucket names."""
-        # Finds the relevant hub and s3 locations
+        """Creates both hub and hub bucket names.
+
+        If a Hub already exists on the account, it will attempt to use the preexisting hub.
+        Raises:
+          ValueError if a hub exists but import_to_preexisting_hub is not set to true.
+        """
         curated_hub_name = hub_name
         curated_hub_s3_bucket_name = self._create_unique_s3_bucket_name(
             curated_hub_name, self._region
@@ -178,7 +182,7 @@ class JumpStartCuratedPublicHub:
         self._create_hub_and_hub_bucket()
 
     def _create_hub_and_hub_bucket(self):
-        """Creates a palatine hub and corresponding s3 bucket"""
+        """Creates a hub and corresponding s3 bucket"""
         self._s3_client.create_bucket(
             Bucket=self.curated_hub_s3_bucket_name,
             CreateBucketConfiguration={"LocationConstraint": self._region},
@@ -186,7 +190,11 @@ class JumpStartCuratedPublicHub:
         self._curated_hub_client.create_hub(self.curated_hub_name, self.curated_hub_s3_bucket_name)
 
     def sync(self, model_ids: List[PublicModelId], force_update: bool = False):
-        """Syncs Curated Hub with the JumpStart Public Hub
+        """Syncs Curated Hub with the JumpStart Public Hub.
+
+        This will compare the models in the hub to the corresponding models in the JumpStart Public Hub.
+        If there is a difference, this will add/update the model in the hub. For each model, this will perform a s3:CopyObject for all model dependencies into the hub.
+        This will then import the metadata as a HubContent entry. This copy is performed in parallel using a thread pool.
 
         If the model already exists in the curated hub,
           it will skip the update.
@@ -223,18 +231,18 @@ class JumpStartCuratedPublicHub:
     def _model_needs_update(self, model_specs: JumpStartModelSpecs) -> bool:
         """Checks if a new upload is necessary."""
         try:
-            self._curated_hub_client.describe_model(model_specs)
+            self._curated_hub_client.describe_model_version(model_specs)
             print(f"INFO: Model {model_specs.model_id} found in hub.")
             return False
         except ClientError as ex:
             if ex.response["Error"]["Code"] != "ResourceNotFound":
-                raise ex
+                raise
             return True
 
     def _import_models(self, model_specs: List[JumpStartModelSpecs]):
         """Imports a list of models to a hub."""
         print(f"Importing {len(model_specs)} models to curated private hub...")
-        tasks = []
+        tasks: List[futures.Future] = []
         with futures.ThreadPoolExecutor(
             max_workers=self._default_thread_pool_size,
             thread_name_prefix="import-models-to-curated-hub",
@@ -282,7 +290,6 @@ class JumpStartCuratedPublicHub:
     def _import_public_model_to_hub(self, model_specs: JumpStartModelSpecs):
         """Imports a public JumpStart model to a hub."""
         hub_content_display_name = self.studio_metadata_map[model_specs.model_id]["name"]
-        # TODO enable: self.studio_metadata_map[model_specs.model_id]["desc"]
         hub_content_description = (
             "This is a curated model based "
             f"off the public JumpStart model {hub_content_display_name}"
@@ -335,14 +342,16 @@ class JumpStartCuratedPublicHub:
     def _delete_model_dependencies_no_content_noop(self, model_specs: JumpStartModelSpecs):
         """Deletes hub content dependencies. If there are no dependencies, it succeeds."""
         try:
-            hub_content = self._curated_hub_client.describe_model(model_specs)
-        except ClientError:
+            hub_content = self._curated_hub_client.describe_model_version(model_specs)
+        except ClientError as ce:
+            if ce.response["Error"]["Code"] != "ResourceNotFound":
+                raise
             return
 
         dependencies = self._get_hub_content_dependencies_from_model_document(
             hub_content["HubContentDocument"]
         )
-        dependency_s3_keys = []
+        dependency_s3_keys: List[Dict[str, str]] = []
         for dependency in dependencies:
             dependency_s3_keys.extend(
                 self._format_dependency_dst_uris_for_delete_objects(dependency)
@@ -367,7 +376,7 @@ class JumpStartCuratedPublicHub:
         return list(map(self._cast_dict_to_dependency, hub_content_document_json["Dependencies"]))
 
     def _cast_dict_to_dependency(self, dependency: Dict[str, str]) -> Dependency:
-        """Converts a dictionary to a Palatine dependency"""
+        """Converts a dictionary to a HubContent dependency"""
         return Dependency(
             DependencyOriginPath=dependency["DependencyOriginPath"],
             DependencyCopyPath=dependency["DependencyCopyPath"],
@@ -377,8 +386,7 @@ class JumpStartCuratedPublicHub:
     def _format_dependency_dst_uris_for_delete_objects(
         self, dependency: Dependency
     ) -> List[Dict[str, str]]:
-        """Formats hub content dependnecy s3 keys"""
-        s3_keys = []
+        """Formats hub content dependency asd s3 keys"""
         s3_object_reference = create_s3_object_reference_from_uri(dependency.DependencyCopyPath)
 
         if self._is_s3_key_a_directory(s3_object_reference.key):

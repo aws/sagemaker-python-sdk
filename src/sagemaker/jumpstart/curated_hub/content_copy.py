@@ -10,10 +10,10 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""This module contains utilities related to SageMaker JumpStart."""
+"""This module contains utilities to help copy hub content dependencies."""
 from __future__ import absolute_import
 import traceback
-from typing import List, Set
+from typing import List, Set, Optional
 
 from concurrent import futures
 from dataclasses import dataclass
@@ -25,7 +25,7 @@ from sagemaker.jumpstart.curated_hub.utils import (
 )
 from sagemaker.jumpstart.types import JumpStartModelSpecs
 from sagemaker.jumpstart.curated_hub.accessors.model_dependency_s3_accessor import (
-    ModoelDependencyS3Accessor,
+    ModelDependencyS3Accessor,
 )
 from sagemaker.jumpstart.curated_hub.accessors.s3_object_reference import (
     S3ObjectLocation,
@@ -51,8 +51,8 @@ class ContentCopier:
         self,
         region: str,
         s3_client: BaseClient,
-        src_s3_accessor: ModoelDependencyS3Accessor,
-        dst_s3_accessor: ModoelDependencyS3Accessor,
+        src_s3_accessor: ModelDependencyS3Accessor,
+        dst_s3_accessor: ModelDependencyS3Accessor,
         thread_pool_size: int = 20,
     ) -> None:
         """Sets up basic info."""
@@ -64,8 +64,10 @@ class ContentCopier:
         self._dst_s3_accessor = dst_s3_accessor
 
     def copy_hub_content_dependencies_to_hub_bucket(self, model_specs: JumpStartModelSpecs) -> None:
-        """Copies artifact and script tarballs into the hub bucket."""
-        copy_configs = []
+        """Copies all hub content dependencies into the hub bucket.
+
+        This copy is multi-threaded."""
+        copy_configs: List[CopyContentConfig] = []
 
         copy_configs.extend(self._get_copy_configs_for_inference_dependencies(model_specs))
         copy_configs.extend(self._get_copy_configs_for_demo_notebook_dependencies(model_specs))
@@ -80,7 +82,7 @@ class ContentCopier:
         self, model_specs: JumpStartModelSpecs
     ) -> List[CopyContentConfig]:
         """Creates copy configs for inference dependencies"""
-        copy_configs = []
+        copy_configs: List[CopyContentConfig] = []
 
         src_inference_artifact_location = self._src_s3_accessor.get_inference_artifact_s3_reference(
             model_specs
@@ -119,7 +121,7 @@ class ContentCopier:
         self, model_specs: JumpStartModelSpecs
     ) -> List[CopyContentConfig]:
         """Creates copy configurations for training dependencies"""
-        copy_configs = []
+        copy_configs: List[CopyContentConfig] = []
 
         src_training_artifact_location = self._src_s3_accessor.get_training_artifact_s3_reference(
             model_specs
@@ -153,14 +155,16 @@ class ContentCopier:
 
         return copy_configs
 
-    def _get_copy_configs_for_training_dataset(self, model_specs: JumpStartModelSpecs) -> None:
+    def _get_copy_configs_for_training_dataset(
+        self, model_specs: JumpStartModelSpecs
+    ) -> List[CopyContentConfig]:
         """Creates copy configuration for training dataset"""
         src_prefix = self._src_s3_accessor.get_default_training_dataset_s3_reference(model_specs)
         dst_prefix = self._dst_s3_accessor.get_default_training_dataset_s3_reference(model_specs)
 
         keys_in_src_dir = self._get_s3_object_keys_under_prefix(src_prefix)
 
-        copy_configs = []
+        copy_configs: List[CopyContentConfig] = []
         for full_key in keys_in_src_dir:
             src_reference = S3ObjectLocation(src_prefix.bucket, full_key)
             dst_reference = S3ObjectLocation(
@@ -176,7 +180,7 @@ class ContentCopier:
         return copy_configs
 
     def _get_s3_object_keys_under_prefix(self, prefix_reference: S3ObjectLocation) -> Set[str]:
-        """Get all s3 objects under a s3 folder"""
+        """Get all s3 keys under a s3 folder"""
         try:
             return find_objects_under_prefix(
                 bucket=prefix_reference.bucket,
@@ -188,13 +192,13 @@ class ContentCopier:
                 "ERROR: encountered an exception when finding objects"
                 + f" under prefix {prefix_reference.bucket}/{prefix_reference.key}: {str(ex)}"
             )
-            raise ex
+            raise
 
     def _get_copy_configs_for_demo_notebook_dependencies(
         self, model_specs: JumpStartModelSpecs
-    ) -> None:
+    ) -> List[CopyContentConfig]:
         """Returns copy configs for demo notebooks"""
-        copy_configs = []
+        copy_configs: List[CopyContentConfig] = []
 
         notebook_s3_reference = self._src_s3_accessor.get_demo_notebook_s3_reference(model_specs)
         notebook_s3_reference_dst = self._dst_s3_accessor.get_demo_notebook_s3_reference(
@@ -210,9 +214,11 @@ class ContentCopier:
 
         return copy_configs
 
-    def _get_copy_configs_for_markdown_dependencies(self, model_specs: JumpStartModelSpecs) -> None:
-        """Returns copy configs for markdown"""
-        copy_configs = []
+    def _get_copy_configs_for_markdown_dependencies(
+        self, model_specs: JumpStartModelSpecs
+    ) -> List[CopyContentConfig]:
+        """A utility to generate a list of copy configurations for model content markdown dependencies."""
+        copy_configs: List[CopyContentConfig] = []
 
         markdown_s3_reference = self._src_s3_accessor.get_markdown_s3_reference(model_specs)
         markdown_s3_reference_dst = self._dst_s3_accessor.get_markdown_s3_reference(model_specs)
@@ -224,8 +230,15 @@ class ContentCopier:
 
         return copy_configs
 
-    def _parallel_execute_copy_configs(self, copy_configs: List[CopyContentConfig]):
-        """Runs all copy configurations in parallel"""
+    def _parallel_execute_copy_configs(self, copy_configs: List[CopyContentConfig]) -> None:
+        """Runs all copy configurations in parallel.
+
+        This utility makes s3:CopyObject calls in a ThreadPoolExecutor. All copy configurations
+        are run before any errors are raised.
+
+        Raises:
+          RuntimeError if any copy configuration fails.
+        """
         tasks = []
         with futures.ThreadPoolExecutor(
             max_workers=self._thread_pool_size, thread_name_prefix="import-models-to-curated-hub"
@@ -258,8 +271,16 @@ class ContentCopier:
                 f"Failures when importing models to curated hub in parallel: {failed_copies}"
             )
 
-    def _copy_s3_reference(self, resource_name: str, src: S3ObjectLocation, dst: S3ObjectLocation):
-        """Copies src S3ObjectReference to dst S3ObjectReference"""
+    def _copy_s3_reference(
+        self, resource_name: str, src: S3ObjectLocation, dst: S3ObjectLocation
+    ) -> None:
+        """Copies src S3ObjectReference to dst S3ObjectReference.
+
+        This utility calls s3:CopyObject.
+
+        Raises:
+          Exception when s3:CopyObject raises an exception
+        """
         if not self.is_s3_object_etag_different(src, dst):
             print(
                 f"Detected that {resource_name} is the same in destination bucket. Skipping copy."
@@ -276,10 +297,10 @@ class ContentCopier:
             )
         except Exception as ex:
             print(
-                "ERROR: encountered an exception when calling copy from"
+                "ERROR: encountered an exception when calling s3:CopyObject from"
                 + f" {src.bucket}/{src.key} to {dst.bucket}/{dst.key}: {str(ex)}"
             )
-            raise ex
+            raise
 
         print(
             f"Copying {resource_name} from"
@@ -287,16 +308,23 @@ class ContentCopier:
         )
 
     def is_s3_object_etag_different(self, src: S3ObjectLocation, dst: S3ObjectLocation) -> bool:
-        """Compares S3ObjectReference"""
+        """Compares S3 object ETag value to determine if the objects are the same"""
         src_etag = self._get_s3_object_etag(src)
         dst_etag = self._get_s3_object_etag(dst)
 
         return src_etag != dst_etag
 
-    def _get_s3_object_etag(self, s3_object: S3ObjectLocation) -> str:
-        """Returns s3 object etag"""
+    def _get_s3_object_etag(self, s3_object: S3ObjectLocation) -> Optional[str]:
+        """Calls S3:HeadObject on the S3 object, returns the ETag value.
+
+        If the object is not found, the ETag is set to None.
+
+        Raises:
+          Any exception that is not a s3:NoSuchKey error"""
         try:
             response = self._s3_client.head_object(Bucket=s3_object.bucket, Key=s3_object.key)
             return response.pop("ETag")
-        except ClientError:
+        except ClientError as ce:
+            if ce.response["Error"]["Code"] != "NoSuchKey":
+                raise
             return None

@@ -19,7 +19,7 @@ from typing import Optional, Dict, Any
 
 from sagemaker import environment_variables as env_vars
 from sagemaker.jumpstart.curated_hub.accessors.model_dependency_s3_accessor import (
-    ModoelDependencyS3Accessor,
+    ModelDependencyS3Accessor,
 )
 from sagemaker.jumpstart.curated_hub.hub_model_specs.hub_model_specs import (
     HubModelSpec_v1_0_0,
@@ -51,14 +51,14 @@ class ModelDocumentCreator:
     def __init__(
         self,
         region: str,
-        src_s3_accessor: ModoelDependencyS3Accessor,
-        palatine_hub_s3_filesystem: ModoelDependencyS3Accessor,
+        src_s3_accessor: ModelDependencyS3Accessor,
+        hub_s3_accessor: ModelDependencyS3Accessor,
         studio_metadata_map: Dict[str, Any],
     ) -> None:
         """Sets up basic info."""
         self._region = region
         self._src_s3 = src_s3_accessor
-        self._hub_s3 = palatine_hub_s3_filesystem
+        self._hub_s3 = hub_s3_accessor
         self.studio_metadata_map = studio_metadata_map
 
     def make_hub_content_document(self, model_specs: JumpStartModelSpecs) -> str:

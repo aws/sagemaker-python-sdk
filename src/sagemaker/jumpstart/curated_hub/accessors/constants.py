@@ -13,8 +13,8 @@
 """This module accessors for the SageMaker JumpStart Curated Hub."""
 from __future__ import absolute_import
 
-PRIVATE_MODEL_TRAINING_ARTIFACT_TARBALL_SUFFIX = "train/model.tar.gz"
-PRIVATE_MODEL_TRAINING_SCRIPT_SUFFIX = "train/sourcedir.tar.gz"
-PRIVATE_MODEL_HOSTING_ARTIFACT_TARBALL_SUFFIX = "host/model.tar.gz"
-PRIVATE_MODEL_HOSTING_SCRIPT_SUFFIX = "host/sourcedir.tar.gz"
-PRIVATE_MODEL_INFERENCE_NOTEBOOK_SUFFIX = "host/notebook.ipynb"
+PRIVATE_MODEL_TRAINING_ARTIFACT_TARBALL_S3_SUFFIX = "train/model.tar.gz"
+PRIVATE_MODEL_TRAINING_SCRIPT_S3_SUFFIX = "train/sourcedir.tar.gz"
+PRIVATE_MODEL_HOSTING_ARTIFACT_S3_TARBALL_SUFFIX = "host/model.tar.gz"
+PRIVATE_MODEL_HOSTING_SCRIPT_S3_SUFFIX = "host/sourcedir.tar.gz"
+PRIVATE_MODEL_INFERENCE_NOTEBOOK_S3_SUFFIX = "host/notebook.ipynb"

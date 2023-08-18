@@ -22,10 +22,10 @@ class ModelDocumentCreatorTest(unittest.TestCase):
         "sagemaker.jumpstart.curated_hub.model_document.ModelDocumentCreator._make_hub_dependency_list"
     )
     @patch(
-        "sagemaker.jumpstart.curated_hub.accessors.model_dependency_s3_accessor.ModoelDependencyS3Accessor"
+        "sagemaker.jumpstart.curated_hub.accessors.model_dependency_s3_accessor.ModelDependencyS3Accessor"
     )
     @patch(
-        "sagemaker.jumpstart.curated_hub.accessors.model_dependency_s3_accessor.ModoelDependencyS3Accessor"
+        "sagemaker.jumpstart.curated_hub.accessors.model_dependency_s3_accessor.ModelDependencyS3Accessor"
     )
     def setUp(self, mock_src, mock_dst, mock_hub_dependency_list):
         self.mock_src = mock_src

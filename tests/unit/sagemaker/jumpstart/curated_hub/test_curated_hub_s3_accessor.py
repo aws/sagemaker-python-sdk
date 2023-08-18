@@ -21,7 +21,7 @@ from sagemaker.jumpstart.types import JumpStartModelSpecs
 from tests.unit.sagemaker.jumpstart.constants import BASE_SPEC
 from mock.mock import patch
 from sagemaker.jumpstart.curated_hub.accessors.constants import (
-    PRIVATE_MODEL_HOSTING_ARTIFACT_TARBALL_SUFFIX,
+    PRIVATE_MODEL_HOSTING_ARTIFACT_S3_TARBALL_SUFFIX,
 )
 
 
@@ -41,7 +41,7 @@ class CuratedHubS3AccessorTest(unittest.TestCase):
         self.assertIn("Model", test_reference.key)
         self.assertIn(test_specs.model_id, test_reference.key)
         self.assertIn(test_specs.version, test_reference.key)
-        self.assertIn(PRIVATE_MODEL_HOSTING_ARTIFACT_TARBALL_SUFFIX, test_reference.key)
+        self.assertIn(PRIVATE_MODEL_HOSTING_ARTIFACT_S3_TARBALL_SUFFIX, test_reference.key)
         self.assertNotIn(test_key_prefix, test_reference.key)
 
     @patch(
@@ -59,4 +59,4 @@ class CuratedHubS3AccessorTest(unittest.TestCase):
         self.assertIn(f"{test_key_prefix}/Model", test_reference.key)
         self.assertIn(test_specs.model_id, test_reference.key)
         self.assertIn(test_specs.version, test_reference.key)
-        self.assertIn(PRIVATE_MODEL_HOSTING_ARTIFACT_TARBALL_SUFFIX, test_reference.key)
+        self.assertIn(PRIVATE_MODEL_HOSTING_ARTIFACT_S3_TARBALL_SUFFIX, test_reference.key)
