@@ -662,8 +662,8 @@ class JumpStartEstimator(Estimator):
         training_job_name: str,
         model_id: str,
         model_version: str = "*",
-        sagemaker_session=None,
-        model_channel_name="model",
+        sagemaker_session: session.Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+        model_channel_name: str = "model",
     ):
         """Attach to an existing training job.
 
@@ -694,16 +694,16 @@ class JumpStartEstimator(Estimator):
                 manages interactions with Amazon SageMaker APIs and any other
                 AWS services needed. If not specified, the estimator creates one
                 using the default AWS configuration chain.
+                (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
             model_channel_name (str): Optional. Name of the channel where pre-trained
                 model data will be downloaded (default: 'model'). If no channel
                 with the same name exists in the training job, this option will
                 be ignored.
 
         Returns:
-            Instance of the calling ``Estimator`` Class with the attached
+            Instance of the calling ``JumpStartEstimator`` Class with the attached
             training job.
         """
-        sagemaker_session = sagemaker_session or DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 
         job_details = sagemaker_session.sagemaker_client.describe_training_job(
             TrainingJobName=training_job_name
