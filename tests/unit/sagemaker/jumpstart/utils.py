@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 import copy
 from typing import List
+import boto3
 
 from sagemaker.jumpstart.cache import JumpStartModelsCache
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME, JUMPSTART_REGION_NAME_SET
@@ -83,7 +84,10 @@ def get_prototype_manifest(
 
 
 def get_prototype_model_spec(
-    region: str = None, model_id: str = None, version: str = None
+    region: str = None,
+    model_id: str = None,
+    version: str = None,
+    s3_client: boto3.client = None,
 ) -> JumpStartModelSpecs:
     """This function mocks cache accessor functions. For this mock,
     we only retrieve model specs based on the model ID.
@@ -94,7 +98,10 @@ def get_prototype_model_spec(
 
 
 def get_special_model_spec(
-    region: str = None, model_id: str = None, version: str = None
+    region: str = None,
+    model_id: str = None,
+    version: str = None,
+    s3_client: boto3.client = None,
 ) -> JumpStartModelSpecs:
     """This function mocks cache accessor functions. For this mock,
     we only retrieve model specs based on the model ID. This is reserved
@@ -111,6 +118,7 @@ def get_spec_from_base_spec(
     model_id: str = None,
     semantic_version_str: str = None,
     version: str = None,
+    s3_client: boto3.client = None,
 ) -> JumpStartModelSpecs:
 
     if version and semantic_version_str:

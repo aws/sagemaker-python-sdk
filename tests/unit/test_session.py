@@ -89,6 +89,7 @@ def test_default_session(boto3_default_session):
     assert sess.boto_session is boto3_default_session
 
 
+@patch("boto3.DEFAULT_SESSION", None)
 @patch("boto3.Session")
 def test_new_session_created(boto3_session):
     sess = Session()

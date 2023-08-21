@@ -11,8 +11,9 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
+from unittest.mock import Mock
 
-
+import boto3
 from mock.mock import patch
 import pytest
 
@@ -26,6 +27,9 @@ def test_jumpstart_default_metric_definitions(patched_get_model_specs):
 
     patched_get_model_specs.side_effect = get_spec_from_base_spec
 
+    mock_client = boto3.client("s3")
+    mock_session = Mock(s3_client=mock_client)
+
     model_id = "pytorch-ic-mobilenet-v2"
     region = "us-west-2"
 
@@ -33,12 +37,15 @@ def test_jumpstart_default_metric_definitions(patched_get_model_specs):
         region=region,
         model_id=model_id,
         model_version="*",
+        sagemaker_session=mock_session,
     )
     assert definitions == [
         {"Regex": "val_accuracy: ([0-9\\.]+)", "Name": "pytorch-ic:val-accuracy"}
     ]
 
-    patched_get_model_specs.assert_called_once_with(region=region, model_id=model_id, version="*")
+    patched_get_model_specs.assert_called_once_with(
+        region=region, model_id=model_id, version="*", s3_client=mock_client
+    )
 
     patched_get_model_specs.reset_mock()
 
@@ -46,12 +53,15 @@ def test_jumpstart_default_metric_definitions(patched_get_model_specs):
         region=region,
         model_id=model_id,
         model_version="1.*",
+        sagemaker_session=mock_session,
     )
     assert definitions == [
         {"Regex": "val_accuracy: ([0-9\\.]+)", "Name": "pytorch-ic:val-accuracy"}
     ]
 
-    patched_get_model_specs.assert_called_once_with(region=region, model_id=model_id, version="1.*")
+    patched_get_model_specs.assert_called_once_with(
+        region=region, model_id=model_id, version="1.*", s3_client=mock_client
+    )
 
     patched_get_model_specs.reset_mock()
 

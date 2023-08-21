@@ -24,6 +24,7 @@ import pytest
 
 import pandas as pd
 
+from sagemaker.utils import retry_with_backoff
 from tests.integ.sagemaker.workflow.helpers import wait_pipeline_execution
 from tests.integ.s3_utils import extract_files_from_s3
 from sagemaker.workflow.model_step import (
@@ -1002,7 +1003,7 @@ def test_create_and_update_with_parallelism_config(
         assert response["ParallelismConfiguration"]["MaxParallelExecutionSteps"] == 50
 
         pipeline.parameters = [ParameterInteger(name="InstanceCount", default_value=1)]
-        response = pipeline.update(role, parallelism_config={"MaxParallelExecutionSteps": 55})
+        response = pipeline.upsert(role, parallelism_config={"MaxParallelExecutionSteps": 55})
         update_arn = response["PipelineArn"]
         assert re.match(
             rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
@@ -1011,6 +1012,99 @@ def test_create_and_update_with_parallelism_config(
 
         response = pipeline.describe()
         assert response["ParallelismConfiguration"]["MaxParallelExecutionSteps"] == 55
+
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
+
+
+def test_create_and_start_without_parallelism_config_override(
+    pipeline_session, role, pipeline_name, script_dir
+):
+    sklearn_train = SKLearn(
+        framework_version="0.20.0",
+        entry_point=os.path.join(script_dir, "train.py"),
+        instance_type="ml.m5.xlarge",
+        sagemaker_session=pipeline_session,
+        role=role,
+    )
+
+    train_steps = [
+        TrainingStep(
+            name=f"my-train-{count}",
+            display_name="TrainingStep",
+            description="description for Training step",
+            step_args=sklearn_train.fit(),
+        )
+        for count in range(2)
+    ]
+    pipeline = Pipeline(
+        name=pipeline_name,
+        steps=train_steps,
+        sagemaker_session=pipeline_session,
+    )
+
+    try:
+        pipeline.create(role, parallelism_config=dict(MaxParallelExecutionSteps=1))
+        # No ParallelismConfiguration given in pipeline.start, so it won't override that in pipeline.create
+        execution = pipeline.start()
+
+        def validate():
+            # Only one step would be scheduled initially
+            assert len(execution.list_steps()) == 1
+
+        retry_with_backoff(validate, num_attempts=4)
+
+        wait_pipeline_execution(execution=execution)
+
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
+
+
+def test_create_and_start_with_parallelism_config_override(
+    pipeline_session, role, pipeline_name, script_dir
+):
+    sklearn_train = SKLearn(
+        framework_version="0.20.0",
+        entry_point=os.path.join(script_dir, "train.py"),
+        instance_type="ml.m5.xlarge",
+        sagemaker_session=pipeline_session,
+        role=role,
+    )
+
+    train_steps = [
+        TrainingStep(
+            name=f"my-train-{count}",
+            display_name="TrainingStep",
+            description="description for Training step",
+            step_args=sklearn_train.fit(),
+        )
+        for count in range(2)
+    ]
+    pipeline = Pipeline(
+        name=pipeline_name,
+        steps=train_steps,
+        sagemaker_session=pipeline_session,
+    )
+
+    try:
+        pipeline.create(role, parallelism_config=dict(MaxParallelExecutionSteps=1))
+        # Override ParallelismConfiguration in pipeline.start
+        execution = pipeline.start(parallelism_config=dict(MaxParallelExecutionSteps=2))
+
+        def validate():
+            assert len(execution.list_steps()) == 2
+            for step in execution.list_steps():
+                assert step["StepStatus"] == "Executing"
+
+        retry_with_backoff(validate, num_attempts=4)
+
+        wait_pipeline_execution(execution=execution)
 
     finally:
         try:

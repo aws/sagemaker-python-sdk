@@ -19,8 +19,10 @@ from typing import Dict, Optional
 
 from sagemaker.jumpstart import utils as jumpstart_utils
 from sagemaker.jumpstart import artifacts
+from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 from sagemaker.jumpstart.enums import HyperparameterValidationMode
 from sagemaker.jumpstart.validators import validate_hyperparameters
+from sagemaker.session import Session
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +34,7 @@ def retrieve_default(
     include_container_hyperparameters: bool = False,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> Dict[str, str]:
     """Retrieves the default training hyperparameters for the model matching the given arguments.
 
@@ -56,6 +59,10 @@ def retrieve_default(
         tolerate_deprecated_model (bool): True if deprecated models should be tolerated
             (exception not raised). False if these models should raise an exception.
             (Default: False).
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions. If not
+            specified, one is created using the default AWS configuration
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     Returns:
         dict: The hyperparameters to use for the model.
 
@@ -74,6 +81,7 @@ def retrieve_default(
         include_container_hyperparameters,
         tolerate_vulnerable_model,
         tolerate_deprecated_model,
+        sagemaker_session=sagemaker_session,
     )
 
 
@@ -83,6 +91,9 @@ def validate(
     model_version: Optional[str] = None,
     hyperparameters: Optional[dict] = None,
     validation_mode: HyperparameterValidationMode = HyperparameterValidationMode.VALIDATE_PROVIDED,
+    tolerate_vulnerable_model: bool = False,
+    tolerate_deprecated_model: bool = False,
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> None:
     """Validates hyperparameters for models.
 
@@ -100,6 +111,17 @@ def validate(
           If set to``VALIDATE_ALGORITHM``, all algorithm hyperparameters will be validated.
           If set to ``VALIDATE_ALL``, all hyperparameters for the model will be validated.
           (Default: None).
+        tolerate_vulnerable_model (bool): True if vulnerable versions of model
+            specifications should be tolerated (exception not raised). If False, raises an
+            exception if the script used by this version of the model has dependencies with known
+            security vulnerabilities. (Default: False).
+        tolerate_deprecated_model (bool): True if deprecated models should be tolerated
+            (exception not raised). False if these models should raise an exception.
+            (Default: False).
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions. If not
+            specified, one is created using the default AWS configuration
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
 
     Raises:
         JumpStartHyperparametersError: If the hyperparameter is not formatted correctly,
@@ -125,4 +147,7 @@ def validate(
         hyperparameters=hyperparameters,
         validation_mode=validation_mode,
         region=region,
+        tolerate_vulnerable_model=tolerate_vulnerable_model,
+        tolerate_deprecated_model=tolerate_deprecated_model,
+        sagemaker_session=sagemaker_session,
     )

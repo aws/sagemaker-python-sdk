@@ -18,6 +18,7 @@ from sagemaker.config.config_schema import (
     MODEL_ENABLE_NETWORK_ISOLATION_PATH,
     MODEL_EXECUTION_ROLE_ARN_PATH,
 )
+from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 
 from sagemaker.jumpstart.model import JumpStartModel
 from sagemaker.session import Session
@@ -28,7 +29,7 @@ from tests.unit.sagemaker.jumpstart.utils import get_special_model_spec
 
 execution_role = "fake role! do not use!"
 region = "us-west-2"
-sagemaker_session = Session()
+sagemaker_session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 sagemaker_session.get_caller_identity_arn = lambda: execution_role
 
 override_role = "fdsfsdfs"
@@ -56,7 +57,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
 
     execution_role = "fake role! do not use!"
     region = "us-west-2"
-    sagemaker_session = Session()
+    sagemaker_session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 
     @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")

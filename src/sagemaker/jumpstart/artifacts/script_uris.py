@@ -15,6 +15,7 @@ from __future__ import absolute_import
 import os
 from typing import Optional
 from sagemaker.jumpstart.constants import (
+    DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     ENV_VARIABLE_JUMPSTART_SCRIPT_ARTIFACT_BUCKET_OVERRIDE,
     JUMPSTART_DEFAULT_REGION_NAME,
 )
@@ -25,6 +26,7 @@ from sagemaker.jumpstart.utils import (
     get_jumpstart_content_bucket,
     verify_model_region_and_return_specs,
 )
+from sagemaker.session import Session
 
 
 def _retrieve_script_uri(
@@ -34,6 +36,7 @@ def _retrieve_script_uri(
     region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ):
     """Retrieves the script S3 URI associated with the model matching the given arguments.
 
@@ -55,6 +58,10 @@ def _retrieve_script_uri(
         tolerate_deprecated_model (bool): True if deprecated versions of model
             specifications should be tolerated (exception not raised). If False, raises
             an exception if the version of the model is deprecated. (Default: False).
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions. If not
+            specified, one is created using the default AWS configuration
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     Returns:
         str: the model script URI for the corresponding model.
 
@@ -74,6 +81,7 @@ def _retrieve_script_uri(
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
+        sagemaker_session=sagemaker_session,
     )
 
     if script_scope == JumpStartScriptScope.INFERENCE:
@@ -98,6 +106,7 @@ def _model_supports_inference_script_uri(
     region: Optional[str],
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> bool:
     """Returns True if the model supports inference with script uri field.
 
@@ -115,6 +124,10 @@ def _model_supports_inference_script_uri(
         tolerate_deprecated_model (bool): True if deprecated versions of model
             specifications should be tolerated (exception not raised). If False, raises
             an exception if the version of the model is deprecated. (Default: False).
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions. If not
+            specified, one is created using the default AWS configuration
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     Returns:
         bool: the support status for script uri with inference.
     """
@@ -129,6 +142,7 @@ def _model_supports_inference_script_uri(
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
+        sagemaker_session=sagemaker_session,
     )
 
     return model_specs.use_inference_script_uri()

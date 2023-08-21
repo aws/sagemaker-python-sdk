@@ -27,6 +27,7 @@ from sagemaker.explainer.explainer_config import ExplainerConfig
 from sagemaker.inputs import FileSystemInput, TrainingInput
 from sagemaker.instance_group import InstanceGroup
 from sagemaker.jumpstart.accessors import JumpStartModelsAccessor
+from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.exceptions import INVALID_MODEL_ID_ERROR_MSG
 
@@ -502,6 +503,7 @@ class JumpStartEstimator(Estimator):
                 model_version=model_version,
                 region=region,
                 script=JumpStartScriptScope.TRAINING,
+                sagemaker_session=sagemaker_session,
             )
 
         if not _is_valid_model_id_hook():
@@ -649,9 +651,66 @@ class JumpStartEstimator(Estimator):
             experiment_config=experiment_config,
             tolerate_vulnerable_model=self.tolerate_vulnerable_model,
             tolerate_deprecated_model=self.tolerate_deprecated_model,
+            sagemaker_session=self.sagemaker_session,
         )
 
         return super(JumpStartEstimator, self).fit(**estimator_fit_kwargs.to_kwargs_dict())
+
+    @classmethod
+    def attach(
+        cls,
+        training_job_name: str,
+        model_id: str,
+        model_version: str = "*",
+        sagemaker_session: session.Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+        model_channel_name: str = "model",
+    ) -> "JumpStartEstimator":
+        """Attach to an existing training job.
+
+        Create a JumpStartEstimator bound to an existing training job.
+        After attaching, if the training job has a Complete status,
+        it can be ``deploy()`` ed to create a SageMaker Endpoint and return
+        a ``Predictor``.
+
+        If the training job is in progress, attach will block until the training job
+        completes, but logs of the training job will not display. To see the logs
+        content, please call ``logs()``
+
+        Examples:
+            >>> my_estimator.fit(wait=False)
+            >>> training_job_name = my_estimator.latest_training_job.name
+            Later on:
+            >>> attached_estimator = JumpStartEstimator.attach(training_job_name, model_id)
+            >>> attached_estimator.logs()
+            >>> attached_estimator.deploy()
+
+        Args:
+            training_job_name (str): The name of the training job to attach to.
+            model_id (str): The name of the JumpStart model id associated with the
+                training job.
+            model_version (str): Optional. The version of the JumpStart model id
+                associated with the training job. (Default: "*").
+            sagemaker_session (sagemaker.session.Session): Optional. Session object which
+                manages interactions with Amazon SageMaker APIs and any other
+                AWS services needed. If not specified, the estimator creates one
+                using the default AWS configuration chain.
+                (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+            model_channel_name (str): Optional. Name of the channel where pre-trained
+                model data will be downloaded (default: 'model'). If no channel
+                with the same name exists in the training job, this option will
+                be ignored.
+
+        Returns:
+            Instance of the calling ``JumpStartEstimator`` Class with the attached
+            training job.
+        """
+
+        return cls._attach(
+            training_job_name=training_job_name,
+            sagemaker_session=sagemaker_session,
+            model_channel_name=model_channel_name,
+            additional_kwargs={"model_id": model_id, "model_version": model_version},
+        )
 
     def deploy(
         self,
@@ -991,6 +1050,7 @@ class JumpStartEstimator(Estimator):
                 region=self.region,
                 tolerate_deprecated_model=self.tolerate_deprecated_model,
                 tolerate_vulnerable_model=self.tolerate_vulnerable_model,
+                sagemaker_session=self.sagemaker_session,
             )
 
         # If a predictor class was passed, do not mutate predictor
