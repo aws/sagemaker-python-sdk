@@ -49,6 +49,29 @@ def feature_processor(
     names nand types in [params: Dict[str, Any], spark: SparkSession]. Outputs: a single return
     value of type pyspark.sql.DataFrame. The function can have any name.
 
+    **Example:**
+
+    .. code-block:: python
+        @feature_processor(
+            inputs=[FeatureGroupDataSource("input-fg"), CSVDataSource("s3://bucket/prefix)],
+            output='arn:aws:sagemaker:us-west-2:123456789012:feature-group/output-fg'
+        )
+        def transform(
+            input_feature_group: DataFrame, input_csv: DataFrame, params: Dict[str, Any],
+            spark: SparkSession
+        ) -> DataFrame:
+            return ...
+
+    **More concisely:**
+
+    .. code-block:: python
+        @feature_processor(
+            inputs=[FeatureGroupDataSource("input-fg"), CSVDataSource("s3://bucket/prefix)],
+            output='arn:aws:sagemaker:us-west-2:123456789012:feature-group/output-fg'
+        )
+        def transform(input_feature_group, input_csv):
+            return ...
+
     Args:
         inputs (Sequence[Union[FeatureGroupDataSource, CSVDataSource, ParquetDataSource]]): A list
             of data sources.
