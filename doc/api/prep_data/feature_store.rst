@@ -143,10 +143,6 @@ Feature Processor Data Source
     :members:
     :show-inheritance:
 
-.. autoclass:: sagemaker.feature_store.feature_processor.IcebergTableDataSource
-    :members:
-    :show-inheritance:
-
 
 Feature Processor Scheduler
 ***************************
