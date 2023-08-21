@@ -463,6 +463,76 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             return response["PipelineExecutionSummaries"][0]["PipelineExecutionArn"]
         return None
 
+    def build_parameters_from_execution(
+        self,
+        pipeline_execution_arn: str,
+        parameter_value_overrides: Dict[str, Union[str, bool, int, float]] = None,
+    ) -> Dict[str, Union[str, bool, int, float]]:
+        """Gets the parameters from an execution, update with optional parameter value overrides.
+
+        Args:
+            pipeline_execution_arn (str): The arn of the pipeline execution.
+            parameter_value_overrides (Dict[str, Union[str, bool, int, float]]): Parameter dict
+                to be updated in the parameters from the referenced execution.
+
+        Returns:
+            A parameter dict built from an execution and provided parameter value overrides.
+        """
+        execution_parameters = self._get_parameters_for_execution(pipeline_execution_arn)
+        if parameter_value_overrides is not None:
+            self._validate_parameter_overrides(
+                pipeline_execution_arn, execution_parameters, parameter_value_overrides
+            )
+            execution_parameters.update(parameter_value_overrides)
+        return execution_parameters
+
+    def _get_parameters_for_execution(self, pipeline_execution_arn: str) -> Dict[str, str]:
+        """Gets all the parameters from an execution.
+
+        Args:
+            pipeline_execution_arn (str): The arn of the pipeline execution.
+
+        Returns:
+            A parameter dict from the execution.
+        """
+        pipeline_execution = _PipelineExecution(
+            arn=pipeline_execution_arn,
+            sagemaker_session=self.sagemaker_session,
+        )
+
+        response = pipeline_execution.list_parameters()
+        parameter_list = response["PipelineParameters"]
+        while response.get("NextToken") is not None:
+            response = pipeline_execution.list_parameters(next_token=response["NextToken"])
+            parameter_list.extend(response["PipelineParameters"])
+
+        return {parameter["Name"]: parameter["Value"] for parameter in parameter_list}
+
+    @staticmethod
+    def _validate_parameter_overrides(
+        pipeline_execution_arn: str,
+        execution_parameters: Dict[str, str],
+        parameter_overrides: Dict[str, Union[str, bool, int, float]],
+    ):
+        """Validates the parameter overrides are present in the execution parameters.
+
+        Args:
+            pipeline_execution_arn (str): The arn of the pipeline execution.
+            execution_parameters (Dict[str, str]): A parameter dict from the execution.
+            parameter_overrides (Dict[str, Union[str, bool, int, float]]): Parameter dict to be
+                updated in the parameters from the referenced execution.
+
+        Raises:
+            ValueError: If any parameters in parameter overrides is not present in the
+                execution parameters.
+        """
+        invalid_parameters = set(parameter_overrides) - set(execution_parameters)
+        if invalid_parameters:
+            raise ValueError(
+                f"The following parameter overrides provided: {str(invalid_parameters)} "
+                + f"are not present in the pipeline execution: {pipeline_execution_arn}"
+            )
+
 
 def format_start_parameters(parameters: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Formats start parameter overrides as a list of dicts.
@@ -651,6 +721,30 @@ sagemaker.html#SageMaker.Client.list_pipeline_execution_steps>`_.
             PipelineExecutionArn=self.arn
         )
         return response["PipelineExecutionSteps"]
+
+    def list_parameters(self, max_results: int = None, next_token: str = None):
+        """Gets a list of parameters for a pipeline execution.
+
+        Args:
+            max_results (int): The maximum number of parameters to return in the response.
+            next_token (str):  If the result of the previous ListPipelineParametersForExecution
+                request was truncated, the response includes a NextToken. To retrieve the next
+                set of parameters, use the token in the next request.
+
+        Returns:
+            Information about the parameters of the pipeline execution.
+            See boto3 client list_pipeline_executions
+            https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker.html#SageMaker.Client.list_pipeline_parameters_for_execution
+        """
+        kwargs = dict(PipelineExecutionArn=self.arn)
+        update_args(
+            kwargs,
+            MaxResults=max_results,
+            NextToken=next_token,
+        )
+        return self.sagemaker_session.sagemaker_client.list_pipeline_parameters_for_execution(
+            **kwargs
+        )
 
     def wait(self, delay=30, max_attempts=60):
         """Waits for a pipeline execution.
