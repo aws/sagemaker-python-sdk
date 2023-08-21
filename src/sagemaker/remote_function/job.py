@@ -191,6 +191,8 @@ class _JobSettings:
         volume_size: int = 30,
         encrypt_inter_container_traffic: bool = None,
         spark_config: SparkConfig = None,
+        use_spot_instances=False,
+        max_wait_time_in_seconds=None,
     ):
         """Initialize a _JobSettings instance which configures the remote job.
 
@@ -353,6 +355,14 @@ class _JobSettings:
               Spark image. If ``spark_config`` is specified, a SageMaker Spark image uri
               will be used for training. Note that ``image_uri`` can not be specified at the
               same time otherwise a ``ValueError`` is thrown. Defaults to ``None``.
+
+            use_spot_instances (bool): Specifies whether to use SageMaker Managed Spot instances for
+              training. If enabled then the ``max_wait`` arg should also be set.
+              Defaults to ``False``.
+
+            max_wait_time_in_seconds (int): Timeout in seconds waiting for spot training job.
+              After this amount of time Amazon SageMaker will stop waiting for managed spot
+              training job to complete. Defaults to ``None``.
         """
         self.sagemaker_session = sagemaker_session or Session()
         self.environment_variables = resolve_value_from_config(
@@ -439,6 +449,8 @@ class _JobSettings:
         self.max_retry_attempts = max_retry_attempts
         self.keep_alive_period_in_seconds = keep_alive_period_in_seconds
         self.spark_config = spark_config
+        self.use_spot_instances = use_spot_instances
+        self.max_wait_time_in_seconds = max_wait_time_in_seconds
         self.job_conda_env = resolve_value_from_config(
             direct_input=job_conda_env,
             config_path=REMOTE_FUNCTION_JOB_CONDA_ENV,
@@ -648,12 +660,16 @@ class _Job:
 
         stored_function.save(func, *func_args, **func_kwargs)
 
+        stopping_condition = {
+            "MaxRuntimeInSeconds": job_settings.max_runtime_in_seconds,
+        }
+        if job_settings.max_wait_time_in_seconds is not None:
+            stopping_condition["MaxWaitTimeInSeconds"] = job_settings.max_wait_time_in_seconds
+
         request_dict = dict(
             TrainingJobName=job_name,
             RoleArn=job_settings.role,
-            StoppingCondition={
-                "MaxRuntimeInSeconds": job_settings.max_runtime_in_seconds,
-            },
+            StoppingCondition=stopping_condition,
             RetryStrategy={"MaximumRetryAttempts": job_settings.max_retry_attempts},
         )
 
@@ -741,6 +757,8 @@ class _Job:
 
         if job_settings.vpc_config:
             request_dict["VpcConfig"] = job_settings.vpc_config
+
+        request_dict["EnableManagedSpotTraining"] = job_settings.use_spot_instances
 
         request_dict["Environment"] = job_settings.environment_variables
 
