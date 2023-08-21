@@ -52,6 +52,7 @@ def feature_processor(
     **Example:**
 
     .. code-block:: python
+
         @feature_processor(
             inputs=[FeatureGroupDataSource("input-fg"), CSVDataSource("s3://bucket/prefix)],
             output='arn:aws:sagemaker:us-west-2:123456789012:feature-group/output-fg'
@@ -65,6 +66,7 @@ def feature_processor(
     **More concisely:**
 
     .. code-block:: python
+    
         @feature_processor(
             inputs=[FeatureGroupDataSource("input-fg"), CSVDataSource("s3://bucket/prefix)],
             output='arn:aws:sagemaker:us-west-2:123456789012:feature-group/output-fg'
