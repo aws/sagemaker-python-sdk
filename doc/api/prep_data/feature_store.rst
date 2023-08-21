@@ -122,6 +122,12 @@ Feature Store
     :show-inheritance:
 
 
+@feature_processor decorator
+****************************
+
+.. automethod:: sagemaker.feature_store.feature_processor.feature_processor.feature_processor
+
+
 Feature Processor Data Source
 *****************************
 
