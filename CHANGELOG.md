@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.179.0 (2023-08-21)
+
+### Features
+
+ * attach method for jumpstart estimator
+
+### Bug Fixes and Other Changes
+
+ * pipeline upsert failed to pass parallelism_config to update
+
 ## v2.178.0 (2023-08-17)
 
 ### Features
