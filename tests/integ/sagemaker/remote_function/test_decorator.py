@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 import time
+from typing import Union
 
 
 import pytest
@@ -23,6 +24,7 @@ import pandas as pd
 import subprocess
 import shlex
 from sagemaker.experiments.run import Run, load_run
+from sagemaker.remote_function import CheckpointLocation
 from tests.integ.sagemaker.experiments.helpers import cleanup_exp_resources
 from sagemaker.experiments.trial_component import _TrialComponent
 from sagemaker.experiments._api_types import _TrialComponentStatusType
@@ -40,13 +42,25 @@ from sagemaker.utils import unique_name_from_base
 
 from tests.integ.kms_utils import get_or_create_kms_key
 from tests.integ import DATA_DIR
+from tests.integ.s3_utils import assert_s3_files_exist
 
 ROLE = "SageMakerRole"
+CHECKPOINT_FILE_CONTENT = "test checkpoint file"
 
 
 @pytest.fixture(scope="module")
 def s3_kms_key(sagemaker_session):
     return get_or_create_kms_key(sagemaker_session=sagemaker_session)
+
+
+@pytest.fixture(scope="module")
+def checkpoint_s3_location(sagemaker_session):
+    def random_s3_uri():
+        return "".join(random.choices(string.ascii_uppercase + string.digits, k=10))
+
+    return "s3://{}/rm-func-checkpoints/{}".format(
+        sagemaker_session.default_bucket(), random_s3_uri()
+    )
 
 
 def test_decorator(sagemaker_session, dummy_container_without_error, cpu_instance_type):
@@ -624,6 +638,69 @@ def test_decorator_with_spot_instances(
 
     assert divide(10, 2) == 5
     assert divide(20, 2) == 10
+
+
+def test_decorator_with_spot_instances_save_checkpoints(
+    sagemaker_session,
+    dummy_container_without_error,
+    cpu_instance_type,
+    checkpoint_s3_location,
+):
+    @remote(
+        role=ROLE,
+        image_uri=dummy_container_without_error,
+        instance_type=cpu_instance_type,
+        sagemaker_session=sagemaker_session,
+        use_spot_instances=True,
+        max_wait_time_in_seconds=48 * 60 * 60,
+    )
+    def save_checkpoints(checkpoint_path: Union[str, os.PathLike]):
+        file_path_1 = os.path.join(checkpoint_path, "checkpoint_1.json")
+        with open(file_path_1, "w") as f:
+            f.write(CHECKPOINT_FILE_CONTENT)
+
+        file_path_2 = os.path.join(checkpoint_path, "checkpoint_2.json")
+        with open(file_path_2, "w") as f:
+            f.write(CHECKPOINT_FILE_CONTENT)
+
+        return CHECKPOINT_FILE_CONTENT
+
+    assert save_checkpoints(CheckpointLocation(checkpoint_s3_location)) == CHECKPOINT_FILE_CONTENT
+    assert_s3_files_exist(
+        sagemaker_session, checkpoint_s3_location, ["checkpoint_1.json", "checkpoint_2.json"]
+    )
+
+
+@pytest.mark.dependency(depends=["test_decorator_with_spot_instances_save_checkpoints"])
+def test_decorator_with_spot_instances_load_checkpoints(
+    sagemaker_session,
+    dummy_container_without_error,
+    cpu_instance_type,
+    checkpoint_s3_location,
+):
+    @remote(
+        role=ROLE,
+        image_uri=dummy_container_without_error,
+        instance_type=cpu_instance_type,
+        sagemaker_session=sagemaker_session,
+        use_spot_instances=True,
+        max_wait_time_in_seconds=48 * 60 * 60,
+    )
+    def load_checkpoints(checkpoint_path: Union[str, os.PathLike]):
+        file_path_1 = os.path.join(checkpoint_path, "checkpoint_1.json")
+        with open(file_path_1, "r") as file:
+            file_content_1 = file.read()
+
+        file_path_2 = os.path.join(checkpoint_path, "checkpoint_2.json")
+        with open(file_path_2, "r") as file:
+            file_content_2 = file.read()
+
+        return file_content_1 + file_content_2
+
+    assert (
+        load_checkpoints(CheckpointLocation(checkpoint_s3_location))
+        == CHECKPOINT_FILE_CONTENT + CHECKPOINT_FILE_CONTENT
+    )
 
 
 @pytest.mark.skip
