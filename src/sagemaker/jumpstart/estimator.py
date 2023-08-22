@@ -705,7 +705,7 @@ class JumpStartEstimator(Estimator):
             training job.
         """
 
-        return cls._attach(
+        return Estimator._attach(
             training_job_name=training_job_name,
             sagemaker_session=sagemaker_session,
             model_channel_name=model_channel_name,
