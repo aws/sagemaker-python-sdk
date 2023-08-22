@@ -49,9 +49,9 @@ class Dependency:
 class DatasetConfig:
     """Dataset locations for Private Hub model"""
 
-    TrainingDatasetLocation: Optional[str]  
-    ValidationDatasetLocation: Optional[str]  
-    DataFormatLocation: Optional[str]  
+    TrainingDatasetLocation: Optional[str]
+    ValidationDatasetLocation: Optional[str]
+    DataFormatLocation: Optional[str]
     PredictColumn: Optional[str]
 
 

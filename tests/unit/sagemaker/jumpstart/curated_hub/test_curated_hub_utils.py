@@ -17,7 +17,7 @@ import unittest
 from mock.mock import Mock
 
 from sagemaker.jumpstart.curated_hub.utils import (
-    list_objects_by_prefix,
+    list_objects_by_prefix_pagination,
     to_s3_folder_prefix,
     convert_s3_key_to_new_prefix,
     base_framework,
@@ -28,18 +28,18 @@ from sagemaker.jumpstart.curated_hub.utils import (
 class CuratedHubUtilsTest(unittest.TestCase):
     def test_list_objects_by_prefix_invalid_bucket_name_fails(self):
         with self.assertRaises(ValueError):
-            list_objects_by_prefix(None, "prefix", None)
+            list_objects_by_prefix_pagination(None, "prefix", None)
 
     def test_list_objects_by_prefix_invalid_prefix_fails(self):
         with self.assertRaises(ValueError):
-            list_objects_by_prefix("bucket", None, None)
+            list_objects_by_prefix_pagination("bucket", None, None)
 
     def test_list_objects_by_prefix_no_content_empty(self):
         mock_s3_client = Mock()
         contents = {"Contents": ["hello"]}
         mock_s3_client.list_objects_v2.return_value = contents
 
-        res = list_objects_by_prefix("bucket", "prefix", mock_s3_client)
+        res = list_objects_by_prefix_pagination("bucket", "prefix", mock_s3_client)
 
         self.assertEqual(res, contents["Contents"])
 

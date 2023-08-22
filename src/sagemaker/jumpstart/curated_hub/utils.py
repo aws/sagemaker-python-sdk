@@ -44,7 +44,7 @@ def find_objects_under_prefix(bucket: str, prefix: str, s3_client: BaseClient) -
     """Returns a set of object keys in the bucket with the provided S3 prefix."""
     s3_objects_to_deploy: Set[str] = set()
     src_prefix = to_s3_folder_prefix(prefix=prefix)
-    s3_object_list: List[Any] = list_objects_by_prefix(
+    s3_object_list: List[Any] = list_objects_by_prefix_pagination(
         bucket_name=bucket, prefix=src_prefix, s3_client=s3_client
     )
     for s3_object in s3_object_list:
@@ -57,7 +57,7 @@ def find_objects_under_prefix(bucket: str, prefix: str, s3_client: BaseClient) -
     return s3_objects_to_deploy
 
 
-def list_objects_by_prefix(
+def list_objects_by_prefix_pagination(
     bucket_name: str, prefix: str, s3_client: BaseClient, paginate: bool = True
 ) -> List[Any]:
     """Call s3.list_objects_v2 for objects in the specified bucket that match a prefix.
@@ -116,7 +116,7 @@ class PublicModelId:
 
 
 def construct_s3_uri(bucket: str, key: str) -> str:
-    """Constructs an s3 uri based off the bucket and key"""
+    """Returns an S3 URI based off the bucket and key"""
     return f"s3://{bucket}/{key}"
 
 
@@ -146,7 +146,7 @@ def get_model_framework(model_specs: JumpStartModelSpecs) -> str:
 def convert_public_model_hyperparameter_to_hub_hyperparameter(
     hyperparameter: JumpStartHyperparameter,
 ) -> Hyperparameter:
-    """Adapter function to format Public Hub hyperparmaters to Private Hub hyperparameter"""
+    """Adapter function to format Public Hub hyperparameters to Private Hub hyperparameter"""
     return Hyperparameter(
         Name=hyperparameter.name,
         DefaultValue=hyperparameter.default,
@@ -160,7 +160,7 @@ def convert_public_model_hyperparameter_to_hub_hyperparameter(
     )
 
 
-def _convert_hyperparameter_type_to_valid_hub_type(hyperparameter_type: str):
+def _convert_hyperparameter_type_to_valid_hub_type(hyperparameter_type: str) -> str:
     """Validates a JumpStartHyperparameter"""
     if hyperparameter_type == "int":
         return "Integer"

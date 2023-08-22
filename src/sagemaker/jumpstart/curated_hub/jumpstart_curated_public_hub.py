@@ -151,6 +151,8 @@ class JumpStartCuratedPublicHub:
             curated_hub_s3_bucket_name = preexisting_hub[1]
             curated_hub_s3_key_prefix = preexisting_hub[2]
 
+            print(f"Found hub {curated_hub_name} bucket {curated_hub_s3_bucket_name} key prefix {curated_hub_s3_key_prefix}")
+
             if not import_to_preexisting_hub:
                 raise ValueError(
                     f"Hub with name {curated_hub_name} detected on account."
@@ -386,10 +388,11 @@ class JumpStartCuratedPublicHub:
     def _format_dependency_dst_uris_for_delete_objects(
         self, dependency: Dependency
     ) -> List[Dict[str, str]]:
-        """Formats hub content dependency asd s3 keys"""
+        """Formats hub content dependency s3 keys"""
+        s3_keys = []
         s3_object_reference = create_s3_object_reference_from_uri(dependency.DependencyCopyPath)
 
-        if self._is_s3_key_a_directory(s3_object_reference.key):
+        if self._is_s3_key_a_prefix(s3_object_reference.key):
             keys = find_objects_under_prefix(
                 bucket=s3_object_reference.bucket,
                 prefix=s3_object_reference.key,
@@ -405,10 +408,10 @@ class JumpStartCuratedPublicHub:
 
         return formatted_keys
 
-    def _is_s3_key_a_directory(self, s3_key: str) -> bool:
+    def _is_s3_key_a_prefix(self, s3_key: str) -> bool:
         """Checks of s3 key is a directory"""
         return s3_key.endswith("/")
 
-    def _should_skip_create(self):
+    def _should_skip_create(self) -> bool:
         """Skips creating resources if true"""
         return self._skip_create

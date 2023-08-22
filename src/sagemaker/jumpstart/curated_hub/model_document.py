@@ -15,7 +15,7 @@ from __future__ import absolute_import
 
 import json
 from dataclasses import asdict
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 from sagemaker import environment_variables as env_vars
 from sagemaker.jumpstart.curated_hub.accessors.model_dependency_s3_accessor import (
@@ -57,8 +57,8 @@ class ModelDocumentCreator:
     ) -> None:
         """Sets up basic info."""
         self._region = region
-        self._src_s3 = src_s3_accessor
-        self._hub_s3 = hub_s3_accessor
+        self._src_s3_accessor = src_s3_accessor
+        self._dst_s3_accessor = hub_s3_accessor
         self.studio_metadata_map = studio_metadata_map
 
     def make_hub_content_document(self, model_specs: JumpStartModelSpecs) -> str:
@@ -68,7 +68,7 @@ class ModelDocumentCreator:
 
     def _make_hub_content_document_json(self, model_specs: JumpStartModelSpecs) -> Dict[str, Any]:
         """Creates hub content document in json format"""
-        capabilities = []
+        capabilities: List[str] = []
         if model_specs.training_supported:
             capabilities.append(ModelCapabilities.TRAINING)
         if model_specs.incremental_training_supported:
@@ -80,9 +80,7 @@ class ModelDocumentCreator:
             MlTask=self.studio_metadata_map[model_specs.model_id]["problemType"],
             Framework=model_specs.hosting_ecr_specs.framework,
             Origin=None,
-            Dependencies=self._make_hub_dependency_list(
-                model_specs
-            ),  # TODO add references to copied artifacts
+            Dependencies=self._make_hub_dependency_list(model_specs),
             DatasetConfig=self._dataset_config(model_specs=model_specs),
             DefaultTrainingConfig=self._make_hub_content_default_training_config(
                 model_specs=model_specs
@@ -106,14 +104,14 @@ class ModelDocumentCreator:
 
     def _make_hub_dependency_list(self, model_specs: JumpStartModelSpecs):
         """Creates hub content dependencies"""
-        dependencies = []
+        dependencies: List[Dependency] = []
 
         dependencies.append(
             Dependency(
-                DependencyOriginPath=self._src_s3.get_inference_artifact_s3_reference(
+                DependencyOriginPath=self._src_s3_accessor.get_inference_artifact_s3_reference(
                     model_specs
                 ).get_uri(),
-                DependencyCopyPath=self._hub_s3.get_inference_artifact_s3_reference(
+                DependencyCopyPath=self._dst_s3_accessor.get_inference_artifact_s3_reference(
                     model_specs
                 ).get_uri(),
                 DependencyType=DependencyType.ARTIFACT,
@@ -121,10 +119,10 @@ class ModelDocumentCreator:
         )
         dependencies.append(
             Dependency(
-                DependencyOriginPath=self._src_s3.get_inference_script_s3_reference(
+                DependencyOriginPath=self._src_s3_accessor.get_inference_script_s3_reference(
                     model_specs
                 ).get_uri(),
-                DependencyCopyPath=self._hub_s3.get_inference_script_s3_reference(
+                DependencyCopyPath=self._dst_s3_accessor.get_inference_script_s3_reference(
                     model_specs
                 ).get_uri(),
                 DependencyType=DependencyType.SCRIPT,
@@ -132,10 +130,10 @@ class ModelDocumentCreator:
         )
         dependencies.append(
             Dependency(
-                DependencyOriginPath=self._src_s3.get_demo_notebook_s3_reference(
+                DependencyOriginPath=self._src_s3_accessor.get_demo_notebook_s3_reference(
                     model_specs
                 ).get_uri(),
-                DependencyCopyPath=self._hub_s3.get_demo_notebook_s3_reference(
+                DependencyCopyPath=self._dst_s3_accessor.get_demo_notebook_s3_reference(
                     model_specs
                 ).get_uri(),
                 DependencyType=DependencyType.NOTEBOOK,
@@ -143,8 +141,12 @@ class ModelDocumentCreator:
         )
         dependencies.append(
             Dependency(
-                DependencyOriginPath=self._src_s3.get_markdown_s3_reference(model_specs).get_uri(),
-                DependencyCopyPath=self._hub_s3.get_markdown_s3_reference(model_specs).get_uri(),
+                DependencyOriginPath=self._src_s3_accessor.get_markdown_s3_reference(
+                    model_specs
+                ).get_uri(),
+                DependencyCopyPath=self._dst_s3_accessor.get_markdown_s3_reference(
+                    model_specs
+                ).get_uri(),
                 DependencyType=DependencyType.OTHER,
             )
         )
@@ -152,10 +154,10 @@ class ModelDocumentCreator:
         if model_specs.training_supported:
             dependencies.append(
                 Dependency(
-                    DependencyOriginPath=self._src_s3.get_training_artifact_s3_reference(
+                    DependencyOriginPath=self._src_s3_accessor.get_training_artifact_s3_reference(
                         model_specs
                     ).get_uri(),
-                    DependencyCopyPath=self._hub_s3.get_training_artifact_s3_reference(
+                    DependencyCopyPath=self._dst_s3_accessor.get_training_artifact_s3_reference(
                         model_specs
                     ).get_uri(),
                     DependencyType=DependencyType.ARTIFACT,
@@ -163,10 +165,10 @@ class ModelDocumentCreator:
             )
             dependencies.append(
                 Dependency(
-                    DependencyOriginPath=self._src_s3.get_training_script_s3_reference(
+                    DependencyOriginPath=self._src_s3_accessor.get_training_script_s3_reference(
                         model_specs
                     ).get_uri(),
-                    DependencyCopyPath=self._hub_s3.get_training_script_s3_reference(
+                    DependencyCopyPath=self._dst_s3_accessor.get_training_script_s3_reference(
                         model_specs
                     ).get_uri(),
                     DependencyType=DependencyType.SCRIPT,
@@ -174,10 +176,10 @@ class ModelDocumentCreator:
             )
             dependencies.append(
                 Dependency(
-                    DependencyOriginPath=self._src_s3.get_default_training_dataset_s3_reference(
+                    DependencyOriginPath=self._src_s3_accessor.get_default_training_dataset_s3_reference(
                         model_specs
                     ).get_uri(),
-                    DependencyCopyPath=self._hub_s3.get_default_training_dataset_s3_reference(
+                    DependencyCopyPath=self._dst_s3_accessor.get_default_training_dataset_s3_reference(
                         model_specs
                     ).get_uri(),
                     DependencyType=DependencyType.DATASET,
@@ -215,19 +217,23 @@ class ModelDocumentCreator:
                 BaseFramework=base_framework(model_specs=model_specs),
             ),
             ModelArtifactConfig=ModelArtifactConfig(
-                ArtifactLocation=self._hub_s3.get_inference_artifact_s3_reference(
+                ArtifactLocation=self._dst_s3_accessor.get_inference_artifact_s3_reference(
                     model_specs
                 ).get_uri()
             ),
             ScriptConfig=ScriptConfig(
-                ScriptLocation=self._hub_s3.get_inference_script_s3_reference(model_specs).get_uri()
+                ScriptLocation=self._dst_s3_accessor.get_inference_script_s3_reference(
+                    model_specs
+                ).get_uri()
             ),
             InstanceConfig=InstanceConfig(
                 DefaultInstanceType=model_specs.default_inference_instance_type,
                 InstanceTypeOptions=model_specs.supported_inference_instance_types or [],
             ),
             InferenceNotebookConfig=InferenceNotebookConfig(
-                NotebookLocation=self._hub_s3.get_demo_notebook_s3_reference(model_specs).get_uri()
+                NotebookLocation=self._dst_s3_accessor.get_demo_notebook_s3_reference(
+                    model_specs
+                ).get_uri()
             ),
             CustomImageConfig=None,
         )
@@ -255,12 +261,14 @@ class ModelDocumentCreator:
                 BaseFramework=base_framework(model_specs=model_specs),
             ),
             ModelArtifactConfig=ModelArtifactConfig(
-                ArtifactLocation=self._hub_s3.get_training_artifact_s3_reference(
+                ArtifactLocation=self._dst_s3_accessor.get_training_artifact_s3_reference(
                     model_specs
                 ).get_uri()
             ),
             ScriptConfig=ScriptConfig(
-                ScriptLocation=self._hub_s3.get_training_script_s3_reference(model_specs).get_uri()
+                ScriptLocation=self._dst_s3_accessor.get_training_script_s3_reference(
+                    model_specs
+                ).get_uri()
             ),
             InstanceConfig=InstanceConfig(
                 DefaultInstanceType=model_specs.default_training_instance_type,
@@ -280,7 +288,7 @@ class ModelDocumentCreator:
         if not model_specs.training_supported:
             return None
         return DatasetConfig(
-            TrainingDatasetLocation=self._hub_s3.get_default_training_dataset_s3_reference(
+            TrainingDatasetLocation=self._dst_s3_accessor.get_default_training_dataset_s3_reference(
                 model_specs
             ).get_uri(),
             ValidationDatasetLocation=None,
