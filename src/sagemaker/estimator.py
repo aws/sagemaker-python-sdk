@@ -49,7 +49,7 @@ from sagemaker.debugger import (  # noqa: F401 # pylint: disable=unused-import
     ProfilerRule,
     Rule,
     TensorBoardOutputConfig,
-    get_default_profiler_rule,
+    get_default_profiler_processing_job,
     get_rule_container_image_uri,
     RuleBase,
 )
@@ -1115,6 +1115,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 self.profiler_config = ProfilerConfig(s3_output_path=self.output_path)
             if self.rules is None or (self.rules and not self.profiler_rules):
                 self.profiler_rules = []
+                if self.profiler_config.profile_params:
+                    self.profiler_rules.append(
+                        get_default_profiler_processing_job(
+                            instance_type=self.profiler_config.profile_params.instanceType,
+                            volume_size_in_gb=self.profiler_config.profile_params.volumeSizeInGB,
+                        )
+                    )  # Rule specifying processing options for detail prof
 
         if self.profiler_config and not self.profiler_config.s3_output_path:
             self.profiler_config.s3_output_path = self.output_path
@@ -1141,9 +1148,12 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             rule (:class:`~sagemaker.debugger.RuleBase`): Any rule object that derives from RuleBase
         """
         if rule.image_uri == "DEFAULT_RULE_EVALUATOR_IMAGE":
-            rule.image_uri = get_rule_container_image_uri(self.sagemaker_session.boto_region_name)
-            rule.instance_type = None
-            rule.volume_size_in_gb = None
+            rule.image_uri = get_rule_container_image_uri(
+                rule.name, self.sagemaker_session.boto_region_name
+            )
+            if rule.name.startswith("DetailedProfilerProcessingJobConfig") is False:
+                rule.instance_type = None
+                rule.volume_size_in_gb = None
 
     def _set_source_s3_uri(self, rule):
         """Set updated source S3 uri when specified.
