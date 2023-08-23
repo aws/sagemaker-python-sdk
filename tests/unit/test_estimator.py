@@ -46,6 +46,7 @@ from sagemaker.estimator import Estimator, EstimatorBase, Framework, _TrainingJo
 from sagemaker.fw_utils import PROFILER_UNSUPPORTED_REGIONS
 from sagemaker.inputs import ShuffleConfig
 from sagemaker.instance_group import InstanceGroup
+from sagemaker.interactive_apps import SupportedInteractiveAppTypes
 from sagemaker.model import FrameworkModel
 from sagemaker.mxnet.estimator import MXNet
 from sagemaker.predictor import Predictor
@@ -5448,3 +5449,46 @@ def test_stage_user_code_in_s3_default_bucket_and_prefix_combinations(
         ),
     )
     assert actual == expected
+
+
+def test_estimator_get_app_url_success(sagemaker_session):
+    job_name = "get-app-url-test-job-name"
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        base_job_name=job_name,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+    )
+    f.fit("s3://mydata")
+
+    url = f.get_app_url("TensorBoard", open_in_default_web_browser=False)
+
+    assert url and job_name in url
+
+    app_type = SupportedInteractiveAppTypes.TENSORBOARD
+    url = f.get_app_url(app_type, open_in_default_web_browser=False)
+
+    assert url and job_name in url
+
+
+def test_estimator_get_app_url_fail(sagemaker_session):
+    job_name = "get-app-url-test-job-name"
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        base_job_name=job_name,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+    )
+    f.fit("s3://mydata")
+    with pytest.raises(ValueError) as error:
+        f.get_app_url("fake-app")
+
+    assert "does not support URL retrieval." in str(error)

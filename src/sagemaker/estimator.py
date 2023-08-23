@@ -65,6 +65,8 @@ from sagemaker.fw_utils import (
     validate_source_code_input_against_pipeline_variables,
 )
 from sagemaker.inputs import TrainingInput, FileSystemInput
+from sagemaker.interactive_apps import SupportedInteractiveAppTypes
+from sagemaker.interactive_apps.tensorboard import TensorBoardApp
 from sagemaker.instance_group import InstanceGroup
 from sagemaker.utils import instance_supports_kms
 from sagemaker.job import _Job
@@ -749,6 +751,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
         # Internal flag
         self._is_output_path_set_from_default_bucket_and_prefix = False
+
+        self.tensorboard_app = TensorBoardApp(region=self.sagemaker_session.boto_region_name)
 
     @abstractmethod
     def training_image_uri(self):
@@ -2255,6 +2259,73 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         profiler_config_request_dict = self.profiler_config._to_request_dict()
 
         _TrainingJob.update(self, profiler_rule_configs, profiler_config_request_dict)
+
+    def get_app_url(
+        self,
+        app_type,
+        open_in_default_web_browser=True,
+        create_presigned_domain_url=False,
+        domain_id=None,
+        user_profile_name=None,
+        optional_create_presigned_url_kwargs=None,
+    ):
+        """Generate a URL to help access the specified app hosted in Amazon SageMaker Studio.
+
+        Args:
+            app_type (str or SupportedInteractiveAppTypes): Required. The app type available in
+                SageMaker Studio to return a URL to.
+            open_in_default_web_browser (bool): Optional. When True, the URL will attempt to be
+                opened in the environment's default web browser. Otherwise, the resulting URL will
+                be returned by this function.
+                Default: ``True``
+            create_presigned_domain_url (bool): Optional. Determines whether a presigned domain URL
+                should be generated instead of an unsigned URL. This only applies when called from
+                outside of a SageMaker Studio environment. If this is set to True inside of a
+                SageMaker Studio environment, it will be ignored.
+                Default: ``False``
+            domain_id (str): Optional. The AWS Studio domain that the resulting app will use. If
+                code is executing in a Studio environment and this was not supplied, this will be
+                automatically detected. If not supplied and running in a non-Studio environment, it
+                is up to the derived class on how to handle that, but in general, a redirect to a
+                landing page can be expected.
+                Default: ``None``
+            user_profile_name (str): Optional. The AWS Studio user profile that the resulting app
+                will use. If code is executing in a Studio environment and this was not supplied,
+                this will be automatically detected. If not supplied and running in a
+                non-Studio environment, it is up to the derived class on how to handle that, but in
+                general, a redirect to a landing page can be expected.
+                Default: ``None``
+            optional_create_presigned_url_kwargs (dict): Optional. This parameter
+                should be passed when a user outside of Studio wants a presigned URL to the
+                TensorBoard application and wants to modify the optional parameters of the
+                create_presigned_domain_url call.
+                Default: ``None``
+        Returns:
+            str: A URL for the requested app in SageMaker Studio.
+        """
+        url = None
+
+        # Get app_type in lower str format
+        if isinstance(app_type, SupportedInteractiveAppTypes):
+            app_type = app_type.name
+        app_type = app_type.lower()
+
+        if app_type == SupportedInteractiveAppTypes.TENSORBOARD.name.lower():
+            training_job_name = None
+            if self._current_job_name:
+                training_job_name = self._current_job_name
+            url = self.tensorboard_app.get_app_url(
+                training_job_name=training_job_name,
+                open_in_default_web_browser=open_in_default_web_browser,
+                create_presigned_domain_url=create_presigned_domain_url,
+                domain_id=domain_id,
+                user_profile_name=user_profile_name,
+                optional_create_presigned_url_kwargs=optional_create_presigned_url_kwargs,
+            )
+        else:
+            raise ValueError(f"{app_type} does not support URL retrieval.")
+
+        return url
 
 
 class _TrainingJob(_Job):
