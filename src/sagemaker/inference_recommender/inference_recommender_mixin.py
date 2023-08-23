@@ -302,10 +302,6 @@ class InferenceRecommenderMixin:
             )
             return None
 
-        instance_type = self.inference_recommendations[0]["EndpointConfiguration"]["InstanceType"]
-        initial_instance_count = self.inference_recommendations[0]["EndpointConfiguration"][
-            "InitialInstanceCount"
-        ]
         return self._filter_recommendations_for_realtime()
 
     def _update_params_for_recommendation_id(
