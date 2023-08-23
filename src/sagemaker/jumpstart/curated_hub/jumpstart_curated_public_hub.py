@@ -78,8 +78,6 @@ class JumpStartCuratedPublicHub:
             curated_hub_name, import_to_preexisting_hub
         )
 
-        self._skip_create = self.curated_hub_name != curated_hub_name
-
         self.studio_metadata_map = get_studio_model_metadata_map_from_region(self._region)
         self._init_dependencies()
 
@@ -166,6 +164,8 @@ class JumpStartCuratedPublicHub:
                 + " is set to true - defaulting to this hub."
             )
 
+            self._skip_create = True
+
         print(f"HUB_BUCKET_NAME={curated_hub_s3_bucket_name}")
         print(f"HUB_NAME={curated_hub_name}")
 
@@ -181,7 +181,14 @@ class JumpStartCuratedPublicHub:
         if self._should_skip_create():
             print(f"WARN: Skipping hub creation as hub {self.curated_hub_name} already exists.")
             return
-        self._create_hub_and_hub_bucket()
+        try:
+          self._create_hub_and_hub_bucket()
+        except ClientError as ex:
+            response_code = ex.response["Error"]["Code"]
+            if response_code == "BucketAlreadyOwnedByYou":
+                if self._should_skip_create():
+                    print(f"WARN: Skipping hub creation as hub {self.curated_hub_name} already exists.")
+            raise
 
     def _create_hub_and_hub_bucket(self):
         """Creates a hub and corresponding s3 bucket"""
