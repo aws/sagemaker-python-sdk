@@ -10,10 +10,10 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Methods for TensorBoard apps hosted on SageMaker.
+"""Methods for starting up and accessing DetailProfiler apps
 
 This module contains methods for starting up and accessing
-TensorBoard apps hosted on SageMaker
+DetailProfiler apps hosted on SageMaker
 """
 from __future__ import absolute_import
 
@@ -28,14 +28,14 @@ from sagemaker.session import Session, NOTEBOOK_METADATA_FILE
 logger = logging.getLogger(__name__)
 
 
-class TensorBoardApp(object):
-    """TensorBoardApp is a class for creating/accessing a TensorBoard app hosted on SageMaker."""
+class DetailProfilerApp(object):
+    """Class for creating/accessing a DetailProfiler app hosted on SageMaker."""
 
     def __init__(self, region: Optional[str] = None):
-        """Initialize a TensorBoardApp object.
+        """Initialize a DetailProfilerApp object.
 
         Args:
-            region (str): The AWS Region, e.g. us-east-1. If not specified,
+            region (str): The name of the region e.g. us-east-1. If not specified,
                 one is created using the default AWS configuration chain.
         """
         if region:
@@ -45,9 +45,8 @@ class TensorBoardApp(object):
                 self.region = Session().boto_region_name
             except ValueError:
                 raise ValueError(
-                    "Failed to get the Region information from the default config. Please either "
-                    "pass your Region manually as an input argument or set up the local AWS "
-                    "configuration."
+                    "Failed to get region from default config. Please eihter pass region "
+                    "as an input argument or setup the local AWS config."
                 )
 
         self._domain_id = None
@@ -57,57 +56,44 @@ class TensorBoardApp(object):
 
     def __str__(self):
         """Return str(self)."""
-        return f"TensorBoardApp(region={self.region})"
+        return f"DetailProfilerApp(region={self.region})"
 
     def __repr__(self):
         """Return repr(self)."""
         return self.__str__()
 
     def get_app_url(self, training_job_name: Optional[str] = None):
-        """Generates an unsigned URL to help access the TensorBoard application hosted in SageMaker.
+        """Get an unsigned URL for DetailProfiler app hosted on SageMaker.
 
-           For users that are already in SageMaker Studio, this method tries to get the domain id
-           and the user profile from the Studio environment. If succeeded, the generated URL will
-           direct to the TensorBoard application in SageMaker. Otherwise, it will direct to the
-           TensorBoard landing page in the SageMaker console. For non-Studio users, the URL will
-           direct to the TensorBoard landing page in the SageMaker console.
-           console.
+           For users that are already in SM Studio notebook instance, the method tries to
+           get domain id and user profile from the Studio environment. If succeeded, the
+           generated URL will direct to SM DetailProfiler app. Otherwise it will direct to
+           DetailProfiler landing page on SageMaker console. For non Studio users, the
+           URL will direct to the DetailProfiler landing page on SageMaker console.
 
         Args:
             training_job_name (str): Optional. The name of the training job to pre-load in
-            TensorBoard.
-                If nothing provided, the method still returns the TensorBoard application URL,
-                but the application will not have any training jobs added for tracking. You can
-                add training jobs later by using the SageMaker Data Manager UI.
-                Default: ``None``
+                DetailProfiler.
+                If not provided, no job will be automatically loaded when the URL is opened.
 
         Returns:
-            str: An unsigned URL for TensorBoard hosted on SageMaker.
+            str: An unsigned URL for DetailProfiler hosted on SageMaker.
         """
         if self._valid_domain_and_user:
-            url = "https://{}.studio.{}.sagemaker.aws/tensorboard/default".format(
-                self._domain_id, self.region
-            )
+            url = f"https://{self._domain_id}.studio.{self.region}.sagemaker.aws/profiler/default"
             if training_job_name is not None:
                 self._validate_job_name(training_job_name)
-                url += (
-                    f"/data/plugin/sagemaker_data_manager/"
-                    f"add_folder_or_job?Redirect=True&Name={training_job_name}"
-                )
-            else:
-                url += "/#sagemaker_data_manager"
+                url += f"/#!/welcome?profile={training_job_name}"
         else:
-            url = "https://{region}.console.aws.amazon.com/sagemaker/home?region={region}#/tensor-board-landing".format(
-                region=self.region
+            dp = "profiler-landing"
+            url = "https://{region}.console.aws.amazon.com/sagemaker/home?region={region}#/{dp}".format(
+                region=self.region, dp=dp
             )
-            if training_job_name is not None:
-                self._validate_job_name(training_job_name)
-                url += "/{}".format(training_job_name)
 
         return url
 
     def _get_domain_and_user(self):
-        """Get and validate studio domain id and user profile
+        """Validate studio domain id and user profile
 
         Get and validate studio domain id and user profile
         from NOTEBOOK_METADATA_FILE in studio environment.
@@ -125,8 +111,8 @@ class TensorBoardApp(object):
                 self._valid_domain_and_user = True
             else:
                 logger.warning(
-                    "NOTEBOOK_METADATA_FILE detected but failed"
-                    " to get valid domain and user from it."
+                    "NOTEBOOK_METADATA_FILE detected but failed to get"
+                    "valid domain and user from it."
                 )
 
     def _validate_job_name(self, job_name: str):
@@ -134,7 +120,7 @@ class TensorBoardApp(object):
         job_name_regex = "^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}"
         if not re.fullmatch(job_name_regex, job_name):
             raise ValueError(
-                "Invalid job name. Job name must match regular expression {}".format(job_name_regex)
+                f"Invalid job name. " f"Job name must match regular expression {job_name_regex}"
             )
 
     def _validate_domain_id(self):
