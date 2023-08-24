@@ -79,8 +79,8 @@ class JumpStartCuratedPublicHub:
         self.curated_hub_s3_bucket_name = curated_hub_s3_config.bucket
         self.curated_hub_s3_key_prefix = curated_hub_s3_config.key
 
-        logging.info(f"HUB_NAME={self.curated_hub_name}")
-        logging.info(f"HUB_BUCKET_NAME={self.curated_hub_s3_bucket_name}")
+        print(f"HUB_NAME={self.curated_hub_name}")
+        print(f"HUB_BUCKET_NAME={self.curated_hub_s3_bucket_name}")
 
         self.studio_metadata_map = get_studio_model_metadata_map_from_region(self._region)
         self._init_dependencies()   

@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 import traceback
 from typing import List, Set, Optional
+import logging
 
 from concurrent import futures
 from dataclasses import dataclass
@@ -326,5 +327,6 @@ class ContentCopier:
             return response.pop("ETag")
         except ClientError as ce:
             if ce.response["Error"]["Code"] != "NoSuchKey":
+                logging.error(f"Received error when calling HeadObject for s3://{s3_object.bucket}/{s3_object.key}")
                 raise
             return None
