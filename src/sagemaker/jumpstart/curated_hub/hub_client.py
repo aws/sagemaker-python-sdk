@@ -105,7 +105,7 @@ class CuratedHubClient:
                 HubContentName=hub_content_name,
                 HubContentType=HubContentType.MODEL,
             )
-            content_versions = response["HubContentVersion"]
+            content_versions = response["HubContentSummaries"]
         except ClientError as ex:
             if ex.response["Error"]["Code"] != "ResourceNotFound":
                 raise
