@@ -76,7 +76,9 @@ class HubClientTest(unittest.TestCase):
 
     def test_list_hub_content_versions_no_content_noop(self):
         hub_content_name = "hub_content_name"
-        self.mock_curated_hub_client._sm_client = Mock()
+        mock_sm_client = Mock()
+        self.mock_curated_hub_client._sm_client = mock_sm_client
+        mock_sm_client.list_hub_content_versions.return_value = {"HubContentSummaries": []}
 
         self.mock_curated_hub_client._list_hub_content_versions_no_content_noop(hub_content_name)
 

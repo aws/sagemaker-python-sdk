@@ -16,12 +16,9 @@ import unittest
 
 from mock.mock import patch, Mock
 
-from sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub import JumpStartCuratedPublicHub
+from sagemaker.jumpstart.curated_hub.jumpstart_curated_hub import JumpStartCuratedHub
 from sagemaker.jumpstart.curated_hub.utils import PublicHubModel
 from sagemaker.jumpstart.curated_hub.hub_model_specs.hub_model_specs import Dependency
-from sagemaker.jumpstart.curated_hub.accessors.s3_object_reference import (
-    S3ObjectLocation, create_s3_object_reference_from_uri
-)
 from botocore.client import ClientError
 
 
@@ -58,27 +55,31 @@ TEST_PREEXISTING_S3_KEY_PREFIX = "test_prefix"
 
 TEST_HUB_CONTENT_ALREADY_IN_HUB_ID = "test_hub_content_already_in_hub"
 
-def _mock_describe_version(mock_spec):
-        if mock_spec.model_id == TEST_HUB_CONTENT_ALREADY_IN_HUB_ID:
-            return
-        raise ClientError(error_response=TEST_HUB_DOES_NOT_EXIST_RESPONSE, operation_name="blah")
 
-class JumpStartCuratedPublicHubTest(unittest.TestCase):
-    
+def _mock_describe_version(mock_spec):
+    if mock_spec.model_id == TEST_HUB_CONTENT_ALREADY_IN_HUB_ID:
+        return
+    raise ClientError(error_response=TEST_HUB_DOES_NOT_EXIST_RESPONSE, operation_name="blah")
+
+
+class JumpStartCuratedHubTest(unittest.TestCase):
+
     test_account_id = "123456789012"
 
     test_public_js_model = PublicHubModel(id="autogluon-classification-ensemble", version="1.1.1")
-    test_second_public_js_model = PublicHubModel(id="catboost-classification-model", version="1.2.7")
+    test_second_public_js_model = PublicHubModel(
+        id="catboost-classification-model", version="1.2.7"
+    )
     test_nonexistent_public_js_model = PublicHubModel(id="fail", version="1.0.0")
 
     @patch(
-        "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub.JumpStartCuratedPublicHub._init_dependencies"
+        "sagemaker.jumpstart.curated_hub.jumpstart_curated_hub.JumpStartCuratedHub._init_dependencies"
     )
     @patch(
-        "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub.JumpStartCuratedPublicHub._get_sm_client"
+        "sagemaker.jumpstart.curated_hub.jumpstart_curated_hub.JumpStartCuratedHub._get_sm_client"
     )
     @patch(
-        "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub.get_studio_model_metadata_map_from_region"
+        "sagemaker.jumpstart.curated_hub.jumpstart_curated_hub.get_studio_model_metadata_map_from_region"
     )
     def setUp(self, mock_metadata_map, mock_get_sm_client, mock_init_deps):
         mock_sm_client = Mock()
@@ -89,18 +90,20 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
         }
         mock_get_sm_client.return_value = mock_sm_client
 
-        self.test_curated_hub = JumpStartCuratedPublicHub(TEST_HUB_NAME, TEST_REGION)
+        self.test_curated_hub = JumpStartCuratedHub(TEST_HUB_NAME, TEST_REGION)
 
     @patch(
-        "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub.JumpStartCuratedPublicHub._init_dependencies"
+        "sagemaker.jumpstart.curated_hub.jumpstart_curated_hub.JumpStartCuratedHub._init_dependencies"
     )
     @patch(
-        "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub.JumpStartCuratedPublicHub._get_sm_client"
+        "sagemaker.jumpstart.curated_hub.jumpstart_curated_hub.JumpStartCuratedHub._get_sm_client"
     )
     @patch(
-        "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub.get_studio_model_metadata_map_from_region"
+        "sagemaker.jumpstart.curated_hub.jumpstart_curated_hub.get_studio_model_metadata_map_from_region"
     )
-    def test_init_hub_exist_should_use_old_s3_config(self, mock_metadata_map, mock_get_sm_client, mock_init_deps):
+    def test_init_hub_exist_should_use_old_s3_config(
+        self, mock_metadata_map, mock_get_sm_client, mock_init_deps
+    ):
         mock_sm_client = Mock()
         mock_sm_client.describe_hub.return_value = {
             "S3StorageConfig": {
@@ -109,66 +112,73 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
         }
         mock_get_sm_client.return_value = mock_sm_client
 
-        curated_hub = JumpStartCuratedPublicHub(TEST_HUB_NAME, TEST_REGION)
+        curated_hub = JumpStartCuratedHub(TEST_HUB_NAME, TEST_REGION)
 
         self.assertEquals(curated_hub.curated_hub_s3_bucket_name, TEST_PREEXISTING_BUCKET_NAME)
         self.assertEquals(curated_hub.curated_hub_s3_key_prefix, TEST_PREEXISTING_S3_KEY_PREFIX)
 
     @patch(
-        "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub.JumpStartCuratedPublicHub._init_dependencies"
+        "sagemaker.jumpstart.curated_hub.jumpstart_curated_hub.JumpStartCuratedHub._init_dependencies"
     )
     @patch(
-        "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub.JumpStartCuratedPublicHub._get_sm_client"
+        "sagemaker.jumpstart.curated_hub.jumpstart_curated_hub.JumpStartCuratedHub._get_sm_client"
     )
     @patch(
-        "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub.get_studio_model_metadata_map_from_region"
+        "sagemaker.jumpstart.curated_hub.jumpstart_curated_hub.get_studio_model_metadata_map_from_region"
     )
-    def test_init_s3_config_no_key_use_old_s3_config(self, mock_metadata_map, mock_get_sm_client, mock_init_deps):
+    def test_init_s3_config_no_key_use_old_s3_config(
+        self, mock_metadata_map, mock_get_sm_client, mock_init_deps
+    ):
         mock_sm_client = Mock()
         mock_sm_client.describe_hub.return_value = {
-            "S3StorageConfig": {
-                "S3OutputPath": f"s3://{TEST_PREEXISTING_BUCKET_NAME}"
-            }
+            "S3StorageConfig": {"S3OutputPath": f"s3://{TEST_PREEXISTING_BUCKET_NAME}"}
         }
         mock_get_sm_client.return_value = mock_sm_client
 
-        curated_hub = JumpStartCuratedPublicHub(TEST_HUB_NAME, TEST_REGION)
+        curated_hub = JumpStartCuratedHub(TEST_HUB_NAME, TEST_REGION)
 
         self.assertEquals(curated_hub.curated_hub_s3_bucket_name, TEST_PREEXISTING_BUCKET_NAME)
         self.assertEquals(curated_hub.curated_hub_s3_key_prefix, "")
 
-
     @patch(
-        "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub.JumpStartCuratedPublicHub._create_unique_s3_bucket_name"
+        "sagemaker.jumpstart.curated_hub.jumpstart_curated_hub.JumpStartCuratedHub._create_unique_s3_bucket_name"
     )
     @patch(
-        "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub.JumpStartCuratedPublicHub._init_dependencies"
+        "sagemaker.jumpstart.curated_hub.jumpstart_curated_hub.JumpStartCuratedHub._init_dependencies"
     )
     @patch(
-        "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub.JumpStartCuratedPublicHub._get_sm_client"
+        "sagemaker.jumpstart.curated_hub.jumpstart_curated_hub.JumpStartCuratedHub._get_sm_client"
     )
     @patch(
-        "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub.get_studio_model_metadata_map_from_region"
+        "sagemaker.jumpstart.curated_hub.jumpstart_curated_hub.get_studio_model_metadata_map_from_region"
     )
-    def test_init_hub_not_exist_create_new_config(self, mock_metadata_map, mock_get_sm_client, mock_init_deps, mock_create_unique):
+    def test_init_hub_not_exist_create_new_config(
+        self, mock_metadata_map, mock_get_sm_client, mock_init_deps, mock_create_unique
+    ):
         mock_new_bucket_name = "new_bucket_name"
         mock_create_unique.return_value = mock_new_bucket_name
         mock_sm_client = Mock()
-        mock_sm_client.describe_hub.side_effect = ClientError(error_response=TEST_HUB_DOES_NOT_EXIST_RESPONSE, operation_name="blah")
+        mock_sm_client.describe_hub.side_effect = ClientError(
+            error_response=TEST_HUB_DOES_NOT_EXIST_RESPONSE, operation_name="blah"
+        )
         mock_get_sm_client.return_value = mock_sm_client
 
-        curated_hub = JumpStartCuratedPublicHub(TEST_HUB_NAME, TEST_REGION)
+        curated_hub = JumpStartCuratedHub(TEST_HUB_NAME, TEST_REGION)
 
         self.assertEquals(curated_hub.curated_hub_s3_bucket_name, mock_new_bucket_name)
         self.assertEquals(curated_hub.curated_hub_s3_key_prefix, "")
 
     def test_create_import_into_preexisting_true_and_hub_exists_should_succeed(self):
         mock_s3_client = Mock()
-        mock_s3_client.create_bucket.side_effect = ClientError(error_response=TEST_S3_BUCKET_ALREADY_EXISTS_RESPONSE, operation_name="blah")
+        mock_s3_client.create_bucket.side_effect = ClientError(
+            error_response=TEST_S3_BUCKET_ALREADY_EXISTS_RESPONSE, operation_name="blah"
+        )
         self.test_curated_hub._s3_client = mock_s3_client
 
         mock_curated_hub_client = Mock()
-        mock_curated_hub_client.create_hub.side_effect = ClientError(error_response=TEST_HUB_ALREADY_EXISTS_RESPONSE, operation_name="blah")
+        mock_curated_hub_client.create_hub.side_effect = ClientError(
+            error_response=TEST_HUB_ALREADY_EXISTS_RESPONSE, operation_name="blah"
+        )
         self.test_curated_hub._curated_hub_client = mock_curated_hub_client
 
         self.test_curated_hub.create(import_into_preexisting=True)
@@ -182,15 +192,17 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
         )
 
     @patch(
-        "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub.JumpStartCuratedPublicHub._init_dependencies"
+        "sagemaker.jumpstart.curated_hub.jumpstart_curated_hub.JumpStartCuratedHub._init_dependencies"
     )
     @patch(
-        "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub.JumpStartCuratedPublicHub._get_sm_client"
+        "sagemaker.jumpstart.curated_hub.jumpstart_curated_hub.JumpStartCuratedHub._get_sm_client"
     )
     @patch(
-        "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub.get_studio_model_metadata_map_from_region"
+        "sagemaker.jumpstart.curated_hub.jumpstart_curated_hub.get_studio_model_metadata_map_from_region"
     )
-    def test_create_us_east_1_should_have_no_location_constraint(self, mock_metadata_map, mock_get_sm_client, mock_init_deps):
+    def test_create_us_east_1_should_have_no_location_constraint(
+        self, mock_metadata_map, mock_get_sm_client, mock_init_deps
+    ):
         mock_sm_client = Mock()
         mock_sm_client.describe_hub.return_value = {
             "S3StorageConfig": {
@@ -199,14 +211,18 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
         }
         mock_get_sm_client.return_value = mock_sm_client
 
-        self.test_curated_hub = JumpStartCuratedPublicHub(TEST_HUB_NAME, "us-east-1")
+        self.test_curated_hub = JumpStartCuratedHub(TEST_HUB_NAME, "us-east-1")
 
         mock_s3_client = Mock()
-        mock_s3_client.create_bucket.side_effect = ClientError(error_response=TEST_S3_BUCKET_ALREADY_EXISTS_RESPONSE, operation_name="blah")
+        mock_s3_client.create_bucket.side_effect = ClientError(
+            error_response=TEST_S3_BUCKET_ALREADY_EXISTS_RESPONSE, operation_name="blah"
+        )
         self.test_curated_hub._s3_client = mock_s3_client
 
         mock_curated_hub_client = Mock()
-        mock_curated_hub_client.create_hub.side_effect = ClientError(error_response=TEST_HUB_ALREADY_EXISTS_RESPONSE, operation_name="blah")
+        mock_curated_hub_client.create_hub.side_effect = ClientError(
+            error_response=TEST_HUB_ALREADY_EXISTS_RESPONSE, operation_name="blah"
+        )
         self.test_curated_hub._curated_hub_client = mock_curated_hub_client
 
         self.test_curated_hub.create(import_into_preexisting=True)
@@ -221,11 +237,13 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
 
     def test_create_import_into_preexisting_false_and_hub_exists_should_throw_exception(self):
         mock_s3_client = Mock()
-        mock_s3_client.create_bucket.side_effect = ClientError(error_response=TEST_S3_BUCKET_ALREADY_EXISTS_RESPONSE, operation_name="blah")
+        mock_s3_client.create_bucket.side_effect = ClientError(
+            error_response=TEST_S3_BUCKET_ALREADY_EXISTS_RESPONSE, operation_name="blah"
+        )
         self.test_curated_hub._s3_client = mock_s3_client
 
         with self.assertRaises(ClientError):
-          self.test_curated_hub.create(import_into_preexisting=False)
+            self.test_curated_hub.create(import_into_preexisting=False)
 
         mock_s3_client.create_bucket.assert_called_with(
             Bucket=self.test_curated_hub.curated_hub_s3_bucket_name,
@@ -250,10 +268,10 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
         )
 
     @patch(
-            "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub.JumpStartCuratedPublicHub._import_models"
+        "sagemaker.jumpstart.curated_hub.jumpstart_curated_hub.JumpStartCuratedHub._import_models"
     )
     @patch(
-            "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub.JumpStartCuratedPublicHub._get_model_specs_for_list"
+        "sagemaker.jumpstart.curated_hub.jumpstart_curated_hub.JumpStartCuratedHub._get_model_specs_for_list"
     )
     def test_sync_filters_existing_models(self, mock_get_model_specs_for_list, mock_import_models):
         mock_curated_hub_client = Mock()
@@ -269,17 +287,17 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
         # Passing in empty array since mock_get_model_specs_for_list is already patched
         self.test_curated_hub.sync([])
 
-        mock_import_models.assert_called_with(
-            [mock_spec_2]
-        )
-    
+        mock_import_models.assert_called_with([mock_spec_2])
+
     @patch(
-            "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub.JumpStartCuratedPublicHub._import_models"
+        "sagemaker.jumpstart.curated_hub.jumpstart_curated_hub.JumpStartCuratedHub._import_models"
     )
     @patch(
-            "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub.JumpStartCuratedPublicHub._get_model_specs_for_list"
+        "sagemaker.jumpstart.curated_hub.jumpstart_curated_hub.JumpStartCuratedHub._get_model_specs_for_list"
     )
-    def test_sync_force_update_updates_all_models(self, mock_get_model_specs_for_list, mock_import_models):
+    def test_sync_force_update_updates_all_models(
+        self, mock_get_model_specs_for_list, mock_import_models
+    ):
         mock_curated_hub_client = Mock()
         mock_curated_hub_client.describe_model_version.side_effect = _mock_describe_version
         self.test_curated_hub._curated_hub_client = mock_curated_hub_client
@@ -293,14 +311,11 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
         # Passing in empty array since mock_get_model_specs_for_list is already patched
         self.test_curated_hub.sync([], force_update=True)
 
-        mock_import_models.assert_called_with(
-            [mock_spec_1, mock_spec_2]
-        )
-
+        mock_import_models.assert_called_with([mock_spec_1, mock_spec_2])
 
     @patch(
-        "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub."
-        + "JumpStartCuratedPublicHub._delete_model_dependencies_no_content_noop"
+        "sagemaker.jumpstart.curated_hub.jumpstart_curated_hub."
+        + "JumpStartCuratedHub._delete_model_dependencies_no_content_noop"
     )
     def test_delete_model_from_curated_hub_deletes_dependencies_true_deletes_dependencies(
         self, mock_delete_model_deps
@@ -315,8 +330,8 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
         mock_hub_client.delete_all_versions_of_model.assert_called_once_with("test_spec")
 
     @patch(
-        "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub."
-        + "JumpStartCuratedPublicHub._delete_model_dependencies_no_content_noop"
+        "sagemaker.jumpstart.curated_hub.jumpstart_curated_hub."
+        + "JumpStartCuratedHub._delete_model_dependencies_no_content_noop"
     )
     def test_delete_model_from_curated_hub_deletes_dependencies_false_keeps_dependencies(
         self, mock_delete_model_deps
@@ -331,8 +346,8 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
         mock_hub_client.delete_all_versions_of_model.assert_called_once_with("test_spec")
 
     @patch(
-        "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub."
-        + "JumpStartCuratedPublicHub._delete_model_dependencies_no_content_noop"
+        "sagemaker.jumpstart.curated_hub.jumpstart_curated_hub."
+        + "JumpStartCuratedHub._delete_model_dependencies_no_content_noop"
     )
     def test_delete_model_from_curated_hub_deletes_delete_single_version(
         self, mock_delete_model_deps
@@ -396,7 +411,7 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
         expected = [{"Key": "test_copy_key"}]
         self.assertEqual(expected, keys)
 
-    @patch("sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub.find_objects_under_prefix")
+    @patch("sagemaker.jumpstart.curated_hub.jumpstart_curated_hub.find_objects_under_prefix")
     def test_format_dependency_dst_uris_for_delete_objects_if_dict_append_dict_keys(
         self, mock_find_objects
     ):
@@ -413,12 +428,12 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
         self.assertEqual(expected, keys)
 
     @patch(
-        "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub."
-        + "JumpStartCuratedPublicHub._format_dependency_dst_uris_for_delete_objects"
+        "sagemaker.jumpstart.curated_hub.jumpstart_curated_hub."
+        + "JumpStartCuratedHub._format_dependency_dst_uris_for_delete_objects"
     )
     @patch(
-        "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub."
-        + "JumpStartCuratedPublicHub._get_hub_content_dependencies_from_model_document"
+        "sagemaker.jumpstart.curated_hub.jumpstart_curated_hub."
+        + "JumpStartCuratedHub._get_hub_content_dependencies_from_model_document"
     )
     def test_delete_model_dependencies_no_content_noop_delete_no_error_passes(
         self, mock_get_deps, mock_format_deps
@@ -442,12 +457,12 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
         mock_get_deps.assert_called_once()
 
     @patch(
-        "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub."
-        + "JumpStartCuratedPublicHub._get_hub_content_dependencies_from_model_document"
+        "sagemaker.jumpstart.curated_hub.jumpstart_curated_hub."
+        + "JumpStartCuratedHub._get_hub_content_dependencies_from_model_document"
     )
     @patch(
-        "sagemaker.jumpstart.curated_hub.jumpstart_curated_public_hub."
-        + "JumpStartCuratedPublicHub._format_dependency_dst_uris_for_delete_objects"
+        "sagemaker.jumpstart.curated_hub.jumpstart_curated_hub."
+        + "JumpStartCuratedHub._format_dependency_dst_uris_for_delete_objects"
     )
     def test_delete_model_dependencies_no_content_noop_delete_error_throws_error(
         self, mock_get_deps, mock_format_deps
@@ -466,4 +481,3 @@ class JumpStartCuratedPublicHubTest(unittest.TestCase):
 
         with self.assertRaises(Exception):
             self.test_curated_hub._delete_model_dependencies_no_content_noop(test_spec)
-

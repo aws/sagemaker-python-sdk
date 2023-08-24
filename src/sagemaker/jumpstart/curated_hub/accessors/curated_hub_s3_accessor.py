@@ -36,6 +36,7 @@ from sagemaker.jumpstart.curated_hub.accessors.model_dependency_s3_accessor impo
 
 DISAMBIGUATE_SUFFIX = uuid.uuid4()
 
+
 class CuratedHubS3Accessor(ModelDependencyS3Accessor):
     """Helper class to access Curated Hub s3 bucket"""
 
@@ -122,14 +123,16 @@ class CuratedHubS3Accessor(ModelDependencyS3Accessor):
     def _get_training_dataset_prefix(self, model_specs: JumpStartModelSpecs) -> str:
         """Retrieves s3 prefix for the training dataset.
 
-        Studio expects the same format as public hub bucket"""
+        Studio expects the same format as public hub bucket.
+        """
         studio_model_metadata = self._studio_metadata_map[model_specs.model_id]
         return studio_model_metadata["defaultDataKey"]
 
     def get_markdown_s3_reference(self, model_specs: JumpStartModelSpecs) -> S3ObjectLocation:
         """Retrieves s3 reference for model markdown file.
 
-        Studio expects the same format as public hub bucket"""
+        Studio expects the same format as public hub bucket.
+        """
         framework = get_model_framework(model_specs)
         key = f"{framework}-metadata/{model_specs.model_id}.md"
         return S3ObjectLocation(self.get_bucket_name(), key)

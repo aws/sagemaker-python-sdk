@@ -14,7 +14,6 @@
 from __future__ import absolute_import
 import traceback
 from typing import List, Set, Optional
-import logging
 
 from concurrent import futures
 from dataclasses import dataclass
@@ -67,7 +66,8 @@ class ContentCopier:
     def copy_hub_content_dependencies_to_hub_bucket(self, model_specs: JumpStartModelSpecs) -> None:
         """Copies all hub content dependencies into the hub bucket.
 
-        This copy is multi-threaded."""
+        This copy is multi-threaded.
+        """
         copy_configs: List[CopyContentConfig] = []
 
         copy_configs.extend(self._get_copy_configs_for_inference_dependencies(model_specs))
@@ -321,12 +321,16 @@ class ContentCopier:
         If the object is not found, the ETag is set to None.
 
         Raises:
-          Any exception that is not a s3:NoSuchKey error"""
+          Any exception that is not a s3:NoSuchKey error.
+        """
         try:
             response = self._s3_client.head_object(Bucket=s3_object.bucket, Key=s3_object.key)
             return response.pop("ETag")
         except ClientError as ce:
             if ce.response["Error"]["Code"] != "404":
-                print(f"ERROR: Received error when calling HeadObject for s3://{s3_object.bucket}/{s3_object.key}: {ce.response['Error']}")
+                print(
+                    "ERROR: Received error when calling HeadObject for "
+                    f"s3://{s3_object.bucket}/{s3_object.key}: {ce.response['Error']}"
+                )
                 raise
             return None
