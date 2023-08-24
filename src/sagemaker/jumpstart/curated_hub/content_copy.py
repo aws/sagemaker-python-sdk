@@ -189,7 +189,7 @@ class ContentCopier:
                 s3_client=self._s3_client,
             )
         except Exception as ex:
-            print(
+            logging.error(
                 "ERROR: encountered an exception when finding objects"
                 + f" under prefix {prefix_reference.bucket}/{prefix_reference.key}: {str(ex)}"
             )
@@ -283,12 +283,12 @@ class ContentCopier:
           Exception when s3:CopyObject raises an exception
         """
         if not self.is_s3_object_etag_different(src, dst):
-            print(
+            logging.debug(
                 f"Detected that {resource_name} is the same in destination bucket. Skipping copy."
             )
             return
 
-        print(f"Copying {resource_name} from {src.bucket}/{src.key} to {dst.bucket}/{dst.key}...")
+        logging.debug(f"Copying {resource_name} from {src.bucket}/{src.key} to {dst.bucket}/{dst.key}...")
         try:
             self._s3_client.copy(
                 src.format_for_s3_copy(),
@@ -297,13 +297,13 @@ class ContentCopier:
                 ExtraArgs=EXTRA_S3_COPY_ARGS,
             )
         except Exception as ex:
-            print(
+            logging.error(
                 "ERROR: encountered an exception when calling s3:CopyObject from"
                 + f" {src.bucket}/{src.key} to {dst.bucket}/{dst.key}: {str(ex)}"
             )
             raise
 
-        print(
+        logging.debug(
             f"Copying {resource_name} from"
             f" {src.bucket}/{src.key} to {dst.bucket}/{dst.key} complete!"
         )

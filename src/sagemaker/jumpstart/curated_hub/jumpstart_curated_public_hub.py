@@ -79,8 +79,8 @@ class JumpStartCuratedPublicHub:
         self.curated_hub_s3_bucket_name = curated_hub_s3_config.bucket
         self.curated_hub_s3_key_prefix = curated_hub_s3_config.key
 
-        print(f"HUB_NAME={self.curated_hub_name}")
-        print(f"HUB_BUCKET_NAME={self.curated_hub_s3_bucket_name}")
+        logging.info(f"HUB_NAME={self.curated_hub_name}")
+        logging.info(f"HUB_BUCKET_NAME={self.curated_hub_s3_bucket_name}")
 
         self.studio_metadata_map = get_studio_model_metadata_map_from_region(self._region)
         self._init_dependencies()   
@@ -250,7 +250,7 @@ class JumpStartCuratedPublicHub:
 
     def _import_model(self, public_js_model_specs: JumpStartModelSpecs) -> None:
         """Imports a model to a hub."""
-        print(
+        logging.info(
             f"Importing model {public_js_model_specs.model_id}"
             f" version {public_js_model_specs.version} to curated private hub..."
         )
@@ -261,7 +261,7 @@ class JumpStartCuratedPublicHub:
             model_specs=public_js_model_specs
         )
         self._import_public_model_to_hub(model_specs=public_js_model_specs)
-        print(
+        logging.info(
             f"Importing model {public_js_model_specs.model_id}"
             f" version {public_js_model_specs.version} to curated private hub complete!"
         )
@@ -335,7 +335,7 @@ class JumpStartCuratedPublicHub:
             dependency_s3_keys.extend(
                 self._format_dependency_dst_uris_for_delete_objects(dependency)
             )
-        print(f"Deleting HubContent dependencies for {model_specs.model_id}: {dependency_s3_keys}")
+        logging.info(f"Deleting HubContent dependencies for {model_specs.model_id}: {dependency_s3_keys}")
         delete_response = self._s3_client.delete_objects(
             Bucket=self.curated_hub_s3_bucket_name,
             Delete={"Objects": dependency_s3_keys, "Quiet": True},
