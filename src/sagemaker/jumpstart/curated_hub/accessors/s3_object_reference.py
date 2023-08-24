@@ -42,5 +42,5 @@ def create_s3_object_reference_from_uri(s3_uri: str) -> S3ObjectLocation:
 
     return S3ObjectLocation(
         bucket=uri_split[0],
-        key="/".join(uri_split[1:]),
+        key="/".join(uri_split[1:]) if len(uri_split) > 1 else "",
     )

@@ -15,6 +15,7 @@ from __future__ import absolute_import
 
 import json
 import uuid
+import logging
 import traceback
 from concurrent import futures
 from typing import List, Optional, Tuple, Dict, Any
@@ -33,7 +34,7 @@ from sagemaker.jumpstart.curated_hub.accessors.curated_hub_s3_accessor import (
     CuratedHubS3Accessor,
 )
 from sagemaker.jumpstart.curated_hub.utils import (
-    PublicModelId,
+    PublicHubModel,
     get_studio_model_metadata_map_from_region,
 )
 from sagemaker.jumpstart.enums import (
@@ -50,6 +51,10 @@ from sagemaker.jumpstart.curated_hub.utils import (
     find_objects_under_prefix,
 )
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
+from sagemaker.jumpstart.curated_hub.accessors.s3_object_reference import (
+    S3ObjectLocation, create_s3_object_reference_from_uri
+)
+from sagemaker.jumpstart.curated_hub.constants import CURATED_HUB_DEFAULT_DOCUMENT_SCHEMA_VERSION, CURATED_HUB_CONTENT_TYPE
 
 
 class JumpStartCuratedPublicHub:
@@ -62,27 +67,53 @@ class JumpStartCuratedPublicHub:
     def __init__(
         self,
         curated_hub_name: str,
-        import_to_preexisting_hub: bool = False,
         region: str = JUMPSTART_DEFAULT_REGION_NAME,
     ):
         self._region = region
-        self._s3_client = boto3.client("s3", region_name=self._region)
-        self._sm_client = boto3.client("sagemaker", region_name=self._region)
+        self._s3_client = self._get_s3_client()
+        self._sm_client = self._get_sm_client()
         self._default_thread_pool_size = 20
 
-        (
-            self.curated_hub_name,
-            self.curated_hub_s3_bucket_name,
-            self.curated_hub_s3_key_prefix,
-        ) = self._get_curated_hub_and_curated_hub_s3_bucket_names(
-            curated_hub_name, import_to_preexisting_hub
-        )
+        self.curated_hub_name = curated_hub_name
+        curated_hub_s3_config = self._get_hub_s3_config(curated_hub_name)
+        self.curated_hub_s3_bucket_name = curated_hub_s3_config.bucket
+        self.curated_hub_s3_key_prefix = curated_hub_s3_config.key
+
+        logging.info(f"HUB_NAME={self.curated_hub_name}")
+        logging.info(f"HUB_BUCKET_NAME={self.curated_hub_s3_bucket_name}")
 
         self.studio_metadata_map = get_studio_model_metadata_map_from_region(self._region)
-        self._init_dependencies()
+        self._init_dependencies()   
+
+    def _get_s3_client(self) -> Any:
+        return boto3.client("s3", region_name=self._region)
+    
+    def _get_sm_client(self) -> Any:
+        return boto3.client("sagemaker", region_name=self._region)
+
+    def _get_hub_s3_config(self, hub_name: str) -> S3ObjectLocation:
+        """Returns an S3ObjectLocation that references the Private Hub S3 location.
+        
+        If it exists, this will take the S3 configuration of the pre-existing hub.
+        If it does not, it will create a unique S3 configuration for a new hub.
+        Raises:
+          ClientError if any error outside of the cases above occurs.
+        """
+        try:
+          hub_res = self._sm_client.describe_hub(HubName=hub_name)              
+          s3_config = hub_res["S3StorageConfig"]["S3OutputPath"]
+          return create_s3_object_reference_from_uri(s3_config)
+        except ClientError as ex:
+            if ex.response["Error"]["Code"] != "ResourceNotFound":
+              raise
+
+        return S3ObjectLocation(
+            bucket=self._create_unique_s3_bucket_name(hub_name, self._region),
+            key=""
+        )
 
     def _init_dependencies(self):
-        """Creates all dependencies to run the Curated Hub"""
+        """Creates all dependencies to run the Curated Hub."""
         self._curated_hub_client = CuratedHubClient(
             curated_hub_name=self.curated_hub_name, region=self._region
         )
@@ -105,100 +136,39 @@ class JumpStartCuratedPublicHub:
             studio_metadata_map=self.studio_metadata_map,
         )
 
-    def _get_preexisting_hub_and_s3_bucket_names(self) -> Optional[Tuple[str, str, str]]:
-        """Finds preexisting hub and hub bucket names if applicable."""
-        res = self._sm_client.list_hubs().pop("HubSummaries")
-        if len(res) > 0:
-            name_of_hub_already_on_account = res[0]["HubName"]
-            hub_res = self._sm_client.describe_hub(HubName=name_of_hub_already_on_account)
-            curated_hub_name = hub_res["HubName"]
-
-            s3_config = hub_res.pop("S3StorageConfig")["S3OutputPath"]
-            s3_config_formatted = s3_config.replace("s3://", "", 1).split("/")
-            curated_hub_s3_bucket_name = s3_config_formatted[0]
-
-            curated_hub_s3_key_prefix = (
-                s3_config_formatted[1:] if len(s3_config_formatted) > 1 else None
-            )
-
-            print(
-                f"Hub found on account in region {self._region} with name"
-                f" {curated_hub_name} and bucket name {curated_hub_s3_bucket_name}"
-            )
-            return (curated_hub_name, curated_hub_s3_bucket_name, curated_hub_s3_key_prefix)
-        return None
-
-    def _get_curated_hub_and_curated_hub_s3_bucket_names(
-        self, hub_name: str, import_to_preexisting_hub: bool
-    ) -> Tuple[str, str]:
-        """Creates both hub and hub bucket names.
-
-        If a Hub already exists on the account, it will attempt to use the preexisting hub.
-        Raises:
-          ValueError if a hub exists but import_to_preexisting_hub is not set to true.
-        """
-        curated_hub_name = hub_name
-        curated_hub_s3_bucket_name = self._create_unique_s3_bucket_name(
-            curated_hub_name, self._region
-        )
-        curated_hub_s3_key_prefix = None
-
-        preexisting_hub = self._get_preexisting_hub_and_s3_bucket_names()
-        if preexisting_hub:
-            curated_hub_name = preexisting_hub[0]
-            curated_hub_s3_bucket_name = preexisting_hub[1]
-            curated_hub_s3_key_prefix = preexisting_hub[2]
-
-            print(f"Found hub {curated_hub_name} bucket {curated_hub_s3_bucket_name} key prefix {curated_hub_s3_key_prefix}")
-
-            if not import_to_preexisting_hub:
-                raise ValueError(
-                    f"Hub with name {curated_hub_name} detected on account."
-                    " The limit of hubs per account is 1."
-                    " If you wish to use this hub as the curated hub,"
-                    " please set the flag `import_to_preexisting_hub` to True."
-                )
-            print(
-                f"WARN: Hub with name {curated_hub_name} detected on account."
-                + " The limit of hubs per account is 1. `import_to_preexisting_hub`"
-                + " is set to true - defaulting to this hub."
-            )
-
-            self._skip_create = True
-
-        print(f"HUB_BUCKET_NAME={curated_hub_s3_bucket_name}")
-        print(f"HUB_NAME={curated_hub_name}")
-
-        return (curated_hub_name, curated_hub_s3_bucket_name, curated_hub_s3_key_prefix)
-
     def _create_unique_s3_bucket_name(self, bucket_name: str, region: str) -> str:
-        """Creates a unique s3 bucket name for the account"""
+        """Creates a unique s3 bucket name."""
         unique_bucket_name = f"{bucket_name}-{region}-{uuid.uuid4()}"
         return unique_bucket_name[:63]  # S3 bucket name size is limited to 63 characters
 
-    def create(self):
-        """Creates a curated hub in the caller AWS account."""
-        if self._should_skip_create():
-            print(f"WARN: Skipping hub creation as hub {self.curated_hub_name} already exists.")
-            return
+    def create(self, import_into_preexisting: bool = False):
+        """Creates a Curated Hub and corresponding S3 bucket in the caller AWS account.
+        
+        If import_into_preexisting is set to true, it will skip creation of the Private hub and hub S3 bucket.
+        Raises:
+          ClientError if any error outside of the above case occurs.
+        """
         try:
-          self._create_hub_and_hub_bucket()
+          location_constraint = None
+          if self._region != "us-east-1":
+            location_constraint = {"LocationConstraint": self._region}
+          self._s3_client.create_bucket(
+              Bucket=self.curated_hub_s3_bucket_name,
+              CreateBucketConfiguration=location_constraint,
+          )
         except ClientError as ex:
-            response_code = ex.response["Error"]["Code"]
-            if response_code == "BucketAlreadyOwnedByYou":
-                if self._should_skip_create():
-                    print(f"WARN: Skipping hub creation as hub {self.curated_hub_name} already exists.")
-            raise
+            if not (ex.response["Error"]["Code"] in ["BucketAlreadyOwnedByYou", "BucketAlreadyExists"] and import_into_preexisting):
+                raise
+            logging.warn(f"Skipping hub bucket creation as S3 bucket {self.curated_hub_s3_bucket_name} already exists.")
 
-    def _create_hub_and_hub_bucket(self):
-        """Creates a hub and corresponding s3 bucket"""
-        self._s3_client.create_bucket(
-            Bucket=self.curated_hub_s3_bucket_name,
-            CreateBucketConfiguration={"LocationConstraint": self._region},
-        )
-        self._curated_hub_client.create_hub(self.curated_hub_name, self.curated_hub_s3_bucket_name)
+        try:
+          self._curated_hub_client.create_hub(self.curated_hub_name, self.curated_hub_s3_bucket_name)
+        except ClientError as ex:
+            if not (ex.response["Error"]["Code"] in ["ResourceInUse"] and import_into_preexisting):
+                raise
+            logging.warn(f"Skipping hub creation as hub {self.curated_hub_name} already exists.")
 
-    def sync(self, model_ids: List[PublicModelId], force_update: bool = False):
+    def sync(self, model_ids: List[PublicHubModel], force_update: bool = False):
         """Syncs Curated Hub with the JumpStart Public Hub.
 
         This will compare the models in the hub to the corresponding models in the JumpStart Public Hub.
@@ -214,22 +184,22 @@ class JumpStartCuratedPublicHub:
         model_specs = self._get_model_specs_for_list(model_ids)
 
         if not force_update:
-            print(
-                "INFO: Filtering out models that are already in hub."
-                " If you still wish to update this model, set `force_update` to True"
+            logging.info(
+                "Filtering out models that are already in hub."
+                " If you still wish to update these models, set `force_update` to True"
             )
             model_specs = list(filter(self._model_needs_update, model_specs))
 
         self._import_models(model_specs)
 
     def _get_model_specs_for_list(
-        self, model_ids: List[PublicModelId]
+        self, model_ids: List[PublicHubModel]
     ) -> List[JumpStartModelSpecs]:
-        """Converts a list of PublicModelId to JumpStartModelSpecs"""
+        """Converts a list of PublicHubModel to JumpStartModelSpecs"""
         return list(map(self._get_model_specs, model_ids))
 
-    def _get_model_specs(self, model_id: PublicModelId) -> JumpStartModelSpecs:
-        """Converts PublicModelId to JumpStartModelSpecs."""
+    def _get_model_specs(self, model_id: PublicHubModel) -> JumpStartModelSpecs:
+        """Converts PublicHubModel to JumpStartModelSpecs."""
         return verify_model_region_and_return_specs(
             model_id=model_id.id,
             version=model_id.version,
@@ -241,7 +211,7 @@ class JumpStartCuratedPublicHub:
         """Checks if a new upload is necessary."""
         try:
             self._curated_hub_client.describe_model_version(model_specs)
-            print(f"INFO: Model {model_specs.model_id} found in hub.")
+            logging.info(f"Model {model_specs.model_id} found in hub.")
             return False
         except ClientError as ex:
             if ex.response["Error"]["Code"] != "ResourceNotFound":
@@ -250,7 +220,7 @@ class JumpStartCuratedPublicHub:
 
     def _import_models(self, model_specs: List[JumpStartModelSpecs]):
         """Imports a list of models to a hub."""
-        print(f"Importing {len(model_specs)} models to curated private hub...")
+        logging.info(f"Importing {len(model_specs)} models to curated private hub...")
         tasks: List[futures.Future] = []
         with futures.ThreadPoolExecutor(
             max_workers=self._default_thread_pool_size,
@@ -315,15 +285,15 @@ class JumpStartCuratedPublicHub:
             HubName=self.curated_hub_name,
             HubContentName=model_specs.model_id,
             HubContentVersion=model_specs.version,
-            HubContentType="Model",
-            DocumentSchemaVersion="1.0.0",
+            HubContentType=CURATED_HUB_CONTENT_TYPE,
+            DocumentSchemaVersion=CURATED_HUB_DEFAULT_DOCUMENT_SCHEMA_VERSION,
             HubContentDisplayName=hub_content_display_name,
             HubContentDescription=hub_content_description,
             HubContentMarkdown=hub_content_markdown,
             HubContentDocument=hub_content_document,
         )
 
-    def delete_models(self, model_ids: List[PublicModelId]):
+    def delete_models(self, model_ids: List[PublicHubModel]):
         """Deletes all versions of each model"""
         # TODO: Add to flags when multiple versions per upload is possible
         delete_all_versions = True
@@ -418,7 +388,3 @@ class JumpStartCuratedPublicHub:
     def _is_s3_key_a_prefix(self, s3_key: str) -> bool:
         """Checks of s3 key is a directory"""
         return s3_key.endswith("/")
-
-    def _should_skip_create(self) -> bool:
-        """Skips creating resources if true"""
-        return self._skip_create

@@ -16,7 +16,8 @@ from enum import Enum
 
 
 CURATED_HUB_DEFAULT_DESCRIPTION = "This is a curated hub."
-
+CURATED_HUB_CONTENT_TYPE = "Model"
+CURATED_HUB_DEFAULT_DOCUMENT_SCHEMA_VERSION = "1.0.0"
 
 class HubContentType(str, Enum):
     """Hub hub content types"""

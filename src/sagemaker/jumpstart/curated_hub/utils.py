@@ -24,7 +24,7 @@ from sagemaker.jumpstart.types import JumpStartModelSpecs, JumpStartHyperparamet
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
 from sagemaker.jumpstart.curated_hub.hub_model_specs.hub_model_specs import Hyperparameter
 
-STUDIO_METADATA_FILENAME = "metadata-modelzoo_v6.json"
+STUDIO_METADATA_FILENAME = "metadata-modelzoo_v7.json"
 
 
 def get_studio_model_metadata_map_from_region(region: str) -> Dict[str, Dict[str, Any]]:
@@ -108,7 +108,7 @@ def convert_s3_key_to_new_prefix(src_key: str, src_prefix: str, dst_prefix: str)
 
 
 @dataclass
-class PublicModelId:
+class PublicHubModel:
     """Property class to assist identifying models in the Public Hub"""
 
     id: str
