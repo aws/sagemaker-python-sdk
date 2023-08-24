@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.180.0 (2023-08-24)
+
+### Features
+
+ * Add presigned URLs for interactive apps
+ * Add detail profiler V2 options and tests
+
 ## v2.179.0 (2023-08-21)
 
 ### Features
