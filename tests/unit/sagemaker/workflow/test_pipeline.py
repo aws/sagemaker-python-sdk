@@ -492,8 +492,10 @@ def test_pipeline_start_selective_execution(sagemaker_session_mock):
             "SourcePipelineExecutionArn": "foo-arn",
         },
     )
+    sagemaker_session_mock.reset_mock()
 
     # Case 2: Start selective execution without SourcePipelineExecutionArn
+    # References latest execution by default.
     sagemaker_session_mock.sagemaker_client.list_pipeline_executions.return_value = {
         "PipelineExecutionSummaries": [
             {
@@ -523,6 +525,27 @@ def test_pipeline_start_selective_execution(sagemaker_session_mock):
             "SourcePipelineExecutionArn": "my:latest:execution:arn",
         },
     )
+    sagemaker_session_mock.reset_mock()
+
+    # Case 3: Start selective execution without SourcePipelineExecutionArn
+    # Opts not to reference latest execution.
+    selective_execution_config = SelectiveExecutionConfig(
+        selected_steps=["step-1", "step-2", "step-3"],
+        reference_latest_execution=False,
+    )
+    pipeline.start(selective_execution_config=selective_execution_config)
+    sagemaker_session_mock.sagemaker_client.list_pipeline_executions.assert_not_called()
+    sagemaker_session_mock.sagemaker_client.start_pipeline_execution.assert_called_with(
+        PipelineName="MyPipeline",
+        SelectiveExecutionConfig={
+            "SelectedSteps": [
+                {"StepName": "step-1"},
+                {"StepName": "step-2"},
+                {"StepName": "step-3"},
+            ],
+        },
+    )
+    sagemaker_session_mock.reset_mock()
 
 
 def test_pipeline_basic():

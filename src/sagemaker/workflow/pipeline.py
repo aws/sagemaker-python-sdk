@@ -344,7 +344,10 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             A `_PipelineExecution` instance, if successful.
         """
         if selective_execution_config is not None:
-            if selective_execution_config.source_pipeline_execution_arn is None:
+            if (
+                selective_execution_config.source_pipeline_execution_arn is None
+                and selective_execution_config.reference_latest_execution
+            ):
                 selective_execution_config.source_pipeline_execution_arn = (
                     self._get_latest_execution_arn()
                 )
