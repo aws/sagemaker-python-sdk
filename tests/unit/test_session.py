@@ -91,7 +91,10 @@ def test_default_session(boto3_default_session):
 
 @patch("boto3.DEFAULT_SESSION", None)
 @patch("boto3.Session")
+@patch("boto3.DEFAULT_SESSION", None)
 def test_new_session_created(boto3_session):
+    # Need to have DEFAULT_SESSION return None as other unit tests can trigger creation of global
+    # default boto3 session that will persist and take precedence over boto3.Session()
     sess = Session()
     assert sess.boto_session is boto3_session.return_value
 
