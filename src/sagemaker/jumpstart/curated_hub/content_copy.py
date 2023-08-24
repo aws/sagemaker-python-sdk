@@ -326,7 +326,7 @@ class ContentCopier:
             response = self._s3_client.head_object(Bucket=s3_object.bucket, Key=s3_object.key)
             return response.pop("ETag")
         except ClientError as ce:
-            if ce.response["Error"]["Code"] != "NoSuchKey":
+            if ce.response["Error"]["Code"] != "404":
                 logging.error(f"Received error when calling HeadObject for s3://{s3_object.bucket}/{s3_object.key}: {ce.response['Error']}")
                 raise
             return None
