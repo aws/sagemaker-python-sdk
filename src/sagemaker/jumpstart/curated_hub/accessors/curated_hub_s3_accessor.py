@@ -34,6 +34,7 @@ from sagemaker.jumpstart.curated_hub.accessors.model_dependency_s3_accessor impo
     ModelDependencyS3Accessor,
 )
 
+DISAMBIGUATE_SUFFIX = uuid.uuid4()
 
 class CuratedHubS3Accessor(ModelDependencyS3Accessor):
     """Helper class to access Curated Hub s3 bucket"""
@@ -112,10 +113,9 @@ class CuratedHubS3Accessor(ModelDependencyS3Accessor):
 
     def _get_unique_s3_key_prefix(self, model_specs: JumpStartModelSpecs) -> str:
         """Creates a unique s3 key prefix based off S3 storage config"""
-        disambiguator = uuid.uuid4()
         key = (
             f"{self._base_s3_key}/Model/"
-            f"{model_specs.model_id}-{disambiguator}/{model_specs.version}"
+            f"{model_specs.model_id}-{DISAMBIGUATE_SUFFIX}/{model_specs.version}"
         )
         return key.lstrip("/")
 
