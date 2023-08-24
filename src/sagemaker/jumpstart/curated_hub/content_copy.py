@@ -189,7 +189,7 @@ class ContentCopier:
                 s3_client=self._s3_client,
             )
         except Exception as ex:
-            logging.error(
+            print(
                 "ERROR: encountered an exception when finding objects"
                 + f" under prefix {prefix_reference.bucket}/{prefix_reference.key}: {str(ex)}"
             )
@@ -283,12 +283,12 @@ class ContentCopier:
           Exception when s3:CopyObject raises an exception
         """
         if not self.is_s3_object_etag_different(src, dst):
-            logging.debug(
+            print(
                 f"Detected that {resource_name} is the same in destination bucket. Skipping copy."
             )
             return
 
-        logging.debug(f"Copying {resource_name} from {src.bucket}/{src.key} to {dst.bucket}/{dst.key}...")
+        print(f"Copying {resource_name} from {src.bucket}/{src.key} to {dst.bucket}/{dst.key}...")
         try:
             self._s3_client.copy(
                 src.format_for_s3_copy(),
@@ -297,13 +297,13 @@ class ContentCopier:
                 ExtraArgs=EXTRA_S3_COPY_ARGS,
             )
         except Exception as ex:
-            logging.error(
+            print(
                 "ERROR: encountered an exception when calling s3:CopyObject from"
                 + f" {src.bucket}/{src.key} to {dst.bucket}/{dst.key}: {str(ex)}"
             )
             raise
 
-        logging.debug(
+        print(
             f"Copying {resource_name} from"
             f" {src.bucket}/{src.key} to {dst.bucket}/{dst.key} complete!"
         )
@@ -327,6 +327,6 @@ class ContentCopier:
             return response.pop("ETag")
         except ClientError as ce:
             if ce.response["Error"]["Code"] != "404":
-                logging.error(f"Received error when calling HeadObject for s3://{s3_object.bucket}/{s3_object.key}: {ce.response['Error']}")
+                print(f"ERROR: Received error when calling HeadObject for s3://{s3_object.bucket}/{s3_object.key}: {ce.response['Error']}")
                 raise
             return None

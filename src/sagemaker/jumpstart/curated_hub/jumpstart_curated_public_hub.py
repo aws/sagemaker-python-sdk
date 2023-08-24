@@ -79,8 +79,8 @@ class JumpStartCuratedPublicHub:
         self.curated_hub_s3_bucket_name = curated_hub_s3_config.bucket
         self.curated_hub_s3_key_prefix = curated_hub_s3_config.key
 
-        logging.info(f"HUB_NAME={self.curated_hub_name}")
-        logging.info(f"HUB_BUCKET_NAME={self.curated_hub_s3_bucket_name}")
+        print(f"HUB_NAME={self.curated_hub_name}")
+        print(f"HUB_BUCKET_NAME={self.curated_hub_s3_bucket_name}")
 
         self.studio_metadata_map = get_studio_model_metadata_map_from_region(self._region)
         self._init_dependencies()   
@@ -159,14 +159,14 @@ class JumpStartCuratedPublicHub:
         except ClientError as ex:
             if not (ex.response["Error"]["Code"] in ["BucketAlreadyOwnedByYou", "BucketAlreadyExists"] and import_into_preexisting):
                 raise
-            logging.warn(f"Skipping hub bucket creation as S3 bucket {self.curated_hub_s3_bucket_name} already exists.")
+            print(f"WARN: Skipping hub bucket creation as S3 bucket {self.curated_hub_s3_bucket_name} already exists.")
 
         try:
           self._curated_hub_client.create_hub(self.curated_hub_name, self.curated_hub_s3_bucket_name)
         except ClientError as ex:
             if not (ex.response["Error"]["Code"] in ["ResourceInUse"] and import_into_preexisting):
                 raise
-            logging.warn(f"Skipping hub creation as hub {self.curated_hub_name} already exists.")
+            print(f"WARN: Skipping hub creation as hub {self.curated_hub_name} already exists.")
 
     def sync(self, model_ids: List[PublicHubModel], force_update: bool = False):
         """Syncs Curated Hub with the JumpStart Public Hub.
@@ -184,7 +184,7 @@ class JumpStartCuratedPublicHub:
         model_specs = self._get_model_specs_for_list(model_ids)
 
         if not force_update:
-            logging.info(
+            print(
                 "Filtering out models that are already in hub."
                 " If you still wish to update these models, set `force_update` to True"
             )
@@ -211,7 +211,7 @@ class JumpStartCuratedPublicHub:
         """Checks if a new upload is necessary."""
         try:
             self._curated_hub_client.describe_model_version(model_specs)
-            logging.info(f"Model {model_specs.model_id} found in hub.")
+            print(f"Model {model_specs.model_id} found in hub.")
             return False
         except ClientError as ex:
             if ex.response["Error"]["Code"] != "ResourceNotFound":
@@ -220,7 +220,7 @@ class JumpStartCuratedPublicHub:
 
     def _import_models(self, model_specs: List[JumpStartModelSpecs]):
         """Imports a list of models to a hub."""
-        logging.info(f"Importing {len(model_specs)} models to curated private hub...")
+        print(f"Importing {len(model_specs)} models to curated private hub...")
         tasks: List[futures.Future] = []
         with futures.ThreadPoolExecutor(
             max_workers=self._default_thread_pool_size,
@@ -250,7 +250,7 @@ class JumpStartCuratedPublicHub:
 
     def _import_model(self, public_js_model_specs: JumpStartModelSpecs) -> None:
         """Imports a model to a hub."""
-        logging.info(
+        print(
             f"Importing model {public_js_model_specs.model_id}"
             f" version {public_js_model_specs.version} to curated private hub..."
         )
@@ -261,7 +261,7 @@ class JumpStartCuratedPublicHub:
             model_specs=public_js_model_specs
         )
         self._import_public_model_to_hub(model_specs=public_js_model_specs)
-        logging.info(
+        print(
             f"Importing model {public_js_model_specs.model_id}"
             f" version {public_js_model_specs.version} to curated private hub complete!"
         )
@@ -335,7 +335,7 @@ class JumpStartCuratedPublicHub:
             dependency_s3_keys.extend(
                 self._format_dependency_dst_uris_for_delete_objects(dependency)
             )
-        logging.info(f"Deleting HubContent dependencies for {model_specs.model_id}: {dependency_s3_keys}")
+        print(f"Deleting HubContent dependencies for {model_specs.model_id}: {dependency_s3_keys}")
         delete_response = self._s3_client.delete_objects(
             Bucket=self.curated_hub_s3_bucket_name,
             Delete={"Objects": dependency_s3_keys, "Quiet": True},
