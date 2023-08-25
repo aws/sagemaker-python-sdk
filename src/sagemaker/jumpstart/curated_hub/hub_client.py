@@ -111,3 +111,20 @@ class CuratedHubClient:
                 raise
 
         return content_versions
+
+    def list_hub_names_on_account(
+            self
+    ) -> List[str]:
+        hub_names: List[str] = []
+        run_once = True
+        next_token = ""
+        while next_token or run_once:
+            run_once = False
+            res = self._sm_client.list_hubs(
+                NextToken=next_token
+            )
+
+            hub_names.extend(map(self._get_hub_name_from_hub_summary, res["HubSummaries"]))
+
+    def _get_hub_name_from_hub_summary(self, hub_summary: Dict[str, Any]) -> str:
+        return hub_summary["HubName"]

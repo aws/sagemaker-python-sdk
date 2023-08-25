@@ -248,7 +248,7 @@ class ModelDocumentCreator:
         return DefaultTrainingConfig(
             SdkArgs=DefaultTrainingSdkArgs(
                 MinSdkVersion=model_specs.min_sdk_version,
-                SdkEstimatorArgs=None,  # TODO add env variables
+                SdkEstimatorArgs=model_specs.estimator_kwargs,
             ),
             CustomImageConfig=None,
             FrameworkImageConfig=FrameworkImageConfig(
