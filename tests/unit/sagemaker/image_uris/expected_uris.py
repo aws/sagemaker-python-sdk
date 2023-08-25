@@ -91,6 +91,11 @@ def huggingface_llm_framework_uri(
     return IMAGE_URI_FORMAT.format(account, region, domain, repo, tag)
 
 
+def stabilityai_framework_uri(repo, account, tag, region=REGION):
+    domain = ALTERNATE_DOMAINS.get(region, DOMAIN)
+    return IMAGE_URI_FORMAT.format(account, region, domain, repo, tag)
+
+
 def base_python_uri(repo, account, region=REGION):
     domain = ALTERNATE_DOMAINS.get(region, DOMAIN)
     tag = "1.0"
