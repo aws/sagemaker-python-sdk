@@ -55,21 +55,13 @@ from sagemaker.jumpstart.curated_hub.constants import (
     CURATED_HUB_DEFAULT_DOCUMENT_SCHEMA_VERSION,
     CURATED_HUB_CONTENT_TYPE,
 )
-
-def _get_hub_limit_exceeded_error(region:str, hubs_on_account: List[str]) -> ValueError:
-    return ValueError(f"You have reached the limit of hubs on the account for {region}. "
-                      f"The current hubs you have are {hubs_on_account}. "
-                      "You can delete one of the hubs to free up space or change "
-                      "curated_hub_name to one of the above preexisting hubs.")
-
-def _get_hub_s3_bucket_permissions_error(hub_s3_bucket_name: str) -> PermissionError:
-  return PermissionError(f"You do not have permissions to the hub bucket {hub_s3_bucket_name}. "
-                                 "Please add [s3:CreateBucket, s3:ListBucket, s3:GetObject*, "
-                                 "s3:PutObject*, s3:DeleteObject*] permissions to our IAM role.")
-
-def _get_hub_creation_error_message(s3_bucket_name: str) -> str:
-    return ("ERROR: Exception occurred during hub Curated Hub Creation. "
-            f"A S3 bucket {s3_bucket_name} has been created and must be manually deleted.")
+from sagemaker.jumpstart.curated_hub.error_messaging import (
+    get_hub_limit_exceeded_error,
+    get_hub_s3_bucket_permissions_error,
+    get_hub_creation_error_message,
+    get_preexisting_hub_should_be_true_error,
+    get_preexisting_hub_should_be_false_error
+)
 
 class JumpStartCuratedHub:
     """This class helps users create a new curated hub in their AWS account for a region."""
@@ -122,13 +114,9 @@ class JumpStartCuratedHub:
             self._create_hub_s3_bucket_flag = False
 
             if not use_preexisting_hub:
-                raise ValueError(f"Hub detected on account with name {self.curated_hub_name} in {self._region}. "
-                                 f"If you wish to use the hub as your Curated Hub, "
-                                 "please pass in use_preexisting_hub=True")
+                raise get_preexisting_hub_should_be_true_error(self.curated_hub_name, self._region)
         elif use_preexisting_hub:
-            raise ValueError(f"Attempted to use a preexisting hub but no hub with name {self.curated_hub_name} "
-                             f"exists for this account in {self._region}. If you wish to create a new Curated Hub, "
-                             "please pass in use_preexisting_hub=False")
+            raise get_preexisting_hub_should_be_false_error(self.curated_hub_name, self._region)
         
     def _get_preexisting_hub_on_account(self, hub_name: str) -> Optional[Dict[str, Any]]:
         """Attempts to retrieve preexisting hub on account in region with the hub name.
@@ -159,7 +147,7 @@ class JumpStartCuratedHub:
             if ex.response["Error"]["Code"] == "NoSuchBucket":
                 self._create_hub_s3_bucket_flag = True
             elif ex.response["Error"]["Code"] == "AccessDenied":
-                raise _get_hub_s3_bucket_permissions_error(hub_s3_bucket_name)
+                raise get_hub_s3_bucket_permissions_error(hub_s3_bucket_name)
             raise
         
     def _create_curated_hub_resources(self) -> None:
@@ -216,7 +204,7 @@ class JumpStartCuratedHub:
             self._create_hub_s3_bucket()
         except ClientError as ce:
           if ce.response["Error"]["Code"] == "AccessDenied":
-              raise _get_hub_s3_bucket_permissions_error(self.curated_hub_s3_bucket_name)
+              raise get_hub_s3_bucket_permissions_error(self.curated_hub_s3_bucket_name)
           raise
 
     def _create_hub_s3_bucket(self) -> None:
@@ -238,11 +226,11 @@ class JumpStartCuratedHub:
         except ClientError as ce:
             if ce.response["Error"]["Code"] == "ResourceLimitExceeded":
               hubs_on_account = self._curated_hub_client.list_hub_names_on_account()
-              raise _get_hub_limit_exceeded_error(hubs_on_account)
+              raise get_hub_limit_exceeded_error(hubs_on_account)
             raise
         except Exception:
             if self._create_hub_s3_bucket_flag:
-              print(_get_hub_creation_error_message(self.curated_hub_s3_bucket_name))
+              print(get_hub_creation_error_message(self.curated_hub_s3_bucket_name))
             raise
 
     def sync(self, model_ids: List[PublicHubModel], force_update: bool = False):
