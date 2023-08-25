@@ -82,7 +82,6 @@ class JumpStartCuratedHub:
         use_preexisting_hub: bool = False
     ):
         self._region = region
-        self._use_preexisting_hub = use_preexisting_hub
         self._s3_client = self._get_s3_client()
         self._sm_client = self._get_sm_client()
         self._default_thread_pool_size = 20
@@ -95,14 +94,14 @@ class JumpStartCuratedHub:
         self.curated_hub_s3_bucket_name = hub_s3_bucket_name_override if hub_s3_bucket_name_override else self._create_unique_s3_bucket_name(curated_hub_name, self._region)
         self.curated_hub_s3_key_prefix = ""
 
+        # Initializes Curated Hub parameters and dependency clients
         self._init_curated_hub_parameters_using_preexisting_hub(curated_hub_name=curated_hub_name, use_preexisting_hub=use_preexisting_hub)
         self._init_hub_bucket_parameters(hub_s3_bucket_name=self.curated_hub_s3_bucket_name)
-
-        print(f"HUB_NAME={self.curated_hub_name}")
-        print(f"HUB_BUCKET_NAME={self.curated_hub_s3_bucket_name}")
-
         self.studio_metadata_map = get_studio_model_metadata_map_from_region(self._region)
         self._init_dependencies()
+
+        # Creates all Curated Hub AWS resources
+        self._create_curated_hub_resources()
 
     def _get_s3_client(self) -> Any:
         return boto3.client("s3", region_name=self._region)
@@ -176,8 +175,10 @@ class JumpStartCuratedHub:
         Raises:
           ClientError if any error outside of the above case occurs.
         """
-        self._create_hub_s3_bucket_with_error_handling()
-        self._create_private_hub()
+        if self._create_hub_s3_bucket_flag:
+          self._create_hub_s3_bucket_with_error_handling()
+        if self._create_hub_flag:
+          self._create_private_hub()
 
 
     def _init_dependencies(self):
@@ -203,16 +204,6 @@ class JumpStartCuratedHub:
             hub_s3_accessor=self._dst_s3_filesystem,
             studio_metadata_map=self.studio_metadata_map,
         )
-
-    def create(self):
-        """Creates a Curated Hub and corresponding S3 bucket in the caller AWS account.
-
-        If import_into_preexisting is set to true, it will skip creation of the Private hub and hub S3 bucket.
-        Raises:
-          ClientError if any error outside of the above case occurs.
-        """
-        self._create_hub_s3_bucket_with_error_handling()
-        self._create_private_hub()
 
     def _create_hub_s3_bucket_with_error_handling(self) -> bool:
         """Creates a S3 bucket on the caller's AWS account.
