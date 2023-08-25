@@ -94,7 +94,7 @@ def compatible_python_version():
 
 @pytest.fixture(scope="package")
 def incompatible_python_version():
-    return "{}.{}".format(sys.version_info.major, sys.version_info.minor - 1)
+    return "{}.{}".format(sys.version_info.major, sys.version_info.minor + 1)
 
 
 @pytest.fixture(scope="package")
