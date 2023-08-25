@@ -314,7 +314,7 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
     """Data class for JumpStart instance type variants."""
 
     __slots__ = [
-        "aliases",
+        "regional_aliases",
         "variants",
     ]
 
@@ -336,7 +336,7 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
         if json_obj is None:
             return
 
-        self.aliases: dict = json_obj["aliases"]
+        self.regional_aliases: dict = json_obj["regional_aliases"]
         self.variants: dict = json_obj["variants"]
 
     def to_json(self) -> Dict[str, Any]:
@@ -352,7 +352,7 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
 
         image_uri_alias: Optional[str] = None
         if instance_type in self.variants:
-            image_uri_alias = self.variants[instance_type]["properties"].get("image_uri")
+            image_uri_alias = self.variants[instance_type]["regional_properties"].get("image_uri")
         else:
             instance_type_family = get_instance_type_family(instance_type)
 
@@ -360,7 +360,7 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
                 return None
 
             image_uri_alias = (
-                self.variants[instance_type_family]["properties"].get("image_uri")
+                self.variants[instance_type_family]["regional_properties"].get("image_uri")
                 if instance_type_family in self.variants
                 else None
             )
@@ -371,9 +371,9 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
         if not image_uri_alias.startswith("$"):
             raise TypeError("All image uris should map to an alias and start with '$'.")
 
-        if region not in self.aliases:
+        if region not in self.regional_aliases:
             return None
-        alias_value = self.aliases[region][image_uri_alias[1:]]
+        alias_value = self.regional_aliases[region][image_uri_alias[1:]]
         return alias_value
 
 

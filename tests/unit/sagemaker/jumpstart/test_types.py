@@ -161,7 +161,7 @@ def test_jumpstart_model_specs():
 def test_jumpstart_instance_variants():
     variant = JumpStartInstanceTypeVariants(
         {
-            "aliases": {
+            "regional_aliases": {
                 "us-west-2": {
                     "gpu_image_uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
                     "huggingface-pytorch-inference:1.13.1-transformers4.26.0-gpu-py39-cu117-ubuntu20.04",
@@ -170,19 +170,23 @@ def test_jumpstart_instance_variants():
                 }
             },
             "variants": {
-                "p2": {"properties": {"image_uri": "$gpu_image_uri"}},
-                "p3": {"properties": {"image_uri": "$gpu_image_uri"}},
-                "ml.p3.200xlarge": {"properties": {"image_uri": "$gpu_image_uri_2"}},
-                "p4": {"properties": {"image_uri": "$gpu_image_uri"}},
-                "g4dn": {"properties": {"image_uri": "$gpu_image_uri"}},
-                "m2": {"properties": {"image_uri": "$cpu_image_uri"}},
-                "c2": {"properties": {"image_uri": "$cpu_image_uri"}},
-                "local": {"properties": {"image_uri": "$cpu_image_uri"}},
+                "p2": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
+                "p3": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
+                "ml.p3.200xlarge": {"regional_properties": {"image_uri": "$gpu_image_uri_2"}},
+                "p4": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
+                "g4dn": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
+                "m2": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
+                "c2": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
+                "local": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
                 "ml.g5.48xlarge": {
-                    "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "8"}}
+                    "regional_properties": {
+                        "environment_variables": {"TENSOR_PARALLEL_DEGREE": "8"}
+                    }
                 },
                 "ml.g5.12xlarge": {
-                    "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"}}
+                    "regional_properties": {
+                        "environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"}
+                    }
                 },
             },
         }
