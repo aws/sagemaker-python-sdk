@@ -148,13 +148,15 @@ class JumpStartCuratedHub:
           ClientError if any error outside of the above case occurs.
         """
         try:
-            location_constraint = None
-            if self._region != "us-east-1":
-                location_constraint = {"LocationConstraint": self._region}
-            self._s3_client.create_bucket(
+            if self._region == "us-east-1":
+              self._s3_client.create_bucket(
                 Bucket=self.curated_hub_s3_bucket_name,
-                CreateBucketConfiguration=location_constraint,
-            )
+              )
+            else:
+              self._s3_client.create_bucket(
+                Bucket=self.curated_hub_s3_bucket_name,
+                CreateBucketConfiguration={"LocationConstraint": self._region},
+              )            
         except ClientError as ex:
             if not (
                 ex.response["Error"]["Code"] in ["BucketAlreadyOwnedByYou", "BucketAlreadyExists"]
