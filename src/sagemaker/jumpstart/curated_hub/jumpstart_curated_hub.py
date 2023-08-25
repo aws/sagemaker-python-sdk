@@ -152,7 +152,7 @@ class JumpStartCuratedHub:
 
     def _init_hub_bucket_parameters(self, hub_s3_bucket_name: str) -> None:
         try:
-            self._s3_client.head_bucket(hub_s3_bucket_name)
+            self._s3_client.head_bucket(Bucket=hub_s3_bucket_name)
             # Bucket already exists on account, skipping creation
             self._create_hub_s3_bucket_flag = False
         except ClientError as ex:
