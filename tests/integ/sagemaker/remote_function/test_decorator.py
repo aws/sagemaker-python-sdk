@@ -274,8 +274,9 @@ def test_with_incompatible_dependencies(
 ):
     """
     This test is limited by the python version it is run with.
-    It is currently working with python 3.10. Running it with other versions
-    may require changes to 'old_deps_requirements.txt' to fulfill testing scenario.
+    It is currently working with python 3.8+. However, running it with older versions
+    or versions in the future may require changes to 'old_deps_requirements.txt' 
+    to fulfill testing scenario.
 
     """
 
