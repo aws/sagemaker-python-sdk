@@ -105,6 +105,7 @@ class JumpStartCuratedHub:
         """Attempts to initialize Curated Hub using a preexisting hub on the account in region if it exists."""
         preexisting_hub = self._get_preexisting_hub_on_account(curated_hub_name)
         if preexisting_hub:
+            print(f"Preexisting hub {curated_hub_name} detected on account. Using hub configuration...")
             preexisting_hub_s3_config = create_s3_object_reference_from_uri(preexisting_hub["S3StorageConfig"]["S3OutputPath"])
             self.curated_hub_s3_bucket_name = preexisting_hub_s3_config.bucket
             self.curated_hub_s3_key_prefix = preexisting_hub_s3_config.key
@@ -142,6 +143,7 @@ class JumpStartCuratedHub:
         try:
             self._s3_client.head_bucket(Bucket=hub_s3_bucket_name)
             # Bucket already exists on account, skipping creation
+            print(f"S3 bucket {hub_s3_bucket_name} detected on account. Using this bucket...")
             self._create_hub_s3_bucket_flag = False
         except ClientError as ex:
             if ex.response["Error"]["Code"] == "NoSuchBucket":
@@ -149,25 +151,6 @@ class JumpStartCuratedHub:
             elif ex.response["Error"]["Code"] == "AccessDenied":
                 raise get_hub_s3_bucket_permissions_error(hub_s3_bucket_name)
             raise
-        
-    def _create_curated_hub_resources(self) -> None:
-        """Creates the resources for a Curated Hub in the caller AWS account.
-
-        The Curated Hub consists of a SageMaker Private Hub and it's corresponding S3 bucket.
-
-        If a Private Hub is detected on the account, this will skip creation of both the Hub and the S3 bucket.
-        If the S3 bucket already exists on the account, this will skip creation of that bucket.
-          A Private Hub will be created using that S3 bucket as it's S3Config. 
-        If neither are found on the account, a new Private Hub and it's corresponding S3 bucket will be created.
-
-        Raises:
-          ClientError if any error outside of the above case occurs.
-        """
-        if self._create_hub_s3_bucket_flag:
-          self._create_hub_s3_bucket_with_error_handling()
-        if self._create_hub_flag:
-          self._create_private_hub()
-
 
     def _init_dependencies(self):
         """Creates all dependencies to run the Curated Hub."""
@@ -192,6 +175,24 @@ class JumpStartCuratedHub:
             hub_s3_accessor=self._dst_s3_filesystem,
             studio_metadata_map=self.studio_metadata_map,
         )
+
+    def create(self) -> None:
+        """Creates the resources for a Curated Hub in the caller AWS account.
+
+        The Curated Hub consists of a SageMaker Private Hub and it's corresponding S3 bucket.
+
+        If a Private Hub is detected on the account, this will skip creation of both the Hub and the S3 bucket.
+        If the S3 bucket already exists on the account, this will skip creation of that bucket.
+          A Private Hub will be created using that S3 bucket as it's S3Config. 
+        If neither are found on the account, a new Private Hub and it's corresponding S3 bucket will be created.
+
+        Raises:
+          ClientError if any error outside of the above case occurs.
+        """
+        if self._create_hub_s3_bucket_flag:
+          self._create_hub_s3_bucket_with_error_handling()
+        if self._create_hub_flag:
+          self._create_private_hub()
 
     def _create_hub_s3_bucket_with_error_handling(self) -> bool:
         """Creates a S3 bucket on the caller's AWS account.
