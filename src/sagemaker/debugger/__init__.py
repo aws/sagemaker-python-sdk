@@ -18,7 +18,7 @@ from sagemaker.debugger.debugger import (  # noqa: F401
     DEBUGGER_FLAG,
     DebuggerHookConfig,
     framework_name,
-    get_default_profiler_rule,
+    get_default_profiler_processing_job,
     get_rule_container_image_uri,
     ProfilerRule,
     Rule,
@@ -27,6 +27,7 @@ from sagemaker.debugger.debugger import (  # noqa: F401
     TensorBoardOutputConfig,
 )
 from sagemaker.debugger.framework_profile import FrameworkProfile  # noqa: F401
+from sagemaker.debugger.profiler import Profiler  # noqa: F401
 from sagemaker.debugger.metrics_config import (  # noqa: F401
     DataloaderProfilingConfig,
     DetailedProfilingConfig,
