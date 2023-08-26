@@ -60,8 +60,12 @@ from sagemaker.jumpstart.curated_hub.error_messaging import (
     get_hub_s3_bucket_permissions_error,
     get_hub_creation_error_message,
     get_preexisting_hub_should_be_true_error,
-    get_preexisting_hub_should_be_false_error
+    get_preexisting_hub_should_be_false_error,
+    RESOURCE_NOT_FOUND_ERROR_CODE,
+    NO_SUCH_BUCKET_ERROR_CODE,
+    ACCESS_DENIED_ERROR_CODE
 )
+
 
 class JumpStartCuratedHub:
     """This class helps users create a new curated hub in their AWS account for a region."""
@@ -139,7 +143,7 @@ class JumpStartCuratedHub:
             return self._sm_client.describe_hub(HubName=hub_name)
         except ClientError as ex:
             # If the hub does not exist on the account, return None
-            if ex.response["Error"]["Code"] == "ResourceNotFound":
+            if ex.response["Error"]["Code"] == RESOURCE_NOT_FOUND_ERROR_CODE:
                 return None
             raise
 
@@ -155,9 +159,9 @@ class JumpStartCuratedHub:
             print(f"S3 bucket {hub_s3_bucket_name} detected on account. Using this bucket...")
             self._create_hub_s3_bucket_flag = False
         except ClientError as ex:
-            if ex.response["Error"]["Code"] == "NoSuchBucket":
+            if ex.response["Error"]["Code"] == NO_SUCH_BUCKET_ERROR_CODE:
                 self._create_hub_s3_bucket_flag = True
-            elif ex.response["Error"]["Code"] == "AccessDenied":
+            elif ex.response["Error"]["Code"] == ACCESS_DENIED_ERROR_CODE:
                 raise get_hub_s3_bucket_permissions_error(hub_s3_bucket_name)
             raise
 
@@ -218,7 +222,7 @@ class JumpStartCuratedHub:
         try:
             self._create_hub_s3_bucket()
         except ClientError as ce:
-          if ce.response["Error"]["Code"] == "AccessDenied":
+          if ce.response["Error"]["Code"] == ACCESS_DENIED_ERROR_CODE:
               raise get_hub_s3_bucket_permissions_error(self.curated_hub_s3_bucket_name)
           raise
 
@@ -296,7 +300,7 @@ class JumpStartCuratedHub:
             print(f"Model {model_specs.model_id} found in hub.")
             return False
         except ClientError as ex:
-            if ex.response["Error"]["Code"] != "ResourceNotFound":
+            if ex.response["Error"]["Code"] != RESOURCE_NOT_FOUND_ERROR_CODE:
                 raise
             return True
 
@@ -405,7 +409,7 @@ class JumpStartCuratedHub:
         try:
             hub_content = self._curated_hub_client.describe_model_version(model_specs)
         except ClientError as ce:
-            if ce.response["Error"]["Code"] != "ResourceNotFound":
+            if ce.response["Error"]["Code"] != RESOURCE_NOT_FOUND_ERROR_CODE:
                 raise
             return
 
