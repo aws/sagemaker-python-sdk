@@ -163,6 +163,8 @@ class JumpStartCuratedHub:
                 self._create_hub_s3_bucket_flag = True
             elif ex.response["Error"]["Code"] == ACCESS_DENIED_ERROR_CODE:
                 raise get_hub_s3_bucket_permissions_error(hub_s3_bucket_name)
+            
+            print(f"Received error: {ex.response}")
             raise
 
     def _init_dependencies(self):
