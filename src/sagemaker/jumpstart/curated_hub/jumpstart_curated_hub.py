@@ -228,6 +228,7 @@ class JumpStartCuratedHub:
           raise
 
     def _create_hub_s3_bucket(self) -> None:
+        print(f"Creating S3 hub bucket {self.curated_hub_s3_bucket_name} in {self._region}...")
         if self._region == "us-east-1":
           self._s3_client.create_bucket(
             Bucket=self.curated_hub_s3_bucket_name,
@@ -236,13 +237,16 @@ class JumpStartCuratedHub:
           self._s3_client.create_bucket(
             Bucket=self.curated_hub_s3_bucket_name,
             CreateBucketConfiguration={"LocationConstraint": self._region},
-          )       
+          )
+        print(f"S3 hub bucket {self.curated_hub_s3_bucket_name} created in {self._region}!")
 
     def _create_private_hub(self) -> None:
         try:
+            print(f"Creating Curated Hub {self.curated_hub_name} in {self._region}...")
             self._curated_hub_client.create_hub(
                 self.curated_hub_name, self.curated_hub_s3_bucket_name
             )
+            print(f"Curated Hub {self.curated_hub_name} created in {self._region}!")
         except ClientError as ce:
             if ce.response["Error"]["Code"] == "ResourceLimitExceeded":
               hubs_on_account = self._curated_hub_client.list_hub_names_on_account()
