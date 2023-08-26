@@ -92,6 +92,17 @@ class JumpStartCuratedHub:
         self.studio_metadata_map = get_studio_model_metadata_map_from_region(self._region)
         self._init_dependencies()
 
+        print("Curated Hub configuration setup complete:")
+        if self._create_hub_flag:
+            print(f"The Curated Hub will create a new hub with the name {self.curated_hub_name} in {self._region}.")
+        else:
+            print(f"The Curated Hub will not create a new hub. It will use the preexisting hub {self.curated_hub_name} in {self._region}.")
+
+        if self._create_hub_s3_bucket_flag:
+            print(f"The Curated Hub will create a new S3 hub bucket with the name {self.curated_hub_s3_bucket_name} in {self._region}.")
+        else:
+            print(f"The Curated Hub will not create a S3 hub bucket. It will use the preexisting S3 bucket {self.curated_hub_s3_bucket_name} in {self._region}.")
+
     def _get_s3_client(self) -> Any:
         return boto3.client("s3", region_name=self._region)
 
@@ -106,6 +117,7 @@ class JumpStartCuratedHub:
             preexisting_hub_s3_config = create_s3_object_reference_from_uri(preexisting_hub["S3StorageConfig"]["S3OutputPath"])
             self.curated_hub_s3_bucket_name = preexisting_hub_s3_config.bucket
             self.curated_hub_s3_key_prefix = preexisting_hub_s3_config.key
+            print(f"NOTE: The Curated Hub will use the preexisting S3 configuration. This will override any input for hub_s3_bucket_name_override.")
 
             # Since hub and hub bucket already exist, skipping creation
             self._create_hub_flag = False
@@ -188,8 +200,13 @@ class JumpStartCuratedHub:
         """
         if self._create_hub_s3_bucket_flag:
           self._create_hub_s3_bucket_with_error_handling()
+        else:
+            print(f"WARN: Skipping S3 hub bucket creation. The Curated Hub will use {self.curated_hub_s3_bucket_name} in {self._region}")
+        
         if self._create_hub_flag:
           self._create_private_hub()
+        else:
+            print(f"WARN: Skipping Hub creation. The Curated Hub will use {self.curated_hub_name} in {self._region}")
 
     def _create_hub_s3_bucket_with_error_handling(self) -> bool:
         """Creates a S3 bucket on the caller's AWS account.
