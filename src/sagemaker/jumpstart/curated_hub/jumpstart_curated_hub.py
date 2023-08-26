@@ -92,9 +92,6 @@ class JumpStartCuratedHub:
         self.studio_metadata_map = get_studio_model_metadata_map_from_region(self._region)
         self._init_dependencies()
 
-        # Creates all Curated Hub AWS resources
-        self._create_curated_hub_resources()
-
     def _get_s3_client(self) -> Any:
         return boto3.client("s3", region_name=self._region)
 
