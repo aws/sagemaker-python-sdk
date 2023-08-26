@@ -161,12 +161,9 @@ class JumpStartCuratedHub:
         except ClientError as ex:
             if ex.response["Error"]["Code"] == NO_SUCH_BUCKET_ERROR_CODE:
                 self._create_hub_s3_bucket_flag = True
+                return
             elif ex.response["Error"]["Code"] == ACCESS_DENIED_ERROR_CODE:
                 raise get_hub_s3_bucket_permissions_error(hub_s3_bucket_name)
-            
-            print(f"Received error: {ex.response}")
-            print(f"Error code: {NO_SUCH_BUCKET_ERROR_CODE}")
-            print(f"Equality check: {ex.response['Error']['Code'] == NO_SUCH_BUCKET_ERROR_CODE}")
             raise
 
     def _init_dependencies(self):
