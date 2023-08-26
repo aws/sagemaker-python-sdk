@@ -16,7 +16,7 @@ from __future__ import absolute_import
 from typing import List
 
 RESOURCE_NOT_FOUND_ERROR_CODE = "ResourceNotFound"
-NO_SUCH_BUCKET_ERROR_CODE = "NoSuchBucket"
+NO_SUCH_BUCKET_ERROR_CODE = "404"
 ACCESS_DENIED_ERROR_CODE = "AccessDenied"
 
 def get_hub_limit_exceeded_error(region:str, hubs_on_account: List[str]) -> ValueError:
