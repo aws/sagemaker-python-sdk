@@ -100,12 +100,12 @@ class JumpStartCuratedHub:
         if self._create_hub_flag:
             print(f"The Curated Hub will create a new hub with the name {self.curated_hub_name} in {self._region}.")
         else:
-            print(f"The Curated Hub will not create a new hub. It will use the preexisting hub {self.curated_hub_name} in {self._region}.")
+            print(f"The Curated Hub will NOT create a new hub. It will use the preexisting hub {self.curated_hub_name} in {self._region}.")
 
         if self._create_hub_s3_bucket_flag:
             print(f"The Curated Hub will create a new S3 hub bucket with the name {self.curated_hub_s3_bucket_name} in {self._region}.")
         else:
-            print(f"The Curated Hub will not create a S3 hub bucket. It will use the preexisting S3 bucket {self.curated_hub_s3_bucket_name} in {self._region}.")
+            print(f"The Curated Hub will NOT create a S3 hub bucket. It will use the preexisting S3 bucket {self.curated_hub_s3_bucket_name} in {self._region}.")
 
     def _get_s3_client(self) -> Any:
         return boto3.client("s3", region_name=self._region)
@@ -310,7 +310,10 @@ class JumpStartCuratedHub:
             return True
 
     def _import_models(self, model_specs: List[JumpStartModelSpecs]):
-        """Imports a list of models to a hub."""
+        """Imports a list of models to a hub.
+        
+        This function uses a ThreadPoolExecutor to run in parallel.
+        """
         print(f"Importing {len(model_specs)} models to curated private hub...")
         tasks: List[futures.Future] = []
         with futures.ThreadPoolExecutor(
@@ -338,7 +341,7 @@ class JumpStartCuratedHub:
             raise RuntimeError(
                 f"Failures when importing models to curated hub in parallel: {failed_imports}"
             )
-
+        
     def _import_model(self, public_js_model_specs: JumpStartModelSpecs) -> None:
         """Imports a model to a hub."""
         print(
