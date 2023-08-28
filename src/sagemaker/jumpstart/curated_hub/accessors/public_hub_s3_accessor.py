@@ -20,9 +20,6 @@ from sagemaker.jumpstart.curated_hub.utils import (
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.types import JumpStartModelSpecs
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
-from sagemaker.jumpstart.curated_hub.utils import (
-    get_studio_model_metadata_map_from_region,
-)
 from sagemaker.jumpstart.curated_hub.accessors.s3_object_reference import (
     S3ObjectLocation,
     create_s3_object_reference_from_uri,
@@ -35,13 +32,10 @@ from sagemaker.jumpstart.curated_hub.accessors.model_dependency_s3_accessor impo
 class PublicHubS3Accessor(ModelDependencyS3Accessor):
     """Helper class to access Public Hub s3 bucket"""
 
-    def __init__(self, 
-                 region: str,
-                 studio_metadata_map: Dict[str, Dict[str, Any]]
-    ):
+    def __init__(self, region: str, studio_metadata_map: Dict[str, Dict[str, Any]]):
         self._region = region
         self._bucket = get_jumpstart_content_bucket(region)
-        self._studio_metadata_map = studio_metadata_map # Necessary for SDK - Studio metadata drift
+        self._studio_metadata_map = studio_metadata_map  # Necessary for SDK - Studio metadata drift
 
     def get_bucket_name(self) -> str:
         """Retrieves s3 bucket"""

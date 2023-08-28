@@ -24,9 +24,7 @@ from sagemaker.jumpstart.curated_hub.constants import (
 )
 from sagemaker.jumpstart.curated_hub.accessors.s3_object_reference import (
     S3ObjectLocation,
-    create_s3_object_reference_from_uri,
 )
-
 
 
 class CuratedHubClient:
@@ -116,19 +114,21 @@ class CuratedHubClient:
 
         return content_versions
 
-    def list_hub_names_on_account(
-            self
-    ) -> List[str]:
+    def list_hub_names_on_account(self) -> List[str]:
+        """Lists the Private Hubs on an AWS account for the region.
+        
+        This call handles the pagination.
+        """
         hub_names: List[str] = []
         run_once = True
         next_token = ""
         while next_token or run_once:
             run_once = False
-            res = self._sm_client.list_hubs(
-                NextToken=next_token
-            )
+            res = self._sm_client.list_hubs(NextToken=next_token)
 
             hub_names.extend(map(self._get_hub_name_from_hub_summary, res["HubSummaries"]))
+
+        return hub_names
 
     def _get_hub_name_from_hub_summary(self, hub_summary: Dict[str, Any]) -> str:
         return hub_summary["HubName"]

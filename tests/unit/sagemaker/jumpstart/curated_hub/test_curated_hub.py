@@ -20,9 +20,7 @@ from sagemaker.jumpstart.curated_hub.jumpstart_curated_hub import JumpStartCurat
 from sagemaker.jumpstart.curated_hub.utils import PublicHubModel
 from sagemaker.jumpstart.curated_hub.hub_model_specs.hub_model_specs import Dependency
 from botocore.client import ClientError
-from sagemaker.jumpstart.curated_hub.accessors.s3_object_reference import (
-    S3ObjectLocation
-)
+from sagemaker.jumpstart.curated_hub.accessors.s3_object_reference import S3ObjectLocation
 
 MODULE_PATH = "sagemaker.jumpstart.curated_hub.jumpstart_curated_hub.JumpStartCuratedHub"
 TEST_S3_BUCKET_ALREADY_EXISTS_RESPONSE = {
@@ -77,12 +75,8 @@ class JumpStartCuratedHubTest(unittest.TestCase):
     )
     test_nonexistent_public_js_model = PublicHubModel(id="fail", version="1.0.0")
 
-    @patch(
-        f"{MODULE_PATH}._get_s3_client"
-    )
-    @patch(
-        f"{MODULE_PATH}._get_sm_client"
-    )
+    @patch(f"{MODULE_PATH}._get_s3_client")
+    @patch(f"{MODULE_PATH}._get_sm_client")
     @patch(
         "sagemaker.jumpstart.curated_hub.jumpstart_curated_hub.get_studio_model_metadata_map_from_region"
     )
@@ -99,13 +93,14 @@ class JumpStartCuratedHubTest(unittest.TestCase):
         }
         self.test_curated_hub._sm_client = mock_sm_client
 
-        self.test_curated_hub.configure(
-            curated_hub_name=TEST_HUB_NAME,
-            use_preexisting_hub=True
-        )
+        self.test_curated_hub.configure(curated_hub_name=TEST_HUB_NAME, use_preexisting_hub=True)
 
-        self.assertEquals(self.test_curated_hub.curated_hub_s3_config.bucket, TEST_PREEXISTING_BUCKET_NAME)
-        self.assertEquals(self.test_curated_hub.curated_hub_s3_config.key, TEST_PREEXISTING_S3_KEY_PREFIX)
+        self.assertEquals(
+            self.test_curated_hub.curated_hub_s3_config.bucket, TEST_PREEXISTING_BUCKET_NAME
+        )
+        self.assertEquals(
+            self.test_curated_hub.curated_hub_s3_config.key, TEST_PREEXISTING_S3_KEY_PREFIX
+        )
         self.assertFalse(self.test_curated_hub._create_hub_flag)
         self.assertFalse(self.test_curated_hub._create_hub_s3_bucket_flag)
 
@@ -116,12 +111,11 @@ class JumpStartCuratedHubTest(unittest.TestCase):
         }
         self.test_curated_hub._sm_client = mock_sm_client
 
-        self.test_curated_hub.configure(
-            curated_hub_name=TEST_HUB_NAME,
-            use_preexisting_hub=True
-        )
+        self.test_curated_hub.configure(curated_hub_name=TEST_HUB_NAME, use_preexisting_hub=True)
 
-        self.assertEquals(self.test_curated_hub.curated_hub_s3_config.bucket, TEST_PREEXISTING_BUCKET_NAME)
+        self.assertEquals(
+            self.test_curated_hub.curated_hub_s3_config.bucket, TEST_PREEXISTING_BUCKET_NAME
+        )
         self.assertEquals(self.test_curated_hub.curated_hub_s3_config.key, "")
         self.assertFalse(self.test_curated_hub._create_hub_flag)
         self.assertFalse(self.test_curated_hub._create_hub_s3_bucket_flag)
@@ -133,10 +127,7 @@ class JumpStartCuratedHubTest(unittest.TestCase):
         )
         self.test_curated_hub._sm_client = mock_sm_client
 
-        self.test_curated_hub.configure(
-            curated_hub_name=TEST_HUB_NAME,
-            use_preexisting_hub=False
-        )
+        self.test_curated_hub.configure(curated_hub_name=TEST_HUB_NAME, use_preexisting_hub=False)
 
         self.assertIn(TEST_HUB_NAME, self.test_curated_hub.curated_hub_s3_config.bucket)
         self.assertIn(TEST_REGION, self.test_curated_hub.curated_hub_s3_config.bucket)
@@ -153,10 +144,12 @@ class JumpStartCuratedHubTest(unittest.TestCase):
         self.test_curated_hub.configure(
             curated_hub_name=TEST_HUB_NAME,
             hub_s3_bucket_name_override=TEST_OVERRIDE_BUCKET_NAME,
-            use_preexisting_hub=False
+            use_preexisting_hub=False,
         )
 
-        self.assertEquals(self.test_curated_hub.curated_hub_s3_config.bucket, TEST_OVERRIDE_BUCKET_NAME)
+        self.assertEquals(
+            self.test_curated_hub.curated_hub_s3_config.bucket, TEST_OVERRIDE_BUCKET_NAME
+        )
         self.assertEquals(self.test_curated_hub.curated_hub_s3_config.key, DEFAULT_S3_KEY_PREFIX)
         self.assertTrue(self.test_curated_hub._create_hub_flag)
 
@@ -168,10 +161,9 @@ class JumpStartCuratedHubTest(unittest.TestCase):
         self.test_curated_hub._sm_client = mock_sm_client
 
         with self.assertRaises(ValueError):
-          self.test_curated_hub.configure(
-              curated_hub_name=TEST_HUB_NAME,
-              use_preexisting_hub=True
-          )
+            self.test_curated_hub.configure(
+                curated_hub_name=TEST_HUB_NAME, use_preexisting_hub=True
+            )
 
     def test_configure_hub_exists_use_preexisting_hub_false_should_fail(self):
         mock_sm_client = Mock()
@@ -181,10 +173,9 @@ class JumpStartCuratedHubTest(unittest.TestCase):
         self.test_curated_hub._sm_client = mock_sm_client
 
         with self.assertRaises(ValueError):
-          self.test_curated_hub.configure(
-              curated_hub_name=TEST_HUB_NAME,
-              use_preexisting_hub=False
-          )
+            self.test_curated_hub.configure(
+                curated_hub_name=TEST_HUB_NAME, use_preexisting_hub=False
+            )
 
     def test_create_hub_already_exists_skips_both_creation(self):
         self.test_curated_hub._create_hub_flag = False
@@ -197,10 +188,7 @@ class JumpStartCuratedHubTest(unittest.TestCase):
         self.test_curated_hub._curated_hub_client = mock_curated_hub_client
 
         # Mock values for after configure() is called
-        self.test_curated_hub.curated_hub_s3_config = S3ObjectLocation(
-            bucket="blah",
-            key="blah"
-        )
+        self.test_curated_hub.curated_hub_s3_config = S3ObjectLocation(bucket="blah", key="blah")
         self.test_curated_hub.curated_hub_name = "blah"
 
         self.test_curated_hub.create()
@@ -219,28 +207,21 @@ class JumpStartCuratedHubTest(unittest.TestCase):
         self.test_curated_hub._curated_hub_client = mock_curated_hub_client
 
         # Mock values for after configure() is called
-        self.test_curated_hub.curated_hub_s3_config = S3ObjectLocation(
-            bucket="blah",
-            key="blah"
-        )
+        self.test_curated_hub.curated_hub_s3_config = S3ObjectLocation(bucket="blah", key="blah")
         self.test_curated_hub.curated_hub_name = TEST_HUB_NAME
 
         self.test_curated_hub.create()
 
         mock_s3_client.create_bucket.assert_called_with(
             Bucket=self.test_curated_hub.curated_hub_s3_config.bucket,
-            CreateBucketConfiguration={'LocationConstraint': self.test_curated_hub._region}
+            CreateBucketConfiguration={"LocationConstraint": self.test_curated_hub._region},
         )
         mock_curated_hub_client.create_hub.assert_called_with(
             TEST_HUB_NAME, self.test_curated_hub.curated_hub_s3_config
         )
 
-    @patch(
-        f"{MODULE_PATH}._import_models"
-    )
-    @patch(
-        f"{MODULE_PATH}._get_model_specs_for_list"
-    )
+    @patch(f"{MODULE_PATH}._import_models")
+    @patch(f"{MODULE_PATH}._get_model_specs_for_list")
     def test_sync_filters_existing_models(self, mock_get_model_specs_for_list, mock_import_models):
         mock_curated_hub_client = Mock()
         mock_curated_hub_client.describe_model_version.side_effect = _mock_describe_version
@@ -257,12 +238,8 @@ class JumpStartCuratedHubTest(unittest.TestCase):
 
         mock_import_models.assert_called_with([mock_spec_2])
 
-    @patch(
-        f"{MODULE_PATH}._import_models"
-    )
-    @patch(
-        f"{MODULE_PATH}._get_model_specs_for_list"
-    )
+    @patch(f"{MODULE_PATH}._import_models")
+    @patch(f"{MODULE_PATH}._get_model_specs_for_list")
     def test_sync_force_update_updates_all_models(
         self, mock_get_model_specs_for_list, mock_import_models
     ):
@@ -419,10 +396,7 @@ class JumpStartCuratedHubTest(unittest.TestCase):
         test_spec.version = "test_model_version"
 
         # Mock values for after configure() is called
-        self.test_curated_hub.curated_hub_s3_config = S3ObjectLocation(
-            bucket="blah",
-            key="blah"
-        )
+        self.test_curated_hub.curated_hub_s3_config = S3ObjectLocation(bucket="blah", key="blah")
         self.test_curated_hub.curated_hub_name = TEST_HUB_NAME
 
         self.test_curated_hub._delete_model_dependencies_no_content_noop(test_spec)

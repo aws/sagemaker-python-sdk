@@ -18,9 +18,6 @@ from sagemaker.jumpstart.curated_hub.utils import (
     get_model_framework,
 )
 from sagemaker.jumpstart.types import JumpStartModelSpecs
-from sagemaker.jumpstart.curated_hub.utils import (
-    get_studio_model_metadata_map_from_region,
-)
 from sagemaker.jumpstart.curated_hub.accessors.s3_object_reference import (
     S3ObjectLocation,
 )
@@ -41,12 +38,15 @@ DISAMBIGUATE_SUFFIX = uuid.uuid4()
 class CuratedHubS3Accessor(ModelDependencyS3Accessor):
     """Helper class to access Curated Hub s3 bucket"""
 
-    def __init__(self, region: str, bucket: str, studio_metadata_map: Dict[str, Dict[str, Any]], base_s3_key: str = ""):
+    def __init__(
+        self,
+        region: str,
+        bucket: str,
+        studio_metadata_map: Dict[str, Dict[str, Any]],
+        base_s3_key: str = "",
+    ):
         self._region = region
-        self._hub_s3_config = S3ObjectLocation(
-            bucket=bucket,
-            key=base_s3_key
-        )
+        self._hub_s3_config = S3ObjectLocation(bucket=bucket, key=base_s3_key)
         self._studio_metadata_map = studio_metadata_map  # Necessary for SDK - Studio metadata drift
 
     def get_bucket_name(self) -> str:

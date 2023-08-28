@@ -32,10 +32,7 @@ class HubClientTest(unittest.TestCase):
 
     def test_create_hub(self):
         hub_name = "hub_name"
-        mock_s3_config = S3ObjectLocation(
-                  bucket="hub_bucket_name",
-                  key=""
-                )
+        mock_s3_config = S3ObjectLocation(bucket="hub_bucket_name", key="")
         self.mock_curated_hub_client._sm_client = Mock()
 
         self.mock_curated_hub_client.create_hub(hub_name, mock_s3_config)
