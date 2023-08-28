@@ -873,6 +873,8 @@ def test_remote_decorator_fields_consistency(get_execution_role, session):
         "volume_kms_key",
         "vpc_config",
         "tags",
+        "use_spot_instances",
+        "max_wait_time_in_seconds",
     }
 
     job_settings = _JobSettings(

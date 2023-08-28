@@ -83,6 +83,8 @@ def remote(
     volume_size: int = 30,
     encrypt_inter_container_traffic: bool = None,
     spark_config: SparkConfig = None,
+    use_spot_instances=False,
+    max_wait_time_in_seconds=None,
 ):
     """Decorator for running the annotated function as a SageMaker training job.
 
@@ -255,6 +257,14 @@ def remote(
           Spark image. If ``spark_config`` is specified, a SageMaker Spark image uri
           will be used for training. Note that ``image_uri`` can not be specified at the
           same time otherwise a ``ValueError`` is thrown. Defaults to ``None``.
+
+        use_spot_instances (bool): Specifies whether to use SageMaker Managed Spot instances for
+          training. If enabled then the ``max_wait_time_in_seconds`` arg should also be set.
+          Defaults to ``False``.
+
+        max_wait_time_in_seconds (int): Timeout in seconds waiting for spot training job.
+          After this amount of time Amazon SageMaker will stop waiting for managed spot training
+          job to complete. Defaults to ``None``.
     """
 
     def _remote(func):
@@ -284,6 +294,8 @@ def remote(
             volume_size=volume_size,
             encrypt_inter_container_traffic=encrypt_inter_container_traffic,
             spark_config=spark_config,
+            use_spot_instances=use_spot_instances,
+            max_wait_time_in_seconds=max_wait_time_in_seconds,
         )
 
         @functools.wraps(func)
@@ -492,6 +504,8 @@ class RemoteExecutor(object):
         volume_size: int = 30,
         encrypt_inter_container_traffic: bool = None,
         spark_config: SparkConfig = None,
+        use_spot_instances=False,
+        max_wait_time_in_seconds=None,
     ):
         """Constructor for RemoteExecutor
 
@@ -670,6 +684,14 @@ class RemoteExecutor(object):
               Spark image. If ``spark_config`` is specified, a SageMaker Spark image uri
               will be used for training. Note that ``image_uri`` can not be specified at the
               same time otherwise a ``ValueError`` is thrown. Defaults to ``None``.
+
+            use_spot_instances (bool): Specifies whether to use SageMaker Managed Spot instances for
+              training. If enabled then the ``max_wait_time_in_seconds`` arg should also be set.
+              Defaults to ``False``.
+
+            max_wait_time_in_seconds (int): Timeout in seconds waiting for spot training job.
+              After this amount of time Amazon SageMaker will stop waiting for managed spot training
+              job to complete. Defaults to ``None``.
         """
         self.max_parallel_jobs = max_parallel_jobs
 
@@ -707,6 +729,8 @@ class RemoteExecutor(object):
             volume_size=volume_size,
             encrypt_inter_container_traffic=encrypt_inter_container_traffic,
             spark_config=spark_config,
+            use_spot_instances=use_spot_instances,
+            max_wait_time_in_seconds=max_wait_time_in_seconds,
         )
 
         self._state_condition = threading.Condition()
