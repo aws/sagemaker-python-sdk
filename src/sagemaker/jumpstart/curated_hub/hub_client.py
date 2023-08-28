@@ -22,6 +22,11 @@ from sagemaker.jumpstart.curated_hub.constants import (
     CURATED_HUB_DEFAULT_DESCRIPTION,
     HubContentType,
 )
+from sagemaker.jumpstart.curated_hub.accessors.s3_object_reference import (
+    S3ObjectLocation,
+    create_s3_object_reference_from_uri,
+)
+
 
 
 class CuratedHubClient:
@@ -36,18 +41,17 @@ class CuratedHubClient:
     def create_hub(
         self,
         hub_name: str,
-        hub_s3_bucket_name: str,
+        hub_s3_location: S3ObjectLocation = None,
         hub_description: str = CURATED_HUB_DEFAULT_DESCRIPTION,
     ) -> None:
         """Creates a Private Hub."""
-        hub_bucket_s3_uri = f"s3://{hub_s3_bucket_name}"
         self._sm_client.create_hub(
             HubName=hub_name,
             HubDescription=hub_description,
             HubDisplayName=hub_name,
             HubSearchKeywords=[],
             S3StorageConfig={
-                "S3OutputPath": hub_bucket_s3_uri,
+                "S3OutputPath": hub_s3_location.get_uri(),
             },
             Tags=[],
         )

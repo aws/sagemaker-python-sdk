@@ -13,6 +13,7 @@
 """This module accessors for the SageMaker JumpStart Public Hub."""
 from __future__ import absolute_import
 from sagemaker import model_uris, script_uris
+from typing import Dict, Any
 from sagemaker.jumpstart.curated_hub.utils import (
     get_model_framework,
 )
@@ -34,12 +35,13 @@ from sagemaker.jumpstart.curated_hub.accessors.model_dependency_s3_accessor impo
 class PublicHubS3Accessor(ModelDependencyS3Accessor):
     """Helper class to access Public Hub s3 bucket"""
 
-    def __init__(self, region: str):
+    def __init__(self, 
+                 region: str,
+                 studio_metadata_map: Dict[str, Dict[str, Any]]
+    ):
         self._region = region
         self._bucket = get_jumpstart_content_bucket(region)
-        self._studio_metadata_map = get_studio_model_metadata_map_from_region(
-            region
-        )  # Necessary for SDK - Studio metadata drift
+        self._studio_metadata_map = studio_metadata_map # Necessary for SDK - Studio metadata drift
 
     def get_bucket_name(self) -> str:
         """Retrieves s3 bucket"""

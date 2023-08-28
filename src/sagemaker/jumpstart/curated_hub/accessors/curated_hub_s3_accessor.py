@@ -13,6 +13,7 @@
 """This module accessors for the SageMaker JumpStart Curated Hub."""
 from __future__ import absolute_import
 import uuid
+from typing import Dict, Any
 from sagemaker.jumpstart.curated_hub.utils import (
     get_model_framework,
 )
@@ -40,17 +41,17 @@ DISAMBIGUATE_SUFFIX = uuid.uuid4()
 class CuratedHubS3Accessor(ModelDependencyS3Accessor):
     """Helper class to access Curated Hub s3 bucket"""
 
-    def __init__(self, region: str, bucket: str, base_s3_key: str = ""):
+    def __init__(self, region: str, bucket: str, studio_metadata_map: Dict[str, Dict[str, Any]], base_s3_key: str = ""):
         self._region = region
-        self._bucket_name = bucket
-        self._studio_metadata_map = get_studio_model_metadata_map_from_region(
-            region
-        )  # Necessary for SDK - Studio metadata drift
-        self._base_s3_key = base_s3_key
+        self._hub_s3_config = S3ObjectLocation(
+            bucket=bucket,
+            key=base_s3_key
+        )
+        self._studio_metadata_map = studio_metadata_map  # Necessary for SDK - Studio metadata drift
 
     def get_bucket_name(self) -> str:
         """Retrieves s3 bucket name."""
-        return self._bucket_name
+        return self._hub_s3_config.bucket
 
     def get_inference_artifact_s3_reference(
         self, model_specs: JumpStartModelSpecs
@@ -115,7 +116,7 @@ class CuratedHubS3Accessor(ModelDependencyS3Accessor):
     def _get_unique_s3_key_prefix(self, model_specs: JumpStartModelSpecs) -> str:
         """Creates a unique s3 key prefix based off S3 storage config"""
         key = (
-            f"{self._base_s3_key}/Model/"
+            f"{self._hub_s3_config.key}/Model/"
             f"{model_specs.model_id}-{DISAMBIGUATE_SUFFIX}/{model_specs.version}"
         )
         return key.lstrip("/")
