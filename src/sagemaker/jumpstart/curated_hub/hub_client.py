@@ -15,7 +15,7 @@ from __future__ import absolute_import
 import boto3
 import time
 from botocore.exceptions import ClientError
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 from sagemaker.jumpstart.types import JumpStartModelSpecs
 from sagemaker.jumpstart.curated_hub.constants import (
@@ -120,8 +120,8 @@ class CuratedHubClient:
         This call handles the pagination.
         """
         hub_names: List[str] = []
-        run_once = True
-        next_token = None
+        run_once: bool = True
+        next_token: Optional[str] = None
         while next_token or run_once:
             run_once = False
             if next_token:
