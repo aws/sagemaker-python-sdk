@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.181.0 (2023-08-28)
+
+### Features
+
+ * StabilityAI DLC Image URIs
+
+### Bug Fixes and Other Changes
+
+ * temporarily skip kmeans notebook
+
 ## v2.180.0 (2023-08-24)
 
 ### Features
