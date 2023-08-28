@@ -13,6 +13,7 @@
 """This module contains utilities related to SageMaker JumpStart."""
 from __future__ import absolute_import
 import unittest
+from mock.mock import Mock
 
 from sagemaker.jumpstart.curated_hub.accessors.curated_hub_s3_accessor import (
     CuratedHubS3Accessor,
@@ -26,13 +27,10 @@ from sagemaker.jumpstart.curated_hub.accessors.constants import (
 
 
 class CuratedHubS3AccessorTest(unittest.TestCase):
-    @patch(
-        "sagemaker.jumpstart.curated_hub.accessors.curated_hub_s3_accessor.get_studio_model_metadata_map_from_region"
-    )
-    def test_no_prefix(self, mock_studio_metadata):
+    def test_no_prefix(self):
         test_bucket = "test_bucket"
         test_key_prefix = "test_key_prefix"
-        test_hub_accessor = CuratedHubS3Accessor("us-west-2", test_bucket)
+        test_hub_accessor = CuratedHubS3Accessor(region="us-west-2", bucket=test_bucket, studio_metadata_map=Mock())
 
         test_specs = JumpStartModelSpecs(BASE_SPEC)
 
@@ -44,13 +42,10 @@ class CuratedHubS3AccessorTest(unittest.TestCase):
         self.assertIn(PRIVATE_MODEL_HOSTING_ARTIFACT_S3_TARBALL_SUFFIX, test_reference.key)
         self.assertNotIn(test_key_prefix, test_reference.key)
 
-    @patch(
-        "sagemaker.jumpstart.curated_hub.accessors.curated_hub_s3_accessor.get_studio_model_metadata_map_from_region"
-    )
-    def test_with_prefix(self, mock_studio_metadata):
+    def test_with_prefix(self):
         test_bucket = "test_bucket"
         test_key_prefix = "test_key_prefix"
-        test_hub_accessor = CuratedHubS3Accessor("us-west-2", test_bucket, test_key_prefix)
+        test_hub_accessor = CuratedHubS3Accessor(region="us-west-2", bucket=test_bucket, studio_metadata_map=Mock(), base_s3_key=test_key_prefix)
 
         test_specs = JumpStartModelSpecs(BASE_SPEC)
 

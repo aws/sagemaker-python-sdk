@@ -232,7 +232,7 @@ class JumpStartCuratedHubTest(unittest.TestCase):
             CreateBucketConfiguration={'LocationConstraint': self.test_curated_hub._region}
         )
         mock_curated_hub_client.create_hub.assert_called_with(
-            TEST_HUB_NAME, self.test_curated_hub.curated_hub_s3_config.bucket
+            TEST_HUB_NAME, self.test_curated_hub.curated_hub_s3_config
         )
 
     @patch(

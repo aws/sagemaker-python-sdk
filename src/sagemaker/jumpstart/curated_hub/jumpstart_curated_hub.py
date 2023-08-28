@@ -271,7 +271,7 @@ class JumpStartCuratedHub:
         try:
             print(f"Creating Curated Hub {self.curated_hub_name} in {self._region}...")
             self._curated_hub_client.create_hub(
-                self.curated_hub_name, self.curated_hub_s3_config.bucket
+                self.curated_hub_name, self.curated_hub_s3_config
             )
             print(f"Curated Hub {self.curated_hub_name} created in {self._region}!")
         except ClientError as ce:
