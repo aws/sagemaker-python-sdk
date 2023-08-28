@@ -121,10 +121,13 @@ class CuratedHubClient:
         """
         hub_names: List[str] = []
         run_once = True
-        next_token = ""
+        next_token = None
         while next_token or run_once:
             run_once = False
-            res = self._sm_client.list_hubs(NextToken=next_token)
+            if next_token:
+              res = self._sm_client.list_hubs(NextToken=next_token)
+            else:
+              res = self._sm_client.list_hubs()
 
             hub_names.extend(map(self._get_hub_name_from_hub_summary, res["HubSummaries"]))
 
