@@ -152,41 +152,53 @@ class ModelDocumentCreator:
         )
 
         if model_specs.training_supported:
-            dependencies.append(
-                Dependency(
-                    DependencyOriginPath=self._src_s3_accessor.get_training_artifact_s3_reference(
-                        model_specs
-                    ).get_uri(),
-                    DependencyCopyPath=self._dst_s3_accessor.get_training_artifact_s3_reference(
-                        model_specs
-                    ).get_uri(),
-                    DependencyType=DependencyType.ARTIFACT,
-                )
-            )
-            dependencies.append(
-                Dependency(
-                    DependencyOriginPath=self._src_s3_accessor.get_training_script_s3_reference(
-                        model_specs
-                    ).get_uri(),
-                    DependencyCopyPath=self._dst_s3_accessor.get_training_script_s3_reference(
-                        model_specs
-                    ).get_uri(),
-                    DependencyType=DependencyType.SCRIPT,
-                )
-            )
-            dependencies.append(
-                Dependency(
-                    DependencyOriginPath=self._src_s3_accessor.get_default_training_dataset_s3_reference(
-                        model_specs
-                    ).get_uri(),
-                    DependencyCopyPath=self._dst_s3_accessor.get_default_training_dataset_s3_reference(
-                        model_specs
-                    ).get_uri(),
-                    DependencyType=DependencyType.DATASET,
-                )
-            )
+            dependencies.append(self._get_training_artifact_s3_reference_dependency(model_specs))
+            dependencies.append(self._get_training_script_s3_reference_dependency(model_specs))
+            dependencies.append(self._get_default_training_dataset_dependency(model_specs))
 
         return dependencies
+
+    def _get_training_artifact_s3_reference_dependency(
+        self, model_specs: JumpStartModelSpecs
+    ) -> Dependency:
+        """Returns HubContent dependency for training artifacts."""
+        return Dependency(
+            DependencyOriginPath=self._src_s3_accessor.get_training_artifact_s3_reference(
+                model_specs
+            ).get_uri(),
+            DependencyCopyPath=self._dst_s3_accessor.get_training_artifact_s3_reference(
+                model_specs
+            ).get_uri(),
+            DependencyType=DependencyType.ARTIFACT,
+        )
+
+    def _get_training_script_s3_reference_dependency(
+        self, model_specs: JumpStartModelSpecs
+    ) -> Dependency:
+        """Returns HubContent dependency for training scripts."""
+        return Dependency(
+            DependencyOriginPath=self._src_s3_accessor.get_training_script_s3_reference(
+                model_specs
+            ).get_uri(),
+            DependencyCopyPath=self._dst_s3_accessor.get_training_script_s3_reference(
+                model_specs
+            ).get_uri(),
+            DependencyType=DependencyType.SCRIPT,
+        )
+
+    def _get_default_training_dataset_dependency(
+        self, model_specs: JumpStartModelSpecs
+    ) -> Dependency:
+        """Returns HubContent dependency for training datasets."""
+        return Dependency(
+            DependencyOriginPath=self._src_s3_accessor.get_default_training_dataset_s3_reference(
+                model_specs
+            ).get_uri(),
+            DependencyCopyPath=self._dst_s3_accessor.get_default_training_dataset_s3_reference(
+                model_specs
+            ).get_uri(),
+            DependencyType=DependencyType.DATASET,
+        )
 
     def _make_hub_content_default_deployment_config(
         self, model_specs: JumpStartModelSpecs

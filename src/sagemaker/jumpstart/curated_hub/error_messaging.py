@@ -41,7 +41,7 @@ def get_hub_s3_bucket_permissions_error(hub_s3_bucket_name: str) -> PermissionEr
 
 def get_hub_creation_error_message(s3_bucket_name: str) -> str:
     """The Curated Hub creation creates a S3 bucket along with the Hub
-    
+
     If the Hub creation fails but the S3 bucket succeeded, the S3 bucket
     will need to be manually deleted.
     """

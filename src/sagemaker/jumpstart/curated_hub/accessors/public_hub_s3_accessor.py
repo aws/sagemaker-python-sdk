@@ -12,8 +12,8 @@
 # language governing permissions and limitations under the License.
 """This module accessors for the SageMaker JumpStart Public Hub."""
 from __future__ import absolute_import
-from sagemaker import model_uris, script_uris
 from typing import Dict, Any
+from sagemaker import model_uris, script_uris
 from sagemaker.jumpstart.curated_hub.utils import (
     get_model_framework,
 )

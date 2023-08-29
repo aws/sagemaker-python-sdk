@@ -218,7 +218,7 @@ class ContentCopier:
     def _get_copy_configs_for_markdown_dependencies(
         self, model_specs: JumpStartModelSpecs
     ) -> List[CopyContentConfig]:
-        """A utility to generate a list of copy configurations for model content markdown dependencies."""
+        """Generates a list of copy configurations for hub content markdown dependencies."""
         copy_configs: List[CopyContentConfig] = []
 
         markdown_s3_reference = self._src_s3_accessor.get_markdown_s3_reference(model_specs)

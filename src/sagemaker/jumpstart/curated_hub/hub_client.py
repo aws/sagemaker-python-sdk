@@ -12,10 +12,10 @@
 # language governing permissions and limitations under the License.
 """This module contains a client with helpers to access the Private Hub."""
 from __future__ import absolute_import
-import boto3
-import time
-from botocore.exceptions import ClientError
 from typing import Dict, Any, List, Optional
+import time
+import boto3
+from botocore.exceptions import ClientError
 
 from sagemaker.jumpstart.types import JumpStartModelSpecs
 from sagemaker.jumpstart.curated_hub.constants import (
@@ -116,7 +116,7 @@ class CuratedHubClient:
 
     def list_hub_names_on_account(self) -> List[str]:
         """Lists the Private Hubs on an AWS account for the region.
-        
+
         This call handles the pagination.
         """
         hub_names: List[str] = []
@@ -125,13 +125,15 @@ class CuratedHubClient:
         while next_token or run_once:
             run_once = False
             if next_token:
-              res = self._sm_client.list_hubs(NextToken=next_token)
+                res = self._sm_client.list_hubs(NextToken=next_token)
             else:
-              res = self._sm_client.list_hubs()
+                res = self._sm_client.list_hubs()
 
             hub_names.extend(map(self._get_hub_name_from_hub_summary, res["HubSummaries"]))
+            next_token = res["NextToken"]
 
         return hub_names
 
     def _get_hub_name_from_hub_summary(self, hub_summary: Dict[str, Any]) -> str:
+        """Retrieves a hub name form a ListHubs HubSummary field."""
         return hub_summary["HubName"]
