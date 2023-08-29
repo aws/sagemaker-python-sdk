@@ -125,7 +125,6 @@ class CuratedHubClient:
         while next_token or run_once:
             run_once = False
             if next_token:
-                print(f"NextToken: {next_token}")
                 res = self._sm_client.list_hubs(NextToken=next_token)
             else:
                 res = self._sm_client.list_hubs()
