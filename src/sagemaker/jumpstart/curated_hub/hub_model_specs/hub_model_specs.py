@@ -76,6 +76,9 @@ class SdkArgs:
 class SdkEstimatorArgs(SdkArgs):
     """Estimator arguments for Private Hub model"""
 
+    EntryPoint: Optional[str]
+    EnableNetworkIsolation: Optional[bool]
+    Environment: Optional[dict]
     Metrics: List[Metric]
     OutputPath: Optional[str]
 

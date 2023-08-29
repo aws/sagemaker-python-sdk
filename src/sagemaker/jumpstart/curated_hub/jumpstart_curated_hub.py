@@ -12,7 +12,6 @@
 # language governing permissions and limitations under the License.
 """This module provides the JumpStart Curated Hub class."""
 from __future__ import absolute_import
-
 import json
 import uuid
 import traceback
@@ -65,7 +64,6 @@ from sagemaker.jumpstart.curated_hub.error_messaging import (
     NO_SUCH_BUCKET_ERROR_CODE,
     ACCESS_DENIED_ERROR_CODE,
 )
-
 
 class JumpStartCuratedHub:
     """This class helps users create a new curated hub in their AWS account for a region."""
@@ -154,7 +152,7 @@ class JumpStartCuratedHub:
         else:
             print(
                 "The Curated Hub WILL NOT create a new hub. It will use the preexisting hub "
-                "{self.curated_hub_name} in {self._region}."
+                f"{self.curated_hub_name} in {self._region}."
             )
 
         if self._create_hub_s3_bucket_flag:
@@ -431,7 +429,12 @@ class JumpStartCuratedHub:
             f" version {public_js_model_specs.version} to curated private hub..."
         )
         # Currently only able to support a single version of HubContent
-        self._curated_hub_client.delete_all_versions_of_model(model_specs=public_js_model_specs)
+        # Deletes all versions to make room for new version
+        self._delete_model_from_curated_hub(
+            model_specs=public_js_model_specs,
+            delete_all_versions=True,
+            delete_dependencies=True
+        )
 
         self._content_copier.copy_hub_content_dependencies_to_hub_bucket(
             model_specs=public_js_model_specs
