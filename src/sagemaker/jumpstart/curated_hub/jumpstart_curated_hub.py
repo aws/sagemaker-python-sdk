@@ -70,6 +70,7 @@ from sagemaker.jumpstart.curated_hub.error_messaging import (
 
 # Print logging to system out to avoid red box in Jupyter notebook
 logging.basicConfig(stream=sys.stdout)
+logging.getLogger("requests").setLevel(logging.ERROR)
 logging.getLogger("urllib3").setLevel(logging.ERROR)
 logging.getLogger(requests.packages.urllib3.__package__).setLevel(logging.ERROR)
 logger = logging.getLogger(__name__)
