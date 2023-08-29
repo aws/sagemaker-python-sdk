@@ -13,10 +13,7 @@
 """This module provides the JumpStart Curated Hub class."""
 from __future__ import absolute_import
 import json
-import logging
-import sys
 import uuid
-import requests
 import traceback
 from concurrent import futures
 from typing import List, Dict, Any, Optional
@@ -67,13 +64,6 @@ from sagemaker.jumpstart.curated_hub.error_messaging import (
     NO_SUCH_BUCKET_ERROR_CODE,
     ACCESS_DENIED_ERROR_CODE,
 )
-
-# Print logging to system out to avoid red box in Jupyter notebook
-logging.basicConfig(stream=sys.stdout)
-logging.getLogger("requests").setLevel(logging.ERROR)
-logging.getLogger("urllib3").setLevel(logging.ERROR)
-logging.getLogger(requests.packages.urllib3.__package__).setLevel(logging.ERROR)
-logger = logging.getLogger(__name__)
 
 class JumpStartCuratedHub:
     """This class helps users create a new curated hub in their AWS account for a region."""
@@ -153,25 +143,25 @@ class JumpStartCuratedHub:
         self._init_hub_bucket_parameters(hub_s3_bucket_name=self.curated_hub_s3_config.bucket)
         self._init_dependencies()
 
-        logger.info("Curated Hub configuration setup complete:")
+        print("Curated Hub configuration setup complete:")
         if self._create_hub_flag:
-            logger.info(
+            print(
                 "The Curated Hub WILL create a new hub with the name "
                 f"{self.curated_hub_name} in {self._region}."
             )
         else:
-            logger.warn(
+            print(
                 "The Curated Hub WILL NOT create a new hub. It will use the preexisting hub "
                 f"{self.curated_hub_name} in {self._region}."
             )
 
         if self._create_hub_s3_bucket_flag:
-            logger.info(
+            print(
                 "The Curated Hub WILL create a new S3 hub bucket with the name "
                 f"{self.curated_hub_s3_config.bucket} in {self._region}."
             )
         else:
-            logger.warn(
+            print(
                 "The Curated Hub WILL NOT create a S3 hub bucket. "
                 "It will use the preexisting S3 bucket "
                 f"{self.curated_hub_s3_config.bucket} in {self._region}."
