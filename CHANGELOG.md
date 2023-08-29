@@ -1,5 +1,22 @@
 # Changelog
 
+## v2.182.0 (2023-08-29)
+
+### Features
+
+ * image url for modelmonitor in TLV region
+ * Enable spot training on remote decorator and executor
+
+## v2.181.0 (2023-08-28)
+
+### Features
+
+ * StabilityAI DLC Image URIs
+
+### Bug Fixes and Other Changes
+
+ * temporarily skip kmeans notebook
+
 ## v2.180.0 (2023-08-24)
 
 ### Features

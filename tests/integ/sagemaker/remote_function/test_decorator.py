@@ -608,6 +608,24 @@ def test_decorator_pre_execution_script_error(
         assert "line 2: bws: command not found" in str(e)
 
 
+def test_decorator_with_spot_instances(
+    sagemaker_session, dummy_container_without_error, cpu_instance_type
+):
+    @remote(
+        role=ROLE,
+        image_uri=dummy_container_without_error,
+        instance_type=cpu_instance_type,
+        sagemaker_session=sagemaker_session,
+        use_spot_instances=True,
+        max_wait_time_in_seconds=48 * 60 * 60,
+    )
+    def divide(x, y):
+        return x / y
+
+    assert divide(10, 2) == 5
+    assert divide(20, 2) == 10
+
+
 @pytest.mark.skip
 def test_decorator_with_spark_job(sagemaker_session, cpu_instance_type):
     @remote(

@@ -412,6 +412,7 @@ def test_start(
         ),
         EnableNetworkIsolation=False,
         EnableInterContainerTrafficEncryption=True,
+        EnableManagedSpotTraining=False,
         Environment={"AWS_DEFAULT_REGION": "us-west-2", "REMOTE_FUNCTION_SECRET_KEY": HMAC_KEY},
     )
 
@@ -537,6 +538,7 @@ def test_start_with_complete_job_settings(
         EnableNetworkIsolation=False,
         EnableInterContainerTrafficEncryption=False,
         VpcConfig=dict(Subnets=["subnet"], SecurityGroupIds=["sg"]),
+        EnableManagedSpotTraining=False,
         Environment={"AWS_DEFAULT_REGION": "us-west-2", "REMOTE_FUNCTION_SECRET_KEY": HMAC_KEY},
     )
 
@@ -667,6 +669,7 @@ def test_start_with_spark(
         ),
         EnableNetworkIsolation=False,
         EnableInterContainerTrafficEncryption=True,
+        EnableManagedSpotTraining=False,
         Environment={"AWS_DEFAULT_REGION": "us-west-2", "REMOTE_FUNCTION_SECRET_KEY": HMAC_KEY},
     )
 

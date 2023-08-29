@@ -39,6 +39,7 @@ SKLEARN_FRAMEWORK = "sklearn"
 TRAINIUM_ALLOWED_FRAMEWORKS = "pytorch"
 INFERENCE_GRAVITON = "inference_graviton"
 DATA_WRANGLER_FRAMEWORK = "data-wrangler"
+STABILITYAI_FRAMEWORK = "stabilityai"
 
 
 @override_pipeline_parameter_var
@@ -476,7 +477,11 @@ def _validate_version_and_set_if_needed(version, config, framework):
 
         return available_versions[0]
 
-    if version is None and framework in [DATA_WRANGLER_FRAMEWORK, HUGGING_FACE_LLM_FRAMEWORK]:
+    if version is None and framework in [
+        DATA_WRANGLER_FRAMEWORK,
+        HUGGING_FACE_LLM_FRAMEWORK,
+        STABILITYAI_FRAMEWORK,
+    ]:
         version = _get_latest_versions(available_versions)
 
     _validate_arg(version, available_versions + aliased_versions, "{} version".format(framework))
@@ -614,6 +619,7 @@ def _format_tag(tag_prefix, processor, py_version, container_version, inference_
     return "-".join(x for x in (tag_prefix, processor, py_version, container_version) if x)
 
 
+@override_pipeline_parameter_var
 def get_training_image_uri(
     region,
     framework,

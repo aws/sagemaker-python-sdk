@@ -26,7 +26,8 @@
                 "us-east-1": "156813124566",
                 "us-east-2": "777275614652",
                 "us-west-1": "890145073186",
-                "us-west-2": "159807026194"
+                "us-west-2": "159807026194",
+                "il-central-1": "843974653677"
             },
             "repository": "sagemaker-model-monitor-analyzer"
         }
