@@ -285,10 +285,8 @@ class ModelDocumentCreator:
         )
     
     def _training_sdk_estimator_args(self, model_specs: JumpStartModelSpecs) -> SdkEstimatorArgs:
-        print(f"Found sdk specs: {model_specs}")
-        print(f"Found sdk estimator args: {model_specs.estimator_kwargs}")
-        return None
-        # return SdkEstimatorArgs( # TODO: Find the correct keywords for these values
+        return None # TODO: SDK args do not have these values
+        # return SdkEstimatorArgs( 
         #     EntryPoint=model_specs.estimator_kwargs.get(""),
         #     EnableNetworkIsolation=model_specs.estimator_kwargs.get(""),
         #     Environment=model_specs.estimator_kwargs.get(""),

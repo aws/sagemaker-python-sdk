@@ -16,6 +16,7 @@ import json
 import logging
 import sys
 import uuid
+import requests
 import traceback
 from concurrent import futures
 from typing import List, Dict, Any, Optional
@@ -66,12 +67,12 @@ from sagemaker.jumpstart.curated_hub.error_messaging import (
     NO_SUCH_BUCKET_ERROR_CODE,
     ACCESS_DENIED_ERROR_CODE,
 )
-import urllib3
 
 # Print logging to system out to avoid red box in Jupyter notebook
 logging.basicConfig(stream=sys.stdout)
+logging.getLogger("urllib3").setLevel(logging.ERROR)
+logging.getLogger(requests.packages.urllib3.__package__).setLevel(logging.ERROR)
 logger = logging.getLogger(__name__)
-urllib3.disable_warnings()
 
 class JumpStartCuratedHub:
     """This class helps users create a new curated hub in their AWS account for a region."""
@@ -437,7 +438,12 @@ class JumpStartCuratedHub:
             f" version {public_js_model_specs.version} to curated private hub..."
         )
         # Currently only able to support a single version of HubContent
-        self._curated_hub_client.delete_all_versions_of_model(model_specs=public_js_model_specs)
+        # Deletes all versions to make room for new version
+        self._delete_model_from_curated_hub(
+            model_specs=public_js_model_specs,
+            delete_all_versions=True,
+            delete_dependencies=True
+        )
 
         self._content_copier.copy_hub_content_dependencies_to_hub_bucket(
             model_specs=public_js_model_specs
