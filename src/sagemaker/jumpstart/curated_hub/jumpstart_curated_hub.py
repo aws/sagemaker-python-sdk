@@ -66,10 +66,12 @@ from sagemaker.jumpstart.curated_hub.error_messaging import (
     NO_SUCH_BUCKET_ERROR_CODE,
     ACCESS_DENIED_ERROR_CODE,
 )
+import urllib3
 
 # Print logging to system out to avoid red box in Jupyter notebook
 logging.basicConfig(stream=sys.stdout)
 logger = logging.getLogger(__name__)
+urllib3.disable_warnings()
 
 class JumpStartCuratedHub:
     """This class helps users create a new curated hub in their AWS account for a region."""

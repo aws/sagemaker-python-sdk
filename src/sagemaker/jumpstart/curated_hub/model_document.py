@@ -285,13 +285,16 @@ class ModelDocumentCreator:
         )
     
     def _training_sdk_estimator_args(self, model_specs: JumpStartModelSpecs) -> SdkEstimatorArgs:
-        return SdkEstimatorArgs( # TODO: Find the correct keywords for these values
-            EntryPoint=model_specs.estimator_kwargs.get(""),
-            EnableNetworkIsolation=model_specs.estimator_kwargs.get(""),
-            Environment=model_specs.estimator_kwargs.get(""),
-            Metrics=model_specs.estimator_kwargs.get(""),
-            OutputPath=model_specs.estimator_kwargs.get(""),
-        )
+        print(f"Found sdk specs: {model_specs}")
+        print(f"Found sdk estimator args: {model_specs.estimator_kwargs}")
+        return None
+        # return SdkEstimatorArgs( # TODO: Find the correct keywords for these values
+        #     EntryPoint=model_specs.estimator_kwargs.get(""),
+        #     EnableNetworkIsolation=model_specs.estimator_kwargs.get(""),
+        #     Environment=model_specs.estimator_kwargs.get(""),
+        #     Metrics=model_specs.estimator_kwargs.get(""),
+        #     OutputPath=model_specs.estimator_kwargs.get(""),
+        # )
 
     def _dataset_config(self, model_specs: JumpStartModelSpecs) -> Optional[DatasetConfig]:
         """Retrieves the DatasetConfig for JumpStartModelSpecs"""
