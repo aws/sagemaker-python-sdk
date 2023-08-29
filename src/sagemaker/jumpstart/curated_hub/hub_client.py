@@ -131,7 +131,7 @@ class CuratedHubClient:
                 res = self._sm_client.list_hubs()
 
             hub_names.extend(map(self._get_hub_name_from_hub_summary, res["HubSummaries"]))
-            next_token = res["NextToken"]
+            next_token = res.get("NextToken")
 
         return hub_names
 
