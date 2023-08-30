@@ -58,12 +58,11 @@ from sagemaker.jumpstart.curated_hub.error_messaging import (
     get_hub_limit_exceeded_error,
     get_hub_s3_bucket_permissions_error,
     get_hub_creation_error_message,
-    get_preexisting_hub_should_be_true_error,
-    get_preexisting_hub_should_be_false_error,
     RESOURCE_NOT_FOUND_ERROR_CODE,
     NO_SUCH_BUCKET_ERROR_CODE,
     ACCESS_DENIED_ERROR_CODE,
 )
+
 
 class JumpStartCuratedHub:
     """This class helps users create a new curated hub in their AWS account for a region."""
@@ -99,31 +98,48 @@ class JumpStartCuratedHub:
         """Returns a SageMaker client."""
         return boto3.client("sagemaker", region_name=self._region)
 
-    def configure(
+    def create_or_reuse(
         self,
         curated_hub_name: str,
         hub_s3_bucket_name_override: Optional[str] = None,
         hub_s3_key_prefix_override: Optional[str] = None,
-        use_preexisting_hub: bool = False,
     ):
         """Configures the Curated Hub using the input parameters.
 
-        The configure call will set the Curated Hub name as well as any overrides.
-        If there is a preexisting hub on the account with the same name,
+        The Curated Hub consists of a SageMaker Private Hub and it's corresponding S3 bucket.
+
+        If there is a preexisting Private hub on the account with the same name,
           the Curated Hub will attempt to use it.
-        To use a preexisting hub as the Curated Hub, set use_preexisting_hub to True.
-        If the Curated Hub is creating a new Private Hub,
-          it will create a new randomly-named bucket by default.
+
+        By default, the Curated Hub will create a corresponding S3 bucket
+          with a randomized name based off the Curated Hub name.
         If a specific bucket name is desired, set hub_s3_bucket_name_override.
-        The Curated Hub will use the default key prefix `curated-hub`
+
+        The Curated Hub will use the default S3 key prefix `curated-hub`
           for all imports to the Curated Hub.
         If a specific key prefix is desired, set hub_s3_key_prefix_override.
 
         Raises:
-          ValueError if a preexisting hub exists with the same name
-            but use_preexisting_hub is False.
-          ValueError if use_preexisting_hub is True but no preexisting hub with the name exists.
           PermissionError if hub_s3_bucket_name_override is set and missing S3 permissions.
+        """
+        self._configure(
+            curated_hub_name=curated_hub_name,
+            hub_s3_bucket_name_override=hub_s3_bucket_name_override,
+            hub_s3_key_prefix_override=hub_s3_key_prefix_override,
+        )
+        self._create()
+
+    def _configure(
+        self,
+        curated_hub_name: str,
+        hub_s3_bucket_name_override: Optional[str] = None,
+        hub_s3_key_prefix_override: Optional[str] = None,
+    ):
+        """Configures the Curated Hub using the input parameters.
+
+        Raises:
+          PermissionError if hub_s3_bucket_name_override is set and missing S3 permissions.
+          ClientError if any dependency call does not fall into the categories above.
         """
         self._create_hub_flag = True
         self._create_hub_s3_bucket_flag = True
@@ -137,9 +153,7 @@ class JumpStartCuratedHub:
         )
 
         # Initializes Curated Hub parameters and dependency clients
-        self._init_curated_hub_parameters_using_preexisting_hub(
-            curated_hub_name=curated_hub_name, use_preexisting_hub=use_preexisting_hub
-        )
+        self._init_curated_hub_parameters_using_preexisting_hub(curated_hub_name=curated_hub_name)
         self._init_hub_bucket_parameters(hub_s3_bucket_name=self.curated_hub_s3_config.bucket)
         self._init_dependencies()
 
@@ -167,9 +181,7 @@ class JumpStartCuratedHub:
                 f"{self.curated_hub_s3_config.bucket} in {self._region}."
             )
 
-    def _init_curated_hub_parameters_using_preexisting_hub(
-        self, curated_hub_name: str, use_preexisting_hub: bool
-    ) -> None:
+    def _init_curated_hub_parameters_using_preexisting_hub(self, curated_hub_name: str) -> None:
         """Attempts to initialize Curated Hub using a preexisting hub."""
         preexisting_hub = self._get_preexisting_hub_on_account(curated_hub_name)
         if preexisting_hub:
@@ -191,11 +203,6 @@ class JumpStartCuratedHub:
             # Since hub and hub bucket already exist, skipping creation
             self._create_hub_flag = False
             self._create_hub_s3_bucket_flag = False
-
-            if not use_preexisting_hub:
-                raise get_preexisting_hub_should_be_true_error(self.curated_hub_name, self._region)
-        elif use_preexisting_hub:
-            raise get_preexisting_hub_should_be_false_error(self.curated_hub_name, self._region)
 
     def _get_preexisting_hub_on_account(self, hub_name: str) -> Optional[Dict[str, Any]]:
         """Attempts to retrieve preexisting hub on account in region with the hub name.
@@ -259,7 +266,7 @@ class JumpStartCuratedHub:
             studio_metadata_map=self._studio_metadata_map,
         )
 
-    def create(self) -> None:
+    def _create(self) -> None:
         """Creates the resources for a Curated Hub in the caller AWS account.
 
         The Curated Hub consists of a SageMaker Private Hub and it's corresponding S3 bucket.
@@ -431,9 +438,7 @@ class JumpStartCuratedHub:
         # Currently only able to support a single version of HubContent
         # Deletes all versions to make room for new version
         self._delete_model_from_curated_hub(
-            model_specs=public_js_model_specs,
-            delete_all_versions=True,
-            delete_dependencies=True
+            model_specs=public_js_model_specs, delete_all_versions=True, delete_dependencies=True
         )
 
         self._content_copier.copy_hub_content_dependencies_to_hub_bucket(

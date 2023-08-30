@@ -93,7 +93,7 @@ class JumpStartCuratedHubTest(unittest.TestCase):
         }
         self.test_curated_hub._sm_client = mock_sm_client
 
-        self.test_curated_hub.configure(curated_hub_name=TEST_HUB_NAME, use_preexisting_hub=True)
+        self.test_curated_hub._configure(curated_hub_name=TEST_HUB_NAME)
 
         self.assertEquals(
             self.test_curated_hub.curated_hub_s3_config.bucket, TEST_PREEXISTING_BUCKET_NAME
@@ -111,7 +111,7 @@ class JumpStartCuratedHubTest(unittest.TestCase):
         }
         self.test_curated_hub._sm_client = mock_sm_client
 
-        self.test_curated_hub.configure(curated_hub_name=TEST_HUB_NAME, use_preexisting_hub=True)
+        self.test_curated_hub._configure(curated_hub_name=TEST_HUB_NAME)
 
         self.assertEquals(
             self.test_curated_hub.curated_hub_s3_config.bucket, TEST_PREEXISTING_BUCKET_NAME
@@ -127,7 +127,7 @@ class JumpStartCuratedHubTest(unittest.TestCase):
         )
         self.test_curated_hub._sm_client = mock_sm_client
 
-        self.test_curated_hub.configure(curated_hub_name=TEST_HUB_NAME, use_preexisting_hub=False)
+        self.test_curated_hub._configure(curated_hub_name=TEST_HUB_NAME)
 
         self.assertIn(TEST_HUB_NAME, self.test_curated_hub.curated_hub_s3_config.bucket)
         self.assertIn(TEST_REGION, self.test_curated_hub.curated_hub_s3_config.bucket)
@@ -141,10 +141,9 @@ class JumpStartCuratedHubTest(unittest.TestCase):
         )
         self.test_curated_hub._sm_client = mock_sm_client
 
-        self.test_curated_hub.configure(
+        self.test_curated_hub._configure(
             curated_hub_name=TEST_HUB_NAME,
             hub_s3_bucket_name_override=TEST_OVERRIDE_BUCKET_NAME,
-            use_preexisting_hub=False,
         )
 
         self.assertEquals(
@@ -152,30 +151,6 @@ class JumpStartCuratedHubTest(unittest.TestCase):
         )
         self.assertEquals(self.test_curated_hub.curated_hub_s3_config.key, DEFAULT_S3_KEY_PREFIX)
         self.assertTrue(self.test_curated_hub._create_hub_flag)
-
-    def test_configure_hub_not_exist_use_preexisting_hub_true_should_fail(self):
-        mock_sm_client = Mock()
-        mock_sm_client.describe_hub.side_effect = ClientError(
-            error_response=TEST_HUB_DOES_NOT_EXIST_RESPONSE, operation_name="blah"
-        )
-        self.test_curated_hub._sm_client = mock_sm_client
-
-        with self.assertRaises(ValueError):
-            self.test_curated_hub.configure(
-                curated_hub_name=TEST_HUB_NAME, use_preexisting_hub=True
-            )
-
-    def test_configure_hub_exists_use_preexisting_hub_false_should_fail(self):
-        mock_sm_client = Mock()
-        mock_sm_client.describe_hub.return_value = {
-            "S3StorageConfig": {"S3OutputPath": f"s3://{TEST_PREEXISTING_BUCKET_NAME}"}
-        }
-        self.test_curated_hub._sm_client = mock_sm_client
-
-        with self.assertRaises(ValueError):
-            self.test_curated_hub.configure(
-                curated_hub_name=TEST_HUB_NAME, use_preexisting_hub=False
-            )
 
     def test_create_hub_already_exists_skips_both_creation(self):
         self.test_curated_hub._create_hub_flag = False
@@ -191,7 +166,7 @@ class JumpStartCuratedHubTest(unittest.TestCase):
         self.test_curated_hub.curated_hub_s3_config = S3ObjectLocation(bucket="blah", key="blah")
         self.test_curated_hub.curated_hub_name = "blah"
 
-        self.test_curated_hub.create()
+        self.test_curated_hub._create()
 
         mock_s3_client.create_bucket.assert_not_called()
         mock_curated_hub_client.create_hub.assert_not_called()
@@ -210,7 +185,7 @@ class JumpStartCuratedHubTest(unittest.TestCase):
         self.test_curated_hub.curated_hub_s3_config = S3ObjectLocation(bucket="blah", key="blah")
         self.test_curated_hub.curated_hub_name = TEST_HUB_NAME
 
-        self.test_curated_hub.create()
+        self.test_curated_hub._create()
 
         mock_s3_client.create_bucket.assert_called_with(
             Bucket=self.test_curated_hub.curated_hub_s3_config.bucket,

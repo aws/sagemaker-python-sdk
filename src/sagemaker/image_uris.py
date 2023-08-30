@@ -18,6 +18,7 @@ import logging
 import os
 import re
 from typing import Optional
+from functools import lru_cache
 from packaging.version import Version
 
 from sagemaker import utils
@@ -407,6 +408,7 @@ def _validate_for_suppported_frameworks_and_instance_type(framework, instance_ty
         _validate_framework(framework, GRAVITON_ALLOWED_FRAMEWORKS, "framework", "Graviton")
 
 
+@lru_cache()
 def config_for_framework(framework):
     """Loads the JSON config for the given framework."""
     fname = os.path.join(os.path.dirname(__file__), "image_uri_config", "{}.json".format(framework))

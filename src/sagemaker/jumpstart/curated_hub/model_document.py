@@ -36,7 +36,7 @@ from sagemaker.jumpstart.curated_hub.hub_model_specs.hub_model_specs import (
     DependencyType,
     SdkArgs,
     DatasetConfig,
-    SdkEstimatorArgs
+    SdkEstimatorArgs,
 )
 from sagemaker.jumpstart.curated_hub.hub_model_specs.hub_model_specs import ModelCapabilities
 from sagemaker.jumpstart.curated_hub.utils import (
@@ -295,10 +295,10 @@ class ModelDocumentCreator:
             ),
             ExtraChannels=[],  # TODO: I can't seem to find these
         )
-    
+
     def _training_sdk_estimator_args(self, model_specs: JumpStartModelSpecs) -> SdkEstimatorArgs:
-        return None # TODO: SDK args do not have these values
-        # return SdkEstimatorArgs( 
+        return None  # TODO: SDK args do not have these values
+        # return SdkEstimatorArgs(
         #     EntryPoint=model_specs.estimator_kwargs.get(""),
         #     EnableNetworkIsolation=model_specs.estimator_kwargs.get(""),
         #     Environment=model_specs.estimator_kwargs.get(""),

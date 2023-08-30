@@ -50,20 +50,3 @@ def get_hub_creation_error_message(s3_bucket_name: str) -> str:
         f"A S3 bucket {s3_bucket_name} has been created and must be manually deleted."
     )
 
-
-def get_preexisting_hub_should_be_true_error(hub_name: str, region: str) -> ValueError:
-    """Returns error for when a preexisting hub does exist but was expected not to."""
-    return ValueError(
-        f"Hub detected on account with name {hub_name} in {region}. "
-        f"If you wish to use the hub as your Curated Hub, "
-        "please pass in use_preexisting_hub=True"
-    )
-
-
-def get_preexisting_hub_should_be_false_error(hub_name: str, region: str) -> ValueError:
-    """Returns error for when a preexisting hub does not exist but was expected to."""
-    return ValueError(
-        f"Attempted to use a preexisting hub but no hub with name {hub_name} "
-        f"exists for this account in {region}. If you wish to create a new Curated Hub, "
-        "please pass in use_preexisting_hub=False"
-    )
