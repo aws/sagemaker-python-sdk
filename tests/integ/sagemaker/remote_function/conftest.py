@@ -80,7 +80,7 @@ CONDA_YML_FILE_TEMPLATE = (
     "channels:\n"
     "  - defaults\n"
     "dependencies:\n"
-    "  - scipy=1.7.3\n"
+    "  - scipy=1.10.1\n"
     "  - pip:\n"
     "    - /sagemaker-{sagemaker_version}.tar.gz\n"
     "prefix: /opt/conda/bin/conda\n"
