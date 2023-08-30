@@ -124,7 +124,8 @@ def load_sagemaker_config(additional_config_paths: List[str] = None, s3_resource
             merge_dicts(merged_config, config_from_file)
             logger.info("Fetched defaults config from location: %s", file_path)
         else:
-            logger.debug("Fetched defaults config from location: %s, but it was empty", file_path)
+            logger.info("Not applying SDK defaults from location: %s", file_path)
+
     return merged_config
 
 

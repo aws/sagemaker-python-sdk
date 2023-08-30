@@ -17,7 +17,12 @@ import pytest
 import yaml
 from mock import Mock, MagicMock
 
-from sagemaker.config.config import load_sagemaker_config
+from sagemaker.config.config import (
+    load_sagemaker_config,
+    logger,
+    _DEFAULT_ADMIN_CONFIG_FILE_PATH,
+    _DEFAULT_USER_CONFIG_FILE_PATH,
+)
 from jsonschema import exceptions
 from yaml.constructor import ConstructorError
 
@@ -236,3 +241,92 @@ def test_merge_of_s3_default_config_file_and_regular_config_file(
         s3_resource=s3_resource_mock,
     )
     del os.environ["SAGEMAKER_ADMIN_CONFIG_OVERRIDE"]
+
+
+def test_logging_when_overriden_admin_and_user_configs_are_found(get_data_dir, caplog):
+    # Should log info message stating defaults were fetched since both exist
+    logger.propagate = True
+    os.environ["SAGEMAKER_ADMIN_CONFIG_OVERRIDE"] = get_data_dir
+    os.environ["SAGEMAKER_USER_CONFIG_OVERRIDE"] = get_data_dir
+    load_sagemaker_config()
+    assert "Fetched defaults config from location: {}".format(get_data_dir) in caplog.text
+    assert (
+        "Not applying SDK defaults from location: {}".format(_DEFAULT_ADMIN_CONFIG_FILE_PATH)
+        not in caplog.text
+    )
+    assert (
+        "Not applying SDK defaults from location: {}".format(_DEFAULT_USER_CONFIG_FILE_PATH)
+        not in caplog.text
+    )
+
+
+def test_logging_when_default_admin_and_user_config_not_found(caplog):
+    # Should log info message stating sdk defaults were not applied
+    # for admin and user config since both are missing from default location
+    logger.propagate = True
+    load_sagemaker_config()
+    assert (
+        "Not applying SDK defaults from location: {}".format(_DEFAULT_ADMIN_CONFIG_FILE_PATH)
+        in caplog.text
+    )
+    assert (
+        "Not applying SDK defaults from location: {}".format(_DEFAULT_USER_CONFIG_FILE_PATH)
+        in caplog.text
+    )
+
+
+def test_logging_when_default_admin_and_overriden_user_config_not_found(get_data_dir, caplog):
+    # Should only log info message stating sdk defaults were not applied from default admin config.
+    # Failing to load overriden user config should throw exception.
+    logger.propagate = True
+    fake_config_file_path = os.path.join(get_data_dir, "config-not-found.yaml")
+    os.environ["SAGEMAKER_USER_CONFIG_OVERRIDE"] = fake_config_file_path
+    with pytest.raises(ValueError):
+        load_sagemaker_config()
+    assert (
+        "Not applying SDK defaults from location: {}".format(_DEFAULT_ADMIN_CONFIG_FILE_PATH)
+        in caplog.text
+    )
+    assert (
+        "Not applying SDK defaults from location: {}".format(_DEFAULT_USER_CONFIG_FILE_PATH)
+        not in caplog.text
+    )
+    del os.environ["SAGEMAKER_USER_CONFIG_OVERRIDE"]
+
+
+def test_logging_when_overriden_admin_and_overridden_user_config_not_found(get_data_dir, caplog):
+    # Should not log any info messages since both config paths are overridden.
+    # Should throw an exception on failure since both will fail to load.
+    logger.propagate = True
+    fake_config_file_path = os.path.join(get_data_dir, "config-not-found.yaml")
+    os.environ["SAGEMAKER_USER_CONFIG_OVERRIDE"] = fake_config_file_path
+    os.environ["SAGEMAKER_ADMIN_CONFIG_OVERRIDE"] = fake_config_file_path
+    with pytest.raises(ValueError):
+        load_sagemaker_config()
+    assert (
+        "Not applying SDK defaults from location: {}".format(_DEFAULT_ADMIN_CONFIG_FILE_PATH)
+        not in caplog.text
+    )
+    assert (
+        "Not applying SDK defaults from location: {}".format(_DEFAULT_USER_CONFIG_FILE_PATH)
+        not in caplog.text
+    )
+    del os.environ["SAGEMAKER_USER_CONFIG_OVERRIDE"]
+    del os.environ["SAGEMAKER_ADMIN_CONFIG_OVERRIDE"]
+
+
+def test_logging_with_additional_configs_and_none_are_found(caplog):
+    # Should log info message stating sdk defaults were not applied
+    # for admin and user config since both are missing from default location.
+    # Should throw exception when config in additional_config_path is missing
+    logger.propagate = True
+    with pytest.raises(ValueError):
+        load_sagemaker_config(additional_config_paths=["fake-path"])
+    assert (
+        "Not applying SDK defaults from location: {}".format(_DEFAULT_ADMIN_CONFIG_FILE_PATH)
+        in caplog.text
+    )
+    assert (
+        "Not applying SDK defaults from location: {}".format(_DEFAULT_USER_CONFIG_FILE_PATH)
+        in caplog.text
+    )
