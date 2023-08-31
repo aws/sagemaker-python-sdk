@@ -785,6 +785,7 @@ def test_framework_without_infra_check_config(sagemaker_session):
     _, args = sagemaker_session.train.call_args
     assert args.get("health_check_config") is None
 
+
 def test_framework_with_infra_check_config(sagemaker_session):
     f = DummyFramework(
         entry_point=SCRIPT_PATH,
@@ -800,6 +801,7 @@ def test_framework_with_infra_check_config(sagemaker_session):
     sagemaker_session.train.assert_called_once()
     _, args = sagemaker_session.train.call_args
     assert args["infra_check_config"]["EnableInfraCheck"] == ENABLE_INFRA_CHECK
+
 
 def test_framework_with_container_entry_point(sagemaker_session):
     f = DummyFramework(
