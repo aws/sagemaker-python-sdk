@@ -1921,7 +1921,7 @@ def test_train_with_sagemaker_config_injection(sagemaker_session):
         training_image_config=TRAINING_IMAGE_CONFIG,
         container_entry_point=CONTAINER_ENTRY_POINT,
         container_arguments=CONTAINER_ARGUMENTS,
-        infra_check_config = INFRA_CHECK_CONFIG,
+        infra_check_config=INFRA_CHECK_CONFIG,
     )
 
     _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
