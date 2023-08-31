@@ -19,6 +19,7 @@ import shutil
 import pytest
 import docker
 import re
+import sys
 
 from sagemaker.utils import sagemaker_timestamp, _tmpdir, sts_regional_endpoint
 
@@ -87,21 +88,32 @@ CONDA_YML_FILE_TEMPLATE = (
 
 
 @pytest.fixture(scope="package")
-def dummy_container_without_error(sagemaker_session):
-    # TODO: the python version should be dynamically specified instead of hardcoding
-    ecr_uri = _build_container(sagemaker_session, "3.7", DOCKERFILE_TEMPLATE)
+def compatible_python_version():
+    return "{}.{}".format(sys.version_info.major, sys.version_info.minor)
+
+
+@pytest.fixture(scope="package")
+def incompatible_python_version():
+    return "{}.{}".format(sys.version_info.major, sys.version_info.minor + 1)
+
+
+@pytest.fixture(scope="package")
+def dummy_container_without_error(sagemaker_session, compatible_python_version):
+    ecr_uri = _build_container(sagemaker_session, compatible_python_version, DOCKERFILE_TEMPLATE)
     return ecr_uri
 
 
 @pytest.fixture(scope="package")
-def dummy_container_incompatible_python_runtime(sagemaker_session):
-    ecr_uri = _build_container(sagemaker_session, "3.10", DOCKERFILE_TEMPLATE)
+def dummy_container_incompatible_python_runtime(sagemaker_session, incompatible_python_version):
+    ecr_uri = _build_container(sagemaker_session, incompatible_python_version, DOCKERFILE_TEMPLATE)
     return ecr_uri
 
 
 @pytest.fixture(scope="package")
-def dummy_container_with_conda(sagemaker_session):
-    ecr_uri = _build_container(sagemaker_session, "3.7", DOCKERFILE_TEMPLATE_WITH_CONDA)
+def dummy_container_with_conda(sagemaker_session, compatible_python_version):
+    ecr_uri = _build_container(
+        sagemaker_session, compatible_python_version, DOCKERFILE_TEMPLATE_WITH_CONDA
+    )
     return ecr_uri
 
 
