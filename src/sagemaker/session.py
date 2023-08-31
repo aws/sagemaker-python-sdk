@@ -809,7 +809,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 For example,
 
                 .. code:: python
-                
                     infra_check_config = {
                         "EnableInfraCheck": True,
                     }
