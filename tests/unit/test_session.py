@@ -29,36 +29,36 @@ from sagemaker import TrainingInput, Session, get_execution_role, exceptions
 from sagemaker.async_inference import AsyncInferenceConfig
 from sagemaker.explainer import ExplainerConfig
 from sagemaker.session import (
-    _tuning_job_status,
-    _transform_job_status,
-    _train_done,
-    _wait_until,
-    _wait_until_training_done,
-    NOTEBOOK_METADATA_FILE,
+_tuning_job_status,
+_transform_job_status,
+_train_done,
+_wait_until,
+_wait_until_training_done,
+NOTEBOOK_METADATA_FILE,
 )
 from sagemaker.tuner import WarmStartConfig, WarmStartTypes
 from sagemaker.inputs import BatchDataCaptureConfig
 from sagemaker.config import MODEL_CONTAINERS_PATH
 from sagemaker.utils import update_list_of_dicts_with_values_from_config
 from tests.unit import (
-    SAGEMAKER_CONFIG_MONITORING_SCHEDULE,
-    SAGEMAKER_CONFIG_COMPILATION_JOB,
-    SAGEMAKER_CONFIG_EDGE_PACKAGING_JOB,
-    SAGEMAKER_CONFIG_ENDPOINT_CONFIG,
-    SAGEMAKER_CONFIG_ENDPOINT_ENDPOINT_CONFIG_COMBINED,
-    SAGEMAKER_CONFIG_ENDPOINT,
-    SAGEMAKER_CONFIG_AUTO_ML,
-    SAGEMAKER_CONFIG_MODEL_PACKAGE,
-    SAGEMAKER_CONFIG_FEATURE_GROUP,
-    SAGEMAKER_CONFIG_PROCESSING_JOB,
-    SAGEMAKER_CONFIG_TRAINING_JOB,
-    SAGEMAKER_CONFIG_TRANSFORM_JOB,
-    SAGEMAKER_CONFIG_MODEL,
-    SAGEMAKER_CONFIG_MODEL_WITH_PRIMARY_CONTAINER,
-    SAGEMAKER_CONFIG_SESSION,
-    _test_default_bucket_and_prefix_combinations,
-    DEFAULT_S3_OBJECT_KEY_PREFIX_NAME,
-    DEFAULT_S3_BUCKET_NAME,
+SAGEMAKER_CONFIG_MONITORING_SCHEDULE,
+SAGEMAKER_CONFIG_COMPILATION_JOB,
+SAGEMAKER_CONFIG_EDGE_PACKAGING_JOB,
+SAGEMAKER_CONFIG_ENDPOINT_CONFIG,
+SAGEMAKER_CONFIG_ENDPOINT_ENDPOINT_CONFIG_COMBINED,
+SAGEMAKER_CONFIG_ENDPOINT,
+SAGEMAKER_CONFIG_AUTO_ML,
+SAGEMAKER_CONFIG_MODEL_PACKAGE,
+SAGEMAKER_CONFIG_FEATURE_GROUP,
+SAGEMAKER_CONFIG_PROCESSING_JOB,
+SAGEMAKER_CONFIG_TRAINING_JOB,
+SAGEMAKER_CONFIG_TRANSFORM_JOB,
+SAGEMAKER_CONFIG_MODEL,
+SAGEMAKER_CONFIG_MODEL_WITH_PRIMARY_CONTAINER,
+SAGEMAKER_CONFIG_SESSION,
+_test_default_bucket_and_prefix_combinations,
+DEFAULT_S3_OBJECT_KEY_PREFIX_NAME,
+DEFAULT_S3_BUCKET_NAME,
 )
 
 STATIC_HPs = {"feature_dim": "784"}
@@ -73,228 +73,72 @@ STS_ENDPOINT = "sts.us-west-2.amazonaws.com"
 
 @pytest.fixture()
 def boto_session():
-    boto_mock = Mock(name="boto_session", region_name=REGION)
+boto_mock = Mock(name="boto_session", region_name=REGION)
 
-    client_mock = Mock()
-    client_mock._client_config.user_agent = (
-        "Boto3/1.9.69 Python/3.6.5 Linux/4.14.77-70.82.amzn1.x86_64 Botocore/1.12.69 Resource"
-    )
-    boto_mock.client.return_value = client_mock
-    return boto_mock
+client_mock = Mock()
+client_mock._client_config.user_agent = (
+    "Boto3/1.9.69 Python/3.6.5 Linux/4.14.77-70.82.amzn1.x86_64 Botocore/1.12.69 Resource"
+)
+boto_mock.client.return_value = client_mock
+return boto_mock
 
 
 @patch("boto3.DEFAULT_SESSION")
 def test_default_session(boto3_default_session):
-    sess = Session()
-    assert sess.boto_session is boto3_default_session
+sess = Session()
+assert sess.boto_session is boto3_default_session
 
 
 @patch("boto3.DEFAULT_SESSION", None)
 @patch("boto3.Session")
 @patch("boto3.DEFAULT_SESSION", None)
 def test_new_session_created(boto3_session):
-    # Need to have DEFAULT_SESSION return None as other unit tests can trigger creation of global
-    # default boto3 session that will persist and take precedence over boto3.Session()
-    sess = Session()
-    assert sess.boto_session is boto3_session.return_value
+# Need to have DEFAULT_SESSION return None as other unit tests can trigger creation of global
+# default boto3 session that will persist and take precedence over boto3.Session()
+sess = Session()
+assert sess.boto_session is boto3_session.return_value
 
 
 def test_process(boto_session):
-    session = Session(boto_session)
+session = Session(boto_session)
 
-    process_request_args = {
-        "inputs": [
-            {
-                "InputName": "input-1",
-                "S3Input": {
-                    "S3Uri": "mocked_s3_uri_from_upload_data",
-                    "LocalPath": "/container/path/",
-                    "S3DataType": "Archive",
-                    "S3InputMode": "File",
-                    "S3DataDistributionType": "FullyReplicated",
-                    "S3CompressionType": "None",
-                },
-            },
-            {
-                "InputName": "my_dataset",
-                "S3Input": {
-                    "S3Uri": "s3://path/to/my/dataset/census.csv",
-                    "LocalPath": "/container/path/",
-                    "S3DataType": "Archive",
-                    "S3InputMode": "File",
-                    "S3DataDistributionType": "FullyReplicated",
-                    "S3CompressionType": "None",
-                },
-            },
-            {
-                "InputName": "source",
-                "S3Input": {
-                    "S3Uri": "mocked_s3_uri_from_upload_data",
-                    "LocalPath": "/code/source",
-                    "S3DataType": "Archive",
-                    "S3InputMode": "File",
-                    "S3DataDistributionType": "FullyReplicated",
-                    "S3CompressionType": "None",
-                },
-            },
-        ],
-        "output_config": {
-            "Outputs": [
-                {
-                    "OutputName": "output-1",
-                    "S3Output": {
-                        "S3Uri": "s3://mybucket/current_job_name/output",
-                        "LocalPath": "/data/output",
-                        "S3UploadMode": "Continuous",
-                    },
-                },
-                {
-                    "OutputName": "my_output",
-                    "S3Output": {
-                        "S3Uri": "s3://uri/",
-                        "LocalPath": "/container/path/",
-                        "S3UploadMode": "Continuous",
-                    },
-                },
-            ],
-            "KmsKeyId": "arn:aws:kms:us-west-2:012345678901:key/kms-key",
-        },
-        "job_name": "current_job_name",
-        "resources": {
-            "ClusterConfig": {
-                "InstanceType": "ml.m4.xlarge",
-                "InstanceCount": 1,
-                "VolumeSizeInGB": 100,
-            }
-        },
-        "stopping_condition": {"MaxRuntimeInSeconds": 3600},
-        "app_specification": {
-            "ImageUri": "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.20.0-cpu-py3",
-            "ContainerArguments": ["--drop-columns", "'SelfEmployed'"],
-            "ContainerEntrypoint": ["python3", "/code/source/sklearn_transformer.py"],
-        },
-        "environment": {"my_env_variable": 20},
-        "network_config": {
-            "EnableInterContainerTrafficEncryption": True,
-            "EnableNetworkIsolation": True,
-            "VpcConfig": {
-                "SecurityGroupIds": ["my_security_group_id"],
-                "Subnets": ["my_subnet_id"],
-            },
-        },
-        "role_arn": ROLE,
-        "tags": [{"Name": "my-tag", "Value": "my-tag-value"}],
-        "experiment_config": {"ExperimentName": "AnExperiment"},
-    }
-    session.process(**process_request_args)
-
-    expected_request = {
-        "ProcessingJobName": "current_job_name",
-        "ProcessingResources": {
-            "ClusterConfig": {
-                "InstanceType": "ml.m4.xlarge",
-                "InstanceCount": 1,
-                "VolumeSizeInGB": 100,
-            }
-        },
-        "AppSpecification": {
-            "ImageUri": "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.20.0-cpu-py3",
-            "ContainerArguments": ["--drop-columns", "'SelfEmployed'"],
-            "ContainerEntrypoint": ["python3", "/code/source/sklearn_transformer.py"],
-        },
-        "RoleArn": ROLE,
-        "ProcessingInputs": [
-            {
-                "InputName": "input-1",
-                "S3Input": {
-                    "S3Uri": "mocked_s3_uri_from_upload_data",
-                    "LocalPath": "/container/path/",
-                    "S3DataType": "Archive",
-                    "S3InputMode": "File",
-                    "S3DataDistributionType": "FullyReplicated",
-                    "S3CompressionType": "None",
-                },
-            },
-            {
-                "InputName": "my_dataset",
-                "S3Input": {
-                    "S3Uri": "s3://path/to/my/dataset/census.csv",
-                    "LocalPath": "/container/path/",
-                    "S3DataType": "Archive",
-                    "S3InputMode": "File",
-                    "S3DataDistributionType": "FullyReplicated",
-                    "S3CompressionType": "None",
-                },
-            },
-            {
-                "InputName": "source",
-                "S3Input": {
-                    "S3Uri": "mocked_s3_uri_from_upload_data",
-                    "LocalPath": "/code/source",
-                    "S3DataType": "Archive",
-                    "S3InputMode": "File",
-                    "S3DataDistributionType": "FullyReplicated",
-                    "S3CompressionType": "None",
-                },
-            },
-        ],
-        "ProcessingOutputConfig": {
-            "Outputs": [
-                {
-                    "OutputName": "output-1",
-                    "S3Output": {
-                        "S3Uri": "s3://mybucket/current_job_name/output",
-                        "LocalPath": "/data/output",
-                        "S3UploadMode": "Continuous",
-                    },
-                },
-                {
-                    "OutputName": "my_output",
-                    "S3Output": {
-                        "S3Uri": "s3://uri/",
-                        "LocalPath": "/container/path/",
-                        "S3UploadMode": "Continuous",
-                    },
-                },
-            ],
-            "KmsKeyId": "arn:aws:kms:us-west-2:012345678901:key/kms-key",
-        },
-        "Environment": {"my_env_variable": 20},
-        "NetworkConfig": {
-            "EnableInterContainerTrafficEncryption": True,
-            "EnableNetworkIsolation": True,
-            "VpcConfig": {
-                "SecurityGroupIds": ["my_security_group_id"],
-                "Subnets": ["my_subnet_id"],
-            },
-        },
-        "StoppingCondition": {"MaxRuntimeInSeconds": 3600},
-        "Tags": [{"Name": "my-tag", "Value": "my-tag-value"}],
-        "ExperimentConfig": {"ExperimentName": "AnExperiment"},
-    }
-
-    session.sagemaker_client.create_processing_job.assert_called_with(**expected_request)
-
-
-def test_create_process_with_sagemaker_config_injection(sagemaker_session):
-    processing_job_config = copy.deepcopy(SAGEMAKER_CONFIG_PROCESSING_JOB)
-    # deleting RedshiftDatasetDefinition. API can take either RedshiftDatasetDefinition or
-    # AthenaDatasetDefinition
-    del processing_job_config["SageMaker"]["ProcessingJob"]["ProcessingInputs"][0][
-        "DatasetDefinition"
-    ]["RedshiftDatasetDefinition"]
-    sagemaker_session.sagemaker_config = processing_job_config
-
-    processing_inputs = [
+process_request_args = {
+    "inputs": [
         {
             "InputName": "input-1",
-            # No S3Input because the API expects only one of S3Input or DatasetDefinition
-            "DatasetDefinition": {
-                "AthenaDatasetDefinition": {},
+            "S3Input": {
+                "S3Uri": "mocked_s3_uri_from_upload_data",
+                "LocalPath": "/container/path/",
+                "S3DataType": "Archive",
+                "S3InputMode": "File",
+                "S3DataDistributionType": "FullyReplicated",
+                "S3CompressionType": "None",
             },
-        }
-    ]
-    output_config = {
+        },
+        {
+            "InputName": "my_dataset",
+            "S3Input": {
+                "S3Uri": "s3://path/to/my/dataset/census.csv",
+                "LocalPath": "/container/path/",
+                "S3DataType": "Archive",
+                "S3InputMode": "File",
+                "S3DataDistributionType": "FullyReplicated",
+                "S3CompressionType": "None",
+            },
+        },
+        {
+            "InputName": "source",
+            "S3Input": {
+                "S3Uri": "mocked_s3_uri_from_upload_data",
+                "LocalPath": "/code/source",
+                "S3DataType": "Archive",
+                "S3InputMode": "File",
+                "S3DataDistributionType": "FullyReplicated",
+                "S3CompressionType": "None",
+            },
+        },
+    ],
+    "output_config": {
         "Outputs": [
             {
                 "OutputName": "output-1",
@@ -313,619 +157,775 @@ def test_create_process_with_sagemaker_config_injection(sagemaker_session):
                 },
             },
         ],
-    }
-    job_name = ("current_job_name",)
-    resource_config = {
+        "KmsKeyId": "arn:aws:kms:us-west-2:012345678901:key/kms-key",
+    },
+    "job_name": "current_job_name",
+    "resources": {
         "ClusterConfig": {
             "InstanceType": "ml.m4.xlarge",
             "InstanceCount": 1,
             "VolumeSizeInGB": 100,
         }
-    }
-    app_specification = {
+    },
+    "stopping_condition": {"MaxRuntimeInSeconds": 3600},
+    "app_specification": {
         "ImageUri": "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.20.0-cpu-py3",
         "ContainerArguments": ["--drop-columns", "'SelfEmployed'"],
         "ContainerEntrypoint": ["python3", "/code/source/sklearn_transformer.py"],
-    }
+    },
+    "environment": {"my_env_variable": 20},
+    "network_config": {
+        "EnableInterContainerTrafficEncryption": True,
+        "EnableNetworkIsolation": True,
+        "VpcConfig": {
+            "SecurityGroupIds": ["my_security_group_id"],
+            "Subnets": ["my_subnet_id"],
+        },
+    },
+    "role_arn": ROLE,
+    "tags": [{"Name": "my-tag", "Value": "my-tag-value"}],
+    "experiment_config": {"ExperimentName": "AnExperiment"},
+}
+session.process(**process_request_args)
 
-    process_request_args = {
-        "inputs": processing_inputs,
-        "output_config": output_config,
-        "job_name": job_name,
-        "resources": resource_config,
-        "stopping_condition": {"MaxRuntimeInSeconds": 3600},
-        "app_specification": app_specification,
-        "experiment_config": {"ExperimentName": "AnExperiment"},
-    }
-    sagemaker_session.process(**process_request_args)
-    expected_volume_kms_key_id = SAGEMAKER_CONFIG_PROCESSING_JOB["SageMaker"]["ProcessingJob"][
-        "ProcessingResources"
-    ]["ClusterConfig"]["VolumeKmsKeyId"]
-    expected_output_kms_key_id = SAGEMAKER_CONFIG_PROCESSING_JOB["SageMaker"]["ProcessingJob"][
-        "ProcessingOutputConfig"
-    ]["KmsKeyId"]
-    expected_tags = SAGEMAKER_CONFIG_PROCESSING_JOB["SageMaker"]["ProcessingJob"]["Tags"]
-    expected_role_arn = SAGEMAKER_CONFIG_PROCESSING_JOB["SageMaker"]["ProcessingJob"]["RoleArn"]
-    expected_vpc_config = SAGEMAKER_CONFIG_PROCESSING_JOB["SageMaker"]["ProcessingJob"][
-        "NetworkConfig"
-    ]["VpcConfig"]
-    expected_enable_network_isolation = SAGEMAKER_CONFIG_PROCESSING_JOB["SageMaker"][
-        "ProcessingJob"
-    ]["NetworkConfig"]["EnableNetworkIsolation"]
-    expected_enable_inter_containter_traffic_encryption = SAGEMAKER_CONFIG_PROCESSING_JOB[
-        "SageMaker"
-    ]["ProcessingJob"]["NetworkConfig"]["EnableInterContainerTrafficEncryption"]
-    expected_environment = SAGEMAKER_CONFIG_PROCESSING_JOB["SageMaker"]["ProcessingJob"][
-        "Environment"
-    ]
-
-    expected_request = copy.deepcopy(
-        {
-            "ProcessingJobName": job_name,
-            "ProcessingResources": resource_config,
-            "AppSpecification": app_specification,
-            "RoleArn": expected_role_arn,
-            "ProcessingInputs": processing_inputs,
-            "ProcessingOutputConfig": output_config,
-            "Environment": expected_environment,
-            "NetworkConfig": {
-                "VpcConfig": expected_vpc_config,
-                "EnableNetworkIsolation": expected_enable_network_isolation,
-                "EnableInterContainerTrafficEncryption": expected_enable_inter_containter_traffic_encryption,
-            },
-            "StoppingCondition": {"MaxRuntimeInSeconds": 3600},
-            "Tags": expected_tags,
-            "ExperimentConfig": {"ExperimentName": "AnExperiment"},
+expected_request = {
+    "ProcessingJobName": "current_job_name",
+    "ProcessingResources": {
+        "ClusterConfig": {
+            "InstanceType": "ml.m4.xlarge",
+            "InstanceCount": 1,
+            "VolumeSizeInGB": 100,
         }
-    )
-    expected_request["ProcessingInputs"][0]["DatasetDefinition"] = processing_job_config[
-        "SageMaker"
-    ]["ProcessingJob"]["ProcessingInputs"][0]["DatasetDefinition"]
-    expected_request["ProcessingOutputConfig"]["KmsKeyId"] = expected_output_kms_key_id
-    expected_request["ProcessingResources"]["ClusterConfig"][
-        "VolumeKmsKeyId"
-    ] = expected_volume_kms_key_id
-    expected_request["Environment"] = expected_environment
+    },
+    "AppSpecification": {
+        "ImageUri": "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.20.0-cpu-py3",
+        "ContainerArguments": ["--drop-columns", "'SelfEmployed'"],
+        "ContainerEntrypoint": ["python3", "/code/source/sklearn_transformer.py"],
+    },
+    "RoleArn": ROLE,
+    "ProcessingInputs": [
+        {
+            "InputName": "input-1",
+            "S3Input": {
+                "S3Uri": "mocked_s3_uri_from_upload_data",
+                "LocalPath": "/container/path/",
+                "S3DataType": "Archive",
+                "S3InputMode": "File",
+                "S3DataDistributionType": "FullyReplicated",
+                "S3CompressionType": "None",
+            },
+        },
+        {
+            "InputName": "my_dataset",
+            "S3Input": {
+                "S3Uri": "s3://path/to/my/dataset/census.csv",
+                "LocalPath": "/container/path/",
+                "S3DataType": "Archive",
+                "S3InputMode": "File",
+                "S3DataDistributionType": "FullyReplicated",
+                "S3CompressionType": "None",
+            },
+        },
+        {
+            "InputName": "source",
+            "S3Input": {
+                "S3Uri": "mocked_s3_uri_from_upload_data",
+                "LocalPath": "/code/source",
+                "S3DataType": "Archive",
+                "S3InputMode": "File",
+                "S3DataDistributionType": "FullyReplicated",
+                "S3CompressionType": "None",
+            },
+        },
+    ],
+    "ProcessingOutputConfig": {
+        "Outputs": [
+            {
+                "OutputName": "output-1",
+                "S3Output": {
+                    "S3Uri": "s3://mybucket/current_job_name/output",
+                    "LocalPath": "/data/output",
+                    "S3UploadMode": "Continuous",
+                },
+            },
+            {
+                "OutputName": "my_output",
+                "S3Output": {
+                    "S3Uri": "s3://uri/",
+                    "LocalPath": "/container/path/",
+                    "S3UploadMode": "Continuous",
+                },
+            },
+        ],
+        "KmsKeyId": "arn:aws:kms:us-west-2:012345678901:key/kms-key",
+    },
+    "Environment": {"my_env_variable": 20},
+    "NetworkConfig": {
+        "EnableInterContainerTrafficEncryption": True,
+        "EnableNetworkIsolation": True,
+        "VpcConfig": {
+            "SecurityGroupIds": ["my_security_group_id"],
+            "Subnets": ["my_subnet_id"],
+        },
+    },
+    "StoppingCondition": {"MaxRuntimeInSeconds": 3600},
+    "Tags": [{"Name": "my-tag", "Value": "my-tag-value"}],
+    "ExperimentConfig": {"ExperimentName": "AnExperiment"},
+}
 
-    sagemaker_session.sagemaker_client.create_processing_job.assert_called_with(**expected_request)
+session.sagemaker_client.create_processing_job.assert_called_with(**expected_request)
+
+
+def test_create_process_with_sagemaker_config_injection(sagemaker_session):
+processing_job_config = copy.deepcopy(SAGEMAKER_CONFIG_PROCESSING_JOB)
+# deleting RedshiftDatasetDefinition. API can take either RedshiftDatasetDefinition or
+# AthenaDatasetDefinition
+del processing_job_config["SageMaker"]["ProcessingJob"]["ProcessingInputs"][0][
+    "DatasetDefinition"
+]["RedshiftDatasetDefinition"]
+sagemaker_session.sagemaker_config = processing_job_config
+
+processing_inputs = [
+    {
+        "InputName": "input-1",
+        # No S3Input because the API expects only one of S3Input or DatasetDefinition
+        "DatasetDefinition": {
+            "AthenaDatasetDefinition": {},
+        },
+    }
+]
+output_config = {
+    "Outputs": [
+        {
+            "OutputName": "output-1",
+            "S3Output": {
+                "S3Uri": "s3://mybucket/current_job_name/output",
+                "LocalPath": "/data/output",
+                "S3UploadMode": "Continuous",
+            },
+        },
+        {
+            "OutputName": "my_output",
+            "S3Output": {
+                "S3Uri": "s3://uri/",
+                "LocalPath": "/container/path/",
+                "S3UploadMode": "Continuous",
+            },
+        },
+    ],
+}
+job_name = ("current_job_name",)
+resource_config = {
+    "ClusterConfig": {
+        "InstanceType": "ml.m4.xlarge",
+        "InstanceCount": 1,
+        "VolumeSizeInGB": 100,
+    }
+}
+app_specification = {
+    "ImageUri": "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.20.0-cpu-py3",
+    "ContainerArguments": ["--drop-columns", "'SelfEmployed'"],
+    "ContainerEntrypoint": ["python3", "/code/source/sklearn_transformer.py"],
+}
+
+process_request_args = {
+    "inputs": processing_inputs,
+    "output_config": output_config,
+    "job_name": job_name,
+    "resources": resource_config,
+    "stopping_condition": {"MaxRuntimeInSeconds": 3600},
+    "app_specification": app_specification,
+    "experiment_config": {"ExperimentName": "AnExperiment"},
+}
+sagemaker_session.process(**process_request_args)
+expected_volume_kms_key_id = SAGEMAKER_CONFIG_PROCESSING_JOB["SageMaker"]["ProcessingJob"][
+    "ProcessingResources"
+]["ClusterConfig"]["VolumeKmsKeyId"]
+expected_output_kms_key_id = SAGEMAKER_CONFIG_PROCESSING_JOB["SageMaker"]["ProcessingJob"][
+    "ProcessingOutputConfig"
+]["KmsKeyId"]
+expected_tags = SAGEMAKER_CONFIG_PROCESSING_JOB["SageMaker"]["ProcessingJob"]["Tags"]
+expected_role_arn = SAGEMAKER_CONFIG_PROCESSING_JOB["SageMaker"]["ProcessingJob"]["RoleArn"]
+expected_vpc_config = SAGEMAKER_CONFIG_PROCESSING_JOB["SageMaker"]["ProcessingJob"][
+    "NetworkConfig"
+]["VpcConfig"]
+expected_enable_network_isolation = SAGEMAKER_CONFIG_PROCESSING_JOB["SageMaker"][
+    "ProcessingJob"
+]["NetworkConfig"]["EnableNetworkIsolation"]
+expected_enable_inter_containter_traffic_encryption = SAGEMAKER_CONFIG_PROCESSING_JOB[
+    "SageMaker"
+]["ProcessingJob"]["NetworkConfig"]["EnableInterContainerTrafficEncryption"]
+expected_environment = SAGEMAKER_CONFIG_PROCESSING_JOB["SageMaker"]["ProcessingJob"][
+    "Environment"
+]
+
+expected_request = copy.deepcopy(
+    {
+        "ProcessingJobName": job_name,
+        "ProcessingResources": resource_config,
+        "AppSpecification": app_specification,
+        "RoleArn": expected_role_arn,
+        "ProcessingInputs": processing_inputs,
+        "ProcessingOutputConfig": output_config,
+        "Environment": expected_environment,
+        "NetworkConfig": {
+            "VpcConfig": expected_vpc_config,
+            "EnableNetworkIsolation": expected_enable_network_isolation,
+            "EnableInterContainerTrafficEncryption": expected_enable_inter_containter_traffic_encryption,
+        },
+        "StoppingCondition": {"MaxRuntimeInSeconds": 3600},
+        "Tags": expected_tags,
+        "ExperimentConfig": {"ExperimentName": "AnExperiment"},
+    }
+)
+expected_request["ProcessingInputs"][0]["DatasetDefinition"] = processing_job_config[
+    "SageMaker"
+]["ProcessingJob"]["ProcessingInputs"][0]["DatasetDefinition"]
+expected_request["ProcessingOutputConfig"]["KmsKeyId"] = expected_output_kms_key_id
+expected_request["ProcessingResources"]["ClusterConfig"][
+    "VolumeKmsKeyId"
+] = expected_volume_kms_key_id
+expected_request["Environment"] = expected_environment
+
+sagemaker_session.sagemaker_client.create_processing_job.assert_called_with(**expected_request)
 
 
 def test_default_bucket_with_sagemaker_config(boto_session, client):
-    # common kwargs for Session objects
-    session_kwargs = {
-        "boto_session": boto_session,
-        "sagemaker_client": client,
-        "sagemaker_runtime_client": client,
-        "sagemaker_metrics_client": client,
-    }
+# common kwargs for Session objects
+session_kwargs = {
+    "boto_session": boto_session,
+    "sagemaker_client": client,
+    "sagemaker_runtime_client": client,
+    "sagemaker_metrics_client": client,
+}
 
-    # Case 1: Use bucket from sagemaker_config
-    session_with_config_bucket = Session(
-        default_bucket=None,
-        sagemaker_config=SAGEMAKER_CONFIG_SESSION,
-        **session_kwargs,
-    )
-    assert (
-        session_with_config_bucket.default_bucket()
-        == SAGEMAKER_CONFIG_SESSION["SageMaker"]["PythonSDK"]["Modules"]["Session"][
-            "DefaultS3Bucket"
-        ]
-    )
+# Case 1: Use bucket from sagemaker_config
+session_with_config_bucket = Session(
+    default_bucket=None,
+    sagemaker_config=SAGEMAKER_CONFIG_SESSION,
+    **session_kwargs,
+)
+assert (
+    session_with_config_bucket.default_bucket()
+    == SAGEMAKER_CONFIG_SESSION["SageMaker"]["PythonSDK"]["Modules"]["Session"][
+        "DefaultS3Bucket"
+    ]
+)
 
-    # Case 2: Use bucket from user input to Session (even if sagemaker_config has a bucket)
-    session_with_user_bucket = Session(
-        default_bucket="default-bucket",
-        sagemaker_config=SAGEMAKER_CONFIG_SESSION,
-        **session_kwargs,
-    )
-    assert session_with_user_bucket.default_bucket() == "default-bucket"
+# Case 2: Use bucket from user input to Session (even if sagemaker_config has a bucket)
+session_with_user_bucket = Session(
+    default_bucket="default-bucket",
+    sagemaker_config=SAGEMAKER_CONFIG_SESSION,
+    **session_kwargs,
+)
+assert session_with_user_bucket.default_bucket() == "default-bucket"
 
-    # Case 3: Use default bucket of SDK
-    session_with_sdk_bucket = Session(
-        default_bucket=None,
-        sagemaker_config=None,
-        **session_kwargs,
-    )
-    session_with_sdk_bucket.boto_session.client.return_value = Mock(
-        get_caller_identity=Mock(return_value={"Account": "111111111"})
-    )
-    assert session_with_sdk_bucket.default_bucket() == "sagemaker-us-west-2-111111111"
+# Case 3: Use default bucket of SDK
+session_with_sdk_bucket = Session(
+    default_bucket=None,
+    sagemaker_config=None,
+    **session_kwargs,
+)
+session_with_sdk_bucket.boto_session.client.return_value = Mock(
+    get_caller_identity=Mock(return_value={"Account": "111111111"})
+)
+assert session_with_sdk_bucket.default_bucket() == "sagemaker-us-west-2-111111111"
 
 
 def test_default_bucket_prefix_with_sagemaker_config(boto_session, client):
-    # common kwargs for Session objects
-    session_kwargs = {
-        "boto_session": boto_session,
-        "sagemaker_client": client,
-        "sagemaker_runtime_client": client,
-        "sagemaker_metrics_client": client,
-    }
+# common kwargs for Session objects
+session_kwargs = {
+    "boto_session": boto_session,
+    "sagemaker_client": client,
+    "sagemaker_runtime_client": client,
+    "sagemaker_metrics_client": client,
+}
 
-    # Case 1: Use prefix from sagemaker_config
-    session_with_config_prefix = Session(
-        default_bucket_prefix=None,
-        sagemaker_config=SAGEMAKER_CONFIG_SESSION,
-        **session_kwargs,
-    )
-    assert (
-        session_with_config_prefix.default_bucket_prefix
-        == SAGEMAKER_CONFIG_SESSION["SageMaker"]["PythonSDK"]["Modules"]["Session"][
-            "DefaultS3ObjectKeyPrefix"
-        ]
-    )
+# Case 1: Use prefix from sagemaker_config
+session_with_config_prefix = Session(
+    default_bucket_prefix=None,
+    sagemaker_config=SAGEMAKER_CONFIG_SESSION,
+    **session_kwargs,
+)
+assert (
+    session_with_config_prefix.default_bucket_prefix
+    == SAGEMAKER_CONFIG_SESSION["SageMaker"]["PythonSDK"]["Modules"]["Session"][
+        "DefaultS3ObjectKeyPrefix"
+    ]
+)
 
-    # Case 2: Use prefix from user input to Session (even if sagemaker_config has a prefix)
-    session_with_user_prefix = Session(
-        default_bucket_prefix="default-prefix",
-        sagemaker_config=SAGEMAKER_CONFIG_SESSION,
-        **session_kwargs,
-    )
-    assert session_with_user_prefix.default_bucket_prefix == "default-prefix"
+# Case 2: Use prefix from user input to Session (even if sagemaker_config has a prefix)
+session_with_user_prefix = Session(
+    default_bucket_prefix="default-prefix",
+    sagemaker_config=SAGEMAKER_CONFIG_SESSION,
+    **session_kwargs,
+)
+assert session_with_user_prefix.default_bucket_prefix == "default-prefix"
 
-    # Case 3: Neither the user input or config has the prefix
-    session_with_no_prefix = Session(
-        default_bucket_prefix=None,
-        sagemaker_config=None,
-        **session_kwargs,
-    )
-    assert session_with_no_prefix.default_bucket_prefix is None
+# Case 3: Neither the user input or config has the prefix
+session_with_no_prefix = Session(
+    default_bucket_prefix=None,
+    sagemaker_config=None,
+    **session_kwargs,
+)
+assert session_with_no_prefix.default_bucket_prefix is None
 
 
 def mock_exists(filepath_to_mock, exists_result):
-    unmocked_exists = os.path.exists
+unmocked_exists = os.path.exists
 
-    def side_effect(filepath):
-        if filepath == filepath_to_mock:
-            return exists_result
-        else:
-            return unmocked_exists(filepath)
+def side_effect(filepath):
+    if filepath == filepath_to_mock:
+        return exists_result
+    else:
+        return unmocked_exists(filepath)
 
-    return Mock(side_effect=side_effect)
+return Mock(side_effect=side_effect)
 
 
 def test_get_execution_role():
-    session = Mock()
-    session.get_caller_identity_arn.return_value = "arn:aws:iam::369233609183:role/SageMakerRole"
+session = Mock()
+session.get_caller_identity_arn.return_value = "arn:aws:iam::369233609183:role/SageMakerRole"
 
-    actual = get_execution_role(session)
-    assert actual == "arn:aws:iam::369233609183:role/SageMakerRole"
+actual = get_execution_role(session)
+assert actual == "arn:aws:iam::369233609183:role/SageMakerRole"
 
 
 def test_get_execution_role_works_with_service_role():
-    session = Mock()
-    session.get_caller_identity_arn.return_value = (
-        "arn:aws:iam::369233609183:role/service-role/AmazonSageMaker-ExecutionRole-20171129T072388"
-    )
+session = Mock()
+session.get_caller_identity_arn.return_value = (
+    "arn:aws:iam::369233609183:role/service-role/AmazonSageMaker-ExecutionRole-20171129T072388"
+)
 
-    actual = get_execution_role(session)
-    assert (
-        actual
-        == "arn:aws:iam::369233609183:role/service-role/AmazonSageMaker-ExecutionRole-20171129T072388"
-    )
+actual = get_execution_role(session)
+assert (
+    actual
+    == "arn:aws:iam::369233609183:role/service-role/AmazonSageMaker-ExecutionRole-20171129T072388"
+)
 
 
 def test_get_execution_role_throws_exception_if_arn_is_not_role():
-    session = Mock()
-    session.get_caller_identity_arn.return_value = "arn:aws:iam::369233609183:user/marcos"
+session = Mock()
+session.get_caller_identity_arn.return_value = "arn:aws:iam::369233609183:user/marcos"
 
-    with pytest.raises(ValueError) as error:
-        get_execution_role(session)
-    assert "The current AWS identity is not a role" in str(error.value)
+with pytest.raises(ValueError) as error:
+    get_execution_role(session)
+assert "The current AWS identity is not a role" in str(error.value)
 
 
 def test_get_execution_role_throws_exception_if_arn_is_not_role_with_role_in_name():
-    session = Mock()
-    session.get_caller_identity_arn.return_value = "arn:aws:iam::369233609183:user/marcos-role"
+session = Mock()
+session.get_caller_identity_arn.return_value = "arn:aws:iam::369233609183:user/marcos-role"
 
-    with pytest.raises(ValueError) as error:
-        get_execution_role(session)
-    assert "The current AWS identity is not a role" in str(error.value)
+with pytest.raises(ValueError) as error:
+    get_execution_role(session)
+assert "The current AWS identity is not a role" in str(error.value)
 
 
 @patch(
-    "six.moves.builtins.open",
-    mock_open(read_data='{"ResourceName": "SageMakerInstance"}'),
+"six.moves.builtins.open",
+mock_open(read_data='{"ResourceName": "SageMakerInstance"}'),
 )
 @patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, True))
 def test_get_caller_identity_arn_from_describe_notebook_instance(boto_session):
-    sess = Session(boto_session)
-    expected_role = "arn:aws:iam::369233609183:role/service-role/SageMakerRole-20171129T072388"
-    sess.sagemaker_client.describe_notebook_instance.return_value = {"RoleArn": expected_role}
+sess = Session(boto_session)
+expected_role = "arn:aws:iam::369233609183:role/service-role/SageMakerRole-20171129T072388"
+sess.sagemaker_client.describe_notebook_instance.return_value = {"RoleArn": expected_role}
 
-    actual = sess.get_caller_identity_arn()
+actual = sess.get_caller_identity_arn()
 
-    assert actual == expected_role
-    sess.sagemaker_client.describe_notebook_instance.assert_called_once_with(
-        NotebookInstanceName="SageMakerInstance"
-    )
+assert actual == expected_role
+sess.sagemaker_client.describe_notebook_instance.assert_called_once_with(
+    NotebookInstanceName="SageMakerInstance"
+)
 
 
 @patch(
-    "six.moves.builtins.open",
-    mock_open(
-        read_data='{"ResourceName": "SageMakerInstance", '
-        '"DomainId": "d-kbnw5yk6tg8j", '
-        '"UserProfileName": "default-1617915559064"}'
-    ),
+"six.moves.builtins.open",
+mock_open(
+    read_data='{"ResourceName": "SageMakerInstance", '
+    '"DomainId": "d-kbnw5yk6tg8j", '
+    '"UserProfileName": "default-1617915559064"}'
+),
 )
 @patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, True))
 def test_get_caller_identity_arn_from_describe_user_profile(boto_session):
-    sess = Session(boto_session)
-    expected_role = "arn:aws:iam::369233609183:role/service-role/SageMakerRole-20171129T072388"
-    sess.sagemaker_client.describe_user_profile.return_value = {
-        "UserSettings": {"ExecutionRole": expected_role}
-    }
+sess = Session(boto_session)
+expected_role = "arn:aws:iam::369233609183:role/service-role/SageMakerRole-20171129T072388"
+sess.sagemaker_client.describe_user_profile.return_value = {
+    "UserSettings": {"ExecutionRole": expected_role}
+}
 
-    actual = sess.get_caller_identity_arn()
+actual = sess.get_caller_identity_arn()
 
-    assert actual == expected_role
-    sess.sagemaker_client.describe_user_profile.assert_called_once_with(
-        DomainId="d-kbnw5yk6tg8j",
-        UserProfileName="default-1617915559064",
-    )
+assert actual == expected_role
+sess.sagemaker_client.describe_user_profile.assert_called_once_with(
+    DomainId="d-kbnw5yk6tg8j",
+    UserProfileName="default-1617915559064",
+)
 
 
 @patch(
-    "six.moves.builtins.open",
-    mock_open(
-        read_data='{"ResourceName": "SageMakerInstance", '
-        '"DomainId": "d-kbnw5yk6tg8j", '
-        '"UserProfileName": "default-1617915559064"}'
-    ),
+"six.moves.builtins.open",
+mock_open(
+    read_data='{"ResourceName": "SageMakerInstance", '
+    '"DomainId": "d-kbnw5yk6tg8j", '
+    '"UserProfileName": "default-1617915559064"}'
+),
 )
 @patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, True))
 def test_get_caller_identity_arn_from_describe_domain_if_no_user_settings(boto_session):
-    sess = Session(boto_session)
-    expected_role = "arn:aws:iam::369233609183:role/service-role/SageMakerRole-20171129T072388"
-    sess.sagemaker_client.describe_user_profile.return_value = {}
-    sess.sagemaker_client.describe_domain.return_value = {
-        "DefaultUserSettings": {"ExecutionRole": expected_role}
-    }
+sess = Session(boto_session)
+expected_role = "arn:aws:iam::369233609183:role/service-role/SageMakerRole-20171129T072388"
+sess.sagemaker_client.describe_user_profile.return_value = {}
+sess.sagemaker_client.describe_domain.return_value = {
+    "DefaultUserSettings": {"ExecutionRole": expected_role}
+}
 
-    actual = sess.get_caller_identity_arn()
+actual = sess.get_caller_identity_arn()
 
-    assert actual == expected_role
-    sess.sagemaker_client.describe_user_profile.assert_called_once_with(
-        DomainId="d-kbnw5yk6tg8j",
-        UserProfileName="default-1617915559064",
-    )
-    sess.sagemaker_client.describe_domain.assert_called_once_with(DomainId="d-kbnw5yk6tg8j")
+assert actual == expected_role
+sess.sagemaker_client.describe_user_profile.assert_called_once_with(
+    DomainId="d-kbnw5yk6tg8j",
+    UserProfileName="default-1617915559064",
+)
+sess.sagemaker_client.describe_domain.assert_called_once_with(DomainId="d-kbnw5yk6tg8j")
 
 
 @patch(
-    "six.moves.builtins.open",
-    mock_open(
-        read_data='{"ResourceName": "SageMakerInstance", '
-        '"DomainId": "d-kbnw5yk6tg8j", '
-        '"UserProfileName": "default-1617915559064"}'
-    ),
+"six.moves.builtins.open",
+mock_open(
+    read_data='{"ResourceName": "SageMakerInstance", '
+    '"DomainId": "d-kbnw5yk6tg8j", '
+    '"UserProfileName": "default-1617915559064"}'
+),
 )
 @patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, True))
 def test_fallback_to_domain_if_role_unavailable_in_user_settings(boto_session):
-    sess = Session(boto_session)
-    expected_role = "expected_role"
-    sess.sagemaker_client.describe_user_profile.return_value = {
-        "DomainId": "d-kbnw5yk6tg8j",
-        "UserSettings": {
-            "JupyterServerAppSettings": {},
-            "KernelGatewayAppSettings": {},
-        },
-    }
+sess = Session(boto_session)
+expected_role = "expected_role"
+sess.sagemaker_client.describe_user_profile.return_value = {
+    "DomainId": "d-kbnw5yk6tg8j",
+    "UserSettings": {
+        "JupyterServerAppSettings": {},
+        "KernelGatewayAppSettings": {},
+    },
+}
 
-    sess.sagemaker_client.describe_domain.return_value = {
-        "DefaultUserSettings": {"ExecutionRole": expected_role}
-    }
+sess.sagemaker_client.describe_domain.return_value = {
+    "DefaultUserSettings": {"ExecutionRole": expected_role}
+}
 
-    actual = sess.get_caller_identity_arn()
+actual = sess.get_caller_identity_arn()
 
-    assert actual == expected_role
-    sess.sagemaker_client.describe_user_profile.assert_called_once_with(
-        DomainId="d-kbnw5yk6tg8j",
-        UserProfileName="default-1617915559064",
-    )
-    sess.sagemaker_client.describe_domain.assert_called_once_with(DomainId="d-kbnw5yk6tg8j")
+assert actual == expected_role
+sess.sagemaker_client.describe_user_profile.assert_called_once_with(
+    DomainId="d-kbnw5yk6tg8j",
+    UserProfileName="default-1617915559064",
+)
+sess.sagemaker_client.describe_domain.assert_called_once_with(DomainId="d-kbnw5yk6tg8j")
 
 
 @patch(
-    "six.moves.builtins.open",
-    mock_open(
-        read_data='{"ResourceName": "SageMakerInstance", '
-        '"DomainId": "d-kbnw5yk6tg8j", '
-        '"SpaceName": "space_name"}'
-    ),
+"six.moves.builtins.open",
+mock_open(
+    read_data='{"ResourceName": "SageMakerInstance", '
+    '"DomainId": "d-kbnw5yk6tg8j", '
+    '"SpaceName": "space_name"}'
+),
 )
 @patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, True))
 def test_get_caller_identity_arn_from_describe_domain_for_space(boto_session):
-    sess = Session(boto_session)
-    expected_role = "arn:aws:iam::369233609183:role/service-role/SageMakerRole-20171129T072388"
-    sess.sagemaker_client.describe_domain.return_value = {
-        "DefaultSpaceSettings": {"ExecutionRole": expected_role}
-    }
+sess = Session(boto_session)
+expected_role = "arn:aws:iam::369233609183:role/service-role/SageMakerRole-20171129T072388"
+sess.sagemaker_client.describe_domain.return_value = {
+    "DefaultSpaceSettings": {"ExecutionRole": expected_role}
+}
 
-    actual = sess.get_caller_identity_arn()
+actual = sess.get_caller_identity_arn()
 
-    assert actual == expected_role
-    sess.sagemaker_client.describe_domain.assert_called_once_with(DomainId="d-kbnw5yk6tg8j")
+assert actual == expected_role
+sess.sagemaker_client.describe_domain.assert_called_once_with(DomainId="d-kbnw5yk6tg8j")
 
 
 @patch(
-    "six.moves.builtins.open",
-    mock_open(read_data='{"ResourceName": "SageMakerInstance"}'),
+"six.moves.builtins.open",
+mock_open(read_data='{"ResourceName": "SageMakerInstance"}'),
 )
 @patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, True))
 @patch("sagemaker.session.sts_regional_endpoint", return_value=STS_ENDPOINT)
 def test_get_caller_identity_arn_from_a_role_after_describe_notebook_exception(
-    sts_regional_endpoint, boto_session
+sts_regional_endpoint, boto_session
 ):
-    sess = Session(boto_session)
-    exception = ClientError(
-        {"Error": {"Code": "ValidationException", "Message": "RecordNotFound"}},
-        "Operation",
-    )
-    sess.sagemaker_client.describe_notebook_instance.side_effect = exception
+sess = Session(boto_session)
+exception = ClientError(
+    {"Error": {"Code": "ValidationException", "Message": "RecordNotFound"}},
+    "Operation",
+)
+sess.sagemaker_client.describe_notebook_instance.side_effect = exception
 
-    arn = (
-        "arn:aws:sts::369233609183:assumed-role/SageMakerRole/6d009ef3-5306-49d5-8efc-78db644d8122"
-    )
-    sess.boto_session.client("sts", endpoint_url=STS_ENDPOINT).get_caller_identity.return_value = {
-        "Arn": arn
-    }
+arn = (
+    "arn:aws:sts::369233609183:assumed-role/SageMakerRole/6d009ef3-5306-49d5-8efc-78db644d8122"
+)
+sess.boto_session.client("sts", endpoint_url=STS_ENDPOINT).get_caller_identity.return_value = {
+    "Arn": arn
+}
 
-    expected_role = "arn:aws:iam::369233609183:role/SageMakerRole"
-    sess.boto_session.client("iam").get_role.return_value = {"Role": {"Arn": expected_role}}
+expected_role = "arn:aws:iam::369233609183:role/SageMakerRole"
+sess.boto_session.client("iam").get_role.return_value = {"Role": {"Arn": expected_role}}
 
-    with patch("logging.Logger.debug") as mock_logger:
-        actual = sess.get_caller_identity_arn()
-        mock_logger.assert_called_once()
+with patch("logging.Logger.debug") as mock_logger:
+    actual = sess.get_caller_identity_arn()
+    mock_logger.assert_called_once()
 
-    sess.sagemaker_client.describe_notebook_instance.assert_called_once_with(
-        NotebookInstanceName="SageMakerInstance"
-    )
-    assert actual == expected_role
+sess.sagemaker_client.describe_notebook_instance.assert_called_once_with(
+    NotebookInstanceName="SageMakerInstance"
+)
+assert actual == expected_role
 
 
 @patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, False))
 @patch("sagemaker.session.sts_regional_endpoint", return_value=STS_ENDPOINT)
 def test_get_caller_identity_arn_from_a_user(sts_regional_endpoint, boto_session):
-    sess = Session(boto_session)
-    arn = "arn:aws:iam::369233609183:user/mia"
-    sess.boto_session.client("sts", endpoint_url=STS_ENDPOINT).get_caller_identity.return_value = {
-        "Arn": arn
-    }
-    sess.boto_session.client("iam").get_role.return_value = {"Role": {"Arn": arn}}
+sess = Session(boto_session)
+arn = "arn:aws:iam::369233609183:user/mia"
+sess.boto_session.client("sts", endpoint_url=STS_ENDPOINT).get_caller_identity.return_value = {
+    "Arn": arn
+}
+sess.boto_session.client("iam").get_role.return_value = {"Role": {"Arn": arn}}
 
-    actual = sess.get_caller_identity_arn()
-    assert actual == "arn:aws:iam::369233609183:user/mia"
+actual = sess.get_caller_identity_arn()
+assert actual == "arn:aws:iam::369233609183:user/mia"
 
 
 @patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, False))
 @patch("sagemaker.session.sts_regional_endpoint", return_value=STS_ENDPOINT)
 def test_get_caller_identity_arn_from_an_user_without_permissions(
-    sts_regional_endpoint, boto_session
+sts_regional_endpoint, boto_session
 ):
-    sess = Session(boto_session)
-    arn = "arn:aws:iam::369233609183:user/mia"
-    sess.boto_session.client("sts", endpoint_url=STS_ENDPOINT).get_caller_identity.return_value = {
-        "Arn": arn
-    }
-    sess.boto_session.client("iam").get_role.side_effect = ClientError({}, {})
+sess = Session(boto_session)
+arn = "arn:aws:iam::369233609183:user/mia"
+sess.boto_session.client("sts", endpoint_url=STS_ENDPOINT).get_caller_identity.return_value = {
+    "Arn": arn
+}
+sess.boto_session.client("iam").get_role.side_effect = ClientError({}, {})
 
-    with patch("logging.Logger.warning") as mock_logger:
-        actual = sess.get_caller_identity_arn()
-        assert actual == "arn:aws:iam::369233609183:user/mia"
-        mock_logger.assert_called_once()
+with patch("logging.Logger.warning") as mock_logger:
+    actual = sess.get_caller_identity_arn()
+    assert actual == "arn:aws:iam::369233609183:user/mia"
+    mock_logger.assert_called_once()
 
 
 @patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, False))
 @patch("sagemaker.session.sts_regional_endpoint", return_value=STS_ENDPOINT)
 def test_get_caller_identity_arn_from_a_role(sts_regional_endpoint, boto_session):
-    sess = Session(boto_session)
-    arn = (
-        "arn:aws:sts::369233609183:assumed-role/SageMakerRole/6d009ef3-5306-49d5-8efc-78db644d8122"
-    )
-    sess.boto_session.client("sts", endpoint_url=STS_ENDPOINT).get_caller_identity.return_value = {
-        "Arn": arn
-    }
+sess = Session(boto_session)
+arn = (
+    "arn:aws:sts::369233609183:assumed-role/SageMakerRole/6d009ef3-5306-49d5-8efc-78db644d8122"
+)
+sess.boto_session.client("sts", endpoint_url=STS_ENDPOINT).get_caller_identity.return_value = {
+    "Arn": arn
+}
 
-    expected_role = "arn:aws:iam::369233609183:role/SageMakerRole"
-    sess.boto_session.client("iam").get_role.return_value = {"Role": {"Arn": expected_role}}
+expected_role = "arn:aws:iam::369233609183:role/SageMakerRole"
+sess.boto_session.client("iam").get_role.return_value = {"Role": {"Arn": expected_role}}
 
-    actual = sess.get_caller_identity_arn()
-    assert actual == expected_role
+actual = sess.get_caller_identity_arn()
+assert actual == expected_role
 
 
 @patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, False))
 @patch("sagemaker.session.sts_regional_endpoint", return_value=STS_ENDPOINT)
 def test_get_caller_identity_arn_from_an_execution_role(sts_regional_endpoint, boto_session):
-    sess = Session(boto_session)
-    sts_arn = "arn:aws:sts::369233609183:assumed-role/AmazonSageMaker-ExecutionRole-20171129T072388/SageMaker"
-    sess.boto_session.client("sts", endpoint_url=STS_ENDPOINT).get_caller_identity.return_value = {
-        "Arn": sts_arn
-    }
-    iam_arn = "arn:aws:iam::369233609183:role/AmazonSageMaker-ExecutionRole-20171129T072388"
-    sess.boto_session.client("iam").get_role.return_value = {"Role": {"Arn": iam_arn}}
+sess = Session(boto_session)
+sts_arn = "arn:aws:sts::369233609183:assumed-role/AmazonSageMaker-ExecutionRole-20171129T072388/SageMaker"
+sess.boto_session.client("sts", endpoint_url=STS_ENDPOINT).get_caller_identity.return_value = {
+    "Arn": sts_arn
+}
+iam_arn = "arn:aws:iam::369233609183:role/AmazonSageMaker-ExecutionRole-20171129T072388"
+sess.boto_session.client("iam").get_role.return_value = {"Role": {"Arn": iam_arn}}
 
-    actual = sess.get_caller_identity_arn()
-    assert actual == iam_arn
+actual = sess.get_caller_identity_arn()
+assert actual == iam_arn
 
 
 @patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, False))
 @patch("sagemaker.session.sts_regional_endpoint", return_value=STS_ENDPOINT)
 def test_get_caller_identity_arn_from_a_sagemaker_execution_role_with_iam_client_error(
-    sts_regional_endpoint, boto_session
+sts_regional_endpoint, boto_session
 ):
-    sess = Session(boto_session)
-    arn = "arn:aws:sts::369233609183:assumed-role/AmazonSageMaker-ExecutionRole-20171129T072388/SageMaker"
-    sess.boto_session.client("sts", endpoint_url=STS_ENDPOINT).get_caller_identity.return_value = {
-        "Arn": arn
-    }
+sess = Session(boto_session)
+arn = "arn:aws:sts::369233609183:assumed-role/AmazonSageMaker-ExecutionRole-20171129T072388/SageMaker"
+sess.boto_session.client("sts", endpoint_url=STS_ENDPOINT).get_caller_identity.return_value = {
+    "Arn": arn
+}
 
-    sess.boto_session.client("iam").get_role.side_effect = ClientError({}, {})
+sess.boto_session.client("iam").get_role.side_effect = ClientError({}, {})
 
-    actual = sess.get_caller_identity_arn()
-    assert (
-        actual
-        == "arn:aws:iam::369233609183:role/service-role/AmazonSageMaker-ExecutionRole-20171129T072388"
-    )
+actual = sess.get_caller_identity_arn()
+assert (
+    actual
+    == "arn:aws:iam::369233609183:role/service-role/AmazonSageMaker-ExecutionRole-20171129T072388"
+)
 
 
 @patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, False))
 @patch("sagemaker.session.sts_regional_endpoint", return_value=STS_ENDPOINT)
 def test_get_caller_identity_arn_from_role_with_path(sts_regional_endpoint, boto_session):
-    sess = Session(boto_session)
-    arn_prefix = "arn:aws:iam::369233609183:role"
-    role_name = "name"
-    sess.boto_session.client("sts", endpoint_url=STS_ENDPOINT).get_caller_identity.return_value = {
-        "Arn": "/".join([arn_prefix, role_name])
-    }
+sess = Session(boto_session)
+arn_prefix = "arn:aws:iam::369233609183:role"
+role_name = "name"
+sess.boto_session.client("sts", endpoint_url=STS_ENDPOINT).get_caller_identity.return_value = {
+    "Arn": "/".join([arn_prefix, role_name])
+}
 
-    role_path = "path"
-    role_with_path = "/".join([arn_prefix, role_path, role_name])
-    sess.boto_session.client("iam").get_role.return_value = {"Role": {"Arn": role_with_path}}
+role_path = "path"
+role_with_path = "/".join([arn_prefix, role_path, role_name])
+sess.boto_session.client("iam").get_role.return_value = {"Role": {"Arn": role_with_path}}
 
-    actual = sess.get_caller_identity_arn()
-    assert actual == role_with_path
+actual = sess.get_caller_identity_arn()
+assert actual == role_with_path
 
 
 def test_delete_endpoint(boto_session):
-    sess = Session(boto_session)
-    sess.delete_endpoint("my_endpoint")
+sess = Session(boto_session)
+sess.delete_endpoint("my_endpoint")
 
-    boto_session.client().delete_endpoint.assert_called_with(EndpointName="my_endpoint")
+boto_session.client().delete_endpoint.assert_called_with(EndpointName="my_endpoint")
 
 
 def test_delete_endpoint_config(boto_session):
-    sess = Session(boto_session)
-    sess.delete_endpoint_config("my_endpoint_config")
+sess = Session(boto_session)
+sess.delete_endpoint_config("my_endpoint_config")
 
-    boto_session.client().delete_endpoint_config.assert_called_with(
-        EndpointConfigName="my_endpoint_config"
-    )
+boto_session.client().delete_endpoint_config.assert_called_with(
+    EndpointConfigName="my_endpoint_config"
+)
 
 
 def test_delete_model(boto_session):
-    sess = Session(boto_session)
+sess = Session(boto_session)
 
-    model_name = "my_model"
-    sess.delete_model(model_name)
+model_name = "my_model"
+sess.delete_model(model_name)
 
-    boto_session.client().delete_model.assert_called_with(ModelName=model_name)
+boto_session.client().delete_model.assert_called_with(ModelName=model_name)
 
 
 def test_user_agent_injected(boto_session):
-    assert (
-        "AWS-SageMaker-Python-SDK" not in boto_session.client("sagemaker")._client_config.user_agent
-    )
+assert (
+    "AWS-SageMaker-Python-SDK" not in boto_session.client("sagemaker")._client_config.user_agent
+)
 
-    sess = Session(boto_session)
+sess = Session(boto_session)
 
-    assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_client._client_config.user_agent
-    assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_runtime_client._client_config.user_agent
-    assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_metrics_client._client_config.user_agent
-    assert "AWS-SageMaker-Notebook-Instance" not in sess.sagemaker_client._client_config.user_agent
-    assert (
-        "AWS-SageMaker-Notebook-Instance"
-        not in sess.sagemaker_runtime_client._client_config.user_agent
-    )
-    assert (
-        "AWS-SageMaker-Notebook-Instance"
-        not in sess.sagemaker_metrics_client._client_config.user_agent
-    )
+assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_client._client_config.user_agent
+assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_runtime_client._client_config.user_agent
+assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_metrics_client._client_config.user_agent
+assert "AWS-SageMaker-Notebook-Instance" not in sess.sagemaker_client._client_config.user_agent
+assert (
+    "AWS-SageMaker-Notebook-Instance"
+    not in sess.sagemaker_runtime_client._client_config.user_agent
+)
+assert (
+    "AWS-SageMaker-Notebook-Instance"
+    not in sess.sagemaker_metrics_client._client_config.user_agent
+)
 
 
 def test_user_agent_injected_with_nbi(boto_session):
-    assert (
-        "AWS-SageMaker-Python-SDK" not in boto_session.client("sagemaker")._client_config.user_agent
-    )
+assert (
+    "AWS-SageMaker-Python-SDK" not in boto_session.client("sagemaker")._client_config.user_agent
+)
 
-    with patch("six.moves.builtins.open", mock_open(read_data="120.0-0")) as mo:
-        sess = Session(boto_session)
+with patch("six.moves.builtins.open", mock_open(read_data="120.0-0")) as mo:
+    sess = Session(boto_session)
 
-        mo.assert_called_with("/etc/opt/ml/sagemaker-notebook-instance-version.txt")
+    mo.assert_called_with("/etc/opt/ml/sagemaker-notebook-instance-version.txt")
 
-    assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_client._client_config.user_agent
-    assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_runtime_client._client_config.user_agent
-    assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_metrics_client._client_config.user_agent
-    assert "AWS-SageMaker-Notebook-Instance" in sess.sagemaker_client._client_config.user_agent
-    assert (
-        "AWS-SageMaker-Notebook-Instance" in sess.sagemaker_runtime_client._client_config.user_agent
-    )
-    assert (
-        "AWS-SageMaker-Notebook-Instance" in sess.sagemaker_metrics_client._client_config.user_agent
-    )
+assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_client._client_config.user_agent
+assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_runtime_client._client_config.user_agent
+assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_metrics_client._client_config.user_agent
+assert "AWS-SageMaker-Notebook-Instance" in sess.sagemaker_client._client_config.user_agent
+assert (
+    "AWS-SageMaker-Notebook-Instance" in sess.sagemaker_runtime_client._client_config.user_agent
+)
+assert (
+    "AWS-SageMaker-Notebook-Instance" in sess.sagemaker_metrics_client._client_config.user_agent
+)
 
 
 def test_user_agent_injected_with_nbi_ioerror(boto_session):
-    assert (
-        "AWS-SageMaker-Python-SDK" not in boto_session.client("sagemaker")._client_config.user_agent
-    )
+assert (
+    "AWS-SageMaker-Python-SDK" not in boto_session.client("sagemaker")._client_config.user_agent
+)
 
-    with patch("six.moves.builtins.open", MagicMock(side_effect=IOError("File not found"))) as mo:
-        sess = Session(boto_session)
+with patch("six.moves.builtins.open", MagicMock(side_effect=IOError("File not found"))) as mo:
+    sess = Session(boto_session)
 
-        mo.assert_called_with("/etc/opt/ml/sagemaker-notebook-instance-version.txt")
+    mo.assert_called_with("/etc/opt/ml/sagemaker-notebook-instance-version.txt")
 
-    assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_client._client_config.user_agent
-    assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_runtime_client._client_config.user_agent
-    assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_metrics_client._client_config.user_agent
-    assert "AWS-SageMaker-Notebook-Instance" not in sess.sagemaker_client._client_config.user_agent
-    assert (
-        "AWS-SageMaker-Notebook-Instance"
-        not in sess.sagemaker_runtime_client._client_config.user_agent
-    )
-    assert (
-        "AWS-SageMaker-Notebook-Instance"
-        not in sess.sagemaker_metrics_client._client_config.user_agent
-    )
+assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_client._client_config.user_agent
+assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_runtime_client._client_config.user_agent
+assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_metrics_client._client_config.user_agent
+assert "AWS-SageMaker-Notebook-Instance" not in sess.sagemaker_client._client_config.user_agent
+assert (
+    "AWS-SageMaker-Notebook-Instance"
+    not in sess.sagemaker_runtime_client._client_config.user_agent
+)
+assert (
+    "AWS-SageMaker-Notebook-Instance"
+    not in sess.sagemaker_metrics_client._client_config.user_agent
+)
 
 
 def test_training_input_all_defaults():
-    prefix = "pre"
-    actual = TrainingInput(s3_data=prefix)
-    expected = {
-        "DataSource": {
-            "S3DataSource": {
-                "S3DataDistributionType": "FullyReplicated",
-                "S3DataType": "S3Prefix",
-                "S3Uri": prefix,
-            }
+prefix = "pre"
+actual = TrainingInput(s3_data=prefix)
+expected = {
+    "DataSource": {
+        "S3DataSource": {
+            "S3DataDistributionType": "FullyReplicated",
+            "S3DataType": "S3Prefix",
+            "S3Uri": prefix,
         }
     }
-    assert actual.config == expected
+}
+assert actual.config == expected
 
 
 def test_training_input_all_arguments():
-    prefix = "pre"
-    distribution = "FullyReplicated"
-    compression = "Gzip"
-    content_type = "text/csv"
-    record_wrapping = "RecordIO"
-    s3_data_type = "Manifestfile"
-    input_mode = "Pipe"
-    result = TrainingInput(
-        s3_data=prefix,
-        distribution=distribution,
-        compression=compression,
-        input_mode=input_mode,
-        content_type=content_type,
-        record_wrapping=record_wrapping,
-        s3_data_type=s3_data_type,
-    )
-    expected = {
-        "DataSource": {
-            "S3DataSource": {
-                "S3DataDistributionType": distribution,
-                "S3DataType": s3_data_type,
-                "S3Uri": prefix,
-            }
-        },
-        "CompressionType": compression,
-        "ContentType": content_type,
-        "RecordWrapperType": record_wrapping,
-        "InputMode": input_mode,
-    }
+prefix = "pre"
+distribution = "FullyReplicated"
+compression = "Gzip"
+content_type = "text/csv"
+record_wrapping = "RecordIO"
+s3_data_type = "Manifestfile"
+input_mode = "Pipe"
+result = TrainingInput(
+    s3_data=prefix,
+    distribution=distribution,
+    compression=compression,
+    input_mode=input_mode,
+    content_type=content_type,
+    record_wrapping=record_wrapping,
+    s3_data_type=s3_data_type,
+)
+expected = {
+    "DataSource": {
+        "S3DataSource": {
+            "S3DataDistributionType": distribution,
+            "S3DataType": s3_data_type,
+            "S3Uri": prefix,
+        }
+    },
+    "CompressionType": compression,
+    "ContentType": content_type,
+    "RecordWrapperType": record_wrapping,
+    "InputMode": input_mode,
+}
 
-    assert result.config == expected
+assert result.config == expected
 
 
 IMAGE = "myimage"
@@ -944,59 +944,59 @@ TAGS = [{"Key": "some-tag", "Value": "value-for-tag"}]
 VPC_CONFIG = {"Subnets": ["foo"], "SecurityGroupIds": ["bar"]}
 METRIC_DEFINITONS = [{"Name": "validation-rmse", "Regex": "validation-rmse=(\\d+)"}]
 EXPERIMENT_CONFIG = {
-    "ExperimentName": "dummyExp",
-    "TrialName": "dummyT",
-    "TrialComponentDisplayName": "dummyTC",
-    "RunName": "dummyRN",
+"ExperimentName": "dummyExp",
+"TrialName": "dummyT",
+"TrialComponentDisplayName": "dummyTC",
+"RunName": "dummyRN",
 }
 MODEL_CLIENT_CONFIG = {"InvocationsMaxRetries": 2, "InvocationsTimeoutInSeconds": 60}
 
 DEFAULT_EXPECTED_TRAIN_JOB_ARGS = {
-    "OutputDataConfig": {"S3OutputPath": S3_OUTPUT},
-    "RoleArn": EXPANDED_ROLE,
-    "ResourceConfig": {
-        "InstanceCount": INSTANCE_COUNT,
-        "InstanceType": INSTANCE_TYPE,
-        "VolumeSizeInGB": MAX_SIZE,
-    },
-    "InputDataConfig": [
-        {
-            "DataSource": {
-                "S3DataSource": {
-                    "S3DataDistributionType": "FullyReplicated",
-                    "S3DataType": "S3Prefix",
-                    "S3Uri": S3_INPUT_URI,
-                }
-            },
-            "ChannelName": "training",
-        }
-    ],
-    "AlgorithmSpecification": {"TrainingInputMode": "File", "TrainingImage": IMAGE},
-    "TrainingJobName": JOB_NAME,
-    "StoppingCondition": {"MaxRuntimeInSeconds": MAX_TIME},
-    "VpcConfig": VPC_CONFIG,
-    "ExperimentConfig": EXPERIMENT_CONFIG,
+"OutputDataConfig": {"S3OutputPath": S3_OUTPUT},
+"RoleArn": EXPANDED_ROLE,
+"ResourceConfig": {
+    "InstanceCount": INSTANCE_COUNT,
+    "InstanceType": INSTANCE_TYPE,
+    "VolumeSizeInGB": MAX_SIZE,
+},
+"InputDataConfig": [
+    {
+        "DataSource": {
+            "S3DataSource": {
+                "S3DataDistributionType": "FullyReplicated",
+                "S3DataType": "S3Prefix",
+                "S3Uri": S3_INPUT_URI,
+            }
+        },
+        "ChannelName": "training",
+    }
+],
+"AlgorithmSpecification": {"TrainingInputMode": "File", "TrainingImage": IMAGE},
+"TrainingJobName": JOB_NAME,
+"StoppingCondition": {"MaxRuntimeInSeconds": MAX_TIME},
+"VpcConfig": VPC_CONFIG,
+"ExperimentConfig": EXPERIMENT_CONFIG,
 }
 
 COMPLETED_DESCRIBE_JOB_RESULT = dict(DEFAULT_EXPECTED_TRAIN_JOB_ARGS)
 COMPLETED_DESCRIBE_JOB_RESULT.update(
-    {"TrainingJobArn": "arn:aws:sagemaker:us-west-2:336:training-job/" + JOB_NAME}
+{"TrainingJobArn": "arn:aws:sagemaker:us-west-2:336:training-job/" + JOB_NAME}
 )
 COMPLETED_DESCRIBE_JOB_RESULT.update({"TrainingJobStatus": "Completed"})
 COMPLETED_DESCRIBE_JOB_RESULT.update(
-    {"ModelArtifacts": {"S3ModelArtifacts": S3_OUTPUT + "/model/model.tar.gz"}}
+{"ModelArtifacts": {"S3ModelArtifacts": S3_OUTPUT + "/model/model.tar.gz"}}
 )
 # TrainingStartTime and TrainingEndTime are for billable seconds calculation
 COMPLETED_DESCRIBE_JOB_RESULT.update(
-    {"TrainingStartTime": datetime.datetime(2018, 2, 17, 7, 15, 0, 103000)}
+{"TrainingStartTime": datetime.datetime(2018, 2, 17, 7, 15, 0, 103000)}
 )
 COMPLETED_DESCRIBE_JOB_RESULT.update(
-    {"TrainingEndTime": datetime.datetime(2018, 2, 17, 7, 19, 34, 953000)}
+{"TrainingEndTime": datetime.datetime(2018, 2, 17, 7, 19, 34, 953000)}
 )
 
 COMPLETED_DESCRIBE_JOB_RESULT_UNCOMPRESSED_S3_MODEL = copy.deepcopy(COMPLETED_DESCRIBE_JOB_RESULT)
 COMPLETED_DESCRIBE_JOB_RESULT_UNCOMPRESSED_S3_MODEL["ModelArtifacts"]["S3ModelArtifacts"] = (
-    S3_OUTPUT + "/model/prefix"
+S3_OUTPUT + "/model/prefix"
 )
 COMPLETED_DESCRIBE_JOB_RESULT_UNCOMPRESSED_S3_MODEL["OutputDataConfig"]["CompressionType"] = "NONE"
 
@@ -1008,26 +1008,26 @@ IN_PROGRESS_DESCRIBE_JOB_RESULT = dict(DEFAULT_EXPECTED_TRAIN_JOB_ARGS)
 IN_PROGRESS_DESCRIBE_JOB_RESULT.update({"TrainingJobStatus": "InProgress"})
 
 COMPLETED_DESCRIBE_TRANSFORM_JOB_RESULT = {
-    "TransformJobStatus": "Completed",
-    "ModelName": "some-model",
-    "TransformJobName": JOB_NAME,
-    "TransformResources": {
-        "InstanceCount": INSTANCE_COUNT,
-        "InstanceType": INSTANCE_TYPE,
-    },
-    "TransformEndTime": datetime.datetime(2018, 2, 17, 7, 19, 34, 953000),
-    "TransformStartTime": datetime.datetime(2018, 2, 17, 7, 15, 0, 103000),
-    "TransformOutput": {
-        "AssembleWith": "None",
-        "KmsKeyId": "",
-        "S3OutputPath": S3_OUTPUT,
-    },
-    "TransformInput": {
-        "CompressionType": "None",
-        "ContentType": "text/csv",
-        "DataSource": {"S3DataType": "S3Prefix", "S3Uri": S3_INPUT_URI},
-        "SplitType": "Line",
-    },
+"TransformJobStatus": "Completed",
+"ModelName": "some-model",
+"TransformJobName": JOB_NAME,
+"TransformResources": {
+    "InstanceCount": INSTANCE_COUNT,
+    "InstanceType": INSTANCE_TYPE,
+},
+"TransformEndTime": datetime.datetime(2018, 2, 17, 7, 19, 34, 953000),
+"TransformStartTime": datetime.datetime(2018, 2, 17, 7, 15, 0, 103000),
+"TransformOutput": {
+    "AssembleWith": "None",
+    "KmsKeyId": "",
+    "S3OutputPath": S3_OUTPUT,
+},
+"TransformInput": {
+    "CompressionType": "None",
+    "ContentType": "text/csv",
+    "DataSource": {"S3DataType": "S3Prefix", "S3Uri": S3_INPUT_URI},
+    "SplitType": "Line",
+},
 }
 
 STOPPED_DESCRIBE_TRANSFORM_JOB_RESULT = dict(COMPLETED_DESCRIBE_TRANSFORM_JOB_RESULT)
@@ -1037,81 +1037,27 @@ IN_PROGRESS_DESCRIBE_TRANSFORM_JOB_RESULT = dict(COMPLETED_DESCRIBE_TRANSFORM_JO
 IN_PROGRESS_DESCRIBE_TRANSFORM_JOB_RESULT.update({"TransformJobStatus": "InProgress"})
 
 SERVERLESS_INFERENCE_CONFIG = {
-    "MemorySizeInMB": 2048,
-    "MaxConcurrency": 2,
+"MemorySizeInMB": 2048,
+"MaxConcurrency": 2,
 }
 
 
 @pytest.fixture()
 def sagemaker_session():
-    boto_mock = MagicMock(name="boto_session")
-    boto_mock.client("sts", endpoint_url=STS_ENDPOINT).get_caller_identity.return_value = {
-        "Account": "123"
-    }
-    ims = sagemaker.Session(boto_session=boto_mock, sagemaker_client=MagicMock())
-    ims.expand_role = Mock(return_value=EXPANDED_ROLE)
+boto_mock = MagicMock(name="boto_session")
+boto_mock.client("sts", endpoint_url=STS_ENDPOINT).get_caller_identity.return_value = {
+    "Account": "123"
+}
+ims = sagemaker.Session(boto_session=boto_mock, sagemaker_client=MagicMock())
+ims.expand_role = Mock(return_value=EXPANDED_ROLE)
 
-    return ims
+return ims
 
 
 def test_train_pack_to_request(sagemaker_session):
-    in_config = [
-        {
-            "ChannelName": "training",
-            "DataSource": {
-                "S3DataSource": {
-                    "S3DataDistributionType": "FullyReplicated",
-                    "S3DataType": "S3Prefix",
-                    "S3Uri": S3_INPUT_URI,
-                }
-            },
-        }
-    ]
-
-    out_config = {"S3OutputPath": S3_OUTPUT}
-
-    resource_config = {
-        "InstanceCount": INSTANCE_COUNT,
-        "InstanceType": INSTANCE_TYPE,
-        "VolumeSizeInGB": MAX_SIZE,
-    }
-
-    stop_cond = {"MaxRuntimeInSeconds": MAX_TIME}
-
-    sagemaker_session.train(
-        image_uri=IMAGE,
-        input_mode="File",
-        input_config=in_config,
-        role=EXPANDED_ROLE,
-        job_name=JOB_NAME,
-        output_config=out_config,
-        resource_config=resource_config,
-        hyperparameters=None,
-        stop_condition=stop_cond,
-        tags=None,
-        vpc_config=VPC_CONFIG,
-        metric_definitions=None,
-        experiment_config=EXPERIMENT_CONFIG,
-        enable_sagemaker_metrics=None,
-    )
-
-    assert sagemaker_session.sagemaker_client.method_calls[0] == (
-        "create_training_job",
-        (),
-        DEFAULT_EXPECTED_TRAIN_JOB_ARGS,
-    )
-
-
-SAMPLE_STOPPING_CONDITION = {"MaxRuntimeInSeconds": MAX_TIME}
-
-RESOURCE_CONFIG = {
-    "InstanceCount": INSTANCE_COUNT,
-    "InstanceType": INSTANCE_TYPE,
-    "VolumeSizeInGB": MAX_SIZE,
-}
-
-SAMPLE_INPUT = [
+in_config = [
     {
+        "ChannelName": "training",
         "DataSource": {
             "S3DataSource": {
                 "S3DataDistributionType": "FullyReplicated",
@@ -1119,8 +1065,62 @@ SAMPLE_INPUT = [
                 "S3Uri": S3_INPUT_URI,
             }
         },
-        "ChannelName": "training",
     }
+]
+
+out_config = {"S3OutputPath": S3_OUTPUT}
+
+resource_config = {
+    "InstanceCount": INSTANCE_COUNT,
+    "InstanceType": INSTANCE_TYPE,
+    "VolumeSizeInGB": MAX_SIZE,
+}
+
+stop_cond = {"MaxRuntimeInSeconds": MAX_TIME}
+
+sagemaker_session.train(
+    image_uri=IMAGE,
+    input_mode="File",
+    input_config=in_config,
+    role=EXPANDED_ROLE,
+    job_name=JOB_NAME,
+    output_config=out_config,
+    resource_config=resource_config,
+    hyperparameters=None,
+    stop_condition=stop_cond,
+    tags=None,
+    vpc_config=VPC_CONFIG,
+    metric_definitions=None,
+    experiment_config=EXPERIMENT_CONFIG,
+    enable_sagemaker_metrics=None,
+)
+
+assert sagemaker_session.sagemaker_client.method_calls[0] == (
+    "create_training_job",
+    (),
+    DEFAULT_EXPECTED_TRAIN_JOB_ARGS,
+)
+
+
+SAMPLE_STOPPING_CONDITION = {"MaxRuntimeInSeconds": MAX_TIME}
+
+RESOURCE_CONFIG = {
+"InstanceCount": INSTANCE_COUNT,
+"InstanceType": INSTANCE_TYPE,
+"VolumeSizeInGB": MAX_SIZE,
+}
+
+SAMPLE_INPUT = [
+{
+    "DataSource": {
+        "S3DataSource": {
+            "S3DataDistributionType": "FullyReplicated",
+            "S3DataType": "S3Prefix",
+            "S3Uri": S3_INPUT_URI,
+        }
+    },
+    "ChannelName": "training",
+}
 ]
 
 SAMPLE_OUTPUT = {"S3OutputPath": S3_OUTPUT}
@@ -1138,19 +1138,49 @@ SAMPLE_PARAM_RANGES = [{"Name": "mini_batch_size", "MinValue": "10", "MaxValue":
 SAMPLE_PARAM_RANGES_2 = [{"Name": "kernel", "Values": ["rbf", "sigmoid"]}]
 
 SAMPLE_TUNING_JOB_REQUEST = {
-    "HyperParameterTuningJobName": "dummy-tuning-1",
-    "HyperParameterTuningJobConfig": {
-        "Strategy": "Bayesian",
-        "HyperParameterTuningJobObjective": SAMPLE_OBJECTIVE,
-        "ResourceLimits": {
-            "MaxNumberOfTrainingJobs": 100,
-            "MaxParallelTrainingJobs": 5,
-        },
-        "ParameterRanges": SAMPLE_PARAM_RANGES,
-        "TrainingJobEarlyStoppingType": "Off",
-        "RandomSeed": 0,
+"HyperParameterTuningJobName": "dummy-tuning-1",
+"HyperParameterTuningJobConfig": {
+    "Strategy": "Bayesian",
+    "HyperParameterTuningJobObjective": SAMPLE_OBJECTIVE,
+    "ResourceLimits": {
+        "MaxNumberOfTrainingJobs": 100,
+        "MaxParallelTrainingJobs": 5,
     },
-    "TrainingJobDefinition": {
+    "ParameterRanges": SAMPLE_PARAM_RANGES,
+    "TrainingJobEarlyStoppingType": "Off",
+    "RandomSeed": 0,
+},
+"TrainingJobDefinition": {
+    "StaticHyperParameters": STATIC_HPs,
+    "AlgorithmSpecification": {
+        "TrainingImage": "dummy-image-1",
+        "TrainingInputMode": "File",
+        "MetricDefinitions": SAMPLE_METRIC_DEF,
+    },
+    "RoleArn": EXPANDED_ROLE,
+    "InputDataConfig": SAMPLE_INPUT,
+    "OutputDataConfig": SAMPLE_OUTPUT,
+    "ResourceConfig": RESOURCE_CONFIG,
+    "StoppingCondition": SAMPLE_STOPPING_CONDITION,
+    "Environment": ENV_INPUT,
+},
+}
+
+SAMPLE_MULTI_ALGO_TUNING_JOB_REQUEST = {
+"HyperParameterTuningJobName": "dummy-tuning-1",
+"HyperParameterTuningJobConfig": {
+    "Strategy": "Bayesian",
+    "ResourceLimits": {
+        "MaxNumberOfTrainingJobs": 100,
+        "MaxParallelTrainingJobs": 5,
+    },
+    "TrainingJobEarlyStoppingType": "Off",
+},
+"TrainingJobDefinitions": [
+    {
+        "DefinitionName": "estimator_1",
+        "TuningObjective": SAMPLE_OBJECTIVE,
+        "HyperParameterRanges": SAMPLE_PARAM_RANGES,
         "StaticHyperParameters": STATIC_HPs,
         "AlgorithmSpecification": {
             "TrainingImage": "dummy-image-1",
@@ -1164,181 +1194,90 @@ SAMPLE_TUNING_JOB_REQUEST = {
         "StoppingCondition": SAMPLE_STOPPING_CONDITION,
         "Environment": ENV_INPUT,
     },
-}
-
-SAMPLE_MULTI_ALGO_TUNING_JOB_REQUEST = {
-    "HyperParameterTuningJobName": "dummy-tuning-1",
-    "HyperParameterTuningJobConfig": {
-        "Strategy": "Bayesian",
-        "ResourceLimits": {
-            "MaxNumberOfTrainingJobs": 100,
-            "MaxParallelTrainingJobs": 5,
+    {
+        "DefinitionName": "estimator_2",
+        "TuningObjective": SAMPLE_OBJECTIVE_2,
+        "HyperParameterRanges": SAMPLE_PARAM_RANGES_2,
+        "StaticHyperParameters": STATIC_HPs_2,
+        "AlgorithmSpecification": {
+            "TrainingImage": "dummy-image-2",
+            "TrainingInputMode": "File",
+            "MetricDefinitions": SAMPLE_METRIC_DEF_2,
         },
-        "TrainingJobEarlyStoppingType": "Off",
+        "RoleArn": EXPANDED_ROLE,
+        "InputDataConfig": SAMPLE_INPUT,
+        "OutputDataConfig": SAMPLE_OUTPUT,
+        "ResourceConfig": RESOURCE_CONFIG,
+        "StoppingCondition": SAMPLE_STOPPING_CONDITION,
+        "Environment": ENV_INPUT,
     },
-    "TrainingJobDefinitions": [
-        {
-            "DefinitionName": "estimator_1",
-            "TuningObjective": SAMPLE_OBJECTIVE,
-            "HyperParameterRanges": SAMPLE_PARAM_RANGES,
-            "StaticHyperParameters": STATIC_HPs,
-            "AlgorithmSpecification": {
-                "TrainingImage": "dummy-image-1",
-                "TrainingInputMode": "File",
-                "MetricDefinitions": SAMPLE_METRIC_DEF,
-            },
-            "RoleArn": EXPANDED_ROLE,
-            "InputDataConfig": SAMPLE_INPUT,
-            "OutputDataConfig": SAMPLE_OUTPUT,
-            "ResourceConfig": RESOURCE_CONFIG,
-            "StoppingCondition": SAMPLE_STOPPING_CONDITION,
-            "Environment": ENV_INPUT,
-        },
-        {
-            "DefinitionName": "estimator_2",
-            "TuningObjective": SAMPLE_OBJECTIVE_2,
-            "HyperParameterRanges": SAMPLE_PARAM_RANGES_2,
-            "StaticHyperParameters": STATIC_HPs_2,
-            "AlgorithmSpecification": {
-                "TrainingImage": "dummy-image-2",
-                "TrainingInputMode": "File",
-                "MetricDefinitions": SAMPLE_METRIC_DEF_2,
-            },
-            "RoleArn": EXPANDED_ROLE,
-            "InputDataConfig": SAMPLE_INPUT,
-            "OutputDataConfig": SAMPLE_OUTPUT,
-            "ResourceConfig": RESOURCE_CONFIG,
-            "StoppingCondition": SAMPLE_STOPPING_CONDITION,
-            "Environment": ENV_INPUT,
-        },
-    ],
+],
 }
 
 SAMPLE_HYPERBAND_STRATEGY_CONFIG = {
-    "HyperbandStrategyConfig": {
-        "MinResource": 1,
-        "MaxResource": 10,
-    }
+"HyperbandStrategyConfig": {
+    "MinResource": 1,
+    "MaxResource": 10,
+}
 }
 
 
 @pytest.mark.parametrize(
-    "warm_start_type, parents",
-    [
-        ("IdenticalDataAndAlgorithm", {"p1", "p2", "p3"}),
-        ("TransferLearning", {"p1", "p2", "p3"}),
-    ],
+"warm_start_type, parents",
+[
+    ("IdenticalDataAndAlgorithm", {"p1", "p2", "p3"}),
+    ("TransferLearning", {"p1", "p2", "p3"}),
+],
 )
 def test_tune_warm_start(sagemaker_session, warm_start_type, parents):
-    def assert_create_tuning_job_request(**kwrags):
-        assert (
-            kwrags["HyperParameterTuningJobConfig"]
-            == SAMPLE_TUNING_JOB_REQUEST["HyperParameterTuningJobConfig"]
-        )
-        assert kwrags["HyperParameterTuningJobName"] == "dummy-tuning-1"
-        assert kwrags["TrainingJobDefinition"] == SAMPLE_TUNING_JOB_REQUEST["TrainingJobDefinition"]
-        assert kwrags["WarmStartConfig"] == {
-            "WarmStartType": warm_start_type,
-            "ParentHyperParameterTuningJobs": [
-                {"HyperParameterTuningJobName": parent} for parent in parents
-            ],
-        }
+def assert_create_tuning_job_request(**kwrags):
+    assert (
+        kwrags["HyperParameterTuningJobConfig"]
+        == SAMPLE_TUNING_JOB_REQUEST["HyperParameterTuningJobConfig"]
+    )
+    assert kwrags["HyperParameterTuningJobName"] == "dummy-tuning-1"
+    assert kwrags["TrainingJobDefinition"] == SAMPLE_TUNING_JOB_REQUEST["TrainingJobDefinition"]
+    assert kwrags["WarmStartConfig"] == {
+        "WarmStartType": warm_start_type,
+        "ParentHyperParameterTuningJobs": [
+            {"HyperParameterTuningJobName": parent} for parent in parents
+        ],
+    }
 
-    sagemaker_session.sagemaker_client.create_hyper_parameter_tuning_job.side_effect = (
-        assert_create_tuning_job_request
-    )
-    sagemaker_session.tune(
-        job_name="dummy-tuning-1",
-        strategy="Bayesian",
-        random_seed=0,
-        objective_type="Maximize",
-        objective_metric_name="val-score",
-        max_jobs=100,
-        max_parallel_jobs=5,
-        parameter_ranges=SAMPLE_PARAM_RANGES,
-        static_hyperparameters=STATIC_HPs,
-        image_uri="dummy-image-1",
-        input_mode="File",
-        metric_definitions=SAMPLE_METRIC_DEF,
-        role=EXPANDED_ROLE,
-        input_config=SAMPLE_INPUT,
-        output_config=SAMPLE_OUTPUT,
-        resource_config=RESOURCE_CONFIG,
-        stop_condition=SAMPLE_STOPPING_CONDITION,
-        tags=None,
-        warm_start_config=WarmStartConfig(
-            warm_start_type=WarmStartTypes(warm_start_type), parents=parents
-        ).to_input_req(),
-        environment=ENV_INPUT,
-    )
+sagemaker_session.sagemaker_client.create_hyper_parameter_tuning_job.side_effect = (
+    assert_create_tuning_job_request
+)
+sagemaker_session.tune(
+    job_name="dummy-tuning-1",
+    strategy="Bayesian",
+    random_seed=0,
+    objective_type="Maximize",
+    objective_metric_name="val-score",
+    max_jobs=100,
+    max_parallel_jobs=5,
+    parameter_ranges=SAMPLE_PARAM_RANGES,
+    static_hyperparameters=STATIC_HPs,
+    image_uri="dummy-image-1",
+    input_mode="File",
+    metric_definitions=SAMPLE_METRIC_DEF,
+    role=EXPANDED_ROLE,
+    input_config=SAMPLE_INPUT,
+    output_config=SAMPLE_OUTPUT,
+    resource_config=RESOURCE_CONFIG,
+    stop_condition=SAMPLE_STOPPING_CONDITION,
+    tags=None,
+    warm_start_config=WarmStartConfig(
+        warm_start_type=WarmStartTypes(warm_start_type), parents=parents
+    ).to_input_req(),
+    environment=ENV_INPUT,
+)
 
 
 def test_create_tuning_job_without_training_config_or_list(sagemaker_session):
-    with pytest.raises(
-        ValueError,
-        match="Either training_config or training_config_list should be provided.",
-    ):
-        sagemaker_session.create_tuning_job(
-            job_name="dummy-tuning-1",
-            tuning_config={
-                "strategy": "Bayesian",
-                "objective_type": "Maximize",
-                "objective_metric_name": "val-score",
-                "max_jobs": 100,
-                "max_parallel_jobs": 5,
-                "parameter_ranges": SAMPLE_PARAM_RANGES,
-            },
-        )
-
-
-def test_create_tuning_job_with_both_training_config_and_list(sagemaker_session):
-    with pytest.raises(
-        ValueError,
-        match="Only one of training_config and training_config_list should be provided.",
-    ):
-        sagemaker_session.create_tuning_job(
-            job_name="dummy-tuning-1",
-            tuning_config={
-                "strategy": "Bayesian",
-                "objective_type": "Maximize",
-                "objective_metric_name": "val-score",
-                "max_jobs": 100,
-                "max_parallel_jobs": 5,
-                "parameter_ranges": SAMPLE_PARAM_RANGES,
-            },
-            training_config={
-                "static_hyperparameters": STATIC_HPs,
-                "image_uri": "dummy-image-1",
-            },
-            training_config_list=[
-                {
-                    "static_hyperparameters": STATIC_HPs,
-                    "image_uri": "dummy-image-1",
-                    "estimator_name": "estimator_1",
-                },
-                {
-                    "static_hyperparameters": STATIC_HPs_2,
-                    "image_uri": "dummy-image-2",
-                    "estimator_name": "estimator_2",
-                },
-            ],
-        )
-
-
-def test_create_tuning_job(sagemaker_session):
-    def assert_create_tuning_job_request(**kwrags):
-        assert (
-            kwrags["HyperParameterTuningJobConfig"]
-            == SAMPLE_TUNING_JOB_REQUEST["HyperParameterTuningJobConfig"]
-        )
-        assert kwrags["HyperParameterTuningJobName"] == "dummy-tuning-1"
-        assert kwrags["TrainingJobDefinition"] == SAMPLE_TUNING_JOB_REQUEST["TrainingJobDefinition"]
-        assert "TrainingJobDefinitions" not in kwrags
-        assert kwrags.get("WarmStartConfig", None) is None
-
-    sagemaker_session.sagemaker_client.create_hyper_parameter_tuning_job.side_effect = (
-        assert_create_tuning_job_request
-    )
+with pytest.raises(
+    ValueError,
+    match="Either training_config or training_config_list should be provided.",
+):
     sagemaker_session.create_tuning_job(
         job_name="dummy-tuning-1",
         tuning_config={
@@ -1348,9 +1287,108 @@ def test_create_tuning_job(sagemaker_session):
             "max_jobs": 100,
             "max_parallel_jobs": 5,
             "parameter_ranges": SAMPLE_PARAM_RANGES,
-            "random_seed": 0,
+        },
+    )
+
+
+def test_create_tuning_job_with_both_training_config_and_list(sagemaker_session):
+with pytest.raises(
+    ValueError,
+    match="Only one of training_config and training_config_list should be provided.",
+):
+    sagemaker_session.create_tuning_job(
+        job_name="dummy-tuning-1",
+        tuning_config={
+            "strategy": "Bayesian",
+            "objective_type": "Maximize",
+            "objective_metric_name": "val-score",
+            "max_jobs": 100,
+            "max_parallel_jobs": 5,
+            "parameter_ranges": SAMPLE_PARAM_RANGES,
         },
         training_config={
+            "static_hyperparameters": STATIC_HPs,
+            "image_uri": "dummy-image-1",
+        },
+        training_config_list=[
+            {
+                "static_hyperparameters": STATIC_HPs,
+                "image_uri": "dummy-image-1",
+                "estimator_name": "estimator_1",
+            },
+            {
+                "static_hyperparameters": STATIC_HPs_2,
+                "image_uri": "dummy-image-2",
+                "estimator_name": "estimator_2",
+            },
+        ],
+    )
+
+
+def test_create_tuning_job(sagemaker_session):
+def assert_create_tuning_job_request(**kwrags):
+    assert (
+        kwrags["HyperParameterTuningJobConfig"]
+        == SAMPLE_TUNING_JOB_REQUEST["HyperParameterTuningJobConfig"]
+    )
+    assert kwrags["HyperParameterTuningJobName"] == "dummy-tuning-1"
+    assert kwrags["TrainingJobDefinition"] == SAMPLE_TUNING_JOB_REQUEST["TrainingJobDefinition"]
+    assert "TrainingJobDefinitions" not in kwrags
+    assert kwrags.get("WarmStartConfig", None) is None
+
+sagemaker_session.sagemaker_client.create_hyper_parameter_tuning_job.side_effect = (
+    assert_create_tuning_job_request
+)
+sagemaker_session.create_tuning_job(
+    job_name="dummy-tuning-1",
+    tuning_config={
+        "strategy": "Bayesian",
+        "objective_type": "Maximize",
+        "objective_metric_name": "val-score",
+        "max_jobs": 100,
+        "max_parallel_jobs": 5,
+        "parameter_ranges": SAMPLE_PARAM_RANGES,
+        "random_seed": 0,
+    },
+    training_config={
+        "static_hyperparameters": STATIC_HPs,
+        "image_uri": "dummy-image-1",
+        "input_mode": "File",
+        "metric_definitions": SAMPLE_METRIC_DEF,
+        "role": EXPANDED_ROLE,
+        "input_config": SAMPLE_INPUT,
+        "output_config": SAMPLE_OUTPUT,
+        "resource_config": RESOURCE_CONFIG,
+        "stop_condition": SAMPLE_STOPPING_CONDITION,
+        "environment": ENV_INPUT,
+    },
+    tags=None,
+    warm_start_config=None,
+)
+
+
+def test_create_tuning_job_multi_algo(sagemaker_session):
+def assert_create_tuning_job_request(**kwrags):
+    expected_tuning_config = SAMPLE_MULTI_ALGO_TUNING_JOB_REQUEST[
+        "HyperParameterTuningJobConfig"
+    ]
+    assert kwrags["HyperParameterTuningJobConfig"] == expected_tuning_config
+    assert kwrags["HyperParameterTuningJobName"] == "dummy-tuning-1"
+    assert "TrainingJobDefinition" not in kwrags
+    assert (
+        kwrags["TrainingJobDefinitions"]
+        == SAMPLE_MULTI_ALGO_TUNING_JOB_REQUEST["TrainingJobDefinitions"]
+    )
+    assert kwrags.get("WarmStartConfig", None) is None
+
+sagemaker_session.sagemaker_client.create_hyper_parameter_tuning_job.side_effect = (
+    assert_create_tuning_job_request
+)
+sagemaker_session.create_tuning_job(
+    job_name="dummy-tuning-1",
+    tuning_config={"strategy": "Bayesian", "max_jobs": 100, "max_parallel_jobs": 5},
+    training_config_list=[
+        {
             "static_hyperparameters": STATIC_HPs,
             "image_uri": "dummy-image-1",
             "input_mode": "File",
@@ -1360,546 +1398,508 @@ def test_create_tuning_job(sagemaker_session):
             "output_config": SAMPLE_OUTPUT,
             "resource_config": RESOURCE_CONFIG,
             "stop_condition": SAMPLE_STOPPING_CONDITION,
+            "estimator_name": "estimator_1",
+            "objective_type": "Maximize",
+            "objective_metric_name": "val-score",
+            "parameter_ranges": SAMPLE_PARAM_RANGES,
             "environment": ENV_INPUT,
         },
-        tags=None,
-        warm_start_config=None,
-    )
-
-
-def test_create_tuning_job_multi_algo(sagemaker_session):
-    def assert_create_tuning_job_request(**kwrags):
-        expected_tuning_config = SAMPLE_MULTI_ALGO_TUNING_JOB_REQUEST[
-            "HyperParameterTuningJobConfig"
-        ]
-        assert kwrags["HyperParameterTuningJobConfig"] == expected_tuning_config
-        assert kwrags["HyperParameterTuningJobName"] == "dummy-tuning-1"
-        assert "TrainingJobDefinition" not in kwrags
-        assert (
-            kwrags["TrainingJobDefinitions"]
-            == SAMPLE_MULTI_ALGO_TUNING_JOB_REQUEST["TrainingJobDefinitions"]
-        )
-        assert kwrags.get("WarmStartConfig", None) is None
-
-    sagemaker_session.sagemaker_client.create_hyper_parameter_tuning_job.side_effect = (
-        assert_create_tuning_job_request
-    )
-    sagemaker_session.create_tuning_job(
-        job_name="dummy-tuning-1",
-        tuning_config={"strategy": "Bayesian", "max_jobs": 100, "max_parallel_jobs": 5},
-        training_config_list=[
-            {
-                "static_hyperparameters": STATIC_HPs,
-                "image_uri": "dummy-image-1",
-                "input_mode": "File",
-                "metric_definitions": SAMPLE_METRIC_DEF,
-                "role": EXPANDED_ROLE,
-                "input_config": SAMPLE_INPUT,
-                "output_config": SAMPLE_OUTPUT,
-                "resource_config": RESOURCE_CONFIG,
-                "stop_condition": SAMPLE_STOPPING_CONDITION,
-                "estimator_name": "estimator_1",
-                "objective_type": "Maximize",
-                "objective_metric_name": "val-score",
-                "parameter_ranges": SAMPLE_PARAM_RANGES,
-                "environment": ENV_INPUT,
-            },
-            {
-                "static_hyperparameters": STATIC_HPs_2,
-                "image_uri": "dummy-image-2",
-                "input_mode": "File",
-                "metric_definitions": SAMPLE_METRIC_DEF_2,
-                "role": EXPANDED_ROLE,
-                "input_config": SAMPLE_INPUT,
-                "output_config": SAMPLE_OUTPUT,
-                "resource_config": RESOURCE_CONFIG,
-                "stop_condition": SAMPLE_STOPPING_CONDITION,
-                "estimator_name": "estimator_2",
-                "objective_type": "Maximize",
-                "objective_metric_name": "value-score",
-                "parameter_ranges": SAMPLE_PARAM_RANGES_2,
-                "environment": ENV_INPUT,
-            },
-        ],
-        tags=None,
-        warm_start_config=None,
-    )
+        {
+            "static_hyperparameters": STATIC_HPs_2,
+            "image_uri": "dummy-image-2",
+            "input_mode": "File",
+            "metric_definitions": SAMPLE_METRIC_DEF_2,
+            "role": EXPANDED_ROLE,
+            "input_config": SAMPLE_INPUT,
+            "output_config": SAMPLE_OUTPUT,
+            "resource_config": RESOURCE_CONFIG,
+            "stop_condition": SAMPLE_STOPPING_CONDITION,
+            "estimator_name": "estimator_2",
+            "objective_type": "Maximize",
+            "objective_metric_name": "value-score",
+            "parameter_ranges": SAMPLE_PARAM_RANGES_2,
+            "environment": ENV_INPUT,
+        },
+    ],
+    tags=None,
+    warm_start_config=None,
+)
 
 
 def test_tune(sagemaker_session):
-    def assert_create_tuning_job_request(**kwrags):
-        assert (
-            kwrags["HyperParameterTuningJobConfig"]
-            == SAMPLE_TUNING_JOB_REQUEST["HyperParameterTuningJobConfig"]
-        )
-        assert kwrags["HyperParameterTuningJobName"] == "dummy-tuning-1"
-        assert kwrags["TrainingJobDefinition"] == SAMPLE_TUNING_JOB_REQUEST["TrainingJobDefinition"]
-        assert kwrags.get("WarmStartConfig", None) is None
+def assert_create_tuning_job_request(**kwrags):
+    assert (
+        kwrags["HyperParameterTuningJobConfig"]
+        == SAMPLE_TUNING_JOB_REQUEST["HyperParameterTuningJobConfig"]
+    )
+    assert kwrags["HyperParameterTuningJobName"] == "dummy-tuning-1"
+    assert kwrags["TrainingJobDefinition"] == SAMPLE_TUNING_JOB_REQUEST["TrainingJobDefinition"]
+    assert kwrags.get("WarmStartConfig", None) is None
 
-    sagemaker_session.sagemaker_client.create_hyper_parameter_tuning_job.side_effect = (
-        assert_create_tuning_job_request
-    )
-    sagemaker_session.tune(
-        job_name="dummy-tuning-1",
-        strategy="Bayesian",
-        random_seed=0,
-        objective_type="Maximize",
-        objective_metric_name="val-score",
-        max_jobs=100,
-        max_parallel_jobs=5,
-        parameter_ranges=SAMPLE_PARAM_RANGES,
-        static_hyperparameters=STATIC_HPs,
-        image_uri="dummy-image-1",
-        input_mode="File",
-        metric_definitions=SAMPLE_METRIC_DEF,
-        role=EXPANDED_ROLE,
-        input_config=SAMPLE_INPUT,
-        output_config=SAMPLE_OUTPUT,
-        resource_config=RESOURCE_CONFIG,
-        stop_condition=SAMPLE_STOPPING_CONDITION,
-        tags=None,
-        warm_start_config=None,
-        environment=ENV_INPUT,
-    )
+sagemaker_session.sagemaker_client.create_hyper_parameter_tuning_job.side_effect = (
+    assert_create_tuning_job_request
+)
+sagemaker_session.tune(
+    job_name="dummy-tuning-1",
+    strategy="Bayesian",
+    random_seed=0,
+    objective_type="Maximize",
+    objective_metric_name="val-score",
+    max_jobs=100,
+    max_parallel_jobs=5,
+    parameter_ranges=SAMPLE_PARAM_RANGES,
+    static_hyperparameters=STATIC_HPs,
+    image_uri="dummy-image-1",
+    input_mode="File",
+    metric_definitions=SAMPLE_METRIC_DEF,
+    role=EXPANDED_ROLE,
+    input_config=SAMPLE_INPUT,
+    output_config=SAMPLE_OUTPUT,
+    resource_config=RESOURCE_CONFIG,
+    stop_condition=SAMPLE_STOPPING_CONDITION,
+    tags=None,
+    warm_start_config=None,
+    environment=ENV_INPUT,
+)
 
 
 def test_tune_with_strategy_config(sagemaker_session):
-    def assert_create_tuning_job_request(**kwrags):
-        assert (
-            kwrags["HyperParameterTuningJobConfig"]["StrategyConfig"]["HyperbandStrategyConfig"][
-                "MinResource"
-            ]
-            == SAMPLE_HYPERBAND_STRATEGY_CONFIG["HyperbandStrategyConfig"]["MinResource"]
-        )
-        assert (
-            kwrags["HyperParameterTuningJobConfig"]["StrategyConfig"]["HyperbandStrategyConfig"][
-                "MaxResource"
-            ]
-            == SAMPLE_HYPERBAND_STRATEGY_CONFIG["HyperbandStrategyConfig"]["MaxResource"]
-        )
+def assert_create_tuning_job_request(**kwrags):
+    assert (
+        kwrags["HyperParameterTuningJobConfig"]["StrategyConfig"]["HyperbandStrategyConfig"][
+            "MinResource"
+        ]
+        == SAMPLE_HYPERBAND_STRATEGY_CONFIG["HyperbandStrategyConfig"]["MinResource"]
+    )
+    assert (
+        kwrags["HyperParameterTuningJobConfig"]["StrategyConfig"]["HyperbandStrategyConfig"][
+            "MaxResource"
+        ]
+        == SAMPLE_HYPERBAND_STRATEGY_CONFIG["HyperbandStrategyConfig"]["MaxResource"]
+    )
 
-    sagemaker_session.sagemaker_client.create_hyper_parameter_tuning_job.side_effect = (
-        assert_create_tuning_job_request
-    )
-    sagemaker_session.tune(
-        job_name="dummy-tuning-1",
-        strategy="Bayesian",
-        objective_type="Maximize",
-        objective_metric_name="val-score",
-        max_jobs=100,
-        max_parallel_jobs=5,
-        parameter_ranges=SAMPLE_PARAM_RANGES,
-        static_hyperparameters=STATIC_HPs,
-        image_uri="dummy-image-1",
-        input_mode="File",
-        metric_definitions=SAMPLE_METRIC_DEF,
-        role=EXPANDED_ROLE,
-        input_config=SAMPLE_INPUT,
-        output_config=SAMPLE_OUTPUT,
-        resource_config=RESOURCE_CONFIG,
-        stop_condition=SAMPLE_STOPPING_CONDITION,
-        tags=None,
-        warm_start_config=None,
-        strategy_config=SAMPLE_HYPERBAND_STRATEGY_CONFIG,
-        environment=ENV_INPUT,
-    )
+sagemaker_session.sagemaker_client.create_hyper_parameter_tuning_job.side_effect = (
+    assert_create_tuning_job_request
+)
+sagemaker_session.tune(
+    job_name="dummy-tuning-1",
+    strategy="Bayesian",
+    objective_type="Maximize",
+    objective_metric_name="val-score",
+    max_jobs=100,
+    max_parallel_jobs=5,
+    parameter_ranges=SAMPLE_PARAM_RANGES,
+    static_hyperparameters=STATIC_HPs,
+    image_uri="dummy-image-1",
+    input_mode="File",
+    metric_definitions=SAMPLE_METRIC_DEF,
+    role=EXPANDED_ROLE,
+    input_config=SAMPLE_INPUT,
+    output_config=SAMPLE_OUTPUT,
+    resource_config=RESOURCE_CONFIG,
+    stop_condition=SAMPLE_STOPPING_CONDITION,
+    tags=None,
+    warm_start_config=None,
+    strategy_config=SAMPLE_HYPERBAND_STRATEGY_CONFIG,
+    environment=ENV_INPUT,
+)
 
 
 def test_tune_with_encryption_flag(sagemaker_session):
-    def assert_create_tuning_job_request(**kwrags):
-        assert (
-            kwrags["HyperParameterTuningJobConfig"]
-            == SAMPLE_TUNING_JOB_REQUEST["HyperParameterTuningJobConfig"]
-        )
-        assert kwrags["HyperParameterTuningJobName"] == "dummy-tuning-1"
-        assert kwrags["TrainingJobDefinition"]["EnableInterContainerTrafficEncryption"] is True
-        assert kwrags.get("WarmStartConfig", None) is None
+def assert_create_tuning_job_request(**kwrags):
+    assert (
+        kwrags["HyperParameterTuningJobConfig"]
+        == SAMPLE_TUNING_JOB_REQUEST["HyperParameterTuningJobConfig"]
+    )
+    assert kwrags["HyperParameterTuningJobName"] == "dummy-tuning-1"
+    assert kwrags["TrainingJobDefinition"]["EnableInterContainerTrafficEncryption"] is True
+    assert kwrags.get("WarmStartConfig", None) is None
 
-    sagemaker_session.sagemaker_client.create_hyper_parameter_tuning_job.side_effect = (
-        assert_create_tuning_job_request
-    )
-    sagemaker_session.tune(
-        job_name="dummy-tuning-1",
-        strategy="Bayesian",
-        random_seed=0,
-        objective_type="Maximize",
-        objective_metric_name="val-score",
-        max_jobs=100,
-        max_parallel_jobs=5,
-        parameter_ranges=SAMPLE_PARAM_RANGES,
-        static_hyperparameters=STATIC_HPs,
-        image_uri="dummy-image-1",
-        input_mode="File",
-        metric_definitions=SAMPLE_METRIC_DEF,
-        role=EXPANDED_ROLE,
-        input_config=SAMPLE_INPUT,
-        output_config=SAMPLE_OUTPUT,
-        resource_config=RESOURCE_CONFIG,
-        stop_condition=SAMPLE_STOPPING_CONDITION,
-        tags=None,
-        warm_start_config=None,
-        encrypt_inter_container_traffic=True,
-    )
+sagemaker_session.sagemaker_client.create_hyper_parameter_tuning_job.side_effect = (
+    assert_create_tuning_job_request
+)
+sagemaker_session.tune(
+    job_name="dummy-tuning-1",
+    strategy="Bayesian",
+    random_seed=0,
+    objective_type="Maximize",
+    objective_metric_name="val-score",
+    max_jobs=100,
+    max_parallel_jobs=5,
+    parameter_ranges=SAMPLE_PARAM_RANGES,
+    static_hyperparameters=STATIC_HPs,
+    image_uri="dummy-image-1",
+    input_mode="File",
+    metric_definitions=SAMPLE_METRIC_DEF,
+    role=EXPANDED_ROLE,
+    input_config=SAMPLE_INPUT,
+    output_config=SAMPLE_OUTPUT,
+    resource_config=RESOURCE_CONFIG,
+    stop_condition=SAMPLE_STOPPING_CONDITION,
+    tags=None,
+    warm_start_config=None,
+    encrypt_inter_container_traffic=True,
+)
 
 
 def test_tune_with_spot_and_checkpoints(sagemaker_session):
-    def assert_create_tuning_job_request(**kwargs):
-        assert (
-            kwargs["HyperParameterTuningJobConfig"]
-            == SAMPLE_TUNING_JOB_REQUEST["HyperParameterTuningJobConfig"]
-        )
-        assert kwargs["HyperParameterTuningJobName"] == "dummy-tuning-1"
-        assert kwargs["TrainingJobDefinition"]["EnableManagedSpotTraining"] is True
-        assert (
-            kwargs["TrainingJobDefinition"]["CheckpointConfig"]["S3Uri"]
-            == "s3://mybucket/checkpoints/"
-        )
-        assert (
-            kwargs["TrainingJobDefinition"]["CheckpointConfig"]["LocalPath"] == "/tmp/checkpoints"
-        )
-        assert kwargs.get("WarmStartConfig", None) is None
+def assert_create_tuning_job_request(**kwargs):
+    assert (
+        kwargs["HyperParameterTuningJobConfig"]
+        == SAMPLE_TUNING_JOB_REQUEST["HyperParameterTuningJobConfig"]
+    )
+    assert kwargs["HyperParameterTuningJobName"] == "dummy-tuning-1"
+    assert kwargs["TrainingJobDefinition"]["EnableManagedSpotTraining"] is True
+    assert (
+        kwargs["TrainingJobDefinition"]["CheckpointConfig"]["S3Uri"]
+        == "s3://mybucket/checkpoints/"
+    )
+    assert (
+        kwargs["TrainingJobDefinition"]["CheckpointConfig"]["LocalPath"] == "/tmp/checkpoints"
+    )
+    assert kwargs.get("WarmStartConfig", None) is None
 
-    sagemaker_session.sagemaker_client.create_hyper_parameter_tuning_job.side_effect = (
-        assert_create_tuning_job_request
-    )
-    sagemaker_session.tune(
-        job_name="dummy-tuning-1",
-        strategy="Bayesian",
-        random_seed=0,
-        objective_type="Maximize",
-        objective_metric_name="val-score",
-        max_jobs=100,
-        max_parallel_jobs=5,
-        parameter_ranges=SAMPLE_PARAM_RANGES,
-        static_hyperparameters=STATIC_HPs,
-        image_uri="dummy-image-1",
-        input_mode="File",
-        metric_definitions=SAMPLE_METRIC_DEF,
-        role=EXPANDED_ROLE,
-        input_config=SAMPLE_INPUT,
-        output_config=SAMPLE_OUTPUT,
-        resource_config=RESOURCE_CONFIG,
-        stop_condition=SAMPLE_STOPPING_CONDITION,
-        tags=None,
-        warm_start_config=None,
-        use_spot_instances=True,
-        checkpoint_s3_uri="s3://mybucket/checkpoints/",
-        checkpoint_local_path="/tmp/checkpoints",
-    )
+sagemaker_session.sagemaker_client.create_hyper_parameter_tuning_job.side_effect = (
+    assert_create_tuning_job_request
+)
+sagemaker_session.tune(
+    job_name="dummy-tuning-1",
+    strategy="Bayesian",
+    random_seed=0,
+    objective_type="Maximize",
+    objective_metric_name="val-score",
+    max_jobs=100,
+    max_parallel_jobs=5,
+    parameter_ranges=SAMPLE_PARAM_RANGES,
+    static_hyperparameters=STATIC_HPs,
+    image_uri="dummy-image-1",
+    input_mode="File",
+    metric_definitions=SAMPLE_METRIC_DEF,
+    role=EXPANDED_ROLE,
+    input_config=SAMPLE_INPUT,
+    output_config=SAMPLE_OUTPUT,
+    resource_config=RESOURCE_CONFIG,
+    stop_condition=SAMPLE_STOPPING_CONDITION,
+    tags=None,
+    warm_start_config=None,
+    use_spot_instances=True,
+    checkpoint_s3_uri="s3://mybucket/checkpoints/",
+    checkpoint_local_path="/tmp/checkpoints",
+)
 
 
 def test_stop_tuning_job(sagemaker_session):
-    sms = sagemaker_session
-    sms.sagemaker_client.stop_hyper_parameter_tuning_job = Mock(
-        name="stop_hyper_parameter_tuning_job"
-    )
+sms = sagemaker_session
+sms.sagemaker_client.stop_hyper_parameter_tuning_job = Mock(
+    name="stop_hyper_parameter_tuning_job"
+)
 
-    sagemaker_session.stop_tuning_job(JOB_NAME)
-    sms.sagemaker_client.stop_hyper_parameter_tuning_job.assert_called_once_with(
-        HyperParameterTuningJobName=JOB_NAME
-    )
+sagemaker_session.stop_tuning_job(JOB_NAME)
+sms.sagemaker_client.stop_hyper_parameter_tuning_job.assert_called_once_with(
+    HyperParameterTuningJobName=JOB_NAME
+)
 
 
 def test_stop_tuning_job_client_error_already_stopped(sagemaker_session):
-    sms = sagemaker_session
-    exception = ClientError({"Error": {"Code": "ValidationException"}}, "Operation")
-    sms.sagemaker_client.stop_hyper_parameter_tuning_job = Mock(
-        name="stop_hyper_parameter_tuning_job", side_effect=exception
-    )
-    sagemaker_session.stop_tuning_job(JOB_NAME)
+sms = sagemaker_session
+exception = ClientError({"Error": {"Code": "ValidationException"}}, "Operation")
+sms.sagemaker_client.stop_hyper_parameter_tuning_job = Mock(
+    name="stop_hyper_parameter_tuning_job", side_effect=exception
+)
+sagemaker_session.stop_tuning_job(JOB_NAME)
 
-    sms.sagemaker_client.stop_hyper_parameter_tuning_job.assert_called_once_with(
-        HyperParameterTuningJobName=JOB_NAME
-    )
+sms.sagemaker_client.stop_hyper_parameter_tuning_job.assert_called_once_with(
+    HyperParameterTuningJobName=JOB_NAME
+)
 
 
 def test_stop_tuning_job_client_error(sagemaker_session):
-    error_response = {"Error": {"Code": "MockException", "Message": "MockMessage"}}
-    operation = "Operation"
-    exception = ClientError(error_response, operation)
+error_response = {"Error": {"Code": "MockException", "Message": "MockMessage"}}
+operation = "Operation"
+exception = ClientError(error_response, operation)
 
-    sms = sagemaker_session
-    sms.sagemaker_client.stop_hyper_parameter_tuning_job = Mock(
-        name="stop_hyper_parameter_tuning_job", side_effect=exception
-    )
+sms = sagemaker_session
+sms.sagemaker_client.stop_hyper_parameter_tuning_job = Mock(
+    name="stop_hyper_parameter_tuning_job", side_effect=exception
+)
 
-    with pytest.raises(ClientError) as e:
-        sagemaker_session.stop_tuning_job(JOB_NAME)
+with pytest.raises(ClientError) as e:
+    sagemaker_session.stop_tuning_job(JOB_NAME)
 
-    sms.sagemaker_client.stop_hyper_parameter_tuning_job.assert_called_once_with(
-        HyperParameterTuningJobName=JOB_NAME
-    )
-    assert (
-        "An error occurred (MockException) when calling the Operation operation: MockMessage"
-        in str(e)
-    )
+sms.sagemaker_client.stop_hyper_parameter_tuning_job.assert_called_once_with(
+    HyperParameterTuningJobName=JOB_NAME
+)
+assert (
+    "An error occurred (MockException) when calling the Operation operation: MockMessage"
+    in str(e)
+)
 
 
 def test_train_with_sagemaker_config_injection_custom_profiler_config(sagemaker_session):
-    """
-    Tests disableProfiler property is overridden by custom profiler_config with property set
-    :param sagemaker_session:
-    :return: None
-    """
-    custom_config = copy.deepcopy(SAGEMAKER_CONFIG_TRAINING_JOB)
-    custom_config["SageMaker"]["TrainingJob"]["ProfilerConfig"]["DisableProfiler"] = True
+"""
+Tests disableProfiler property is overridden by custom profiler_config with property set
+:param sagemaker_session:
+:return: None
+"""
+custom_config = copy.deepcopy(SAGEMAKER_CONFIG_TRAINING_JOB)
+custom_config["SageMaker"]["TrainingJob"]["ProfilerConfig"]["DisableProfiler"] = True
 
-    sagemaker_session.sagemaker_config = custom_config
-    in_config = [
-        {
-            "ChannelName": "training",
-            "DataSource": {
-                "S3DataSource": {
-                    "S3DataDistributionType": "FullyReplicated",
-                    "S3DataType": "S3Prefix",
-                    "S3Uri": S3_INPUT_URI,
-                }
-            },
-        }
-    ]
-
-    out_config = {"S3OutputPath": S3_OUTPUT}
-
-    resource_config = {
-        "InstanceCount": INSTANCE_COUNT,
-        "InstanceType": INSTANCE_TYPE,
-        "VolumeSizeInGB": MAX_SIZE,
-    }
-
-    stop_cond = {"MaxRuntimeInSeconds": MAX_TIME}
-    RETRY_STRATEGY = {"MaximumRetryAttempts": 2}
-    hyperparameters = {"foo": "bar"}
-    TRAINING_IMAGE_CONFIG = {
-        "TrainingRepositoryAccessMode": "Vpc",
-        "TrainingRepositoryAuthConfig": {
-            "TrainingRepositoryCredentialsProviderArn": "arn:aws:lambda:us-west-2:1234567897:function:test"
+sagemaker_session.sagemaker_config = custom_config
+in_config = [
+    {
+        "ChannelName": "training",
+        "DataSource": {
+            "S3DataSource": {
+                "S3DataDistributionType": "FullyReplicated",
+                "S3DataType": "S3Prefix",
+                "S3Uri": S3_INPUT_URI,
+            }
         },
     }
+]
 
-    profiler_config = {"DisableProfiler": False}
-    sagemaker_session.train(
-        image_uri=IMAGE,
-        input_mode="File",
-        input_config=in_config,
-        job_name=JOB_NAME,
-        output_config=out_config,
-        resource_config=resource_config,
-        profiler_config=profiler_config,
-        hyperparameters=hyperparameters,
-        stop_condition=stop_cond,
-        metric_definitions=METRIC_DEFINITONS,
-        use_spot_instances=True,
-        checkpoint_s3_uri="s3://mybucket/checkpoints/",
-        checkpoint_local_path="/tmp/checkpoints",
-        enable_sagemaker_metrics=True,
-        retry_strategy=RETRY_STRATEGY,
-        training_image_config=TRAINING_IMAGE_CONFIG,
-    )
+out_config = {"S3OutputPath": S3_OUTPUT}
 
-    _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
+resource_config = {
+    "InstanceCount": INSTANCE_COUNT,
+    "InstanceType": INSTANCE_TYPE,
+    "VolumeSizeInGB": MAX_SIZE,
+}
 
-    assert actual_train_args["ProfilerConfig"]["DisableProfiler"] is False
+stop_cond = {"MaxRuntimeInSeconds": MAX_TIME}
+RETRY_STRATEGY = {"MaximumRetryAttempts": 2}
+hyperparameters = {"foo": "bar"}
+TRAINING_IMAGE_CONFIG = {
+    "TrainingRepositoryAccessMode": "Vpc",
+    "TrainingRepositoryAuthConfig": {
+        "TrainingRepositoryCredentialsProviderArn": "arn:aws:lambda:us-west-2:1234567897:function:test"
+    },
+}
+
+profiler_config = {"DisableProfiler": False}
+sagemaker_session.train(
+    image_uri=IMAGE,
+    input_mode="File",
+    input_config=in_config,
+    job_name=JOB_NAME,
+    output_config=out_config,
+    resource_config=resource_config,
+    profiler_config=profiler_config,
+    hyperparameters=hyperparameters,
+    stop_condition=stop_cond,
+    metric_definitions=METRIC_DEFINITONS,
+    use_spot_instances=True,
+    checkpoint_s3_uri="s3://mybucket/checkpoints/",
+    checkpoint_local_path="/tmp/checkpoints",
+    enable_sagemaker_metrics=True,
+    retry_strategy=RETRY_STRATEGY,
+    training_image_config=TRAINING_IMAGE_CONFIG,
+)
+
+_, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
+
+assert actual_train_args["ProfilerConfig"]["DisableProfiler"] is False
 
 
 def test_train_with_sagemaker_config_injection_empty_profiler_config(sagemaker_session):
-    """
-    Tests disableProfiler property is injected into a profiler_config object when the property does not exist explicitly
-    :param sagemaker_session:
-    :return: None
-    """
-    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
+"""
+Tests disableProfiler property is injected into a profiler_config object when the property does not exist explicitly
+:param sagemaker_session:
+:return: None
+"""
+sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
 
-    in_config = [
-        {
-            "ChannelName": "training",
-            "DataSource": {
-                "S3DataSource": {
-                    "S3DataDistributionType": "FullyReplicated",
-                    "S3DataType": "S3Prefix",
-                    "S3Uri": S3_INPUT_URI,
-                }
-            },
-        }
-    ]
-
-    out_config = {"S3OutputPath": S3_OUTPUT}
-
-    resource_config = {
-        "InstanceCount": INSTANCE_COUNT,
-        "InstanceType": INSTANCE_TYPE,
-        "VolumeSizeInGB": MAX_SIZE,
-    }
-
-    stop_cond = {"MaxRuntimeInSeconds": MAX_TIME}
-    RETRY_STRATEGY = {"MaximumRetryAttempts": 2}
-    hyperparameters = {"foo": "bar"}
-    TRAINING_IMAGE_CONFIG = {
-        "TrainingRepositoryAccessMode": "Vpc",
-        "TrainingRepositoryAuthConfig": {
-            "TrainingRepositoryCredentialsProviderArn": "arn:aws:lambda:us-west-2:1234567897:function:test"
+in_config = [
+    {
+        "ChannelName": "training",
+        "DataSource": {
+            "S3DataSource": {
+                "S3DataDistributionType": "FullyReplicated",
+                "S3DataType": "S3Prefix",
+                "S3Uri": S3_INPUT_URI,
+            }
         },
     }
+]
 
-    profiler_config = {}
-    sagemaker_session.train(
-        image_uri=IMAGE,
-        input_mode="File",
-        input_config=in_config,
-        job_name=JOB_NAME,
-        output_config=out_config,
-        resource_config=resource_config,
-        profiler_config=profiler_config,
-        hyperparameters=hyperparameters,
-        stop_condition=stop_cond,
-        metric_definitions=METRIC_DEFINITONS,
-        use_spot_instances=True,
-        checkpoint_s3_uri="s3://mybucket/checkpoints/",
-        checkpoint_local_path="/tmp/checkpoints",
-        enable_sagemaker_metrics=True,
-        retry_strategy=RETRY_STRATEGY,
-        training_image_config=TRAINING_IMAGE_CONFIG,
-    )
+out_config = {"S3OutputPath": S3_OUTPUT}
 
-    _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
+resource_config = {
+    "InstanceCount": INSTANCE_COUNT,
+    "InstanceType": INSTANCE_TYPE,
+    "VolumeSizeInGB": MAX_SIZE,
+}
 
-    expected_disable_profiler_attribute = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
-        "ProfilerConfig"
-    ]["DisableProfiler"]
-    assert (
-        actual_train_args["ProfilerConfig"]["DisableProfiler"]
-        == expected_disable_profiler_attribute
-    )
+stop_cond = {"MaxRuntimeInSeconds": MAX_TIME}
+RETRY_STRATEGY = {"MaximumRetryAttempts": 2}
+hyperparameters = {"foo": "bar"}
+TRAINING_IMAGE_CONFIG = {
+    "TrainingRepositoryAccessMode": "Vpc",
+    "TrainingRepositoryAuthConfig": {
+        "TrainingRepositoryCredentialsProviderArn": "arn:aws:lambda:us-west-2:1234567897:function:test"
+    },
+}
+
+profiler_config = {}
+sagemaker_session.train(
+    image_uri=IMAGE,
+    input_mode="File",
+    input_config=in_config,
+    job_name=JOB_NAME,
+    output_config=out_config,
+    resource_config=resource_config,
+    profiler_config=profiler_config,
+    hyperparameters=hyperparameters,
+    stop_condition=stop_cond,
+    metric_definitions=METRIC_DEFINITONS,
+    use_spot_instances=True,
+    checkpoint_s3_uri="s3://mybucket/checkpoints/",
+    checkpoint_local_path="/tmp/checkpoints",
+    enable_sagemaker_metrics=True,
+    retry_strategy=RETRY_STRATEGY,
+    training_image_config=TRAINING_IMAGE_CONFIG,
+)
+
+_, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
+
+expected_disable_profiler_attribute = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+    "ProfilerConfig"
+]["DisableProfiler"]
+assert (
+    actual_train_args["ProfilerConfig"]["DisableProfiler"]
+    == expected_disable_profiler_attribute
+)
 
 
 def test_train_with_sagemaker_config_injection_partial_profiler_config(sagemaker_session):
-    """
-    Tests disableProfiler property is injected into a profiler_config object when the property does not exist explicitly
-    :param sagemaker_session:
-    :return: None
-    """
-    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
+"""
+Tests disableProfiler property is injected into a profiler_config object when the property does not exist explicitly
+:param sagemaker_session:
+:return: None
+"""
+sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
 
-    in_config = [
-        {
-            "ChannelName": "training",
-            "DataSource": {
-                "S3DataSource": {
-                    "S3DataDistributionType": "FullyReplicated",
-                    "S3DataType": "S3Prefix",
-                    "S3Uri": S3_INPUT_URI,
-                }
-            },
-        }
-    ]
-
-    out_config = {"S3OutputPath": S3_OUTPUT}
-
-    resource_config = {
-        "InstanceCount": INSTANCE_COUNT,
-        "InstanceType": INSTANCE_TYPE,
-        "VolumeSizeInGB": MAX_SIZE,
-    }
-
-    stop_cond = {"MaxRuntimeInSeconds": MAX_TIME}
-    RETRY_STRATEGY = {"MaximumRetryAttempts": 2}
-    hyperparameters = {"foo": "bar"}
-    TRAINING_IMAGE_CONFIG = {
-        "TrainingRepositoryAccessMode": "Vpc",
-        "TrainingRepositoryAuthConfig": {
-            "TrainingRepositoryCredentialsProviderArn": "arn:aws:lambda:us-west-2:1234567897:function:test"
+in_config = [
+    {
+        "ChannelName": "training",
+        "DataSource": {
+            "S3DataSource": {
+                "S3DataDistributionType": "FullyReplicated",
+                "S3DataType": "S3Prefix",
+                "S3Uri": S3_INPUT_URI,
+            }
         },
     }
+]
 
-    profiler_config = {
-        "ProfilingIntervalInMilliseconds": 1000,
-        "S3OutputPath": "s3://mybucket/myoutputbucket",
-        "ProfilingParameters": {},
-    }
-    sagemaker_session.train(
-        image_uri=IMAGE,
-        input_mode="File",
-        input_config=in_config,
-        job_name=JOB_NAME,
-        output_config=out_config,
-        resource_config=resource_config,
-        profiler_config=profiler_config,
-        hyperparameters=hyperparameters,
-        stop_condition=stop_cond,
-        metric_definitions=METRIC_DEFINITONS,
-        use_spot_instances=True,
-        checkpoint_s3_uri="s3://mybucket/checkpoints/",
-        checkpoint_local_path="/tmp/checkpoints",
-        enable_sagemaker_metrics=True,
-        retry_strategy=RETRY_STRATEGY,
-        training_image_config=TRAINING_IMAGE_CONFIG,
-    )
+out_config = {"S3OutputPath": S3_OUTPUT}
 
-    _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
+resource_config = {
+    "InstanceCount": INSTANCE_COUNT,
+    "InstanceType": INSTANCE_TYPE,
+    "VolumeSizeInGB": MAX_SIZE,
+}
 
-    expected_disable_profiler_attribute = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
-        "ProfilerConfig"
-    ]["DisableProfiler"]
-    assert (
-        actual_train_args["ProfilerConfig"]["DisableProfiler"]
-        == expected_disable_profiler_attribute
-    )
-    assert actual_train_args["ProfilerConfig"]["ProfilingIntervalInMilliseconds"] == 1000
-    assert actual_train_args["ProfilerConfig"]["S3OutputPath"] == "s3://mybucket/myoutputbucket"
+stop_cond = {"MaxRuntimeInSeconds": MAX_TIME}
+RETRY_STRATEGY = {"MaximumRetryAttempts": 2}
+hyperparameters = {"foo": "bar"}
+TRAINING_IMAGE_CONFIG = {
+    "TrainingRepositoryAccessMode": "Vpc",
+    "TrainingRepositoryAuthConfig": {
+        "TrainingRepositoryCredentialsProviderArn": "arn:aws:lambda:us-west-2:1234567897:function:test"
+    },
+}
+
+profiler_config = {
+    "ProfilingIntervalInMilliseconds": 1000,
+    "S3OutputPath": "s3://mybucket/myoutputbucket",
+    "ProfilingParameters": {},
+}
+sagemaker_session.train(
+    image_uri=IMAGE,
+    input_mode="File",
+    input_config=in_config,
+    job_name=JOB_NAME,
+    output_config=out_config,
+    resource_config=resource_config,
+    profiler_config=profiler_config,
+    hyperparameters=hyperparameters,
+    stop_condition=stop_cond,
+    metric_definitions=METRIC_DEFINITONS,
+    use_spot_instances=True,
+    checkpoint_s3_uri="s3://mybucket/checkpoints/",
+    checkpoint_local_path="/tmp/checkpoints",
+    enable_sagemaker_metrics=True,
+    retry_strategy=RETRY_STRATEGY,
+    training_image_config=TRAINING_IMAGE_CONFIG,
+)
+
+_, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
+
+expected_disable_profiler_attribute = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+    "ProfilerConfig"
+]["DisableProfiler"]
+assert (
+    actual_train_args["ProfilerConfig"]["DisableProfiler"]
+    == expected_disable_profiler_attribute
+)
+assert actual_train_args["ProfilerConfig"]["ProfilingIntervalInMilliseconds"] == 1000
+assert actual_train_args["ProfilerConfig"]["S3OutputPath"] == "s3://mybucket/myoutputbucket"
 
 
 def test_update_training_job_without_sagemaker_config_injection(sagemaker_session):
-    sagemaker_session.update_training_job(job_name="MyTestJob")
-    _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
-    assert actual_train_args["TrainingJobName"] == "MyTestJob"
+sagemaker_session.update_training_job(job_name="MyTestJob")
+_, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
+assert actual_train_args["TrainingJobName"] == "MyTestJob"
 
 
 def test_update_training_job_with_sagemaker_config_injection(sagemaker_session):
-    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
-    sagemaker_session.update_training_job(job_name="MyTestJob")
-    _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
-    expected_disable_profiler_attribute = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
-        "ProfilerConfig"
-    ]["DisableProfiler"]
-    assert (
-        actual_train_args["ProfilerConfig"]["DisableProfiler"]
-        == expected_disable_profiler_attribute
-    )
+sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
+sagemaker_session.update_training_job(job_name="MyTestJob")
+_, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
+expected_disable_profiler_attribute = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+    "ProfilerConfig"
+]["DisableProfiler"]
+assert (
+    actual_train_args["ProfilerConfig"]["DisableProfiler"]
+    == expected_disable_profiler_attribute
+)
 
 
 def test_train_with_sagemaker_config_injection(sagemaker_session):
-    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
+sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
 
-    in_config = [
-        {
-            "ChannelName": "training",
-            "DataSource": {
-                "S3DataSource": {
-                    "S3DataDistributionType": "FullyReplicated",
-                    "S3DataType": "S3Prefix",
-                    "S3Uri": S3_INPUT_URI,
-                }
-            },
-        }
-    ]
-
-    out_config = {"S3OutputPath": S3_OUTPUT}
-
-    resource_config = {
-        "InstanceCount": INSTANCE_COUNT,
-        "InstanceType": INSTANCE_TYPE,
-        "VolumeSizeInGB": MAX_SIZE,
-    }
-
-    stop_cond = {"MaxRuntimeInSeconds": MAX_TIME}
-    RETRY_STRATEGY = {"MaximumRetryAttempts": 2}
-    hyperparameters = {"foo": "bar"}
-    TRAINING_IMAGE_CONFIG = {
-        "TrainingRepositoryAccessMode": "Vpc",
-        "TrainingRepositoryAuthConfig": {
-            "TrainingRepositoryCredentialsProviderArn": "arn:aws:lambda:us-west-2:1234567897:function:test"
+in_config = [
+    {
+        "ChannelName": "training",
+        "DataSource": {
+            "S3DataSource": {
+                "S3DataDistributionType": "FullyReplicated",
+                "S3DataType": "S3Prefix",
+                "S3Uri": S3_INPUT_URI,
+            }
         },
     }
-    HEALTH_CHECK_CONFIG = {"EnableHealthCheck": True}
+]
+
+out_config = {"S3OutputPath": S3_OUTPUT}
+
+resource_config = {
+    "InstanceCount": INSTANCE_COUNT,
+    "InstanceType": INSTANCE_TYPE,
+    "VolumeSizeInGB": MAX_SIZE,
+}
+
+stop_cond = {"MaxRuntimeInSeconds": MAX_TIME}
+RETRY_STRATEGY = {"MaximumRetryAttempts": 2}
+hyperparameters = {"foo": "bar"}
+TRAINING_IMAGE_CONFIG = {
+    "TrainingRepositoryAccessMode": "Vpc",
+    "TrainingRepositoryAuthConfig": {
+        "TrainingRepositoryCredentialsProviderArn": "arn:aws:lambda:us-west-2:1234567897:function:test"
+    },
+}
+    INFRA_CHECK_CONFIG = {"EnableInfraCheck": True}
 
     CONTAINER_ENTRY_POINT = ["bin/bash", "test.sh"]
     CONTAINER_ARGUMENTS = ["--arg1", "value1", "--arg2", "value2"]
@@ -1922,7 +1922,11 @@ def test_train_with_sagemaker_config_injection(sagemaker_session):
         training_image_config=TRAINING_IMAGE_CONFIG,
         container_entry_point=CONTAINER_ENTRY_POINT,
         container_arguments=CONTAINER_ARGUMENTS,
+<<<<<<< HEAD
         health_check_config=HEALTH_CHECK_CONFIG,
+=======
+        infra_check_config=INFRA_CHECK_CONFIG,
+>>>>>>> 681efe42 (feature: add InfraCheckConfig support)
     )
 
     _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
@@ -1969,7 +1973,11 @@ def test_train_with_sagemaker_config_injection(sagemaker_session):
         actual_train_args["AlgorithmSpecification"]["ContainerEntrypoint"] == CONTAINER_ENTRY_POINT
     )
     assert actual_train_args["AlgorithmSpecification"]["ContainerArguments"] == CONTAINER_ARGUMENTS
+<<<<<<< HEAD
     assert actual_train_args["HealthCheckConfig"] == HEALTH_CHECK_CONFIG
+=======
+    assert actual_train_args["InfraCheckConfig"] == INFRA_CHECK_CONFIG
+>>>>>>> 681efe42 (feature: add InfraCheckConfig support)
     assert actual_train_args["RoleArn"] == expected_role_arn
     assert actual_train_args["ResourceConfig"] == {
         "InstanceCount": INSTANCE_COUNT,

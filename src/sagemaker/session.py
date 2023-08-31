@@ -674,7 +674,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         enable_network_isolation=None,
         image_uri=None,
         training_image_config=None,
-        health_check_config=None,
+        infra_check_config=None,
         container_entry_point=None,
         container_arguments=None,
         algorithm_arn=None,
@@ -804,14 +804,24 @@ class Session(object):  # pylint: disable=too-many-public-methods
             retry_strategy(dict): Defines RetryStrategy for InternalServerFailures.
                 * max_retry_attsmpts (int): Number of times a job should be retried.
                 The key in RetryStrategy is 'MaxRetryAttempts'.
+<<<<<<< HEAD
             health_check_config(dict): Health check configuration.
                 Optionally, the dict can contain 'EnableHealthCheck'(bool).
+=======
+            infra_check_config(dict): Infra check configuration.
+                Optionally, the dict can contain 'EnableInfraCheck'(bool).
+>>>>>>> 681efe42 (feature: add InfraCheckConfig support)
                 For example,
 
                 .. code:: python
 
+<<<<<<< HEAD
                     health_check_config = {
                         "EnableHealthCheck": True,
+=======
+                    infra_check_config = {
+                        "EnableInfraCheck": True,
+>>>>>>> 681efe42 (feature: add InfraCheckConfig support)
                     }
         Returns:
             str: ARN of the training job, if it is created.
@@ -876,7 +886,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
             enable_network_isolation=enable_network_isolation,
             image_uri=image_uri,
             training_image_config=training_image_config,
+<<<<<<< HEAD
             health_check_config=health_check_config,
+=======
+            infra_check_config=infra_check_config,
+>>>>>>> 681efe42 (feature: add InfraCheckConfig support)
             container_entry_point=container_entry_point,
             container_arguments=container_arguments,
             algorithm_arn=algorithm_arn,
@@ -918,7 +932,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
         enable_network_isolation=False,
         image_uri=None,
         training_image_config=None,
+<<<<<<< HEAD
         health_check_config=None,
+=======
+        infra_check_config=None,
+>>>>>>> 681efe42 (feature: add InfraCheckConfig support)
         container_entry_point=None,
         container_arguments=None,
         algorithm_arn=None,
@@ -1075,8 +1093,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if training_image_config is not None:
             train_request["AlgorithmSpecification"]["TrainingImageConfig"] = training_image_config
 
+<<<<<<< HEAD
         if health_check_config is not None:
             train_request["HealthCheckConfig"] = health_check_config
+=======
+        if infra_check_config is not None:
+            train_request["InfraCheckConfig"] = infra_check_config
+>>>>>>> 681efe42 (feature: add InfraCheckConfig support)
 
         if container_entry_point is not None:
             train_request["AlgorithmSpecification"]["ContainerEntrypoint"] = container_entry_point
