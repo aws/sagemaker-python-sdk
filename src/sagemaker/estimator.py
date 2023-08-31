@@ -173,6 +173,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         instance_groups: Optional[List[InstanceGroup]] = None,
         training_repository_access_mode: Optional[Union[str, PipelineVariable]] = None,
         training_repository_credentials_provider_arn: Optional[Union[str, PipelineVariable]] = None,
+        enable_health_check: Optional[Union[bool, PipelineVariable]] = None,
         container_entry_point: Optional[List[str]] = None,
         container_arguments: Optional[List[str]] = None,
         disable_output_compression: bool = False,
@@ -536,6 +537,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 a training job.
             disable_output_compression (bool): Optional. When set to true, Model is uploaded
                 to Amazon S3 without compression after training finishes.
+            enable_health_check (bool or PipelineVariable): Optional.
+                Specifies whether it is running Sagemaker built-in health check jobs.
         """
         instance_count = renamed_kwargs(
             "train_instance_count", "instance_count", instance_count, kwargs
@@ -665,6 +668,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             training_repository_credentials_provider_arn
         )
 
+        self.enable_health_check = enable_health_check
         # container entry point / arguments configs
         self.container_entry_point = container_entry_point
         self.container_arguments = container_arguments
@@ -1904,6 +1908,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 "EnableInterContainerTrafficEncryption"
             ]
 
+        if "HealthCheckConfig" in job_details:
+            init_params["enable_health_check"] = job_details["HealthCheckConfig"].get(
+                "EnableHealthCheck"
+            )
+
         subnets, security_group_ids = vpc_utils.from_dict(job_details.get(vpc_utils.VPC_CONFIG_KEY))
         if subnets:
             init_params["subnets"] = subnets
@@ -2446,6 +2455,10 @@ class _TrainingJob(_Job):
                 ] = estimator.training_repository_credentials_provider_arn
             train_args["training_image_config"] = training_image_config
 
+        if estimator.enable_health_check is not None:
+            health_check_config = {"EnableHealthCheck": estimator.enable_health_check}
+            train_args["health_check_config"] = health_check_config
+
         if estimator.container_entry_point is not None:
             train_args["container_entry_point"] = estimator.container_entry_point
 
@@ -2661,6 +2674,7 @@ class Estimator(EstimatorBase):
         container_entry_point: Optional[List[str]] = None,
         container_arguments: Optional[List[str]] = None,
         disable_output_compression: bool = False,
+        enable_health_check: Optional[Union[bool, PipelineVariable]] = None,
         **kwargs,
     ):
         """Initialize an ``Estimator`` instance.
@@ -3020,6 +3034,8 @@ class Estimator(EstimatorBase):
                 a training job.
             disable_output_compression (bool): Optional. When set to true, Model is uploaded
                 to Amazon S3 without compression after training finishes.
+            enable_health_check (bool or PipelineVariable): Optional.
+                Specifies whether it is running Sagemaker built-in health check jobs.
         """
         self.image_uri = image_uri
         self._hyperparameters = hyperparameters.copy() if hyperparameters else {}
