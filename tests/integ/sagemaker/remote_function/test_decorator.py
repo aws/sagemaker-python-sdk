@@ -272,6 +272,13 @@ def test_with_non_existent_dependencies(
 def test_with_incompatible_dependencies(
     sagemaker_session, dummy_container_without_error, cpu_instance_type
 ):
+    """
+    This test is limited by the python version it is run with.
+    It is currently working with python 3.8+. However, running it with older versions
+    or versions in the future may require changes to 'old_deps_requirements.txt'
+    to fulfill testing scenario.
+
+    """
 
     dependencies_path = os.path.join(DATA_DIR, "remote_function", "old_deps_requirements.txt")
 
