@@ -1922,11 +1922,7 @@ TRAINING_IMAGE_CONFIG = {
         training_image_config=TRAINING_IMAGE_CONFIG,
         container_entry_point=CONTAINER_ENTRY_POINT,
         container_arguments=CONTAINER_ARGUMENTS,
-<<<<<<< HEAD
-        health_check_config=HEALTH_CHECK_CONFIG,
-=======
         infra_check_config=INFRA_CHECK_CONFIG,
->>>>>>> 681efe42 (feature: add InfraCheckConfig support)
     )
 
     _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
@@ -1973,11 +1969,7 @@ TRAINING_IMAGE_CONFIG = {
         actual_train_args["AlgorithmSpecification"]["ContainerEntrypoint"] == CONTAINER_ENTRY_POINT
     )
     assert actual_train_args["AlgorithmSpecification"]["ContainerArguments"] == CONTAINER_ARGUMENTS
-<<<<<<< HEAD
-    assert actual_train_args["HealthCheckConfig"] == HEALTH_CHECK_CONFIG
-=======
     assert actual_train_args["InfraCheckConfig"] == INFRA_CHECK_CONFIG
->>>>>>> 681efe42 (feature: add InfraCheckConfig support)
     assert actual_train_args["RoleArn"] == expected_role_arn
     assert actual_train_args["ResourceConfig"] == {
         "InstanceCount": INSTANCE_COUNT,

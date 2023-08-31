@@ -537,13 +537,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 a training job.
             disable_output_compression (bool): Optional. When set to true, Model is uploaded
                 to Amazon S3 without compression after training finishes.
-<<<<<<< HEAD
-            enable_health_check (bool or PipelineVariable): Optional.
-                Specifies whether it is running Sagemaker built-in health check jobs.
-=======
             enable_infra_check (bool or PipelineVariable): Optional.
                 Specifies whether it is running Sagemaker built-in infra check jobs.
->>>>>>> 681efe42 (feature: add InfraCheckConfig support)
         """
         instance_count = renamed_kwargs(
             "train_instance_count", "instance_count", instance_count, kwargs
@@ -673,11 +668,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             training_repository_credentials_provider_arn
         )
 
-<<<<<<< HEAD
-        self.enable_health_check = enable_health_check
-=======
         self.enable_infra_check = enable_infra_check
->>>>>>> 681efe42 (feature: add InfraCheckConfig support)
         # container entry point / arguments configs
         self.container_entry_point = container_entry_point
         self.container_arguments = container_arguments
@@ -1917,15 +1908,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 "EnableInterContainerTrafficEncryption"
             ]
 
-<<<<<<< HEAD
-        if "HealthCheckConfig" in job_details:
-            init_params["enable_health_check"] = job_details["HealthCheckConfig"].get(
-                "EnableHealthCheck"
-=======
         if "InfraCheckConfig" in job_details:
             init_params["enable_infra_check"] = job_details["InfraCheckConfig"].get(
                 "EnableInfraCheck"
->>>>>>> 681efe42 (feature: add InfraCheckConfig support)
             )
 
         subnets, security_group_ids = vpc_utils.from_dict(job_details.get(vpc_utils.VPC_CONFIG_KEY))
@@ -2470,15 +2455,9 @@ class _TrainingJob(_Job):
                 ] = estimator.training_repository_credentials_provider_arn
             train_args["training_image_config"] = training_image_config
 
-<<<<<<< HEAD
-        if estimator.enable_health_check is not None:
-            health_check_config = {"EnableHealthCheck": estimator.enable_health_check}
-            train_args["health_check_config"] = health_check_config
-=======
         if estimator.enable_infra_check is not None:
             infra_check_config = {"EnableInfraCheck": estimator.enable_infra_check}
             train_args["infra_check_config"] = infra_check_config
->>>>>>> 681efe42 (feature: add InfraCheckConfig support)
 
         if estimator.container_entry_point is not None:
             train_args["container_entry_point"] = estimator.container_entry_point
@@ -2695,11 +2674,7 @@ class Estimator(EstimatorBase):
         container_entry_point: Optional[List[str]] = None,
         container_arguments: Optional[List[str]] = None,
         disable_output_compression: bool = False,
-<<<<<<< HEAD
-        enable_health_check: Optional[Union[bool, PipelineVariable]] = None,
-=======
         enable_infra_check: Optional[Union[bool, PipelineVariable]] = None,
->>>>>>> 681efe42 (feature: add InfraCheckConfig support)
         **kwargs,
     ):
         """Initialize an ``Estimator`` instance.
@@ -3059,13 +3034,8 @@ class Estimator(EstimatorBase):
                 a training job.
             disable_output_compression (bool): Optional. When set to true, Model is uploaded
                 to Amazon S3 without compression after training finishes.
-<<<<<<< HEAD
-            enable_health_check (bool or PipelineVariable): Optional.
-                Specifies whether it is running Sagemaker built-in health check jobs.
-=======
             enable_infra_check (bool or PipelineVariable): Optional.
                 Specifies whether it is running Sagemaker built-in infra check jobs.
->>>>>>> 681efe42 (feature: add InfraCheckConfig support)
         """
         self.image_uri = image_uri
         self._hyperparameters = hyperparameters.copy() if hyperparameters else {}

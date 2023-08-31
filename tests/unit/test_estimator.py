@@ -770,11 +770,7 @@ def test_framework_without_training_repository_config(sagemaker_session):
     assert args.get("training_image_config") is None
 
 
-<<<<<<< HEAD
-def test_framework_without_health_check_config(sagemaker_session):
-=======
 def test_framework_without_infra_check_config(sagemaker_session):
->>>>>>> 681efe42 (feature: add InfraCheckConfig support)
     f = DummyFramework(
         entry_point=SCRIPT_PATH,
         role=ROLE,
@@ -787,17 +783,9 @@ def test_framework_without_infra_check_config(sagemaker_session):
     f.fit("s3://mydata")
     sagemaker_session.train.assert_called_once()
     _, args = sagemaker_session.train.call_args
-<<<<<<< HEAD
     assert args.get("health_check_config") is None
 
-
-def test_framework_with_health_check_config(sagemaker_session):
-=======
-    assert args.get("infra_check_config") is None
-
-
 def test_framework_with_infra_check_config(sagemaker_session):
->>>>>>> 681efe42 (feature: add InfraCheckConfig support)
     f = DummyFramework(
         entry_point=SCRIPT_PATH,
         role=ROLE,
@@ -806,21 +794,12 @@ def test_framework_with_infra_check_config(sagemaker_session):
             InstanceGroup("group1", "ml.c4.xlarge", 1),
             InstanceGroup("group2", "ml.m4.xlarge", 2),
         ],
-<<<<<<< HEAD
-        enable_health_check=ENABLE_HEALTH_CHECK,
-=======
         enable_infra_check=ENABLE_INFRA_CHECK,
->>>>>>> 681efe42 (feature: add InfraCheckConfig support)
     )
     f.fit("s3://mydata")
     sagemaker_session.train.assert_called_once()
     _, args = sagemaker_session.train.call_args
-<<<<<<< HEAD
-    assert args["health_check_config"]["EnableHealthCheck"] == ENABLE_HEALTH_CHECK
-=======
     assert args["infra_check_config"]["EnableInfraCheck"] == ENABLE_INFRA_CHECK
->>>>>>> 681efe42 (feature: add InfraCheckConfig support)
-
 
 def test_framework_with_container_entry_point(sagemaker_session):
     f = DummyFramework(
