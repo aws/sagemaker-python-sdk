@@ -110,7 +110,7 @@ def load_sagemaker_config(additional_config_paths: List[str] = None, s3_resource
         else:
             try:
                 config_from_file = _load_config_from_file(file_path)
-            except ValueError:
+            except ValueError as error:
                 if file_path not in (
                     _DEFAULT_ADMIN_CONFIG_FILE_PATH,
                     _DEFAULT_USER_CONFIG_FILE_PATH,
@@ -119,6 +119,8 @@ def load_sagemaker_config(additional_config_paths: List[str] = None, s3_resource
                     # If there are no files in the Default config file locations, don't throw
                     # Exceptions.
                     raise
+                else:
+                    logger.debug(error)
         if config_from_file:
             validate_sagemaker_config(config_from_file)
             merge_dicts(merged_config, config_from_file)
