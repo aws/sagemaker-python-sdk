@@ -264,38 +264,47 @@ def test_logging_when_overriden_admin_and_user_configs_are_found(get_data_dir, c
     del os.environ["SAGEMAKER_USER_CONFIG_OVERRIDE"]
     logger.propagate = False
 
-def test_logging_when_overriden_admin_is_found_and_default_user_config_not_found(get_data_dir, caplog):
+
+def test_logging_when_overriden_admin_is_found_and_default_user_config_not_found(
+    get_data_dir, caplog
+):
     logger.propagate = True
     caplog.set_level(logging.DEBUG, logger=logger.name)
     os.environ["SAGEMAKER_ADMIN_CONFIG_OVERRIDE"] = get_data_dir
     load_sagemaker_config()
     assert "Fetched defaults config from location: {}".format(get_data_dir) in caplog.text
     assert (
-        "Not applying SDK defaults from location: {}".format(
-            _DEFAULT_USER_CONFIG_FILE_PATH)
+        "Not applying SDK defaults from location: {}".format(_DEFAULT_USER_CONFIG_FILE_PATH)
         in caplog.text
     )
-    assert "Unable to load the config file from the location: {}".format(
-        _DEFAULT_USER_CONFIG_FILE_PATH
-    ) in caplog.text
+    assert (
+        "Unable to load the config file from the location: {}".format(
+            _DEFAULT_USER_CONFIG_FILE_PATH
+        )
+        in caplog.text
+    )
     del os.environ["SAGEMAKER_ADMIN_CONFIG_OVERRIDE"]
     logger.propagate = False
 
 
-def test_logging_when_default_admin_not_found_and_overriden_user_config_is_found(get_data_dir, caplog):
+def test_logging_when_default_admin_not_found_and_overriden_user_config_is_found(
+    get_data_dir, caplog
+):
     logger.propagate = True
     caplog.set_level(logging.DEBUG, logger=logger.name)
     os.environ["SAGEMAKER_USER_CONFIG_OVERRIDE"] = get_data_dir
     load_sagemaker_config()
     assert "Fetched defaults config from location: {}".format(get_data_dir) in caplog.text
     assert (
-        "Not applying SDK defaults from location: {}".format(
-            _DEFAULT_ADMIN_CONFIG_FILE_PATH)
+        "Not applying SDK defaults from location: {}".format(_DEFAULT_ADMIN_CONFIG_FILE_PATH)
         in caplog.text
     )
-    assert "Unable to load the config file from the location: {}".format(
-        _DEFAULT_ADMIN_CONFIG_FILE_PATH
-    ) in caplog.text
+    assert (
+        "Unable to load the config file from the location: {}".format(
+            _DEFAULT_ADMIN_CONFIG_FILE_PATH
+        )
+        in caplog.text
+    )
     del os.environ["SAGEMAKER_USER_CONFIG_OVERRIDE"]
     logger.propagate = False
 
@@ -314,8 +323,18 @@ def test_logging_when_default_admin_and_default_user_config_not_found(caplog):
         "Not applying SDK defaults from location: {}".format(_DEFAULT_USER_CONFIG_FILE_PATH)
         in caplog.text
     )
-    assert "Unable to load the config file from the location: {}".format(_DEFAULT_ADMIN_CONFIG_FILE_PATH) in caplog.text
-    assert "Unable to load the config file from the location: {}".format(_DEFAULT_USER_CONFIG_FILE_PATH) in caplog.text
+    assert (
+        "Unable to load the config file from the location: {}".format(
+            _DEFAULT_ADMIN_CONFIG_FILE_PATH
+        )
+        in caplog.text
+    )
+    assert (
+        "Unable to load the config file from the location: {}".format(
+            _DEFAULT_USER_CONFIG_FILE_PATH
+        )
+        in caplog.text
+    )
     logger.propagate = False
 
 
