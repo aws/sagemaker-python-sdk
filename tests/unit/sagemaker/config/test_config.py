@@ -244,7 +244,9 @@ def test_merge_of_s3_default_config_file_and_regular_config_file(
     del os.environ["SAGEMAKER_ADMIN_CONFIG_OVERRIDE"]
 
 
-def test_logging_when_overriden_admin_and_user_configs_are_found(get_data_dir, caplog):
+def test_logging_when_overridden_admin_is_found_and_overridden_user_config_is_found(
+    get_data_dir, caplog
+):
     # Should log info message stating defaults were fetched since both exist
     logger.propagate = True
 
@@ -265,7 +267,7 @@ def test_logging_when_overriden_admin_and_user_configs_are_found(get_data_dir, c
     logger.propagate = False
 
 
-def test_logging_when_overriden_admin_is_found_and_default_user_config_not_found(
+def test_logging_when_overridden_admin_is_found_and_default_user_config_not_found(
     get_data_dir, caplog
 ):
     logger.propagate = True
@@ -309,7 +311,7 @@ def test_logging_when_default_admin_not_found_and_overriden_user_config_is_found
     logger.propagate = False
 
 
-def test_logging_when_default_admin_and_default_user_config_not_found(caplog):
+def test_logging_when_default_admin_not_found_and_default_user_config_not_found(caplog):
     # Should log info message stating sdk defaults were not applied
     # for admin and user config since both are missing from default location
     logger.propagate = True
@@ -338,7 +340,9 @@ def test_logging_when_default_admin_and_default_user_config_not_found(caplog):
     logger.propagate = False
 
 
-def test_logging_when_default_admin_and_overriden_user_config_not_found(get_data_dir, caplog):
+def test_logging_when_default_admin_not_found_and_overriden_user_config_not_found(
+    get_data_dir, caplog
+):
     # Should only log info message stating sdk defaults were not applied from default admin config.
     # Failing to load overriden user config should throw exception.
     logger.propagate = True
@@ -358,7 +362,9 @@ def test_logging_when_default_admin_and_overriden_user_config_not_found(get_data
     logger.propagate = False
 
 
-def test_logging_when_overriden_admin_and_overridden_user_config_not_found(get_data_dir, caplog):
+def test_logging_when_overriden_admin_not_found_and_overridden_user_config_not_found(
+    get_data_dir, caplog
+):
     # Should not log any info messages since both config paths are overridden.
     # Should throw an exception on failure since both will fail to load.
     logger.propagate = True
