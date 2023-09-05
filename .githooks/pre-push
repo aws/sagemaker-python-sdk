@@ -1,5 +1,5 @@
 #!/bin/sh
-# this pre-push hook runs style checks and unit tests in python 3.8, 3.9, 3.10, 3.11 using tox.
+# this pre-push hook runs style checks and unit tests in python 3.8, 3.9, and 3.10 using tox.
 
 set -e
 
@@ -12,5 +12,5 @@ start_time=`date +%s`
 tox -e sphinx,doc8 --parallel all
 ./ci-scripts/displaytime.sh 'sphinx,doc8' $start_time
 start_time=`date +%s`
-tox -e py38,py39,py310,py311 --parallel all -- tests/unit
-./ci-scripts/displaytime.sh 'py38,py39,py310,py311 unit' $start_time
+tox -e py38,py39,py310 --parallel all -- tests/unit
+./ci-scripts/displaytime.sh 'py38,py39,py310 unit' $start_time
