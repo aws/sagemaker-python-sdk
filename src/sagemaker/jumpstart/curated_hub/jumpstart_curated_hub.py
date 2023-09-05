@@ -349,7 +349,8 @@ class JumpStartCuratedHub:
 
     def list_models(self):
         """Lists models on the Curated Hub."""
-        self._curated_hub_client.list_hub_models(self.curated_hub_name)
+        hub_models = self._curated_hub_client.list_hub_models(self.curated_hub_name)
+        print(f"Models on the hub {self.curated_hub_name}: {hub_models}")
 
     def sync(self, model_ids: List[PublicHubModel], force_update: bool = False):
         """Syncs Curated Hub with the JumpStart Public Hub.
