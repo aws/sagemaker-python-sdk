@@ -1,5 +1,5 @@
 #!/bin/sh
-# this pre-push hook runs style checks and unit tests in python 3.6, 3.7, and 3.8 using tox.
+# this pre-push hook runs style checks and unit tests in python 3.8, 3.9, and 3.10 using tox.
 
 set -e
 
