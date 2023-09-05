@@ -49,4 +49,3 @@ def get_hub_creation_error_message(s3_bucket_name: str) -> str:
         "ERROR: Exception occurred during hub Curated Hub Creation. "
         f"A S3 bucket {s3_bucket_name} has been created and must be manually deleted."
     )
-

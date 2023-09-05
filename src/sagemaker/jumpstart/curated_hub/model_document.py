@@ -36,7 +36,6 @@ from sagemaker.jumpstart.curated_hub.hub_model_specs.hub_model_specs import (
     DependencyType,
     SdkArgs,
     DatasetConfig,
-    SdkEstimatorArgs,
 )
 from sagemaker.jumpstart.curated_hub.hub_model_specs.hub_model_specs import ModelCapabilities
 from sagemaker.jumpstart.curated_hub.utils import (
@@ -261,7 +260,7 @@ class ModelDocumentCreator:
         return DefaultTrainingConfig(
             SdkArgs=DefaultTrainingSdkArgs(
                 MinSdkVersion=model_specs.min_sdk_version,
-                SdkEstimatorArgs=self._training_sdk_estimator_args(model_specs),
+                SdkEstimatorArgs=None, # TODO: Current Palatine schema doesn't have needed values
             ),
             CustomImageConfig=None,
             FrameworkImageConfig=FrameworkImageConfig(
@@ -295,16 +294,6 @@ class ModelDocumentCreator:
             ),
             ExtraChannels=[],  # TODO: I can't seem to find these
         )
-
-    def _training_sdk_estimator_args(self, model_specs: JumpStartModelSpecs) -> SdkEstimatorArgs:
-        return None  # TODO: SDK args do not have these values
-        # return SdkEstimatorArgs(
-        #     EntryPoint=model_specs.estimator_kwargs.get(""),
-        #     EnableNetworkIsolation=model_specs.estimator_kwargs.get(""),
-        #     Environment=model_specs.estimator_kwargs.get(""),
-        #     Metrics=model_specs.estimator_kwargs.get(""),
-        #     OutputPath=model_specs.estimator_kwargs.get(""),
-        # )
 
     def _dataset_config(self, model_specs: JumpStartModelSpecs) -> Optional[DatasetConfig]:
         """Retrieves the DatasetConfig for JumpStartModelSpecs"""

@@ -281,19 +281,23 @@ class JumpStartCuratedHub:
         Raises:
           ClientError if any error outside of the above case occurs.
         """
+        print(f"Creating the Curated Hub {self.curated_hub_name}")
+
         if self._create_hub_s3_bucket_flag:
             self._create_hub_s3_bucket_with_error_handling()
         else:
             print(
                 "WARN: Skipping S3 hub bucket creation. "
-                f"The Curated Hub will use {self.curated_hub_s3_config.bucket} in {self._region}"
+                "The Curated Hub will use the preexisting bucket "
+                f"{self.curated_hub_s3_config.bucket} in {self._region}"
             )
 
         if self._create_hub_flag:
             self._create_private_hub()
         else:
             print(
-                "WARN: Skipping Hub creation. The Curated Hub will use "
+                "WARN: Skipping Private Hub creation. "
+                "The Curated Hub will use the preexisting Private Hub"
                 f"{self.curated_hub_name} in {self._region}"
             )
 
@@ -342,6 +346,10 @@ class JumpStartCuratedHub:
             if self._create_hub_s3_bucket_flag:
                 print(get_hub_creation_error_message(self.curated_hub_s3_config.bucket))
             raise
+
+    def list_models(self):
+        """Lists models on the Curated Hub."""
+        self._curated_hub_client.list_hub_models(self.curated_hub_name)
 
     def sync(self, model_ids: List[PublicHubModel], force_update: bool = False):
         """Syncs Curated Hub with the JumpStart Public Hub.

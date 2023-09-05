@@ -26,7 +26,6 @@ from sagemaker.jumpstart.curated_hub.accessors.s3_object_reference import (
     S3ObjectLocation,
 )
 
-
 class CuratedHubClient:
     """Calls SageMaker Hub APIs for the curated hub."""
 
@@ -125,7 +124,7 @@ class CuratedHubClient:
         while next_token or run_once:
             run_once = False
             if next_token:
-                res = self._sm_client.list_hubs(NextToken=next_token)
+                res = self._sm_client.list_hub(NextToken=next_token)
             else:
                 res = self._sm_client.list_hubs()
 
@@ -134,6 +133,39 @@ class CuratedHubClient:
 
         return hub_names
 
+    def list_hub_models(self, hub_name: str) -> List[str]:
+        """Lists the Models on a Private Hub.
+
+        This call handles the pagination.
+        """
+        hub_names: List[str] = []
+        run_once: bool = True
+        next_token: Optional[str] = None
+        while next_token or run_once:
+            run_once = False
+            if next_token:
+                res = self._sm_client.list_hub_contents(
+                    HubName=hub_name, HubContentType="Model", NextToken=next_token
+                )
+            else:
+                res = self._sm_client.list_hub_contents(HubName=hub_name, HubContentType="Model")
+
+            hub_names.extend(
+                map(self._get_hub_content_from_hub_content_summary, res["HubContentSummaries"])
+            )
+            next_token = res.get("NextToken")
+
+        return hub_names
+
     def _get_hub_name_from_hub_summary(self, hub_summary: Dict[str, Any]) -> str:
         """Retrieves a hub name form a ListHubs HubSummary field."""
         return hub_summary["HubName"]
+
+    def _get_hub_content_from_hub_content_summary(
+        self, hub_content_summary: Dict[str, Any]
+    ) -> Dict[str, str]:
+        """Retrieves a hub content from a ListHubContents HubContentSummary field."""
+        return {
+            "HubContentName": hub_content_summary["HubContentName"],
+            "HubContentVersion": hub_content_summary["HubContentVersion"],
+        }
