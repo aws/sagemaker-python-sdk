@@ -26,6 +26,7 @@ from sagemaker.jumpstart.curated_hub.accessors.s3_object_reference import (
     S3ObjectLocation,
 )
 
+
 class CuratedHubClient:
     """Calls SageMaker Hub APIs for the curated hub."""
 

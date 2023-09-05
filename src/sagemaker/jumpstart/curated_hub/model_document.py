@@ -260,7 +260,7 @@ class ModelDocumentCreator:
         return DefaultTrainingConfig(
             SdkArgs=DefaultTrainingSdkArgs(
                 MinSdkVersion=model_specs.min_sdk_version,
-                SdkEstimatorArgs=None, # TODO: Current Palatine schema doesn't have needed values
+                SdkEstimatorArgs=None,  # TODO: Current Palatine schema doesn't have needed values
             ),
             CustomImageConfig=None,
             FrameworkImageConfig=FrameworkImageConfig(

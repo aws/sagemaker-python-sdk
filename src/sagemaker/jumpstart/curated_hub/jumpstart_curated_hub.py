@@ -349,7 +349,6 @@ class JumpStartCuratedHub:
 
     def list_models(self):
         """Lists models on the Curated Hub."""
-        print("Hello!")
         hub_models = self._curated_hub_client.list_hub_models(self.curated_hub_name)
         print(f"Models on the hub {self.curated_hub_name}: {hub_models}")
 
