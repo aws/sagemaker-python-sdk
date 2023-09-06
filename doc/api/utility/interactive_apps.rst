@@ -16,4 +16,3 @@ SageMaker Profiler UI application
     :members:
     :undoc-members:
     :show-inheritance:
-    
