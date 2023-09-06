@@ -13,10 +13,8 @@
 """This module provides error message handling for the JumpStart Curated Hub."""
 from __future__ import absolute_import
 
-import sys
 from typing import List
 import logging
-import traceback
 
 logger = logging.getLogger("jumpstart_curated_hub")
 

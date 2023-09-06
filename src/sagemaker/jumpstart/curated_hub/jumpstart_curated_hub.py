@@ -63,6 +63,7 @@ from sagemaker.jumpstart.curated_hub.error_messaging import (
     S3_ACCESS_DENIED_ERROR_CODE,
 )
 
+
 class JumpStartCuratedHub:
     """This class helps users create a new curated hub in their AWS account for a region."""
 
@@ -580,10 +581,10 @@ class JumpStartCuratedHub:
     def _is_s3_key_a_prefix(self, s3_key: str) -> bool:
         """Checks of s3 key is a directory"""
         return s3_key.endswith("/")
-    
+
     def delete(self, delete_hub_s3_bucket: bool = False) -> None:
         """Deletes the Curated Hub.
-        
+
         By default, it will not attempt to delete the corresponding hub S3 bucket.
 
         Raises:

@@ -170,16 +170,14 @@ class CuratedHubClient:
             "HubContentName": hub_content_summary["HubContentName"],
             "HubContentVersion": hub_content_summary["HubContentVersion"],
         }
-    
+
     def delete_hub(self, hub_name: str) -> None:
         """Deletes a private hub.
-        
+
         This will fail if the hub is not empty.
         """
         print(f"Deleting private hub {hub_name}...")
 
-        self._sm_client.delete_hub(
-            HubName=self.curated_hub_name
-        )
+        self._sm_client.delete_hub(HubName=self.curated_hub_name)
 
         print(f"Deleted private hub {hub_name}!")
