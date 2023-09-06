@@ -55,7 +55,6 @@ from sagemaker.jumpstart.curated_hub.constants import (
     CURATED_HUB_CONTENT_TYPE,
 )
 from sagemaker.jumpstart.curated_hub.error_messaging import (
-    log_stacktrace_as_debug_and_raise,
     get_hub_limit_exceeded_error,
     get_hub_s3_bucket_permissions_error,
     get_hub_creation_error_message,
@@ -217,7 +216,7 @@ class JumpStartCuratedHub:
             # If the hub does not exist on the account, return None
             if ex.response["Error"]["Code"] == RESOURCE_NOT_FOUND_ERROR_CODE:
                 return None
-            log_stacktrace_as_debug_and_raise("describe_hub", ex)
+            raise
 
     def _create_unique_s3_bucket_name(self, bucket_name: str, region: str) -> str:
         """Creates a unique s3 bucket name."""
@@ -236,9 +235,8 @@ class JumpStartCuratedHub:
                 self._create_hub_s3_bucket_flag = True
                 return
             if ex.response["Error"]["Code"] == S3_ACCESS_DENIED_ERROR_CODE:
-                log_stacktrace_as_debug_and_raise("head_bucket", get_hub_s3_bucket_permissions_error(hub_s3_bucket_name))
-            
-            log_stacktrace_as_debug_and_raise("head_bucket", ex)
+                raise get_hub_s3_bucket_permissions_error(hub_s3_bucket_name)
+            raise
 
     def _init_dependencies(self):
         """Creates all dependencies to run the Curated Hub."""
@@ -583,9 +581,14 @@ class JumpStartCuratedHub:
         """Checks of s3 key is a directory"""
         return s3_key.endswith("/")
     
-    def delete(self) -> None:
+    def delete(self, delete_hub_s3_bucket: bool = False) -> None:
         """Deletes the Curated Hub.
         
-        This will delete the Private Hub, but not the corresponding hub S3 bucket.
+        By default, it will not attempt to delete the corresponding hub S3 bucket.
+
+        Raises:
+          ClientError if delete_hub or delete_bucket fails.
         """
         self._curated_hub_client.delete_hub(self.curated_hub_name)
+        if delete_hub_s3_bucket:
+            self._s3_client.delete_bucket(Bucket=self.curated_hub_s3_config.bucket)
