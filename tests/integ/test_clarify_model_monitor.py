@@ -20,6 +20,8 @@ import os
 import pandas as pd
 import pytest
 import tempfile
+import uuid
+import time
 
 import tests.integ
 import tests.integ.timeout
@@ -33,6 +35,8 @@ from sagemaker.model_monitor import (
     ExplainabilityAnalysisConfig,
     ModelBiasMonitor,
     ModelExplainabilityMonitor,
+    BatchTransformInput,
+    MonitoringDatasetFormat,
 )
 from sagemaker.s3 import S3Uploader
 from sagemaker.utils import unique_name_from_base
@@ -232,6 +236,71 @@ def scheduled_bias_monitor(
         schedule_cron_expression=CRON,
     )
     return bias_monitor
+
+
+def test_one_time_bias_monitor(bias_monitor, sagemaker_session, bias_config):
+    monitor_schedule_name = utils.unique_name_from_base("bias-monitor")
+    ground_truth_input = os.path.join(
+        "s3://",
+        sagemaker_session.default_bucket(),
+        "sagemaker-serving-batch-transform",
+        "IntegTestGroundtruth",
+    )
+    bias_analysis_config = BiasAnalysisConfig(
+        bias_config, headers=ALL_HEADERS, label=HEADER_OF_LABEL
+    )
+    s3_uri_monitoring_output = os.path.join(
+        "s3://",
+        sagemaker_session.default_bucket(),
+        "sagemaker-serving-batch-transform",
+        monitor_schedule_name,
+        "monitor_output",
+    )
+    # To include probability threshold
+    data_captured_destination_s3_uri = os.path.join(
+        "s3://",
+        sagemaker_session.default_bucket(),
+        "sagemaker-serving-batch-transform",
+        str(uuid.uuid4()),
+    )
+
+    batch_transform_input = BatchTransformInput(
+        data_captured_destination_s3_uri=data_captured_destination_s3_uri,
+        destination="/opt/ml/processing/output",
+        dataset_format=MonitoringDatasetFormat.csv(header=False),
+        probability_threshold_attribute=BIAS_PROBABILITY_THRESHOLD,
+    )
+
+    start = datetime.now()
+
+    bias_monitor.create_monitoring_schedule(
+        monitor_schedule_name=monitor_schedule_name,
+        analysis_config=bias_analysis_config,
+        batch_transform_input=batch_transform_input,
+        ground_truth_input=ground_truth_input,
+        output_s3_uri=s3_uri_monitoring_output,
+        schedule_cron_expression=CronExpressionGenerator.now(),
+        data_analysis_start_time=START_TIME_OFFSET,
+        data_analysis_end_time=END_TIME_OFFSET,
+    )
+
+    try:
+        _wait_for_first_execution_to_start(monitor=bias_monitor)
+
+        # storing the start time as soon as an execution starts
+        end = datetime.now()
+
+        _wait_for_first_execution_to_complete(monitor=bias_monitor)
+        bias_monitor.stop_monitoring_schedule()
+        bias_monitor.delete_monitoring_schedule()
+
+        # the execution should start within 30 minutes
+        assert (end - start).total_seconds() < 30 * 60
+
+    except Exception as e:
+        bias_monitor.stop_monitoring_schedule()
+        bias_monitor.delete_monitoring_schedule()
+        raise e
 
 
 @pytest.mark.skipif(
@@ -599,4 +668,39 @@ def _wait_for_completion(monitor):
                 monitor.stop_monitoring_schedule()
         # End this loop once the execution has reached a terminal state.
         if last_execution_status in ["Completed", "CompletedWithViolations", "Failed", "Stopped"]:
+            break
+
+
+def _wait_for_first_execution_to_complete(monitor):
+    for _ in retries(
+        max_retry_count=30,
+        exception_message_prefix="Waiting for first execution to reach terminal state",
+        seconds_to_sleep=60,
+    ):
+        schedule_desc = monitor.describe_schedule()
+        execution_summary = schedule_desc.get("LastMonitoringExecutionSummary")
+
+        # Once there is an execution, we can break
+        if execution_summary is not None:
+            monitor.stop_monitoring_schedule()
+            last_execution_status = execution_summary["MonitoringExecutionStatus"]
+
+            if last_execution_status not in ["Pending", "InProgess"]:
+                # to prevent delete as it takes sometime for schedule to update out of InProgress
+                time.sleep(120)
+                break
+
+
+def _wait_for_first_execution_to_start(monitor):
+    for _ in retries(
+        max_retry_count=30,
+        exception_message_prefix="Waiting for an execution for the schedule to start",
+        seconds_to_sleep=60,
+    ):
+        schedule_desc = monitor.describe_schedule()
+        execution_summary = schedule_desc.get("LastMonitoringExecutionSummary")
+
+        # Once there is an execution, we can break
+        if execution_summary is not None:
+            monitor.stop_monitoring_schedule()
             break
