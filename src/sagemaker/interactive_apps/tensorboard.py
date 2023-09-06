@@ -87,36 +87,11 @@ class TensorBoardApp(BaseInteractiveApp):
         if training_job_name is not None:
             self._validate_job_name(training_job_name)
 
-        if optional_create_presigned_url_kwargs is None:
-            optional_create_presigned_url_kwargs = {}
-
-        if domain_id is not None:
-            optional_create_presigned_url_kwargs["DomainId"] = domain_id
-
-        if user_profile_name is not None:
-            optional_create_presigned_url_kwargs["UserProfileName"] = user_profile_name
-
         if (
-            create_presigned_domain_url
-            and not self._is_in_studio()
-            and self._validate_domain_id(optional_create_presigned_url_kwargs.get("DomainId"))
-            and self._validate_user_profile_name(
-                optional_create_presigned_url_kwargs.get("UserProfileName")
-            )
+            self._in_studio_env
+            and self._validate_domain_id(self._domain_id)
+            and self._validate_user_profile_name(self._user_profile_name)
         ):
-            state_to_encode = None
-            redirect = "TensorBoard"
-
-            if training_job_name is not None:
-                state_to_encode = (
-                    "/tensorboard/default/data/plugin/sagemaker_data_manager/"
-                    + f"add_folder_or_job?Redirect=True&Name={training_job_name}"
-                )
-
-            url = self._get_presigned_url(
-                optional_create_presigned_url_kwargs, redirect, state_to_encode
-            )
-        elif self._is_in_studio() and self._validate_domain_and_user():
             if domain_id or user_profile_name:
                 logger.warning(
                     "Ignoring passed in domain_id and user_profile_name for Studio set values."
@@ -126,15 +101,37 @@ class TensorBoardApp(BaseInteractiveApp):
                 + "sagemaker.aws/tensorboard/default"
             )
             if training_job_name is not None:
-                self._validate_job_name(training_job_name)
                 url += (
                     "/data/plugin/sagemaker_data_manager/"
                     + f"add_folder_or_job?Redirect=True&Name={training_job_name}"
                 )
             else:
                 url += "/#sagemaker_data_manager"
+
+        elif (
+            not self._in_studio_env
+            and create_presigned_domain_url
+            and self._validate_domain_id(domain_id)
+            and self._validate_user_profile_name(user_profile_name)
+        ):
+            if optional_create_presigned_url_kwargs is None:
+                optional_create_presigned_url_kwargs = {}
+            optional_create_presigned_url_kwargs["DomainId"] = domain_id
+            optional_create_presigned_url_kwargs["UserProfileName"] = user_profile_name
+
+            redirect = "TensorBoard"
+            state_to_encode = None
+            if training_job_name is not None:
+                state_to_encode = (
+                    "/tensorboard/default/data/plugin/sagemaker_data_manager/"
+                    + f"add_folder_or_job?Redirect=True&Name={training_job_name}"
+                )
+
+            url = self._get_presigned_url(
+                optional_create_presigned_url_kwargs, redirect, state_to_encode
+            )
         else:
-            if domain_id or user_profile_name or create_presigned_domain_url:
+            if not self._in_studio_env and create_presigned_domain_url:
                 logger.warning(
                     "A valid domain ID and user profile name were not provided. "
                     "Providing default landing page URL as a result."

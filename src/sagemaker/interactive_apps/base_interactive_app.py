@@ -59,6 +59,7 @@ class BaseInteractiveApp(abc.ABC):
         # Used to store domain and user profile info retrieved from Studio environment.
         self._domain_id = None
         self._user_profile_name = None
+        self._in_studio_env = False
         self._get_domain_and_user()
 
     def __str__(self):
@@ -70,25 +71,25 @@ class BaseInteractiveApp(abc.ABC):
         return self.__str__()
 
     def _get_domain_and_user(self):
-        """Get and validate studio domain id and user profile from studio environment."""
-        if not self._is_in_studio():
+        """Get domain id and user profile from Studio environment.
+
+        To verify Studio environment, we check if NOTEBOOK_METADATA_FILE exists
+        and domain id and user profile name are present in the file.
+        """
+        if not os.path.isfile(NOTEBOOK_METADATA_FILE):
             return
 
         try:
             with open(NOTEBOOK_METADATA_FILE, "rb") as metadata_file:
                 metadata = json.loads(metadata_file.read())
-                if not self._validate_domain_id(
-                    metadata.get("DomainId")
-                ) or not self._validate_user_profile_name(metadata.get("UserProfileName")):
-                    logger.warning(
-                        "NOTEBOOK_METADATA_FILE detected but failed to get valid domain and user"
-                        " from it."
-                    )
-                    return
-                self._domain_id = metadata.get("DomainId")
-                self._user_profile_name = metadata.get("UserProfileName")
         except OSError as err:
-            logger.warning("Could not load Studio metadata due to unexpected error. %s", err)
+            logger.warning("Could not load metadata due to unexpected error. %s", err)
+            return
+
+        if "DomainId" in metadata and "UserProfileName" in metadata:
+            self._in_studio_env = True
+            self._domain_id = metadata.get("DomainId")
+            self._user_profile_name = metadata.get("UserProfileName")
 
     def _get_presigned_url(
         self,
@@ -142,10 +143,6 @@ class BaseInteractiveApp(abc.ABC):
 
         return url
 
-    def _is_in_studio(self):
-        """Check to see if NOTEBOOK_METADATA_FILE exists to verify Studio environment."""
-        return os.path.isfile(NOTEBOOK_METADATA_FILE)
-
     def _open_url_in_web_browser(self, url: str):
         """Open a URL in the default web browser.
 
@@ -153,23 +150,6 @@ class BaseInteractiveApp(abc.ABC):
             url (str): The URL to open.
         """
         webbrowser.open(url)
-
-    def _validate_domain_id(self, domain_id: Optional[str] = None):
-        """Validate domain id format.
-
-        Args:
-            domain_id (str): Optional. The domain ID to validate. If one is not supplied,
-            self._domain_id will be used instead.
-            Default: ``None``
-
-        Returns:
-            bool: Whether the supplied domain ID is valid.
-        """
-        if domain_id is None:
-            domain_id = self._domain_id
-        if domain_id is None or len(domain_id) > 63:
-            return False
-        return True
 
     def _validate_job_name(self, job_name: str):
         """Validate training job name format.
@@ -186,29 +166,34 @@ class BaseInteractiveApp(abc.ABC):
                 f"Invalid job name. Job name must match regular expression {job_name_regex}"
             )
 
-    def _validate_user_profile_name(self, user_profile_name: Optional[str] = None):
+    def _validate_domain_id(self, domain_id: str):
+        """Validate domain id format.
+
+        Args:
+            domain_id (str): Required. The domain ID to validate.
+
+        Returns:
+            bool: Whether the supplied domain ID is valid.
+        """
+        if domain_id is None or len(domain_id) > 63:
+            return False
+        return True
+
+    def _validate_user_profile_name(self, user_profile_name: str):
         """Validate user profile name format.
 
         Args:
-            user_profile_name (str): Optional. The user profile name to validate. If one is not
-            supplied, self._user_profile_name will be used instead.
-            Default: ``None``
+            user_profile_name (str): Required. The user profile name to validate.
 
         Returns:
             bool: Whether the supplied user profile name is valid.
         """
-        if user_profile_name is None:
-            user_profile_name = self._user_profile_name
         user_profile_name_regex = "^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}"
         if user_profile_name is None or not re.fullmatch(
             user_profile_name_regex, user_profile_name
         ):
             return False
         return True
-
-    def _validate_domain_and_user(self):
-        """Helper function to consolidate validation calls."""
-        return self._validate_domain_id() and self._validate_user_profile_name()
 
     @abc.abstractmethod
     def get_app_url(self):
