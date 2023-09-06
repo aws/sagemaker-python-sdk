@@ -14,6 +14,10 @@
 from __future__ import absolute_import
 
 from typing import List
+import logging
+import traceback
+
+logger = logging.getLogger("jumpstart_curated_hub")
 
 RESOURCE_NOT_FOUND_ERROR_CODE = "ResourceNotFound"
 NO_SUCH_BUCKET_ERROR_CODE = "404"
@@ -49,3 +53,9 @@ def get_hub_creation_error_message(s3_bucket_name: str) -> str:
         "ERROR: Exception occurred during hub Curated Hub Creation. "
         f"A S3 bucket {s3_bucket_name} has been created and must be manually deleted."
     )
+
+def log_stacktrace_as_debug_and_raise(context: str, exception: Exception) -> None:
+    """Logs the exception stack trace as debug and throws error without stacktrace."""
+    stacktrace = traceback.TracebackException.from_exception(exception).format()
+    logger.debug(f"Received unknown exception when {context}: {stacktrace}")
+    raise exception

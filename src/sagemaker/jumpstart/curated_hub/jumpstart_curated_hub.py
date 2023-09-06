@@ -55,6 +55,7 @@ from sagemaker.jumpstart.curated_hub.constants import (
     CURATED_HUB_CONTENT_TYPE,
 )
 from sagemaker.jumpstart.curated_hub.error_messaging import (
+    log_stacktrace_as_debug_and_raise,
     get_hub_limit_exceeded_error,
     get_hub_s3_bucket_permissions_error,
     get_hub_creation_error_message,
@@ -62,7 +63,6 @@ from sagemaker.jumpstart.curated_hub.error_messaging import (
     NO_SUCH_BUCKET_ERROR_CODE,
     S3_ACCESS_DENIED_ERROR_CODE,
 )
-
 
 class JumpStartCuratedHub:
     """This class helps users create a new curated hub in their AWS account for a region."""
@@ -217,7 +217,7 @@ class JumpStartCuratedHub:
             # If the hub does not exist on the account, return None
             if ex.response["Error"]["Code"] == RESOURCE_NOT_FOUND_ERROR_CODE:
                 return None
-            raise
+            log_stacktrace_as_debug_and_raise("describe_hub", ex)
 
     def _create_unique_s3_bucket_name(self, bucket_name: str, region: str) -> str:
         """Creates a unique s3 bucket name."""
@@ -236,10 +236,9 @@ class JumpStartCuratedHub:
                 self._create_hub_s3_bucket_flag = True
                 return
             if ex.response["Error"]["Code"] == S3_ACCESS_DENIED_ERROR_CODE:
-                raise get_hub_s3_bucket_permissions_error(hub_s3_bucket_name)
+                log_stacktrace_as_debug_and_raise("head_bucket", get_hub_s3_bucket_permissions_error(hub_s3_bucket_name))
             
-            print(f"Received error that we could not handle: {ex.response}")
-            raise
+            log_stacktrace_as_debug_and_raise("head_bucket", ex)
 
     def _init_dependencies(self):
         """Creates all dependencies to run the Curated Hub."""
