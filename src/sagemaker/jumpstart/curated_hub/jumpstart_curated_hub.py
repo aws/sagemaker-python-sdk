@@ -60,7 +60,7 @@ from sagemaker.jumpstart.curated_hub.error_messaging import (
     get_hub_creation_error_message,
     RESOURCE_NOT_FOUND_ERROR_CODE,
     NO_SUCH_BUCKET_ERROR_CODE,
-    ACCESS_DENIED_ERROR_CODE,
+    S3_ACCESS_DENIED_ERROR_CODE,
 )
 
 
@@ -235,8 +235,10 @@ class JumpStartCuratedHub:
             if ex.response["Error"]["Code"] == NO_SUCH_BUCKET_ERROR_CODE:
                 self._create_hub_s3_bucket_flag = True
                 return
-            if ex.response["Error"]["Code"] == ACCESS_DENIED_ERROR_CODE:
+            if ex.response["Error"]["Code"] == S3_ACCESS_DENIED_ERROR_CODE:
                 raise get_hub_s3_bucket_permissions_error(hub_s3_bucket_name)
+            
+            print(f"Received error that we could not handle: {ex.response}")
             raise
 
     def _init_dependencies(self):
@@ -311,7 +313,7 @@ class JumpStartCuratedHub:
         try:
             self._create_hub_s3_bucket()
         except ClientError as ce:
-            if ce.response["Error"]["Code"] == ACCESS_DENIED_ERROR_CODE:
+            if ce.response["Error"]["Code"] == S3_ACCESS_DENIED_ERROR_CODE:
                 raise get_hub_s3_bucket_permissions_error(self.curated_hub_s3_config.bucket)
             raise
 
@@ -581,3 +583,10 @@ class JumpStartCuratedHub:
     def _is_s3_key_a_prefix(self, s3_key: str) -> bool:
         """Checks of s3 key is a directory"""
         return s3_key.endswith("/")
+    
+    def delete(self) -> None:
+        """Deletes the Curated Hub.
+        
+        This will delete the Private Hub, but not the corresponding hub S3 bucket.
+        """
+        self._curated_hub_client.delete_hub(self.curated_hub_name)
