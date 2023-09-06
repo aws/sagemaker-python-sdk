@@ -59,4 +59,6 @@ def log_stacktrace_as_debug_and_raise(context: str, exception: Exception) -> Non
     """Logs the exception stack trace as debug and throws error without stacktrace."""
     stacktrace = traceback.TracebackException.from_exception(exception).format()
     logger.debug(f"Received unknown exception when {context}: {stacktrace}")
-    raise SystemExit(exception)
+
+    sys.tracebacklimit = 0
+    raise exception
