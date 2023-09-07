@@ -97,6 +97,10 @@ class JumpStartCuratedHub:
     def _get_sm_client(self) -> Any:
         """Returns a SageMaker client."""
         return boto3.client("sagemaker", region_name=self._region)
+    
+    def _get_sts_client(self) -> Any:
+        """Returns an STS client."""
+        return boto3.client("sts", region_name=self._region)
 
     def create_or_reuse(
         self,
@@ -127,7 +131,35 @@ class JumpStartCuratedHub:
             hub_s3_bucket_name_override=hub_s3_bucket_name_override,
             hub_s3_key_prefix_override=hub_s3_key_prefix_override,
         )
+        # self._create_iam_policies()
         self._create()
+
+    def _create_iam_policies(
+            self,
+            create_iam_roles: bool = False
+    ) -> None:
+        """Creates the IAM policies to create and use the Curated Hub.
+        
+        This will use STS to retrieve the AWS assumed role and IAM to add policies to
+        gain read-access to the JumpStart public hub and read-write access the Curated Hub S3 bucket.
+
+        Calls sts:get_caller_identity and iam:put_role_policy
+        
+        Raises:
+          ClientError if STS or IAM fail.
+        """
+        if not create_iam_roles:
+            print(
+                "To create and use the Curated Hub, you will need a set of IAM permissions. "
+                "By default, these permissions will NOT be created. If you wish to have the script "
+                "auto-generate these IAM permissions for the execution role, please pass in "
+                "create_iam_roles=True."
+            )
+            return
+        
+        sts_client = self._get_sts_client()
+        role = sts_client.get_caller_identity()
+
 
     def _configure(
         self,
@@ -227,7 +259,8 @@ class JumpStartCuratedHub:
     def _init_hub_bucket_parameters(self, hub_s3_bucket_name: str) -> None:
         """Sets up hub S3 bucket parameters to"""
         try:
-            self._s3_client.head_bucket(Bucket=hub_s3_bucket_name)
+            res = self._s3_client.head_bucket(Bucket=hub_s3_bucket_name)
+            print(res)
             # Bucket already exists on account, skipping creation
             print(f"S3 bucket {hub_s3_bucket_name} detected on account. Using this bucket...")
             self._create_hub_s3_bucket_flag = False
