@@ -54,8 +54,9 @@ def test_init_when_non_defaults_provided():
 
 
 def test_init_when_optionals_not_provided():
-    sagemaker_session = Mock()
+    sagemaker_session = Mock(default_bucket_prefix=None)
     sagemaker_session.default_bucket.return_value = DEFAULT_BUCKET_NAME
+    sagemaker_session.sagemaker_config = {}
 
     data_capture_config = DataCaptureConfig(
         enable_capture=DEFAULT_ENABLE_CAPTURE, sagemaker_session=sagemaker_session

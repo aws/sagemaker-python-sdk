@@ -19,6 +19,7 @@ from tests.unit.sagemaker.image_uris import expected_uris
 
 ACCOUNTS = {
     "af-south-1": "626614931356",
+    "il-central-1": "780543022126",
     "ap-east-1": "871362719292",
     "ap-northeast-1": "763104351884",
     "ap-northeast-2": "763104351884",
@@ -37,35 +38,83 @@ ACCOUNTS = {
     "sa-east-1": "763104351884",
     "us-east-1": "763104351884",
     "us-east-2": "763104351884",
+    "us-gov-east-1": "446045086412",
     "us-gov-west-1": "442386744353",
     "us-iso-east-1": "886529160074",
+    "us-isob-east-1": "094389454867",
     "us-west-1": "763104351884",
     "us-west-2": "763104351884",
 }
-VERSIONS = ["0.3.1", "0.3.2", "0.4.0", "0.3", "0.4"]
+VERSIONS = [
+    "0.3.1",
+    "0.3.2",
+    "0.4.0",
+    "0.4.2",
+    "0.4.3",
+    "0.3",
+    "0.4",
+    "0.5.2",
+    "0.5",
+    "0.6.1",
+    "0.6",
+    "0.6.2",
+    "0.7.0",
+    "0.7",
+    "0.8",
+    "0.8.2",
+]
+
+SCOPES = ["training", "inference"]
+PROCESSORS = ["cpu", "gpu"]
 
 
 @pytest.mark.parametrize("version", VERSIONS)
-def test_valid_uris(version):
-    py_version = "py37" if version == "0.3.1" else "py38"
-    for region in ACCOUNTS.keys():
-        uri = image_uris.retrieve(
-            "autogluon",
-            region=region,
-            version=version,
-            py_version=py_version,
-            image_scope="training",
-            instance_type="ml.c4.xlarge",
-        )
+@pytest.mark.parametrize("scope", SCOPES)
+@pytest.mark.parametrize("processor", PROCESSORS)
+def test_valid_uris_training(version, scope, processor):
+    instance_type = "ml.c4.xlarge" if processor == "cpu" else "ml.p2.xlarge"
+    if version == "0.3.1":
+        py_version = "py37"
+    elif version < "0.7":
+        py_version = "py38"
+    else:
+        py_version = "py39"
+    if (
+        scope == "inference"
+        and processor == "gpu"
+        and version in ["0.3.1", "0.3.2", "0.4.0", "0.3"]
+    ):
+        with pytest.raises(ValueError) as e:
+            image_uris.retrieve(
+                "autogluon",
+                region="us-west-2",
+                version=version,
+                py_version=py_version,
+                image_scope=scope,
+                instance_type=instance_type,
+            )
 
-        expected = expected_uris.framework_uri(
-            "autogluon-training",
-            version,
-            ACCOUNTS[region],
-            py_version=py_version,
-            region=region,
-        )
-        assert uri == expected
+        assert "Unsupported processor: gpu." in str(e.value)
+    else:
+        for region in ACCOUNTS.keys():
+            uri = image_uris.retrieve(
+                "autogluon",
+                region=region,
+                version=version,
+                py_version=py_version,
+                image_scope=scope,
+                instance_type=instance_type,
+            )
+
+            expected = expected_uris.framework_uri(
+                f"autogluon-{scope}",
+                version,
+                ACCOUNTS[region],
+                py_version=py_version,
+                region=region,
+                processor=processor,
+            )
+            assert uri == expected
 
 
 @pytest.mark.parametrize("version", VERSIONS)
@@ -81,17 +130,3 @@ def test_py3_error(version):
         )
 
     assert "Unsupported Python version: py3." in str(e.value)
-
-
-@pytest.mark.parametrize("version", VERSIONS)
-def test_gpu_error(version):
-    with pytest.raises(ValueError) as e:
-        image_uris.retrieve(
-            "autogluon",
-            region="us-west-2",
-            version=version,
-            image_scope="inference",
-            instance_type="ml.p2.xlarge",
-        )
-
-    assert "Unsupported processor: gpu." in str(e.value)

@@ -27,8 +27,11 @@
                 "us-east-1": "785573368785",
                 "us-east-2": "007439368137",
                 "us-gov-west-1": "263933020539",
+                "us-iso-east-1": "167761179201",
+                "us-isob-east-1": "406031935815",
                 "us-west-1": "710691900526",
-                "us-west-2": "301217895009"                
+                "us-west-2": "301217895009",
+                "il-central-1": "275950707576"
             },
             "repository": "sagemaker-neo-tensorflow"
         },
@@ -57,8 +60,11 @@
                 "us-east-1": "785573368785",
                 "us-east-2": "007439368137",
                 "us-gov-west-1": "263933020539",
+                "us-iso-east-1": "167761179201",
+                "us-isob-east-1": "406031935815",
                 "us-west-1": "710691900526",
-                "us-west-2": "301217895009"
+                "us-west-2": "301217895009",
+                "il-central-1": "275950707576"
             },
             "repository": "sagemaker-neo-tensorflow"
         }

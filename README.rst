@@ -87,10 +87,9 @@ Supported Python Versions
 
 SageMaker Python SDK is tested on:
 
-- Python 3.6
-- Python 3.7
 - Python 3.8
 - Python 3.9
+- Python 3.10
 
 AWS Permissions
 ~~~~~~~~~~~~~~~
@@ -126,13 +125,15 @@ To run the unit tests with tox, run:
 
     tox tests/unit
 
-**Integrations tests**
+**Integration tests**
 
 To run the integration tests, the following prerequisites must be met
 
 1. AWS account credentials are available in the environment for the boto3 client to use.
 2. The AWS account has an IAM role named :code:`SageMakerRole`.
    It should have the AmazonSageMakerFullAccess policy attached as well as a policy with `the necessary permissions to use Elastic Inference <https://docs.aws.amazon.com/sagemaker/latest/dg/ei-setup.html>`__.
+3. To run remote_function tests, dummy ecr repo should be created. It can be created by running -
+    :code:`aws ecr create-repository --repository-name remote-function-dummy-container`
 
 We recommend selectively running just those integration tests you'd like to run. You can filter by individual test function names with:
 
@@ -214,7 +215,7 @@ In order to host a SparkML model in SageMaker, it should be serialized with ``ML
 
 For more information on MLeap, see https://github.com/combust/mleap .
 
-Supported major version of Spark: 2.4 (MLeap version - 0.9.6)
+Supported major version of Spark: 3.3 (MLeap version - 0.20.0)
 
 Here is an example on how to create an instance of  ``SparkMLModel`` class and use ``deploy()`` method to create an
 endpoint which can be used to perform prediction against your trained SparkML Model.

@@ -31,59 +31,53 @@ def read_version():
     return read("VERSION").strip()
 
 
+def read_requirements(filename):
+    """Reads requirements file which lists package dependencies.
+
+    Args:
+        filename: type(str) Relative file path of requirements.txt file
+
+    Returns:
+        list of dependencies extracted from file
+    """
+    with open(os.path.abspath(filename)) as fp:
+        deps = [line.strip() for line in fp.readlines()]
+    return deps
+
+
 # Declare minimal set for installation
 required_packages = [
-    "attrs==20.3.0",
-    "boto3>=1.20.21",
+    "attrs>=23.1.0,<24",
+    "boto3>=1.26.131,<2.0",
+    "cloudpickle==2.2.1",
     "google-pasta",
-    "numpy>=1.9.0",
-    "protobuf>=3.1",
-    "protobuf3-to-dict>=0.1.5",
+    "numpy>=1.9.0,<2.0",
+    "protobuf>=3.12,<5.0",
     "smdebug_rulesconfig==1.0.1",
-    "importlib-metadata>=1.4.0",
+    "importlib-metadata>=1.4.0,<7.0",
     "packaging>=20.0",
     "pandas",
     "pathos",
+    "schema",
+    "PyYAML~=6.0",
+    "jsonschema",
+    "platformdirs",
+    "tblib==1.7.0",
 ]
 
 # Specific use case dependencies
+# Keep format of *_requirements.txt to be tracked by dependabot
 extras = {
-    "local": [
-        "urllib3==1.26.8",
-        "docker-compose==1.29.2",
-        "docker~=5.0.0",
-        "PyYAML==5.4.1",  # PyYAML version has to match docker-compose requirements
-    ],
-    "scipy": ["scipy==1.5.4"],
+    "local": read_requirements("requirements/extras/local_requirements.txt"),
+    "scipy": read_requirements("requirements/extras/scipy_requirements.txt"),
+    "feature-processor": read_requirements(
+        "requirements/extras/feature-processor_requirements.txt"
+    ),
 }
 # Meta dependency groups
 extras["all"] = [item for group in extras.values() for item in group]
 # Tests specific dependencies (do not need to be included in 'all')
-extras["test"] = (
-    [
-        extras["all"],
-        "tox==3.24.5",
-        "flake8==4.0.1",
-        "pytest==6.0.2",
-        "pytest-cov==3.0.0",
-        "pytest-rerunfailures==10.2",
-        "pytest-timeout==2.1.0",
-        "pytest-xdist==2.4.0",
-        "coverage>=5.2, <6.2",
-        "mock==4.0.3",
-        "contextlib2==21.6.0",
-        "awslogs==0.14.0",
-        "black==22.1.0",
-        "stopit==1.1.2",
-        "apache-airflow==2.2.3",
-        "apache-airflow-providers-amazon==3.0.0",
-        "attrs==20.3.0",
-        "fabric==2.6.0",
-        "requests==2.27.1",
-        "sagemaker-experiments==0.1.35",
-        "Jinja2==3.0.3",
-    ],
-)
+extras["test"] = (read_requirements("requirements/extras/test_requirements.txt"),)
 
 setup(
     name="sagemaker",
@@ -98,16 +92,16 @@ setup(
     url="https://github.com/aws/sagemaker-python-sdk/",
     license="Apache License 2.0",
     keywords="ML Amazon AWS AI Tensorflow MXNet",
+    python_requires=">= 3.8",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
         "Natural Language :: English",
         "License :: OSI Approved :: Apache Software License",
         "Programming Language :: Python",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
     ],
     install_requires=required_packages,
     extras_require=extras,

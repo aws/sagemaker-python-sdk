@@ -14,15 +14,20 @@ from __future__ import absolute_import
 import logging
 from functools import wraps
 
+from botocore.exceptions import ClientError
+
 from tests.conftest import NO_P3_REGIONS, NO_M4_REGIONS
 from sagemaker.exceptions import CapacityError
+
+P2_INSTANCES = ["ml.p2.xlarge", "ml.p2.8xlarge", "ml.p2.16xlarge"]
+P3_INSTANCES = ["ml.p3.2xlarge"]
 
 
 def gpu_list(region):
     if region in NO_P3_REGIONS:
-        return ["ml.p2.xlarge"]
+        return P2_INSTANCES
     else:
-        return ["ml.p3.2xlarge", "ml.p2.xlarge"]
+        return [*P2_INSTANCES, *P3_INSTANCES]
 
 
 def cpu_list(region):
@@ -69,3 +74,21 @@ def retry_with_instance_list(instance_list):
         return wrapper
 
     return decorator
+
+
+def create_repository(ecr_client, repository_name):
+    """Creates an ECS Repository (ECR).
+
+    When a new transform is being registered,
+    we'll need a repository to push the image (and composed model images) to
+    """
+    try:
+        response = ecr_client.create_repository(repositoryName=repository_name)
+        return response["repository"]["repositoryUri"]
+    except ClientError as e:
+        # Handle when the repository already exists
+        if "RepositoryAlreadyExistsException" == e.response.get("Error", {}).get("Code"):
+            response = ecr_client.describe_repositories(repositoryNames=[repository_name])
+            return response["repositories"][0]["repositoryUri"]
+        else:
+            raise

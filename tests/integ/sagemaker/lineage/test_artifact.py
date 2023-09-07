@@ -20,7 +20,9 @@ import time
 import pytest
 
 from sagemaker.lineage import artifact
-from tests.integ.sagemaker.lineage.helpers import retry
+from sagemaker.utils import retry_with_backoff
+
+CREATION_VERIFICATION_WINDOW_MINUTES = 2
 
 
 def test_create_delete(artifact_obj):
@@ -81,7 +83,7 @@ def test_list(artifact_objs, sagemaker_session):
 
 
 def test_list_by_type(artifact_objs, sagemaker_session):
-    slack = datetime.timedelta(minutes=1)
+    slack = datetime.timedelta(minutes=CREATION_VERIFICATION_WINDOW_MINUTES)
     now = datetime.datetime.now(datetime.timezone.utc)
     expected_name = list(
         filter(lambda x: x.artifact_type == "SDKIntegrationTestType2", artifact_objs)
@@ -125,7 +127,7 @@ def test_downstream_trials(trial_associated_artifact, trial_obj, sagemaker_sessi
         assert len(trials) == 1
         assert trial_obj.trial_name in trials
 
-    retry(validate, num_attempts=3)
+    retry_with_backoff(validate, num_attempts=3)
 
 
 def test_downstream_trials_v2(trial_associated_artifact, trial_obj, sagemaker_session):

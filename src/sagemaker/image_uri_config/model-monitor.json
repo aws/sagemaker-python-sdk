@@ -11,6 +11,7 @@
                 "ap-south-1": "126357580389",
                 "ap-southeast-1": "245545462676",
                 "ap-southeast-2": "563025443158",
+                "ap-southeast-3": "669540362728",
                 "ca-central-1": "536280801234",
                 "cn-north-1": "453000072557",
                 "cn-northwest-1": "453252182341",
@@ -25,7 +26,8 @@
                 "us-east-1": "156813124566",
                 "us-east-2": "777275614652",
                 "us-west-1": "890145073186",
-                "us-west-2": "159807026194"
+                "us-west-2": "159807026194",
+                "il-central-1": "843974653677"
             },
             "repository": "sagemaker-model-monitor-analyzer"
         }

@@ -36,12 +36,15 @@ def sagemaker_session():
         local_mode=False,
         s3_resource=None,
         s3_client=None,
+        default_bucket_prefix=None,
     )
     session.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     session.expand_role = Mock(name="expand_role", return_value=ROLE)
     describe = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/m.tar.gz"}}
     session.sagemaker_client.describe_training_job = Mock(return_value=describe)
     session.sagemaker_client.list_tags = Mock(return_value=LIST_TAGS_RESULT)
+    # For tests which doesn't verify config file injection, operate with empty config
+    session.sagemaker_config = {}
     return session
 
 

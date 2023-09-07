@@ -39,7 +39,10 @@ ENDPOINT_CONFIG_DESC = {"ProductionVariants": [{"ModelName": "model-1"}, {"Model
 
 
 def empty_sagemaker_session():
-    ims = Mock(name="sagemaker_session")
+    ims = Mock(
+        name="sagemaker_session",
+        default_bucket_prefix=None,
+    )
     ims.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     ims.sagemaker_runtime_client = Mock(name="sagemaker_runtime")
     ims.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
@@ -147,7 +150,10 @@ def test_multi_model_predict_call():
 
 
 def json_sagemaker_session():
-    ims = Mock(name="sagemaker_session")
+    ims = Mock(
+        name="sagemaker_session",
+        default_bucket_prefix=None,
+    )
     ims.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     ims.sagemaker_runtime_client = Mock(name="sagemaker_runtime")
     ims.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
@@ -188,7 +194,10 @@ def test_predict_call_with_json():
 
 
 def ret_csv_sagemaker_session():
-    ims = Mock(name="sagemaker_session")
+    ims = Mock(
+        name="sagemaker_session",
+        default_bucket_prefix=None,
+    )
     ims.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     ims.sagemaker_runtime_client = Mock(name="sagemaker_runtime")
     ims.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
@@ -249,7 +258,7 @@ def test_predict_call_with_multiple_accept_types():
     assert kwargs == expected_request_args
 
 
-@patch("sagemaker.predictor.name_from_base")
+@patch("sagemaker.base_predictor.name_from_base")
 def test_update_endpoint_no_args(name_from_base):
     new_endpoint_config_name = "new-endpoint-config"
     name_from_base.return_value = new_endpoint_config_name
@@ -279,8 +288,8 @@ def test_update_endpoint_no_args(name_from_base):
     )
 
 
-@patch("sagemaker.predictor.production_variant")
-@patch("sagemaker.predictor.name_from_base")
+@patch("sagemaker.base_predictor.production_variant")
+@patch("sagemaker.base_predictor.name_from_base")
 def test_update_endpoint_all_args(name_from_base, production_variant):
     new_endpoint_config_name = "new-endpoint-config"
     name_from_base.return_value = new_endpoint_config_name
@@ -332,8 +341,8 @@ def test_update_endpoint_all_args(name_from_base, production_variant):
     )
 
 
-@patch("sagemaker.predictor.production_variant")
-@patch("sagemaker.predictor.name_from_base")
+@patch("sagemaker.base_predictor.production_variant")
+@patch("sagemaker.base_predictor.name_from_base")
 def test_update_endpoint_instance_type_and_count(name_from_base, production_variant):
     new_endpoint_config_name = "new-endpoint-config"
     name_from_base.return_value = new_endpoint_config_name
@@ -493,11 +502,11 @@ def test_endpoint_context_fail():
     assert not context
 
 
-@patch("sagemaker.predictor.ModelExplainabilityMonitor.attach")
-@patch("sagemaker.predictor.ModelBiasMonitor.attach")
-@patch("sagemaker.predictor.ModelQualityMonitor.attach")
-@patch("sagemaker.predictor.ModelMonitor.attach")
-@patch("sagemaker.predictor.DefaultModelMonitor.attach")
+@patch("sagemaker.base_predictor.ModelExplainabilityMonitor.attach")
+@patch("sagemaker.base_predictor.ModelBiasMonitor.attach")
+@patch("sagemaker.base_predictor.ModelQualityMonitor.attach")
+@patch("sagemaker.base_predictor.ModelMonitor.attach")
+@patch("sagemaker.base_predictor.DefaultModelMonitor.attach")
 def test_list_monitors(default_model_monitor_attach, *attach_methods):
     sagemaker_session = empty_sagemaker_session()
     sagemaker_session.list_monitoring_schedules = Mock(
@@ -594,3 +603,33 @@ def test_list_monitors_unknown_monitoring_type():
     predictor = Predictor(ENDPOINT, sagemaker_session=sagemaker_session)
     with pytest.raises(TypeError):
         predictor.list_monitors()
+
+
+def test_setting_serializer_deserializer_atts_changes_content_accept_types():
+    sagemaker_session = empty_sagemaker_session()
+    predictor = Predictor(ENDPOINT, sagemaker_session=sagemaker_session)
+    assert predictor.accept == ("*/*",)
+    assert predictor.content_type == "application/octet-stream"
+    predictor.serializer = CSVSerializer()
+    predictor.deserializer = PandasDeserializer()
+    assert predictor.accept == ("text/csv", "application/json")
+    assert predictor.content_type == "text/csv"
+
+
+def test_custom_attributes():
+    sagemaker_session = empty_sagemaker_session()
+    predictor = Predictor(ENDPOINT, sagemaker_session=sagemaker_session)
+
+    sagemaker_session.sagemaker_runtime_client.invoke_endpoint = Mock(
+        return_value={"Body": io.StringIO("response")}
+    )
+
+    predictor.predict("payload", custom_attributes="custom-attribute")
+
+    sagemaker_session.sagemaker_runtime_client.invoke_endpoint.assert_called_once_with(
+        EndpointName=ENDPOINT,
+        ContentType="application/octet-stream",
+        Accept="*/*",
+        CustomAttributes="custom-attribute",
+        Body="payload",
+    )

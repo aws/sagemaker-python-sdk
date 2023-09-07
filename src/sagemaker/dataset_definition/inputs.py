@@ -124,8 +124,10 @@ class DatasetDefinition(ApiObject):
     """DatasetDefinition input."""
 
     _custom_boto_types = {
-        "redshift_dataset_definition": (RedshiftDatasetDefinition, True),
-        "athena_dataset_definition": (AthenaDatasetDefinition, True),
+        # RedshiftDatasetDefinition and AthenaDatasetDefinition are not collection
+        # Instead they are singleton objects. Thus, set the is_collection flag to False.
+        "redshift_dataset_definition": (RedshiftDatasetDefinition, False),
+        "athena_dataset_definition": (AthenaDatasetDefinition, False),
     }
 
     def __init__(

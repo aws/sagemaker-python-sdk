@@ -13,8 +13,10 @@
 from __future__ import absolute_import
 import os
 
-from sagemaker import image_uris, model_uris, script_uris
+from sagemaker import image_uris, instance_types, model_uris, script_uris, environment_variables
 from sagemaker.jumpstart.constants import INFERENCE_ENTRY_POINT_SCRIPT_NAME
+from sagemaker.jumpstart.artifacts import _retrieve_model_init_kwargs, _retrieve_model_deploy_kwargs
+from sagemaker import predictor
 from sagemaker.model import Model
 from tests.integ.sagemaker.jumpstart.constants import (
     ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID,
@@ -22,7 +24,6 @@ from tests.integ.sagemaker.jumpstart.constants import (
     InferenceTabularDataname,
 )
 from tests.integ.sagemaker.jumpstart.utils import (
-    EndpointInvoker,
     download_inference_assets,
     get_sm_session,
     get_tabular_data,
@@ -31,8 +32,12 @@ from tests.integ.sagemaker.jumpstart.utils import (
 
 def test_jumpstart_inference_model_class(setup):
 
-    model_id, model_version = "catboost-classification-model", "1.0.0"
-    instance_type, instance_count = "ml.m5.xlarge", 1
+    model_id, model_version = "catboost-classification-model", "1.2.7"
+
+    instance_type = instance_types.retrieve_default(
+        model_id=model_id, model_version=model_version, scope="inference"
+    )
+    instance_count = 1
 
     print("Starting inference...")
 
@@ -53,6 +58,16 @@ def test_jumpstart_inference_model_class(setup):
         model_id=model_id, model_version=model_version, model_scope="inference"
     )
 
+    env = environment_variables.retrieve_default(
+        model_id=model_id,
+        model_version=model_version,
+        include_aws_sdk_env_vars=False,
+    )
+    model_kwargs = _retrieve_model_init_kwargs(
+        model_id=model_id,
+        model_version=model_version,
+    )
+
     model = Model(
         image_uri=image_uri,
         model_data=model_uri,
@@ -60,22 +75,33 @@ def test_jumpstart_inference_model_class(setup):
         entry_point=INFERENCE_ENTRY_POINT_SCRIPT_NAME,
         role=get_sm_session().get_caller_identity_arn(),
         sagemaker_session=get_sm_session(),
-        enable_network_isolation=True,
+        env=env,
+        **model_kwargs,
+    )
+
+    deploy_kwargs = _retrieve_model_deploy_kwargs(
+        model_id=model_id,
+        model_version=model_version,
+        instance_type=instance_type,
     )
 
     model.deploy(
         initial_instance_count=instance_count,
         instance_type=instance_type,
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
+        **deploy_kwargs,
     )
 
-    endpoint_invoker = EndpointInvoker(
+    js_predictor = predictor.retrieve_default(
         endpoint_name=model.endpoint_name,
+        model_id=model_id,
+        model_version=model_version,
+        sagemaker_session=get_sm_session(),
     )
 
     download_inference_assets()
     ground_truth_label, features = get_tabular_data(InferenceTabularDataname.MULTICLASS)
 
-    response = endpoint_invoker.invoke_tabular_endpoint(features)
+    response = js_predictor.predict(features)
 
     assert response is not None

@@ -12,10 +12,13 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import copy
+
 import pytest
 from mock import Mock, patch, MagicMock
 from packaging import version
 
+from sagemaker import LocalSession
 from sagemaker.dataset_definition.inputs import (
     S3Input,
     DatasetDefinition,
@@ -29,14 +32,21 @@ from sagemaker.processing import (
     ScriptProcessor,
     ProcessingJob,
 )
+from sagemaker.session_settings import SessionSettings
+from sagemaker.spark.processing import PySparkProcessor
 from sagemaker.sklearn.processing import SKLearnProcessor
 from sagemaker.pytorch.processing import PyTorchProcessor
 from sagemaker.tensorflow.processing import TensorFlowProcessor
+from sagemaker.workflow.pipeline_definition_config import PipelineDefinitionConfig
 from sagemaker.xgboost.processing import XGBoostProcessor
 from sagemaker.mxnet.processing import MXNetProcessor
 from sagemaker.network import NetworkConfig
 from sagemaker.processing import FeatureStoreOutput
 from sagemaker.fw_utils import UploadedCode
+from sagemaker.workflow.pipeline_context import PipelineSession, _PipelineConfig
+from sagemaker.workflow.functions import Join
+from sagemaker.workflow.execution_variables import ExecutionVariables
+from tests.unit import SAGEMAKER_CONFIG_PROCESSING_JOB
 
 BUCKET_NAME = "mybucket"
 REGION = "us-west-2"
@@ -44,6 +54,14 @@ ROLE = "arn:aws:iam::012345678901:role/SageMakerRole"
 ECR_HOSTNAME = "ecr.us-west-2.amazonaws.com"
 CUSTOM_IMAGE_URI = "012345678901.dkr.ecr.us-west-2.amazonaws.com/my-custom-image-uri"
 MOCKED_S3_URI = "s3://mocked_s3_uri_from_upload_data"
+_DEFINITION_CONFIG = PipelineDefinitionConfig(use_custom_job_prefix=False)
+MOCKED_PIPELINE_CONFIG = _PipelineConfig(
+    "test-pipeline",
+    "test-processing-step",
+    "code-hash-abcdefg",
+    "config-hash-abcdefg",
+    _DEFINITION_CONFIG,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -61,6 +79,8 @@ def sagemaker_session():
         boto_region_name=REGION,
         config=None,
         local_mode=False,
+        settings=SessionSettings(),
+        default_bucket_prefix=None,
     )
     session_mock.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
 
@@ -70,6 +90,37 @@ def sagemaker_session():
     session_mock.describe_processing_job = MagicMock(
         name="describe_processing_job", return_value=_get_describe_response_inputs_and_ouputs()
     )
+
+    # For tests which doesn't verify config file injection, operate with empty config
+    session_mock.sagemaker_config = {}
+    return session_mock
+
+
+@pytest.fixture()
+def pipeline_session():
+    boto_mock = Mock(name="boto_session", region_name=REGION)
+    session_mock = MagicMock(
+        name="sagemaker_session",
+        boto_session=boto_mock,
+        boto_region_name=REGION,
+        config=None,
+        local_mode=False,
+        settings=SessionSettings(),
+        default_bucket_prefix=None,
+    )
+    session_mock.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
+
+    session_mock.upload_data = Mock(name="upload_data", return_value=MOCKED_S3_URI)
+    session_mock.download_data = Mock(name="download_data")
+    session_mock.expand_role.return_value = ROLE
+    session_mock.describe_processing_job = MagicMock(
+        name="describe_processing_job", return_value=_get_describe_response_inputs_and_ouputs()
+    )
+    session_mock.__class__ = PipelineSession
+
+    # For tests which doesn't verify config file injection, operate with empty config
+    session_mock.sagemaker_config = {}
+
     return session_mock
 
 
@@ -156,9 +207,8 @@ def test_sklearn_with_all_parameters(
     sagemaker_session.process.assert_called_with(**expected_args)
 
 
-@patch("sagemaker.local.LocalSession.__init__", return_value=None)
-def test_local_mode_disables_local_code_by_default(localsession_mock):
-    Processor(
+def test_local_mode_disables_local_code_by_default():
+    processor = Processor(
         image_uri="",
         role=ROLE,
         instance_count=1,
@@ -167,7 +217,8 @@ def test_local_mode_disables_local_code_by_default(localsession_mock):
 
     # Most tests use a fixture for sagemaker_session for consistent behaviour, so this unit test
     # checks that the default initialization disables unsupported 'local_code' mode:
-    localsession_mock.assert_called_with(disable_local_code=True)
+    assert processor.sagemaker_session._disable_local_code
+    assert isinstance(processor.sagemaker_session, LocalSession)
 
 
 @patch("sagemaker.utils._botocore_resolver")
@@ -576,6 +627,103 @@ def test_script_processor_with_required_parameters(exists_mock, isfile_mock, sag
 
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
+def test_script_processor_without_role(exists_mock, isfile_mock, sagemaker_session):
+    with pytest.raises(ValueError):
+        ScriptProcessor(
+            image_uri=CUSTOM_IMAGE_URI,
+            command=["python3"],
+            instance_type="ml.m4.xlarge",
+            instance_count=1,
+            volume_size_in_gb=100,
+            volume_kms_key="arn:aws:kms:us-west-2:012345678901:key/volume-kms-key",
+            output_kms_key="arn:aws:kms:us-west-2:012345678901:key/output-kms-key",
+            max_runtime_in_seconds=3600,
+            base_job_name="my_sklearn_processor",
+            env={"my_env_variable": "my_env_variable_value"},
+            tags=[{"Key": "my-tag", "Value": "my-tag-value"}],
+            network_config=NetworkConfig(
+                subnets=["my_subnet_id"],
+                security_group_ids=["my_security_group_id"],
+                enable_network_isolation=True,
+                encrypt_inter_container_traffic=True,
+            ),
+            sagemaker_session=sagemaker_session,
+        )
+
+
+@patch("os.path.exists", return_value=True)
+@patch("os.path.isfile", return_value=True)
+def test_script_processor_with_sagemaker_config_injection(
+    exists_mock, isfile_mock, sagemaker_session
+):
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_PROCESSING_JOB
+
+    sagemaker_session.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
+    sagemaker_session.upload_data = Mock(name="upload_data", return_value=MOCKED_S3_URI)
+    sagemaker_session.wait_for_processing_job = MagicMock(
+        name="wait_for_processing_job", return_value=_get_describe_response_inputs_and_ouputs()
+    )
+    sagemaker_session.process = Mock()
+    sagemaker_session.expand_role = Mock(name="expand_role", side_effect=lambda a: a)
+
+    processor = ScriptProcessor(
+        image_uri=CUSTOM_IMAGE_URI,
+        command=["python3"],
+        instance_type="ml.m4.xlarge",
+        instance_count=1,
+        volume_size_in_gb=100,
+        max_runtime_in_seconds=3600,
+        base_job_name="my_sklearn_processor",
+        tags=[{"Key": "my-tag", "Value": "my-tag-value"}],
+        sagemaker_session=sagemaker_session,
+    )
+    processor.run(
+        code="/local/path/to/processing_code.py",
+        inputs=_get_data_inputs_all_parameters(),
+        outputs=_get_data_outputs_all_parameters(),
+        arguments=["--drop-columns", "'SelfEmployed'"],
+        wait=True,
+        logs=False,
+        job_name="my_job_name",
+        experiment_config={"ExperimentName": "AnExperiment"},
+    )
+    expected_args = copy.deepcopy(_get_expected_args_all_parameters(processor._current_job_name))
+    expected_volume_kms_key_id = SAGEMAKER_CONFIG_PROCESSING_JOB["SageMaker"]["ProcessingJob"][
+        "ProcessingResources"
+    ]["ClusterConfig"]["VolumeKmsKeyId"]
+    expected_output_kms_key_id = SAGEMAKER_CONFIG_PROCESSING_JOB["SageMaker"]["ProcessingJob"][
+        "ProcessingOutputConfig"
+    ]["KmsKeyId"]
+    expected_role_arn = SAGEMAKER_CONFIG_PROCESSING_JOB["SageMaker"]["ProcessingJob"]["RoleArn"]
+    expected_vpc_config = SAGEMAKER_CONFIG_PROCESSING_JOB["SageMaker"]["ProcessingJob"][
+        "NetworkConfig"
+    ]["VpcConfig"]
+    expected_enable_network_isolation = SAGEMAKER_CONFIG_PROCESSING_JOB["SageMaker"][
+        "ProcessingJob"
+    ]["NetworkConfig"]["EnableNetworkIsolation"]
+    expected_enable_inter_containter_traffic_encryption = SAGEMAKER_CONFIG_PROCESSING_JOB[
+        "SageMaker"
+    ]["ProcessingJob"]["NetworkConfig"]["EnableInterContainerTrafficEncryption"]
+    expected_environment = SAGEMAKER_CONFIG_PROCESSING_JOB["SageMaker"]["ProcessingJob"][
+        "Environment"
+    ]
+
+    expected_args["resources"]["ClusterConfig"]["VolumeKmsKeyId"] = expected_volume_kms_key_id
+    expected_args["output_config"]["KmsKeyId"] = expected_output_kms_key_id
+    expected_args["role_arn"] = expected_role_arn
+    expected_args["network_config"]["VpcConfig"] = expected_vpc_config
+    expected_args["network_config"]["EnableNetworkIsolation"] = expected_enable_network_isolation
+    expected_args["network_config"][
+        "EnableInterContainerTrafficEncryption"
+    ] = expected_enable_inter_containter_traffic_encryption
+    expected_args["environment"] = expected_environment
+
+    sagemaker_session.process.assert_called_with(**expected_args)
+    assert "my_job_name" in processor._current_job_name
+
+
+@patch("os.path.exists", return_value=True)
+@patch("os.path.isfile", return_value=True)
 def test_script_processor_with_all_parameters(exists_mock, isfile_mock, sagemaker_session):
     processor = ScriptProcessor(
         role=ROLE,
@@ -667,6 +815,26 @@ def test_script_processor_with_all_parameters_via_run_args(
     assert "my_job_name" in processor._current_job_name
 
 
+@patch("os.path.exists", return_value=True)
+@patch("os.path.isfile", return_value=True)
+@patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
+def test_script_processor_code_path_with_pipeline_config(
+    exists_mock, isfile_mock, pipeline_session
+):
+    processor = _get_script_processor(pipeline_session)
+    step_args = processor.run(
+        code="/local/path/to/processing_code.py",
+    )
+    # execute process.run() and generate args, S3 paths
+    step_args.func(*step_args.func_args, **step_args.func_kwargs)
+    pipeline_session.upload_data.assert_called_with(
+        path="/local/path/to/processing_code.py",
+        bucket="mybucket",
+        key_prefix="test-pipeline/code/code-hash-abcdefg",
+        extra_args=None,
+    )
+
+
 def test_processor_with_required_parameters(sagemaker_session):
     processor = Processor(
         role=ROLE,
@@ -703,6 +871,70 @@ def test_processor_with_missing_network_config_parameters(sagemaker_session):
     expected_args["network_config"] = {"EnableNetworkIsolation": True}
 
     sagemaker_session.process.assert_called_with(**expected_args)
+
+
+@patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
+def test_processor_with_pipeline_s3_output_paths(pipeline_session):
+    processor = Processor(
+        role=ROLE,
+        image_uri=CUSTOM_IMAGE_URI,
+        instance_count=1,
+        instance_type="ml.m4.xlarge",
+        sagemaker_session=pipeline_session,
+    )
+
+    outputs = [
+        ProcessingOutput(output_name="train", source="/opt/ml/processing/train"),
+    ]
+
+    step_args = processor.run(outputs=outputs)
+    # execute process.run() and generate args, S3 paths
+    step_args.func(*step_args.func_args, **step_args.func_kwargs)
+    expected_output_config = {
+        "Outputs": [
+            {
+                "OutputName": "train",
+                "AppManaged": False,
+                "S3Output": {
+                    "S3Uri": Join(
+                        on="/",
+                        values=[
+                            "s3:/",
+                            "mybucket",
+                            "test-pipeline",
+                            ExecutionVariables.PIPELINE_EXECUTION_ID,
+                            "test-processing-step",
+                            "output",
+                            "train",
+                        ],
+                    ),
+                    "LocalPath": "/opt/ml/processing/train",
+                    "S3UploadMode": "EndOfJob",
+                },
+            }
+        ]
+    }
+    pipeline_session.process.assert_called_with(
+        inputs=[],
+        output_config=expected_output_config,
+        experiment_config=None,
+        job_name=processor._current_job_name,
+        resources={
+            "ClusterConfig": {
+                "InstanceType": "ml.m4.xlarge",
+                "InstanceCount": 1,
+                "VolumeSizeInGB": 30,
+            }
+        },
+        stopping_condition=None,
+        app_specification={
+            "ImageUri": "012345678901.dkr.ecr.us-west-2.amazonaws.com/my-custom-image-uri"
+        },
+        environment=None,
+        network_config=None,
+        role_arn="arn:aws:iam::012345678901:role/SageMakerRole",
+        tags=None,
+    )
 
 
 def test_processor_with_encryption_parameter_in_network_config(sagemaker_session):
@@ -768,6 +1000,42 @@ def test_processor_with_all_parameters(sagemaker_session):
     sagemaker_session.process.assert_called_with(**expected_args)
 
 
+@patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
+def test_processor_input_path_with_pipeline_config(pipeline_session):
+    processor = Processor(
+        role=ROLE,
+        image_uri=CUSTOM_IMAGE_URI,
+        instance_count=1,
+        instance_type="ml.m4.xlarge",
+        sagemaker_session=pipeline_session,
+    )
+
+    inputs = [
+        ProcessingInput(
+            input_name="s3_input",
+            s3_input=S3Input(
+                local_path="/container/path/",
+                s3_data_type="S3Prefix",
+                s3_input_mode="File",
+                s3_data_distribution_type="FullyReplicated",
+                s3_compression_type="None",
+            ),
+        )
+    ]
+
+    step_args = processor.run(
+        inputs=inputs,
+    )
+    # execute process.run() and generate args, S3 paths
+    step_args.func(*step_args.func_args, **step_args.func_kwargs)
+    pipeline_session.upload_data.assert_called_with(
+        path=None,
+        bucket="mybucket",
+        key_prefix="test-pipeline/test-processing-step/input/s3_input",
+        extra_args=None,
+    )
+
+
 def test_processing_job_from_processing_arn(sagemaker_session):
     processing_job = ProcessingJob.from_processing_arn(
         sagemaker_session=sagemaker_session,
@@ -804,6 +1072,31 @@ def test_extend_processing_args(sagemaker_session):
 
     assert extended_inputs == inputs
     assert extended_outputs == outputs
+
+
+@patch("os.path.exists", return_value=True)
+@patch("os.path.isfile", return_value=True)
+@patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
+def test_pyspark_processor_configuration_path_pipeline_config(
+    exists_mock, isfile_mock, pipeline_session
+):
+    processor = PySparkProcessor(
+        role=ROLE,
+        image_uri=CUSTOM_IMAGE_URI,
+        instance_count=1,
+        instance_type="ml.m4.xlarge",
+        sagemaker_session=pipeline_session,
+    )
+
+    extended_inputs, extended_outputs = processor._extend_processing_args(
+        inputs=[], outputs=[], configuration={"Classification": "hadoop-env", "Properties": {}}
+    )
+
+    s3_uri = extended_inputs[0].s3_input.s3_uri
+    assert (
+        s3_uri
+        == "s3://mybucket/test-pipeline/test-processing-step/input/conf/config-hash-abcdefg/configuration.json"
+    )
 
 
 def _get_script_processor(sagemaker_session):

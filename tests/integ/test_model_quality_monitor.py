@@ -235,6 +235,7 @@ def test_model_quality_monitor(
     tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
     reason="ModelMonitoring is not yet supported in this region.",
 )
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
 def test_run_model_quality_monitor(
     scheduled_model_quality_monitor,
     sagemaker_session,
@@ -260,6 +261,7 @@ def test_run_model_quality_monitor(
     tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
     reason="ModelMonitoring is not yet supported in this region.",
 )
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
 def test_run_model_quality_monitor_baseline(
     sagemaker_session,
     endpoint_name,
@@ -456,6 +458,7 @@ def _upload_actual_data(sagemaker_session, endpoint_name, actuals_s3_uri_base):
     capture_s3_uri_base = os.path.join(
         "s3://",
         sagemaker_session.default_bucket(),
+        sagemaker_session.default_bucket_prefix,
         "model-monitor",
         "data-capture",
         endpoint_name,

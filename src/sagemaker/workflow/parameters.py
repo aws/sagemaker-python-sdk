@@ -90,6 +90,11 @@ class Parameter(PipelineVariable, Entity):
         """The 'Get' expression dict for a `Parameter`."""
         return Parameter._expr(self.name)
 
+    @property
+    def _referenced_steps(self) -> List[str]:
+        """List of step names that this function depends on."""
+        return []
+
     @classmethod
     def _expr(cls, name):
         """An internal classmethod for the 'Get' expression dict for a `Parameter`.
@@ -98,29 +103,6 @@ class Parameter(PipelineVariable, Entity):
             name (str): The name of the parameter.
         """
         return {"Get": f"Parameters.{name}"}
-
-    @classmethod
-    def _implicit_value(cls, value, python_type, args, kwargs):
-        """Determine the implicit value from the arguments.
-
-        The implicit value of the instance should be the default_value if present.
-
-        Args:
-            value: The default implicit value.
-            python_type: The Python type the implicit value should be.
-            args: The list of positional arguments.
-            kwargs: The dict of keyword arguments.
-
-        Returns:
-            The implicit value that should be used.
-        """
-        if len(args) == 2:
-            value = args[1] or value
-        elif kwargs:
-            value = kwargs.get("default_value", value)
-        cls._check_default_value_type(value, python_type)
-
-        return value
 
     @classmethod
     def _check_default_value_type(cls, value, python_type):
@@ -143,13 +125,8 @@ class Parameter(PipelineVariable, Entity):
 ParameterBoolean = partial(Parameter, parameter_type=ParameterTypeEnum.BOOLEAN)
 
 
-class ParameterString(Parameter, str):
+class ParameterString(Parameter):
     """String parameter for pipelines."""
-
-    def __new__(cls, *args, **kwargs):  # pylint: disable=unused-argument
-        """Subclass str"""
-        val = cls._implicit_value("", str, args, kwargs)
-        return str.__new__(cls, val)
 
     def __init__(self, name: str, default_value: str = None, enum_values: List[str] = None):
         """Create a pipeline string parameter.
@@ -186,13 +163,8 @@ class ParameterString(Parameter, str):
         return request_dict
 
 
-class ParameterInteger(Parameter, int):
+class ParameterInteger(Parameter):
     """Integer parameter for pipelines."""
-
-    def __new__(cls, *args, **kwargs):
-        """Subclass int"""
-        val = cls._implicit_value(0, int, args, kwargs)
-        return int.__new__(cls, val)
 
     def __init__(self, name: str, default_value: int = None):
         """Create a pipeline integer parameter.
@@ -209,13 +181,8 @@ class ParameterInteger(Parameter, int):
         )
 
 
-class ParameterFloat(Parameter, float):
+class ParameterFloat(Parameter):
     """Float parameter for pipelines."""
-
-    def __new__(cls, *args, **kwargs):
-        """Subclass float"""
-        val = cls._implicit_value(0.0, float, args, kwargs)
-        return float.__new__(cls, val)
 
     def __init__(self, name: str, default_value: float = None):
         """Create a pipeline float parameter.

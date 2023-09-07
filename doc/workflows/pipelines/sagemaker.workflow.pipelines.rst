@@ -46,12 +46,15 @@ Entities
 
 .. autoclass:: sagemaker.workflow.entities.Expression
 
+.. autoclass:: sagemaker.workflow.entities.PipelineVariable
+
 Execution Variables
 -------------------
 
 .. autoclass:: sagemaker.workflow.execution_variables.ExecutionVariable
 
 .. autoclass:: sagemaker.workflow.execution_variables.ExecutionVariables
+    :members: START_DATETIME, CURRENT_DATETIME, PIPELINE_EXECUTION_ID, PIPELINE_EXECUTION_ARN, PIPELINE_NAME, PIPELINE_ARN, TRAINING_JOB_NAME, PROCESSING_JOB_NAME
 
 Functions
 ---------
@@ -73,6 +76,8 @@ Parameters
 
 .. autoclass:: sagemaker.workflow.parameters.ParameterFloat
 
+.. autoclass:: sagemaker.workflow.parameters.ParameterBoolean
+
 Pipeline
 --------
 
@@ -82,11 +87,26 @@ Pipeline
 .. autoclass:: sagemaker.workflow.pipeline._PipelineExecution
     :members:
 
+Pipeline Context
+------------------
+
+.. autoclass:: sagemaker.workflow.pipeline_context.PipelineSession
+    :members:
+
+.. autoclass:: sagemaker.workflow.pipeline_context.LocalPipelineSession
+    :members:
+
+
 Parallelism Configuration
 -------------------------
 
 .. autoclass:: sagemaker.workflow.parallelism_config.ParallelismConfiguration
     :members:
+
+Pipeline Definition Config
+--------------------------
+
+.. autoclass:: sagemaker.workflow.pipeline_definition_config.PipelineDefinitionConfig
 
 Pipeline Experiment Config
 --------------------------
@@ -94,6 +114,12 @@ Pipeline Experiment Config
 .. autoclass:: sagemaker.workflow.pipeline_experiment_config.PipelineExperimentConfig
 
 .. autoclass:: sagemaker.workflow.pipeline_experiment_config.PipelineExperimentConfigProperty
+
+Selective Execution Config
+--------------------------
+
+.. autoclass:: sagemaker.workflow.selective_execution_config.SelectiveExecutionConfig
+
 
 Properties
 ----------
@@ -114,6 +140,10 @@ Step Collections
 .. autoclass:: sagemaker.workflow.step_collections.RegisterModel
 
 .. autoclass:: sagemaker.workflow.step_collections.EstimatorTransformer
+
+.. autoclass:: sagemaker.workflow.model_step.ModelStep
+
+.. autoclass:: sagemaker.workflow.monitor_batch_transform_step.MonitorBatchTransformStep
 
 Steps
 -----
@@ -149,3 +179,9 @@ Steps
 .. autoclass:: sagemaker.workflow.clarify_check_step.ClarifyCheckStep
 
 .. autoclass:: sagemaker.workflow.fail_step.FailStep
+
+.. autoclass:: sagemaker.workflow.emr_step.EMRStepConfig
+
+.. autoclass:: sagemaker.workflow.emr_step.EMRStep
+
+.. autoclass:: sagemaker.workflow.automl_step.AutoMLStep

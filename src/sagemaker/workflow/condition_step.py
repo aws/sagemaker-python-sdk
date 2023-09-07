@@ -13,22 +13,19 @@
 """The step definitions for workflow."""
 from __future__ import absolute_import
 
-from typing import List, Union
+from typing import List, Union, Optional
 
-import attr
 
 from sagemaker.deprecations import deprecated_class
 from sagemaker.workflow.conditions import Condition
+from sagemaker.workflow.step_collections import StepCollection
+from sagemaker.workflow.functions import JsonGet as NewJsonGet
 from sagemaker.workflow.steps import (
     Step,
     StepTypeEnum,
 )
-from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.utilities import list_to_request
-from sagemaker.workflow.entities import (
-    Expression,
-    RequestType,
-)
+from sagemaker.workflow.entities import RequestType
 from sagemaker.workflow.properties import (
     Properties,
     PropertyFile,
@@ -41,7 +38,7 @@ class ConditionStep(Step):
     def __init__(
         self,
         name: str,
-        depends_on: Union[List[str], List[Step]] = None,
+        depends_on: Optional[List[Union[str, Step, StepCollection]]] = None,
         display_name: str = None,
         description: str = None,
         conditions: List[Condition] = None,
@@ -56,6 +53,9 @@ class ConditionStep(Step):
 
         Args:
             name (str): The name of the condition step.
+            depends_on (List[Union[str, Step, StepCollection]]): The list of `Step`/StepCollection`
+                names or `Step` instances or `StepCollection` instances that the current `Step`
+                depends on.
             display_name (str): The display name of the condition step.
             description (str): The description of the condition step.
             conditions (List[Condition]): A list of `sagemaker.workflow.conditions.Condition`
@@ -74,9 +74,8 @@ class ConditionStep(Step):
         self.if_steps = if_steps or []
         self.else_steps = else_steps or []
 
-        root_path = f"Steps.{name}"
-        root_prop = Properties(path=root_path)
-        root_prop.__dict__["Outcome"] = Properties(f"{root_path}.Outcome")
+        root_prop = Properties(step_name=name)
+        root_prop.__dict__["Outcome"] = Properties(step_name=name, path="Outcome")
         self._properties = root_prop
 
     @property
@@ -89,13 +88,17 @@ class ConditionStep(Step):
         )
 
     @property
+    def step_only_arguments(self):
+        """Argument dict pertaining to the step only, and not the `if_steps` or `else_steps`."""
+        return dict(Conditions=[condition.to_request() for condition in self.conditions])
+
+    @property
     def properties(self):
         """A simple Properties object with `Outcome` as the only property"""
         return self._properties
 
 
-@attr.s
-class JsonGet(Expression):  # pragma: no cover
+class JsonGet(NewJsonGet):  # pragma: no cover
     """Get JSON properties from PropertyFiles.
 
     Attributes:
@@ -105,23 +108,8 @@ class JsonGet(Expression):  # pragma: no cover
         json_path (str): The JSON path expression to the requested value.
     """
 
-    step: Step = attr.ib()
-    property_file: Union[PropertyFile, str] = attr.ib()
-    json_path: str = attr.ib()
-
-    @property
-    def expr(self):
-        """The expression dict for a `JsonGet` function."""
-        if isinstance(self.property_file, PropertyFile):
-            name = self.property_file.name
-        else:
-            name = self.property_file
-        return {
-            "Std:JsonGet": {
-                "PropertyFile": {"Get": f"Steps.{self.step.name}.PropertyFiles.{name}"},
-                "Path": self.json_path,
-            }
-        }
+    def __init__(self, step: Step, property_file: Union[PropertyFile, str], json_path: str):
+        super().__init__(step_name=step.name, property_file=property_file, json_path=json_path)
 
 
 JsonGet = deprecated_class(JsonGet, "JsonGet")

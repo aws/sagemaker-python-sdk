@@ -30,6 +30,7 @@ def test_endpoints(
         assert model.destination_type == endpoint_context_obj.context_type
 
 
+@pytest.mark.skip("static test data inconsistency AML-166905")
 def test_endpoint_contexts(
     static_model_artifact,
 ):

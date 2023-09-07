@@ -38,9 +38,13 @@ def sagemaker_session():
         local_mode=False,
         s3_resource=None,
         s3_client=None,
+        default_bucket_prefix=None,
     )
     session.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     session._default_bucket = BUCKET_NAME
+
+    # For tests which doesn't verify config file injection, operate with empty config
+    session.sagemaker_config = {}
     return session
 
 

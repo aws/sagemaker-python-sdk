@@ -16,10 +16,6 @@ import json
 import re
 import pytest
 
-import sagemaker
-
-from mock import Mock, PropertyMock
-
 from sagemaker.clarify import (
     DataConfig,
     BiasConfig,
@@ -39,6 +35,7 @@ from sagemaker.workflow.clarify_check_step import (
 from sagemaker.model_monitor.model_monitoring import _MODEL_MONITOR_S3_PATH
 from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.pipeline import Pipeline
+from sagemaker.workflow.pipeline import PipelineDefinitionConfig
 from sagemaker.workflow.steps import CacheConfig
 from sagemaker.workflow.check_job_config import CheckJobConfig
 
@@ -48,52 +45,14 @@ _DEFAULT_BUCKET = "my-bucket"
 _S3_INPUT_PATH = "s3://my_bucket/input"
 _S3_OUTPUT_PATH = "s3://my_bucket/output"
 _S3_ANALYSIS_CONFIG_OUTPUT_PATH = "s3://my_bucket/analysis_cfg_output"
-
-
-@pytest.fixture
-def boto_session():
-    role_mock = Mock()
-    type(role_mock).arn = PropertyMock(return_value=_ROLE)
-
-    resource_mock = Mock()
-    resource_mock.Role.return_value = role_mock
-
-    session_mock = Mock(region_name=_REGION)
-    session_mock.resource.return_value = resource_mock
-
-    return session_mock
-
-
-@pytest.fixture
-def client():
-    """Mock client.
-
-    Considerations when appropriate:
-
-         * utilize botocore.stub.Stubber
-         * separate runtime client from client
-    """
-    client_mock = Mock()
-    client_mock._client_config.user_agent = (
-        "Boto3/1.14.24 Python/3.8.5 Linux/5.4.0-42-generic Botocore/1.17.24 Resource"
-    )
-    return client_mock
-
-
-@pytest.fixture
-def sagemaker_session(boto_session, client):
-    return sagemaker.session.Session(
-        boto_session=boto_session,
-        sagemaker_client=client,
-        sagemaker_runtime_client=client,
-        default_bucket=_DEFAULT_BUCKET,
-    )
+_CHECK_JOB_PREFIX = "CheckJobPrefix"
 
 
 _expected_data_bias_dsl = {
     "Name": "DataBiasCheckStep",
     "Type": "ClarifyCheck",
     "Arguments": {
+        "ProcessingJobName": _CHECK_JOB_PREFIX,
         "ProcessingResources": {
             "ClusterConfig": {
                 "InstanceType": "ml.m5.xlarge",
@@ -149,6 +108,7 @@ _expected_data_bias_dsl = {
     "CheckType": "DATA_BIAS",
     "ModelPackageGroupName": {"Get": "Parameters.MyModelPackageGroup"},
     "SkipCheck": False,
+    "FailOnViolation": False,
     "RegisterNewBaseline": False,
     "SuppliedBaselineConstraints": "supplied_baseline_constraints",
     "CacheConfig": {"Enabled": True, "ExpireAfter": "PT1H"},
@@ -213,6 +173,7 @@ _expected_model_bias_dsl = {
     "CheckType": "MODEL_BIAS",
     "ModelPackageGroupName": {"Get": "Parameters.MyModelPackageGroup"},
     "SkipCheck": False,
+    "FailOnViolation": True,
     "RegisterNewBaseline": False,
     "SuppliedBaselineConstraints": "supplied_baseline_constraints",
     "ModelName": "model_name",
@@ -277,6 +238,7 @@ _expected_model_explainability_dsl = {
     "CheckType": "MODEL_EXPLAINABILITY",
     "ModelPackageGroupName": {"Get": "Parameters.MyModelPackageGroup"},
     "SkipCheck": False,
+    "FailOnViolation": False,
     "RegisterNewBaseline": False,
     "SuppliedBaselineConstraints": "supplied_baseline_constraints",
     "ModelName": "model_name",
@@ -296,6 +258,7 @@ def check_job_config(sagemaker_session):
         instance_count=1,
         sagemaker_session=sagemaker_session,
         output_kms_key="output_kms_key",
+        base_job_name=_CHECK_JOB_PREFIX,
     )
 
 
@@ -365,19 +328,24 @@ def test_data_bias_check_step(
         clarify_check_config=data_bias_check_config,
         check_job_config=check_job_config,
         skip_check=False,
+        fail_on_violation=False,
         register_new_baseline=False,
         model_package_group_name=model_package_group_name,
         supplied_baseline_constraints="supplied_baseline_constraints",
         cache_config=CacheConfig(enable_caching=True, expire_after="PT1H"),
     )
+
+    definition_config = PipelineDefinitionConfig(use_custom_job_prefix=True)
     pipeline = Pipeline(
         name="MyPipeline",
         parameters=[model_package_group_name],
         steps=[data_bias_check_step],
         sagemaker_session=sagemaker_session,
+        pipeline_definition_config=definition_config,
     )
 
-    assert json.loads(pipeline.definition())["Steps"][0] == _expected_data_bias_dsl
+    step_def = json.loads(pipeline.definition())["Steps"][0]
+    assert step_def == _expected_data_bias_dsl
     assert re.match(
         f"{_S3_ANALYSIS_CONFIG_OUTPUT_PATH}/{_BIAS_MONITORING_CFG_BASE_NAME}-configuration"
         + f"/{_BIAS_MONITORING_CFG_BASE_NAME}-config.*/.*/analysis_config.json",
@@ -406,6 +374,7 @@ def test_model_bias_check_step(
         clarify_check_config=model_bias_check_config,
         check_job_config=check_job_config,
         skip_check=False,
+        fail_on_violation=True,
         register_new_baseline=False,
         model_package_group_name=model_package_group_name,
         supplied_baseline_constraints="supplied_baseline_constraints",
@@ -444,6 +413,7 @@ def test_model_explainability_check_step(
         clarify_check_config=model_explainability_check_config,
         check_job_config=check_job_config,
         skip_check=False,
+        fail_on_violation=False,
         register_new_baseline=False,
         model_package_group_name=model_package_group_name,
         supplied_baseline_constraints="supplied_baseline_constraints",

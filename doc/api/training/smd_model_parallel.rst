@@ -11,10 +11,11 @@ across multiple GPUs with minimal code changes. The library's API can be accesse
 
 .. tip::
 
-  We recommended using this API documentation with the conceptual guide at
+  We recommend that you use this API documentation along with the conceptual guide at
   `SageMaker's Distributed Model Parallel
   <http://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel.html>`_
-  in the *Amazon SageMaker developer guide*. This developer guide documentation includes:
+  in the *Amazon SageMaker developer guide*.
+  The conceptual guide includes the following topics:
 
   - An overview of model parallelism, and the library's
     `core features <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-core-features.html>`_,
@@ -32,10 +33,11 @@ across multiple GPUs with minimal code changes. The library's API can be accesse
 
 
 .. important::
-   The model parallel library only supports training jobs using CUDA 11. When you define a PyTorch or TensorFlow
-   ``Estimator`` with ``modelparallel`` parameter ``enabled`` set to ``True``,
-   it uses CUDA 11. When you extend or customize your own training image
-   you must use a CUDA 11 base image. See
-   `Extend or Adapt A Docker Container that Contains the Model Parallel Library
-   <https://integ-docs-aws.amazon.com/sagemaker/latest/dg/model-parallel-use-api.html#model-parallel-customize-container>`__
-   for more information.
+   The model parallel library only supports SageMaker training jobs using CUDA 11.
+   Make sure you use the pre-built Deep Learning Containers.
+   If you want to extend or customize your own training image,
+   you must use a CUDA 11 base image. For more information, see `Extend a Prebuilt Docker
+   Container that Contains SageMaker's Distributed Model Parallel Library
+   <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-sm-sdk.html#model-parallel-customize-container>`_
+   and `Create Your Own Docker Container with the SageMaker Distributed Model Parallel Library
+   <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-sm-sdk.html#model-parallel-bring-your-own-container>`_.

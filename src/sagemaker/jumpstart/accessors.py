@@ -12,7 +12,10 @@
 # language governing permissions and limitations under the License.
 """This module contains accessors related to SageMaker JumpStart."""
 from __future__ import absolute_import
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
+import boto3
+
+from sagemaker.deprecations import deprecated
 from sagemaker.jumpstart.types import JumpStartModelHeader, JumpStartModelSpecs
 from sagemaker.jumpstart import cache
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
@@ -40,7 +43,19 @@ class JumpStartModelsAccessor(object):
     _cache: Optional[cache.JumpStartModelsCache] = None
     _curr_region = JUMPSTART_DEFAULT_REGION_NAME
 
+    _content_bucket: Optional[str] = None
+
     _cache_kwargs: Dict[str, Any] = {}
+
+    @staticmethod
+    def set_jumpstart_content_bucket(content_bucket: str) -> None:
+        """Sets JumpStart content bucket."""
+        JumpStartModelsAccessor._content_bucket = content_bucket
+
+    @staticmethod
+    def get_jumpstart_content_bucket() -> Optional[str]:
+        """Returns JumpStart content bucket."""
+        return JumpStartModelsAccessor._content_bucket
 
     @staticmethod
     def _validate_and_mutate_region_cache_kwargs(
@@ -72,11 +87,44 @@ class JumpStartModelsAccessor(object):
             region (str): region for which to retrieve header/spec.
             cache_kwargs (dict): kwargs to pass to ``JumpStartModelsCache``.
         """
-        if JumpStartModelsAccessor._cache is None or region != JumpStartModelsAccessor._curr_region:
+        new_cache_kwargs = JumpStartModelsAccessor._validate_and_mutate_region_cache_kwargs(
+            cache_kwargs, region
+        )
+        if (
+            JumpStartModelsAccessor._cache is None
+            or region != JumpStartModelsAccessor._curr_region
+            or new_cache_kwargs != JumpStartModelsAccessor._cache_kwargs
+        ):
             JumpStartModelsAccessor._cache = cache.JumpStartModelsCache(
                 region=region, **cache_kwargs
             )
             JumpStartModelsAccessor._curr_region = region
+            JumpStartModelsAccessor._cache_kwargs = new_cache_kwargs
+
+    @staticmethod
+    def _get_manifest(
+        region: str = JUMPSTART_DEFAULT_REGION_NAME, s3_client: Optional[boto3.client] = None
+    ) -> List[JumpStartModelHeader]:
+        """Return entire JumpStart models manifest.
+
+        Raises:
+            ValueError: If region in `cache_kwargs` is inconsistent with `region` argument.
+
+        Args:
+            region (str): Optional. The region to use for the cache.
+            s3_client (boto3.client): Optional. Boto3 client to use for accessing JumpStart models
+                s3 cache. If not set, a default client will be made.
+        """
+
+        additional_kwargs = {}
+        if s3_client is not None:
+            additional_kwargs.update({"s3_client": s3_client})
+
+        cache_kwargs = JumpStartModelsAccessor._validate_and_mutate_region_cache_kwargs(
+            {**JumpStartModelsAccessor._cache_kwargs, **additional_kwargs}, region
+        )
+        JumpStartModelsAccessor._set_cache_and_region(region, cache_kwargs)
+        return JumpStartModelsAccessor._cache.get_manifest()  # type: ignore
 
     @staticmethod
     def get_model_header(region: str, model_id: str, version: str) -> JumpStartModelHeader:
@@ -84,8 +132,8 @@ class JumpStartModelsAccessor(object):
 
         Args:
             region (str): region for which to retrieve header.
-            model_id (str): model id to retrieve.
-            version (str): semantic version to retrieve for the model id.
+            model_id (str): model ID to retrieve.
+            version (str): semantic version to retrieve for the model ID.
         """
         cache_kwargs = JumpStartModelsAccessor._validate_and_mutate_region_cache_kwargs(
             JumpStartModelsAccessor._cache_kwargs, region
@@ -96,16 +144,25 @@ class JumpStartModelsAccessor(object):
         )
 
     @staticmethod
-    def get_model_specs(region: str, model_id: str, version: str) -> JumpStartModelSpecs:
+    def get_model_specs(
+        region: str, model_id: str, version: str, s3_client: Optional[boto3.client] = None
+    ) -> JumpStartModelSpecs:
         """Returns model specs from JumpStart models cache.
 
         Args:
             region (str): region for which to retrieve header.
-            model_id (str): model id to retrieve.
-            version (str): semantic version to retrieve for the model id.
+            model_id (str): model ID to retrieve.
+            version (str): semantic version to retrieve for the model ID.
+            s3_client (boto3.client): boto3 client to use for accessing JumpStart models s3 cache.
+                If not set, a default client will be made.
         """
+
+        additional_kwargs = {}
+        if s3_client is not None:
+            additional_kwargs.update({"s3_client": s3_client})
+
         cache_kwargs = JumpStartModelsAccessor._validate_and_mutate_region_cache_kwargs(
-            JumpStartModelsAccessor._cache_kwargs, region
+            {**JumpStartModelsAccessor._cache_kwargs, **additional_kwargs}
         )
         JumpStartModelsAccessor._set_cache_and_region(region, cache_kwargs)
         return JumpStartModelsAccessor._cache.get_specs(  # type: ignore
@@ -150,3 +207,23 @@ class JumpStartModelsAccessor(object):
         """
         cache_kwargs_dict = {} if cache_kwargs is None else cache_kwargs
         JumpStartModelsAccessor.set_cache_kwargs(cache_kwargs_dict, region)
+
+    @staticmethod
+    @deprecated()
+    def get_manifest(
+        cache_kwargs: Optional[Dict[str, Any]] = None, region: Optional[str] = None
+    ) -> List[JumpStartModelHeader]:
+        """Return entire JumpStart models manifest.
+
+        Raises:
+            ValueError: If region in `cache_kwargs` is inconsistent with `region` argument.
+
+        Args:
+            cache_kwargs (Dict[str, Any]): Optional. Cache kwargs to use.
+                (Default: None).
+            region (str): Optional. The region to use for the cache.
+                (Default: None).
+        """
+        cache_kwargs_dict: Dict[str, Any] = {} if cache_kwargs is None else cache_kwargs
+        JumpStartModelsAccessor.set_cache_kwargs(cache_kwargs_dict, region)
+        return JumpStartModelsAccessor._cache.get_manifest()  # type: ignore

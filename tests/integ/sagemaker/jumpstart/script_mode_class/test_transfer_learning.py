@@ -13,8 +13,24 @@
 from __future__ import absolute_import
 import os
 
-from sagemaker import hyperparameters, image_uris, model_uris, script_uris
+from sagemaker import (
+    environment_variables,
+    hyperparameters,
+    instance_types,
+    metric_definitions,
+    image_uris,
+    model_uris,
+    script_uris,
+)
 from sagemaker.estimator import Estimator
+from sagemaker.jumpstart.artifacts import (
+    _retrieve_estimator_init_kwargs,
+    _retrieve_estimator_fit_kwargs,
+)
+from sagemaker.jumpstart.artifacts.kwargs import (
+    _retrieve_model_deploy_kwargs,
+    _retrieve_model_init_kwargs,
+)
 from sagemaker.jumpstart.constants import (
     INFERENCE_ENTRY_POINT_SCRIPT_NAME,
     JUMPSTART_DEFAULT_REGION_NAME,
@@ -35,9 +51,14 @@ from tests.integ.sagemaker.jumpstart.utils import (
 
 def test_jumpstart_transfer_learning_estimator_class(setup):
 
-    model_id, model_version = "huggingface-spc-bert-base-cased", "1.0.0"
-    training_instance_type = "ml.p3.2xlarge"
-    inference_instance_type = "ml.p2.xlarge"
+    model_id, model_version = "huggingface-spc-bert-base-cased", "1.2.3"
+
+    inference_instance_type = instance_types.retrieve_default(
+        model_id=model_id, model_version=model_version, scope="inference"
+    )
+    training_instance_type = instance_types.retrieve_default(
+        model_id=model_id, model_version=model_version, scope="training"
+    )
     instance_count = 1
 
     print("Starting training...")
@@ -66,6 +87,21 @@ def test_jumpstart_transfer_learning_estimator_class(setup):
 
     default_hyperparameters["epochs"] = "1"
 
+    default_metric_definitions = metric_definitions.retrieve_default(
+        model_id=model_id,
+        model_version=model_version,
+    )
+
+    estimator_kwargs = _retrieve_estimator_init_kwargs(
+        model_id=model_id,
+        model_version=model_version,
+        instance_type=training_instance_type,
+    )
+
+    # Avoid exceeding resource limits
+    if "max_run" in estimator_kwargs:
+        del estimator_kwargs["max_run"]
+
     estimator = Estimator(
         image_uri=image_uri,
         source_dir=script_uri,
@@ -73,18 +109,25 @@ def test_jumpstart_transfer_learning_estimator_class(setup):
         entry_point=TRAINING_ENTRY_POINT_SCRIPT_NAME,
         role=get_sm_session().get_caller_identity_arn(),
         sagemaker_session=get_sm_session(),
-        enable_network_isolation=True,
         hyperparameters=default_hyperparameters,
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
         instance_count=instance_count,
         instance_type=training_instance_type,
+        metric_definitions=default_metric_definitions,
+        **estimator_kwargs,
+    )
+
+    fit_kwargs = _retrieve_estimator_fit_kwargs(
+        model_id=model_id,
+        model_version=model_version,
     )
 
     estimator.fit(
         {
             "training": f"s3://{get_jumpstart_content_bucket(JUMPSTART_DEFAULT_REGION_NAME)}/"
             f"{get_training_dataset_for_model_and_version(model_id, model_version)}",
-        }
+        },
+        **fit_kwargs,
     )
 
     print("Starting inference...")
@@ -106,6 +149,22 @@ def test_jumpstart_transfer_learning_estimator_class(setup):
         model_id=model_id, model_version=model_version, model_scope="inference"
     )
 
+    env = environment_variables.retrieve_default(
+        model_id=model_id,
+        model_version=model_version,
+        include_aws_sdk_env_vars=False,
+    )
+    model_kwargs = _retrieve_model_init_kwargs(
+        model_id=model_id,
+        model_version=model_version,
+    )
+
+    deploy_kwargs = _retrieve_model_deploy_kwargs(
+        model_id=model_id,
+        model_version=model_version,
+        instance_type=inference_instance_type,
+    )
+
     predictor: Predictor = estimator.deploy(
         initial_instance_count=instance_count,
         instance_type=inference_instance_type,
@@ -113,6 +172,9 @@ def test_jumpstart_transfer_learning_estimator_class(setup):
         image_uri=image_uri,
         source_dir=script_uri,
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
+        env=env,
+        **model_kwargs,
+        **deploy_kwargs,
     )
 
     endpoint_invoker = EndpointInvoker(

@@ -80,3 +80,57 @@ def test_two_steps_emr_pipeline(sagemaker_session, role, pipeline_name, region_n
             pipeline.delete()
         except Exception:
             pass
+
+
+def test_emr_with_cluster_config(sagemaker_session, role, pipeline_name, region_name):
+
+    emr_step_config = EMRStepConfig(
+        jar="s3://us-west-2.elasticmapreduce/libs/script-runner/script-runner.jar",
+        args=["dummy_emr_script_path"],
+    )
+
+    cluster_config = {
+        "Instances": {
+            "InstanceGroups": [
+                {
+                    "Name": "Master Instance Group",
+                    "InstanceRole": "MASTER",
+                    "InstanceCount": 1,
+                    "InstanceType": "m1.small",
+                    "Market": "ON_DEMAND",
+                }
+            ],
+            "InstanceCount": 1,
+            "HadoopVersion": "MyHadoopVersion",
+        },
+        "AmiVersion": "3.8.0",
+        "AdditionalInfo": "MyAdditionalInfo",
+    }
+
+    step_emr_with_cluster_config = EMRStep(
+        name="MyEMRStep-name",
+        display_name="MyEMRStep-display_name",
+        description="MyEMRStepDescription",
+        cluster_id=None,
+        step_config=emr_step_config,
+        cluster_config=cluster_config,
+    )
+
+    pipeline = Pipeline(
+        name=pipeline_name,
+        steps=[step_emr_with_cluster_config],
+        sagemaker_session=sagemaker_session,
+    )
+
+    try:
+        response = pipeline.create(role)
+        create_arn = response["PipelineArn"]
+        assert re.match(
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            create_arn,
+        )
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass

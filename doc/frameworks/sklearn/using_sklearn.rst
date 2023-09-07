@@ -7,7 +7,7 @@ With Scikit-learn Estimators, you can train and host Scikit-learn models on Amaz
 For information about supported versions of Scikit-learn, see the `AWS documentation <https://docs.aws.amazon.com/sagemaker/latest/dg/sklearn.html>`__.
 We recommend that you use the latest supported version because that's where we focus most of our development efforts.
 
-You can visit the Scikit-learn repository at https://github.com/scikit-learn/scikit-learn.
+For more information about the framework, see the `Scikit-Learn <https://github.com/scikit-learn/scikit-learn>`_ repository.
 For general information about using the SageMaker Python SDK, see :ref:`overview:Using the SageMaker Python SDK`.
 
 .. contents::
@@ -31,7 +31,7 @@ To train a Scikit-learn model by using the SageMaker Python SDK:
 Prepare a Scikit-learn Training Script
 ======================================
 
-Your Scikit-learn training script must be a Python 3.6 compatible source file.
+Your Scikit-learn training script must be a Python 3.7 compatible source file.
 
 The training script is similar to a training script you might run outside of SageMaker, but you
 can access useful properties about the training environment through various environment variables.
@@ -82,7 +82,8 @@ Because the SageMaker imports your training script, you should put your training
 (``if __name__=='__main__':``) if you are using the same script to host your model, so that SageMaker does not
 inadvertently run your training code at the wrong point in execution.
 
-For more on training environment variables, please visit https://github.com/aws/sagemaker-containers.
+For more on training environment variables, please visit
+`SageMaker Training Toolkit <https://github.com/aws/sagemaker-training-toolkit>`_.
 
 .. important::
     The sagemaker-containers repository has been deprecated,
@@ -124,7 +125,7 @@ Both ``requirements.txt`` and your training script should be put in the same fol
 You must specify this folder in ``source_dir`` argument when creating a Scikit-learn estimator.
 A ``requirements.txt`` file is a text file that contains a list of items that are installed by using ``pip install``.
 You can also specify the version of an item to install.
-For information about the format of a ``requirements.txt`` file, see `Requirements Files <https://pip.pypa.io/en/stable/user_guide/#requirements-files>`__ in the pip documentation.
+For information about the format of a ``requirements.txt`` file, see `Requirements Files <https://pip.pypa.io/en/stable/user_guide#requirements-files>`__ in the pip documentation.
 
 Create an Estimator
 ===================
@@ -139,7 +140,7 @@ directories ('train' and 'test').
 
     sklearn_estimator = SKLearn('sklearn-train.py',
                                 instance_type='ml.m4.xlarge',
-                                framework_version='0.20.0',
+                                framework_version='1.0-1',
                                 hyperparameters = {'epochs': 20, 'batch-size': 64, 'learning-rate': 0.1})
     sklearn_estimator.fit({'train': 's3://my-data-bucket/path/to/my/training/data',
                             'test': 's3://my-data-bucket/path/to/my/test/data'})
@@ -203,7 +204,7 @@ operation.
     # Train my estimator
     sklearn_estimator = SKLearn(entry_point='train_and_deploy.py',
                                 instance_type='ml.m4.xlarge',
-                                framework_version='0.20.0')
+                                framework_version='1.0-1')
     sklearn_estimator.fit('s3://my_bucket/my_training_data/')
 
     # Deploy my estimator to a SageMaker Endpoint and get a Predictor
@@ -241,7 +242,8 @@ Before a model can be served, it must be loaded. The SageMaker Scikit-learn mode
 
 .. code:: python
 
-    def model_fn(model_dir)
+    def model_fn(model_dir):
+        ...
 
 SageMaker will inject the directory where your model files and sub-directories, saved by ``save``, have been mounted.
 Your model function should return a model object that can be used for model serving.
@@ -334,14 +336,16 @@ it should return an object that can be passed to ``predict_fn`` and have the fol
 
 .. code:: python
 
-    def input_fn(request_body, request_content_type)
+  def input_fn(request_body, request_content_type):
+      ...
 
-Where ``request_body`` is a byte buffer and ``request_content_type`` is a Python string
+where ``request_body`` is a byte buffer and ``request_content_type`` is a Python string.
 
 The SageMaker Scikit-learn model server provides a default implementation of ``input_fn``.
 This function deserializes JSON, CSV, or NPY encoded data into a NumPy array.
 
-Default NPY deserialization requires ``request_body`` to follow the `NPY <https://docs.scipy.org/doc/numpy/neps/npy-format.html>`_ format. For Scikit-learn, the Python SDK
+Default NPY deserialization requires ``request_body`` to follow the
+`NPY <https://docs.scipy.org/doc/numpy/neps/npy-format.html>`_ format. For Scikit-learn, the Python SDK
 defaults to sending prediction requests with this format.
 
 Default json deserialization requires ``request_body`` contain a single json list.
@@ -383,7 +387,8 @@ The ``predict_fn`` function has the following signature:
 
 .. code:: python
 
-    def predict_fn(input_object, model)
+    def predict_fn(input_object, model):
+        ...
 
 Where ``input_object`` is the object returned from ``input_fn`` and
 ``model`` is the model loaded by ``model_fn``.
@@ -426,7 +431,8 @@ The ``output_fn`` has the following signature:
 
 .. code:: python
 
-    def output_fn(prediction, content_type)
+    def output_fn(prediction, content_type):
+        ...
 
 Where ``prediction`` is the result of invoking ``predict_fn`` and
 ``content_type`` is the InvokeEndpoint requested response content-type.
@@ -472,7 +478,7 @@ The following code sample shows how to do this, using the ``SKLearnModel`` class
     sklearn_model = SKLearnModel(model_data="s3://bucket/model.tar.gz",
                                  role="SageMakerRole",
                                  entry_point="transform_script.py",
-                                 framework_version="0.20.0")
+                                 framework_version="1.0-1")
 
     predictor = sklearn_model.deploy(instance_type="ml.c4.xlarge", initial_instance_count=1)
 
@@ -481,10 +487,10 @@ To see what arguments are accepted by the ``SKLearnModel`` constructor, see :cla
 Your model data must be a .tar.gz file in S3. SageMaker Training Job model data is saved to .tar.gz files in S3,
 however if you have local data you want to deploy, you can prepare the data yourself.
 
-Assuming you have a local directory containg your model data named "my_model" you can tar and gzip compress the file and
+Assuming you have a local directory containing your model data named "my_model", you can tar and gzip compress the file and
 upload to S3 using the following commands:
 
-::
+.. code::
 
     tar -czf model.tar.gz my_model
     aws s3 cp model.tar.gz s3://my-bucket/my-path/model.tar.gz
@@ -492,27 +498,28 @@ upload to S3 using the following commands:
 This uploads the contents of my_model to a gzip compressed tar file to S3 in the bucket "my-bucket", with the key
 "my-path/model.tar.gz".
 
-To run this command, you'll need the aws cli tool installed. Please refer to our `FAQ <#FAQ>`__ for more information on
+To run this command, you'll need the AWS CLI tool installed. Please refer to our `FAQ <#FAQ>`__ for more information on
 installing this.
 
 ******************************
 Scikit-learn Training Examples
 ******************************
 
-Amazon provides an example Jupyter notebook that demonstrate end-to-end training on Amazon SageMaker using Scikit-learn:
-
-https://github.com/awslabs/amazon-sagemaker-examples/tree/master/sagemaker-python-sdk
+To find example notebooks that demonstrate end-to-end training on Amazon SageMaker using Scikit-learn,
+see the `Amazon SageMaker example notebooks repository
+<https://github.com/awslabs/amazon-sagemaker-examples/tree/master/sagemaker-python-sdk>`_.
 
 These are also available in SageMaker Notebook Instance hosted Jupyter notebooks under the "sample notebooks" folder.
 
 ******************************
-SageMaker scikit-learn Classes
+SageMaker Scikit-learn Classes
 ******************************
 
-For information about the different scikit-learn classes in the SageMaker Python SDK, see https://sagemaker.readthedocs.io/en/stable/frameworks/sklearn/sagemaker.sklearn.html.
+For information about the different Scikit-learn classes in the SageMaker Python SDK, see https://sagemaker.readthedocs.io/en/stable/frameworks/sklearn/sagemaker.sklearn.html.
 
 ****************************************
 SageMaker Scikit-learn Docker Containers
 ****************************************
 
-You can visit the SageMaker Scikit-Learn containers repository here: https://github.com/aws/sagemaker-scikit-learn-container
+To find the SageMaker-managed Scikit-learn containers,
+visit the `SageMaker Scikit-Learn containers repository <https://github.com/aws/sagemaker-scikit-learn-container>`_.

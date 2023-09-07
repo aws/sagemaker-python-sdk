@@ -11,7 +11,9 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
+from unittest.mock import Mock
 import pytest
+import boto3
 
 from mock.mock import patch
 
@@ -22,7 +24,7 @@ from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec
 from sagemaker.jumpstart import constants as sagemaker_constants
 
 
-@patch("sagemaker.jumpstart.artifacts.verify_model_region_and_return_specs")
+@patch("sagemaker.jumpstart.artifacts.script_uris.verify_model_region_and_return_specs")
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
 def test_jumpstart_common_script_uri(
     patched_get_model_specs, patched_verify_model_region_and_return_specs
@@ -31,15 +33,20 @@ def test_jumpstart_common_script_uri(
     patched_verify_model_region_and_return_specs.side_effect = verify_model_region_and_return_specs
     patched_get_model_specs.side_effect = get_spec_from_base_spec
 
+    mock_client = boto3.client("s3")
+    mock_session = Mock(s3_client=mock_client)
+
     script_uris.retrieve(
         script_scope="training",
         model_id="pytorch-ic-mobilenet-v2",
         model_version="*",
+        sagemaker_session=mock_session,
     )
     patched_get_model_specs.assert_called_once_with(
         region=sagemaker_constants.JUMPSTART_DEFAULT_REGION_NAME,
         model_id="pytorch-ic-mobilenet-v2",
         version="*",
+        s3_client=mock_client,
     )
     patched_verify_model_region_and_return_specs.assert_called_once()
 
@@ -50,11 +57,13 @@ def test_jumpstart_common_script_uri(
         script_scope="inference",
         model_id="pytorch-ic-mobilenet-v2",
         model_version="1.*",
+        sagemaker_session=mock_session,
     )
     patched_get_model_specs.assert_called_once_with(
         region=sagemaker_constants.JUMPSTART_DEFAULT_REGION_NAME,
         model_id="pytorch-ic-mobilenet-v2",
         version="1.*",
+        s3_client=mock_client,
     )
     patched_verify_model_region_and_return_specs.assert_called_once()
 
@@ -66,9 +75,10 @@ def test_jumpstart_common_script_uri(
         script_scope="training",
         model_id="pytorch-ic-mobilenet-v2",
         model_version="*",
+        sagemaker_session=mock_session,
     )
     patched_get_model_specs.assert_called_once_with(
-        region="us-west-2", model_id="pytorch-ic-mobilenet-v2", version="*"
+        region="us-west-2", model_id="pytorch-ic-mobilenet-v2", version="*", s3_client=mock_client
     )
     patched_verify_model_region_and_return_specs.assert_called_once()
 
@@ -80,9 +90,13 @@ def test_jumpstart_common_script_uri(
         script_scope="inference",
         model_id="pytorch-ic-mobilenet-v2",
         model_version="1.*",
+        sagemaker_session=mock_session,
     )
     patched_get_model_specs.assert_called_once_with(
-        region="us-west-2", model_id="pytorch-ic-mobilenet-v2", version="1.*"
+        region="us-west-2",
+        model_id="pytorch-ic-mobilenet-v2",
+        version="1.*",
+        s3_client=mock_client,
     )
     patched_verify_model_region_and_return_specs.assert_called_once()
 
@@ -127,3 +141,29 @@ def test_jumpstart_common_script_uri(
             script_scope="training",
             model_id="pytorch-ic-mobilenet-v2",
         )
+
+
+@patch("sagemaker.jumpstart.artifacts.script_uris.verify_model_region_and_return_specs")
+@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+@patch.dict(
+    "sagemaker.jumpstart.cache.os.environ",
+    {
+        sagemaker_constants.ENV_VARIABLE_JUMPSTART_SCRIPT_ARTIFACT_BUCKET_OVERRIDE: "some-cool-bucket-name"
+    },
+)
+def test_jumpstart_artifact_bucket_override(
+    patched_get_model_specs, patched_verify_model_region_and_return_specs
+):
+
+    patched_verify_model_region_and_return_specs.side_effect = verify_model_region_and_return_specs
+    patched_get_model_specs.side_effect = get_spec_from_base_spec
+
+    uri = script_uris.retrieve(
+        script_scope="training",
+        model_id="pytorch-ic-mobilenet-v2",
+        model_version="*",
+    )
+    assert (
+        uri
+        == "s3://some-cool-bucket-name/source-directory-tarballs/pytorch/transfer_learning/ic/v1.0.0/sourcedir.tar.gz"
+    )

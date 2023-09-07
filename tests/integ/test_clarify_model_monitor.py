@@ -291,6 +291,7 @@ def test_bias_monitor(sagemaker_session, scheduled_bias_monitor, endpoint_name, 
     tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
     reason="ModelMonitoring is not yet supported in this region.",
 )
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
 def test_run_bias_monitor(
     scheduled_bias_monitor, sagemaker_session, endpoint_name, ground_truth_input, upload_actual_data
 ):
@@ -400,6 +401,7 @@ def test_explainability_monitor(sagemaker_session, scheduled_explainability_moni
     tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
     reason="ModelMonitoring is not yet supported in this region.",
 )
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
 def test_run_explainability_monitor(
     scheduled_explainability_monitor,
     sagemaker_session,
@@ -551,6 +553,7 @@ def _upload_actual_data(sagemaker_session, endpoint_name, actuals_s3_uri_base):
     capture_s3_uri_base = os.path.join(
         "s3://",
         sagemaker_session.default_bucket(),
+        sagemaker_session.default_bucket_prefix,
         "model-monitor",
         "data-capture",
         endpoint_name,

@@ -14,16 +14,15 @@ from __future__ import absolute_import
 
 import json
 import os
-import tarfile
 
-import boto3
 import pytest
-from six.moves.urllib.parse import urlparse
 
 import sagemaker.utils
 import tests.integ as integ
+from tests.integ.s3_utils import extract_files_from_s3
 from sagemaker.mxnet import MXNet
 from tests.integ import timeout
+from tests.integ.utils import gpu_list, retry_with_instance_list
 
 horovod_dir = os.path.join(os.path.dirname(__file__), "..", "data", "horovod")
 
@@ -51,18 +50,19 @@ def test_hvd_cpu(
     and integ.test_region() in integ.TRAINING_NO_P3_REGIONS,
     reason="no ml.p2 or ml.p3 instances in this region",
 )
+@retry_with_instance_list(gpu_list(integ.test_region()))
 def test_hvd_gpu(
     mxnet_training_latest_version,
     mxnet_training_latest_py_version,
     sagemaker_session,
-    gpu_instance_type,
     tmpdir,
+    **kwargs,
 ):
     _create_and_fit_estimator(
         mxnet_training_latest_version,
         mxnet_training_latest_py_version,
         sagemaker_session,
-        gpu_instance_type,
+        kwargs["instance_type"],
         tmpdir,
     )
 
@@ -70,17 +70,6 @@ def test_hvd_gpu(
 def read_json(file, tmp):
     with open(os.path.join(tmp, file)) as f:
         return json.load(f)
-
-
-def extract_files_from_s3(s3_url, tmpdir, sagemaker_session):
-    parsed_url = urlparse(s3_url)
-    s3 = boto3.resource("s3", region_name=sagemaker_session.boto_region_name)
-
-    model = os.path.join(tmpdir, "model")
-    s3.Bucket(parsed_url.netloc).download_file(parsed_url.path.lstrip("/"), model)
-
-    with tarfile.open(model, "r") as tar_file:
-        tar_file.extractall(tmpdir)
 
 
 def _create_and_fit_estimator(mxnet_version, py_version, sagemaker_session, instance_type, tmpdir):

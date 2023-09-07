@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 from abc import ABC
-from typing import List, Union
+from typing import List, Union, Optional
 import os
 import pathlib
 import attr
@@ -22,14 +22,16 @@ import attr
 from sagemaker import s3
 from sagemaker.model_monitor import ModelMonitor
 from sagemaker.processing import ProcessingOutput, ProcessingJob, Processor, ProcessingInput
-from sagemaker.workflow import PipelineNonPrimitiveInputTypes, ExecutionVariable, Parameter
+from sagemaker.workflow import is_pipeline_variable
 
-from sagemaker.workflow.entities import RequestType, Expression
+from sagemaker.workflow.entities import RequestType, PipelineVariable
 from sagemaker.workflow.properties import (
     Properties,
 )
+from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.steps import Step, StepTypeEnum, CacheConfig
 from sagemaker.workflow.check_job_config import CheckJobConfig
+from sagemaker.workflow.utilities import trim_request_dict
 
 _CONTAINER_BASE_PATH = "/opt/ml/processing"
 _CONTAINER_INPUT_PATH = "input"
@@ -50,21 +52,21 @@ class QualityCheckConfig(ABC):
     """Quality Check Config.
 
     Attributes:
-        baseline_dataset (str or PipelineNonPrimitiveInputTypes): The path to the
+        baseline_dataset (str or PipelineVariable): The path to the
             baseline_dataset file. This can be a local path or an S3 uri string
         dataset_format (dict): The format of the baseline_dataset.
-        output_s3_uri (str or PipelineNonPrimitiveInputTypes): Desired S3 destination of
+        output_s3_uri (str or PipelineVariable): Desired S3 destination of
             the constraint_violations and statistics json files (default: None).
             If not specified an auto generated path will be used:
             "s3://<default_session_bucket>/model-monitor/baselining/<job_name>/results"
         post_analytics_processor_script (str): The path to the record post-analytics
             processor script (default: None). This can be a local path or an S3 uri string
-            but CANNOT be any of PipelineNonPrimitiveInputTypes.
+            but CANNOT be any type of the PipelineVariable.
     """
 
-    baseline_dataset: Union[str, PipelineNonPrimitiveInputTypes] = attr.ib()
+    baseline_dataset: Union[str, PipelineVariable] = attr.ib()
     dataset_format: dict = attr.ib()
-    output_s3_uri: Union[str, PipelineNonPrimitiveInputTypes] = attr.ib(kw_only=True, default=None)
+    output_s3_uri: Union[str, PipelineVariable] = attr.ib(kw_only=True, default=None)
     post_analytics_processor_script: str = attr.ib(kw_only=True, default=None)
 
 
@@ -76,7 +78,7 @@ class DataQualityCheckConfig(QualityCheckConfig):
         record_preprocessor_script (str): The path to the record preprocessor script
             (default: None).
             This can be a local path or an S3 uri string
-            but CANNOT be any of PipelineNonPrimitiveInputTypes.
+            but CANNOT be any type of the PipelineVariable.
     """
 
     record_preprocessor_script: str = attr.ib(default=None)
@@ -87,26 +89,24 @@ class ModelQualityCheckConfig(QualityCheckConfig):
     """Model Quality Check Config.
 
     Attributes:
-        problem_type (str or PipelineNonPrimitiveInputTypes): The type of problem of this model
+        problem_type (str or PipelineVariable): The type of problem of this model
             quality monitoring.
             Valid values are "Regression", "BinaryClassification", "MulticlassClassification".
-        inference_attribute (str or PipelineNonPrimitiveInputTypes): Index or JSONpath to
+        inference_attribute (str or PipelineVariable): Index or JSONpath to
             locate predicted label(s) (default: None).
-        probability_attribute (str or PipelineNonPrimitiveInputTypes): Index or JSONpath to
+        probability_attribute (str or PipelineVariable): Index or JSONpath to
             locate probabilities (default: None).
-        ground_truth_attribute (str or PipelineNonPrimitiveInputTypes: Index or JSONpath to
+        ground_truth_attribute (str or PipelineVariable: Index or JSONpath to
             locate actual label(s) (default: None).
-        probability_threshold_attribute (str or PipelineNonPrimitiveInputTypes): Threshold to
+        probability_threshold_attribute (str or PipelineVariable): Threshold to
             convert probabilities to binaries (default: None).
     """
 
-    problem_type: Union[str, PipelineNonPrimitiveInputTypes] = attr.ib()
-    inference_attribute: Union[str, PipelineNonPrimitiveInputTypes] = attr.ib(default=None)
-    probability_attribute: Union[str, PipelineNonPrimitiveInputTypes] = attr.ib(default=None)
-    ground_truth_attribute: Union[str, PipelineNonPrimitiveInputTypes] = attr.ib(default=None)
-    probability_threshold_attribute: Union[str, PipelineNonPrimitiveInputTypes] = attr.ib(
-        default=None
-    )
+    problem_type: Union[str, PipelineVariable] = attr.ib()
+    inference_attribute: Union[str, PipelineVariable] = attr.ib(default=None)
+    probability_attribute: Union[str, PipelineVariable] = attr.ib(default=None)
+    ground_truth_attribute: Union[str, PipelineVariable] = attr.ib(default=None)
+    probability_threshold_attribute: Union[str, PipelineVariable] = attr.ib(default=None)
 
 
 class QualityCheckStep(Step):
@@ -117,15 +117,16 @@ class QualityCheckStep(Step):
         name: str,
         quality_check_config: QualityCheckConfig,
         check_job_config: CheckJobConfig,
-        skip_check: Union[bool, PipelineNonPrimitiveInputTypes] = False,
-        register_new_baseline: Union[bool, PipelineNonPrimitiveInputTypes] = False,
-        model_package_group_name: Union[str, PipelineNonPrimitiveInputTypes] = None,
-        supplied_baseline_statistics: Union[str, PipelineNonPrimitiveInputTypes] = None,
-        supplied_baseline_constraints: Union[str, PipelineNonPrimitiveInputTypes] = None,
+        skip_check: Union[bool, PipelineVariable] = False,
+        fail_on_violation: Union[bool, PipelineVariable] = True,
+        register_new_baseline: Union[bool, PipelineVariable] = False,
+        model_package_group_name: Union[str, PipelineVariable] = None,
+        supplied_baseline_statistics: Union[str, PipelineVariable] = None,
+        supplied_baseline_constraints: Union[str, PipelineVariable] = None,
         display_name: str = None,
         description: str = None,
         cache_config: CacheConfig = None,
-        depends_on: Union[List[str], List[Step]] = None,
+        depends_on: Optional[List[Union[str, Step, StepCollection]]] = None,
     ):
         """Constructs a QualityCheckStep.
 
@@ -133,25 +134,28 @@ class QualityCheckStep(Step):
             name (str): The name of the QualityCheckStep step.
             quality_check_config (QualityCheckConfig): A QualityCheckConfig instance.
             check_job_config (CheckJobConfig): A CheckJobConfig instance.
-            skip_check (bool or PipelineNonPrimitiveInputTypes): Whether the check
+            skip_check (bool or PipelineVariable): Whether the check
                 should be skipped (default: False).
-            register_new_baseline (bool or PipelineNonPrimitiveInputTypes): Whether
+            fail_on_violation (bool or PipelineVariable): Whether to fail the step
+                if violation detected (default: True).
+            register_new_baseline (bool or PipelineVariable): Whether
                 the new baseline should be registered (default: False).
-            model_package_group_name (str or PipelineNonPrimitiveInputTypes): The name of a
+            model_package_group_name (str or PipelineVariable): The name of a
                 registered model package group, among which the baseline will be fetched
                 from the latest approved model (default: None).
-            supplied_baseline_statistics (str or PipelineNonPrimitiveInputTypes): The S3 path
+            supplied_baseline_statistics (str or PipelineVariable): The S3 path
                 to the supplied statistics object representing the statistics JSON file
                 which will be used for drift to check (default: None).
-            supplied_baseline_constraints (str or PipelineNonPrimitiveInputTypes): The S3 path
+            supplied_baseline_constraints (str or PipelineVariable): The S3 path
                 to the supplied constraints object representing the constraints JSON file
                 which will be used for drift to check (default: None).
             display_name (str): The display name of the QualityCheckStep step (default: None).
             description (str): The description of the QualityCheckStep step (default: None).
             cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance
                 (default: None).
-            depends_on (List[str] or List[Step]): A list of step names or step instances
-                this `sagemaker.workflow.steps.QualityCheckStep` depends on (default: None).
+            depends_on (List[Union[str, Step, StepCollection]]): A list of `Step`/`StepCollection`
+                names or `Step` instances or `StepCollection` instances that this `QualityCheckStep`
+                depends on (default: None).
         """
         if not isinstance(quality_check_config, DataQualityCheckConfig) and not isinstance(
             quality_check_config, ModelQualityCheckConfig
@@ -165,6 +169,7 @@ class QualityCheckStep(Step):
             name, display_name, description, StepTypeEnum.QUALITY_CHECK, depends_on
         )
         self.skip_check = skip_check
+        self.fail_on_violation = fail_on_violation
         self.register_new_baseline = register_new_baseline
         self.check_job_config = check_job_config
         self.quality_check_config = quality_check_config
@@ -203,25 +208,26 @@ class QualityCheckStep(Step):
             ],
         )
 
-        root_path = f"Steps.{name}"
-        root_prop = Properties(path=root_path)
+        root_prop = Properties(step_name=name)
         root_prop.__dict__["CalculatedBaselineConstraints"] = Properties(
-            f"{root_path}.CalculatedBaselineConstraints"
+            step_name=name, path="CalculatedBaselineConstraints"
         )
         root_prop.__dict__["CalculatedBaselineStatistics"] = Properties(
-            f"{root_path}.CalculatedBaselineStatistics"
+            step_name=name, path="CalculatedBaselineStatistics"
         )
         root_prop.__dict__["BaselineUsedForDriftCheckStatistics"] = Properties(
-            f"{root_path}.BaselineUsedForDriftCheckStatistics"
+            step_name=name, path="BaselineUsedForDriftCheckStatistics"
         )
         root_prop.__dict__["BaselineUsedForDriftCheckConstraints"] = Properties(
-            f"{root_path}.BaselineUsedForDriftCheckConstraints"
+            step_name=name, path="BaselineUsedForDriftCheckConstraints"
         )
         self._properties = root_prop
 
     @property
     def arguments(self) -> RequestType:
         """The arguments dict that is used to define the QualityCheck step."""
+        from sagemaker.workflow.utilities import _pipeline_config
+
         normalized_inputs, normalized_outputs = self._baselining_processor._normalize_args(
             inputs=self._baseline_job_inputs,
             outputs=[self._baseline_output],
@@ -235,8 +241,8 @@ class QualityCheckStep(Step):
         request_dict = self._baselining_processor.sagemaker_session._get_process_request(
             **process_args
         )
-        if "ProcessingJobName" in request_dict:
-            request_dict.pop("ProcessingJobName")
+        # Continue to pop job name if not explicitly opted-in via config
+        request_dict = trim_request_dict(request_dict, "ProcessingJobName", _pipeline_config)
 
         return request_dict
 
@@ -258,6 +264,7 @@ class QualityCheckStep(Step):
 
         request_dict["ModelPackageGroupName"] = self.model_package_group_name
         request_dict["SkipCheck"] = self.skip_check
+        request_dict["FailOnViolation"] = self.fail_on_violation
         request_dict["RegisterNewBaseline"] = self.register_new_baseline
         request_dict["SuppliedBaselineStatistics"] = self.supplied_baseline_statistics
         request_dict["SuppliedBaselineConstraints"] = self.supplied_baseline_constraints
@@ -279,7 +286,7 @@ class QualityCheckStep(Step):
                 _CONTAINER_BASE_PATH, _CONTAINER_INPUT_PATH, _BASELINE_DATASET_INPUT_NAME
             )
         )
-        if isinstance(baseline_dataset, (ExecutionVariable, Expression, Parameter, Properties)):
+        if is_pipeline_variable(baseline_dataset):
             baseline_dataset_input = ProcessingInput(
                 source=self.quality_check_config.baseline_dataset,
                 destination=baseline_dataset_des,
@@ -334,6 +341,7 @@ class QualityCheckStep(Step):
         s3_uri = self.quality_check_config.output_s3_uri or s3.s3_path_join(
             "s3://",
             self._model_monitor.sagemaker_session.default_bucket(),
+            self._model_monitor.sagemaker_session.default_bucket_prefix,
             _MODEL_MONITOR_S3_PATH,
             _BASELINING_S3_PATH,
             self._model_monitor.latest_baselining_job_name,

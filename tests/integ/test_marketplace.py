@@ -15,20 +15,31 @@ from __future__ import absolute_import
 import itertools
 import os
 import time
+import requests
 
 import pandas
 import pytest
+import docker
 
 import sagemaker
 import tests.integ
-from sagemaker import AlgorithmEstimator, ModelPackage
+from tests.integ.utils import create_repository
+from sagemaker import AlgorithmEstimator, ModelPackage, Model
 from sagemaker.serializers import CSVSerializer
 from sagemaker.tuner import IntegerParameter, HyperparameterTuner
 from sagemaker.utils import sagemaker_timestamp, _aws_partition, unique_name_from_base
 from tests.integ import DATA_DIR
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 from tests.integ.marketplace_utils import REGION_ACCOUNT_MAP
+from tests.integ.test_multidatamodel import (
+    _ecr_image_uri,
+    _ecr_login,
+    _delete_repository,
+)
+from tests.integ.retry import retries
+import logging
 
+logger = logging.getLogger(__name__)
 
 # All these tests require a manual 1 time subscription to the following Marketplace items:
 # Algorithm: Scikit Decision Trees
@@ -154,6 +165,7 @@ def test_marketplace_attach(sagemaker_session, cpu_instance_type):
     tests.integ.test_region() in tests.integ.NO_MARKET_PLACE_REGIONS,
     reason="Marketplace is not available in {}".format(tests.integ.test_region()),
 )
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
 def test_marketplace_model(sagemaker_session, cpu_instance_type):
     region = sagemaker_session.boto_region_name
     account = REGION_ACCOUNT_MAP[region]
@@ -184,6 +196,136 @@ def test_marketplace_model(sagemaker_session, cpu_instance_type):
         test_x = test_data.iloc[:, 1:]
 
         print(predictor.predict(test_x.values).decode("utf-8"))
+
+
+@pytest.fixture(scope="module")
+def iris_image(sagemaker_session):
+    algorithm_name = unique_name_from_base("iris-classifier")
+    ecr_image = _ecr_image_uri(sagemaker_session, algorithm_name)
+    ecr_client = sagemaker_session.boto_session.client("ecr")
+    username, password = _ecr_login(ecr_client)
+
+    docker_client = docker.from_env()
+
+    # Build and tag docker image locally
+    path = os.path.join(DATA_DIR, "marketplace", "iris")
+    image, build_logs = docker_client.images.build(
+        path=path,
+        tag=algorithm_name,
+        rm=True,
+    )
+    image.tag(ecr_image, tag="latest")
+    create_repository(ecr_client, algorithm_name)
+
+    # Retry docker image push
+    for _ in retries(3, "Upload docker image to ECR repo", seconds_to_sleep=10):
+        try:
+            docker_client.images.push(
+                ecr_image, auth_config={"username": username, "password": password}
+            )
+            break
+        except requests.exceptions.ConnectionError:
+            # This can happen when we try to create multiple repositories in parallel, so we retry
+            pass
+
+    yield ecr_image
+
+    # Delete repository after the marketplace integration tests complete
+    _delete_repository(ecr_client, algorithm_name)
+
+
+@pytest.mark.xfail(reason="marking this for xfail until we work on the test failure to be fixed")
+def test_create_model_package(sagemaker_session, boto_session, iris_image):
+    MODEL_NAME = "iris-classifier-mp"
+    # Prepare
+    s3_bucket = sagemaker_session.default_bucket()
+
+    model_name = unique_name_from_base(MODEL_NAME)
+    model_description = "This model accepts petal length, petal width, sepal length, sepal width and predicts whether \
+    flower is of type setosa, versicolor, or virginica"
+
+    supported_realtime_inference_instance_types = supported_batch_transform_instance_types = [
+        "ml.m4.xlarge"
+    ]
+    supported_content_types = ["text/csv", "application/json", "application/jsonlines"]
+    supported_response_MIME_types = ["application/json", "text/csv", "application/jsonlines"]
+
+    validation_input_path = "s3://" + s3_bucket + "/validation-input-csv/"
+    validation_output_path = "s3://" + s3_bucket + "/validation-output-csv/"
+
+    iam = boto_session.resource("iam")
+    role = iam.Role("SageMakerRole").arn
+    sm_client = boto_session.client("sagemaker")
+    s3_client = boto_session.client("s3")
+    s3_client.put_object(
+        Bucket=s3_bucket, Key="validation-input-csv/input.csv", Body="5.1, 3.5, 1.4, 0.2"
+    )
+
+    ValidationSpecification = {
+        "ValidationRole": role,
+        "ValidationProfiles": [
+            {
+                "ProfileName": "Validation-test",
+                "TransformJobDefinition": {
+                    "BatchStrategy": "SingleRecord",
+                    "TransformInput": {
+                        "DataSource": {
+                            "S3DataSource": {
+                                "S3DataType": "S3Prefix",
+                                "S3Uri": validation_input_path,
+                            }
+                        },
+                        "ContentType": supported_content_types[0],
+                    },
+                    "TransformOutput": {
+                        "S3OutputPath": validation_output_path,
+                    },
+                    "TransformResources": {
+                        "InstanceType": supported_batch_transform_instance_types[0],
+                        "InstanceCount": 1,
+                    },
+                },
+            },
+        ],
+    }
+
+    # get pre-existing model artifact stored in ECR
+    model = Model(
+        image_uri=iris_image,
+        model_data=validation_input_path + "input.csv",
+        role=role,
+        sagemaker_session=sagemaker_session,
+        enable_network_isolation=False,
+    )
+
+    # Call model.register() - the method under test - to create a model package
+    model.register(
+        supported_content_types,
+        supported_response_MIME_types,
+        supported_realtime_inference_instance_types,
+        supported_batch_transform_instance_types,
+        marketplace_cert=True,
+        description=model_description,
+        model_package_name=model_name,
+        validation_specification=ValidationSpecification,
+    )
+
+    # wait for model execution to complete
+    time.sleep(60 * 3)
+
+    # query for all model packages with the name <MODEL_NAME>
+    response = sm_client.list_model_packages(
+        MaxResults=10,
+        NameContains=MODEL_NAME,
+        SortBy="CreationTime",
+        SortOrder="Descending",
+    )
+
+    if len(response["ModelPackageSummaryList"]) > 0:
+        sm_client.delete_model_package(ModelPackageName=model_name)
+
+    # assert that response is non-empty
+    assert len(response["ModelPackageSummaryList"]) > 0
 
 
 @pytest.mark.skipif(

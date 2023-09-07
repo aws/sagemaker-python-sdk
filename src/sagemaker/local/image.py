@@ -49,6 +49,13 @@ REGION_ENV_NAME = "AWS_REGION"
 TRAINING_JOB_NAME_ENV_NAME = "TRAINING_JOB_NAME"
 S3_ENDPOINT_URL_ENV_NAME = "S3_ENDPOINT_URL"
 
+# SELinux Enabled
+SELINUX_ENABLED = os.environ.get("SAGEMAKER_LOCAL_SELINUX_ENABLED", "False").lower() in [
+    "1",
+    "true",
+    "yes",
+]
+
 logger = logging.getLogger(__name__)
 
 
@@ -112,7 +119,11 @@ class _SageMakerContainer(object):
         self.container = None
 
     def process(
-        self, processing_inputs, processing_output_config, environment, processing_job_name
+        self,
+        processing_inputs,
+        processing_output_config,
+        environment,
+        processing_job_name,
     ):
         """Run a processing job locally using docker-compose.
 
@@ -139,7 +150,11 @@ class _SageMakerContainer(object):
         for host in self.hosts:
             _create_processing_config_file_directories(self.container_root, host)
             self.write_processing_config_files(
-                host, environment, processing_inputs, processing_output_config, processing_job_name
+                host,
+                environment,
+                processing_inputs,
+                processing_output_config,
+                processing_job_name,
             )
 
         self._generate_compose_file(
@@ -341,6 +356,7 @@ class _SageMakerContainer(object):
         # Gather the artifacts from all nodes into artifacts/model and artifacts/output
         for host in self.hosts:
             volumes = compose_data["services"][str(host)]["volumes"]
+            volumes = [v[:-2] if v.endswith(":z") else v for v in volumes]
             for volume in volumes:
                 if re.search(r"^[A-Za-z]:", volume):
                     unit, host_dir, container_dir = volume.split(":")
@@ -381,7 +397,12 @@ class _SageMakerContainer(object):
         return os.path.join(output_data, "model.tar.gz")
 
     def write_processing_config_files(
-        self, host, environment, processing_inputs, processing_output_config, processing_job_name
+        self,
+        host,
+        environment,
+        processing_inputs,
+        processing_output_config,
+        processing_job_name,
     ):
         """Write the config files for the processing containers.
 
@@ -746,7 +767,9 @@ class _SageMakerContainer(object):
         # for GPU support pass in nvidia as the runtime, this is equivalent
         # to setting --runtime=nvidia in the docker commandline.
         if self.instance_type == "local_gpu":
-            host_config["runtime"] = "nvidia"
+            host_config["deploy"] = {
+                "resources": {"reservations": {"devices": [{"capabilities": ["gpu"]}]}}
+            }
 
         if command == "serve":
             serving_port = (
@@ -872,10 +895,14 @@ class _Volume(object):
 
         self.container_dir = container_dir if container_dir else "/opt/ml/input/data/" + channel
         self.host_dir = host_dir
+        map_format = "{}:{}"
+        if platform.system() == "Linux" and SELINUX_ENABLED:
+            # Support mounting shared volumes in SELinux enabled hosts
+            map_format += ":z"
         if platform.system() == "Darwin" and host_dir.startswith("/var"):
             self.host_dir = os.path.join("/private", host_dir)
 
-        self.map = "{}:{}".format(self.host_dir, self.container_dir)
+        self.map = map_format.format(self.host_dir, self.container_dir)
 
 
 def _stream_output(process):
@@ -999,7 +1026,7 @@ def _aws_credentials(session):
                 "AWS_ACCESS_KEY_ID=%s" % (str(access_key)),
                 "AWS_SECRET_ACCESS_KEY=%s" % (str(secret_key)),
             ]
-        if not _aws_credentials_available_in_metadata_service():
+        if _use_short_lived_credentials() or not _aws_credentials_available_in_metadata_service():
             logger.warning(
                 "Using the short-lived AWS credentials found in session. They might expire while "
                 "running."
@@ -1035,6 +1062,11 @@ def _aws_credentials_available_in_metadata_service():
         )
     )
     return not instance_metadata_provider.load() is None
+
+
+def _use_short_lived_credentials():
+    """Use short-lived AWS credentials found in session."""
+    return os.environ.get("USE_SHORT_LIVED_CREDENTIALS") == "1"
 
 
 def _write_json_file(filename, content):
@@ -1080,8 +1112,14 @@ def _ecr_login_if_needed(boto_session, image):
     token = raw_token.decode("utf-8").strip("AWS:")
     ecr_url = auth["authorizationData"][0]["proxyEndpoint"]
 
-    cmd = "docker login -u AWS -p %s %s" % (token, ecr_url)
-    subprocess.check_output(cmd.split())
+    # Log in to ecr, but use communicate to not print creds to the console
+    cmd = f"docker login {ecr_url} -u AWS --password-stdin".split()
+    proc = subprocess.Popen(
+        cmd,
+        stdin=subprocess.PIPE,
+    )
+
+    proc.communicate(input=token.encode())
 
     return True
 

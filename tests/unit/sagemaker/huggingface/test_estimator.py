@@ -20,6 +20,8 @@ import pytest
 from mock import MagicMock, Mock, patch
 
 from sagemaker.huggingface import HuggingFace, HuggingFaceModel
+from sagemaker.session_settings import SessionSettings
+
 
 from .huggingface_utils import get_full_gpu_image_uri, GPU_INSTANCE_TYPE, REGION
 
@@ -48,6 +50,7 @@ EXPERIMENT_CONFIG = {
     "ExperimentName": "exp",
     "TrialName": "trial",
     "TrialComponentDisplayName": "tc",
+    "RunName": "rn",
 }
 
 
@@ -62,6 +65,8 @@ def fixture_sagemaker_session():
         local_mode=False,
         s3_resource=None,
         s3_client=None,
+        settings=SessionSettings(),
+        default_bucket_prefix=None,
     )
 
     describe = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/m.tar.gz"}}
@@ -71,6 +76,8 @@ def fixture_sagemaker_session():
     session.sagemaker_client.list_tags = Mock(return_value=LIST_TAGS_RESULT)
     session.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     session.expand_role = Mock(name="expand_role", return_value=ROLE)
+    # For tests which doesn't verify config file injection, operate with empty config
+    session.sagemaker_config = {}
     return session
 
 
@@ -142,14 +149,8 @@ def _create_train_job(version, base_framework_version):
             "CollectionConfigurations": [],
             "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
         },
-        "profiler_rule_configs": [
-            {
-                "RuleConfigurationName": "ProfilerReport-1510006209",
-                "RuleEvaluatorImage": "503895931360.dkr.ecr.us-east-1.amazonaws.com/sagemaker-debugger-rules:latest",
-                "RuleParameters": {"rule_to_invoke": "ProfilerReport"},
-            }
-        ],
         "profiler_config": {
+            "DisableProfiler": False,
             "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
         },
     }
@@ -268,8 +269,29 @@ def test_huggingface_neuron(
         pytorch_version=huggingface_neuron_latest_inference_pytorch_version,
         py_version=huggingface_neuron_latest_inference_py_version,
     )
-    container = huggingface_model.prepare_container_def("ml.inf.xlarge")
+    container = huggingface_model.prepare_container_def("ml.inf1.xlarge", inference_tool="neuron")
     assert container["Image"]
+
+
+def test_huggingface_neuronx(
+    sagemaker_session,
+    huggingface_neuronx_latest_inference_pytorch_version,
+    huggingface_neuronx_latest_inference_transformer_version,
+    huggingface_neuronx_latest_inference_py_version,
+):
+
+    inputs = "s3://mybucket/train"
+    huggingface_model = HuggingFaceModel(
+        model_data=inputs,
+        transformers_version=huggingface_neuronx_latest_inference_transformer_version,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        pytorch_version=huggingface_neuronx_latest_inference_pytorch_version,
+        py_version=huggingface_neuronx_latest_inference_py_version,
+    )
+    container = huggingface_model.prepare_container_def("ml.inf2.xlarge", inference_tool="neuronx")
+    assert container["Image"]
+    assert "sdk" in container["Image"] and "py" in container["Image"]
 
 
 def test_attach(

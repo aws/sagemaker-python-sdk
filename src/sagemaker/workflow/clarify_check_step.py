@@ -18,7 +18,7 @@ import json
 import os
 import tempfile
 from abc import ABC
-from typing import List, Union
+from typing import List, Union, Optional
 
 import attr
 
@@ -29,6 +29,7 @@ from sagemaker.clarify import (
     ModelConfig,
     ModelPredictedLabelConfig,
     SHAPConfig,
+    ProcessingOutputHandler,
     _upload_analysis_config,
     SageMakerClarifyProcessor,
     _set,
@@ -37,11 +38,13 @@ from sagemaker.model_monitor import BiasAnalysisConfig, ExplainabilityAnalysisCo
 from sagemaker.model_monitor.model_monitoring import _MODEL_MONITOR_S3_PATH
 from sagemaker.processing import ProcessingInput, ProcessingOutput, ProcessingJob
 from sagemaker.utils import name_from_base
-from sagemaker.workflow import PipelineNonPrimitiveInputTypes, ExecutionVariable, Parameter
-from sagemaker.workflow.entities import RequestType, Expression
+from sagemaker.workflow import is_pipeline_variable
+from sagemaker.workflow.entities import RequestType, PipelineVariable
 from sagemaker.workflow.properties import Properties
+from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.steps import Step, StepTypeEnum, CacheConfig
 from sagemaker.workflow.check_job_config import CheckJobConfig
+from sagemaker.workflow.utilities import trim_request_dict
 
 _DATA_BIAS_TYPE = "DATA_BIAS"
 _MODEL_BIAS_TYPE = "MODEL_BIAS"
@@ -58,7 +61,7 @@ class ClarifyCheckConfig(ABC):
         data_config (DataConfig): Config of the input/output data.
         kms_key (str): The ARN of the KMS key that is used to encrypt the
             user code file (default: None).
-            This field CANNOT be any of PipelineNonPrimitiveInputTypes.
+            This field CANNOT be any type of the `PipelineVariable`.
         monitoring_analysis_config_uri: (str): The uri of monitoring analysis config.
             This field does not take input.
             It will be generated once uploading the created analysis config file.
@@ -85,7 +88,7 @@ class DataBiasCheckConfig(ClarifyCheckConfig):
             "`KS <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-data-bias-metric-kolmogorov-smirnov.html>`_",
             "`CDDL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-data-bias-metric-cddl.html>`_"].
             Defaults to computing all.
-            This field CANNOT be any of PipelineNonPrimitiveInputTypes.
+            This field CANNOT be any type of the `PipelineVariable`.
     """  # noqa E501
 
     data_bias_config: BiasConfig = attr.ib()
@@ -114,7 +117,7 @@ class ModelBiasCheckConfig(ClarifyCheckConfig):
             ", "`TE <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-te.html>`_",
             "`FT <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-ft.html>`_"].
             Defaults to computing all.
-            This field CANNOT be any of PipelineNonPrimitiveInputTypes.
+            This field CANNOT be any type of the `PipelineVariable`.
     """
 
     data_bias_config: BiasConfig = attr.ib()
@@ -131,11 +134,11 @@ class ModelExplainabilityCheckConfig(ClarifyCheckConfig):
         model_config (ModelConfig): Config of the model and its endpoint to be created.
         explainability_config (SHAPConfig): Config of the specific explainability method.
             Currently, only SHAP is supported.
-        model_scores (str or int or ModelPredictedLabelConfig): Index or JSONPath location
-            in the model output for the predicted scores to be explained (default: None).
+        model_scores (str or int or ModelPredictedLabelConfig): Index or JMESPath expression
+            to locate the predicted scores in the model output (default: None).
             This is not required if the model output is a single score. Alternatively,
             an instance of ModelPredictedLabelConfig can be provided
-            but this field CANNOT be any of PipelineNonPrimitiveInputTypes.
+            but this field CANNOT be any type of the `PipelineVariable`.
     """
 
     model_config: ModelConfig = attr.ib()
@@ -151,14 +154,15 @@ class ClarifyCheckStep(Step):
         name: str,
         clarify_check_config: ClarifyCheckConfig,
         check_job_config: CheckJobConfig,
-        skip_check: Union[bool, PipelineNonPrimitiveInputTypes] = False,
-        register_new_baseline: Union[bool, PipelineNonPrimitiveInputTypes] = False,
-        model_package_group_name: Union[str, PipelineNonPrimitiveInputTypes] = None,
-        supplied_baseline_constraints: Union[str, PipelineNonPrimitiveInputTypes] = None,
+        skip_check: Union[bool, PipelineVariable] = False,
+        fail_on_violation: Union[bool, PipelineVariable] = True,
+        register_new_baseline: Union[bool, PipelineVariable] = False,
+        model_package_group_name: Union[str, PipelineVariable] = None,
+        supplied_baseline_constraints: Union[str, PipelineVariable] = None,
         display_name: str = None,
         description: str = None,
         cache_config: CacheConfig = None,
-        depends_on: Union[List[str], List[Step]] = None,
+        depends_on: Optional[List[Union[str, Step, StepCollection]]] = None,
     ):
         """Constructs a ClarifyCheckStep.
 
@@ -166,22 +170,25 @@ class ClarifyCheckStep(Step):
             name (str): The name of the ClarifyCheckStep step.
             clarify_check_config (ClarifyCheckConfig): A ClarifyCheckConfig instance.
             check_job_config (CheckJobConfig): A CheckJobConfig instance.
-            skip_check (bool or PipelineNonPrimitiveInputTypes): Whether the check
+            skip_check (bool or PipelineVariable): Whether the check
                 should be skipped (default: False).
-            register_new_baseline (bool or PipelineNonPrimitiveInputTypes): Whether
+            fail_on_violation (bool or PipelineVariable): Whether to fail the step
+                if violation detected (default: True).
+            register_new_baseline (bool or PipelineVariable): Whether
                 the new baseline should be registered (default: False).
-            model_package_group_name (str or PipelineNonPrimitiveInputTypes): The name of a
+            model_package_group_name (str or PipelineVariable): The name of a
                 registered model package group, among which the baseline will be fetched
                 from the latest approved model (default: None).
-            supplied_baseline_constraints (str or PipelineNonPrimitiveInputTypes): The S3 path
+            supplied_baseline_constraints (str or PipelineVariable): The S3 path
                 to the supplied constraints object representing the constraints JSON file
                 which will be used for drift to check (default: None).
             display_name (str): The display name of the ClarifyCheckStep step (default: None).
             description (str): The description of the ClarifyCheckStep step (default: None).
             cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance
                 (default: None).
-            depends_on (List[str] or List[Step]): A list of step names or step instances
-                this `sagemaker.workflow.steps.ClarifyCheckStep` depends on (default: None).
+            depends_on (List[Union[str, Step, StepCollection]]): A list of `Step`/`StepCollection`
+                names or `Step` instances or `StepCollection` instances that this `ClarifyCheckStep`
+                depends on (default: None).
         """
         if (
             not isinstance(clarify_check_config, DataBiasCheckConfig)
@@ -193,18 +200,15 @@ class ClarifyCheckStep(Step):
                 + "DataBiasCheckConfig, ModelBiasCheckConfig or ModelExplainabilityCheckConfig"
             )
 
-        if isinstance(
-            clarify_check_config.data_config.s3_analysis_config_output_path,
-            (ExecutionVariable, Expression, Parameter, Properties),
-        ):
+        if is_pipeline_variable(clarify_check_config.data_config.s3_analysis_config_output_path):
             raise RuntimeError(
                 "s3_analysis_config_output_path cannot be of type "
                 + "ExecutionVariable/Expression/Parameter/Properties"
             )
 
-        if not clarify_check_config.data_config.s3_analysis_config_output_path and isinstance(
-            clarify_check_config.data_config.s3_output_path,
-            (ExecutionVariable, Expression, Parameter, Properties),
+        if (
+            not clarify_check_config.data_config.s3_analysis_config_output_path
+            and is_pipeline_variable(clarify_check_config.data_config.s3_output_path)
         ):
             raise RuntimeError(
                 "`s3_output_path` cannot be of type ExecutionVariable/Expression/Parameter"
@@ -215,6 +219,7 @@ class ClarifyCheckStep(Step):
             name, display_name, description, StepTypeEnum.CLARIFY_CHECK, depends_on
         )
         self.skip_check = skip_check
+        self.fail_on_violation = fail_on_violation
         self.register_new_baseline = register_new_baseline
         self.clarify_check_config = clarify_check_config
         self.check_job_config = check_job_config
@@ -237,19 +242,20 @@ class ClarifyCheckStep(Step):
             self._generate_processing_job_analysis_config(), self._baselining_processor
         )
 
-        root_path = f"Steps.{name}"
-        root_prop = Properties(path=root_path)
+        root_prop = Properties(step_name=name)
         root_prop.__dict__["CalculatedBaselineConstraints"] = Properties(
-            f"{root_path}.CalculatedBaselineConstraints"
+            step_name=name, path="CalculatedBaselineConstraints"
         )
         root_prop.__dict__["BaselineUsedForDriftCheckConstraints"] = Properties(
-            f"{root_path}.BaselineUsedForDriftCheckConstraints"
+            step_name=name, path="BaselineUsedForDriftCheckConstraints"
         )
         self._properties = root_prop
 
     @property
     def arguments(self) -> RequestType:
         """The arguments dict that is used to define the ClarifyCheck step."""
+        from sagemaker.workflow.utilities import _pipeline_config
+
         normalized_inputs, normalized_outputs = self._baselining_processor._normalize_args(
             inputs=[self._processing_params["config_input"], self._processing_params["data_input"]],
             outputs=[self._processing_params["result_output"]],
@@ -263,8 +269,8 @@ class ClarifyCheckStep(Step):
         request_dict = self._baselining_processor.sagemaker_session._get_process_request(
             **process_args
         )
-        if "ProcessingJobName" in request_dict:
-            request_dict.pop("ProcessingJobName")
+        # Continue to pop job name if not explicitly opted-in via config
+        request_dict = trim_request_dict(request_dict, "ProcessingJobName", _pipeline_config)
 
         return request_dict
 
@@ -288,6 +294,7 @@ class ClarifyCheckStep(Step):
 
         request_dict["ModelPackageGroupName"] = self.model_package_group_name
         request_dict["SkipCheck"] = self.skip_check
+        request_dict["FailOnViolation"] = self.fail_on_violation
         request_dict["RegisterNewBaseline"] = self.register_new_baseline
         request_dict["SuppliedBaselineConstraints"] = self.supplied_baseline_constraints
         if isinstance(
@@ -388,7 +395,7 @@ class ClarifyCheckStep(Step):
                 source=SageMakerClarifyProcessor._CLARIFY_OUTPUT,
                 destination=data_config.s3_output_path,
                 output_name="analysis_result",
-                s3_upload_mode="EndOfJob",
+                s3_upload_mode=ProcessingOutputHandler.get_s3_upload_mode(analysis_config),
             )
         return dict(config_input=config_input, data_input=data_input, result_output=result_output)
 
@@ -428,7 +435,7 @@ class ClarifyCheckStep(Step):
             job_definition_name = name_from_base(f"{_BIAS_MONITORING_CFG_BASE_NAME}-config")
 
         return self._model_monitor._upload_analysis_config(
-            analysis_config, output_s3_uri, job_definition_name
+            analysis_config, output_s3_uri, job_definition_name, self.clarify_check_config.kms_key
         )
 
     def _get_s3_base_uri_for_monitoring_analysis_config(self) -> str:
@@ -452,6 +459,7 @@ class ClarifyCheckStep(Step):
         return s3.s3_path_join(
             "s3://",
             self._model_monitor.sagemaker_session.default_bucket(),
+            self._model_monitor.sagemaker_session.default_bucket_prefix,
             _MODEL_MONITOR_S3_PATH,
             monitoring_cfg_base_name,
         )

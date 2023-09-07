@@ -16,6 +16,10 @@ It also includes encryption, network isolation, and VPC configurations.
 """
 from __future__ import absolute_import
 
+from typing import Union, Optional, List
+
+from sagemaker.workflow.entities import PipelineVariable
+
 
 class NetworkConfig(object):
     """Accepts network configuration parameters for conversion to request dict.
@@ -25,10 +29,10 @@ class NetworkConfig(object):
 
     def __init__(
         self,
-        enable_network_isolation=False,
-        security_group_ids=None,
-        subnets=None,
-        encrypt_inter_container_traffic=None,
+        enable_network_isolation: Union[bool, PipelineVariable] = None,
+        security_group_ids: Optional[List[Union[str, PipelineVariable]]] = None,
+        subnets: Optional[List[Union[str, PipelineVariable]]] = None,
+        encrypt_inter_container_traffic: Optional[Union[bool, PipelineVariable]] = None,
     ):
         """Initialize a ``NetworkConfig`` instance.
 
@@ -36,12 +40,13 @@ class NetworkConfig(object):
         these parameters into a dictionary.
 
         Args:
-            enable_network_isolation (bool): Boolean that determines whether to enable
-                network isolation.
-            security_group_ids ([str]): A list of strings representing security group IDs.
-            subnets ([str]): A list of strings representing subnets.
-            encrypt_inter_container_traffic (bool): Boolean that determines whether to
-                encrypt inter-container traffic. Default value is None.
+            enable_network_isolation (bool or PipelineVariable): Boolean that determines
+                whether to enable network isolation.
+            security_group_ids (list[str] or list[PipelineVariable]): A list of strings representing
+                security group IDs.
+            subnets (list[str] or list[PipelineVariable]): A list of strings representing subnets.
+            encrypt_inter_container_traffic (bool or PipelineVariable): Boolean that determines
+                whether to encrypt inter-container traffic. Default value is None.
         """
         self.enable_network_isolation = enable_network_isolation
         self.security_group_ids = security_group_ids
@@ -50,7 +55,11 @@ class NetworkConfig(object):
 
     def _to_request_dict(self):
         """Generates a request dictionary using the parameters provided to the class."""
-        network_config_request = {"EnableNetworkIsolation": self.enable_network_isolation}
+        # Enable Network Isolation should default to False if it is not provided.
+        enable_network_isolation = (
+            False if self.enable_network_isolation is None else self.enable_network_isolation
+        )
+        network_config_request = {"EnableNetworkIsolation": enable_network_isolation}
 
         if self.encrypt_inter_container_traffic is not None:
             network_config_request[

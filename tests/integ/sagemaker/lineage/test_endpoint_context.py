@@ -20,6 +20,7 @@ SLEEP_TIME_ONE_SECONDS = 1
 SLEEP_TIME_THREE_SECONDS = 3
 
 
+@pytest.mark.skip("recurring failures due to existing ARN V739948996")
 def test_model(endpoint_context_associate_with_model, model_obj, endpoint_action_obj):
     model_list = endpoint_context_associate_with_model.models()
     for model in model_list:
@@ -29,6 +30,7 @@ def test_model(endpoint_context_associate_with_model, model_obj, endpoint_action
         assert model.destination_type == "Model"
 
 
+@pytest.mark.skip("recurring failures due to existing ARN V739948996")
 def test_model_v2(endpoint_context_associate_with_model, model_obj, sagemaker_session):
     time.sleep(SLEEP_TIME_ONE_SECONDS)
     model_list = endpoint_context_associate_with_model.models_v2()

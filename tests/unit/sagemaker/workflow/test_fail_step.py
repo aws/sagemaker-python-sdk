@@ -21,7 +21,8 @@ from sagemaker.workflow.conditions import ConditionEquals
 from sagemaker.workflow.fail_step import FailStep
 from sagemaker.workflow.functions import Join
 from sagemaker.workflow.parameters import ParameterInteger
-from sagemaker.workflow.pipeline import Pipeline
+from sagemaker.workflow.pipeline import Pipeline, PipelineGraph
+from tests.unit.sagemaker.workflow.helpers import ordered
 
 
 def test_fail_step():
@@ -104,6 +105,8 @@ def test_fail_step_with_join_fn_in_error_message():
     ]
 
     assert json.loads(pipeline.definition())["Steps"] == _expected_dsl
+    adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
+    assert ordered(adjacency_list) == ordered({"CondStep": ["FailStep"], "FailStep": []})
 
 
 def test_fail_step_with_properties_ref():

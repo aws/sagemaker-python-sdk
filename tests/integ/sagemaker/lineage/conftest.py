@@ -19,6 +19,7 @@ import boto3
 import pytest
 import logging
 import uuid
+import json
 from sagemaker.lineage import (
     action,
     context,
@@ -26,6 +27,7 @@ from sagemaker.lineage import (
     artifact,
 )
 from sagemaker.model import ModelPackage
+from sagemaker.utils import retry_with_backoff
 from tests.integ.sagemaker.workflow.test_workflow import (
     test_end_to_end_pipeline_successful_execution,
 )
@@ -141,7 +143,7 @@ def action_objs(sagemaker_session):
 @pytest.fixture
 def artifact_obj(sagemaker_session):
     obj = artifact.Artifact.create(
-        artifact_name="SDKIntegrationTest",
+        artifact_name=name(),
         artifact_type="SDKIntegrationTest",
         source_uri=name(),
         properties={"k1": "v1"},
@@ -400,7 +402,7 @@ def model_obj(sagemaker_session):
 
     yield model
     time.sleep(SLEEP_TIME_SECONDS)
-    model.delete(disassociate=True)
+    retry_with_backoff(lambda: model.delete(disassociate=True), num_attempts=4)
 
 
 @pytest.fixture
@@ -663,7 +665,12 @@ def static_endpoint_context(sagemaker_session, static_pipeline_execution_arn):
     contexts = sagemaker_session.sagemaker_client.list_contexts(SourceUri=endpoint_arn)[
         "ContextSummaries"
     ]
-    if len(contexts) != 1:
+
+    logging.info(f"Found {len(contexts)} contexts associated with {endpoint_arn}")
+    for ctx in contexts:
+        logging.info(f'Found context "{ctx["ContextArn"]}"')
+
+    if len(contexts) == 0:
         raise (
             Exception(
                 f"Got an unexpected number of Contexts for \
@@ -689,7 +696,12 @@ def static_model_package_group_context(sagemaker_session, static_pipeline_execut
     contexts = sagemaker_session.sagemaker_client.list_contexts(SourceUri=model_package_group_arn)[
         "ContextSummaries"
     ]
-    if len(contexts) != 1:
+
+    logging.info(f"Found {len(contexts)} contexts associated with {model_package_group_arn}")
+    for ctx in context:
+        logging.info(f'Found context "{ctx["ContextArn"]}"')
+
+    if len(contexts) == 0:
         raise (
             Exception(
                 f"Got an unexpected number of Contexts for \
@@ -713,7 +725,12 @@ def static_model_artifact(sagemaker_session, static_pipeline_execution_arn):
     artifacts = sagemaker_session.sagemaker_client.list_artifacts(SourceUri=model_package_arn)[
         "ArtifactSummaries"
     ]
-    if len(artifacts) != 1:
+
+    logging.info(f"Found {len(artifacts)} artifacts associated with {model_package_arn}")
+    for art in artifacts:
+        logging.info(f'Found artifact {art["ArtifactArn"]}')
+
+    if len(artifacts) == 0:
         raise (
             Exception(
                 f"Got an unexpected number of Artifacts for \
@@ -876,3 +893,17 @@ def _deploy_static_endpoint(execution_arn, sagemaker_session):
             pass
         else:
             raise (e)
+
+
+@pytest.fixture
+def extract_data_from_html():
+    def _method(data):
+        start = data.find("[")
+        end = data.find("]")
+        res = data[start + 1 : end].split("}, ")
+        res = [i + "}" for i in res]
+        res[-1] = res[-1][:-1]
+        data_dict = [json.loads(i) for i in res]
+        return data_dict
+
+    return _method

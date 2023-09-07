@@ -149,7 +149,7 @@ def test_jumpstart_model_specs():
 
     assert specs1.to_json() == BASE_SPEC
 
-    BASE_SPEC["model_id"] = "diff model id"
+    BASE_SPEC["model_id"] = "diff model ID"
     specs2 = JumpStartModelSpecs(BASE_SPEC)
     assert specs1 != specs2
 

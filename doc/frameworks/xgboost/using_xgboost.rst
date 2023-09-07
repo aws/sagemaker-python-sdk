@@ -465,6 +465,7 @@ For information about the SageMaker Python SDK XGBoost classes, see the followin
 * :class:`sagemaker.xgboost.estimator.XGBoost`
 * :class:`sagemaker.xgboost.model.XGBoostModel`
 * :class:`sagemaker.xgboost.model.XGBoostPredictor`
+* :class:`sagemaker.xgboost.processing.XGBoostProcessor`
 
 ***********************************
 SageMaker XGBoost Docker Containers

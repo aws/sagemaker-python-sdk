@@ -12,9 +12,11 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 import copy
+from typing import List
+import boto3
 
 from sagemaker.jumpstart.cache import JumpStartModelsCache
-from sagemaker.jumpstart.constants import JUMPSTART_REGION_NAME_SET
+from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME, JUMPSTART_REGION_NAME_SET
 from sagemaker.jumpstart.types import (
     JumpStartCachedS3ContentKey,
     JumpStartCachedS3ContentValue,
@@ -28,6 +30,7 @@ from tests.unit.sagemaker.jumpstart.constants import (
     BASE_MANIFEST,
     BASE_SPEC,
     BASE_HEADER,
+    SPECIAL_MODEL_SPECS_DICT,
 )
 
 
@@ -42,8 +45,19 @@ def get_header_from_base_header(
     if version and semantic_version_str:
         raise ValueError("Cannot specify both `version` and `semantic_version_str` fields.")
 
-    if "pytorch" not in model_id and "tensorflow" not in model_id:
-        raise KeyError("Bad model id")
+    if all(
+        [
+            "pytorch" not in model_id,
+            "tensorflow" not in model_id,
+            "huggingface" not in model_id,
+            "mxnet" not in model_id,
+            "xgboost" not in model_id,
+            "catboost" not in model_id,
+            "lightgbm" not in model_id,
+            "sklearn" not in model_id,
+        ]
+    ):
+        raise KeyError("Bad model ID")
 
     if region is not None and region not in JUMPSTART_REGION_NAME_SET:
         raise ValueError(
@@ -59,14 +73,42 @@ def get_header_from_base_header(
     return JumpStartModelHeader(spec)
 
 
+def get_prototype_manifest(
+    region: str = JUMPSTART_DEFAULT_REGION_NAME,
+) -> List[JumpStartModelHeader]:
+    return [
+        get_header_from_base_header(region=region, model_id=model_id, version=version)
+        for model_id in PROTOTYPICAL_MODEL_SPECS_DICT.keys()
+        for version in ["1.0.0"]
+    ]
+
+
 def get_prototype_model_spec(
-    region: str = None, model_id: str = None, version: str = None
+    region: str = None,
+    model_id: str = None,
+    version: str = None,
+    s3_client: boto3.client = None,
 ) -> JumpStartModelSpecs:
     """This function mocks cache accessor functions. For this mock,
-    we only retrieve model specs based on the model id.
+    we only retrieve model specs based on the model ID.
     """
 
     specs = JumpStartModelSpecs(PROTOTYPICAL_MODEL_SPECS_DICT[model_id])
+    return specs
+
+
+def get_special_model_spec(
+    region: str = None,
+    model_id: str = None,
+    version: str = None,
+    s3_client: boto3.client = None,
+) -> JumpStartModelSpecs:
+    """This function mocks cache accessor functions. For this mock,
+    we only retrieve model specs based on the model ID. This is reserved
+    for special specs.
+    """
+
+    specs = JumpStartModelSpecs(SPECIAL_MODEL_SPECS_DICT[model_id])
     return specs
 
 
@@ -76,13 +118,25 @@ def get_spec_from_base_spec(
     model_id: str = None,
     semantic_version_str: str = None,
     version: str = None,
+    s3_client: boto3.client = None,
 ) -> JumpStartModelSpecs:
 
     if version and semantic_version_str:
         raise ValueError("Cannot specify both `version` and `semantic_version_str` fields.")
 
-    if "pytorch" not in model_id and "tensorflow" not in model_id:
-        raise KeyError("Bad model id")
+    if all(
+        [
+            "pytorch" not in model_id,
+            "tensorflow" not in model_id,
+            "huggingface" not in model_id,
+            "mxnet" not in model_id,
+            "xgboost" not in model_id,
+            "catboost" not in model_id,
+            "lightgbm" not in model_id,
+            "sklearn" not in model_id,
+        ]
+    ):
+        raise KeyError("Bad model ID")
 
     if region is not None and region not in JUMPSTART_REGION_NAME_SET:
         raise ValueError(
@@ -98,7 +152,7 @@ def get_spec_from_base_spec(
     return JumpStartModelSpecs(spec)
 
 
-def patched_get_file_from_s3(
+def patched_retrieval_function(
     _modelCacheObj: JumpStartModelsCache,
     key: JumpStartCachedS3ContentKey,
     value: JumpStartCachedS3ContentValue,
@@ -119,3 +173,24 @@ def patched_get_file_from_s3(
         )
 
     raise ValueError(f"Bad value for filetype: {filetype}")
+
+
+def overwrite_dictionary(
+    base_dictionary: dict,
+    dictionary_with_overwrites: dict,
+) -> dict:
+
+    for key, value in dictionary_with_overwrites.items():
+
+        if key in base_dictionary:
+            base_dictionary_entry = base_dictionary[key]
+            if isinstance(base_dictionary_entry, list):
+                assert isinstance(value, list)
+                value += base_dictionary_entry
+            if isinstance(base_dictionary_entry, dict):
+                assert isinstance(value, dict)
+                value.update(base_dictionary_entry)
+
+        base_dictionary[key] = value
+
+    return base_dictionary

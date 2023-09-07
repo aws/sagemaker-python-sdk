@@ -158,7 +158,12 @@ class Statistics(ModelMonitoringFile):
         sagemaker_session = sagemaker_session or Session()
         file_name = file_name or "statistics.json"
         desired_s3_uri = s3.s3_path_join(
-            "s3://", sagemaker_session.default_bucket(), "monitoring", str(uuid.uuid4()), file_name
+            "s3://",
+            sagemaker_session.default_bucket(),
+            sagemaker_session.default_bucket_prefix,
+            "monitoring",
+            str(uuid.uuid4()),
+            file_name,
         )
         s3_uri = s3.S3Uploader.upload_string_as_file_body(
             body=statistics_file_string,
@@ -286,7 +291,12 @@ class Constraints(ModelMonitoringFile):
         sagemaker_session = sagemaker_session or Session()
         file_name = file_name or "constraints.json"
         desired_s3_uri = s3.s3_path_join(
-            "s3://", sagemaker_session.default_bucket(), "monitoring", str(uuid.uuid4()), file_name
+            "s3://",
+            sagemaker_session.default_bucket(),
+            sagemaker_session.default_bucket_prefix,
+            "monitoring",
+            str(uuid.uuid4()),
+            file_name,
         )
         s3_uri = s3.S3Uploader.upload_string_as_file_body(
             body=constraints_file_string,
@@ -441,7 +451,12 @@ class ConstraintViolations(ModelMonitoringFile):
         sagemaker_session = sagemaker_session or Session()
         file_name = file_name or "constraint_violations.json"
         desired_s3_uri = s3.s3_path_join(
-            "s3://", sagemaker_session.default_bucket(), "monitoring", str(uuid.uuid4()), file_name
+            "s3://",
+            sagemaker_session.default_bucket(),
+            sagemaker_session.default_bucket_prefix,
+            "monitoring",
+            str(uuid.uuid4()),
+            file_name,
         )
         s3_uri = s3.S3Uploader.upload_string_as_file_body(
             body=constraint_violations_file_string,

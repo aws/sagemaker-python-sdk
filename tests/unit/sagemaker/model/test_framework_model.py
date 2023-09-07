@@ -21,6 +21,8 @@ from sagemaker.predictor import Predictor
 import pytest
 from mock import MagicMock, Mock, patch
 
+from sagemaker.session_settings import SessionSettings
+
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
 ENTRY_POINT = "blah.py"
@@ -89,8 +91,12 @@ def sagemaker_session():
         local_mode=False,
         s3_client=None,
         s3_resource=None,
+        settings=SessionSettings(),
+        default_bucket_prefix=None,
     )
     sms.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
+    # For tests which doesn't verify config file injection, operate with empty config
+    sms.sagemaker_config = {}
     return sms
 
 
@@ -203,6 +209,7 @@ def test_git_support_repo_not_provided(sagemaker_session):
     ),
 )
 def test_git_support_git_clone_fail(sagemaker_session):
+    sagemaker_session.sagemaker_config = {}
     entry_point = "source_dir/entry_point"
     git_config = {"repo": "https://github.com/aws/no-such-repo.git", "branch": BRANCH}
     with pytest.raises(subprocess.CalledProcessError) as error:
@@ -252,6 +259,7 @@ def test_git_support_commit_not_exist(git_clone_repo, sagemaker_session):
     side_effect=ValueError("Entry point does not exist in the repo."),
 )
 def test_git_support_entry_point_not_exist(sagemaker_session):
+    sagemaker_session.sagemaker_config = {}
     entry_point = "source_dir/entry_point"
     git_config = {"repo": GIT_REPO, "branch": BRANCH, "commit": COMMIT}
     with pytest.raises(ValueError) as error:
@@ -267,6 +275,7 @@ def test_git_support_entry_point_not_exist(sagemaker_session):
     side_effect=ValueError("Source directory does not exist in the repo."),
 )
 def test_git_support_source_dir_not_exist(sagemaker_session):
+    sagemaker_session.sagemaker_config = {}
     entry_point = "entry_point"
     source_dir = "source_dir_that_does_not_exist"
     git_config = {"repo": GIT_REPO, "branch": BRANCH, "commit": COMMIT}
@@ -286,6 +295,7 @@ def test_git_support_source_dir_not_exist(sagemaker_session):
     side_effect=ValueError("Dependency no-such-dir does not exist in the repo."),
 )
 def test_git_support_dependencies_not_exist(sagemaker_session):
+    sagemaker_session.sagemaker_config = {}
     entry_point = "entry_point"
     dependencies = ["foo", "no_such_dir"]
     git_config = {"repo": GIT_REPO, "branch": BRANCH, "commit": COMMIT}

@@ -63,6 +63,12 @@ def test_async_walkthrough(sagemaker_session, cpu_instance_type, training_set):
         assert result_no_wait_with_data.output_path.startswith(
             "s3://" + sagemaker_session.default_bucket()
         )
+        assert result_no_wait_with_data.failure_path.startswith(
+            "s3://"
+            + sagemaker_session.default_bucket()
+            + f"/{sagemaker_session.default_bucket_prefix}"
+            + "/async-endpoint-failures/"
+        )
         time.sleep(5)
         result_no_wait_with_data = result_no_wait_with_data.get_result()
         assert len(result_no_wait_with_data) == 5
@@ -97,6 +103,12 @@ def test_async_walkthrough(sagemaker_session, cpu_instance_type, training_set):
         result_not_wait = predictor_async.predict_async(input_path=input_s3_path)
         assert isinstance(result_not_wait, AsyncInferenceResponse)
         assert result_not_wait.output_path.startswith("s3://" + sagemaker_session.default_bucket())
+        assert result_not_wait.failure_path.startswith(
+            "s3://"
+            + sagemaker_session.default_bucket()
+            + f"/{sagemaker_session.default_bucket_prefix}"
+            + "/async-endpoint-failures/"
+        )
         time.sleep(5)
         result_not_wait = result_not_wait.get_result()
         assert len(result_not_wait) == 5

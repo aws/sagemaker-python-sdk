@@ -14,8 +14,10 @@
 from __future__ import absolute_import
 
 import json
+from typing import Union
 
 from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.utils import to_string
 
 
 class ParameterRange(object):
@@ -27,13 +29,18 @@ class ParameterRange(object):
 
     __all_types__ = ("Continuous", "Categorical", "Integer")
 
-    def __init__(self, min_value, max_value, scaling_type="Auto"):
+    def __init__(
+        self,
+        min_value: Union[int, float, PipelineVariable],
+        max_value: Union[int, float, PipelineVariable],
+        scaling_type: Union[str, PipelineVariable] = "Auto",
+    ):
         """Initialize a parameter range.
 
         Args:
-            min_value (float or int): The minimum value for the range.
-            max_value (float or int): The maximum value for the range.
-            scaling_type (str): The scale used for searching the range during
+            min_value (float or int or PipelineVariable): The minimum value for the range.
+            max_value (float or int or PipelineVariable): The maximum value for the range.
+            scaling_type (str or PipelineVariable): The scale used for searching the range during
                 tuning (default: 'Auto'). Valid values: 'Auto', 'Linear',
                 'Logarithmic' and 'ReverseLogarithmic'.
         """
@@ -71,12 +78,8 @@ class ParameterRange(object):
         """
         return {
             "Name": name,
-            "MinValue": str(self.min_value)
-            if not isinstance(self.min_value, PipelineVariable)
-            else self.min_value.to_string(),
-            "MaxValue": str(self.max_value)
-            if not isinstance(self.max_value, PipelineVariable)
-            else self.max_value.to_string(),
+            "MinValue": to_string(self.min_value),
+            "MaxValue": to_string(self.max_value),
             "ScalingType": self.scaling_type,
         }
 
@@ -110,9 +113,7 @@ class CategoricalParameter(ParameterRange):
                 This input will be converted into a list of strings.
         """
         values = values if isinstance(values, list) else [values]
-        self.values = [
-            str(v) if not isinstance(v, PipelineVariable) else v.to_string() for v in values
-        ]
+        self.values = [to_string(v) for v in values]
 
     def as_tuning_range(self, name):
         """Represent the parameter range as a dictionary.

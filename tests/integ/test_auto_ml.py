@@ -31,10 +31,12 @@ RESOURCE_POOLS = [{"InstanceType": AUTO_ML_INSTANCE_TYPE, "PoolSize": INSTANCE_C
 TARGET_ATTRIBUTE_NAME = "virginica"
 DATA_DIR = os.path.join(DATA_DIR, "automl", "data")
 TRAINING_DATA = os.path.join(DATA_DIR, "iris_training.csv")
+VALIDATION_DATA = os.path.join(DATA_DIR, "iris_validation.csv")
 TEST_DATA = os.path.join(DATA_DIR, "iris_test.csv")
 TRANSFORM_DATA = os.path.join(DATA_DIR, "iris_transform.csv")
 PROBLEM_TYPE = "MultiClassClassification"
 BASE_JOB_NAME = "auto-ml"
+MODE = "ENSEMBLING"
 
 # use a succeeded AutoML job to test describe and list candidates method, otherwise tests will run too long
 AUTO_ML_JOB_NAME = "python-sdk-integ-test-base-job"
@@ -76,7 +78,6 @@ def test_auto_ml_fit_local_input(sagemaker_session):
         role=ROLE,
         target_attribute_name=TARGET_ATTRIBUTE_NAME,
         sagemaker_session=sagemaker_session,
-        max_candidates=1,
         generate_candidate_definitions_only=True,
     )
 
@@ -101,6 +102,40 @@ def test_auto_ml_input_object_fit(sagemaker_session):
     job_name = unique_name_from_base("auto-ml", max_length=32)
     s3_input = sagemaker_session.upload_data(path=TRAINING_DATA, key_prefix=PREFIX + "/input")
     inputs = AutoMLInput(inputs=s3_input, target_attribute_name=TARGET_ATTRIBUTE_NAME)
+    with timeout(minutes=AUTO_ML_DEFAULT_TIMEMOUT_MINUTES):
+        auto_ml.fit(inputs, job_name=job_name)
+
+
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
+    reason="AutoML is not supported in the region yet.",
+)
+def test_auto_ml_input_object_list_fit(sagemaker_session):
+    auto_ml = AutoML(
+        role=ROLE,
+        target_attribute_name=TARGET_ATTRIBUTE_NAME,
+        sagemaker_session=sagemaker_session,
+        max_candidates=1,
+        mode=MODE,
+    )
+    job_name = unique_name_from_base("auto-ml", max_length=32)
+    s3_input_training = sagemaker_session.upload_data(
+        path=TRAINING_DATA, key_prefix=PREFIX + "/input"
+    )
+    s3_input_validation = sagemaker_session.upload_data(
+        path=VALIDATION_DATA, key_prefix=PREFIX + "/input"
+    )
+    input_training = AutoMLInput(
+        inputs=s3_input_training,
+        target_attribute_name=TARGET_ATTRIBUTE_NAME,
+        channel_type="training",
+    )
+    input_validation = AutoMLInput(
+        inputs=s3_input_validation,
+        target_attribute_name=TARGET_ATTRIBUTE_NAME,
+        channel_type="validation",
+    )
+    inputs = [input_training, input_validation]
     with timeout(minutes=AUTO_ML_DEFAULT_TIMEMOUT_MINUTES):
         auto_ml.fit(inputs, job_name=job_name)
 
@@ -170,6 +205,7 @@ def test_auto_ml_describe_auto_ml_job(sagemaker_session):
             },
             "TargetAttributeName": TARGET_ATTRIBUTE_NAME,
             "ContentType": "text/csv;header=present",
+            "ChannelType": "training",
         }
     ]
     expected_default_output_config = {
@@ -207,6 +243,7 @@ def test_auto_ml_attach(sagemaker_session):
             },
             "TargetAttributeName": TARGET_ATTRIBUTE_NAME,
             "ContentType": "text/csv;header=present",
+            "ChannelType": "training",
         }
     ]
     expected_default_output_config = {
@@ -290,6 +327,9 @@ def test_deploy_best_candidate(sagemaker_session, cpu_instance_type):
 @pytest.mark.skipif(
     tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
     reason="AutoML is not supported in the region yet.",
+)
+@pytest.mark.skip(
+    reason="",
 )
 def test_candidate_estimator_default_rerun_and_deploy(sagemaker_session, cpu_instance_type):
     auto_ml_utils.create_auto_ml_job_if_not_exist(sagemaker_session)

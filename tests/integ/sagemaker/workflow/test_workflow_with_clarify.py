@@ -21,7 +21,8 @@ import tempfile
 import pytest
 import numpy as np
 import pandas as pd
-from botocore.exceptions import WaiterError
+
+from tests.integ.sagemaker.workflow.helpers import wait_pipeline_execution
 from sagemaker.amazon.linear_learner import LinearLearner, LinearLearnerPredictor
 from sagemaker.clarify import (
     BiasConfig,
@@ -33,8 +34,8 @@ from sagemaker.clarify import (
 from sagemaker.processing import ProcessingInput, ProcessingOutput
 from sagemaker.session import get_execution_role
 from sagemaker.workflow.conditions import ConditionLessThanOrEqualTo
-from sagemaker.workflow.condition_step import ConditionStep
-from sagemaker.workflow.functions import JsonGet
+from sagemaker.workflow.condition_step import ConditionStep, JsonGet
+
 from sagemaker.workflow.parameters import (
     ParameterInteger,
     ParameterString,
@@ -237,8 +238,9 @@ def test_workflow_with_clarify(
             property_files=[property_file],
         )
 
+        # Keep the deprecated JsonGet in test to verify it's compatible with new changes
         cond_left = JsonGet(
-            step_name=step_process.name,
+            step=step_process,
             property_file="BiasOutput",
             json_path="post_training_bias_metrics.facets.F1[0].metrics[0].value",
         )
@@ -266,10 +268,7 @@ def test_workflow_with_clarify(
             response = execution.describe()
             assert response["PipelineArn"] == create_arn
 
-            try:
-                execution.wait(delay=30, max_attempts=60)
-            except WaiterError:
-                pass
+            wait_pipeline_execution(execution=execution)
             execution_steps = execution.list_steps()
 
             assert len(execution_steps) == 2

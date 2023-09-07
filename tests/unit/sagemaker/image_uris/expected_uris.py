@@ -16,6 +16,7 @@ ALTERNATE_DOMAINS = {
     "cn-north-1": "amazonaws.com.cn",
     "cn-northwest-1": "amazonaws.com.cn",
     "us-iso-east-1": "c2s.ic.gov",
+    "us-isob-east-1": "sc2s.sgov.gov",
 }
 DOMAIN = "amazonaws.com"
 IMAGE_URI_FORMAT = "{}.dkr.ecr.{}.{}/{}:{}"
@@ -30,6 +31,24 @@ def framework_uri(repo, fw_version, account, py_version=None, processor="cpu", r
     return IMAGE_URI_FORMAT.format(account, region, domain, repo, tag)
 
 
+def neuron_framework_uri(
+    repo,
+    fw_version,
+    account,
+    py_version=None,
+    inference_tool="neuron",
+    region=REGION,
+    sdk_version="sdk2.4.0",
+    container_version="ubuntu20.04",
+):
+    domain = ALTERNATE_DOMAINS.get(region, DOMAIN)
+    tag = "-".join(
+        x for x in (fw_version, inference_tool, py_version, sdk_version, container_version) if x
+    )
+
+    return IMAGE_URI_FORMAT.format(account, region, domain, repo, tag)
+
+
 def algo_uri(algo, account, region, version=1):
     domain = ALTERNATE_DOMAINS.get(region, DOMAIN)
     return IMAGE_URI_FORMAT.format(account, region, domain, algo, version)
@@ -38,3 +57,46 @@ def algo_uri(algo, account, region, version=1):
 def monitor_uri(account, region=REGION):
     domain = ALTERNATE_DOMAINS.get(region, DOMAIN)
     return MONITOR_URI_FORMAT.format(account, region, domain)
+
+
+def graviton_framework_uri(
+    repo,
+    fw_version,
+    account,
+    py_version="py38",
+    processor="cpu",
+    region=REGION,
+    container_version="ubuntu20.04-sagemaker",
+):
+    domain = ALTERNATE_DOMAINS.get(region, DOMAIN)
+    tag = "-".join(x for x in (fw_version, processor, py_version, container_version) if x)
+
+    return IMAGE_URI_FORMAT.format(account, region, domain, repo, tag)
+
+
+def djl_framework_uri(repo, account, djl_version, primary_framework, region=REGION):
+    domain = ALTERNATE_DOMAINS.get(region, DOMAIN)
+    tag = f"{djl_version}-{primary_framework}"
+    return IMAGE_URI_FORMAT.format(account, region, domain, repo, tag)
+
+
+def huggingface_llm_framework_uri(
+    repo,
+    account,
+    version,
+    tag,
+    region=REGION,
+):
+    domain = ALTERNATE_DOMAINS.get(region, DOMAIN)
+    return IMAGE_URI_FORMAT.format(account, region, domain, repo, tag)
+
+
+def stabilityai_framework_uri(repo, account, tag, region=REGION):
+    domain = ALTERNATE_DOMAINS.get(region, DOMAIN)
+    return IMAGE_URI_FORMAT.format(account, region, domain, repo, tag)
+
+
+def base_python_uri(repo, account, region=REGION):
+    domain = ALTERNATE_DOMAINS.get(region, DOMAIN)
+    tag = "1.0"
+    return IMAGE_URI_FORMAT.format(account, region, domain, repo, tag)

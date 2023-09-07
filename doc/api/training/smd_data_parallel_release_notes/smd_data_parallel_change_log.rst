@@ -1,14 +1,171 @@
-.. _sdp_1.2.2_release_note:
+.. _sdp_release_note:
 
 #############
 Release Notes
 #############
 
 New features, bug fixes, and improvements are regularly made to the SageMaker
-distributed data parallel library.
+data parallelism library.
+
+SageMaker Distributed Data Parallel 1.8.0 Release Notes
+=======================================================
+
+*Date: Apr. 17. 2023*
+
+**Currency Updates**
+
+* Added support for PyTorch 2.0.0.
+
+**Migration to AWS Deep Learning Containers**
+
+This version passed benchmark testing and is migrated to the following AWS Deep Learning Containers (DLC):
+
+- PyTorch 2.0.0 DLC
+
+  .. code::
+
+    763104351884.dkr.ecr.us-east-1.amazonaws.com/pytorch-training:2.0.0-gpu-py310-cu118-ubuntu20.04-sagemaker
+
+Binary file of this version of the library for custom container users:
+
+  .. code::
+
+    https://smdataparallel.s3.amazonaws.com/binary/pytorch/2.0.0/cu118/2023-03-20/smdistributed_dataparallel-1.8.0-cp310-cp310-linux_x86_64.whl
+
+
+----
+
+Release History
+===============
+
+SageMaker Distributed Data Parallel 1.7.0 Release Notes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+*Date: Feb. 10. 2023*
+
+**Currency Updates**
+
+* Added support for PyTorch 1.13.1.
+
+**Migration to AWS Deep Learning Containers**
+
+This version passed benchmark testing and is migrated to the following AWS Deep Learning Containers (DLC):
+
+- PyTorch 1.13.1 DLC
+
+  .. code::
+
+    763104351884.dkr.ecr.us-east-1.amazonaws.com/pytorch-training:1.13.1-gpu-py39-cu117-ubuntu20.04-sagemaker
+
+Binary file of this version of the library for custom container users:
+
+  .. code::
+
+    https://smdataparallel.s3.amazonaws.com/binary/pytorch/1.13.1/cu117/2023-01-09/smdistributed_dataparallel-1.7.0-cp39-cp39-linux_x86_64.whl
+
+SageMaker Distributed Data Parallel 1.6.0 Release Notes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+*Date: Dec. 15. 2022*
+
+**New Features**
+
+* New optimized SMDDP AllGather collective to complement the sharded data parallelism technique
+  in the SageMaker model parallelism library. For more information, see `Sharded data parallelism with SMDDP Collectives
+  <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-extended-features-pytorch-sharded-data-parallelism.html#model-parallel-extended-features-pytorch-sharded-data-parallelism-smddp-collectives>`_
+  in the *Amazon SageMaker Developer Guide*.
+* Added support for Amazon EC2 ``ml.p4de.24xlarge`` instances. You can run data parallel training jobs
+  on ``ml.p4de.24xlarge`` instances with the SageMaker data parallelism library’s AllReduce collective.
+
+**Improvements**
+
+* General performance improvements of the SMDDP AllReduce collective communication operation.
+
+**Migration to AWS Deep Learning Containers**
+
+This version passed benchmark testing and is migrated to the following AWS Deep Learning Containers (DLC):
+
+- SageMaker training container for PyTorch v1.12.1
+
+  .. code::
+
+    763104351884.dkr.ecr.<region>.amazonaws.com/pytorch-training:1.12.1-gpu-py38-cu113-ubuntu20.04-sagemaker
+
+
+Binary file of this version of the library for `custom container
+<https://docs.aws.amazon.com/sagemaker/latest/dg/data-parallel-use-api.html#data-parallel-bring-your-own-container>`_ users:
+
+  .. code::
+
+    https://smdataparallel.s3.amazonaws.com/binary/pytorch/1.12.1/cu113/2022-12-05/smdistributed_dataparallel-1.6.0-cp38-cp38-linux_x86_64.whl
+
+
+SageMaker Distributed Data Parallel 1.5.0 Release Notes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+*Date: Jul. 26. 2022*
+
+**Currency Updates**
+
+* Added support for PyTorch 1.12.0.
+
+**Bug Fixes**
+
+* Improved stability for long-running training jobs.
+
+
+**Migration to AWS Deep Learning Containers**
+
+This version passed benchmark testing and is migrated to the following AWS Deep Learning Containers (DLC):
+
+- PyTorch 1.12.0 DLC
+
+  .. code::
+
+    763104351884.dkr.ecr.<region>.amazonaws.com/pytorch-training:1.12.0-gpu-py38-cu113-ubuntu20.04-sagemaker
+
+Binary file of this version of the library for `custom container
+<https://docs.aws.amazon.com/sagemaker/latest/dg/data-parallel-use-api.html#data-parallel-bring-your-own-container>`_ users:
+
+  .. code::
+
+    https://smdataparallel.s3.amazonaws.com/binary/pytorch/1.12.0/cu113/2022-07-01/smdistributed_dataparallel-1.5.0-cp38-cp38-linux_x86_64.whl
+
+SageMaker Distributed Data Parallel 1.4.1 Release Notes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+*Date: May. 3. 2022*
+
+**Currency Updates**
+
+* Added support for PyTorch 1.11.0
+
+**Known Issues**
+
+* The library currently does not support the PyTorch sub-process groups API
+  (`torch.distributed.new_group
+  <https://pytorch.org/docs/stable/distributed.html#torch.distributed.new_group>`_).
+
+
+**Migration to AWS Deep Learning Containers**
+
+This version passed benchmark testing and is migrated to the following AWS Deep Learning Containers (DLC):
+
+- PyTorch 1.11.0 DLC
+
+  .. code::
+
+    763104351884.dkr.ecr.<region>.amazonaws.com/pytorch-training:1.11.0-gpu-py38-cu113-ubuntu20.04-sagemaker
+
+Binary file of this version of the library for custom container users:
+
+  .. code::
+
+    https://smdataparallel.s3.amazonaws.com/binary/pytorch/1.11.0/cu113/2022-04-14/smdistributed_dataparallel-1.4.1-cp38-cp38-linux_x86_64.whl
+
 
 SageMaker Distributed Data Parallel 1.4.0 Release Notes
-=======================================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 *Date: Feb. 24. 2022*
 
@@ -71,11 +228,6 @@ This version passed benchmark testing and is migrated to the following AWS Deep 
 
     763104351884.dkr.ecr.<region>.amazonaws.com/pytorch-training:1.10.2-gpu-py38-cu113-ubuntu20.04-sagemaker
 
-
-----
-
-Release History
-===============
 
 SageMaker Distributed Data Parallel 1.2.2 Release Notes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

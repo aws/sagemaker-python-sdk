@@ -38,6 +38,7 @@ FRAMEWORK_REGION_REGISTRY = {
     "us-east-2": "763104351884",
     "us-gov-west-1": "442386744353",
     "us-iso-east-1": "886529160074",
+    "us-isob-east-1": "094389454867",
     "us-west-1": "763104351884",
     "us-west-2": "763104351884",
 }

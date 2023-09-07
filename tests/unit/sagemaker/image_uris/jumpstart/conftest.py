@@ -15,6 +15,8 @@ from __future__ import absolute_import
 from mock.mock import Mock
 import pytest
 
+from sagemaker.session_settings import SessionSettings
+
 REGION_NAME = "us-west-2"
 BUCKET_NAME = "some-bucket-name"
 
@@ -26,6 +28,9 @@ def session():
         boto_session=boto_mock,
         boto_region_name=REGION_NAME,
         config=None,
+        settings=SessionSettings(),
     )
     sms.default_bucket = Mock(return_value=BUCKET_NAME)
+    # For tests which doesn't verify config file injection, operate with empty config
+    sms.sagemaker_config = {}
     return sms

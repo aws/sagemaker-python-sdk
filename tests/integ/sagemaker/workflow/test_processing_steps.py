@@ -17,15 +17,19 @@ import os
 import re
 import subprocess
 from datetime import datetime
+from pathlib import Path
 
 import pytest
-from botocore.exceptions import WaiterError
+
+from tests.integ.sagemaker.workflow.helpers import wait_pipeline_execution
+from sagemaker.workflow.utilities import hash_files_or_dirs, hash_object
 
 from sagemaker import image_uris, get_execution_role, utils
 from sagemaker.dataset_definition import DatasetDefinition, AthenaDatasetDefinition
-from sagemaker.processing import ProcessingInput, ProcessingOutput
-from sagemaker.s3 import S3Uploader
-from sagemaker.sklearn import SKLearnProcessor
+from sagemaker.processing import ProcessingInput, ProcessingOutput, FrameworkProcessor
+from sagemaker.s3 import S3Uploader, S3Downloader
+from sagemaker.sklearn import SKLearnProcessor, SKLearn
+from sagemaker.tensorflow import TensorFlow
 from sagemaker.workflow.parameters import ParameterInteger, ParameterString
 from sagemaker.workflow.pipeline import Pipeline
 from sagemaker.workflow.steps import (
@@ -267,10 +271,7 @@ def test_one_step_sklearn_processing_pipeline(
         assert response["Enabled"] == cache_config.enable_caching
         assert response["ExpireAfter"] == cache_config.expire_after
 
-        try:
-            execution.wait(delay=30, max_attempts=3)
-        except WaiterError:
-            pass
+        wait_pipeline_execution(execution=execution, max_attempts=3)
         execution_steps = execution.list_steps()
         assert len(execution_steps) == 1
         assert execution_steps[0]["StepName"] == "sklearn-process"
@@ -365,13 +366,225 @@ def test_one_step_framework_processing_pipeline(
         assert response["Enabled"] == cache_config.enable_caching
         assert response["ExpireAfter"] == cache_config.expire_after
 
-        try:
-            execution.wait(delay=30, max_attempts=3)
-        except WaiterError:
-            pass
+        wait_pipeline_execution(execution=execution, max_attempts=3)
         execution_steps = execution.list_steps()
         assert len(execution_steps) == 1
         assert execution_steps[0]["StepName"] == "sklearn-process"
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
+
+
+def test_multi_step_framework_processing_pipeline_same_source_dir(
+    pipeline_session, role, pipeline_name
+):
+    default_bucket = pipeline_session.default_bucket()
+    cache_config = CacheConfig(enable_caching=True, expire_after="PT1H")
+
+    SOURCE_DIR = "/pipeline/test_source_dir"
+
+    role_param = ParameterString(name="Role", default_value=role)
+
+    framework_processor_tf = FrameworkProcessor(
+        role=role_param,
+        instance_type="ml.m5.xlarge",
+        instance_count=1,
+        estimator_cls=TensorFlow,
+        framework_version="2.9",
+        py_version="py39",
+        sagemaker_session=pipeline_session,
+    )
+
+    framework_processor_sk = FrameworkProcessor(
+        framework_version="1.0-1",
+        instance_type="ml.m5.xlarge",
+        instance_count=1,
+        base_job_name="my-job",
+        role=role_param,
+        estimator_cls=SKLearn,
+        sagemaker_session=pipeline_session,
+    )
+
+    step_1 = ProcessingStep(
+        name="Step-1",
+        step_args=framework_processor_tf.run(
+            code="script_1.py",
+            source_dir=DATA_DIR + SOURCE_DIR,
+            outputs=[ProcessingOutput(output_name="test", source="/opt/ml/processing/test")],
+        ),
+        cache_config=cache_config,
+    )
+
+    step_2 = ProcessingStep(
+        name="Step-2",
+        step_args=framework_processor_sk.run(
+            code="script_2.py",
+            source_dir=DATA_DIR + SOURCE_DIR,
+            inputs=[
+                ProcessingInput(
+                    source=step_1.properties.ProcessingOutputConfig.Outputs["test"].S3Output.S3Uri,
+                    destination="/opt/ml/processing/test",
+                ),
+            ],
+        ),
+        cache_config=cache_config,
+    )
+
+    pipeline = Pipeline(
+        name=pipeline_name,
+        steps=[step_1, step_2],
+        sagemaker_session=pipeline_session,
+        parameters=[role_param],
+    )
+    try:
+        pipeline.create(role)
+        definition = json.loads(pipeline.definition())
+
+        source_dir_1_tar_uri, entry_point_1 = _verify_code_artifacts_of_framework_processing_step(
+            pipeline_session,
+            framework_processor_tf,
+            default_bucket,
+            pipeline_name,
+            definition["Steps"][0],
+            DATA_DIR + SOURCE_DIR,
+            "script_1.py",
+        )
+
+        source_dir_2_tar_uri, entry_point_2 = _verify_code_artifacts_of_framework_processing_step(
+            pipeline_session,
+            framework_processor_sk,
+            default_bucket,
+            pipeline_name,
+            definition["Steps"][1],
+            DATA_DIR + SOURCE_DIR,
+            "script_2.py",
+        )
+
+        # the tarred source dirs should have a different s3 uri since the entry_point code is different
+        assert source_dir_1_tar_uri != source_dir_2_tar_uri
+
+        # verify different entry_point paths
+        assert entry_point_1 != entry_point_2
+
+        execution = pipeline.start(parameters={})
+        wait_pipeline_execution(execution=execution, delay=540, max_attempts=3)
+
+        execution_steps = execution.list_steps()
+        assert len(execution_steps) == 2
+        for step in execution_steps:
+            assert step["StepStatus"] == "Succeeded"
+
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
+
+
+def test_multi_step_framework_processing_pipeline_different_source_dir(
+    pipeline_session, role, pipeline_name
+):
+    default_bucket = pipeline_session.default_bucket()
+    cache_config = CacheConfig(enable_caching=True, expire_after="PT1H")
+
+    SOURCE_DIR_1 = "/pipeline/test_source_dir"
+    SOURCE_DIR_2 = "/pipeline/test_source_dir_2"
+
+    framework_processor_tf = FrameworkProcessor(
+        role=role,
+        instance_type="ml.m5.xlarge",
+        instance_count=1,
+        estimator_cls=TensorFlow,
+        framework_version="2.9",
+        py_version="py39",
+        sagemaker_session=pipeline_session,
+    )
+
+    step_1 = ProcessingStep(
+        name="Step-1",
+        step_args=framework_processor_tf.run(
+            code="script_1.py",
+            source_dir=DATA_DIR + SOURCE_DIR_1,
+            outputs=[ProcessingOutput(output_name="test", source="/opt/ml/processing/test")],
+        ),
+        cache_config=cache_config,
+    )
+
+    step_2 = ProcessingStep(
+        name="Step-2",
+        step_args=framework_processor_tf.run(
+            code="script_2.py",
+            source_dir=DATA_DIR + SOURCE_DIR_2,
+            inputs=[
+                ProcessingInput(
+                    source=step_1.properties.ProcessingOutputConfig.Outputs["test"].S3Output.S3Uri,
+                    destination="/opt/ml/processing/test",
+                ),
+            ],
+        ),
+        cache_config=cache_config,
+    )
+
+    pipeline = Pipeline(
+        name=pipeline_name, steps=[step_1, step_2], sagemaker_session=pipeline_session
+    )
+    try:
+        pipeline.create(role)
+        definition = json.loads(pipeline.definition())
+
+        source_dir_1_tar_uri, entry_point_1 = _verify_code_artifacts_of_framework_processing_step(
+            pipeline_session,
+            framework_processor_tf,
+            default_bucket,
+            pipeline_name,
+            definition["Steps"][0],
+            DATA_DIR + SOURCE_DIR_1,
+            "script_1.py",
+        )
+
+        source_dir_2_tar_uri, entry_point_2 = _verify_code_artifacts_of_framework_processing_step(
+            pipeline_session,
+            framework_processor_tf,
+            default_bucket,
+            pipeline_name,
+            definition["Steps"][1],
+            DATA_DIR + SOURCE_DIR_2,
+            "script_2.py",
+        )
+
+        # the tarred source dirs should have a different s3 uri since the source_dirs and entry_point code are different
+        assert source_dir_1_tar_uri != source_dir_2_tar_uri
+
+        # verify different entry_point paths
+        assert entry_point_1 != entry_point_2
+
+        # define another step with the same source_dir and entry_point as the second step
+        source_dir_3_tar_uri, entry_point_3 = _verify_code_artifacts_of_framework_processing_step(
+            pipeline_session,
+            framework_processor_tf,
+            default_bucket,
+            pipeline_name,
+            definition["Steps"][1],
+            DATA_DIR + SOURCE_DIR_2,
+            "script_2.py",
+        )
+
+        # verify the same entry_point paths
+        assert entry_point_2 == entry_point_3
+
+        # the tarred source dirs should now be the same since the source_dirs and entry_point are the same
+        assert source_dir_2_tar_uri == source_dir_3_tar_uri
+
+        execution = pipeline.start(parameters={})
+        wait_pipeline_execution(execution=execution, delay=540, max_attempts=3)
+
+        execution_steps = execution.list_steps()
+        assert len(execution_steps) == 2
+        for step in execution_steps:
+            assert step["StepStatus"] == "Succeeded"
+
     finally:
         try:
             pipeline.delete()
@@ -467,10 +680,7 @@ def test_one_step_pyspark_processing_pipeline(
         assert response["Enabled"] == cache_config.enable_caching
         assert response["ExpireAfter"] == cache_config.expire_after
 
-        try:
-            execution.wait(delay=30, max_attempts=3)
-        except WaiterError:
-            pass
+        wait_pipeline_execution(execution=execution, max_attempts=3)
         execution_steps = execution.list_steps()
         assert len(execution_steps) == 1
         assert execution_steps[0]["StepName"] == "pyspark-process"
@@ -572,10 +782,7 @@ def test_one_step_sparkjar_processing_pipeline(
         assert response["Enabled"] == cache_config.enable_caching
         assert response["ExpireAfter"] == cache_config.expire_after
 
-        try:
-            execution.wait(delay=30, max_attempts=3)
-        except WaiterError:
-            pass
+        wait_pipeline_execution(execution=execution, max_attempts=3)
         execution_steps = execution.list_steps()
         assert len(execution_steps) == 1
         assert execution_steps[0]["StepName"] == "sparkjar-process"
@@ -676,10 +883,7 @@ def test_one_step_data_wrangler_processing_pipeline(sagemaker_session, role, pip
         response = execution.describe()
         assert response["PipelineArn"] == create_arn
 
-        try:
-            execution.wait(delay=60, max_attempts=10)
-        except WaiterError:
-            pass
+        wait_pipeline_execution(execution=execution, delay=60, max_attempts=10)
 
         execution_steps = execution.list_steps()
         assert len(execution_steps) == 1
@@ -776,10 +980,7 @@ def test_two_processing_job_depends_on(
         response = execution.describe()
         assert response["PipelineArn"] == create_arn
 
-        try:
-            execution.wait(delay=60)
-        except WaiterError:
-            pass
+        wait_pipeline_execution(execution=execution, delay=60)
 
         execution_steps = execution.list_steps()
         assert len(execution_steps) == 2
@@ -796,3 +997,49 @@ def test_two_processing_job_depends_on(
             pipeline.delete()
         except Exception:
             pass
+
+
+# Verifies that the processing step artifacts are created as expected.
+# Requires that source_dir and entry_point are exactly those passed to the processing step.
+def _verify_code_artifacts_of_framework_processing_step(
+    pipeline_session, processor, bucket, pipeline_name, step_definition, source_dir, entry_point
+):
+
+    files_to_hash = []
+    if entry_point is not None:
+        files_to_hash.append(source_dir)
+    files_to_hash.append(entry_point)
+    file_hash = hash_files_or_dirs(files_to_hash)
+
+    source_dir_s3_uri = f"s3://{bucket}/{pipeline_name}/code/{file_hash}"
+
+    # verify runproc.sh prefix is different from code artifact prefix
+    runprocs = []
+    for input_obj in step_definition["Arguments"]["ProcessingInputs"]:
+        if input_obj["InputName"] == "entrypoint":
+            s3_uri = input_obj["S3Input"]["S3Uri"]
+            runprocs.append(s3_uri)
+
+            assert Path(s3_uri).parent != source_dir_s3_uri
+
+    # verify only one entrypoint generated per step
+    assert len(runprocs) == 1
+
+    expected_source_dir_tar = f"{pipeline_name}/code/{file_hash}/sourcedir.tar.gz"
+
+    step_script = processor._generate_framework_script(entry_point)
+    expected_step_artifact = f"{pipeline_name}/code/{hash_object(step_script)}/runproc.sh"
+
+    expected_prefix = f"{pipeline_name}/code"
+    s3_code_objects = pipeline_session.list_s3_files(bucket=bucket, key_prefix=expected_prefix)
+
+    # verify all distinct artifacts were uploaded
+    assert expected_source_dir_tar in s3_code_objects
+    assert expected_step_artifact in s3_code_objects
+
+    # verify runprocs contain the correct commands
+    step_runproc = S3Downloader.read_file(
+        f"s3://{bucket}/{expected_step_artifact}", pipeline_session
+    )
+    assert f"python {entry_point}" in step_runproc
+    return expected_source_dir_tar, expected_step_artifact

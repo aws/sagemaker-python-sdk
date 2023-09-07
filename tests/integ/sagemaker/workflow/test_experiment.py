@@ -17,7 +17,7 @@ import time
 
 import pytest
 
-from botocore.exceptions import WaiterError
+from tests.integ.sagemaker.workflow.helpers import wait_pipeline_execution
 from sagemaker.processing import ProcessingInput
 from sagemaker.session import get_execution_role
 from sagemaker.sklearn.processing import SKLearnProcessor
@@ -120,10 +120,7 @@ def test_pipeline_execution_with_default_experiment_config(
         pipeline.create(role)
         execution = pipeline.start(parameters={})
 
-        try:
-            execution.wait(delay=30, max_attempts=3)
-        except WaiterError:
-            pass
+        wait_pipeline_execution(execution=execution, max_attempts=3)
         execution_steps = execution.list_steps()
         assert len(execution_steps) == 1
         assert execution_steps[0]["StepName"] == "sklearn-process"
@@ -195,10 +192,7 @@ def test_pipeline_execution_with_custom_experiment_config(
         pipeline.create(role)
         execution = pipeline.start(parameters={})
 
-        try:
-            execution.wait(delay=30, max_attempts=3)
-        except WaiterError:
-            pass
+        wait_pipeline_execution(execution=execution, max_attempts=3)
         execution_steps = execution.list_steps()
         assert len(execution_steps) == 1
         assert execution_steps[0]["StepName"] == "sklearn-process"

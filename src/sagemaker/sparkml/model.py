@@ -13,8 +13,12 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
+from typing import Union, Optional
+
 from sagemaker import Model, Predictor, Session, image_uris
 from sagemaker.serializers import CSVSerializer
+from sagemaker.utils import pop_out_unused_kwarg
+from sagemaker.workflow.entities import PipelineVariable
 
 framework_name = "sparkml-serving"
 
@@ -71,12 +75,17 @@ class SparkMLModel(Model):
     """
 
     def __init__(
-        self, model_data, role=None, spark_version="2.4", sagemaker_session=None, **kwargs
+        self,
+        model_data: Union[str, PipelineVariable],
+        role: Optional[str] = None,
+        spark_version: str = "3.3",
+        sagemaker_session: Optional[Session] = None,
+        **kwargs,
     ):
         """Initialize a SparkMLModel.
 
         Args:
-            model_data (str): The S3 location of a SageMaker model data
+            model_data (str or PipelineVariable): The S3 location of a SageMaker model data
                 ``.tar.gz`` file. For SparkML, this will be the output that has
                 been produced by the Spark job after serializing the Model via
                 MLeap.
@@ -86,7 +95,7 @@ class SparkMLModel(Model):
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if it needs to access an AWS resource.
             spark_version (str): Spark version you want to use for executing the
-                inference (default: '2.4').
+                inference (default: '3.3').
             sagemaker_session (sagemaker.session.Session): Session object which
                 manages interactions with Amazon SageMaker APIs and any other
                 AWS services needed. If not specified, the estimator creates one
@@ -104,6 +113,8 @@ class SparkMLModel(Model):
         # boto_region_name
         region_name = (sagemaker_session or Session()).boto_region_name
         image_uri = image_uris.retrieve(framework_name, region_name, version=spark_version)
+        pop_out_unused_kwarg("predictor_cls", kwargs, SparkMLPredictor.__name__)
+        pop_out_unused_kwarg("image_uri", kwargs, image_uri)
         super(SparkMLModel, self).__init__(
             image_uri,
             model_data,

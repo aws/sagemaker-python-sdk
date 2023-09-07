@@ -13,12 +13,16 @@
 from __future__ import absolute_import
 
 
-from mock.mock import patch
+import boto3
+from mock.mock import patch, Mock
 import pytest
 
 from sagemaker import environment_variables
 
 from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec
+
+mock_client = boto3.client("s3")
+mock_session = Mock(s3_client=mock_client)
 
 
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -30,40 +34,42 @@ def test_jumpstart_default_environment_variables(patched_get_model_specs):
     region = "us-west-2"
 
     vars = environment_variables.retrieve_default(
-        region=region,
-        model_id=model_id,
-        model_version="*",
+        region=region, model_id=model_id, model_version="*", sagemaker_session=mock_session
     )
     assert vars == {
         "MODEL_CACHE_ROOT": "/opt/ml/model",
         "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
         "SAGEMAKER_ENV": "1",
         "SAGEMAKER_MODEL_SERVER_TIMEOUT": "3600",
+        "ENDPOINT_SERVER_TIMEOUT": "3600",
         "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
         "SAGEMAKER_PROGRAM": "inference.py",
         "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
     }
 
-    patched_get_model_specs.assert_called_once_with(region=region, model_id=model_id, version="*")
+    patched_get_model_specs.assert_called_once_with(
+        region=region, model_id=model_id, version="*", s3_client=mock_client
+    )
 
     patched_get_model_specs.reset_mock()
 
     vars = environment_variables.retrieve_default(
-        region=region,
-        model_id=model_id,
-        model_version="1.*",
+        region=region, model_id=model_id, model_version="1.*", sagemaker_session=mock_session
     )
     assert vars == {
         "MODEL_CACHE_ROOT": "/opt/ml/model",
         "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
         "SAGEMAKER_ENV": "1",
         "SAGEMAKER_MODEL_SERVER_TIMEOUT": "3600",
+        "ENDPOINT_SERVER_TIMEOUT": "3600",
         "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
         "SAGEMAKER_PROGRAM": "inference.py",
         "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
     }
 
-    patched_get_model_specs.assert_called_once_with(region=region, model_id=model_id, version="1.*")
+    patched_get_model_specs.assert_called_once_with(
+        region=region, model_id=model_id, version="1.*", s3_client=mock_client
+    )
 
     patched_get_model_specs.reset_mock()
 
@@ -89,4 +95,83 @@ def test_jumpstart_default_environment_variables(patched_get_model_specs):
     with pytest.raises(ValueError):
         environment_variables.retrieve_default(
             model_id=model_id,
+        )
+
+
+@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+def test_jumpstart_sdk_environment_variables(patched_get_model_specs):
+
+    patched_get_model_specs.side_effect = get_spec_from_base_spec
+
+    model_id = "pytorch-eqa-bert-base-cased"
+    region = "us-west-2"
+
+    vars = environment_variables.retrieve_default(
+        region=region,
+        model_id=model_id,
+        model_version="*",
+        include_aws_sdk_env_vars=False,
+        sagemaker_session=mock_session,
+    )
+    assert vars == {
+        "ENDPOINT_SERVER_TIMEOUT": "3600",
+        "MODEL_CACHE_ROOT": "/opt/ml/model",
+        "SAGEMAKER_ENV": "1",
+        "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+        "SAGEMAKER_PROGRAM": "inference.py",
+    }
+
+    patched_get_model_specs.assert_called_once_with(
+        region=region, model_id=model_id, version="*", s3_client=mock_client
+    )
+
+    patched_get_model_specs.reset_mock()
+
+    vars = environment_variables.retrieve_default(
+        region=region,
+        model_id=model_id,
+        model_version="1.*",
+        include_aws_sdk_env_vars=False,
+        sagemaker_session=mock_session,
+    )
+    assert vars == {
+        "ENDPOINT_SERVER_TIMEOUT": "3600",
+        "MODEL_CACHE_ROOT": "/opt/ml/model",
+        "SAGEMAKER_ENV": "1",
+        "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+        "SAGEMAKER_PROGRAM": "inference.py",
+    }
+
+    patched_get_model_specs.assert_called_once_with(
+        region=region, model_id=model_id, version="1.*", s3_client=mock_client
+    )
+
+    patched_get_model_specs.reset_mock()
+
+    with pytest.raises(KeyError):
+        environment_variables.retrieve_default(
+            region=region,
+            model_id="blah",
+            model_version="*",
+            include_aws_sdk_env_vars=False,
+        )
+
+    with pytest.raises(ValueError):
+        environment_variables.retrieve_default(
+            region="mars-south-1",
+            model_id=model_id,
+            model_version="*",
+            include_aws_sdk_env_vars=False,
+        )
+
+    with pytest.raises(ValueError):
+        environment_variables.retrieve_default(
+            model_version="*",
+            include_aws_sdk_env_vars=False,
+        )
+
+    with pytest.raises(ValueError):
+        environment_variables.retrieve_default(
+            model_id=model_id,
+            include_aws_sdk_env_vars=False,
         )

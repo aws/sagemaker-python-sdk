@@ -10,7 +10,7 @@ The SageMaker Distributed Data Parallel Library
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. toctree::
-    :maxdepth: 3
+    :maxdepth: 2
 
     smd_data_parallel
     sdp_versions/latest
@@ -23,7 +23,7 @@ The SageMaker Distributed Model Parallel Library
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 2
 
    smd_model_parallel
    smp_versions/latest

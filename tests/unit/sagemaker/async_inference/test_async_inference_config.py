@@ -15,12 +15,14 @@ from __future__ import absolute_import
 from sagemaker.async_inference import AsyncInferenceConfig
 
 S3_OUTPUT_PATH = "s3://some-output-path"
+S3_FAILURE_PATH = "s3://some-failure-path"
 DEFAULT_KMS_KEY_ID = None
 DEFAULT_MAX_CONCURRENT_INVOCATIONS = None
 DEFAULT_NOTIFICATION_CONFIG = None
 DEFAULT_ASYNC_INFERENCE_DICT = {
     "OutputConfig": {
         "S3OutputPath": S3_OUTPUT_PATH,
+        "S3FailurePath": S3_FAILURE_PATH,
     },
 }
 
@@ -29,10 +31,12 @@ OPTIONAL_MAX_CONCURRENT_INVOCATIONS = 2
 OPTIONAL_NOTIFICATION_CONFIG = {
     "SuccessTopic": "some-sunccess-topic",
     "ErrorTopic": "some-error-topic",
+    "IncludeInferenceResponseIn": ["SUCCESS_NOTIFICATION_TOPIC", "ERROR_NOTIFICATION_TOPIC"],
 }
 ASYNC_INFERENCE_DICT_WITH_OPTIONAL = {
     "OutputConfig": {
         "S3OutputPath": S3_OUTPUT_PATH,
+        "S3FailurePath": S3_FAILURE_PATH,
         "KmsKeyId": OPTIONAL_KMS_KEY_ID,
         "NotificationConfig": OPTIONAL_NOTIFICATION_CONFIG,
     },
@@ -41,9 +45,12 @@ ASYNC_INFERENCE_DICT_WITH_OPTIONAL = {
 
 
 def test_init_without_optional():
-    async_inference_config = AsyncInferenceConfig(output_path=S3_OUTPUT_PATH)
+    async_inference_config = AsyncInferenceConfig(
+        output_path=S3_OUTPUT_PATH, failure_path=S3_FAILURE_PATH
+    )
 
     assert async_inference_config.output_path == S3_OUTPUT_PATH
+    assert async_inference_config.failure_path == S3_FAILURE_PATH
     assert async_inference_config.kms_key_id == DEFAULT_KMS_KEY_ID
     assert (
         async_inference_config.max_concurrent_invocations_per_instance
@@ -55,6 +62,7 @@ def test_init_without_optional():
 def test_init_with_optional():
     async_inference_config = AsyncInferenceConfig(
         output_path=S3_OUTPUT_PATH,
+        failure_path=S3_FAILURE_PATH,
         max_concurrent_invocations_per_instance=OPTIONAL_MAX_CONCURRENT_INVOCATIONS,
         kms_key_id=OPTIONAL_KMS_KEY_ID,
         notification_config=OPTIONAL_NOTIFICATION_CONFIG,
@@ -62,6 +70,7 @@ def test_init_with_optional():
 
     assert async_inference_config.output_path == S3_OUTPUT_PATH
     assert async_inference_config.kms_key_id == OPTIONAL_KMS_KEY_ID
+    assert async_inference_config.failure_path == S3_FAILURE_PATH
     assert (
         async_inference_config.max_concurrent_invocations_per_instance
         == OPTIONAL_MAX_CONCURRENT_INVOCATIONS
@@ -70,11 +79,14 @@ def test_init_with_optional():
 
 
 def test_to_request_dict():
-    async_inference_config = AsyncInferenceConfig(output_path=S3_OUTPUT_PATH)
+    async_inference_config = AsyncInferenceConfig(
+        output_path=S3_OUTPUT_PATH, failure_path=S3_FAILURE_PATH
+    )
     assert async_inference_config._to_request_dict() == DEFAULT_ASYNC_INFERENCE_DICT
 
     async_inference_config_with_optional = AsyncInferenceConfig(
         output_path=S3_OUTPUT_PATH,
+        failure_path=S3_FAILURE_PATH,
         max_concurrent_invocations_per_instance=OPTIONAL_MAX_CONCURRENT_INVOCATIONS,
         kms_key_id=OPTIONAL_KMS_KEY_ID,
         notification_config=OPTIONAL_NOTIFICATION_CONFIG,

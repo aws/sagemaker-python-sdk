@@ -17,8 +17,8 @@ import logging
 import os
 
 import pytest
-from botocore.exceptions import WaiterError
 
+from tests.integ.sagemaker.workflow.helpers import wait_pipeline_execution
 from sagemaker.clarify import (
     BiasConfig,
     DataConfig,
@@ -182,10 +182,7 @@ def test_one_step_data_bias_pipeline_happycase(
 
             assert response["PipelineArn"] == create_arn
 
-            try:
-                execution.wait(delay=30, max_attempts=60)
-            except WaiterError:
-                pass
+            wait_pipeline_execution(execution=execution)
             execution_steps = execution.list_steps()
 
             assert len(execution_steps) == 1
@@ -215,11 +212,13 @@ def test_one_step_data_bias_pipeline_happycase(
             pass
 
 
+@pytest.mark.parametrize("fail_on_violation", [None, True, False])
 def test_one_step_data_bias_pipeline_constraint_violation(
     sagemaker_session,
     role,
     pipeline_name,
     check_job_config,
+    fail_on_violation,
     data_bias_check_config,
     supplied_baseline_constraints_uri_param,
 ):
@@ -234,6 +233,7 @@ def test_one_step_data_bias_pipeline_constraint_violation(
         clarify_check_config=data_bias_check_config,
         check_job_config=check_job_config,
         skip_check=False,
+        fail_on_violation=fail_on_violation,
         register_new_baseline=False,
         supplied_baseline_constraints=supplied_baseline_constraints_uri_param,
     )
@@ -269,19 +269,23 @@ def test_one_step_data_bias_pipeline_constraint_violation(
 
             assert response["PipelineArn"] == create_arn
 
-            try:
-                execution.wait(delay=30, max_attempts=60)
-            except WaiterError:
-                pass
+            wait_pipeline_execution(execution=execution)
             execution_steps = execution.list_steps()
 
             assert len(execution_steps) == 1
-            failure_reason = execution_steps[0].get("FailureReason", "")
-            if _CHECK_FAIL_ERROR_MSG not in failure_reason:
-                logging.error(f"Pipeline execution failed with error: {failure_reason}. Retrying..")
-                continue
             assert execution_steps[0]["StepName"] == "DataBiasCheckStep"
-            assert execution_steps[0]["StepStatus"] == "Failed"
+            failure_reason = execution_steps[0].get("FailureReason", "")
+
+            if fail_on_violation is None or fail_on_violation:
+                if _CHECK_FAIL_ERROR_MSG not in failure_reason:
+                    logging.error(
+                        f"Pipeline execution failed with error: {failure_reason}. Retrying.."
+                    )
+                    continue
+                assert execution_steps[0]["StepStatus"] == "Failed"
+            else:
+                assert _CHECK_FAIL_ERROR_MSG not in failure_reason
+                assert execution_steps[0]["StepStatus"] == "Succeeded"
             break
     finally:
         try:

@@ -14,14 +14,19 @@
 from __future__ import absolute_import
 
 import os
+import logging
 import shutil
 import subprocess
 import json
+import re
+import errno
 
 from distutils.dir_util import copy_tree
 from six.moves.urllib.parse import urlparse
 
 from sagemaker import s3
+
+logger = logging.getLogger(__name__)
 
 
 def copy_directory_structure(destination_directory, relative_path):
@@ -76,7 +81,19 @@ def move_to_destination(source, destination, job_name, sagemaker_session):
     else:
         raise ValueError("Invalid destination URI, must be s3:// or file://, got: %s" % destination)
 
-    shutil.rmtree(source)
+    try:
+        shutil.rmtree(source)
+    except OSError as exc:
+        # on Linux, when docker writes to any mounted volume, it uses the container's user. In most
+        # cases this is root. When the container exits and we try to delete them we can't because
+        # root owns those files. We expect this to happen, so we handle EACCESS. Any other error
+        # we will raise the exception up.
+        if exc.errno == errno.EACCES:
+            logger.warning("Failed to delete: %s Please remove it manually.", source)
+        else:
+            logger.error("Failed to delete: %s", source)
+            raise
+
     return final_uri
 
 
@@ -152,3 +169,48 @@ def get_docker_host():
     if parsed_url.hostname and parsed_url.scheme == "tcp":
         return parsed_url.hostname
     return "localhost"
+
+
+def get_using_dot_notation(dictionary, keys):
+    """Extract `keys` from dictionary where keys is a string in dot notation.
+
+    Args:
+        dictionary (Dict)
+        keys (str)
+
+    Returns:
+        Nested object within dictionary as defined by "keys"
+
+    Raises:
+     ValueError if the provided key does not exist in input dictionary
+    """
+    try:
+        if keys is None:
+            return dictionary
+        split_keys = keys.split(".", 1)
+        key = split_keys[0]
+        rest = None
+        if len(split_keys) > 1:
+            rest = split_keys[1]
+        bracket_accessors = re.findall(r"\[(.+?)]", key)
+        if bracket_accessors:
+            pre_bracket_key = key.split("[", 1)[0]
+            inner_dict = dictionary[pre_bracket_key]
+        else:
+            inner_dict = dictionary[key]
+        for bracket_accessor in bracket_accessors:
+            if (
+                bracket_accessor.startswith("'")
+                and bracket_accessor.endswith("'")
+                or bracket_accessor.startswith('"')
+                and bracket_accessor.endswith('"')
+            ):
+                # key accessor
+                inner_key = bracket_accessor[1:-1]
+            else:
+                # list accessor
+                inner_key = int(bracket_accessor)
+            inner_dict = inner_dict[inner_key]
+        return get_using_dot_notation(inner_dict, rest)
+    except (KeyError, IndexError, TypeError):
+        raise ValueError(f"{keys} does not exist in input dictionary.")

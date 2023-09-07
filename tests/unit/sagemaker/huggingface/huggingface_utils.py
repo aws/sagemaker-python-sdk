@@ -16,6 +16,7 @@ from sagemaker import image_uris
 
 REGION = "us-east-1"
 GPU_INSTANCE_TYPE = "ml.p2.xlarge"
+NEURONX_INSTANCE_TYPE = "ml.trn1.2xlarge"
 
 
 def get_full_gpu_image_uri(
@@ -32,4 +33,22 @@ def get_full_gpu_image_uri(
         image_scope="training",
         base_framework_version=base_framework_version,
         container_version="cu110-ubuntu18.04",
+    )
+
+
+def get_full_neuronx_image_uri(
+    version,
+    base_framework_version,
+    region=REGION,
+    instance_type=NEURONX_INSTANCE_TYPE,
+):
+    return image_uris.retrieve(
+        "huggingface",
+        region,
+        version=version,
+        instance_type=instance_type,
+        image_scope="training",
+        base_framework_version=base_framework_version,
+        container_version="cu110-ubuntu18.04",
+        inference_tool="neuronx",
     )

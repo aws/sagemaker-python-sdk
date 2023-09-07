@@ -18,12 +18,14 @@ from unittest.mock import (
 import pytest
 
 from sagemaker.processing import ProcessingInput, ProcessingOutput
+from sagemaker.session_settings import SessionSettings
 from sagemaker.spark.processing import (
     PySparkProcessor,
     SparkJarProcessor,
     _SparkProcessorBase,
     _HistoryServer,
     FileType,
+    SparkConfigUtils,
 )
 
 SPARK_EVENT_LOGS_S3_URI = "s3://bucket/spark-events"
@@ -57,8 +59,11 @@ def sagemaker_session():
         boto_region_name=REGION,
         config=None,
         local_mode=False,
+        settings=SessionSettings(),
+        default_bucket_prefix=None,
     )
     session_mock.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
+    session_mock.sagemaker_config = {}
 
     return session_mock
 
@@ -178,22 +183,11 @@ missing_properties_list = [missing_properties_dict]
     ],
 )
 def test_configuration_validation(config, expected, sagemaker_session) -> None:
-    # This just tests that the import is right and that the processor can be instantiated
-    # Functionality is tested in project root container directory.
-    spark = PySparkProcessor(
-        base_job_name="sm-spark",
-        role="AmazonSageMaker-ExecutionRole",
-        framework_version="2.4",
-        instance_count=1,
-        instance_type="ml.c5.xlarge",
-        sagemaker_session=sagemaker_session,
-    )
-
     if expected is None:
-        spark._validate_configuration(config)
+        SparkConfigUtils.validate_configuration(config)
     else:
         with pytest.raises(expected):
-            spark._validate_configuration(config)
+            SparkConfigUtils.validate_configuration(config)
 
 
 @patch("sagemaker.processing.ScriptProcessor.run")
@@ -271,13 +265,61 @@ def test_spark_processor_base_extend_processing_args(
 serialized_configuration = BytesIO("test".encode("utf-8"))
 
 
+@pytest.mark.parametrize(
+    "config, expected",
+    [
+        (
+            {
+                "spark_processor_type": "py_spark_processor",
+                "configuration_location": None,
+            },
+            "s3://bucket/None/input/conf/configuration.json",
+        ),
+        (
+            {
+                "spark_processor_type": "py_spark_processor",
+                "configuration_location": "s3://configbucket/someprefix/",
+            },
+            "s3://configbucket/someprefix/None/input/conf/configuration.json",
+        ),
+        (
+            {
+                "spark_processor_type": "spark_jar_processor",
+                "configuration_location": None,
+            },
+            "s3://bucket/None/input/conf/configuration.json",
+        ),
+        (
+            {
+                "spark_processor_type": "spark_jar_processor",
+                "configuration_location": "s3://configbucket/someprefix",
+            },
+            "s3://configbucket/someprefix/None/input/conf/configuration.json",
+        ),
+    ],
+)
 @patch("sagemaker.spark.processing.BytesIO")
 @patch("sagemaker.spark.processing.S3Uploader.upload_string_as_file_body")
-def test_stage_configuration(mock_s3_upload, mock_bytesIO, py_spark_processor, sagemaker_session):
-    desired_s3_uri = "s3://bucket/None/input/conf/configuration.json"
+def test_stage_configuration(mock_s3_upload, mock_bytesIO, config, expected, sagemaker_session):
+    spark_processor_type = {
+        "py_spark_processor": PySparkProcessor,
+        "spark_jar_processor": SparkJarProcessor,
+    }[config["spark_processor_type"]]
+    spark_processor = spark_processor_type(
+        base_job_name="sm-spark",
+        role="AmazonSageMaker-ExecutionRole",
+        framework_version="2.4",
+        instance_count=1,
+        instance_type="ml.c5.xlarge",
+        image_uri="790336243319.dkr.ecr.us-west-2.amazonaws.com/sagemaker-spark:0.1",
+        configuration_location=config["configuration_location"],
+        sagemaker_session=sagemaker_session,
+    )
+
+    desired_s3_uri = expected
     mock_bytesIO.return_value = serialized_configuration
 
-    result = py_spark_processor._stage_configuration({})
+    result = spark_processor._stage_configuration({})
 
     mock_s3_upload.assert_called_with(
         body=serialized_configuration,
@@ -290,23 +332,121 @@ def test_stage_configuration(mock_s3_upload, mock_bytesIO, py_spark_processor, s
 @pytest.mark.parametrize(
     "config, expected",
     [
-        ({"submit_deps": None, "input_channel_name": "channelName"}, ValueError),
-        ({"submit_deps": ["s3"], "input_channel_name": None}, ValueError),
-        ({"submit_deps": ["other"], "input_channel_name": "channelName"}, ValueError),
-        ({"submit_deps": ["file"], "input_channel_name": "channelName"}, ValueError),
-        ({"submit_deps": ["file"], "input_channel_name": "channelName"}, ValueError),
         (
-            {"submit_deps": ["s3", "s3"], "input_channel_name": "channelName"},
+            {
+                "spark_processor_type": "py_spark_processor",
+                "dependency_location": None,
+                "submit_deps": None,
+                "input_channel_name": "channelName",
+            },
+            ValueError,
+        ),
+        (
+            {
+                "spark_processor_type": "py_spark_processor",
+                "dependency_location": None,
+                "submit_deps": ["s3"],
+                "input_channel_name": None,
+            },
+            ValueError,
+        ),
+        (
+            {
+                "spark_processor_type": "py_spark_processor",
+                "dependency_location": None,
+                "submit_deps": ["other"],
+                "input_channel_name": "channelName",
+            },
+            ValueError,
+        ),
+        (
+            {
+                "spark_processor_type": "py_spark_processor",
+                "dependency_location": None,
+                "submit_deps": ["file"],
+                "input_channel_name": "channelName",
+            },
+            ValueError,
+        ),
+        (
+            {
+                "spark_processor_type": "py_spark_processor",
+                "dependency_location": None,
+                "submit_deps": ["file"],
+                "input_channel_name": "channelName",
+            },
+            ValueError,
+        ),
+        (
+            {
+                "spark_processor_type": "py_spark_processor",
+                "dependency_location": None,
+                "submit_deps": ["s3", "s3"],
+                "input_channel_name": "channelName",
+            },
             (None, "s3://bucket,s3://bucket"),
         ),
         (
-            {"submit_deps": ["jar"], "input_channel_name": "channelName"},
-            (processing_input, "s3://bucket"),
+            {
+                "spark_processor_type": "py_spark_processor",
+                "dependency_location": None,
+                "submit_deps": ["jar"],
+                "input_channel_name": "channelName",
+            },
+            ("s3://bucket/None/input/channelName", "/opt/ml/processing/input/channelName"),
+        ),
+        (
+            {
+                "spark_processor_type": "py_spark_processor",
+                "dependency_location": "s3://codebucket/someprefix/",
+                "submit_deps": ["jar"],
+                "input_channel_name": "channelName",
+            },
+            (
+                "s3://codebucket/someprefix/None/input/channelName",
+                "/opt/ml/processing/input/channelName",
+            ),
+        ),
+        (
+            {
+                "spark_processor_type": "spark_jar_processor",
+                "dependency_location": None,
+                "submit_deps": ["jar"],
+                "input_channel_name": "channelName",
+            },
+            ("s3://bucket/None/input/channelName", "/opt/ml/processing/input/channelName"),
+        ),
+        (
+            {
+                "spark_processor_type": "spark_jar_processor",
+                "dependency_location": "s3://codebucket/someprefix",
+                "submit_deps": ["jar"],
+                "input_channel_name": "channelName",
+            },
+            (
+                "s3://codebucket/someprefix/None/input/channelName",
+                "/opt/ml/processing/input/channelName",
+            ),
         ),
     ],
 )
 @patch("sagemaker.spark.processing.S3Uploader")
-def test_stage_submit_deps(mock_s3_uploader, py_spark_processor, jar_file, config, expected):
+def test_stage_submit_deps(mock_s3_uploader, jar_file, config, expected, sagemaker_session):
+    spark_processor_type = {
+        "py_spark_processor": PySparkProcessor,
+        "spark_jar_processor": SparkJarProcessor,
+    }[config["spark_processor_type"]]
+    spark_processor = spark_processor_type(
+        base_job_name="sm-spark",
+        role="AmazonSageMaker-ExecutionRole",
+        framework_version="2.4",
+        instance_count=1,
+        instance_type="ml.c5.xlarge",
+        image_uri="790336243319.dkr.ecr.us-west-2.amazonaws.com/sagemaker-spark:0.1",
+        dependency_location=config["dependency_location"],
+        sagemaker_session=sagemaker_session,
+    )
+
     submit_deps_dict = {
         None: None,
         "s3": "s3://bucket",
@@ -320,11 +460,11 @@ def test_stage_submit_deps(mock_s3_uploader, py_spark_processor, jar_file, confi
 
     if expected is ValueError:
         with pytest.raises(expected) as e:
-            py_spark_processor._stage_submit_deps(submit_deps, config["input_channel_name"])
+            spark_processor._stage_submit_deps(submit_deps, config["input_channel_name"])
 
         assert isinstance(e.value, expected)
     else:
-        input_channel, spark_opt = py_spark_processor._stage_submit_deps(
+        input_channel, spark_opt = spark_processor._stage_submit_deps(
             submit_deps, config["input_channel_name"]
         )
 
@@ -332,9 +472,8 @@ def test_stage_submit_deps(mock_s3_uploader, py_spark_processor, jar_file, confi
             assert input_channel is None
             assert spark_opt == expected[1]
         else:
-            expected_source = "s3://bucket/None/input/channelName"
-            assert input_channel.source == expected_source
-            assert spark_opt == "/opt/ml/processing/input/channelName"
+            assert input_channel.source == expected[0]
+            assert spark_opt == expected[1]
 
 
 @pytest.mark.parametrize(
@@ -661,7 +800,7 @@ def test_is_history_server_started(mock_urlopen, py_spark_processor, config, exp
 
 def test_validate_s3_uri(py_spark_processor):
     with pytest.raises(ValueError) as e:
-        py_spark_processor._validate_s3_uri("http")
+        SparkConfigUtils.validate_s3_uri("http")
 
     assert isinstance(e.value, ValueError)
 

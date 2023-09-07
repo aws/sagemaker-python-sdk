@@ -1,0 +1,2 @@
+flake8==4.0.1
+flake8-future-import==0.4.6

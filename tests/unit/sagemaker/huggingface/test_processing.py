@@ -17,6 +17,7 @@ from mock import Mock, patch, MagicMock
 
 from sagemaker.huggingface.processing import HuggingFaceProcessor
 from sagemaker.fw_utils import UploadedCode
+from sagemaker.session_settings import SessionSettings
 
 from .huggingface_utils import get_full_gpu_image_uri, GPU_INSTANCE_TYPE, REGION
 
@@ -42,12 +43,16 @@ def sagemaker_session():
         boto_region_name=REGION,
         config=None,
         local_mode=False,
+        settings=SessionSettings(),
+        default_bucket_prefix=None,
     )
     session_mock.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
 
     session_mock.upload_data = Mock(name="upload_data", return_value=MOCKED_S3_URI)
     session_mock.download_data = Mock(name="download_data")
     session_mock.expand_role.return_value = ROLE
+    # For tests which doesn't verify config file injection, operate with empty config
+    session_mock.sagemaker_config = {}
     return session_mock
 
 

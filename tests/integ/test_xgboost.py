@@ -14,13 +14,50 @@ from __future__ import absolute_import
 
 import os
 import pytest
+
+from sagemaker.serverless import ServerlessInferenceConfig
 from sagemaker.utils import unique_name_from_base
-from sagemaker.xgboost import XGBoost
+from sagemaker.xgboost import XGBoost, XGBoostModel
 from sagemaker.xgboost.processing import XGBoostProcessor
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
-from tests.integ.timeout import timeout
+from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 ROLE = "SageMakerRole"
+
+
+@pytest.fixture(scope="module")
+def xgboost_training_job(
+    sagemaker_session,
+    xgboost_latest_version,
+    xgboost_latest_py_version,
+    cpu_instance_type,
+):
+    return _run_mnist_training_job(
+        sagemaker_session,
+        cpu_instance_type,
+        xgboost_latest_version,
+        xgboost_latest_py_version,
+    )
+
+
+def test_sourcedir_naming(
+    sagemaker_session,
+    xgboost_latest_version,
+    xgboost_latest_py_version,
+    cpu_instance_type,
+):
+    with pytest.raises(RuntimeError):
+        processor = XGBoostProcessor(
+            framework_version=xgboost_latest_version,
+            role=ROLE,
+            instance_count=1,
+            instance_type=cpu_instance_type,
+            sagemaker_session=sagemaker_session,
+        )
+        processor.run(
+            source_dir="s3://bucket/deps.tar.gz",
+            code="main_script.py",
+        )
 
 
 @pytest.mark.release
@@ -82,3 +119,56 @@ def test_training_with_network_isolation(
         assert sagemaker_session.sagemaker_client.describe_training_job(TrainingJobName=job_name)[
             "EnableNetworkIsolation"
         ]
+
+
+def test_xgboost_serverless_inference(
+    xgboost_training_job,
+    sagemaker_session,
+    xgboost_latest_version,
+):
+    endpoint_name = unique_name_from_base("test-xgboost-deploy-model-serverless")
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
+        desc = sagemaker_session.sagemaker_client.describe_training_job(
+            TrainingJobName=xgboost_training_job
+        )
+        model_data = desc["ModelArtifacts"]["S3ModelArtifacts"]
+
+        xgboost = XGBoostModel(
+            sagemaker_session=sagemaker_session,
+            model_data=model_data,
+            role=ROLE,
+            entry_point=os.path.join(DATA_DIR, "xgboost_abalone", "abalone.py"),
+            framework_version=xgboost_latest_version,
+        )
+
+        xgboost.deploy(
+            serverless_inference_config=ServerlessInferenceConfig(), endpoint_name=endpoint_name
+        )
+
+
+def _run_mnist_training_job(
+    sagemaker_session, cpu_instance_type, xgboost_latest_version, xgboost_latest_py_version
+):
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        base_job_name = "test-xgboost-mnist"
+
+        xgboost = XGBoost(
+            entry_point=os.path.join(DATA_DIR, "xgboost_abalone", "abalone.py"),
+            role=ROLE,
+            instance_type=cpu_instance_type,
+            instance_count=1,
+            framework_version=xgboost_latest_version,
+            py_version=xgboost_latest_py_version,
+            base_job_name=base_job_name,
+            sagemaker_session=sagemaker_session,
+            enable_network_isolation=True,
+        )
+
+        train_input = xgboost.sagemaker_session.upload_data(
+            path=os.path.join(DATA_DIR, "xgboost_abalone", "abalone"),
+            key_prefix="integ-test-data/xgboost_abalone/abalone",
+        )
+        job_name = unique_name_from_base(base_job_name)
+        xgboost.fit(inputs={"train": train_input}, job_name=job_name)
+
+        return xgboost.latest_training_job.name

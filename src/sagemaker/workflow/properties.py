@@ -50,7 +50,8 @@ class Properties(PipelineVariable, metaclass=PropertiesMeta):
 
     def __init__(
         self,
-        path: str,
+        step_name: str,
+        path: str = None,
         shape_name: str = None,
         shape_names: List[str] = None,
         service_name: str = "sagemaker",
@@ -58,11 +59,14 @@ class Properties(PipelineVariable, metaclass=PropertiesMeta):
         """Create a Properties instance representing the given shape.
 
         Args:
-            path (str): The parent path of the Properties instance.
+            step_name (str): The name of the Step this Property belongs to.
+            path (str): The relative path of this Property value.
             shape_name (str): The botocore service model shape name.
             shape_names (str): A List of the botocore service model shape name.
         """
-        self._path = path
+        self.step_name = step_name
+        self.path = path
+
         shape_names = [] if shape_names is None else shape_names
         self._shape_names = shape_names if shape_name is None else [shape_name] + shape_names
 
@@ -78,35 +82,54 @@ class Properties(PipelineVariable, metaclass=PropertiesMeta):
                 for key, info in members.items():
                     if shapes.get(info["shape"], {}).get("type") == "list":
                         self.__dict__[key] = PropertiesList(
-                            f"{path}.{key}", info["shape"], service_name
+                            step_name=step_name,
+                            path=".".join(filter(None, (path, key))),
+                            shape_name=info["shape"],
+                            service_name=service_name,
                         )
                     elif shapes.get(info["shape"], {}).get("type") == "map":
                         self.__dict__[key] = PropertiesMap(
-                            f"{path}.{key}", info["shape"], service_name
+                            step_name=step_name,
+                            path=".".join(filter(None, (path, key))),
+                            shape_name=info["shape"],
+                            service_name=service_name,
                         )
                     else:
                         self.__dict__[key] = Properties(
-                            f"{path}.{key}", info["shape"], service_name=service_name
+                            step_name=step_name,
+                            path=".".join(filter(None, (path, key))),
+                            shape_name=info["shape"],
+                            service_name=service_name,
                         )
 
     @property
     def expr(self):
         """The 'Get' expression dict for a `Properties`."""
-        return {"Get": self._path}
+        prefix = f"Steps.{self.step_name}"
+        full_path = prefix if self.path is None else f"{prefix}.{self.path}"
+        return {"Get": full_path}
+
+    @property
+    def _referenced_steps(self) -> List[str]:
+        """List of step names that this function depends on."""
+        return [self.step_name]
 
 
 class PropertiesList(Properties):
     """PropertiesList for use in workflow expressions."""
 
-    def __init__(self, path: str, shape_name: str = None, service_name: str = "sagemaker"):
+    def __init__(
+        self, step_name: str, path: str, shape_name: str = None, service_name: str = "sagemaker"
+    ):
         """Create a PropertiesList instance representing the given shape.
 
         Args:
-            path (str): The parent path of the PropertiesList instance.
+            step_name (str): The name of the Step this Property belongs to.
+            path (str): The relative path of this Property value.
             shape_name (str): The botocore service model shape name.
             service_name (str): The botocore service name.
         """
-        super(PropertiesList, self).__init__(path, shape_name)
+        super(PropertiesList, self).__init__(step_name, path, shape_name)
         self.shape_name = shape_name
         self.service_name = service_name
         self._items: Dict[Union[int, str], Properties] = dict()
@@ -121,9 +144,9 @@ class PropertiesList(Properties):
             shape = Properties._shapes_map.get(self.service_name, {}).get(self.shape_name)
             member = shape["member"]["shape"]
             if isinstance(item, str):
-                property_item = Properties(f"{self._path}['{item}']", member)
+                property_item = Properties(self.step_name, f"{self.path}['{item}']", member)
             else:
-                property_item = Properties(f"{self._path}[{item}]", member)
+                property_item = Properties(self.step_name, f"{self.path}[{item}]", member)
             self._items[item] = property_item
 
         return self._items.get(item)
@@ -132,15 +155,18 @@ class PropertiesList(Properties):
 class PropertiesMap(Properties):
     """PropertiesMap for use in workflow expressions."""
 
-    def __init__(self, path: str, shape_name: str = None, service_name: str = "sagemaker"):
+    def __init__(
+        self, step_name: str, path: str, shape_name: str = None, service_name: str = "sagemaker"
+    ):
         """Create a PropertiesMap instance representing the given shape.
 
         Args:
-            path (str): The parent path of the PropertiesMap instance.
-            shape_name (str): The botocore sagemaker service model shape name.
+            step_name (str): The name of the Step this Property belongs to.
+            path (str): The relative path of this Property value.
+            shape_name (str): The botocore service model shape name.
             service_name (str): The botocore service name.
         """
-        super(PropertiesMap, self).__init__(path, shape_name)
+        super(PropertiesMap, self).__init__(step_name, path, shape_name)
         self.shape_name = shape_name
         self.service_name = service_name
         self._items: Dict[Union[int, str], Properties] = dict()
@@ -155,9 +181,9 @@ class PropertiesMap(Properties):
             shape = Properties._shapes_map.get(self.service_name, {}).get(self.shape_name)
             member = shape["value"]["shape"]
             if isinstance(item, str):
-                property_item = Properties(f"{self._path}['{item}']", member)
+                property_item = Properties(self.step_name, f"{self.path}['{item}']", member)
             else:
-                property_item = Properties(f"{self._path}[{item}]", member)
+                property_item = Properties(self.step_name, f"{self.path}[{item}]", member)
             self._items[item] = property_item
 
         return self._items.get(item)
@@ -168,9 +194,9 @@ class PropertyFile(Expression):
     """Provides a property file struct.
 
     Attributes:
-        name: The name of the property file for reference with `JsonGet` functions.
-        output_name: The name of the processing job output channel.
-        path: The path to the file at the output channel location.
+        name (str): The name of the property file for reference with `JsonGet` functions.
+        output_name (str): The name of the processing job output channel.
+        path (str): The path to the file at the output channel location.
     """
 
     name: str = attr.ib()

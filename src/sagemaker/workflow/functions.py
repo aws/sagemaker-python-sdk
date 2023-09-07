@@ -32,7 +32,10 @@ class Join(PipelineVariable):
         bucket = ParameterString('bucket', default_value='my-bucket')
 
         TrainingInput(
-            s3_data=Join(on='/', ['s3:/', bucket, ExecutionVariables.PIPELINE_EXECUTION_ID]),
+            s3_data=Join(
+                on='/',
+                values=['s3:/', bucket, ExecutionVariables.PIPELINE_EXECUTION_ID]
+            ),
             content_type="text/csv")
 
     Attributes:
@@ -63,6 +66,15 @@ class Join(PipelineVariable):
                 ],
             },
         }
+
+    @property
+    def _referenced_steps(self) -> List[str]:
+        """List of step names that this function depends on."""
+        steps = []
+        for value in self.values:
+            if isinstance(value, PipelineVariable):
+                steps.extend(value._referenced_steps)
+        return steps
 
 
 @attr.s
@@ -96,3 +108,8 @@ class JsonGet(PipelineVariable):
                 "Path": self.json_path,
             }
         }
+
+    @property
+    def _referenced_steps(self) -> List[str]:
+        """List of step names that this function depends on."""
+        return [self.step_name]

@@ -266,7 +266,7 @@ PyTorch API
       .. note::
 
         The ``no_sync()`` context manager is available from smdistributed-dataparallel v1.2.2.
-        To find the release note, see :ref:`sdp_1.2.2_release_note`.
+        To find the release note, see :ref:`sdp_release_note`.
 
       **Example:**
 

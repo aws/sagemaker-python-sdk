@@ -17,11 +17,14 @@ but use of functools.partial doesn't set correct metadata/type information.
 """
 from __future__ import absolute_import
 
+import abc
+
 from enum import Enum
 from typing import Dict, List, Union
 
 import attr
 
+from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import (
     DefaultEnumMeta,
     Entity,
@@ -32,6 +35,7 @@ from sagemaker.workflow.entities import (
 from sagemaker.workflow.execution_variables import ExecutionVariable
 from sagemaker.workflow.parameters import Parameter
 from sagemaker.workflow.properties import Properties
+from sagemaker.workflow.entities import PipelineVariable
 
 # TODO: consider base class for those with an expr method, rather than defining a type here
 ConditionValueType = Union[ExecutionVariable, Parameter, Properties]
@@ -60,6 +64,11 @@ class Condition(Entity):
 
     condition_type: ConditionTypeEnum = attr.ib(factory=ConditionTypeEnum.factory)
 
+    @property
+    @abc.abstractmethod
+    def _referenced_steps(self) -> List[str]:
+        """List of step names that this function depends on."""
+
 
 @attr.s
 class ConditionComparison(Condition):
@@ -79,9 +88,19 @@ class ConditionComparison(Condition):
         """Get the request structure for workflow service calls."""
         return {
             "Type": self.condition_type.value,
-            "LeftValue": primitive_or_expr(self.left),
-            "RightValue": primitive_or_expr(self.right),
+            "LeftValue": self.left,
+            "RightValue": self.right,
         }
+
+    @property
+    def _referenced_steps(self) -> List[str]:
+        """List of step names that this function depends on."""
+        steps = []
+        if isinstance(self.left, PipelineVariable):
+            steps.extend(self.left._referenced_steps)
+        if isinstance(self.right, PipelineVariable):
+            steps.extend(self.right._referenced_steps)
+        return steps
 
 
 class ConditionEquals(ConditionComparison):
@@ -208,9 +227,20 @@ class ConditionIn(Condition):
         """Get the request structure for workflow service calls."""
         return {
             "Type": self.condition_type.value,
-            "QueryValue": self.value.expr,
-            "Values": [primitive_or_expr(in_value) for in_value in self.in_values],
+            "QueryValue": self.value,
+            "Values": self.in_values,
         }
+
+    @property
+    def _referenced_steps(self) -> List[str]:
+        """List of step names that this function depends on."""
+        steps = []
+        if isinstance(self.value, PipelineVariable):
+            steps.extend(self.value._referenced_steps)
+        for in_value in self.in_values:
+            if isinstance(in_value, PipelineVariable):
+                steps.extend(in_value._referenced_steps)
+        return steps
 
 
 class ConditionNot(Condition):
@@ -228,6 +258,11 @@ class ConditionNot(Condition):
     def to_request(self) -> RequestType:
         """Get the request structure for workflow service calls."""
         return {"Type": self.condition_type.value, "Expression": self.expression.to_request()}
+
+    @property
+    def _referenced_steps(self) -> List[str]:
+        """List of step names that this function depends on."""
+        return self.expression._referenced_steps
 
 
 class ConditionOr(Condition):
@@ -249,6 +284,14 @@ class ConditionOr(Condition):
             "Conditions": [condition.to_request() for condition in self.conditions],
         }
 
+    @property
+    def _referenced_steps(self) -> List[str]:
+        """List of step names that this function depends on."""
+        steps = []
+        for condition in self.conditions:
+            steps.extend(condition._referenced_steps)
+        return steps
+
 
 def primitive_or_expr(
     value: Union[ExecutionVariable, Expression, PrimitiveType, Parameter, Properties]
@@ -257,10 +300,9 @@ def primitive_or_expr(
 
     Args:
         value (Union[ConditionValueType, PrimitiveType]): The value to evaluate.
-
     Returns:
         Either the expression of the value or the primitive value.
     """
-    if isinstance(value, (ExecutionVariable, Expression, Parameter, Properties)):
+    if is_pipeline_variable(value):
         return value.expr
     return value

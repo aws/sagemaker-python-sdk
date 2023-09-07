@@ -13,21 +13,25 @@
 """This file contains code related to drift check baselines"""
 from __future__ import absolute_import
 
+from typing import Optional
+
+from sagemaker.model_metrics import MetricsSource, FileSource
+
 
 class DriftCheckBaselines(object):
     """Accepts drift check baselines parameters for conversion to request dict."""
 
     def __init__(
         self,
-        model_statistics=None,
-        model_constraints=None,
-        model_data_statistics=None,
-        model_data_constraints=None,
-        bias_config_file=None,
-        bias_pre_training_constraints=None,
-        bias_post_training_constraints=None,
-        explainability_constraints=None,
-        explainability_config_file=None,
+        model_statistics: Optional[MetricsSource] = None,
+        model_constraints: Optional[MetricsSource] = None,
+        model_data_statistics: Optional[MetricsSource] = None,
+        model_data_constraints: Optional[MetricsSource] = None,
+        bias_config_file: Optional[FileSource] = None,
+        bias_pre_training_constraints: Optional[MetricsSource] = None,
+        bias_post_training_constraints: Optional[MetricsSource] = None,
+        explainability_constraints: Optional[MetricsSource] = None,
+        explainability_config_file: Optional[FileSource] = None,
     ):
         """Initialize a ``DriftCheckBaselines`` instance and turn parameters into dict.
 

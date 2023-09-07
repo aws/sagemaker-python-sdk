@@ -15,13 +15,10 @@ from __future__ import absolute_import
 import json
 import pytest
 
-import sagemaker
-
-from mock import Mock, PropertyMock
-
 from sagemaker.model_monitor import DatasetFormat
 from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.pipeline import Pipeline
+from sagemaker.workflow.pipeline import PipelineDefinitionConfig
 from sagemaker.workflow.quality_check_step import (
     QualityCheckStep,
     DataQualityCheckConfig,
@@ -31,55 +28,15 @@ from sagemaker.workflow.quality_check_step import (
 from sagemaker.workflow.steps import CacheConfig
 from sagemaker.workflow.check_job_config import CheckJobConfig
 
-_REGION = "us-west-2"
 _ROLE = "DummyRole"
-_BUCKET = "my-bucket"
-
-
-@pytest.fixture
-def boto_session():
-    role_mock = Mock()
-    type(role_mock).arn = PropertyMock(return_value=_ROLE)
-
-    resource_mock = Mock()
-    resource_mock.Role.return_value = role_mock
-
-    session_mock = Mock(region_name=_REGION)
-    session_mock.resource.return_value = resource_mock
-
-    return session_mock
-
-
-@pytest.fixture
-def client():
-    """Mock client.
-
-    Considerations when appropriate:
-
-        * utilize botocore.stub.Stubber
-        * separate runtime client from client
-    """
-    client_mock = Mock()
-    client_mock._client_config.user_agent = (
-        "Boto3/1.14.24 Python/3.8.5 Linux/5.4.0-42-generic Botocore/1.17.24 Resource"
-    )
-    return client_mock
-
-
-@pytest.fixture
-def sagemaker_session(boto_session, client):
-    return sagemaker.session.Session(
-        boto_session=boto_session,
-        sagemaker_client=client,
-        sagemaker_runtime_client=client,
-        default_bucket=_BUCKET,
-    )
+_CHECK_JOB_PREFIX = "CheckJobPrefix"
 
 
 _expected_data_quality_dsl = {
     "Name": "DataQualityCheckStep",
     "Type": "QualityCheck",
     "Arguments": {
+        "ProcessingJobName": _CHECK_JOB_PREFIX,
         "ProcessingResources": {
             "ClusterConfig": {
                 "InstanceType": "ml.m5.xlarge",
@@ -154,6 +111,7 @@ _expected_data_quality_dsl = {
     "CheckType": "DATA_QUALITY",
     "ModelPackageGroupName": {"Get": "Parameters.MyModelPackageGroup"},
     "SkipCheck": False,
+    "FailOnViolation": False,
     "RegisterNewBaseline": False,
     "SuppliedBaselineStatistics": {"Get": "Parameters.SuppliedBaselineStatisticsUri"},
     "SuppliedBaselineConstraints": {"Get": "Parameters.SuppliedBaselineConstraintsUri"},
@@ -228,6 +186,7 @@ _expected_model_quality_dsl = {
     "CheckType": "MODEL_QUALITY",
     "ModelPackageGroupName": {"Get": "Parameters.MyModelPackageGroup"},
     "SkipCheck": False,
+    "FailOnViolation": True,
     "RegisterNewBaseline": False,
     "SuppliedBaselineStatistics": {"Get": "Parameters.SuppliedBaselineStatisticsUri"},
     "SuppliedBaselineConstraints": {"Get": "Parameters.SuppliedBaselineConstraintsUri"},
@@ -258,6 +217,7 @@ def check_job_config(sagemaker_session):
         volume_size_in_gb=60,
         max_runtime_in_seconds=1800,
         sagemaker_session=sagemaker_session,
+        base_job_name=_CHECK_JOB_PREFIX,
     )
 
 
@@ -278,6 +238,7 @@ def test_data_quality_check_step(
     data_quality_check_step = QualityCheckStep(
         name="DataQualityCheckStep",
         skip_check=False,
+        fail_on_violation=False,
         register_new_baseline=False,
         quality_check_config=data_quality_check_config,
         check_job_config=check_job_config,
@@ -286,6 +247,9 @@ def test_data_quality_check_step(
         supplied_baseline_constraints=supplied_baseline_constraints_uri,
         cache_config=CacheConfig(enable_caching=True, expire_after="PT1H"),
     )
+
+    definition_config = PipelineDefinitionConfig(use_custom_job_prefix=True)
+
     pipeline = Pipeline(
         name="MyPipeline",
         parameters=[
@@ -295,11 +259,13 @@ def test_data_quality_check_step(
         ],
         steps=[data_quality_check_step],
         sagemaker_session=sagemaker_session,
+        pipeline_definition_config=definition_config,
     )
     step_definition = _get_step_definition_for_test(
         pipeline, ["baseline_dataset_input", "quality_check_output"]
     )
 
+    assert step_definition["Arguments"]["ProcessingJobName"] == _CHECK_JOB_PREFIX
     assert step_definition == _expected_data_quality_dsl
 
 
@@ -324,6 +290,7 @@ def test_model_quality_check_step(
         name="ModelQualityCheckStep",
         register_new_baseline=False,
         skip_check=False,
+        fail_on_violation=True,
         quality_check_config=model_quality_check_config,
         check_job_config=check_job_config,
         model_package_group_name=model_package_group_name,

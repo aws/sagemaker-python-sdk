@@ -36,6 +36,7 @@ from sagemaker.model_monitor import (
     Constraints,
     CronExpressionGenerator,
     EndpointInput,
+    BatchTransformInput,
     ExplainabilityAnalysisConfig,
     ModelBiasMonitor,
     ModelExplainabilityMonitor,
@@ -48,6 +49,7 @@ from sagemaker.model_monitor.clarify_model_monitoring import (
     ClarifyBaseliningJob,
     ClarifyMonitoringExecution,
 )
+from sagemaker.model_monitor.dataset_format import MonitoringDatasetFormat
 
 # shared
 CLARIFY_IMAGE_URI = "306415355426.dkr.ecr.us-west-2.amazonaws.com/sagemaker-clarify-processing:1.0"
@@ -62,6 +64,7 @@ PROCESSING_OUTPUT = Mock()
 S3_INPUT_MODE = "File"
 S3_DATA_DISTRIBUTION_TYPE = "FullyReplicated"
 S3_UPLOAD_MODE = "Continuous"
+DATASET_FORMAT = MonitoringDatasetFormat.csv(header=False)
 
 # For create API
 ROLE = "SageMakerRole"
@@ -91,6 +94,8 @@ GROUND_TRUTH_S3_URI = "s3://bucket/monitoring_captured/actuals"
 ANALYSIS_CONFIG_S3_URI = "s3://bucket/analysis_config.json"
 START_TIME_OFFSET = "-PT1H"
 END_TIME_OFFSET = "-PT0H"
+DATA_CAPTURED_S3_URI = "s3://my-bucket/batch-fraud-detection/on-schedule-monitoring/in/"
+SCHEDULE_DESTINATION = "/opt/ml/processing/data"
 OUTPUT_S3_URI = "s3://bucket/output"
 CONSTRAINTS = Constraints("", "s3://bucket/analysis.json")
 FEATURES_ATTRIBUTE = "features"
@@ -138,6 +143,22 @@ BIAS_JOB_INPUT = {
     },
     "GroundTruthS3Input": {"S3Uri": GROUND_TRUTH_S3_URI},
 }
+BIAS_BATCH_TRANSFORM_JOB_INPUT = {
+    "BatchTransformInput": {
+        "DataCapturedDestinationS3Uri": DATA_CAPTURED_S3_URI,
+        "LocalPath": SCHEDULE_DESTINATION,
+        "S3InputMode": S3_INPUT_MODE,
+        "S3DataDistributionType": S3_DATA_DISTRIBUTION_TYPE,
+        "StartTimeOffset": START_TIME_OFFSET,
+        "EndTimeOffset": END_TIME_OFFSET,
+        "FeaturesAttribute": FEATURES_ATTRIBUTE,
+        "InferenceAttribute": str(INFERENCE_ATTRIBUTE),
+        "ProbabilityAttribute": str(PROBABILITY_ATTRIBUTE),
+        "ProbabilityThresholdAttribute": PROBABILITY_THRESHOLD_ATTRIBUTE,
+        "DatasetFormat": DATASET_FORMAT,
+    },
+    "GroundTruthS3Input": {"S3Uri": GROUND_TRUTH_S3_URI},
+}
 STOP_CONDITION = {"MaxRuntimeInSeconds": MAX_RUNTIME_IN_SECONDS}
 BIAS_JOB_DEFINITION = {
     "ModelBiasAppSpecification": APP_SPECIFICATION,
@@ -149,6 +170,17 @@ BIAS_JOB_DEFINITION = {
     "NetworkConfig": NETWORK_CONFIG._to_request_dict(),
     "StoppingCondition": STOP_CONDITION,
 }
+BIAS_BATCH_TRANSFORM_JOB_DEFINITION = {
+    "ModelBiasAppSpecification": APP_SPECIFICATION,
+    "ModelBiasJobInput": BIAS_BATCH_TRANSFORM_JOB_INPUT,
+    "ModelBiasJobOutputConfig": JOB_OUTPUT_CONFIG,
+    "JobResources": JOB_RESOURCES,
+    "RoleArn": ROLE_ARN,
+    "ModelBiasBaselineConfig": BASELINE_CONFIG,
+    "NetworkConfig": NETWORK_CONFIG._to_request_dict(),
+    "StoppingCondition": STOP_CONDITION,
+}
+
 EXPLAINABILITY_JOB_INPUT = {
     "EndpointInput": {
         "EndpointName": ENDPOINT_NAME,
@@ -159,6 +191,17 @@ EXPLAINABILITY_JOB_INPUT = {
         "InferenceAttribute": str(INFERENCE_ATTRIBUTE),
     }
 }
+EXPLAINABILITY_BATCH_TRANSFORM_JOB_INPUT = {
+    "BatchTransformInput": {
+        "DataCapturedDestinationS3Uri": DATA_CAPTURED_S3_URI,
+        "LocalPath": SCHEDULE_DESTINATION,
+        "S3InputMode": S3_INPUT_MODE,
+        "S3DataDistributionType": S3_DATA_DISTRIBUTION_TYPE,
+        "FeaturesAttribute": FEATURES_ATTRIBUTE,
+        "InferenceAttribute": str(INFERENCE_ATTRIBUTE),
+        "DatasetFormat": DATASET_FORMAT,
+    }
+}
 EXPLAINABILITY_JOB_DEFINITION = {
     "ModelExplainabilityAppSpecification": APP_SPECIFICATION,
     "ModelExplainabilityJobInput": EXPLAINABILITY_JOB_INPUT,
@@ -167,6 +210,23 @@ EXPLAINABILITY_JOB_DEFINITION = {
     "StoppingCondition": STOP_CONDITION,
     "RoleArn": ROLE_ARN,
     "NetworkConfig": NETWORK_CONFIG._to_request_dict(),
+}
+EXPLAINABILITY__BATCH_TRANSFORM_JOB_DEFINITION = {
+    "ModelExplainabilityAppSpecification": APP_SPECIFICATION,
+    "ModelExplainabilityJobInput": EXPLAINABILITY_BATCH_TRANSFORM_JOB_INPUT,
+    "ModelExplainabilityJobOutputConfig": JOB_OUTPUT_CONFIG,
+    "JobResources": JOB_RESOURCES,
+    "StoppingCondition": STOP_CONDITION,
+    "RoleArn": ROLE_ARN,
+    "NetworkConfig": NETWORK_CONFIG._to_request_dict(),
+}
+
+MONITORING_EXECUTIONS_EMPTY = {
+    "MonitoringExecutionSummaries": [],
+}
+
+MONITORING_EXECUTIONS_NO_PROCESSING_JOB = {
+    "MonitoringExecutionSummaries": [{"MonitoringSchedule": "MonitoringSchedule"}],
 }
 
 # For update API
@@ -313,6 +373,7 @@ SHAP_USE_LOGIT = True
 MODEL_NAME = "xgboost-model"
 ACCEPT_TYPE = "text/csv"
 CONTENT_TYPE = "application/jsonlines"
+JSONLINES_CONTENT_TEMPLATE = '{"instances":$features}'
 EXPLAINABILITY_ANALYSIS_CONFIG = {
     "headers": ANALYSIS_CONFIG_HEADERS_OF_FEATURES,
     "methods": {
@@ -330,6 +391,7 @@ EXPLAINABILITY_ANALYSIS_CONFIG = {
         "initial_instance_count": INSTANCE_COUNT,
         "accept_type": ACCEPT_TYPE,
         "content_type": CONTENT_TYPE,
+        "content_template": JSONLINES_CONTENT_TEMPLATE,
     },
 }
 EXPLAINABILITY_ANALYSIS_CONFIG_WITH_LABEL_HEADERS = copy.deepcopy(EXPLAINABILITY_ANALYSIS_CONFIG)
@@ -354,6 +416,7 @@ def sagemaker_session(sagemaker_client):
         boto_region_name="us-west-2",
         config=None,
         local_mode=False,
+        default_bucket_prefix=None,
     )
     session_mock.default_bucket = Mock(name="default_bucket", return_value="mybucket")
     session_mock.upload_data = Mock(
@@ -361,6 +424,11 @@ def sagemaker_session(sagemaker_client):
     )
     session_mock.download_data = Mock(name="download_data")
     session_mock.expand_role.return_value = ROLE_ARN
+    session_mock._append_sagemaker_config_tags = Mock(
+        name="_append_sagemaker_config_tags", side_effect=lambda tags, config_path_to_tags: tags
+    )
+    # For tests which doesn't verify config file injection, operate with empty config
+    session_mock.sagemaker_config = {}
     return session_mock
 
 
@@ -432,6 +500,7 @@ def model_config():
         instance_count=INSTANCE_COUNT,
         content_type=CONTENT_TYPE,
         accept_type=ACCEPT_TYPE,
+        content_template=JSONLINES_CONTENT_TEMPLATE,
     )
 
 
@@ -716,6 +785,28 @@ def test_model_bias_monitor(model_bias_monitor, sagemaker_session):
     )
 
 
+def test_model_batch_transform_bias_monitor(model_bias_monitor, sagemaker_session):
+    # create schedule
+    _test_model_bias_monitor_batch_transform_create_schedule(
+        model_bias_monitor=model_bias_monitor,
+        sagemaker_session=sagemaker_session,
+        analysis_config=ANALYSIS_CONFIG_S3_URI,
+        constraints=CONSTRAINTS,
+    )
+
+    # update schedule
+    _test_model_bias_monitor_update_schedule(
+        model_bias_monitor=model_bias_monitor,
+        sagemaker_session=sagemaker_session,
+    )
+
+    # delete schedule
+    _test_model_bias_monitor_delete_schedule(
+        model_bias_monitor=model_bias_monitor,
+        sagemaker_session=sagemaker_session,
+    )
+
+
 def test_model_bias_monitor_created_with_config(model_bias_monitor, sagemaker_session, bias_config):
     # create schedule
     analysis_config = BiasAnalysisConfig(
@@ -877,6 +968,71 @@ def _test_model_bias_monitor_create_schedule(
     expected_arguments = {
         "JobDefinitionName": model_bias_monitor.job_definition_name,
         **copy.deepcopy(BIAS_JOB_DEFINITION),
+        "Tags": TAGS,
+    }
+    if constraints:
+        expected_arguments["ModelBiasBaselineConfig"] = {
+            "ConstraintsResource": {"S3Uri": constraints.file_s3_uri}
+        }
+    elif baseline_job_name:
+        expected_arguments["ModelBiasBaselineConfig"] = {
+            "BaseliningJobName": baseline_job_name,
+        }
+
+    sagemaker_session.sagemaker_client.create_model_bias_job_definition.assert_called_with(
+        **expected_arguments
+    )
+
+    sagemaker_session.sagemaker_client.create_monitoring_schedule.assert_called_with(
+        MonitoringScheduleName=SCHEDULE_NAME,
+        MonitoringScheduleConfig={
+            "MonitoringJobDefinitionName": model_bias_monitor.job_definition_name,
+            "MonitoringType": "ModelBias",
+            "ScheduleConfig": {"ScheduleExpression": CRON_HOURLY},
+        },
+        Tags=TAGS,
+    )
+
+
+def _test_model_bias_monitor_batch_transform_create_schedule(
+    model_bias_monitor,
+    sagemaker_session,
+    analysis_config=None,
+    constraints=None,
+    baseline_job_name=None,
+    batch_transform_input=BatchTransformInput(
+        data_captured_destination_s3_uri=DATA_CAPTURED_S3_URI,
+        destination=SCHEDULE_DESTINATION,
+        start_time_offset=START_TIME_OFFSET,
+        end_time_offset=END_TIME_OFFSET,
+        features_attribute=FEATURES_ATTRIBUTE,
+        inference_attribute=str(INFERENCE_ATTRIBUTE),
+        probability_attribute=str(PROBABILITY_ATTRIBUTE),
+        probability_threshold_attribute=PROBABILITY_THRESHOLD_ATTRIBUTE,
+        dataset_format=MonitoringDatasetFormat.csv(header=False),
+    ),
+):
+    # create schedule
+    with patch(
+        "sagemaker.s3.S3Uploader.upload_string_as_file_body", return_value=ANALYSIS_CONFIG_S3_URI
+    ) as upload:
+        model_bias_monitor.create_monitoring_schedule(
+            batch_transform_input=batch_transform_input,
+            ground_truth_input=GROUND_TRUTH_S3_URI,
+            analysis_config=analysis_config,
+            output_s3_uri=OUTPUT_S3_URI,
+            constraints=constraints,
+            monitor_schedule_name=SCHEDULE_NAME,
+            schedule_cron_expression=CRON_HOURLY,
+        )
+        if not isinstance(analysis_config, str):
+            upload.assert_called_once()
+            assert json.loads(upload.call_args[0][0]) == BIAS_ANALYSIS_CONFIG
+
+    # validation
+    expected_arguments = {
+        "JobDefinitionName": model_bias_monitor.job_definition_name,
+        **copy.deepcopy(BIAS_BATCH_TRANSFORM_JOB_DEFINITION),
         "Tags": TAGS,
     }
     if constraints:
@@ -1146,6 +1302,30 @@ def test_model_explainability_monitor(model_explainability_monitor, sagemaker_se
     )
 
 
+def test_model_explainability_batch_transform_monitor(
+    model_explainability_monitor, sagemaker_session
+):
+    # create schedule
+    _test_model_explainability_batch_transform_monitor_create_schedule(
+        model_explainability_monitor=model_explainability_monitor,
+        sagemaker_session=sagemaker_session,
+        analysis_config=ANALYSIS_CONFIG_S3_URI,
+        constraints=CONSTRAINTS,
+    )
+
+    # update schedule
+    _test_model_explainability_monitor_update_schedule(
+        model_explainability_monitor=model_explainability_monitor,
+        sagemaker_session=sagemaker_session,
+    )
+
+    # delete schedule
+    _test_model_explainability_monitor_delete_schedule(
+        model_explainability_monitor=model_explainability_monitor,
+        sagemaker_session=sagemaker_session,
+    )
+
+
 def test_model_explainability_monitor_created_with_config(
     model_explainability_monitor, sagemaker_session, shap_config, model_config
 ):
@@ -1339,6 +1519,67 @@ def _test_model_explainability_monitor_create_schedule(
     )
 
 
+def _test_model_explainability_batch_transform_monitor_create_schedule(
+    model_explainability_monitor,
+    sagemaker_session,
+    analysis_config=None,
+    constraints=None,
+    baseline_job_name=None,
+    batch_transform_input=BatchTransformInput(
+        data_captured_destination_s3_uri=DATA_CAPTURED_S3_URI,
+        destination=SCHEDULE_DESTINATION,
+        features_attribute=FEATURES_ATTRIBUTE,
+        inference_attribute=str(INFERENCE_ATTRIBUTE),
+        dataset_format=MonitoringDatasetFormat.csv(header=False),
+    ),
+    explainability_analysis_config=None,
+):
+    # create schedule
+    with patch(
+        "sagemaker.s3.S3Uploader.upload_string_as_file_body", return_value=ANALYSIS_CONFIG_S3_URI
+    ) as upload:
+        model_explainability_monitor.create_monitoring_schedule(
+            batch_transform_input=batch_transform_input,
+            analysis_config=analysis_config,
+            output_s3_uri=OUTPUT_S3_URI,
+            constraints=constraints,
+            monitor_schedule_name=SCHEDULE_NAME,
+            schedule_cron_expression=CRON_HOURLY,
+        )
+        if not isinstance(analysis_config, str):
+            upload.assert_called_once()
+            assert json.loads(upload.call_args[0][0]) == explainability_analysis_config
+
+    # validation
+    expected_arguments = {
+        "JobDefinitionName": model_explainability_monitor.job_definition_name,
+        **copy.deepcopy(EXPLAINABILITY__BATCH_TRANSFORM_JOB_DEFINITION),
+        "Tags": TAGS,
+    }
+    if constraints:
+        expected_arguments["ModelExplainabilityBaselineConfig"] = {
+            "ConstraintsResource": {"S3Uri": constraints.file_s3_uri}
+        }
+    elif baseline_job_name:
+        expected_arguments["ModelExplainabilityBaselineConfig"] = {
+            "BaseliningJobName": baseline_job_name,
+        }
+
+    sagemaker_session.sagemaker_client.create_model_explainability_job_definition.assert_called_with(
+        **expected_arguments
+    )
+
+    sagemaker_session.sagemaker_client.create_monitoring_schedule.assert_called_with(
+        MonitoringScheduleName=SCHEDULE_NAME,
+        MonitoringScheduleConfig={
+            "MonitoringJobDefinitionName": model_explainability_monitor.job_definition_name,
+            "MonitoringType": "ModelExplainability",
+            "ScheduleConfig": {"ScheduleExpression": CRON_HOURLY},
+        },
+        Tags=TAGS,
+    )
+
+
 def _test_model_explainability_monitor_update_schedule(
     model_explainability_monitor, sagemaker_session
 ):
@@ -1483,3 +1724,20 @@ def _test_model_explainability_monitor_delete_schedule(
     sagemaker_session.sagemaker_client.delete_model_explainability_job_definition.assert_called_once_with(
         JobDefinitionName=job_definition_name
     )
+
+
+def test_model_explainability_monitor_logs_failure(model_explainability_monitor, sagemaker_session):
+    sagemaker_session.list_monitoring_executions = MagicMock(
+        return_value=MONITORING_EXECUTIONS_EMPTY
+    )
+    try:
+        model_explainability_monitor.get_latest_execution_logs()
+    except ValueError as ve:
+        assert "No execution jobs were kicked off." in str(ve)
+    sagemaker_session.list_monitoring_executions = MagicMock(
+        return_value=MONITORING_EXECUTIONS_NO_PROCESSING_JOB
+    )
+    try:
+        model_explainability_monitor.get_latest_execution_logs()
+    except ValueError as ve:
+        assert "Processing Job did not run for the last execution" in str(ve)

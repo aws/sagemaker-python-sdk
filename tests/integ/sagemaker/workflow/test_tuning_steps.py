@@ -17,9 +17,10 @@ import re
 
 import pytest
 
+from tests.integ.sagemaker.workflow.helpers import wait_pipeline_execution
+from sagemaker.workflow.model_step import ModelStep, _CREATE_MODEL_NAME_BASE
 from sagemaker import TrainingInput, Model, get_execution_role, utils
 from sagemaker.dataset_definition import DatasetDefinition, AthenaDatasetDefinition
-from sagemaker.inputs import CreateModelInput
 from sagemaker.processing import ProcessingInput, ProcessingOutput
 from sagemaker.pytorch import PyTorch
 from sagemaker.sklearn import SKLearnProcessor
@@ -29,7 +30,6 @@ from sagemaker.workflow.parameters import ParameterInteger, ParameterString
 from sagemaker.workflow.pipeline import Pipeline
 
 from sagemaker.workflow.steps import (
-    CreateModelStep,
     ProcessingStep,
     TuningStep,
     PropertyFile,
@@ -76,7 +76,7 @@ def athena_dataset_definition(sagemaker_session):
 
 
 def test_tuning_single_algo(
-    sagemaker_session,
+    pipeline_session,
     role,
     cpu_instance_type,
     pipeline_name,
@@ -84,15 +84,17 @@ def test_tuning_single_algo(
 ):
     base_dir = os.path.join(DATA_DIR, "pytorch_mnist")
     entry_point = os.path.join(base_dir, "mnist.py")
-    input_path = sagemaker_session.upload_data(
+    input_path = pipeline_session.upload_data(
         path=os.path.join(base_dir, "training"),
         key_prefix="integ-test-data/pytorch_mnist/training",
     )
     inputs = TrainingInput(s3_data=input_path)
 
     instance_count = ParameterInteger(name="InstanceCount", default_value=1)
-    instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
+    instance_type = "ml.m5.xlarge"
 
+    # If image_uri is not provided, the instance_type should not be a pipeline variable
+    # since instance_type is used to retrieve image_uri in compile time (PySDK)
     pytorch_estimator = PyTorch(
         entry_point=entry_point,
         role=role,
@@ -100,7 +102,7 @@ def test_tuning_single_algo(
         py_version="py3",
         instance_count=instance_count,
         instance_type=instance_type,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=pipeline_session,
         enable_sagemaker_metrics=True,
         max_retry_attempts=3,
     )
@@ -131,42 +133,45 @@ def test_tuning_single_algo(
         image_uri=pytorch_estimator.training_image_uri(),
         model_data=step_tune.get_top_model_s3_uri(
             top_k=0,
-            s3_bucket=sagemaker_session.default_bucket(),
+            s3_bucket=pipeline_session.default_bucket(),
         ),
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=pipeline_session,
         role=role,
     )
-    model_inputs = CreateModelInput(
+    step_best_model_args = best_model.create(
         instance_type="ml.m5.large",
         accelerator_type="ml.eia1.medium",
     )
-    step_best_model = CreateModelStep(
+    step_best_model = ModelStep(
         name="1st-model",
-        model=best_model,
-        inputs=model_inputs,
+        step_args=step_best_model_args,
     )
 
     second_best_model = Model(
         image_uri=pytorch_estimator.training_image_uri(),
         model_data=step_tune.get_top_model_s3_uri(
             top_k=1,
-            s3_bucket=sagemaker_session.default_bucket(),
+            s3_bucket=pipeline_session.default_bucket(),
         ),
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=pipeline_session,
         role=role,
+        entry_point=entry_point,
+        source_dir=base_dir,
     )
-
-    step_second_best_model = CreateModelStep(
+    step_second_best_model_args = second_best_model.create(
+        instance_type="ml.m5.large",
+        accelerator_type="ml.eia1.medium",
+    )
+    step_second_best_model = ModelStep(
         name="2nd-best-model",
-        model=second_best_model,
-        inputs=model_inputs,
+        step_args=step_second_best_model_args,
     )
 
     pipeline = Pipeline(
         name=pipeline_name,
-        parameters=[instance_count, instance_type, min_batch_size, max_batch_size],
+        parameters=[instance_count, min_batch_size, max_batch_size],
         steps=[step_tune, step_best_model, step_second_best_model],
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=pipeline_session,
     )
 
     try:
@@ -182,6 +187,15 @@ def test_tuning_single_algo(
             rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
+        wait_pipeline_execution(execution=execution)
+        execution_steps = execution.list_steps()
+
+        for step in execution_steps:
+            assert not step.get("FailureReason", None)
+            assert step["StepStatus"] == "Succeeded"
+            if _CREATE_MODEL_NAME_BASE in step["StepName"]:
+                assert step["Metadata"]["Model"]
+        assert len(execution_steps) == 4
     finally:
         try:
             pipeline.delete()
@@ -206,10 +220,12 @@ def test_tuning_multi_algos(
     )
 
     instance_count = ParameterInteger(name="InstanceCount", default_value=1)
-    instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
+    instance_type = "ml.m5.xlarge"
 
     input_data = f"s3://sagemaker-sample-data-{region_name}/processing/census/census-income.csv"
 
+    # The instance_type should not be a pipeline variable
+    # since it is used to retrieve image_uri in compile time (PySDK)
     sklearn_processor = SKLearnProcessor(
         framework_version="0.20.0",
         instance_type=instance_type,
@@ -244,6 +260,8 @@ def test_tuning_multi_algos(
     json_get_hp = JsonGet(
         step_name=step_process.name, property_file=property_file, json_path="train_size"
     )
+    # If image_uri is not provided, the instance_type should not be a pipeline variable
+    # since instance_type is used to retrieve image_uri in compile time (PySDK)
     pytorch_estimator = PyTorch(
         entry_point=entry_point,
         role=role,
@@ -292,7 +310,7 @@ def test_tuning_multi_algos(
 
     pipeline = Pipeline(
         name=pipeline_name,
-        parameters=[instance_count, instance_type, min_batch_size, max_batch_size],
+        parameters=[instance_count, min_batch_size, max_batch_size, static_hp_1],
         steps=[step_process, step_tune],
         sagemaker_session=sagemaker_session,
     )
@@ -306,6 +324,7 @@ def test_tuning_multi_algos(
         )
 
         execution = pipeline.start(parameters={})
+        wait_pipeline_execution(execution=execution)
         assert re.match(
             rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,

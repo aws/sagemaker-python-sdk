@@ -203,8 +203,7 @@ class DetailedProfilingConfig(MetricsConfigBase):
     ):
         """Specify target steps or a target duration to profile.
 
-        By default, it profiles step 5
-        of training.
+        By default, it profiles step 5 of the training job.
 
         If **profile_default_steps** is set to `True` and none of the other
         range parameters is specified,
@@ -223,6 +222,11 @@ class DetailedProfilingConfig(MetricsConfigBase):
             The two parameter pairs are mutually exclusive, and this class validates
             if one of the two pairs is used. If both pairs are specified, a
             conflict error occurs.
+
+        .. warning::
+            This detailed framework profiling feature discontinues support for TensorFlow v2.11
+            and later. To use the detailed profiling feature, use previous versions of
+            TensorFlow between v2.3.1 and v2.10.0.
 
         """
         assert isinstance(

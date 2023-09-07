@@ -13,8 +13,9 @@
 """The step definitions for workflow."""
 from __future__ import absolute_import
 
-from typing import List, Dict
+from typing import List, Dict, Optional, Union
 from enum import Enum
+import warnings
 
 import attr
 
@@ -27,6 +28,7 @@ from sagemaker.workflow.properties import (
 from sagemaker.workflow.entities import (
     DefaultEnumMeta,
 )
+from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.steps import Step, StepTypeEnum, CacheConfig
 from sagemaker.lambda_helper import Lambda
 
@@ -87,7 +89,7 @@ class LambdaStep(Step):
         inputs: dict = None,
         outputs: List[LambdaOutput] = None,
         cache_config: CacheConfig = None,
-        depends_on: List[str] = None,
+        depends_on: Optional[List[Union[str, Step, StepCollection]]] = None,
     ):
         """Constructs a LambdaStep.
 
@@ -102,8 +104,9 @@ class LambdaStep(Step):
                 to the lambda function.
             outputs (List[LambdaOutput]): List of outputs from the lambda function.
             cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
-            depends_on (List[str]): A list of step names this `sagemaker.workflow.steps.LambdaStep`
-                depends on
+            depends_on (List[Union[str, Step, StepCollection]]): A list of `Step`/`StepCollection`
+                names or `Step` instances or `StepCollection` instances that this `LambdaStep`
+                depends on.
         """
         super(LambdaStep, self).__init__(
             name, display_name, description, StepTypeEnum.LAMBDA, depends_on
@@ -113,13 +116,12 @@ class LambdaStep(Step):
         self.cache_config = cache_config
         self.inputs = inputs if inputs is not None else {}
 
-        root_path = f"Steps.{name}"
-        root_prop = Properties(path=root_path)
+        root_prop = Properties(step_name=name)
 
         property_dict = {}
         for output in self.outputs:
             property_dict[output.output_name] = Properties(
-                f"{root_path}.OutputParameters['{output.output_name}']"
+                step_name=name, path=f"OutputParameters['{output.output_name}']"
             )
 
         root_prop.__dict__["Outputs"] = property_dict
@@ -149,28 +151,22 @@ class LambdaStep(Step):
         return request_dict
 
     def _get_function_arn(self):
-        """Returns the lamba function arn
+        """Returns the lambda function arn
 
-        Method creates a lambda function and returns it's arn.
-        If the lambda is already present, it will build it's arn and return that.
+        It upserts a lambda function if function name is provided.
+        It updates a lambda function if lambda arn and code is provided.
+        It is a no-op if code is not provided but function arn is provided.
         """
-        region = self.lambda_func.session.boto_region_name
-        if region.lower() == "cn-north-1" or region.lower() == "cn-northwest-1":
-            partition = "aws-cn"
-        else:
-            partition = "aws"
-
         if self.lambda_func.function_arn is None:
-            account_id = self.lambda_func.session.account_id()
-            try:
-                response = self.lambda_func.create()
-                return response["FunctionArn"]
-            except ValueError as error:
-                if "ResourceConflictException" not in str(error):
-                    raise
-                return (
-                    f"arn:{partition}:lambda:{region}:{account_id}:"
-                    f"function:{self.lambda_func.function_name}"
-                )
-        else:
+            response = self.lambda_func.upsert()
+            return response["FunctionArn"]
+
+        if self.lambda_func.zipped_code_dir is None and self.lambda_func.script is None:
+            warnings.warn(
+                "Lambda function won't be updated because zipped_code_dir \
+                or script is not provided."
+            )
             return self.lambda_func.function_arn
+
+        response = self.lambda_func.update()
+        return response["FunctionArn"]

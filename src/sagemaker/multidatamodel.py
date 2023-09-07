@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 import os
+from typing import Union, Optional
 
 from six.moves.urllib.parse import urlparse
 
@@ -22,6 +23,8 @@ from sagemaker import local, s3
 from sagemaker.deprecations import removed_kwargs
 from sagemaker.model import Model
 from sagemaker.session import Session
+from sagemaker.utils import pop_out_unused_kwarg
+from sagemaker.workflow.entities import PipelineVariable
 
 MULTI_MODEL_CONTAINER_MODE = "MultiModel"
 
@@ -34,12 +37,12 @@ class MultiDataModel(Model):
 
     def __init__(
         self,
-        name,
-        model_data_prefix,
-        model=None,
-        image_uri=None,
-        role=None,
-        sagemaker_session=None,
+        name: str,
+        model_data_prefix: str,
+        model: Optional[Model] = None,
+        image_uri: Optional[Union[str, PipelineVariable]] = None,
+        role: Optional[str] = None,
+        sagemaker_session: Optional[Session] = None,
         **kwargs,
     ):
         """Initialize a ``MultiDataModel``.
@@ -55,8 +58,8 @@ class MultiDataModel(Model):
                 If this is present, the attributes from this model are used when
                 deploying the ``MultiDataModel``.  Parameters 'image_uri', 'role' and 'kwargs'
                 are not permitted when model parameter is set.
-            image_uri (str): A Docker image URI. It can be null if the 'model' parameter
-                is passed to during ``MultiDataModel`` initialization (default: None)
+            image_uri (str or PipelineVariable): A Docker image URI. It can be null if the 'model'
+                parameter is passed to during ``MultiDataModel`` initialization (default: None)
             role (str): An AWS IAM role (either name or full ARN). The Amazon
                 SageMaker training jobs and APIs that create Amazon SageMaker
                 endpoints use this role to access training data and model
@@ -96,6 +99,7 @@ class MultiDataModel(Model):
         self.model = model
         self.container_mode = MULTI_MODEL_CONTAINER_MODE
         self.sagemaker_session = sagemaker_session or Session()
+        self.endpoint_name = None
 
         if self.sagemaker_session.s3_client is None:
             self.s3_client = self.sagemaker_session.boto_session.client(
@@ -106,6 +110,7 @@ class MultiDataModel(Model):
 
         # Set the ``Model`` parameters if the model parameter is not specified
         if not self.model:
+            pop_out_unused_kwarg("model_data", kwargs, self.model_data_prefix)
             super(MultiDataModel, self).__init__(
                 image_uri,
                 self.model_data_prefix,
@@ -115,7 +120,9 @@ class MultiDataModel(Model):
                 **kwargs,
             )
 
-    def prepare_container_def(self, instance_type=None, accelerator_type=None):
+    def prepare_container_def(
+        self, instance_type=None, accelerator_type=None, serverless_inference_config=None
+    ):
         """Return a container definition set.
 
         Definition set includes MultiModel mode, model data and other parameters

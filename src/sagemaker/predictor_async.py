@@ -12,10 +12,13 @@
 # language governing permissions and limitations under the License.
 """Placeholder docstring"""
 from __future__ import absolute_import
-
+import threading
+import time
 import uuid
 from botocore.exceptions import WaiterError
-from sagemaker.exceptions import PollingTimeoutError
+
+from sagemaker import s3
+from sagemaker.exceptions import PollingTimeoutError, AsyncInferenceModelError
 from sagemaker.async_inference import WaiterConfig, AsyncInferenceResponse
 from sagemaker.s3 import parse_s3_url
 from sagemaker.session import Session
@@ -98,7 +101,10 @@ class AsyncPredictor:
         self._input_path = input_path
         response = self._submit_async_request(input_path, initial_args, inference_id)
         output_location = response["OutputLocation"]
-        result = self._wait_for_output(output_path=output_location, waiter_config=waiter_config)
+        failure_location = response.get("FailureLocation")
+        result = self._wait_for_output(
+            output_path=output_location, failure_path=failure_location, waiter_config=waiter_config
+        )
 
         return result
 
@@ -141,9 +147,11 @@ class AsyncPredictor:
         self._input_path = input_path
         response = self._submit_async_request(input_path, initial_args, inference_id)
         output_location = response["OutputLocation"]
+        failure_location = response.get("FailureLocation")
         response_async = AsyncInferenceResponse(
             predictor_async=self,
             output_path=output_location,
+            failure_path=failure_location,
         )
 
         return response_async
@@ -160,17 +168,18 @@ class AsyncPredictor:
             my_uuid = str(uuid.uuid4())
             timestamp = sagemaker_timestamp()
             bucket = self.sagemaker_session.default_bucket()
-            key = "async-endpoint-inputs/{}/{}-{}".format(
+            key = s3.s3_path_join(
+                self.sagemaker_session.default_bucket_prefix,
+                "async-endpoint-inputs",
                 name_from_base(self.name, short=True),
-                timestamp,
-                my_uuid,
+                "{}-{}".format(timestamp, my_uuid),
             )
 
         data = self.serializer.serialize(data)
         self.s3_client.put_object(
             Body=data, Bucket=bucket, Key=key, ContentType=self.serializer.CONTENT_TYPE
         )
-        input_path = input_path or "s3://{}/{}".format(self.sagemaker_session.default_bucket(), key)
+        input_path = input_path or "s3://{}/{}".format(bucket, key)
 
         return input_path
 
@@ -209,11 +218,14 @@ class AsyncPredictor:
 
         return response
 
-    def _wait_for_output(
-        self,
-        output_path,
-        waiter_config,
-    ):
+    def _wait_for_output(self, output_path, failure_path, waiter_config):
+        """Retrieve output based on the presense of failure_path."""
+        if failure_path is not None:
+            return self._check_output_and_failure_paths(output_path, failure_path, waiter_config)
+
+        return self._check_output_path(output_path, waiter_config)
+
+    def _check_output_path(self, output_path, waiter_config):
         """Check the Amazon S3 output path for the output.
 
         Periodically check Amazon S3 output path for async inference result.
@@ -229,10 +241,85 @@ class AsyncPredictor:
                 output_path=output_path,
                 seconds=waiter_config.delay * waiter_config.max_attempts,
             )
-
         s3_object = self.s3_client.get_object(Bucket=bucket, Key=key)
         result = self.predictor._handle_response(response=s3_object)
         return result
+
+    def _check_output_and_failure_paths(self, output_path, failure_path, waiter_config):
+        """Check the Amazon S3 output path for the output.
+
+        This method waits for either the output file or the failure file to be found on the
+        specified S3 output path. Whichever file is found first, its corresponding event is
+        triggered, and the method executes the appropriate action based on the event.
+
+        Args:
+            output_path (str): The S3 path where the output file is expected to be found.
+            failure_path (str): The S3 path where the failure file is expected to be found.
+            waiter_config (boto3.waiter.WaiterConfig): The configuration for the S3 waiter.
+
+        Returns:
+            Any: The deserialized result from the output file, if the output file is found first.
+            Otherwise, raises an exception.
+
+        Raises:
+            AsyncInferenceModelError: If the failure file is found before the output file.
+            PollingTimeoutError: If both files are not found and the S3 waiter
+             has thrown a WaiterError.
+        """
+        output_bucket, output_key = parse_s3_url(output_path)
+        failure_bucket, failure_key = parse_s3_url(failure_path)
+
+        output_file_found = threading.Event()
+        failure_file_found = threading.Event()
+
+        def check_output_file():
+            try:
+                output_file_waiter = self.s3_client.get_waiter("object_exists")
+                output_file_waiter.wait(
+                    Bucket=output_bucket,
+                    Key=output_key,
+                    WaiterConfig=waiter_config._to_request_dict(),
+                )
+                output_file_found.set()
+            except WaiterError:
+                pass
+
+        def check_failure_file():
+            try:
+                failure_file_waiter = self.s3_client.get_waiter("object_exists")
+                failure_file_waiter.wait(
+                    Bucket=failure_bucket,
+                    Key=failure_key,
+                    WaiterConfig=waiter_config._to_request_dict(),
+                )
+                failure_file_found.set()
+            except WaiterError:
+                pass
+
+        output_thread = threading.Thread(target=check_output_file)
+        failure_thread = threading.Thread(target=check_failure_file)
+
+        output_thread.start()
+        failure_thread.start()
+
+        while not output_file_found.is_set() and not failure_file_found.is_set():
+            time.sleep(1)
+
+        if output_file_found.is_set():
+            s3_object = self.s3_client.get_object(Bucket=output_bucket, Key=output_key)
+            result = self.predictor._handle_response(response=s3_object)
+            return result
+
+        failure_object = self.s3_client.get_object(Bucket=failure_bucket, Key=failure_key)
+        failure_response = self.predictor._handle_response(response=failure_object)
+
+        raise AsyncInferenceModelError(
+            message=failure_response
+        ) if failure_file_found.is_set() else PollingTimeoutError(
+            message="Inference could still be running",
+            output_path=output_path,
+            seconds=waiter_config.delay * waiter_config.max_attempts,
+        )
 
     def update_endpoint(
         self,
