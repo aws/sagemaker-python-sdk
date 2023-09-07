@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.184.0 (2023-09-07)
+
+### Features
+
+ * Enable notebook instances to get presigned url
+
+### Bug Fixes and Other Changes
+
+ * update scikit-learn, scipy, and apache-airflow deps for dependabot
+ * log message when sdk defaults not applied
+
 ## v2.183.0 (2023-09-05)
 
 ### Deprecations and Removals
