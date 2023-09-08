@@ -231,8 +231,7 @@ class JumpStartCuratedHub:
     def _init_hub_bucket_parameters(self, hub_s3_bucket_name: str) -> None:
         """Sets up hub S3 bucket parameters to"""
         try:
-            res = self._s3_client.head_bucket(Bucket=hub_s3_bucket_name)
-            print(res)
+            self._s3_client.head_bucket(Bucket=hub_s3_bucket_name)
             # Bucket already exists on account, skipping creation
             print(f"S3 bucket {hub_s3_bucket_name} detected on account. Using this bucket...")
             self._create_hub_s3_bucket_flag = False
@@ -302,7 +301,7 @@ class JumpStartCuratedHub:
         else:
             print(
                 "WARN: Skipping Private Hub creation. "
-                "The Curated Hub will use the preexisting Private Hub"
+                "The Curated Hub will use the preexisting Private Hub "
                 f"{self.curated_hub_name} in {self._region}"
             )
 
@@ -392,12 +391,14 @@ class JumpStartCuratedHub:
 
     def _get_model_specs(self, model_id: PublicHubModel) -> JumpStartModelSpecs:
         """Converts PublicHubModel to JumpStartModelSpecs."""
-        return verify_model_region_and_return_specs(
+        specs =  verify_model_region_and_return_specs(
             model_id=model_id.id,
             version=model_id.version,
             scope=JumpStartScriptScope.INFERENCE,
             region=self._region,
         )
+        print(f"Public JumpStart model specs for {model_id.id}-{model_id.version}: {specs}")
+        return specs
 
     def _model_needs_update(self, model_specs: JumpStartModelSpecs) -> bool:
         """Checks if a new upload is necessary."""
