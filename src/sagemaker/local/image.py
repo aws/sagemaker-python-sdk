@@ -134,7 +134,6 @@ class _SageMakerContainer(object):
                 "'Docker Compose' is not installed. "
                 "Proceeding to check for 'docker-compose' CLI."
             )
-            pass
 
         if output and "v2" in output.strip():
             logger.info("'Docker Compose' found using Docker CLI.")
