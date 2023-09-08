@@ -39,7 +39,8 @@ from sagemaker.jumpstart.curated_hub.hub_model_specs.hub_model_specs import (
 )
 from sagemaker.jumpstart.curated_hub.hub_model_specs.hub_model_specs import ModelCapabilities
 from sagemaker.jumpstart.curated_hub.utils import (
-    base_framework,
+    hosting_base_framework,
+    training_base_framework,
     convert_public_model_hyperparameter_to_hub_hyperparameter,
 )
 from sagemaker.jumpstart.types import JumpStartModelSpecs
@@ -226,7 +227,7 @@ class ModelDocumentCreator:
                 TransformersVersion=getattr(
                     model_specs.hosting_ecr_specs, "huggingface_transformers_version", None
                 ),
-                BaseFramework=base_framework(model_specs=model_specs),
+                BaseFramework=hosting_base_framework(model_specs=model_specs),
             ),
             ModelArtifactConfig=ModelArtifactConfig(
                 ArtifactLocation=self._dst_s3_accessor.get_inference_artifact_s3_reference(
@@ -270,7 +271,7 @@ class ModelDocumentCreator:
                 TransformersVersion=getattr(
                     model_specs.training_ecr_specs, "huggingface_transformers_version", None
                 ),
-                BaseFramework=base_framework(model_specs=model_specs),
+                BaseFramework=training_base_framework(model_specs=model_specs),
             ),
             ModelArtifactConfig=ModelArtifactConfig(
                 ArtifactLocation=self._dst_s3_accessor.get_training_artifact_s3_reference(

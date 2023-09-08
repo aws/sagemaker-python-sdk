@@ -131,10 +131,16 @@ def get_bucket_and_key_from_s3_uri(s3_uri: str) -> Dict[str, str]:
     }
 
 
-def base_framework(model_specs: JumpStartModelSpecs) -> Optional[str]:
+def hosting_base_framework(model_specs: JumpStartModelSpecs) -> Optional[str]:
     """Retrieves the base framework from a model spec"""
     if model_specs.hosting_ecr_specs.framework == "huggingface":
         return f"pytorch{model_specs.hosting_ecr_specs.framework_version}"
+    return None
+
+def training_base_framework(model_specs: JumpStartModelSpecs) -> Optional[str]:
+    """Retrieves the base framework from a model spec"""
+    if model_specs.training_ecr_specs.framework == "huggingface":
+        return f"pytorch{model_specs.training_ecr_specs.framework_version}"
     return None
 
 
