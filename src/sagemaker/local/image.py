@@ -94,14 +94,8 @@ class _SageMakerContainer(object):
         from sagemaker.local.local_session import LocalSession
 
         # check if docker-compose is installed
-        if find_executable("docker-compose") is None:
-            raise ImportError(
-                "'docker-compose' is not installed. "
-                "Local Mode features will not work without docker-compose. "
-                "For more information on how to install 'docker-compose', please, see "
-                "https://docs.docker.com/compose/install/"
-            )
 
+        self.compose_cmd_prefix = _SageMakerContainer._get_compose_cmd_prefix()
         self.sagemaker_session = sagemaker_session or LocalSession()
         self.instance_type = instance_type
         self.instance_count = instance_count
@@ -117,6 +111,41 @@ class _SageMakerContainer(object):
         ]
         self.container_root = None
         self.container = None
+
+    @staticmethod
+    def _get_compose_cmd_prefix():
+        compose_cmd_prefix = []
+
+        output = None
+        try:
+            output = subprocess.check_output(
+                ["docker", "compose", "version"],
+                stderr=subprocess.DEVNULL,
+                encoding="UTF-8",
+            )
+        except subprocess.CalledProcessError:
+            logger.info(
+                "'Docker Compose' is not installed. "
+                "Proceeding to check for 'docker-compose' CLI."
+            )
+            pass
+
+        if output and "v2" in output.strip():
+            logger.info("'Docker Compose' found using Docker CLI.")
+            compose_cmd_prefix.extend(["docker", "compose"])
+            return compose_cmd_prefix
+
+        if find_executable("docker-compose") is not None:
+            logger.info("'Docker Compose' found using Docker Compose CLI.")
+            compose_cmd_prefix.extend(["docker-compose"])
+            return compose_cmd_prefix
+
+        raise ImportError(
+            "Docker Compose is not installed. "
+            "Local Mode features will not work without docker compose. "
+            "For more information on how to install 'docker compose', please, see "
+            "https://docs.docker.com/compose/install/"
+        )
 
     def process(
         self,
@@ -715,10 +744,9 @@ class _SageMakerContainer(object):
         Args:
             detached:
         """
-        compose_cmd = "docker-compose"
+        compose_cmd = self.compose_cmd_prefix
 
         command = [
-            compose_cmd,
             "-f",
             os.path.join(self.container_root, DOCKER_COMPOSE_FILENAME),
             "up",
@@ -726,8 +754,10 @@ class _SageMakerContainer(object):
             "--abort-on-container-exit" if not detached else "--detach",  # mutually exclusive
         ]
 
-        logger.info("docker command: %s", " ".join(command))
-        return command
+        compose_cmd.extend(command)
+
+        logger.info("docker command: %s", " ".join(compose_cmd))
+        return compose_cmd
 
     def _create_docker_host(self, host, environment, optml_subdirs, command, volumes):
         """Creates the docker host configuration.
