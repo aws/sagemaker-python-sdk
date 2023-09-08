@@ -131,35 +131,7 @@ class JumpStartCuratedHub:
             hub_s3_bucket_name_override=hub_s3_bucket_name_override,
             hub_s3_key_prefix_override=hub_s3_key_prefix_override,
         )
-        # self._create_iam_policies()
         self._create()
-
-    def _create_iam_policies(
-            self,
-            create_iam_roles: bool = False
-    ) -> None:
-        """Creates the IAM policies to create and use the Curated Hub.
-        
-        This will use STS to retrieve the AWS assumed role and IAM to add policies to
-        gain read-access to the JumpStart public hub and read-write access the Curated Hub S3 bucket.
-
-        Calls sts:get_caller_identity and iam:put_role_policy
-        
-        Raises:
-          ClientError if STS or IAM fail.
-        """
-        if not create_iam_roles:
-            print(
-                "To create and use the Curated Hub, you will need a set of IAM permissions. "
-                "By default, these permissions will NOT be created. If you wish to have the script "
-                "auto-generate these IAM permissions for the execution role, please pass in "
-                "create_iam_roles=True."
-            )
-            return
-        
-        sts_client = self._get_sts_client()
-        role = sts_client.get_caller_identity()
-
 
     def _configure(
         self,
