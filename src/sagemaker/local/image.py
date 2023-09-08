@@ -114,6 +114,12 @@ class _SageMakerContainer(object):
 
     @staticmethod
     def _get_compose_cmd_prefix():
+        """Gets the Docker Compose command. The method initially looks for 'docker compose' v2
+        executable, if not found looks for 'docker-compose' executable.
+
+        Raises:
+            ImportError: If Docker Compose executable was not found.
+        """
         compose_cmd_prefix = []
 
         output = None
