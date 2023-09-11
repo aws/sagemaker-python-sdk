@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.184.0.post0 (2023-09-11)
+
+### Documentation Changes
+
+ * add interactive apps rst file
+
 ## v2.184.0 (2023-09-07)
 
 ### Features
