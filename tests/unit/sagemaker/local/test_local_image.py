@@ -28,7 +28,6 @@ import tarfile
 import pytest
 import yaml
 from mock import patch, Mock, MagicMock
-
 import sagemaker
 from sagemaker.local.image import _SageMakerContainer, _Volume, _aws_credentials
 
@@ -89,6 +88,38 @@ def sagemaker_session():
     sms.expand_role = Mock(return_value=EXPANDED_ROLE)
 
     return sms
+
+
+@patch("subprocess.check_output", Mock(return_value="Docker Compose version v2.0.0-rc.3"))
+def test_get_compose_cmd_prefix_with_docker_cli():
+    compose_cmd_prefix = _SageMakerContainer._get_compose_cmd_prefix()
+    assert compose_cmd_prefix == ["docker", "compose"]
+
+
+@patch(
+    "subprocess.check_output",
+    side_effect=subprocess.CalledProcessError(returncode=1, cmd="docker compose version"),
+)
+@patch("sagemaker.local.image.find_executable", Mock(return_value="/usr/bin/docker-compose"))
+def test_get_compose_cmd_prefix_with_docker_compose_cli(check_output):
+    compose_cmd_prefix = _SageMakerContainer._get_compose_cmd_prefix()
+    assert compose_cmd_prefix == ["docker-compose"]
+
+
+@patch(
+    "subprocess.check_output",
+    side_effect=subprocess.CalledProcessError(returncode=1, cmd="docker compose version"),
+)
+@patch("sagemaker.local.image.find_executable", Mock(return_value=None))
+def test_get_compose_cmd_prefix_raises_import_error(check_output):
+    with pytest.raises(ImportError) as e:
+        _SageMakerContainer._get_compose_cmd_prefix()
+    assert (
+        "Docker Compose is not installed. "
+        "Local Mode features will not work without docker compose. "
+        "For more information on how to install 'docker compose', please, see "
+        "https://docs.docker.com/compose/install/" in str(e)
+    )
 
 
 def test_sagemaker_container_hosts_should_have_lowercase_names():
@@ -333,6 +364,10 @@ def test_check_output():
 @patch("sagemaker.local.image._stream_output", Mock())
 @patch("sagemaker.local.image._SageMakerContainer._cleanup")
 @patch("sagemaker.local.image._SageMakerContainer.retrieve_artifacts")
+@patch(
+    "sagemaker.local.image._SageMakerContainer._get_compose_cmd_prefix",
+    Mock(return_value=["docker-compose"]),
+)
 @patch("sagemaker.local.data.get_data_source_instance")
 @patch("subprocess.Popen")
 def test_train(
@@ -438,6 +473,10 @@ def test_train_with_hyperparameters_without_job_name(
 @patch("sagemaker.local.image._stream_output", side_effect=RuntimeError("this is expected"))
 @patch("sagemaker.local.image._SageMakerContainer._cleanup")
 @patch("sagemaker.local.image._SageMakerContainer.retrieve_artifacts")
+@patch(
+    "sagemaker.local.image._SageMakerContainer._get_compose_cmd_prefix",
+    Mock(return_value=["docker-compose"]),
+)
 @patch("sagemaker.local.data.get_data_source_instance")
 @patch("subprocess.Popen", Mock())
 def test_train_error(
@@ -475,6 +514,10 @@ def test_train_error(
 @patch("sagemaker.local.local_session.LocalSession", Mock())
 @patch("sagemaker.local.image._stream_output", Mock())
 @patch("sagemaker.local.image._SageMakerContainer._cleanup", Mock())
+@patch(
+    "sagemaker.local.image._SageMakerContainer._get_compose_cmd_prefix",
+    Mock(return_value=["docker-compose"]),
+)
 @patch("sagemaker.local.data.get_data_source_instance")
 @patch("subprocess.Popen", Mock())
 def test_train_local_code(get_data_source_instance, tmpdir, sagemaker_session):
@@ -528,6 +571,10 @@ def test_train_local_code(get_data_source_instance, tmpdir, sagemaker_session):
 @patch("sagemaker.local.local_session.LocalSession", Mock())
 @patch("sagemaker.local.image._stream_output", Mock())
 @patch("sagemaker.local.image._SageMakerContainer._cleanup", Mock())
+@patch(
+    "sagemaker.local.image._SageMakerContainer._get_compose_cmd_prefix",
+    Mock(return_value=["docker-compose"]),
+)
 @patch("sagemaker.local.data.get_data_source_instance")
 @patch("subprocess.Popen", Mock())
 def test_train_local_intermediate_output(get_data_source_instance, tmpdir, sagemaker_session):
