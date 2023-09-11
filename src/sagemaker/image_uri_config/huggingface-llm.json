@@ -172,7 +172,7 @@
                 "us-west-1": "763104351884",
                 "us-west-2": "763104351884"
             },
-            "tag_prefix": "2.0.1-tgi1.0.2",
+            "tag_prefix": "2.0.1-tgi1.0.3",
             "repository": "huggingface-pytorch-tgi-inference",
             "container_version": {"gpu": "cu118-ubuntu20.04"}
         }
