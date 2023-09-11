@@ -1161,6 +1161,226 @@ SPECIAL_MODEL_SPECS_DICT = {
             "default_accept_type": "application/json",
         },
         "resource_name_base": "blahblahblah",
+        "hosting_instance_type_variants": {
+            "regional_aliases": {
+                "af-south-1": {
+                    "cpu_ecr_uri_1": "626614931356.dkr.ecr.af-south-1.amazonaws.com/autogluon-inference:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "626614931356.dkr.ecr.af-south-1.amazonaws.com/autogluon-inference:0.4.3-gpu-py38",
+                },
+                "ap-east-1": {
+                    "cpu_ecr_uri_1": "871362719292.dkr.ecr.ap-east-1.amazonaws.com/autogluon-inference:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "871362719292.dkr.ecr.ap-east-1.amazonaws.com/autogluon-inference:0.4.3-gpu-py38",
+                },
+                "ap-northeast-1": {
+                    "cpu_ecr_uri_1": "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/autogluon-inference:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/autogluon-inference:0.4.3-gpu-py38",
+                },
+                "ap-northeast-2": {
+                    "cpu_ecr_uri_1": "763104351884.dkr.ecr.ap-northeast-2.amazonaws.com/autogluon-inference:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "763104351884.dkr.ecr.ap-northeast-2.amazonaws.com/autogluon-inference:0.4.3-gpu-py38",
+                },
+                "ap-south-1": {
+                    "cpu_ecr_uri_1": "763104351884.dkr.ecr.ap-south-1.amazonaws.com/autogluon-inference:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "763104351884.dkr.ecr.ap-south-1.amazonaws.com/autogluon-inference:0.4.3-gpu-py38",
+                },
+                "ap-southeast-1": {
+                    "cpu_ecr_uri_1": "763104351884.dkr.ecr.ap-southeast-1.amazonaws.com/autogluon-inference:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "763104351884.dkr.ecr.ap-southeast-1.amazonaws.com/autogluon-inference:0.4.3-gpu-py38",
+                },
+                "ap-southeast-2": {
+                    "cpu_ecr_uri_1": "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/autogluon-inference:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/autogluon-inference:0.4.3-gpu-py38",
+                },
+                "ca-central-1": {
+                    "cpu_ecr_uri_1": "763104351884.dkr.ecr.ca-central-1.amazonaws.com/autogluon-inference:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "763104351884.dkr.ecr.ca-central-1.amazonaws.com/autogluon-inference:0.4.3-gpu-py38",
+                },
+                "cn-north-1": {
+                    "cpu_ecr_uri_1": "727897471807.dkr.ecr.cn-north-1.amazonaws.com.cn/autogluon-inference:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "727897471807.dkr.ecr.cn-north-1.amazonaws.com.cn/autogluon-inference:0.4.3-gpu-py38",
+                },
+                "eu-central-1": {
+                    "cpu_ecr_uri_1": "763104351884.dkr.ecr.eu-central-1.amazonaws.com/autogluon-inference:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "763104351884.dkr.ecr.eu-central-1.amazonaws.com/autogluon-inference:0.4.3-gpu-py38",
+                },
+                "eu-north-1": {
+                    "cpu_ecr_uri_1": "763104351884.dkr.ecr.eu-north-1.amazonaws.com/autogluon-inference:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "763104351884.dkr.ecr.eu-north-1.amazonaws.com/autogluon-inference:0.4.3-gpu-py38",
+                },
+                "eu-south-1": {
+                    "cpu_ecr_uri_1": "692866216735.dkr.ecr.eu-south-1.amazonaws.com/autogluon-inference:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "692866216735.dkr.ecr.eu-south-1.amazonaws.com/autogluon-inference:0.4.3-gpu-py38",
+                },
+                "eu-west-1": {
+                    "cpu_ecr_uri_1": "763104351884.dkr.ecr.eu-west-1.amazonaws.com/autogluon-inference:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "763104351884.dkr.ecr.eu-west-1.amazonaws.com/autogluon-inference:0.4.3-gpu-py38",
+                },
+                "eu-west-2": {
+                    "cpu_ecr_uri_1": "763104351884.dkr.ecr.eu-west-2.amazonaws.com/autogluon-inference:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "763104351884.dkr.ecr.eu-west-2.amazonaws.com/autogluon-inference:0.4.3-gpu-py38",
+                },
+                "eu-west-3": {
+                    "cpu_ecr_uri_1": "763104351884.dkr.ecr.eu-west-3.amazonaws.com/autogluon-inference:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "763104351884.dkr.ecr.eu-west-3.amazonaws.com/autogluon-inference:0.4.3-gpu-py38",
+                },
+                "me-south-1": {
+                    "cpu_ecr_uri_1": "217643126080.dkr.ecr.me-south-1.amazonaws.com/autogluon-inference:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "217643126080.dkr.ecr.me-south-1.amazonaws.com/autogluon-inference:0.4.3-gpu-py38",
+                },
+                "sa-east-1": {
+                    "cpu_ecr_uri_1": "763104351884.dkr.ecr.sa-east-1.amazonaws.com/autogluon-inference:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "763104351884.dkr.ecr.sa-east-1.amazonaws.com/autogluon-inference:0.4.3-gpu-py38",
+                },
+                "us-east-1": {
+                    "cpu_ecr_uri_1": "763104351884.dkr.ecr.us-east-1.amazonaws.com/autogluon-inference:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "763104351884.dkr.ecr.us-east-1.amazonaws.com/autogluon-inference:0.4.3-gpu-py38",
+                },
+                "us-east-2": {
+                    "cpu_ecr_uri_1": "763104351884.dkr.ecr.us-east-2.amazonaws.com/autogluon-inference:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "763104351884.dkr.ecr.us-east-2.amazonaws.com/autogluon-inference:0.4.3-gpu-py38",
+                },
+                "us-west-1": {
+                    "cpu_ecr_uri_1": "763104351884.dkr.ecr.us-west-1.amazonaws.com/autogluon-inference:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "763104351884.dkr.ecr.us-west-1.amazonaws.com/autogluon-inference:0.4.3-gpu-py38",
+                },
+                "us-west-2": {
+                    "cpu_ecr_uri_1": "763104351884.dkr.ecr.us-west-2.amazonaws.com/autogluon-inference:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "763104351884.dkr.ecr.us-west-2.amazonaws.com/autogluon-inference:0.4.3-gpu-py38",
+                },
+            },
+            "variants": {
+                "c4": {"regional_properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "c5": {"regional_properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "c5d": {"regional_properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "c5n": {"regional_properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "c6i": {"regional_properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "g4dn": {"regional_properties": {"image_uri": "$gpu_ecr_uri_2"}},
+                "g5": {"regional_properties": {"image_uri": "$gpu_ecr_uri_2"}},
+                "local": {"regional_properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "local_gpu": {"regional_properties": {"image_uri": "$gpu_ecr_uri_2"}},
+                "m4": {"regional_properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "m5": {"regional_properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "m5d": {"regional_properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "p2": {"regional_properties": {"image_uri": "$gpu_ecr_uri_2"}},
+                "p3": {"regional_properties": {"image_uri": "$gpu_ecr_uri_2"}},
+                "p3dn": {"regional_properties": {"image_uri": "$gpu_ecr_uri_2"}},
+                "p4d": {"regional_properties": {"image_uri": "$gpu_ecr_uri_2"}},
+                "p4de": {"regional_properties": {"image_uri": "$gpu_ecr_uri_2"}},
+                "p5": {"regional_properties": {"image_uri": "$gpu_ecr_uri_2"}},
+                "r5": {"regional_properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "r5d": {"regional_properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "t2": {"regional_properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "t3": {"regional_properties": {"image_uri": "$cpu_ecr_uri_1"}},
+            },
+        },
+        "training_instance_type_variants": {
+            "regional_aliases": {
+                "af-south-1": {
+                    "cpu_ecr_uri_1": "626614931356.dkr.ecr.af-south-1.amazonaws.com/autogluon-training:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "626614931356.dkr.ecr.af-south-1.amazonaws.com/autogluon-training:0.4.3-gpu-py38",
+                },
+                "ap-east-1": {
+                    "cpu_ecr_uri_1": "871362719292.dkr.ecr.ap-east-1.amazonaws.com/autogluon-training:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "871362719292.dkr.ecr.ap-east-1.amazonaws.com/autogluon-training:0.4.3-gpu-py38",
+                },
+                "ap-northeast-1": {
+                    "cpu_ecr_uri_1": "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/autogluon-training:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/autogluon-training:0.4.3-gpu-py38",
+                },
+                "ap-northeast-2": {
+                    "cpu_ecr_uri_1": "763104351884.dkr.ecr.ap-northeast-2.amazonaws.com/autogluon-training:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "763104351884.dkr.ecr.ap-northeast-2.amazonaws.com/autogluon-training:0.4.3-gpu-py38",
+                },
+                "ap-south-1": {
+                    "cpu_ecr_uri_1": "763104351884.dkr.ecr.ap-south-1.amazonaws.com/autogluon-training:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "763104351884.dkr.ecr.ap-south-1.amazonaws.com/autogluon-training:0.4.3-gpu-py38",
+                },
+                "ap-southeast-1": {
+                    "cpu_ecr_uri_1": "763104351884.dkr.ecr.ap-southeast-1.amazonaws.com/autogluon-training:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "763104351884.dkr.ecr.ap-southeast-1.amazonaws.com/autogluon-training:0.4.3-gpu-py38",
+                },
+                "ap-southeast-2": {
+                    "cpu_ecr_uri_1": "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/autogluon-training:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/autogluon-training:0.4.3-gpu-py38",
+                },
+                "ca-central-1": {
+                    "cpu_ecr_uri_1": "763104351884.dkr.ecr.ca-central-1.amazonaws.com/autogluon-training:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "763104351884.dkr.ecr.ca-central-1.amazonaws.com/autogluon-training:0.4.3-gpu-py38",
+                },
+                "eu-central-1": {
+                    "cpu_ecr_uri_1": "763104351884.dkr.ecr.eu-central-1.amazonaws.com/autogluon-training:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "763104351884.dkr.ecr.eu-central-1.amazonaws.com/autogluon-training:0.4.3-gpu-py38",
+                },
+                "eu-north-1": {
+                    "cpu_ecr_uri_1": "763104351884.dkr.ecr.eu-north-1.amazonaws.com/autogluon-training:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "763104351884.dkr.ecr.eu-north-1.amazonaws.com/autogluon-training:0.4.3-gpu-py38",
+                },
+                "eu-south-1": {
+                    "cpu_ecr_uri_1": "692866216735.dkr.ecr.eu-south-1.amazonaws.com/autogluon-training:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "692866216735.dkr.ecr.eu-south-1.amazonaws.com/autogluon-training:0.4.3-gpu-py38",
+                },
+                "eu-west-1": {
+                    "cpu_ecr_uri_1": "763104351884.dkr.ecr.eu-west-1.amazonaws.com/autogluon-training:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "763104351884.dkr.ecr.eu-west-1.amazonaws.com/autogluon-training:0.4.3-gpu-py38",
+                },
+                "eu-west-2": {
+                    "cpu_ecr_uri_1": "763104351884.dkr.ecr.eu-west-2.amazonaws.com/autogluon-training:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "763104351884.dkr.ecr.eu-west-2.amazonaws.com/autogluon-training:0.4.3-gpu-py38",
+                },
+                "eu-west-3": {
+                    "cpu_ecr_uri_1": "763104351884.dkr.ecr.eu-west-3.amazonaws.com/autogluon-training:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "763104351884.dkr.ecr.eu-west-3.amazonaws.com/autogluon-training:0.4.3-gpu-py38",
+                },
+                "me-south-1": {
+                    "cpu_ecr_uri_1": "217643126080.dkr.ecr.me-south-1.amazonaws.com/autogluon-training:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "217643126080.dkr.ecr.me-south-1.amazonaws.com/autogluon-training:0.4.3-gpu-py38",
+                },
+                "sa-east-1": {
+                    "cpu_ecr_uri_1": "763104351884.dkr.ecr.sa-east-1.amazonaws.com/autogluon-training:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "763104351884.dkr.ecr.sa-east-1.amazonaws.com/autogluon-training:0.4.3-gpu-py38",
+                },
+                "us-east-1": {
+                    "cpu_ecr_uri_1": "763104351884.dkr.ecr.us-east-1.amazonaws.com/autogluon-training:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "763104351884.dkr.ecr.us-east-1.amazonaws.com/autogluon-training:0.4.3-gpu-py38",
+                },
+                "us-east-2": {
+                    "cpu_ecr_uri_1": "763104351884.dkr.ecr.us-east-2.amazonaws.com/autogluon-training:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "763104351884.dkr.ecr.us-east-2.amazonaws.com/autogluon-training:0.4.3-gpu-py38",
+                },
+                "us-west-1": {
+                    "cpu_ecr_uri_1": "763104351884.dkr.ecr.us-west-1.amazonaws.com/autogluon-training:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "763104351884.dkr.ecr.us-west-1.amazonaws.com/autogluon-training:0.4.3-gpu-py38",
+                },
+                "us-west-2": {
+                    "cpu_ecr_uri_1": "763104351884.dkr.ecr.us-west-2.amazonaws.com/autogluon-training:0.4.3-cpu-py38",
+                    "gpu_ecr_uri_2": "763104351884.dkr.ecr.us-west-2.amazonaws.com/autogluon-training:0.4.3-gpu-py38",
+                },
+            },
+            "variants": {
+                "c4": {"regional_properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "c5": {"regional_properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "c5d": {"regional_properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "c5n": {"regional_properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "c6i": {"regional_properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "g4dn": {"regional_properties": {"image_uri": "$gpu_ecr_uri_2"}},
+                "g5": {"regional_properties": {"image_uri": "$gpu_ecr_uri_2"}},
+                "local": {"regional_properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "local_gpu": {"regional_properties": {"image_uri": "$gpu_ecr_uri_2"}},
+                "m4": {"regional_properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "m5": {"regional_properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "m5d": {"regional_properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "p2": {"regional_properties": {"image_uri": "$gpu_ecr_uri_2"}},
+                "p3": {"regional_properties": {"image_uri": "$gpu_ecr_uri_2"}},
+                "p3dn": {"regional_properties": {"image_uri": "$gpu_ecr_uri_2"}},
+                "p4d": {"regional_properties": {"image_uri": "$gpu_ecr_uri_2"}},
+                "p4de": {"regional_properties": {"image_uri": "$gpu_ecr_uri_2"}},
+                "p5": {"regional_properties": {"image_uri": "$gpu_ecr_uri_2"}},
+                "r5": {"regional_properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "r5d": {"regional_properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "t2": {"regional_properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "t3": {"regional_properties": {"image_uri": "$cpu_ecr_uri_1"}},
+            },
+        },
     },
     "predictor-specs-model": {
         "model_id": "huggingface-text2text-flan-t5-xxl-fp16",

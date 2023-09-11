@@ -448,7 +448,11 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         self.version: str = json_obj["version"]
         self.min_sdk_version: str = json_obj["min_sdk_version"]
         self.incremental_training_supported: bool = bool(json_obj["incremental_training_supported"])
-        self.hosting_ecr_specs: JumpStartECRSpecs = JumpStartECRSpecs(json_obj["hosting_ecr_specs"])
+        self.hosting_ecr_specs: Optional[JumpStartECRSpecs] = (
+            JumpStartECRSpecs(json_obj["hosting_ecr_specs"])
+            if "hosting_ecr_specs" in json_obj
+            else None
+        )
         self.hosting_artifact_key: str = json_obj["hosting_artifact_key"]
         self.hosting_script_key: str = json_obj["hosting_script_key"]
         self.training_supported: bool = bool(json_obj["training_supported"])
@@ -509,8 +513,10 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         )
 
         if self.training_supported:
-            self.training_ecr_specs: JumpStartECRSpecs = JumpStartECRSpecs(
-                json_obj["training_ecr_specs"]
+            self.training_ecr_specs: Optional[JumpStartECRSpecs] = (
+                JumpStartECRSpecs(json_obj["training_ecr_specs"])
+                if "training_ecr_specs" in json_obj
+                else None
             )
             self.training_artifact_key: str = json_obj["training_artifact_key"]
             self.training_script_key: str = json_obj["training_script_key"]

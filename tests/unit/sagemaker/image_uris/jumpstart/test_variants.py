@@ -21,10 +21,11 @@ from sagemaker.jumpstart.utils import verify_model_region_and_return_specs
 from tests.unit.sagemaker.jumpstart.utils import get_special_model_spec
 
 
+@patch("sagemaker.jumpstart.artifacts.image_uris.JUMPSTART_LOGGER.warning")
 @patch("sagemaker.jumpstart.artifacts.image_uris.verify_model_region_and_return_specs")
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
 def test_jumpstart_variants_image_uri(
-    patched_get_model_specs, patched_verify_model_region_and_return_specs
+    patched_get_model_specs, patched_verify_model_region_and_return_specs, patched_warning_logger
 ):
 
     patched_verify_model_region_and_return_specs.side_effect = verify_model_region_and_return_specs
@@ -43,6 +44,8 @@ def test_jumpstart_variants_image_uri(
         )
     )
 
+    patched_warning_logger.assert_not_called()
+
     assert "867930986793.dkr.us-west-2.amazonaws.com/cpu-blah" == image_uris.retrieve(
         framework=None,
         region="us-west-2",
@@ -51,6 +54,10 @@ def test_jumpstart_variants_image_uri(
         model_version="*",
         instance_type="ml.c2.xlarge",
     )
+
+    patched_warning_logger.assert_not_called()
+
+    patched_warning_logger.reset_mock()
 
     assert (
         "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.5.0-cpu-py3"
@@ -64,6 +71,12 @@ def test_jumpstart_variants_image_uri(
         )
     )
 
+    patched_warning_logger.assert_called_once_with(
+        "Using fallback hosting ECR specs for retrieving image uri for JumpStart model '%s': '%s'",
+        "variant-model",
+        "JumpStartECRSpecs: {'framework': 'pytorch', 'framework_version': '1.5.0', 'py_version': 'py3'}",
+    )
+
     with pytest.raises(ValueError):
         image_uris.retrieve(
             framework=None,
@@ -73,6 +86,8 @@ def test_jumpstart_variants_image_uri(
             model_version="*",
             instance_type="ml.c2.xlarge",
         )
+
+    patched_warning_logger.reset_mock()
 
     assert (
         "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.5.0-gpu-py3"
@@ -84,4 +99,10 @@ def test_jumpstart_variants_image_uri(
             model_version="*",
             instance_type="ml.g4dn.2xlarge",
         )
+    )
+
+    patched_warning_logger.assert_called_once_with(
+        "Using fallback training ECR specs for retrieving image uri for JumpStart model '%s': '%s'",
+        "variant-model",
+        "JumpStartECRSpecs: {'framework': 'pytorch', 'framework_version': '1.5.0', 'py_version': 'py3'}",
     )
