@@ -133,7 +133,7 @@
                 "tag_prefix": "2.0.1-tgi0.9.3",
                 "repository": "huggingface-pytorch-tgi-inference",
                 "container_version": {"gpu": "cu118-ubuntu20.04"}
-            },
+            }
         },
         "1.0.3": {
             "py_versions": ["py39"],
