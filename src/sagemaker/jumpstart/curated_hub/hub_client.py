@@ -134,12 +134,12 @@ class CuratedHubClient:
 
         return hub_names
 
-    def list_hub_models(self, hub_name: str) -> List[str]:
+    def _list_hub_models(self, hub_name: str) -> List[Dict[str, Any]]:
         """Lists the Models on a Private Hub.
 
         This call handles the pagination.
         """
-        hub_names: List[str] = []
+        all_models_on_hub: List[Dict[str, Any]] = []
         run_once: bool = True
         next_token: Optional[str] = None
         while next_token or run_once:
@@ -151,12 +151,33 @@ class CuratedHubClient:
             else:
                 res = self._sm_client.list_hub_contents(HubName=hub_name, HubContentType="Model")
 
-            hub_names.extend(
-                map(self._get_hub_content_from_hub_content_summary, res["HubContentSummaries"])
-            )
-            next_token = res.get("NextToken")
+            # Adds only the HubContentSummaries to the list
+            all_models_on_hub.extend(res["HubContentSummaries"])
 
-        return hub_names
+        return all_models_on_hub
+
+    def list_hub_models_all_versions(self, hub_name: str) -> List[str]:
+        """Lists all versions of each Model on a Private Hub.
+
+        This call handles the pagination.
+        """
+        hub_content_summaries = self._list_hub_models(hub_name)
+        hub_content_version_summaries: List[Dict[str, str]] = []
+        for hub_content_summary in hub_content_summaries:
+            hub_content_version_summaries.extend(
+                self._list_hub_content_versions_no_content_noop(
+                    hub_content_summary["HubContentName"]
+                )
+            )
+        return hub_content_version_summaries
+
+    def list_hub_models(self, hub_name: str) -> List[Dict[str, str]]:
+        """Lists the Models on a Private Hub.
+
+        This call handles the pagination.
+        """
+        hub_content_summaries = self._list_hub_models(hub_name)
+        return list(map(self._get_hub_content_from_hub_content_summary, hub_content_summaries))
 
     def _get_hub_name_from_hub_summary(self, hub_summary: Dict[str, Any]) -> str:
         """Retrieves a hub name form a ListHubs HubSummary field."""

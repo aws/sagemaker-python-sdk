@@ -351,9 +351,19 @@ class JumpStartCuratedHub:
                 print(get_hub_creation_error_message(self.curated_hub_s3_config.bucket))
             raise
 
-    def list_models(self):
-        """Lists models on the Curated Hub."""
-        hub_models = self._curated_hub_client.list_hub_models(self.curated_hub_name)
+    def list_models(self, all_versions: bool = False):
+        """Lists models on the Curated Hub.
+
+        If all_versions is set to True, this will list all the versions of each model.
+
+        This calls sagemaker:ListHubContent and sagemaker:ListHubContentVersions.
+        Raises:
+          ClientError
+        """
+        if all_versions:
+            self._curated_hub_client.list_hub_models_all_versions(self.curated_hub_name)
+        else:
+            hub_models = self._curated_hub_client.list_hub_models(self.curated_hub_name)
         print(f"Models on the hub {self.curated_hub_name}: {hub_models}")
 
     def sync(self, model_ids: List[PublicHubModel], force_update: bool = False):
@@ -365,6 +375,8 @@ class JumpStartCuratedHub:
         For each model, this will perform a s3:CopyObject for all model dependencies into the hub.
         This will then import the metadata as a HubContent entry.
         This copy is performed in parallel using a thread pool.
+
+        This calls sagemaker:DescribeHubContent and sagemaker:ImportHubContent.
 
         If the model already exists in the curated hub,
           it will skip the update.
