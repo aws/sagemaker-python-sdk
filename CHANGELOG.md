@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.185.0 (2023-09-12)
+
+### Features
+
+ * Local Mode - Add Support for Docker Compose V2
+
+### Bug Fixes and Other Changes
+
+ * handle bad jumpstart default session
+ * Add Data Wrangler TLV and version 3.x images
+
 ## v2.184.0.post0 (2023-09-11)
 
 ### Documentation Changes
