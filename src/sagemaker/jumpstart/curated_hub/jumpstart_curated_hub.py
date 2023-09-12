@@ -361,7 +361,7 @@ class JumpStartCuratedHub:
           ClientError
         """
         if all_versions:
-            self._curated_hub_client.list_hub_models_all_versions(self.curated_hub_name)
+            hub_models = self._curated_hub_client.list_hub_models_all_versions(self.curated_hub_name)
         else:
             hub_models = self._curated_hub_client.list_hub_models(self.curated_hub_name)
         print(f"Models on the hub {self.curated_hub_name}: {hub_models}")
