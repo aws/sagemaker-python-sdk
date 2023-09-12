@@ -21,6 +21,7 @@ from typing import Optional
 from packaging.version import Version
 
 from sagemaker import utils
+from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 from sagemaker.jumpstart.utils import is_jumpstart_model_input
 from sagemaker.spark import defaults
 from sagemaker.jumpstart import artifacts
@@ -38,6 +39,7 @@ SKLEARN_FRAMEWORK = "sklearn"
 TRAINIUM_ALLOWED_FRAMEWORKS = "pytorch"
 INFERENCE_GRAVITON = "inference_graviton"
 DATA_WRANGLER_FRAMEWORK = "data-wrangler"
+STABILITYAI_FRAMEWORK = "stabilityai"
 
 
 @override_pipeline_parameter_var
@@ -60,6 +62,7 @@ def retrieve(
     sdk_version=None,
     inference_tool=None,
     serverless_inference_config=None,
+    sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> str:
     """Retrieves the ECR URI for the Docker image matching the given arguments.
 
@@ -109,6 +112,10 @@ def retrieve(
         serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
             Specifies configuration related to serverless endpoint. Instance type is
             not provided in serverless inference. So this is used to determine processor type.
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions. If not
+            specified, one is created using the default AWS configuration
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
 
     Returns:
         str: The ECR URI for the corresponding SageMaker Docker image.
@@ -147,6 +154,7 @@ def retrieve(
             training_compiler_config,
             tolerate_vulnerable_model,
             tolerate_deprecated_model,
+            sagemaker_session=sagemaker_session,
         )
 
     if training_compiler_config and (framework in [HUGGING_FACE_FRAMEWORK, "pytorch"]):
@@ -455,7 +463,11 @@ def _validate_version_and_set_if_needed(version, config, framework):
 
         return available_versions[0]
 
-    if version is None and framework in [DATA_WRANGLER_FRAMEWORK, HUGGING_FACE_LLM_FRAMEWORK]:
+    if version is None and framework in [
+        DATA_WRANGLER_FRAMEWORK,
+        HUGGING_FACE_LLM_FRAMEWORK,
+        STABILITYAI_FRAMEWORK,
+    ]:
         version = _get_latest_versions(available_versions)
 
     _validate_arg(version, available_versions + aliased_versions, "{} version".format(framework))
@@ -593,6 +605,7 @@ def _format_tag(tag_prefix, processor, py_version, container_version, inference_
     return "-".join(x for x in (tag_prefix, processor, py_version, container_version) if x)
 
 
+@override_pipeline_parameter_var
 def get_training_image_uri(
     region,
     framework,

@@ -18,6 +18,7 @@ from sagemaker.base_serializers import BaseSerializer
 from sagemaker.jumpstart.constants import (
     ACCEPT_TYPE_TO_DESERIALIZER_TYPE_MAP,
     CONTENT_TYPE_TO_SERIALIZER_TYPE_MAP,
+    DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     DESERIALIZER_TYPE_TO_CLASS_MAP,
     JUMPSTART_DEFAULT_REGION_NAME,
     SERIALIZER_TYPE_TO_CLASS_MAP,
@@ -29,6 +30,7 @@ from sagemaker.jumpstart.enums import (
 from sagemaker.jumpstart.utils import (
     verify_model_region_and_return_specs,
 )
+from sagemaker.session import Session
 
 
 def _retrieve_serializer_from_content_type(
@@ -73,6 +75,7 @@ def _retrieve_default_deserializer(
     region: Optional[str],
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> BaseDeserializer:
     """Retrieves the default deserializer for the model.
 
@@ -89,6 +92,10 @@ def _retrieve_default_deserializer(
         tolerate_deprecated_model (bool): True if deprecated versions of model
             specifications should be tolerated (exception not raised). If False, raises
             an exception if the version of the model is deprecated. (Default: False).
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions. If not
+            specified, one is created using the default AWS configuration
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
 
     Returns:
         BaseDeserializer: the default deserializer to use for the model.
@@ -100,6 +107,7 @@ def _retrieve_default_deserializer(
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
+        sagemaker_session=sagemaker_session,
     )
 
     return _retrieve_deserializer_from_accept_type(MIMEType.from_suffixed_type(default_accept_type))
@@ -111,6 +119,7 @@ def _retrieve_default_serializer(
     region: Optional[str],
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> BaseSerializer:
     """Retrieves the default serializer for the model.
 
@@ -127,7 +136,10 @@ def _retrieve_default_serializer(
         tolerate_deprecated_model (bool): True if deprecated versions of model
             specifications should be tolerated (exception not raised). If False, raises
             an exception if the version of the model is deprecated. (Default: False).
-
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions. If not
+            specified, one is created using the default AWS configuration
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     Returns:
         BaseSerializer: the default serializer to use for the model.
     """
@@ -138,6 +150,7 @@ def _retrieve_default_serializer(
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
+        sagemaker_session=sagemaker_session,
     )
 
     return _retrieve_serializer_from_content_type(MIMEType.from_suffixed_type(default_content_type))
@@ -149,6 +162,7 @@ def _retrieve_deserializer_options(
     region: Optional[str],
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> List[BaseDeserializer]:
     """Retrieves the supported deserializers for the model.
 
@@ -165,7 +179,10 @@ def _retrieve_deserializer_options(
         tolerate_deprecated_model (bool): True if deprecated versions of model
             specifications should be tolerated (exception not raised). If False, raises
             an exception if the version of the model is deprecated. (Default: False).
-
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions. If not
+            specified, one is created using the default AWS configuration
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     Returns:
         List[BaseDeserializer]: the supported deserializers to use for the model.
     """
@@ -176,6 +193,7 @@ def _retrieve_deserializer_options(
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
+        sagemaker_session=sagemaker_session,
     )
 
     seen_classes: Set[Type] = set()
@@ -201,6 +219,7 @@ def _retrieve_serializer_options(
     region: Optional[str],
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> List[BaseSerializer]:
     """Retrieves the supported serializers for the model.
 
@@ -217,7 +236,10 @@ def _retrieve_serializer_options(
         tolerate_deprecated_model (bool): True if deprecated versions of model
             specifications should be tolerated (exception not raised). If False, raises
             an exception if the version of the model is deprecated. (Default: False).
-
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions. If not
+            specified, one is created using the default AWS configuration
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     Returns:
         List[BaseSerializer]: the supported serializers to use for the model.
     """
@@ -228,6 +250,7 @@ def _retrieve_serializer_options(
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
+        sagemaker_session=sagemaker_session,
     )
 
     seen_classes: Set[Type] = set()
@@ -253,6 +276,7 @@ def _retrieve_default_content_type(
     region: Optional[str],
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> str:
     """Retrieves the default content type for the model.
 
@@ -269,7 +293,10 @@ def _retrieve_default_content_type(
         tolerate_deprecated_model (bool): True if deprecated versions of model
             specifications should be tolerated (exception not raised). If False, raises
             an exception if the version of the model is deprecated. (Default: False).
-
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions. If not
+            specified, one is created using the default AWS configuration
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     Returns:
         str: the default content type to use for the model.
     """
@@ -284,6 +311,7 @@ def _retrieve_default_content_type(
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
+        sagemaker_session=sagemaker_session,
     )
 
     default_content_type = model_specs.predictor_specs.default_content_type
@@ -296,6 +324,7 @@ def _retrieve_default_accept_type(
     region: Optional[str],
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> str:
     """Retrieves the default accept type for the model.
 
@@ -312,7 +341,10 @@ def _retrieve_default_accept_type(
         tolerate_deprecated_model (bool): True if deprecated versions of model
             specifications should be tolerated (exception not raised). If False, raises
             an exception if the version of the model is deprecated. (Default: False).
-
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions. If not
+            specified, one is created using the default AWS configuration
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     Returns:
         str: the default accept type to use for the model.
     """
@@ -327,6 +359,7 @@ def _retrieve_default_accept_type(
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
+        sagemaker_session=sagemaker_session,
     )
 
     default_accept_type = model_specs.predictor_specs.default_accept_type
@@ -340,6 +373,7 @@ def _retrieve_supported_accept_types(
     region: Optional[str],
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> List[str]:
     """Retrieves the supported accept types for the model.
 
@@ -356,7 +390,10 @@ def _retrieve_supported_accept_types(
         tolerate_deprecated_model (bool): True if deprecated versions of model
             specifications should be tolerated (exception not raised). If False, raises
             an exception if the version of the model is deprecated. (Default: False).
-
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions. If not
+            specified, one is created using the default AWS configuration
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     Returns:
         list: the supported accept types to use for the model.
     """
@@ -371,6 +408,7 @@ def _retrieve_supported_accept_types(
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
+        sagemaker_session=sagemaker_session,
     )
 
     supported_accept_types = model_specs.predictor_specs.supported_accept_types
@@ -384,6 +422,7 @@ def _retrieve_supported_content_types(
     region: Optional[str],
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> List[str]:
     """Retrieves the supported content types for the model.
 
@@ -400,7 +439,10 @@ def _retrieve_supported_content_types(
         tolerate_deprecated_model (bool): True if deprecated versions of model
             specifications should be tolerated (exception not raised). If False, raises
             an exception if the version of the model is deprecated. (Default: False).
-
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions. If not
+            specified, one is created using the default AWS configuration
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     Returns:
         list: the supported content types to use for the model.
     """
@@ -415,6 +457,7 @@ def _retrieve_supported_content_types(
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
+        sagemaker_session=sagemaker_session,
     )
 
     supported_content_types = model_specs.predictor_specs.supported_content_types

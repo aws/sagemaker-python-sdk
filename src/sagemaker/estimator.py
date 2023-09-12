@@ -49,7 +49,7 @@ from sagemaker.debugger import (  # noqa: F401 # pylint: disable=unused-import
     ProfilerRule,
     Rule,
     TensorBoardOutputConfig,
-    get_default_profiler_rule,
+    get_default_profiler_processing_job,
     get_rule_container_image_uri,
     RuleBase,
 )
@@ -65,6 +65,8 @@ from sagemaker.fw_utils import (
     validate_source_code_input_against_pipeline_variables,
 )
 from sagemaker.inputs import TrainingInput, FileSystemInput
+from sagemaker.interactive_apps import SupportedInteractiveAppTypes
+from sagemaker.interactive_apps.tensorboard import TensorBoardApp
 from sagemaker.instance_group import InstanceGroup
 from sagemaker.utils import instance_supports_kms
 from sagemaker.job import _Job
@@ -99,7 +101,6 @@ from sagemaker.utils import (
 )
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
-from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.pipeline_context import PipelineSession, runnable_by_pipeline
 
 logger = logging.getLogger(__name__)
@@ -614,16 +615,21 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.output_kms_key = resolve_value_from_config(
             output_kms_key, TRAINING_JOB_KMS_KEY_ID_PATH, sagemaker_session=self.sagemaker_session
         )
+        use_volume_kms_config: bool = False
         if instance_type is None or isinstance(instance_type, str):
             instance_type_for_volume_kms = instance_type
-        elif isinstance(instance_type, ParameterString):
-            instance_type_for_volume_kms = instance_type.default_value
+        elif isinstance(instance_type, PipelineVariable):
+            use_volume_kms_config = True
+            instance_type_for_volume_kms = instance_type
         else:
             raise ValueError(f"Bad value for instance type: '{instance_type}'")
 
         # KMS can only be attached to supported instances
         use_volume_kms_config = (
-            (instance_type_for_volume_kms and instance_supports_kms(instance_type_for_volume_kms))
+            use_volume_kms_config
+            or (
+                instance_type_for_volume_kms and instance_supports_kms(instance_type_for_volume_kms)
+            )
             or instance_groups is not None
             and any(
                 [
@@ -745,6 +751,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
         # Internal flag
         self._is_output_path_set_from_default_bucket_and_prefix = False
+
+        self.tensorboard_app = TensorBoardApp(region=self.sagemaker_session.boto_region_name)
 
     @abstractmethod
     def training_image_uri(self):
@@ -1111,6 +1119,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 self.profiler_config = ProfilerConfig(s3_output_path=self.output_path)
             if self.rules is None or (self.rules and not self.profiler_rules):
                 self.profiler_rules = []
+                if self.profiler_config.profile_params:
+                    self.profiler_rules.append(
+                        get_default_profiler_processing_job(
+                            instance_type=self.profiler_config.profile_params.instanceType,
+                            volume_size_in_gb=self.profiler_config.profile_params.volumeSizeInGB,
+                        )
+                    )  # Rule specifying processing options for detail prof
 
         if self.profiler_config and not self.profiler_config.s3_output_path:
             self.profiler_config.s3_output_path = self.output_path
@@ -1137,9 +1152,12 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             rule (:class:`~sagemaker.debugger.RuleBase`): Any rule object that derives from RuleBase
         """
         if rule.image_uri == "DEFAULT_RULE_EVALUATOR_IMAGE":
-            rule.image_uri = get_rule_container_image_uri(self.sagemaker_session.boto_region_name)
-            rule.instance_type = None
-            rule.volume_size_in_gb = None
+            rule.image_uri = get_rule_container_image_uri(
+                rule.name, self.sagemaker_session.boto_region_name
+            )
+            if rule.name.startswith("DetailedProfilerProcessingJobConfig") is False:
+                rule.instance_type = None
+                rule.volume_size_in_gb = None
 
     def _set_source_s3_uri(self, rule):
         """Set updated source S3 uri when specified.
@@ -1425,6 +1443,24 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             Instance of the calling ``Estimator`` Class with the attached
             training job.
         """
+        return cls._attach(
+            training_job_name=training_job_name,
+            sagemaker_session=sagemaker_session,
+            model_channel_name=model_channel_name,
+        )
+
+    @classmethod
+    def _attach(
+        cls,
+        training_job_name: str,
+        sagemaker_session: Optional[str] = None,
+        model_channel_name: str = "model",
+        additional_kwargs: Optional[Dict[str, Any]] = None,
+    ) -> "EstimatorBase":
+        """Creates an Estimator bound to an existing training job.
+
+        Additional kwargs are allowed for instantiating Estimator.
+        """
         sagemaker_session = sagemaker_session or Session()
 
         job_details = sagemaker_session.sagemaker_client.describe_training_job(
@@ -1435,6 +1471,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             ResourceArn=job_details["TrainingJobArn"]
         )["Tags"]
         init_params.update(tags=tags)
+
+        if additional_kwargs:
+            init_params.update(additional_kwargs)
 
         estimator = cls(sagemaker_session=sagemaker_session, **init_params)
         estimator.latest_training_job = _TrainingJob(
@@ -2220,6 +2259,73 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         profiler_config_request_dict = self.profiler_config._to_request_dict()
 
         _TrainingJob.update(self, profiler_rule_configs, profiler_config_request_dict)
+
+    def get_app_url(
+        self,
+        app_type,
+        open_in_default_web_browser=True,
+        create_presigned_domain_url=False,
+        domain_id=None,
+        user_profile_name=None,
+        optional_create_presigned_url_kwargs=None,
+    ):
+        """Generate a URL to help access the specified app hosted in Amazon SageMaker Studio.
+
+        Args:
+            app_type (str or SupportedInteractiveAppTypes): Required. The app type available in
+                SageMaker Studio to return a URL to.
+            open_in_default_web_browser (bool): Optional. When True, the URL will attempt to be
+                opened in the environment's default web browser. Otherwise, the resulting URL will
+                be returned by this function.
+                Default: ``True``
+            create_presigned_domain_url (bool): Optional. Determines whether a presigned domain URL
+                should be generated instead of an unsigned URL. This only applies when called from
+                outside of a SageMaker Studio environment. If this is set to True inside of a
+                SageMaker Studio environment, it will be ignored.
+                Default: ``False``
+            domain_id (str): Optional. The AWS Studio domain that the resulting app will use. If
+                code is executing in a Studio environment and this was not supplied, this will be
+                automatically detected. If not supplied and running in a non-Studio environment, it
+                is up to the derived class on how to handle that, but in general, a redirect to a
+                landing page can be expected.
+                Default: ``None``
+            user_profile_name (str): Optional. The AWS Studio user profile that the resulting app
+                will use. If code is executing in a Studio environment and this was not supplied,
+                this will be automatically detected. If not supplied and running in a
+                non-Studio environment, it is up to the derived class on how to handle that, but in
+                general, a redirect to a landing page can be expected.
+                Default: ``None``
+            optional_create_presigned_url_kwargs (dict): Optional. This parameter
+                should be passed when a user outside of Studio wants a presigned URL to the
+                TensorBoard application and wants to modify the optional parameters of the
+                create_presigned_domain_url call.
+                Default: ``None``
+        Returns:
+            str: A URL for the requested app in SageMaker Studio.
+        """
+        url = None
+
+        # Get app_type in lower str format
+        if isinstance(app_type, SupportedInteractiveAppTypes):
+            app_type = app_type.name
+        app_type = app_type.lower()
+
+        if app_type == SupportedInteractiveAppTypes.TENSORBOARD.name.lower():
+            training_job_name = None
+            if self._current_job_name:
+                training_job_name = self._current_job_name
+            url = self.tensorboard_app.get_app_url(
+                training_job_name=training_job_name,
+                open_in_default_web_browser=open_in_default_web_browser,
+                create_presigned_domain_url=create_presigned_domain_url,
+                domain_id=domain_id,
+                user_profile_name=user_profile_name,
+                optional_create_presigned_url_kwargs=optional_create_presigned_url_kwargs,
+            )
+        else:
+            raise ValueError(f"{app_type} does not support URL retrieval.")
+
+        return url
 
 
 class _TrainingJob(_Job):

@@ -1,5 +1,88 @@
 # Changelog
 
+## v2.184.0.post0 (2023-09-11)
+
+### Documentation Changes
+
+ * add interactive apps rst file
+
+## v2.184.0 (2023-09-07)
+
+### Features
+
+ * Enable notebook instances to get presigned url
+
+### Bug Fixes and Other Changes
+
+ * update scikit-learn, scipy, and apache-airflow deps for dependabot
+ * log message when sdk defaults not applied
+
+## v2.183.0 (2023-09-05)
+
+### Deprecations and Removals
+
+ * remove support for py37
+
+### Features
+
+ * Neo service GA in TLV
+
+### Bug Fixes and Other Changes
+
+ * Update pytorch.json with 2.0.1 for inference and training
+ * get python version dynamically for remote function tests
+ * HuggingFaceProcessor parameterized instance_type when image_uri is absent
+
+## v2.182.0 (2023-08-29)
+
+### Features
+
+ * image url for modelmonitor in TLV region
+ * Enable spot training on remote decorator and executor
+
+## v2.181.0 (2023-08-28)
+
+### Features
+
+ * StabilityAI DLC Image URIs
+
+### Bug Fixes and Other Changes
+
+ * temporarily skip kmeans notebook
+
+## v2.180.0 (2023-08-24)
+
+### Features
+
+ * Add presigned URLs for interactive apps
+ * Add detail profiler V2 options and tests
+
+## v2.179.0 (2023-08-21)
+
+### Features
+
+ * attach method for jumpstart estimator
+
+### Bug Fixes and Other Changes
+
+ * pipeline upsert failed to pass parallelism_config to update
+
+## v2.178.0 (2023-08-17)
+
+### Features
+
+ * Support to get latest monitoring execution processing logs
+
+### Bug Fixes and Other Changes
+
+ * Add context to predict_fn example
+ * gated models unsupported region
+ * jumpstart cache using sagemaker session s3 client
+ * add TFS 2.13 Graviton SM images
+ * pipeline variable kms key
+ * integration test for gated jumpstart training model
+ * tags for jumpstart model package models
+
 ## v2.177.1 (2023-08-14)
 
 ### Bug Fixes and Other Changes

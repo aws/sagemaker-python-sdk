@@ -46,6 +46,7 @@ ACCOUNTS = {
     "us-isob-east-1": "406031935815",
     "us-west-1": "710691900526",
     "us-west-2": "301217895009",
+    "il-central-1": "275950707576",
 }
 
 INFERENTIA_REGIONS = ACCOUNTS.keys()

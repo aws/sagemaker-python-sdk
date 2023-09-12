@@ -23,7 +23,7 @@ ROLE = "arn:aws:iam::012345678901:role/SageMakerRole"
 REGION = "us-west-2"
 DATA_WRANGLER_RECIPE_SOURCE = "s3://data_wrangler_flows/flow-26-18-43-16-0b48ac2e.flow"
 DATA_WRANGLER_CONTAINER_URI = (
-    "174368400705.dkr.ecr.us-west-2.amazonaws.com/sagemaker-data-wrangler-container:2.x"
+    "174368400705.dkr.ecr.us-west-2.amazonaws.com/sagemaker-data-wrangler-container:3.x"
 )
 MOCK_S3_URI = "s3://mock_data/mock.csv"
 

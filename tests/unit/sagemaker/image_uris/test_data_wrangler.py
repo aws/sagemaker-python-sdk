@@ -40,20 +40,39 @@ DATA_WRANGLER_ACCOUNTS = {
     "cn-north-1": "245909111842",
     "cn-northwest-1": "249157047649",
 }
-VERSIONS = ["1.x", "2.x"]
+
+# Accounts only supported in DW 3.x and beyond
+DATA_WRANGLER_3X_ACCOUNTS = {
+    "il-central-1": "406833011540",
+}
+
+VERSIONS = ["1.x", "2.x", "3.x"]
+
+
+def _test_ecr_uri(account, region, version):
+    actual_uri = image_uris.retrieve("data-wrangler", region=region, version=version)
+    expected_uri = expected_uris.algo_uri(
+        "sagemaker-data-wrangler-container",
+        account,
+        region,
+        version=version,
+    )
+    return expected_uri == actual_uri
 
 
 def test_data_wrangler_ecr_uri():
     for version in VERSIONS:
         for region in DATA_WRANGLER_ACCOUNTS.keys():
-            actual_uri = image_uris.retrieve("data-wrangler", region=region, version="1.x")
-            expected_uri = expected_uris.algo_uri(
-                "sagemaker-data-wrangler-container",
-                DATA_WRANGLER_ACCOUNTS[region],
-                region,
-                version="1.x",
+            assert _test_ecr_uri(
+                account=DATA_WRANGLER_ACCOUNTS[region], region=region, version=version
             )
-            assert expected_uri == actual_uri
+
+
+def test_data_wrangler_ecr_uri_3x():
+    for region in DATA_WRANGLER_3X_ACCOUNTS.keys():
+        assert _test_ecr_uri(
+            account=DATA_WRANGLER_3X_ACCOUNTS[region], region=region, version="3.x"
+        )
 
 
 def test_data_wrangler_ecr_uri_none():
