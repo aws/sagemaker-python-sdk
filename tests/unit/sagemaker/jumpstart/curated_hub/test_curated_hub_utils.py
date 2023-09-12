@@ -20,7 +20,8 @@ from sagemaker.jumpstart.curated_hub.utils import (
     list_objects_by_prefix_pagination,
     to_s3_folder_prefix,
     convert_s3_key_to_new_prefix,
-    base_framework,
+    hosting_base_framework,
+    training_base_framework,
     get_model_framework,
 )
 
@@ -63,7 +64,16 @@ class CuratedHubUtilsTest(unittest.TestCase):
         model_specs.hosting_ecr_specs.framework_version = "version"
 
         self.assertEqual(
-            base_framework(model_specs), f"pytorch{model_specs.hosting_ecr_specs.framework_version}"
+            hosting_base_framework(model_specs), f"pytorch{model_specs.hosting_ecr_specs.framework_version}"
+        )
+
+    def test_training_base_framework(self):
+        model_specs = Mock()
+        model_specs.training_ecr_specs.framework = "huggingface"
+        model_specs.training_ecr_specs.framework_version = "version"
+
+        self.assertEqual(
+            training_base_framework(model_specs), f"pytorch{model_specs.training_ecr_specs.framework_version}"
         )
 
     def test_get_model_framework(self):

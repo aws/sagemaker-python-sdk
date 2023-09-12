@@ -397,7 +397,6 @@ class JumpStartCuratedHub:
             scope=JumpStartScriptScope.INFERENCE,
             region=self._region,
         )
-        print(f"Public JumpStart model specs for {model_id.id}-{model_id.version}: {specs}")
         return specs
 
     def _model_needs_update(self, model_specs: JumpStartModelSpecs) -> bool:
@@ -450,11 +449,6 @@ class JumpStartCuratedHub:
             f"Importing model {public_js_model_specs.model_id}"
             f" version {public_js_model_specs.version} to curated private hub..."
         )
-        # Currently only able to support a single version of HubContent
-        # Deletes all versions to make room for new version
-        self._delete_model_from_curated_hub(
-            model_specs=public_js_model_specs, delete_all_versions=True, delete_dependencies=True
-        )
 
         self._content_copier.copy_hub_content_dependencies_to_hub_bucket(
             model_specs=public_js_model_specs
@@ -492,10 +486,11 @@ class JumpStartCuratedHub:
             HubContentDocument=hub_content_document,
         )
 
-    def delete_models(self, model_ids: List[PublicHubModel]):
-        """Deletes all versions of each model"""
-        # TODO: Add to flags when multiple versions per upload is possible
-        delete_all_versions = True
+    def delete_models(self, model_ids: List[PublicHubModel], delete_all_versions: bool = False):
+        """Deletes a list of model versions from the Curated Hub.
+        
+        If delete_all_versions is set to true, all versions of a Model will be deleted.
+        """
         model_specs = self._get_model_specs_for_list(model_ids)
         for model_spec in model_specs:
             self._delete_model_from_curated_hub(model_spec, delete_all_versions)
