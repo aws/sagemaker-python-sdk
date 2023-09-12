@@ -97,7 +97,7 @@ class JumpStartCuratedHub:
     def _get_sm_client(self) -> Any:
         """Returns a SageMaker client."""
         return boto3.client("sagemaker", region_name=self._region)
-    
+
     def _get_sts_client(self) -> Any:
         """Returns an STS client."""
         return boto3.client("sts", region_name=self._region)
@@ -391,7 +391,7 @@ class JumpStartCuratedHub:
 
     def _get_model_specs(self, model_id: PublicHubModel) -> JumpStartModelSpecs:
         """Converts PublicHubModel to JumpStartModelSpecs."""
-        specs =  verify_model_region_and_return_specs(
+        specs = verify_model_region_and_return_specs(
             model_id=model_id.id,
             version=model_id.version,
             scope=JumpStartScriptScope.INFERENCE,
@@ -488,7 +488,7 @@ class JumpStartCuratedHub:
 
     def delete_models(self, model_ids: List[PublicHubModel], delete_all_versions: bool = False):
         """Deletes a list of model versions from the Curated Hub.
-        
+
         If delete_all_versions is set to true, all versions of a Model will be deleted.
         """
         model_specs = self._get_model_specs_for_list(model_ids)

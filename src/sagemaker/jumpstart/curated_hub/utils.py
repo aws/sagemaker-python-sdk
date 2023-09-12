@@ -137,6 +137,7 @@ def hosting_base_framework(model_specs: JumpStartModelSpecs) -> Optional[str]:
         return f"pytorch{model_specs.hosting_ecr_specs.framework_version}"
     return None
 
+
 def training_base_framework(model_specs: JumpStartModelSpecs) -> Optional[str]:
     """Retrieves the base framework from a model spec"""
     if model_specs.training_ecr_specs.framework == "huggingface":

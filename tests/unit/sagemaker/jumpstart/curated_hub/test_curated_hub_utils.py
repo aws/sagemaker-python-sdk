@@ -64,7 +64,8 @@ class CuratedHubUtilsTest(unittest.TestCase):
         model_specs.hosting_ecr_specs.framework_version = "version"
 
         self.assertEqual(
-            hosting_base_framework(model_specs), f"pytorch{model_specs.hosting_ecr_specs.framework_version}"
+            hosting_base_framework(model_specs),
+            f"pytorch{model_specs.hosting_ecr_specs.framework_version}",
         )
 
     def test_training_base_framework(self):
@@ -73,7 +74,8 @@ class CuratedHubUtilsTest(unittest.TestCase):
         model_specs.training_ecr_specs.framework_version = "version"
 
         self.assertEqual(
-            training_base_framework(model_specs), f"pytorch{model_specs.training_ecr_specs.framework_version}"
+            training_base_framework(model_specs),
+            f"pytorch{model_specs.training_ecr_specs.framework_version}",
         )
 
     def test_get_model_framework(self):
