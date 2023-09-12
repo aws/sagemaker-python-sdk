@@ -1,11 +1,7 @@
 {
     "inference": {
         "processors": ["gpu"],
-        "version_aliases": {
-            "0.6": "0.6.0",
-            "0.8": "0.8.2",
-            "0.9": "0.9.3"
-        },
+        "version_aliases": {"0.6": "0.6.0", "0.8": "0.8.2", "0.9": "0.9.3", "1.0": "1.0.3"},
         "versions": {
             "0.6.0": {
                 "py_versions": ["py39"],
@@ -43,11 +39,11 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
                 },
                 "tag_prefix": "2.0.0-tgi0.6.0",
                 "repository": "huggingface-pytorch-tgi-inference",
-                "container_version": {"gpu": "cu118-ubuntu20.04"}
+                "container_version": {"gpu": "cu118-ubuntu20.04"},
             },
             "0.8.2": {
                 "py_versions": ["py39"],
@@ -85,11 +81,11 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
                 },
                 "tag_prefix": "2.0.0-tgi0.8.2",
                 "repository": "huggingface-pytorch-tgi-inference",
-                "container_version": {"gpu": "cu118-ubuntu20.04"}
+                "container_version": {"gpu": "cu118-ubuntu20.04"},
             },
             "0.9.3": {
                 "py_versions": ["py39"],
@@ -127,12 +123,12 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
                 },
                 "tag_prefix": "2.0.1-tgi0.9.3",
                 "repository": "huggingface-pytorch-tgi-inference",
-                "container_version": {"gpu": "cu118-ubuntu20.04"}
-            }
+                "container_version": {"gpu": "cu118-ubuntu20.04"},
+            },
         },
         "1.0.3": {
             "py_versions": ["py39"],
@@ -170,11 +166,11 @@
                 "us-iso-east-1": "886529160074",
                 "us-isob-east-1": "094389454867",
                 "us-west-1": "763104351884",
-                "us-west-2": "763104351884"
+                "us-west-2": "763104351884",
             },
             "tag_prefix": "2.0.1-tgi1.0.3",
             "repository": "huggingface-pytorch-tgi-inference",
-            "container_version": {"gpu": "cu118-ubuntu20.04"}
-        }
+            "container_version": {"gpu": "cu118-ubuntu20.04"},
+        },
     }
 }
