@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 import json
+import re
 from dataclasses import dataclass
 from typing import Dict, Any, Set, List, Optional
 
@@ -25,7 +26,7 @@ from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
 from sagemaker.jumpstart.curated_hub.hub_model_specs.hub_model_specs import Hyperparameter
 
 STUDIO_METADATA_FILENAME = "metadata-modelzoo_v7.json"
-
+STUDIO_HYPERPARAMETER_NAME_REGEX = "/^[a-zA-Z0-9](-*[a-zA-Z0-9])*$/"
 
 def get_studio_model_metadata_map_from_region(region: str) -> Dict[str, Dict[str, Any]]:
     """Pulls Studio modelzoo metadata from JS prod bucket in region."""
@@ -153,22 +154,23 @@ def get_model_framework(model_specs: JumpStartModelSpecs) -> str:
 def convert_public_model_hyperparameter_to_hub_hyperparameter(
     hyperparameter: JumpStartHyperparameter,
 ) -> Hyperparameter:
-    """Adapter function to format Public Hub hyperparameters to Private Hub hyperparameter"""
+    """Adapter function to format Public Hub hyperparameters to Private Hub hyperparameter."""
+
+    # All hyperparameters are currently being stored as Text values
     return Hyperparameter(
         Name=hyperparameter.name,
         DefaultValue=hyperparameter.default,
-        Type=_convert_hyperparameter_type_to_valid_hub_type(hyperparameter.type),
+        Type="Text",
         Options=hyperparameter.options if hasattr(hyperparameter, "options") else None,
-        Min=hyperparameter.min if hasattr(hyperparameter, "min") else None,
-        Max=hyperparameter.max if hasattr(hyperparameter, "max") else None,
+        Min=str(hyperparameter.min) if hasattr(hyperparameter, "min") else None,
+        Max=str(hyperparameter.max) if hasattr(hyperparameter, "max") else None,
         Label=None,
         Description=None,
         Regex=None,
     )
 
-
 def _convert_hyperparameter_type_to_valid_hub_type(hyperparameter_type: str) -> str:
-    """Validates a JumpStartHyperparameter"""
+    """Sets the JumpStart hyperparameter type."""
     if hyperparameter_type == "int":
         return "Integer"
     return hyperparameter_type.capitalize()
