@@ -146,12 +146,12 @@ class Hyperparameter:
     Name: str
     DefaultValue: Optional[str]
     Type: str  # enum
-    Options: List[Optional[str]]
-    Label: Optional[str]
-    Description: Optional[str]
-    Regex: Optional[str]
-    Min: Optional[str]
-    Max: Optional[str]
+    Options: List[Optional[str]] = []
+    Label: Optional[str] = None
+    Description: Optional[str] = None
+    Regex: Optional[str] = None
+    Min: Optional[str] = None
+    Max: Optional[str] = None
 
 
 @dataclass

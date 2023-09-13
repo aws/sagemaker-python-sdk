@@ -158,7 +158,7 @@ def convert_public_model_hyperparameter_to_hub_hyperparameter(
     return Hyperparameter(
         Name=hyperparameter.name,
         DefaultValue=str(hyperparameter.default),
-        Type="Text",
+        Type="Text"
     )
 
     # Current import hyperparameters are currently being stored as Text values
