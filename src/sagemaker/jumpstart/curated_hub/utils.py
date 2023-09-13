@@ -155,19 +155,26 @@ def convert_public_model_hyperparameter_to_hub_hyperparameter(
     hyperparameter: JumpStartHyperparameter,
 ) -> Hyperparameter:
     """Adapter function to format Public Hub hyperparameters to Private Hub hyperparameter."""
-
-    # All hyperparameters are currently being stored as Text values
     return Hyperparameter(
         Name=hyperparameter.name,
-        DefaultValue=hyperparameter.default,
+        DefaultValue=str(hyperparameter.default),
         Type="Text",
-        Options=hyperparameter.options if hasattr(hyperparameter, "options") else None,
-        Min=str(hyperparameter.min) if hasattr(hyperparameter, "min") else None,
-        Max=str(hyperparameter.max) if hasattr(hyperparameter, "max") else None,
-        Label=None,
-        Description=None,
-        Regex=None,
     )
+
+    # Current import hyperparameters are currently being stored as Text values
+    # Current import hyperparameters don't have min, max, options, etc.
+    # The below is the expected result. Until Studio FE is fixed we will use the above.
+    # return Hyperparameter(
+    #     Name=hyperparameter.name,
+    #     DefaultValue=hyperparameter.default,
+    #     Type=_convert_hyperparameter_type_to_valid_hub_type(hyperparameter.type),,
+    #     Options=hyperparameter.options if hasattr(hyperparameter, "options") else None,
+    #     Min=hyperparameter.min if hasattr(hyperparameter, "min") else None,
+    #     Max=hyperparameter.max if hasattr(hyperparameter, "max") else None,
+    #     Label=None,
+    #     Description=None,
+    #     Regex=None,
+    # )
 
 def _convert_hyperparameter_type_to_valid_hub_type(hyperparameter_type: str) -> str:
     """Sets the JumpStart hyperparameter type."""
