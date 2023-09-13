@@ -12,17 +12,26 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import os
+import json
 import pytest
-from sagemaker import image_uris
-from tests.unit.sagemaker.image_uris import expected_uris
 
 
-@pytest.mark.parametrize("load_config", ["debugger.json"], indirect=True)
-def test_debugger(load_config):
-    ACCOUNTS = load_config["versions"]["latest"]["registries"]
-    for region in ACCOUNTS.keys():
-        uri = image_uris.retrieve("debugger", region=region)
-        expected = expected_uris.algo_uri(
-            "sagemaker-debugger-rules", ACCOUNTS[region], region, version="latest"
-        )
-        assert expected == uri
+@pytest.fixture(scope="module")
+def config_dir():
+    return "src/sagemaker/image_uri_config/"
+
+
+@pytest.fixture(scope="module")
+def load_config(config_dir, request):
+    config_file_name = request.param
+    config_file_path = os.path.join(config_dir, config_file_name)
+
+    with open(config_file_path, "r") as config_file:
+        return json.load(config_file)
+
+
+@pytest.fixture(scope="module")
+def extract_versions_for_image_scope(load_config, request):
+    scope_val = request.param
+    return load_config[scope_val]["versions"]
