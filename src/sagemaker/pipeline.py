@@ -356,6 +356,7 @@ class PipelineModel(object):
         framework_version: Optional[Union[str, PipelineVariable]] = None,
         nearest_model_name: Optional[Union[str, PipelineVariable]] = None,
         data_input_configuration: Optional[Union[str, PipelineVariable]] = None,
+        skip_model_validation: Optional[Union[str, PipelineVariable]] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -403,6 +404,8 @@ class PipelineModel(object):
                 benchmarked by Amazon SageMaker Inference Recommender (default: None).
             data_input_configuration (str or PipelineVariable): Input object for the model
                 (default: None).
+            skip_model_validation (str or PipelineVariable): Indicates if you want to skip model
+                validation. Values can be "All" or "None" (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance.
@@ -448,6 +451,7 @@ class PipelineModel(object):
             domain=domain,
             sample_payload_url=sample_payload_url,
             task=task,
+            skip_model_validation=skip_model_validation,
         )
 
         self.sagemaker_session.create_model_package_from_containers(**model_pkg_args)
