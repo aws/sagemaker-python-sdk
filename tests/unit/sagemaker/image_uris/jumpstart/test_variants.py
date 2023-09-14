@@ -72,10 +72,12 @@ def test_jumpstart_variants_image_uri(
     )
 
     patched_warning_logger.assert_called_once_with(
-        "Using fallback hosting ECR specs for retrieving image uri for JumpStart model '%s': '%s'",
+        "Using fallback inference ECR specs for retrieving image URI for JumpStart model ID '%s': '%s'",
         "variant-model",
         "JumpStartECRSpecs: {'framework': 'pytorch', 'framework_version': '1.5.0', 'py_version': 'py3'}",
     )
+
+    patched_warning_logger.reset_mock()
 
     with pytest.raises(ValueError):
         image_uris.retrieve(
@@ -86,6 +88,12 @@ def test_jumpstart_variants_image_uri(
             model_version="*",
             instance_type="ml.c2.xlarge",
         )
+
+    patched_warning_logger.assert_called_once_with(
+        "Using fallback inference ECR specs for retrieving image URI for JumpStart model ID '%s': '%s'",
+        "variant-model",
+        "JumpStartECRSpecs: {'framework': 'pytorch', 'framework_version': '1.5.0', 'py_version': 'py3'}",
+    )
 
     patched_warning_logger.reset_mock()
 
@@ -102,7 +110,7 @@ def test_jumpstart_variants_image_uri(
     )
 
     patched_warning_logger.assert_called_once_with(
-        "Using fallback training ECR specs for retrieving image uri for JumpStart model '%s': '%s'",
+        "Using fallback training ECR specs for retrieving image URI for JumpStart model ID '%s': '%s'",
         "variant-model",
         "JumpStartECRSpecs: {'framework': 'pytorch', 'framework_version': '1.5.0', 'py_version': 'py3'}",
     )

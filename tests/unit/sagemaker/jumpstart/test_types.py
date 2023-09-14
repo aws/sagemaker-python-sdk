@@ -179,14 +179,10 @@ def test_jumpstart_instance_variants():
                 "c2": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
                 "local": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
                 "ml.g5.48xlarge": {
-                    "regional_properties": {
-                        "environment_variables": {"TENSOR_PARALLEL_DEGREE": "8"}
-                    }
+                    "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "8"}}
                 },
                 "ml.g5.12xlarge": {
-                    "regional_properties": {
-                        "environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"}
-                    }
+                    "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"}}
                 },
             },
         }

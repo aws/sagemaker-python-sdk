@@ -1437,7 +1437,7 @@ def instance_supports_kms(instance_type: str) -> bool:
     return volume_size_supported(instance_type)
 
 
-def get_instance_type_family(instance_type):
+def get_instance_type_family(instance_type: str) -> str:
     """Return the family of the instance type.
 
     Regex matches either "ml.<family>.<size>" or "ml_<family>. If input is None

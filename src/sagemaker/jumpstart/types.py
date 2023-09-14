@@ -338,8 +338,8 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
         if json_obj is None:
             return
 
-        self.regional_aliases: dict = json_obj["regional_aliases"]
-        self.variants: dict = json_obj["variants"]
+        self.regional_aliases: Optional[dict] = json_obj.get("regional_aliases")
+        self.variants: Optional[dict] = json_obj.get("variants")
 
     def to_json(self) -> Dict[str, Any]:
         """Returns json representation of JumpStartInstanceTypeVariants object."""
@@ -350,11 +350,17 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
         """Returns image uri from instance type and region.
 
         Returns None if no instance type is available or found.
+        None is also returned if the metadata is improperly formatted.
         """
+
+        if None in [self.regional_aliases, self.variants]:
+            return None
 
         image_uri_alias: Optional[str] = None
         if instance_type in self.variants:
-            image_uri_alias = self.variants[instance_type]["regional_properties"].get("image_uri")
+            image_uri_alias = (
+                self.variants[instance_type].get("regional_properties", {}).get("image_uri")
+            )
         else:
             instance_type_family = get_instance_type_family(instance_type)
 
@@ -362,20 +368,25 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
                 return None
 
             image_uri_alias = (
-                self.variants[instance_type_family]["regional_properties"].get("image_uri")
-                if instance_type_family in self.variants
-                else None
+                self.variants.get(instance_type_family, {})
+                .get("regional_properties", {})
+                .get("image_uri")
             )
 
         if image_uri_alias is None:
             return image_uri_alias
 
         if not image_uri_alias.startswith("$"):
-            raise TypeError("All image uris should map to an alias and start with '$'.")
+            # No leading '$' indicates bad metadata.
+            # There are tests to ensure this never happens.
+            # However, to allow for fallback options in the unlikely event
+            # of a regression, we do not raise an exception here.
+            # We return None, indicating the image uri does not exist.
+            return None
 
         if region not in self.regional_aliases:
             return None
-        alias_value = self.regional_aliases[region][image_uri_alias[1:]]
+        alias_value = self.regional_aliases[region].get(image_uri_alias[1:], None)
         return alias_value
 
 

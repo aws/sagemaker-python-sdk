@@ -33,6 +33,7 @@ import sagemaker
 from sagemaker.experiments._run_context import _RunContext
 from sagemaker.session_settings import SessionSettings
 from sagemaker.utils import (
+    get_instance_type_family,
     retry_with_backoff,
     check_and_get_run_experiment_config,
     get_sagemaker_config_value,
@@ -1721,3 +1722,20 @@ class TestVolumeSizeSupported(TestCase):
 
         with pytest.raises(ValueError):
             volume_size_supported({})
+
+    def test_instance_family_from_full_instance_type(self):
+
+        instance_type_to_family_test_dict = {
+            "ml.p3.xlarge": "p3",
+            "ml.inf1.4xlarge": "inf1",
+            "ml.afbsadjfbasfb.sdkjfnsa": "afbsadjfbasfb",
+            "ml_fdsfsdf.xlarge": "fdsfsdf",
+            "ml_c2.4xlarge": "c2",
+            "sdfasfdda": "",
+            "local": "",
+            "c2.xlarge": "",
+            "": "",
+        }
+
+        for instance_type, family in instance_type_to_family_test_dict.items():
+            self.assertEqual(family, get_instance_type_family(instance_type))

@@ -130,8 +130,8 @@ def _retrieve_image_uri(
         if ecr_specs is None:
             raise ValueError("No value for hosting ECR specs found!")
         JUMPSTART_LOGGER.warning(
-            "Using fallback hosting ECR specs for retrieving image uri "
-            "for JumpStart model '%s': '%s'",
+            "Using fallback inference ECR specs for retrieving image URI "
+            "for JumpStart model ID '%s': '%s'",
             model_id,
             str(ecr_specs),
         )
@@ -147,8 +147,8 @@ def _retrieve_image_uri(
         if ecr_specs is None:
             raise ValueError("No value for training ECR specs found!")
         JUMPSTART_LOGGER.warning(
-            "Using fallback training ECR specs for retrieving image uri "
-            "for JumpStart model '%s': '%s'",
+            "Using fallback training ECR specs for retrieving image URI "
+            "for JumpStart model ID '%s': '%s'",
             model_id,
             str(ecr_specs),
         )
