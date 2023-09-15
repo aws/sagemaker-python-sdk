@@ -75,7 +75,7 @@ for env in base /home/ec2-user/anaconda3/envs/*; do
     $ENV_PYTHON -m pip install --upgrade pip
     $ENV_PYTHON -m pip install "$TARBALL_DIRECTORY/sagemaker.tar.gz"
 
-    sudo -u ec2-user -E sh -c 'conda deactivate'
+    sudo -u ec2-user -E sh -c 'source /home/ec2-user/anaconda3/bin/deactivate'
 
     echo "Update of $env is complete."
 done
