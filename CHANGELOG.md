@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.186.0 (2023-09-14)
+
+### Features
+
+ * TGI 1.0.3 Image URI Config
+
 ## v2.185.0 (2023-09-12)
 
 ### Features
