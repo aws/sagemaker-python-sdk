@@ -18,7 +18,6 @@ from sagemaker import image_uris
 from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     JUMPSTART_DEFAULT_REGION_NAME,
-    JUMPSTART_LOGGER,
 )
 from sagemaker.jumpstart.enums import (
     JumpStartScriptScope,
@@ -128,13 +127,11 @@ def _retrieve_image_uri(
                 return image_uri
         ecr_specs = model_specs.hosting_ecr_specs
         if ecr_specs is None:
-            raise ValueError("No value for hosting ECR specs found!")
-        JUMPSTART_LOGGER.warning(
-            "Using fallback inference ECR specs for retrieving image URI "
-            "for JumpStart model ID '%s': '%s'",
-            model_id,
-            str(ecr_specs),
-        )
+            raise ValueError(
+                f"No hosting ECR specs found for JumpStart model ID '{model_id}' with "
+                f"{instance_type} instance type in {region}. "
+                "Please try another instance type or region."
+            )
     elif image_scope == JumpStartScriptScope.TRAINING:
         training_instance_type_variants = model_specs.training_instance_type_variants
         if training_instance_type_variants:
@@ -145,13 +142,11 @@ def _retrieve_image_uri(
                 return image_uri
         ecr_specs = model_specs.training_ecr_specs
         if ecr_specs is None:
-            raise ValueError("No value for training ECR specs found!")
-        JUMPSTART_LOGGER.warning(
-            "Using fallback training ECR specs for retrieving image URI "
-            "for JumpStart model ID '%s': '%s'",
-            model_id,
-            str(ecr_specs),
-        )
+            raise ValueError(
+                f"No training ECR specs found for JumpStart model ID '{model_id}' with "
+                f"{instance_type} instance type in {region}. "
+                "Please try another instance type or region."
+            )
     if framework is not None and framework != ecr_specs.framework:
         raise ValueError(
             f"Incorrect container framework '{framework}' for JumpStart model ID '{model_id}' "
