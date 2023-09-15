@@ -110,7 +110,11 @@ class CuratedHubS3Accessor(ModelDependencyS3Accessor):
     ) -> S3ObjectLocation:
         """Retrieves s3 reference for s3 directory containing training datasets"""
         return S3ObjectLocation(
-            self.get_bucket_name(), self._get_training_dataset_prefix(model_specs)
+            self.get_bucket_name(), 
+            (
+                f"{self._get_unique_s3_key_prefix(model_specs)}/"
+                f"{self._get_training_dataset_prefix(model_specs)}"
+            ),
         )
 
     def _get_unique_s3_key_prefix(self, model_specs: JumpStartModelSpecs) -> str:
