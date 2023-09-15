@@ -13,7 +13,7 @@
 """This module data structures for Private Hub content."""
 from __future__ import absolute_import
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional, List, Mapping
 from enum import Enum
 
@@ -146,12 +146,12 @@ class Hyperparameter:
     Name: str
     DefaultValue: Optional[str]
     Type: str  # enum
-    Options: List[Optional[str]]
-    Label: Optional[str]
-    Description: Optional[str]
-    Regex: Optional[str]
-    Min: Optional[str]
-    Max: Optional[str]
+    Options: List[Optional[str]] = field(default_factory=list) 
+    Label: Optional[str] = None
+    Description: Optional[str] = None
+    Regex: Optional[str] = None
+    Min: Optional[str] = None
+    Max: Optional[str] = None
 
 
 @dataclass

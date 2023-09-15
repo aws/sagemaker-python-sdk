@@ -20,7 +20,6 @@ from sagemaker.jumpstart.curated_hub.accessors.curated_hub_s3_accessor import (
 )
 from sagemaker.jumpstart.types import JumpStartModelSpecs
 from tests.unit.sagemaker.jumpstart.constants import BASE_SPEC
-from mock.mock import patch
 from sagemaker.jumpstart.curated_hub.accessors.constants import (
     PRIVATE_MODEL_HOSTING_ARTIFACT_S3_TARBALL_SUFFIX,
 )
@@ -30,7 +29,9 @@ class CuratedHubS3AccessorTest(unittest.TestCase):
     def test_no_prefix(self):
         test_bucket = "test_bucket"
         test_key_prefix = "test_key_prefix"
-        test_hub_accessor = CuratedHubS3Accessor(region="us-west-2", bucket=test_bucket, studio_metadata_map=Mock())
+        test_hub_accessor = CuratedHubS3Accessor(
+            region="us-west-2", bucket=test_bucket, studio_metadata_map=Mock()
+        )
 
         test_specs = JumpStartModelSpecs(BASE_SPEC)
 
@@ -45,7 +46,12 @@ class CuratedHubS3AccessorTest(unittest.TestCase):
     def test_with_prefix(self):
         test_bucket = "test_bucket"
         test_key_prefix = "test_key_prefix"
-        test_hub_accessor = CuratedHubS3Accessor(region="us-west-2", bucket=test_bucket, studio_metadata_map=Mock(), base_s3_key=test_key_prefix)
+        test_hub_accessor = CuratedHubS3Accessor(
+            region="us-west-2",
+            bucket=test_bucket,
+            studio_metadata_map=Mock(),
+            base_s3_key=test_key_prefix,
+        )
 
         test_specs = JumpStartModelSpecs(BASE_SPEC)
 

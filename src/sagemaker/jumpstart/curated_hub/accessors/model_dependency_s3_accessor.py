@@ -12,11 +12,11 @@
 # language governing permissions and limitations under the License.
 """This module accessors for the SageMaker JumpStart Public Hub."""
 from __future__ import absolute_import
+from abc import abstractmethod
 from sagemaker.jumpstart.types import JumpStartModelSpecs
 from sagemaker.jumpstart.curated_hub.accessors.s3_object_reference import (
     S3ObjectLocation,
 )
-from abc import abstractmethod
 
 
 class ModelDependencyS3Accessor:

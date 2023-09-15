@@ -18,9 +18,6 @@ from sagemaker.jumpstart.curated_hub.utils import (
     get_model_framework,
 )
 from sagemaker.jumpstart.types import JumpStartModelSpecs
-from sagemaker.jumpstart.curated_hub.utils import (
-    get_studio_model_metadata_map_from_region,
-)
 from sagemaker.jumpstart.curated_hub.accessors.s3_object_reference import (
     S3ObjectLocation,
 )
@@ -41,12 +38,15 @@ DISAMBIGUATE_SUFFIX = uuid.uuid4()
 class CuratedHubS3Accessor(ModelDependencyS3Accessor):
     """Helper class to access Curated Hub s3 bucket"""
 
-    def __init__(self, region: str, bucket: str, studio_metadata_map: Dict[str, Dict[str, Any]], base_s3_key: str = ""):
+    def __init__(
+        self,
+        region: str,
+        bucket: str,
+        studio_metadata_map: Dict[str, Dict[str, Any]],
+        base_s3_key: str = "",
+    ):
         self._region = region
-        self._hub_s3_config = S3ObjectLocation(
-            bucket=bucket,
-            key=base_s3_key
-        )
+        self._hub_s3_config = S3ObjectLocation(bucket=bucket, key=base_s3_key)
         self._studio_metadata_map = studio_metadata_map  # Necessary for SDK - Studio metadata drift
 
     def get_bucket_name(self) -> str:
@@ -71,7 +71,8 @@ class CuratedHubS3Accessor(ModelDependencyS3Accessor):
         """Retrieves s3 reference for model traiing script."""
         return S3ObjectLocation(
             self.get_bucket_name(),
-            f"{self._get_unique_s3_key_prefix(model_specs)}/{PRIVATE_MODEL_HOSTING_SCRIPT_S3_SUFFIX}",
+            f"{self._get_unique_s3_key_prefix(model_specs)}"
+            f"/{PRIVATE_MODEL_HOSTING_SCRIPT_S3_SUFFIX}",
         )
 
     def get_training_artifact_s3_reference(
@@ -92,7 +93,8 @@ class CuratedHubS3Accessor(ModelDependencyS3Accessor):
         """Retrieves s3 reference for model training script"""
         return S3ObjectLocation(
             self.get_bucket_name(),
-            f"{self._get_unique_s3_key_prefix(model_specs)}/{PRIVATE_MODEL_TRAINING_SCRIPT_S3_SUFFIX}",
+            f"{self._get_unique_s3_key_prefix(model_specs)}"
+            f"/{PRIVATE_MODEL_TRAINING_SCRIPT_S3_SUFFIX}",
         )
 
     def get_demo_notebook_s3_reference(self, model_specs: JumpStartModelSpecs) -> S3ObjectLocation:

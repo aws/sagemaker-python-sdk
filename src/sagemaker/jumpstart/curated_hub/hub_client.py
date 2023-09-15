@@ -12,10 +12,10 @@
 # language governing permissions and limitations under the License.
 """This module contains a client with helpers to access the Private Hub."""
 from __future__ import absolute_import
-import boto3
+from typing import Dict, Any, List, Optional
 import time
+import boto3
 from botocore.exceptions import ClientError
-from typing import Dict, Any, List
 
 from sagemaker.jumpstart.types import JumpStartModelSpecs
 from sagemaker.jumpstart.curated_hub.constants import (
@@ -24,9 +24,7 @@ from sagemaker.jumpstart.curated_hub.constants import (
 )
 from sagemaker.jumpstart.curated_hub.accessors.s3_object_reference import (
     S3ObjectLocation,
-    create_s3_object_reference_from_uri,
 )
-
 
 
 class CuratedHubClient:
@@ -116,19 +114,91 @@ class CuratedHubClient:
 
         return content_versions
 
-    def list_hub_names_on_account(
-            self
-    ) -> List[str]:
+    def list_hub_names_on_account(self) -> List[str]:
+        """Lists the Private Hubs on an AWS account for the region.
+
+        This call handles the pagination.
+        """
         hub_names: List[str] = []
-        run_once = True
-        next_token = ""
+        run_once: bool = True
+        next_token: Optional[str] = None
         while next_token or run_once:
             run_once = False
-            res = self._sm_client.list_hubs(
-                NextToken=next_token
-            )
+            if next_token:
+                res = self._sm_client.list_hub(NextToken=next_token)
+            else:
+                res = self._sm_client.list_hubs()
 
             hub_names.extend(map(self._get_hub_name_from_hub_summary, res["HubSummaries"]))
+            next_token = res.get("NextToken")
+
+        return hub_names
+
+    def _list_hub_models(self, hub_name: str) -> List[Dict[str, Any]]:
+        """Lists the Models on a Private Hub.
+
+        This call handles the pagination.
+        """
+        all_models_on_hub: List[Dict[str, Any]] = []
+        run_once: bool = True
+        next_token: Optional[str] = None
+        while next_token or run_once:
+            run_once = False
+            if next_token:
+                res = self._sm_client.list_hub_contents(
+                    HubName=hub_name, HubContentType="Model", NextToken=next_token
+                )
+            else:
+                res = self._sm_client.list_hub_contents(HubName=hub_name, HubContentType="Model")
+
+            # Adds only the HubContentSummaries to the list
+            all_models_on_hub.extend(res["HubContentSummaries"])
+
+        return all_models_on_hub
+
+    def list_hub_models_all_versions(self, hub_name: str) -> List[str]:
+        """Lists all versions of each Model on a Private Hub.
+
+        This call handles the pagination.
+        """
+        hub_content_summaries = self._list_hub_models(hub_name)
+        hub_content_version_summaries: List[Dict[str, str]] = []
+        for hub_content_summary in hub_content_summaries:
+            hub_content_version_summaries.extend(
+                self._list_hub_content_versions_no_content_noop(
+                    hub_content_summary["HubContentName"]
+                )
+            )
+        return hub_content_version_summaries
+
+    def list_hub_models(self, hub_name: str) -> List[Dict[str, str]]:
+        """Lists the Models on a Private Hub.
+
+        This call handles the pagination.
+        """
+        hub_content_summaries = self._list_hub_models(hub_name)
+        return list(map(self._get_hub_content_from_hub_content_summary, hub_content_summaries))
 
     def _get_hub_name_from_hub_summary(self, hub_summary: Dict[str, Any]) -> str:
+        """Retrieves a hub name form a ListHubs HubSummary field."""
         return hub_summary["HubName"]
+
+    def _get_hub_content_from_hub_content_summary(
+        self, hub_content_summary: Dict[str, Any]
+    ) -> Dict[str, str]:
+        """Retrieves a hub content from a ListHubContents HubContentSummary field."""
+        return {
+            "HubContentName": hub_content_summary["HubContentName"],
+            "HubContentVersion": hub_content_summary["HubContentVersion"],
+        }
+
+    def delete_hub(self, hub_name: str) -> None:
+        """Deletes a private hub.
+
+        This will fail if the hub is not empty.
+        """
+        print(f"Deleting private hub {hub_name}...")
+
+        self._sm_client.delete_hub(HubName=self.curated_hub_name)
+
+        print(f"Deleted private hub {hub_name}!")
