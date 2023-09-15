@@ -78,7 +78,7 @@ class CuratedHubS3Accessor(ModelDependencyS3Accessor):
     def get_training_artifact_s3_reference(
         self, model_specs: JumpStartModelSpecs
     ) -> S3ObjectLocation:
-        """Retrieves s3 reference for model training artifact"""
+        """Retrieves s3 reference for model training artifact."""
         return S3ObjectLocation(
             self.get_bucket_name(),
             (
@@ -90,7 +90,7 @@ class CuratedHubS3Accessor(ModelDependencyS3Accessor):
     def get_training_script_s3_reference(
         self, model_specs: JumpStartModelSpecs
     ) -> S3ObjectLocation:
-        """Retrieves s3 reference for model training script"""
+        """Retrieves s3 reference for model training script."""
         return S3ObjectLocation(
             self.get_bucket_name(),
             f"{self._get_unique_s3_key_prefix(model_specs)}"
@@ -98,7 +98,7 @@ class CuratedHubS3Accessor(ModelDependencyS3Accessor):
         )
 
     def get_demo_notebook_s3_reference(self, model_specs: JumpStartModelSpecs) -> S3ObjectLocation:
-        """Retrieves s3 reference for model jupyter notebook"""
+        """Retrieves s3 reference for model jupyter notebook."""
         return S3ObjectLocation(
             self.get_bucket_name(),
             (
@@ -110,7 +110,7 @@ class CuratedHubS3Accessor(ModelDependencyS3Accessor):
     def get_default_training_dataset_s3_reference(
         self, model_specs: JumpStartModelSpecs
     ) -> S3ObjectLocation:
-        """Retrieves s3 reference for s3 directory containing training datasets"""
+        """Retrieves s3 reference for s3 directory containing training datasets."""
         return S3ObjectLocation(
             self.get_bucket_name(), 
             (
@@ -120,7 +120,7 @@ class CuratedHubS3Accessor(ModelDependencyS3Accessor):
         )
 
     def _get_unique_s3_key_prefix(self, model_specs: JumpStartModelSpecs) -> str:
-        """Creates a unique s3 key prefix based off S3 storage config"""
+        """Creates a unique s3 key prefix based off S3 storage config."""
         key = (
             f"{self._hub_s3_config.key}/Model/"
             f"{model_specs.model_id}-{DISAMBIGUATE_SUFFIX}/{model_specs.version}"
@@ -128,18 +128,12 @@ class CuratedHubS3Accessor(ModelDependencyS3Accessor):
         return key.lstrip("/")
 
     def _get_training_dataset_prefix(self, model_specs: JumpStartModelSpecs) -> str:
-        """Retrieves s3 prefix for the training dataset.
-
-        Studio expects the same format as public hub bucket.
-        """
+        """Retrieves s3 prefix for the training dataset."""
         studio_model_metadata = self._studio_metadata_map[model_specs.model_id]
         return studio_model_metadata["defaultDataKey"]
 
     def get_markdown_s3_reference(self, model_specs: JumpStartModelSpecs) -> S3ObjectLocation:
-        """Retrieves s3 reference for model markdown file.
-
-        Studio expects the same format as public hub bucket.
-        """
-        framework = get_model_framework(model_specs)
-        key = f"{framework}-metadata/{model_specs.model_id}.md"
-        return S3ObjectLocation(self.get_bucket_name(), key)
+        """Retrieves s3 reference for model markdown file."""
+        return S3ObjectLocation(
+            self.get_bucket_name(), f"{self._get_unique_s3_key_prefix(model_specs)}/markdown.md"
+        )
