@@ -373,8 +373,8 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
                 .get("image_uri")
             )
 
-        if image_uri_alias is None:
-            return image_uri_alias
+        if image_uri_alias is None or len(image_uri_alias) == 0:
+            return None
 
         if not image_uri_alias.startswith("$"):
             # No leading '$' indicates bad metadata.
