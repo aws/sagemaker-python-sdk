@@ -14,9 +14,6 @@
 from __future__ import absolute_import
 import uuid
 from typing import Dict, Any
-from sagemaker.jumpstart.curated_hub.utils import (
-    get_model_framework,
-)
 from sagemaker.jumpstart.types import JumpStartModelSpecs
 from sagemaker.jumpstart.curated_hub.accessors.s3_object_reference import (
     S3ObjectLocation,
@@ -112,7 +109,7 @@ class CuratedHubS3Accessor(ModelDependencyS3Accessor):
     ) -> S3ObjectLocation:
         """Retrieves s3 reference for s3 directory containing training datasets."""
         return S3ObjectLocation(
-            self.get_bucket_name(), 
+            self.get_bucket_name(),
             (
                 f"{self._get_unique_s3_key_prefix(model_specs)}/"
                 f"{self._get_training_dataset_prefix(model_specs)}"

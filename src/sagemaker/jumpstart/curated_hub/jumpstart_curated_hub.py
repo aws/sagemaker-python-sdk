@@ -361,7 +361,9 @@ class JumpStartCuratedHub:
           ClientError
         """
         if all_versions:
-            hub_models = self._curated_hub_client.list_hub_models_all_versions(self.curated_hub_name)
+            hub_models = self._curated_hub_client.list_hub_models_all_versions(
+                self.curated_hub_name
+            )
         else:
             hub_models = self._curated_hub_client.list_hub_models(self.curated_hub_name)
         print(f"Models on the hub {self.curated_hub_name}: {hub_models}")
@@ -486,16 +488,15 @@ class JumpStartCuratedHub:
             model_specs=model_specs
         )
 
-        self._sm_client.import_hub_content(
-            HubName=self.curated_hub_name,
-            HubContentName=model_specs.model_id,
-            HubContentVersion=model_specs.version,
-            HubContentType=CURATED_HUB_CONTENT_TYPE,
-            DocumentSchemaVersion=CURATED_HUB_DEFAULT_DOCUMENT_SCHEMA_VERSION,
-            HubContentDisplayName=hub_content_display_name,
-            HubContentDescription=hub_content_description,
-            HubContentMarkdown=hub_content_markdown,
-            HubContentDocument=hub_content_document,
+        self._curated_hub_client.import_hub_content(
+            hub_name=self.curated_hub_name,
+            model_specs=model_specs,
+            hub_content_type=CURATED_HUB_CONTENT_TYPE,
+            model_document_schema_version=CURATED_HUB_DEFAULT_DOCUMENT_SCHEMA_VERSION,
+            display_name=hub_content_display_name,
+            description=hub_content_description,
+            markdown=hub_content_markdown,
+            content_document=hub_content_document,
         )
 
     def delete_models(self, model_ids: List[PublicHubModel], delete_all_versions: bool = False):

@@ -14,7 +14,6 @@
 from __future__ import absolute_import
 
 import json
-import re
 from dataclasses import dataclass
 from typing import Dict, Any, Set, List, Optional
 
@@ -27,6 +26,7 @@ from sagemaker.jumpstart.curated_hub.hub_model_specs.hub_model_specs import Hype
 
 STUDIO_METADATA_FILENAME = "metadata-modelzoo_v7.json"
 STUDIO_HYPERPARAMETER_NAME_REGEX = "/^[a-zA-Z0-9](-*[a-zA-Z0-9])*$/"
+
 
 def get_studio_model_metadata_map_from_region(region: str) -> Dict[str, Dict[str, Any]]:
     """Pulls Studio modelzoo metadata from JS prod bucket in region."""
@@ -156,9 +156,7 @@ def convert_public_model_hyperparameter_to_hub_hyperparameter(
 ) -> Hyperparameter:
     """Adapter function to format Public Hub hyperparameters to Private Hub hyperparameter."""
     return Hyperparameter(
-        Name=hyperparameter.name,
-        DefaultValue=str(hyperparameter.default),
-        Type="Text"
+        Name=hyperparameter.name, DefaultValue=str(hyperparameter.default), Type="Text"
     )
 
     # Current import hyperparameters are currently being stored as Text values
@@ -175,6 +173,7 @@ def convert_public_model_hyperparameter_to_hub_hyperparameter(
     #     Description=None,
     #     Regex=None,
     # )
+
 
 def _convert_hyperparameter_type_to_valid_hub_type(hyperparameter_type: str) -> str:
     """Sets the JumpStart hyperparameter type."""

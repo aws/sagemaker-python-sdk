@@ -25,6 +25,9 @@ from sagemaker.jumpstart.curated_hub.constants import (
 from sagemaker.jumpstart.curated_hub.accessors.s3_object_reference import (
     S3ObjectLocation,
 )
+from botocore.config import Config
+
+CONFIG = Config(retries={"max_attempts": 10, "mode": "standard"})
 
 
 class CuratedHubClient:
@@ -34,7 +37,7 @@ class CuratedHubClient:
         """Sets up region and underlying client."""
         self.curated_hub_name = curated_hub_name
         self._region = region
-        self._sm_client = boto3.client("sagemaker", region_name=self._region)
+        self._sm_client = boto3.client("sagemaker", region_name=self._region, config=CONFIG)
 
     def create_hub(
         self,
@@ -52,6 +55,30 @@ class CuratedHubClient:
                 "S3OutputPath": hub_s3_location.get_uri(),
             },
             Tags=[],
+        )
+
+    def import_hub_content(
+        self,
+        hub_name: str,
+        display_name: str,
+        description: str,
+        markdown: str,
+        hub_content_type: str,
+        model_specs: JumpStartModelSpecs,
+        model_document_schema_version: str,
+        content_document: str,
+    ) -> None:
+        """Imports a Model into the Private Hub."""
+        self._sm_client.import_hub_content(
+            HubName=hub_name,
+            HubContentName=model_specs.model_id,
+            HubContentVersion=model_specs.version,
+            HubContentType=hub_content_type,
+            DocumentSchemaVersion=model_document_schema_version,
+            HubContentDisplayName=display_name,
+            HubContentDescription=description,
+            HubContentMarkdown=markdown,
+            HubContentDocument=content_document,
         )
 
     def describe_model_version(self, model_specs: JumpStartModelSpecs) -> Dict[str, Any]:
