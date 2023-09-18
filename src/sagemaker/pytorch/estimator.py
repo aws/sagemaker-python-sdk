@@ -326,6 +326,9 @@ class PyTorch(Framework):
             if self.instance_type is not None:
                 distribution_config[self.INSTANCE_TYPE_ENV_NAME] = self.instance_type
         elif torch_distributed_enabled:
+            if "smdistributed" in distribution:
+                # Enable torch_distributed for smdistributed.
+                distribution_config = self._distribution_configuration(distribution=distribution)
             distribution_config[self.LAUNCH_TORCH_DISTRIBUTED_ENV_NAME] = torch_distributed_enabled
             if self.instance_type is not None:
                 distribution_config[self.INSTANCE_TYPE_ENV_NAME] = self.instance_type

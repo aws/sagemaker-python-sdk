@@ -3843,14 +3843,10 @@ class Framework(EstimatorBase):
                 "custom_mpi_options", ""
             )
 
-            if get_mp_parameters(distribution):
-                distribution_config["mp_parameters"] = get_mp_parameters(distribution)
-
-        elif "modelparallel" in distribution.get("smdistributed", {}):
-            raise ValueError("Cannot use Model Parallelism without MPI enabled!")
-
         if "smdistributed" in distribution:
             # smdistributed strategy selected
+            if get_mp_parameters(distribution):
+                distribution_config["mp_parameters"] = get_mp_parameters(distribution)
             smdistributed = distribution["smdistributed"]
             smdataparallel_enabled = smdistributed.get("dataparallel", {}).get("enabled", False)
             distribution_config[self.LAUNCH_SM_DDP_ENV_NAME] = smdataparallel_enabled
