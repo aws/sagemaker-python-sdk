@@ -13,6 +13,9 @@
 """This module accessors for the SageMaker JumpStart Curated Hub."""
 from __future__ import absolute_import
 from enum import Enum
+from botocore.config import Config
+
+DEFAULT_CLIENT_CONFIG = Config(retries={"max_attempts": 10, "mode": "standard"})
 
 
 CURATED_HUB_DEFAULT_DESCRIPTION = "This is a curated hub."

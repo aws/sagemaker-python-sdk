@@ -20,14 +20,12 @@ from botocore.exceptions import ClientError
 from sagemaker.jumpstart.types import JumpStartModelSpecs
 from sagemaker.jumpstart.curated_hub.constants import (
     CURATED_HUB_DEFAULT_DESCRIPTION,
+    DEFAULT_CLIENT_CONFIG,
     HubContentType,
 )
 from sagemaker.jumpstart.curated_hub.accessors.s3_object_reference import (
     S3ObjectLocation,
 )
-from botocore.config import Config
-
-CONFIG = Config(retries={"max_attempts": 10, "mode": "standard"})
 
 
 class CuratedHubClient:
@@ -37,7 +35,9 @@ class CuratedHubClient:
         """Sets up region and underlying client."""
         self.curated_hub_name = curated_hub_name
         self._region = region
-        self._sm_client = boto3.client("sagemaker", region_name=self._region, config=CONFIG)
+        self._sm_client = boto3.client(
+            "sagemaker", region_name=self._region, config=DEFAULT_CLIENT_CONFIG
+        )
 
     def create_hub(
         self,

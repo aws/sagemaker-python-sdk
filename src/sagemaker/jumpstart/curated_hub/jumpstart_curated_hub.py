@@ -53,6 +53,7 @@ from sagemaker.jumpstart.curated_hub.accessors.s3_object_reference import (
 from sagemaker.jumpstart.curated_hub.constants import (
     CURATED_HUB_DEFAULT_DOCUMENT_SCHEMA_VERSION,
     CURATED_HUB_CONTENT_TYPE,
+    DEFAULT_CLIENT_CONFIG,
 )
 from sagemaker.jumpstart.curated_hub.error_messaging import (
     get_hub_limit_exceeded_error,
@@ -92,15 +93,11 @@ class JumpStartCuratedHub:
 
     def _get_s3_client(self) -> Any:
         """Returns an S3 client."""
-        return boto3.client("s3", region_name=self._region)
+        return boto3.client("s3", region_name=self._region, config=DEFAULT_CLIENT_CONFIG)
 
     def _get_sm_client(self) -> Any:
         """Returns a SageMaker client."""
-        return boto3.client("sagemaker", region_name=self._region)
-
-    def _get_sts_client(self) -> Any:
-        """Returns an STS client."""
-        return boto3.client("sts", region_name=self._region)
+        return boto3.client("sagemaker", region_name=self._region, config=DEFAULT_CLIENT_CONFIG)
 
     def create_or_reuse(
         self,
