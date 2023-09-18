@@ -38,3 +38,34 @@ For detailed documentation please refer :ref:`Use Built-in Algorithms with Pre-t
      - 1.4.2
      - 2.100.0
      - `GluonCV <https://cv.gluon.ai/model_zoo/segmentation.html>`__
+
+.. list-table:: Available Models
+   :widths: 50 20 20 20 20
+   :header-rows: 1
+   :class: datatable
+
+   * - Model ID
+     - Fine Tunable?
+     - Latest Version
+     - Min SDK Version
+     - Source
+   * - mxnet-semseg-fcn-resnet101-ade
+     - True
+     - 1.4.2
+     - 2.100.0
+     - `GluonCV <https://cv.gluon.ai/model_zoo/segmentation.html>`__
+   * - mxnet-semseg-fcn-resnet101-coco
+     - True
+     - 1.4.2
+     - 2.100.0
+     - `GluonCV <https://cv.gluon.ai/model_zoo/segmentation.html>`__
+   * - mxnet-semseg-fcn-resnet101-voc
+     - True
+     - 1.4.2
+     - 2.100.0
+     - `GluonCV <https://cv.gluon.ai/model_zoo/segmentation.html>`__
+   * - mxnet-semseg-fcn-resnet50-ade
+     - True
+     - 1.4.2
+     - 2.100.0
+     - `GluonCV <https://cv.gluon.ai/model_zoo/segmentation.html>`__

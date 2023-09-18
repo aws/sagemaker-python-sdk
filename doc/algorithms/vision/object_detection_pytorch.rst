@@ -23,3 +23,19 @@ For detailed documentation please refer :ref:`Use Built-in Algorithms with Pre-t
      - 1.0.3
      - 2.75.0
      - `Pytorch Hub <https://pytorch.org/hub/nvidia_deeplearningexamples_ssd/>`__
+
+.. list-table:: Available Models
+   :widths: 50 20 20 20 20
+   :header-rows: 1
+   :class: datatable
+
+   * - Model ID
+     - Fine Tunable?
+     - Latest Version
+     - Min SDK Version
+     - Source
+   * - pytorch-od-nvidia-ssd
+     - False
+     - 1.0.3
+     - 2.75.0
+     - `Pytorch Hub <https://pytorch.org/hub/nvidia_deeplearningexamples_ssd/>`__
