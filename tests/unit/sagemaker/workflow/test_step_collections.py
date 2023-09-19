@@ -498,6 +498,7 @@ def test_register_model(estimator, model_metrics, drift_check_baselines):
                         "SupportedTransformInstanceTypes": ["transform_instance"],
                     },
                     "ModelApprovalStatus": "Approved",
+                    "SkipModelValidation": "None",
                     "ModelMetrics": {
                         "Bias": {},
                         "Explainability": {},
@@ -568,6 +569,7 @@ def test_register_model_tf(estimator_tf, model_metrics, drift_check_baselines):
                         "SupportedTransformInstanceTypes": ["transform_instance"],
                     },
                     "ModelApprovalStatus": "Approved",
+                    "SkipModelValidation": "None",
                     "ModelMetrics": {
                         "Bias": {},
                         "Explainability": {},
@@ -657,6 +659,7 @@ def test_register_model_sip(estimator, model_metrics, drift_check_baselines):
                         "SupportedTransformInstanceTypes": ["transform_instance"],
                     },
                     "ModelApprovalStatus": "Approved",
+                    "SkipModelValidation": "None",
                     "ModelMetrics": {
                         "Bias": {},
                         "Explainability": {},
@@ -794,6 +797,7 @@ def test_register_model_with_model_repack_with_estimator(
                         "SupportedTransformInstanceTypes": ["transform_instance"],
                     },
                     "ModelApprovalStatus": "Approved",
+                    "SkipModelValidation": "None",
                     "ModelMetrics": {
                         "Bias": {},
                         "Explainability": {},
@@ -919,6 +923,7 @@ def test_register_model_with_model_repack_with_model(model, model_metrics, drift
                         "SupportedTransformInstanceTypes": ["transform_instance"],
                     },
                     "ModelApprovalStatus": "Approved",
+                    "SkipModelValidation": "None",
                     "ModelMetrics": {
                         "Bias": {},
                         "Explainability": {},
@@ -1052,6 +1057,7 @@ def test_register_model_with_model_repack_with_pipeline_model(
                         "SupportedTransformInstanceTypes": ["transform_instance"],
                     },
                     "ModelApprovalStatus": "Approved",
+                    "SkipModelValidation": "None",
                     "ModelMetrics": {
                         "Bias": {},
                         "Explainability": {},
