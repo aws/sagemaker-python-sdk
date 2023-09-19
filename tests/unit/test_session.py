@@ -4621,6 +4621,7 @@ def test_create_model_package_from_containers_without_model_package_group_name(
 def test_create_model_package_with_sagemaker_config_injection(sagemaker_session):
     sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_MODEL_PACKAGE
 
+    skip_model_validation = "All"
     model_package_name = "sagemaker-model-package"
     containers = [{"Image": "dummy-container"}]
     content_types = ["application/json"]
@@ -4680,6 +4681,7 @@ def test_create_model_package_with_sagemaker_config_injection(sagemaker_session)
         sample_payload_url=sample_payload_url,
         task=task,
         validation_specification=validation_specification,
+        skip_model_validation=skip_model_validation,
     )
     expected_kms_key_id = SAGEMAKER_CONFIG_MODEL_PACKAGE["SageMaker"]["ModelPackage"][
         "ValidationSpecification"
@@ -4717,6 +4719,7 @@ def test_create_model_package_with_sagemaker_config_injection(sagemaker_session)
             "SamplePayloadUrl": sample_payload_url,
             "Task": task,
             "ValidationSpecification": validation_specification,
+            "SkipModelValidation": skip_model_validation,
         }
     )
     expected_args["ValidationSpecification"]["ValidationRole"] = expected_role_arn
@@ -4764,6 +4767,7 @@ def test_create_model_package_from_containers_all_args(sagemaker_session):
         "GeneratedBy": "sagemaker-python-sdk",
         "ProjectId": "unit-test",
     }
+    skip_model_validation = "All"
     marketplace_cert = (True,)
     approval_status = ("Approved",)
     description = "description"
@@ -4788,6 +4792,7 @@ def test_create_model_package_from_containers_all_args(sagemaker_session):
         domain=domain,
         sample_payload_url=sample_payload_url,
         task=task,
+        skip_model_validation=skip_model_validation,
     )
     expected_args = {
         "ModelPackageName": model_package_name,
@@ -4808,6 +4813,7 @@ def test_create_model_package_from_containers_all_args(sagemaker_session):
         "Domain": domain,
         "SamplePayloadUrl": sample_payload_url,
         "Task": task,
+        "SkipModelValidation": skip_model_validation,
     }
     sagemaker_session.sagemaker_client.create_model_package.assert_called_with(**expected_args)
 
@@ -4838,6 +4844,7 @@ def test_create_model_package_from_containers_without_instance_types(sagemaker_s
         "GeneratedBy": "sagemaker-python-sdk",
         "ProjectId": "unit-test",
     }
+    skip_model_validation = "All"
     marketplace_cert = (True,)
     approval_status = ("Approved",)
     description = "description"
@@ -4854,6 +4861,7 @@ def test_create_model_package_from_containers_without_instance_types(sagemaker_s
         description=description,
         drift_check_baselines=drift_check_baselines,
         customer_metadata_properties=customer_metadata_properties,
+        skip_model_validation=skip_model_validation,
     )
     expected_args = {
         "ModelPackageGroupName": model_package_group_name,
@@ -4869,6 +4877,7 @@ def test_create_model_package_from_containers_without_instance_types(sagemaker_s
         "ModelApprovalStatus": approval_status,
         "DriftCheckBaselines": drift_check_baselines,
         "CustomerMetadataProperties": customer_metadata_properties,
+        "SkipModelValidation": skip_model_validation,
     }
     sagemaker_session.sagemaker_client.create_model_package.assert_called_with(**expected_args)
 
@@ -4902,6 +4911,7 @@ def test_create_model_package_from_containers_with_one_instance_types(
         "GeneratedBy": "sagemaker-python-sdk",
         "ProjectId": "unit-test",
     }
+    skip_model_validation = "All"
     marketplace_cert = (True,)
     approval_status = ("Approved",)
     description = "description"
@@ -4919,6 +4929,7 @@ def test_create_model_package_from_containers_with_one_instance_types(
         description=description,
         drift_check_baselines=drift_check_baselines,
         customer_metadata_properties=customer_metadata_properties,
+        skip_model_validation=skip_model_validation,
     )
     expected_args = {
         "ModelPackageGroupName": model_package_group_name,
@@ -4935,6 +4946,7 @@ def test_create_model_package_from_containers_with_one_instance_types(
         "ModelApprovalStatus": approval_status,
         "DriftCheckBaselines": drift_check_baselines,
         "CustomerMetadataProperties": customer_metadata_properties,
+        "SkipModelValidation": skip_model_validation,
     }
     sagemaker_session.sagemaker_client.create_model_package.assert_called_with(**expected_args)
 

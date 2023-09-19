@@ -3648,6 +3648,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         domain=None,
         sample_payload_url=None,
         task=None,
+        skip_model_validation="None",
     ):
         """Get request dictionary for CreateModelPackage API.
 
@@ -3682,6 +3683,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             task (str): Task values which are supported by Inference Recommender are "FILL_MASK",
                 "IMAGE_CLASSIFICATION", "OBJECT_DETECTION", "TEXT_GENERATION", "IMAGE_SEGMENTATION",
                 "CLASSIFICATION", "REGRESSION", "OTHER" (default: None).
+            skip_model_validation (str): Indicates if you want to skip model validation.
+                Values can be "All" or "None" (default: None).
         """
         if containers:
             # Containers are provided. Now we can merge missing entries from config.
@@ -3737,6 +3740,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             domain=domain,
             sample_payload_url=sample_payload_url,
             task=task,
+            skip_model_validation=skip_model_validation,
         )
 
         def submit(request):
@@ -5764,6 +5768,7 @@ def get_model_package_args(
     domain=None,
     sample_payload_url=None,
     task=None,
+    skip_model_validation=None,
 ):
     """Get arguments for create_model_package method.
 
@@ -5800,6 +5805,8 @@ def get_model_package_args(
         task (str): Task values which are supported by Inference Recommender are "FILL_MASK",
             "IMAGE_CLASSIFICATION", "OBJECT_DETECTION", "TEXT_GENERATION", "IMAGE_SEGMENTATION",
             "CLASSIFICATION", "REGRESSION", "OTHER" (default: None).
+        skip_model_validation (str): Indicates if you want to skip model validation.
+            Values can be "All" or "None" (default: None).
 
     Returns:
         dict: A dictionary of method argument names and values.
@@ -5848,6 +5855,8 @@ def get_model_package_args(
         model_package_args["sample_payload_url"] = sample_payload_url
     if task is not None:
         model_package_args["task"] = task
+    if skip_model_validation is not None:
+        model_package_args["skip_model_validation"] = skip_model_validation
     return model_package_args
 
 
@@ -5871,6 +5880,7 @@ def get_create_model_package_request(
     domain=None,
     sample_payload_url=None,
     task=None,
+    skip_model_validation="None",
 ):
     """Get request dictionary for CreateModelPackage API.
 
@@ -5905,6 +5915,8 @@ def get_create_model_package_request(
         task (str): Task values which are supported by Inference Recommender are "FILL_MASK",
             "IMAGE_CLASSIFICATION", "OBJECT_DETECTION", "TEXT_GENERATION", "IMAGE_SEGMENTATION",
             "CLASSIFICATION", "REGRESSION", "OTHER" (default: None).
+        skip_model_validation (str): Indicates if you want to skip model validation.
+            Values can be "All" or "None" (default: None).
     """
 
     if all([model_package_name, model_package_group_name]):
@@ -5974,6 +5986,7 @@ def get_create_model_package_request(
         request_dict["InferenceSpecification"] = inference_specification
     request_dict["CertifyForMarketplace"] = marketplace_cert
     request_dict["ModelApprovalStatus"] = approval_status
+    request_dict["SkipModelValidation"] = skip_model_validation
     return request_dict
 
 
