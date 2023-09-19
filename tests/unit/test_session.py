@@ -1899,6 +1899,7 @@ def test_train_with_sagemaker_config_injection(sagemaker_session):
             "TrainingRepositoryCredentialsProviderArn": "arn:aws:lambda:us-west-2:1234567897:function:test"
         },
     }
+    INFRA_CHECK_CONFIG = {"EnableInfraCheck": True}
     CONTAINER_ENTRY_POINT = ["bin/bash", "test.sh"]
     CONTAINER_ARGUMENTS = ["--arg1", "value1", "--arg2", "value2"]
 
@@ -1920,6 +1921,7 @@ def test_train_with_sagemaker_config_injection(sagemaker_session):
         training_image_config=TRAINING_IMAGE_CONFIG,
         container_entry_point=CONTAINER_ENTRY_POINT,
         container_arguments=CONTAINER_ARGUMENTS,
+        infra_check_config=INFRA_CHECK_CONFIG,
     )
 
     _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
@@ -1966,6 +1968,7 @@ def test_train_with_sagemaker_config_injection(sagemaker_session):
         actual_train_args["AlgorithmSpecification"]["ContainerEntrypoint"] == CONTAINER_ENTRY_POINT
     )
     assert actual_train_args["AlgorithmSpecification"]["ContainerArguments"] == CONTAINER_ARGUMENTS
+    assert actual_train_args["InfraCheckConfig"] == INFRA_CHECK_CONFIG
     assert actual_train_args["RoleArn"] == expected_role_arn
     assert actual_train_args["ResourceConfig"] == {
         "InstanceCount": INSTANCE_COUNT,
