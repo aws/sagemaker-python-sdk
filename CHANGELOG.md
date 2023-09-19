@@ -1,5 +1,17 @@
 # Changelog
 
+## v2.187.0 (2023-09-19)
+
+### Features
+
+ * add HealthCheckConfig support
+ * SkipModelValidation in modelRegistry
+
+### Bug Fixes and Other Changes
+
+ * Update fw_utils.py - support 2.0.1 container for DDP and Torch distri…
+ * bump apache-airflow to v2.7.1
+
 ## v2.186.0 (2023-09-14)
 
 ### Features
