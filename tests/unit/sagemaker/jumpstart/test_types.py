@@ -175,6 +175,7 @@ def test_jumpstart_instance_variants():
                 "ml.p3.200xlarge": {"regional_properties": {"image_uri": "$gpu_image_uri_2"}},
                 "p4": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
                 "g4dn": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
+                "g9": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
                 "m2": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
                 "c2": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
                 "local": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
@@ -184,12 +185,21 @@ def test_jumpstart_instance_variants():
                 "ml.g5.12xlarge": {
                     "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"}}
                 },
+                "ml.g9.12xlarge": {
+                    "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"}}
+                },
             },
         }
     )
     assert (
         variant.get_image_uri(instance_type="ml.p3.200xlarge", region="us-west-2")
         == "763104351884.dkr.ecr.us-west-2.amazonaws.com/stud-gpu"
+    )
+
+    assert (
+        variant.get_image_uri(instance_type="ml.g9.12xlarge", region="us-west-2")
+        == "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-inference:"
+        "1.13.1-transformers4.26.0-gpu-py39-cu117-ubuntu20.04"
     )
 
     assert (

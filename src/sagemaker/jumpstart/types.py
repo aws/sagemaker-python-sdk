@@ -356,12 +356,10 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
         if None in [self.regional_aliases, self.variants]:
             return None
 
-        image_uri_alias: Optional[str] = None
-        if instance_type in self.variants:
-            image_uri_alias = (
-                self.variants[instance_type].get("regional_properties", {}).get("image_uri")
-            )
-        else:
+        image_uri_alias: Optional[str] = (
+            self.variants.get(instance_type, {}).get("regional_properties", {}).get("image_uri")
+        )
+        if image_uri_alias is None:
             instance_type_family = get_instance_type_family(instance_type)
 
             if instance_type_family in {"", None}:
