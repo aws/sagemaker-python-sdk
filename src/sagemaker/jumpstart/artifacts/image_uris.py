@@ -128,8 +128,8 @@ def _retrieve_image_uri(
         ecr_specs = model_specs.hosting_ecr_specs
         if ecr_specs is None:
             raise ValueError(
-                f"No hosting ECR specs found for JumpStart model ID '{model_id}' with "
-                f"{instance_type} instance type in {region}. "
+                f"No inference ECR configuration found for JumpStart model ID '{model_id}' "
+                f"with {instance_type} instance type in {region}. "
                 "Please try another instance type or region."
             )
     elif image_scope == JumpStartScriptScope.TRAINING:
@@ -143,8 +143,8 @@ def _retrieve_image_uri(
         ecr_specs = model_specs.training_ecr_specs
         if ecr_specs is None:
             raise ValueError(
-                f"No training ECR specs found for JumpStart model ID '{model_id}' with "
-                f"{instance_type} instance type in {region}. "
+                f"No training ECR configuration found for JumpStart model ID '{model_id}' "
+                f"with {instance_type} instance type in {region}. "
                 "Please try another instance type or region."
             )
     if framework is not None and framework != ecr_specs.framework:
