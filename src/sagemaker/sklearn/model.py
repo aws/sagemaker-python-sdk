@@ -166,6 +166,7 @@ class SKLearnModel(FrameworkModel):
         framework_version: Optional[Union[str, PipelineVariable]] = None,
         nearest_model_name: Optional[Union[str, PipelineVariable]] = None,
         data_input_configuration: Optional[Union[str, PipelineVariable]] = None,
+        skip_model_validation: Optional[Union[str, PipelineVariable]] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -213,6 +214,8 @@ class SKLearnModel(FrameworkModel):
                 benchmarked by Amazon SageMaker Inference Recommender (default: None).
             data_input_configuration (str or PipelineVariable): Input object for the model
                 (default: None).
+            skip_model_validation (str or PipelineVariable): Indicates if you want to skip model
+                validation. Values can be "All" or "None" (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance.
@@ -251,6 +254,7 @@ class SKLearnModel(FrameworkModel):
             framework_version=framework_version,
             nearest_model_name=nearest_model_name,
             data_input_configuration=data_input_configuration,
+            skip_model_validation=skip_model_validation,
         )
 
     def prepare_container_def(

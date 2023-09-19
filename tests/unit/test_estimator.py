@@ -46,6 +46,7 @@ from sagemaker.estimator import Estimator, EstimatorBase, Framework, _TrainingJo
 from sagemaker.fw_utils import PROFILER_UNSUPPORTED_REGIONS
 from sagemaker.inputs import ShuffleConfig
 from sagemaker.instance_group import InstanceGroup
+from sagemaker.interactive_apps import SupportedInteractiveAppTypes
 from sagemaker.model import FrameworkModel
 from sagemaker.mxnet.estimator import MXNet
 from sagemaker.predictor import Predictor
@@ -102,6 +103,7 @@ CODECOMMIT_BRANCH = "master"
 REPO_DIR = "/tmp/repo_dir"
 ENV_INPUT = {"env_key1": "env_val1", "env_key2": "env_val2", "env_key3": "env_val3"}
 TRAINING_REPOSITORY_ACCESS_MODE = "VPC"
+ENABLE_INFRA_CHECK = True
 TRAINING_REPOSITORY_CREDENTIALS_PROVIDER_ARN = "arn:aws:lambda:us-west-2:1234567890:function:test"
 CONTAINER_ENTRY_POINT = ["entry_point1", "entry_point2"]
 CONTAINER_ARGUMENTS = ["container_arg1", "container_arg2"]
@@ -766,6 +768,39 @@ def test_framework_without_training_repository_config(sagemaker_session):
     sagemaker_session.train.assert_called_once()
     _, args = sagemaker_session.train.call_args
     assert args.get("training_image_config") is None
+
+
+def test_framework_without_infra_check_config(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args.get("health_check_config") is None
+
+
+def test_framework_with_infra_check_config(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+        enable_infra_check=ENABLE_INFRA_CHECK,
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args["infra_check_config"]["EnableInfraCheck"] == ENABLE_INFRA_CHECK
 
 
 def test_framework_with_container_entry_point(sagemaker_session):
@@ -5448,3 +5483,46 @@ def test_stage_user_code_in_s3_default_bucket_and_prefix_combinations(
         ),
     )
     assert actual == expected
+
+
+def test_estimator_get_app_url_success(sagemaker_session):
+    job_name = "get-app-url-test-job-name"
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        base_job_name=job_name,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+    )
+    f.fit("s3://mydata")
+
+    url = f.get_app_url("TensorBoard", open_in_default_web_browser=False)
+
+    assert url and job_name in url
+
+    app_type = SupportedInteractiveAppTypes.TENSORBOARD
+    url = f.get_app_url(app_type, open_in_default_web_browser=False)
+
+    assert url and job_name in url
+
+
+def test_estimator_get_app_url_fail(sagemaker_session):
+    job_name = "get-app-url-test-job-name"
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        base_job_name=job_name,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+    )
+    f.fit("s3://mydata")
+    with pytest.raises(ValueError) as error:
+        f.get_app_url("fake-app")
+
+    assert "does not support URL retrieval." in str(error)

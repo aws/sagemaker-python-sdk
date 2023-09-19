@@ -772,7 +772,7 @@ The following example is for use cases with multiple GPUs and shows an overridde
     import torch
     import numpy as np
 
-    def predict_fn(input_data, model):
+    def predict_fn(input_data, model, context):
         device = torch.device("cuda:" + str(context.system_properties.get("gpu_id")) if torch.cuda.is_available() else "cpu")
         model.to(device)
         model.eval()

@@ -1550,14 +1550,15 @@ them to your local environment. This is a great way to test your deep learning s
 managed training or hosting environments. Local Mode is supported for frameworks images (TensorFlow, MXNet, Chainer, PyTorch,
 and Scikit-Learn) and images you supply yourself.
 
-You can install necessary dependencies for this feature using pip; local mode also requires docker-compose which you can
-install using the following steps (More info - https://github.com/docker/compose#where-to-get-docker-compose ):
+You can install necessary dependencies for this feature using pip.
 
 ::
 
     pip install 'sagemaker[local]' --upgrade
-    curl -L "https://github.com/docker/compose/releases/download/v2.7.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-    chmod +x /usr/local/bin/docker-compose
+
+
+Additionally, Local Mode also requires Docker Compose V2. Follow the guidelines in https://docs.docker.com/compose/install/ to install.
+Make sure to have a Compose Version compatible with your Docker Engine installation. Check Docker Engine release notes https://docs.docker.com/engine/release-notes to find a compatible version.
 
 If you want to keep everything local, and not use Amazon S3 either, you can enable "local code" in one of two ways:
 

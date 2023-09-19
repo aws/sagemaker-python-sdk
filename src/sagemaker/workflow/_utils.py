@@ -322,6 +322,7 @@ class _RegisterModelStep(ConfigurableRetryStep):
         domain=None,
         sample_payload_url=None,
         task=None,
+        skip_model_validation=None,
         **kwargs,
     ):
         """Constructor of a register model step.
@@ -371,6 +372,8 @@ class _RegisterModelStep(ConfigurableRetryStep):
             task (str): Task values which are supported by Inference Recommender are "FILL_MASK",
                 "IMAGE_CLASSIFICATION", "OBJECT_DETECTION", "TEXT_GENERATION", "IMAGE_SEGMENTATION",
                 "CLASSIFICATION", "REGRESSION", "OTHER" (default: None).
+            skip_model_validation (str): Indicates if you want to skip model validation.
+                Values can be "All" or "None" (default: None).
             **kwargs: additional arguments to `create_model`.
         """
         super(_RegisterModelStep, self).__init__(
@@ -407,6 +410,7 @@ class _RegisterModelStep(ConfigurableRetryStep):
         self.tags = tags
         self.kwargs = kwargs
         self.container_def_list = container_def_list
+        self.skip_model_validation = skip_model_validation
 
         self._properties = Properties(step_name=name, shape_name="DescribeModelPackageOutput")
 
@@ -481,6 +485,7 @@ class _RegisterModelStep(ConfigurableRetryStep):
                 domain=self.domain,
                 sample_payload_url=self.sample_payload_url,
                 task=self.task,
+                skip_model_validation=self.skip_model_validation,
             )
 
             request_dict = get_create_model_package_request(**model_package_args)

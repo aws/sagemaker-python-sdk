@@ -26,7 +26,6 @@ from sagemaker.workflow.conditions import ConditionEquals
 from sagemaker.workflow.execution_variables import ExecutionVariables
 from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.pipeline import Pipeline, PipelineGraph
-from sagemaker.workflow.parallelism_config import ParallelismConfiguration
 from sagemaker.workflow.pipeline_experiment_config import (
     PipelineExperimentConfig,
     PipelineExperimentConfigProperties,
@@ -126,15 +125,53 @@ def test_pipeline_create_with_parallelism_config(sagemaker_session_mock, role_ar
         name="MyPipeline",
         parameters=[],
         steps=[],
-        pipeline_experiment_config=ParallelismConfiguration(max_parallel_execution_steps=10),
         sagemaker_session=sagemaker_session_mock,
     )
-    pipeline.create(role_arn=role_arn)
+    pipeline.create(
+        role_arn=role_arn,
+        parallelism_config=dict(MaxParallelExecutionSteps=10),
+    )
     assert sagemaker_session_mock.sagemaker_client.create_pipeline.called_with(
         PipelineName="MyPipeline",
         PipelineDefinition=pipeline.definition(),
         RoleArn=role_arn,
         ParallelismConfiguration={"MaxParallelExecutionSteps": 10},
+    )
+
+
+def test_pipeline_create_and_start_with_parallelism_config(sagemaker_session_mock, role_arn):
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[],
+        steps=[],
+        sagemaker_session=sagemaker_session_mock,
+    )
+    pipeline.create(
+        role_arn=role_arn,
+        parallelism_config=dict(MaxParallelExecutionSteps=10),
+    )
+    assert sagemaker_session_mock.sagemaker_client.create_pipeline.called_with(
+        PipelineName="MyPipeline",
+        PipelineDefinition=pipeline.definition(),
+        RoleArn=role_arn,
+        ParallelismConfiguration={"MaxParallelExecutionSteps": 10},
+    )
+
+    sagemaker_session_mock.sagemaker_client.start_pipeline_execution.return_value = dict(
+        PipelineExecutionArn="pipeline-execution-arn"
+    )
+
+    # No ParallelismConfiguration specified
+    pipeline.start()
+    assert sagemaker_session_mock.sagemaker_client.start_pipeline_execution.call_args[1] == {
+        "PipelineName": "MyPipeline"
+    }
+
+    # Specify ParallelismConfiguration to another value which will be honored in backend
+    pipeline.start(parallelism_config=dict(MaxParallelExecutionSteps=20))
+    assert sagemaker_session_mock.sagemaker_client.start_pipeline_execution.called_with(
+        PipelineName="MyPipeline",
+        ParallelismConfiguration={"MaxParallelExecutionSteps": 20},
     )
 
 
@@ -200,10 +237,12 @@ def test_pipeline_update_with_parallelism_config(sagemaker_session_mock, role_ar
         name="MyPipeline",
         parameters=[],
         steps=[],
-        pipeline_experiment_config=ParallelismConfiguration(max_parallel_execution_steps=10),
         sagemaker_session=sagemaker_session_mock,
     )
-    pipeline.create(role_arn=role_arn)
+    pipeline.create(
+        role_arn=role_arn,
+        parallelism_config=dict(MaxParallelExecutionSteps=10),
+    )
     assert sagemaker_session_mock.sagemaker_client.update_pipeline.called_with(
         PipelineName="MyPipeline",
         PipelineDefinition=pipeline.definition(),

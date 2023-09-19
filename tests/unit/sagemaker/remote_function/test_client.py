@@ -455,6 +455,26 @@ def test_decorator_with_spark_config(mock_start, mock_job_settings, mock_deseria
     assert mock_job_settings.call_args.kwargs["spark_config"] == spark_config
 
 
+@patch(
+    "sagemaker.remote_function.core.serialization.deserialize_obj_from_s3",
+    return_value=EXPECTED_JOB_RESULT,
+)
+@patch("sagemaker.remote_function.client._JobSettings")
+@patch("sagemaker.remote_function.client._Job.start")
+def test_decorator_with_spot_instances(mock_start, mock_job_settings, mock_deserialize):
+    mock_job = Mock(job_name=TRAINING_JOB_NAME)
+    mock_job.describe.return_value = COMPLETED_TRAINING_JOB
+
+    mock_start.return_value = mock_job
+
+    @remote(use_spot_instances=True, max_wait_time_in_seconds=48 * 60 * 60)
+    def square(x):
+        pass
+
+    assert mock_job_settings.call_args.kwargs["use_spot_instances"] is True
+    assert mock_job_settings.call_args.kwargs["max_wait_time_in_seconds"] == 172800
+
+
 @pytest.mark.parametrize(
     "args, kwargs, error_message",
     [
