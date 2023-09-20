@@ -349,13 +349,14 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
     def get_instance_specific_environment_variables(self, instance_type: str) -> Dict[str, str]:
         """Returns instance specific environment variables.
 
-        Not all models and images have instance specific environment variables.
+        Returns empty dict if a model, instance type tuple does not have specific
+        environment variables.
         """
 
         if self.variants is None:
             return {}
 
-        instance_specific_environment_variables: dict = (
+        instance_specific_environment_variables: Dict[str, str] = (
             self.variants.get(instance_type, {})
             .get("properties", {})
             .get("environment_variables", {})

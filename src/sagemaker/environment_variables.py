@@ -61,9 +61,10 @@ def retrieve_default(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
-        instance_type (str): An instance type to optionally supply in order to get environment variables
-            specific for the instance type.
-        script (JumpStartScriptScope): The JumpStart script for which to retrieve environment variables.
+        instance_type (str): An instance type to optionally supply in order to get environment
+            variables specific for the instance type.
+        script (JumpStartScriptScope): The JumpStart script for which to retrieve environment
+            variables.
     Returns:
         dict: The variables to use for the model.
 

@@ -61,9 +61,10 @@ def _retrieve_default_environment_variables(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
-        instance_type (str): An instance type to optionally supply in order to get environment variables
-            specific for the instance type.
-        script (JumpStartScriptScope): The JumpStart script for which to retrieve environment variables.
+        instance_type (str): An instance type to optionally supply in order to get
+            environment variables specific for the instance type.
+        script (JumpStartScriptScope): The JumpStart script for which to retrieve
+            environment variables.
     Returns:
         dict: the inference environment variables to use for the model.
     """
@@ -94,7 +95,7 @@ def _retrieve_default_environment_variables(
             model_specs, "hosting_instance_type_variants", None
         ):
             default_environment_variables.update(
-                model_specs.hosting_instance_type_variants.get_instance_specific_environment_variables(
+                model_specs.hosting_instance_type_variants.get_instance_specific_environment_variables(  # noqa E501  # pylint: disable=c0301
                     instance_type
                 )
             )
@@ -102,7 +103,7 @@ def _retrieve_default_environment_variables(
             model_specs, "training_instance_type_variants", None
         ):
             default_environment_variables.update(
-                model_specs.training_instance_type_variants.get_instance_specific_environment_variables(
+                model_specs.training_instance_type_variants.get_instance_specific_environment_variables(  # noqa E501  # pylint: disable=c0301
                     instance_type
                 )
             )
