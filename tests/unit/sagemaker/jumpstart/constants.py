@@ -14,6 +14,166 @@ from __future__ import absolute_import
 
 
 SPECIAL_MODEL_SPECS_DICT = {
+    "env-var-variant-model": {
+        "model_id": "huggingface-llm-falcon-180b-bf16",
+        "url": "https://huggingface.co/tiiuae/falcon-180B",
+        "version": "1.0.0",
+        "min_sdk_version": "2.175.0",
+        "training_supported": False,
+        "incremental_training_supported": False,
+        "hosting_ecr_specs": {
+            "framework": "huggingface-llm",
+            "framework_version": "0.9.3",
+            "py_version": "py39",
+            "huggingface_transformers_version": "4.29.2",
+        },
+        "hosting_artifact_key": "huggingface-infer/infer-huggingface-llm-falcon-180b-bf16.tar.gz",
+        "hosting_script_key": "source-directory-tarballs/huggingface/inference/llm/v1.0.1/sourcedir.tar.gz",
+        "hosting_prepacked_artifact_key": "huggingface-infer/prepack/v1.0.1/infer-prepack"
+        "-huggingface-llm-falcon-180b-bf16.tar.gz",
+        "hosting_prepacked_artifact_version": "1.0.1",
+        "hosting_use_script_uri": False,
+        "inference_vulnerable": False,
+        "inference_dependencies": [],
+        "inference_vulnerabilities": [],
+        "training_vulnerable": False,
+        "training_dependencies": [],
+        "training_vulnerabilities": [],
+        "deprecated": False,
+        "inference_environment_variables": [
+            {
+                "name": "SAGEMAKER_PROGRAM",
+                "type": "text",
+                "default": "inference.py",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "SAGEMAKER_SUBMIT_DIRECTORY",
+                "type": "text",
+                "default": "/opt/ml/model/code",
+                "scope": "container",
+                "required_for_model_class": False,
+            },
+            {
+                "name": "SAGEMAKER_CONTAINER_LOG_LEVEL",
+                "type": "text",
+                "default": "20",
+                "scope": "container",
+                "required_for_model_class": False,
+            },
+            {
+                "name": "SAGEMAKER_MODEL_SERVER_TIMEOUT",
+                "type": "text",
+                "default": "3600",
+                "scope": "container",
+                "required_for_model_class": False,
+            },
+            {
+                "name": "ENDPOINT_SERVER_TIMEOUT",
+                "type": "int",
+                "default": 3600,
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "MODEL_CACHE_ROOT",
+                "type": "text",
+                "default": "/opt/ml/model",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "SAGEMAKER_ENV",
+                "type": "text",
+                "default": "1",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "HF_MODEL_ID",
+                "type": "text",
+                "default": "/opt/ml/model",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "SM_NUM_GPUS",
+                "type": "text",
+                "default": "8",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "MAX_INPUT_LENGTH",
+                "type": "text",
+                "default": "1024",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "MAX_TOTAL_TOKENS",
+                "type": "text",
+                "default": "2048",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "SAGEMAKER_MODEL_SERVER_WORKERS",
+                "type": "int",
+                "default": 1,
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+        ],
+        "metrics": [],
+        "default_inference_instance_type": "ml.p4de.24xlarge",
+        "supported_inference_instance_types": ["ml.p4de.24xlarge"],
+        "model_kwargs": {},
+        "deploy_kwargs": {
+            "model_data_download_timeout": 3600,
+            "container_startup_health_check_timeout": 3600,
+        },
+        "predictor_specs": {
+            "supported_content_types": ["application/json"],
+            "supported_accept_types": ["application/json"],
+            "default_content_type": "application/json",
+            "default_accept_type": "application/json",
+        },
+        "inference_volume_size": 512,
+        "inference_enable_network_isolation": True,
+        "validation_supported": False,
+        "fine_tuning_supported": False,
+        "resource_name_base": "hf-llm-falcon-180b-bf16",
+        "hosting_instance_type_variants": {
+            "regional_aliases": {
+                "us-west-2": {
+                    "gpu_image_uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
+                    "huggingface-pytorch-inference:1.13.1-transformers4.26.0-gpu-py39-cu117-ubuntu20.04",
+                    "cpu_image_uri": "867930986793.dkr.us-west-2.amazonaws.com/cpu-blah",
+                }
+            },
+            "variants": {
+                "g4dn": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "g5": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "local_gpu": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p2": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p3": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p3dn": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p4d": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p4de": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p5": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "ml.g5.48xlarge": {"properties": {"environment_variables": {"SM_NUM_GPUS": "80"}}},
+                "ml.p4d.24xlarge": {
+                    "properties": {
+                        "environment_variables": {
+                            "YODEL": "NACEREMA",
+                        }
+                    }
+                },
+            },
+        },
+    },
     "variant-model": {
         "model_id": "pytorch-ic-mobilenet-v2",
         "url": "https://pytorch.org/hub/pytorch_vision_mobilenet_v2/",

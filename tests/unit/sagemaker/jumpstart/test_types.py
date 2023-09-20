@@ -21,6 +21,48 @@ from sagemaker.jumpstart.types import (
 )
 from tests.unit.sagemaker.jumpstart.constants import BASE_SPEC
 
+INSTANCE_TYPE_VARIANT = JumpStartInstanceTypeVariants(
+    {
+        "regional_aliases": {
+            "us-west-2": {
+                "gpu_image_uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
+                "huggingface-pytorch-inference:1.13.1-transformers4.26.0-gpu-py39-cu117-ubuntu20.04",
+                "gpu_image_uri_2": "763104351884.dkr.ecr.us-west-2.amazonaws.com/stud-gpu",
+                "cpu_image_uri": "867930986793.dkr.us-west-2.amazonaws.com/cpu-blah",
+            }
+        },
+        "variants": {
+            "p2": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
+            "p3": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
+            "ml.p3.200xlarge": {"regional_properties": {"image_uri": "$gpu_image_uri_2"}},
+            "p4": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
+            "g4dn": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
+            "g9": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
+            "m2": {
+                "regional_properties": {"image_uri": "$cpu_image_uri"},
+                "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "400"}},
+            },
+            "c2": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
+            "local": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
+            "ml.g5.48xlarge": {
+                "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "8"}}
+            },
+            "ml.g5.12xlarge": {
+                "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"}}
+            },
+            "g5": {
+                "properties": {
+                    "environment_variables": {"TENSOR_PARALLEL_DEGREE": "4", "JOHN": "DOE"}
+                }
+            },
+            "ml.g9.12xlarge": {
+                "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"}}
+            },
+            "g6": {"properties": {"environment_variables": {"BLAH": "4"}}},
+        },
+    }
+)
+
 
 def test_jumpstart_model_header():
 
@@ -158,78 +200,93 @@ def test_jumpstart_model_specs():
     assert specs3 == specs1
 
 
-def test_jumpstart_instance_variants():
-    variant = JumpStartInstanceTypeVariants(
-        {
-            "regional_aliases": {
-                "us-west-2": {
-                    "gpu_image_uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
-                    "huggingface-pytorch-inference:1.13.1-transformers4.26.0-gpu-py39-cu117-ubuntu20.04",
-                    "gpu_image_uri_2": "763104351884.dkr.ecr.us-west-2.amazonaws.com/stud-gpu",
-                    "cpu_image_uri": "867930986793.dkr.us-west-2.amazonaws.com/cpu-blah",
-                }
-            },
-            "variants": {
-                "p2": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
-                "p3": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
-                "ml.p3.200xlarge": {"regional_properties": {"image_uri": "$gpu_image_uri_2"}},
-                "p4": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
-                "g4dn": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
-                "g9": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
-                "m2": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
-                "c2": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
-                "local": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
-                "ml.g5.48xlarge": {
-                    "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "8"}}
-                },
-                "ml.g5.12xlarge": {
-                    "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"}}
-                },
-                "ml.g9.12xlarge": {
-                    "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"}}
-                },
-            },
-        }
-    )
+def test_jumpstart_image_uri_instance_variants():
+
     assert (
-        variant.get_image_uri(instance_type="ml.p3.200xlarge", region="us-west-2")
+        INSTANCE_TYPE_VARIANT.get_image_uri(instance_type="ml.p3.200xlarge", region="us-west-2")
         == "763104351884.dkr.ecr.us-west-2.amazonaws.com/stud-gpu"
     )
 
     assert (
-        variant.get_image_uri(instance_type="ml.g9.12xlarge", region="us-west-2")
+        INSTANCE_TYPE_VARIANT.get_image_uri(instance_type="ml.g9.12xlarge", region="us-west-2")
         == "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-inference:"
         "1.13.1-transformers4.26.0-gpu-py39-cu117-ubuntu20.04"
     )
 
     assert (
-        variant.get_image_uri(instance_type="ml.p3.2xlarge", region="us-west-2")
+        INSTANCE_TYPE_VARIANT.get_image_uri(instance_type="ml.p3.2xlarge", region="us-west-2")
         == "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-inference:"
         "1.13.1-transformers4.26.0-gpu-py39-cu117-ubuntu20.04"
     )
 
     assert (
-        variant.get_image_uri(instance_type="ml.g4dn.2xlarge", region="us-west-2")
+        INSTANCE_TYPE_VARIANT.get_image_uri(instance_type="ml.g4dn.2xlarge", region="us-west-2")
         == "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-inference:"
         "1.13.1-transformers4.26.0-gpu-py39-cu117-ubuntu20.04"
     )
 
     assert (
-        variant.get_image_uri(instance_type="ml.c2.xlarge", region="us-west-2")
+        INSTANCE_TYPE_VARIANT.get_image_uri(instance_type="ml.c2.xlarge", region="us-west-2")
         == "867930986793.dkr.us-west-2.amazonaws.com/cpu-blah"
     )
 
     assert (
-        variant.get_image_uri(instance_type="local", region="us-west-2")
+        INSTANCE_TYPE_VARIANT.get_image_uri(instance_type="local", region="us-west-2")
         == "867930986793.dkr.us-west-2.amazonaws.com/cpu-blah"
     )
 
-    assert variant.get_image_uri(instance_type="local_gpu", region="us-west-2") is None
+    assert (
+        INSTANCE_TYPE_VARIANT.get_image_uri(instance_type="local_gpu", region="us-west-2") is None
+    )
 
-    assert variant.get_image_uri(instance_type="ml.g5.12xlarge", region="us-west-2") is None
+    assert (
+        INSTANCE_TYPE_VARIANT.get_image_uri(instance_type="ml.g5.12xlarge", region="us-west-2")
+        is None
+    )
 
-    assert variant.get_image_uri(instance_type="ml.c3.xlarge", region="us-west-2") is None
+    assert (
+        INSTANCE_TYPE_VARIANT.get_image_uri(instance_type="ml.c3.xlarge", region="us-west-2")
+        is None
+    )
 
-    assert variant.get_image_uri(instance_type="ml.c2.xlarge", region="us-east-2000") is None
+    assert (
+        INSTANCE_TYPE_VARIANT.get_image_uri(instance_type="ml.c2.xlarge", region="us-east-2000")
+        is None
+    )
 
-    assert variant.get_image_uri(instance_type="ml.c3.xlarge", region="us-east-2000") is None
+    assert (
+        INSTANCE_TYPE_VARIANT.get_image_uri(instance_type="ml.c3.xlarge", region="us-east-2000")
+        is None
+    )
+
+
+def test_jumpstart_environment_variables_instance_variants():
+    assert INSTANCE_TYPE_VARIANT.get_instance_specific_environment_variables(
+        instance_type="ml.g9.12xlarge"
+    ) == {"TENSOR_PARALLEL_DEGREE": "4"}
+
+    assert INSTANCE_TYPE_VARIANT.get_instance_specific_environment_variables(
+        instance_type="ml.g5.48xlarge"
+    ) == {"TENSOR_PARALLEL_DEGREE": "8", "JOHN": "DOE"}
+
+    assert INSTANCE_TYPE_VARIANT.get_instance_specific_environment_variables(
+        instance_type="ml.m2.48xlarge"
+    ) == {"TENSOR_PARALLEL_DEGREE": "400"}
+
+    assert INSTANCE_TYPE_VARIANT.get_instance_specific_environment_variables(
+        instance_type="ml.g6.48xlarge"
+    ) == {"BLAH": "4"}
+
+    assert (
+        INSTANCE_TYPE_VARIANT.get_instance_specific_environment_variables(
+            instance_type="ml.p2.xlarge"
+        )
+        == {}
+    )
+
+    assert (
+        INSTANCE_TYPE_VARIANT.get_instance_specific_environment_variables(
+            instance_type="safh8ads9fhsad89fh"
+        )
+        == {}
+    )

@@ -34,6 +34,8 @@ def _retrieve_default_environment_variables(
     tolerate_deprecated_model: bool = False,
     include_aws_sdk_env_vars: bool = True,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    instance_type: Optional[str] = None,
+    script: JumpStartScriptScope = JumpStartScriptScope.INFERENCE,
 ) -> Dict[str, str]:
     """Retrieves the inference environment variables for the model matching the given arguments.
 
@@ -59,6 +61,9 @@ def _retrieve_default_environment_variables(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        instance_type (str): An instance type to optionally supply in order to get environment variables
+            specific for the instance type.
+        script (JumpStartScriptScope): The JumpStart script for which to retrieve environment variables.
     Returns:
         dict: the inference environment variables to use for the model.
     """
@@ -69,7 +74,7 @@ def _retrieve_default_environment_variables(
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
-        scope=JumpStartScriptScope.INFERENCE,
+        scope=script,
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
@@ -77,9 +82,29 @@ def _retrieve_default_environment_variables(
     )
 
     default_environment_variables: Dict[str, str] = {}
-    for environment_variable in model_specs.inference_environment_variables:
-        if include_aws_sdk_env_vars or environment_variable.required_for_model_class:
-            default_environment_variables[environment_variable.name] = str(
-                environment_variable.default
+    if script == JumpStartScriptScope.INFERENCE:
+        for environment_variable in model_specs.inference_environment_variables:
+            if include_aws_sdk_env_vars or environment_variable.required_for_model_class:
+                default_environment_variables[environment_variable.name] = str(
+                    environment_variable.default
+                )
+
+    if instance_type:
+        if script == JumpStartScriptScope.INFERENCE and getattr(
+            model_specs, "hosting_instance_type_variants", None
+        ):
+            default_environment_variables.update(
+                model_specs.hosting_instance_type_variants.get_instance_specific_environment_variables(
+                    instance_type
+                )
             )
+        elif script == JumpStartScriptScope.TRAINING and getattr(
+            model_specs, "training_instance_type_variants", None
+        ):
+            default_environment_variables.update(
+                model_specs.training_instance_type_variants.get_instance_specific_environment_variables(
+                    instance_type
+                )
+            )
+
     return default_environment_variables

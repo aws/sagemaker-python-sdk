@@ -346,6 +346,35 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
         json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
         return json_obj
 
+    def get_instance_specific_environment_variables(self, instance_type: str) -> Dict[str, str]:
+        """Returns instance specific environment variables.
+
+        Not all models and images have instance specific environment variables.
+        """
+
+        if self.variants is None:
+            return {}
+
+        instance_specific_environment_variables: dict = (
+            self.variants.get(instance_type, {})
+            .get("properties", {})
+            .get("environment_variables", {})
+        )
+
+        instance_type_family = get_instance_type_family(instance_type)
+
+        instance_family_environment_variables: dict = (
+            self.variants.get(instance_type_family, {})
+            .get("properties", {})
+            .get("environment_variables", {})
+            if instance_type_family not in {"", None}
+            else {}
+        )
+
+        instance_family_environment_variables.update(instance_specific_environment_variables)
+
+        return instance_family_environment_variables
+
     def get_image_uri(self, instance_type: str, region: str) -> Optional[str]:
         """Returns image uri from instance type and region.
 
