@@ -130,6 +130,7 @@ from sagemaker.session_settings import SessionSettings
 LOGGER = logging.getLogger("sagemaker")
 
 NOTEBOOK_METADATA_FILE = "/opt/ml/metadata/resource-metadata.json"
+MODEL_MONITOR_ONE_TIME_SCHEDULE = "NOW"
 _STATUS_CODE_TABLE = {
     "COMPLETED": "Completed",
     "INPROGRESS": "InProgress",
@@ -1449,6 +1450,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         network_config=None,
         role_arn=None,
         tags=None,
+        data_analysis_start_time=None,
+        data_analysis_end_time=None,
     ):
         """Create an Amazon SageMaker monitoring schedule.
 
@@ -1487,6 +1490,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 Amazon SageMaker can assume to perform tasks on your behalf.
             tags ([dict[str,str]]): A list of dictionaries containing key-value
                 pairs.
+            data_analysis_start_time (str): Start time for the data analysis window
+                for the one time monitoring schedule (NOW), e.g. "-PT1H"
+            data_analysis_end_time (str): End time for the data analysis window
+                for the one time monitoring schedule (NOW), e.g. "-PT1H"
         """
         role_arn = resolve_value_from_config(
             role_arn, MONITORING_JOB_ROLE_ARN_PATH, sagemaker_session=self
@@ -1524,8 +1531,17 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if schedule_expression is not None:
             monitoring_schedule_request["MonitoringScheduleConfig"]["ScheduleConfig"] = {
-                "ScheduleExpression": schedule_expression
+                "ScheduleExpression": schedule_expression,
             }
+            if data_analysis_start_time is not None:
+                monitoring_schedule_request["MonitoringScheduleConfig"]["ScheduleConfig"][
+                    "DataAnalysisStartTime"
+                ] = data_analysis_start_time
+
+            if data_analysis_end_time is not None:
+                monitoring_schedule_request["MonitoringScheduleConfig"]["ScheduleConfig"][
+                    "DataAnalysisEndTime"
+                ] = data_analysis_end_time
 
         if monitoring_output_config is not None:
             kms_key_from_config = resolve_value_from_config(
@@ -1626,6 +1642,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         environment=None,
         network_config=None,
         role_arn=None,
+        data_analysis_start_time=None,
+        data_analysis_end_time=None,
     ):
         """Update an Amazon SageMaker monitoring schedule.
 
@@ -1664,12 +1682,19 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 Amazon SageMaker can assume to perform tasks on your behalf.
             tags ([dict[str,str]]): A list of dictionaries containing key-value
                 pairs.
+            data_analysis_start_time (str): Start time for the data analysis window
+                for the one time monitoring schedule (NOW), e.g. "-PT1H"
+            data_analysis_end_time (str): End time for the data analysis window
+                for the one time monitoring schedule (NOW), e.g. "-PT1H"
         """
         existing_desc = self.sagemaker_client.describe_monitoring_schedule(
             MonitoringScheduleName=monitoring_schedule_name
         )
 
         existing_schedule_config = None
+        existing_data_analysis_start_time = None
+        existing_data_analysis_end_time = None
+
         if (
             existing_desc.get("MonitoringScheduleConfig") is not None
             and existing_desc["MonitoringScheduleConfig"].get("ScheduleConfig") is not None
@@ -1679,8 +1704,41 @@ class Session(object):  # pylint: disable=too-many-public-methods
             existing_schedule_config = existing_desc["MonitoringScheduleConfig"]["ScheduleConfig"][
                 "ScheduleExpression"
             ]
+            if (
+                existing_desc["MonitoringScheduleConfig"]["ScheduleConfig"].get(
+                    "DataAnalysisStartTime"
+                )
+                is not None
+            ):
+                existing_data_analysis_start_time = existing_desc["MonitoringScheduleConfig"][
+                    "ScheduleConfig"
+                ]["DataAnalysisStartTime"]
+            if (
+                existing_desc["MonitoringScheduleConfig"]["ScheduleConfig"].get(
+                    "DataAnalysisEndTime"
+                )
+                is not None
+            ):
+                existing_data_analysis_end_time = existing_desc["MonitoringScheduleConfig"][
+                    "ScheduleConfig"
+                ]["DataAnalysisEndTime"]
 
         request_schedule_expression = schedule_expression or existing_schedule_config
+        request_data_analysis_start_time = (
+            data_analysis_start_time or existing_data_analysis_start_time
+        )
+        request_data_analysis_end_time = data_analysis_end_time or existing_data_analysis_end_time
+
+        if request_schedule_expression == MODEL_MONITOR_ONE_TIME_SCHEDULE and (
+            request_data_analysis_start_time is None or request_data_analysis_end_time is None
+        ):
+            message = (
+                "Both data_analysis_start_time and data_analysis_end_time are required "
+                "for one time monitoring schedule "
+            )
+            LOGGER.error(message)
+            raise ValueError(message)
+
         request_monitoring_inputs = (
             monitoring_inputs
             or existing_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
@@ -1736,8 +1794,18 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if existing_schedule_config is not None:
             monitoring_schedule_request["MonitoringScheduleConfig"]["ScheduleConfig"] = {
-                "ScheduleExpression": request_schedule_expression
+                "ScheduleExpression": request_schedule_expression,
             }
+
+            if request_data_analysis_start_time is not None:
+                monitoring_schedule_request["MonitoringScheduleConfig"]["ScheduleConfig"][
+                    "DataAnalysisStartTime"
+                ] = request_data_analysis_start_time
+
+            if request_data_analysis_end_time is not None:
+                monitoring_schedule_request["MonitoringScheduleConfig"]["ScheduleConfig"][
+                    "DataAnalysisEndTime"
+                ] = request_data_analysis_end_time
 
         existing_monitoring_output_config = existing_desc["MonitoringScheduleConfig"][
             "MonitoringJobDefinition"
