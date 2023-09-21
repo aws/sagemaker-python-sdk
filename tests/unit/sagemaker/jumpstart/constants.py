@@ -1721,7 +1721,7 @@ SPECIAL_MODEL_SPECS_DICT = {
             "py_version": "py38",
             "huggingface_transformers_version": "4.17.0",
         },
-        "hosting_artifact_key": "huggingface-infer/infer-huggingface-text2text-flan-t5-xxl-fp16.tar.gz",
+        "hosting_artifact_key": "huggingface-infer/",
         "hosting_script_key": "source-directory-tarballs/huggingface/inference/text2text/v1.0.3/sourcedir.tar.gz",
         "hosting_prepacked_artifact_key": "huggingface-infer/prepack/v1.0.1/",
         "hosting_prepacked_artifact_version": "1.0.1",

@@ -737,8 +737,11 @@ class ModelTest(unittest.TestCase):
         )
 
         mock_js_info_logger.assert_called_with(
-            "S3 prefix model_data detected for JumpStartModel: '%s'. Converting to S3DataSource dictionary.",
+            "S3 prefix model_data detected for JumpStartModel: '%s'. "
+            "Converting to S3DataSource dictionary: '%s'.",
             "s3://some-bucket/path/to/prefix/",
+            '{"S3DataSource": {"S3Uri": "s3://some-bucket/path/to/prefix/", '
+            '"S3DataType": "S3Prefix", "CompressionType": "None"}}',
         )
 
     @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")

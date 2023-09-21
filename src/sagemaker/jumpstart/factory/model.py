@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 """This module stores JumpStart Model factory methods."""
 from __future__ import absolute_import
+import json
 
 
 from typing import Any, Dict, List, Optional, Union
@@ -217,12 +218,7 @@ def _add_model_data_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartMode
     )
 
     if isinstance(model_data, str) and model_data.startswith("s3://") and model_data.endswith("/"):
-        if kwargs.model_data:
-            JUMPSTART_LOGGER.info(
-                "S3 prefix model_data detected for JumpStartModel: '%s'. "
-                "Converting to S3DataSource dictionary.",
-                model_data,
-            )
+        old_model_data_str = model_data
         model_data = {
             "S3DataSource": {
                 "S3Uri": model_data,
@@ -230,6 +226,13 @@ def _add_model_data_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartMode
                 "CompressionType": "None",
             }
         }
+        if kwargs.model_data:
+            JUMPSTART_LOGGER.info(
+                "S3 prefix model_data detected for JumpStartModel: '%s'. "
+                "Converting to S3DataSource dictionary: '%s'.",
+                old_model_data_str,
+                json.dumps(model_data),
+            )
 
     kwargs.model_data = model_data
 
