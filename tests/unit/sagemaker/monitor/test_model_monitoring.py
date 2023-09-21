@@ -137,6 +137,7 @@ FEATURES_ATTRIBUTE = "features"
 INFERENCE_ATTRIBUTE = "predicted_label"
 PROBABILITY_ATTRIBUTE = "probabilities"
 PROBABILITY_THRESHOLD_ATTRIBUTE = 0.6
+EXCLUDE_FEATURES_ATTRIBUTE = "0"
 PREPROCESSOR_URI = "s3://my_bucket/preprocessor.py"
 POSTPROCESSOR_URI = "s3://my_bucket/postprocessor.py"
 DATA_CAPTURED_S3_URI = "s3://my-bucket/batch-fraud-detection/on-schedule-monitoring/in/"
@@ -180,6 +181,7 @@ DATA_QUALITY_BATCH_TRANSFORM_INPUT = {
         "DatasetFormat": DATASET_FORMAT,
     }
 }
+
 DATA_QUALITY_APP_SPECIFICATION = {
     "ImageUri": DEFAULT_IMAGE_URI,
     "Environment": ENVIRONMENT,
@@ -249,6 +251,23 @@ MODEL_QUALITY_BATCH_TRANSFORM_INPUT_JOB_INPUT = {
         "DatasetFormat": DATASET_FORMAT,
     },
     "GroundTruthS3Input": {"S3Uri": GROUND_TRUTH_S3_URI},
+}
+
+MODEL_QUALITY_BATCH_TRANSFORM_INPUT_JOB_INPUT_WITH_EXCLUDES = {
+    "BatchTransformInput": {
+        "DataCapturedDestinationS3Uri": DATA_CAPTURED_S3_URI,
+        "LocalPath": SCHEDULE_DESTINATION,
+        "S3InputMode": S3_INPUT_MODE,
+        "S3DataDistributionType": S3_DATA_DISTRIBUTION_TYPE,
+        "StartTimeOffset": START_TIME_OFFSET,
+        "EndTimeOffset": END_TIME_OFFSET,
+        "FeaturesAttribute": FEATURES_ATTRIBUTE,
+        "InferenceAttribute": INFERENCE_ATTRIBUTE,
+        "ProbabilityAttribute": PROBABILITY_ATTRIBUTE,
+        "ProbabilityThresholdAttribute": PROBABILITY_THRESHOLD_ATTRIBUTE,
+        "DatasetFormat": DATASET_FORMAT,
+        "ExcludeFeaturesAttribute": EXCLUDE_FEATURES_ATTRIBUTE,
+    }
 }
 
 MODEL_QUALITY_JOB_DEFINITION = {
@@ -395,6 +414,23 @@ MODEL_QUALITY_MONITOR_JOB_INPUT = {
         "ProbabilityThresholdAttribute": PROBABILITY_THRESHOLD_ATTRIBUTE,
     },
 }
+
+MODEL_QUALITY_MONITOR_JOB_INPUT_WITH_EXCULDE_FEATURES = {
+    "EndpointInput": {
+        "EndpointName": ENDPOINT_NAME,
+        "LocalPath": ENDPOINT_INPUT_LOCAL_PATH,
+        "S3InputMode": S3_INPUT_MODE,
+        "S3DataDistributionType": S3_DATA_DISTRIBUTION_TYPE,
+        "StartTimeOffset": START_TIME_OFFSET,
+        "EndTimeOffset": END_TIME_OFFSET,
+        "FeaturesAttribute": FEATURES_ATTRIBUTE,
+        "InferenceAttribute": INFERENCE_ATTRIBUTE,
+        "ProbabilityAttribute": PROBABILITY_ATTRIBUTE,
+        "ProbabilityThresholdAttribute": PROBABILITY_THRESHOLD_ATTRIBUTE,
+        "ExcludeFeaturesAttribute": EXCLUDE_FEATURES_ATTRIBUTE,
+    },
+}
+
 NEW_MODEL_QUALITY_JOB_DEFINITION = {
     "ModelQualityAppSpecification": NEW_MODEL_QUALITY_APP_SPECIFICATION,
     "ModelQualityJobInput": NEW_MODEL_QUALITY_JOB_INPUT,
@@ -1994,6 +2030,8 @@ def test_model_monitor_with_arguments(
         network_config=NETWORK_CONFIG._to_request_dict(),
         role_arn=ROLE,
         tags=TAGS,
+        data_analysis_start_time=None,
+        data_analysis_end_time=None,
     )
 
 
@@ -2039,3 +2077,121 @@ def test_update_model_monitor_error_with_endpoint_and_batch(
         assert "Cannot update both batch_transform_input and endpoint_input to update an" in str(
             error
         )
+
+
+def test_model_monitor_exclude_feature(
+    sagemaker_session,
+    model_monitor_arguments,
+    endpoint_input=EndpointInput(
+        endpoint_name=ENDPOINT_NAME,
+        destination=ENDPOINT_INPUT_LOCAL_PATH,
+        start_time_offset=START_TIME_OFFSET,
+        end_time_offset=END_TIME_OFFSET,
+        features_attribute=FEATURES_ATTRIBUTE,
+        inference_attribute=INFERENCE_ATTRIBUTE,
+        probability_attribute=PROBABILITY_ATTRIBUTE,
+        probability_threshold_attribute=PROBABILITY_THRESHOLD_ATTRIBUTE,
+        exclude_features_attribute=EXCLUDE_FEATURES_ATTRIBUTE,
+    ),
+):
+    model_monitor_arguments.create_monitoring_schedule(
+        monitor_schedule_name=SCHEDULE_NAME,
+        schedule_cron_expression=CronExpressionGenerator.now(),
+        endpoint_input=endpoint_input,
+        output=MonitoringOutput(source="/opt/ml/processing/output", destination=OUTPUT_S3_URI),
+        data_analysis_start_time=NEW_START_TIME_OFFSET,
+        data_analysis_end_time=NEW_END_TIME_OFFSET,
+    )
+
+    sagemaker_session.create_monitoring_schedule.assert_called_with(
+        monitoring_schedule_name=SCHEDULE_NAME,
+        schedule_expression=CronExpressionGenerator.now(),
+        statistics_s3_uri=None,
+        constraints_s3_uri=None,
+        monitoring_inputs=[MODEL_QUALITY_MONITOR_JOB_INPUT_WITH_EXCULDE_FEATURES],
+        monitoring_output_config=JOB_OUTPUT_CONFIG,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        volume_size_in_gb=VOLUME_SIZE_IN_GB,
+        volume_kms_key=VOLUME_KMS_KEY,
+        image_uri=DEFAULT_IMAGE_URI,
+        entrypoint=None,
+        arguments=None,
+        record_preprocessor_source_uri=None,
+        post_analytics_processor_source_uri=None,
+        max_runtime_in_seconds=3,
+        environment=ENVIRONMENT,
+        network_config=NETWORK_CONFIG._to_request_dict(),
+        role_arn=ROLE,
+        tags=TAGS,
+        data_analysis_start_time=NEW_START_TIME_OFFSET,
+        data_analysis_end_time=NEW_END_TIME_OFFSET,
+    )
+
+
+def test_model_monitor_exclude_feature_batch(
+    sagemaker_session,
+    model_monitor_arguments,
+    batch_transform_input=BatchTransformInput(
+        data_captured_destination_s3_uri=DATA_CAPTURED_S3_URI,
+        destination=SCHEDULE_DESTINATION,
+        dataset_format=MonitoringDatasetFormat.csv(header=False),
+        exclude_features_attribute=EXCLUDE_FEATURES_ATTRIBUTE,
+        start_time_offset=START_TIME_OFFSET,
+        end_time_offset=END_TIME_OFFSET,
+        features_attribute=FEATURES_ATTRIBUTE,
+        inference_attribute=INFERENCE_ATTRIBUTE,
+        probability_attribute=PROBABILITY_ATTRIBUTE,
+        probability_threshold_attribute=PROBABILITY_THRESHOLD_ATTRIBUTE,
+    ),
+):
+    model_monitor_arguments.create_monitoring_schedule(
+        monitor_schedule_name=SCHEDULE_NAME,
+        schedule_cron_expression=CronExpressionGenerator.now(),
+        batch_transform_input=batch_transform_input,
+        data_analysis_start_time=NEW_START_TIME_OFFSET,
+        data_analysis_end_time=NEW_END_TIME_OFFSET,
+        output=MonitoringOutput(source="/opt/ml/processing/output", destination=OUTPUT_S3_URI),
+    )
+
+    sagemaker_session.create_monitoring_schedule.assert_called_with(
+        monitoring_schedule_name=SCHEDULE_NAME,
+        schedule_expression=CronExpressionGenerator.now(),
+        statistics_s3_uri=None,
+        constraints_s3_uri=None,
+        monitoring_inputs=[MODEL_QUALITY_BATCH_TRANSFORM_INPUT_JOB_INPUT_WITH_EXCLUDES],
+        monitoring_output_config=JOB_OUTPUT_CONFIG,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        volume_size_in_gb=VOLUME_SIZE_IN_GB,
+        volume_kms_key=VOLUME_KMS_KEY,
+        image_uri=DEFAULT_IMAGE_URI,
+        entrypoint=None,
+        record_preprocessor_source_uri=None,
+        post_analytics_processor_source_uri=None,
+        max_runtime_in_seconds=3,
+        environment=ENVIRONMENT,
+        network_config=NETWORK_CONFIG._to_request_dict(),
+        role_arn=ROLE,
+        tags=TAGS,
+        arguments=None,
+        data_analysis_start_time=NEW_START_TIME_OFFSET,
+        data_analysis_end_time=NEW_END_TIME_OFFSET,
+    )
+
+
+def test_update_model_monitor_error_with_one_time_schedule(
+    data_quality_monitor,
+    batch_transform_input=BatchTransformInput(
+        data_captured_destination_s3_uri=DATA_CAPTURED_S3_URI,
+        destination=SCHEDULE_DESTINATION,
+        dataset_format=MonitoringDatasetFormat.csv(header=False),
+    ),
+):
+    try:
+        data_quality_monitor.create_monitoring_schedule(
+            schedule_cron_expression=CronExpressionGenerator.now(),
+            batch_transform_input=batch_transform_input,
+        )
+    except ValueError as error:
+        assert "Both data_analysis_start_time and data_analysis_end_time are required" in str(error)

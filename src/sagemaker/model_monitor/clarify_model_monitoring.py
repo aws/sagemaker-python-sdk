@@ -561,6 +561,8 @@ class ModelBiasMonitor(ClarifyModelMonitor):
         schedule_cron_expression=None,
         enable_cloudwatch_metrics=True,
         batch_transform_input=None,
+        data_analysis_start_time=None,
+        data_analysis_end_time=None,
     ):
         """Creates a monitoring schedule.
 
@@ -586,6 +588,10 @@ class ModelBiasMonitor(ClarifyModelMonitor):
                 the baselining or monitoring jobs. (default: True)
             batch_transform_input (sagemaker.model_monitor.BatchTransformInput): Inputs to run
                 the monitoring schedule on the batch transform (default: None)
+            data_analysis_start_time (str): Start time for the data analysis window
+                for the one time monitoring schedule (NOW), e.g. "-PT1H" (default: None)
+            data_analysis_end_time (str): End time for the data analysis window
+                for the one time monitoring schedule (NOW), e.g. "-PT1H" (default: None)
         """
         # we default ground_truth_input to None in the function signature
         # but verify they are giving here for positional argument
@@ -609,6 +615,12 @@ class ModelBiasMonitor(ClarifyModelMonitor):
             )
             _LOGGER.error(message)
             raise ValueError(message)
+
+        self._check_monitoring_schedule_cron_validity(
+            schedule_cron_expression=schedule_cron_expression,
+            data_analysis_start_time=data_analysis_start_time,
+            data_analysis_end_time=data_analysis_end_time,
+        )
 
         # create job definition
         monitor_schedule_name = self._generate_monitoring_schedule_name(
@@ -649,6 +661,8 @@ class ModelBiasMonitor(ClarifyModelMonitor):
                 monitor_schedule_name=monitor_schedule_name,
                 job_definition_name=new_job_definition_name,
                 schedule_cron_expression=schedule_cron_expression,
+                data_analysis_start_time=data_analysis_start_time,
+                data_analysis_end_time=data_analysis_end_time,
             )
             self.job_definition_name = new_job_definition_name
             self.monitoring_schedule_name = monitor_schedule_name
@@ -684,6 +698,8 @@ class ModelBiasMonitor(ClarifyModelMonitor):
         env=None,
         network_config=None,
         batch_transform_input=None,
+        data_analysis_start_time=None,
+        data_analysis_end_time=None,
     ):
         """Updates the existing monitoring schedule.
 
@@ -778,7 +794,12 @@ class ModelBiasMonitor(ClarifyModelMonitor):
         )
         self.sagemaker_session.sagemaker_client.create_model_bias_job_definition(**request_dict)
         try:
-            self._update_monitoring_schedule(new_job_definition_name, schedule_cron_expression)
+            self._update_monitoring_schedule(
+                new_job_definition_name,
+                schedule_cron_expression,
+                data_analysis_start_time=data_analysis_start_time,
+                data_analysis_end_time=data_analysis_end_time,
+            )
             self.job_definition_name = new_job_definition_name
             if role is not None:
                 self.role = role
@@ -988,6 +1009,8 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
         schedule_cron_expression=None,
         enable_cloudwatch_metrics=True,
         batch_transform_input=None,
+        data_analysis_start_time=None,
+        data_analysis_end_time=None,
     ):
         """Creates a monitoring schedule.
 
@@ -1011,6 +1034,10 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
                 the baselining or monitoring jobs.
             batch_transform_input (sagemaker.model_monitor.BatchTransformInput): Inputs to
             run the monitoring schedule on the batch transform
+            data_analysis_start_time (str): Start time for the data analysis window
+                for the one time monitoring schedule (NOW), e.g. "-PT1H" (default: None)
+            data_analysis_end_time (str): End time for the data analysis window
+                for the one time monitoring schedule (NOW), e.g. "-PT1H" (default: None)
         """
         if self.job_definition_name is not None or self.monitoring_schedule_name is not None:
             message = (
@@ -1029,6 +1056,12 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
             )
             _LOGGER.error(message)
             raise ValueError(message)
+
+        self._check_monitoring_schedule_cron_validity(
+            schedule_cron_expression=schedule_cron_expression,
+            data_analysis_start_time=data_analysis_start_time,
+            data_analysis_end_time=data_analysis_end_time,
+        )
 
         # create job definition
         monitor_schedule_name = self._generate_monitoring_schedule_name(
@@ -1104,6 +1137,8 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
         env=None,
         network_config=None,
         batch_transform_input=None,
+        data_analysis_start_time=None,
+        data_analysis_end_time=None,
     ):
         """Updates the existing monitoring schedule.
 
@@ -1144,6 +1179,10 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
                 inter-container traffic, security group IDs, and subnets.
             batch_transform_input (sagemaker.model_monitor.BatchTransformInput): Inputs to
                 run the monitoring schedule on the batch transform
+            data_analysis_start_time (str): Start time for the data analysis window
+                for the one time monitoring schedule (NOW), e.g. "-PT1H" (default: None)
+            data_analysis_end_time (str): End time for the data analysis window
+                for the one time monitoring schedule (NOW), e.g. "-PT1H" (default: None)
         """
         valid_args = {
             arg: value for arg, value in locals().items() if arg != "self" and value is not None
@@ -1200,7 +1239,12 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
             **request_dict
         )
         try:
-            self._update_monitoring_schedule(new_job_definition_name, schedule_cron_expression)
+            self._update_monitoring_schedule(
+                new_job_definition_name,
+                schedule_cron_expression,
+                data_analysis_start_time=data_analysis_start_time,
+                data_analysis_end_time=data_analysis_end_time,
+            )
             self.job_definition_name = new_job_definition_name
             if role is not None:
                 self.role = role
