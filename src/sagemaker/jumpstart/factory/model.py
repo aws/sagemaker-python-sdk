@@ -206,9 +206,7 @@ def _add_image_uri_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModel
 def _add_model_data_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelInitKwargs:
     """Sets model data based on default or override, returns full kwargs."""
 
-    model_data = kwargs.model_data
-
-    kwargs.model_data = model_data or model_uris.retrieve(
+    model_data: Union[str, dict] = kwargs.model_data or model_uris.retrieve(
         model_scope=JumpStartScriptScope.INFERENCE,
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
@@ -217,6 +215,23 @@ def _add_model_data_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartMode
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
         sagemaker_session=kwargs.sagemaker_session,
     )
+
+    if isinstance(model_data, str) and model_data.startswith("s3://") and model_data.endswith("/"):
+        if kwargs.model_data:
+            JUMPSTART_LOGGER.info(
+                "S3 prefix model_data detected for JumpStartModel: '%s'. "
+                "Converting to S3DataSource dictionary.",
+                model_data,
+            )
+        model_data = {
+            "S3DataSource": {
+                "S3Uri": model_data,
+                "S3DataType": "S3Prefix",
+                "CompressionType": "None",
+            }
+        }
+
+    kwargs.model_data = model_data
 
     return kwargs
 
@@ -496,7 +511,7 @@ def get_init_kwargs(
     instance_type: Optional[str] = None,
     region: Optional[str] = None,
     image_uri: Optional[Union[str, PipelineVariable]] = None,
-    model_data: Optional[Union[str, PipelineVariable]] = None,
+    model_data: Optional[Union[str, PipelineVariable, dict]] = None,
     role: Optional[str] = None,
     predictor_cls: Optional[callable] = None,
     env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,

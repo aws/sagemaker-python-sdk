@@ -752,7 +752,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         region: Optional[str] = None,
         instance_type: Optional[str] = None,
         image_uri: Optional[Union[str, Any]] = None,
-        model_data: Optional[Union[str, Any]] = None,
+        model_data: Optional[Union[str, Any, dict]] = None,
         role: Optional[str] = None,
         predictor_cls: Optional[callable] = None,
         env: Optional[Dict[str, Union[str, Any]]] = None,

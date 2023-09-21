@@ -678,6 +678,113 @@ class ModelTest(unittest.TestCase):
             "us-east-2. Please try one of the following regions: us-west-2, us-east-1."
         )
 
+    @mock.patch("sagemaker.utils.sagemaker_timestamp")
+    @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.model.Model.__init__")
+    @mock.patch("sagemaker.jumpstart.model.Model.deploy")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_LOGGER.info")
+    def test_model_data_s3_prefix_override(
+        self,
+        mock_js_info_logger: mock.Mock,
+        mock_model_deploy: mock.Mock,
+        mock_model_init: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
+        mock_sagemaker_timestamp: mock.Mock,
+    ):
+        mock_model_deploy.return_value = default_predictor
+
+        mock_sagemaker_timestamp.return_value = "7777"
+
+        mock_is_valid_model_id.return_value = True
+        model_id, _ = "js-trainable-model", "*"
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        mock_session.return_value = sagemaker_session
+
+        JumpStartModel(model_id=model_id, model_data="s3://some-bucket/path/to/prefix/")
+
+        mock_model_init.assert_called_once_with(
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/"
+            "autogluon-inference:0.4.3-gpu-py38",
+            model_data={
+                "S3DataSource": {
+                    "S3Uri": "s3://some-bucket/path/to/prefix/",
+                    "S3DataType": "S3Prefix",
+                    "CompressionType": "None",
+                }
+            },
+            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-"
+            "tarballs/autogluon/inference/classification/v1.0.0/sourcedir.tar.gz",
+            entry_point="inference.py",
+            env={
+                "SAGEMAKER_PROGRAM": "inference.py",
+                "ENDPOINT_SERVER_TIMEOUT": "3600",
+                "MODEL_CACHE_ROOT": "/opt/ml/model",
+                "SAGEMAKER_ENV": "1",
+                "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+            },
+            predictor_cls=Predictor,
+            role=execution_role,
+            sagemaker_session=sagemaker_session,
+            enable_network_isolation=False,
+            name="blahblahblah-7777",
+        )
+
+        mock_js_info_logger.assert_called_with(
+            "S3 prefix model_data detected for JumpStartModel: '%s'. Converting to S3DataSource dictionary.",
+            "s3://some-bucket/path/to/prefix/",
+        )
+
+    @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.model.Model.__init__")
+    @mock.patch("sagemaker.jumpstart.model.Model.deploy")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_LOGGER.info")
+    def test_model_data_s3_prefix_model(
+        self,
+        mock_js_info_logger: mock.Mock,
+        mock_model_deploy: mock.Mock,
+        mock_model_init: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
+    ):
+        mock_model_deploy.return_value = default_predictor
+
+        mock_is_valid_model_id.return_value = True
+        model_id, _ = "model_data_s3_prefix_model", "*"
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        mock_session.return_value = sagemaker_session
+
+        JumpStartModel(model_id=model_id, instance_type="ml.p2.xlarge")
+
+        mock_model_init.assert_called_once_with(
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.12.0-gpu-py38",
+            model_data={
+                "S3DataSource": {
+                    "S3Uri": "s3://jumpstart-cache-prod-us-west-2/huggingface-infer/prepack/v1.0.1/",
+                    "S3DataType": "S3Prefix",
+                    "CompressionType": "None",
+                }
+            },
+            predictor_cls=Predictor,
+            role=execution_role,
+            sagemaker_session=sagemaker_session,
+            enable_network_isolation=False,
+        )
+
+        mock_js_info_logger.assert_not_called()
+
 
 def test_jumpstart_model_requires_model_id():
     with pytest.raises(ValueError):
