@@ -23,7 +23,8 @@ import stopit
 from sagemaker import Predictor
 from tests.integ.retry import retries
 
-LOGGER = logging.getLogger("timeout")
+# Setting LOGGER for backward compatibility, in case users import it...
+logger = LOGGER = logging.getLogger("timeout")
 
 
 @contextmanager
@@ -73,7 +74,7 @@ def timeout_and_delete_endpoint_by_name(
                         sagemaker_session=sagemaker_session, endpoint_name=endpoint_name
                     )
                     sagemaker_session.delete_endpoint(endpoint_name)
-                    LOGGER.info("deleted endpoint {}".format(endpoint_name))
+                    logger.info("deleted endpoint %s", endpoint_name)
 
                     _show_logs(endpoint_name, "Endpoints", sagemaker_session)
                     if no_errors:
@@ -111,7 +112,7 @@ def timeout_and_delete_model_with_transformer(
                 attempts -= 1
                 try:
                     transformer.delete_model()
-                    LOGGER.info("deleted SageMaker model {}".format(transformer.model_name))
+                    logger.info("deleted SageMaker model %s", transformer.model_name)
 
                     _show_logs(transformer.model_name, "Models", sagemaker_session)
                     if no_errors:
@@ -147,7 +148,7 @@ def timeout_and_delete_model_by_name(
                 attempts -= 1
                 try:
                     sagemaker_session.delete_model(model_name)
-                    LOGGER.info("deleted model {}".format(model_name))
+                    logger.info("deleted model %s", model_name)
 
                     _show_logs(model_name, "Models", sagemaker_session)
                     if no_errors:
@@ -200,10 +201,10 @@ def _delete_schedules_associated_with_endpoint(sagemaker_session, endpoint_name)
             # Delete schedules.
             monitor.delete_monitoring_schedule()
         except Exception as e:
-            LOGGER.warning(
-                "Failed to delete monitor {},\nError: {}".format(
-                    monitor.monitoring_schedule_name, e
-                )
+            logger.warning(
+                "Failed to delete monitor %s,\nError: %s",
+                monitor.monitoring_schedule_name,
+                e,
             )
 
 
@@ -211,7 +212,7 @@ def _show_logs(resource_name, resource_type, sagemaker_session):
     log_group = "/aws/sagemaker/{}/{}".format(resource_type, resource_name)
     try:
         # print out logs before deletion for debuggability
-        LOGGER.info("cloudwatch logs for log group {}:".format(log_group))
+        logger.info("cloudwatch logs for log group %s:", log_group)
         logs = AWSLogs(
             log_group_name=log_group,
             log_stream_name="ALL",
@@ -220,7 +221,7 @@ def _show_logs(resource_name, resource_type, sagemaker_session):
         )
         logs.list_logs()
     except Exception:
-        LOGGER.exception(
+        logger.exception(
             "Failure occurred while listing cloudwatch log group %s. Swallowing exception but printing "
             "stacktrace for debugging.",
             log_group,
@@ -231,12 +232,12 @@ def _cleanup_logs(resource_name, resource_type, sagemaker_session):
     log_group = "/aws/sagemaker/{}/{}".format(resource_type, resource_name)
     try:
         # print out logs before deletion for debuggability
-        LOGGER.info("deleting cloudwatch log group {}:".format(log_group))
+        logger.info("deleting cloudwatch log group %s:", log_group)
         cwl_client = sagemaker_session.boto_session.client("logs")
         cwl_client.delete_log_group(logGroupName=log_group)
-        LOGGER.info("deleted cloudwatch log group: {}".format(log_group))
+        logger.info("deleted cloudwatch log group: %s", log_group)
     except Exception:
-        LOGGER.exception(
+        logger.exception(
             "Failure occurred while cleaning up cloudwatch log group %s. "
             "Swallowing exception but printing stacktrace for debugging.",
             log_group,

@@ -474,7 +474,7 @@ def tar_and_upload_dir(
         if s3_resource is None:
             s3_resource = session.resource("s3", region_name=session.region_name)
         else:
-            print("Using provided s3_resource")
+            logger.debug("Using provided s3_resource")
 
         s3_resource.Object(bucket, key).upload_file(tar_file, ExtraArgs=extra_args)
     finally:

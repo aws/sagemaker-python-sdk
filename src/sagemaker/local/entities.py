@@ -683,8 +683,10 @@ class _LocalPipeline(object):
         )
 
         self._executions[execution_id] = execution
-        print(
-            f"Starting execution for pipeline {self.pipeline.name}. Execution ID is {execution_id}"
+        logger.info(
+            "Starting execution for pipeline %s. Execution ID is %s",
+            self.pipeline.name,
+            execution_id,
         )
         self.last_modified_time = datetime.datetime.now().timestamp()
 
@@ -771,31 +773,32 @@ class _LocalPipelineExecution(object):
         """Mark execution as succeeded."""
         self.status = _LocalExecutionStatus.SUCCEEDED.value
         self.last_modified_time = datetime.datetime.now().timestamp()
-        print(f"Pipeline execution {self.pipeline_execution_name} SUCCEEDED")
+        logger.info("Pipeline execution %s SUCCEEDED", self.pipeline_execution_name)
 
     def update_execution_failure(self, step_name, failure_message):
         """Mark execution as failed."""
         self.status = _LocalExecutionStatus.FAILED.value
         self.failure_reason = f"Step '{step_name}' failed with message: {failure_message}"
         self.last_modified_time = datetime.datetime.now().timestamp()
-        print(
-            f"Pipeline execution {self.pipeline_execution_name} FAILED because step "
-            f"'{step_name}' failed."
+        logger.info(
+            "Pipeline execution %s FAILED because step '%s' failed.",
+            self.pipeline_execution_name,
+            step_name,
         )
 
     def update_step_properties(self, step_name, step_properties):
         """Update pipeline step execution output properties."""
         self.step_execution.get(step_name).update_step_properties(step_properties)
-        print(f"Pipeline step '{step_name}' SUCCEEDED.")
+        logger.info("Pipeline step '%s' SUCCEEDED.", step_name)
 
     def update_step_failure(self, step_name, failure_message):
         """Mark step_name as failed."""
-        print(f"Pipeline step '{step_name}' FAILED. Failure message is: {failure_message}")
+        logger.info("Pipeline step '%s' FAILED. Failure message is: %s", step_name, failure_message)
         self.step_execution.get(step_name).update_step_failure(failure_message)
 
     def mark_step_executing(self, step_name):
         """Update pipelines step's status to EXECUTING and start_time to now."""
-        print(f"Starting pipeline step: '{step_name}'")
+        logger.info("Starting pipeline step: '%s'", step_name)
         self.step_execution.get(step_name).mark_step_executing()
 
     def _initialize_step_execution(self, steps):
