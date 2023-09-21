@@ -63,6 +63,7 @@ from sagemaker.feature_store.inputs import (
     DeletionModeEnum,
     TtlDuration,
     OnlineStoreConfigUpdate,
+    OnlineStoreStorageTypeEnum,
 )
 from sagemaker.utils import resolve_value_from_config
 
@@ -539,6 +540,7 @@ class FeatureGroup:
         description: str = None,
         tags: List[Dict[str, str]] = None,
         table_format: TableFormatEnum = None,
+        online_store_storage_type: OnlineStoreStorageTypeEnum = None,
     ) -> Dict[str, Any]:
         """Create a SageMaker FeatureStore FeatureGroup.
 
@@ -566,6 +568,8 @@ class FeatureGroup:
             description (str): description of the FeatureGroup (default: None).
             tags (List[Dict[str, str]]): list of tags for labeling a FeatureGroup (default: None).
             table_format (TableFormatEnum): format of the offline store table (default: None).
+            online_store_storage_type (OnlineStoreStorageTypeEnum): storage type for the
+                online store (default: None).
 
         Returns:
             Response dict from service.
@@ -606,6 +610,7 @@ class FeatureGroup:
             online_store_config = OnlineStoreConfig(
                 enable_online_store=enable_online_store,
                 ttl_duration=ttl_duration,
+                storage_type=online_store_storage_type,
             )
             if online_store_kms_key_id is not None:
                 online_store_config.online_store_security_config = OnlineStoreSecurityConfig(

@@ -36,6 +36,7 @@ from sagemaker.feature_store.inputs import (
     DeletionModeEnum,
     TtlDuration,
     OnlineStoreConfigUpdate,
+    OnlineStoreStorageTypeEnum,
 )
 
 from tests.unit import SAGEMAKER_CONFIG_FEATURE_GROUP
@@ -233,6 +234,31 @@ def test_feature_store_create_online_only(
         description=None,
         tags=None,
         online_store_config={"EnableOnlineStore": True},
+    )
+
+
+def test_feature_store_create_online_only_with_in_memory(
+    sagemaker_session_mock, role_arn, feature_group_dummy_definitions
+):
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
+    feature_group.feature_definitions = feature_group_dummy_definitions
+    feature_group.create(
+        s3_uri=False,
+        record_identifier_name="feature1",
+        event_time_feature_name="feature2",
+        role_arn=role_arn,
+        enable_online_store=True,
+        online_store_storage_type=OnlineStoreStorageTypeEnum.IN_MEMORY,
+    )
+    sagemaker_session_mock.create_feature_group.assert_called_with(
+        feature_group_name="MyFeatureGroup",
+        record_identifier_name="feature1",
+        event_time_feature_name="feature2",
+        feature_definitions=[fd.to_dict() for fd in feature_group_dummy_definitions],
+        role_arn=role_arn,
+        description=None,
+        tags=None,
+        online_store_config={"EnableOnlineStore": True, "StorageType": "InMemory"},
     )
 
 

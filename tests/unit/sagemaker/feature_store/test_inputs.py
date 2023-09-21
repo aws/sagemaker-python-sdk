@@ -21,6 +21,7 @@ from sagemaker.feature_store.inputs import (
     OfflineStoreConfig,
     FeatureParameter,
     TableFormatEnum,
+    OnlineStoreStorageTypeEnum,
     Filter,
     FilterOperatorEnum,
     Identifier,
@@ -56,6 +57,32 @@ def test_online_store_config():
             "SecurityConfig": {
                 "KmsKeyId": "kms",
             },
+        }
+    )
+
+    config_with_inmemory = OnlineStoreConfig(
+        enable_online_store=True,
+        storage_type=OnlineStoreStorageTypeEnum.IN_MEMORY,
+    )
+    assert ordered(config_with_inmemory.to_dict()) == ordered(
+        {
+            "EnableOnlineStore": True,
+            "StorageType": "InMemory",
+        }
+    )
+
+    config_with_kms_standard = OnlineStoreConfig(
+        enable_online_store=True,
+        online_store_security_config=OnlineStoreSecurityConfig(kms_key_id="kms"),
+        storage_type=OnlineStoreStorageTypeEnum.STANDARD,
+    )
+    assert ordered(config_with_kms_standard.to_dict()) == ordered(
+        {
+            "EnableOnlineStore": True,
+            "SecurityConfig": {
+                "KmsKeyId": "kms",
+            },
+            "StorageType": "Standard",
         }
     )
 

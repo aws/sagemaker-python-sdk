@@ -77,6 +77,10 @@ Inputs
     :members:
     :show-inheritance:
 
+.. autoclass:: sagemaker.feature_store.inputs.OnlineStoreStorageTypeEnum
+    :members:
+    :show-inheritance:
+
 .. autoclass:: sagemaker.feature_store.inputs.ResourceEnum
     :members:
     :show-inheritance:

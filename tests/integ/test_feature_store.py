@@ -38,6 +38,7 @@ from sagemaker.feature_store.inputs import (
     DeletionModeEnum,
     TtlDuration,
     OnlineStoreConfigUpdate,
+    OnlineStoreStorageTypeEnum,
 )
 from sagemaker.feature_store.dataset_builder import (
     JoinTypeEnum,
@@ -345,6 +346,54 @@ def test_create_feature_group_glue_table_format(
 
         table_format = feature_group.describe().get("OfflineStoreConfig").get("TableFormat")
         assert table_format == "Glue"
+
+
+def test_create_feature_group_in_memory_storage_type(
+    feature_store_session,
+    role,
+    feature_group_name,
+    pandas_data_frame,
+):
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
+    feature_group.load_feature_definitions(data_frame=pandas_data_frame)
+
+    with cleanup_feature_group(feature_group):
+        feature_group.create(
+            s3_uri=False,
+            record_identifier_name="feature1",
+            event_time_feature_name="feature3",
+            role_arn=role,
+            enable_online_store=True,
+            online_store_storage_type=OnlineStoreStorageTypeEnum.IN_MEMORY,
+        )
+        _wait_for_feature_group_create(feature_group)
+
+        storage_type = feature_group.describe().get("OnlineStoreConfig").get("StorageType")
+        assert storage_type == "InMemory"
+
+
+def test_create_feature_group_standard_storage_type(
+    feature_store_session,
+    role,
+    feature_group_name,
+    pandas_data_frame,
+):
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
+    feature_group.load_feature_definitions(data_frame=pandas_data_frame)
+
+    with cleanup_feature_group(feature_group):
+        feature_group.create(
+            s3_uri=False,
+            record_identifier_name="feature1",
+            event_time_feature_name="feature3",
+            role_arn=role,
+            enable_online_store=True,
+            online_store_storage_type=OnlineStoreStorageTypeEnum.STANDARD,
+        )
+        _wait_for_feature_group_create(feature_group)
+
+        storage_type = feature_group.describe().get("OnlineStoreConfig").get("StorageType")
+        assert storage_type == "Standard"
 
 
 def test_ttl_duration(
