@@ -2,7 +2,7 @@
 build
 src/*.egg-info
 .cache
-.coverage
+.coverage*
 sagemaker_venv*
 *.egg-info
 .tox
