@@ -21,7 +21,7 @@ from sagemaker.feature_store.feature_processor._data_source import (  # noqa: F4
 from sagemaker.feature_store.feature_processor._exceptions import (  # noqa: F401
     IngestionError,
 )
-from sagemaker.feature_store.feature_processor.client import (  # noqa: F401
+from sagemaker.feature_store.feature_processor.feature_processor import (  # noqa: F401
     feature_processor,
 )
 from sagemaker.feature_store.feature_processor.feature_scheduler import (  # noqa: F401
