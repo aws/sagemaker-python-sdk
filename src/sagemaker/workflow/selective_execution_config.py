@@ -38,7 +38,7 @@ class SelectiveExecutionConfig:
             selected_steps (List[str]): A list of pipeline steps to run. All step(s) in all
                 path(s) between two selected steps should be included.
             reference_latest_execution (bool): Whether to reference the latest execution if
-                source_pipeline_execution_arn is not provided.
+                `source_pipeline_execution_arn` is not provided.
         """
         self.source_pipeline_execution_arn = source_pipeline_execution_arn
         self.selected_steps = selected_steps

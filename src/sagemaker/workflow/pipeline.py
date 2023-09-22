@@ -428,8 +428,8 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             sort_by (str): The field by which to sort results(CreationTime/PipelineExecutionArn).
             sort_order (str): The sort order for results (Ascending/Descending).
             max_results (int): The maximum number of pipeline executions to return in the response.
-            next_token (str):  If the result of the previous ListPipelineExecutions request was
-                truncated, the response includes a NextToken. To retrieve the next set of pipeline
+            next_token (str):  If the result of the previous `ListPipelineExecutions` request was
+                truncated, the response includes a `NextToken`. To retrieve the next set of pipeline
                 executions, use the token in the next request.
 
         Returns:
@@ -474,9 +474,9 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         """Gets the parameters from an execution, update with optional parameter value overrides.
 
         Args:
-            pipeline_execution_arn (str): The arn of the pipeline execution.
+            pipeline_execution_arn (str): The arn of the reference pipeline execution.
             parameter_value_overrides (Dict[str, Union[str, bool, int, float]]): Parameter dict
-                to be updated in the parameters from the referenced execution.
+                to be updated with the parameters from the referenced execution.
 
         Returns:
             A parameter dict built from an execution and provided parameter value overrides.
@@ -730,14 +730,14 @@ sagemaker.html#SageMaker.Client.list_pipeline_execution_steps>`_.
 
         Args:
             max_results (int): The maximum number of parameters to return in the response.
-            next_token (str):  If the result of the previous ListPipelineParametersForExecution
-                request was truncated, the response includes a NextToken. To retrieve the next
+            next_token (str):  If the result of the previous `ListPipelineParametersForExecution`
+                request was truncated, the response includes a `NextToken`. To retrieve the next
                 set of parameters, use the token in the next request.
 
         Returns:
-            Information about the parameters of the pipeline execution.
-            See boto3 client list_pipeline_executions
-            https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker.html#SageMaker.Client.list_pipeline_parameters_for_execution
+            Information about the parameters of the pipeline execution. This function is also
+            a wrapper for `list_pipeline_parameters_for_execution
+            <https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker.html#SageMaker.Client.list_pipeline_parameters_for_execution>`_.
         """
         kwargs = dict(PipelineExecutionArn=self.arn)
         update_args(
