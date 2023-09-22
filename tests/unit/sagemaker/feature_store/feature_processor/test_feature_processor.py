@@ -29,7 +29,7 @@ from sagemaker.feature_store.feature_processor._feature_processor_config import 
 )
 from sagemaker.feature_store.feature_processor._udf_wrapper import UDFWrapper
 from sagemaker.feature_store.feature_processor._validation import ValidatorChain
-from sagemaker.feature_store.feature_processor.client import (
+from sagemaker.feature_store.feature_processor.feature_processor import (
     feature_processor,
 )
 
