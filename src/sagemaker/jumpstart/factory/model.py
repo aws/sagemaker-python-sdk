@@ -286,6 +286,8 @@ def _add_env_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelInitKw
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
         sagemaker_session=kwargs.sagemaker_session,
+        script=JumpStartScriptScope.INFERENCE,
+        instance_type=kwargs.instance_type,
     )
 
     for key, value in extra_env_vars.items():
