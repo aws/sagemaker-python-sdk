@@ -26,7 +26,7 @@ TARGET_ATTRIBUTE_NAME = "virginica"
 
 
 def create_auto_ml_job_if_not_exist(sagemaker_session):
-    auto_ml_job_name = "python-sdk-integ-test-base-job"
+    auto_ml_job_name = "python-sdk-integ-test-base-automl-job"
 
     try:
         sagemaker_session.describe_auto_ml_job(job_name=auto_ml_job_name)

@@ -40,7 +40,7 @@ BASE_JOB_NAME = "auto-ml"
 MODE = "ENSEMBLING"
 
 # use a succeeded AutoML job to test describe and list candidates method, otherwise tests will run too long
-AUTO_ML_JOB_NAME = "python-sdk-integ-test-base-job"
+AUTO_ML_JOB_NAME = "python-sdk-integ-test-base-automl-job"
 DEFAULT_MODEL_NAME = "python-sdk-automl"
 
 
