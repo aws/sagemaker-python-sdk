@@ -109,7 +109,7 @@ autosummary_generate = True
 # autosectionlabel
 autosectionlabel_prefix_document = True
 
-autodoc_mock_imports = ['pyspark']
+autodoc_mock_imports = ['pyspark', 'feature_store_pyspark']
 
 def setup(app):
     sys.stdout.write("Generating JumpStart model table...")
