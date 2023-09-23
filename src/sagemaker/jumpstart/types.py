@@ -15,6 +15,7 @@ from __future__ import absolute_import
 from copy import deepcopy
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Union
+from sagemaker.utils import get_instance_type_family
 
 from sagemaker.session import Session
 
@@ -311,6 +312,112 @@ class JumpStartPredictorSpecs(JumpStartDataHolderType):
         return json_obj
 
 
+class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
+    """Data class for JumpStart instance type variants."""
+
+    __slots__ = [
+        "regional_aliases",
+        "variants",
+    ]
+
+    def __init__(self, spec: Optional[Dict[str, Any]]):
+        """Initializes a JumpStartInstanceTypeVariants object from its json representation.
+
+        Args:
+            spec (Dict[str, Any]): Dictionary representation of instance type variants.
+        """
+        self.from_json(spec)
+
+    def from_json(self, json_obj: Optional[Dict[str, Any]]) -> None:
+        """Sets fields in object based on json.
+
+        Args:
+            json_obj (Dict[str, Any]): Dictionary representation of instance type variants.
+        """
+
+        if json_obj is None:
+            return
+
+        self.regional_aliases: Optional[dict] = json_obj.get("regional_aliases")
+        self.variants: Optional[dict] = json_obj.get("variants")
+
+    def to_json(self) -> Dict[str, Any]:
+        """Returns json representation of JumpStartInstanceTypeVariants object."""
+        json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
+        return json_obj
+
+    def get_instance_specific_environment_variables(self, instance_type: str) -> Dict[str, str]:
+        """Returns instance specific environment variables.
+
+        Returns empty dict if a model, instance type tuple does not have specific
+        environment variables.
+        """
+
+        if self.variants is None:
+            return {}
+
+        instance_specific_environment_variables: Dict[str, str] = (
+            self.variants.get(instance_type, {})
+            .get("properties", {})
+            .get("environment_variables", {})
+        )
+
+        instance_type_family = get_instance_type_family(instance_type)
+
+        instance_family_environment_variables: dict = (
+            self.variants.get(instance_type_family, {})
+            .get("properties", {})
+            .get("environment_variables", {})
+            if instance_type_family not in {"", None}
+            else {}
+        )
+
+        instance_family_environment_variables.update(instance_specific_environment_variables)
+
+        return instance_family_environment_variables
+
+    def get_image_uri(self, instance_type: str, region: str) -> Optional[str]:
+        """Returns image uri from instance type and region.
+
+        Returns None if no instance type is available or found.
+        None is also returned if the metadata is improperly formatted.
+        """
+
+        if None in [self.regional_aliases, self.variants]:
+            return None
+
+        image_uri_alias: Optional[str] = (
+            self.variants.get(instance_type, {}).get("regional_properties", {}).get("image_uri")
+        )
+        if image_uri_alias is None:
+            instance_type_family = get_instance_type_family(instance_type)
+
+            if instance_type_family in {"", None}:
+                return None
+
+            image_uri_alias = (
+                self.variants.get(instance_type_family, {})
+                .get("regional_properties", {})
+                .get("image_uri")
+            )
+
+        if image_uri_alias is None or len(image_uri_alias) == 0:
+            return None
+
+        if not image_uri_alias.startswith("$"):
+            # No leading '$' indicates bad metadata.
+            # There are tests to ensure this never happens.
+            # However, to allow for fallback options in the unlikely event
+            # of a regression, we do not raise an exception here.
+            # We return None, indicating the image uri does not exist.
+            return None
+
+        if region not in self.regional_aliases:
+            return None
+        alias_value = self.regional_aliases[region].get(image_uri_alias[1:], None)
+        return alias_value
+
+
 class JumpStartModelSpecs(JumpStartDataHolderType):
     """Data class JumpStart model specs."""
 
@@ -359,6 +466,8 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         "hosting_model_package_arns",
         "training_model_package_artifact_uris",
         "hosting_use_script_uri",
+        "hosting_instance_type_variants",
+        "training_instance_type_variants",
     ]
 
     def __init__(self, spec: Dict[str, Any]):
@@ -380,7 +489,11 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         self.version: str = json_obj["version"]
         self.min_sdk_version: str = json_obj["min_sdk_version"]
         self.incremental_training_supported: bool = bool(json_obj["incremental_training_supported"])
-        self.hosting_ecr_specs: JumpStartECRSpecs = JumpStartECRSpecs(json_obj["hosting_ecr_specs"])
+        self.hosting_ecr_specs: Optional[JumpStartECRSpecs] = (
+            JumpStartECRSpecs(json_obj["hosting_ecr_specs"])
+            if "hosting_ecr_specs" in json_obj
+            else None
+        )
         self.hosting_artifact_key: str = json_obj["hosting_artifact_key"]
         self.hosting_script_key: str = json_obj["hosting_script_key"]
         self.training_supported: bool = bool(json_obj["training_supported"])
@@ -434,9 +547,17 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         self.hosting_model_package_arns: Optional[Dict] = json_obj.get("hosting_model_package_arns")
         self.hosting_use_script_uri: bool = json_obj.get("hosting_use_script_uri", True)
 
+        self.hosting_instance_type_variants: Optional[JumpStartInstanceTypeVariants] = (
+            JumpStartInstanceTypeVariants(json_obj["hosting_instance_type_variants"])
+            if json_obj.get("hosting_instance_type_variants")
+            else None
+        )
+
         if self.training_supported:
-            self.training_ecr_specs: JumpStartECRSpecs = JumpStartECRSpecs(
-                json_obj["training_ecr_specs"]
+            self.training_ecr_specs: Optional[JumpStartECRSpecs] = (
+                JumpStartECRSpecs(json_obj["training_ecr_specs"])
+                if "training_ecr_specs" in json_obj
+                else None
             )
             self.training_artifact_key: str = json_obj["training_artifact_key"]
             self.training_script_key: str = json_obj["training_script_key"]
@@ -454,6 +575,11 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
             )
             self.training_model_package_artifact_uris: Optional[Dict] = json_obj.get(
                 "training_model_package_artifact_uris"
+            )
+            self.training_instance_type_variants: Optional[JumpStartInstanceTypeVariants] = (
+                JumpStartInstanceTypeVariants(json_obj["training_instance_type_variants"])
+                if json_obj.get("training_instance_type_variants")
+                else None
             )
 
     def to_json(self) -> Dict[str, Any]:

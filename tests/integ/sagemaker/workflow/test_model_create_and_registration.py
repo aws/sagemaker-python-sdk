@@ -600,6 +600,7 @@ def test_model_registration_with_drift_check_baselines(
     framework_version = "2.9"
     nearest_model_name = "resnet50"
     data_input_configuration = '{"input_1":[1,224,224,3]}'
+    skip_model_validation = "All"
 
     # If image_uri is not provided, the instance_type should not be a pipeline variable
     # since instance_type is used to retrieve image_uri in compile time (PySDK)
@@ -633,6 +634,7 @@ def test_model_registration_with_drift_check_baselines(
         framework_version=framework_version,
         nearest_model_name=nearest_model_name,
         data_input_configuration=data_input_configuration,
+        skip_model_validation=skip_model_validation,
     )
 
     pipeline = Pipeline(
@@ -703,6 +705,7 @@ def test_model_registration_with_drift_check_baselines(
             assert response["Domain"] == domain
             assert response["Task"] == task
             assert response["SamplePayloadUrl"] == sample_payload_url
+            assert response["SkipModelValidation"] == skip_model_validation
             break
     finally:
         try:

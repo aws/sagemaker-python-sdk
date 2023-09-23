@@ -272,6 +272,13 @@ def test_with_non_existent_dependencies(
 def test_with_incompatible_dependencies(
     sagemaker_session, dummy_container_without_error, cpu_instance_type
 ):
+    """
+    This test is limited by the python version it is run with.
+    It is currently working with python 3.8+. However, running it with older versions
+    or versions in the future may require changes to 'old_deps_requirements.txt'
+    to fulfill testing scenario.
+
+    """
 
     dependencies_path = os.path.join(DATA_DIR, "remote_function", "old_deps_requirements.txt")
 
@@ -599,6 +606,24 @@ def test_decorator_pre_execution_script_error(
     with pytest.raises(RuntimeEnvironmentError) as e:
         get_file_content(["test_file_1", "test_file_2", "test_file_3"])
         assert "line 2: bws: command not found" in str(e)
+
+
+def test_decorator_with_spot_instances(
+    sagemaker_session, dummy_container_without_error, cpu_instance_type
+):
+    @remote(
+        role=ROLE,
+        image_uri=dummy_container_without_error,
+        instance_type=cpu_instance_type,
+        sagemaker_session=sagemaker_session,
+        use_spot_instances=True,
+        max_wait_time_in_seconds=48 * 60 * 60,
+    )
+    def divide(x, y):
+        return x / y
+
+    assert divide(10, 2) == 5
+    assert divide(20, 2) == 10
 
 
 @pytest.mark.skip

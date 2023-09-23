@@ -90,6 +90,7 @@ class RegisterModel(StepCollection):  # pragma: no cover
         framework_version=None,
         nearest_model_name=None,
         data_input_configuration=None,
+        skip_model_validation=None,
         **kwargs,
     ):
         """Construct steps `_RepackModelStep` and `_RegisterModelStep` based on the estimator.
@@ -145,6 +146,8 @@ class RegisterModel(StepCollection):  # pragma: no cover
             nearest_model_name (str): Name of a pre-trained machine learning benchmarked by
                 Amazon SageMaker Inference Recommender (default: None).
             data_input_configuration (str): Input object for the model (default: None).
+            skip_model_validation (str): Indicates if you want to skip model
+                validation. Values can be "All" or "None" (default: None).
 
             **kwargs: additional arguments to `create_model`.
         """
@@ -281,6 +284,7 @@ class RegisterModel(StepCollection):  # pragma: no cover
             domain=domain,
             sample_payload_url=sample_payload_url,
             task=task,
+            skip_model_validation=skip_model_validation,
             **kwargs,
         )
         if not repack_model:

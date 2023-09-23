@@ -49,7 +49,7 @@ from sagemaker.debugger import (  # noqa: F401 # pylint: disable=unused-import
     ProfilerRule,
     Rule,
     TensorBoardOutputConfig,
-    get_default_profiler_rule,
+    get_default_profiler_processing_job,
     get_rule_container_image_uri,
     RuleBase,
 )
@@ -65,6 +65,8 @@ from sagemaker.fw_utils import (
     validate_source_code_input_against_pipeline_variables,
 )
 from sagemaker.inputs import TrainingInput, FileSystemInput
+from sagemaker.interactive_apps import SupportedInteractiveAppTypes
+from sagemaker.interactive_apps.tensorboard import TensorBoardApp
 from sagemaker.instance_group import InstanceGroup
 from sagemaker.utils import instance_supports_kms
 from sagemaker.job import _Job
@@ -171,6 +173,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         instance_groups: Optional[List[InstanceGroup]] = None,
         training_repository_access_mode: Optional[Union[str, PipelineVariable]] = None,
         training_repository_credentials_provider_arn: Optional[Union[str, PipelineVariable]] = None,
+        enable_infra_check: Optional[Union[bool, PipelineVariable]] = None,
         container_entry_point: Optional[List[str]] = None,
         container_arguments: Optional[List[str]] = None,
         disable_output_compression: bool = False,
@@ -534,6 +537,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 a training job.
             disable_output_compression (bool): Optional. When set to true, Model is uploaded
                 to Amazon S3 without compression after training finishes.
+            enable_infra_check (bool or PipelineVariable): Optional.
+                Specifies whether it is running Sagemaker built-in infra check jobs.
         """
         instance_count = renamed_kwargs(
             "train_instance_count", "instance_count", instance_count, kwargs
@@ -663,6 +668,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             training_repository_credentials_provider_arn
         )
 
+        self.enable_infra_check = enable_infra_check
         # container entry point / arguments configs
         self.container_entry_point = container_entry_point
         self.container_arguments = container_arguments
@@ -749,6 +755,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
         # Internal flag
         self._is_output_path_set_from_default_bucket_and_prefix = False
+
+        self.tensorboard_app = TensorBoardApp(region=self.sagemaker_session.boto_region_name)
 
     @abstractmethod
     def training_image_uri(self):
@@ -1115,6 +1123,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 self.profiler_config = ProfilerConfig(s3_output_path=self.output_path)
             if self.rules is None or (self.rules and not self.profiler_rules):
                 self.profiler_rules = []
+                if self.profiler_config.profile_params:
+                    self.profiler_rules.append(
+                        get_default_profiler_processing_job(
+                            instance_type=self.profiler_config.profile_params.instanceType,
+                            volume_size_in_gb=self.profiler_config.profile_params.volumeSizeInGB,
+                        )
+                    )  # Rule specifying processing options for detail prof
 
         if self.profiler_config and not self.profiler_config.s3_output_path:
             self.profiler_config.s3_output_path = self.output_path
@@ -1141,9 +1156,12 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             rule (:class:`~sagemaker.debugger.RuleBase`): Any rule object that derives from RuleBase
         """
         if rule.image_uri == "DEFAULT_RULE_EVALUATOR_IMAGE":
-            rule.image_uri = get_rule_container_image_uri(self.sagemaker_session.boto_region_name)
-            rule.instance_type = None
-            rule.volume_size_in_gb = None
+            rule.image_uri = get_rule_container_image_uri(
+                rule.name, self.sagemaker_session.boto_region_name
+            )
+            if rule.name.startswith("DetailedProfilerProcessingJobConfig") is False:
+                rule.instance_type = None
+                rule.volume_size_in_gb = None
 
     def _set_source_s3_uri(self, rule):
         """Set updated source S3 uri when specified.
@@ -1670,6 +1688,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         framework_version=None,
         nearest_model_name=None,
         data_input_configuration=None,
+        skip_model_validation=None,
         **kwargs,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
@@ -1715,6 +1734,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             nearest_model_name (str): Name of a pre-trained machine learning benchmarked by
                 Amazon SageMaker Inference Recommender (default: None).
             data_input_configuration (str): Input object for the model (default: None).
+            skip_model_validation (str): Indicates if you want to skip model validation.
+                Values can be "All" or "None" (default: None).
             **kwargs: Passed to invocation of ``create_model()``. Implementations may customize
                 ``create_model()`` to accept ``**kwargs`` to customize model creation during
                 deploy. For more, see the implementation docs.
@@ -1758,6 +1779,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             framework_version=framework_version,
             nearest_model_name=nearest_model_name,
             data_input_configuration=data_input_configuration,
+            skip_model_validation=skip_model_validation,
         )
 
     @property
@@ -1885,6 +1907,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             init_params["encrypt_inter_container_traffic"] = job_details[
                 "EnableInterContainerTrafficEncryption"
             ]
+
+        if "InfraCheckConfig" in job_details:
+            init_params["enable_infra_check"] = job_details["InfraCheckConfig"].get(
+                "EnableInfraCheck"
+            )
 
         subnets, security_group_ids = vpc_utils.from_dict(job_details.get(vpc_utils.VPC_CONFIG_KEY))
         if subnets:
@@ -2246,6 +2273,73 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
         _TrainingJob.update(self, profiler_rule_configs, profiler_config_request_dict)
 
+    def get_app_url(
+        self,
+        app_type,
+        open_in_default_web_browser=True,
+        create_presigned_domain_url=False,
+        domain_id=None,
+        user_profile_name=None,
+        optional_create_presigned_url_kwargs=None,
+    ):
+        """Generate a URL to help access the specified app hosted in Amazon SageMaker Studio.
+
+        Args:
+            app_type (str or SupportedInteractiveAppTypes): Required. The app type available in
+                SageMaker Studio to return a URL to.
+            open_in_default_web_browser (bool): Optional. When True, the URL will attempt to be
+                opened in the environment's default web browser. Otherwise, the resulting URL will
+                be returned by this function.
+                Default: ``True``
+            create_presigned_domain_url (bool): Optional. Determines whether a presigned domain URL
+                should be generated instead of an unsigned URL. This only applies when called from
+                outside of a SageMaker Studio environment. If this is set to True inside of a
+                SageMaker Studio environment, it will be ignored.
+                Default: ``False``
+            domain_id (str): Optional. The AWS Studio domain that the resulting app will use. If
+                code is executing in a Studio environment and this was not supplied, this will be
+                automatically detected. If not supplied and running in a non-Studio environment, it
+                is up to the derived class on how to handle that, but in general, a redirect to a
+                landing page can be expected.
+                Default: ``None``
+            user_profile_name (str): Optional. The AWS Studio user profile that the resulting app
+                will use. If code is executing in a Studio environment and this was not supplied,
+                this will be automatically detected. If not supplied and running in a
+                non-Studio environment, it is up to the derived class on how to handle that, but in
+                general, a redirect to a landing page can be expected.
+                Default: ``None``
+            optional_create_presigned_url_kwargs (dict): Optional. This parameter
+                should be passed when a user outside of Studio wants a presigned URL to the
+                TensorBoard application and wants to modify the optional parameters of the
+                create_presigned_domain_url call.
+                Default: ``None``
+        Returns:
+            str: A URL for the requested app in SageMaker Studio.
+        """
+        url = None
+
+        # Get app_type in lower str format
+        if isinstance(app_type, SupportedInteractiveAppTypes):
+            app_type = app_type.name
+        app_type = app_type.lower()
+
+        if app_type == SupportedInteractiveAppTypes.TENSORBOARD.name.lower():
+            training_job_name = None
+            if self._current_job_name:
+                training_job_name = self._current_job_name
+            url = self.tensorboard_app.get_app_url(
+                training_job_name=training_job_name,
+                open_in_default_web_browser=open_in_default_web_browser,
+                create_presigned_domain_url=create_presigned_domain_url,
+                domain_id=domain_id,
+                user_profile_name=user_profile_name,
+                optional_create_presigned_url_kwargs=optional_create_presigned_url_kwargs,
+            )
+        else:
+            raise ValueError(f"{app_type} does not support URL retrieval.")
+
+        return url
+
 
 class _TrainingJob(_Job):
     """Placeholder docstring"""
@@ -2360,6 +2454,10 @@ class _TrainingJob(_Job):
                     "TrainingRepositoryCredentialsProviderArn"
                 ] = estimator.training_repository_credentials_provider_arn
             train_args["training_image_config"] = training_image_config
+
+        if estimator.enable_infra_check is not None:
+            infra_check_config = {"EnableInfraCheck": estimator.enable_infra_check}
+            train_args["infra_check_config"] = infra_check_config
 
         if estimator.container_entry_point is not None:
             train_args["container_entry_point"] = estimator.container_entry_point
@@ -2576,6 +2674,7 @@ class Estimator(EstimatorBase):
         container_entry_point: Optional[List[str]] = None,
         container_arguments: Optional[List[str]] = None,
         disable_output_compression: bool = False,
+        enable_infra_check: Optional[Union[bool, PipelineVariable]] = None,
         **kwargs,
     ):
         """Initialize an ``Estimator`` instance.
@@ -2935,6 +3034,8 @@ class Estimator(EstimatorBase):
                 a training job.
             disable_output_compression (bool): Optional. When set to true, Model is uploaded
                 to Amazon S3 without compression after training finishes.
+            enable_infra_check (bool or PipelineVariable): Optional.
+                Specifies whether it is running Sagemaker built-in infra check jobs.
         """
         self.image_uri = image_uri
         self._hyperparameters = hyperparameters.copy() if hyperparameters else {}

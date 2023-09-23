@@ -130,6 +130,7 @@ from sagemaker.session_settings import SessionSettings
 LOGGER = logging.getLogger("sagemaker")
 
 NOTEBOOK_METADATA_FILE = "/opt/ml/metadata/resource-metadata.json"
+MODEL_MONITOR_ONE_TIME_SCHEDULE = "NOW"
 _STATUS_CODE_TABLE = {
     "COMPLETED": "Completed",
     "INPROGRESS": "InProgress",
@@ -674,6 +675,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         enable_network_isolation=None,
         image_uri=None,
         training_image_config=None,
+        infra_check_config=None,
         container_entry_point=None,
         container_arguments=None,
         algorithm_arn=None,
@@ -803,6 +805,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
             retry_strategy(dict): Defines RetryStrategy for InternalServerFailures.
                 * max_retry_attsmpts (int): Number of times a job should be retried.
                 The key in RetryStrategy is 'MaxRetryAttempts'.
+            infra_check_config(dict): Infra check configuration.
+                Optionally, the dict can contain 'EnableInfraCheck'(bool).
+                For example,
+
+                .. code:: python
+
+                    infra_check_config = {
+                        "EnableInfraCheck": True,
+                    }
         Returns:
             str: ARN of the training job, if it is created.
         """
@@ -866,6 +877,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             enable_network_isolation=enable_network_isolation,
             image_uri=image_uri,
             training_image_config=training_image_config,
+            infra_check_config=infra_check_config,
             container_entry_point=container_entry_point,
             container_arguments=container_arguments,
             algorithm_arn=algorithm_arn,
@@ -907,6 +919,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         enable_network_isolation=False,
         image_uri=None,
         training_image_config=None,
+        infra_check_config=None,
         container_entry_point=None,
         container_arguments=None,
         algorithm_arn=None,
@@ -1062,6 +1075,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if training_image_config is not None:
             train_request["AlgorithmSpecification"]["TrainingImageConfig"] = training_image_config
+
+        if infra_check_config is not None:
+            train_request["InfraCheckConfig"] = infra_check_config
 
         if container_entry_point is not None:
             train_request["AlgorithmSpecification"]["ContainerEntrypoint"] = container_entry_point
@@ -1434,6 +1450,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         network_config=None,
         role_arn=None,
         tags=None,
+        data_analysis_start_time=None,
+        data_analysis_end_time=None,
     ):
         """Create an Amazon SageMaker monitoring schedule.
 
@@ -1472,6 +1490,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 Amazon SageMaker can assume to perform tasks on your behalf.
             tags ([dict[str,str]]): A list of dictionaries containing key-value
                 pairs.
+            data_analysis_start_time (str): Start time for the data analysis window
+                for the one time monitoring schedule (NOW), e.g. "-PT1H"
+            data_analysis_end_time (str): End time for the data analysis window
+                for the one time monitoring schedule (NOW), e.g. "-PT1H"
         """
         role_arn = resolve_value_from_config(
             role_arn, MONITORING_JOB_ROLE_ARN_PATH, sagemaker_session=self
@@ -1509,8 +1531,17 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if schedule_expression is not None:
             monitoring_schedule_request["MonitoringScheduleConfig"]["ScheduleConfig"] = {
-                "ScheduleExpression": schedule_expression
+                "ScheduleExpression": schedule_expression,
             }
+            if data_analysis_start_time is not None:
+                monitoring_schedule_request["MonitoringScheduleConfig"]["ScheduleConfig"][
+                    "DataAnalysisStartTime"
+                ] = data_analysis_start_time
+
+            if data_analysis_end_time is not None:
+                monitoring_schedule_request["MonitoringScheduleConfig"]["ScheduleConfig"][
+                    "DataAnalysisEndTime"
+                ] = data_analysis_end_time
 
         if monitoring_output_config is not None:
             kms_key_from_config = resolve_value_from_config(
@@ -1611,6 +1642,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         environment=None,
         network_config=None,
         role_arn=None,
+        data_analysis_start_time=None,
+        data_analysis_end_time=None,
     ):
         """Update an Amazon SageMaker monitoring schedule.
 
@@ -1649,12 +1682,19 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 Amazon SageMaker can assume to perform tasks on your behalf.
             tags ([dict[str,str]]): A list of dictionaries containing key-value
                 pairs.
+            data_analysis_start_time (str): Start time for the data analysis window
+                for the one time monitoring schedule (NOW), e.g. "-PT1H"
+            data_analysis_end_time (str): End time for the data analysis window
+                for the one time monitoring schedule (NOW), e.g. "-PT1H"
         """
         existing_desc = self.sagemaker_client.describe_monitoring_schedule(
             MonitoringScheduleName=monitoring_schedule_name
         )
 
         existing_schedule_config = None
+        existing_data_analysis_start_time = None
+        existing_data_analysis_end_time = None
+
         if (
             existing_desc.get("MonitoringScheduleConfig") is not None
             and existing_desc["MonitoringScheduleConfig"].get("ScheduleConfig") is not None
@@ -1664,8 +1704,41 @@ class Session(object):  # pylint: disable=too-many-public-methods
             existing_schedule_config = existing_desc["MonitoringScheduleConfig"]["ScheduleConfig"][
                 "ScheduleExpression"
             ]
+            if (
+                existing_desc["MonitoringScheduleConfig"]["ScheduleConfig"].get(
+                    "DataAnalysisStartTime"
+                )
+                is not None
+            ):
+                existing_data_analysis_start_time = existing_desc["MonitoringScheduleConfig"][
+                    "ScheduleConfig"
+                ]["DataAnalysisStartTime"]
+            if (
+                existing_desc["MonitoringScheduleConfig"]["ScheduleConfig"].get(
+                    "DataAnalysisEndTime"
+                )
+                is not None
+            ):
+                existing_data_analysis_end_time = existing_desc["MonitoringScheduleConfig"][
+                    "ScheduleConfig"
+                ]["DataAnalysisEndTime"]
 
         request_schedule_expression = schedule_expression or existing_schedule_config
+        request_data_analysis_start_time = (
+            data_analysis_start_time or existing_data_analysis_start_time
+        )
+        request_data_analysis_end_time = data_analysis_end_time or existing_data_analysis_end_time
+
+        if request_schedule_expression == MODEL_MONITOR_ONE_TIME_SCHEDULE and (
+            request_data_analysis_start_time is None or request_data_analysis_end_time is None
+        ):
+            message = (
+                "Both data_analysis_start_time and data_analysis_end_time are required "
+                "for one time monitoring schedule "
+            )
+            LOGGER.error(message)
+            raise ValueError(message)
+
         request_monitoring_inputs = (
             monitoring_inputs
             or existing_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
@@ -1721,8 +1794,18 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if existing_schedule_config is not None:
             monitoring_schedule_request["MonitoringScheduleConfig"]["ScheduleConfig"] = {
-                "ScheduleExpression": request_schedule_expression
+                "ScheduleExpression": request_schedule_expression,
             }
+
+            if request_data_analysis_start_time is not None:
+                monitoring_schedule_request["MonitoringScheduleConfig"]["ScheduleConfig"][
+                    "DataAnalysisStartTime"
+                ] = request_data_analysis_start_time
+
+            if request_data_analysis_end_time is not None:
+                monitoring_schedule_request["MonitoringScheduleConfig"]["ScheduleConfig"][
+                    "DataAnalysisEndTime"
+                ] = request_data_analysis_end_time
 
         existing_monitoring_output_config = existing_desc["MonitoringScheduleConfig"][
             "MonitoringJobDefinition"
@@ -3648,6 +3731,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         domain=None,
         sample_payload_url=None,
         task=None,
+        skip_model_validation="None",
     ):
         """Get request dictionary for CreateModelPackage API.
 
@@ -3682,6 +3766,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             task (str): Task values which are supported by Inference Recommender are "FILL_MASK",
                 "IMAGE_CLASSIFICATION", "OBJECT_DETECTION", "TEXT_GENERATION", "IMAGE_SEGMENTATION",
                 "CLASSIFICATION", "REGRESSION", "OTHER" (default: None).
+            skip_model_validation (str): Indicates if you want to skip model validation.
+                Values can be "All" or "None" (default: None).
         """
         if containers:
             # Containers are provided. Now we can merge missing entries from config.
@@ -3737,6 +3823,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             domain=domain,
             sample_payload_url=sample_payload_url,
             task=task,
+            skip_model_validation=skip_model_validation,
         )
 
         def submit(request):
@@ -5764,6 +5851,7 @@ def get_model_package_args(
     domain=None,
     sample_payload_url=None,
     task=None,
+    skip_model_validation=None,
 ):
     """Get arguments for create_model_package method.
 
@@ -5800,6 +5888,8 @@ def get_model_package_args(
         task (str): Task values which are supported by Inference Recommender are "FILL_MASK",
             "IMAGE_CLASSIFICATION", "OBJECT_DETECTION", "TEXT_GENERATION", "IMAGE_SEGMENTATION",
             "CLASSIFICATION", "REGRESSION", "OTHER" (default: None).
+        skip_model_validation (str): Indicates if you want to skip model validation.
+            Values can be "All" or "None" (default: None).
 
     Returns:
         dict: A dictionary of method argument names and values.
@@ -5848,6 +5938,8 @@ def get_model_package_args(
         model_package_args["sample_payload_url"] = sample_payload_url
     if task is not None:
         model_package_args["task"] = task
+    if skip_model_validation is not None:
+        model_package_args["skip_model_validation"] = skip_model_validation
     return model_package_args
 
 
@@ -5871,6 +5963,7 @@ def get_create_model_package_request(
     domain=None,
     sample_payload_url=None,
     task=None,
+    skip_model_validation="None",
 ):
     """Get request dictionary for CreateModelPackage API.
 
@@ -5905,6 +5998,8 @@ def get_create_model_package_request(
         task (str): Task values which are supported by Inference Recommender are "FILL_MASK",
             "IMAGE_CLASSIFICATION", "OBJECT_DETECTION", "TEXT_GENERATION", "IMAGE_SEGMENTATION",
             "CLASSIFICATION", "REGRESSION", "OTHER" (default: None).
+        skip_model_validation (str): Indicates if you want to skip model validation.
+            Values can be "All" or "None" (default: None).
     """
 
     if all([model_package_name, model_package_group_name]):
@@ -5974,6 +6069,7 @@ def get_create_model_package_request(
         request_dict["InferenceSpecification"] = inference_specification
     request_dict["CertifyForMarketplace"] = marketplace_cert
     request_dict["ModelApprovalStatus"] = approval_status
+    request_dict["SkipModelValidation"] = skip_model_validation
     return request_dict
 
 

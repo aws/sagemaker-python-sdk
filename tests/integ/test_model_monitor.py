@@ -15,7 +15,7 @@ from __future__ import absolute_import
 import json
 import os
 import uuid
-
+import time
 import pytest
 
 import tests.integ
@@ -2375,3 +2375,116 @@ def test_byoc_monitoring_schedule_name_update_batch(
 
     my_byoc_monitor.stop_monitoring_schedule()
     my_byoc_monitor.delete_monitoring_schedule()
+
+
+def _wait_for_first_execution_to_complete(monitor):
+    for _ in retries(
+        max_retry_count=30,
+        exception_message_prefix="Waiting for first execution to reach terminal state",
+        seconds_to_sleep=60,
+    ):
+        schedule_desc = monitor.describe_schedule()
+        execution_summary = schedule_desc.get("LastMonitoringExecutionSummary")
+
+        # Once there is an execution, we can break
+        if execution_summary is not None:
+            monitor.stop_monitoring_schedule()
+            last_execution_status = execution_summary["MonitoringExecutionStatus"]
+
+            if last_execution_status not in ["Pending", "InProgess"]:
+                # to prevent delete as it takes sometime for schedule to update out of InProgress
+                time.sleep(120)
+                break
+
+
+def _wait_for_first_execution_to_start(monitor):
+    for _ in retries(
+        max_retry_count=30,
+        exception_message_prefix="Waiting for an execution for the schedule to start",
+        seconds_to_sleep=60,
+    ):
+        schedule_desc = monitor.describe_schedule()
+        execution_summary = schedule_desc.get("LastMonitoringExecutionSummary")
+
+        # Once there is an execution, we can break
+        if execution_summary is not None:
+            monitor.stop_monitoring_schedule()
+            break
+
+
+def test_one_time_monitoring_schedule(sagemaker_session):
+    my_default_monitor = DefaultModelMonitor(
+        role=ROLE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        volume_size_in_gb=VOLUME_SIZE_IN_GB,
+        max_runtime_in_seconds=MAX_RUNTIME_IN_SECONDS,
+        sagemaker_session=sagemaker_session,
+        env=ENVIRONMENT,
+        tags=TAGS,
+        network_config=NETWORK_CONFIG,
+    )
+
+    output_s3_uri = os.path.join(
+        "s3://",
+        sagemaker_session.default_bucket(),
+        "integ-test-monitoring-output-bucket",
+        str(uuid.uuid4()),
+    )
+
+    data_captured_destination_s3_uri = os.path.join(
+        "s3://",
+        sagemaker_session.default_bucket(),
+        "sagemaker-serving-batch-transform",
+        str(uuid.uuid4()),
+    )
+
+    batch_transform_input = BatchTransformInput(
+        data_captured_destination_s3_uri=data_captured_destination_s3_uri,
+        destination="/opt/ml/processing/output",
+        dataset_format=MonitoringDatasetFormat.csv(header=False),
+    )
+
+    statistics = Statistics.from_file_path(
+        statistics_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/statistics.json"),
+        sagemaker_session=sagemaker_session,
+    )
+
+    constraints = Constraints.from_file_path(
+        constraints_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/constraints.json"),
+        sagemaker_session=sagemaker_session,
+    )
+
+    # storing the time before creation of monitoring schedule
+    start = datetime.now()
+
+    my_default_monitor.create_monitoring_schedule(
+        batch_transform_input=batch_transform_input,
+        output_s3_uri=output_s3_uri,
+        statistics=statistics,
+        constraints=constraints,
+        schedule_cron_expression=CronExpressionGenerator.now(),
+        data_analysis_start_time="-PT1H",
+        data_analysis_end_time="-PT0H",
+        enable_cloudwatch_metrics=ENABLE_CLOUDWATCH_METRICS,
+    )
+
+    try:
+
+        _wait_for_schedule_changes_to_apply(monitor=my_default_monitor)
+        _wait_for_first_execution_to_start(monitor=my_default_monitor)
+
+        # storing the start time as soon as an execution starts
+        end = datetime.now()
+
+        _wait_for_first_execution_to_complete(monitor=my_default_monitor)
+        my_default_monitor.stop_monitoring_schedule()
+        my_default_monitor.delete_monitoring_schedule()
+
+        # the execution should start within 10 minutes
+        assert (end - start).total_seconds() < 10 * 60
+
+    except Exception as e:
+        my_default_monitor.stop_monitoring_schedule()
+        my_default_monitor.delete_monitoring_schedule()
+        raise e

@@ -179,6 +179,13 @@ MODEL_ID_LIST_WEB_URL = "https://sagemaker.readthedocs.io/en/stable/doc_utils/pr
 
 JUMPSTART_LOGGER = logging.getLogger("sagemaker.jumpstart")
 
-DEFAULT_JUMPSTART_SAGEMAKER_SESSION = Session(
-    boto3.Session(region_name=JUMPSTART_DEFAULT_REGION_NAME)
-)
+try:
+    DEFAULT_JUMPSTART_SAGEMAKER_SESSION = Session(
+        boto3.Session(region_name=JUMPSTART_DEFAULT_REGION_NAME)
+    )
+except Exception as e:  # pylint: disable=W0703
+    DEFAULT_JUMPSTART_SAGEMAKER_SESSION = None
+    JUMPSTART_LOGGER.warning(
+        "Unable to create default JumpStart SageMaker Session due to the following error: %s.",
+        str(e),
+    )

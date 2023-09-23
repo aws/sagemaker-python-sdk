@@ -195,6 +195,46 @@ def test_executor_submit_with_run_outside(
             assert metric_summary.avg == 550
 
 
+def test_executor_submit_using_spot_instances(
+    sagemaker_session, dummy_container_without_error, cpu_instance_type
+):
+    def square_on_spot_instance(x):
+        return x * x
+
+    def cube_on_spot_instance(x):
+        return x * x * x
+
+    with RemoteExecutor(
+        max_parallel_jobs=1,
+        role=ROLE,
+        image_uri=dummy_container_without_error,
+        instance_type=cpu_instance_type,
+        sagemaker_session=sagemaker_session,
+        use_spot_instances=True,
+        max_wait_time_in_seconds=48 * 60 * 60,
+    ) as e:
+        future_1 = e.submit(square_on_spot_instance, 10)
+        future_2 = e.submit(cube_on_spot_instance, 10)
+
+    assert future_1.result() == 100
+    assert future_2.result() == 1000
+
+    assert get_future(future_1._job.job_name, sagemaker_session).result() == 100
+    assert get_future(future_2._job.job_name, sagemaker_session).result() == 1000
+
+    describe_job_1 = next(
+        list_futures(job_name_prefix="square-on-spot-instance", sagemaker_session=sagemaker_session)
+    )._job.describe()
+    assert describe_job_1["EnableManagedSpotTraining"] is True
+    assert describe_job_1["StoppingCondition"]["MaxWaitTimeInSeconds"] == 172800
+
+    describe_job_2 = next(
+        list_futures(job_name_prefix="cube-on-spot-instance", sagemaker_session=sagemaker_session)
+    )._job.describe()
+    assert describe_job_2["EnableManagedSpotTraining"] is True
+    assert describe_job_2["StoppingCondition"]["MaxWaitTimeInSeconds"] == 172800
+
+
 def test_executor_map_with_run(sagemaker_session, dummy_container_without_error, cpu_instance_type):
     def square(x):
         with load_run() as run:

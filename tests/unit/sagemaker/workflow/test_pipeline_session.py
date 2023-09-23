@@ -218,6 +218,7 @@ def test_pipeline_session_context_for_model_step_without_instance_types(
         },
         "CertifyForMarketplace": False,
         "ModelApprovalStatus": "PendingManualApproval",
+        "SkipModelValidation": "None",
         "SamplePayloadUrl": "s3://test-bucket/model",
         "Task": "IMAGE_CLASSIFICATION",
     }
@@ -280,6 +281,7 @@ def test_pipeline_session_context_for_model_step_with_one_instance_types(
         },
         "CertifyForMarketplace": False,
         "ModelApprovalStatus": "PendingManualApproval",
+        "SkipModelValidation": "None",
         "SamplePayloadUrl": "s3://test-bucket/model",
         "Task": "IMAGE_CLASSIFICATION",
     }

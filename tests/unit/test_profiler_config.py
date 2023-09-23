@@ -23,7 +23,9 @@ from sagemaker import image_uris
 import sagemaker.fw_utils as fw
 from sagemaker.pytorch import PyTorch
 from sagemaker.tensorflow import TensorFlow
-from sagemaker.debugger.profiler_config import ProfilerConfig, FrameworkProfile
+from sagemaker.debugger import get_rule_container_image_uri
+from sagemaker.debugger.profiler_config import FrameworkProfile
+from sagemaker import ProfilerConfig, Profiler
 
 from sagemaker.debugger.metrics_config import (
     StepRange,
@@ -52,6 +54,8 @@ from sagemaker.debugger.profiler_constants import (
     PYTHON_PROFILING_NUM_STEPS_DEFAULT,
     PYTHON_PROFILING_START_STEP_DEFAULT,
     START_STEP_DEFAULT,
+    DETAIL_PROF_PROCESSING_DEFAULT_INSTANCE_TYPE,
+    DETAIL_PROF_PROCESSING_DEFAULT_VOLUME_SIZE,
 )
 from sagemaker.debugger.utils import PythonProfiler, cProfileTimer, ErrorMessages
 
@@ -651,12 +655,17 @@ def test_validation():
         PythonProfilingConfig(cprofile_timer="bad_cprofile_timer")
 
 
+def test_detail_profiler_processing_url():
+    url = get_rule_container_image_uri("DetailedProfilerProcessingJobConfig", "us-west-2")
+    assert url.endswith("detailed-profiler-processing:latest")
+
+
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 SCRIPT_PATH = os.path.join(DATA_DIR, "dummy_script.py")
 INSTANCE_COUNT = 1
-INSTANCE_TYPE = "ml.p3.2xlarge"
 ROLE = "Dummy"
 REGION = "us-west-2"
+INSTANCE_TYPE = "ml.p3.2xlarge"
 
 
 def _check_framework_profile_deprecation_warning(framework_version, framework_name, warn_list):
@@ -808,3 +817,48 @@ def test_create_tf_estimator_w_image_with_framework_profile(
             _check_framework_profile_deprecation_warning(
                 framework_version, tf._framework_name, warn_list
             )
+
+
+def test_create_pytorch_estimator_with_profile_processing(
+    sagemaker_session,
+    pytorch_training_version,
+    pytorch_training_py_version,
+    default_framework_profile,
+):
+
+    profiler_config = ProfilerConfig(
+        system_monitor_interval_millis=500, profile_params=Profiler(cpu_profiling_duration="3600")
+    )
+    assert (
+        profiler_config.profile_params.instanceType == DETAIL_PROF_PROCESSING_DEFAULT_INSTANCE_TYPE
+    )
+    assert (
+        profiler_config.profile_params.volumeSizeInGB == DETAIL_PROF_PROCESSING_DEFAULT_VOLUME_SIZE
+    )
+
+    profiler_config = ProfilerConfig(
+        system_monitor_interval_millis=500,
+        profile_params=Profiler(
+            cpu_profiling_duration="3600",
+        ),
+    )
+
+    pytorch = PyTorch(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,  # gpu_pytorch_instance_type,
+        framework_version=pytorch_training_version,
+        py_version=pytorch_training_py_version,
+        profiler_config=profiler_config,
+    )
+    pytorch._prepare_profiler_for_training()
+
+    assert pytorch.profiler_rules is not None
+    for rule in pytorch.profiler_rules:
+        if rule.name is not None and rule.name.startswith("DetailedProfilerProcessingJobConfig"):
+            if rule.image_uri.endswith("detailed-profiler-processing:latest"):
+                return
+
+    assert 0  # Should not happen. A rule should have been built with return above

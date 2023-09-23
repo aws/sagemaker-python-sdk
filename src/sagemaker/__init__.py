@@ -62,4 +62,6 @@ from sagemaker.session import get_execution_role  # noqa: F401
 from sagemaker.automl.automl import AutoML, AutoMLJob, AutoMLInput  # noqa: F401
 from sagemaker.automl.candidate_estimator import CandidateEstimator, CandidateStep  # noqa: F401
 
+from sagemaker.debugger import ProfilerConfig, Profiler  # noqa: F401
+
 __version__ = importlib_metadata.version("sagemaker")
