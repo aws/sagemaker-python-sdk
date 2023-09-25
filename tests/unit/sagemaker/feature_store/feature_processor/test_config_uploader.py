@@ -64,6 +64,7 @@ def remote_decorator_config(sagemaker_session):
         pre_execution_script="some_path",
         python_sdk_whl_s3_uri=SAGEMAKER_WHL_FILE_S3_PATH,
         environment_variables={"REMOTE_FUNCTION_SECRET_KEY": "some_secret_key"},
+        custom_file_filter=None,
     )
 
 
@@ -108,6 +109,7 @@ def test_prepare_and_upload_dependencies(mock_upload, config_uploader):
         s3_base_uri=remote_decorator_config.s3_root_uri,
         s3_kms_key=remote_decorator_config.s3_kms_key,
         sagemaker_session=sagemaker_session,
+        custom_file_filter=None,
     )
 
 
@@ -201,6 +203,7 @@ def test_prepare_step_input_channel(
         s3_base_uri=remote_decorator_config.s3_root_uri,
         s3_kms_key="some_kms",
         sagemaker_session=sagemaker_session,
+        custom_file_filter=None,
     )
 
     mock_spark_dependency_upload.assert_called_once_with(

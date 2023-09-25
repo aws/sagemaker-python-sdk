@@ -20,7 +20,7 @@ import shutil
 import sys
 import json
 import secrets
-from typing import Dict, List, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 from io import BytesIO
 
@@ -193,6 +193,7 @@ class _JobSettings:
         spark_config: SparkConfig = None,
         use_spot_instances=False,
         max_wait_time_in_seconds=None,
+        custom_file_filter: Optional[Callable[[str, List], List]] = None,
     ):
         """Initialize a _JobSettings instance which configures the remote job.
 
@@ -363,6 +364,11 @@ class _JobSettings:
             max_wait_time_in_seconds (int): Timeout in seconds waiting for spot training job.
               After this amount of time Amazon SageMaker will stop waiting for managed spot
               training job to complete. Defaults to ``None``.
+
+            custom_file_filter (Callable[[str, List], List]): A function that filters job
+              dependencies to be uploaded to S3. This function is passed to the ``ignore``
+              argument of ``shutil.copytree``. Defaults to ``None``, which means only python
+              files are accepted.
         """
         self.sagemaker_session = sagemaker_session or Session()
         self.environment_variables = resolve_value_from_config(
@@ -450,6 +456,7 @@ class _JobSettings:
         self.keep_alive_period_in_seconds = keep_alive_period_in_seconds
         self.spark_config = spark_config
         self.use_spot_instances = use_spot_instances
+        self.custom_file_filter = custom_file_filter
         self.max_wait_time_in_seconds = max_wait_time_in_seconds
         self.job_conda_env = resolve_value_from_config(
             direct_input=job_conda_env,
@@ -649,6 +656,7 @@ class _Job:
             s3_base_uri=s3_base_uri,
             s3_kms_key=job_settings.s3_kms_key,
             sagemaker_session=job_settings.sagemaker_session,
+            custom_file_filter=job_settings.custom_file_filter,
         )
 
         stored_function = StoredFunction(
@@ -890,6 +898,7 @@ def _prepare_and_upload_dependencies(
     s3_base_uri: str,
     s3_kms_key: str,
     sagemaker_session: Session,
+    custom_file_filter: Optional[Callable[[str, List], List]] = None,
 ) -> str:
     """Upload the job dependencies to S3 if present"""
 
@@ -906,12 +915,12 @@ def _prepare_and_upload_dependencies(
         os.mkdir(tmp_workspace_dir)
         # TODO Remove the following hack to avoid dir_exists error in the copy_tree call below.
         tmp_workspace = os.path.join(tmp_workspace_dir, JOB_REMOTE_FUNCTION_WORKSPACE)
-
+        ignore = custom_file_filter if custom_file_filter is not None else _filter_non_python_files
         if include_local_workdir:
             shutil.copytree(
                 os.getcwd(),
                 tmp_workspace,
-                ignore=_filter_non_python_files,
+                ignore=ignore,
             )
             logger.info("Copied user workspace python scripts to '%s'", tmp_workspace)
 
