@@ -1,5 +1,17 @@
 # Changelog
 
+## v2.188.0 (2023-09-26)
+
+### Features
+
+ * jumpstart instance type variants
+ * New methods to ingest and create Feature Groups
+
+### Bug Fixes and Other Changes
+
+ * auto ml integ tests and add flaky test markers
+ * Enhance unit-tests to automatically consume image URIs config registries from config JSONs
+
 ## v2.187.0 (2023-09-19)
 
 ### Features
