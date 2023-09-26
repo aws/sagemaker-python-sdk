@@ -25,9 +25,7 @@ TRAINING_DATA = os.path.join(DATA_DIR, "iris_training.csv")
 TARGET_ATTRIBUTE_NAME = "virginica"
 
 
-def create_auto_ml_job_if_not_exist(sagemaker_session):
-    auto_ml_job_name = "python-sdk-integ-test-base-job"
-
+def create_auto_ml_job_if_not_exist(sagemaker_session, auto_ml_job_name):
     try:
         sagemaker_session.describe_auto_ml_job(job_name=auto_ml_job_name)
     except Exception as e:  # noqa: F841
