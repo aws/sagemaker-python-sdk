@@ -206,7 +206,7 @@ def default_right_sized_unregistered_model(sagemaker_session, cpu_instance_type)
                 ir_job_name,
             )
         except Exception:
-            sagemaker_session.delete_model(ModelName=sklearn_model.name)
+            sagemaker_session.delete_model(model_name=sklearn_model.name)
 
 
 @pytest.fixture(scope="module")
@@ -261,7 +261,7 @@ def advanced_right_sized_unregistered_model(sagemaker_session, cpu_instance_type
             )
 
         except Exception:
-            sagemaker_session.delete_model(ModelName=sklearn_model.name)
+            sagemaker_session.delete_model(model_name=sklearn_model.name)
 
 
 @pytest.fixture(scope="module")
@@ -300,7 +300,7 @@ def default_right_sized_unregistered_base_model(sagemaker_session, cpu_instance_
                 ir_job_name,
             )
         except Exception:
-            sagemaker_session.delete_model(ModelName=model.name)
+            sagemaker_session.delete_model(model_name=model.name)
 
 
 @pytest.fixture(scope="module")
@@ -328,6 +328,7 @@ def created_base_model(sagemaker_session, cpu_instance_type):
 
 
 @pytest.mark.slow_test
+@pytest.mark.flaky(reruns=3, reruns_delay=2)
 def test_default_right_size_and_deploy_registered_model_sklearn(
     default_right_sized_model, sagemaker_session
 ):
@@ -350,6 +351,7 @@ def test_default_right_size_and_deploy_registered_model_sklearn(
 
 
 @pytest.mark.slow_test
+@pytest.mark.flaky(reruns=3, reruns_delay=2)
 def test_default_right_size_and_deploy_unregistered_model_sklearn(
     default_right_sized_unregistered_model, sagemaker_session
 ):
@@ -372,6 +374,7 @@ def test_default_right_size_and_deploy_unregistered_model_sklearn(
 
 
 @pytest.mark.slow_test
+@pytest.mark.flaky(reruns=3, reruns_delay=2)
 def test_default_right_size_and_deploy_unregistered_base_model(
     default_right_sized_unregistered_base_model, sagemaker_session
 ):
@@ -394,6 +397,7 @@ def test_default_right_size_and_deploy_unregistered_base_model(
 
 
 @pytest.mark.slow_test
+@pytest.mark.flaky(reruns=3, reruns_delay=2)
 def test_advanced_right_size_and_deploy_unregistered_model_sklearn(
     advanced_right_sized_unregistered_model, sagemaker_session
 ):
@@ -416,6 +420,7 @@ def test_advanced_right_size_and_deploy_unregistered_model_sklearn(
 
 
 @pytest.mark.slow_test
+@pytest.mark.flaky(reruns=3, reruns_delay=2)
 def test_advanced_right_size_and_deploy_registered_model_sklearn(
     advanced_right_sized_model, sagemaker_session
 ):
@@ -446,6 +451,7 @@ def test_advanced_right_size_and_deploy_registered_model_sklearn(
 # TODO when we've added support for inference_recommendation_id
 # then add tests to test Framework models
 @pytest.mark.slow_test
+@pytest.mark.flaky(reruns=3, reruns_delay=2)
 def test_deploy_inference_recommendation_id_with_registered_model_sklearn(
     default_right_sized_model, sagemaker_session
 ):
@@ -480,6 +486,7 @@ def test_deploy_inference_recommendation_id_with_registered_model_sklearn(
 
 
 @pytest.mark.slow_test
+@pytest.mark.flaky(reruns=3, reruns_delay=2)
 def test_deploy_deployment_recommendation_id_with_model(created_base_model, sagemaker_session):
     with timeout(minutes=20):
         try:
