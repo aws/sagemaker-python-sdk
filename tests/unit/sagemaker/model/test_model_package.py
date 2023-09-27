@@ -19,6 +19,11 @@ from mock import Mock, patch
 
 import sagemaker
 from sagemaker.model import ModelPackage
+from sagemaker.model_card.schema_constraints import ModelApprovalStatusEnum
+
+MODEL_PACKAGE_VERSIONED_ARN = (
+    "arn:aws:sagemaker:us-west-2:001234567890:model-package/testmodelgroup/1"
+)
 
 DESCRIBE_MODEL_PACKAGE_RESPONSE = {
     "InferenceSpecification": {
@@ -34,6 +39,7 @@ DESCRIBE_MODEL_PACKAGE_RESPONSE = {
         ],
         "SupportedRealtimeInferenceInstanceTypes": ["ml.m4.xlarge", "ml.m4.2xlarge"],
     },
+    "ModelApprovalStatus": "PendingManualApproval",
     "ModelPackageDescription": "Model Package created from training with "
     "arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees",
     "CreationTime": 1542752036.687,
@@ -50,6 +56,14 @@ DESCRIBE_MODEL_PACKAGE_RESPONSE = {
     "ModelPackageStatus": "Completed",
     "ModelPackageName": "mp-scikit-decision-trees-1542410022-2018-11-20-22-13-56-502",
     "CertifyForMarketplace": False,
+}
+
+MODEL_DATA = {
+    "S3DataSource": {
+        "S3Uri": "s3://bucket/model/prefix/",
+        "S3DataType": "S3Prefix",
+        "CompressionType": "None",
+    }
 }
 
 
@@ -296,3 +310,19 @@ def test_model_package_create_transformer_with_product_id(sagemaker_session):
     assert transformer.model_name == "auto-generated-model"
     assert transformer.instance_type == "ml.m4.xlarge"
     assert transformer.env is None
+
+
+@patch("sagemaker.model.ModelPackage.update_approval_status")
+def test_model_package_auto_approve_on_deploy(update_approval_status, sagemaker_session):
+    tags = {"Key": "foo", "Value": "bar"}
+    model_package = ModelPackage(
+        role="role",
+        model_package_arn=MODEL_PACKAGE_VERSIONED_ARN,
+        sagemaker_session=sagemaker_session,
+    )
+    model_package.deploy(tags=tags, instance_type="ml.p2.xlarge", initial_instance_count=1)
+
+    assert (
+        update_approval_status.call_args_list[0][1]["approval_status"]
+        == ModelApprovalStatusEnum.APPROVED
+    )

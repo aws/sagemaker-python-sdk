@@ -5830,8 +5830,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
 
 def get_model_package_args(
-    content_types,
-    response_types,
+    content_types=None,
+    response_types=None,
     inference_instances=None,
     transform_instances=None,
     model_package_name=None,
@@ -5899,19 +5899,23 @@ def get_model_package_args(
     else:
         container = {
             "Image": image_uri,
-            "ModelDataUrl": model_data,
         }
+        if model_data is not None:
+            container["ModelDataUrl"] = model_data
+
         containers = [container]
 
     model_package_args = {
         "containers": containers,
-        "content_types": content_types,
-        "response_types": response_types,
         "inference_instances": inference_instances,
         "transform_instances": transform_instances,
         "marketplace_cert": marketplace_cert,
     }
 
+    if content_types is not None:
+        model_package_args["content_types"] = content_types
+    if response_types is not None:
+        model_package_args["response_types"] = response_types
     if model_package_name is not None:
         model_package_args["model_package_name"] = model_package_name
     if model_package_group_name is not None:

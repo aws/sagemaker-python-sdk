@@ -1665,8 +1665,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
     def register(
         self,
-        content_types,
-        response_types,
+        content_types=None,
+        response_types=None,
         inference_instances=None,
         transform_instances=None,
         image_uri=None,
