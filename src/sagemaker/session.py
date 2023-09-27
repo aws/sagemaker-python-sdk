@@ -542,11 +542,16 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         region = self.boto_session.region_name
 
+        _default_bucket_set_by_sdk = False
         default_bucket = self._default_bucket_name_override
         if not default_bucket:
             default_bucket = generate_default_sagemaker_bucket_name(self.boto_session)
+            _default_bucket_set_by_sdk = True
 
         self._create_s3_bucket_if_it_does_not_exist(bucket_name=default_bucket, region=region)
+        if _default_bucket_set_by_sdk:
+            # make sure the s3 bucket is configured in users account.
+            self._bucket_owner_check(default_bucket)
 
         self._default_bucket = default_bucket
 
@@ -619,6 +624,32 @@ class Session(object):  # pylint: disable=too-many-public-methods
                     raise
                 else:
                     raise
+
+    def _bucket_owner_check(self, bucket_name):
+        # Make sure the s3 bucket is configured in users account.
+        # https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-owner-condition.html
+        if self.s3_resource is None:
+            s3 = self.boto_session.resource("s3", region_name=region)
+        else:
+            s3 = self.s3_resource
+
+        expected_bucket_owner_id = self.account_id()
+        try:
+            s3.meta.client.head_bucket(
+                Bucket=bucket_name, ExpectedBucketOwner=expected_bucket_owner_id
+            )
+        except ClientError as e:
+            error_code = e.response["Error"]["Code"]
+            message = e.response["Error"]["Message"]
+            if error_code == "403" and message == "Forbidden":
+                LOGGER.error(
+                    "Bucket %s exists, but not in the AWS account configured in AWS Session."
+                    "Please reach out to AWS Security to verify on bucket ownership."
+                    "To unblock it's recommended to use custom default_bucket "
+                    "param in sagemaker.Session",
+                    bucket_name,
+                )
+                raise
 
     def _append_sagemaker_config_tags(self, tags: list, config_path_to_tags: str):
         """Appends tags specified in the sagemaker_config to the given list of tags.
