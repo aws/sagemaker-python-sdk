@@ -626,8 +626,19 @@ class Session(object):  # pylint: disable=too-many-public-methods
                     raise
 
     def _bucket_owner_check(self, bucket_name):
-        # Make sure the s3 bucket is configured in users account.
-        # https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-owner-condition.html
+        """Checks if the S3 Bucket exists in AWS account configured in Session.
+
+        More info: https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-owner-condition.html
+
+        Args:
+            bucket_name (str): Name of the S3 bucket.
+
+        Raises:
+            botocore.exceptions.ClientError: If S3 throws an unexpected exception during
+                head_bucket call. Only if the exception is due to the bucket exists but not in
+                AWS account configured in Session
+
+        """
         if self.s3_resource is None:
             s3 = self.boto_session.resource("s3", region_name=region)
         else:
