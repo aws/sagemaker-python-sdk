@@ -78,6 +78,7 @@ def test_default_bucket_s3_needs_bucket_owner_access(sagemaker_session, datetime
             operation_name="foo",
         )
         sagemaker_session.boto_session.resource("s3").meta.client.head_bucket.side_effect = error
+        # bucket exists
         sagemaker_session.boto_session.resource("s3").Bucket(
             name=DEFAULT_BUCKET_NAME
         ).creation_date = datetime_obj
@@ -91,6 +92,22 @@ def test_default_bucket_s3_needs_bucket_owner_access(sagemaker_session, datetime
     )
     assert error_message in caplog.text
     assert sagemaker_session._default_bucket is None
+
+
+def test_default_bucket_s3_custom_bucket_input(sagemaker_session, datetime_obj, caplog):
+    sagemaker_session._default_bucket_name_override = "custom-bucket-override"
+    error = ClientError(
+        error_response={"Error": {"Code": "403", "Message": "Forbidden"}},
+        operation_name="foo",
+    )
+    sagemaker_session.boto_session.resource("s3").meta.client.head_bucket.side_effect = error
+    # bucket exists
+    sagemaker_session.boto_session.resource("s3").Bucket(
+        name=DEFAULT_BUCKET_NAME
+    ).creation_date = datetime_obj
+    # This should not raise ClientError as no head_bucket call is expected for custom bucket
+    sagemaker_session.default_bucket()
+    assert sagemaker_session._default_bucket == "custom-bucket-override"
 
 
 def test_default_already_cached(sagemaker_session):
