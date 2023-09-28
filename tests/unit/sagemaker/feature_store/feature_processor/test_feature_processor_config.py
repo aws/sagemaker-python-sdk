@@ -31,6 +31,7 @@ def test_feature_processor_config_is_immutable():
         target_stores=None,
         enable_ingestion=True,
         parameters=None,
+        spark_config=None,
     )
 
     with pytest.raises(attr.exceptions.FrozenInstanceError):

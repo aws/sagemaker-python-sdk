@@ -19,12 +19,14 @@ import sys
 import time
 from typing import Dict
 from datetime import datetime
+from pyspark.sql import DataFrame
 import pytz
 
 import pytest
 import pandas as pd
 import numpy as np
 import json
+import attr
 from boto3 import client
 
 from tests.integ import DATA_DIR
@@ -39,6 +41,7 @@ from sagemaker.feature_store.feature_group import FeatureGroup
 from sagemaker.feature_store.feature_processor import (
     feature_processor,
     CSVDataSource,
+    PySparkDataSource,
 )
 from sagemaker.feature_store.feature_processor.feature_scheduler import (
     to_pipeline,
@@ -121,6 +124,148 @@ def test_feature_processor_transform_online_only_store_ingestion(
             inputs=[CSVDataSource(raw_data_uri)],
             output=feature_groups["car_data_arn"],
             target_stores=["OnlineStore"],
+        )
+        def transform(raw_s3_data_as_df):
+            """Load data from S3, perform basic feature engineering, store it in a Feature Group"""
+            from pyspark.sql.functions import regexp_replace
+            from pyspark.sql.functions import lit
+
+            transformed_df = (
+                raw_s3_data_as_df
+                # Rename Columns
+                .withColumnRenamed("Id", "id")
+                .withColumnRenamed("Model", "model")
+                .withColumnRenamed("Year", "model_year")
+                .withColumnRenamed("Status", "status")
+                .withColumnRenamed("Mileage", "mileage")
+                .withColumnRenamed("Price", "price")
+                .withColumnRenamed("MSRP", "msrp")
+                # Add Event Time
+                .withColumn("ingest_time", lit(int(time.time())))
+                # Remove punctuation and fluff; replace with NA
+                .withColumn("Price", regexp_replace("Price", "\$", ""))  # noqa: W605
+                .withColumn("mileage", regexp_replace("mileage", "(,)|(mi\.)", ""))  # noqa: W605
+                .withColumn("mileage", regexp_replace("mileage", "Not available", "NA"))
+                .withColumn("price", regexp_replace("price", ",", ""))
+                .withColumn("msrp", regexp_replace("msrp", "(^MSRP\s\\$)|(,)", ""))  # noqa: W605
+                .withColumn("msrp", regexp_replace("msrp", "Not specified", "NA"))
+                .withColumn("msrp", regexp_replace("msrp", "\\$\d+[a-zA-Z\s]+", "NA"))  # noqa: W605
+                .withColumn("model", regexp_replace("model", "^\d\d\d\d\s", ""))  # noqa: W605
+            )
+
+            transformed_df.show()
+            return transformed_df
+
+        transform()
+
+        featurestore_client = sagemaker_session.sagemaker_featurestore_runtime_client
+        results = featurestore_client.batch_get_record(
+            Identifiers=[
+                {
+                    "FeatureGroupName": car_data_feature_group_name,
+                    "RecordIdentifiersValueAsString": [
+                        "0",
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6",
+                        "7",
+                        "8",
+                        "9",
+                        "10",
+                        "11",
+                        "12",
+                        "13",
+                        "14",
+                        "15",
+                        "16",
+                        "17",
+                        "18",
+                        "19",
+                        "20",
+                        "21",
+                        "22",
+                        "23",
+                        "24",
+                        "25",
+                    ],
+                },
+            ]
+        )
+
+        assert len(results["Records"]) == 26
+
+        car_sales_query = feature_groups["car_data_feature_group"].athena_query()
+        query = f'SELECT * FROM "sagemaker_featurestore".{car_sales_query.table_name} LIMIT 1000;'
+        output_uri = "s3://{}/{}/input/data/{}".format(
+            sagemaker_session.default_bucket(),
+            "feature-processor-test",
+            "csv-data-fg-result",
+        )
+        car_sales_query.run(query_string=query, output_location=output_uri)
+        car_sales_query.wait()
+        dataset = car_sales_query.as_dataframe()
+        assert dataset.empty
+    finally:
+        cleanup_offline_store(
+            feature_group=feature_groups["car_data_feature_group"],
+            sagemaker_session=sagemaker_session,
+        )
+        cleanup_offline_store(
+            feature_group=feature_groups["car_data_aggregated_feature_group"],
+            sagemaker_session=sagemaker_session,
+        )
+        cleanup_feature_group(
+            feature_groups["car_data_feature_group"], sagemaker_session=sagemaker_session
+        )
+        cleanup_feature_group(
+            feature_groups["car_data_aggregated_feature_group"], sagemaker_session=sagemaker_session
+        )
+
+
+@pytest.mark.slow_test
+def test_feature_processor_transform_with_customized_data_source(
+    sagemaker_session,
+):
+    car_data_feature_group_name = get_car_data_feature_group_name()
+    car_data_aggregated_feature_group_name = get_car_data_aggregated_feature_group_name()
+
+    try:
+        feature_groups = create_feature_groups(
+            sagemaker_session=sagemaker_session,
+            car_data_feature_group_name=car_data_feature_group_name,
+            car_data_aggregated_feature_group_name=car_data_aggregated_feature_group_name,
+            offline_store_s3_uri=get_offline_store_s3_uri(sagemaker_session=sagemaker_session),
+        )
+
+        raw_data_uri = get_raw_car_data_s3_uri(sagemaker_session=sagemaker_session)
+
+        @attr.s
+        class TestCSVDataSource(PySparkDataSource):
+
+            s3_uri = attr.ib()
+            data_source_name = "TestCSVDataSource"
+            data_source_unique_id = "s3_uri"
+
+            def read_data(self, spark, params) -> DataFrame:
+                s3a_uri = self.s3_uri.replace("s3://", "s3a://")
+                return spark.read.csv(s3a_uri, header=True, inferSchema=False)
+
+        @feature_processor(
+            inputs=[TestCSVDataSource(raw_data_uri)],
+            output=feature_groups["car_data_arn"],
+            target_stores=["OnlineStore"],
+            spark_config={
+                "spark.hadoop.fs.s3a.aws.credentials.provider": ",".join(
+                    [
+                        "com.amazonaws.auth.ContainerCredentialsProvider",
+                        "com.amazonaws.auth.profile.ProfileCredentialsProvider",
+                        "com.amazonaws.auth.DefaultAWSCredentialsProviderChain",
+                    ]
+                )
+            },
         )
         def transform(raw_s3_data_as_df):
             """Load data from S3, perform basic feature engineering, store it in a Feature Group"""
@@ -368,11 +513,17 @@ def test_feature_processor_transform_offline_only_store_ingestion_run_with_remot
 
         raw_data_uri = get_raw_car_data_s3_uri(sagemaker_session=sagemaker_session)
         whl_file_uri = get_wheel_file_s3_uri(sagemaker_session=sagemaker_session)
+        whl_file_name = os.path.basename(whl_file_uri)
+
+        pre_execution_commands = [
+            f"aws s3 cp {whl_file_uri} ./",
+            f"/usr/local/bin/python3.9 -m pip install ./{whl_file_name} --force-reinstall",
+        ]
 
         @remote(
+            pre_execution_commands=pre_execution_commands,
             spark_config=SparkConfig(),
             instance_type="ml.m5.xlarge",
-            python_sdk_whl_s3_uri=whl_file_uri,
         )
         @feature_processor(
             inputs=[CSVDataSource(raw_data_uri)],
@@ -504,11 +655,17 @@ def test_to_pipeline_and_execute(
 
         raw_data_uri = get_raw_car_data_s3_uri(sagemaker_session=sagemaker_session)
         whl_file_uri = get_wheel_file_s3_uri(sagemaker_session=sagemaker_session)
+        whl_file_name = os.path.basename(whl_file_uri)
+
+        pre_execution_commands = [
+            f"aws s3 cp {whl_file_uri} ./",
+            f"/usr/local/bin/python3.9 -m pip install ./{whl_file_name} --force-reinstall",
+        ]
 
         @remote(
+            pre_execution_commands=pre_execution_commands,
             spark_config=SparkConfig(),
             instance_type="ml.m5.xlarge",
-            python_sdk_whl_s3_uri=whl_file_uri,
         )
         @feature_processor(
             inputs=[CSVDataSource(raw_data_uri)],
@@ -621,11 +778,17 @@ def test_schedule(
 
         raw_data_uri = get_raw_car_data_s3_uri(sagemaker_session=sagemaker_session)
         whl_file_uri = get_wheel_file_s3_uri(sagemaker_session=sagemaker_session)
+        whl_file_name = os.path.basename(whl_file_uri)
+
+        pre_execution_commands = [
+            f"aws s3 cp {whl_file_uri} ./",
+            f"/usr/local/bin/python3.9 -m pip install ./{whl_file_name} --force-reinstall",
+        ]
 
         @remote(
+            pre_execution_commands=pre_execution_commands,
             spark_config=SparkConfig(),
             instance_type="ml.m5.xlarge",
-            python_sdk_whl_s3_uri=whl_file_uri,
         )
         @feature_processor(
             inputs=[CSVDataSource(raw_data_uri)],

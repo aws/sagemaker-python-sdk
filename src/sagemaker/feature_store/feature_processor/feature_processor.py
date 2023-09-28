@@ -19,6 +19,7 @@ from sagemaker.feature_store.feature_processor import (
     CSVDataSource,
     FeatureGroupDataSource,
     ParquetDataSource,
+    BaseDataSource,
 )
 from sagemaker.feature_store.feature_processor._enums import FeatureProcessorMode
 from sagemaker.feature_store.feature_processor._factory import (
@@ -31,11 +32,14 @@ from sagemaker.feature_store.feature_processor._feature_processor_config import 
 
 
 def feature_processor(
-    inputs: Sequence[Union[FeatureGroupDataSource, CSVDataSource, ParquetDataSource]],
+    inputs: Sequence[
+        Union[FeatureGroupDataSource, CSVDataSource, ParquetDataSource, BaseDataSource]
+    ],
     output: str,
     target_stores: Optional[List[str]] = None,
     parameters: Optional[Dict[str, Union[str, Dict]]] = None,
     enable_ingestion: bool = True,
+    spark_config: Dict[str, str] = None,
 ) -> Callable:
     """Decorator to facilitate feature engineering for Feature Groups.
 
@@ -46,7 +50,7 @@ def feature_processor(
 
     Decorated functions must conform to the expected signature. Parameters: one parameter of type
     pyspark.sql.DataFrame for each DataSource in 'inputs'; followed by the optional parameters with
-    names nand types in [params: Dict[str, Any], spark: SparkSession]. Outputs: a single return
+    names and types in [params: Dict[str, Any], spark: SparkSession]. Outputs: a single return
     value of type pyspark.sql.DataFrame. The function can have any name.
 
     **Example:**
@@ -75,8 +79,8 @@ def feature_processor(
             return ...
 
     Args:
-        inputs (Sequence[Union[FeatureGroupDataSource, CSVDataSource, ParquetDataSource]]): A list
-            of data sources.
+        inputs (Sequence[Union[FeatureGroupDataSource, CSVDataSource, ParquetDataSource,
+            BaseDataSource]]): A list of data sources.
         output (str): A Feature Group ARN to write results of this function to.
         target_stores (Optional[list[str]], optional): A list containing at least one of
             'OnlineStore' or 'OfflineStore'. If unspecified, data will be ingested to the enabled
@@ -91,6 +95,7 @@ def feature_processor(
             return value is ingested to the 'output' Feature Group. This flag is useful during the
             development phase to ensure that data is not used until the function is ready. It also
             useful for users that want to manage their own data ingestion. Defaults to True.
+        spark_config (Dict[str, str]): A dict contains the key-value paris for Spark configurations.
 
     Raises:
         IngestionError: If any rows are not ingested successfully then a sample of the records,
@@ -108,6 +113,7 @@ def feature_processor(
             target_stores=target_stores,
             parameters=parameters,
             enable_ingestion=enable_ingestion,
+            spark_config=spark_config,
         )
 
         validator_chain = ValidatorFactory.get_validation_chain(fp_config)
