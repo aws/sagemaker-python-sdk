@@ -443,9 +443,6 @@ class _RegisterModelStep(ConfigurableRetryStep):
                         model = self.estimator.create_model(**self.kwargs)
                         self.image_uri = model.image_uri
 
-                    if self.model_data is None:
-                        self.model_data = model.model_data
-
                     # reset placeholder
                     self.estimator.output_path = output_path
 
