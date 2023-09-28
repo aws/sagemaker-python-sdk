@@ -654,7 +654,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             message = e.response["Error"]["Message"]
             if error_code == "403" and message == "Forbidden":
                 LOGGER.error(
-                    "Bucket %s exists, but not in the AWS account configured in AWS Session."
+                    "Since default_bucket param was not set, SageMaker Python SDK tried to use "
+                    "%s bucket. The bucket exists, but not in the AWS account configured in "
+                    "SageMaker Session."
                     "Please reach out to AWS Security to verify on bucket ownership."
                     "To unblock it's recommended to use custom default_bucket "
                     "param in sagemaker.Session",

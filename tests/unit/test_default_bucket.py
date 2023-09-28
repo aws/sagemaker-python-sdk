@@ -85,7 +85,7 @@ def test_default_bucket_s3_needs_bucket_owner_access(sagemaker_session, datetime
         sagemaker_session.default_bucket()
 
     error_message = (
-        " exists, but not in the AWS account configured in AWS Session."
+        " exists, but not in the AWS account configured in SageMaker Session."
         "Please reach out to AWS Security to verify on bucket ownership."
         "To unblock it's recommended to use custom default_bucket "
         "param in sagemaker.Session"
