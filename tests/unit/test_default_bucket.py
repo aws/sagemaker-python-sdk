@@ -15,7 +15,7 @@ from __future__ import absolute_import
 import datetime
 import pytest
 from botocore.exceptions import ClientError
-from mock import MagicMock, patch
+from mock import MagicMock
 import sagemaker
 
 ACCOUNT_ID = "123"
@@ -65,7 +65,7 @@ def test_default_bucket_s3_needs_access(sagemaker_session, caplog):
         sagemaker_session.boto_session.resource("s3").meta.client.head_bucket.side_effect = error
         sagemaker_session.default_bucket()
     error_message = (
-        f" exists, but access is forbidden. Please try again after " f"adding appropriate access."
+        " exists, but access is forbidden. Please try again after adding appropriate access."
     )
     assert error_message in caplog.text
     assert sagemaker_session._default_bucket is None
@@ -84,10 +84,10 @@ def test_default_bucket_s3_needs_bucket_owner_access(sagemaker_session, datetime
         sagemaker_session.default_bucket()
 
     error_message = (
-        f" exists, but not in the AWS account configured in AWS Session."
-        f"Please reach out to AWS Security to verify on bucket ownership."
-        f"To unblock it's recommended to use custom default_bucket "
-        f"param in sagemaker.Session"
+        " exists, but not in the AWS account configured in AWS Session."
+        "Please reach out to AWS Security to verify on bucket ownership."
+        "To unblock it's recommended to use custom default_bucket "
+        "param in sagemaker.Session"
     )
     assert error_message in caplog.text
     assert sagemaker_session._default_bucket is None
