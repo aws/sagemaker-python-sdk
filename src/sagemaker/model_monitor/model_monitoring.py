@@ -64,6 +64,7 @@ from sagemaker.utils import (
     resolve_class_attribute_from_config,
 )
 from sagemaker.lineage._utils import get_resource_name_from_arn
+from sagemaker.model_monitor.cron_expression_generator import CronExpressionGenerator
 
 DEFAULT_REPOSITORY_NAME = "sagemaker-model-monitor-analyzer"
 
@@ -303,6 +304,8 @@ class ModelMonitor(object):
         schedule_cron_expression=None,
         batch_transform_input=None,
         arguments=None,
+        data_analysis_start_time=None,
+        data_analysis_end_time=None,
     ):
         """Creates a monitoring schedule to monitor an Amazon SageMaker Endpoint.
 
@@ -333,6 +336,10 @@ class ModelMonitor(object):
                 run the monitoring schedule on the batch transform
                 (default: None)
             arguments ([str]): A list of string arguments to be passed to a processing job.
+            data_analysis_start_time (str): Start time for the data analysis window
+                for the one time monitoring schedule (NOW), e.g. "-PT1H" (default: None)
+            data_analysis_end_time (str): End time for the data analysis window
+                for the one time monitoring schedule (NOW), e.g. "-PT1H" (default: None)
 
         """
         if self.monitoring_schedule_name is not None:
@@ -355,6 +362,12 @@ class ModelMonitor(object):
             )
             _LOGGER.error(message)
             raise ValueError(message)
+
+        self._check_monitoring_schedule_cron_validity(
+            schedule_cron_expression=schedule_cron_expression,
+            data_analysis_start_time=data_analysis_start_time,
+            data_analysis_end_time=data_analysis_end_time,
+        )
 
         self.monitoring_schedule_name = self._generate_monitoring_schedule_name(
             schedule_name=monitor_schedule_name
@@ -421,6 +434,8 @@ class ModelMonitor(object):
             network_config=network_config_dict,
             role_arn=self.sagemaker_session.expand_role(self.role),
             tags=self.tags,
+            data_analysis_start_time=data_analysis_start_time,
+            data_analysis_end_time=data_analysis_end_time,
         )
 
     def update_monitoring_schedule(
@@ -443,6 +458,8 @@ class ModelMonitor(object):
         role=None,
         image_uri=None,
         batch_transform_input=None,
+        data_analysis_start_time=None,
+        data_analysis_end_time=None,
     ):
         """Updates the existing monitoring schedule.
 
@@ -487,6 +504,10 @@ class ModelMonitor(object):
                 the Monitor.
             batch_transform_input (sagemaker.model_monitor.BatchTransformInput): Inputs to
                 run the monitoring schedule on the batch transform (default: None)
+            data_analysis_start_time (str): Start time for the data analysis window
+                for the one time monitoring schedule (NOW), e.g. "-PT1H" (default: None)
+            data_analysis_end_time (str): End time for the data analysis window
+                for the one time monitoring schedule (NOW), e.g. "-PT1H" (default: None)
 
         """
         monitoring_inputs = None
@@ -588,6 +609,8 @@ class ModelMonitor(object):
             environment=env,
             network_config=network_config_dict,
             role_arn=self.sagemaker_session.expand_role(self.role),
+            data_analysis_start_time=data_analysis_start_time,
+            data_analysis_end_time=data_analysis_end_time,
         )
 
         self._wait_for_schedule_changes_to_apply()
@@ -1481,8 +1504,41 @@ class ModelMonitor(object):
         """Type of the monitoring job."""
         raise TypeError("Subclass of {} shall define this property".format(__class__.__name__))
 
+    def _check_monitoring_schedule_cron_validity(
+        self,
+        schedule_cron_expression=None,
+        data_analysis_start_time=None,
+        data_analysis_end_time=None,
+    ):
+        """Checks if the schedule expression for the schedule is valid
+
+        Args:
+            schedule_cron_expression (str): The cron expression that dictates the frequency that
+                this job run. See sagemaker.model_monitor.CronExpressionGenerator for valid
+                expressions. Default: Daily.
+            data_analysis_start_time (str): Start time for the data analysis window
+                for the one time monitoring schedule (NOW), e.g. "-PT1H" (default: None)
+            data_analysis_end_time (str): End time for the data analysis window
+                for the one time monitoring schedule (NOW), e.g. "-PT1H" (default: None)
+        """
+
+        if schedule_cron_expression == CronExpressionGenerator.now() and (
+            data_analysis_start_time is None or data_analysis_end_time is None
+        ):
+            message = (
+                "Both data_analysis_start_time and data_analysis_end_time are required "
+                "for one time monitoring schedule "
+            )
+            _LOGGER.error(message)
+            raise ValueError(message)
+
     def _create_monitoring_schedule_from_job_definition(
-        self, monitor_schedule_name, job_definition_name, schedule_cron_expression=None
+        self,
+        monitor_schedule_name,
+        job_definition_name,
+        schedule_cron_expression=None,
+        data_analysis_start_time=None,
+        data_analysis_end_time=None,
     ):
         """Creates a monitoring schedule.
 
@@ -1492,9 +1548,19 @@ class ModelMonitor(object):
             schedule_cron_expression (str): The cron expression that dictates the frequency that
                 this job run. See sagemaker.model_monitor.CronExpressionGenerator for valid
                 expressions. Default: Daily.
+            data_analysis_start_time (str): Start time for the data analysis window
+                for the one time monitoring schedule (NOW), e.g. "-PT1H" (default: None)
+            data_analysis_end_time (str): End time for the data analysis window
+                for the one time monitoring schedule (NOW), e.g. "-PT1H" (default: None)
         """
         message = "Creating Monitoring Schedule with name: {}".format(monitor_schedule_name)
         _LOGGER.info(message)
+
+        self._check_monitoring_schedule_cron_validity(
+            schedule_cron_expression=schedule_cron_expression,
+            data_analysis_start_time=data_analysis_start_time,
+            data_analysis_end_time=data_analysis_end_time,
+        )
 
         monitoring_schedule_config = {
             "MonitoringJobDefinitionName": job_definition_name,
@@ -1502,8 +1568,18 @@ class ModelMonitor(object):
         }
         if schedule_cron_expression is not None:
             monitoring_schedule_config["ScheduleConfig"] = {
-                "ScheduleExpression": schedule_cron_expression
+                "ScheduleExpression": schedule_cron_expression,
             }
+            if data_analysis_start_time is not None:
+                monitoring_schedule_config["ScheduleConfig"][
+                    "DataAnalysisStartTime"
+                ] = data_analysis_start_time
+
+            if data_analysis_end_time is not None:
+                monitoring_schedule_config["ScheduleConfig"][
+                    "DataAnalysisEndTime"
+                ] = data_analysis_end_time
+
         all_tags = self.sagemaker_session._append_sagemaker_config_tags(
             self.tags, "{}.{}.{}".format(SAGEMAKER, MONITORING_SCHEDULE, TAGS)
         )
@@ -1556,7 +1632,13 @@ class ModelMonitor(object):
         return ProcessingInput(source=source, destination=destination, input_name=name)
 
     # noinspection PyMethodOverriding
-    def _update_monitoring_schedule(self, job_definition_name, schedule_cron_expression=None):
+    def _update_monitoring_schedule(
+        self,
+        job_definition_name,
+        schedule_cron_expression=None,
+        data_analysis_start_time=None,
+        data_analysis_end_time=None,
+    ):
         """Updates existing monitoring schedule with new job definition and/or schedule expression.
 
         Args:
@@ -1564,11 +1646,21 @@ class ModelMonitor(object):
             schedule_cron_expression (str or None): The cron expression that dictates the frequency
                 that this job run. See sagemaker.model_monitor.CronExpressionGenerator for valid
                 expressions.
+            data_analysis_start_time (str): Start time for the data analysis window
+                for the one time monitoring schedule (NOW), e.g. "-PT1H" (default: None)
+            data_analysis_end_time (str): End time for the data analysis window
+                for the one time monitoring schedule (NOW), e.g. "-PT1H" (default: None)
         """
         if self.job_definition_name is None or self.monitoring_schedule_name is None:
             message = "Nothing to update, please create a schedule first."
             _LOGGER.error(message)
             raise ValueError(message)
+
+        self._check_monitoring_schedule_cron_validity(
+            schedule_cron_expression=schedule_cron_expression,
+            data_analysis_start_time=data_analysis_start_time,
+            data_analysis_end_time=data_analysis_end_time,
+        )
 
         monitoring_schedule_config = {
             "MonitoringJobDefinitionName": job_definition_name,
@@ -1578,6 +1670,14 @@ class ModelMonitor(object):
             monitoring_schedule_config["ScheduleConfig"] = {
                 "ScheduleExpression": schedule_cron_expression
             }
+            if data_analysis_start_time is not None:
+                monitoring_schedule_config["ScheduleConfig"][
+                    "DataAnalysisStartTime"
+                ] = data_analysis_start_time
+            if data_analysis_end_time is not None:
+                monitoring_schedule_config["ScheduleConfig"][
+                    "DataAnalysisEndTime"
+                ] = data_analysis_end_time
 
         # Not using value from sagemaker
         # config key MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION_PATH here
@@ -1843,6 +1943,8 @@ class DefaultModelMonitor(ModelMonitor):
         schedule_cron_expression=None,
         enable_cloudwatch_metrics=True,
         batch_transform_input=None,
+        data_analysis_start_time=None,
+        data_analysis_end_time=None,
     ):
         """Creates a monitoring schedule to monitor an Amazon SageMaker Endpoint.
 
@@ -1878,6 +1980,10 @@ class DefaultModelMonitor(ModelMonitor):
                 the baselining or monitoring jobs.
             batch_transform_input (sagemaker.model_monitor.BatchTransformInput): Inputs to
                 run the monitoring schedule on the batch transform (default: None)
+            data_analysis_start_time (str): Start time for the data analysis window
+                for the one time monitoring schedule (NOW), e.g. "-PT1H" (default: None)
+            data_analysis_end_time (str): End time for the data analysis window
+                for the one time monitoring schedule (NOW), e.g. "-PT1H" (default: None)
         """
         if self.job_definition_name is not None or self.monitoring_schedule_name is not None:
             message = (
@@ -1896,6 +2002,12 @@ class DefaultModelMonitor(ModelMonitor):
             )
             _LOGGER.error(message)
             raise ValueError(message)
+
+        self._check_monitoring_schedule_cron_validity(
+            schedule_cron_expression=schedule_cron_expression,
+            data_analysis_start_time=data_analysis_start_time,
+            data_analysis_end_time=data_analysis_end_time,
+        )
 
         # create job definition
         monitor_schedule_name = self._generate_monitoring_schedule_name(
@@ -1936,6 +2048,8 @@ class DefaultModelMonitor(ModelMonitor):
                 monitor_schedule_name=monitor_schedule_name,
                 job_definition_name=new_job_definition_name,
                 schedule_cron_expression=schedule_cron_expression,
+                data_analysis_end_time=data_analysis_end_time,
+                data_analysis_start_time=data_analysis_start_time,
             )
             self.job_definition_name = new_job_definition_name
             self.monitoring_schedule_name = monitor_schedule_name
@@ -1971,6 +2085,8 @@ class DefaultModelMonitor(ModelMonitor):
         enable_cloudwatch_metrics=None,
         role=None,
         batch_transform_input=None,
+        data_analysis_start_time=None,
+        data_analysis_end_time=None,
     ):
         """Updates the existing monitoring schedule.
 
@@ -2014,6 +2130,10 @@ class DefaultModelMonitor(ModelMonitor):
             role (str): An AWS IAM role name or ARN. The Amazon SageMaker jobs use this role.
             batch_transform_input (sagemaker.model_monitor.BatchTransformInput): Inputs to
                 run the monitoring schedule on the batch transform (default: None)
+            data_analysis_start_time (str): Start time for the data analysis window
+                for the one time monitoring schedule (NOW), e.g. "-PT1H" (default: None)
+            data_analysis_end_time (str): End time for the data analysis window
+                for the one time monitoring schedule (NOW), e.g. "-PT1H" (default: None)
 
         """
 
@@ -2047,6 +2167,8 @@ class DefaultModelMonitor(ModelMonitor):
                 enable_cloudwatch_metrics=enable_cloudwatch_metrics,
                 role=role,
                 batch_transform_input=batch_transform_input,
+                data_analysis_start_time=data_analysis_start_time,
+                data_analysis_end_time=data_analysis_end_time,
             )
             return
 
@@ -2148,6 +2270,8 @@ class DefaultModelMonitor(ModelMonitor):
             environment=normalized_env,
             network_config=network_config_dict,
             role_arn=self.sagemaker_session.expand_role(self.role),
+            data_analysis_start_time=data_analysis_start_time,
+            data_analysis_end_time=data_analysis_end_time,
         )
 
         self._wait_for_schedule_changes_to_apply()
@@ -2172,6 +2296,8 @@ class DefaultModelMonitor(ModelMonitor):
         env=None,
         network_config=None,
         batch_transform_input=None,
+        data_analysis_start_time=None,
+        data_analysis_end_time=None,
     ):
         """Updates the existing monitoring schedule.
 
@@ -2214,6 +2340,10 @@ class DefaultModelMonitor(ModelMonitor):
                 inter-container traffic, security group IDs, and subnets.
             batch_transform_input (sagemaker.model_monitor.BatchTransformInput): Inputs to
                 run the monitoring schedule on the batch transform (default: None)
+            data_analysis_start_time (str): Start time for the data analysis window
+                for the one time monitoring schedule (NOW), e.g. "-PT1H" (default: None)
+            data_analysis_end_time (str): End time for the data analysis window
+                for the one time monitoring schedule (NOW), e.g. "-PT1H" (default: None)
         """
         valid_args = {
             arg: value for arg, value in locals().items() if arg != "self" and value is not None
@@ -2225,7 +2355,12 @@ class DefaultModelMonitor(ModelMonitor):
 
         # Only need to update schedule expression
         if len(valid_args) == 1 and schedule_cron_expression is not None:
-            self._update_monitoring_schedule(self.job_definition_name, schedule_cron_expression)
+            self._update_monitoring_schedule(
+                self.job_definition_name,
+                schedule_cron_expression,
+                data_analysis_start_time,
+                data_analysis_end_time,
+            )
             return
 
         existing_desc = self.sagemaker_session.describe_monitoring_schedule(
@@ -2923,6 +3058,8 @@ class ModelQualityMonitor(ModelMonitor):
         schedule_cron_expression=None,
         enable_cloudwatch_metrics=True,
         batch_transform_input=None,
+        data_analysis_start_time=None,
+        data_analysis_end_time=None,
     ):
         """Creates a monitoring schedule.
 
@@ -2953,6 +3090,10 @@ class ModelQualityMonitor(ModelMonitor):
                 the baselining or monitoring jobs.
             batch_transform_input (sagemaker.model_monitor.BatchTransformInput): Inputs to
                 run the monitoring schedule on the batch transform
+            data_analysis_start_time (str): Start time for the data analysis window
+                for the one time monitoring schedule (NOW), e.g. "-PT1H" (default: None)
+            data_analysis_end_time (str): End time for the data analysis window
+                for the one time monitoring schedule (NOW), e.g. "-PT1H" (default: None)
         """
         # we default below two parameters to None in the function signature
         # but verify they are giving here for positional argument
@@ -2979,6 +3120,12 @@ class ModelQualityMonitor(ModelMonitor):
             )
             _LOGGER.error(message)
             raise ValueError(message)
+
+        self._check_monitoring_schedule_cron_validity(
+            schedule_cron_expression=schedule_cron_expression,
+            data_analysis_start_time=data_analysis_start_time,
+            data_analysis_end_time=data_analysis_end_time,
+        )
 
         # create job definition
         monitor_schedule_name = self._generate_monitoring_schedule_name(
@@ -3020,6 +3167,8 @@ class ModelQualityMonitor(ModelMonitor):
                 monitor_schedule_name=monitor_schedule_name,
                 job_definition_name=new_job_definition_name,
                 schedule_cron_expression=schedule_cron_expression,
+                data_analysis_end_time=data_analysis_end_time,
+                data_analysis_start_time=data_analysis_start_time,
             )
             self.job_definition_name = new_job_definition_name
             self.monitoring_schedule_name = monitor_schedule_name
@@ -3056,6 +3205,8 @@ class ModelQualityMonitor(ModelMonitor):
         env=None,
         network_config=None,
         batch_transform_input=None,
+        data_analysis_start_time=None,
+        data_analysis_end_time=None,
     ):
         """Updates the existing monitoring schedule.
 
@@ -3100,6 +3251,10 @@ class ModelQualityMonitor(ModelMonitor):
                 inter-container traffic, security group IDs, and subnets.
             batch_transform_input (sagemaker.model_monitor.BatchTransformInput): Inputs to
                 run the monitoring schedule on the batch transform
+            data_analysis_start_time (str): Start time for the data analysis window
+                for the one time monitoring schedule (NOW), e.g. "-PT1H" (default: None)
+            data_analysis_end_time (str): End time for the data analysis window
+                for the one time monitoring schedule (NOW), e.g. "-PT1H" (default: None)
         """
         valid_args = {
             arg: value for arg, value in locals().items() if arg != "self" and value is not None
@@ -3110,7 +3265,11 @@ class ModelQualityMonitor(ModelMonitor):
             return
 
         # Only need to update schedule expression
-        if len(valid_args) == 1 and schedule_cron_expression is not None:
+        if (
+            len(valid_args) == 1
+            and schedule_cron_expression is not None
+            and schedule_cron_expression != CronExpressionGenerator.now()
+        ):
             self._update_monitoring_schedule(self.job_definition_name, schedule_cron_expression)
             return
 
@@ -3155,7 +3314,12 @@ class ModelQualityMonitor(ModelMonitor):
         )
         self.sagemaker_session.sagemaker_client.create_model_quality_job_definition(**request_dict)
         try:
-            self._update_monitoring_schedule(new_job_definition_name, schedule_cron_expression)
+            self._update_monitoring_schedule(
+                new_job_definition_name,
+                schedule_cron_expression,
+                data_analysis_start_time,
+                data_analysis_end_time,
+            )
             self.job_definition_name = new_job_definition_name
             if role is not None:
                 self.role = role
@@ -3759,6 +3923,7 @@ class EndpointInput(object):
         inference_attribute=None,
         probability_attribute=None,
         probability_threshold_attribute=None,
+        exclude_features_attribute=None,
     ):
         """Initialize an ``EndpointInput`` instance.
 
@@ -3781,6 +3946,8 @@ class EndpointInput(object):
                 Only used for ModelQualityMonitor, ModelBiasMonitor and ModelExplainabilityMonitor
             probability_threshold_attribute (float): threshold to convert probabilities to binaries
                 Only used for ModelQualityMonitor, ModelBiasMonitor and ModelExplainabilityMonitor
+            exclude_features_attribute (str): Comma separated column indices of features or
+                actual feature names that needs to be excluded. (default: None)
         """
         self.endpoint_name = endpoint_name
         self.destination = destination
@@ -3792,6 +3959,7 @@ class EndpointInput(object):
         self.inference_attribute = inference_attribute
         self.probability_attribute = probability_attribute
         self.probability_threshold_attribute = probability_threshold_attribute
+        self.exclude_features_attribute = exclude_features_attribute
 
     def _to_request_dict(self):
         """Generates a request dictionary using the parameters provided to the class."""
@@ -3814,7 +3982,8 @@ class EndpointInput(object):
             endpoint_input["ProbabilityAttribute"] = self.probability_attribute
         if self.probability_threshold_attribute is not None:
             endpoint_input["ProbabilityThresholdAttribute"] = self.probability_threshold_attribute
-
+        if self.exclude_features_attribute is not None:
+            endpoint_input["ExcludeFeaturesAttribute"] = self.exclude_features_attribute
         endpoint_input_request = {"EndpointInput": endpoint_input}
         return endpoint_input_request
 
@@ -3866,6 +4035,7 @@ class BatchTransformInput(MonitoringInput):
         inference_attribute: str = None,
         probability_attribute: str = None,
         probability_threshold_attribute: str = None,
+        exclude_features_attribute: str = None,
     ):
         """Initialize a `BatchTransformInput` instance.
 
@@ -3889,6 +4059,8 @@ class BatchTransformInput(MonitoringInput):
             probability_threshold_attribute (float): threshold to convert probabilities to binaries
                 Only used for ModelQualityMonitor, ModelBiasMonitor and ModelExplainabilityMonitor
                 (default: None)
+            exclude_features_attribute (str): Comma separated column indices of features or
+                actual feature names that needs to be excluded. (default: None)
 
         """
         self.data_captured_destination_s3_uri = data_captured_destination_s3_uri
@@ -3896,6 +4068,7 @@ class BatchTransformInput(MonitoringInput):
         self.s3_input_mode = s3_input_mode
         self.s3_data_distribution_type = s3_data_distribution_type
         self.dataset_format = dataset_format
+        self.exclude_features_attribute = exclude_features_attribute
 
         super(BatchTransformInput, self).__init__(
             start_time_offset=start_time_offset,
@@ -3930,6 +4103,8 @@ class BatchTransformInput(MonitoringInput):
             batch_transform_input_data[
                 "ProbabilityThresholdAttribute"
             ] = self.probability_threshold_attribute
+        if self.exclude_features_attribute is not None:
+            batch_transform_input_data["ExcludeFeaturesAttribute"] = self.exclude_features_attribute
 
         batch_transform_input_request = {"BatchTransformInput": batch_transform_input_data}
 

@@ -103,6 +103,7 @@ CODECOMMIT_BRANCH = "master"
 REPO_DIR = "/tmp/repo_dir"
 ENV_INPUT = {"env_key1": "env_val1", "env_key2": "env_val2", "env_key3": "env_val3"}
 TRAINING_REPOSITORY_ACCESS_MODE = "VPC"
+ENABLE_INFRA_CHECK = True
 TRAINING_REPOSITORY_CREDENTIALS_PROVIDER_ARN = "arn:aws:lambda:us-west-2:1234567890:function:test"
 CONTAINER_ENTRY_POINT = ["entry_point1", "entry_point2"]
 CONTAINER_ARGUMENTS = ["container_arg1", "container_arg2"]
@@ -767,6 +768,39 @@ def test_framework_without_training_repository_config(sagemaker_session):
     sagemaker_session.train.assert_called_once()
     _, args = sagemaker_session.train.call_args
     assert args.get("training_image_config") is None
+
+
+def test_framework_without_infra_check_config(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args.get("health_check_config") is None
+
+
+def test_framework_with_infra_check_config(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+        enable_infra_check=ENABLE_INFRA_CHECK,
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args["infra_check_config"]["EnableInfraCheck"] == ENABLE_INFRA_CHECK
 
 
 def test_framework_with_container_entry_point(sagemaker_session):

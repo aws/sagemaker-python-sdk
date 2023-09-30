@@ -53,7 +53,7 @@ class JumpStartModel(Model):
         region: Optional[str] = None,
         instance_type: Optional[str] = None,
         image_uri: Optional[Union[str, PipelineVariable]] = None,
-        model_data: Optional[Union[str, PipelineVariable]] = None,
+        model_data: Optional[Union[str, PipelineVariable, dict]] = None,
         role: Optional[str] = None,
         predictor_cls: Optional[callable] = None,
         env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
@@ -95,8 +95,8 @@ class JumpStartModel(Model):
             instance_type (Optional[str]): The EC2 instance type to use when provisioning a hosting
                 endpoint. (Default: None).
             image_uri (Optional[Union[str, PipelineVariable]]): A Docker image URI. (Default: None).
-            model_data (Optional[Union[str, PipelineVariable]]): The S3 location of a SageMaker
-                model data ``.tar.gz`` file. (Default: None).
+            model_data (Optional[Union[str, PipelineVariable, dict]]): Location
+                of SageMaker model data. (Default: None).
             role (Optional[str]): An AWS IAM role (either name or full ARN). The Amazon
                 SageMaker training jobs and APIs that create Amazon SageMaker
                 endpoints use this role to access training data and model

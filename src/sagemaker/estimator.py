@@ -173,6 +173,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         instance_groups: Optional[List[InstanceGroup]] = None,
         training_repository_access_mode: Optional[Union[str, PipelineVariable]] = None,
         training_repository_credentials_provider_arn: Optional[Union[str, PipelineVariable]] = None,
+        enable_infra_check: Optional[Union[bool, PipelineVariable]] = None,
         container_entry_point: Optional[List[str]] = None,
         container_arguments: Optional[List[str]] = None,
         disable_output_compression: bool = False,
@@ -536,6 +537,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 a training job.
             disable_output_compression (bool): Optional. When set to true, Model is uploaded
                 to Amazon S3 without compression after training finishes.
+            enable_infra_check (bool or PipelineVariable): Optional.
+                Specifies whether it is running Sagemaker built-in infra check jobs.
         """
         instance_count = renamed_kwargs(
             "train_instance_count", "instance_count", instance_count, kwargs
@@ -665,6 +668,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             training_repository_credentials_provider_arn
         )
 
+        self.enable_infra_check = enable_infra_check
         # container entry point / arguments configs
         self.container_entry_point = container_entry_point
         self.container_arguments = container_arguments
@@ -1661,8 +1665,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
     def register(
         self,
-        content_types,
-        response_types,
+        content_types=None,
+        response_types=None,
         inference_instances=None,
         transform_instances=None,
         image_uri=None,
@@ -1684,6 +1688,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         framework_version=None,
         nearest_model_name=None,
         data_input_configuration=None,
+        skip_model_validation=None,
         **kwargs,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
@@ -1729,6 +1734,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             nearest_model_name (str): Name of a pre-trained machine learning benchmarked by
                 Amazon SageMaker Inference Recommender (default: None).
             data_input_configuration (str): Input object for the model (default: None).
+            skip_model_validation (str): Indicates if you want to skip model validation.
+                Values can be "All" or "None" (default: None).
             **kwargs: Passed to invocation of ``create_model()``. Implementations may customize
                 ``create_model()`` to accept ``**kwargs`` to customize model creation during
                 deploy. For more, see the implementation docs.
@@ -1772,6 +1779,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             framework_version=framework_version,
             nearest_model_name=nearest_model_name,
             data_input_configuration=data_input_configuration,
+            skip_model_validation=skip_model_validation,
         )
 
     @property
@@ -1899,6 +1907,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             init_params["encrypt_inter_container_traffic"] = job_details[
                 "EnableInterContainerTrafficEncryption"
             ]
+
+        if "InfraCheckConfig" in job_details:
+            init_params["enable_infra_check"] = job_details["InfraCheckConfig"].get(
+                "EnableInfraCheck"
+            )
 
         subnets, security_group_ids = vpc_utils.from_dict(job_details.get(vpc_utils.VPC_CONFIG_KEY))
         if subnets:
@@ -2442,6 +2455,10 @@ class _TrainingJob(_Job):
                 ] = estimator.training_repository_credentials_provider_arn
             train_args["training_image_config"] = training_image_config
 
+        if estimator.enable_infra_check is not None:
+            infra_check_config = {"EnableInfraCheck": estimator.enable_infra_check}
+            train_args["infra_check_config"] = infra_check_config
+
         if estimator.container_entry_point is not None:
             train_args["container_entry_point"] = estimator.container_entry_point
 
@@ -2657,6 +2674,7 @@ class Estimator(EstimatorBase):
         container_entry_point: Optional[List[str]] = None,
         container_arguments: Optional[List[str]] = None,
         disable_output_compression: bool = False,
+        enable_infra_check: Optional[Union[bool, PipelineVariable]] = None,
         **kwargs,
     ):
         """Initialize an ``Estimator`` instance.
@@ -3016,6 +3034,8 @@ class Estimator(EstimatorBase):
                 a training job.
             disable_output_compression (bool): Optional. When set to true, Model is uploaded
                 to Amazon S3 without compression after training finishes.
+            enable_infra_check (bool or PipelineVariable): Optional.
+                Specifies whether it is running Sagemaker built-in infra check jobs.
         """
         self.image_uri = image_uri
         self._hyperparameters = hyperparameters.copy() if hyperparameters else {}

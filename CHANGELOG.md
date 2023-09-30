@@ -1,5 +1,52 @@
 # Changelog
 
+## v2.188.0 (2023-09-26)
+
+### Features
+
+ * jumpstart instance type variants
+ * New methods to ingest and create Feature Groups
+
+### Bug Fixes and Other Changes
+
+ * auto ml integ tests and add flaky test markers
+ * Enhance unit-tests to automatically consume image URIs config registries from config JSONs
+
+## v2.187.0 (2023-09-19)
+
+### Features
+
+ * add HealthCheckConfig support
+ * SkipModelValidation in modelRegistry
+
+### Bug Fixes and Other Changes
+
+ * Update fw_utils.py - support 2.0.1 container for DDP and Torch distri…
+ * bump apache-airflow to v2.7.1
+
+## v2.186.0 (2023-09-14)
+
+### Features
+
+ * TGI 1.0.3 Image URI Config
+
+## v2.185.0 (2023-09-12)
+
+### Features
+
+ * Local Mode - Add Support for Docker Compose V2
+
+### Bug Fixes and Other Changes
+
+ * handle bad jumpstart default session
+ * Add Data Wrangler TLV and version 3.x images
+
+## v2.184.0.post0 (2023-09-11)
+
+### Documentation Changes
+
+ * add interactive apps rst file
+
 ## v2.184.0 (2023-09-07)
 
 ### Features
