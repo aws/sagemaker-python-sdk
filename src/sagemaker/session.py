@@ -557,9 +557,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         return self._default_bucket
 
-    def _create_s3_bucket_if_it_does_not_exist(
-        self, bucket_name, region
-    ):
+    def _create_s3_bucket_if_it_does_not_exist(self, bucket_name, region):
         """Creates an S3 Bucket if it does not exist.
 
         Also swallows a few common exceptions that indicate that the bucket already exists or
