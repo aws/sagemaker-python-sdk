@@ -88,7 +88,7 @@ def test_prepacked_jumpstart_model(setup):
 
 def test_default_payload_jumpstart_model(setup):
 
-    ## DO NOT COMMIT THIS LINE
+    # DO NOT COMMIT THIS LINE
     os.environ.update({"AWS_JUMPSTART_CONTENT_BUCKET_OVERRIDE": "jumpstart-cache-alpha-us-west-2"})
 
     model_id = "model-depth2img-stable-diffusion-v1-5-controlnet-v1-1-fp16"
