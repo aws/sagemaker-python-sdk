@@ -120,3 +120,41 @@ Feature Store
 .. autoclass:: sagemaker.feature_store.feature_store.FeatureStore
     :members:
     :show-inheritance:
+
+
+@feature_processor Decorator
+****************************
+
+.. autodecorator:: sagemaker.feature_store.feature_processor.feature_processor
+
+
+Feature Processor Data Source
+*****************************
+
+.. autoclass:: sagemaker.feature_store.feature_processor.FeatureGroupDataSource
+    :members:
+    :show-inheritance:
+
+.. autoclass:: sagemaker.feature_store.feature_processor.CSVDataSource
+    :members:
+    :show-inheritance:
+
+.. autoclass:: sagemaker.feature_store.feature_processor.ParquetDataSource
+    :members:
+    :show-inheritance:
+
+
+Feature Processor Scheduler
+***************************
+
+.. automethod:: sagemaker.feature_store.feature_processor.to_pipeline
+
+.. automethod:: sagemaker.feature_store.feature_processor.schedule
+
+.. automethod:: sagemaker.feature_store.feature_processor.execute
+
+.. automethod:: sagemaker.feature_store.feature_processor.delete_schedule
+
+.. automethod:: sagemaker.feature_store.feature_processor.describe
+
+.. automethod:: sagemaker.feature_store.feature_processor.list_pipelines
