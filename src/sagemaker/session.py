@@ -548,16 +548,19 @@ class Session(object):  # pylint: disable=too-many-public-methods
             default_bucket = generate_default_sagemaker_bucket_name(self.boto_session)
             _default_bucket_set_by_sdk = True
 
-        self._create_s3_bucket_if_it_does_not_exist(bucket_name=default_bucket, region=region)
-        if _default_bucket_set_by_sdk:
-            # make sure the s3 bucket is configured in users account.
-            self._bucket_owner_check(default_bucket)
+        self._create_s3_bucket_if_it_does_not_exist(
+            bucket_name=default_bucket,
+            region=region,
+            default_bucket_set_by_sdk=_default_bucket_set_by_sdk,
+        )
 
         self._default_bucket = default_bucket
 
         return self._default_bucket
 
-    def _create_s3_bucket_if_it_does_not_exist(self, bucket_name, region):
+    def _create_s3_bucket_if_it_does_not_exist(
+        self, bucket_name, region, default_bucket_set_by_sdk
+    ):
         """Creates an S3 Bucket if it does not exist.
 
         Also swallows a few common exceptions that indicate that the bucket already exists or
@@ -625,44 +628,26 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 else:
                     raise
 
-    def _bucket_owner_check(self, bucket_name):
-        """Checks if the S3 Bucket exists in AWS account configured in Session.
-
-        More info: https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-owner-condition.html
-
-        Args:
-            bucket_name (str): Name of the S3 bucket.
-
-        Raises:
-            botocore.exceptions.ClientError: If S3 throws an unexpected exception during
-                head_bucket call. Only if the exception is due to the bucket exists but not in
-                AWS account configured in Session
-
-        """
-        if self.s3_resource is None:
-            s3 = self.boto_session.resource("s3", region_name=self.boto_session.region_name)
-        else:
-            s3 = self.s3_resource
-
-        expected_bucket_owner_id = self.account_id()
-        try:
-            s3.meta.client.head_bucket(
-                Bucket=bucket_name, ExpectedBucketOwner=expected_bucket_owner_id
-            )
-        except ClientError as e:
-            error_code = e.response["Error"]["Code"]
-            message = e.response["Error"]["Message"]
-            if error_code == "403" and message == "Forbidden":
-                LOGGER.error(
-                    "Since default_bucket param was not set, SageMaker Python SDK tried to use "
-                    "%s bucket. The bucket exists, but not in the AWS account configured in "
-                    "SageMaker Session."
-                    "Please reach out to AWS Security to verify on bucket ownership."
-                    "To unblock it's recommended to use custom default_bucket "
-                    "param in sagemaker.Session",
-                    bucket_name,
+        if default_bucket_set_by_sdk:
+            # make sure the s3 bucket is configured in users account.
+            expected_bucket_owner_id = self.account_id()
+            try:
+                s3.meta.client.head_bucket(
+                    Bucket=bucket_name, ExpectedBucketOwner=expected_bucket_owner_id
                 )
-                raise
+            except ClientError as e:
+                error_code = e.response["Error"]["Code"]
+                message = e.response["Error"]["Message"]
+                if error_code == "403" and message == "Forbidden":
+                    LOGGER.error(
+                        "Since default_bucket param was not set, SageMaker Python SDK tried to use "
+                        "%s bucket. This bucket cannot be configured to use as it is not owned by Account %s. "
+                        "To unblock it's recommended to use custom default_bucket "
+                        "parameter in sagemaker.Session",
+                        bucket_name,
+                        expected_bucket_owner_id,
+                    )
+                    raise
 
     def _append_sagemaker_config_tags(self, tags: list, config_path_to_tags: str):
         """Appends tags specified in the sagemaker_config to the given list of tags.
