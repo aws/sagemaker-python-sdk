@@ -45,8 +45,8 @@ def retrieve_samples(
         model_version (str): The version of the JumpStart model for which to retrieve
             the model payloads.
         serialize (bool): Whether to serialize byte-stream valued payloads by downloading
-            binary files from s3 and applying encoding, or to keep payload in pre-serialized .
-            state. Set this option to False if you only want to avoid s3 download of it you
+            binary files from s3 and applying encoding, or to keep payload in pre-serialized
+            state. Set this option to False if you want to avoid s3 downloads or if you
             want to inspect the payload in a human-readable form. (Default: True).
         tolerate_vulnerable_model (bool): ``True`` if vulnerable versions of model
             specifications should be tolerated without raising an exception. If ``False``, raises an
