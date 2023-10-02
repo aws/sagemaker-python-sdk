@@ -41,8 +41,8 @@ class SageMakerSettings(object):
 class JumpStartS3Accessor(object):
     """Static class for storing and retrieving auxilliary s3 artifacts."""
 
-    @functools.lru_cache()
     @staticmethod
+    @functools.lru_cache()
     def _get_default_s3_client(region: str = JUMPSTART_DEFAULT_REGION_NAME) -> boto3.client:
         """Returns default s3 client associated with the region.
 
@@ -50,8 +50,8 @@ class JumpStartS3Accessor(object):
         """
         return boto3.client("s3", region_name=region)
 
-    @functools.lru_cache()
     @staticmethod
+    @functools.lru_cache()
     def get_object_cached(
         bucket: str,
         key: str,
