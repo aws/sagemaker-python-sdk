@@ -233,6 +233,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         self._default_bucket_name_override = default_bucket
         # this may also be set again inside :func:`_initialize` if it is None
         self.default_bucket_prefix = default_bucket_prefix
+        self._default_bucket_set_by_sdk = False
 
         self.s3_resource = None
         self.s3_client = None
@@ -542,16 +543,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         region = self.boto_session.region_name
 
-        _default_bucket_set_by_sdk = False
         default_bucket = self._default_bucket_name_override
         if not default_bucket:
             default_bucket = generate_default_sagemaker_bucket_name(self.boto_session)
-            _default_bucket_set_by_sdk = True
+            self._default_bucket_set_by_sdk = True
 
         self._create_s3_bucket_if_it_does_not_exist(
             bucket_name=default_bucket,
             region=region,
-            default_bucket_set_by_sdk=_default_bucket_set_by_sdk,
         )
 
         self._default_bucket = default_bucket
@@ -559,7 +558,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         return self._default_bucket
 
     def _create_s3_bucket_if_it_does_not_exist(
-        self, bucket_name, region, default_bucket_set_by_sdk
+        self, bucket_name, region
     ):
         """Creates an S3 Bucket if it does not exist.
 
@@ -628,7 +627,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 else:
                     raise
 
-        if default_bucket_set_by_sdk:
+        if self._default_bucket_set_by_sdk:
             # make sure the s3 bucket is configured in users account.
             expected_bucket_owner_id = self.account_id()
             try:
@@ -641,7 +640,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 if error_code == "403" and message == "Forbidden":
                     LOGGER.error(
                         "Since default_bucket param was not set, SageMaker Python SDK tried to use "
-                        "%s bucket. This bucket cannot be configured to use as it is not owned by Account %s. "
+                        "%s bucket. "
+                        "This bucket cannot be configured to use as it is not owned by Account %s. "
                         "To unblock it's recommended to use custom default_bucket "
                         "parameter in sagemaker.Session",
                         bucket_name,
