@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 """This module contains accessors related to SageMaker JumpStart."""
 from __future__ import absolute_import
+import functools
 from typing import Any, Dict, List, Optional
 import boto3
 
@@ -35,6 +36,49 @@ class SageMakerSettings(object):
     def get_sagemaker_version() -> str:
         """Return SageMaker version."""
         return SageMakerSettings._parsed_sagemaker_version
+
+
+class JumpStartS3Accessor(object):
+    """Static class for storing and retrieving auxilliary s3 artifacts."""
+
+    @functools.cache
+    @staticmethod
+    def _get_default_s3_client(region: str = JUMPSTART_DEFAULT_REGION_NAME) -> boto3.client:
+        """Returns default s3 client associated with the region.
+
+        Result is cached so multiple clients in memory are not created.
+        """
+        return boto3.client("s3", region_name=region)
+
+    @functools.lru_cache
+    @staticmethod
+    def get_object_cached(
+        bucket: str,
+        key: str,
+        region: str = JUMPSTART_DEFAULT_REGION_NAME,
+        s3_client: Optional[boto3.client] = None,
+    ) -> bytes:
+        """Returns s3 object located at the bucket and key.
+
+        Requests are cached so that the same s3 request is never made more
+        than once, unless a different region or client is used.
+        """
+        return JumpStartS3Accessor.get_object(
+            bucket=bucket, key=key, region=region, s3_client=s3_client
+        )
+
+    @staticmethod
+    def get_object(
+        bucket: str,
+        key: str,
+        region: str = JUMPSTART_DEFAULT_REGION_NAME,
+        s3_client: Optional[boto3.client] = None,
+    ) -> bytes:
+        """Returns s3 object located at the bucket and key."""
+        if s3_client is None:
+            s3_client = JumpStartS3Accessor._get_default_s3_client(region)
+
+        return s3_client.get_object(Bucket=bucket, Key=key)["Body"].read()
 
 
 class JumpStartModelsAccessor(object):

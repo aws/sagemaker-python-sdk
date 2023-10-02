@@ -16,6 +16,7 @@ from __future__ import absolute_import
 import re
 
 from typing import Dict, List, Optional, Union
+from sagemaker import payloads
 from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
 from sagemaker.base_deserializers import BaseDeserializer
 from sagemaker.base_serializers import BaseSerializer
@@ -28,6 +29,7 @@ from sagemaker.jumpstart.factory.model import (
     get_deploy_kwargs,
     get_init_kwargs,
 )
+from sagemaker.jumpstart.types import JumpStartSerializablePayload
 from sagemaker.jumpstart.utils import is_valid_model_id
 from sagemaker.utils import stringify_object
 from sagemaker.model import MODEL_PACKAGE_ARN_PATTERN, Model
@@ -311,6 +313,27 @@ class JumpStartModel(Model):
         self.sagemaker_session = model_init_kwargs.sagemaker_session
 
         super(JumpStartModel, self).__init__(**model_init_kwargs.to_kwargs_dict())
+
+    def retrieve_default_payload(self) -> JumpStartSerializablePayload:
+        """Returns default payload associated with the model.
+
+        Payload can be directly used with the `sagemaker.predictor.Predictor.predict(...)` function.
+        """
+        sample_payloads: Optional[List[JumpStartSerializablePayload]] = payloads.retrieve_samples(
+            model_id=self.model_id,
+            model_version=self.model_version,
+            region=self.region,
+            tolerate_deprecated_model=self.tolerate_deprecated_model,
+            tolerate_vulnerable_model=self.tolerate_vulnerable_model,
+            sagemaker_session=self.sagemaker_session,
+        )
+
+        if sample_payloads is None or len(sample_payloads) == 0:
+            raise NotImplementedError(
+                f"No default payload supported for model ID '{self.model_id}'."
+            )
+
+        return sample_payloads[0]
 
     def _create_sagemaker_model(
         self,
