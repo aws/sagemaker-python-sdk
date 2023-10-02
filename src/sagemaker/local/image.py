@@ -11,7 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Placeholder docstring"""
-from __future__ import absolute_import
+from __future__ import absolute_import, annotations
 
 import base64
 import copy
@@ -32,6 +32,7 @@ import tempfile
 
 from distutils.spawn import find_executable
 from threading import Thread
+from typing import Dict, List
 from six.moves.urllib.parse import urlparse
 
 import sagemaker
@@ -74,6 +75,7 @@ class _SageMakerContainer(object):
         sagemaker_session=None,
         container_entrypoint=None,
         container_arguments=None,
+        container_default_config=None,
     ):
         """Initialize a SageMakerContainer instance
 
@@ -90,6 +92,8 @@ class _SageMakerContainer(object):
                 to use when interacting with SageMaker.
             container_entrypoint (str): the container entrypoint to execute
             container_arguments (str): the container entrypoint arguments
+            container_default_config (Dict | None): the dict of user-defined docker
+                configuration. Defaults to ``None``
         """
         from sagemaker.local.local_session import LocalSession
 
@@ -102,6 +106,7 @@ class _SageMakerContainer(object):
         self.image = image
         self.container_entrypoint = container_entrypoint
         self.container_arguments = container_arguments
+        self.container_default_config = container_default_config or {}
         # Since we are using a single docker network, Generate a random suffix to attach to the
         # container names. This way multiple jobs can run in parallel.
         suffix = "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(5))
@@ -768,16 +773,23 @@ class _SageMakerContainer(object):
 
         logger.info("docker command: %s", " ".join(compose_cmd))
         return compose_cmd
-
-    def _create_docker_host(self, host, environment, optml_subdirs, command, volumes):
+    
+    def _create_docker_host(
+        self,
+        host: str,
+        environment: List[str],
+        optml_subdirs: set[str],
+        command: str,
+        volumes: List,
+    ) -> Dict:
         """Creates the docker host configuration.
 
         Args:
-            host:
-            environment:
-            optml_subdirs:
-            command:
-            volumes:
+            host (str): The host address 
+            environment (List[str]): List of environment variables 
+            optml_subdirs (Set[str]): Set of subdirs
+            command (str): Either 'train' or 'serve'
+            volumes (list): List of volumes that will be mapped to the containers
         """
         optml_volumes = self._build_optml_volumes(host, optml_subdirs)
         optml_volumes.extend(volumes)
@@ -787,6 +799,7 @@ class _SageMakerContainer(object):
         )
 
         host_config = {
+            **self.container_default_config,
             "image": self.image,
             "container_name": f"{container_name_prefix}-{host}",
             "stdin_open": True,

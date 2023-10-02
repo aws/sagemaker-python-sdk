@@ -128,6 +128,7 @@ class LocalSagemakerClient(object):  # pylint: disable=too-many-public-methods
             sagemaker_session=self.sagemaker_session,
             container_entrypoint=container_entrypoint,
             container_arguments=container_arguments,
+            container_default_config=self._container_default_config
         )
         processing_job = _LocalProcessingJob(container)
         logger.info("Starting processing job")
@@ -685,7 +686,7 @@ class LocalSession(Session):
             )
 
         self.sagemaker_client = LocalSagemakerClient(self)
-        self.sagemaker_runtime_client = LocalSagemakerRuntimeClient(self.config)
+
         self.local_mode = True
         sagemaker_config = kwargs.get("sagemaker_config", None)
         if sagemaker_config:
@@ -737,6 +738,8 @@ class LocalSession(Session):
             self.config = yaml.safe_load(open(local_mode_config_file, "r"))
             if self._disable_local_code and "local" in self.config:
                 self.config["local"]["local_code"] = False
+
+            self.sagemaker_runtime_client = LocalSagemakerRuntimeClient(self.config)
 
     def logs_for_job(self, job_name, wait=False, poll=5, log_type="All"):
         """A no-op method meant to override the sagemaker client.
