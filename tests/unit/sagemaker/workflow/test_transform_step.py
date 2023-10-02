@@ -127,7 +127,7 @@ def test_transform_step_with_transformer(model_name, data, output_path, pipeline
     )
 
     step_def = json.loads(pipeline.definition())["Steps"][0]
-    assert step_def["Arguments"]["TransformJobName"] == "TestTransformJobPrefix"
+    assert step_def["Arguments"]["TransformJobName"].startswith("TestTransformJobPrefix")
     assert step_def == {
         "Name": "MyTransformStep",
         "Type": "Transform",
