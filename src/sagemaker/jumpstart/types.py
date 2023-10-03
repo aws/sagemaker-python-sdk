@@ -18,6 +18,7 @@ from typing import Any, Dict, List, Optional, Set, Union
 from sagemaker.utils import get_instance_type_family
 
 from sagemaker.session import Session
+from sagemaker.workflow.entities import PipelineVariable
 
 
 class JumpStartDataHolderType:
@@ -946,6 +947,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         "container_entry_point",
         "container_arguments",
         "disable_output_compression",
+        "enable_infra_check",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -1009,6 +1011,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         container_entry_point: Optional[List[str]] = None,
         container_arguments: Optional[List[str]] = None,
         disable_output_compression: Optional[bool] = None,
+        enable_infra_check: Optional[Union[bool, PipelineVariable]] = None,
     ) -> None:
         """Instantiates JumpStartEstimatorInitKwargs object."""
 
@@ -1065,6 +1068,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         self.container_entry_point = container_entry_point
         self.container_arguments = container_arguments
         self.disable_output_compression = disable_output_compression
+        self.enable_infra_check = enable_infra_check
 
 
 class JumpStartEstimatorFitKwargs(JumpStartKwargs):
