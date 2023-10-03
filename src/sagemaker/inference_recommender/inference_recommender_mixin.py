@@ -607,12 +607,12 @@ class InferenceRecommenderMixin:
             None,
         )
 
-        # TODO: until we have bandwidth to integrate right_size + deploy with serverless
+    # TODO: until we have bandwidth to integrate right_size + deploy with serverless
     def _filter_recommendations_for_realtime(self):
         instance_type = None
         initial_instance_count = None
         for recommendations in self.inference_recommendations:
-            if not "serverlessConfig" in recommendations["EndpointConfiguration"]:
+            if not "ServerlessConfig" in recommendations["EndpointConfiguration"]:
                 instance_type = recommendations["EndpointConfiguration"]["InstanceType"]
                 initial_instance_count = recommendations["EndpointConfiguration"][
                     "InitialInstanceCount"
