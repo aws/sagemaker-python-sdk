@@ -361,7 +361,7 @@ class JumpStartSerializablePayload(JumpStartDataHolderType):
             self.accept = accept
 
     def to_json(self) -> Dict[str, Any]:
-        """Returns json representation of JumpStartDefaultPayloads object."""
+        """Returns json representation of JumpStartSerializablePayload object."""
         return deepcopy(self.raw_payload)
 
 

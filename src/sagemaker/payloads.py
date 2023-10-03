@@ -71,7 +71,7 @@ def retrieve_samples(
     """
     if not jumpstart_utils.is_jumpstart_model_input(model_id, model_version):
         raise ValueError(
-            "Must specify JumpStart `model_id` and `model_version` when retrieving model URIs."
+            "Must specify JumpStart `model_id` and `model_version` when retrieving payloads."
         )
 
     unserialized_payload_dict: Optional[
