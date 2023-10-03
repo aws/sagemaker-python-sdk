@@ -11,21 +11,24 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Placeholder docstring"""
-from __future__ import absolute_import
+from __future__ import absolute_import, annotations
 
 import logging
-import os
 import platform
 from datetime import datetime
+from typing import Dict
 
 import boto3
 from botocore.exceptions import ClientError
+import jsonschema
 
 from sagemaker.config import (
-    load_sagemaker_config,
-    validate_sagemaker_config,
+    SAGEMAKER_PYTHON_SDK_LOCAL_MODE_CONFIG_SCHEMA,
     SESSION_DEFAULT_S3_BUCKET_PATH,
     SESSION_DEFAULT_S3_OBJECT_KEY_PREFIX_PATH,
+    load_local_mode_config,
+    load_sagemaker_config,
+    validate_sagemaker_config,
 )
 from sagemaker.local.image import _SageMakerContainer
 from sagemaker.local.utils import get_docker_host
@@ -83,7 +86,7 @@ class LocalSagemakerClient(object):  # pylint: disable=too-many-public-methods
         Environment=None,
         ProcessingInputs=None,
         ProcessingOutputConfig=None,
-        **kwargs
+        **kwargs,
     ):
         """Creates a processing job in Local Mode
 
@@ -128,7 +131,6 @@ class LocalSagemakerClient(object):  # pylint: disable=too-many-public-methods
             sagemaker_session=self.sagemaker_session,
             container_entrypoint=container_entrypoint,
             container_arguments=container_arguments,
-            container_default_config=self._container_default_config
         )
         processing_job = _LocalProcessingJob(container)
         logger.info("Starting processing job")
@@ -166,7 +168,7 @@ class LocalSagemakerClient(object):  # pylint: disable=too-many-public-methods
         ResourceConfig,
         InputDataConfig=None,
         Environment=None,
-        **kwargs
+        **kwargs,
     ):
         """Create a training job in Local Mode.
 
@@ -231,7 +233,7 @@ class LocalSagemakerClient(object):  # pylint: disable=too-many-public-methods
         TransformInput,
         TransformOutput,
         TransformResources,
-        **kwargs
+        **kwargs,
     ):
         """Create the transform job.
 
@@ -727,19 +729,25 @@ class LocalSession(Session):
             sagemaker_session=self,
         )
 
-        local_mode_config_file = os.path.join(os.path.expanduser("~"), ".sagemaker", "config.yaml")
-        if os.path.exists(local_mode_config_file):
+        self.config = load_local_mode_config()
+        if self._disable_local_code and self.config and "local" in self.config:
+            self.config["local"]["local_code"] = False
+
+    @Session.config.setter
+    def config(self, value: Dict | None):
+        """Setter of the local mode config"""
+        if value is not None:
             try:
-                import yaml
-            except ImportError as e:
-                logger.error(_module_import_error("yaml", "Local mode", "local"))
+                jsonschema.validate(value, SAGEMAKER_PYTHON_SDK_LOCAL_MODE_CONFIG_SCHEMA)
+            except jsonschema.ValidationError as e:
+                logger.error("Failed to validate the local mode config")
                 raise e
+            self._config = value
+        else:
+            self._config = value
 
-            self.config = yaml.safe_load(open(local_mode_config_file, "r"))
-            if self._disable_local_code and "local" in self.config:
-                self.config["local"]["local_code"] = False
-
-            self.sagemaker_runtime_client = LocalSagemakerRuntimeClient(self.config)
+        # update the runtime client on config changed
+        self.sagemaker_runtime_client = LocalSagemakerRuntimeClient(self._config)
 
     def logs_for_job(self, job_name, wait=False, poll=5, log_type="All"):
         """A no-op method meant to override the sagemaker client.

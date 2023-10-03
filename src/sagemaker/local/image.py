@@ -36,6 +36,7 @@ from typing import Dict, List
 from six.moves.urllib.parse import urlparse
 
 import sagemaker
+from sagemaker.config.config_schema import CONTAINER_CONFIG, LOCAL
 import sagemaker.local.data
 import sagemaker.local.utils
 import sagemaker.utils
@@ -75,7 +76,6 @@ class _SageMakerContainer(object):
         sagemaker_session=None,
         container_entrypoint=None,
         container_arguments=None,
-        container_default_config=None,
     ):
         """Initialize a SageMakerContainer instance
 
@@ -92,8 +92,6 @@ class _SageMakerContainer(object):
                 to use when interacting with SageMaker.
             container_entrypoint (str): the container entrypoint to execute
             container_arguments (str): the container entrypoint arguments
-            container_default_config (Dict | None): the dict of user-defined docker
-                configuration. Defaults to ``None``
         """
         from sagemaker.local.local_session import LocalSession
 
@@ -106,7 +104,6 @@ class _SageMakerContainer(object):
         self.image = image
         self.container_entrypoint = container_entrypoint
         self.container_arguments = container_arguments
-        self.container_default_config = container_default_config or {}
         # Since we are using a single docker network, Generate a random suffix to attach to the
         # container names. This way multiple jobs can run in parallel.
         suffix = "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(5))
@@ -773,7 +770,7 @@ class _SageMakerContainer(object):
 
         logger.info("docker command: %s", " ".join(compose_cmd))
         return compose_cmd
-    
+
     def _create_docker_host(
         self,
         host: str,
@@ -785,8 +782,8 @@ class _SageMakerContainer(object):
         """Creates the docker host configuration.
 
         Args:
-            host (str): The host address 
-            environment (List[str]): List of environment variables 
+            host (str): The host address
+            environment (List[str]): List of environment variables
             optml_subdirs (Set[str]): Set of subdirs
             command (str): Either 'train' or 'serve'
             volumes (list): List of volumes that will be mapped to the containers
@@ -797,9 +794,15 @@ class _SageMakerContainer(object):
         container_name_prefix = "".join(
             random.choice(string.ascii_lowercase + string.digits) for _ in range(10)
         )
+        container_default_config = (
+            sagemaker.utils.get_config_value(
+                f"{LOCAL}.{CONTAINER_CONFIG}", self.sagemaker_session.config
+            )
+            or {}
+        )
 
         host_config = {
-            **self.container_default_config,
+            **container_default_config,
             "image": self.image,
             "container_name": f"{container_name_prefix}-{host}",
             "stdin_open": True,

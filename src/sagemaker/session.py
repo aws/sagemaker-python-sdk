@@ -11,7 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Placeholder docstring"""
-from __future__ import absolute_import, print_function
+from __future__ import absolute_import, annotations, print_function
 
 import json
 import logging
@@ -239,7 +239,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         self.s3_client = None
         self.resource_groups_client = None
         self.resource_group_tagging_client = None
-        self.config = None
+        self._config = None
         self.lambda_client = None
         self.settings = settings
 
@@ -325,6 +325,16 @@ class Session(object):  # pylint: disable=too-many-public-methods
             config_path=SESSION_DEFAULT_S3_OBJECT_KEY_PREFIX_PATH,
             sagemaker_session=self,
         )
+
+    @property
+    def config(self) -> Dict | None:
+        """The config for the local mode, unused in a normal session"""
+        return self._config
+
+    @config.setter
+    def config(self, value: Dict | None):
+        """The config for the local mode, unused in a normal session"""
+        self._config = value
 
     @property
     def boto_region_name(self):
