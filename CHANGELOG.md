@@ -1,5 +1,19 @@
 # Changelog
 
+## v2.189.0 (2023-10-03)
+
+### Features
+
+ * add feature processor APIs to public doc
+ * s3 prefix model data for JumpStartModel
+ * Model Package support for updating approval
+
+### Bug Fixes and Other Changes
+
+ * Add bucket owner check
+ * transform step  unit test
+ * Release TGI 1.1.0 Image
+
 ## v2.188.0 (2023-09-26)
 
 ### Features

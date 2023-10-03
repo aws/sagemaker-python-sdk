@@ -233,6 +233,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         self._default_bucket_name_override = default_bucket
         # this may also be set again inside :func:`_initialize` if it is None
         self.default_bucket_prefix = default_bucket_prefix
+        self._default_bucket_set_by_sdk = False
 
         self.s3_resource = None
         self.s3_client = None
@@ -545,8 +546,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
         default_bucket = self._default_bucket_name_override
         if not default_bucket:
             default_bucket = generate_default_sagemaker_bucket_name(self.boto_session)
+            self._default_bucket_set_by_sdk = True
 
-        self._create_s3_bucket_if_it_does_not_exist(bucket_name=default_bucket, region=region)
+        self._create_s3_bucket_if_it_does_not_exist(
+            bucket_name=default_bucket,
+            region=region,
+        )
 
         self._default_bucket = default_bucket
 
@@ -618,6 +623,28 @@ class Session(object):  # pylint: disable=too-many-public-methods
                     )
                     raise
                 else:
+                    raise
+
+        if self._default_bucket_set_by_sdk:
+            # make sure the s3 bucket is configured in users account.
+            expected_bucket_owner_id = self.account_id()
+            try:
+                s3.meta.client.head_bucket(
+                    Bucket=bucket_name, ExpectedBucketOwner=expected_bucket_owner_id
+                )
+            except ClientError as e:
+                error_code = e.response["Error"]["Code"]
+                message = e.response["Error"]["Message"]
+                if error_code == "403" and message == "Forbidden":
+                    LOGGER.error(
+                        "Since default_bucket param was not set, SageMaker Python SDK tried to use "
+                        "%s bucket. "
+                        "This bucket cannot be configured to use as it is not owned by Account %s. "
+                        "To unblock it's recommended to use custom default_bucket "
+                        "parameter in sagemaker.Session",
+                        bucket_name,
+                        expected_bucket_owner_id,
+                    )
                     raise
 
     def _append_sagemaker_config_tags(self, tags: list, config_path_to_tags: str):
