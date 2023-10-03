@@ -266,10 +266,13 @@ class FeatureValue(Config):
     Attributes:
         feature_name (str): name of the Feature.
         value_as_string (str): value of the Feature in string form.
+        value_as_string_list (List[str]): value of the Feature in string list
+        form used for collection type.
     """
 
     feature_name: str = attr.ib(default=None)
     value_as_string: str = attr.ib(default=None)
+    value_as_string_list: List[str] = attr.ib(default=None)
 
     def to_dict(self) -> Dict[str, Any]:
         """Construct a dictionary based on the attributes provided.
@@ -280,6 +283,7 @@ class FeatureValue(Config):
         return Config.construct_dict(
             FeatureName=self.feature_name,
             ValueAsString=self.value_as_string,
+            ValueAsStringList=self.value_as_string_list,
         )
 
 

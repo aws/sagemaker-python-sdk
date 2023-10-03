@@ -41,6 +41,25 @@ Feature Definition
     :members:
     :show-inheritance:
 
+.. autoclass:: sagemaker.feature_store.feature_definition.CollectionTypeEnum
+    :members:
+    :show-inheritance:
+
+.. autoclass:: sagemaker.feature_store.feature_definition.CollectionType
+    :members:
+    :show-inheritance:
+
+.. autoclass:: sagemaker.feature_store.feature_definition.ListCollectionType
+    :members:
+    :show-inheritance:
+
+.. autoclass:: sagemaker.feature_store.feature_definition.SetCollectionType
+    :members:
+    :show-inheritance:
+
+.. autoclass:: sagemaker.feature_store.feature_definition.VectorCollectionType
+    :members:
+    :show-inheritance:
 
 Inputs
 ******
