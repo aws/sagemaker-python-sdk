@@ -18,7 +18,7 @@ from typing import Optional, Union
 import re
 import boto3
 
-from sagemaker.jumpstart.accessors import JumpStartS3Accessor
+from sagemaker.jumpstart.accessors import JumpStartS3PayloadAccessor
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
 from sagemaker.jumpstart.enums import MIMEType
 from sagemaker.jumpstart.types import JumpStartSerializablePayload
@@ -60,7 +60,7 @@ class PayloadSerializer:
             raise ValueError("Invalid bytes payload.")
 
         s3_key = s3_keys[0]
-        serialized_s3_object = JumpStartS3Accessor.get_object_cached(
+        serialized_s3_object = JumpStartS3PayloadAccessor.get_object_cached(
             bucket=self.bucket, key=s3_key, region=self.region, s3_client=self.s3_client
         )
 
@@ -90,7 +90,7 @@ class PayloadSerializer:
         for s3_key in s3_keys:
             b64_encoded_string = base64.b64encode(
                 bytearray(
-                    JumpStartS3Accessor.get_object_cached(
+                    JumpStartS3PayloadAccessor.get_object_cached(
                         bucket=self.bucket, key=s3_key, region=self.region, s3_client=self.s3_client
                     )
                 )

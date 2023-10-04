@@ -23,7 +23,7 @@ class TestPayloadSerializer(TestCase):
 
     payload_serializer = PayloadSerializer()
 
-    @patch("sagemaker.jumpstart.payload_utils.JumpStartS3Accessor.get_object_cached")
+    @patch("sagemaker.jumpstart.payload_utils.JumpStartS3PayloadAccessor.get_object_cached")
     def test_serialize_bytes_payload(self, mock_get_object_cached):
 
         mock_get_object_cached.return_value = "7897"
@@ -36,7 +36,7 @@ class TestPayloadSerializer(TestCase):
         serialized_payload = self.payload_serializer.serialize(payload)
         self.assertEqual(serialized_payload, "7897")
 
-    @patch("sagemaker.jumpstart.payload_utils.JumpStartS3Accessor.get_object_cached")
+    @patch("sagemaker.jumpstart.payload_utils.JumpStartS3PayloadAccessor.get_object_cached")
     def test_serialize_json_payload(self, mock_get_object_cached):
 
         mock_get_object_cached.return_value = base64.b64decode("encodedimage")

@@ -40,7 +40,7 @@ def test_jumpstart_predictor_support(
     assert js_predictor.accept == MIMEType.JSON
 
 
-@patch("sagemaker.jumpstart.payload_utils.JumpStartS3Accessor.get_object_cached")
+@patch("sagemaker.jumpstart.payload_utils.JumpStartS3PayloadAccessor.get_object_cached")
 @patch("sagemaker.jumpstart.model.is_valid_model_id")
 @patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
