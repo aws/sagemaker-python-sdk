@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
+import jsonschema
 
 import pytest
 import urllib3
@@ -1031,3 +1032,52 @@ def test_default_bucket_prefix_with_sagemaker_config(boto_session, client):
         **session_kwargs,
     )
     assert session_with_no_prefix.default_bucket_prefix is None
+
+
+VALID_LOCAL_MODE_CONFIG = {
+    "local": {
+        "local_code": True,
+        "serving_port": 8888,
+        "container_config": {"shm_size": "128M"},
+    }
+}
+
+INVALID_LOCAL_MODE_CONFIG = {
+    "locals": {
+        "local_code": True,
+        "serving_port": 8888,
+        "container_config": {"shm_size": "128M"},
+    }
+}
+
+
+@patch("sagemaker.local.local_session.load_local_mode_config", return_value=VALID_LOCAL_MODE_CONFIG)
+def test_config_getter(load_config_mock):
+    boto_session = Mock(region_name="us-west-2")
+    session = LocalSession(boto_session=boto_session)
+    load_config_mock.assert_called()
+    assert session.config == VALID_LOCAL_MODE_CONFIG
+
+
+@patch(
+    "sagemaker.local.local_session.load_local_mode_config", return_value=INVALID_LOCAL_MODE_CONFIG
+)
+def test_config_validation(load_config_mock):
+    boto_session = Mock(region_name="us-west-2")
+
+    with pytest.raises(jsonschema.ValidationError):
+        LocalSession(boto_session=boto_session)
+
+
+def test_config_setter():
+    boto_session = Mock(region_name="us-west-2")
+
+    session = LocalSession(boto_session=boto_session)
+    session.config = VALID_LOCAL_MODE_CONFIG
+    assert (
+        session.sagemaker_runtime_client.serving_port
+        == VALID_LOCAL_MODE_CONFIG["local"]["serving_port"]
+    )
+
+    with pytest.raises(jsonschema.ValidationError):
+        session.config = INVALID_LOCAL_MODE_CONFIG
