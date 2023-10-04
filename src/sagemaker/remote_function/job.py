@@ -46,6 +46,7 @@ from sagemaker.experiments._run_context import _RunContext
 from sagemaker.experiments.run import Run
 from sagemaker.image_uris import get_base_python_image_uri
 from sagemaker import image_uris
+from sagemaker.remote_function.checkpoint_location import CheckpointLocation
 from sagemaker.session import get_execution_role, _logs_for_job, Session
 from sagemaker.utils import name_from_base, _tmpdir, resolve_value_from_config
 from sagemaker.s3 import s3_path_join, S3Uploader
@@ -673,6 +674,8 @@ class _Job:
             RetryStrategy={"MaximumRetryAttempts": job_settings.max_retry_attempts},
         )
 
+        _update_job_request_with_checkpoint_config(func_args, func_kwargs, request_dict)
+
         if job_settings.tags:
             request_dict["Tags"] = job_settings.tags
 
@@ -1169,6 +1172,50 @@ def _extend_spark_config_to_request(
         container_entrypoint.extend([SPARK_APP_SCRIPT_PATH])
 
     return extended_request
+
+
+def _update_job_request_with_checkpoint_config(args, kwargs, request_dict):
+    """Extend job request with checkpoint config based on CheckpointLocation in function args.
+
+    Args:
+        args (tuple): The positional arguments of the remote function.
+        kwargs (Dict): The keyword arguments of the remote function.
+        request_dict (Dict): create training job request dict.
+    """
+    checkpoint_location_index_in_args = None
+    checkpoint_location_key_in_kwargs = None
+    checkpoint_location_count = 0
+
+    for index, arg in enumerate(args):
+        if isinstance(arg, CheckpointLocation):
+            checkpoint_location_index_in_args = index
+            checkpoint_location_count += 1
+
+    for key, value in kwargs.items():
+        if isinstance(value, CheckpointLocation):
+            checkpoint_location_key_in_kwargs = key
+            checkpoint_location_count += 1
+
+    if checkpoint_location_count < 1:
+        return
+
+    if checkpoint_location_count > 1:
+        raise ValueError(
+            "Remote function cannot have more than one argument of type CheckpointLocation."
+        )
+
+    if checkpoint_location_index_in_args is not None:
+        checkpoint_location_arg = args[checkpoint_location_index_in_args]
+    else:
+        checkpoint_location_arg = kwargs[checkpoint_location_key_in_kwargs]
+
+    checkpoint_s3_uri = checkpoint_location_arg._s3_uri
+    checkpoint_local_path = checkpoint_location_arg._local_path
+
+    request_dict["CheckpointConfig"] = {
+        "LocalPath": checkpoint_local_path,
+        "S3Uri": checkpoint_s3_uri,
+    }
 
 
 @dataclasses.dataclass

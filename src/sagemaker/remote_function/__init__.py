@@ -14,3 +14,4 @@
 from __future__ import absolute_import
 
 from sagemaker.remote_function.client import remote, RemoteExecutor  # noqa: F401
+from sagemaker.remote_function.checkpoint_location import CheckpointLocation  # noqa: F401
