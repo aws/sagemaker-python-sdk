@@ -21,9 +21,11 @@ from sagemaker.feature_store.inputs import (
     OfflineStoreConfig,
     FeatureParameter,
     TableFormatEnum,
+    OnlineStoreStorageTypeEnum,
     Filter,
     FilterOperatorEnum,
     Identifier,
+    FeatureValue,
 )
 
 
@@ -56,6 +58,32 @@ def test_online_store_config():
             "SecurityConfig": {
                 "KmsKeyId": "kms",
             },
+        }
+    )
+
+    config_with_inmemory = OnlineStoreConfig(
+        enable_online_store=True,
+        storage_type=OnlineStoreStorageTypeEnum.IN_MEMORY,
+    )
+    assert ordered(config_with_inmemory.to_dict()) == ordered(
+        {
+            "EnableOnlineStore": True,
+            "StorageType": "InMemory",
+        }
+    )
+
+    config_with_kms_standard = OnlineStoreConfig(
+        enable_online_store=True,
+        online_store_security_config=OnlineStoreSecurityConfig(kms_key_id="kms"),
+        storage_type=OnlineStoreStorageTypeEnum.STANDARD,
+    )
+    assert ordered(config_with_kms_standard.to_dict()) == ordered(
+        {
+            "EnableOnlineStore": True,
+            "SecurityConfig": {
+                "KmsKeyId": "kms",
+            },
+            "StorageType": "Standard",
         }
     )
 
@@ -92,7 +120,8 @@ def test_offline_data_store_config():
 
 def test_offline_data_store_config_with_glue_table_format():
     config = OfflineStoreConfig(
-        s3_storage_config=S3StorageConfig(s3_uri="uri"), table_format=TableFormatEnum.GLUE
+        s3_storage_config=S3StorageConfig(s3_uri="uri"),
+        table_format=TableFormatEnum.GLUE,
     )
     assert ordered(config.to_dict()) == ordered(
         {
@@ -105,7 +134,8 @@ def test_offline_data_store_config_with_glue_table_format():
 
 def test_offline_data_store_config_with_iceberg_table_format():
     config = OfflineStoreConfig(
-        s3_storage_config=S3StorageConfig(s3_uri="uri"), table_format=TableFormatEnum.ICEBERG
+        s3_storage_config=S3StorageConfig(s3_uri="uri"),
+        table_format=TableFormatEnum.ICEBERG,
     )
     assert ordered(config.to_dict()) == ordered(
         {
@@ -166,5 +196,34 @@ def test_identifier_with_none_feature_names():
     )
 
     assert ordered(identifier.to_dict()) == ordered(
-        {"FeatureGroupName": "name", "RecordIdentifiersValueAsString": ["record_identifier"]}
+        {
+            "FeatureGroupName": "name",
+            "RecordIdentifiersValueAsString": ["record_identifier"],
+        }
+    )
+
+
+def test_feature_value():
+    value = FeatureValue(
+        feature_name="feature1",
+        value_as_string="value1",
+    )
+
+    assert ordered(value.to_dict()) == ordered(
+        {
+            "FeatureName": "feature1",
+            "ValueAsString": "value1",
+        }
+    )
+
+    collection_value = FeatureValue(
+        feature_name="feature2",
+        value_as_string_list=["value1", "value2"],
+    )
+
+    assert ordered(collection_value.to_dict()) == ordered(
+        {
+            "FeatureName": "feature2",
+            "ValueAsStringList": ["value1", "value2"],
+        }
     )

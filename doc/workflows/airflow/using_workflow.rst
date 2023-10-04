@@ -22,6 +22,16 @@ the configuration dictionary in the SageMaker Python SDK. Currently, the followi
 * ``SageMakerTransformOperator``
 * ``SageMakerEndpointConfigOperator``
 * ``SageMakerEndpointOperator``
+* ``SageMakerProcessingOperator``
+* ``SageMakerDeleteModelOperator``
+* ``SageMakerStartPipelineOperator``
+* ``SageMakerStopPipelineOperator``
+* ``SageMakerRegisterModelVersionOperator``
+* ``SageMakerAutoMLOperator``
+* ``SageMakerCreateExperimentOperator``
+
+You can look into `the Apache Airflow documentation <https://airflow.apache.org/docs/apache-airflow-providers-amazon/stable/operators/sagemaker.html>`_ for the full
+list of operators with examples.
 
 2. PythonOperator: Airflow built-in operator that executes Python callables. You can use the PythonOperator to execute
 operations in the SageMaker Python SDK to create a SageMaker workflow.
