@@ -315,11 +315,11 @@ class JumpStartModel(Model):
         super(JumpStartModel, self).__init__(**model_init_kwargs.to_kwargs_dict())
 
     def retrieve_default_payload(self) -> JumpStartSerializablePayload:
-        """Returns default payload associated with the model.
+        """Returns the default payload associated with the model.
 
         Payload can be directly used with the `sagemaker.predictor.Predictor.predict(...)` function.
         """
-        sample_payloads: Optional[List[JumpStartSerializablePayload]] = payloads.retrieve_samples(
+        payload_options: Optional[List[JumpStartSerializablePayload]] = payloads.retrieve_options(
             model_id=self.model_id,
             model_version=self.model_version,
             region=self.region,
@@ -328,12 +328,10 @@ class JumpStartModel(Model):
             sagemaker_session=self.sagemaker_session,
         )
 
-        if sample_payloads is None or len(sample_payloads) == 0:
-            raise NotImplementedError(
-                f"No default payload supported for model ID '{self.model_id}'."
-            )
+        if payload_options is None or len(payload_options) == 0:
+            return None
 
-        return sample_payloads[0]
+        return payload_options[0]
 
     def _create_sagemaker_model(
         self,

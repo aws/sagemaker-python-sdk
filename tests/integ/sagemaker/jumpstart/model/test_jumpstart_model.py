@@ -86,31 +86,6 @@ def test_prepacked_jumpstart_model(setup):
     assert response is not None
 
 
-def test_default_payload_jumpstart_model(setup):
-
-    # DO NOT COMMIT THIS LINE
-    os.environ.update({"AWS_JUMPSTART_CONTENT_BUCKET_OVERRIDE": "jumpstart-cache-alpha-us-west-2"})
-
-    model_id = "model-depth2img-stable-diffusion-v1-5-controlnet-v1-1-fp16"
-
-    model = JumpStartModel(
-        model_id=model_id,
-        role=get_sm_session().get_caller_identity_arn(),
-        sagemaker_session=get_sm_session(),
-    )
-
-    default_payload = model.retrieve_default_payload()
-
-    # uses ml.g5.8xlarge instance
-    predictor = model.deploy(
-        tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
-    )
-
-    response = predictor.predict(default_payload)
-
-    assert response is not None
-
-
 @pytest.mark.skipif(
     tests.integ.test_region() not in GATED_INFERENCE_MODEL_SUPPORTED_REGIONS,
     reason=f"JumpStart gated inference models unavailable in {tests.integ.test_region()}.",

@@ -39,12 +39,19 @@ class SageMakerSettings(object):
 
 
 class JumpStartS3Accessor(object):
-    """Static class for storing and retrieving auxilliary s3 artifacts."""
+    """Static class for storing and retrieving auxilliary S3 artifacts."""
+
+    @staticmethod
+    def clear_cache() -> None:
+        """Clears LRU caches associated with S3 client and retrieved objects."""
+
+        JumpStartS3Accessor._get_default_s3_client.cache_clear()
+        JumpStartS3Accessor.get_object_cached.cache_clear()
 
     @staticmethod
     @functools.lru_cache()
     def _get_default_s3_client(region: str = JUMPSTART_DEFAULT_REGION_NAME) -> boto3.client:
-        """Returns default s3 client associated with the region.
+        """Returns default S3 client associated with the region.
 
         Result is cached so multiple clients in memory are not created.
         """
@@ -58,9 +65,9 @@ class JumpStartS3Accessor(object):
         region: str = JUMPSTART_DEFAULT_REGION_NAME,
         s3_client: Optional[boto3.client] = None,
     ) -> bytes:
-        """Returns s3 object located at the bucket and key.
+        """Returns S3 object located at the bucket and key.
 
-        Requests are cached so that the same s3 request is never made more
+        Requests are cached so that the same S3 request is never made more
         than once, unless a different region or client is used.
         """
         return JumpStartS3Accessor.get_object(
@@ -74,7 +81,7 @@ class JumpStartS3Accessor(object):
         region: str = JUMPSTART_DEFAULT_REGION_NAME,
         s3_client: Optional[boto3.client] = None,
     ) -> bytes:
-        """Returns s3 object located at the bucket and key."""
+        """Returns S3 object located at the bucket and key."""
         if s3_client is None:
             s3_client = JumpStartS3Accessor._get_default_s3_client(region)
 

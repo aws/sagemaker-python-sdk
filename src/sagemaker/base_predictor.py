@@ -14,7 +14,7 @@
 from __future__ import print_function, absolute_import
 
 import abc
-from typing import Any, Tuple
+from typing import Any, Optional, Tuple, Union
 
 from sagemaker.deprecations import (
     deprecated_class,
@@ -205,18 +205,20 @@ class Predictor(PredictorBase):
     ):
         """Placeholder docstring"""
 
-        js_accept = None
+        jumpstart_serialized_data: Optional[Union[str, bytes]] = None
+        jumpstart_accept: Optional[str] = None
+        jumpstart_content_type: Optional[str] = None
 
         if isinstance(data, JumpStartSerializablePayload):
             s3_client = self.sagemaker_session.s3_client
             region = self.sagemaker_session._region_name
             bucket = get_jumpstart_content_bucket(region)
 
-            js_serialized_data = PayloadSerializer(
+            jumpstart_serialized_data = PayloadSerializer(
                 bucket=bucket, region=region, s3_client=s3_client
             ).serialize(data)
-            js_content_type = data.content_type
-            js_accept = data.accept
+            jumpstart_content_type = data.content_type
+            jumpstart_accept = data.accept
 
         args = dict(initial_args) if initial_args else {}
 
@@ -224,8 +226,8 @@ class Predictor(PredictorBase):
             args["EndpointName"] = self.endpoint_name
 
         if "ContentType" not in args:
-            if isinstance(data, JumpStartSerializablePayload):
-                args["ContentType"] = js_content_type
+            if isinstance(data, JumpStartSerializablePayload) and jumpstart_content_type:
+                args["ContentType"] = jumpstart_content_type
             else:
                 args["ContentType"] = (
                     self.content_type
@@ -234,8 +236,8 @@ class Predictor(PredictorBase):
                 )
 
         if "Accept" not in args:
-            if isinstance(data, JumpStartSerializablePayload) and js_accept:
-                args["Accept"] = js_accept
+            if isinstance(data, JumpStartSerializablePayload) and jumpstart_accept:
+                args["Accept"] = jumpstart_accept
             else:
                 args["Accept"] = (
                     self.accept if isinstance(self.accept, str) else ", ".join(self.accept)
@@ -254,9 +256,9 @@ class Predictor(PredictorBase):
             args["CustomAttributes"] = custom_attributes
 
         data = (
-            self.serializer.serialize(data)
-            if not isinstance(data, JumpStartSerializablePayload)
-            else js_serialized_data
+            jumpstart_serialized_data
+            if isinstance(data, JumpStartSerializablePayload) and jumpstart_serialized_data
+            else self.serializer.serialize(data)
         )
 
         args["Body"] = data

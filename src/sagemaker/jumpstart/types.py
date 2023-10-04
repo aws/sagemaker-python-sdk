@@ -348,6 +348,9 @@ class JumpStartSerializablePayload(JumpStartDataHolderType):
         Args:
             json_obj (Dict[str, Any]): Dictionary representation of serializable
                 payload specs.
+
+        Raises:
+            KeyError: If the dictionary is missing keys.
         """
 
         if json_obj is None:

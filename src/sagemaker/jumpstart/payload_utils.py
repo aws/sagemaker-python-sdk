@@ -10,11 +10,11 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""This module stores payload utilities for SageMaker JumpStart."""
+"""This module stores stores inference payload utilities for JumpStart models."""
 from __future__ import absolute_import
 import base64
 import json
-from typing import Any, Optional, Union
+from typing import Optional, Union
 import re
 import boto3
 
@@ -50,14 +50,14 @@ class PayloadSerializer:
         self,
         payload_str: str,
     ) -> bytes:
-        """Returns bytes object corresponding to referenced s3 object.
+        """Returns bytes object corresponding to referenced S3 object.
 
         Raises:
             ValueError: If the raw bytes payload is not formatted correctly.
         """
         s3_keys = re.compile(S3_BYTES_REGEX).findall(payload_str)
         if len(s3_keys) != 1:
-            raise ValueError(f"Invalid bytes payload: {payload_str}")
+            raise ValueError("Invalid bytes payload.")
 
         s3_key = s3_keys[0]
         serialized_s3_object = JumpStartS3Accessor.get_object_cached(
@@ -70,7 +70,10 @@ class PayloadSerializer:
         self,
         payload: str,
     ) -> str:
-        """Embeds s3 references in string payloads."""
+        """Inserts serialized S3 content into string payload.
+
+        If no S3 content is embedded in payload, original string is returned.
+        """
         return self._embed_s3_b64_references_in_str_payload(payload_body=payload)
 
     def _embed_s3_b64_references_in_str_payload(
@@ -98,10 +101,12 @@ class PayloadSerializer:
     def embed_s3_references_in_json_payload(
         self, payload_body: Union[list, dict, str, int, float]
     ) -> Union[list, dict, str, int, float]:
-        """Finds all s3 references in payload and embeds serialized s3 data.
+        """Finds all S3 references in payload and embeds serialized S3 data.
 
-        S3 bucket is assumed to be the default JumpStart content bucket. If no s3 references
-        are found, the payload is returned un-modified.
+        If no S3 references are found, the payload is returned un-modified.
+
+        Raises:
+            ValueError: If the payload has an unrecognized type.
         """
         if isinstance(payload_body, str):
             return self.embed_s3_references_in_str_payload(payload_body)
@@ -116,8 +121,12 @@ class PayloadSerializer:
             }
         raise ValueError(f"Payload has unrecognized type: {type(payload_body)}")
 
-    def serialize(self, payload: JumpStartSerializablePayload) -> Any:
-        """Returns payload bytes that can be inputted to inference endpoint."""
+    def serialize(self, payload: JumpStartSerializablePayload) -> Union[str, bytes]:
+        """Returns payload string or bytes that can be inputted to inference endpoint.
+
+        Raises:
+            ValueError: If the payload has an unrecognized type.
+        """
         content_type = MIMEType.from_suffixed_type(payload.content_type)
         body = payload.body
 

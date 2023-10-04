@@ -27,7 +27,7 @@ from sagemaker.session import Session
 logger = logging.getLogger(__name__)
 
 
-def retrieve_samples(
+def retrieve_options(
     region: Optional[str] = None,
     model_id: Optional[str] = None,
     model_version: Optional[str] = None,
@@ -78,7 +78,7 @@ def retrieve_samples(
         Dict[str, JumpStartSerializablePayload]
     ] = artifacts._retrieve_default_payloads(
         model_id,
-        model_version,  # type: ignore
+        model_version,
         region,
         tolerate_vulnerable_model,
         tolerate_deprecated_model,
