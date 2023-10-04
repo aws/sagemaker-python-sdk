@@ -108,6 +108,16 @@ class TtlDuration(Config):
         )
 
 
+class OnlineStoreStorageTypeEnum(Enum):
+    """Enum of storage types for online store.
+
+    The online store storage types can be Standard or InMemory.
+    """
+
+    STANDARD = "Standard"
+    IN_MEMORY = "InMemory"
+
+
 @attr.s
 class OnlineStoreConfig(Config):
     """OnlineStoreConfig for FeatureStore.
@@ -121,6 +131,7 @@ class OnlineStoreConfig(Config):
     enable_online_store: bool = attr.ib(default=True)
     online_store_security_config: OnlineStoreSecurityConfig = attr.ib(default=None)
     ttl_duration: TtlDuration = attr.ib(default=None)
+    storage_type: OnlineStoreStorageTypeEnum = attr.ib(default=None)
 
     def to_dict(self) -> Dict[str, Any]:
         """Construct a dictionary based on the attributes.
@@ -132,6 +143,7 @@ class OnlineStoreConfig(Config):
             EnableOnlineStore=self.enable_online_store,
             SecurityConfig=self.online_store_security_config,
             TtlDuration=self.ttl_duration,
+            StorageType=self.storage_type.value if self.storage_type else None,
         )
 
 
@@ -254,10 +266,13 @@ class FeatureValue(Config):
     Attributes:
         feature_name (str): name of the Feature.
         value_as_string (str): value of the Feature in string form.
+        value_as_string_list (List[str]): value of the Feature in string list
+        form used for collection type.
     """
 
     feature_name: str = attr.ib(default=None)
     value_as_string: str = attr.ib(default=None)
+    value_as_string_list: List[str] = attr.ib(default=None)
 
     def to_dict(self) -> Dict[str, Any]:
         """Construct a dictionary based on the attributes provided.
@@ -268,6 +283,7 @@ class FeatureValue(Config):
         return Config.construct_dict(
             FeatureName=self.feature_name,
             ValueAsString=self.value_as_string,
+            ValueAsStringList=self.value_as_string_list,
         )
 
 
