@@ -54,7 +54,6 @@ ENTRY_POINT_INFERENCE = "inference.py"
 SCRIPT_URI = "s3://codebucket/someprefix/sourcedir.tar.gz"
 IMAGE_URI = "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.9.0-gpu-py38"
 
-
 MODEL_DESCRIPTION = "a description"
 
 SUPPORTED_REALTIME_INFERENCE_INSTANCE_TYPES = ["ml.m4.xlarge"]

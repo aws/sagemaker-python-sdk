@@ -1,5 +1,35 @@
 # Changelog
 
+## v2.190.0 (2023-10-04)
+
+### Features
+
+ * Add support for in-memory feature groups and collection type features in Feature Store.
+
+### Bug Fixes and Other Changes
+
+ * chore: xfail resource in use failure for specific test
+ * Add missing API docs for processors
+
+### Documentation Changes
+
+ * Bring back (de)serializers documentation
+ * Add missing AirFlow operators + link to airflow documentation
+
+## v2.189.0 (2023-10-03)
+
+### Features
+
+ * add feature processor APIs to public doc
+ * s3 prefix model data for JumpStartModel
+ * Model Package support for updating approval
+
+### Bug Fixes and Other Changes
+
+ * Add bucket owner check
+ * transform step  unit test
+ * Release TGI 1.1.0 Image
+
 ## v2.188.0 (2023-09-26)
 
 ### Features

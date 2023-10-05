@@ -14,16 +14,23 @@
 from __future__ import absolute_import
 
 from typing import Callable
+from pyspark.sql import DataFrame
 
 import pytest
 
 import test_data_helpers as tdh
+import string
+import random
 from mock import Mock
 
 from sagemaker.feature_store.feature_processor._validation import (
     SparkUDFSignatureValidator,
     Validator,
     ValidatorChain,
+    BaseDataSourceValidator,
+)
+from sagemaker.feature_store.feature_processor._data_source import (
+    BaseDataSource,
 )
 
 
@@ -148,3 +155,40 @@ def test_spark_udf_signature_validator_udf_invalid_non_input_position():
             return None
 
         SparkUDFSignatureValidator().validate(invalid_spark_position, fp_config)
+
+
+@pytest.mark.parametrize(
+    "data_source_name, data_source_unique_id, error_pattern",
+    [
+        ("$_invalid_source", "unique_id", "data_source_name of input does not match pattern '.*'."),
+        ("", "unique_id", "data_source_name of input does not match pattern '.*'."),
+        (
+            "source",
+            "".join(random.choices(string.ascii_uppercase, k=2050)),
+            "data_source_unique_id of input does not match pattern '.*'.",
+        ),
+        ("source", "", "data_source_unique_id of input does not match pattern '.*'."),
+    ],
+)
+def test_spark_udf_signature_validator_udf_invalid_base_data_source(
+    data_source_name, data_source_unique_id, error_pattern
+):
+    class TestInValidCustomDataSource(BaseDataSource):
+
+        data_source_name = None
+        data_source_unique_id = None
+
+        def read_data(self, spark, params) -> DataFrame:
+            return None
+
+    test_data_source = TestInValidCustomDataSource()
+    test_data_source.data_source_name = data_source_name
+    test_data_source.data_source_unique_id = data_source_unique_id
+
+    fp_config = tdh.create_fp_config(inputs=[test_data_source])
+
+    def udf(input_data_source, params, spark):
+        return None
+
+    with pytest.raises(ValueError, match=error_pattern):
+        BaseDataSourceValidator().validate(udf, fp_config)

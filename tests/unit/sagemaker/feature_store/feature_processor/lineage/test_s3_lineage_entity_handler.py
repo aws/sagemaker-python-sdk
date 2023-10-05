@@ -24,6 +24,7 @@ from test_constants import (
     TRANSFORMATION_CODE_ARTIFACT_1,
     TRANSFORMATION_CODE_INPUT_1,
     LAST_UPDATE_TIME,
+    MockDataSource,
 )
 from test_pipeline_lineage_entity_handler import SAGEMAKER_SESSION_MOCK
 
@@ -88,6 +89,60 @@ def test_retrieve_raw_data_artifact_when_artifact_does_not_exist():
         source_uri=raw_data.s3_uri,
         artifact_type="DataSet",
         artifact_name="sm-fs-fe-raw-data",
+        properties=None,
+        source_types=None,
+        sagemaker_session=SAGEMAKER_SESSION_MOCK,
+    )
+
+
+def test_retrieve_user_defined_raw_data_artifact_when_artifact_already_exist():
+    data_source = MockDataSource()
+    with patch.object(Artifact, "list", return_value=[ARTIFACT_SUMMARY]) as artifact_list_method:
+        with patch.object(Artifact, "load", return_value=ARTIFACT_RESULT) as artifact_load_method:
+            with patch.object(
+                Artifact, "create", return_value=ARTIFACT_RESULT
+            ) as artifact_create_method:
+                result = S3LineageEntityHandler.retrieve_raw_data_artifact(
+                    raw_data=data_source, sagemaker_session=SAGEMAKER_SESSION_MOCK
+                )
+
+    assert result == ARTIFACT_RESULT
+
+    artifact_list_method.assert_called_once_with(
+        source_uri=data_source.data_source_unique_id, sagemaker_session=SAGEMAKER_SESSION_MOCK
+    )
+
+    artifact_load_method.assert_called_once_with(
+        artifact_arn=ARTIFACT_SUMMARY.artifact_arn,
+        sagemaker_session=SAGEMAKER_SESSION_MOCK,
+    )
+
+    artifact_create_method.assert_not_called()
+
+
+def test_retrieve_user_defined_raw_data_artifact_when_artifact_does_not_exist():
+    data_source = MockDataSource()
+    with patch.object(Artifact, "list", return_value=[]) as artifact_list_method:
+        with patch.object(Artifact, "load", return_value=ARTIFACT_RESULT) as artifact_load_method:
+            with patch.object(
+                Artifact, "create", return_value=ARTIFACT_RESULT
+            ) as artifact_create_method:
+                result = S3LineageEntityHandler.retrieve_raw_data_artifact(
+                    raw_data=data_source, sagemaker_session=SAGEMAKER_SESSION_MOCK
+                )
+
+    assert result == ARTIFACT_RESULT
+
+    artifact_list_method.assert_called_once_with(
+        source_uri=data_source.data_source_unique_id, sagemaker_session=SAGEMAKER_SESSION_MOCK
+    )
+
+    artifact_load_method.assert_not_called()
+
+    artifact_create_method.assert_called_once_with(
+        source_uri=data_source.data_source_unique_id,
+        artifact_type="DataSet",
+        artifact_name=data_source.data_source_name,
         properties=None,
         source_types=None,
         sagemaker_session=SAGEMAKER_SESSION_MOCK,
