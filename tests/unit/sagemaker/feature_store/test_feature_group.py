@@ -24,6 +24,9 @@ from sagemaker.feature_store.feature_definition import (
     IntegralFeatureDefinition,
     StringFeatureDefinition,
     FeatureTypeEnum,
+    VectorCollectionType,
+    SetCollectionType,
+    ListCollectionType,
 )
 from sagemaker.feature_store.feature_group import (
     FeatureGroup,
@@ -36,6 +39,7 @@ from sagemaker.feature_store.inputs import (
     DeletionModeEnum,
     TtlDuration,
     OnlineStoreConfigUpdate,
+    OnlineStoreStorageTypeEnum,
 )
 
 from tests.unit import SAGEMAKER_CONFIG_FEATURE_GROUP
@@ -146,7 +150,10 @@ def test_feature_store_create_with_config_injection(
         },
         offline_store_config={
             "DisableGlueTableCreation": False,
-            "S3StorageConfig": {"S3Uri": s3_uri, "KmsKeyId": expected_offline_store_kms_key_id},
+            "S3StorageConfig": {
+                "S3Uri": s3_uri,
+                "KmsKeyId": expected_offline_store_kms_key_id,
+            },
         },
     )
 
@@ -233,6 +240,68 @@ def test_feature_store_create_online_only(
         description=None,
         tags=None,
         online_store_config={"EnableOnlineStore": True},
+    )
+
+
+def test_feature_store_create_online_only_with_in_memory(
+    sagemaker_session_mock, role_arn, feature_group_dummy_definitions
+):
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
+    feature_group.feature_definitions = feature_group_dummy_definitions
+    feature_group.create(
+        s3_uri=False,
+        record_identifier_name="feature1",
+        event_time_feature_name="feature2",
+        role_arn=role_arn,
+        enable_online_store=True,
+        online_store_storage_type=OnlineStoreStorageTypeEnum.IN_MEMORY,
+    )
+    sagemaker_session_mock.create_feature_group.assert_called_with(
+        feature_group_name="MyFeatureGroup",
+        record_identifier_name="feature1",
+        event_time_feature_name="feature2",
+        feature_definitions=[fd.to_dict() for fd in feature_group_dummy_definitions],
+        role_arn=role_arn,
+        description=None,
+        tags=None,
+        online_store_config={"EnableOnlineStore": True, "StorageType": "InMemory"},
+    )
+
+
+def test_feature_store_create_with_in_memory_collection_types(
+    sagemaker_session_mock, role_arn, feature_group_dummy_definitions
+):
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
+    feature_definition_with_collection = [
+        FractionalFeatureDefinition(feature_name="feature1"),
+        IntegralFeatureDefinition(feature_name="feature2"),
+        StringFeatureDefinition(feature_name="feature3"),
+        FractionalFeatureDefinition(
+            feature_name="feature4",
+            collection_type=VectorCollectionType(dimension=2000),
+        ),
+        IntegralFeatureDefinition(feature_name="feature5", collection_type=SetCollectionType()),
+        StringFeatureDefinition(feature_name="feature6", collection_type=ListCollectionType()),
+    ]
+    feature_group.feature_definitions = feature_definition_with_collection
+
+    feature_group.create(
+        s3_uri=False,
+        record_identifier_name="feature1",
+        event_time_feature_name="feature2",
+        role_arn=role_arn,
+        enable_online_store=True,
+        online_store_storage_type=OnlineStoreStorageTypeEnum.IN_MEMORY,
+    )
+    sagemaker_session_mock.create_feature_group.assert_called_with(
+        feature_group_name="MyFeatureGroup",
+        record_identifier_name="feature1",
+        event_time_feature_name="feature2",
+        feature_definitions=[fd.to_dict() for fd in feature_definition_with_collection],
+        role_arn=role_arn,
+        description=None,
+        tags=None,
+        online_store_config={"EnableOnlineStore": True, "StorageType": "InMemory"},
     )
 
 
@@ -341,7 +410,9 @@ def test_put_record_ttl_duration(sagemaker_session_mock):
     ttl_duration = TtlDuration(unit="Minutes", value=123)
     feature_group.put_record(record=[], ttl_duration=ttl_duration)
     sagemaker_session_mock.put_record.assert_called_with(
-        feature_group_name="MyFeatureGroup", record=[], ttl_duration=ttl_duration.to_dict()
+        feature_group_name="MyFeatureGroup",
+        record=[],
+        ttl_duration=ttl_duration.to_dict(),
     )
 
 
@@ -709,7 +780,9 @@ def query(sagemaker_session_mock):
 def test_athena_query_run(sagemaker_session_mock, query):
     sagemaker_session_mock.start_query_execution.return_value = {"QueryExecutionId": "query_id"}
     query.run(
-        query_string="query", output_location="s3://some-bucket/some-path", workgroup="workgroup"
+        query_string="query",
+        output_location="s3://some-bucket/some-path",
+        workgroup="workgroup",
     )
     sagemaker_session_mock.start_query_execution.assert_called_with(
         catalog="catalog",

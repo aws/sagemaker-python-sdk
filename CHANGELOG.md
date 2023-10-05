@@ -1,5 +1,21 @@
 # Changelog
 
+## v2.190.0 (2023-10-04)
+
+### Features
+
+ * Add support for in-memory feature groups and collection type features in Feature Store.
+
+### Bug Fixes and Other Changes
+
+ * chore: xfail resource in use failure for specific test
+ * Add missing API docs for processors
+
+### Documentation Changes
+
+ * Bring back (de)serializers documentation
+ * Add missing AirFlow operators + link to airflow documentation
+
 ## v2.189.0 (2023-10-03)
 
 ### Features
