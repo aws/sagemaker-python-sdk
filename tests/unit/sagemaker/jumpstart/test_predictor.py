@@ -72,6 +72,13 @@ def test_jumpstart_serializable_payload_with_predictor(
     js_predictor.sagemaker_session.sagemaker_runtime_client.invoke_endpoint = invoke_endpoint_mock
     js_predictor._handle_response = mock.Mock()
 
+    assert str(default_payload) == (
+        "JumpStartSerializablePayload: {'content_type': 'application/json', 'accept': 'application/json'"
+        ", 'body': {'prompt': 'a dog', 'num_images_per_prompt': 2, 'num_inference_steps':"
+        " 20, 'guidance_scale': 7.5, 'seed': 43, 'eta': 0.7, 'image':"
+        " '$s3_b64<inference-notebook-assets/inpainting_cow.jpg>'}}"
+    )
+
     js_predictor.predict(default_payload)
 
     invoke_endpoint_mock.assert_called_once_with(
