@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 from functools import lru_cache
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 import feature_store_pyspark
 import feature_store_pyspark.FeatureStoreManager as fsm
@@ -34,14 +34,19 @@ class SparkSessionFactory:
     instance throughout the application.
     """
 
-    def __init__(self, environment_helper: EnvironmentHelper) -> None:
+    def __init__(
+        self, environment_helper: EnvironmentHelper, spark_config: Dict[str, str] = None
+    ) -> None:
         """Initialize the SparkSessionFactory.
 
         Args:
             environment_helper (EnvironmentHelper): A helper class to determine the current
                 execution.
+            spark_config (Dict[str, str]): The Spark configuration that will be passed to the
+                initialization of Spark session.
         """
         self.environment_helper = environment_helper
+        self.spark_config = spark_config
 
     @property
     @lru_cache()
@@ -106,24 +111,32 @@ class SparkSessionFactory:
             ("spark.port.maxRetries", "50"),
         ]
 
+        if self.spark_config:
+            spark_configs.extend(self.spark_config.items())
+
         if not is_training_job:
+            fp_spark_jars = feature_store_pyspark.classpath_jars()
+            fp_spark_packages = [
+                "org.apache.hadoop:hadoop-aws:3.3.1",
+                "org.apache.hadoop:hadoop-common:3.3.1",
+            ]
+
+            if self.spark_config and "spark.jars" in self.spark_config:
+                fp_spark_jars.append(self.spark_config.get("spark.jars"))
+
+            if self.spark_config and "spark.jars.packages" in self.spark_config:
+                fp_spark_packages.append(self.spark_config.get("spark.jars.packages"))
+
             spark_configs.extend(
                 (
-                    (
-                        "spark.jars",
-                        ",".join(feature_store_pyspark.classpath_jars()),
-                    ),
+                    ("spark.jars", ",".join(fp_spark_jars)),
                     (
                         "spark.jars.packages",
-                        ",".join(
-                            [
-                                "org.apache.hadoop:hadoop-aws:3.3.1",
-                                "org.apache.hadoop:hadoop-common:3.3.1",
-                            ]
-                        ),
+                        ",".join(fp_spark_packages),
                     ),
                 )
             )
+
         return spark_configs
 
     def _get_jsc_hadoop_configs(self) -> List[Tuple[str, str]]:

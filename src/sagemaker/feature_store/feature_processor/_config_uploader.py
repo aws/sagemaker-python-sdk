@@ -31,7 +31,7 @@ from sagemaker.remote_function.job import (
     _JobSettings,
     RUNTIME_SCRIPTS_CHANNEL_NAME,
     REMOTE_FUNCTION_WORKSPACE,
-    SPARK_CONF_WORKSPACE,
+    SPARK_CONF_CHANNEL_NAME,
     _prepare_and_upload_spark_dependent_files,
 )
 from sagemaker.remote_function.runtime_environment.runtime_environment_manager import (
@@ -99,7 +99,7 @@ class ConfigUploader:
             )
 
         if config_file_s3_uri:
-            input_data_config[SPARK_CONF_WORKSPACE] = TrainingInput(
+            input_data_config[SPARK_CONF_CHANNEL_NAME] = TrainingInput(
                 s3_data=config_file_s3_uri,
                 s3_data_type="S3Prefix",
                 distribution=S3_DATA_DISTRIBUTION_TYPE,
