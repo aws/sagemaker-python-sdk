@@ -551,3 +551,4 @@ def get_realtime_recommendation_id(recommendation_list):
             ),
             None,
         )
+
