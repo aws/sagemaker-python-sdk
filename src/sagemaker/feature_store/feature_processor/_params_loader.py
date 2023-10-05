@@ -72,7 +72,7 @@ class ParamsLoader:
                 feature_processor decorator.
 
         Returns:
-            Dict[str, Union[str, Dict]]: A dictionary containin both user provided
+            Dict[str, Union[str, Dict]]: A dictionary that contains both user provided
                 parameters (feature_processor argument) and system parameters.
         """
         return {

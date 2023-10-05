@@ -21,6 +21,7 @@ from sagemaker.feature_store.feature_processor._data_source import (
     CSVDataSource,
     FeatureGroupDataSource,
     ParquetDataSource,
+    BaseDataSource,
 )
 from sagemaker.feature_store.feature_processor._enums import FeatureProcessorMode
 
@@ -37,21 +38,27 @@ class FeatureProcessorConfig:
     It only serves as an immutable data class.
     """
 
-    inputs: Sequence[Union[FeatureGroupDataSource, CSVDataSource, ParquetDataSource]] = attr.ib()
+    inputs: Sequence[
+        Union[FeatureGroupDataSource, CSVDataSource, ParquetDataSource, BaseDataSource]
+    ] = attr.ib()
     output: str = attr.ib()
     mode: FeatureProcessorMode = attr.ib()
     target_stores: Optional[List[str]] = attr.ib()
     parameters: Optional[Dict[str, Union[str, Dict]]] = attr.ib()
     enable_ingestion: bool = attr.ib()
+    spark_config: Dict[str, str] = attr.ib()
 
     @staticmethod
     def create(
-        inputs: Sequence[Union[FeatureGroupDataSource, CSVDataSource, ParquetDataSource]],
+        inputs: Sequence[
+            Union[FeatureGroupDataSource, CSVDataSource, ParquetDataSource, BaseDataSource]
+        ],
         output: str,
         mode: FeatureProcessorMode,
         target_stores: Optional[List[str]],
         parameters: Optional[Dict[str, Union[str, Dict]]],
         enable_ingestion: bool,
+        spark_config: Dict[str, str],
     ) -> "FeatureProcessorConfig":
         """Static initializer."""
         return FeatureProcessorConfig(
@@ -61,4 +68,5 @@ class FeatureProcessorConfig:
             target_stores=target_stores,
             parameters=parameters,
             enable_ingestion=enable_ingestion,
+            spark_config=spark_config,
         )

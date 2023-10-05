@@ -119,6 +119,7 @@ def test_create_lineage_when_no_lineage_exists_with_fg_only():
             RAW_DATA_INPUT_ARTIFACTS[0],
             RAW_DATA_INPUT_ARTIFACTS[1],
             RAW_DATA_INPUT_ARTIFACTS[2],
+            RAW_DATA_INPUT_ARTIFACTS[3],
         ],
     ) as retrieve_raw_data_artifact_method, patch.object(
         S3LineageEntityHandler,
@@ -264,6 +265,7 @@ def test_create_lineage_when_no_lineage_exists_with_raw_data_only():
             RAW_DATA_INPUT_ARTIFACTS[0],
             RAW_DATA_INPUT_ARTIFACTS[1],
             RAW_DATA_INPUT_ARTIFACTS[2],
+            RAW_DATA_INPUT_ARTIFACTS[3],
         ],
     ) as retrieve_raw_data_artifact_method, patch.object(
         S3LineageEntityHandler,
@@ -329,9 +331,10 @@ def test_create_lineage_when_no_lineage_exists_with_raw_data_only():
             call(raw_data=RAW_DATA_INPUT[0], sagemaker_session=SAGEMAKER_SESSION_MOCK),
             call(raw_data=RAW_DATA_INPUT[1], sagemaker_session=SAGEMAKER_SESSION_MOCK),
             call(raw_data=RAW_DATA_INPUT[2], sagemaker_session=SAGEMAKER_SESSION_MOCK),
+            call(raw_data=RAW_DATA_INPUT[3], sagemaker_session=SAGEMAKER_SESSION_MOCK),
         ]
     )
-    assert 3 == retrieve_raw_data_artifact_method.call_count
+    assert 4 == retrieve_raw_data_artifact_method.call_count
 
     create_transformation_code_artifact_method.assert_called_once_with(
         transformation_code=TRANSFORMATION_CODE_INPUT_1,
@@ -411,6 +414,7 @@ def test_create_lineage_when_no_lineage_exists_with_fg_and_raw_data_with_tags():
             RAW_DATA_INPUT_ARTIFACTS[0],
             RAW_DATA_INPUT_ARTIFACTS[1],
             RAW_DATA_INPUT_ARTIFACTS[2],
+            RAW_DATA_INPUT_ARTIFACTS[3],
         ],
     ) as retrieve_raw_data_artifact_method, patch.object(
         S3LineageEntityHandler,
@@ -489,9 +493,10 @@ def test_create_lineage_when_no_lineage_exists_with_fg_and_raw_data_with_tags():
             call(raw_data=RAW_DATA_INPUT[0], sagemaker_session=SAGEMAKER_SESSION_MOCK),
             call(raw_data=RAW_DATA_INPUT[1], sagemaker_session=SAGEMAKER_SESSION_MOCK),
             call(raw_data=RAW_DATA_INPUT[2], sagemaker_session=SAGEMAKER_SESSION_MOCK),
+            call(raw_data=RAW_DATA_INPUT[3], sagemaker_session=SAGEMAKER_SESSION_MOCK),
         ]
     )
-    assert 3 == retrieve_raw_data_artifact_method.call_count
+    assert 4 == retrieve_raw_data_artifact_method.call_count
 
     create_transformation_code_artifact_method.assert_called_once_with(
         transformation_code=TRANSFORMATION_CODE_INPUT_1,
@@ -570,6 +575,7 @@ def test_create_lineage_when_no_lineage_exists_with_no_transformation_code():
             RAW_DATA_INPUT_ARTIFACTS[0],
             RAW_DATA_INPUT_ARTIFACTS[1],
             RAW_DATA_INPUT_ARTIFACTS[2],
+            RAW_DATA_INPUT_ARTIFACTS[3],
         ],
     ) as retrieve_raw_data_artifact_method, patch.object(
         S3LineageEntityHandler,
@@ -648,9 +654,10 @@ def test_create_lineage_when_no_lineage_exists_with_no_transformation_code():
             call(raw_data=RAW_DATA_INPUT[0], sagemaker_session=SAGEMAKER_SESSION_MOCK),
             call(raw_data=RAW_DATA_INPUT[1], sagemaker_session=SAGEMAKER_SESSION_MOCK),
             call(raw_data=RAW_DATA_INPUT[2], sagemaker_session=SAGEMAKER_SESSION_MOCK),
+            call(raw_data=RAW_DATA_INPUT[3], sagemaker_session=SAGEMAKER_SESSION_MOCK),
         ]
     )
-    assert 3 == retrieve_raw_data_artifact_method.call_count
+    assert 4 == retrieve_raw_data_artifact_method.call_count
 
     create_transformation_code_artifact_method.assert_called_once_with(
         transformation_code=None,
@@ -727,6 +734,7 @@ def test_create_lineage_when_already_exist_with_no_version_change():
             RAW_DATA_INPUT_ARTIFACTS[0],
             RAW_DATA_INPUT_ARTIFACTS[1],
             RAW_DATA_INPUT_ARTIFACTS[2],
+            RAW_DATA_INPUT_ARTIFACTS[3],
         ],
     ) as retrieve_raw_data_artifact_method, patch.object(
         S3LineageEntityHandler,
@@ -808,9 +816,10 @@ def test_create_lineage_when_already_exist_with_no_version_change():
             call(raw_data=RAW_DATA_INPUT[0], sagemaker_session=SAGEMAKER_SESSION_MOCK),
             call(raw_data=RAW_DATA_INPUT[1], sagemaker_session=SAGEMAKER_SESSION_MOCK),
             call(raw_data=RAW_DATA_INPUT[2], sagemaker_session=SAGEMAKER_SESSION_MOCK),
+            call(raw_data=RAW_DATA_INPUT[3], sagemaker_session=SAGEMAKER_SESSION_MOCK),
         ]
     )
-    assert 3 == retrieve_raw_data_artifact_method.call_count
+    assert 4 == retrieve_raw_data_artifact_method.call_count
 
     create_transformation_code_artifact_method.assert_called_once_with(
         transformation_code=TRANSFORMATION_CODE_INPUT_1,
@@ -1133,6 +1142,7 @@ def test_create_lineage_when_already_exist_with_changed_input_fg():
             RAW_DATA_INPUT_ARTIFACTS[0],
             RAW_DATA_INPUT_ARTIFACTS[1],
             RAW_DATA_INPUT_ARTIFACTS[2],
+            RAW_DATA_INPUT_ARTIFACTS[3],
         ],
     ) as retrieve_raw_data_artifact_method, patch.object(
         S3LineageEntityHandler,
@@ -1210,9 +1220,10 @@ def test_create_lineage_when_already_exist_with_changed_input_fg():
             call(raw_data=RAW_DATA_INPUT[0], sagemaker_session=SAGEMAKER_SESSION_MOCK),
             call(raw_data=RAW_DATA_INPUT[1], sagemaker_session=SAGEMAKER_SESSION_MOCK),
             call(raw_data=RAW_DATA_INPUT[2], sagemaker_session=SAGEMAKER_SESSION_MOCK),
+            call(raw_data=RAW_DATA_INPUT[3], sagemaker_session=SAGEMAKER_SESSION_MOCK),
         ]
     )
-    assert 3 == retrieve_raw_data_artifact_method.call_count
+    assert 4 == retrieve_raw_data_artifact_method.call_count
 
     create_transformation_code_artifact_method.assert_called_once_with(
         transformation_code=TRANSFORMATION_CODE_INPUT_1,
@@ -1349,6 +1360,7 @@ def test_create_lineage_when_already_exist_with_changed_output_fg():
             RAW_DATA_INPUT_ARTIFACTS[0],
             RAW_DATA_INPUT_ARTIFACTS[1],
             RAW_DATA_INPUT_ARTIFACTS[2],
+            RAW_DATA_INPUT_ARTIFACTS[3],
         ],
     ) as retrieve_raw_data_artifact_method, patch.object(
         S3LineageEntityHandler,
@@ -1430,9 +1442,10 @@ def test_create_lineage_when_already_exist_with_changed_output_fg():
             call(raw_data=RAW_DATA_INPUT[0], sagemaker_session=SAGEMAKER_SESSION_MOCK),
             call(raw_data=RAW_DATA_INPUT[1], sagemaker_session=SAGEMAKER_SESSION_MOCK),
             call(raw_data=RAW_DATA_INPUT[2], sagemaker_session=SAGEMAKER_SESSION_MOCK),
+            call(raw_data=RAW_DATA_INPUT[3], sagemaker_session=SAGEMAKER_SESSION_MOCK),
         ]
     )
-    assert 3 == retrieve_raw_data_artifact_method.call_count
+    assert 4 == retrieve_raw_data_artifact_method.call_count
 
     create_transformation_code_artifact_method.assert_called_once_with(
         transformation_code=TRANSFORMATION_CODE_INPUT_1,
@@ -1569,6 +1582,7 @@ def test_create_lineage_when_already_exist_with_changed_transformation_code():
             RAW_DATA_INPUT_ARTIFACTS[0],
             RAW_DATA_INPUT_ARTIFACTS[1],
             RAW_DATA_INPUT_ARTIFACTS[2],
+            RAW_DATA_INPUT_ARTIFACTS[3],
         ],
     ) as retrieve_raw_data_artifact_method, patch.object(
         S3LineageEntityHandler,
@@ -1650,9 +1664,10 @@ def test_create_lineage_when_already_exist_with_changed_transformation_code():
             call(raw_data=RAW_DATA_INPUT[0], sagemaker_session=SAGEMAKER_SESSION_MOCK),
             call(raw_data=RAW_DATA_INPUT[1], sagemaker_session=SAGEMAKER_SESSION_MOCK),
             call(raw_data=RAW_DATA_INPUT[2], sagemaker_session=SAGEMAKER_SESSION_MOCK),
+            call(raw_data=RAW_DATA_INPUT[3], sagemaker_session=SAGEMAKER_SESSION_MOCK),
         ]
     )
-    assert 3 == retrieve_raw_data_artifact_method.call_count
+    assert 4 == retrieve_raw_data_artifact_method.call_count
 
     create_transformation_code_artifact_method.assert_called_once_with(
         transformation_code=TRANSFORMATION_CODE_INPUT_2,
@@ -1769,6 +1784,7 @@ def test_create_lineage_when_already_exist_with_last_transformation_code_as_none
             RAW_DATA_INPUT_ARTIFACTS[0],
             RAW_DATA_INPUT_ARTIFACTS[1],
             RAW_DATA_INPUT_ARTIFACTS[2],
+            RAW_DATA_INPUT_ARTIFACTS[3],
         ],
     ) as retrieve_raw_data_artifact_method, patch.object(
         S3LineageEntityHandler,
@@ -1850,9 +1866,10 @@ def test_create_lineage_when_already_exist_with_last_transformation_code_as_none
             call(raw_data=RAW_DATA_INPUT[0], sagemaker_session=SAGEMAKER_SESSION_MOCK),
             call(raw_data=RAW_DATA_INPUT[1], sagemaker_session=SAGEMAKER_SESSION_MOCK),
             call(raw_data=RAW_DATA_INPUT[2], sagemaker_session=SAGEMAKER_SESSION_MOCK),
+            call(raw_data=RAW_DATA_INPUT[3], sagemaker_session=SAGEMAKER_SESSION_MOCK),
         ]
     )
-    assert 3 == retrieve_raw_data_artifact_method.call_count
+    assert 4 == retrieve_raw_data_artifact_method.call_count
 
     create_transformation_code_artifact_method.assert_called_once_with(
         transformation_code=TRANSFORMATION_CODE_INPUT_2,
@@ -1957,6 +1974,7 @@ def test_create_lineage_when_already_exist_with_all_previous_transformation_code
             RAW_DATA_INPUT_ARTIFACTS[0],
             RAW_DATA_INPUT_ARTIFACTS[1],
             RAW_DATA_INPUT_ARTIFACTS[2],
+            RAW_DATA_INPUT_ARTIFACTS[3],
         ],
     ) as retrieve_raw_data_artifact_method, patch.object(
         S3LineageEntityHandler,
@@ -2037,9 +2055,10 @@ def test_create_lineage_when_already_exist_with_all_previous_transformation_code
             call(raw_data=RAW_DATA_INPUT[0], sagemaker_session=SAGEMAKER_SESSION_MOCK),
             call(raw_data=RAW_DATA_INPUT[1], sagemaker_session=SAGEMAKER_SESSION_MOCK),
             call(raw_data=RAW_DATA_INPUT[2], sagemaker_session=SAGEMAKER_SESSION_MOCK),
+            call(raw_data=RAW_DATA_INPUT[3], sagemaker_session=SAGEMAKER_SESSION_MOCK),
         ]
     )
-    assert 3 == retrieve_raw_data_artifact_method.call_count
+    assert 4 == retrieve_raw_data_artifact_method.call_count
 
     create_transformation_code_artifact_method.assert_called_once_with(
         transformation_code=TRANSFORMATION_CODE_INPUT_2,
@@ -2141,6 +2160,7 @@ def test_create_lineage_when_already_exist_with_removed_transformation_code():
             RAW_DATA_INPUT_ARTIFACTS[0],
             RAW_DATA_INPUT_ARTIFACTS[1],
             RAW_DATA_INPUT_ARTIFACTS[2],
+            RAW_DATA_INPUT_ARTIFACTS[3],
         ],
     ) as retrieve_raw_data_artifact_method, patch.object(
         S3LineageEntityHandler,
@@ -2222,9 +2242,10 @@ def test_create_lineage_when_already_exist_with_removed_transformation_code():
             call(raw_data=RAW_DATA_INPUT[0], sagemaker_session=SAGEMAKER_SESSION_MOCK),
             call(raw_data=RAW_DATA_INPUT[1], sagemaker_session=SAGEMAKER_SESSION_MOCK),
             call(raw_data=RAW_DATA_INPUT[2], sagemaker_session=SAGEMAKER_SESSION_MOCK),
+            call(raw_data=RAW_DATA_INPUT[3], sagemaker_session=SAGEMAKER_SESSION_MOCK),
         ]
     )
-    assert 3 == retrieve_raw_data_artifact_method.call_count
+    assert 4 == retrieve_raw_data_artifact_method.call_count
 
     create_transformation_code_artifact_method.assert_called_once_with(
         transformation_code=None,
@@ -2471,6 +2492,7 @@ def test_upsert_tags_for_lineage_resources():
             RAW_DATA_INPUT_ARTIFACTS[0],
             RAW_DATA_INPUT_ARTIFACTS[1],
             RAW_DATA_INPUT_ARTIFACTS[2],
+            RAW_DATA_INPUT_ARTIFACTS[3],
         ],
     ) as retrieve_raw_data_artifact_method, patch.object(
         PipelineLineageEntityHandler,
@@ -2518,6 +2540,7 @@ def test_upsert_tags_for_lineage_resources():
             call(raw_data=RAW_DATA_INPUT[0], sagemaker_session=mock_session),
             call(raw_data=RAW_DATA_INPUT[1], sagemaker_session=mock_session),
             call(raw_data=RAW_DATA_INPUT[2], sagemaker_session=mock_session),
+            call(raw_data=RAW_DATA_INPUT[3], sagemaker_session=mock_session),
         ]
     )
 

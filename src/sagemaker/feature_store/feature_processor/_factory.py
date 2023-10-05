@@ -13,6 +13,7 @@
 """Contains static factory classes to instantiate complex objects for the FeatureProcessor."""
 from __future__ import absolute_import
 
+from typing import Dict
 from pyspark.sql import DataFrame
 
 from sagemaker.feature_store.feature_processor._enums import FeatureProcessorMode
@@ -41,6 +42,7 @@ from sagemaker.feature_store.feature_processor._validation import (
     InputValidator,
     SparkUDFSignatureValidator,
     InputOffsetValidator,
+    BaseDataSourceValidator,
     ValidatorChain,
 )
 
@@ -55,6 +57,7 @@ class ValidatorFactory:
             InputValidator(),
             FeatureProcessorArgValidator(),
             InputOffsetValidator(),
+            BaseDataSourceValidator(),
         ]
 
         mode = fp_config.mode
@@ -85,14 +88,19 @@ class UDFWrapperFactory:
         mode = fp_config.mode
 
         if FeatureProcessorMode.PYSPARK == mode:
-            return UDFWrapperFactory._get_spark_udf_wrapper()
+            return UDFWrapperFactory._get_spark_udf_wrapper(fp_config)
 
         raise ValueError(f"FeatureProcessorMode {mode} is not supported.")
 
     @staticmethod
-    def _get_spark_udf_wrapper() -> UDFWrapper[DataFrame]:
-        """Instantiate a new UDFWrapper for PySpark functions."""
-        spark_session_factory = UDFWrapperFactory._get_spark_session_factory()
+    def _get_spark_udf_wrapper(fp_config: FeatureProcessorConfig) -> UDFWrapper[DataFrame]:
+        """Instantiate a new UDFWrapper for PySpark functions.
+
+        Args:
+            fp_config (FeatureProcessorConfig): the configuration values for the feature_processor
+                decorator.
+        """
+        spark_session_factory = UDFWrapperFactory._get_spark_session_factory(fp_config.spark_config)
         feature_store_manager_factory = UDFWrapperFactory._get_feature_store_manager_factory()
 
         output_manager = UDFWrapperFactory._get_spark_output_receiver(feature_store_manager_factory)
@@ -131,7 +139,7 @@ class UDFWrapperFactory:
 
         Args:
             feature_store_manager_factory (FeatureStoreManagerFactory): A factory to provide
-                that provides a FeaturStoreManager that handles data ingestion to a Feature Group.
+                that provides a FeatureStoreManager that handles data ingestion to a Feature Group.
                 The factory lazily loads the FeatureStoreManager.
 
         Returns:
@@ -140,10 +148,18 @@ class UDFWrapperFactory:
         return SparkOutputReceiver(feature_store_manager_factory)
 
     @staticmethod
-    def _get_spark_session_factory() -> SparkSessionFactory:
-        """Instantiate a new SparkSessionFactory"""
+    def _get_spark_session_factory(spark_config: Dict[str, str]) -> SparkSessionFactory:
+        """Instantiate a new SparkSessionFactory
+
+        Args:
+            spark_config (Dict[str, str]): The Spark configuration that will be passed to the
+                initialization of Spark session.
+
+        Returns:
+            SparkSessionFactory: A Spark session factory instance.
+        """
         environment_helper = EnvironmentHelper()
-        return SparkSessionFactory(environment_helper)
+        return SparkSessionFactory(environment_helper, spark_config)
 
     @staticmethod
     def _get_feature_store_manager_factory() -> FeatureStoreManagerFactory:

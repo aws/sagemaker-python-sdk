@@ -73,6 +73,7 @@ from sagemaker.feature_store.feature_processor._data_source import (
     CSVDataSource,
     FeatureGroupDataSource,
     ParquetDataSource,
+    BaseDataSource,
 )
 
 logger = logging.getLogger(SAGEMAKER)
@@ -86,8 +87,8 @@ class FeatureProcessorLineageHandler:
         pipeline_name (str): Pipeline Name.
         pipeline_arn (str): The ARN of the Pipeline.
         pipeline (str): The details of the Pipeline.
-        inputs (Sequence[Union[FeatureGroupDataSource, CSVDataSource, ParquetDataSource]]):
-            The inputs to the Feature processor.
+        inputs (Sequence[Union[FeatureGroupDataSource, CSVDataSource, ParquetDataSource,
+            BaseDataSource]]): The inputs to the Feature processor.
         output (str): The output Feature Group.
         transformation_code (TransformationCode): The Transformation Code for Feature Processor.
         sagemaker_session (Session): Session object which manages interactions
@@ -99,9 +100,9 @@ class FeatureProcessorLineageHandler:
     pipeline_arn: str = attr.ib()
     pipeline: Dict = attr.ib()
     sagemaker_session: Session = attr.ib()
-    inputs: Sequence[Union[FeatureGroupDataSource, CSVDataSource, ParquetDataSource]] = attr.ib(
-        default=None
-    )
+    inputs: Sequence[
+        Union[FeatureGroupDataSource, CSVDataSource, ParquetDataSource, BaseDataSource]
+    ] = attr.ib(default=None)
     output: str = attr.ib(default=None)
     transformation_code: TransformationCode = attr.ib(default=None)
 
@@ -398,17 +399,24 @@ class FeatureProcessorLineageHandler:
             List[Artifact]: List of Raw Data Artifacts.
         """
         raw_data_artifacts: List[Artifact] = list()
-        raw_data_s3_uri_set: Set[str] = set()
+        raw_data_uri_set: Set[str] = set()
+
         for data_source in self.inputs:
-            if isinstance(data_source, (CSVDataSource, ParquetDataSource)):
-                if data_source.s3_uri not in raw_data_s3_uri_set:
-                    raw_data_s3_uri_set.add(data_source.s3_uri)
+            if isinstance(data_source, (CSVDataSource, ParquetDataSource, BaseDataSource)):
+                data_source_uri = (
+                    data_source.s3_uri
+                    if isinstance(data_source, (CSVDataSource, ParquetDataSource))
+                    else data_source.data_source_unique_id
+                )
+                if data_source_uri not in raw_data_uri_set:
+                    raw_data_uri_set.add(data_source_uri)
                     raw_data_artifacts.append(
                         S3LineageEntityHandler.retrieve_raw_data_artifact(
                             raw_data=data_source,
                             sagemaker_session=self.sagemaker_session,
                         )
                     )
+
         return raw_data_artifacts
 
     def _compare_upstream_raw_data(
