@@ -216,7 +216,6 @@ def test_add_jumpstart_tags_inference():
         inference_script_uri=inference_script_uri,
     ) == [{"Key": JumpStartTag.INFERENCE_MODEL_URI.value, "Value": inference_model_uri}]
 
-
     tags = []
     inference_model_uri = {"S3DataSource": {"S3Uri": random_jumpstart_s3_uri("random_key")}}
     inference_script_uri = "dfsdfs"
@@ -224,7 +223,26 @@ def test_add_jumpstart_tags_inference():
         tags=tags,
         inference_model_uri=inference_model_uri,
         inference_script_uri=inference_script_uri,
-    ) == [{"Key": JumpStartTag.INFERENCE_MODEL_URI.value, "Value": inference_model_uri["S3DataSource"]["S3Uri"]}]
+    ) == [
+        {
+            "Key": JumpStartTag.INFERENCE_MODEL_URI.value,
+            "Value": inference_model_uri["S3DataSource"]["S3Uri"],
+        }
+    ]
+
+    tags = []
+    inference_model_uri = {"S3DataSource": {"S3Uri": random_jumpstart_s3_uri("random_key/prefix/")}}
+    inference_script_uri = "dfsdfs"
+    assert utils.add_jumpstart_tags(
+        tags=tags,
+        inference_model_uri=inference_model_uri,
+        inference_script_uri=inference_script_uri,
+    ) == [
+        {
+            "Key": JumpStartTag.INFERENCE_MODEL_URI.value,
+            "Value": inference_model_uri["S3DataSource"]["S3Uri"],
+        }
+    ]
 
     tags = [{"Key": "some", "Value": "tag"}]
     inference_model_uri = random_jumpstart_s3_uri("random_key")
