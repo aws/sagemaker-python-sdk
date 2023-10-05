@@ -17,6 +17,8 @@ from sagemaker.feature_store.feature_processor._data_source import (  # noqa: F4
     CSVDataSource,
     FeatureGroupDataSource,
     ParquetDataSource,
+    BaseDataSource,
+    PySparkDataSource,
 )
 from sagemaker.feature_store.feature_processor._exceptions import (  # noqa: F401
     IngestionError,

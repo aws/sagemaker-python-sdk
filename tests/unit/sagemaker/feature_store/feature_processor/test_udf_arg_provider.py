@@ -15,19 +15,20 @@ from __future__ import absolute_import
 
 import pytest
 import test_data_helpers as tdh
-from mock import Mock
+from mock import Mock, patch
 from pyspark.sql import DataFrame, SparkSession
 
 from sagemaker.feature_store.feature_processor._input_loader import InputLoader
 from sagemaker.feature_store.feature_processor._params_loader import ParamsLoader
 from sagemaker.feature_store.feature_processor._spark_factory import SparkSessionFactory
 from sagemaker.feature_store.feature_processor._udf_arg_provider import SparkArgProvider
+from sagemaker.feature_store.feature_processor._data_source import PySparkDataSource
 
 
 @pytest.fixture
 def params_loader():
     params_loader = Mock(ParamsLoader)
-    params_loader.get_parameter_args.return_value = Mock()
+    params_loader.get_parameter_args = Mock(return_value={"params": {"key": "value"}})
     return params_loader
 
 
@@ -38,6 +39,11 @@ def feature_group_as_spark_df():
 
 @pytest.fixture
 def s3_uri_as_spark_df():
+    return Mock(DataFrame)
+
+
+@pytest.fixture
+def base_data_source_as_spark_df():
     return Mock(DataFrame)
 
 
@@ -63,6 +69,15 @@ def spark_session_factory(spark_session):
 @pytest.fixture
 def spark_arg_provider(params_loader, input_loader, spark_session_factory):
     return SparkArgProvider(params_loader, input_loader, spark_session_factory)
+
+
+class MockDataSource(PySparkDataSource):
+
+    data_source_unique_id = "test_id"
+    data_source_name = "test_source"
+
+    def read_data(self, spark, params) -> DataFrame:
+        return Mock(DataFrame)
 
 
 def test_provide_additional_kw_args(spark_arg_provider, spark_session):
@@ -251,3 +266,15 @@ def test_provide_input_args_with_optional_args(
         assert inputs.keys() == {"input_fg", "input_s3_uri"}
         assert inputs["input_fg"] == feature_group_as_spark_df
         assert inputs["input_s3_uri"] == s3_uri_as_spark_df
+
+
+def test_provide_input_arg_for_base_data_source(spark_arg_provider, params_loader, spark_session):
+    fp_config = tdh.create_fp_config(inputs=[MockDataSource()], output=tdh.OUTPUT_FEATURE_GROUP_ARN)
+
+    def udf(input_df) -> DataFrame:
+        return input_df
+
+    with patch.object(MockDataSource, "read_data", return_value=Mock(DataFrame)) as mock_read:
+        spark_arg_provider.provide_input_args(udf, fp_config)
+        mock_read.assert_called_with(spark=spark_session, params={"key": "value"})
+        params_loader.get_parameter_args.assert_called_with(fp_config)

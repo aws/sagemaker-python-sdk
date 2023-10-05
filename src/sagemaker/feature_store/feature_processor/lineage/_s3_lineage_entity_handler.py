@@ -16,7 +16,11 @@ import logging
 from typing import Union, Optional, List
 
 from sagemaker import Session
-from sagemaker.feature_store.feature_processor import CSVDataSource, ParquetDataSource
+from sagemaker.feature_store.feature_processor import (
+    CSVDataSource,
+    ParquetDataSource,
+    BaseDataSource,
+)
 
 # pylint: disable=C0301
 from sagemaker.feature_store.feature_processor.lineage._feature_processor_lineage_name_helper import (
@@ -43,12 +47,14 @@ class S3LineageEntityHandler:
 
     @staticmethod
     def retrieve_raw_data_artifact(
-        raw_data: Union[CSVDataSource, ParquetDataSource], sagemaker_session: Session
+        raw_data: Union[CSVDataSource, ParquetDataSource, BaseDataSource],
+        sagemaker_session: Session,
     ) -> Artifact:
         """Load or create the FeatureProcessor Pipeline's raw data Artifact.
 
         Arguments:
-            raw_data (Union[CSVDataSource, ParquetDataSource]): The raw data to be retrieved.
+            raw_data (Union[CSVDataSource, ParquetDataSource, BaseDataSource]): The raw data to be
+                retrieved.
             sagemaker_session (Session): Session object which manages interactions
                 with Amazon SageMaker APIs and any other AWS services needed. If not specified, the
                 function creates one using the default AWS configuration chain.
@@ -56,18 +62,30 @@ class S3LineageEntityHandler:
         Returns:
             Artifact: The raw data artifact.
         """
+        raw_data_uri = (
+            raw_data.s3_uri
+            if isinstance(raw_data, (CSVDataSource, ParquetDataSource))
+            else raw_data.data_source_unique_id
+        )
+        raw_data_artifact_name = (
+            "sm-fs-fe-raw-data"
+            if isinstance(raw_data, (CSVDataSource, ParquetDataSource))
+            else raw_data.data_source_name
+        )
+
         load_artifact: ArtifactSummary = S3LineageEntityHandler._load_artifact_from_s3_uri(
-            s3_uri=raw_data.s3_uri, sagemaker_session=sagemaker_session
+            s3_uri=raw_data_uri, sagemaker_session=sagemaker_session
         )
         if load_artifact is not None:
             return S3LineageEntityHandler.load_artifact_from_arn(
                 artifact_arn=load_artifact.artifact_arn,
                 sagemaker_session=sagemaker_session,
             )
+
         return S3LineageEntityHandler._create_artifact(
-            s3_uri=raw_data.s3_uri,
+            s3_uri=raw_data_uri,
             artifact_type="DataSet",
-            artifact_name="sm-fs-fe-raw-data",
+            artifact_name=raw_data_artifact_name,
             sagemaker_session=sagemaker_session,
         )
 
