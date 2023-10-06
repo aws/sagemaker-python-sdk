@@ -30,6 +30,7 @@ def retrieve(
     model_id: Optional[str] = None,
     model_version: Optional[str] = None,
     model_scope: Optional[str] = None,
+    instance_type: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
@@ -44,6 +45,8 @@ def retrieve(
             the model artifact S3 URI.
         model_scope (str): The model type.
             Valid values: "training" and "inference".
+        instance_type (str): An instance type to optionally supply in order to get
+            model artifacts specific for the instance type. (Default: None).
         tolerate_vulnerable_model (bool): ``True`` if vulnerable versions of model
             specifications should be tolerated without raising an exception. If ``False``, raises an
             exception if the script used by this version of the model has dependencies with known
@@ -71,11 +74,12 @@ def retrieve(
         )
 
     return artifacts._retrieve_model_uri(
-        model_id,
-        model_version,  # type: ignore
-        model_scope,
-        region,
-        tolerate_vulnerable_model,
-        tolerate_deprecated_model,
+        model_id=model_id,
+        model_version=model_version,  # type: ignore
+        model_scope=model_scope,
+        instance_type=instance_type,
+        region=region,
+        tolerate_vulnerable_model=tolerate_vulnerable_model,
+        tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
     )

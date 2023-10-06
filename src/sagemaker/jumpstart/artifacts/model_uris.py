@@ -34,6 +34,7 @@ def _retrieve_model_uri(
     model_id: str,
     model_version: str,
     model_scope: Optional[str] = None,
+    instance_type: Optional[str] = None,
     region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
@@ -50,6 +51,8 @@ def _retrieve_model_uri(
             artifact S3 URI.
         model_scope (str): The model type, i.e. what it is used for.
             Valid values: "training" and "inference".
+        instance_type (str): An instance type to optionally supply in order to get
+            model artifacts specific for the instance type. (Default: None).
         region (str): Region for which to retrieve model S3 URI. (Default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
             specifications should be tolerated (exception not raised). If False, raises an
@@ -84,14 +87,55 @@ def _retrieve_model_uri(
         sagemaker_session=sagemaker_session,
     )
 
+    model_artifact_key: str
+
     if model_scope == JumpStartScriptScope.INFERENCE:
+        instance_specific_prepacked_hosting_artifact_key: Optional[str] = (
+            model_specs.hosting_instance_type_variants.get_instance_specific_prepacked_artifact_key(
+                instance_type=instance_type
+            )
+            if instance_type
+            and getattr(model_specs, "hosting_instance_type_variants", None) is not None
+            else None
+        )
+
+        instance_specific_hosting_artifact_key: Optional[str] = (
+            model_specs.hosting_instance_type_variants.get_instance_specific_artifact_key(
+                instance_type=instance_type
+            )
+            if instance_type
+            and getattr(model_specs, "hosting_instance_type_variants", None) is not None
+            else None
+        )
+
+        default_prepacked_hosting_artifact_key: Optional[str] = getattr(
+            model_specs, "hosting_prepacked_artifact_key"
+        )
+
+        default_hosting_artifact_key: str = model_specs.hosting_artifact_key
+
         model_artifact_key = (
-            getattr(model_specs, "hosting_prepacked_artifact_key", None)
-            or model_specs.hosting_artifact_key
+            instance_specific_prepacked_hosting_artifact_key
+            or instance_specific_hosting_artifact_key
+            or default_prepacked_hosting_artifact_key
+            or default_hosting_artifact_key
         )
 
     elif model_scope == JumpStartScriptScope.TRAINING:
-        model_artifact_key = model_specs.training_artifact_key
+        instance_specific_training_artifact_key: Optional[str] = (
+            model_specs.training_instance_type_variants.get_instance_specific_artifact_key(
+                instance_type=instance_type
+            )
+            if instance_type
+            and getattr(model_specs, "training_instance_type_variants", None) is not None
+            else None
+        )
+
+        default_training_artifact_key: str = model_specs.training_artifact_key
+
+        model_artifact_key = (
+            instance_specific_training_artifact_key or default_training_artifact_key
+        )
 
     bucket = os.environ.get(
         ENV_VARIABLE_JUMPSTART_MODEL_ARTIFACT_BUCKET_OVERRIDE
