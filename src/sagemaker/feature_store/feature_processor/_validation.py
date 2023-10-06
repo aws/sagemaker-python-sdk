@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 import inspect
+import re
 from abc import ABC, abstractmethod
 from typing import Any, Callable, List
 
@@ -21,6 +22,7 @@ import attr
 
 from sagemaker.feature_store.feature_processor._data_source import (
     FeatureGroupDataSource,
+    BaseDataSource,
 )
 from sagemaker.feature_store.feature_processor._feature_processor_config import (
     FeatureProcessorConfig,
@@ -172,3 +174,37 @@ class InputOffsetValidator(Validator):
                 end_td = InputOffsetParser.parse_offset_to_timedelta(input_end_offset)
                 if start_td and end_td and start_td > end_td:
                     raise ValueError("input_start_offset should be always before input_end_offset.")
+
+
+class BaseDataSourceValidator(Validator):
+    """An Validator for BaseDataSource."""
+
+    def validate(self, udf: Callable[..., Any], fp_config: FeatureProcessorConfig) -> None:
+        """Validate the BaseDataSource provided to the decorator.
+
+        Args:
+            udf (Callable[..., T]): The feature_processor wrapped user function.
+            fp_config (FeatureProcessorConfig): The configuration for the feature_processor.
+
+        Raises (ValueError): raises ValueError when data_source_unique_id or data_source_name
+            of the input data source is not valid.
+        """
+
+        for config_input in fp_config.inputs:
+            if isinstance(config_input, BaseDataSource):
+                source_name = config_input.data_source_name
+                source_id = config_input.data_source_unique_id
+
+                source_name_pattern = r"^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,119}$"
+                source_id_pattern = r"^.{1,2048}$"
+
+                if not re.match(source_name_pattern, source_name):
+                    raise ValueError(
+                        f"data_source_name of input does not match pattern '{source_name_pattern}'."
+                    )
+
+                if not re.match(source_id_pattern, source_id):
+                    raise ValueError(
+                        f"data_source_unique_id of input does not match "
+                        f"pattern '{source_id_pattern}'."
+                    )

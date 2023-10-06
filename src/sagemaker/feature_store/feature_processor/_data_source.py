@@ -13,9 +13,75 @@
 """Contains classes to define input data sources."""
 from __future__ import absolute_import
 
-from typing import Optional
+from typing import Optional, Dict, Union, TypeVar, Generic
+from abc import ABC, abstractmethod
+from pyspark.sql import DataFrame, SparkSession
+
 
 import attr
+
+T = TypeVar("T")
+
+
+@attr.s
+class BaseDataSource(Generic[T], ABC):
+    """Abstract base class for feature processor data sources.
+
+    Provides a skeleton for customization requiring the overriding of the method to read data from
+    data source and return the specified type.
+    """
+
+    @abstractmethod
+    def read_data(self, *args, **kwargs) -> T:
+        """Read data from data source and return the specified type.
+
+        Args:
+            args: Arguments for reading the data.
+            kwargs: Keyword argument for reading the data.
+        Returns:
+            T: The specified abstraction of data source.
+        """
+
+    @property
+    @abstractmethod
+    def data_source_unique_id(self) -> str:
+        """The identifier for the customized feature processor data source.
+
+        Returns:
+            str: The data source unique id.
+        """
+
+    @property
+    @abstractmethod
+    def data_source_name(self) -> str:
+        """The name for the customized feature processor data source.
+
+        Returns:
+            str: The data source name.
+        """
+
+
+@attr.s
+class PySparkDataSource(BaseDataSource[DataFrame], ABC):
+    """Abstract base class for feature processor data sources.
+
+    Provides a skeleton for customization requiring the overriding of the method to read data from
+    data source and return the Spark DataFrame.
+    """
+
+    @abstractmethod
+    def read_data(
+        self, spark: SparkSession, params: Optional[Dict[str, Union[str, Dict]]] = None
+    ) -> DataFrame:
+        """Read data from data source and convert the data to Spark DataFrame.
+
+        Args:
+            spark (SparkSession): The Spark session to read the data.
+            params (Optional[Dict[str, Union[str, Dict]]]): Parameters provided to the
+                feature_processor decorator.
+        Returns:
+            DataFrame: The Spark DataFrame as an abstraction on the data source.
+        """
 
 
 @attr.s
@@ -26,7 +92,7 @@ class FeatureGroupDataSource:
         name (str): The name or ARN of the Feature Group.
         input_start_offset (Optional[str], optional): A duration specified as a string in the
             format '<no> <unit>' where 'no' is a number and 'unit' is a unit of time in ['hours',
-            'days', 'weeks', 'months', 'years'] (plural and singluar forms). Inputs contain data
+            'days', 'weeks', 'months', 'years'] (plural and singular forms). Inputs contain data
             with event times no earlier than input_start_offset in the past. Offsets are relative
             to the function execution time. If the function is executed by a Schedule, then the
             offset is relative to the scheduled start time. Defaults to None.

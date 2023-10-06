@@ -33,7 +33,8 @@ def env_helper():
 
 def test_spark_session_factory_configuration():
     env_helper = Mock()
-    spark_session_factory = SparkSessionFactory(env_helper)
+    spark_config = {"spark.test.key": "spark.test.value"}
+    spark_session_factory = SparkSessionFactory(env_helper, spark_config)
     spark_configs = dict(spark_session_factory._get_spark_configs(is_training_job=False))
     jsc_hadoop_configs = dict(spark_session_factory._get_jsc_hadoop_configs())
 
@@ -65,6 +66,8 @@ def test_spark_session_factory_configuration():
     assert spark_configs.get("spark.hadoop.fs.trash.interval") == "0"
     assert spark_configs.get("spark.port.maxRetries") == "50"
 
+    assert spark_configs.get("spark.test.key") == "spark.test.value"
+
     assert jsc_hadoop_configs.get("mapreduce.fileoutputcommitter.marksuccessfuljobs") == "false"
 
     # Verify configurations when not running on a training job
@@ -79,9 +82,11 @@ def test_spark_session_factory_configuration():
 
 def test_spark_session_factory_configuration_on_training_job():
     env_helper = Mock()
-    spark_session_factory = SparkSessionFactory(env_helper)
+    spark_config = {"spark.test.key": "spark.test.value"}
+    spark_session_factory = SparkSessionFactory(env_helper, spark_config)
 
     spark_config = spark_session_factory._get_spark_configs(is_training_job=True)
+    assert dict(spark_config).get("spark.test.key") == "spark.test.value"
 
     assert all(tup[0] != "spark.jars" for tup in spark_config)
     assert all(tup[0] != "spark.jars.packages" for tup in spark_config)
