@@ -318,8 +318,15 @@ class JumpStartModel(Model):
         """Returns the default payload associated with the model.
 
         Payload can be directly used with the `sagemaker.predictor.Predictor.predict(...)` function.
+
+        Raises:
+            NotImplementedError: If the scope is not supported.
+            ValueError: If the combination of arguments specified is not supported.
+            VulnerableJumpStartModelError: If any of the dependencies required by the script have
+                known security vulnerabilities.
+            DeprecatedJumpStartModelError: If the version of the model is deprecated.
         """
-        payload_options: Optional[List[JumpStartSerializablePayload]] = payloads.retrieve_options(
+        return payloads.retrieve_example(
             model_id=self.model_id,
             model_version=self.model_version,
             region=self.region,
@@ -327,11 +334,6 @@ class JumpStartModel(Model):
             tolerate_vulnerable_model=self.tolerate_vulnerable_model,
             sagemaker_session=self.sagemaker_session,
         )
-
-        if payload_options is None or len(payload_options) == 0:
-            return None
-
-        return payload_options[0]
 
     def _create_sagemaker_model(
         self,

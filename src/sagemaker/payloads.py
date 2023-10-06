@@ -27,7 +27,7 @@ from sagemaker.session import Session
 logger = logging.getLogger(__name__)
 
 
-def retrieve_options(
+def retrieve_all_examples(
     region: Optional[str] = None,
     model_id: Optional[str] = None,
     model_version: Optional[str] = None,
@@ -60,7 +60,7 @@ def retrieve_options(
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     Returns:
-        str: The model artifact S3 URI for the corresponding model.
+        Optional[List[str]]: List of payloads or None.
 
     Raises:
         NotImplementedError: If the scope is not supported.
@@ -114,3 +114,61 @@ def retrieve_options(
         )
 
     return serialized_payloads
+
+
+def retrieve_example(
+    region: Optional[str] = None,
+    model_id: Optional[str] = None,
+    model_version: Optional[str] = None,
+    serialize: bool = False,
+    tolerate_vulnerable_model: bool = False,
+    tolerate_deprecated_model: bool = False,
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+) -> Optional[str]:
+    """Retrieves a single compatible payload for the model matching the given arguments.
+
+    Args:
+        region (str): The AWS Region for which to retrieve the Jumpstart model payloads.
+        model_id (str): The model ID of the JumpStart model for which to retrieve
+            the model payload.
+        model_version (str): The version of the JumpStart model for which to retrieve
+            the model payload.
+        serialize (bool): Whether to serialize byte-stream valued payloads by downloading
+            binary files from s3 and applying encoding, or to keep payload in pre-serialized
+            state. Set this option to False if you want to avoid s3 downloads or if you
+            want to inspect the payload in a human-readable form. (Default: False).
+        tolerate_vulnerable_model (bool): ``True`` if vulnerable versions of model
+            specifications should be tolerated without raising an exception. If ``False``, raises an
+            exception if the script used by this version of the model has dependencies with known
+            security vulnerabilities. (Default: False).
+        tolerate_deprecated_model (bool): ``True`` if deprecated versions of model
+            specifications should be tolerated without raising an exception. If ``False``, raises
+            an exception if the version of the model is deprecated. (Default: False).
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions. If not
+            specified, one is created using the default AWS configuration
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+    Returns:
+        Optional[str]: A single default payload or None.
+
+    Raises:
+        NotImplementedError: If the scope is not supported.
+        ValueError: If the combination of arguments specified is not supported.
+        VulnerableJumpStartModelError: If any of the dependencies required by the script have
+            known security vulnerabilities.
+        DeprecatedJumpStartModelError: If the version of the model is deprecated.
+    """
+    example_payloads: Optional[List[str]] = retrieve_all_examples(
+        region=region,
+        model_id=model_id,
+        model_version=model_version,
+        serialize=serialize,
+        tolerate_vulnerable_model=tolerate_vulnerable_model,
+        tolerate_deprecated_model=tolerate_deprecated_model,
+        sagemaker_session=sagemaker_session,
+    )
+
+    if example_payloads is None or len(example_payloads) == 0:
+        return None
+
+    return example_payloads[0]
