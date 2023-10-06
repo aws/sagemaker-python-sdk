@@ -49,8 +49,8 @@ from sagemaker.remote_function.job import (
     SPARK_APP_SCRIPT_PATH,
     RUNTIME_SCRIPTS_CHANNEL_NAME,
     REMOTE_FUNCTION_WORKSPACE,
-    SPARK_CONF_WORKSPACE,
     ENTRYPOINT_SCRIPT_NAME,
+    SPARK_CONF_CHANNEL_NAME,
 )
 from sagemaker.workflow.parameters import Parameter, ParameterTypeEnum
 from sagemaker.workflow.retry import (
@@ -316,7 +316,7 @@ def test_to_pipeline(
             REMOTE_FUNCTION_WORKSPACE: mock_training_input(
                 s3_data=f"{S3_URI}/pipeline_name/sm_rf_user_ws", s3_data_type="S3Prefix"
             ),
-            SPARK_CONF_WORKSPACE: mock_training_input(s3_data="path_d", s3_data_type="S3Prefix"),
+            SPARK_CONF_CHANNEL_NAME: mock_training_input(s3_data="path_d", s3_data_type="S3Prefix"),
         },
         retry_policies=[
             StepRetryPolicy(

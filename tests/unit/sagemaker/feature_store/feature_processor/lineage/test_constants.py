@@ -18,12 +18,14 @@ from typing import List, Sequence, Union
 
 from botocore.exceptions import ClientError
 from mock import Mock
+from pyspark.sql import DataFrame
 
 from sagemaker import Session
 from sagemaker.feature_store.feature_processor._data_source import (
     CSVDataSource,
     FeatureGroupDataSource,
     ParquetDataSource,
+    BaseDataSource,
 )
 from sagemaker.feature_store.feature_processor.lineage._feature_group_contexts import (
     FeatureGroupContexts,
@@ -45,6 +47,16 @@ LAST_UPDATE_TIME = "234234234"
 SAGEMAKER_SESSION_MOCK = Mock(Session)
 CONTEXT_MOCK_01 = Mock(Context)
 CONTEXT_MOCK_02 = Mock(Context)
+
+
+class MockDataSource(BaseDataSource):
+
+    data_source_unique_id = "test_source_unique_id"
+    data_source_name = "test_source_name"
+
+    def read_data(self, spark, params) -> DataFrame:
+        return None
+
 
 FEATURE_GROUP_DATA_SOURCE: List[FeatureGroupDataSource] = [
     FeatureGroupDataSource(
@@ -68,16 +80,18 @@ FEATURE_GROUP_INPUT: List[FeatureGroupContexts] = [
     ),
 ]
 
-RAW_DATA_INPUT: Sequence[Union[CSVDataSource, ParquetDataSource]] = [
+RAW_DATA_INPUT: Sequence[Union[CSVDataSource, ParquetDataSource, BaseDataSource]] = [
     CSVDataSource(s3_uri="raw-data-uri-01"),
     CSVDataSource(s3_uri="raw-data-uri-02"),
     ParquetDataSource(s3_uri="raw-data-uri-03"),
+    MockDataSource(),
 ]
 
 RAW_DATA_INPUT_ARTIFACTS: List[Artifact] = [
     Artifact(artifact_arn="artifact-01-arn"),
     Artifact(artifact_arn="artifact-02-arn"),
     Artifact(artifact_arn="artifact-03-arn"),
+    Artifact(artifact_arn="artifact-04-arn"),
 ]
 
 PIPELINE_SCHEDULE = PipelineSchedule(

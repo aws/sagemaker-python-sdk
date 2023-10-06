@@ -27,7 +27,7 @@ from sagemaker.remote_function.job import (
     _JobSettings,
     RUNTIME_SCRIPTS_CHANNEL_NAME,
     REMOTE_FUNCTION_WORKSPACE,
-    SPARK_CONF_WORKSPACE,
+    SPARK_CONF_CHANNEL_NAME,
 )
 from sagemaker.remote_function.spark_config import SparkConfig
 from sagemaker.session import Session
@@ -218,7 +218,7 @@ def test_prepare_step_input_channel(
             s3_data=f"{config_uploader.remote_decorator_config.s3_root_uri}/pipeline_name/sm_rf_user_ws",
             s3_data_type="S3Prefix",
         ),
-        SPARK_CONF_WORKSPACE: mock_training_input(s3_data="path_d", s3_data_type="S3Prefix"),
+        SPARK_CONF_CHANNEL_NAME: mock_training_input(s3_data="path_d", s3_data_type="S3Prefix"),
     }
 
     assert spark_dependency_paths == {
