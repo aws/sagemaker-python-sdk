@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.191.0 (2023-10-05)
+
+### Features
+
+ * Selective Step Execution milestone 2 features
+ * feature-processor extra data sources support
+
 ## v2.190.0 (2023-10-04)
 
 ### Features
