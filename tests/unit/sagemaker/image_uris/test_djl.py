@@ -45,6 +45,7 @@ ACCOUNTS = {
 DJL_DEEPSPEED_VERSIONS = ["0.23.0", "0.22.1", "0.21.0", "0.20.0", "0.19.0"]
 DJL_FASTERTRANSFORMER_VERSIONS = ["0.23.0", "0.22.1", "0.21.0"]
 DJL_NEURONX_VERSIONS = ["0.23.0", "0.22.1"]
+DJL_NEURONX_VERSIONS = ["0.24.0", "0.23.0", "0.22.1"]
 DJL_VERSIONS_TO_FRAMEWORK = {
     "0.19.0": {"djl-deepspeed": "deepspeed0.7.3-cu113"},
     "0.20.0": {"djl-deepspeed": "deepspeed0.7.5-cu116"},
@@ -61,6 +62,9 @@ DJL_VERSIONS_TO_FRAMEWORK = {
         "djl-deepspeed": "deepspeed0.9.5-cu118",
         "djl-fastertransformer": "fastertransformer5.3.0-cu118",
         "djl-neuronx": "neuronx-sdk2.12.0",
+    },
+    "0.24.0": {
+        "djl-neuronx": "neuronx-sdk2.14.1",
     },
 }
 
