@@ -759,8 +759,8 @@ class FeatureGroup:
         """Load feature definitions from a Pandas DataFrame.
 
         Column name is used as feature name. Feature type is inferred from the dtype
-        of the column. Dtype int_, int8, int16, int32, int64, uint8, uint16, uint32
-        and uint64 are mapped to Integral feature type. Dtype float_, float16, float32
+        of the column. Dtype :literal:`int_`, int8, int16, int32, int64, uint8, uint16, uint32
+        and uint64 are mapped to Integral feature type. Dtype :literal:`float_`, float16, float32
         and float64 are mapped to Fractional feature type. string dtype is mapped to
         String feature type.
 
