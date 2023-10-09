@@ -3198,6 +3198,7 @@ class Framework(EstimatorBase):
     """
 
     _framework_name = None
+    UNSUPPORTED_DLC_IMAGE_FOR_SM_PARALLELISM = ("2.0.1-gpu-py310-cu121", "2.0-gpu-py310-cu121")
 
     def __init__(
         self,
@@ -3415,7 +3416,6 @@ class Framework(EstimatorBase):
         self.checkpoint_s3_uri = checkpoint_s3_uri
         self.checkpoint_local_path = checkpoint_local_path
         self.enable_sagemaker_metrics = enable_sagemaker_metrics
-        self.unsupported_dlc_image_for_sm_parallelism = ["2.0.1-gpu-py310-cu121"]
 
     def _prepare_for_training(self, job_name=None):
         """Set hyperparameters needed for training. This method will also validate ``source_dir``.
@@ -3854,7 +3854,7 @@ class Framework(EstimatorBase):
             smdataparallel_enabled = smdistributed.get("dataparallel", {}).get("enabled", False)
             p5_enabled = bool("p5.48xlarge" in self.instance_type)
             img_uri = "" if self.image_uri is None else self.image_uri
-            for unsupported_image in self.unsupported_dlc_image_for_sm_parallelism:
+            for unsupported_image in Framework.UNSUPPORTED_DLC_IMAGE_FOR_SM_PARALLELISM:
                 if unsupported_image in img_uri and not torch_distributed_enabled: #disabling DLC images with CUDA12
                     raise ValueError(f"SMDistributed is currently incompatible with DLC image: {img_uri}. (Could be due to CUDA version being greater than 11.)")
             if not torch_distributed_enabled and p5_enabled: #disabling p5 when torch distributed is disabled
