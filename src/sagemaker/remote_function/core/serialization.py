@@ -15,7 +15,6 @@ from __future__ import absolute_import
 
 import dataclasses
 import json
-import os
 import sys
 import hmac
 import hashlib
@@ -28,6 +27,8 @@ from sagemaker.s3 import S3Downloader, S3Uploader
 from sagemaker.session import Session
 
 from tblib import pickling_support
+
+# Note: do not use os.path.join for s3 uris, fails on windows
 
 
 def _get_python_version():
@@ -143,18 +144,15 @@ def serialize_func_to_s3(
     Raises:
         SerializationError: when fail to serialize function to bytes.
     """
-
     bytes_to_upload = CloudpickleSerializer.serialize(func)
 
-    _upload_bytes_to_s3(
-        bytes_to_upload, os.path.join(s3_uri, "payload.pkl"), s3_kms_key, sagemaker_session
-    )
+    _upload_bytes_to_s3(bytes_to_upload, f"{s3_uri}/payload.pkl", s3_kms_key, sagemaker_session)
 
     sha256_hash = _compute_hash(bytes_to_upload, secret_key=hmac_key)
 
     _upload_bytes_to_s3(
         _MetaData(sha256_hash).to_json(),
-        os.path.join(s3_uri, "metadata.json"),
+        f"{s3_uri}/metadata.json",
         s3_kms_key,
         sagemaker_session,
     )
@@ -177,20 +175,16 @@ def deserialize_func_from_s3(sagemaker_session: Session, s3_uri: str, hmac_key: 
         DeserializationError: when fail to serialize function to bytes.
     """
     metadata = _MetaData.from_json(
-        _read_bytes_from_s3(os.path.join(s3_uri, "metadata.json"), sagemaker_session)
+        _read_bytes_from_s3(f"{s3_uri}/metadata.json", sagemaker_session)
     )
 
-    bytes_to_deserialize = _read_bytes_from_s3(
-        os.path.join(s3_uri, "payload.pkl"), sagemaker_session
-    )
+    bytes_to_deserialize = _read_bytes_from_s3(f"{s3_uri}/payload.pkl", sagemaker_session)
 
     _perform_integrity_check(
         expected_hash_value=metadata.sha256_hash, secret_key=hmac_key, buffer=bytes_to_deserialize
     )
 
-    return CloudpickleSerializer.deserialize(
-        os.path.join(s3_uri, "payload.pkl"), bytes_to_deserialize
-    )
+    return CloudpickleSerializer.deserialize(f"{s3_uri}/payload.pkl", bytes_to_deserialize)
 
 
 def serialize_obj_to_s3(
@@ -211,15 +205,13 @@ def serialize_obj_to_s3(
 
     bytes_to_upload = CloudpickleSerializer.serialize(obj)
 
-    _upload_bytes_to_s3(
-        bytes_to_upload, os.path.join(s3_uri, "payload.pkl"), s3_kms_key, sagemaker_session
-    )
+    _upload_bytes_to_s3(bytes_to_upload, f"{s3_uri}/payload.pkl", s3_kms_key, sagemaker_session)
 
     sha256_hash = _compute_hash(bytes_to_upload, secret_key=hmac_key)
 
     _upload_bytes_to_s3(
         _MetaData(sha256_hash).to_json(),
-        os.path.join(s3_uri, "metadata.json"),
+        f"{s3_uri}/metadata.json",
         s3_kms_key,
         sagemaker_session,
     )
@@ -240,20 +232,16 @@ def deserialize_obj_from_s3(sagemaker_session: Session, s3_uri: str, hmac_key: s
     """
 
     metadata = _MetaData.from_json(
-        _read_bytes_from_s3(os.path.join(s3_uri, "metadata.json"), sagemaker_session)
+        _read_bytes_from_s3(f"{s3_uri}/metadata.json", sagemaker_session)
     )
 
-    bytes_to_deserialize = _read_bytes_from_s3(
-        os.path.join(s3_uri, "payload.pkl"), sagemaker_session
-    )
+    bytes_to_deserialize = _read_bytes_from_s3(f"{s3_uri}/payload.pkl", sagemaker_session)
 
     _perform_integrity_check(
         expected_hash_value=metadata.sha256_hash, secret_key=hmac_key, buffer=bytes_to_deserialize
     )
 
-    return CloudpickleSerializer.deserialize(
-        os.path.join(s3_uri, "payload.pkl"), bytes_to_deserialize
-    )
+    return CloudpickleSerializer.deserialize(f"{s3_uri}/payload.pkl", bytes_to_deserialize)
 
 
 def serialize_exception_to_s3(
@@ -275,15 +263,13 @@ def serialize_exception_to_s3(
 
     bytes_to_upload = CloudpickleSerializer.serialize(exc)
 
-    _upload_bytes_to_s3(
-        bytes_to_upload, os.path.join(s3_uri, "payload.pkl"), s3_kms_key, sagemaker_session
-    )
+    _upload_bytes_to_s3(bytes_to_upload, f"{s3_uri}/payload.pkl", s3_kms_key, sagemaker_session)
 
     sha256_hash = _compute_hash(bytes_to_upload, secret_key=hmac_key)
 
     _upload_bytes_to_s3(
         _MetaData(sha256_hash).to_json(),
-        os.path.join(s3_uri, "metadata.json"),
+        f"{s3_uri}/metadata.json",
         s3_kms_key,
         sagemaker_session,
     )
@@ -304,20 +290,16 @@ def deserialize_exception_from_s3(sagemaker_session: Session, s3_uri: str, hmac_
     """
 
     metadata = _MetaData.from_json(
-        _read_bytes_from_s3(os.path.join(s3_uri, "metadata.json"), sagemaker_session)
+        _read_bytes_from_s3(f"{s3_uri}/metadata.json", sagemaker_session)
     )
 
-    bytes_to_deserialize = _read_bytes_from_s3(
-        os.path.join(s3_uri, "payload.pkl"), sagemaker_session
-    )
+    bytes_to_deserialize = _read_bytes_from_s3(f"{s3_uri}/payload.pkl", sagemaker_session)
 
     _perform_integrity_check(
         expected_hash_value=metadata.sha256_hash, secret_key=hmac_key, buffer=bytes_to_deserialize
     )
 
-    return CloudpickleSerializer.deserialize(
-        os.path.join(s3_uri, "payload.pkl"), bytes_to_deserialize
-    )
+    return CloudpickleSerializer.deserialize(f"{s3_uri}/payload.pkl", bytes_to_deserialize)
 
 
 def _upload_bytes_to_s3(bytes, s3_uri, s3_kms_key, sagemaker_session):

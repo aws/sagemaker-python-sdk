@@ -12,7 +12,6 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import os.path
 import random
 import string
 import pytest
@@ -186,7 +185,7 @@ def test_deserialize_func_corrupt_metadata():
     serialize_func_to_s3(
         func=square, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY, hmac_key=HMAC_KEY
     )
-    mock_s3[os.path.join(s3_uri, "metadata.json")] = b"not json serializable"
+    mock_s3[f"{s3_uri}/metadata.json"] = b"not json serializable"
 
     del square
 
