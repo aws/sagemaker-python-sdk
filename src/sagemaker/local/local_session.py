@@ -540,7 +540,21 @@ class LocalSagemakerRuntimeClient(object):
         self.http = urllib3.PoolManager()
         self.serving_port = 8080
         self.config = config
-        self.serving_port = get_config_value("local.serving_port", config) or 8080
+
+    @property
+    def config(self) -> dict:
+        """Local config getter"""
+        return self._config
+
+    @config.setter
+    def config(self, value: dict):
+        """Local config setter, this method also updates the `serving_port` attribute.
+
+        Args:
+            value (dict): the new config value
+        """
+        self._config = value
+        self.serving_port = get_config_value("local.serving_port", self._config) or 8080
 
     def invoke_endpoint(
         self,
@@ -688,6 +702,7 @@ class LocalSession(Session):
             )
 
         self.sagemaker_client = LocalSagemakerClient(self)
+        self.sagemaker_runtime_client = LocalSagemakerRuntimeClient(self.config)
 
         self.local_mode = True
         sagemaker_config = kwargs.get("sagemaker_config", None)
@@ -747,7 +762,8 @@ class LocalSession(Session):
             self._config = value
 
         # update the runtime client on config changed
-        self.sagemaker_runtime_client = LocalSagemakerRuntimeClient(self._config)
+        if getattr(self, "sagemaker_runtime_client", None):
+            self.sagemaker_runtime_client.config = self._config
 
     def logs_for_job(self, job_name, wait=False, poll=5, log_type="All"):
         """A no-op method meant to override the sagemaker client.
