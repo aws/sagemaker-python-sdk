@@ -16,7 +16,7 @@ It supports loading config files from the local file system and Amazon S3.
 The schema of the config file is dictated in config_schema.py in the same module.
 
 """
-from __future__ import absolute_import
+from __future__ import absolute_import, annotations
 
 import pathlib
 import os
@@ -33,12 +33,18 @@ from sagemaker.config.config_utils import get_sagemaker_config_logger
 logger = get_sagemaker_config_logger()
 
 _APP_NAME = "sagemaker"
+# The default name of the config file.
+_CONFIG_FILE_NAME = "config.yaml"
 # The default config file location of the Administrator provided config file. This path can be
 # overridden with `SAGEMAKER_ADMIN_CONFIG_OVERRIDE` environment variable.
-_DEFAULT_ADMIN_CONFIG_FILE_PATH = os.path.join(site_config_dir(_APP_NAME), "config.yaml")
+_DEFAULT_ADMIN_CONFIG_FILE_PATH = os.path.join(site_config_dir(_APP_NAME), _CONFIG_FILE_NAME)
 # The default config file location of the user provided config file. This path can be
 # overridden with `SAGEMAKER_USER_CONFIG_OVERRIDE` environment variable.
-_DEFAULT_USER_CONFIG_FILE_PATH = os.path.join(user_config_dir(_APP_NAME), "config.yaml")
+_DEFAULT_USER_CONFIG_FILE_PATH = os.path.join(user_config_dir(_APP_NAME), _CONFIG_FILE_NAME)
+# The default config file location of the local mode.
+_DEFAULT_LOCAL_MODE_CONFIG_FILE_PATH = os.path.join(
+    os.path.expanduser("~"), ".sagemaker", _CONFIG_FILE_NAME
+)
 
 ENV_VARIABLE_ADMIN_CONFIG_OVERRIDE = "SAGEMAKER_ADMIN_CONFIG_OVERRIDE"
 ENV_VARIABLE_USER_CONFIG_OVERRIDE = "SAGEMAKER_USER_CONFIG_OVERRIDE"
@@ -144,11 +150,21 @@ def validate_sagemaker_config(sagemaker_config: dict = None):
     jsonschema.validate(sagemaker_config, SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA)
 
 
+def load_local_mode_config() -> dict | None:
+    """Loads the local mode config file."""
+    try:
+        content = _load_config_from_file(_DEFAULT_LOCAL_MODE_CONFIG_FILE_PATH)
+    except ValueError:
+        content = None
+
+    return content
+
+
 def _load_config_from_file(file_path: str) -> dict:
     """Placeholder docstring"""
     inferred_file_path = file_path
     if os.path.isdir(file_path):
-        inferred_file_path = os.path.join(file_path, "config.yaml")
+        inferred_file_path = os.path.join(file_path, _CONFIG_FILE_NAME)
     if not os.path.exists(inferred_file_path):
         raise ValueError(
             f"Unable to load the config file from the location: {file_path}"
@@ -194,10 +210,14 @@ def _get_inferred_s3_uri(s3_uri, s3_resource_for_config):
     if len(s3_files_with_same_prefix) > 1:
         # Customer has provided us with a S3 URI which points to a directory
         # search for s3://<bucket>/directory-key-prefix/config.yaml
-        inferred_s3_uri = str(pathlib.PurePosixPath(s3_uri, "config.yaml")).replace("s3:/", "s3://")
+        inferred_s3_uri = str(pathlib.PurePosixPath(s3_uri, _CONFIG_FILE_NAME)).replace(
+            "s3:/", "s3://"
+        )
         if inferred_s3_uri not in s3_files_with_same_prefix:
             # We don't know which file we should be operating with.
-            raise ValueError("Provide an S3 URI of a directory that has a config.yaml file.")
+            raise ValueError(
+                f"Provide an S3 URI of a directory that has a {_CONFIG_FILE_NAME} file."
+            )
         # Customer has a config.yaml present in the directory that was provided as the S3 URI
         return inferred_s3_uri
     return s3_uri

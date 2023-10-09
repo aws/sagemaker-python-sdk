@@ -11,7 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Placeholder docstring"""
-from __future__ import absolute_import
+from __future__ import absolute_import, annotations
 
 import base64
 import copy
@@ -32,9 +32,11 @@ import tempfile
 
 from distutils.spawn import find_executable
 from threading import Thread
+from typing import Dict, List
 from six.moves.urllib.parse import urlparse
 
 import sagemaker
+from sagemaker.config.config_schema import CONTAINER_CONFIG, LOCAL
 import sagemaker.local.data
 import sagemaker.local.utils
 import sagemaker.utils
@@ -769,15 +771,22 @@ class _SageMakerContainer(object):
         logger.info("docker command: %s", " ".join(compose_cmd))
         return compose_cmd
 
-    def _create_docker_host(self, host, environment, optml_subdirs, command, volumes):
+    def _create_docker_host(
+        self,
+        host: str,
+        environment: List[str],
+        optml_subdirs: set[str],
+        command: str,
+        volumes: List,
+    ) -> Dict:
         """Creates the docker host configuration.
 
         Args:
-            host:
-            environment:
-            optml_subdirs:
-            command:
-            volumes:
+            host (str): The host address
+            environment (List[str]): List of environment variables
+            optml_subdirs (Set[str]): Set of subdirs
+            command (str): Either 'train' or 'serve'
+            volumes (list): List of volumes that will be mapped to the containers
         """
         optml_volumes = self._build_optml_volumes(host, optml_subdirs)
         optml_volumes.extend(volumes)
@@ -785,8 +794,15 @@ class _SageMakerContainer(object):
         container_name_prefix = "".join(
             random.choice(string.ascii_lowercase + string.digits) for _ in range(10)
         )
+        container_default_config = (
+            sagemaker.utils.get_config_value(
+                f"{LOCAL}.{CONTAINER_CONFIG}", self.sagemaker_session.config
+            )
+            or {}
+        )
 
         host_config = {
+            **container_default_config,
             "image": self.image,
             "container_name": f"{container_name_prefix}-{host}",
             "stdin_open": True,

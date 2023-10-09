@@ -17,7 +17,7 @@ from concurrent.futures import ThreadPoolExecutor
 from collections import deque
 import time
 import threading
-from typing import Dict, List, Tuple, Any
+from typing import Callable, Dict, List, Optional, Tuple, Any
 import functools
 import itertools
 import inspect
@@ -85,6 +85,7 @@ def remote(
     spark_config: SparkConfig = None,
     use_spot_instances=False,
     max_wait_time_in_seconds=None,
+    custom_file_filter: Optional[Callable[[str, List], List]] = None,
 ):
     """Decorator for running the annotated function as a SageMaker training job.
 
@@ -265,6 +266,11 @@ def remote(
         max_wait_time_in_seconds (int): Timeout in seconds waiting for spot training job.
           After this amount of time Amazon SageMaker will stop waiting for managed spot training
           job to complete. Defaults to ``None``.
+
+        custom_file_filter (Callable[[str, List], List]): A function that filters job
+          dependencies to be uploaded to S3. This function is passed to the ``ignore``
+          argument of ``shutil.copytree``. Defaults to ``None``, which means only python
+          files are accepted.
     """
 
     def _remote(func):
@@ -296,6 +302,7 @@ def remote(
             spark_config=spark_config,
             use_spot_instances=use_spot_instances,
             max_wait_time_in_seconds=max_wait_time_in_seconds,
+            custom_file_filter=custom_file_filter,
         )
 
         @functools.wraps(func)
@@ -506,6 +513,7 @@ class RemoteExecutor(object):
         spark_config: SparkConfig = None,
         use_spot_instances=False,
         max_wait_time_in_seconds=None,
+        custom_file_filter: Optional[Callable[[str, List], List]] = None,
     ):
         """Constructor for RemoteExecutor
 
@@ -692,6 +700,11 @@ class RemoteExecutor(object):
             max_wait_time_in_seconds (int): Timeout in seconds waiting for spot training job.
               After this amount of time Amazon SageMaker will stop waiting for managed spot training
               job to complete. Defaults to ``None``.
+
+            custom_file_filter (Callable[[str, List], List]): A function that filters job
+              dependencies to be uploaded to S3. This function is passed to the ``ignore``
+              argument of ``shutil.copytree``. Defaults to ``None``, which means only python
+              files are accepted.
         """
         self.max_parallel_jobs = max_parallel_jobs
 
@@ -731,6 +744,7 @@ class RemoteExecutor(object):
             spark_config=spark_config,
             use_spot_instances=use_spot_instances,
             max_wait_time_in_seconds=max_wait_time_in_seconds,
+            custom_file_filter=custom_file_filter,
         )
 
         self._state_condition = threading.Condition()

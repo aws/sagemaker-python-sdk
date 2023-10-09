@@ -102,6 +102,11 @@ PROFILER_CONFIG = "ProfilerConfig"
 DISABLE_PROFILER = "DisableProfiler"
 ESTIMATOR = "Estimator"
 DEBUG_HOOK_CONFIG = "DebugHookConfig"
+LOCAL = "local"
+LOCAL_CODE = "local_code"
+SERVING_PORT = "serving_port"
+CONTAINER_CONFIG = "container_config"
+REGION_NAME = "region_name"
 
 
 def _simple_path(*args: str):
@@ -1067,4 +1072,29 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
             },
         },
     },
+}
+
+SAGEMAKER_PYTHON_SDK_LOCAL_MODE_CONFIG_SCHEMA = {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    TYPE: OBJECT,
+    ADDITIONAL_PROPERTIES: False,
+    PROPERTIES: {
+        LOCAL: {
+            TYPE: OBJECT,
+            ADDITIONAL_PROPERTIES: False,
+            PROPERTIES: {
+                LOCAL_CODE: {
+                    TYPE: "boolean",
+                },
+                REGION_NAME: {TYPE: "string"},
+                SERVING_PORT: {
+                    TYPE: "integer",
+                },
+                CONTAINER_CONFIG: {
+                    TYPE: OBJECT,
+                },
+            },
+        },
+    },
+    "required": [LOCAL],
 }
