@@ -74,7 +74,7 @@ def _bootstrap_runtime_environment(
     Args:
         conda_env (str): conda environment to be activated. Default is None.
     """
-    workspace_archive_dir_path = os.path.join(BASE_CHANNEL_PATH, REMOTE_FUNCTION_WORKSPACE)
+    workspace_archive_dir_path = f"{BASE_CHANNEL_PATH}/{REMOTE_FUNCTION_WORKSPACE}"
 
     if not os.path.exists(workspace_archive_dir_path):
         logger.info(
@@ -84,7 +84,7 @@ def _bootstrap_runtime_environment(
         return
 
     # Unpack user workspace archive first.
-    workspace_archive_path = os.path.join(workspace_archive_dir_path, "workspace.zip")
+    workspace_archive_path = f"{workspace_archive_dir_path}/workspace.zip"
     if not os.path.isfile(workspace_archive_path):
         logger.info(
             "Workspace archive '%s' does not exist. Assuming no dependencies to bootstrap.",
