@@ -6,7 +6,6 @@ Feature Group
 
 .. autoclass:: sagemaker.feature_store.feature_group.FeatureGroup
     :members:
-    :exclude-members: load_feature_definitions
     :show-inheritance:
 
 .. autoclass:: sagemaker.feature_store.feature_group.AthenaQuery
