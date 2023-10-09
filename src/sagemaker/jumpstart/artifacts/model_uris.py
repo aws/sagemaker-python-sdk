@@ -28,6 +28,61 @@ from sagemaker.jumpstart.utils import (
     verify_model_region_and_return_specs,
 )
 from sagemaker.session import Session
+from sagemaker.jumpstart.types import JumpStartModelSpecs
+
+
+def _retrieve_hosting_prepacked_artifact_key(
+    model_specs: JumpStartModelSpecs, instance_type: str
+) -> str:
+    """Returns instance specific hosting prepacked artifact key or default one as fallback."""
+    instance_specific_prepacked_hosting_artifact_key: Optional[str] = (
+        model_specs.hosting_instance_type_variants.get_instance_specific_prepacked_artifact_key(
+            instance_type=instance_type
+        )
+        if instance_type
+        and getattr(model_specs, "hosting_instance_type_variants", None) is not None
+        else None
+    )
+
+    default_prepacked_hosting_artifact_key: Optional[str] = getattr(
+        model_specs, "hosting_prepacked_artifact_key"
+    )
+
+    return (
+        instance_specific_prepacked_hosting_artifact_key or default_prepacked_hosting_artifact_key
+    )
+
+
+def _retrieve_hosting_artifact_key(model_specs: JumpStartModelSpecs, instance_type: str) -> str:
+    """Returns instance specific hosting artifact key or default one as fallback."""
+    instance_specific_hosting_artifact_key: Optional[str] = (
+        model_specs.hosting_instance_type_variants.get_instance_specific_artifact_key(
+            instance_type=instance_type
+        )
+        if instance_type
+        and getattr(model_specs, "hosting_instance_type_variants", None) is not None
+        else None
+    )
+
+    default_hosting_artifact_key: str = model_specs.hosting_artifact_key
+
+    return instance_specific_hosting_artifact_key or default_hosting_artifact_key
+
+
+def _retrieve_training_artifact_key(model_specs: JumpStartModelSpecs, instance_type: str) -> str:
+    """Returns instance specific training artifact key or default one as fallback."""
+    instance_specific_training_artifact_key: Optional[str] = (
+        model_specs.training_instance_type_variants.get_instance_specific_artifact_key(
+            instance_type=instance_type
+        )
+        if instance_type
+        and getattr(model_specs, "training_instance_type_variants", None) is not None
+        else None
+    )
+
+    default_training_artifact_key: str = model_specs.training_artifact_key
+
+    return instance_specific_training_artifact_key or default_training_artifact_key
 
 
 def _retrieve_model_uri(
@@ -90,52 +145,18 @@ def _retrieve_model_uri(
     model_artifact_key: str
 
     if model_scope == JumpStartScriptScope.INFERENCE:
-        instance_specific_prepacked_hosting_artifact_key: Optional[str] = (
-            model_specs.hosting_instance_type_variants.get_instance_specific_prepacked_artifact_key(
-                instance_type=instance_type
-            )
-            if instance_type
-            and getattr(model_specs, "hosting_instance_type_variants", None) is not None
-            else None
-        )
 
-        instance_specific_hosting_artifact_key: Optional[str] = (
-            model_specs.hosting_instance_type_variants.get_instance_specific_artifact_key(
-                instance_type=instance_type
-            )
-            if instance_type
-            and getattr(model_specs, "hosting_instance_type_variants", None) is not None
-            else None
-        )
-
-        default_prepacked_hosting_artifact_key: Optional[str] = getattr(
-            model_specs, "hosting_prepacked_artifact_key"
-        )
-
-        default_hosting_artifact_key: str = model_specs.hosting_artifact_key
+        is_prepacked = not model_specs.use_inference_script_uri()
 
         model_artifact_key = (
-            instance_specific_prepacked_hosting_artifact_key
-            or instance_specific_hosting_artifact_key
-            or default_prepacked_hosting_artifact_key
-            or default_hosting_artifact_key
+            _retrieve_hosting_prepacked_artifact_key(model_specs, instance_type)
+            if is_prepacked
+            else _retrieve_hosting_artifact_key(model_specs, instance_type)
         )
 
     elif model_scope == JumpStartScriptScope.TRAINING:
-        instance_specific_training_artifact_key: Optional[str] = (
-            model_specs.training_instance_type_variants.get_instance_specific_artifact_key(
-                instance_type=instance_type
-            )
-            if instance_type
-            and getattr(model_specs, "training_instance_type_variants", None) is not None
-            else None
-        )
 
-        default_training_artifact_key: str = model_specs.training_artifact_key
-
-        model_artifact_key = (
-            instance_specific_training_artifact_key or default_training_artifact_key
-        )
+        model_artifact_key = _retrieve_training_artifact_key(model_specs, instance_type)
 
     bucket = os.environ.get(
         ENV_VARIABLE_JUMPSTART_MODEL_ARTIFACT_BUCKET_OVERRIDE
