@@ -263,13 +263,7 @@ def test_to_pipeline(
     )
 
     mock_dependency_upload.assert_called_once_with(
-        local_dependencies_path,
-        True,
-        None,
-        None,
-        f"{S3_URI}/pipeline_name",
-        None,
-        session,
+        local_dependencies_path, True, None, None, f"{S3_URI}/pipeline_name", None, session, None
     )
 
     mock_spark_dependency_upload.assert_called_once_with(
@@ -875,6 +869,7 @@ def test_remote_decorator_fields_consistency(get_execution_role, session):
         "tags",
         "use_spot_instances",
         "max_wait_time_in_seconds",
+        "custom_file_filter",
     }
 
     job_settings = _JobSettings(

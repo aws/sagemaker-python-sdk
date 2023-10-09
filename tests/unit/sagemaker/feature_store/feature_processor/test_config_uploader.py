@@ -50,6 +50,10 @@ def runtime_env_manager():
     return mocked_runtime_env_manager
 
 
+def custom_file_filter():
+    pass
+
+
 @pytest.fixture
 def remote_decorator_config(sagemaker_session):
     return Mock(
@@ -64,12 +68,31 @@ def remote_decorator_config(sagemaker_session):
         pre_execution_script="some_path",
         python_sdk_whl_s3_uri=SAGEMAKER_WHL_FILE_S3_PATH,
         environment_variables={"REMOTE_FUNCTION_SECRET_KEY": "some_secret_key"},
+        custom_file_filter=None,
     )
 
 
 @pytest.fixture
 def config_uploader(remote_decorator_config, runtime_env_manager):
     return ConfigUploader(remote_decorator_config, runtime_env_manager)
+
+
+@pytest.fixture
+def remote_decorator_config_with_filter(sagemaker_session):
+    return Mock(
+        _JobSettings,
+        sagemaker_session=sagemaker_session,
+        s3_root_uri="some_s3_uri",
+        s3_kms_key="some_kms",
+        spark_config=SparkConfig(),
+        dependencies=None,
+        include_local_workdir=True,
+        pre_execution_commands="some_commands",
+        pre_execution_script="some_path",
+        python_sdk_whl_s3_uri=SAGEMAKER_WHL_FILE_S3_PATH,
+        environment_variables={"REMOTE_FUNCTION_SECRET_KEY": "some_secret_key"},
+        custom_file_filter=custom_file_filter,
+    )
 
 
 @patch("sagemaker.feature_store.feature_processor._config_uploader.StoredFunction")
@@ -108,6 +131,42 @@ def test_prepare_and_upload_dependencies(mock_upload, config_uploader):
         s3_base_uri=remote_decorator_config.s3_root_uri,
         s3_kms_key=remote_decorator_config.s3_kms_key,
         sagemaker_session=sagemaker_session,
+        custom_file_filter=None,
+    )
+
+
+@patch(
+    "sagemaker.feature_store.feature_processor._config_uploader._prepare_and_upload_dependencies",
+    return_value="some_s3_uri",
+)
+def test_prepare_and_upload_dependencies_with_filter(
+    mock_job_upload, remote_decorator_config_with_filter, runtime_env_manager
+):
+    config_uploader_with_filter = ConfigUploader(
+        remote_decorator_config=remote_decorator_config_with_filter,
+        runtime_env_manager=runtime_env_manager,
+    )
+    remote_decorator_config = config_uploader_with_filter.remote_decorator_config
+    config_uploader_with_filter._prepare_and_upload_dependencies(
+        local_dependencies_path="some/path/to/dependency",
+        include_local_workdir=True,
+        pre_execution_commands=remote_decorator_config.pre_execution_commands,
+        pre_execution_script_local_path=remote_decorator_config.pre_execution_script,
+        s3_base_uri=remote_decorator_config.s3_root_uri,
+        s3_kms_key=remote_decorator_config.s3_kms_key,
+        sagemaker_session=sagemaker_session,
+        custom_file_filter=remote_decorator_config_with_filter.custom_file_filter,
+    )
+
+    mock_job_upload.assert_called_once_with(
+        local_dependencies_path="some/path/to/dependency",
+        include_local_workdir=True,
+        pre_execution_commands=remote_decorator_config.pre_execution_commands,
+        pre_execution_script_local_path=remote_decorator_config.pre_execution_script,
+        s3_base_uri=remote_decorator_config.s3_root_uri,
+        s3_kms_key=remote_decorator_config.s3_kms_key,
+        sagemaker_session=sagemaker_session,
+        custom_file_filter=custom_file_filter,
     )
 
 
@@ -201,6 +260,7 @@ def test_prepare_step_input_channel(
         s3_base_uri=remote_decorator_config.s3_root_uri,
         s3_kms_key="some_kms",
         sagemaker_session=sagemaker_session,
+        custom_file_filter=None,
     )
 
     mock_spark_dependency_upload.assert_called_once_with(

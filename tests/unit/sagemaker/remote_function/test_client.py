@@ -176,6 +176,32 @@ def test_decorator(mock_start, mock_job_settings, mock_deserialize_obj_from_s3):
 
 
 @patch(
+    "sagemaker.remote_function.client.serialization.deserialize_obj_from_s3",
+    return_value=EXPECTED_JOB_RESULT,
+)
+@patch("sagemaker.remote_function.client._JobSettings")
+@patch("sagemaker.remote_function.client._Job.start")
+def test_decorator_with_custom_file_filter(
+    mock_start, mock_job_settings, mock_deserialize_obj_from_s3
+):
+    mock_job = Mock(job_name=TRAINING_JOB_NAME)
+    mock_job.describe.return_value = COMPLETED_TRAINING_JOB
+
+    mock_start.return_value = mock_job
+
+    def custom_file_filter():
+        pass
+
+    @remote(image_uri=IMAGE, s3_root_uri=S3_URI, custom_file_filter=custom_file_filter)
+    def square(x):
+        return x * x
+
+    result = square(5)
+    assert result == EXPECTED_JOB_RESULT
+    assert mock_job_settings.call_args.kwargs["custom_file_filter"] == custom_file_filter
+
+
+@patch(
     "sagemaker.remote_function.client.serialization.deserialize_exception_from_s3",
     return_value=ZeroDivisionError("division by zero"),
 )
