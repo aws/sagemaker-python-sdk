@@ -45,8 +45,7 @@ def retrieve(
             the model artifact S3 URI.
         model_scope (str): The model type.
             Valid values: "training" and "inference".
-        instance_type (str): An instance type to optionally supply in order to get
-            model artifacts specific for the instance type. (Default: None).
+        instance_type (str): The ML compute instance type for the specified scope. (Default: None).
         tolerate_vulnerable_model (bool): ``True`` if vulnerable versions of model
             specifications should be tolerated without raising an exception. If ``False``, raises an
             exception if the script used by this version of the model has dependencies with known
