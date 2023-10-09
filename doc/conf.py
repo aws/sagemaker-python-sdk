@@ -52,20 +52,32 @@ release = version
 # for source files.
 exclude_trees = ["_build"]
 
-pygments_style = "default"
+highlight_language = "python3"
+pygments_style = "sphinx"
 
 autoclass_content = "both"
 autodoc_default_flags = ["show-inheritance", "members", "undoc-members"]
 autodoc_member_order = "bysource"
 
-html_theme = "sphinx_rtd_theme"
+html_theme = "pydata_sphinx_theme"
+
+html_logo = "../branding/icon/sagemaker-icon.png"
+html_favicon = "../branding/icon/sagemaker-icon.png"
 
 html_theme_options = {
     "collapse_navigation": True,
-    "sticky_navigation": True,
     "navigation_depth": 6,
-    "includehidden": True,
-    "titles_only": False,
+    "icon_links": [
+        {
+            "name": "GitHub",
+            "url": "https://github.com/aws/sagemaker-python-sdk",
+            "icon": "fa-brands fa-square-github",
+            "type": "fontawesome",
+        }
+    ],
+    "logo": {
+        "text": "Amazon Sagemaker SDK",
+    }
 }
 
 
@@ -83,15 +95,10 @@ html_js_files = [
 
 html_css_files = [
     "https://cdn.datatables.net/1.10.23/css/jquery.dataTables.min.css",
+    "_static/theme_overrides.css",
+    "_static/pagination.css",
+    "_static/search_accessories.css",
 ]
-
-html_context = {
-    "css_files": [
-        "_static/theme_overrides.css",
-        "_static/pagination.css",
-        "_static/search_accessories.css",
-    ]
-}
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {"http://docs.python.org/": None}
