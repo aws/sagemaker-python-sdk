@@ -860,7 +860,7 @@ def _prepare_and_upload_runtime_scripts(
             )
             shutil.copy2(spark_script_path, bootstrap_scripts)
 
-        with open(entrypoint_script_path, "w") as file:
+        with open(entrypoint_script_path, "w", newline="\n") as file:
             file.writelines(entry_point_script)
 
         bootstrap_script_path = os.path.join(

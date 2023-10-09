@@ -199,7 +199,8 @@ def test_main_no_dependency_file(
     validate_python.assert_called_once_with(TEST_PYTHON_VERSION, TEST_JOB_CONDA_ENV)
     path_exists.assert_called_once_with(TEST_WORKSPACE_ARCHIVE_DIR_PATH)
     file_exists.assert_called_once_with(TEST_WORKSPACE_ARCHIVE_PATH)
-    get_cwd.assert_called_once()
+    # Called twice by pathlib on some platforms
+    get_cwd.assert_called()
     list_dir.assert_called_once_with(pathlib.Path(TEST_DEPENDENCIES_PATH))
     run_pre_exec_script.assert_called()
     bootstrap_runtime.assert_not_called()
