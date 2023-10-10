@@ -1560,9 +1560,20 @@ You can install necessary dependencies for this feature using pip.
 Additionally, Local Mode also requires Docker Compose V2. Follow the guidelines in https://docs.docker.com/compose/install/ to install.
 Make sure to have a Compose Version compatible with your Docker Engine installation. Check Docker Engine release notes https://docs.docker.com/engine/release-notes to find a compatible version.
 
-If you want to keep everything local, and not use Amazon S3 either, you can enable "local code" in one of two ways:
+Local mode configuration
+========================
 
-- Create a file at ``~/.sagemaker/config.yaml`` that contains:
+The local mode uses a YAML configuration file located at ``~/.sagemaker/config.yaml`` to define the default values that are automatically passed to the ``config`` attribute of ``LocalSession``. This is an example of the configuration, for the full schema, see `sagemaker.config.config_schema.SAGEMAKER_PYTHON_SDK_LOCAL_MODE_CONFIG_SCHEMA <https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/config/config_schema.py>`_.
+
+.. code:: yaml
+
+    local:
+        local_code: true # Using everything locally
+        region_name: "us-west-2" # Name of the region
+        container_config: # Additional docker container config
+            shm_size: "128M
+
+If you want to keep everything local, and not use Amazon S3 either, you can enable "local code" in one of two ways:
 
 .. code:: yaml
 
@@ -1582,6 +1593,9 @@ If you want to keep everything local, and not use Amazon S3 either, you can enab
 
 .. note::
     If you enable "local code," then you cannot use the ``dependencies`` parameter in your estimator or model.
+
+Activating local mode by ``instance_type`` argument
+====================================================
 
 We can take the example in  `Using Estimators <#using-estimators>`__ , and use either ``local`` or ``local_gpu`` as the instance type.
 

@@ -358,6 +358,7 @@ def test_start(
         s3_base_uri=f"{S3_URI}/{job.job_name}",
         s3_kms_key=None,
         sagemaker_session=session(),
+        custom_file_filter=None,
     )
 
     session().sagemaker_client.create_training_job.assert_called_once_with(
@@ -480,6 +481,7 @@ def test_start_with_complete_job_settings(
         s3_base_uri=f"{S3_URI}/{job.job_name}",
         s3_kms_key=job_settings.s3_kms_key,
         sagemaker_session=session(),
+        custom_file_filter=None,
     )
 
     session().sagemaker_client.create_training_job.assert_called_once_with(
@@ -776,6 +778,32 @@ def test_prepare_and_upload_dependencies(session, mock_copytree, mock_copy, mock
     mock_s3_upload.assert_called_once_with(
         ANY, S3_URI + "/" + REMOTE_FUNCTION_WORKSPACE, KMS_KEY_ARN, session
     )
+
+
+@patch("sagemaker.s3.S3Uploader.upload", return_value="some_uri")
+@patch("shutil.copy2")
+@patch("shutil.copytree")
+@patch("sagemaker.remote_function.job.Session", return_value=mock_session())
+def test_prepare_and_upload_dependencies_with_custom_filter(
+    session, mock_copytree, mock_copy, mock_s3_upload
+):
+    def custom_file_filter():
+        pass
+
+    s3_path = _prepare_and_upload_dependencies(
+        local_dependencies_path="some/path/to/dependency",
+        include_local_workdir=True,
+        pre_execution_commands=["cmd_1", "cmd_2"],
+        pre_execution_script_local_path=None,
+        s3_base_uri=S3_URI,
+        s3_kms_key=KMS_KEY_ARN,
+        sagemaker_session=session,
+        custom_file_filter=custom_file_filter,
+    )
+
+    assert s3_path == mock_s3_upload.return_value
+
+    mock_copytree.assert_called_with(os.getcwd(), ANY, ignore=custom_file_filter)
 
 
 @patch("sagemaker.remote_function.job.Session", return_value=mock_session())

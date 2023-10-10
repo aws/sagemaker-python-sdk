@@ -657,6 +657,23 @@ def test_container_does_not_enable_nvidia_docker_for_cpu_containers(sagemaker_se
     assert "runtime" not in docker_host
 
 
+def test_container_with_custom_config(sagemaker_session):
+    custom_config = {
+        "local": {
+            "container_config": {"shm_size": "128M"},
+        }
+    }
+    sagemaker_session.config = custom_config
+    instance_count = 1
+    image = "my-image"
+    sagemaker_container = _SageMakerContainer(
+        "local", instance_count, image, sagemaker_session=sagemaker_session
+    )
+
+    docker_host = sagemaker_container._create_docker_host("host-1", {}, set(), "train", [])
+    assert "shm_size" in docker_host
+
+
 @patch("sagemaker.local.image._HostingContainer.run", Mock())
 @patch("sagemaker.local.image._SageMakerContainer._prepare_serving_volumes", Mock(return_value=[]))
 @patch("shutil.copy", Mock())
