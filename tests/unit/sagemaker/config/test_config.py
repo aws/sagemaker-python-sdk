@@ -16,13 +16,15 @@ import os
 import pytest
 import yaml
 import logging
-from mock import Mock, MagicMock
+from mock import Mock, MagicMock, patch
 
 from sagemaker.config.config import (
+    load_local_mode_config,
     load_sagemaker_config,
     logger,
     _DEFAULT_ADMIN_CONFIG_FILE_PATH,
     _DEFAULT_USER_CONFIG_FILE_PATH,
+    _DEFAULT_LOCAL_MODE_CONFIG_FILE_PATH,
 )
 from jsonschema import exceptions
 from yaml.constructor import ConstructorError
@@ -402,3 +404,13 @@ def test_logging_with_additional_configs_and_none_are_found(caplog):
         in caplog.text
     )
     logger.propagate = False
+
+
+@patch("sagemaker.config.config._load_config_from_file")
+def test_load_local_mode_config(mock_load_config):
+    load_local_mode_config()
+    mock_load_config.assert_called_with(_DEFAULT_LOCAL_MODE_CONFIG_FILE_PATH)
+
+
+def test_load_local_mode_config_when_config_file_is_not_found():
+    assert load_local_mode_config() is None
