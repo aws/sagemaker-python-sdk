@@ -314,8 +314,27 @@ class JumpStartModel(Model):
 
         super(JumpStartModel, self).__init__(**model_init_kwargs.to_kwargs_dict())
 
-    def retrieve_default_payload(self) -> JumpStartSerializablePayload:
-        """Returns the default payload associated with the model.
+    def retrieve_all_examples(self) -> Optional[List[JumpStartSerializablePayload]]:
+        """Returns all example payloads associated with the model.
+
+        Raises:
+            NotImplementedError: If the scope is not supported.
+            ValueError: If the combination of arguments specified is not supported.
+            VulnerableJumpStartModelError: If any of the dependencies required by the script have
+                known security vulnerabilities.
+            DeprecatedJumpStartModelError: If the version of the model is deprecated.
+        """
+        return payloads.retrieve_all_examples(
+            model_id=self.model_id,
+            model_version=self.model_version,
+            region=self.region,
+            tolerate_deprecated_model=self.tolerate_deprecated_model,
+            tolerate_vulnerable_model=self.tolerate_vulnerable_model,
+            sagemaker_session=self.sagemaker_session,
+        )
+
+    def retrieve_example_payload(self) -> JumpStartSerializablePayload:
+        """Returns the example payload associated with the model.
 
         Payload can be directly used with the `sagemaker.predictor.Predictor.predict(...)` function.
 

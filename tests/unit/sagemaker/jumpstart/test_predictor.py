@@ -65,7 +65,7 @@ def test_jumpstart_serializable_payload_with_predictor(
 
     default_payload = JumpStartModel(
         model_id=model_id, model_version=model_version
-    ).retrieve_default_payload()
+    ).retrieve_example_payload()
 
     invoke_endpoint_mock = mock.Mock()
 

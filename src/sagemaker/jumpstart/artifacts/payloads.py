@@ -28,7 +28,7 @@ from sagemaker.jumpstart.utils import (
 from sagemaker.session import Session
 
 
-def _retrieve_default_payloads(
+def _retrieve_example_payloads(
     model_id: str,
     model_version: str,
     region: Optional[str],
@@ -36,15 +36,15 @@ def _retrieve_default_payloads(
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> Optional[Dict[str, JumpStartSerializablePayload]]:
-    """Returns default payloads.
+    """Returns example payloads.
 
     Args:
         model_id (str): JumpStart model ID of the JumpStart model for which to
-            get default payloads.
+            get example payloads.
         model_version (str): Version of the JumpStart model for which to retrieve the
-            default resource name.
+            example payloads.
         region (Optional[str]): Region for which to retrieve the
-            default resource name.
+            example payloads.
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
             specifications should be tolerated (exception not raised). If False, raises an
             exception if the script used by this version of the model has dependencies with known
@@ -57,7 +57,8 @@ def _retrieve_default_payloads(
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     Returns:
-        str: the default payload.
+        Optional[Dict[str, JumpStartSerializablePayload]]: dictionary mapping payload aliases
+            to the serializable payload object.
     """
 
     if region is None:

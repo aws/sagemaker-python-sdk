@@ -62,5 +62,5 @@ from sagemaker.jumpstart.artifacts.model_packages import (  # noqa: F401
     _retrieve_model_package_model_artifact_s3_uri,
 )
 from sagemaker.jumpstart.artifacts.payloads import (  # noqa: F401
-    _retrieve_default_payloads,
+    _retrieve_example_payloads,
 )

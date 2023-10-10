@@ -35,7 +35,7 @@ def retrieve_all_examples(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-) -> Optional[List[str]]:
+) -> Optional[List[JumpStartSerializablePayload]]:
     """Retrieves the compatible payloads for the model matching the given arguments.
 
     Args:
@@ -60,7 +60,7 @@ def retrieve_all_examples(
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     Returns:
-        Optional[List[str]]: List of payloads or None.
+        Optional[List[JumpStartSerializablePayload]]: List of payloads or None.
 
     Raises:
         NotImplementedError: If the scope is not supported.
@@ -76,7 +76,7 @@ def retrieve_all_examples(
 
     unserialized_payload_dict: Optional[
         Dict[str, JumpStartSerializablePayload]
-    ] = artifacts._retrieve_default_payloads(
+    ] = artifacts._retrieve_example_payloads(
         model_id,
         model_version,
         region,
@@ -124,7 +124,7 @@ def retrieve_example(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-) -> Optional[str]:
+) -> Optional[JumpStartSerializablePayload]:
     """Retrieves a single compatible payload for the model matching the given arguments.
 
     Args:
@@ -149,7 +149,7 @@ def retrieve_example(
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     Returns:
-        Optional[str]: A single default payload or None.
+        Optional[JumpStartSerializablePayload]: A single default payload or None.
 
     Raises:
         NotImplementedError: If the scope is not supported.
@@ -158,7 +158,7 @@ def retrieve_example(
             known security vulnerabilities.
         DeprecatedJumpStartModelError: If the version of the model is deprecated.
     """
-    example_payloads: Optional[List[str]] = retrieve_all_examples(
+    example_payloads: Optional[List[JumpStartSerializablePayload]] = retrieve_all_examples(
         region=region,
         model_id=model_id,
         model_version=model_version,
