@@ -11,21 +11,24 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Placeholder docstring"""
-from __future__ import absolute_import
+from __future__ import absolute_import, annotations
 
 import logging
-import os
 import platform
 from datetime import datetime
+from typing import Dict
 
 import boto3
 from botocore.exceptions import ClientError
+import jsonschema
 
 from sagemaker.config import (
-    load_sagemaker_config,
-    validate_sagemaker_config,
+    SAGEMAKER_PYTHON_SDK_LOCAL_MODE_CONFIG_SCHEMA,
     SESSION_DEFAULT_S3_BUCKET_PATH,
     SESSION_DEFAULT_S3_OBJECT_KEY_PREFIX_PATH,
+    load_local_mode_config,
+    load_sagemaker_config,
+    validate_sagemaker_config,
 )
 from sagemaker.local.image import _SageMakerContainer
 from sagemaker.local.utils import get_docker_host
@@ -83,7 +86,7 @@ class LocalSagemakerClient(object):  # pylint: disable=too-many-public-methods
         Environment=None,
         ProcessingInputs=None,
         ProcessingOutputConfig=None,
-        **kwargs
+        **kwargs,
     ):
         """Creates a processing job in Local Mode
 
@@ -165,7 +168,7 @@ class LocalSagemakerClient(object):  # pylint: disable=too-many-public-methods
         ResourceConfig,
         InputDataConfig=None,
         Environment=None,
-        **kwargs
+        **kwargs,
     ):
         """Create a training job in Local Mode.
 
@@ -230,7 +233,7 @@ class LocalSagemakerClient(object):  # pylint: disable=too-many-public-methods
         TransformInput,
         TransformOutput,
         TransformResources,
-        **kwargs
+        **kwargs,
     ):
         """Create the transform job.
 
@@ -537,7 +540,21 @@ class LocalSagemakerRuntimeClient(object):
         self.http = urllib3.PoolManager()
         self.serving_port = 8080
         self.config = config
-        self.serving_port = get_config_value("local.serving_port", config) or 8080
+
+    @property
+    def config(self) -> dict:
+        """Local config getter"""
+        return self._config
+
+    @config.setter
+    def config(self, value: dict):
+        """Local config setter, this method also updates the `serving_port` attribute.
+
+        Args:
+            value (dict): the new config value
+        """
+        self._config = value
+        self.serving_port = get_config_value("local.serving_port", self._config) or 8080
 
     def invoke_endpoint(
         self,
@@ -686,6 +703,7 @@ class LocalSession(Session):
 
         self.sagemaker_client = LocalSagemakerClient(self)
         self.sagemaker_runtime_client = LocalSagemakerRuntimeClient(self.config)
+
         self.local_mode = True
         sagemaker_config = kwargs.get("sagemaker_config", None)
         if sagemaker_config:
@@ -726,17 +744,26 @@ class LocalSession(Session):
             sagemaker_session=self,
         )
 
-        local_mode_config_file = os.path.join(os.path.expanduser("~"), ".sagemaker", "config.yaml")
-        if os.path.exists(local_mode_config_file):
-            try:
-                import yaml
-            except ImportError as e:
-                logger.error(_module_import_error("yaml", "Local mode", "local"))
-                raise e
+        self.config = load_local_mode_config()
+        if self._disable_local_code and self.config and "local" in self.config:
+            self.config["local"]["local_code"] = False
 
-            self.config = yaml.safe_load(open(local_mode_config_file, "r"))
-            if self._disable_local_code and "local" in self.config:
-                self.config["local"]["local_code"] = False
+    @Session.config.setter
+    def config(self, value: Dict | None):
+        """Setter of the local mode config"""
+        if value is not None:
+            try:
+                jsonschema.validate(value, SAGEMAKER_PYTHON_SDK_LOCAL_MODE_CONFIG_SCHEMA)
+            except jsonschema.ValidationError as e:
+                logger.error("Failed to validate the local mode config")
+                raise e
+            self._config = value
+        else:
+            self._config = value
+
+        # update the runtime client on config changed
+        if getattr(self, "sagemaker_runtime_client", None):
+            self.sagemaker_runtime_client.config = self._config
 
     def logs_for_job(self, job_name, wait=False, poll=5, log_type="All"):
         """A no-op method meant to override the sagemaker client.
