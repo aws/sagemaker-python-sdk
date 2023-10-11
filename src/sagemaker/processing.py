@@ -1846,12 +1846,13 @@ class FrameworkProcessor(ScriptProcessor):
         return s3_runproc_sh, inputs, job_name
 
     def _get_codeartifact_index(self, codeartifact_repo_arn: str, codeartifact_client: Any = None):
-        """
-        Build the authenticated codeartifact index url based on the arn provided
-        via codeartifact_repo_arn property following the form
+        """Build an authenticated codeartifact index url based on the arn provided.
+
+        The codeartifact_repo_arn property must follow the form
         # `arn:${Partition}:codeartifact:${Region}:${Account}:repository/${Domain}/${Repository}`
         https://docs.aws.amazon.com/codeartifact/latest/ug/python-configure-pip.html
         https://docs.aws.amazon.com/service-authorization/latest/reference/list_awscodeartifact.html#awscodeartifact-resources-for-iam-policies
+        
         Args:
             codeartifact_repo_arn: arn of the codeartifact repository
             codeartifact_client: boto3 client for codeartifact (used for testing)
