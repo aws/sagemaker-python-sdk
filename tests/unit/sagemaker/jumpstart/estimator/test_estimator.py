@@ -677,7 +677,7 @@ class EstimatorTest(unittest.TestCase):
         Please add the new argument to the skip set below,
         and reach out to JumpStart team."""
 
-        init_args_to_skip: Set[str] = set(["kwargs", "enable_infra_check"])
+        init_args_to_skip: Set[str] = set(["kwargs"])
         fit_args_to_skip: Set[str] = set()
         deploy_args_to_skip: Set[str] = set(["kwargs"])
 

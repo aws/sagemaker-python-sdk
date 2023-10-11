@@ -1,5 +1,26 @@
 # Changelog
 
+## v2.192.0 (2023-10-11)
+
+### Features
+
+ * jumpstart estimator enable infra check flag
+ * jumpstart default payloads
+ * allow non-python files in job dependencies
+ * allow configuring docker container in local mode
+
+### Bug Fixes and Other Changes
+
+ * js tagging s3 prefix
+ * Batch transform: Add support for split_type == "None" in local mode
+ * use correct line endings and s3 uris on windows
+ * Fixed bug in _create_training_details
+ * DJL Neuronx 0.24.0
+
+### Documentation Changes
+
+ * Include FeatureGroup's load_feature_definitions API documentation
+
 ## v2.191.0 (2023-10-05)
 
 ### Features
