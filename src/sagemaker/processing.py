@@ -22,7 +22,7 @@ import os
 import pathlib
 import logging
 from textwrap import dedent
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 from copy import copy
 import re
 
@@ -1845,14 +1845,18 @@ class FrameworkProcessor(ScriptProcessor):
 
         return s3_runproc_sh, inputs, job_name
 
-    def _get_codeartifact_index(self, codeartifact_repo_arn: str):
+    def _get_codeartifact_index(self, codeartifact_repo_arn: str, codeartifact_client: Any = None):
         """
         Build the authenticated codeartifact index url based on the arn provided
         via codeartifact_repo_arn property following the form
         # `arn:${Partition}:codeartifact:${Region}:${Account}:repository/${Domain}/${Repository}`
         https://docs.aws.amazon.com/codeartifact/latest/ug/python-configure-pip.html
         https://docs.aws.amazon.com/service-authorization/latest/reference/list_awscodeartifact.html#awscodeartifact-resources-for-iam-policies
-        :return: authenticated codeartifact index url
+        Args:
+            codeartifact_repo_arn: arn of the codeartifact repository
+            codeartifact_client: boto3 client for codeartifact (used for testing)
+        Returns:
+            authenticated codeartifact index url
         """
 
         arn_regex = (
@@ -1861,7 +1865,7 @@ class FrameworkProcessor(ScriptProcessor):
         )
         m = re.match(arn_regex, codeartifact_repo_arn)
         if not m:
-            raise Exception("invalid CodeArtifact repository arn {}".format(codeartifact_repo_arn))
+            raise ValueError("invalid CodeArtifact repository arn {}".format(codeartifact_repo_arn))
         domain = m.group("domain")
         owner = m.group("account")
         repository = m.group("repository")
@@ -1876,10 +1880,12 @@ class FrameworkProcessor(ScriptProcessor):
             region,
         )
         try:
-            client = self.sagemaker_session.boto_session.client("codeartifact", region_name=region)
-            auth_token_response = client.get_authorization_token(domain=domain, domainOwner=owner)
+            if not codeartifact_client:
+                codeartifact_client = self.sagemaker_session.boto_session.client("codeartifact", region_name=region)
+            
+            auth_token_response = codeartifact_client.get_authorization_token(domain=domain, domainOwner=owner)
             token = auth_token_response["authorizationToken"]
-            endpoint_response = client.get_repository_endpoint(
+            endpoint_response = codeartifact_client.get_repository_endpoint(
                 domain=domain, domainOwner=owner, repository=repository, format="pypi"
             )
             unauthenticated_index = endpoint_response["repositoryEndpoint"]
@@ -1892,9 +1898,9 @@ class FrameworkProcessor(ScriptProcessor):
                     unauthenticated_index,
                 ),
             )
-        except Exception:
-            logger.error("failed to configure pip to use codeartifact")
-            raise Exception("failed to configure pip to use codeartifact")
+        except Exception as e:
+            logger.error("failed to configure pip to use codeartifact: %s", e, exc_info=True)
+            raise RuntimeError("failed to configure pip to use codeartifact")
 
     def _generate_framework_script(
         self, user_script: str, codeartifact_repo_arn: str = None

@@ -13,7 +13,10 @@
 from __future__ import absolute_import
 
 import copy
+import datetime
 
+import boto3
+from botocore.stub import Stubber
 import pytest
 from mock import Mock, patch, MagicMock
 from packaging import version
@@ -1100,6 +1103,121 @@ def test_pyspark_processor_configuration_path_pipeline_config(
         s3_uri
         == "s3://mybucket/test-pipeline/test-processing-step/input/conf/config-hash-abcdefg/configuration.json"
     )
+
+
+@patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
+def test_get_codeartifact_index(pipeline_session):
+    codeartifact_repo_arn = "arn:aws:codeartifact:us-west-2:012345678901:repository/test-domain/test-repository"
+    codeartifact_url = "test-domain-012345678901.d.codeartifact.us-west-2.amazonaws.com/pypi/test-repository/simple/"
+
+    client = boto3.client('codeartifact', region_name=REGION)
+    stubber = Stubber(client)
+        
+    get_auth_token_response = {
+        "authorizationToken": "mocked_token",
+        "expiration": datetime.datetime(2045, 1, 1, 0, 0, 0)
+    }
+    auth_token_expected_params = {"domain": "test-domain", "domainOwner": "012345678901"}
+    stubber.add_response("get_authorization_token", get_auth_token_response, auth_token_expected_params)
+
+    get_repo_endpoint_response = {"repositoryEndpoint": f"https://{codeartifact_url}"}
+    repo_endpoint_expected_params = {
+        "domain": "test-domain",
+        "domainOwner": "012345678901",
+        "repository": "test-repository",
+        "format": "pypi"
+    }
+    stubber.add_response("get_repository_endpoint", get_repo_endpoint_response, repo_endpoint_expected_params)
+
+    processor = PyTorchProcessor(
+        role=ROLE,
+        instance_type="ml.m4.xlarge",
+        framework_version="2.0.1",
+        py_version="py310",
+        instance_count=1,
+        sagemaker_session=pipeline_session,
+    )
+
+    with stubber:
+        codeartifact_index = processor._get_codeartifact_index(codeartifact_repo_arn=codeartifact_repo_arn, codeartifact_client=client)
+    
+    assert codeartifact_index == f"https://aws:mocked_token@{codeartifact_url}"
+
+
+@patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
+def test_get_codeartifact_index_bad_repo_arn(pipeline_session):
+    codeartifact_repo_arn = "arn:aws:codeartifact:us-west-2:012345678901:repository/test-domain"
+    codeartifact_url = "test-domain-012345678901.d.codeartifact.us-west-2.amazonaws.com/pypi/test-repository/simple/"
+
+    client = boto3.client('codeartifact', region_name=REGION)
+    stubber = Stubber(client)
+        
+    get_auth_token_response = {
+        "authorizationToken": "mocked_token",
+        "expiration": datetime.datetime(2045, 1, 1, 0, 0, 0)
+    }
+    auth_token_expected_params = {"domain": "test-domain", "domainOwner": "012345678901"}
+    stubber.add_response("get_authorization_token", get_auth_token_response, auth_token_expected_params)
+
+    get_repo_endpoint_response = {"repositoryEndpoint": f"https://{codeartifact_url}"}
+    repo_endpoint_expected_params = {
+        "domain": "test-domain",
+        "domainOwner": "012345678901",
+        "repository": "test-repository",
+        "format": "pypi"
+    }
+    stubber.add_response("get_repository_endpoint", get_repo_endpoint_response, repo_endpoint_expected_params)
+
+    processor = PyTorchProcessor(
+        role=ROLE,
+        instance_type="ml.m4.xlarge",
+        framework_version="2.0.1",
+        py_version="py310",
+        instance_count=1,
+        sagemaker_session=pipeline_session,
+    )
+
+    with stubber:
+        with pytest.raises(ValueError):
+            processor._get_codeartifact_index(codeartifact_repo_arn=codeartifact_repo_arn, codeartifact_client=client)
+
+
+@patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
+def test_get_codeartifact_index_client_error(pipeline_session):
+    codeartifact_repo_arn = "arn:aws:codeartifact:us-west-2:012345678901:repository/test-domain/test-repository"
+    codeartifact_url = "test-domain-012345678901.d.codeartifact.us-west-2.amazonaws.com/pypi/test-repository/simple/"
+
+    client = boto3.client('codeartifact', region_name=REGION)
+    stubber = Stubber(client)
+        
+    get_auth_token_response = {
+        "authorizationToken": "mocked_token",
+        "expiration": datetime.datetime(2045, 1, 1, 0, 0, 0)
+    }
+    auth_token_expected_params = {"domain": "test-domain", "domainOwner": "012345678901"}
+    stubber.add_client_error("get_authorization_token", service_error_code="404", expected_params=auth_token_expected_params)
+
+    get_repo_endpoint_response = {"repositoryEndpoint": f"https://{codeartifact_url}"}
+    repo_endpoint_expected_params = {
+        "domain": "test-domain",
+        "domainOwner": "012345678901",
+        "repository": "test-repository",
+        "format": "pypi"
+    }
+    stubber.add_response("get_repository_endpoint", get_repo_endpoint_response, repo_endpoint_expected_params)
+
+    processor = PyTorchProcessor(
+        role=ROLE,
+        instance_type="ml.m4.xlarge",
+        framework_version="2.0.1",
+        py_version="py310",
+        instance_count=1,
+        sagemaker_session=pipeline_session,
+    )
+
+    with stubber:
+        with pytest.raises(RuntimeError):
+            processor._get_codeartifact_index(codeartifact_repo_arn=codeartifact_repo_arn, codeartifact_client=client)
 
 
 def _get_script_processor(sagemaker_session):
