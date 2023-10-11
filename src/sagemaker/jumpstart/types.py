@@ -31,6 +31,8 @@ class JumpStartDataHolderType:
 
     __slots__: List[str] = []
 
+    _non_serializable_slots: List[str] = []
+
     def __eq__(self, other: Any) -> bool:
         """Returns True if ``other`` is of the same type and has all attributes equal.
 
@@ -69,7 +71,11 @@ class JumpStartDataHolderType:
         {'content_bucket': 'bucket', 'region_name': 'us-west-2'}"
         """
 
-        att_dict = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
+        att_dict = {
+            att: getattr(self, att)
+            for att in self.__slots__
+            if hasattr(self, att) and att not in self._non_serializable_slots
+        }
         return f"{type(self).__name__}: {str(att_dict)}"
 
     def __repr__(self) -> str:
@@ -79,7 +85,11 @@ class JumpStartDataHolderType:
         {'content_bucket': 'bucket', 'region_name': 'us-west-2'}"
         """
 
-        att_dict = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
+        att_dict = {
+            att: getattr(self, att)
+            for att in self.__slots__
+            if hasattr(self, att) and att not in self._non_serializable_slots
+        }
         return f"{type(self).__name__} at {hex(id(self))}: {str(att_dict)}"
 
 
@@ -312,6 +322,52 @@ class JumpStartPredictorSpecs(JumpStartDataHolderType):
         return json_obj
 
 
+class JumpStartSerializablePayload(JumpStartDataHolderType):
+    """Data class for JumpStart serialized payload specs."""
+
+    __slots__ = [
+        "raw_payload",
+        "content_type",
+        "accept",
+        "body",
+    ]
+
+    _non_serializable_slots = ["raw_payload"]
+
+    def __init__(self, spec: Optional[Dict[str, Any]]):
+        """Initializes a JumpStartSerializablePayload object from its json representation.
+
+        Args:
+            spec (Dict[str, Any]): Dictionary representation of payload specs.
+        """
+        self.from_json(spec)
+
+    def from_json(self, json_obj: Optional[Dict[str, Any]]) -> None:
+        """Sets fields in object based on json.
+
+        Args:
+            json_obj (Dict[str, Any]): Dictionary representation of serializable
+                payload specs.
+
+        Raises:
+            KeyError: If the dictionary is missing keys.
+        """
+
+        if json_obj is None:
+            return
+
+        self.raw_payload = json_obj
+        self.content_type = json_obj["content_type"]
+        self.body = json_obj["body"]
+        accept = json_obj.get("accept")
+        if accept:
+            self.accept = accept
+
+    def to_json(self) -> Dict[str, Any]:
+        """Returns json representation of JumpStartSerializablePayload object."""
+        return deepcopy(self.raw_payload)
+
+
 class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
     """Data class for JumpStart instance type variants."""
 
@@ -468,6 +524,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         "hosting_use_script_uri",
         "hosting_instance_type_variants",
         "training_instance_type_variants",
+        "default_payloads",
     ]
 
     def __init__(self, spec: Dict[str, Any]):
@@ -534,6 +591,14 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         self.predictor_specs: Optional[JumpStartPredictorSpecs] = (
             JumpStartPredictorSpecs(json_obj["predictor_specs"])
             if "predictor_specs" in json_obj
+            else None
+        )
+        self.default_payloads: Optional[Dict[str, JumpStartSerializablePayload]] = (
+            {
+                alias: JumpStartSerializablePayload(payload)
+                for alias, payload in json_obj["default_payloads"].items()
+            }
+            if json_obj.get("default_payloads")
             else None
         )
         self.inference_volume_size: Optional[int] = json_obj.get("inference_volume_size")

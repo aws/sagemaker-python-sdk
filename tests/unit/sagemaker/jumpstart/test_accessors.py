@@ -11,6 +11,8 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
+from io import BytesIO
+from unittest import TestCase
 
 from mock.mock import Mock, patch
 import pytest
@@ -134,3 +136,87 @@ def test_jumpstart_models_cache_set_reset_fxs(mock_model_cache: Mock):
 
     # necessary because accessors is a static module
     reload(accessors)
+
+
+class TestS3Accessor(TestCase):
+
+    bucket = "bucket"
+    key = "key"
+
+    @patch("sagemaker.jumpstart.accessors.boto3.client")
+    def test_get_object(self, mocked_boto3_client):
+
+        # required due to static class
+        reload(accessors)
+
+        mocked_boto3_client.return_value = Mock()
+
+        mocked_boto3_client.return_value.get_object.return_value = {"Body": BytesIO(b"s3-object")}
+        mocked_boto3_client.return_value.head_object.return_value = {"ContentLength": 1}
+
+        response = accessors.JumpStartS3PayloadAccessor.get_object(bucket=self.bucket, key=self.key)
+
+        self.assertEqual(response, b"s3-object")
+
+        mocked_boto3_client.assert_called_once_with("s3", region_name="us-west-2")
+        mocked_boto3_client.return_value.get_object.assert_called_once_with(
+            Bucket=self.bucket, Key=self.key
+        )
+        mocked_boto3_client.return_value.head_object.assert_called_once_with(
+            Bucket=self.bucket, Key=self.key
+        )
+
+    @patch("sagemaker.jumpstart.accessors.boto3.client")
+    def test_get_object_cached(self, mocked_boto3_client):
+
+        # required due to static class
+        reload(accessors)
+
+        mocked_boto3_client.return_value = Mock()
+
+        mocked_boto3_client.return_value.get_object.return_value = {"Body": BytesIO(b"s3-object")}
+        mocked_boto3_client.return_value.head_object.return_value = {"ContentLength": 1}
+
+        response = accessors.JumpStartS3PayloadAccessor.get_object_cached(
+            bucket=self.bucket, key=self.key
+        )
+        response = accessors.JumpStartS3PayloadAccessor.get_object_cached(
+            bucket=self.bucket, key=self.key
+        )
+
+        self.assertEqual(response, b"s3-object")
+
+        # only a single s3 call should be made when identical requests are made
+        mocked_boto3_client.assert_called_once_with("s3", region_name="us-west-2")
+        mocked_boto3_client.return_value.get_object.assert_called_once_with(
+            Bucket=self.bucket, Key=self.key
+        )
+        mocked_boto3_client.return_value.head_object.assert_called_once_with(
+            Bucket=self.bucket, Key=self.key
+        )
+
+    @patch("sagemaker.jumpstart.accessors.boto3.client")
+    def test_get_object_limit_exceeded(self, mocked_boto3_client):
+
+        # required due to static class
+        reload(accessors)
+
+        mocked_boto3_client.return_value = Mock()
+
+        mocked_boto3_client.return_value.get_object.return_value = {"Body": BytesIO(b"s3-object")}
+        mocked_boto3_client.return_value.head_object.return_value = {"ContentLength": 1e99}
+
+        with pytest.raises(ValueError) as e:
+            accessors.JumpStartS3PayloadAccessor.get_object(bucket=self.bucket, key=self.key)
+
+        self.assertEqual(
+            str(e.value),
+            "s3://bucket/key has size of 1e+99 bytes, which "
+            "exceeds maximum allowed size of 6000000 bytes.",
+        )
+
+        mocked_boto3_client.assert_called_once_with("s3", region_name="us-west-2")
+        mocked_boto3_client.return_value.get_object.assert_not_called()
+        mocked_boto3_client.return_value.head_object.assert_called_once_with(
+            Bucket=self.bucket, Key=self.key
+        )

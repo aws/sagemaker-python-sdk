@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 """This module contains accessors related to SageMaker JumpStart."""
 from __future__ import absolute_import
+import functools
 from typing import Any, Dict, List, Optional
 import boto3
 
@@ -35,6 +36,88 @@ class SageMakerSettings(object):
     def get_sagemaker_version() -> str:
         """Return SageMaker version."""
         return SageMakerSettings._parsed_sagemaker_version
+
+
+class JumpStartS3PayloadAccessor(object):
+    """Static class for storing and retrieving S3 payload artifacts."""
+
+    MAX_CACHE_SIZE_BYTES = int(100 * 1e6)
+    MAX_PAYLOAD_SIZE_BYTES = int(6 * 1e6)
+
+    CACHE_SIZE = MAX_CACHE_SIZE_BYTES // MAX_PAYLOAD_SIZE_BYTES
+
+    @staticmethod
+    def clear_cache() -> None:
+        """Clears LRU caches associated with S3 client and retrieved objects."""
+
+        JumpStartS3PayloadAccessor._get_default_s3_client.cache_clear()
+        JumpStartS3PayloadAccessor.get_object_cached.cache_clear()
+
+    @staticmethod
+    @functools.lru_cache()
+    def _get_default_s3_client(region: str = JUMPSTART_DEFAULT_REGION_NAME) -> boto3.client:
+        """Returns default S3 client associated with the region.
+
+        Result is cached so multiple clients in memory are not created.
+        """
+        return boto3.client("s3", region_name=region)
+
+    @staticmethod
+    @functools.lru_cache(maxsize=CACHE_SIZE)
+    def get_object_cached(
+        bucket: str,
+        key: str,
+        region: str = JUMPSTART_DEFAULT_REGION_NAME,
+        s3_client: Optional[boto3.client] = None,
+    ) -> bytes:
+        """Returns S3 object located at the bucket and key.
+
+        Requests are cached so that the same S3 request is never made more
+        than once, unless a different region or client is used.
+        """
+        return JumpStartS3PayloadAccessor.get_object(
+            bucket=bucket, key=key, region=region, s3_client=s3_client
+        )
+
+    @staticmethod
+    def _get_object_size_bytes(
+        bucket: str,
+        key: str,
+        region: str = JUMPSTART_DEFAULT_REGION_NAME,
+        s3_client: Optional[boto3.client] = None,
+    ) -> bytes:
+        """Returns size in bytes of S3 object using S3.HeadObject operation."""
+        if s3_client is None:
+            s3_client = JumpStartS3PayloadAccessor._get_default_s3_client(region)
+
+        return s3_client.head_object(Bucket=bucket, Key=key)["ContentLength"]
+
+    @staticmethod
+    def get_object(
+        bucket: str,
+        key: str,
+        region: str = JUMPSTART_DEFAULT_REGION_NAME,
+        s3_client: Optional[boto3.client] = None,
+    ) -> bytes:
+        """Returns S3 object located at the bucket and key.
+
+        Raises:
+            ValueError: The object size is too large.
+        """
+        if s3_client is None:
+            s3_client = JumpStartS3PayloadAccessor._get_default_s3_client(region)
+
+        object_size_bytes = JumpStartS3PayloadAccessor._get_object_size_bytes(
+            bucket=bucket, key=key, region=region, s3_client=s3_client
+        )
+        if object_size_bytes > JumpStartS3PayloadAccessor.MAX_PAYLOAD_SIZE_BYTES:
+            raise ValueError(
+                f"s3://{bucket}/{key} has size of {object_size_bytes} bytes, "
+                "which exceeds maximum allowed size of "
+                f"{JumpStartS3PayloadAccessor.MAX_PAYLOAD_SIZE_BYTES} bytes."
+            )
+
+        return s3_client.get_object(Bucket=bucket, Key=key)["Body"].read()
 
 
 class JumpStartModelsAccessor(object):

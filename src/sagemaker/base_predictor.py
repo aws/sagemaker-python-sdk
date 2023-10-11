@@ -14,7 +14,7 @@
 from __future__ import print_function, absolute_import
 
 import abc
-from typing import Any, Tuple
+from typing import Any, Optional, Tuple, Union
 
 from sagemaker.deprecations import (
     deprecated_class,
@@ -32,6 +32,9 @@ from sagemaker.deserializers import (  # noqa: F401 # pylint: disable=unused-imp
     StreamDeserializer,
     StringDeserializer,
 )
+from sagemaker.jumpstart.payload_utils import PayloadSerializer
+from sagemaker.jumpstart.types import JumpStartSerializablePayload
+from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
 from sagemaker.model_monitor import (
     DataCaptureConfig,
     DefaultModelMonitor,
@@ -201,20 +204,44 @@ class Predictor(PredictorBase):
         custom_attributes=None,
     ):
         """Placeholder docstring"""
+
+        jumpstart_serialized_data: Optional[Union[str, bytes]] = None
+        jumpstart_accept: Optional[str] = None
+        jumpstart_content_type: Optional[str] = None
+
+        if isinstance(data, JumpStartSerializablePayload):
+            s3_client = self.sagemaker_session.s3_client
+            region = self.sagemaker_session._region_name
+            bucket = get_jumpstart_content_bucket(region)
+
+            jumpstart_serialized_data = PayloadSerializer(
+                bucket=bucket, region=region, s3_client=s3_client
+            ).serialize(data)
+            jumpstart_content_type = data.content_type
+            jumpstart_accept = data.accept
+
         args = dict(initial_args) if initial_args else {}
 
         if "EndpointName" not in args:
             args["EndpointName"] = self.endpoint_name
 
         if "ContentType" not in args:
-            args["ContentType"] = (
-                self.content_type
-                if isinstance(self.content_type, str)
-                else ", ".join(self.content_type)
-            )
+            if isinstance(data, JumpStartSerializablePayload) and jumpstart_content_type:
+                args["ContentType"] = jumpstart_content_type
+            else:
+                args["ContentType"] = (
+                    self.content_type
+                    if isinstance(self.content_type, str)
+                    else ", ".join(self.content_type)
+                )
 
         if "Accept" not in args:
-            args["Accept"] = self.accept if isinstance(self.accept, str) else ", ".join(self.accept)
+            if isinstance(data, JumpStartSerializablePayload) and jumpstart_accept:
+                args["Accept"] = jumpstart_accept
+            else:
+                args["Accept"] = (
+                    self.accept if isinstance(self.accept, str) else ", ".join(self.accept)
+                )
 
         if target_model:
             args["TargetModel"] = target_model
@@ -228,7 +255,11 @@ class Predictor(PredictorBase):
         if custom_attributes:
             args["CustomAttributes"] = custom_attributes
 
-        data = self.serializer.serialize(data)
+        data = (
+            jumpstart_serialized_data
+            if isinstance(data, JumpStartSerializablePayload) and jumpstart_serialized_data
+            else self.serializer.serialize(data)
+        )
 
         args["Body"] = data
         return args
