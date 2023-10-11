@@ -170,19 +170,19 @@ DISTRIBUTION_MPI_ENABLED = {
 }
 DISTRIBUTION_SM_DDP_ENABLED = {
     "smdistributed": {"dataparallel": {"enabled": True, "custom_mpi_options": "options"}},
-    "torch_distributed": {"enabled": False}
+    "torch_distributed": {"enabled": False},
 }
 DISTRIBUTION_SM_DDP_DISABLED = {
     "smdistributed": {"enabled": True},
-    "torch_distributed": {"enabled": False}
+    "torch_distributed": {"enabled": False},
 }
 DISTRIBUTION_SM_TORCH_DIST_AND_DDP_ENABLED = {
     "smdistributed": {"dataparallel": {"enabled": True, "custom_mpi_options": "options"}},
-    "torch_distributed": {"enabled": True}
+    "torch_distributed": {"enabled": True},
 }
 DISTRIBUTION_SM_TORCH_DIST_AND_DDP_DISABLED = {
     "smdistributed": {"enabled": True},
-    "torch_distributed": {"enabled": True}
+    "torch_distributed": {"enabled": True},
 }
 MOCKED_S3_URI = "s3://mocked_s3_uri_from_source_dir"
 _DEFINITION_CONFIG = PipelineDefinitionConfig(use_custom_job_prefix=False)
@@ -360,18 +360,18 @@ def test_validate_smdistributed_unsupported_image_raises(sagemaker_session):
 def test_validate_smdistributed_p5_raises(sagemaker_session):
     # Supported DLC image.
     f = DummyFramework(
-        "some_script.py", 
+        "some_script.py",
         role="DummyRole",
-        instance_type="ml.p5.48xlarge", 
+        instance_type="ml.p5.48xlarge",
         sagemaker_session=sagemaker_session,
         output_path="outputpath",
         image_uri="some_acceptable_image",
     )
     # Both fail because instance type is p5 and torch_distributed is off.
     with pytest.raises(ValueError):
-        f._distribution_configuration(DISTRIBUTION_SM_DDP_ENABLED) 
+        f._distribution_configuration(DISTRIBUTION_SM_DDP_ENABLED)
     with pytest.raises(ValueError):
-        f._distribution_configuration(DISTRIBUTION_SM_DDP_DISABLED) 
+        f._distribution_configuration(DISTRIBUTION_SM_DDP_DISABLED)
 
 
 def test_validate_smdistributed_p5_not_raises(sagemaker_session):
