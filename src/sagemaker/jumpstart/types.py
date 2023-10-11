@@ -402,6 +402,50 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
         json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
         return json_obj
 
+    def get_instance_specific_hyperparameters(
+        self, instance_type: str
+    ) -> List[JumpStartHyperparameter]:
+        """Returns instance specific hyperparameters.
+
+        Returns empty list if a model, instance type tuple does not have specific
+        hyperparameters.
+        """
+
+        if self.variants is None:
+            return []
+
+        instance_specific_hyperparameters: List[JumpStartHyperparameter] = [
+            JumpStartHyperparameter(json)
+            for json in self.variants.get(instance_type, {})
+            .get("properties", {})
+            .get("hyperparameters", [])
+        ]
+
+        instance_type_family = get_instance_type_family(instance_type)
+
+        instance_family_hyperparameters: List[JumpStartHyperparameter] = [
+            JumpStartHyperparameter(json)
+            for json in (
+                self.variants.get(instance_type_family, {})
+                .get("properties", {})
+                .get("hyperparameters", [])
+                if instance_type_family not in {"", None}
+                else []
+            )
+        ]
+
+        instance_specific_hyperparameter_names = {
+            hyperparameter.name for hyperparameter in instance_specific_hyperparameters
+        }
+
+        hyperparams_to_return = deepcopy(instance_specific_hyperparameters)
+
+        for hyperparameter in instance_family_hyperparameters:
+            if hyperparameter.name not in instance_specific_hyperparameter_names:
+                hyperparams_to_return.append(hyperparameter)
+
+        return hyperparams_to_return
+
     def get_instance_specific_environment_variables(self, instance_type: str) -> Dict[str, str]:
         """Returns instance specific environment variables.
 

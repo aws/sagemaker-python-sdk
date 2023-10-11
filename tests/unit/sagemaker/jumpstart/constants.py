@@ -214,7 +214,141 @@ SPECIAL_MODEL_SPECS_DICT = {
             "framework_version": "1.5.0",
             "py_version": "py3",
         },
-        "training_instance_type_variants": None,
+        "training_instance_type_variants": {
+            "variants": {
+                "ml.p2.12xlarge": {
+                    "properties": {
+                        "environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"},
+                        "hyperparameters": [
+                            {
+                                "name": "eval_metric",
+                                "type": "text",
+                                "default": "auto",
+                                "scope": "algorithm",
+                            },
+                            {
+                                "name": "presets",
+                                "type": "text",
+                                "default": "medium_quality",
+                                "options": [
+                                    "best_quality",
+                                    "high_quality",
+                                    "good_quality",
+                                    "medium_quality",
+                                    "optimize_for_deployment",
+                                    "interpretable",
+                                ],
+                                "scope": "algorithm",
+                            },
+                            {
+                                "name": "auto_stack",
+                                "type": "text",
+                                "default": "False",
+                                "options": ["True", "False"],
+                                "scope": "algorithm",
+                            },
+                            {
+                                "name": "num_bag_folds",
+                                "type": "text",
+                                "default": "0",
+                                "options": ["0", "2", "3", "4", "5", "6", "7", "8", "9", "10"],
+                                "scope": "algorithm",
+                            },
+                            {
+                                "name": "num_bag_sets",
+                                "type": "int",
+                                "default": 1,
+                                "min": 1,
+                                "scope": "algorithm",
+                            },
+                            {
+                                "name": "batch-size",
+                                "type": "int",
+                                "default": 1,
+                                "min": 1,
+                                "scope": "algorithm",
+                            },
+                            {
+                                "name": "num_stack_levels",
+                                "type": "int",
+                                "default": 0,
+                                "min": 0,
+                                "max": 3,
+                                "scope": "algorithm",
+                            },
+                        ],
+                    }
+                },
+                "p2": {
+                    "properties": {
+                        "hyperparameters": [
+                            {
+                                "name": "num_bag_sets",
+                                "type": "int",
+                                "default": 5,
+                                "min": 5,
+                                "scope": "algorithm",
+                            },
+                            {
+                                "name": "num_stack_levels",
+                                "type": "int",
+                                "default": 6,
+                                "min": 7,
+                                "max": 3,
+                                "scope": "algorithm",
+                            },
+                            {
+                                "name": "refit_full",
+                                "type": "text",
+                                "default": "False",
+                                "options": ["True", "False"],
+                                "scope": "algorithm",
+                            },
+                            {
+                                "name": "set_best_to_refit_full",
+                                "type": "text",
+                                "default": "False",
+                                "options": ["True", "False"],
+                                "scope": "algorithm",
+                            },
+                            {
+                                "name": "save_space",
+                                "type": "text",
+                                "default": "False",
+                                "options": ["True", "False"],
+                                "scope": "algorithm",
+                            },
+                            {
+                                "name": "verbosity",
+                                "type": "int",
+                                "default": 2,
+                                "min": 0,
+                                "max": 4,
+                                "scope": "algorithm",
+                            },
+                            {
+                                "name": "sagemaker_submit_directory",
+                                "type": "text",
+                                "default": "/opt/ml/input/data/code/sourcedir.tar.gz",
+                                "scope": "container",
+                            },
+                            {
+                                "name": "sagemaker_program",
+                                "type": "text",
+                                "default": "transfer_learning.py",
+                                "scope": "container",
+                            },
+                            {
+                                "name": "sagemaker_container_log_level",
+                                "type": "text",
+                                "default": "20",
+                                "scope": "container",
+                            },
+                        ]
+                    }
+                },
+            }
+        },
         "hosting_artifact_key": "pytorch-infer/infer-pytorch-ic-mobilenet-v2.tar.gz",
         "training_artifact_key": "pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz",
         "hosting_script_key": "source-directory-tarballs/pytorch/inference/ic/v1.0.0/sourcedir.tar.gz",

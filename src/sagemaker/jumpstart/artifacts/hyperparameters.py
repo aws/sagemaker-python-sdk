@@ -35,6 +35,7 @@ def _retrieve_default_hyperparameters(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    instance_type: Optional[str] = None,
 ):
     """Retrieves the training hyperparameters for the model matching the given arguments.
 
@@ -86,4 +87,19 @@ def _retrieve_default_hyperparameters(
             include_container_hyperparameters and hyperparameter.scope == VariableScope.CONTAINER
         ) or hyperparameter.scope == VariableScope.ALGORITHM:
             default_hyperparameters[hyperparameter.name] = str(hyperparameter.default)
+
+    instance_specific_hyperparameters = (
+        model_specs.training_instance_type_variants.get_instance_specific_hyperparameters(
+            instance_type
+        )
+        if instance_type
+        and getattr(model_specs, "training_instance_type_variants", None) is not None
+        else []
+    )
+
+    for instance_specific_hyperparameter in instance_specific_hyperparameters:
+        default_hyperparameters[instance_specific_hyperparameter.name] = str(
+            instance_specific_hyperparameter.default
+        )
+
     return default_hyperparameters

@@ -314,7 +314,7 @@ class JumpStartModel(Model):
 
         super(JumpStartModel, self).__init__(**model_init_kwargs.to_kwargs_dict())
 
-    def retrieve_all_examples(self) -> Optional[List[JumpStartSerializablePayload]]:
+    def retrieve_all_example_payloads(self) -> Optional[List[JumpStartSerializablePayload]]:
         """Returns all example payloads associated with the model.
 
         Raises:
