@@ -1347,7 +1347,9 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
 
         tags = add_jumpstart_tags(
             tags=tags,
-            inference_model_uri=self.model_data if isinstance(self.model_data, str) else None,
+            inference_model_uri=self.model_data
+            if isinstance(self.model_data, (str, dict))
+            else None,
             inference_script_uri=self.source_dir,
         )
 
