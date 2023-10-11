@@ -64,6 +64,8 @@ def _retrieve_default_hyperparameters(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        instance_type (str): An instance type to optionally supply in order to get hyperparameters
+            specific for the instance type.
     Returns:
         dict: the hyperparameters to use for the model.
     """

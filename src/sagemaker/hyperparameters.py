@@ -46,6 +46,8 @@ def retrieve_default(
             retrieve the default hyperparameters. (Default: None).
         model_version (str): The version of the model for which to retrieve the
             default hyperparameters. (Default: None).
+        instance_type (str): An instance type to optionally supply in order to get hyperparameters
+            specific for the instance type.
         include_container_hyperparameters (bool): ``True`` if the container hyperparameters
             should be returned. Container hyperparameters are not used to tune
             the specific algorithm. They are used by SageMaker Training jobs to set up
