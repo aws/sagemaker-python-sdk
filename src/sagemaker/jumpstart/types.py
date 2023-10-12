@@ -16,6 +16,9 @@ from copy import deepcopy
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Union
 from sagemaker.utils import get_instance_type_family
+from sagemaker.model_metrics import ModelMetrics
+from sagemaker.metadata_properties import MetadataProperties
+from sagemaker.drift_check_baselines import DriftCheckBaselines
 
 from sagemaker.session import Session
 from sagemaker.workflow.entities import PipelineVariable
@@ -1328,3 +1331,113 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         self.tolerate_deprecated_model = tolerate_deprecated_model
         self.tolerate_vulnerable_model = tolerate_vulnerable_model
         self.use_compiled_model = use_compiled_model
+
+
+class JumpStartModelRegisterKwargs(JumpStartKwargs):
+    """Data class for the inputs to `JumpStartEstimator.deploy` method."""
+
+    __slots__ = [
+        "tolerate_vulnerable_model",
+        "tolerate_deprecated_model",
+        "region",
+        "model_id",
+        "model_version",
+        "sagemaker_session",
+        "content_types",
+        "response_types",
+        "inference_instances",
+        "transform_instances",
+        "model_package_name",
+        "model_package_group_name",
+        "image_uri",
+        "model_metrics",
+        "metadata_properties",
+        "marketplace_cert",
+        "approval_status",
+        "description",
+        "drift_check_baselines",
+        "customer_metadata_properties",
+        "validation_specification",
+        "domain",
+        "task",
+        "sample_payload_url",
+        "framework",
+        "framework_version",
+        "nearest_model_name",
+        "data_input_configuration",
+        "skip_model_validation",
+    ]
+
+    SERIALIZATION_EXCLUSION_SET = {
+        "tolerate_vulnerable_model",
+        "tolerate_deprecated_model",
+        "region",
+        "model_id",
+        "model_version",
+        "sagemaker_session",
+    }
+
+    def __init__(
+        self,
+        model_id: str,
+        model_version: Optional[str] = None,
+        region: Optional[str] = None,
+        tolerate_deprecated_model: Optional[bool] = None,
+        tolerate_vulnerable_model: Optional[bool] = None,
+        sagemaker_session: Optional[Any] = None,
+        content_types: List[str] = None,
+        response_types: List[str] = None,
+        inference_instances: Optional[List[str]] = None,
+        transform_instances: Optional[List[str]] = None,
+        model_package_name: Optional[str] = None,
+        model_package_group_name: Optional[str] = None,
+        image_uri: Optional[str] = None,
+        model_metrics: Optional[ModelMetrics] = None,
+        metadata_properties: Optional[MetadataProperties] = None,
+        marketplace_cert: bool = False,
+        approval_status: Optional[str] = None,
+        description: Optional[str] = None,
+        drift_check_baselines: Optional[DriftCheckBaselines] = None,
+        customer_metadata_properties: Optional[Dict[str, str]] = None,
+        validation_specification: Optional[str] = None,
+        domain: Optional[str] = None,
+        task: Optional[str] = None,
+        sample_payload_url: Optional[str] = None,
+        framework: Optional[str] = None,
+        framework_version: Optional[str] = None,
+        nearest_model_name: Optional[str] = None,
+        data_input_configuration: Optional[str] = None,
+        skip_model_validation: Optional[str] = None,
+    ) -> None:
+        """Instantiates JumpStartModelRegisterKwargs object."""
+
+        self.model_id = model_id
+        self.model_version = model_version
+        self.region = region
+        self.image_uri = image_uri
+        self.sagemaker_session = sagemaker_session
+        self.tolerate_deprecated_model = tolerate_deprecated_model
+        self.tolerate_vulnerable_model = tolerate_vulnerable_model
+        self.content_types = content_types
+        self.response_types = response_types
+        self.inference_instances = inference_instances
+        self.transform_instances = transform_instances
+        self.model_package_name = model_package_name
+        self.model_package_group_name = model_package_group_name
+        self.image_uri = image_uri
+        self.model_metrics = model_metrics
+        self.metadata_properties = metadata_properties
+        self.marketplace_cert = marketplace_cert
+        self.approval_status = approval_status
+        self.description = description
+        self.drift_check_baselines = drift_check_baselines
+        self.customer_metadata_properties = customer_metadata_properties
+        self.validation_specification = validation_specification
+        self.domain = domain
+        self.task = task
+        self.sample_payload_url = sample_payload_url
+        self.framework = framework
+        self.framework_version = framework_version
+        self.nearest_model_name = nearest_model_name
+        self.data_input_configuration = data_input_configuration
+        self.skip_model_validation = skip_model_validation

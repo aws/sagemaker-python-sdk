@@ -534,6 +534,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
             model_data=self.model_data,
             model_package_arn=model_package.get("ModelPackageArn"),
             sagemaker_session=self.sagemaker_session,
+            predictor_cls=self.predictor_cls,
         )
 
     @runnable_by_pipeline
@@ -1886,6 +1887,11 @@ class ModelPackage(Model):
             kwargs: Keyword arguments coming from the caller. This class does not require
                 any so they are ignored.
         """
+
+        import pdb
+
+        pdb.set_trace()
+
         if self.algorithm_arn:
             # When ModelPackage is created using an algorithm_arn we need to first
             # create a ModelPackage. If we had already created one then its fine to re-use it.
