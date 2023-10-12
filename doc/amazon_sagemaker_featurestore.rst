@@ -230,10 +230,10 @@ The following code from the fraud detection example shows a minimal
        enable_online_store=True
    )
 
-Creating a feature group takes time as the data is loaded. You will 
+Creating a feature group takes time as the data is loaded. You will
 need to wait until it is created before you can use it. You can
-check status using the following method. Note that it can take 
-approximately 10-15 minutes to provision an online ``FeatureGroup`` 
+check status using the following method. Note that it can take
+approximately 10-15 minutes to provision an online ``FeatureGroup``
 with the ``InMemory`` ``StorageType``.
 
 .. code:: python
@@ -482,8 +482,8 @@ Feature Store `DatasetBuilder API Reference
 .. rubric:: Delete a feature group
    :name: bCe9CA61b78
 
-You can delete a feature group with the ``delete`` function. Note that it 
-can take approximately 10-15 minutes to delete an online ``FeatureGroup`` 
+You can delete a feature group with the ``delete`` function. Note that it
+can take approximately 10-15 minutes to delete an online ``FeatureGroup``
 with the ``InMemory`` ``StorageType``.
 
 .. code:: python
