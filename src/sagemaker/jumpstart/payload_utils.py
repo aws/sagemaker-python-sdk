@@ -46,8 +46,8 @@ def _construct_payload(
 
     Args:
         prompt (str): String-valued prompt to embed in payload.
-        model_id (str): JumpStart model ID of the JumpStart model for which to
-            payload.
+        model_id (str): JumpStart model ID of the JumpStart model for which to construct
+            the payload.
         model_version (str): Version of the JumpStart model for which to retrieve the
             payload.
         region (Optional[str]): Region for which to retrieve the
