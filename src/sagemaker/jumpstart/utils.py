@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 import logging
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 from urllib.parse import urlparse
 from packaging.version import Version
 import sagemaker
@@ -277,7 +277,7 @@ def get_jumpstart_base_name_if_jumpstart_model(
 
 def add_jumpstart_tags(
     tags: Optional[List[Dict[str, str]]] = None,
-    inference_model_uri: Optional[str] = None,
+    inference_model_uri: Optional[Union[str, dict]] = None,
     inference_script_uri: Optional[str] = None,
     training_model_uri: Optional[str] = None,
     training_script_uri: Optional[str] = None,
@@ -289,7 +289,7 @@ def add_jumpstart_tags(
     Args:
         tags (Optional[List[Dict[str,str]]): Current tags for JumpStart inference
             or training job. (Default: None).
-        inference_model_uri (Optional[str]): S3 URI for inference model artifact.
+        inference_model_uri (Optional[Union[dict, str]]): S3 URI for inference model artifact.
             (Default: None).
         inference_script_uri (Optional[str]): S3 URI for inference script tarball.
             (Default: None).
@@ -302,6 +302,10 @@ def add_jumpstart_tags(
         "The URI (%s) is a pipeline variable which is only interpreted at execution time. "
         "As a result, the JumpStart resources will not be tagged."
     )
+
+    if isinstance(inference_model_uri, dict):
+        inference_model_uri = inference_model_uri.get("S3DataSource", {}).get("S3Uri", None)
+
     if inference_model_uri:
         if is_pipeline_variable(inference_model_uri):
             logging.warning(warn_msg, "inference_model_uri")

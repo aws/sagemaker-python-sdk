@@ -13,7 +13,10 @@
 from __future__ import absolute_import
 from jsonschema import validate, exceptions
 import pytest
-from sagemaker.config.config_schema import SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA
+from sagemaker.config.config_schema import (
+    SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA,
+    SAGEMAKER_PYTHON_SDK_LOCAL_MODE_CONFIG_SCHEMA,
+)
 
 
 def _validate_config(base_config_with_schema, sagemaker_config):
@@ -291,3 +294,19 @@ def test_session_s3_object_key_prefix_schema(base_config_with_schema, prefix_nam
 def test_invalid_session_s3_object_key_prefix_schema(base_config_with_schema, invalid_prefix_name):
     with pytest.raises(exceptions.ValidationError):
         test_session_s3_object_key_prefix_schema(base_config_with_schema, invalid_prefix_name)
+
+
+def test_validate_local_mode_schema(base_local_mode_config):
+    validate(base_local_mode_config, SAGEMAKER_PYTHON_SDK_LOCAL_MODE_CONFIG_SCHEMA)
+
+
+def test_validate_local_mode_schema_with_additional_key(base_local_mode_config):
+    config = dict(**base_local_mode_config)
+    config["foo"] = "bar"
+    with pytest.raises(exceptions.ValidationError):
+        validate(config, SAGEMAKER_PYTHON_SDK_LOCAL_MODE_CONFIG_SCHEMA)
+
+    config2 = dict(**base_local_mode_config)
+    config2["local"]["foo"] = "bar"
+    with pytest.raises(exceptions.ValidationError):
+        validate(config2, SAGEMAKER_PYTHON_SDK_LOCAL_MODE_CONFIG_SCHEMA)
