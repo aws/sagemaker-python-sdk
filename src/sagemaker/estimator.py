@@ -3849,7 +3849,9 @@ class Framework(EstimatorBase):
             if get_mp_parameters(distribution):
                 distribution_config["mp_parameters"] = get_mp_parameters(distribution)
             # first make sure torch_distributed is enabled if instance type is p5
-            torch_distributed_enabled = distribution.get("torch_distributed").get("enabled", False)
+            torch_distributed_enabled = False
+            if "torch_distributed" in distribution:
+                torch_distributed_enabled = distribution.get("torch_distributed").get("enabled", False)
             smdistributed = distribution["smdistributed"]
             smdataparallel_enabled = smdistributed.get("dataparallel", {}).get("enabled", False)
             p5_enabled = "p5.48xlarge" in self.instance_type
