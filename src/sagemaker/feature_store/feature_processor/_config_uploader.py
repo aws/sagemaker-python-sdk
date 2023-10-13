@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 """Contains classes for preparing and uploading configs for a scheduled feature processor."""
 from __future__ import absolute_import
-from typing import Callable, Dict, Tuple, List
+from typing import Callable, Dict, Optional, Tuple, List
 
 import attr
 
@@ -70,6 +70,7 @@ class ConfigUploader:
             s3_base_uri,
             self.remote_decorator_config.s3_kms_key,
             sagemaker_session,
+            self.remote_decorator_config.custom_file_filter,
         )
 
         (
@@ -134,6 +135,7 @@ class ConfigUploader:
         s3_base_uri: str,
         s3_kms_key: str,
         sagemaker_session: Session,
+        custom_file_filter: Optional[Callable[[str, List], List]] = None,
     ) -> str:
         """Upload the training step dependencies to S3 if present"""
         return _prepare_and_upload_dependencies(
@@ -144,6 +146,7 @@ class ConfigUploader:
             s3_base_uri=s3_base_uri,
             s3_kms_key=s3_kms_key,
             sagemaker_session=sagemaker_session,
+            custom_file_filter=custom_file_filter,
         )
 
     def _prepare_and_upload_runtime_scripts(

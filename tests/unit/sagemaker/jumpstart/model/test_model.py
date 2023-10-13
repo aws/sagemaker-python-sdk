@@ -331,7 +331,7 @@ class ModelTest(unittest.TestCase):
 
         """If you add arguments to <Model constructor>, this test will fail.
         Please add the new argument to the skip set below,
-        and cut a ticket sev-3 to JumpStart team: AWS > SageMaker > JumpStart"""
+        and reach out to JumpStart team."""
 
         init_args_to_skip: Set[str] = set()
         deploy_args_to_skip: Set[str] = set(["kwargs"])
