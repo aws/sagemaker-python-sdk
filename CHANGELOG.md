@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.192.1 (2023-10-13)
+
+### Bug Fixes and Other Changes
+
+ * update local mode schema
+ * import error in unsupported js regions
+ * Update Ec2 instance type to g5.4xlarge in test_huggingface_torch_distributed.py
+
 ## v2.192.0 (2023-10-11)
 
 ### Features
