@@ -32,7 +32,7 @@ def test_huggingface_torch_distributed_g5_glue(
             transformers_version=huggingface_training_latest_version,
             pytorch_version=huggingface_training_pytorch_latest_version,
             instance_count=1,
-            instance_type="ml.g5.8xlarge",
+            instance_type="ml.g5.4xlarge",
             hyperparameters={
                 "model_name_or_path": "distilbert-base-cased",
                 "task_name": "wnli",
