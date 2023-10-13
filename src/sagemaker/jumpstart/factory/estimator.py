@@ -123,6 +123,7 @@ def get_init_kwargs(
     container_entry_point: Optional[List[str]] = None,
     container_arguments: Optional[List[str]] = None,
     disable_output_compression: Optional[bool] = None,
+    enable_infra_check: Optional[Union[bool, PipelineVariable]] = None,
 ) -> JumpStartEstimatorInitKwargs:
     """Returns kwargs required to instantiate `sagemaker.estimator.Estimator` object."""
 
@@ -178,6 +179,7 @@ def get_init_kwargs(
         container_entry_point=container_entry_point,
         container_arguments=container_arguments,
         disable_output_compression=disable_output_compression,
+        enable_infra_check=enable_infra_check,
     )
 
     estimator_init_kwargs = _add_model_version_to_kwargs(estimator_init_kwargs)
