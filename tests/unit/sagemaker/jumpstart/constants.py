@@ -186,6 +186,57 @@ SPECIAL_MODEL_SPECS_DICT = {
             "framework_version": "1.5.0",
             "py_version": "py3",
         },
+        "training_instance_type_variants": {
+            "regional_aliases": {},
+            "variants": {
+                "ml.p2.12xlarge": {
+                    "properties": {
+                        "environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"},
+                        "metrics": [
+                            {
+                                "Name": "huggingface-textgeneration:instance-typemetric-loss",
+                                "Regex": "'eval_loss': ([0-9]+\\.[0-9]+)",
+                            },
+                            {
+                                "Name": "huggingface-textgeneration:eval-loss",
+                                "Regex": "'eval_loss': ([0-9]+\\.[0-9]+)",
+                            },
+                            {
+                                "Name": "huggingface-textgeneration:train-loss",
+                                "Regex": "'instance type specific': ([0-9]+\\.[0-9]+)",
+                            },
+                            {
+                                "Name": "huggingface-textgeneration:noneyourbusiness-loss",
+                                "Regex": "'loss-noyb instance specific': ([0-9]+\\.[0-9]+)",
+                            },
+                        ],
+                    }
+                },
+                "p2": {
+                    "regional_properties": {"image_uri": "$gpu_ecr_uri_2"},
+                    "properties": {
+                        "metrics": [
+                            {
+                                "Name": "huggingface-textgeneration:wtafigo",
+                                "Regex": "'evasadfasdl_loss': ([0-9]+\\.[0-9]+)",
+                            },
+                            {
+                                "Name": "huggingface-textgeneration:eval-loss",
+                                "Regex": "'eval_loss': ([0-9]+\\.[0-9]+)",
+                            },
+                            {
+                                "Name": "huggingface-textgeneration:train-loss",
+                                "Regex": "'instance family specific': ([0-9]+\\.[0-9]+)",
+                            },
+                            {
+                                "Name": "huggingface-textgeneration:noneyourbusiness-loss",
+                                "Regex": "'loss-noyb': ([0-9]+\\.[0-9]+)",
+                            },
+                        ]
+                    },
+                },
+            },
+        },
         "hosting_instance_type_variants": {
             "regional_aliases": {
                 "us-west-2": {
@@ -214,7 +265,6 @@ SPECIAL_MODEL_SPECS_DICT = {
             "framework_version": "1.5.0",
             "py_version": "py3",
         },
-        "training_instance_type_variants": None,
         "hosting_artifact_key": "pytorch-infer/infer-pytorch-ic-mobilenet-v2.tar.gz",
         "training_artifact_key": "pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz",
         "hosting_script_key": "source-directory-tarballs/pytorch/inference/ic/v1.0.0/sourcedir.tar.gz",
@@ -354,7 +404,16 @@ SPECIAL_MODEL_SPECS_DICT = {
             "ml.c5.2xlarge",
         ],
         "hosting_use_script_uri": True,
-        "metrics": [{"Regex": "val_accuracy: ([0-9\\.]+)", "Name": "pytorch-ic:val-accuracy"}],
+        "metrics": [
+            {
+                "Name": "huggingface-textgeneration:train-loss",
+                "Regex": "'loss default': ([0-9]+\\.[0-9]+)",
+            },
+            {
+                "Name": "huggingface-textgeyyyuyuyuyneration:train-loss",
+                "Regex": "'loss default': ([0-9]+\\.[0-9]+)",
+            },
+        ],
         "model_kwargs": {"some-model-kwarg-key": "some-model-kwarg-value"},
         "deploy_kwargs": {"some-model-deploy-kwarg-key": "some-model-deploy-kwarg-value"},
         "estimator_kwargs": {

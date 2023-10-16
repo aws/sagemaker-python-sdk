@@ -403,6 +403,42 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
         json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
         return json_obj
 
+    def get_instance_specific_metric_definitions(
+        self, instance_type: str
+    ) -> List[JumpStartHyperparameter]:
+        """Returns instance specific metric definitions.
+
+        Returns empty list if a model, instance type tuple does not have specific
+        metric definitions.
+        """
+
+        if self.variants is None:
+            return []
+
+        instance_specific_metric_definitions: List[Dict[str, Union[str, Any]]] = (
+            self.variants.get(instance_type, {}).get("properties", {}).get("metrics", [])
+        )
+
+        instance_type_family = get_instance_type_family(instance_type)
+
+        instance_family_metric_definitions: List[Dict[str, Union[str, Any]]] = (
+            self.variants.get(instance_type_family, {}).get("properties", {}).get("metrics", [])
+            if instance_type_family not in {"", None}
+            else []
+        )
+
+        instance_specific_metric_names = {
+            metric_definition["Name"] for metric_definition in instance_specific_metric_definitions
+        }
+
+        metric_definitions_to_return = deepcopy(instance_specific_metric_definitions)
+
+        for instance_family_metric_definition in instance_family_metric_definitions:
+            if instance_family_metric_definition["Name"] not in instance_specific_metric_names:
+                metric_definitions_to_return.append(instance_family_metric_definition)
+
+        return metric_definitions_to_return
+
     def get_instance_specific_environment_variables(self, instance_type: str) -> Dict[str, str]:
         """Returns instance specific environment variables.
 
