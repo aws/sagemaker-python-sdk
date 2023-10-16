@@ -609,6 +609,7 @@ class InferenceRecommenderMixin:
 
     # TODO: until we have bandwidth to integrate right_size + deploy with serverless
     def _filter_recommendations_for_realtime(self):
+        """Filter recommendations list to find a realtime instance"""
         instance_type = None
         initial_instance_count = None
         for recommendations in self.inference_recommendations:
