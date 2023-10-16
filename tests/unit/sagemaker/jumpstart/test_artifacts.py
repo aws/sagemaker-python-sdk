@@ -12,9 +12,11 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 import unittest
+from unittest.mock import Mock
 
 
 from mock.mock import patch
+import pytest
 
 import copy
 from sagemaker.jumpstart import artifacts
@@ -28,8 +30,11 @@ from tests.unit.sagemaker.jumpstart.constants import (
     BASE_SPEC,
 )
 
+from sagemaker.jumpstart.artifacts.model_packages import _retrieve_model_package_arn
+from sagemaker.jumpstart.enums import JumpStartScriptScope
 
-from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec
+from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec, get_special_model_spec
+from tests.unit.sagemaker.workflow.conftest import mock_client
 
 
 class ModelArtifactVariantsTest(unittest.TestCase):
@@ -319,3 +324,109 @@ class RetrieveKwargsTest(unittest.TestCase):
         )
 
         assert kwargs == {"some-estimator-fit-key": "some-estimator-fit-value"}
+
+
+class RetrieveModelPackageArnTest(unittest.TestCase):
+
+    mock_session = Mock(s3_client=mock_client)
+
+    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    def test_retrieve_model_package_arn(self, patched_get_model_specs):
+        patched_get_model_specs.side_effect = get_special_model_spec
+
+        model_id = "variant-model"
+        region = "us-west-2"
+
+        assert (
+            _retrieve_model_package_arn(
+                region=region,
+                model_id=model_id,
+                scope=JumpStartScriptScope.INFERENCE,
+                model_version="*",
+                sagemaker_session=self.mock_session,
+                instance_type="ml.p2.48xlarge",
+            )
+            == "us-west-2/blah/blah/blah/gpu"
+        )
+
+        assert (
+            _retrieve_model_package_arn(
+                region=region,
+                model_id=model_id,
+                scope=JumpStartScriptScope.INFERENCE,
+                model_version="*",
+                sagemaker_session=self.mock_session,
+                instance_type="ml.p4.2xlarge",
+            )
+            == "us-west-2/blah/blah/blah/gpu"
+        )
+
+        assert (
+            _retrieve_model_package_arn(
+                region=region,
+                model_id=model_id,
+                scope=JumpStartScriptScope.INFERENCE,
+                model_version="*",
+                sagemaker_session=self.mock_session,
+                instance_type="ml.inf1.2xlarge",
+            )
+            == "us-west-2/blah/blah/blah/inf"
+        )
+
+        assert (
+            _retrieve_model_package_arn(
+                region=region,
+                model_id=model_id,
+                scope=JumpStartScriptScope.INFERENCE,
+                model_version="*",
+                sagemaker_session=self.mock_session,
+                instance_type="ml.inf2.12xlarge",
+            )
+            == "us-west-2/blah/blah/blah/inf"
+        )
+
+        assert (
+            _retrieve_model_package_arn(
+                region=region,
+                model_id=model_id,
+                scope=JumpStartScriptScope.INFERENCE,
+                model_version="*",
+                sagemaker_session=self.mock_session,
+                instance_type="ml.afasfasf.12xlarge",
+            )
+            == "arn:aws:sagemaker:us-west-2:594846645681:model-package/llama2-7b-v3-740347e540da35b4ab9f6fc0ab3fed2c"
+        )
+
+        assert (
+            _retrieve_model_package_arn(
+                region=region,
+                model_id=model_id,
+                scope=JumpStartScriptScope.INFERENCE,
+                model_version="*",
+                sagemaker_session=self.mock_session,
+                instance_type="ml.m2.12xlarge",
+            )
+            == "arn:aws:sagemaker:us-west-2:594846645681:model-package/llama2-7b-v3-740347e540da35b4ab9f6fc0ab3fed2c"
+        )
+
+        assert (
+            _retrieve_model_package_arn(
+                region=region,
+                model_id=model_id,
+                scope=JumpStartScriptScope.INFERENCE,
+                model_version="*",
+                sagemaker_session=self.mock_session,
+                instance_type="nobodycares",
+            )
+            == "arn:aws:sagemaker:us-west-2:594846645681:model-package/llama2-7b-v3-740347e540da35b4ab9f6fc0ab3fed2c"
+        )
+
+        with pytest.raises(ValueError):
+            _retrieve_model_package_arn(
+                region="cn-north-1",
+                model_id=model_id,
+                scope=JumpStartScriptScope.INFERENCE,
+                model_version="*",
+                sagemaker_session=self.mock_session,
+                instance_type="ml.p2.12xlarge",
+            )
