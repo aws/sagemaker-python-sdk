@@ -483,39 +483,61 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
         Returns None if no instance type is available or found.
         None is also returned if the metadata is improperly formatted.
         """
+        return self._get_regional_property(
+            instance_type=instance_type, region=region, property_name="image_uri"
+        )
+
+    def get_model_package_arn(self, instance_type: str, region: str) -> Optional[str]:
+        """Returns model package arn from instance type and region.
+
+        Returns None if no instance type is available or found.
+        None is also returned if the metadata is improperly formatted.
+        """
+        return self._get_regional_property(
+            instance_type=instance_type, region=region, property_name="model_package_arn"
+        )
+
+    def _get_regional_property(
+        self, instance_type: str, region: str, property_name: str
+    ) -> Optional[str]:
+        """Returns regional property from instance type and region.
+
+        Returns None if no instance type is available or found.
+        None is also returned if the metadata is improperly formatted.
+        """
 
         if None in [self.regional_aliases, self.variants]:
             return None
 
-        image_uri_alias: Optional[str] = (
-            self.variants.get(instance_type, {}).get("regional_properties", {}).get("image_uri")
+        regional_property_alias: Optional[str] = (
+            self.variants.get(instance_type, {}).get("regional_properties", {}).get(property_name)
         )
-        if image_uri_alias is None:
+        if regional_property_alias is None:
             instance_type_family = get_instance_type_family(instance_type)
 
             if instance_type_family in {"", None}:
                 return None
 
-            image_uri_alias = (
+            regional_property_alias = (
                 self.variants.get(instance_type_family, {})
                 .get("regional_properties", {})
-                .get("image_uri")
+                .get(property_name)
             )
 
-        if image_uri_alias is None or len(image_uri_alias) == 0:
+        if regional_property_alias is None or len(regional_property_alias) == 0:
             return None
 
-        if not image_uri_alias.startswith("$"):
+        if not regional_property_alias.startswith("$"):
             # No leading '$' indicates bad metadata.
             # There are tests to ensure this never happens.
             # However, to allow for fallback options in the unlikely event
             # of a regression, we do not raise an exception here.
-            # We return None, indicating the image uri does not exist.
+            # We return None, indicating the field does not exist.
             return None
 
         if region not in self.regional_aliases:
             return None
-        alias_value = self.regional_aliases[region].get(image_uri_alias[1:], None)
+        alias_value = self.regional_aliases[region].get(regional_property_alias[1:], None)
         return alias_value
 
 
