@@ -612,7 +612,7 @@ class InferenceRecommenderMixin:
         instance_type = None
         initial_instance_count = None
         for recommendations in self.inference_recommendations:
-            if not "ServerlessConfig" in recommendations["EndpointConfiguration"]:
+            if "ServerlessConfig" not in recommendations["EndpointConfiguration"]:
                 instance_type = recommendations["EndpointConfiguration"]["InstanceType"]
                 initial_instance_count = recommendations["EndpointConfiguration"][
                     "InitialInstanceCount"
