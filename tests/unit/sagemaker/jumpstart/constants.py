@@ -181,6 +181,10 @@ SPECIAL_MODEL_SPECS_DICT = {
         "min_sdk_version": "2.49.0",
         "training_supported": True,
         "incremental_training_supported": True,
+        "hosting_model_package_arns": {
+            "us-west-2": "arn:aws:sagemaker:us-west-2:594846645681:model-package/ll"
+            "ama2-7b-v3-740347e540da35b4ab9f6fc0ab3fed2c"
+        },
         "hosting_ecr_specs": {
             "framework": "pytorch",
             "framework_version": "1.5.0",
@@ -192,13 +196,35 @@ SPECIAL_MODEL_SPECS_DICT = {
                     "gpu_image_uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
                     "huggingface-pytorch-inference:1.13.1-transformers4.26.0-gpu-py39-cu117-ubuntu20.04",
                     "cpu_image_uri": "867930986793.dkr.us-west-2.amazonaws.com/cpu-blah",
+                    "inf_model_package_arn": "us-west-2/blah/blah/blah/inf",
+                    "gpu_model_package_arn": "us-west-2/blah/blah/blah/gpu",
                 }
             },
             "variants": {
-                "p2": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
-                "p3": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
-                "p4": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
-                "g4dn": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
+                "p2": {
+                    "regional_properties": {
+                        "image_uri": "$gpu_image_uri",
+                        "model_package_arn": "$gpu_model_package_arn",
+                    }
+                },
+                "p3": {
+                    "regional_properties": {
+                        "image_uri": "$gpu_image_uri",
+                        "model_package_arn": "$gpu_model_package_arn",
+                    }
+                },
+                "p4": {
+                    "regional_properties": {
+                        "image_uri": "$gpu_image_uri",
+                        "model_package_arn": "$gpu_model_package_arn",
+                    }
+                },
+                "g4dn": {
+                    "regional_properties": {
+                        "image_uri": "$gpu_image_uri",
+                        "model_package_arn": "$gpu_model_package_arn",
+                    }
+                },
                 "m2": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
                 "c2": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
                 "ml.g5.48xlarge": {
@@ -207,6 +233,8 @@ SPECIAL_MODEL_SPECS_DICT = {
                 "ml.g5.12xlarge": {
                     "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"}}
                 },
+                "inf1": {"regional_properties": {"model_package_arn": "$inf_model_package_arn"}},
+                "inf2": {"regional_properties": {"model_package_arn": "$inf_model_package_arn"}},
             },
         },
         "training_ecr_specs": {
@@ -224,7 +252,6 @@ SPECIAL_MODEL_SPECS_DICT = {
         "training_model_package_artifact_uris": None,
         "deprecate_warn_message": None,
         "deprecated_message": None,
-        "hosting_model_package_arns": None,
         "hosting_eula_key": None,
         "hyperparameters": [
             {
