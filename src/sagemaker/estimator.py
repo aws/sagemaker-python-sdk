@@ -101,6 +101,7 @@ from sagemaker.utils import (
 )
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.pipeline_context import PipelineSession, runnable_by_pipeline
 
 logger = logging.getLogger(__name__)
@@ -3856,7 +3857,15 @@ class Framework(EstimatorBase):
                 )
             smdistributed = distribution["smdistributed"]
             smdataparallel_enabled = smdistributed.get("dataparallel", {}).get("enabled", False)
-            p5_enabled = "p5.48xlarge" in self.instance_type
+            if isinstance(self.instance_type, ParameterString):
+                p5_enabled = "p5.48xlarge" in self.instance_type.default_value
+            elif isinstance(self.instance_type, str):
+                p5_enabled = "p5.48xlarge" in self.instance_type
+            else:
+                raise ValueError(
+                    "Invalid object type for instance_type argument. Expected "
+                    f"{type(str)} or {type(ParameterString)} but got {type(self.instance_type)}."
+                )
             img_uri = "" if self.image_uri is None else self.image_uri
             for unsupported_image in Framework.UNSUPPORTED_DLC_IMAGE_FOR_SM_PARALLELISM:
                 if (
