@@ -1101,7 +1101,9 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             input_shape (dict): Specifies the name and shape of the expected
                 inputs for your trained model in json dictionary form, for
                 example: {'data': [1,3,1024,1024]}, or {'var1': [1,1,28,28],
-                'var2': [1,1,28,28]}
+                'var2': [1,1,28,28]}. Input shape is optional for those models traced with torch 2.0,
+                see pytorch section of this document for detail:
+                https://docs.aws.amazon.com/sagemaker/latest/dg/neo-compilation-preparing-model.html
             output_path (str): Specifies where to store the compiled model
             role (str): Execution role
             tags (list[dict]): List of tags for labeling a compilation job. For
