@@ -104,12 +104,12 @@ class PayloadSerializer:
 
     def __init__(
         self,
-        bucket: str = get_jumpstart_content_bucket(),
+        bucket: Optional[str] = None,
         region: str = JUMPSTART_DEFAULT_REGION_NAME,
         s3_client: Optional[boto3.client] = None,
     ) -> None:
         """Initializes PayloadSerializer object."""
-        self.bucket = bucket
+        self.bucket = bucket or get_jumpstart_content_bucket()
         self.region = region
         self.s3_client = s3_client
 

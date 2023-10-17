@@ -405,6 +405,50 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
         json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
         return json_obj
 
+    def get_instance_specific_hyperparameters(
+        self, instance_type: str
+    ) -> List[JumpStartHyperparameter]:
+        """Returns instance specific hyperparameters.
+
+        Returns empty list if a model, instance type tuple does not have specific
+        hyperparameters.
+        """
+
+        if self.variants is None:
+            return []
+
+        instance_specific_hyperparameters: List[JumpStartHyperparameter] = [
+            JumpStartHyperparameter(json)
+            for json in self.variants.get(instance_type, {})
+            .get("properties", {})
+            .get("hyperparameters", [])
+        ]
+
+        instance_type_family = get_instance_type_family(instance_type)
+
+        instance_family_hyperparameters: List[JumpStartHyperparameter] = [
+            JumpStartHyperparameter(json)
+            for json in (
+                self.variants.get(instance_type_family, {})
+                .get("properties", {})
+                .get("hyperparameters", [])
+                if instance_type_family not in {"", None}
+                else []
+            )
+        ]
+
+        instance_specific_hyperparameter_names = {
+            hyperparameter.name for hyperparameter in instance_specific_hyperparameters
+        }
+
+        hyperparams_to_return = deepcopy(instance_specific_hyperparameters)
+
+        for hyperparameter in instance_family_hyperparameters:
+            if hyperparameter.name not in instance_specific_hyperparameter_names:
+                hyperparams_to_return.append(hyperparameter)
+
+        return hyperparams_to_return
+
     def get_instance_specific_environment_variables(self, instance_type: str) -> Dict[str, str]:
         """Returns instance specific environment variables.
 
@@ -441,39 +485,61 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
         Returns None if no instance type is available or found.
         None is also returned if the metadata is improperly formatted.
         """
+        return self._get_regional_property(
+            instance_type=instance_type, region=region, property_name="image_uri"
+        )
+
+    def get_model_package_arn(self, instance_type: str, region: str) -> Optional[str]:
+        """Returns model package arn from instance type and region.
+
+        Returns None if no instance type is available or found.
+        None is also returned if the metadata is improperly formatted.
+        """
+        return self._get_regional_property(
+            instance_type=instance_type, region=region, property_name="model_package_arn"
+        )
+
+    def _get_regional_property(
+        self, instance_type: str, region: str, property_name: str
+    ) -> Optional[str]:
+        """Returns regional property from instance type and region.
+
+        Returns None if no instance type is available or found.
+        None is also returned if the metadata is improperly formatted.
+        """
 
         if None in [self.regional_aliases, self.variants]:
             return None
 
-        image_uri_alias: Optional[str] = (
-            self.variants.get(instance_type, {}).get("regional_properties", {}).get("image_uri")
+        regional_property_alias: Optional[str] = (
+            self.variants.get(instance_type, {}).get("regional_properties", {}).get(property_name)
         )
-        if image_uri_alias is None:
+        if regional_property_alias is None:
             instance_type_family = get_instance_type_family(instance_type)
 
             if instance_type_family in {"", None}:
                 return None
 
-            image_uri_alias = (
+            regional_property_alias = (
                 self.variants.get(instance_type_family, {})
                 .get("regional_properties", {})
-                .get("image_uri")
+                .get(property_name)
             )
 
-        if image_uri_alias is None or len(image_uri_alias) == 0:
+        if regional_property_alias is None or len(regional_property_alias) == 0:
             return None
 
-        if not image_uri_alias.startswith("$"):
+        if not regional_property_alias.startswith("$"):
             # No leading '$' indicates bad metadata.
             # There are tests to ensure this never happens.
             # However, to allow for fallback options in the unlikely event
             # of a regression, we do not raise an exception here.
-            # We return None, indicating the image uri does not exist.
+            # We return None, indicating the field does not exist.
             return None
 
         if region not in self.regional_aliases:
             return None
-        alias_value = self.regional_aliases[region].get(image_uri_alias[1:], None)
+        alias_value = self.regional_aliases[region].get(regional_property_alias[1:], None)
         return alias_value
 
 
@@ -847,10 +913,10 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         self.instance_type = instance_type
         self.region = region
         self.image_uri = image_uri
-        self.model_data = model_data
+        self.model_data = deepcopy(model_data)
         self.source_dir = source_dir
         self.entry_point = entry_point
-        self.env = env
+        self.env = deepcopy(env)
         self.predictor_cls = predictor_cls
         self.role = role
         self.name = name
@@ -943,7 +1009,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         self.deserializer = deserializer
         self.accelerator_type = accelerator_type
         self.endpoint_name = endpoint_name
-        self.tags = tags
+        self.tags = deepcopy(tags)
         self.kms_key = kms_key
         self.wait = wait
         self.data_capture_config = data_capture_config
@@ -1091,8 +1157,8 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         self.model_uri = model_uri
         self.source_dir = source_dir
         self.entry_point = entry_point
-        self.hyperparameters = hyperparameters
-        self.metric_definitions = metric_definitions
+        self.hyperparameters = deepcopy(hyperparameters)
+        self.metric_definitions = deepcopy(metric_definitions)
         self.role = role
         self.keep_alive_period_in_seconds = keep_alive_period_in_seconds
         self.volume_size = volume_size
@@ -1103,7 +1169,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         self.output_kms_key = output_kms_key
         self.base_job_name = base_job_name
         self.sagemaker_session = sagemaker_session
-        self.tags = tags
+        self.tags = deepcopy(tags)
         self.subnets = subnets
         self.security_group_ids = security_group_ids
         self.model_channel_name = model_channel_name
@@ -1119,7 +1185,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         self.enable_sagemaker_metrics = enable_sagemaker_metrics
         self.profiler_config = profiler_config
         self.disable_profiler = disable_profiler
-        self.environment = environment
+        self.environment = deepcopy(environment)
         self.max_retry_attempts = max_retry_attempts
         self.git_config = git_config
         self.container_log_level = container_log_level
@@ -1299,13 +1365,13 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         self.image_uri = image_uri
         self.source_dir = source_dir
         self.entry_point = entry_point
-        self.env = env
+        self.env = deepcopy(env)
         self.predictor_cls = predictor_cls
         self.serializer = serializer
         self.deserializer = deserializer
         self.accelerator_type = accelerator_type
         self.endpoint_name = endpoint_name
-        self.tags = tags
+        self.tags = deepcopy(tags)
         self.kms_key = kms_key
         self.wait = wait
         self.data_capture_config = data_capture_config

@@ -31,6 +31,7 @@ def retrieve_default(
     region: Optional[str] = None,
     model_id: Optional[str] = None,
     model_version: Optional[str] = None,
+    instance_type: Optional[str] = None,
     include_container_hyperparameters: bool = False,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
@@ -45,6 +46,8 @@ def retrieve_default(
             retrieve the default hyperparameters. (Default: None).
         model_version (str): The version of the model for which to retrieve the
             default hyperparameters. (Default: None).
+        instance_type (str): An instance type to optionally supply in order to get hyperparameters
+            specific for the instance type.
         include_container_hyperparameters (bool): ``True`` if the container hyperparameters
             should be returned. Container hyperparameters are not used to tune
             the specific algorithm. They are used by SageMaker Training jobs to set up
@@ -75,12 +78,13 @@ def retrieve_default(
         )
 
     return artifacts._retrieve_default_hyperparameters(
-        model_id,
-        model_version,
-        region,
-        include_container_hyperparameters,
-        tolerate_vulnerable_model,
-        tolerate_deprecated_model,
+        model_id=model_id,
+        model_version=model_version,
+        instance_type=instance_type,
+        region=region,
+        include_container_hyperparameters=include_container_hyperparameters,
+        tolerate_vulnerable_model=tolerate_vulnerable_model,
+        tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
     )
 
