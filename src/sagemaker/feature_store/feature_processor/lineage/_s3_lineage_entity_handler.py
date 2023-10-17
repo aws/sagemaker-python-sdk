@@ -25,10 +25,12 @@ from sagemaker.feature_store.feature_processor import (
 # pylint: disable=C0301
 from sagemaker.feature_store.feature_processor.lineage._feature_processor_lineage_name_helper import (
     _get_feature_processor_schedule_lineage_artifact_name,
+    _get_feature_processor_trigger_lineage_artifact_name,
 )
 from sagemaker.feature_store.feature_processor.lineage._pipeline_schedule import (
     PipelineSchedule,
 )
+from sagemaker.feature_store.feature_processor.lineage._pipeline_trigger import PipelineTrigger
 from sagemaker.feature_store.feature_processor.lineage._transformation_code import (
     TransformationCode,
 )
@@ -189,6 +191,53 @@ class S3LineageEntityHandler:
                 schedule_expression=pipeline_schedule.schedule_expression,
                 state=pipeline_schedule.state,
                 start_date=pipeline_schedule.start_date,
+            ),
+            sagemaker_session=sagemaker_session,
+        )
+
+    @staticmethod
+    def retrieve_pipeline_trigger_artifact(
+        pipeline_trigger: PipelineTrigger,
+        sagemaker_session: Session,
+    ) -> Optional[Artifact]:
+        """Load or create the FeatureProcessor Pipeline's trigger Artifact
+
+        Arguments:
+            pipeline_trigger (PipelineTrigger): Class to hold the Pipeline Trigger details
+            sagemaker_session (Session): Session object which manages interactions
+                with Amazon SageMaker APIs and any other AWS services needed. If not specified, the
+                function creates one using the default AWS configuration chain.
+
+        Returns:
+            Artifact: The Trigger Artifact.
+        """
+        if pipeline_trigger is None:
+            return None
+        load_artifact: ArtifactSummary = S3LineageEntityHandler._load_artifact_from_s3_uri(
+            s3_uri=pipeline_trigger.trigger_arn,
+            sagemaker_session=sagemaker_session,
+        )
+        if load_artifact is not None:
+            pipeline_trigger_artifact: Artifact = S3LineageEntityHandler.load_artifact_from_arn(
+                artifact_arn=load_artifact.artifact_arn,
+                sagemaker_session=sagemaker_session,
+            )
+            pipeline_trigger_artifact.properties["pipeline_name"] = pipeline_trigger.pipeline_name
+            pipeline_trigger_artifact.properties["event_pattern"] = pipeline_trigger.event_pattern
+            pipeline_trigger_artifact.properties["state"] = pipeline_trigger.state
+            pipeline_trigger_artifact.save()
+            return pipeline_trigger_artifact
+
+        return S3LineageEntityHandler._create_artifact(
+            s3_uri=pipeline_trigger.trigger_arn,
+            artifact_type="PipelineTrigger",
+            artifact_name=_get_feature_processor_trigger_lineage_artifact_name(
+                trigger_name=pipeline_trigger.trigger_name
+            ),
+            properties=dict(
+                pipeline_name=pipeline_trigger.pipeline_name,
+                event_pattern=pipeline_trigger.event_pattern,
+                state=pipeline_trigger.state,
             ),
             sagemaker_session=sagemaker_session,
         )
