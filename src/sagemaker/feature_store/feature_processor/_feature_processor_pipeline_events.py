@@ -10,24 +10,20 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Module containing Enums for the feature_processor module."""
+"""Contains data classes for the Feature Processor Pipeline Events."""
 from __future__ import absolute_import
 
-from enum import Enum
+from typing import List
+import attr
+from sagemaker.feature_store.feature_processor._enums import FeatureProcessorPipelineExecutionStatus
 
 
-class FeatureProcessorMode(Enum):
-    """Enum of feature_processor modes."""
+@attr.s(frozen=True)
+class FeatureProcessorPipelineEvents:
+    """Immutable data class containing the execution events for a FeatureProcessor pipeline.
 
-    PYSPARK = "pyspark"  # Execute a pyspark job.
-    PYTHON = "python"  # Execute a regular python script.
+    This class is used for creating event based triggers for feature processor pipelines.
+    """
 
-
-class FeatureProcessorPipelineExecutionStatus(Enum):
-    """Enum of feature_processor pipeline execution status."""
-
-    EXECUTING = "Executing"
-    STOPPING = "Stopping"
-    STOPPED = "Stopped"
-    FAILED = "Failed"
-    SUCCEEDED = "Succeeded"
+    pipeline_name: str = attr.ib()
+    pipeline_execution_status: List[FeatureProcessorPipelineExecutionStatus] = attr.ib()
