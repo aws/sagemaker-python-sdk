@@ -439,6 +439,50 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
 
         return metric_definitions_to_return
 
+    def get_instance_specific_hyperparameters(
+        self, instance_type: str
+    ) -> List[JumpStartHyperparameter]:
+        """Returns instance specific hyperparameters.
+
+        Returns empty list if a model, instance type tuple does not have specific
+        hyperparameters.
+        """
+
+        if self.variants is None:
+            return []
+
+        instance_specific_hyperparameters: List[JumpStartHyperparameter] = [
+            JumpStartHyperparameter(json)
+            for json in self.variants.get(instance_type, {})
+            .get("properties", {})
+            .get("hyperparameters", [])
+        ]
+
+        instance_type_family = get_instance_type_family(instance_type)
+
+        instance_family_hyperparameters: List[JumpStartHyperparameter] = [
+            JumpStartHyperparameter(json)
+            for json in (
+                self.variants.get(instance_type_family, {})
+                .get("properties", {})
+                .get("hyperparameters", [])
+                if instance_type_family not in {"", None}
+                else []
+            )
+        ]
+
+        instance_specific_hyperparameter_names = {
+            hyperparameter.name for hyperparameter in instance_specific_hyperparameters
+        }
+
+        hyperparams_to_return = deepcopy(instance_specific_hyperparameters)
+
+        for hyperparameter in instance_family_hyperparameters:
+            if hyperparameter.name not in instance_specific_hyperparameter_names:
+                hyperparams_to_return.append(hyperparameter)
+
+        return hyperparams_to_return
+
     def get_instance_specific_environment_variables(self, instance_type: str) -> Dict[str, str]:
         """Returns instance specific environment variables.
 
@@ -903,10 +947,10 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         self.instance_type = instance_type
         self.region = region
         self.image_uri = image_uri
-        self.model_data = model_data
+        self.model_data = deepcopy(model_data)
         self.source_dir = source_dir
         self.entry_point = entry_point
-        self.env = env
+        self.env = deepcopy(env)
         self.predictor_cls = predictor_cls
         self.role = role
         self.name = name
@@ -999,7 +1043,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         self.deserializer = deserializer
         self.accelerator_type = accelerator_type
         self.endpoint_name = endpoint_name
-        self.tags = tags
+        self.tags = deepcopy(tags)
         self.kms_key = kms_key
         self.wait = wait
         self.data_capture_config = data_capture_config
@@ -1147,8 +1191,8 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         self.model_uri = model_uri
         self.source_dir = source_dir
         self.entry_point = entry_point
-        self.hyperparameters = hyperparameters
-        self.metric_definitions = metric_definitions
+        self.hyperparameters = deepcopy(hyperparameters)
+        self.metric_definitions = deepcopy(metric_definitions)
         self.role = role
         self.keep_alive_period_in_seconds = keep_alive_period_in_seconds
         self.volume_size = volume_size
@@ -1159,7 +1203,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         self.output_kms_key = output_kms_key
         self.base_job_name = base_job_name
         self.sagemaker_session = sagemaker_session
-        self.tags = tags
+        self.tags = deepcopy(tags)
         self.subnets = subnets
         self.security_group_ids = security_group_ids
         self.model_channel_name = model_channel_name
@@ -1175,7 +1219,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         self.enable_sagemaker_metrics = enable_sagemaker_metrics
         self.profiler_config = profiler_config
         self.disable_profiler = disable_profiler
-        self.environment = environment
+        self.environment = deepcopy(environment)
         self.max_retry_attempts = max_retry_attempts
         self.git_config = git_config
         self.container_log_level = container_log_level
@@ -1355,13 +1399,13 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         self.image_uri = image_uri
         self.source_dir = source_dir
         self.entry_point = entry_point
-        self.env = env
+        self.env = deepcopy(env)
         self.predictor_cls = predictor_cls
         self.serializer = serializer
         self.deserializer = deserializer
         self.accelerator_type = accelerator_type
         self.endpoint_name = endpoint_name
-        self.tags = tags
+        self.tags = deepcopy(tags)
         self.kms_key = kms_key
         self.wait = wait
         self.data_capture_config = data_capture_config
