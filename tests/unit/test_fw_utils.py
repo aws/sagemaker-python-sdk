@@ -784,6 +784,28 @@ def test_validate_distribution_raises():
                 )
 
 
+def test_validate_distribution_copy():
+    train_group = InstanceGroup("train_group", "ml.p3.16xlarge", 1)
+    instance_groups = [train_group]
+    framework = "tensorflow"
+    distribution = {"smdistributed": {"dataparallel": {"enabled": True}}}
+    validated = fw_utils.validate_distribution(
+        distribution,
+        instance_groups,
+        framework,
+        None,
+        None,
+        "custom-container",
+        {"entry_point": "train.py"},
+    )
+
+    assert validated == {
+        "instance_groups": ["train_group"],
+        "smdistributed": {"dataparallel": {"enabled": True}},
+    }
+    assert validated is not distribution
+
+
 def test_validate_smdistributed_not_raises():
     smdataparallel_enabled = {"smdistributed": {"dataparallel": {"enabled": True}}}
     smdataparallel_enabled_custom_mpi = {
