@@ -23,6 +23,9 @@ from sagemaker import Session
 from sagemaker.feature_store.feature_processor._event_bridge_scheduler_helper import (
     EventBridgeSchedulerHelper,
 )
+from sagemaker.feature_store.feature_processor._event_bridge_rule_helper import (
+    EventBridgeRuleHelper,
+)
 from sagemaker.feature_store.feature_processor.lineage.constants import (
     TRANSFORMATION_CODE_STATUS_INACTIVE,
 )
@@ -42,6 +45,7 @@ from test_constants import (
     RESOURCE_NOT_FOUND_EXCEPTION,
     SAGEMAKER_SESSION_MOCK,
     SCHEDULE_ARTIFACT_RESULT,
+    PIPELINE_TRIGGER_ARTIFACT,
     TRANSFORMATION_CODE_ARTIFACT_1,
     TRANSFORMATION_CODE_ARTIFACT_2,
     TRANSFORMATION_CODE_INPUT_1,
@@ -65,6 +69,9 @@ from sagemaker.feature_store.feature_processor.lineage._pipeline_lineage_entity_
 from sagemaker.feature_store.feature_processor.lineage._pipeline_schedule import (
     PipelineSchedule,
 )
+from sagemaker.feature_store.feature_processor.lineage._pipeline_trigger import (
+    PipelineTrigger,
+)
 from sagemaker.feature_store.feature_processor.lineage._pipeline_version_lineage_entity_handler import (
     PipelineVersionLineageEntityHandler,
 )
@@ -76,6 +83,8 @@ from sagemaker.lineage._api_types import AssociationSummary
 SCHEDULE_ARN = ""
 SCHEDULE_EXPRESSION = ""
 STATE = ""
+TRIGGER_ARN = ""
+EVENT_PATTERN = ""
 START_DATE = datetime.datetime(2023, 4, 28, 21, 53, 47, 912000)
 TAGS = [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
 
@@ -2471,6 +2480,76 @@ def test_create_schedule_lineage():
         artifact_set_tags.assert_called_once_with(TAGS)
 
 
+def test_create_trigger_lineage():
+    lineage_handler = FeatureProcessorLineageHandler(
+        pipeline_name=PIPELINE_NAME,
+        pipeline_arn=PIPELINE_ARN,
+        pipeline=PIPELINE,
+        sagemaker_session=SAGEMAKER_SESSION_MOCK,
+    )
+    with patch.object(
+        PipelineLineageEntityHandler,
+        "load_pipeline_context",
+        return_value=PIPELINE_CONTEXT,
+    ) as load_pipeline_context_method, patch.object(
+        PipelineVersionLineageEntityHandler,
+        "load_pipeline_version_context",
+        return_value=PIPELINE_VERSION_CONTEXT,
+    ) as load_pipeline_version_context_method, patch.object(
+        S3LineageEntityHandler,
+        "retrieve_pipeline_trigger_artifact",
+        return_value=PIPELINE_TRIGGER_ARTIFACT,
+    ) as retrieve_pipeline_trigger_artifact_method, patch.object(
+        LineageAssociationHandler,
+        "_add_association",
+    ) as add_association_method, patch.object(
+        Artifact,
+        "set_tags",
+        return_value={
+            "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
+        },
+    ) as artifact_set_tags:
+        lineage_handler.create_trigger_lineage(
+            pipeline_name=PIPELINE_NAME,
+            trigger_arn=TRIGGER_ARN,
+            event_pattern=EVENT_PATTERN,
+            state=STATE,
+            tags=TAGS,
+        )
+
+        load_pipeline_context_method.assert_called_once_with(
+            pipeline_name=PIPELINE_NAME,
+            creation_time=PIPELINE["CreationTime"].strftime("%s"),
+            sagemaker_session=SAGEMAKER_SESSION_MOCK,
+        )
+
+        load_pipeline_version_context_method.assert_called_once_with(
+            pipeline_name=PIPELINE_NAME,
+            last_update_time=PIPELINE_CONTEXT.properties["LastUpdateTime"],
+            sagemaker_session=SAGEMAKER_SESSION_MOCK,
+        )
+
+        retrieve_pipeline_trigger_artifact_method.assert_called_once_with(
+            pipeline_trigger=PipelineTrigger(
+                trigger_name=PIPELINE_NAME,
+                trigger_arn=TRIGGER_ARN,
+                pipeline_name=PIPELINE_NAME,
+                event_pattern=EVENT_PATTERN,
+                state=STATE,
+            ),
+            sagemaker_session=SAGEMAKER_SESSION_MOCK,
+        )
+
+        add_association_method.assert_called_once_with(
+            source_arn=PIPELINE_TRIGGER_ARTIFACT.artifact_arn,
+            destination_arn=PIPELINE_VERSION_CONTEXT.context_arn,
+            association_type="ContributedTo",
+            sagemaker_session=SAGEMAKER_SESSION_MOCK,
+        )
+
+        artifact_set_tags.assert_called_once_with(TAGS)
+
+
 def test_upsert_tags_for_lineage_resources():
     pipeline_context = copy.deepcopy(PIPELINE_CONTEXT)
     mock_session = Mock(Session)
@@ -2532,7 +2611,9 @@ def test_upsert_tags_for_lineage_resources():
         },
     ) as context_set_tags, patch.object(
         EventBridgeSchedulerHelper, "describe_schedule", return_value=dict(Arn="schedule_arn")
-    ) as get_event_bridge_schedule:
+    ) as get_event_bridge_schedule, patch.object(
+        EventBridgeRuleHelper, "describe_rule", return_value=dict(Arn="rule_arn")
+    ) as get_event_bridge_rule:
         lineage_handler.upsert_tags_for_lineage_resources(TAGS)
 
     retrieve_raw_data_artifact_method.assert_has_calls(
@@ -2558,17 +2639,22 @@ def test_upsert_tags_for_lineage_resources():
 
     list_upstream_associations_method.assert_not_called()
     list_downstream_associations_method.assert_not_called()
-    load_artifact_from_s3_uri_method.assert_called_once_with(
-        s3_uri="schedule_arn", sagemaker_session=mock_session
+    load_artifact_from_s3_uri_method.assert_has_calls(
+        [
+            call(s3_uri="schedule_arn", sagemaker_session=mock_session),
+            call(s3_uri="rule_arn", sagemaker_session=mock_session),
+        ]
     )
     get_event_bridge_schedule.assert_called_once_with(PIPELINE_NAME)
-    load_artifact_from_arn_method.assert_called_once_with(
+    get_event_bridge_rule.assert_called_once_with(PIPELINE_NAME)
+    load_artifact_from_arn_method.assert_called_with(
         artifact_arn=ARTIFACT_SUMMARY.artifact_arn, sagemaker_session=mock_session
     )
 
-    # three raw data artifact and one schedule artifact
+    # three raw data artifact, one schedule artifact and one trigger artifact
     artifact_set_tags.assert_has_calls(
         [
+            call(TAGS),
             call(TAGS),
             call(TAGS),
             call(TAGS),
