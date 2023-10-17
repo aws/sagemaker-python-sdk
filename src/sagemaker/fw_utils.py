@@ -21,10 +21,11 @@ import time
 import shutil
 import tempfile
 from collections import namedtuple
-from typing import Optional, Union, Dict
+from typing import List, Optional, Union, Dict
 from packaging import version
 
 import sagemaker.image_uris
+from sagemaker.instance_group import InstanceGroup
 from sagemaker.s3_utils import s3_path_join
 from sagemaker.session_settings import SessionSettings
 import sagemaker.utils
@@ -828,14 +829,14 @@ def _validate_smdataparallel_args(
 
 
 def validate_distribution(
-    distribution,
-    instance_groups,
-    framework_name,
-    framework_version,
-    py_version,
-    image_uri,
-    kwargs,
-):
+    distribution: Dict,
+    instance_groups: List[InstanceGroup],
+    framework_name: str,
+    framework_version: str,
+    py_version: str,
+    image_uri: str,
+    kwargs: Dict,
+) -> Dict:
     """Check if distribution strategy is correctly invoked by the user.
 
     Currently, check for `dataparallel`, `modelparallel` and heterogeneous cluster set up.
@@ -872,7 +873,9 @@ def validate_distribution(
             strategy-specific inputs are incorrect/unsupported or
             heterogeneous cluster set up is incorrect
     """
-    train_instance_groups = distribution.get("instance_groups", [])
+    validated_distribution = dict(distribution)
+
+    train_instance_groups = validated_distribution.get("instance_groups", [])
     if instance_groups is None:
         if len(train_instance_groups) >= 1:
             # if estimator's instance_groups is not defined but
@@ -902,20 +905,20 @@ def validate_distribution(
             instance_type = train_instance_group.instance_type
             validate_distribution_for_instance_type(
                 instance_type=instance_type,
-                distribution=distribution,
+                distribution=validated_distribution,
             )
             validate_smdistributed(
                 instance_type=instance_type,
                 framework_name=framework_name,
                 framework_version=framework_version,
                 py_version=py_version,
-                distribution=distribution,
+                distribution=validated_distribution,
                 image_uri=image_uri,
             )
             if framework_name and framework_name == "pytorch":
                 # We need to validate only for PyTorch framework
                 validate_pytorch_distribution(
-                    distribution=distribution,
+                    distribution=validated_distribution,
                     framework_name=framework_name,
                     framework_version=framework_version,
                     py_version=py_version,
@@ -923,18 +926,18 @@ def validate_distribution(
                 )
                 validate_torch_distributed_distribution(
                     instance_type=instance_type,
-                    distribution=distribution,
+                    distribution=validated_distribution,
                     framework_version=framework_version,
                     py_version=py_version,
                     image_uri=image_uri,
                     entry_point=kwargs["entry_point"],
                 )
             warn_if_parameter_server_with_multi_gpu(
-                training_instance_type=instance_type, distribution=distribution
+                training_instance_type=instance_type, distribution=validated_distribution
             )
             # get instance group names
             instance_group_names.append(train_instance_group.instance_group_name)
-        distribution["instance_groups"] = instance_group_names
+        validated_distribution["instance_groups"] = instance_group_names
     else:
         # in this case, we are handling a normal training job (without heterogeneous cluster)
         instance_type = renamed_kwargs(
@@ -942,20 +945,20 @@ def validate_distribution(
         )
         validate_distribution_for_instance_type(
             instance_type=instance_type,
-            distribution=distribution,
+            distribution=validated_distribution,
         )
         validate_smdistributed(
             instance_type=instance_type,
             framework_name=framework_name,
             framework_version=framework_version,
             py_version=py_version,
-            distribution=distribution,
+            distribution=validated_distribution,
             image_uri=image_uri,
         )
         if framework_name and framework_name == "pytorch":
             # We need to validate only for PyTorch framework
             validate_pytorch_distribution(
-                distribution=distribution,
+                distribution=validated_distribution,
                 framework_name=framework_name,
                 framework_version=framework_version,
                 py_version=py_version,
@@ -963,16 +966,16 @@ def validate_distribution(
             )
             validate_torch_distributed_distribution(
                 instance_type=instance_type,
-                distribution=distribution,
+                distribution=validated_distribution,
                 framework_version=framework_version,
                 py_version=py_version,
                 image_uri=image_uri,
                 entry_point=kwargs["entry_point"],
             )
         warn_if_parameter_server_with_multi_gpu(
-            training_instance_type=instance_type, distribution=distribution
+            training_instance_type=instance_type, distribution=validated_distribution
         )
-    return distribution
+    return validated_distribution
 
 
 def validate_distribution_for_instance_type(instance_type, distribution):
