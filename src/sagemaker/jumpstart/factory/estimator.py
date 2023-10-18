@@ -475,6 +475,7 @@ def _add_model_uri_to_kwargs(kwargs: JumpStartEstimatorInitKwargs) -> JumpStartE
             tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
             tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
             sagemaker_session=kwargs.sagemaker_session,
+            instance_type=kwargs.instance_type,
         )
 
         if (
