@@ -190,59 +190,8 @@ SPECIAL_MODEL_SPECS_DICT = {
             "framework_version": "1.5.0",
             "py_version": "py3",
         },
-        "hosting_instance_type_variants": {
-            "regional_aliases": {
-                "us-west-2": {
-                    "gpu_image_uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
-                    "huggingface-pytorch-inference:1.13.1-transformers4.26.0-gpu-py39-cu117-ubuntu20.04",
-                    "cpu_image_uri": "867930986793.dkr.us-west-2.amazonaws.com/cpu-blah",
-                    "inf_model_package_arn": "us-west-2/blah/blah/blah/inf",
-                    "gpu_model_package_arn": "us-west-2/blah/blah/blah/gpu",
-                }
-            },
-            "variants": {
-                "p2": {
-                    "regional_properties": {
-                        "image_uri": "$gpu_image_uri",
-                        "model_package_arn": "$gpu_model_package_arn",
-                    }
-                },
-                "p3": {
-                    "regional_properties": {
-                        "image_uri": "$gpu_image_uri",
-                        "model_package_arn": "$gpu_model_package_arn",
-                    }
-                },
-                "p4": {
-                    "regional_properties": {
-                        "image_uri": "$gpu_image_uri",
-                        "model_package_arn": "$gpu_model_package_arn",
-                    }
-                },
-                "g4dn": {
-                    "regional_properties": {
-                        "image_uri": "$gpu_image_uri",
-                        "model_package_arn": "$gpu_model_package_arn",
-                    }
-                },
-                "m2": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
-                "c2": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
-                "ml.g5.48xlarge": {
-                    "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "8"}}
-                },
-                "ml.g5.12xlarge": {
-                    "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"}}
-                },
-                "inf1": {"regional_properties": {"model_package_arn": "$inf_model_package_arn"}},
-                "inf2": {"regional_properties": {"model_package_arn": "$inf_model_package_arn"}},
-            },
-        },
-        "training_ecr_specs": {
-            "framework": "pytorch",
-            "framework_version": "1.5.0",
-            "py_version": "py3",
-        },
         "training_instance_type_variants": {
+            "regional_aliases": {},
             "variants": {
                 "ml.p2.12xlarge": {
                     "properties": {
@@ -305,9 +254,28 @@ SPECIAL_MODEL_SPECS_DICT = {
                                 "scope": "algorithm",
                             },
                         ],
+                        "metrics": [
+                            {
+                                "Name": "huggingface-textgeneration:instance-typemetric-loss",
+                                "Regex": "'eval_loss': ([0-9]+\\.[0-9]+)",
+                            },
+                            {
+                                "Name": "huggingface-textgeneration:eval-loss",
+                                "Regex": "'eval_loss': ([0-9]+\\.[0-9]+)",
+                            },
+                            {
+                                "Name": "huggingface-textgeneration:train-loss",
+                                "Regex": "'instance type specific': ([0-9]+\\.[0-9]+)",
+                            },
+                            {
+                                "Name": "huggingface-textgeneration:noneyourbusiness-loss",
+                                "Regex": "'loss-noyb instance specific': ([0-9]+\\.[0-9]+)",
+                            },
+                        ],
                     }
                 },
                 "p2": {
+                    "regional_properties": {"image_uri": "$gpu_ecr_uri_2"},
                     "properties": {
                         "hyperparameters": [
                             {
@@ -372,10 +340,80 @@ SPECIAL_MODEL_SPECS_DICT = {
                                 "default": "20",
                                 "scope": "container",
                             },
-                        ]
+                        ],
+                        "metrics": [
+                            {
+                                "Name": "huggingface-textgeneration:wtafigo",
+                                "Regex": "'evasadfasdl_loss': ([0-9]+\\.[0-9]+)",
+                            },
+                            {
+                                "Name": "huggingface-textgeneration:eval-loss",
+                                "Regex": "'eval_loss': ([0-9]+\\.[0-9]+)",
+                            },
+                            {
+                                "Name": "huggingface-textgeneration:train-loss",
+                                "Regex": "'instance family specific': ([0-9]+\\.[0-9]+)",
+                            },
+                            {
+                                "Name": "huggingface-textgeneration:noneyourbusiness-loss",
+                                "Regex": "'loss-noyb': ([0-9]+\\.[0-9]+)",
+                            },
+                        ],
+                    },
+                },
+            },
+        },
+        "hosting_instance_type_variants": {
+            "regional_aliases": {
+                "us-west-2": {
+                    "gpu_image_uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
+                    "huggingface-pytorch-inference:1.13.1-transformers4.26.0-gpu-py39-cu117-ubuntu20.04",
+                    "cpu_image_uri": "867930986793.dkr.us-west-2.amazonaws.com/cpu-blah",
+                    "inf_model_package_arn": "us-west-2/blah/blah/blah/inf",
+                    "gpu_model_package_arn": "us-west-2/blah/blah/blah/gpu",
+                }
+            },
+            "variants": {
+                "p2": {
+                    "regional_properties": {
+                        "image_uri": "$gpu_image_uri",
+                        "model_package_arn": "$gpu_model_package_arn",
                     }
                 },
-            }
+                "p3": {
+                    "regional_properties": {
+                        "image_uri": "$gpu_image_uri",
+                        "model_package_arn": "$gpu_model_package_arn",
+                    }
+                },
+                "p4": {
+                    "regional_properties": {
+                        "image_uri": "$gpu_image_uri",
+                        "model_package_arn": "$gpu_model_package_arn",
+                    }
+                },
+                "g4dn": {
+                    "regional_properties": {
+                        "image_uri": "$gpu_image_uri",
+                        "model_package_arn": "$gpu_model_package_arn",
+                    }
+                },
+                "m2": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
+                "c2": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
+                "ml.g5.48xlarge": {
+                    "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "8"}}
+                },
+                "ml.g5.12xlarge": {
+                    "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"}}
+                },
+                "inf1": {"regional_properties": {"model_package_arn": "$inf_model_package_arn"}},
+                "inf2": {"regional_properties": {"model_package_arn": "$inf_model_package_arn"}},
+            },
+        },
+        "training_ecr_specs": {
+            "framework": "pytorch",
+            "framework_version": "1.5.0",
+            "py_version": "py3",
         },
         "hosting_artifact_key": "pytorch-infer/infer-pytorch-ic-mobilenet-v2.tar.gz",
         "training_artifact_key": "pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz",
@@ -515,7 +553,16 @@ SPECIAL_MODEL_SPECS_DICT = {
             "ml.c5.2xlarge",
         ],
         "hosting_use_script_uri": True,
-        "metrics": [{"Regex": "val_accuracy: ([0-9\\.]+)", "Name": "pytorch-ic:val-accuracy"}],
+        "metrics": [
+            {
+                "Name": "huggingface-textgeneration:train-loss",
+                "Regex": "'loss default': ([0-9]+\\.[0-9]+)",
+            },
+            {
+                "Name": "huggingface-textgeyyyuyuyuyneration:train-loss",
+                "Regex": "'loss default': ([0-9]+\\.[0-9]+)",
+            },
+        ],
         "model_kwargs": {"some-model-kwarg-key": "some-model-kwarg-value"},
         "deploy_kwargs": {"some-model-deploy-kwarg-key": "some-model-deploy-kwarg-value"},
         "estimator_kwargs": {
