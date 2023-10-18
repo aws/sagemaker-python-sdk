@@ -90,9 +90,9 @@ class AsyncInferenceResponse(object):
         """Retrieve output based on the presense of failure_path"""
         if failure_path is not None:
             return self._get_result_from_s3_output_failure_paths(output_path, failure_path)
-
+    
         return self._get_result_from_s3_output_path(output_path)
-
+    
     def _get_result_from_s3_output_path(self, output_path):
         """Get inference result from the output Amazon S3 path"""
         bucket, key = parse_s3_url(output_path)
@@ -131,5 +131,7 @@ class AsyncInferenceResponse(object):
                         raise ObjectNotExistedError(
                             message="Inference could still be running", output_path=output_path
                         )
-                    raise UnexpectedClientError(message=ex.response["Error"]["Message"])
+                    raise UnexpectedClientError(
+                        message=ex.response["Error"]["Message"]
+                    )
             raise UnexpectedClientError(message=e.response["Error"]["Message"])
