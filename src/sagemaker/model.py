@@ -623,14 +623,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         )
         deploy_env = copy.deepcopy(self.env)
         if self.source_dir or self.dependencies or self.entry_point or self.git_config:
-            is_repack = (
-                self.source_dir
-                and self.entry_point
-                and not (
-                    (self.key_prefix and issubclass(type(self), FrameworkModel)) or self.git_config
-                )
-            )
-            self._upload_code(deploy_key_prefix, repack=is_repack)
+            self._upload_code(deploy_key_prefix, repack=self.is_repack())
             deploy_env.update(self._script_mode_env_vars())
 
         return sagemaker.container_def(
@@ -639,6 +632,14 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             deploy_env,
             image_config=self.image_config,
         )
+
+    def is_repack(self) -> bool:
+        """Whether the source code needs to be repacked before uploading to S3.
+
+        Returns:
+            bool: if the source need to be repacked or not
+        """
+        return self.source_dir and self.entry_point and not self.git_config
 
     def _upload_code(self, key_prefix: str, repack: bool = False) -> None:
         """Uploads code to S3 to be used with script mode with SageMaker inference.
@@ -1774,6 +1775,14 @@ class FrameworkModel(Model):
             git_config=git_config,
             **kwargs,
         )
+
+    def is_repack(self) -> bool:
+        """Whether the source code needs to be repacked before uploading to S3.
+
+        Returns:
+            bool: if the source need to be repacked or not
+        """
+        return self.source_dir and self.entry_point and not (self.key_prefix or self.git_config)
 
 
 # works for MODEL_PACKAGE_ARN with or without version info.

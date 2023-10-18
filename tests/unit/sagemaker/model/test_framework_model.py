@@ -48,6 +48,7 @@ CODECOMMIT_REPO = "https://git-codecommit.us-west-2.amazonaws.com/v1/repos/test-
 CODECOMMIT_REPO_SSH = "ssh://git-codecommit.us-west-2.amazonaws.com/v1/repos/test-repo/"
 CODECOMMIT_BRANCH = "master"
 REPO_DIR = "/tmp/repo_dir"
+IMAGE_URI = "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.9.0-gpu-py38"
 
 
 class DummyFrameworkModel(FrameworkModel):
@@ -471,3 +472,66 @@ def test_git_support_codecommit_ssh_passphrase_required(
         )
         model.prepare_container_def(instance_type=INSTANCE_TYPE)
     assert "returned non-zero exit status" in str(error.value)
+
+
+@patch("sagemaker.utils.repack_model")
+def test_not_repack_code_location_with_key_prefix(repack_model, sagemaker_session):
+
+    code_location = "s3://my-bucket/code/location/"
+
+    t = FrameworkModel(
+        entry_point=ENTRY_POINT,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        source_dir="s3://codebucket/someprefix/sourcedir.tar.gz",
+        image_uri=IMAGE_URI,
+        model_data=MODEL_DATA,
+        code_location=code_location,
+    )
+    t.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=INSTANCE_COUNT)
+
+    repack_model.assert_not_called()
+
+
+@patch("sagemaker.utils.repack_model")
+def test_is_repack_with_code_location(repack_model, sagemaker_session):
+
+    code_location = "s3://my-bucket/code/location/"
+
+    model = FrameworkModel(
+        entry_point=ENTRY_POINT,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        source_dir="s3://codebucket/someprefix/sourcedir.tar.gz",
+        image_uri=IMAGE_URI,
+        model_data=MODEL_DATA,
+        code_location=code_location,
+    )
+
+    assert not model.is_repack()
+
+
+@patch("sagemaker.git_utils.git_clone_repo")
+@patch("sagemaker.model.fw_utils.tar_and_upload_dir")
+def test_is_repack_with_git_config(tar_and_upload_dir, git_clone_repo, sagemaker_session):
+    git_clone_repo.side_effect = lambda gitconfig, entrypoint, sourcedir, dependency: {
+        "entry_point": "entry_point",
+        "source_dir": "/tmp/repo_dir/source_dir",
+        "dependencies": ["/tmp/repo_dir/foo", "/tmp/repo_dir/bar"],
+    }
+
+    entry_point = "entry_point"
+    source_dir = "source_dir"
+    dependencies = ["foo", "bar"]
+    git_config = {"repo": GIT_REPO, "branch": BRANCH, "commit": COMMIT}
+    model = FrameworkModel(
+        sagemaker_session=sagemaker_session,
+        entry_point=entry_point,
+        source_dir=source_dir,
+        dependencies=dependencies,
+        git_config=git_config,
+        image_uri=IMAGE_URI,
+        model_data=MODEL_DATA,
+    )
+
+    assert not model.is_repack()
