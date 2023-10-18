@@ -104,16 +104,21 @@ class JumpStartS3FileType(str, Enum):
 class JumpStartLaunchedRegionInfo(JumpStartDataHolderType):
     """Data class for launched region info."""
 
-    __slots__ = ["content_bucket", "region_name"]
+    __slots__ = ["content_bucket", "region_name", "private_content_bucket"]
 
-    def __init__(self, content_bucket: str, region_name: str):
+    def __init__(
+        self, content_bucket: str, region_name: str, private_content_bucket: Optional[str] = None
+    ):
         """Instantiates JumpStartLaunchedRegionInfo object.
 
         Args:
             content_bucket (str): Name of JumpStart s3 content bucket associated with region.
             region_name (str): Name of JumpStart launched region.
+            private_content_bucket (Optional[str[]): Name of JumpStart private s3 content bucket
+                optionally associated with region.
         """
         self.content_bucket = content_bucket
+        self.private_content_bucket = private_content_bucket
         self.region_name = region_name
 
 
@@ -548,6 +553,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         "hosting_instance_type_variants",
         "training_instance_type_variants",
         "default_payloads",
+        "private_bucket",
     ]
 
     def __init__(self, spec: Dict[str, Any]):
@@ -624,6 +630,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
             if json_obj.get("default_payloads")
             else None
         )
+        self.private_bucket = json_obj.get("private_bucket", False)
         self.inference_volume_size: Optional[int] = json_obj.get("inference_volume_size")
         self.inference_enable_network_isolation: bool = json_obj.get(
             "inference_enable_network_isolation", False

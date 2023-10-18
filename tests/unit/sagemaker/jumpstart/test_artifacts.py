@@ -20,6 +20,7 @@ import pytest
 
 from sagemaker.jumpstart import artifacts
 from sagemaker.jumpstart.artifacts.model_packages import _retrieve_model_package_arn
+from sagemaker.jumpstart.artifacts.model_uris import _retrieve_model_uri
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 
 from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec, get_special_model_spec
@@ -240,3 +241,28 @@ class RetrieveModelPackageArnTest(unittest.TestCase):
                 sagemaker_session=self.mock_session,
                 instance_type="ml.p2.12xlarge",
             )
+
+
+class PrivateJumpStartBucketTest(unittest.TestCase):
+
+    mock_session = Mock(s3_client=mock_client)
+
+    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    def test_retrieve_uri_from_private_bucket(self, patched_get_model_specs):
+        patched_get_model_specs.side_effect = get_special_model_spec
+
+        model_id = "private-model"
+        region = "us-west-2"
+
+        self.assertEqual(
+            _retrieve_model_uri(
+                model_id=model_id, model_version="*", model_scope="inference", region=region
+            ),
+            "s3://jumpstart-private-cache-prod-us-west-2/pytorch-infer/infer-pytorch-ic-mobilenet-v2.tar.gz",
+        )
+        self.assertEqual(
+            _retrieve_model_uri(
+                model_id=model_id, model_version="*", model_scope="training", region=region
+            ),
+            "s3://jumpstart-private-cache-prod-us-west-2/pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz",
+        )
