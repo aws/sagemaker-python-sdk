@@ -284,7 +284,7 @@ def schedule(
             at expression, rate expression and cron expression. See the
             `CreateSchedule API
             <https://docs.aws.amazon.com/scheduler/latest/APIReference/API_CreateSchedule.html#scheduler-CreateSchedulerequest-ScheduleExpression>`_
-               for more details.
+            for more details.
         state (str): Specifies whether the schedule is enabled or disabled. Valid values are
             ENABLED and DISABLED. See the `State request parameter
             <https://docs.aws.amazon.com/scheduler/latest/APIReference/API_CreateSchedule.html#scheduler-CreateSchedule-request-State>`_
