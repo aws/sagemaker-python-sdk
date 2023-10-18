@@ -347,7 +347,6 @@ ANALYSIS_CONFIG_SCHEMA_V1_0 = Schema(
             SchemaOptional("time_series_predictor_config"): {
                 "forecast": str,
                 "forecast_horizon": int,
-                SchemaOptional("use_future_covariates"): bool,
             },
         },
     }
@@ -805,15 +804,12 @@ class TimeSeriesModelConfig:
         self,
         forecast: str,
         forecast_horizon: int = TS_MODEL_DEFAULT_FORECAST_HORIZON,
-        use_future_covariates: Optional[bool] = False,
     ):
         """Initializes model configuration fields for TimeSeries explainability use cases.
 
         Args:
             forecast (str): JMESPath expression to extract the forecast result.
             forecast_horizon (int):  An integer that tells the forecast horizon.
-            use_future_covariates (None or bool): If set as True, future covariates
-                included in model input and used for forecasting
 
         Raises:
             AssertionError: when either ``forecast`` or ``forecast_horizon`` are not provided
@@ -829,15 +825,10 @@ class TimeSeriesModelConfig:
             raise ValueError("Please provide a string JMESPath expression for ``forecast``.")
         if not isinstance(forecast_horizon, int):
             raise ValueError("Please provide an integer ``forecast_horizon``.")
-        if use_future_covariates and not isinstance(use_future_covariates, bool):
-            raise ValueError("Please provide a boolean value for ``use_future_covariates``.")
         # add fields to an internal config dictionary
         self.predictor_config = dict()
         _set(forecast, "forecast", self.predictor_config)
         _set(forecast_horizon, "forecast_horizon", self.predictor_config)
-        _set(
-            use_future_covariates, "use_future_covariates", self.predictor_config
-        )  # _set() does nothing if a given argument is None
 
     def get_predictor_config(self):
         """Returns TimeSeries predictor config dictionary"""

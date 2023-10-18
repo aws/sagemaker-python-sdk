@@ -897,7 +897,6 @@ class TestTimeSeriesModelConfig:
         expected_config = {
             "forecast": forecast,
             "forecast_horizon": TS_MODEL_DEFAULT_FORECAST_HORIZON,
-            "use_future_covariates": False,
         }
         # WHEN
         ts_model_config = TimeSeriesModelConfig(
@@ -919,75 +918,26 @@ class TestTimeSeriesModelConfig:
         expected_config = {
             "forecast": forecast,
             "forecast_horizon": forecast_horizon,
-            "use_future_covariates": False,
         }
         # WHEN
         ts_model_config = TimeSeriesModelConfig(
             forecast,
             forecast_horizon=forecast_horizon,
-        )
-        # THEN
-        assert ts_model_config.predictor_config == expected_config
-
-    def test_time_series_model_config_with_future_covariates(self):
-        """
-        GIVEN a valid forecast expression
-        WHEN a TimeSeriesModelConfig is constructed with it and use_future_covariates is True
-        THEN the predictor_config dictionary matches the expected
-        """
-        # GIVEN
-        forecast = "results.[forecast]"  # mock JMESPath expression for forecast
-        # create expected output
-        expected_config = {
-            "forecast": forecast,
-            "forecast_horizon": TS_MODEL_DEFAULT_FORECAST_HORIZON,
-            "use_future_covariates": True,
-        }
-        # WHEN
-        ts_model_config = TimeSeriesModelConfig(
-            forecast,
-            use_future_covariates=True,
-        )
-        # THEN
-        assert ts_model_config.predictor_config == expected_config
-
-    def test_time_series_model_config_with_horizon_and_covariates(self):
-        """
-        GIVEN a valid forecast expression and forecast horizon
-        WHEN a TimeSeriesModelConfig is constructed with it and use_future_covariates is True
-        THEN the predictor_config dictionary matches the expected
-        """
-        # GIVEN
-        forecast = "results.[forecast]"  # mock JMESPath expression for forecast
-        forecast_horizon = 25  # non-default forecast horizon
-        # create expected output
-        expected_config = {
-            "forecast": forecast,
-            "forecast_horizon": forecast_horizon,
-            "use_future_covariates": True,
-        }
-        # WHEN
-        ts_model_config = TimeSeriesModelConfig(
-            forecast,
-            forecast_horizon=forecast_horizon,
-            use_future_covariates=True,
         )
         # THEN
         assert ts_model_config.predictor_config == expected_config
 
     @pytest.mark.parametrize(
-        ("forecast", "forecast_horizon", "use_future_covariates", "error", "error_message"),
+        ("forecast", "forecast_horizon", "error", "error_message"),
         [
             (
                 None,
                 TS_MODEL_DEFAULT_FORECAST_HORIZON,
-                None,
                 AssertionError,
                 "Please provide ``forecast``, a JMESPath expression to extract the forecast result.",
             ),
             (
                 "results.[forecast]",
-                None,
                 None,
                 AssertionError,
                 "Please provide an integer ``forecast_horizon``.",
@@ -995,23 +945,14 @@ class TestTimeSeriesModelConfig:
             (
                 123,
                 TS_MODEL_DEFAULT_FORECAST_HORIZON,
-                None,
                 ValueError,
                 "Please provide a string JMESPath expression for ``forecast``.",
             ),
             (
                 "results.[forecast]",
                 "Not an int",
-                None,
                 ValueError,
                 "Please provide an integer ``forecast_horizon``.",
-            ),
-            (
-                "results.[forecast]",
-                TS_MODEL_DEFAULT_FORECAST_HORIZON,
-                "Not a bool",
-                ValueError,
-                "Please provide a boolean value for ``use_future_covariates``.",
             ),
         ],
     )
@@ -1019,7 +960,6 @@ class TestTimeSeriesModelConfig:
         self,
         forecast,
         forecast_horizon,
-        use_future_covariates,
         error,
         error_message,
     ):
@@ -1032,7 +972,6 @@ class TestTimeSeriesModelConfig:
             TimeSeriesModelConfig(
                 forecast=forecast,
                 forecast_horizon=forecast_horizon,
-                use_future_covariates=use_future_covariates,
             )
 
     def test_model_config_with_time_series(self):
@@ -1064,7 +1003,6 @@ class TestTimeSeriesModelConfig:
         mock_ts_model_config_dict = {
             "forecast": forecast,
             "forecast_horizon": forecast_horizon,
-            "use_future_covariates": True,
         }
         mock_ts_model_config = Mock()
         mock_ts_model_config.get_predictor_config.return_value = mock_ts_model_config_dict
