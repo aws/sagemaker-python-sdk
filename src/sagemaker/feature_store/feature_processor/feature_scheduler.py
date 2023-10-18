@@ -281,13 +281,13 @@ def schedule(
     Args:
         pipeline_name (str): The SageMaker Pipeline name that will be scheduled.
         schedule_expression (str): The expression that defines when the schedule runs. It supports
-            at expression, rate expression and cron expression. See https://docs.aws.amazon.com/
-            scheduler/latest/APIReference/API_CreateSchedule.html#scheduler-CreateSchedule-request
-            -ScheduleExpression for more details.
+            at expression, rate expression and cron expression. See '''https://docs.aws.amazon.com\
+                /scheduler/latest/APIReference/API_CreateSchedule.html#scheduler-CreateSchedule-\
+                request-ScheduleExpression''' for more details.
         state (str): Specifies whether the schedule is enabled or disabled. Valid values are
-            ENABLED and DISABLED. See https://docs.aws.amazon.com/scheduler/latest/APIReference/
-            API_CreateSchedule.html#scheduler-CreateSchedule-request-State for more details.
-            If not specified, it will default to ENABLED.
+            ENABLED and DISABLED. See '''https://docs.aws.amazon.com/scheduler/latest/APIReference\
+                /API_CreateSchedule.html#scheduler-CreateSchedule-request-State'''
+            for more details. If not specified, it will default to ENABLED.
         start_date (Optional[datetime]): The date, in UTC, after which the schedule can begin
             invoking its target. Depending on the schedule’s recurrence expression, invocations
             might occur on, or after, the StartDate you specify.

@@ -439,6 +439,62 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
 
         return metric_definitions_to_return
 
+    def get_instance_specific_prepacked_artifact_key(self, instance_type: str) -> Optional[str]:
+        """Returns instance specific model artifact key.
+
+        Returns None if a model, instance type tuple does not have specific
+        artifact key.
+        """
+
+        return self._get_instance_specific_property(
+            instance_type=instance_type, property_name="prepacked_artifact_key"
+        )
+
+    def get_instance_specific_artifact_key(self, instance_type: str) -> Optional[str]:
+        """Returns instance specific model artifact key.
+
+        Returns None if a model, instance type tuple does not have specific
+        artifact key.
+        """
+
+        return self._get_instance_specific_property(
+            instance_type=instance_type, property_name="artifact_key"
+        )
+
+    def _get_instance_specific_property(
+        self, instance_type: str, property_name: str
+    ) -> Optional[str]:
+        """Returns instance specific property.
+
+        If a value exists for both the instance family and instance type,
+        the instance type value is chosen.
+
+        Returns None if a (model, instance type, property name) tuple does not have
+        specific prepacked artifact key.
+        """
+
+        if self.variants is None:
+            return None
+
+        instance_specific_property: Optional[str] = (
+            self.variants.get(instance_type, {}).get("properties", {}).get(property_name, None)
+        )
+
+        if instance_specific_property:
+            return instance_specific_property
+
+        instance_type_family = get_instance_type_family(instance_type)
+
+        instance_family_property: Optional[str] = (
+            self.variants.get(instance_type_family, {})
+            .get("properties", {})
+            .get(property_name, None)
+            if instance_type_family not in {"", None}
+            else None
+        )
+
+        return instance_family_property
+
     def get_instance_specific_hyperparameters(
         self, instance_type: str
     ) -> List[JumpStartHyperparameter]:
