@@ -1,5 +1,28 @@
 # Changelog
 
+## v2.193.0 (2023-10-18)
+
+### Features
+
+ * jumpstart model artifact instance type variants
+ * jumpstart instance specific hyperparameters
+ * Feature Processor event based triggers (#1132)
+ * Support job checkpoint in remote function
+ * jumpstart model package arn instance type variants
+
+### Bug Fixes and Other Changes
+
+ * Fix hyperlinks in feature_processor.scheduler parameter descriptions
+ * add image_uris_unit_test pytest mark
+ * bump apache-airflow to `v2.7.2`
+ * clone distribution in validate_distribution
+ * fix flaky Inference Recommender integration tests
+
+### Documentation Changes
+
+ * Update PipelineModel.register documentation
+ * specify that input_shape in no longer required for torch 2.0 mod…
+
 ## v2.192.1 (2023-10-13)
 
 ### Bug Fixes and Other Changes
