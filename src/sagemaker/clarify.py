@@ -39,6 +39,19 @@ logger = logging.getLogger(__name__)
 
 ENDPOINT_NAME_PREFIX_PATTERN = "^[a-zA-Z0-9](-*[a-zA-Z0-9])"
 
+# TODO: verify these are sensible/sound values
+# timeseries predictor config default values
+TS_MODEL_DEFAULT_FORECAST_HORIZON = 5  # predictor config
+# asymmetric shap default values (timeseries)
+ASYM_SHAP_DEFAULT_EXPLANATION_TYPE = "fine_grained"
+ASYM_SHAP_DEFAULT_NUM_SAMPLES = 5
+ASYM_SHAP_EXPLANATION_TYPES = [
+    "timewise_chronological",
+    "timewise_anti_chronological",
+    "timewise_bidirectional",
+    "fine_grained",
+]
+
 ANALYSIS_CONFIG_SCHEMA_V1_0 = Schema(
     {
         SchemaOptional("version"): str,
@@ -84,6 +97,13 @@ ANALYSIS_CONFIG_SCHEMA_V1_0 = Schema(
         SchemaOptional("excluded_columns"): [Or(int, str)],
         SchemaOptional("joinsource_name_or_index"): Or(str, int),
         SchemaOptional("group_variable"): Or(str, int),
+        SchemaOptional("time_series_data_config"): {
+            "target_time_series": Or(str, int),
+            "item_id": Or(str, int),
+            "timestamp": Or(str, int),
+            SchemaOptional("related_time_series"): [Or(int, str)],
+            SchemaOptional("item_metadata"): [Or(int, str)],
+        },
         "methods": {
             SchemaOptional("shap"): {
                 SchemaOptional("baseline"): Or(
@@ -277,6 +297,20 @@ ANALYSIS_CONFIG_SCHEMA_V1_0 = Schema(
                 SchemaOptional("top_k_features"): int,
             },
             SchemaOptional("report"): {"name": str, SchemaOptional("title"): str},
+            SchemaOptional("asymmetric_shap"): {
+                "explanation_type": And(
+                    str,
+                    Use(str.lower),
+                    lambda s: s
+                    in (
+                        "timewise_chronological",
+                        "timewise_anti_chronological",
+                        "timewise_bidirectional",
+                        "fine_grained",
+                    ),
+                ),
+                SchemaOptional("num_samples"): int,
+            },
         },
         SchemaOptional("predictor"): {
             SchemaOptional("endpoint_name"): str,
@@ -310,6 +344,11 @@ ANALYSIS_CONFIG_SCHEMA_V1_0 = Schema(
             SchemaOptional("content_template"): Or(str, {str: str}),
             SchemaOptional("record_template"): str,
             SchemaOptional("custom_attributes"): str,
+            SchemaOptional("time_series_predictor_config"): {
+                "forecast": str,
+                "forecast_horizon": int,
+                SchemaOptional("use_future_covariates"): bool,
+            },
         },
     }
 )
@@ -393,6 +432,94 @@ class SegmentationConfig:
         return segment_config_dict
 
 
+class TimeSeriesDataConfig:
+    """Config object for TimeSeries explainability specific data fields."""
+
+    def __init__(
+        self,
+        target_time_series: Union[str, int],
+        item_id: Union[str, int],
+        timestamp: Union[str, int],
+        related_time_series: Optional[List[Union[str, int]]] = None,
+        item_metadata: Optional[List[Union[str, int]]] = None,
+    ):
+        """Initialises TimeSeries explainability data configuration fields.
+
+        Args: #TODO: verify param descriptions are accurate
+            target_time_series (str or int): A string or a zero-based integer index.
+                Used to locate target time series in the shared input dataset.
+            item_id (str or int): A string or a zero-based integer index. Used to
+                locate item id in the shared input dataset.
+            timestamp (str or int): A string or a zero-based integer index. Used to
+                locate timestamp in the shared input dataset.
+            related_time_series (list[str] or list[int]): Optional. An array of strings
+                or array of zero-based integer indices. Used to locate all related time
+                series in the shared input dataset.
+            item_metadata (list[str] or list[int]): Optional.  An array of strings or
+                array of zero-based integer indices. Used to locate all item metadata
+                fields in the shared input dataset.
+
+        Raises:
+            AssertionError: If any required arguments are not provided.
+            ValueError: If any provided arguments are the wrong type.
+        """
+        # check target_time_series, item_id, and timestamp are provided
+        assert target_time_series, "Please provide a target time series."
+        assert item_id, "Please provide an item id."
+        assert timestamp, "Please provide a timestamp."
+        # check all arguments are the right types
+        if not isinstance(target_time_series, (str, int)):
+            raise ValueError("Please provide a string or an int for ``target_time_series``")
+        if not isinstance(item_id, (str, int)):
+            raise ValueError("Please provide a string or an int for ``item_id``")
+        if not isinstance(timestamp, (str, int)):
+            raise ValueError("Please provide a string or an int for ``timestamp``")
+        # add remaining fields to an internal dictionary
+        self.analysis_config = dict()
+        _set(target_time_series, "target_time_series", self.analysis_config)
+        _set(item_id, "item_id", self.analysis_config)
+        _set(timestamp, "timestamp", self.analysis_config)
+        # check optional arguments are right types if provided
+        related_time_series_error_message = (
+            "Please provide a list of strings or list of ints for ``related_time_series``"
+        )
+        if related_time_series:
+            if not isinstance(related_time_series, list):
+                raise ValueError(
+                    related_time_series_error_message
+                )  # related_time_series is not a list
+            if not (
+                all([isinstance(value, str) for value in related_time_series])
+                or all([isinstance(value, int) for value in related_time_series])
+            ):
+                raise ValueError(
+                    related_time_series_error_message
+                )  # related_time_series is not a list of strings or list of ints
+            _set(
+                related_time_series, "related_time_series", self.analysis_config
+            )  # related_time_series is valid, add it
+        item_metadata_series_error_message = (
+            "Please provide a list of strings or list of ints for ``item_metadata``"
+        )
+        if item_metadata:
+            if not isinstance(item_metadata, list):
+                raise ValueError(item_metadata_series_error_message)  # item_metadata is not a list
+            if not (
+                all([isinstance(value, str) for value in item_metadata])
+                or all([isinstance(value, int) for value in item_metadata])
+            ):
+                raise ValueError(
+                    item_metadata_series_error_message
+                )  # item_metadata is not a list of strings or list of ints
+            _set(
+                item_metadata, "item_metadata", self.analysis_config
+            )  # item_metadata is valid, add it
+
+    def get_config(self):
+        """Returns part of an analysis config dictionary."""
+        return copy.deepcopy(self.analysis_config)
+
+
 class DataConfig:
     """Config object related to configurations of the input and output dataset."""
 
@@ -414,6 +541,7 @@ class DataConfig:
         predicted_label: Optional[Union[str, int]] = None,
         excluded_columns: Optional[Union[List[int], List[str]]] = None,
         segmentation_config: Optional[List[SegmentationConfig]] = None,
+        time_series_data_config: Optional[TimeSeriesDataConfig] = None,
     ):
         """Initializes a configuration of both input and output datasets.
 
@@ -482,6 +610,8 @@ class DataConfig:
                 which are to be excluded from making model inference API calls.
             segmentation_config (list[SegmentationConfig]): A list of ``SegmentationConfig``
                 objects.
+            time_series_data_config (TimeSeriesDataConfig): Optional. A config object for TimeSeries
+                data specific fields, required for TimeSeries explainability use cases.
 
         Raises:
             ValueError: when the ``dataset_type`` is invalid, predicted label dataset parameters
@@ -573,6 +703,11 @@ class DataConfig:
                 "segment_config",
                 self.analysis_config,
             )
+        _set(
+            time_series_data_config.get_config() if time_series_data_config else None,
+            "time_series_data_config",
+            self.analysis_config,
+        )
 
     def get_config(self):
         """Returns part of an analysis config dictionary."""
@@ -663,6 +798,52 @@ class BiasConfig:
         return copy.deepcopy(self.analysis_config)
 
 
+class TimeSeriesModelConfig:
+    """Config object for TimeSeries predictor configuration fields."""
+
+    def __init__(
+        self,
+        forecast: str,
+        forecast_horizon: int = TS_MODEL_DEFAULT_FORECAST_HORIZON,
+        use_future_covariates: Optional[bool] = False,
+    ):
+        """Initializes model configuration fields for TimeSeries explainability use cases.
+
+        Args:
+            forecast (str): JMESPath expression to extract the forecast result.
+            forecast_horizon (int):  An integer that tells the forecast horizon.
+            use_future_covariates (None or bool): If set as True, future covariates
+                included in model input and used for forecasting
+
+        Raises:
+            AssertionError: when either ``forecast`` or ``forecast_horizon`` are not provided
+            ValueError: when any provided argument are not of specified type
+        """
+        # assert forecast and forecast_horizon are provided
+        assert (
+            forecast
+        ), "Please provide ``forecast``, a JMESPath expression to extract the forecast result."
+        assert forecast_horizon, "Please provide an integer ``forecast_horizon``."
+        # check provided arguments are of the right type
+        if not isinstance(forecast, str):
+            raise ValueError("Please provide a string JMESPath expression for ``forecast``.")
+        if not isinstance(forecast_horizon, int):
+            raise ValueError("Please provide an integer ``forecast_horizon``.")
+        if use_future_covariates and not isinstance(use_future_covariates, bool):
+            raise ValueError("Please provide a boolean value for ``use_future_covariates``.")
+        # add fields to an internal config dictionary
+        self.predictor_config = dict()
+        _set(forecast, "forecast", self.predictor_config)
+        _set(forecast_horizon, "forecast_horizon", self.predictor_config)
+        _set(
+            use_future_covariates, "use_future_covariates", self.predictor_config
+        )  # _set() does nothing if a given argument is None
+
+    def get_predictor_config(self):
+        """Returns TimeSeries predictor config dictionary"""
+        return copy.deepcopy(self.predictor_config)
+
+
 class ModelConfig:
     """Config object related to a model and its endpoint to be created."""
 
@@ -680,6 +861,7 @@ class ModelConfig:
         endpoint_name_prefix: Optional[str] = None,
         target_model: Optional[str] = None,
         endpoint_name: Optional[str] = None,
+        time_series_model_config: Optional[TimeSeriesModelConfig] = None,
     ):
         r"""Initializes a configuration of a model and the endpoint to be created for it.
 
@@ -796,6 +978,9 @@ class ModelConfig:
             endpoint_name (str): Sets the endpoint_name when re-uses an existing endpoint.
                 Cannot be set when ``model_name``, ``instance_count``,
                 and ``instance_type`` set
+            time_series_model_config (TimeSeriesModelConfig): Optional. A config object for
+                TimeSeries predictor specific fields, required for TimeSeries
+                explainability use cases.
 
         Raises:
             ValueError: when the
@@ -884,6 +1069,11 @@ class ModelConfig:
         _set(custom_attributes, "custom_attributes", self.predictor_config)
         _set(accelerator_type, "accelerator_type", self.predictor_config)
         _set(target_model, "target_model", self.predictor_config)
+        _set(
+            time_series_model_config.get_predictor_config() if time_series_model_config else None,
+            "time_series_predictor_config",
+            self.predictor_config,
+        )
 
     def get_predictor_config(self):
         """Returns part of the predictor dictionary of the analysis config."""
@@ -1397,6 +1587,45 @@ class SHAPConfig(ExplainabilityConfig):
     def get_explainability_config(self):
         """Returns a shap config dictionary."""
         return copy.deepcopy({"shap": self.shap_config})
+
+
+class AsymmetricSHAPConfig(ExplainabilityConfig):
+    """Config class for Asymmetric SHAP algorithm for TimeSeries explainability"""
+
+    def __init__(
+        self,
+        explanation_type: str = ASYM_SHAP_DEFAULT_EXPLANATION_TYPE,
+        num_samples: Optional[int] = ASYM_SHAP_DEFAULT_NUM_SAMPLES,
+    ):
+        """Initialises config for asymmetric SHAP config.
+
+        AsymmetricSHAPConfig is used specifically and only for TimeSeries explainability purposes.
+
+        Args:
+            explanation_type (str): Type of explanation to be used
+            num_samples (None or int): Number of samples to be used in the Asymmetric SHAP
+                algorithm.
+
+        Raises:
+            AssertionError: when ``explanation_type`` is not valid
+        """
+        self.asymmetric_shap_config = dict()
+        # validate explanation type
+        assert (
+            explanation_type in ASYM_SHAP_EXPLANATION_TYPES
+        ), "Please provide a valid explanation type from: " + ", ".join(ASYM_SHAP_EXPLANATION_TYPES)
+        # validate num_samples if provided
+        if num_samples and not isinstance(num_samples, int):
+            raise ValueError("Please provide an integer value for ``num_samples``.")
+        # set explanation type and (if provided) num_samples in internal config dictionary
+        _set(explanation_type, "explanation_type", self.asymmetric_shap_config)
+        _set(
+            num_samples, "num_samples", self.asymmetric_shap_config
+        )  # _set() does nothing if a given argument is None
+
+    def get_explainability_config(self):
+        """Returns an asymmetric shap config dictionary."""
+        return copy.deepcopy({"asymmetric_shap": self.asymmetric_shap_config})
 
 
 class SageMakerClarifyProcessor(Processor):
@@ -2092,12 +2321,26 @@ class _AnalysisConfigGenerator:
         explainability_config: Union[ExplainabilityConfig, List[ExplainabilityConfig]],
     ):
         """Generates a config for Explainability"""
+        # determine if this is a timeseries explainability case by checking
+        # if *both* TimeSeriesDataConfig and TimeSeriesModelConfig were given
+        ts_data_config_present = "time_series_data_config" in data_config.analysis_config
+        ts_model_config_present = "time_series_predictor_config" in model_config.predictor_config
+
+        if ts_data_config_present and ts_model_config_present:
+            time_series_case = True
+        elif not ts_data_config_present and not ts_model_config_present:
+            time_series_case = False
+        else:
+            raise ValueError("Please provide both TimeSeriesDataConfig and TimeSeriesModelConfig.")
+        # construct whole analysis config
         analysis_config = data_config.analysis_config
         analysis_config = cls._add_predictor(
             analysis_config, model_config, model_predicted_label_config
         )
         analysis_config = cls._add_methods(
-            analysis_config, explainability_config=explainability_config
+            analysis_config,
+            explainability_config=explainability_config,
+            time_series_case=time_series_case,
         )
         return analysis_config
 
@@ -2164,7 +2407,11 @@ class _AnalysisConfigGenerator:
         if isinstance(model_config, ModelConfig):
             analysis_config["predictor"] = model_config.get_predictor_config()
         else:
-            if "shap" in analysis_config["methods"] or "pdp" in analysis_config["methods"]:
+            if (
+                "shap" in analysis_config["methods"]
+                or "pdp" in analysis_config["methods"]
+                or "asymmetric_shap" in analysis_config["methods"]
+            ):
                 raise ValueError(
                     "model_config must be provided when explainability methods are selected."
                 )
@@ -2195,11 +2442,16 @@ class _AnalysisConfigGenerator:
         pre_training_methods: Union[str, List[str]] = None,
         post_training_methods: Union[str, List[str]] = None,
         explainability_config: Union[ExplainabilityConfig, List[ExplainabilityConfig]] = None,
-        report=True,
+        report: bool = True,
+        time_series_case: bool = False,
     ):
         """Extends analysis config with methods."""
         # validate
         params = [pre_training_methods, post_training_methods, explainability_config]
+        if time_series_case and not explainability_config:
+            raise AttributeError(
+                "At least one AsymmetricSHAPConfig must be provided for TimeSeriex explainability."
+            )
         if not any(params):
             raise AttributeError(
                 "analysis_config must have at least one working method: "
@@ -2225,7 +2477,9 @@ class _AnalysisConfigGenerator:
             analysis_config["methods"]["post_training_bias"] = {"methods": post_training_methods}
 
         if explainability_config is not None:
-            explainability_methods = cls._merge_explainability_configs(explainability_config)
+            explainability_methods = cls._merge_explainability_configs(
+                explainability_config, time_series_case
+            )
             analysis_config["methods"] = {
                 **analysis_config["methods"],
                 **explainability_methods,
@@ -2236,6 +2490,7 @@ class _AnalysisConfigGenerator:
     def _merge_explainability_configs(
         cls,
         explainability_config: Union[ExplainabilityConfig, List[ExplainabilityConfig]],
+        time_series_case: bool = False,
     ):
         """Merges explainability configs, when more than one."""
         if isinstance(explainability_config, list):
@@ -2243,16 +2498,37 @@ class _AnalysisConfigGenerator:
             if len(explainability_config) == 0:
                 raise ValueError("Please provide at least one explainability config.")
             for config in explainability_config:
+                # ensure all provided explainability configs
+                # are AsymmetricSHAPConfig in time series case
+                is_asym_shap_config = isinstance(config, AsymmetricSHAPConfig)
+                if time_series_case and not is_asym_shap_config:
+                    raise ValueError(
+                        "Please provide only Asymmetric SHAP configs for TimeSeries explainability."
+                    )
+                if not time_series_case and is_asym_shap_config:
+                    raise ValueError(
+                        "Please do not provide Asymmetric SHAP configs for non-TimeSeries uses."
+                    )
                 explain_config = config.get_explainability_config()
                 explainability_methods.update(explain_config)
             if not len(explainability_methods) == len(explainability_config):
                 raise ValueError("Duplicate explainability configs are provided")
             if (
-                "shap" not in explainability_methods
+                not time_series_case
+                and "shap" not in explainability_methods
                 and "features" not in explainability_methods["pdp"]
             ):
                 raise ValueError("PDP features must be provided when ShapConfig is not provided")
             return explainability_methods
+        is_asym_shap_config = isinstance(explainability_config, AsymmetricSHAPConfig)
+        if time_series_case and not is_asym_shap_config:
+            raise ValueError(
+                "Please provide only Asymmetric SHAP configs for TimeSeries explainability."
+            )
+        if not time_series_case and is_asym_shap_config:
+            raise ValueError(
+                "Please do not provide Asymmetric SHAP configs for non-TimeSeries uses."
+            )
         if (
             isinstance(explainability_config, PDPConfig)
             and "features" not in explainability_config.get_explainability_config()["pdp"]

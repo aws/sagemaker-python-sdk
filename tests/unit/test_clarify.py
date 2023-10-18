@@ -17,22 +17,30 @@ import copy
 
 import pytest
 from mock import MagicMock, Mock, patch
+from typing import List, NamedTuple, Optional, Union
 
 from sagemaker import Processor, image_uris
 from sagemaker.clarify import (
     BiasConfig,
     DataConfig,
+    TimeSeriesDataConfig,
     ModelConfig,
+    TimeSeriesModelConfig,
     ModelPredictedLabelConfig,
     PDPConfig,
     SageMakerClarifyProcessor,
     SHAPConfig,
+    AsymmetricSHAPConfig,
     TextConfig,
     ImageConfig,
     _AnalysisConfigGenerator,
     DatasetType,
     ProcessingOutputHandler,
     SegmentationConfig,
+    TS_MODEL_DEFAULT_FORECAST_HORIZON,
+    ASYM_SHAP_DEFAULT_EXPLANATION_TYPE,
+    ASYM_SHAP_DEFAULT_NUM_SAMPLES,
+    ASYM_SHAP_EXPLANATION_TYPES,
 )
 
 JOB_NAME_PREFIX = "my-prefix"
@@ -319,6 +327,241 @@ def test_s3_data_distribution_type_ignorance():
         joinsource="F4",
     )
     assert data_config.s3_data_distribution_type == "FullyReplicated"
+
+
+class TimeSeriesDataConfigCase(NamedTuple):
+    target_time_series: Union[str, int]
+    item_id: Union[str, int]
+    timestamp: Union[str, int]
+    related_time_series: Optional[List[Union[str, int]]]
+    item_metadata: Optional[List[Union[str, int]]]
+    error: Exception
+    error_message: Optional[str]
+
+
+class TestTimeSeriesDataConfig:
+    valid_ts_data_config_case_list = [
+        TimeSeriesDataConfigCase(  # no optional args provided
+            target_time_series="target_time_series",
+            item_id="item_id",
+            timestamp="timestamp",
+            related_time_series=None,
+            item_metadata=None,
+            error=None,
+            error_message=None,
+        ),
+        TimeSeriesDataConfigCase(  # related_time_series provided
+            target_time_series="target_time_series",
+            item_id="item_id",
+            timestamp="timestamp",
+            related_time_series=[1, 2, 3],
+            item_metadata=None,
+            error=None,
+            error_message=None,
+        ),
+        TimeSeriesDataConfigCase(  # item_metadata provided
+            target_time_series="target_time_series",
+            item_id="item_id",
+            timestamp="timestamp",
+            related_time_series=None,
+            item_metadata=["a", "b", "c", "d"],
+            error=None,
+            error_message=None,
+        ),
+        TimeSeriesDataConfigCase(  # both related_time_series and item_metadata provided
+            target_time_series="target_time_series",
+            item_id="item_id",
+            timestamp="timestamp",
+            related_time_series=[1, 2, 3],
+            item_metadata=["a", "b", "c", "d"],
+            error=None,
+            error_message=None,
+        ),
+    ]
+
+    @pytest.mark.parametrize("test_case", valid_ts_data_config_case_list)
+    def test_time_series_data_config(self, test_case):
+        """
+        GIVEN A set of valid parameters are given
+        WHEN A TimeSeriesDataConfig object is instantiated
+        THEN the returned config dictionary matches what's expected
+        """
+        # construct expected output
+        expected_output = {
+            "target_time_series": test_case.target_time_series,
+            "item_id": test_case.item_id,
+            "timestamp": test_case.timestamp,
+        }
+        if test_case.related_time_series:
+            expected_output["related_time_series"] = test_case.related_time_series
+        if test_case.item_metadata:
+            expected_output["item_metadata"] = test_case.item_metadata
+        # GIVEN, WHEN
+        ts_data_config = TimeSeriesDataConfig(
+            target_time_series=test_case.target_time_series,
+            item_id=test_case.item_id,
+            timestamp=test_case.timestamp,
+            related_time_series=test_case.related_time_series,
+            item_metadata=test_case.item_metadata,
+        )
+        # THEN
+        assert ts_data_config.analysis_config == expected_output
+
+    @pytest.mark.parametrize(
+        "test_case",
+        [
+            TimeSeriesDataConfigCase(  # no target_time_series provided
+                target_time_series=None,
+                item_id="item_id",
+                timestamp="timestamp",
+                related_time_series=None,
+                item_metadata=None,
+                error=AssertionError,
+                error_message="Please provide a target time series.",
+            ),
+            TimeSeriesDataConfigCase(  # no item_id provided
+                target_time_series="target_time_series",
+                item_id=None,
+                timestamp="timestamp",
+                related_time_series=None,
+                item_metadata=None,
+                error=AssertionError,
+                error_message="Please provide an item id.",
+            ),
+            TimeSeriesDataConfigCase(  # no timestamp provided
+                target_time_series="target_time_series",
+                item_id="item_id",
+                timestamp=None,
+                related_time_series=None,
+                item_metadata=None,
+                error=AssertionError,
+                error_message="Please provide a timestamp.",
+            ),
+            TimeSeriesDataConfigCase(  # target_time_series not int or str
+                target_time_series=["target_time_series"],
+                item_id="item_id",
+                timestamp="timestamp",
+                related_time_series=None,
+                item_metadata=None,
+                error=ValueError,
+                error_message="Please provide a string or an int for ``target_time_series``",
+            ),
+            TimeSeriesDataConfigCase(  # item_id not int or str
+                target_time_series="target_time_series",
+                item_id=["item_id"],
+                timestamp="timestamp",
+                related_time_series=None,
+                item_metadata=None,
+                error=ValueError,
+                error_message="Please provide a string or an int for ``item_id``",
+            ),
+            TimeSeriesDataConfigCase(  # timestamp not int or str
+                target_time_series="target_time_series",
+                item_id="item_id",
+                timestamp=["timestamp"],
+                related_time_series=None,
+                item_metadata=None,
+                error=ValueError,
+                error_message="Please provide a string or an int for ``timestamp``",
+            ),
+            TimeSeriesDataConfigCase(  # related_time_series not list of ints or list of strs
+                target_time_series="target_time_series",
+                item_id="item_id",
+                timestamp="timestamp",
+                related_time_series=5,
+                item_metadata=None,
+                error=ValueError,
+                error_message="Please provide a list of strings or list of ints for ``related_time_series``",
+            ),
+            TimeSeriesDataConfigCase(  # item_metadata not list of ints or list of strs
+                target_time_series="target_time_series",
+                item_id="item_id",
+                timestamp="timestamp",
+                related_time_series=None,
+                item_metadata=[4, 5, 6.0],
+                error=ValueError,
+                error_message="Please provide a list of strings or list of ints for ``item_metadata``",
+            ),
+        ],
+    )
+    def test_time_series_data_config_invalid(self, test_case):
+        """
+        GIVEN required parameters are incomplete or invalid
+        WHEN TimeSeriesDataConfig constructor is called
+        THEN the expected error and message are raised
+        """
+        with pytest.raises(test_case.error, match=test_case.error_message):
+            TimeSeriesDataConfig(
+                target_time_series=test_case.target_time_series,
+                item_id=test_case.item_id,
+                timestamp=test_case.timestamp,
+                related_time_series=test_case.related_time_series,
+                item_metadata=test_case.item_metadata,
+            )
+
+    @pytest.mark.parametrize("test_case", valid_ts_data_config_case_list)
+    def test_data_config_with_time_series(self, test_case):
+        """
+        GIVEN a TimeSeriesDataConfig object is created
+        WHEN a DataConfig object is created and given valid params + the TimeSeriesDataConfig
+        THEN the internal config dictionary matches what's expected
+        """
+        # setup
+        headers = ["Label", "F1", "F2", "F3", "F4", "Predicted Label"]
+        dataset_type = "application/json"
+        segment_config = [
+            SegmentationConfig(
+                name_or_index="F1",
+                segments=[[0]],
+                config_name="c1",
+                display_aliases=["a1"],
+            )
+        ]
+        # construct expected output
+        mock_ts_data_config_dict = {
+            "target_time_series": test_case.target_time_series,
+            "item_id": test_case.item_id,
+            "timestamp": test_case.timestamp,
+        }
+        if test_case.related_time_series:
+            mock_ts_data_config_dict["related_time_series"] = test_case.related_time_series
+        if test_case.item_metadata:
+            mock_ts_data_config_dict["item_metadata"] = test_case.item_metadata
+        expected_config = {
+            "dataset_type": dataset_type,
+            "headers": headers,
+            "label": "Label",
+            "segment_config": [
+                {
+                    "config_name": "c1",
+                    "display_aliases": ["a1"],
+                    "name_or_index": "F1",
+                    "segments": [[0]],
+                }
+            ],
+            "excluded_columns": ["F4"],
+            "features": "[*].[F1,F2,F3]",
+            "predicted_label": "Predicted Label",
+            "time_series_data_config": mock_ts_data_config_dict,
+        }
+        # GIVEN
+        ts_data_config = Mock()
+        ts_data_config.get_config.return_value = copy.deepcopy(mock_ts_data_config_dict)
+        # WHEN
+        data_config = DataConfig(
+            s3_data_input_path="s3://path/to/input.csv",
+            s3_output_path="s3://path/to/output",
+            features="[*].[F1,F2,F3]",
+            label="Label",
+            headers=headers,
+            dataset_type="application/json",
+            excluded_columns=["F4"],
+            predicted_label="Predicted Label",
+            segmentation_config=segment_config,
+            time_series_data_config=ts_data_config,
+        )
+        # THEN
+        assert expected_config == data_config.get_config()
 
 
 def test_bias_config():
@@ -641,6 +884,229 @@ def test_invalid_model_predicted_label_config():
     )
 
 
+class TestTimeSeriesModelConfig:
+    def test_time_series_model_config(self):
+        """
+        GIVEN a valid forecast expression
+        WHEN a TimeSeriesModelConfig is constructed with it
+        THEN the predictor_config dictionary matches the expected
+        """
+        # GIVEN
+        forecast = "results.[forecast]"  # mock JMESPath expression for forecast
+        # create expected output
+        expected_config = {
+            "forecast": forecast,
+            "forecast_horizon": TS_MODEL_DEFAULT_FORECAST_HORIZON,
+            "use_future_covariates": False,
+        }
+        # WHEN
+        ts_model_config = TimeSeriesModelConfig(
+            forecast,
+        )
+        # THEN
+        assert ts_model_config.predictor_config == expected_config
+
+    def test_time_series_model_config_with_forecast_horizon(self):
+        """
+        GIVEN a valid forecast expression and forecast horizon
+        WHEN a TimeSeriesModelConfig is constructed with it
+        THEN the predictor_config dictionary matches the expected
+        """
+        # GIVEN
+        forecast = "results.[forecast]"  # mock JMESPath expression for forecast
+        forecast_horizon = 25  # non-default forecast horizon
+        # create expected output
+        expected_config = {
+            "forecast": forecast,
+            "forecast_horizon": forecast_horizon,
+            "use_future_covariates": False,
+        }
+        # WHEN
+        ts_model_config = TimeSeriesModelConfig(
+            forecast,
+            forecast_horizon=forecast_horizon,
+        )
+        # THEN
+        assert ts_model_config.predictor_config == expected_config
+
+    def test_time_series_model_config_with_future_covariates(self):
+        """
+        GIVEN a valid forecast expression
+        WHEN a TimeSeriesModelConfig is constructed with it and use_future_covariates is True
+        THEN the predictor_config dictionary matches the expected
+        """
+        # GIVEN
+        forecast = "results.[forecast]"  # mock JMESPath expression for forecast
+        # create expected output
+        expected_config = {
+            "forecast": forecast,
+            "forecast_horizon": TS_MODEL_DEFAULT_FORECAST_HORIZON,
+            "use_future_covariates": True,
+        }
+        # WHEN
+        ts_model_config = TimeSeriesModelConfig(
+            forecast,
+            use_future_covariates=True,
+        )
+        # THEN
+        assert ts_model_config.predictor_config == expected_config
+
+    def test_time_series_model_config_with_horizon_and_covariates(self):
+        """
+        GIVEN a valid forecast expression and forecast horizon
+        WHEN a TimeSeriesModelConfig is constructed with it and use_future_covariates is True
+        THEN the predictor_config dictionary matches the expected
+        """
+        # GIVEN
+        forecast = "results.[forecast]"  # mock JMESPath expression for forecast
+        forecast_horizon = 25  # non-default forecast horizon
+        # create expected output
+        expected_config = {
+            "forecast": forecast,
+            "forecast_horizon": forecast_horizon,
+            "use_future_covariates": True,
+        }
+        # WHEN
+        ts_model_config = TimeSeriesModelConfig(
+            forecast,
+            forecast_horizon=forecast_horizon,
+            use_future_covariates=True,
+        )
+        # THEN
+        assert ts_model_config.predictor_config == expected_config
+
+    @pytest.mark.parametrize(
+        ("forecast", "forecast_horizon", "use_future_covariates", "error", "error_message"),
+        [
+            (
+                None,
+                TS_MODEL_DEFAULT_FORECAST_HORIZON,
+                None,
+                AssertionError,
+                "Please provide ``forecast``, a JMESPath expression to extract the forecast result.",
+            ),
+            (
+                "results.[forecast]",
+                None,
+                None,
+                AssertionError,
+                "Please provide an integer ``forecast_horizon``.",
+            ),
+            (
+                123,
+                TS_MODEL_DEFAULT_FORECAST_HORIZON,
+                None,
+                ValueError,
+                "Please provide a string JMESPath expression for ``forecast``.",
+            ),
+            (
+                "results.[forecast]",
+                "Not an int",
+                None,
+                ValueError,
+                "Please provide an integer ``forecast_horizon``.",
+            ),
+            (
+                "results.[forecast]",
+                TS_MODEL_DEFAULT_FORECAST_HORIZON,
+                "Not a bool",
+                ValueError,
+                "Please provide a boolean value for ``use_future_covariates``.",
+            ),
+        ],
+    )
+    def test_time_series_model_config_invalid(
+        self,
+        forecast,
+        forecast_horizon,
+        use_future_covariates,
+        error,
+        error_message,
+    ):
+        """
+        GIVEN invalid args for a TimeSeriesModelConfig
+        WHEN TimeSeriesModelConfig constructor is called
+        THEN The appropriate error is raised
+        """
+        with pytest.raises(error, match=error_message):
+            TimeSeriesModelConfig(
+                forecast=forecast,
+                forecast_horizon=forecast_horizon,
+                use_future_covariates=use_future_covariates,
+            )
+
+    def test_model_config_with_time_series(self):
+        """
+        GIVEN valid fields for a ModelConfig and a TimeSeriesModelConfig
+        WHEN a ModelConfig is constructed with them
+        THEN actual predictor_config matches expected
+        """
+        # setup
+        model_name = "xgboost-model"
+        instance_type = "ml.c5.xlarge"
+        instance_count = 1
+        custom_attributes = "c000b4f9-df62-4c85-a0bf-7c525f9104a4"
+        target_model = "target_model_name"
+        accelerator_type = "ml.eia1.medium"
+        content_type = "application/x-npy"
+        accept_type = "text/csv"
+        content_template = (
+            '{"instances":$features}'
+            if content_type == "application/jsonlines"
+            else "$records"
+            if content_type == "application/json"
+            else None
+        )
+        record_template = "$features_kvp" if content_type == "application/json" else None
+        # create mock config for TimeSeriesModelConfig
+        forecast = "results.[forecast]"  # mock JMESPath expression for forecast
+        forecast_horizon = 25  # non-default forecast horizon
+        mock_ts_model_config_dict = {
+            "forecast": forecast,
+            "forecast_horizon": forecast_horizon,
+            "use_future_covariates": True,
+        }
+        mock_ts_model_config = Mock()
+        mock_ts_model_config.get_predictor_config.return_value = mock_ts_model_config_dict
+        # create expected config
+        expected_config = {
+            "model_name": model_name,
+            "instance_type": instance_type,
+            "initial_instance_count": instance_count,
+            "accept_type": accept_type,
+            "content_type": content_type,
+            "custom_attributes": custom_attributes,
+            "accelerator_type": accelerator_type,
+            "target_model": target_model,
+            "time_series_predictor_config": mock_ts_model_config_dict,
+        }
+        if content_template is not None:
+            expected_config["content_template"] = content_template
+        if record_template is not None:
+            expected_config["record_template"] = record_template
+        # GIVEN
+        mock_ts_model_config = Mock()  # create mock TimeSeriesModelConfig object
+        mock_ts_model_config.get_predictor_config.return_value = copy.deepcopy(
+            mock_ts_model_config_dict
+        )  # set the mock's get_config return value
+        # WHEN
+        model_config = ModelConfig(
+            model_name=model_name,
+            instance_type=instance_type,
+            instance_count=instance_count,
+            accept_type=accept_type,
+            content_type=content_type,
+            content_template=content_template,
+            record_template=record_template,
+            custom_attributes=custom_attributes,
+            accelerator_type=accelerator_type,
+            target_model=target_model,
+            time_series_model_config=mock_ts_model_config,
+        )
+        # THEN
+        assert expected_config == model_config.get_predictor_config()
+
+
 @pytest.mark.parametrize(
     "baseline",
     [
@@ -781,6 +1247,81 @@ def test_shap_config_no_parameters():
         }
     }
     assert expected_config == shap_config.get_explainability_config()
+
+
+class AsymmetricSHAPConfigCase(NamedTuple):
+    explanation_type: str
+    num_samples: Optional[int]
+
+
+class TestAsymmetricSHAPConfig:
+    @pytest.mark.parametrize(
+        "test_case",
+        [
+            AsymmetricSHAPConfigCase(  # cases for different explanation types
+                explanation_type=explanation_type,
+                num_samples=ASYM_SHAP_DEFAULT_NUM_SAMPLES,
+            )
+            for explanation_type in ASYM_SHAP_EXPLANATION_TYPES
+        ]
+        + [
+            AsymmetricSHAPConfigCase(  # case for non-default number of samples
+                explanation_type=ASYM_SHAP_DEFAULT_EXPLANATION_TYPE,
+                num_samples=50,
+            ),
+        ],
+    )
+    def test_asymmetric_shap_config(self, test_case):
+        """
+        GIVEN valid arguments for an AsymmetricSHAPConfig object
+        WHEN AsymmetricSHAPConfig object is instantiated with those arguments
+        THEN the asymmetric_shap_config dictionary matches expected
+        """
+        # test case is GIVEN
+        # construct expected config
+        expected_config = {
+            "explanation_type": test_case.explanation_type,
+            "num_samples": test_case.num_samples,
+        }
+        # WHEN
+        asym_shap_config = AsymmetricSHAPConfig(
+            explanation_type=test_case.explanation_type,
+            num_samples=test_case.num_samples,
+        )
+        # THEN
+        assert asym_shap_config.asymmetric_shap_config == expected_config
+
+    def test_asymmetric_shap_config_invalid_explanation_type(self):
+        """
+        GIVEN invalid explanation_type
+        WHEN AsymmetricSHAPConfig constructor is called with it
+        THEN ``AssertionError`` with correct message is raised
+        """
+        # setup
+        error_message = "Please provide a valid explanation type from: " + ", ".join(
+            ASYM_SHAP_EXPLANATION_TYPES
+        )
+        # GIVEN
+        explanation_type = "disaggregated_random"
+        # WHEN, THEN
+        with pytest.raises(AssertionError, match=error_message):
+            AsymmetricSHAPConfig(
+                explanation_type=explanation_type,
+            )
+
+    def test_asymmetric_shap_config_invalid_num_samples(self):
+        """
+        GIVEN non-integer num_samples
+        WHEN AsymmetricSHAPConfig constructor is called with it
+        THEN ``ValueError`` with correct message is raised
+        """
+        # setup
+        error_message = "Please provide an integer value for ``num_samples``."
+        # GIVEN
+        num_samples = "NaN"
+        # WHEN, THEN
+        with pytest.raises(ValueError, match=error_message):
+            AsymmetricSHAPConfig(num_samples=num_samples)
 
 
 def test_pdp_config():
@@ -1915,6 +2456,98 @@ def test_invalid_analysis_config(data_config, data_bias_config, model_config):
             pre_training_methods="all",
             post_training_methods="all",
         )
+
+
+def _build_pdp_config_mock():
+    pdp_config_dict = {
+        "pdp": {
+            "grid_resolution": 15,
+            "top_k_features": 10,
+            "features": [
+                "some",
+                "features",
+            ],
+        }
+    }
+    pdp_config = Mock(spec=PDPConfig)
+    pdp_config.get_explainability_config.return_value = pdp_config_dict
+    return pdp_config
+
+
+def _build_asymmetric_shap_config_mock():
+    asym_shap_config_dict = {
+        "asymmetric_shap": {
+            "explanation_type": ASYM_SHAP_DEFAULT_EXPLANATION_TYPE,
+            "num_samples": ASYM_SHAP_DEFAULT_NUM_SAMPLES,
+        },
+    }
+    asym_shap_config = Mock(spec=AsymmetricSHAPConfig)
+    asym_shap_config.get_explainability_config.return_value = asym_shap_config_dict
+    return asym_shap_config
+
+
+class TestAnalysisConfigGeneratorForTimeSeriesExplainability:
+    @pytest.mark.parametrize(
+        ("mock_config", "time_series_case", "error", "error_message"),
+        [
+            (  # single pdp config for TSX
+                _build_pdp_config_mock(),
+                True,
+                ValueError,
+                "Please provide only Asymmetric SHAP configs for TimeSeries explainability.",
+            ),
+            (  # single asym shap config for non TSX
+                _build_asymmetric_shap_config_mock(),
+                False,
+                ValueError,
+                "Please do not provide Asymmetric SHAP configs for non-TimeSeries uses.",
+            ),
+            (  # list of duplicate asym_shap configs for TSX
+                [
+                    _build_asymmetric_shap_config_mock(),
+                    _build_asymmetric_shap_config_mock(),
+                ],
+                True,
+                ValueError,
+                "Duplicate explainability configs are provided",
+            ),
+            (  # list with pdp config for TSX
+                [
+                    _build_asymmetric_shap_config_mock(),
+                    _build_pdp_config_mock(),
+                ],
+                True,
+                ValueError,
+                "Please provide only Asymmetric SHAP configs for TimeSeries explainability.",
+            ),
+            (  # list with asym shap config for non-TSX
+                [
+                    _build_asymmetric_shap_config_mock(),
+                    _build_pdp_config_mock(),
+                ],
+                False,
+                ValueError,
+                "Please do not provide Asymmetric SHAP configs for non-TimeSeries uses.",
+            ),
+        ],
+    )
+    def test_merge_explainability_configs_with_timeseries_invalid(
+        self,
+        mock_config,
+        time_series_case,
+        error,
+        error_message,
+    ):
+        """
+        GIVEN _merge_explainability_configs is called with a explainability config or list thereof
+        WHEN the provided config(s) aren't the right type for the given case
+        THEN the function will raise the appropriate error
+        """
+        with pytest.raises(error, match=error_message):
+            _AnalysisConfigGenerator._merge_explainability_configs(
+                explainability_config=mock_config,
+                time_series_case=time_series_case,
+            )
 
 
 class TestProcessingOutputHandler:
