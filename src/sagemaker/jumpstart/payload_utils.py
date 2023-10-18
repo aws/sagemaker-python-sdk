@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 import base64
 import json
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 import re
 import boto3
 
@@ -37,7 +37,7 @@ S3_B64_STR_REGEX = r"\$s3_b64<(?P<s3_key>[a-zA-Z0-9-_/.]+)>"
 
 def _extract_field_from_json(
     json_input: dict,
-    keys: list[str],
+    keys: List[str],
 ) -> Any:
     """Given a dictionary, returns value at specified keys.
 
