@@ -315,6 +315,8 @@ class Model(ModelBase, InferenceRecommenderMixin):
         self.name = name
         self._base_name = None
         self.sagemaker_session = sagemaker_session
+        self.algorithm_arn = None
+        self.model_package_arn = None
 
         # Workaround for config injection if sagemaker_session is None, since in
         # that case sagemaker_session will not be initialized until
@@ -534,6 +536,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
             model_data=self.model_data,
             model_package_arn=model_package.get("ModelPackageArn"),
             sagemaker_session=self.sagemaker_session,
+            predictor_cls=self.predictor_cls,
         )
 
     @runnable_by_pipeline
@@ -623,14 +626,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         )
         deploy_env = copy.deepcopy(self.env)
         if self.source_dir or self.dependencies or self.entry_point or self.git_config:
-            is_repack = (
-                self.source_dir
-                and self.entry_point
-                and not (
-                    (self.key_prefix and issubclass(type(self), FrameworkModel)) or self.git_config
-                )
-            )
-            self._upload_code(deploy_key_prefix, repack=is_repack)
+            self._upload_code(deploy_key_prefix, repack=self.is_repack())
             deploy_env.update(self._script_mode_env_vars())
 
         return sagemaker.container_def(
@@ -639,6 +635,14 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             deploy_env,
             image_config=self.image_config,
         )
+
+    def is_repack(self) -> bool:
+        """Whether the source code needs to be repacked before uploading to S3.
+
+        Returns:
+            bool: if the source need to be repacked or not
+        """
+        return self.source_dir and self.entry_point and not self.git_config
 
     def _upload_code(self, key_prefix: str, repack: bool = False) -> None:
         """Uploads code to S3 to be used with script mode with SageMaker inference.
@@ -791,61 +795,87 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 Specifies configuration related to serverless endpoint. Instance type is
                 not provided in serverless inference. So this is used to find image URIs.
         """
-        container_def = self.prepare_container_def(
-            instance_type,
-            accelerator_type=accelerator_type,
-            serverless_inference_config=serverless_inference_config,
-        )
 
-        if not isinstance(self.sagemaker_session, PipelineSession):
-            # _base_name, model_name are not needed under PipelineSession.
-            # the model_data may be Pipeline variable
-            # which may break the _base_name generation
-            model_uri = None
-            if isinstance(self.model_data, (str, PipelineVariable)):
-                model_uri = self.model_data
-            elif isinstance(self.model_data, dict):
-                model_uri = self.model_data.get("S3DataSource", {}).get("S3Uri", None)
-
-            self._ensure_base_name_if_needed(
-                image_uri=container_def["Image"],
-                script_uri=self.source_dir,
-                model_uri=model_uri,
+        if self.model_package_arn is not None or self.algorithm_arn is not None:
+            model_package = ModelPackage(
+                role=self.role,
+                model_data=self.model_data,
+                model_package_arn=self.model_package_arn,
+                algorithm_arn=self.algorithm_arn,
+                sagemaker_session=self.sagemaker_session,
+                predictor_cls=self.predictor_cls,
+                vpc_config=self.vpc_config,
             )
-            self._set_model_name_if_needed()
+            if self.name is not None:
+                model_package.name = self.name
+            if self.env is not None:
+                model_package.env = self.env
+            model_package._create_sagemaker_model(
+                instance_type=instance_type,
+                accelerator_type=accelerator_type,
+                tags=tags,
+                serverless_inference_config=serverless_inference_config,
+            )
+            if self._base_name is None and model_package._base_name is not None:
+                self._base_name = model_package._base_name
+            if self.name is None and model_package.name is not None:
+                self.name = model_package.name
+        else:
+            container_def = self.prepare_container_def(
+                instance_type,
+                accelerator_type=accelerator_type,
+                serverless_inference_config=serverless_inference_config,
+            )
 
-        self._init_sagemaker_session_if_does_not_exist(instance_type)
-        # Depending on the instance type, a local session (or) a session is initialized.
-        self.role = resolve_value_from_config(
-            self.role,
-            MODEL_EXECUTION_ROLE_ARN_PATH,
-            sagemaker_session=self.sagemaker_session,
-        )
-        self.vpc_config = resolve_value_from_config(
-            self.vpc_config,
-            MODEL_VPC_CONFIG_PATH,
-            sagemaker_session=self.sagemaker_session,
-        )
-        self._enable_network_isolation = resolve_value_from_config(
-            self._enable_network_isolation,
-            MODEL_ENABLE_NETWORK_ISOLATION_PATH,
-            sagemaker_session=self.sagemaker_session,
-        )
-        self.env = resolve_nested_dict_value_from_config(
-            self.env,
-            ["Environment"],
-            MODEL_CONTAINERS_PATH,
-            sagemaker_session=self.sagemaker_session,
-        )
-        create_model_args = dict(
-            name=self.name,
-            role=self.role,
-            container_defs=container_def,
-            vpc_config=self.vpc_config,
-            enable_network_isolation=self._enable_network_isolation,
-            tags=tags,
-        )
-        self.sagemaker_session.create_model(**create_model_args)
+            if not isinstance(self.sagemaker_session, PipelineSession):
+                # _base_name, model_name are not needed under PipelineSession.
+                # the model_data may be Pipeline variable
+                # which may break the _base_name generation
+                model_uri = None
+                if isinstance(self.model_data, (str, PipelineVariable)):
+                    model_uri = self.model_data
+                elif isinstance(self.model_data, dict):
+                    model_uri = self.model_data.get("S3DataSource", {}).get("S3Uri", None)
+
+                self._ensure_base_name_if_needed(
+                    image_uri=container_def["Image"],
+                    script_uri=self.source_dir,
+                    model_uri=model_uri,
+                )
+                self._set_model_name_if_needed()
+
+            self._init_sagemaker_session_if_does_not_exist(instance_type)
+            # Depending on the instance type, a local session (or) a session is initialized.
+            self.role = resolve_value_from_config(
+                self.role,
+                MODEL_EXECUTION_ROLE_ARN_PATH,
+                sagemaker_session=self.sagemaker_session,
+            )
+            self.vpc_config = resolve_value_from_config(
+                self.vpc_config,
+                MODEL_VPC_CONFIG_PATH,
+                sagemaker_session=self.sagemaker_session,
+            )
+            self._enable_network_isolation = resolve_value_from_config(
+                self._enable_network_isolation,
+                MODEL_ENABLE_NETWORK_ISOLATION_PATH,
+                sagemaker_session=self.sagemaker_session,
+            )
+            self.env = resolve_nested_dict_value_from_config(
+                self.env,
+                ["Environment"],
+                MODEL_CONTAINERS_PATH,
+                sagemaker_session=self.sagemaker_session,
+            )
+            create_model_args = dict(
+                name=self.name,
+                role=self.role,
+                container_defs=container_def,
+                vpc_config=self.vpc_config,
+                enable_network_isolation=self._enable_network_isolation,
+                tags=tags,
+            )
+            self.sagemaker_session.create_model(**create_model_args)
 
     def _ensure_base_name_if_needed(self, image_uri, script_uri, model_uri):
         """Create a base name from the image URI if there is no model name provided.
@@ -1775,6 +1805,14 @@ class FrameworkModel(Model):
             **kwargs,
         )
 
+    def is_repack(self) -> bool:
+        """Whether the source code needs to be repacked before uploading to S3.
+
+        Returns:
+            bool: if the source need to be repacked or not
+        """
+        return self.source_dir and self.entry_point and not (self.key_prefix or self.git_config)
+
 
 # works for MODEL_PACKAGE_ARN with or without version info.
 MODEL_PACKAGE_ARN_PATTERN = r"arn:aws:sagemaker:(.*?):(.*?):model-package/(.*?)(?:/(\d+))?$"
@@ -1888,6 +1926,7 @@ class ModelPackage(Model):
             kwargs: Keyword arguments coming from the caller. This class does not require
                 any so they are ignored.
         """
+
         if self.algorithm_arn:
             # When ModelPackage is created using an algorithm_arn we need to first
             # create a ModelPackage. If we had already created one then its fine to re-use it.
