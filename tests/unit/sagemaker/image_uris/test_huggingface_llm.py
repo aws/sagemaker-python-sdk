@@ -45,7 +45,7 @@ ACCOUNTS = {
     "us-west-2": "763104351884",
 }
 HF_VERSIONS = ["0.6.0", "0.8.2", "0.9.3", "1.0.3", "1.1.0"]
-LMI_VERSIONS = ["0.23.0"]
+LMI_VERSIONS = ["0.24.0"]
 HF_VERSIONS_MAPPING = {
     "0.6.0": "2.0.0-tgi0.6.0-gpu-py39-cu118-ubuntu20.04",
     "0.8.2": "2.0.0-tgi0.8.2-gpu-py39-cu118-ubuntu20.04",
@@ -53,7 +53,7 @@ HF_VERSIONS_MAPPING = {
     "1.0.3": "2.0.1-tgi1.0.3-gpu-py39-cu118-ubuntu20.04",
     "1.1.0": "2.0.1-tgi1.1.0-gpu-py39-cu118-ubuntu20.04",
 }
-LMI_VERSIONS_MAPPING = {"0.23.0": "deepspeed0.9.5-cu118"}
+LMI_VERSIONS_MAPPING = {"0.24.0": "deepspeed0.10.0-cu118"}
 
 
 @pytest.mark.parametrize("version", HF_VERSIONS)
