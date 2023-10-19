@@ -438,7 +438,7 @@ class PrivateJumpStartBucketTest(unittest.TestCase):
     mock_session = Mock(s3_client=mock_client)
 
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-    def test_retrieve_uri_from_private_bucket(self, patched_get_model_specs):
+    def test_retrieve_uri_from_gated_bucket(self, patched_get_model_specs):
         patched_get_model_specs.side_effect = get_special_model_spec
 
         model_id = "private-model"

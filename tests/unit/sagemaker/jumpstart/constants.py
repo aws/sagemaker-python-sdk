@@ -809,7 +809,7 @@ SPECIAL_MODEL_SPECS_DICT = {
     },
     "private-model": {
         "model_id": "pytorch-ic-mobilenet-v2",
-        "private_bucket": True,
+        "gated_bucket": True,
         "url": "https://pytorch.org/hub/pytorch_vision_mobilenet_v2/",
         "version": "1.0.0",
         "min_sdk_version": "2.49.0",
@@ -4017,7 +4017,7 @@ BASE_SPEC = {
     "min_sdk_version": "2.49.0",
     "training_supported": True,
     "incremental_training_supported": True,
-    "private_bucket": False,
+    "gated_bucket": False,
     "default_payloads": None,
     "hosting_ecr_specs": {
         "framework": "pytorch",

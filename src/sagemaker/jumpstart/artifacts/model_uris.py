@@ -25,7 +25,7 @@ from sagemaker.jumpstart.enums import (
 )
 from sagemaker.jumpstart.utils import (
     get_jumpstart_content_bucket,
-    get_jumpstart_private_content_bucket,
+    get_jumpstart_gated_content_bucket,
     verify_model_region_and_return_specs,
 )
 from sagemaker.session import Session
@@ -159,8 +159,8 @@ def _retrieve_model_uri(
         model_artifact_key = _retrieve_training_artifact_key(model_specs, instance_type)
 
     default_jumpstart_bucket: str = (
-        get_jumpstart_private_content_bucket(region)
-        if model_specs.private_bucket
+        get_jumpstart_gated_content_bucket(region)
+        if model_specs.gated_bucket
         else get_jumpstart_content_bucket(region)
     )
 

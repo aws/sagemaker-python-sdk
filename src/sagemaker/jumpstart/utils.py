@@ -63,7 +63,7 @@ def get_jumpstart_launched_regions_message() -> str:
     return f"JumpStart is available in {formatted_launched_regions_str} regions."
 
 
-def get_jumpstart_private_content_bucket(
+def get_jumpstart_gated_content_bucket(
     region: str = constants.JUMPSTART_DEFAULT_REGION_NAME,
 ) -> str:
     """Returns regionalized private content bucket name for JumpStart.
@@ -73,27 +73,27 @@ def get_jumpstart_private_content_bucket(
             unavailable in that region.
     """
 
-    old_private_content_bucket: Optional[
+    old_gated_content_bucket: Optional[
         str
-    ] = accessors.JumpStartModelsAccessor.get_jumpstart_private_content_bucket()
+    ] = accessors.JumpStartModelsAccessor.get_jumpstart_gated_content_bucket()
 
     info_logs: List[str] = []
 
-    private_bucket_to_return: Optional[str] = None
+    gated_bucket_to_return: Optional[str] = None
     if (
         constants.ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE in os.environ
         and len(os.environ[constants.ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE]) > 0
     ):
-        private_bucket_to_return = os.environ[
+        gated_bucket_to_return = os.environ[
             constants.ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE
         ]
-        info_logs.append(f"Using JumpStart private bucket override: '{private_bucket_to_return}'")
+        info_logs.append(f"Using JumpStart private bucket override: '{gated_bucket_to_return}'")
     else:
         try:
-            private_bucket_to_return = constants.JUMPSTART_REGION_NAME_TO_LAUNCHED_REGION_DICT[
+            gated_bucket_to_return = constants.JUMPSTART_REGION_NAME_TO_LAUNCHED_REGION_DICT[
                 region
-            ].private_content_bucket
-            if private_bucket_to_return is None:
+            ].gated_content_bucket
+            if gated_bucket_to_return is None:
                 raise ValueError(
                     f"No private content bucket for JumpStart exists in {region} region."
                 )
@@ -104,14 +104,14 @@ def get_jumpstart_private_content_bucket(
                 f"{formatted_launched_regions_str}"
             )
 
-    accessors.JumpStartModelsAccessor.set_jumpstart_private_content_bucket(private_bucket_to_return)
+    accessors.JumpStartModelsAccessor.set_jumpstart_gated_content_bucket(gated_bucket_to_return)
 
-    if private_bucket_to_return != old_private_content_bucket:
+    if gated_bucket_to_return != old_gated_content_bucket:
         accessors.JumpStartModelsAccessor.reset_cache()
         for info_log in info_logs:
             constants.JUMPSTART_LOGGER.info(info_log)
 
-    return private_bucket_to_return
+    return gated_bucket_to_return
 
 
 def get_jumpstart_content_bucket(
