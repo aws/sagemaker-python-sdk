@@ -853,6 +853,38 @@ class ModelTest(unittest.TestCase):
             enable_network_isolation=True,
         )
 
+    @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.model.Model.deploy")
+    @mock.patch("sagemaker.jumpstart.model.Model.register")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_model_registry_accept_and_response_types(
+        self,
+        mock_model_register: mock.Mock,
+        mock_model_deploy: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
+    ):
+        mock_model_deploy.return_value = default_predictor
+
+        mock_is_valid_model_id.return_value = True
+        model_id, _ = "model_data_s3_prefix_model", "*"
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        mock_session.return_value = sagemaker_session
+
+        model = JumpStartModel(model_id=model_id, instance_type="ml.p2.xlarge")
+
+        model.register()
+
+        mock_model_register.assert_called_once_with(
+            content_types=["application/x-text"],
+            response_types=["application/json;verbose", "application/json"],
+        )
+
 
 def test_jumpstart_model_requires_model_id():
     with pytest.raises(ValueError):

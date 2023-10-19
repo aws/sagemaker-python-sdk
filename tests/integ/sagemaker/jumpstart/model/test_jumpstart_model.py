@@ -30,7 +30,6 @@ from tests.integ.sagemaker.jumpstart.utils import (
     get_tabular_data,
 )
 
-
 MAX_INIT_TIME_SECONDS = 5
 
 GATED_INFERENCE_MODEL_SUPPORTED_REGIONS = {
@@ -130,3 +129,26 @@ def test_instatiating_model_not_too_slow(setup):
     elapsed_time = time.perf_counter() - start_time
 
     assert elapsed_time <= MAX_INIT_TIME_SECONDS
+
+
+def test_jumpstart_model_register(setup):
+    model_id = "huggingface-txt2img-conflictx-complex-lineart"
+
+    model = JumpStartModel(
+        model_id=model_id,
+        role=get_sm_session().get_caller_identity_arn(),
+        sagemaker_session=get_sm_session(),
+    )
+
+    model_package = model.register()
+
+    # uses  instance
+    predictor = model_package.deploy(
+        instance_type="ml.p3.2xlarge",
+        initial_instance_count=1,
+        tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
+    )
+
+    response = predictor.predict("hello world!")
+
+    assert response is not None
