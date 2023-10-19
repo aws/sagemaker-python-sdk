@@ -16,6 +16,9 @@ from copy import deepcopy
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Union
 from sagemaker.utils import get_instance_type_family
+from sagemaker.model_metrics import ModelMetrics
+from sagemaker.metadata_properties import MetadataProperties
+from sagemaker.drift_check_baselines import DriftCheckBaselines
 
 from sagemaker.session import Session
 from sagemaker.workflow.entities import PipelineVariable
@@ -407,6 +410,142 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
         """Returns json representation of JumpStartInstanceTypeVariants object."""
         json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
         return json_obj
+
+    def get_instance_specific_metric_definitions(
+        self, instance_type: str
+    ) -> List[JumpStartHyperparameter]:
+        """Returns instance specific metric definitions.
+
+        Returns empty list if a model, instance type tuple does not have specific
+        metric definitions.
+        """
+
+        if self.variants is None:
+            return []
+
+        instance_specific_metric_definitions: List[Dict[str, Union[str, Any]]] = (
+            self.variants.get(instance_type, {}).get("properties", {}).get("metrics", [])
+        )
+
+        instance_type_family = get_instance_type_family(instance_type)
+
+        instance_family_metric_definitions: List[Dict[str, Union[str, Any]]] = (
+            self.variants.get(instance_type_family, {}).get("properties", {}).get("metrics", [])
+            if instance_type_family not in {"", None}
+            else []
+        )
+
+        instance_specific_metric_names = {
+            metric_definition["Name"] for metric_definition in instance_specific_metric_definitions
+        }
+
+        metric_definitions_to_return = deepcopy(instance_specific_metric_definitions)
+
+        for instance_family_metric_definition in instance_family_metric_definitions:
+            if instance_family_metric_definition["Name"] not in instance_specific_metric_names:
+                metric_definitions_to_return.append(instance_family_metric_definition)
+
+        return metric_definitions_to_return
+
+    def get_instance_specific_prepacked_artifact_key(self, instance_type: str) -> Optional[str]:
+        """Returns instance specific model artifact key.
+
+        Returns None if a model, instance type tuple does not have specific
+        artifact key.
+        """
+
+        return self._get_instance_specific_property(
+            instance_type=instance_type, property_name="prepacked_artifact_key"
+        )
+
+    def get_instance_specific_artifact_key(self, instance_type: str) -> Optional[str]:
+        """Returns instance specific model artifact key.
+
+        Returns None if a model, instance type tuple does not have specific
+        artifact key.
+        """
+
+        return self._get_instance_specific_property(
+            instance_type=instance_type, property_name="artifact_key"
+        )
+
+    def _get_instance_specific_property(
+        self, instance_type: str, property_name: str
+    ) -> Optional[str]:
+        """Returns instance specific property.
+
+        If a value exists for both the instance family and instance type,
+        the instance type value is chosen.
+
+        Returns None if a (model, instance type, property name) tuple does not have
+        specific prepacked artifact key.
+        """
+
+        if self.variants is None:
+            return None
+
+        instance_specific_property: Optional[str] = (
+            self.variants.get(instance_type, {}).get("properties", {}).get(property_name, None)
+        )
+
+        if instance_specific_property:
+            return instance_specific_property
+
+        instance_type_family = get_instance_type_family(instance_type)
+
+        instance_family_property: Optional[str] = (
+            self.variants.get(instance_type_family, {})
+            .get("properties", {})
+            .get(property_name, None)
+            if instance_type_family not in {"", None}
+            else None
+        )
+
+        return instance_family_property
+
+    def get_instance_specific_hyperparameters(
+        self, instance_type: str
+    ) -> List[JumpStartHyperparameter]:
+        """Returns instance specific hyperparameters.
+
+        Returns empty list if a model, instance type tuple does not have specific
+        hyperparameters.
+        """
+
+        if self.variants is None:
+            return []
+
+        instance_specific_hyperparameters: List[JumpStartHyperparameter] = [
+            JumpStartHyperparameter(json)
+            for json in self.variants.get(instance_type, {})
+            .get("properties", {})
+            .get("hyperparameters", [])
+        ]
+
+        instance_type_family = get_instance_type_family(instance_type)
+
+        instance_family_hyperparameters: List[JumpStartHyperparameter] = [
+            JumpStartHyperparameter(json)
+            for json in (
+                self.variants.get(instance_type_family, {})
+                .get("properties", {})
+                .get("hyperparameters", [])
+                if instance_type_family not in {"", None}
+                else []
+            )
+        ]
+
+        instance_specific_hyperparameter_names = {
+            hyperparameter.name for hyperparameter in instance_specific_hyperparameters
+        }
+
+        hyperparams_to_return = deepcopy(instance_specific_hyperparameters)
+
+        for hyperparameter in instance_family_hyperparameters:
+            if hyperparameter.name not in instance_specific_hyperparameter_names:
+                hyperparams_to_return.append(hyperparameter)
+
+        return hyperparams_to_return
 
     def get_instance_specific_environment_variables(self, instance_type: str) -> Dict[str, str]:
         """Returns instance specific environment variables.
@@ -874,10 +1013,10 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         self.instance_type = instance_type
         self.region = region
         self.image_uri = image_uri
-        self.model_data = model_data
+        self.model_data = deepcopy(model_data)
         self.source_dir = source_dir
         self.entry_point = entry_point
-        self.env = env
+        self.env = deepcopy(env)
         self.predictor_cls = predictor_cls
         self.role = role
         self.name = name
@@ -970,7 +1109,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         self.deserializer = deserializer
         self.accelerator_type = accelerator_type
         self.endpoint_name = endpoint_name
-        self.tags = tags
+        self.tags = deepcopy(tags)
         self.kms_key = kms_key
         self.wait = wait
         self.data_capture_config = data_capture_config
@@ -1118,8 +1257,8 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         self.model_uri = model_uri
         self.source_dir = source_dir
         self.entry_point = entry_point
-        self.hyperparameters = hyperparameters
-        self.metric_definitions = metric_definitions
+        self.hyperparameters = deepcopy(hyperparameters)
+        self.metric_definitions = deepcopy(metric_definitions)
         self.role = role
         self.keep_alive_period_in_seconds = keep_alive_period_in_seconds
         self.volume_size = volume_size
@@ -1130,7 +1269,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         self.output_kms_key = output_kms_key
         self.base_job_name = base_job_name
         self.sagemaker_session = sagemaker_session
-        self.tags = tags
+        self.tags = deepcopy(tags)
         self.subnets = subnets
         self.security_group_ids = security_group_ids
         self.model_channel_name = model_channel_name
@@ -1146,7 +1285,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         self.enable_sagemaker_metrics = enable_sagemaker_metrics
         self.profiler_config = profiler_config
         self.disable_profiler = disable_profiler
-        self.environment = environment
+        self.environment = deepcopy(environment)
         self.max_retry_attempts = max_retry_attempts
         self.git_config = git_config
         self.container_log_level = container_log_level
@@ -1326,13 +1465,13 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         self.image_uri = image_uri
         self.source_dir = source_dir
         self.entry_point = entry_point
-        self.env = env
+        self.env = deepcopy(env)
         self.predictor_cls = predictor_cls
         self.serializer = serializer
         self.deserializer = deserializer
         self.accelerator_type = accelerator_type
         self.endpoint_name = endpoint_name
-        self.tags = tags
+        self.tags = deepcopy(tags)
         self.kms_key = kms_key
         self.wait = wait
         self.data_capture_config = data_capture_config
@@ -1357,3 +1496,107 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         self.tolerate_deprecated_model = tolerate_deprecated_model
         self.tolerate_vulnerable_model = tolerate_vulnerable_model
         self.use_compiled_model = use_compiled_model
+
+
+class JumpStartModelRegisterKwargs(JumpStartKwargs):
+    """Data class for the inputs to `JumpStartEstimator.deploy` method."""
+
+    __slots__ = [
+        "tolerate_vulnerable_model",
+        "tolerate_deprecated_model",
+        "region",
+        "model_id",
+        "model_version",
+        "sagemaker_session",
+        "content_types",
+        "response_types",
+        "inference_instances",
+        "transform_instances",
+        "model_package_group_name",
+        "image_uri",
+        "model_metrics",
+        "metadata_properties",
+        "approval_status",
+        "description",
+        "drift_check_baselines",
+        "customer_metadata_properties",
+        "validation_specification",
+        "domain",
+        "task",
+        "sample_payload_url",
+        "framework",
+        "framework_version",
+        "nearest_model_name",
+        "data_input_configuration",
+        "skip_model_validation",
+    ]
+
+    SERIALIZATION_EXCLUSION_SET = {
+        "tolerate_vulnerable_model",
+        "tolerate_deprecated_model",
+        "region",
+        "model_id",
+        "model_version",
+        "sagemaker_session",
+    }
+
+    def __init__(
+        self,
+        model_id: str,
+        model_version: Optional[str] = None,
+        region: Optional[str] = None,
+        tolerate_deprecated_model: Optional[bool] = None,
+        tolerate_vulnerable_model: Optional[bool] = None,
+        sagemaker_session: Optional[Any] = None,
+        content_types: List[str] = None,
+        response_types: List[str] = None,
+        inference_instances: Optional[List[str]] = None,
+        transform_instances: Optional[List[str]] = None,
+        model_package_group_name: Optional[str] = None,
+        image_uri: Optional[str] = None,
+        model_metrics: Optional[ModelMetrics] = None,
+        metadata_properties: Optional[MetadataProperties] = None,
+        approval_status: Optional[str] = None,
+        description: Optional[str] = None,
+        drift_check_baselines: Optional[DriftCheckBaselines] = None,
+        customer_metadata_properties: Optional[Dict[str, str]] = None,
+        validation_specification: Optional[str] = None,
+        domain: Optional[str] = None,
+        task: Optional[str] = None,
+        sample_payload_url: Optional[str] = None,
+        framework: Optional[str] = None,
+        framework_version: Optional[str] = None,
+        nearest_model_name: Optional[str] = None,
+        data_input_configuration: Optional[str] = None,
+        skip_model_validation: Optional[str] = None,
+    ) -> None:
+        """Instantiates JumpStartModelRegisterKwargs object."""
+
+        self.model_id = model_id
+        self.model_version = model_version
+        self.region = region
+        self.image_uri = image_uri
+        self.sagemaker_session = sagemaker_session
+        self.tolerate_deprecated_model = tolerate_deprecated_model
+        self.tolerate_vulnerable_model = tolerate_vulnerable_model
+        self.content_types = content_types
+        self.response_types = response_types
+        self.inference_instances = inference_instances
+        self.transform_instances = transform_instances
+        self.model_package_group_name = model_package_group_name
+        self.image_uri = image_uri
+        self.model_metrics = model_metrics
+        self.metadata_properties = metadata_properties
+        self.approval_status = approval_status
+        self.description = description
+        self.drift_check_baselines = drift_check_baselines
+        self.customer_metadata_properties = customer_metadata_properties
+        self.validation_specification = validation_specification
+        self.domain = domain
+        self.task = task
+        self.sample_payload_url = sample_payload_url
+        self.framework = framework
+        self.framework_version = framework_version
+        self.nearest_model_name = nearest_model_name
+        self.data_input_configuration = data_input_configuration
+        self.skip_model_validation = skip_model_validation

@@ -17,6 +17,7 @@ from sagemaker.workflow.parameters import Parameter, ParameterTypeEnum
 
 DEFAULT_INSTANCE_TYPE = "ml.m5.xlarge"
 DEFAULT_SCHEDULE_STATE = "ENABLED"
+DEFAULT_TRIGGER_STATE = "ENABLED"
 UNDERSCORE = "_"
 RESOURCE_NOT_FOUND_EXCEPTION = "ResourceNotFoundException"
 RESOURCE_NOT_FOUND = "ResourceNotFound"
@@ -36,6 +37,8 @@ SPARK_FILES_PATH = "submit_files_s3_path"
 FEATURE_PROCESSOR_TAG_KEY = "sm-fs-fe:created-from"
 FEATURE_PROCESSOR_TAG_VALUE = "fp-to-pipeline"
 FEATURE_GROUP_ARN_REGEX_PATTERN = r"arn:(.*?):sagemaker:(.*?):(.*?):feature-group/(.*?)$"
+PIPELINE_ARN_REGEX_PATTERN = r"arn:(.*?):sagemaker:(.*?):(.*?):pipeline/(.*?)$"
+EVENTBRIDGE_RULE_ARN_REGEX_PATTERN = r"arn:(.*?):events:(.*?):(.*?):rule/(.*?)$"
 SAGEMAKER_WHL_FILE_S3_PATH = "s3://ada-private-beta/sagemaker-2.151.1.dev0-py2.py3-none-any.whl"
 S3_DATA_DISTRIBUTION_TYPE = "FullyReplicated"
 PIPELINE_CONTEXT_NAME_TAG_KEY = "sm-fs-fe:feature-engineering-pipeline-context-name"
@@ -45,3 +48,7 @@ TO_PIPELINE_RESERVED_TAG_KEYS = [
     PIPELINE_CONTEXT_NAME_TAG_KEY,
     PIPELINE_VERSION_CONTEXT_NAME_TAG_KEY,
 ]
+BASE_EVENT_PATTERN = {
+    "source": ["aws.sagemaker"],
+    "detail": {"currentPipelineExecutionStatus": [], "pipelineArn": []},
+}

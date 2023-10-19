@@ -18,13 +18,203 @@ from unittest.mock import Mock
 from mock.mock import patch
 import pytest
 
+import copy
 from sagemaker.jumpstart import artifacts
+from sagemaker.jumpstart.artifacts.model_uris import (
+    _retrieve_hosting_prepacked_artifact_key,
+    _retrieve_hosting_artifact_key,
+    _retrieve_training_artifact_key,
+)
+from sagemaker.jumpstart.types import JumpStartModelSpecs
+from tests.unit.sagemaker.jumpstart.constants import (
+    BASE_SPEC,
+)
+
 from sagemaker.jumpstart.artifacts.model_packages import _retrieve_model_package_arn
 from sagemaker.jumpstart.artifacts.model_uris import _retrieve_model_uri
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 
 from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec, get_special_model_spec
 from tests.unit.sagemaker.workflow.conftest import mock_client
+
+
+class ModelArtifactVariantsTest(unittest.TestCase):
+    def test_retrieve_hosting_prepacked_artifact_key(self):
+
+        test_spec = copy.deepcopy(BASE_SPEC)
+
+        test_spec["hosting_prepacked_artifact_key"] = "some/thing"
+
+        test_spec["hosting_instance_type_variants"] = {
+            "regional_aliases": {
+                "us-west-2": {
+                    "alias_ecr_uri_1": "763104351884.dkr.ecr.us-west-2.ama"
+                    "zonaws.com/djl-inference:0.23.0-deepspeed0.9.5-cu118"
+                }
+            },
+            "variants": {
+                "c4": {
+                    "regional_properties": {
+                        "image_uri": "$alias_ecr_uri_1",
+                    },
+                    "properties": {
+                        "prepacked_artifact_key": "in/the/way",
+                    },
+                }
+            },
+        }
+
+        self.assertEqual(
+            _retrieve_hosting_prepacked_artifact_key(
+                JumpStartModelSpecs(test_spec), instance_type="ml.c4.xlarge"
+            ),
+            "in/the/way",
+        )
+
+        test_spec["hosting_prepacked_artifact_key"] = None
+
+        self.assertEqual(
+            _retrieve_hosting_prepacked_artifact_key(
+                JumpStartModelSpecs(test_spec), instance_type="ml.c4.xlarge"
+            ),
+            "in/the/way",
+        )
+
+        test_spec["hosting_instance_type_variants"] = None
+
+        self.assertEqual(
+            _retrieve_hosting_prepacked_artifact_key(
+                JumpStartModelSpecs(test_spec), instance_type="ml.c4.xlarge"
+            ),
+            None,
+        )
+
+        test_spec["hosting_prepacked_artifact_key"] = "shemoves"
+
+        self.assertEqual(
+            _retrieve_hosting_prepacked_artifact_key(
+                JumpStartModelSpecs(test_spec), instance_type="ml.c4.xlarge"
+            ),
+            "shemoves",
+        )
+
+    def test_retrieve_hosting_artifact_key(self):
+
+        test_spec = copy.deepcopy(BASE_SPEC)
+
+        test_spec["hosting_artifact_key"] = "some/thing"
+
+        test_spec["hosting_instance_type_variants"] = {
+            "regional_aliases": {
+                "us-west-2": {
+                    "alias_ecr_uri_1": "763104351884.dkr.ecr.us-west-2.ama"
+                    "zonaws.com/djl-inference:0.23.0-deepspeed0.9.5-cu118"
+                }
+            },
+            "variants": {
+                "c4": {
+                    "regional_properties": {
+                        "image_uri": "$alias_ecr_uri_1",
+                    },
+                    "properties": {
+                        "artifact_key": "in/the/way",
+                    },
+                }
+            },
+        }
+
+        self.assertEqual(
+            _retrieve_hosting_artifact_key(
+                JumpStartModelSpecs(test_spec), instance_type="ml.c4.xlarge"
+            ),
+            "in/the/way",
+        )
+
+        test_spec["hosting_artifact_key"] = None
+
+        self.assertEqual(
+            _retrieve_hosting_artifact_key(
+                JumpStartModelSpecs(test_spec), instance_type="ml.c4.xlarge"
+            ),
+            "in/the/way",
+        )
+
+        test_spec["hosting_instance_type_variants"] = None
+
+        self.assertEqual(
+            _retrieve_hosting_artifact_key(
+                JumpStartModelSpecs(test_spec), instance_type="ml.c4.xlarge"
+            ),
+            None,
+        )
+
+        test_spec["hosting_artifact_key"] = "shemoves"
+
+        self.assertEqual(
+            _retrieve_hosting_artifact_key(
+                JumpStartModelSpecs(test_spec), instance_type="ml.c4.xlarge"
+            ),
+            "shemoves",
+        )
+
+    def test_retrieve_training_artifact_key(self):
+
+        test_spec = copy.deepcopy(BASE_SPEC)
+
+        test_spec["training_artifact_key"] = "some/thing"
+
+        test_spec["training_instance_type_variants"] = {
+            "regional_aliases": {
+                "us-west-2": {
+                    "alias_ecr_uri_1": "763104351884.dkr.ecr.us-west-2."
+                    "amazonaws.com/djl-inference:0.23.0-deepspeed0.9.5-cu118"
+                }
+            },
+            "variants": {
+                "c4": {
+                    "regional_properties": {
+                        "image_uri": "$alias_ecr_uri_1",
+                    },
+                    "properties": {
+                        "artifact_key": "in/the/way",
+                    },
+                }
+            },
+        }
+
+        self.assertEqual(
+            _retrieve_training_artifact_key(
+                JumpStartModelSpecs(test_spec), instance_type="ml.c4.xlarge"
+            ),
+            "in/the/way",
+        )
+
+        test_spec["training_artifact_key"] = None
+
+        self.assertEqual(
+            _retrieve_training_artifact_key(
+                JumpStartModelSpecs(test_spec), instance_type="ml.c4.xlarge"
+            ),
+            "in/the/way",
+        )
+
+        test_spec["training_instance_type_variants"] = None
+
+        self.assertEqual(
+            _retrieve_training_artifact_key(
+                JumpStartModelSpecs(test_spec), instance_type="ml.c4.xlarge"
+            ),
+            None,
+        )
+
+        test_spec["training_artifact_key"] = "shemoves"
+
+        self.assertEqual(
+            _retrieve_training_artifact_key(
+                JumpStartModelSpecs(test_spec), instance_type="ml.c4.xlarge"
+            ),
+            "shemoves",
+        )
 
 
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")

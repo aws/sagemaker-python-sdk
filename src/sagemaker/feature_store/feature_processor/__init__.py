@@ -30,8 +30,16 @@ from sagemaker.feature_store.feature_processor.feature_scheduler import (  # noq
     to_pipeline,
     schedule,
     describe,
+    put_trigger,
+    delete_trigger,
+    enable_trigger,
+    disable_trigger,
     delete_schedule,
     list_pipelines,
     execute,
     TransformationCode,
+    FeatureProcessorPipelineEvents,
+)
+from sagemaker.feature_store.feature_processor._enums import (  # noqa: F401
+    FeatureProcessorPipelineExecutionStatus,
 )

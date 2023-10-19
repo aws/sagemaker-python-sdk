@@ -190,6 +190,179 @@ SPECIAL_MODEL_SPECS_DICT = {
             "framework_version": "1.5.0",
             "py_version": "py3",
         },
+        "training_instance_type_variants": {
+            "regional_aliases": {},
+            "variants": {
+                "ml.p2.12xlarge": {
+                    "properties": {
+                        "environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"},
+                        "hyperparameters": [
+                            {
+                                "name": "eval_metric",
+                                "type": "text",
+                                "default": "auto",
+                                "scope": "algorithm",
+                            },
+                            {
+                                "name": "presets",
+                                "type": "text",
+                                "default": "medium_quality",
+                                "options": [
+                                    "best_quality",
+                                    "high_quality",
+                                    "good_quality",
+                                    "medium_quality",
+                                    "optimize_for_deployment",
+                                    "interpretable",
+                                ],
+                                "scope": "algorithm",
+                            },
+                            {
+                                "name": "auto_stack",
+                                "type": "text",
+                                "default": "False",
+                                "options": ["True", "False"],
+                                "scope": "algorithm",
+                            },
+                            {
+                                "name": "num_bag_folds",
+                                "type": "text",
+                                "default": "0",
+                                "options": ["0", "2", "3", "4", "5", "6", "7", "8", "9", "10"],
+                                "scope": "algorithm",
+                            },
+                            {
+                                "name": "num_bag_sets",
+                                "type": "int",
+                                "default": 1,
+                                "min": 1,
+                                "scope": "algorithm",
+                            },
+                            {
+                                "name": "batch-size",
+                                "type": "int",
+                                "default": 1,
+                                "min": 1,
+                                "scope": "algorithm",
+                            },
+                            {
+                                "name": "num_stack_levels",
+                                "type": "int",
+                                "default": 0,
+                                "min": 0,
+                                "max": 3,
+                                "scope": "algorithm",
+                            },
+                        ],
+                        "metrics": [
+                            {
+                                "Name": "huggingface-textgeneration:instance-typemetric-loss",
+                                "Regex": "'eval_loss': ([0-9]+\\.[0-9]+)",
+                            },
+                            {
+                                "Name": "huggingface-textgeneration:eval-loss",
+                                "Regex": "'eval_loss': ([0-9]+\\.[0-9]+)",
+                            },
+                            {
+                                "Name": "huggingface-textgeneration:train-loss",
+                                "Regex": "'instance type specific': ([0-9]+\\.[0-9]+)",
+                            },
+                            {
+                                "Name": "huggingface-textgeneration:noneyourbusiness-loss",
+                                "Regex": "'loss-noyb instance specific': ([0-9]+\\.[0-9]+)",
+                            },
+                        ],
+                    }
+                },
+                "p2": {
+                    "regional_properties": {"image_uri": "$gpu_ecr_uri_2"},
+                    "properties": {
+                        "hyperparameters": [
+                            {
+                                "name": "num_bag_sets",
+                                "type": "int",
+                                "default": 5,
+                                "min": 5,
+                                "scope": "algorithm",
+                            },
+                            {
+                                "name": "num_stack_levels",
+                                "type": "int",
+                                "default": 6,
+                                "min": 7,
+                                "max": 3,
+                                "scope": "algorithm",
+                            },
+                            {
+                                "name": "refit_full",
+                                "type": "text",
+                                "default": "False",
+                                "options": ["True", "False"],
+                                "scope": "algorithm",
+                            },
+                            {
+                                "name": "set_best_to_refit_full",
+                                "type": "text",
+                                "default": "False",
+                                "options": ["True", "False"],
+                                "scope": "algorithm",
+                            },
+                            {
+                                "name": "save_space",
+                                "type": "text",
+                                "default": "False",
+                                "options": ["True", "False"],
+                                "scope": "algorithm",
+                            },
+                            {
+                                "name": "verbosity",
+                                "type": "int",
+                                "default": 2,
+                                "min": 0,
+                                "max": 4,
+                                "scope": "algorithm",
+                            },
+                            {
+                                "name": "sagemaker_submit_directory",
+                                "type": "text",
+                                "default": "/opt/ml/input/data/code/sourcedir.tar.gz",
+                                "scope": "container",
+                            },
+                            {
+                                "name": "sagemaker_program",
+                                "type": "text",
+                                "default": "transfer_learning.py",
+                                "scope": "container",
+                            },
+                            {
+                                "name": "sagemaker_container_log_level",
+                                "type": "text",
+                                "default": "20",
+                                "scope": "container",
+                            },
+                        ],
+                        "metrics": [
+                            {
+                                "Name": "huggingface-textgeneration:wtafigo",
+                                "Regex": "'evasadfasdl_loss': ([0-9]+\\.[0-9]+)",
+                            },
+                            {
+                                "Name": "huggingface-textgeneration:eval-loss",
+                                "Regex": "'eval_loss': ([0-9]+\\.[0-9]+)",
+                            },
+                            {
+                                "Name": "huggingface-textgeneration:train-loss",
+                                "Regex": "'instance family specific': ([0-9]+\\.[0-9]+)",
+                            },
+                            {
+                                "Name": "huggingface-textgeneration:noneyourbusiness-loss",
+                                "Regex": "'loss-noyb': ([0-9]+\\.[0-9]+)",
+                            },
+                        ],
+                    },
+                },
+            },
+        },
         "hosting_instance_type_variants": {
             "regional_aliases": {
                 "us-west-2": {
@@ -242,7 +415,6 @@ SPECIAL_MODEL_SPECS_DICT = {
             "framework_version": "1.5.0",
             "py_version": "py3",
         },
-        "training_instance_type_variants": None,
         "hosting_artifact_key": "pytorch-infer/infer-pytorch-ic-mobilenet-v2.tar.gz",
         "training_artifact_key": "pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz",
         "hosting_script_key": "source-directory-tarballs/pytorch/inference/ic/v1.0.0/sourcedir.tar.gz",
@@ -381,7 +553,16 @@ SPECIAL_MODEL_SPECS_DICT = {
             "ml.c5.2xlarge",
         ],
         "hosting_use_script_uri": True,
-        "metrics": [{"Regex": "val_accuracy: ([0-9\\.]+)", "Name": "pytorch-ic:val-accuracy"}],
+        "metrics": [
+            {
+                "Name": "huggingface-textgeneration:train-loss",
+                "Regex": "'loss default': ([0-9]+\\.[0-9]+)",
+            },
+            {
+                "Name": "huggingface-textgeyyyuyuyuyneration:train-loss",
+                "Regex": "'loss default': ([0-9]+\\.[0-9]+)",
+            },
+        ],
         "model_kwargs": {"some-model-kwarg-key": "some-model-kwarg-value"},
         "deploy_kwargs": {"some-model-deploy-kwarg-key": "some-model-deploy-kwarg-value"},
         "estimator_kwargs": {
@@ -399,6 +580,232 @@ SPECIAL_MODEL_SPECS_DICT = {
         "inference_enable_network_isolation": True,
         "training_enable_network_isolation": False,
         "resource_name_base": "dfsdfsds",
+    },
+    "model-artifact-variant-model": {
+        "model_id": "pytorch-ic-mobilenet-v2",
+        "url": "https://pytorch.org/hub/pytorch_vision_mobilenet_v2/",
+        "version": "1.0.0",
+        "min_sdk_version": "2.49.0",
+        "training_supported": True,
+        "incremental_training_supported": True,
+        "hosting_ecr_specs": {
+            "framework": "pytorch",
+            "framework_version": "1.5.0",
+            "py_version": "py3",
+        },
+        "hosting_instance_type_variants": {
+            "regional_aliases": {
+                "us-west-2": {
+                    "gpu_image_uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
+                    "huggingface-pytorch-inference:1.13.1-transformers4.26.0-gpu-py39-cu117-ubuntu20.04",
+                    "cpu_image_uri": "867930986793.dkr.us-west-2.amazonaws.com/cpu-blah",
+                }
+            },
+            "variants": {
+                "p2": {
+                    "regional_properties": {"image_uri": "$gpu_image_uri"},
+                    "properties": {"prepacked_artifact_key": "hello-world-1"},
+                },
+                "p3": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
+                "p4": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
+                "g4dn": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
+                "m2": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
+                "c2": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
+                "ml.g5.48xlarge": {
+                    "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "8"}}
+                },
+                "ml.g5.12xlarge": {
+                    "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"}}
+                },
+            },
+        },
+        "training_ecr_specs": {
+            "framework": "pytorch",
+            "framework_version": "1.5.0",
+            "py_version": "py3",
+        },
+        "training_instance_type_variants": {
+            "regional_aliases": {
+                "us-west-2": {
+                    "gpu_image_uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
+                    "huggingface-pytorch-inference:1.13.1-transformers4.26.0-gpu-py39-cu117-ubuntu20.04",
+                    "cpu_image_uri": "867930986793.dkr.us-west-2.amazonaws.com/cpu-blah",
+                }
+            },
+            "variants": {
+                "p2": {
+                    "regional_properties": {"image_uri": "$gpu_image_uri"},
+                    "properties": {"artifact_key": "hello-mars-1"},
+                },
+                "p3": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
+                "p4": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
+                "g4dn": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
+                "m2": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
+                "c2": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
+                "ml.g5.48xlarge": {
+                    "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "8"}}
+                },
+                "ml.g5.12xlarge": {
+                    "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"}}
+                },
+            },
+        },
+        "hosting_artifact_key": "pytorch-infer/infer-pytorch-ic-mobilenet-v2.tar.gz",
+        "training_artifact_key": "pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz",
+        "hosting_script_key": None,
+        "training_script_key": "source-directory-tarballs/pytorch/transfer_learning/ic/v1.0.0/sourcedir.tar.gz",
+        "training_prepacked_script_key": None,
+        "hosting_prepacked_artifact_key": "basfsdfssf",
+        "training_model_package_artifact_uris": None,
+        "deprecate_warn_message": None,
+        "deprecated_message": None,
+        "hosting_model_package_arns": None,
+        "hosting_eula_key": None,
+        "hyperparameters": [
+            {
+                "name": "epochs",
+                "type": "int",
+                "default": 3,
+                "min": 1,
+                "max": 1000,
+                "scope": "algorithm",
+            },
+            {
+                "name": "adam-learning-rate",
+                "type": "float",
+                "default": 0.05,
+                "min": 1e-08,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "batch-size",
+                "type": "int",
+                "default": 4,
+                "min": 1,
+                "max": 1024,
+                "scope": "algorithm",
+            },
+            {
+                "name": "sagemaker_submit_directory",
+                "type": "text",
+                "default": "/opt/ml/input/data/code/sourcedir.tar.gz",
+                "scope": "container",
+            },
+            {
+                "name": "sagemaker_program",
+                "type": "text",
+                "default": "transfer_learning.py",
+                "scope": "container",
+            },
+            {
+                "name": "sagemaker_container_log_level",
+                "type": "text",
+                "default": "20",
+                "scope": "container",
+            },
+        ],
+        "inference_environment_variables": [
+            {
+                "name": "SAGEMAKER_PROGRAM",
+                "type": "text",
+                "default": "inference.py",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "SAGEMAKER_SUBMIT_DIRECTORY",
+                "type": "text",
+                "default": "/opt/ml/model/code",
+                "scope": "container",
+                "required_for_model_class": False,
+            },
+            {
+                "name": "SAGEMAKER_CONTAINER_LOG_LEVEL",
+                "type": "text",
+                "default": "20",
+                "scope": "container",
+                "required_for_model_class": False,
+            },
+            {
+                "name": "SAGEMAKER_MODEL_SERVER_TIMEOUT",
+                "type": "text",
+                "default": "3600",
+                "scope": "container",
+                "required_for_model_class": False,
+            },
+            {
+                "name": "ENDPOINT_SERVER_TIMEOUT",
+                "type": "int",
+                "default": 3600,
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "MODEL_CACHE_ROOT",
+                "type": "text",
+                "default": "/opt/ml/model",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "SAGEMAKER_ENV",
+                "type": "text",
+                "default": "1",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "SAGEMAKER_MODEL_SERVER_WORKERS",
+                "type": "int",
+                "default": 1,
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+        ],
+        "inference_vulnerable": False,
+        "inference_dependencies": [],
+        "inference_vulnerabilities": [],
+        "training_vulnerable": False,
+        "training_dependencies": [],
+        "training_vulnerabilities": [],
+        "deprecated": False,
+        "default_inference_instance_type": "ml.p2.xlarge",
+        "supported_inference_instance_types": [
+            "ml.p2.xlarge",
+            "ml.p3.2xlarge",
+            "ml.g4dn.xlarge",
+            "ml.m5.large",
+            "ml.m5.xlarge",
+            "ml.c5.xlarge",
+            "ml.c5.2xlarge",
+        ],
+        "default_training_instance_type": "ml.p3.2xlarge",
+        "supported_training_instance_types": [
+            "ml.p3.2xlarge",
+            "ml.p2.xlarge",
+            "ml.g4dn.2xlarge",
+            "ml.m5.xlarge",
+            "ml.c5.2xlarge",
+        ],
+        "hosting_use_script_uri": True,
+        "metrics": [{"Regex": "val_accuracy: ([0-9\\.]+)", "Name": "pytorch-ic:val-accuracy"}],
+        "model_kwargs": {},
+        "deploy_kwargs": {"some-model-deploy-kwarg-key": "some-model-deploy-kwarg-value"},
+        "estimator_kwargs": {
+            "encrypt_inter_container_traffic": True,
+        },
+        "fit_kwargs": {"some-estimator-fit-key": "some-estimator-fit-value"},
+        "predictor_specs": {
+            "supported_content_types": ["application/x-image"],
+            "supported_accept_types": ["application/json;verbose", "application/json"],
+            "default_content_type": "application/x-image",
+            "default_accept_type": "application/json",
+        },
+        "inference_volume_size": 123,
+        "training_volume_size": 456,
+        "inference_enable_network_isolation": True,
+        "training_enable_network_isolation": False,
     },
     "private-model": {
         "model_id": "pytorch-ic-mobilenet-v2",

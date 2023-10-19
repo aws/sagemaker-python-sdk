@@ -23,6 +23,12 @@ from botocore.exceptions import ClientError
 
 from sagemaker.feature_store.feature_processor._config_uploader import ConfigUploader
 from sagemaker.feature_store.feature_processor._enums import FeatureProcessorMode
+from sagemaker.feature_store.feature_processor._event_bridge_rule_helper import (
+    EventBridgeRuleHelper,
+)
+from sagemaker.feature_store.feature_processor._feature_processor_pipeline_events import (
+    FeatureProcessorPipelineEvents,
+)
 
 # pylint: disable=C0301
 from sagemaker.feature_store.feature_processor.lineage._feature_processor_lineage_name_helper import (
@@ -59,6 +65,8 @@ from sagemaker.feature_store.feature_processor._constants import (
     RESOURCE_NOT_FOUND,
     FEATURE_GROUP_ARN_REGEX_PATTERN,
     TO_PIPELINE_RESERVED_TAG_KEYS,
+    DEFAULT_TRIGGER_STATE,
+    EVENTBRIDGE_RULE_ARN_REGEX_PATTERN,
 )
 from sagemaker.feature_store.feature_processor._feature_processor_config import (
     FeatureProcessorConfig,
@@ -273,13 +281,13 @@ def schedule(
     Args:
         pipeline_name (str): The SageMaker Pipeline name that will be scheduled.
         schedule_expression (str): The expression that defines when the schedule runs. It supports
-            at expression, rate expression and cron expression. See https://docs.aws.amazon.com/
-            scheduler/latest/APIReference/API_CreateSchedule.html#scheduler-CreateSchedule-request
-            -ScheduleExpression for more details.
+            at expression, rate expression and cron expression. See '''https://docs.aws.amazon.com\
+                /scheduler/latest/APIReference/API_CreateSchedule.html#scheduler-CreateSchedule-\
+                request-ScheduleExpression''' for more details.
         state (str): Specifies whether the schedule is enabled or disabled. Valid values are
-            ENABLED and DISABLED. See https://docs.aws.amazon.com/scheduler/latest/APIReference/
-            API_CreateSchedule.html#scheduler-CreateSchedule-request-State for more details.
-            If not specified, it will default to ENABLED.
+            ENABLED and DISABLED. See '''https://docs.aws.amazon.com/scheduler/latest/APIReference\
+                /API_CreateSchedule.html#scheduler-CreateSchedule-request-State'''
+            for more details. If not specified, it will default to ENABLED.
         start_date (Optional[datetime]): The date, in UTC, after which the schedule can begin
             invoking its target. Depending on the schedule’s recurrence expression, invocations
             might occur on, or after, the StartDate you specify.
@@ -333,6 +341,129 @@ def schedule(
         tags=tags_propagate_to_lineage_resources,
     )
     return event_bridge_schedule_arn["ScheduleArn"]
+
+
+def put_trigger(
+    source_pipeline_events: List[FeatureProcessorPipelineEvents],
+    target_pipeline: str,
+    target_pipeline_parameters: Optional[Dict[str, str]] = None,
+    state: Optional[str] = DEFAULT_TRIGGER_STATE,
+    event_pattern: Optional[str] = None,
+    role_arn: Optional[str] = None,
+    sagemaker_session: Optional[Session] = None,
+) -> str:
+    """Creates an event based trigger that triggers executions of a sagemaker pipeline.
+
+    Args:
+        source_pipeline_events (List[FeatureProcessorPipelineEvents]): The list of
+            FeatureProcessorPipelineEvents that will trigger the target_pipeline.
+        target_pipeline (str): The name of the SageMaker Pipeline that will be triggered.
+        target_pipeline_parameters (Optional[Dict[str, str]]): The list of parameters to start
+            execution of a pipeline.
+        state (Optional[str]):  Indicates whether the rule is enabled or disabled.
+            If not specified, it will default to ENABLED.
+        event_pattern (Optional[str]): The EventBridge EventPattern that triggers the
+            target_pipeline. If specified, will override source_pipeline_events. For more
+            information, see
+            https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-event-patterns.html
+            in the Amazon EventBridge User Guide.
+        role_arn (Optional[str]): The Amazon Resource Name (ARN) of the IAM role that EventBridge
+            Scheduler will assume for this target when the schedule is invoked.
+        sagemaker_session (Optional[Session]): Session object which manages interactions
+            with Amazon SageMaker APIs and any other AWS services needed. If not specified, the
+            function creates one using the default AWS configuration chain.
+    Returns:
+        str: The EventBridge Rule ARN.
+    """
+    _sagemaker_session = sagemaker_session or Session()
+    _role_arn = role_arn or get_execution_role(_sagemaker_session)
+    event_bridge_rule_helper = EventBridgeRuleHelper(
+        _sagemaker_session,
+        _sagemaker_session.boto_session.client("events"),
+    )
+    logger.info("Creating/Updating EventBridge Rule for pipeline %s.", target_pipeline)
+    rule_arn = event_bridge_rule_helper.put_rule(
+        source_pipeline_events=source_pipeline_events,
+        target_pipeline=target_pipeline,
+        event_pattern=event_pattern,
+        state=state,
+    )
+    rule_name = _parse_name_from_arn(rule_arn, EVENTBRIDGE_RULE_ARN_REGEX_PATTERN)
+    logger.info("Created/Updated EventBridge Rule  for pipeline %s.", target_pipeline)
+
+    logger.info("Attaching pipeline %s to EventBridge Rule %s as target", target_pipeline, rule_arn)
+    event_bridge_rule_helper.put_target(
+        rule_name=rule_name,
+        target_pipeline=target_pipeline,
+        target_pipeline_parameters=target_pipeline_parameters,
+        role_arn=_role_arn,
+    )
+    logger.info("Attached pipeline %s to EventBridge Rule %s as target", target_pipeline, rule_arn)
+
+    describe_pipeline_response = _sagemaker_session.sagemaker_client.describe_pipeline(
+        PipelineName=target_pipeline
+    )
+    describe_rule_response = event_bridge_rule_helper.describe_rule(rule_name=rule_name)
+    pipeline_arn = describe_pipeline_response["PipelineArn"]
+    tags_propagate_to_lineage_resources = _get_tags_from_pipeline_to_propagate_to_lineage_resources(
+        pipeline_arn, _sagemaker_session
+    )
+
+    event_bridge_rule_helper.add_tags(rule_arn=rule_arn, tags=tags_propagate_to_lineage_resources)
+
+    lineage_handler = FeatureProcessorLineageHandler(
+        pipeline_name=target_pipeline,
+        pipeline_arn=describe_pipeline_response["PipelineArn"],
+        pipeline=describe_pipeline_response,
+        sagemaker_session=_sagemaker_session,
+    )
+    lineage_handler.create_trigger_lineage(
+        pipeline_name=target_pipeline,
+        trigger_arn=rule_arn,
+        state=state,
+        tags=tags_propagate_to_lineage_resources,
+        event_pattern=describe_rule_response["EventPattern"],
+    )
+    return rule_arn
+
+
+def enable_trigger(
+    pipeline_name: str,
+    sagemaker_session: Optional[Session] = None,
+) -> None:
+    """Enable the EventBridge Rule that is associated with the pipeline.
+
+    Args:
+        pipeline_name (str): The SageMaker Pipeline name that will be executed.
+        sagemaker_session (Optional[Session]): Session object which manages interactions
+            with Amazon SageMaker APIs and any other AWS services needed. If not specified, the
+            function creates one using the default AWS configuration chain.
+    """
+    _sagemaker_session = sagemaker_session or Session()
+    event_bridge_rule_helper = EventBridgeRuleHelper(
+        _sagemaker_session,
+        _sagemaker_session.boto_session.client("events"),
+    )
+    event_bridge_rule_helper.enable_rule(rule_name=pipeline_name)
+    logger.info("Enabled EventBridge Rule for pipeline %s.", pipeline_name)
+
+
+def disable_trigger(pipeline_name: str, sagemaker_session: Optional[Session] = None) -> None:
+    """Disable the EventBridge Rule that is associated with the pipeline.
+
+    Args:
+        pipeline_name (str): The SageMaker Pipeline name that will be executed.
+        sagemaker_session (Optional[Session]): Session object which manages interactions
+            with Amazon SageMaker APIs and any other AWS services needed. If not specified, the
+            function creates one using the default AWS configuration chain.
+    """
+    _sagemaker_session = sagemaker_session or Session()
+    event_bridge_rule_helper = EventBridgeRuleHelper(
+        _sagemaker_session,
+        _sagemaker_session.boto_session.client("events"),
+    )
+    event_bridge_rule_helper.disable_rule(rule_name=pipeline_name)
+    logger.info("Disabled EventBridge Rule for pipeline %s.", pipeline_name)
 
 
 def execute(
@@ -399,6 +530,32 @@ def delete_schedule(pipeline_name: str, sagemaker_session: Optional[Session] = N
             raise e
 
 
+def delete_trigger(pipeline_name: str, sagemaker_session: Optional[Session] = None) -> None:
+    """Delete EventBridge Rule corresponding to a SageMaker Pipeline if there is one.
+
+    Args:
+        pipeline_name (str): The name of the SageMaker Pipeline that needs to be deleted
+        sagemaker_session: (Optional[Session], optional): Session object which manages interactions
+            with Amazon SageMaker APIs and any other AWS services needed. If not specified, the
+            function creates one using the default AWS configuration chain.
+    """
+    _sagemaker_session = sagemaker_session or Session()
+    event_bridge_rule_helper = EventBridgeRuleHelper(
+        _sagemaker_session,
+        _sagemaker_session.boto_session.client("events"),
+    )
+    try:
+        target_ids = []
+        for page in event_bridge_rule_helper.list_targets_by_rule(pipeline_name):
+            target_ids.extend([target["Id"] for target in page["Targets"]])
+        event_bridge_rule_helper.remove_targets(rule_name=pipeline_name, ids=target_ids)
+        event_bridge_rule_helper.delete_rule(pipeline_name)
+        logger.info("Deleted EventBridge Rule for pipeline %s.", pipeline_name)
+    except ClientError as e:
+        if RESOURCE_NOT_FOUND_EXCEPTION != e.response["Error"]["Code"]:
+            raise e
+
+
 def describe(
     pipeline_name: str, sagemaker_session: Optional[Session] = None
 ) -> Dict[str, Union[int, str]]:
@@ -452,6 +609,20 @@ def describe(
                     EXECUTION_TIME_PIPELINE_PARAMETER_FORMAT
                 ),
                 schedule_role=event_bridge_schedule["Target"]["RoleArn"],
+            )
+        )
+
+    event_bridge_rule_helper = EventBridgeRuleHelper(
+        _sagemaker_session,
+        _sagemaker_session.boto_session.client("events"),
+    )
+    event_based_trigger = event_bridge_rule_helper.describe_rule(pipeline_name)
+    if event_based_trigger:
+        describe_response_dict.update(
+            dict(
+                trigger=event_based_trigger["Arn"],
+                event_pattern=event_based_trigger["EventPattern"],
+                trigger_state=event_based_trigger["State"],
             )
         )
 
@@ -811,7 +982,9 @@ def _get_feature_processor_outputs(
     return feature_processor_config.output
 
 
-def _parse_name_from_arn(fg_uri: str) -> str:
+def _parse_name_from_arn(
+    name_or_arn: str, regex_pattern: str = FEATURE_GROUP_ARN_REGEX_PATTERN
+) -> str:
     """Parse the name from a string, if it's an ARN. Otherwise, return the string.
 
     Args:
@@ -820,11 +993,11 @@ def _parse_name_from_arn(fg_uri: str) -> str:
     Returns:
         str: The Feature Group Name.
     """
-    match = re.match(FEATURE_GROUP_ARN_REGEX_PATTERN, fg_uri)
+    match = re.match(regex_pattern, name_or_arn)
     if match:
-        feature_group_name = match.group(4)
-        return feature_group_name
-    return fg_uri
+        name = match.group(4)
+        return name
+    return name_or_arn
 
 
 def _get_tags_from_pipeline_to_propagate_to_lineage_resources(
