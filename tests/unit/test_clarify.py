@@ -405,7 +405,7 @@ class TestTimeSeriesDataConfig:
             item_metadata=test_case.item_metadata,
         )
         # THEN
-        assert ts_data_config.analysis_config == expected_output
+        assert ts_data_config.time_series_data_config == expected_output
 
     @pytest.mark.parametrize(
         "test_case",
@@ -546,7 +546,9 @@ class TestTimeSeriesDataConfig:
         }
         # GIVEN
         ts_data_config = Mock()
-        ts_data_config.get_config.return_value = copy.deepcopy(mock_ts_data_config_dict)
+        ts_data_config.get_time_series_data_config.return_value = copy.deepcopy(
+            mock_ts_data_config_dict
+        )
         # WHEN
         data_config = DataConfig(
             s3_data_input_path="s3://path/to/input.csv",

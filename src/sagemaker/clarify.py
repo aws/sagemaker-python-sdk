@@ -474,10 +474,10 @@ class TimeSeriesDataConfig:
         if not isinstance(timestamp, (str, int)):
             raise ValueError("Please provide a string or an int for ``timestamp``")
         # add remaining fields to an internal dictionary
-        self.analysis_config = dict()
-        _set(target_time_series, "target_time_series", self.analysis_config)
-        _set(item_id, "item_id", self.analysis_config)
-        _set(timestamp, "timestamp", self.analysis_config)
+        self.time_series_data_config = dict()
+        _set(target_time_series, "target_time_series", self.time_series_data_config)
+        _set(item_id, "item_id", self.time_series_data_config)
+        _set(timestamp, "timestamp", self.time_series_data_config)
         # check optional arguments are right types if provided
         related_time_series_error_message = (
             "Please provide a list of strings or list of ints for ``related_time_series``"
@@ -495,7 +495,7 @@ class TimeSeriesDataConfig:
                     related_time_series_error_message
                 )  # related_time_series is not a list of strings or list of ints
             _set(
-                related_time_series, "related_time_series", self.analysis_config
+                related_time_series, "related_time_series", self.time_series_data_config
             )  # related_time_series is valid, add it
         item_metadata_series_error_message = (
             "Please provide a list of strings or list of ints for ``item_metadata``"
@@ -511,12 +511,12 @@ class TimeSeriesDataConfig:
                     item_metadata_series_error_message
                 )  # item_metadata is not a list of strings or list of ints
             _set(
-                item_metadata, "item_metadata", self.analysis_config
+                item_metadata, "item_metadata", self.time_series_data_config
             )  # item_metadata is valid, add it
 
-    def get_config(self):
+    def get_time_series_data_config(self):
         """Returns part of an analysis config dictionary."""
-        return copy.deepcopy(self.analysis_config)
+        return copy.deepcopy(self.time_series_data_config)
 
 
 class DataConfig:
@@ -702,11 +702,12 @@ class DataConfig:
                 "segment_config",
                 self.analysis_config,
             )
-        _set(
-            time_series_data_config.get_config() if time_series_data_config else None,
-            "time_series_data_config",
-            self.analysis_config,
-        )
+        if time_series_data_config:
+            _set(
+                time_series_data_config.get_time_series_data_config(),
+                "time_series_data_config",
+                self.analysis_config,
+            )
 
     def get_config(self):
         """Returns part of an analysis config dictionary."""
