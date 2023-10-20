@@ -14,18 +14,85 @@
 from __future__ import absolute_import
 import base64
 import json
-from typing import Optional, Union
+from typing import Dict, Optional, Union
 import re
 import boto3
 
 from sagemaker.jumpstart.accessors import JumpStartS3PayloadAccessor
-from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
+from sagemaker.jumpstart.artifacts.payloads import _retrieve_example_payloads
+from sagemaker.jumpstart.constants import (
+    DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    JUMPSTART_DEFAULT_REGION_NAME,
+)
 from sagemaker.jumpstart.enums import MIMEType
 from sagemaker.jumpstart.types import JumpStartSerializablePayload
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
+from sagemaker.session import Session
 
 S3_BYTES_REGEX = r"^\$s3<(?P<s3_key>[a-zA-Z0-9-_/.]+)>$"
 S3_B64_STR_REGEX = r"\$s3_b64<(?P<s3_key>[a-zA-Z0-9-_/.]+)>"
+
+
+def _construct_payload(
+    prompt: str,
+    model_id: str,
+    model_version: str,
+    region: Optional[str] = None,
+    tolerate_vulnerable_model: bool = False,
+    tolerate_deprecated_model: bool = False,
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+) -> Optional[JumpStartSerializablePayload]:
+    """Returns example payload from prompt.
+
+    Args:
+        prompt (str): String-valued prompt to embed in payload.
+        model_id (str): JumpStart model ID of the JumpStart model for which to construct
+            the payload.
+        model_version (str): Version of the JumpStart model for which to retrieve the
+            payload.
+        region (Optional[str]): Region for which to retrieve the
+            payload. (Default: None).
+        tolerate_vulnerable_model (bool): True if vulnerable versions of model
+            specifications should be tolerated (exception not raised). If False, raises an
+            exception if the script used by this version of the model has dependencies with known
+            security vulnerabilities. (Default: False).
+        tolerate_deprecated_model (bool): True if deprecated versions of model
+            specifications should be tolerated (exception not raised). If False, raises
+            an exception if the version of the model is deprecated. (Default: False).
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions. If not
+            specified, one is created using the default AWS configuration
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+    Returns:
+        Optional[JumpStartSerializablePayload]: serializable payload with prompt, or None if
+            this feature is unavailable for the specified model.
+    """
+    payloads: Optional[Dict[str, JumpStartSerializablePayload]] = _retrieve_example_payloads(
+        model_id=model_id,
+        model_version=model_version,
+        region=region,
+        tolerate_vulnerable_model=tolerate_vulnerable_model,
+        tolerate_deprecated_model=tolerate_deprecated_model,
+        sagemaker_session=sagemaker_session,
+    )
+    if payloads is None or len(payloads) == 0:
+        return None
+
+    payload_to_use: JumpStartSerializablePayload = list(payloads.values())[0]
+
+    prompt_key: Optional[str] = payload_to_use.prompt_key
+    if prompt_key is None:
+        return None
+
+    payload_body = payload_to_use.body
+    prompt_key_split = prompt_key.split(".")
+    for idx, prompt_key in enumerate(prompt_key_split):
+        if idx < len(prompt_key_split) - 1:
+            payload_body = payload_body[prompt_key]
+        else:
+            payload_body[prompt_key] = prompt
+
+    return payload_to_use
 
 
 class PayloadSerializer:

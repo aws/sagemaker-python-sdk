@@ -15,8 +15,43 @@ import base64
 from unittest import TestCase
 from mock.mock import patch
 
-from sagemaker.jumpstart.payload_utils import PayloadSerializer
+from sagemaker.jumpstart.payload_utils import PayloadSerializer, _construct_payload
 from sagemaker.jumpstart.types import JumpStartSerializablePayload
+from tests.unit.sagemaker.jumpstart.utils import get_special_model_spec
+
+
+class TestConstructPayload(TestCase):
+    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    def test_construct_payload(self, patched_get_model_specs):
+        patched_get_model_specs.side_effect = get_special_model_spec
+
+        model_id = "prompt-key"
+        region = "us-west-2"
+
+        constructed_payload_body = _construct_payload(
+            prompt="kobebryant",
+            model_id=model_id,
+            model_version="*",
+            region=region,
+        ).body
+
+        self.assertEqual(
+            {
+                "hello": {"prompt": "kobebryant"},
+                "seed": 43,
+            },
+            constructed_payload_body,
+        )
+
+        # Unsupported model
+        self.assertIsNone(
+            _construct_payload(
+                prompt="blah",
+                model_id="default_payloads",
+                model_version="*",
+                region=region,
+            )
+        )
 
 
 class TestPayloadSerializer(TestCase):
