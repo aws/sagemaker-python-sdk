@@ -34,14 +34,19 @@ from sagemaker.jumpstart.constants import (
     JUMPSTART_DEFAULT_REGION_NAME,
     JUMPSTART_LOGGER,
 )
+from sagemaker.model_metrics import ModelMetrics
+from sagemaker.metadata_properties import MetadataProperties
+from sagemaker.drift_check_baselines import DriftCheckBaselines
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.types import (
     JumpStartModelDeployKwargs,
     JumpStartModelInitKwargs,
+    JumpStartModelRegisterKwargs,
 )
 from sagemaker.jumpstart.utils import (
     update_dict_if_key_not_present,
     resolve_model_sagemaker_config_field,
+    verify_model_region_and_return_specs,
 )
 
 from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
@@ -505,6 +510,87 @@ def get_deploy_kwargs(
     deploy_kwargs = _add_deploy_extra_kwargs(kwargs=deploy_kwargs)
 
     return deploy_kwargs
+
+
+def get_register_kwargs(
+    model_id: str,
+    model_version: Optional[str] = None,
+    region: Optional[str] = None,
+    tolerate_deprecated_model: Optional[bool] = None,
+    tolerate_vulnerable_model: Optional[bool] = None,
+    sagemaker_session: Optional[Any] = None,
+    supported_content_types: List[str] = None,
+    response_types: List[str] = None,
+    inference_instances: Optional[List[str]] = None,
+    transform_instances: Optional[List[str]] = None,
+    model_package_group_name: Optional[str] = None,
+    image_uri: Optional[str] = None,
+    model_metrics: Optional[ModelMetrics] = None,
+    metadata_properties: Optional[MetadataProperties] = None,
+    approval_status: Optional[str] = None,
+    description: Optional[str] = None,
+    drift_check_baselines: Optional[DriftCheckBaselines] = None,
+    customer_metadata_properties: Optional[Dict[str, str]] = None,
+    validation_specification: Optional[str] = None,
+    domain: Optional[str] = None,
+    task: Optional[str] = None,
+    sample_payload_url: Optional[str] = None,
+    framework: Optional[str] = None,
+    framework_version: Optional[str] = None,
+    nearest_model_name: Optional[str] = None,
+    data_input_configuration: Optional[str] = None,
+    skip_model_validation: Optional[str] = None,
+) -> JumpStartModelRegisterKwargs:
+    """Returns kwargs required to call `register` on `sagemaker.estimator.Model` object."""
+
+    register_kwargs = JumpStartModelRegisterKwargs(
+        model_id=model_id,
+        model_version=model_version,
+        region=region,
+        tolerate_deprecated_model=tolerate_deprecated_model,
+        tolerate_vulnerable_model=tolerate_vulnerable_model,
+        sagemaker_session=sagemaker_session,
+        content_types=supported_content_types,
+        response_types=response_types,
+        inference_instances=inference_instances,
+        transform_instances=transform_instances,
+        model_package_group_name=model_package_group_name,
+        image_uri=image_uri,
+        model_metrics=model_metrics,
+        metadata_properties=metadata_properties,
+        approval_status=approval_status,
+        description=description,
+        drift_check_baselines=drift_check_baselines,
+        customer_metadata_properties=customer_metadata_properties,
+        validation_specification=validation_specification,
+        domain=domain,
+        task=task,
+        sample_payload_url=sample_payload_url,
+        framework=framework,
+        framework_version=framework_version,
+        nearest_model_name=nearest_model_name,
+        data_input_configuration=data_input_configuration,
+        skip_model_validation=skip_model_validation,
+    )
+
+    model_specs = verify_model_region_and_return_specs(
+        model_id=model_id,
+        version=model_version,
+        region=region,
+        scope=JumpStartScriptScope.INFERENCE,
+        sagemaker_session=sagemaker_session,
+        tolerate_deprecated_model=tolerate_deprecated_model,
+        tolerate_vulnerable_model=tolerate_vulnerable_model,
+    )
+
+    register_kwargs.content_types = (
+        register_kwargs.content_types or model_specs.predictor_specs.supported_content_types
+    )
+    register_kwargs.response_types = (
+        register_kwargs.response_types or model_specs.predictor_specs.supported_accept_types
+    )
+
+    return register_kwargs
 
 
 def get_init_kwargs(
