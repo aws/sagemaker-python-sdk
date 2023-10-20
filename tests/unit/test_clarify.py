@@ -905,7 +905,7 @@ class TestTimeSeriesModelConfig:
             forecast,
         )
         # THEN
-        assert ts_model_config.predictor_config == expected_config
+        assert ts_model_config.time_series_model_config == expected_config
 
     def test_time_series_model_config_with_forecast_horizon(self):
         """
@@ -927,7 +927,7 @@ class TestTimeSeriesModelConfig:
             forecast_horizon=forecast_horizon,
         )
         # THEN
-        assert ts_model_config.predictor_config == expected_config
+        assert ts_model_config.time_series_model_config == expected_config
 
     @pytest.mark.parametrize(
         ("forecast", "forecast_horizon", "error", "error_message"),
@@ -976,7 +976,16 @@ class TestTimeSeriesModelConfig:
                 forecast_horizon=forecast_horizon,
             )
 
-    def test_model_config_with_time_series(self):
+    @pytest.mark.parametrize(
+        ("content_type", "accept_type"),
+        [
+            ("application/json", "application/json"),
+            ("application/json", "application/jsonlines"),
+            ("application/jsonlines", "application/json"),
+            ("application/jsonlines", "application/jsonlines"),
+        ],
+    )
+    def test_model_config_with_time_series(self, content_type, accept_type):
         """
         GIVEN valid fields for a ModelConfig and a TimeSeriesModelConfig
         WHEN a ModelConfig is constructed with them
@@ -989,8 +998,6 @@ class TestTimeSeriesModelConfig:
         custom_attributes = "c000b4f9-df62-4c85-a0bf-7c525f9104a4"
         target_model = "target_model_name"
         accelerator_type = "ml.eia1.medium"
-        content_type = "application/x-npy"
-        accept_type = "text/csv"
         content_template = (
             '{"instances":$features}'
             if content_type == "application/jsonlines"
@@ -1006,8 +1013,6 @@ class TestTimeSeriesModelConfig:
             "forecast": forecast,
             "forecast_horizon": forecast_horizon,
         }
-        mock_ts_model_config = Mock()
-        mock_ts_model_config.get_predictor_config.return_value = mock_ts_model_config_dict
         # create expected config
         expected_config = {
             "model_name": model_name,
@@ -1026,7 +1031,7 @@ class TestTimeSeriesModelConfig:
             expected_config["record_template"] = record_template
         # GIVEN
         mock_ts_model_config = Mock()  # create mock TimeSeriesModelConfig object
-        mock_ts_model_config.get_predictor_config.return_value = copy.deepcopy(
+        mock_ts_model_config.get_time_series_model_config.return_value = copy.deepcopy(
             mock_ts_model_config_dict
         )  # set the mock's get_config return value
         # WHEN

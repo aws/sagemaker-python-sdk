@@ -41,7 +41,7 @@ ENDPOINT_NAME_PREFIX_PATTERN = "^[a-zA-Z0-9](-*[a-zA-Z0-9])"
 
 # TODO: verify these are sensible/sound values
 # timeseries predictor config default values
-TS_MODEL_DEFAULT_FORECAST_HORIZON = 5  # predictor config
+TS_MODEL_DEFAULT_FORECAST_HORIZON = 1  # predictor config
 # asymmetric shap default values (timeseries)
 ASYM_SHAP_DEFAULT_EXPLANATION_TYPE = "fine_grained"
 ASYM_SHAP_DEFAULT_NUM_SAMPLES = 5
@@ -827,13 +827,13 @@ class TimeSeriesModelConfig:
         if not isinstance(forecast_horizon, int):
             raise ValueError("Please provide an integer ``forecast_horizon``.")
         # add fields to an internal config dictionary
-        self.predictor_config = dict()
-        _set(forecast, "forecast", self.predictor_config)
-        _set(forecast_horizon, "forecast_horizon", self.predictor_config)
+        self.time_series_model_config = dict()
+        _set(forecast, "forecast", self.time_series_model_config)
+        _set(forecast_horizon, "forecast_horizon", self.time_series_model_config)
 
-    def get_predictor_config(self):
-        """Returns TimeSeries predictor config dictionary"""
-        return copy.deepcopy(self.predictor_config)
+    def get_time_series_model_config(self):
+        """Returns TimeSeries model config dictionary"""
+        return copy.deepcopy(self.time_series_model_config)
 
 
 class ModelConfig:
@@ -1017,6 +1017,10 @@ class ModelConfig:
                     f"Invalid accept_type {accept_type}."
                     f" Please choose text/csv or application/jsonlines."
                 )
+            if time_series_model_config and accept_type == "text/csv":
+                raise ValueError(
+                    "``accept_type`` must be JSON or JSONLines for time series explainability."
+                )
             self.predictor_config["accept_type"] = accept_type
         if content_type is not None:
             if content_type not in [
@@ -1053,6 +1057,13 @@ class ModelConfig:
                         f"Invalid content_template {content_template}."
                         f" Please include either placeholder $records or $record."
                     )
+            if time_series_model_config and content_type not in [
+                "application/json",
+                "application/jsonlines"
+            ]:
+                raise ValueError(
+                    "``content_type`` must be JSON or JSONLines for time series explainability."
+                )
             self.predictor_config["content_type"] = content_type
         if content_template is not None:
             self.predictor_config["content_template"] = content_template
@@ -1061,11 +1072,12 @@ class ModelConfig:
         _set(custom_attributes, "custom_attributes", self.predictor_config)
         _set(accelerator_type, "accelerator_type", self.predictor_config)
         _set(target_model, "target_model", self.predictor_config)
-        _set(
-            time_series_model_config.get_predictor_config() if time_series_model_config else None,
-            "time_series_predictor_config",
-            self.predictor_config,
-        )
+        if time_series_model_config:
+            _set(
+                time_series_model_config.get_time_series_model_config(),
+                "time_series_predictor_config",
+                self.predictor_config,
+            )
 
     def get_predictor_config(self):
         """Returns part of the predictor dictionary of the analysis config."""
