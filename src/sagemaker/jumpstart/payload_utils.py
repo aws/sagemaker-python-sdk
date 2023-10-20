@@ -63,6 +63,7 @@ def _construct_payload(
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> Optional[JumpStartSerializablePayload]:
     """Returns example payload from prompt.
+
     Args:
         prompt (str): String-valued prompt to embed in payload.
         model_id (str): JumpStart model ID of the JumpStart model for which to construct
