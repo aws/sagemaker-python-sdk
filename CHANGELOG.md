@@ -1,5 +1,18 @@
 # Changelog
 
+## v2.194.0 (2023-10-19)
+
+### Features
+
+ * Added register step in Jumpstart model
+ * jumpstart instance specific metric definitions
+
+### Bug Fixes and Other Changes
+
+ * Updates for DJL 0.24.0 Release
+ * use getter for resource-metadata dict
+ * add method to Model class to check if repack is needed
+
 ## v2.193.0 (2023-10-18)
 
 ### Features
