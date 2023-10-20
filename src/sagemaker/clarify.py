@@ -1058,7 +1058,7 @@ class ModelConfig:
                     )
             if time_series_model_config and content_type not in [
                 "application/json",
-                "application/jsonlines"
+                "application/jsonlines",
             ]:
                 raise ValueError(
                     "``content_type`` must be JSON or JSONLines for time series explainability."

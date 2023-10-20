@@ -1221,9 +1221,7 @@ class TestAsymmetricSHAPConfig:
         """
         # test case is GIVEN
         # construct expected config
-        expected_config = {
-            "explanation_type": test_case.explanation_type
-        }
+        expected_config = {"explanation_type": test_case.explanation_type}
         if test_case.explanation_type == "fine_grained":
             expected_config["num_samples"] = test_case.num_samples
         # WHEN
