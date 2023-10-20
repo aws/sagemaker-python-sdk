@@ -2462,9 +2462,9 @@ class _AnalysisConfigGenerator:
         """Extends analysis config with methods."""
         # validate
         params = [pre_training_methods, post_training_methods, explainability_config]
-        if time_series_case and not explainability_config:
+        if time_series_case and not isinstance(explainability_config, AsymmetricSHAPConfig):
             raise AttributeError(
-                "At least one AsymmetricSHAPConfig must be provided for TimeSeriex explainability."
+                "Please provide one AsymmetricSHAPConfig for TimeSeries explainability."
             )
         if not any(params):
             raise AttributeError(
@@ -2491,9 +2491,12 @@ class _AnalysisConfigGenerator:
             analysis_config["methods"]["post_training_bias"] = {"methods": post_training_methods}
 
         if explainability_config is not None:
-            explainability_methods = cls._merge_explainability_configs(
-                explainability_config, time_series_case
-            )
+            if time_series_case:
+                explainability_methods = explainability_config.get_explainability_config()
+            else:
+                explainability_methods = cls._merge_explainability_configs(
+                    explainability_config,
+                )
             analysis_config["methods"] = {
                 **analysis_config["methods"],
                 **explainability_methods,
@@ -2504,42 +2507,10 @@ class _AnalysisConfigGenerator:
     def _merge_explainability_configs(
         cls,
         explainability_config: Union[ExplainabilityConfig, List[ExplainabilityConfig]],
-        time_series_case: bool = False,
     ):
         """Merges explainability configs, when more than one."""
-        if isinstance(explainability_config, list):
-            explainability_methods = {}
-            if len(explainability_config) == 0:
-                raise ValueError("Please provide at least one explainability config.")
-            for config in explainability_config:
-                # ensure all provided explainability configs
-                # are AsymmetricSHAPConfig in time series case
-                is_asym_shap_config = isinstance(config, AsymmetricSHAPConfig)
-                if time_series_case and not is_asym_shap_config:
-                    raise ValueError(
-                        "Please provide only Asymmetric SHAP configs for TimeSeries explainability."
-                    )
-                if not time_series_case and is_asym_shap_config:
-                    raise ValueError(
-                        "Please do not provide Asymmetric SHAP configs for non-TimeSeries uses."
-                    )
-                explain_config = config.get_explainability_config()
-                explainability_methods.update(explain_config)
-            if not len(explainability_methods) == len(explainability_config):
-                raise ValueError("Duplicate explainability configs are provided")
-            if (
-                not time_series_case
-                and "shap" not in explainability_methods
-                and "features" not in explainability_methods["pdp"]
-            ):
-                raise ValueError("PDP features must be provided when ShapConfig is not provided")
-            return explainability_methods
-        is_asym_shap_config = isinstance(explainability_config, AsymmetricSHAPConfig)
-        if time_series_case and not is_asym_shap_config:
-            raise ValueError(
-                "Please provide only Asymmetric SHAP configs for TimeSeries explainability."
-            )
-        if not time_series_case and is_asym_shap_config:
+        # validation
+        if isinstance(explainability_config, AsymmetricSHAPConfig):
             raise ValueError(
                 "Please do not provide Asymmetric SHAP configs for non-TimeSeries uses."
             )
@@ -2548,6 +2519,29 @@ class _AnalysisConfigGenerator:
             and "features" not in explainability_config.get_explainability_config()["pdp"]
         ):
             raise ValueError("PDP features must be provided when ShapConfig is not provided")
+        if isinstance(explainability_config, list):
+            if len(explainability_config) == 0:
+                raise ValueError("Please provide at least one explainability config.")
+            # list validation
+            for config in explainability_config:
+                # ensure all provided explainability configs are not AsymmetricSHAPConfig
+                if isinstance(config, AsymmetricSHAPConfig):
+                    raise ValueError(
+                        "Please do not provide Asymmetric SHAP configs for non-TimeSeries uses."
+                    )
+            # main logic
+            explainability_methods = {}
+            for config in explainability_config:
+                explain_config = config.get_explainability_config()
+                explainability_methods.update(explain_config)
+            if not len(explainability_methods) == len(explainability_config):
+                raise ValueError("Duplicate explainability configs are provided")
+            if (
+                "shap" not in explainability_methods
+                and "features" not in explainability_methods["pdp"]
+            ):
+                raise ValueError("PDP features must be provided when ShapConfig is not provided")
+            return explainability_methods
         return explainability_config.get_explainability_config()
 
 

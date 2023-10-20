@@ -2432,7 +2432,6 @@ def _build_asymmetric_shap_config_mock():
     asym_shap_config_dict = {
         "asymmetric_shap": {
             "explanation_type": ASYM_SHAP_DEFAULT_EXPLANATION_TYPE,
-            "num_samples": ASYM_SHAP_DEFAULT_NUM_SAMPLES,
         },
     }
     asym_shap_config = Mock(spec=AsymmetricSHAPConfig)
@@ -2442,44 +2441,18 @@ def _build_asymmetric_shap_config_mock():
 
 class TestAnalysisConfigGeneratorForTimeSeriesExplainability:
     @pytest.mark.parametrize(
-        ("mock_config", "time_series_case", "error", "error_message"),
+        ("mock_config", "error", "error_message"),
         [
-            (  # single pdp config for TSX
-                _build_pdp_config_mock(),
-                True,
-                ValueError,
-                "Please provide only Asymmetric SHAP configs for TimeSeries explainability.",
-            ),
             (  # single asym shap config for non TSX
                 _build_asymmetric_shap_config_mock(),
-                False,
                 ValueError,
                 "Please do not provide Asymmetric SHAP configs for non-TimeSeries uses.",
-            ),
-            (  # list of duplicate asym_shap configs for TSX
-                [
-                    _build_asymmetric_shap_config_mock(),
-                    _build_asymmetric_shap_config_mock(),
-                ],
-                True,
-                ValueError,
-                "Duplicate explainability configs are provided",
-            ),
-            (  # list with pdp config for TSX
-                [
-                    _build_asymmetric_shap_config_mock(),
-                    _build_pdp_config_mock(),
-                ],
-                True,
-                ValueError,
-                "Please provide only Asymmetric SHAP configs for TimeSeries explainability.",
             ),
             (  # list with asym shap config for non-TSX
                 [
                     _build_asymmetric_shap_config_mock(),
                     _build_pdp_config_mock(),
                 ],
-                False,
                 ValueError,
                 "Please do not provide Asymmetric SHAP configs for non-TimeSeries uses.",
             ),
@@ -2488,7 +2461,6 @@ class TestAnalysisConfigGeneratorForTimeSeriesExplainability:
     def test_merge_explainability_configs_with_timeseries_invalid(
         self,
         mock_config,
-        time_series_case,
         error,
         error_message,
     ):
@@ -2500,7 +2472,6 @@ class TestAnalysisConfigGeneratorForTimeSeriesExplainability:
         with pytest.raises(error, match=error_message):
             _AnalysisConfigGenerator._merge_explainability_configs(
                 explainability_config=mock_config,
-                time_series_case=time_series_case,
             )
 
 
