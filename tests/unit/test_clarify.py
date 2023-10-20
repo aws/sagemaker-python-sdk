@@ -39,7 +39,6 @@ from sagemaker.clarify import (
     SegmentationConfig,
     TS_MODEL_DEFAULT_FORECAST_HORIZON,
     ASYM_SHAP_DEFAULT_EXPLANATION_TYPE,
-    ASYM_SHAP_DEFAULT_NUM_SAMPLES,
     ASYM_SHAP_EXPLANATION_TYPES,
 )
 
@@ -1197,6 +1196,8 @@ def test_shap_config_no_parameters():
 class AsymmetricSHAPConfigCase(NamedTuple):
     explanation_type: str
     num_samples: Optional[int]
+    error: Exception
+    error_message: str
 
 
 class TestAsymmetricSHAPConfig:
@@ -1205,15 +1206,11 @@ class TestAsymmetricSHAPConfig:
         [
             AsymmetricSHAPConfigCase(  # cases for different explanation types
                 explanation_type=explanation_type,
-                num_samples=ASYM_SHAP_DEFAULT_NUM_SAMPLES,
+                num_samples=1 if explanation_type == "fine_grained" else None,
+                error=None,
+                error_message=None,
             )
             for explanation_type in ASYM_SHAP_EXPLANATION_TYPES
-        ]
-        + [
-            AsymmetricSHAPConfigCase(  # case for non-default number of samples
-                explanation_type=ASYM_SHAP_DEFAULT_EXPLANATION_TYPE,
-                num_samples=50,
-            ),
         ],
     )
     def test_asymmetric_shap_config(self, test_case):
@@ -1225,9 +1222,10 @@ class TestAsymmetricSHAPConfig:
         # test case is GIVEN
         # construct expected config
         expected_config = {
-            "explanation_type": test_case.explanation_type,
-            "num_samples": test_case.num_samples,
+            "explanation_type": test_case.explanation_type
         }
+        if test_case.explanation_type == "fine_grained":
+            expected_config["num_samples"] = test_case.num_samples
         # WHEN
         asym_shap_config = AsymmetricSHAPConfig(
             explanation_type=test_case.explanation_type,
@@ -1236,37 +1234,48 @@ class TestAsymmetricSHAPConfig:
         # THEN
         assert asym_shap_config.asymmetric_shap_config == expected_config
 
-    def test_asymmetric_shap_config_invalid_explanation_type(self):
+    @pytest.mark.parametrize(
+        "test_case",
+        [
+            AsymmetricSHAPConfigCase(  # case for invalid explanation_type
+                explanation_type="coarse_grained",
+                num_samples=None,
+                error=AssertionError,
+                error_message="Please provide a valid explanation type from: "
+                + ", ".join(ASYM_SHAP_EXPLANATION_TYPES),
+            ),
+            AsymmetricSHAPConfigCase(  # case for fine_grained and no num_samples
+                explanation_type="fine_grained",
+                num_samples=None,
+                error=AssertionError,
+                error_message="Please provide an integer for ``num_samples``.",
+            ),
+            AsymmetricSHAPConfigCase(  # case for fine_grained and non-integer num_samples
+                explanation_type="fine_grained",
+                num_samples="5",
+                error=AssertionError,
+                error_message="Please provide an integer for ``num_samples``.",
+            ),
+            AsymmetricSHAPConfigCase(  # case for num_samples when non fine-grained explanation
+                explanation_type="timewise_chronological",
+                num_samples=5,
+                error=ValueError,
+                error_message="``num_samples`` is only used for fine-grained explanations.",
+            ),
+        ],
+    )
+    def test_asymmetric_shap_config_invalid(self, test_case):
         """
-        GIVEN invalid explanation_type
-        WHEN AsymmetricSHAPConfig constructor is called with it
-        THEN ``AssertionError`` with correct message is raised
+        GIVEN invalid parameters for AsymmetricSHAP
+        WHEN AsymmetricSHAPConfig constructor is called with them
+        THEN the expected error and message are raised
         """
-        # setup
-        error_message = "Please provide a valid explanation type from: " + ", ".join(
-            ASYM_SHAP_EXPLANATION_TYPES
-        )
-        # GIVEN
-        explanation_type = "disaggregated_random"
-        # WHEN, THEN
-        with pytest.raises(AssertionError, match=error_message):
-            AsymmetricSHAPConfig(
-                explanation_type=explanation_type,
+        # test case is GIVEN
+        with pytest.raises(test_case.error, match=test_case.error_message):  # THEN
+            AsymmetricSHAPConfig(  # WHEN
+                explanation_type=test_case.explanation_type,
+                num_samples=test_case.num_samples,
             )
-
-    def test_asymmetric_shap_config_invalid_num_samples(self):
-        """
-        GIVEN non-integer num_samples
-        WHEN AsymmetricSHAPConfig constructor is called with it
-        THEN ``ValueError`` with correct message is raised
-        """
-        # setup
-        error_message = "Please provide an integer value for ``num_samples``."
-        # GIVEN
-        num_samples = "NaN"
-        # WHEN, THEN
-        with pytest.raises(ValueError, match=error_message):
-            AsymmetricSHAPConfig(num_samples=num_samples)
 
 
 def test_pdp_config():

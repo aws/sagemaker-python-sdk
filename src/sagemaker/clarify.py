@@ -25,7 +25,7 @@ import re
 
 import tempfile
 from abc import ABC, abstractmethod
-from typing import List, Union, Dict, Optional, Any
+from typing import List, Literal, Union, Dict, Optional, Any
 from enum import Enum
 from schema import Schema, And, Use, Or, Optional as SchemaOptional, Regex
 
@@ -43,8 +43,7 @@ ENDPOINT_NAME_PREFIX_PATTERN = "^[a-zA-Z0-9](-*[a-zA-Z0-9])"
 # timeseries predictor config default values
 TS_MODEL_DEFAULT_FORECAST_HORIZON = 1  # predictor config
 # asymmetric shap default values (timeseries)
-ASYM_SHAP_DEFAULT_EXPLANATION_TYPE = "fine_grained"
-ASYM_SHAP_DEFAULT_NUM_SAMPLES = 5
+ASYM_SHAP_DEFAULT_EXPLANATION_TYPE = "timewise_chronological"
 ASYM_SHAP_EXPLANATION_TYPES = [
     "timewise_chronological",
     "timewise_anti_chronological",
@@ -1598,29 +1597,40 @@ class AsymmetricSHAPConfig(ExplainabilityConfig):
 
     def __init__(
         self,
-        explanation_type: str = ASYM_SHAP_DEFAULT_EXPLANATION_TYPE,
-        num_samples: Optional[int] = ASYM_SHAP_DEFAULT_NUM_SAMPLES,
+        explanation_type: Literal[
+            "timewise_chronological",
+            "timewise_anti_chronological",
+            "timewise_bidirectional",
+            "fine_grained",
+        ] = ASYM_SHAP_DEFAULT_EXPLANATION_TYPE,
+        num_samples: Optional[int] = None,
     ):
         """Initialises config for asymmetric SHAP config.
 
         AsymmetricSHAPConfig is used specifically and only for TimeSeries explainability purposes.
 
         Args:
-            explanation_type (str): Type of explanation to be used
+            explanation_type (str): Type of explanation to be used. Available explanation
+                types are ``"timewise_chronological"``, ``"timewise_anti_chronological"``,
+                ``"timewise_bidirectional"``, and ``"fine_grained"``.
             num_samples (None or int): Number of samples to be used in the Asymmetric SHAP
-                algorithm.
+                algorithm. Only applicable when using ``"fine_grained"`` explanations.
 
         Raises:
-            AssertionError: when ``explanation_type`` is not valid
+            AssertionError: when ``explanation_type`` is not valid or ``num_samples``
+                is not provided for fine-grained explanations
+            ValueError: when ``num_samples`` is provided for non fine-grained explanations
         """
         self.asymmetric_shap_config = dict()
         # validate explanation type
         assert (
             explanation_type in ASYM_SHAP_EXPLANATION_TYPES
         ), "Please provide a valid explanation type from: " + ", ".join(ASYM_SHAP_EXPLANATION_TYPES)
-        # validate num_samples if provided
-        if num_samples and not isinstance(num_samples, int):
-            raise ValueError("Please provide an integer value for ``num_samples``.")
+        # validate integer num_samples is provided when necessary
+        if explanation_type == "fine_grained":
+            assert isinstance(num_samples, int), "Please provide an integer for ``num_samples``."
+        elif num_samples:  # validate num_samples is not provided when unnecessary
+            raise ValueError("``num_samples`` is only used for fine-grained explanations.")
         # set explanation type and (if provided) num_samples in internal config dictionary
         _set(explanation_type, "explanation_type", self.asymmetric_shap_config)
         _set(
