@@ -1,5 +1,5 @@
-sphinx==3.1.2
-sphinx-rtd-theme==0.5.0
+sphinx==5.1.1
+pydata-sphinx-theme==0.14.1
 docutils==0.15.2
 packaging==20.9
 jinja2<3.1

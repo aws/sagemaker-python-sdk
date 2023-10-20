@@ -11,7 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Feature Processor decorator for feature transformation functions."""
-from __future__ import absolute_import
+from __future__ import absolute_import, annotations
 
 from typing import Any, Callable, Dict, List, Optional, Sequence, Union
 
@@ -33,7 +33,7 @@ from sagemaker.feature_store.feature_processor._feature_processor_config import 
 
 def feature_processor(
     inputs: Sequence[
-        Union[FeatureGroupDataSource, CSVDataSource, ParquetDataSource, BaseDataSource]
+        FeatureGroupDataSource | CSVDataSource | ParquetDataSource | BaseDataSource
     ],
     output: str,
     target_stores: Optional[List[str]] = None,
@@ -79,8 +79,8 @@ def feature_processor(
             return ...
 
     Args:
-        inputs (Sequence[Union[FeatureGroupDataSource, CSVDataSource, ParquetDataSource,
-            BaseDataSource]]): A list of data sources.
+        inputs (Sequence[FeatureGroupDataSource | CSVDataSource  | ParquetDataSource
+            | BaseDataSource]): A list of data sources.
         output (str): A Feature Group ARN to write results of this function to.
         target_stores (Optional[list[str]], optional): A list containing at least one of
             'OnlineStore' or 'OfflineStore'. If unspecified, data will be ingested to the enabled

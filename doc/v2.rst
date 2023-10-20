@@ -414,7 +414,7 @@ Usage
 
 Currently, the tool supports only converting one file at a time:
 
-.. code::
+.. code:: bash
 
     $ sagemaker-upgrade-v2 --in-file input.py --out-file output.py
     $ sagemaker-upgrade-v2 --in-file input.ipynb --out-file output.ipynb
