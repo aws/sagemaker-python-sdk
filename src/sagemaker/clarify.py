@@ -2344,6 +2344,8 @@ class _AnalysisConfigGenerator:
             assert ts_data_config_present, "Please provide a TimeSeriesDataConfig"
             assert ts_model_config_present, "Please provide a TimeSeriesModelConfig"
             time_series_case = True
+        else:
+            time_series_case = False
 
         # construct whole analysis config
         analysis_config = data_config.analysis_config
