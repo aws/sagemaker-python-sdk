@@ -2340,12 +2340,11 @@ class _AnalysisConfigGenerator:
         ts_data_config_present = "time_series_data_config" in data_config.analysis_config
         ts_model_config_present = "time_series_predictor_config" in model_config.predictor_config
 
-        if ts_data_config_present and ts_model_config_present:
+        if isinstance(explainability_config, AsymmetricSHAPConfig):
+            assert ts_data_config_present, "Please provide a TimeSeriesDataConfig"
+            assert ts_model_config_present, "Please provide a TimeSeriesModelConfig"
             time_series_case = True
-        elif not ts_data_config_present and not ts_model_config_present:
-            time_series_case = False
-        else:
-            raise ValueError("Please provide both TimeSeriesDataConfig and TimeSeriesModelConfig.")
+
         # construct whole analysis config
         analysis_config = data_config.analysis_config
         analysis_config = cls._add_predictor(
@@ -2462,10 +2461,6 @@ class _AnalysisConfigGenerator:
         """Extends analysis config with methods."""
         # validate
         params = [pre_training_methods, post_training_methods, explainability_config]
-        if time_series_case and not isinstance(explainability_config, AsymmetricSHAPConfig):
-            raise AttributeError(
-                "Please provide one AsymmetricSHAPConfig for TimeSeries explainability."
-            )
         if not any(params):
             raise AttributeError(
                 "analysis_config must have at least one working method: "
