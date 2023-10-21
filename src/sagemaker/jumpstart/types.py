@@ -334,9 +334,11 @@ class JumpStartSerializablePayload(JumpStartDataHolderType):
         "content_type",
         "accept",
         "body",
+        "generated_text_response_key",
+        "prompt_key",
     ]
 
-    _non_serializable_slots = ["raw_payload"]
+    _non_serializable_slots = ["raw_payload", "prompt_key"]
 
     def __init__(self, spec: Optional[Dict[str, Any]]):
         """Initializes a JumpStartSerializablePayload object from its json representation.
@@ -364,6 +366,8 @@ class JumpStartSerializablePayload(JumpStartDataHolderType):
         self.content_type = json_obj["content_type"]
         self.body = json_obj["body"]
         accept = json_obj.get("accept")
+        self.generated_text_response_key = json_obj.get("generated_text_response_key")
+        self.prompt_key = json_obj.get("prompt_key")
         if accept:
             self.accept = accept
 
