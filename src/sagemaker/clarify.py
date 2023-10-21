@@ -445,7 +445,9 @@ class TimeSeriesDataConfig:
 
         Args: #TODO: verify param descriptions are accurate
             target_time_series (str or int): A string or a zero-based integer index.
-                Used to locate target time series in the shared input dataset.
+                Used to locate target time series in the shared input dataset. Also
+                used to determine the correct type of all succeeding arguments, as
+                parameters must either be all strings or all ints.
             item_id (str or int): A string or a zero-based integer index. Used to
                 locate item id in the shared input dataset.
             timestamp (str or int): A string or a zero-based integer index. Used to
@@ -468,10 +470,11 @@ class TimeSeriesDataConfig:
         # check all arguments are the right types
         if not isinstance(target_time_series, (str, int)):
             raise ValueError("Please provide a string or an int for ``target_time_series``")
-        if not isinstance(item_id, (str, int)):
-            raise ValueError("Please provide a string or an int for ``item_id``")
-        if not isinstance(timestamp, (str, int)):
-            raise ValueError("Please provide a string or an int for ``timestamp``")
+        params_type = type(target_time_series)
+        if not isinstance(item_id, params_type):
+            raise ValueError(f"Please provide {params_type} for ``item_id``")
+        if not isinstance(timestamp, params_type):
+            raise ValueError(f"Please provide {params_type} for ``timestamp``")
         # add remaining fields to an internal dictionary
         self.time_series_data_config = dict()
         _set(target_time_series, "target_time_series", self.time_series_data_config)
@@ -479,17 +482,14 @@ class TimeSeriesDataConfig:
         _set(timestamp, "timestamp", self.time_series_data_config)
         # check optional arguments are right types if provided
         related_time_series_error_message = (
-            "Please provide a list of strings or list of ints for ``related_time_series``"
+            f"Please provide a list of {params_type} for ``related_time_series``"
         )
         if related_time_series:
             if not isinstance(related_time_series, list):
                 raise ValueError(
                     related_time_series_error_message
                 )  # related_time_series is not a list
-            if not (
-                all([isinstance(value, str) for value in related_time_series])
-                or all([isinstance(value, int) for value in related_time_series])
-            ):
+            if not all([isinstance(value, params_type) for value in related_time_series]):
                 raise ValueError(
                     related_time_series_error_message
                 )  # related_time_series is not a list of strings or list of ints
@@ -497,15 +497,12 @@ class TimeSeriesDataConfig:
                 related_time_series, "related_time_series", self.time_series_data_config
             )  # related_time_series is valid, add it
         item_metadata_series_error_message = (
-            "Please provide a list of strings or list of ints for ``item_metadata``"
+            f"Please provide a list of {params_type} for ``item_metadata``"
         )
         if item_metadata:
             if not isinstance(item_metadata, list):
                 raise ValueError(item_metadata_series_error_message)  # item_metadata is not a list
-            if not (
-                all([isinstance(value, str) for value in item_metadata])
-                or all([isinstance(value, int) for value in item_metadata])
-            ):
+            if not all([isinstance(value, params_type) for value in item_metadata]):
                 raise ValueError(
                     item_metadata_series_error_message
                 )  # item_metadata is not a list of strings or list of ints
