@@ -29,11 +29,15 @@ import botocore
 import pytest
 from mock import call, patch, Mock, MagicMock, PropertyMock
 
+import pandas
+import numpy
+
 import sagemaker
 from sagemaker.experiments._run_context import _RunContext
 from sagemaker.session_settings import SessionSettings
 from sagemaker.utils import (
     get_instance_type_family,
+    is_likely_a_pandas_df,
     retry_with_backoff,
     check_and_get_run_experiment_config,
     get_sagemaker_config_value,
@@ -1739,3 +1743,17 @@ class TestVolumeSizeSupported(TestCase):
 
         for instance_type, family in instance_type_to_family_test_dict.items():
             self.assertEqual(family, get_instance_type_family(instance_type))
+
+
+@pytest.mark.parametrize(
+    "data, is_dataframe",
+    [
+        (pandas.DataFrame([]), True),
+        (pandas.Series([]), False),
+        (numpy.array([]), False),
+        ([], False),
+        (None, False),
+    ],
+)
+def test_is_likely_a_pandas_df(data, is_dataframe):
+    assert is_likely_a_pandas_df(data) == is_dataframe
