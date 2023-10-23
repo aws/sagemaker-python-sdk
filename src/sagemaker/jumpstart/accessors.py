@@ -127,6 +127,7 @@ class JumpStartModelsAccessor(object):
     _curr_region = JUMPSTART_DEFAULT_REGION_NAME
 
     _content_bucket: Optional[str] = None
+    _gated_content_bucket: Optional[str] = None
 
     _cache_kwargs: Dict[str, Any] = {}
 
@@ -139,6 +140,16 @@ class JumpStartModelsAccessor(object):
     def get_jumpstart_content_bucket() -> Optional[str]:
         """Returns JumpStart content bucket."""
         return JumpStartModelsAccessor._content_bucket
+
+    @staticmethod
+    def set_jumpstart_gated_content_bucket(gated_content_bucket: str) -> None:
+        """Sets JumpStart gated content bucket."""
+        JumpStartModelsAccessor._gated_content_bucket = gated_content_bucket
+
+    @staticmethod
+    def get_jumpstart_gated_content_bucket() -> Optional[str]:
+        """Returns JumpStart gated content bucket."""
+        return JumpStartModelsAccessor._gated_content_bucket
 
     @staticmethod
     def _validate_and_mutate_region_cache_kwargs(
