@@ -16,17 +16,26 @@ from __future__ import absolute_import
 import re
 import logging
 
-from typing import Union
+from typing import Union, TYPE_CHECKING
 from pathlib import Path
 
-import pandas
 import boto3
-from pandas import DataFrame, Series, read_csv
 
 from sagemaker.feature_store.feature_group import FeatureGroup
 from sagemaker.session import Session
+from sagemaker.utils import DeferredError, is_likely_a_pandas_df
 
 logger = logging.getLogger(__name__)
+
+try:
+    import pandas
+except ImportError as e:
+    logger.warning("pandas failed to import. Feature store features will be impaired or broken.")
+    # Any subsequent attempt to use pandas will raise the ImportError
+    pandas = DeferredError(e)
+
+if TYPE_CHECKING:
+    from pandas import DataFrame
 
 
 def get_session_from_role(region: str, assume_role: str = None) -> Session:
@@ -90,7 +99,7 @@ def get_feature_group_as_dataframe(
     latest_ingestion: bool = True,
     verbose: bool = True,
     **kwargs,
-) -> DataFrame:
+) -> "DataFrame":
     """:class:`sagemaker.feature_store.feature_group.FeatureGroup` as :class:`pandas.DataFrame`
 
     Examples:
@@ -196,7 +205,7 @@ def get_feature_group_as_dataframe(
     return dataset
 
 
-def _format_column_names(data: pandas.DataFrame) -> pandas.DataFrame:
+def _format_column_names(data: "DataFrame") -> "DataFrame":
     """Formats the column names for :class:`sagemaker.feature_store.feature_group.FeatureGroup`
 
     Description:
@@ -213,7 +222,7 @@ def _format_column_names(data: pandas.DataFrame) -> pandas.DataFrame:
     return data
 
 
-def _cast_object_to_string(data_frame: pandas.DataFrame) -> pandas.DataFrame:
+def _cast_object_to_string(data_frame: "DataFrame") -> "DataFrame":
     """Cast properly pandas object types to strings
 
     Description:
@@ -231,7 +240,7 @@ def _cast_object_to_string(data_frame: pandas.DataFrame) -> pandas.DataFrame:
 
 
 def prepare_fg_from_dataframe_or_file(
-    dataframe_or_path: Union[str, Path, pandas.DataFrame],
+    dataframe_or_path: Union[str, Path, "DataFrame"],
     feature_group_name: str,
     role: str = None,
     region: str = None,
@@ -282,11 +291,11 @@ def prepare_fg_from_dataframe_or_file(
     if verbose:
         logger.setLevel(logging.INFO)
 
-    if isinstance(dataframe_or_path, DataFrame):
+    if is_likely_a_pandas_df(dataframe_or_path):
         data = dataframe_or_path
     elif isinstance(dataframe_or_path, str):
         kwargs.pop("filepath_or_buffer", None)
-        data = read_csv(filepath_or_buffer=dataframe_or_path, **kwargs)
+        data = pandas.read_csv(filepath_or_buffer=dataframe_or_path, **kwargs)
     else:
         exc = Exception(
             str(
@@ -323,7 +332,7 @@ def prepare_fg_from_dataframe_or_file(
         import time
 
         current_time_sec = int(round(time.time()))
-        data[event_id] = Series([current_time_sec] * lg_id, dtype="float64")
+        data[event_id] = pandas.Series([current_time_sec] * lg_id, dtype="float64")
 
     if session is not None:
         sagemaker_session = session

@@ -19,10 +19,9 @@ import csv
 import io
 import json
 import numpy as np
-from pandas import DataFrame
 from six import with_metaclass
 
-from sagemaker.utils import DeferredError
+from sagemaker.utils import DeferredError, is_likely_a_pandas_df
 
 try:
     import scipy.sparse
@@ -108,7 +107,7 @@ class CSVSerializer(SimpleBaseSerializer):
         if hasattr(data, "read"):
             return data.read()
 
-        if isinstance(data, DataFrame):
+        if is_likely_a_pandas_df(data):
             return data.to_csv(header=False, index=False)
 
         is_mutable_sequence_like = self._is_sequence_like(data) and hasattr(data, "__setitem__")

@@ -56,7 +56,6 @@ required_packages = [
     "smdebug_rulesconfig==1.0.1",
     "importlib-metadata>=1.4.0,<7.0",
     "packaging>=20.0",
-    "pandas",
     "pathos",
     "schema",
     "PyYAML~=6.0",
@@ -69,6 +68,7 @@ required_packages = [
 # Keep format of *_requirements.txt to be tracked by dependabot
 extras = {
     "local": read_requirements("requirements/extras/local_requirements.txt"),
+    "pandas": read_requirements("requirements/extras/pandas_requirements.txt"),
     "scipy": read_requirements("requirements/extras/scipy_requirements.txt"),
     "feature-processor": read_requirements(
         "requirements/extras/feature-processor_requirements.txt"

@@ -28,14 +28,12 @@ import os
 import tempfile
 from concurrent.futures import as_completed
 from concurrent.futures import ThreadPoolExecutor
-from typing import Sequence, List, Dict, Any, Union
+from typing import Sequence, List, Dict, Any, Union, TYPE_CHECKING
 from urllib.parse import urlparse
 
 from multiprocessing.pool import AsyncResult
 import signal
 import attr
-import pandas as pd
-from pandas import DataFrame
 
 import boto3
 from botocore.config import Config
@@ -65,9 +63,20 @@ from sagemaker.feature_store.inputs import (
     OnlineStoreConfigUpdate,
     OnlineStoreStorageTypeEnum,
 )
-from sagemaker.utils import resolve_value_from_config
+from sagemaker.utils import DeferredError, resolve_value_from_config
 
 logger = logging.getLogger(__name__)
+
+
+try:
+    import pandas as pd
+except ImportError as e:
+    logger.warning("pandas failed to import. Feature group features will be impaired or broken.")
+    # Any subsequent attempt to use pandas will raise the ImportError
+    pd = DeferredError(e)
+
+if TYPE_CHECKING:
+    from pandas import DataFrame
 
 
 @attr.s
@@ -139,7 +148,7 @@ class AthenaQuery:
             query_execution_id=self._current_query_execution_id
         )
 
-    def as_dataframe(self, **kwargs) -> DataFrame:
+    def as_dataframe(self, **kwargs) -> "DataFrame":
         """Download the result of the current query and load it into a DataFrame.
 
         Args:
@@ -203,7 +212,7 @@ class IngestionManagerPandas:
 
     @staticmethod
     def _ingest_single_batch(
-        data_frame: DataFrame,
+        data_frame: "DataFrame",
         feature_group_name: str,
         client_config: Config,
         start_index: int,
@@ -286,7 +295,7 @@ class IngestionManagerPandas:
 
     @staticmethod
     def _ingest_row(
-        data_frame: DataFrame,
+        data_frame: "DataFrame",
         row: int,
         feature_group_name: str,
         sagemaker_fs_runtime_client: Session,
@@ -322,7 +331,7 @@ class IngestionManagerPandas:
             logger.error("Failed to ingest row %d: %s", row[0], e)
             failed_rows.append(row[0])
 
-    def _run_single_process_single_thread(self, data_frame: DataFrame):
+    def _run_single_process_single_thread(self, data_frame: "DataFrame"):
         """Ingest a utilizing single process and single thread.
 
         Args:
@@ -347,7 +356,7 @@ class IngestionManagerPandas:
                 f"Failed to ingest some data into FeatureGroup {self.feature_group_name}",
             )
 
-    def _run_multi_process(self, data_frame: DataFrame, wait=True, timeout=None):
+    def _run_multi_process(self, data_frame: "DataFrame", wait=True, timeout=None):
         """Start the ingestion process with the specified number of processes.
 
         Args:
@@ -394,7 +403,7 @@ class IngestionManagerPandas:
         max_workers: int,
         feature_group_name: str,
         sagemaker_fs_runtime_client_config: Config,
-        data_frame: DataFrame,
+        data_frame: "DataFrame",
         row_offset=0,
         timeout=None,
         profile_name=None,
@@ -447,7 +456,7 @@ class IngestionManagerPandas:
 
         return failed_indices
 
-    def run(self, data_frame: DataFrame, wait=True, timeout=None):
+    def run(self, data_frame: "DataFrame", wait=True, timeout=None):
         """Start the ingestion process.
 
         Args:
@@ -754,7 +763,7 @@ class FeatureGroup:
 
     def load_feature_definitions(
         self,
-        data_frame: DataFrame,
+        data_frame: "DataFrame",
     ) -> Sequence[FeatureDefinition]:
         """Load feature definitions from a Pandas DataFrame.
 
@@ -855,7 +864,7 @@ class FeatureGroup:
 
     def ingest(
         self,
-        data_frame: DataFrame,
+        data_frame: "DataFrame",
         max_workers: int = 1,
         max_processes: int = 1,
         wait: bool = True,

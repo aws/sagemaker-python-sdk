@@ -19,14 +19,27 @@ from __future__ import absolute_import
 import datetime
 from enum import Enum
 import os
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union, TYPE_CHECKING
 
+import logging
 import attr
-import pandas as pd
 
 from sagemaker import Session, s3, utils
 from sagemaker.feature_store.feature_group import FeatureDefinition, FeatureGroup, FeatureTypeEnum
 
+from sagemaker.utils import DeferredError, is_likely_a_pandas_df
+
+logger = logging.getLogger(__name__)
+
+try:
+    import pandas as pd
+except ImportError as e:
+    logger.warning("pandas failed to import. Feature store features will be impaired or broken.")
+    # Any subsequent attempt to use pandas will raise the ImportError
+    pd = DeferredError(e)
+
+if TYPE_CHECKING:
+    from pandas import DataFrame
 
 _DEFAULT_CATALOG = "AwsDataCatalog"
 _DEFAULT_DATABASE = "sagemaker_featurestore"
@@ -269,7 +282,7 @@ class DatasetBuilder:
     """
 
     _sagemaker_session: Session = attr.ib()
-    _base: Union[FeatureGroup, pd.DataFrame] = attr.ib()
+    _base: Union[FeatureGroup, "DataFrame"] = attr.ib()
     _output_path: str = attr.ib()
     _record_identifier_feature_name: str = attr.ib(default=None)
     _event_time_identifier_feature_name: str = attr.ib(default=None)
@@ -424,7 +437,7 @@ class DatasetBuilder:
             The S3 path of the .csv file.
             The query string executed.
         """
-        if isinstance(self._base, pd.DataFrame):
+        if is_likely_a_pandas_df(self._base):
             temp_id = utils.unique_name_from_base("dataframe-base")
             local_file_name = f"{temp_id}.csv"
             desired_s3_folder = f"{self._output_path}/{temp_id}"
@@ -491,7 +504,7 @@ class DatasetBuilder:
             ), query_result.get("QueryExecution", {}).get("Query", None)
         raise ValueError("Base must be either a FeatureGroup or a DataFrame.")
 
-    def to_dataframe(self) -> Tuple[pd.DataFrame, str]:
+    def to_dataframe(self) -> Tuple["DataFrame", str]:
         """Get query string and result in pandas.Dataframe
 
         Returns:
@@ -595,14 +608,14 @@ class DatasetBuilder:
             if self._number_of_records < 0:
                 raise ValueError("Please provide non-negative integer for number_of_records.")
         if self._include_deleted_records:
-            if isinstance(self._base, pd.DataFrame):
+            if is_likely_a_pandas_df(self._base):
                 if len(self._feature_groups_to_be_merged) == 0:
                     raise ValueError(
                         "include_deleted_records() only works for FeatureGroup,"
                         " if there is no join operation."
                     )
         if self._include_duplicated_records:
-            if isinstance(self._base, pd.DataFrame):
+            if is_likely_a_pandas_df(self._base):
                 if len(self._feature_groups_to_be_merged) == 0:
                     raise ValueError(
                         "include_duplicated_records() only works for FeatureGroup,"
@@ -615,7 +628,7 @@ class DatasetBuilder:
                     "more than one feature group to join."
                 )
         if self._write_time_ending_timestamp:
-            if isinstance(self._base, pd.DataFrame):
+            if is_likely_a_pandas_df(self._base):
                 if len(self._feature_groups_to_be_merged) == 0:
                     raise ValueError(
                         "as_of() only works for FeatureGroup," " if there is no join operation."

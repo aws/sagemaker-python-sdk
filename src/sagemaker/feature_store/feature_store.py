@@ -18,10 +18,10 @@ manage features for machine learning (ML) models.
 from __future__ import absolute_import
 
 import datetime
-from typing import Any, Dict, Sequence, Union
+from typing import Any, Dict, Sequence, Union, TYPE_CHECKING
 
+import logging
 import attr
-import pandas as pd
 
 from sagemaker import Session
 from sagemaker.feature_store.dataset_builder import DatasetBuilder
@@ -33,6 +33,13 @@ from sagemaker.feature_store.inputs import (
     SortOrderEnum,
     Identifier,
 )
+
+from sagemaker.utils import is_likely_a_pandas_df
+
+logger = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    from pandas import DataFrame
 
 
 @attr.s
@@ -49,7 +56,7 @@ class FeatureStore:
 
     def create_dataset(
         self,
-        base: Union[FeatureGroup, pd.DataFrame],
+        base: Union[FeatureGroup, "DataFrame"],
         output_path: str,
         record_identifier_feature_name: str = None,
         event_time_identifier_feature_name: str = None,
@@ -76,7 +83,7 @@ class FeatureStore:
             ValueError: Base is a Pandas DataFrame but no record identifier feature name nor event
                 time identifier feature name is provided.
         """
-        if isinstance(base, pd.DataFrame):
+        if is_likely_a_pandas_df(base):
             if record_identifier_feature_name is None or event_time_identifier_feature_name is None:
                 raise ValueError(
                     "You must provide a record identifier feature name and an event time "
