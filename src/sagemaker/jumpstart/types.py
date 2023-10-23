@@ -107,16 +107,21 @@ class JumpStartS3FileType(str, Enum):
 class JumpStartLaunchedRegionInfo(JumpStartDataHolderType):
     """Data class for launched region info."""
 
-    __slots__ = ["content_bucket", "region_name"]
+    __slots__ = ["content_bucket", "region_name", "gated_content_bucket"]
 
-    def __init__(self, content_bucket: str, region_name: str):
+    def __init__(
+        self, content_bucket: str, region_name: str, gated_content_bucket: Optional[str] = None
+    ):
         """Instantiates JumpStartLaunchedRegionInfo object.
 
         Args:
             content_bucket (str): Name of JumpStart s3 content bucket associated with region.
             region_name (str): Name of JumpStart launched region.
+            gated_content_bucket (Optional[str[]): Name of JumpStart gated s3 content bucket
+                optionally associated with region.
         """
         self.content_bucket = content_bucket
+        self.gated_content_bucket = gated_content_bucket
         self.region_name = region_name
 
 
@@ -334,6 +339,7 @@ class JumpStartSerializablePayload(JumpStartDataHolderType):
         "content_type",
         "accept",
         "body",
+        "generated_text_response_key",
         "prompt_key",
     ]
 
@@ -365,6 +371,7 @@ class JumpStartSerializablePayload(JumpStartDataHolderType):
         self.content_type = json_obj["content_type"]
         self.body = json_obj["body"]
         accept = json_obj.get("accept")
+        self.generated_text_response_key = json_obj.get("generated_text_response_key")
         self.prompt_key = json_obj.get("prompt_key")
         if accept:
             self.accept = accept
@@ -689,6 +696,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         "hosting_instance_type_variants",
         "training_instance_type_variants",
         "default_payloads",
+        "gated_bucket",
     ]
 
     def __init__(self, spec: Dict[str, Any]):
@@ -765,6 +773,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
             if json_obj.get("default_payloads")
             else None
         )
+        self.gated_bucket = json_obj.get("gated_bucket", False)
         self.inference_volume_size: Optional[int] = json_obj.get("inference_volume_size")
         self.inference_enable_network_isolation: bool = json_obj.get(
             "inference_enable_network_isolation", False
