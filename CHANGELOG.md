@@ -1,5 +1,70 @@
 # Changelog
 
+## v2.194.0 (2023-10-19)
+
+### Features
+
+ * Added register step in Jumpstart model
+ * jumpstart instance specific metric definitions
+
+### Bug Fixes and Other Changes
+
+ * Updates for DJL 0.24.0 Release
+ * use getter for resource-metadata dict
+ * add method to Model class to check if repack is needed
+
+## v2.193.0 (2023-10-18)
+
+### Features
+
+ * jumpstart model artifact instance type variants
+ * jumpstart instance specific hyperparameters
+ * Feature Processor event based triggers (#1132)
+ * Support job checkpoint in remote function
+ * jumpstart model package arn instance type variants
+
+### Bug Fixes and Other Changes
+
+ * Fix hyperlinks in feature_processor.scheduler parameter descriptions
+ * add image_uris_unit_test pytest mark
+ * bump apache-airflow to `v2.7.2`
+ * clone distribution in validate_distribution
+ * fix flaky Inference Recommender integration tests
+
+### Documentation Changes
+
+ * Update PipelineModel.register documentation
+ * specify that input_shape in no longer required for torch 2.0 mod…
+
+## v2.192.1 (2023-10-13)
+
+### Bug Fixes and Other Changes
+
+ * update local mode schema
+ * import error in unsupported js regions
+ * Update Ec2 instance type to g5.4xlarge in test_huggingface_torch_distributed.py
+
+## v2.192.0 (2023-10-11)
+
+### Features
+
+ * jumpstart estimator enable infra check flag
+ * jumpstart default payloads
+ * allow non-python files in job dependencies
+ * allow configuring docker container in local mode
+
+### Bug Fixes and Other Changes
+
+ * js tagging s3 prefix
+ * Batch transform: Add support for split_type == "None" in local mode
+ * use correct line endings and s3 uris on windows
+ * Fixed bug in _create_training_details
+ * DJL Neuronx 0.24.0
+
+### Documentation Changes
+
+ * Include FeatureGroup's load_feature_definitions API documentation
+
 ## v2.191.0 (2023-10-05)
 
 ### Features

@@ -302,11 +302,7 @@ class InferenceRecommenderMixin:
             )
             return None
 
-        instance_type = self.inference_recommendations[0]["EndpointConfiguration"]["InstanceType"]
-        initial_instance_count = self.inference_recommendations[0]["EndpointConfiguration"][
-            "InitialInstanceCount"
-        ]
-        return (instance_type, initial_instance_count)
+        return self._filter_recommendations_for_realtime()
 
     def _update_params_for_recommendation_id(
         self,
@@ -610,3 +606,16 @@ class InferenceRecommenderMixin:
             ),
             None,
         )
+
+    # TODO: until we have bandwidth to integrate right_size + deploy with serverless
+    def _filter_recommendations_for_realtime(self):
+        """Filter recommendations list to find a realtime instance"""
+        instance_type = None
+        initial_instance_count = None
+        for recommendations in self.inference_recommendations:
+            if "ServerlessConfig" not in recommendations["EndpointConfiguration"]:
+                instance_type = recommendations["EndpointConfiguration"]["InstanceType"]
+                initial_instance_count = recommendations["EndpointConfiguration"][
+                    "InitialInstanceCount"
+                ]
+        return (instance_type, initial_instance_count)

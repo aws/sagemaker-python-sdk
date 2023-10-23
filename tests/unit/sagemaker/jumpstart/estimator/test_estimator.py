@@ -677,7 +677,7 @@ class EstimatorTest(unittest.TestCase):
         Please add the new argument to the skip set below,
         and reach out to JumpStart team."""
 
-        init_args_to_skip: Set[str] = set(["kwargs", "enable_infra_check"])
+        init_args_to_skip: Set[str] = set(["kwargs"])
         fit_args_to_skip: Set[str] = set()
         deploy_args_to_skip: Set[str] = set(["kwargs"])
 
@@ -1230,6 +1230,73 @@ class EstimatorTest(unittest.TestCase):
                     sagemaker_session=None,
                 ),
             ]
+        )
+
+    @mock.patch("sagemaker.jumpstart.estimator.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_model_artifact_variant_estimator(
+        self,
+        mock_estimator_init: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
+    ):
+
+        mock_is_valid_model_id.return_value = True
+
+        model_id, _ = "model-artifact-variant-model", "*"
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        mock_session.return_value = sagemaker_session
+
+        # this instance type has a special model artifact
+        JumpStartEstimator(model_id=model_id, instance_type="ml.p2.xlarge")
+
+        mock_estimator_init.assert_called_once_with(
+            instance_type="ml.p2.xlarge",
+            instance_count=1,
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-inference:1.13.1"
+            "-transformers4.26.0-gpu-py39-cu117-ubuntu20.04",
+            model_uri="s3://jumpstart-cache-prod-us-west-2/hello-mars-1",
+            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/"
+            "pytorch/transfer_learning/ic/v1.0.0/sourcedir.tar.gz",
+            entry_point="transfer_learning.py",
+            hyperparameters={"epochs": "3", "adam-learning-rate": "0.05", "batch-size": "4"},
+            metric_definitions=[
+                {"Regex": "val_accuracy: ([0-9\\.]+)", "Name": "pytorch-ic:val-accuracy"}
+            ],
+            role=execution_role,
+            sagemaker_session=sagemaker_session,
+            enable_network_isolation=False,
+            encrypt_inter_container_traffic=True,
+            volume_size=456,
+        )
+
+        mock_estimator_init.reset_mock()
+
+        JumpStartEstimator(model_id=model_id, instance_type="ml.p99.xlarge")
+
+        mock_estimator_init.assert_called_once_with(
+            instance_type="ml.p99.xlarge",
+            instance_count=1,
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.5.0-gpu-py3",
+            model_uri="s3://jumpstart-cache-prod-us-west-2/pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz",
+            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/pytorch/"
+            "transfer_learning/ic/v1.0.0/sourcedir.tar.gz",
+            entry_point="transfer_learning.py",
+            hyperparameters={"epochs": "3", "adam-learning-rate": "0.05", "batch-size": "4"},
+            metric_definitions=[
+                {"Regex": "val_accuracy: ([0-9\\.]+)", "Name": "pytorch-ic:val-accuracy"}
+            ],
+            role=execution_role,
+            sagemaker_session=sagemaker_session,
+            enable_network_isolation=False,
+            encrypt_inter_container_traffic=True,
+            volume_size=456,
         )
 
 

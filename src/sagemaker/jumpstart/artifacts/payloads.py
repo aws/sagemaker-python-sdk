@@ -10,10 +10,10 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""This module contains functions for obtaining JumpStart metric definitions."""
+"""This module contains functions to obtain JumpStart model payloads."""
 from __future__ import absolute_import
 from copy import deepcopy
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     JUMPSTART_DEFAULT_REGION_NAME,
@@ -21,30 +21,30 @@ from sagemaker.jumpstart.constants import (
 from sagemaker.jumpstart.enums import (
     JumpStartScriptScope,
 )
+from sagemaker.jumpstart.types import JumpStartSerializablePayload
 from sagemaker.jumpstart.utils import (
     verify_model_region_and_return_specs,
 )
 from sagemaker.session import Session
 
 
-def _retrieve_default_training_metric_definitions(
+def _retrieve_example_payloads(
     model_id: str,
     model_version: str,
     region: Optional[str],
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-    instance_type: Optional[str] = None,
-) -> Optional[List[Dict[str, str]]]:
-    """Retrieves the default training metric definitions for the model.
+) -> Optional[Dict[str, JumpStartSerializablePayload]]:
+    """Returns example payloads.
 
     Args:
         model_id (str): JumpStart model ID of the JumpStart model for which to
-            retrieve the default training metric definitions.
+            get example payloads.
         model_version (str): Version of the JumpStart model for which to retrieve the
-            default training metric definitions.
-        region (Optional[str]): Region for which to retrieve default training metric
-            definitions.
+            example payloads.
+        region (Optional[str]): Region for which to retrieve the
+            example payloads.
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
             specifications should be tolerated (exception not raised). If False, raises an
             exception if the script used by this version of the model has dependencies with known
@@ -56,10 +56,9 @@ def _retrieve_default_training_metric_definitions(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
-        instance_type (str): An instance type to optionally supply in order to get
-            metric definitions specific for the instance type.
     Returns:
-        list: the default training metric definitions to use for the model or None.
+        Optional[Dict[str, JumpStartSerializablePayload]]: dictionary mapping payload aliases
+            to the serializable payload object.
     """
 
     if region is None:
@@ -68,36 +67,19 @@ def _retrieve_default_training_metric_definitions(
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
-        scope=JumpStartScriptScope.TRAINING,
+        scope=JumpStartScriptScope.INFERENCE,
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
     )
 
-    default_metric_definitions = (
-        deepcopy(model_specs.metrics) if getattr(model_specs, "metrics") else []
-    )
+    default_payloads = model_specs.default_payloads
 
-    instance_specific_metric_definitions = (
-        model_specs.training_instance_type_variants.get_instance_specific_metric_definitions(
-            instance_type
-        )
-        if instance_type
-        and getattr(model_specs, "training_instance_type_variants", None) is not None
-        else []
-    )
-
-    instance_specific_metric_name: str
-    for instance_specific_metric_definition in instance_specific_metric_definitions:
-        instance_specific_metric_name = instance_specific_metric_definition["Name"]
-        default_metric_definitions = list(
-            filter(
-                lambda metric_definition: metric_definition["Name"]
-                != instance_specific_metric_name,
-                default_metric_definitions,
+    if default_payloads:
+        for payload in default_payloads.values():
+            payload.accept = getattr(
+                payload, "accept", model_specs.predictor_specs.default_accept_type
             )
-        )
-        default_metric_definitions.append(instance_specific_metric_definition)
 
-    return default_metric_definitions
+    return deepcopy(default_payloads) if default_payloads else None

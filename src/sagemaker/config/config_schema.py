@@ -106,6 +106,7 @@ LOCAL = "local"
 LOCAL_CODE = "local_code"
 SERVING_PORT = "serving_port"
 CONTAINER_CONFIG = "container_config"
+CONTAINER_ROOT = "container_root"
 REGION_NAME = "region_name"
 
 
@@ -1089,6 +1090,9 @@ SAGEMAKER_PYTHON_SDK_LOCAL_MODE_CONFIG_SCHEMA = {
                 REGION_NAME: {TYPE: "string"},
                 SERVING_PORT: {
                     TYPE: "integer",
+                },
+                CONTAINER_ROOT: {
+                    TYPE: "string",
                 },
                 CONTAINER_CONFIG: {
                     TYPE: OBJECT,
