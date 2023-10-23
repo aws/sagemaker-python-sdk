@@ -138,12 +138,10 @@ class HuggingFaceModel(FrameworkModel):
                 unless ``image_uri`` is provided.
             tensorflow_version (str): TensorFlow version you want to use for
                 executing your inference code. Defaults to ``None``. Required unless
-                ``pytorch_version`` is provided. List of supported versions:
-                https://github.com/aws/sagemaker-python-sdk#huggingface-sagemaker-estimators.
+                ``pytorch_version`` is provided. The current supported version is ``2.4.1``.
             pytorch_version (str): PyTorch version you want to use for
                 executing your inference code. Defaults to ``None``. Required unless
-                ``tensorflow_version`` is provided. List of supported versions:
-                https://github.com/aws/sagemaker-python-sdk#huggingface-sagemaker-estimators.
+                ``tensorflow_version`` is provided. The current supported versions are ``1.7.1`` and ``1.6.0``.
             py_version (str): Python version you want to use for executing your
                 model training code. Defaults to ``None``. Required unless
                 ``image_uri`` is provided.

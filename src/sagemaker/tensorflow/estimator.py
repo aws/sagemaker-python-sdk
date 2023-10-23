@@ -59,7 +59,7 @@ class TensorFlow(Framework):
             framework_version (str): TensorFlow version you want to use for executing your model
                 training code. Defaults to ``None``. Required unless ``image_uri`` is provided.
                 List of supported versions:
-                https://github.com/aws/sagemaker-python-sdk#tensorflow-sagemaker-estimators.
+                https://aws.amazon.com/releasenotes/available-deep-learning-containers-images/.
             model_dir (str or PipelineVariable): S3 location where the checkpoint data and models
                 can be exported to during training (default: None). It will be passed in the
                 training script as one of the command line arguments. If not specified,
