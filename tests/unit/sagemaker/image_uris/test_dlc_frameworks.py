@@ -61,7 +61,7 @@ def test_chainer_uris(load_config):
 @pytest.mark.parametrize("scope", ["training", "inference", "eia"])
 def test_dlc_framework_uris(load_config_and_file_name, scope):
     config, file_name = load_config_and_file_name
-    framework = file_name.removesuffix(".json")
+    framework = file_name.split(".json")[0]
     VERSIONS = config[scope]["versions"]
 
     for version in VERSIONS:
@@ -115,7 +115,7 @@ def test_dlc_framework_uris(load_config_and_file_name, scope):
 )
 def test_uncommon_format_dlc_framework_version_uris(load_config_and_file_name):
     config, file_name = load_config_and_file_name
-    framework = file_name.removesuffix(".json")
+    framework = file_name.split(".json")[0]
     py_versions = ["py2", "py3"]
 
     # These versions are formatted differently than others for their framework

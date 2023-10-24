@@ -33,7 +33,7 @@ INSTANCE_TYPES = {"cpu": "ml.c4.xlarge", "gpu": "ml.p2.xlarge"}
 )
 def test_rl_image_uris(load_config_and_file_name):
     config, filename = load_config_and_file_name
-    framework = filename.removesuffix(".json")
+    framework = filename.split(".json")[0]
     VERSIONS = config["versions"]
     processors = config["processors"]
     for version in VERSIONS:

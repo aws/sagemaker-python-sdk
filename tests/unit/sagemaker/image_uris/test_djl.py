@@ -23,7 +23,7 @@ from tests.unit.sagemaker.image_uris import expected_uris
 )
 def test_djl_uris(load_config_and_file_name):
     config, file_name = load_config_and_file_name
-    framework = file_name.removesuffix(".json")
+    framework = file_name.split(".json")[0]
     VERSIONS = config["versions"]
     for version in VERSIONS:
         ACCOUNTS = config["versions"][version]["registries"]

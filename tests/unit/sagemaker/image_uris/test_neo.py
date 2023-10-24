@@ -33,7 +33,7 @@ NEO_AND_INFERENTIA_FRAMEWORKS = NEO_FRAMEWORKS + INFERENTIA_FRAMEWORKS
 @pytest.mark.parametrize("load_config_and_file_name", NEO_ALGOS, indirect=True)
 def test_neo_alogos(load_config_and_file_name):
     config, file_name = load_config_and_file_name
-    algo = file_name.removesuffix(".json")
+    algo = file_name.split(".json")[0]
     VERSIONS = config["versions"]
     for version in VERSIONS:
         ACCOUNTS = config["versions"][version]["registries"]
@@ -46,7 +46,7 @@ def test_neo_alogos(load_config_and_file_name):
 @pytest.mark.parametrize("load_config_and_file_name", NEO_AND_INFERENTIA_FRAMEWORKS, indirect=True)
 def test_neo_and_inferentia_frameworks(load_config_and_file_name):
     config, file_name = load_config_and_file_name
-    framework = file_name.removesuffix(".json")
+    framework = file_name.split(".json")[0]
     VERSIONS = config["versions"]
     processors = config["processors"]
     for version in VERSIONS:

@@ -45,7 +45,7 @@ def _test_graviton_framework_uris(framework, version, py_version, account, regio
 @pytest.mark.parametrize("scope", ["inference_graviton"])
 def test_graviton_framework_uris(load_config_and_file_name, scope):
     config, file_name = load_config_and_file_name
-    framework = file_name.removesuffix(".json")
+    framework = file_name.split(".json")[0]
     VERSIONS = config[scope]["versions"]
     for version in VERSIONS:
         ACCOUNTS = config[scope]["versions"][version]["registries"]
