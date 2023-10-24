@@ -37,7 +37,6 @@ from sagemaker.clarify import (
     DatasetType,
     ProcessingOutputHandler,
     SegmentationConfig,
-    TS_MODEL_DEFAULT_FORECAST_HORIZON,
     ASYM_SHAP_DEFAULT_EXPLANATION_TYPE,
     ASYM_SHAP_EXPLANATION_TYPES,
 )
@@ -969,70 +968,32 @@ class TestTimeSeriesModelConfig:
         # create expected output
         expected_config = {
             "forecast": forecast,
-            "forecast_horizon": TS_MODEL_DEFAULT_FORECAST_HORIZON,
         }
         # WHEN
         ts_model_config = TimeSeriesModelConfig(
             forecast,
-        )
-        # THEN
-        assert ts_model_config.time_series_model_config == expected_config
-
-    def test_time_series_model_config_with_forecast_horizon(self):
-        """
-        GIVEN a valid forecast expression and forecast horizon
-        WHEN a TimeSeriesModelConfig is constructed with it
-        THEN the predictor_config dictionary matches the expected
-        """
-        # GIVEN
-        forecast = "results.[forecast]"  # mock JMESPath expression for forecast
-        forecast_horizon = 25  # non-default forecast horizon
-        # create expected output
-        expected_config = {
-            "forecast": forecast,
-            "forecast_horizon": forecast_horizon,
-        }
-        # WHEN
-        ts_model_config = TimeSeriesModelConfig(
-            forecast,
-            forecast_horizon=forecast_horizon,
         )
         # THEN
         assert ts_model_config.time_series_model_config == expected_config
 
     @pytest.mark.parametrize(
-        ("forecast", "forecast_horizon", "error", "error_message"),
+        ("forecast", "error", "error_message"),
         [
             (
                 None,
-                TS_MODEL_DEFAULT_FORECAST_HORIZON,
                 AssertionError,
                 "Please provide ``forecast``, a JMESPath expression to extract the forecast result.",
             ),
             (
-                "results.[forecast]",
-                None,
-                AssertionError,
-                "Please provide an integer ``forecast_horizon``.",
-            ),
-            (
                 123,
-                TS_MODEL_DEFAULT_FORECAST_HORIZON,
                 ValueError,
                 "Please provide a string JMESPath expression for ``forecast``.",
-            ),
-            (
-                "results.[forecast]",
-                "Not an int",
-                ValueError,
-                "Please provide an integer ``forecast_horizon``.",
             ),
         ],
     )
     def test_time_series_model_config_invalid(
         self,
         forecast,
-        forecast_horizon,
         error,
         error_message,
     ):
@@ -1044,7 +1005,6 @@ class TestTimeSeriesModelConfig:
         with pytest.raises(error, match=error_message):
             TimeSeriesModelConfig(
                 forecast=forecast,
-                forecast_horizon=forecast_horizon,
             )
 
     @pytest.mark.parametrize(
@@ -1079,10 +1039,8 @@ class TestTimeSeriesModelConfig:
         record_template = "$features_kvp" if content_type == "application/json" else None
         # create mock config for TimeSeriesModelConfig
         forecast = "results.[forecast]"  # mock JMESPath expression for forecast
-        forecast_horizon = 25  # non-default forecast horizon
         mock_ts_model_config_dict = {
             "forecast": forecast,
-            "forecast_horizon": forecast_horizon,
         }
         # create expected config
         expected_config = {

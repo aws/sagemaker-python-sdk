@@ -40,8 +40,6 @@ logger = logging.getLogger(__name__)
 ENDPOINT_NAME_PREFIX_PATTERN = "^[a-zA-Z0-9](-*[a-zA-Z0-9])"
 
 # TODO: verify these are sensible/sound values
-# timeseries predictor config default values
-TS_MODEL_DEFAULT_FORECAST_HORIZON = 1  # predictor config
 # asymmetric shap default values (timeseries)
 ASYM_SHAP_DEFAULT_EXPLANATION_TYPE = "timewise_chronological"
 ASYM_SHAP_EXPLANATION_TYPES = [
@@ -345,7 +343,6 @@ ANALYSIS_CONFIG_SCHEMA_V1_0 = Schema(
             SchemaOptional("custom_attributes"): str,
             SchemaOptional("time_series_predictor_config"): {
                 "forecast": str,
-                "forecast_horizon": int,
             },
         },
     }
@@ -800,13 +797,11 @@ class TimeSeriesModelConfig:
     def __init__(
         self,
         forecast: str,
-        forecast_horizon: int = TS_MODEL_DEFAULT_FORECAST_HORIZON,
     ):
         """Initializes model configuration fields for TimeSeries explainability use cases.
 
         Args:
             forecast (str): JMESPath expression to extract the forecast result.
-            forecast_horizon (int):  An integer that tells the forecast horizon.
 
         Raises:
             AssertionError: when either ``forecast`` or ``forecast_horizon`` are not provided
@@ -816,16 +811,12 @@ class TimeSeriesModelConfig:
         assert (
             forecast
         ), "Please provide ``forecast``, a JMESPath expression to extract the forecast result."
-        assert forecast_horizon, "Please provide an integer ``forecast_horizon``."
         # check provided arguments are of the right type
         if not isinstance(forecast, str):
             raise ValueError("Please provide a string JMESPath expression for ``forecast``.")
-        if not isinstance(forecast_horizon, int):
-            raise ValueError("Please provide an integer ``forecast_horizon``.")
         # add fields to an internal config dictionary
         self.time_series_model_config = dict()
         _set(forecast, "forecast", self.time_series_model_config)
-        _set(forecast_horizon, "forecast_horizon", self.time_series_model_config)
 
     def get_time_series_model_config(self):
         """Returns TimeSeries model config dictionary"""
