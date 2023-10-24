@@ -100,8 +100,8 @@ ANALYSIS_CONFIG_SCHEMA_V1_0 = Schema(
             "target_time_series": Or(str, int),
             "item_id": Or(str, int),
             "timestamp": Or(str, int),
-            SchemaOptional("related_time_series"): [Or(int, str)],
-            SchemaOptional("item_metadata"): [Or(int, str)],
+            SchemaOptional("related_time_series"): Or([str], [int]),
+            SchemaOptional("item_metadata"): Or([str], [int]),
         },
         "methods": {
             SchemaOptional("shap"): {
