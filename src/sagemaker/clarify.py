@@ -435,8 +435,8 @@ class TimeSeriesDataConfig:
         target_time_series: Union[str, int],
         item_id: Union[str, int],
         timestamp: Union[str, int],
-        related_time_series: Optional[List[Union[str, int]]] = None,
-        item_metadata: Optional[List[Union[str, int]]] = None,
+        related_time_series: Optional[Union[List[str], List[int]]] = None,
+        item_metadata: Optional[Union[List[str], List[int]]] = None,
     ):
         """Initialises TimeSeries explainability data configuration fields.
 
