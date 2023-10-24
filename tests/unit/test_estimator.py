@@ -169,7 +169,20 @@ DISTRIBUTION_MPI_ENABLED = {
     "mpi": {"enabled": True, "custom_mpi_options": "options", "processes_per_host": 2}
 }
 DISTRIBUTION_SM_DDP_ENABLED = {
-    "smdistributed": {"dataparallel": {"enabled": True, "custom_mpi_options": "options"}}
+    "smdistributed": {"dataparallel": {"enabled": True, "custom_mpi_options": "options"}},
+    "torch_distributed": {"enabled": False},
+}
+DISTRIBUTION_SM_DDP_DISABLED = {
+    "smdistributed": {"enabled": True},
+    "torch_distributed": {"enabled": False},
+}
+DISTRIBUTION_SM_TORCH_DIST_AND_DDP_ENABLED = {
+    "smdistributed": {"dataparallel": {"enabled": True, "custom_mpi_options": "options"}},
+    "torch_distributed": {"enabled": True},
+}
+DISTRIBUTION_SM_TORCH_DIST_AND_DDP_DISABLED = {
+    "smdistributed": {"enabled": True},
+    "torch_distributed": {"enabled": True},
 }
 MOCKED_S3_URI = "s3://mocked_s3_uri_from_source_dir"
 _DEFINITION_CONFIG = PipelineDefinitionConfig(use_custom_job_prefix=False)
@@ -308,6 +321,85 @@ def training_job_description(sagemaker_session):
     sagemaker_session.sagemaker_client.describe_training_job = mock_describe_training_job
     sagemaker_session.describe_training_job = mock_describe_training_job
     return returned_job_description
+
+
+def test_validate_smdistributed_unsupported_image_raises(sagemaker_session):
+    # Test unsupported image raises error.
+    for unsupported_image in DummyFramework.UNSUPPORTED_DLC_IMAGE_FOR_SM_PARALLELISM:
+        # Fail due to unsupported CUDA12 DLC image.
+        f = DummyFramework(
+            "some_script.py",
+            role="DummyRole",
+            instance_type="ml.p4d.24xlarge",
+            sagemaker_session=sagemaker_session,
+            output_path="outputpath",
+            image_uri=unsupported_image,
+        )
+        with pytest.raises(ValueError):
+            f._distribution_configuration(DISTRIBUTION_SM_DDP_ENABLED)
+        with pytest.raises(ValueError):
+            f._distribution_configuration(DISTRIBUTION_SM_DDP_DISABLED)
+
+    # Test unsupported image with suffix raises error.
+    for unsupported_image in DummyFramework.UNSUPPORTED_DLC_IMAGE_FOR_SM_PARALLELISM:
+        # Fail due to unsupported CUDA12 DLC image.
+        f = DummyFramework(
+            "some_script.py",
+            role="DummyRole",
+            instance_type="ml.p4d.24xlarge",
+            sagemaker_session=sagemaker_session,
+            output_path="outputpath",
+            image_uri=unsupported_image + "-ubuntu20.04-sagemaker-pr-3303",
+        )
+        with pytest.raises(ValueError):
+            f._distribution_configuration(DISTRIBUTION_SM_DDP_ENABLED)
+        with pytest.raises(ValueError):
+            f._distribution_configuration(DISTRIBUTION_SM_DDP_DISABLED)
+
+
+def test_validate_smdistributed_p5_raises(sagemaker_session):
+    # Supported DLC image.
+    f = DummyFramework(
+        "some_script.py",
+        role="DummyRole",
+        instance_type="ml.p5.48xlarge",
+        sagemaker_session=sagemaker_session,
+        output_path="outputpath",
+        image_uri="some_acceptable_image",
+    )
+    # Both fail because instance type is p5 and torch_distributed is off.
+    with pytest.raises(ValueError):
+        f._distribution_configuration(DISTRIBUTION_SM_DDP_ENABLED)
+    with pytest.raises(ValueError):
+        f._distribution_configuration(DISTRIBUTION_SM_DDP_DISABLED)
+
+
+def test_validate_smdistributed_p5_not_raises(sagemaker_session):
+    f = DummyFramework(
+        "some_script.py",
+        role="DummyRole",
+        instance_type="ml.p5.48xlarge",
+        sagemaker_session=sagemaker_session,
+        output_path="outputpath",
+        image_uri="ecr-url/2.0.1-gpu-py310-cu121-ubuntu20.04-sagemaker-pr-3303",
+    )
+    # Testing with p5 instance and torch_distributed enabled.
+    f._distribution_configuration(DISTRIBUTION_SM_TORCH_DIST_AND_DDP_ENABLED)
+    f._distribution_configuration(DISTRIBUTION_SM_TORCH_DIST_AND_DDP_DISABLED)
+
+
+def test_validate_smdistributed_backward_compat_p4_not_raises(sagemaker_session):
+    f = DummyFramework(
+        "some_script.py",
+        role="DummyRole",
+        instance_type="ml.p4d.24xlarge",
+        sagemaker_session=sagemaker_session,
+        output_path="outputpath",
+        image_uri="some_acceptable_image",
+    )
+    # Testing backwards compatability with p4d instances.
+    f._distribution_configuration(DISTRIBUTION_SM_TORCH_DIST_AND_DDP_ENABLED)
+    f._distribution_configuration(DISTRIBUTION_SM_TORCH_DIST_AND_DDP_DISABLED)
 
 
 def test_framework_all_init_args(sagemaker_session):
