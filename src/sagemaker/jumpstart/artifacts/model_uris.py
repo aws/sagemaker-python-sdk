@@ -25,6 +25,7 @@ from sagemaker.jumpstart.enums import (
 )
 from sagemaker.jumpstart.utils import (
     get_jumpstart_content_bucket,
+    get_jumpstart_gated_content_bucket,
     verify_model_region_and_return_specs,
 )
 from sagemaker.session import Session
@@ -157,9 +158,16 @@ def _retrieve_model_uri(
 
         model_artifact_key = _retrieve_training_artifact_key(model_specs, instance_type)
 
-    bucket = os.environ.get(
-        ENV_VARIABLE_JUMPSTART_MODEL_ARTIFACT_BUCKET_OVERRIDE
-    ) or get_jumpstart_content_bucket(region)
+    default_jumpstart_bucket: str = (
+        get_jumpstart_gated_content_bucket(region)
+        if model_specs.gated_bucket
+        else get_jumpstart_content_bucket(region)
+    )
+
+    bucket = (
+        os.environ.get(ENV_VARIABLE_JUMPSTART_MODEL_ARTIFACT_BUCKET_OVERRIDE)
+        or default_jumpstart_bucket
+    )
 
     model_s3_uri = f"s3://{bucket}/{model_artifact_key}"
 

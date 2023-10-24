@@ -38,82 +38,102 @@ JUMPSTART_LAUNCHED_REGIONS: Set[JumpStartLaunchedRegionInfo] = set(
         JumpStartLaunchedRegionInfo(
             region_name="us-west-2",
             content_bucket="jumpstart-cache-prod-us-west-2",
+            gated_content_bucket="jumpstart-private-cache-prod-us-west-2",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="us-east-1",
             content_bucket="jumpstart-cache-prod-us-east-1",
+            gated_content_bucket="jumpstart-private-cache-prod-us-east-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="us-east-2",
             content_bucket="jumpstart-cache-prod-us-east-2",
+            gated_content_bucket="jumpstart-private-cache-prod-us-east-2",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="eu-west-1",
             content_bucket="jumpstart-cache-prod-eu-west-1",
+            gated_content_bucket="jumpstart-private-cache-prod-eu-west-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="eu-central-1",
             content_bucket="jumpstart-cache-prod-eu-central-1",
+            gated_content_bucket="jumpstart-private-cache-prod-eu-central-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="eu-north-1",
             content_bucket="jumpstart-cache-prod-eu-north-1",
+            gated_content_bucket="jumpstart-private-cache-prod-eu-north-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="me-south-1",
             content_bucket="jumpstart-cache-prod-me-south-1",
+            gated_content_bucket="jumpstart-private-cache-prod-me-south-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="ap-south-1",
             content_bucket="jumpstart-cache-prod-ap-south-1",
+            gated_content_bucket="jumpstart-private-cache-prod-ap-south-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="eu-west-3",
             content_bucket="jumpstart-cache-prod-eu-west-3",
+            gated_content_bucket="jumpstart-private-cache-prod-eu-west-3",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="af-south-1",
             content_bucket="jumpstart-cache-prod-af-south-1",
+            gated_content_bucket="jumpstart-private-cache-prod-af-south-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="sa-east-1",
             content_bucket="jumpstart-cache-prod-sa-east-1",
+            gated_content_bucket="jumpstart-private-cache-prod-sa-east-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="ap-east-1",
             content_bucket="jumpstart-cache-prod-ap-east-1",
+            gated_content_bucket="jumpstart-private-cache-prod-ap-east-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="ap-northeast-2",
             content_bucket="jumpstart-cache-prod-ap-northeast-2",
+            gated_content_bucket="jumpstart-private-cache-prod-ap-northeast-2",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="eu-west-2",
             content_bucket="jumpstart-cache-prod-eu-west-2",
+            gated_content_bucket="jumpstart-private-cache-prod-eu-west-2",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="eu-south-1",
             content_bucket="jumpstart-cache-prod-eu-south-1",
+            gated_content_bucket="jumpstart-private-cache-prod-eu-south-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="ap-northeast-1",
             content_bucket="jumpstart-cache-prod-ap-northeast-1",
+            gated_content_bucket="jumpstart-private-cache-prod-ap-northeast-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="us-west-1",
             content_bucket="jumpstart-cache-prod-us-west-1",
+            gated_content_bucket="jumpstart-private-cache-prod-us-west-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="ap-southeast-1",
             content_bucket="jumpstart-cache-prod-ap-southeast-1",
+            gated_content_bucket="jumpstart-private-cache-prod-ap-southeast-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="ap-southeast-2",
             content_bucket="jumpstart-cache-prod-ap-southeast-2",
+            gated_content_bucket="jumpstart-private-cache-prod-ap-southeast-2",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="ca-central-1",
             content_bucket="jumpstart-cache-prod-ca-central-1",
+            gated_content_bucket="jumpstart-private-cache-prod-ca-central-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="cn-north-1",
@@ -128,6 +148,11 @@ JUMPSTART_REGION_NAME_TO_LAUNCHED_REGION_DICT = {
 JUMPSTART_REGION_NAME_SET = {region.region_name for region in JUMPSTART_LAUNCHED_REGIONS}
 
 JUMPSTART_BUCKET_NAME_SET = {region.content_bucket for region in JUMPSTART_LAUNCHED_REGIONS}
+JUMPSTART_GATED_BUCKET_NAME_SET = {
+    region.gated_content_bucket
+    for region in JUMPSTART_LAUNCHED_REGIONS
+    if region.gated_content_bucket is not None
+}
 
 JUMPSTART_DEFAULT_REGION_NAME = boto3.session.Session().region_name or "us-west-2"
 
