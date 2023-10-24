@@ -18,17 +18,6 @@ from sagemaker.fw_utils import GRAVITON_ALLOWED_FRAMEWORKS
 
 import pytest
 
-GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY = [
-    "m6g",
-    "m6gd",
-    "c6g",
-    "c6gd",
-    "c6gn",
-    "c7g",
-    "r6g",
-    "r6gd",
-]
-GRAVITON_ALGOS = ("tensorflow", "pytorch")
 GRAVITON_INSTANCE_TYPES = [
     "ml.m6g.4xlarge",
     "ml.m6gd.2xlarge",
@@ -40,74 +29,55 @@ GRAVITON_INSTANCE_TYPES = [
     "ml.r6gd.4xlarge",
 ]
 
-ACCOUNTS = {
-    "af-south-1": "626614931356",
-    "il-central-1": "780543022126",
-    "ap-east-1": "871362719292",
-    "ap-northeast-1": "763104351884",
-    "ap-northeast-2": "763104351884",
-    "ap-northeast-3": "364406365360",
-    "ap-south-1": "763104351884",
-    "ap-southeast-1": "763104351884",
-    "ap-southeast-2": "763104351884",
-    "ap-southeast-3": "907027046896",
-    "ca-central-1": "763104351884",
-    "cn-north-1": "727897471807",
-    "cn-northwest-1": "727897471807",
-    "eu-central-1": "763104351884",
-    "eu-north-1": "763104351884",
-    "eu-west-1": "763104351884",
-    "eu-west-2": "763104351884",
-    "eu-west-3": "763104351884",
-    "eu-south-1": "692866216735",
-    "me-south-1": "217643126080",
-    "sa-east-1": "763104351884",
-    "us-east-1": "763104351884",
-    "us-east-2": "763104351884",
-    "us-gov-west-1": "442386744353",
-    "us-iso-east-1": "886529160074",
-    "us-isob-east-1": "094389454867",
-    "us-west-1": "763104351884",
-    "us-west-2": "763104351884",
-}
 
-GRAVITON_REGIONS = ACCOUNTS.keys()
+def _test_graviton_framework_uris(framework, version, py_version, account, region):
+    for instance_type in GRAVITON_INSTANCE_TYPES:
+        uri = image_uris.retrieve(framework, region, instance_type=instance_type, version=version)
+        expected = _expected_graviton_framework_uri(
+            framework, version, py_version, account, region=region
+        )
+        assert expected == uri
 
 
-def _test_graviton_framework_uris(framework, version):
-    for region in GRAVITON_REGIONS:
-        for instance_type in GRAVITON_INSTANCE_TYPES:
-            uri = image_uris.retrieve(
-                framework, region, instance_type=instance_type, version=version
-            )
-            expected = _expected_graviton_framework_uri(framework, version, region=region)
-            assert expected == uri
-
-
-def test_graviton_tensorflow(graviton_tensorflow_version):
-    _test_graviton_framework_uris("tensorflow", graviton_tensorflow_version)
-
-
-def test_graviton_pytorch(graviton_pytorch_version):
-    _test_graviton_framework_uris("pytorch", graviton_pytorch_version)
-
-
-def _test_graviton_unsupported_framework(framework, framework_version):
-    for region in GRAVITON_REGIONS:
-        for instance_type in GRAVITON_INSTANCE_TYPES:
-            with pytest.raises(ValueError) as error:
-                image_uris.retrieve(
-                    framework, region, version=framework_version, instance_type=instance_type
+@pytest.mark.parametrize(
+    "load_config_and_file_name", ["pytorch.json", "tensorflow.json"], indirect=True
+)
+@pytest.mark.parametrize("scope", ["inference_graviton"])
+def test_graviton_framework_uris(load_config_and_file_name, scope):
+    config, file_name = load_config_and_file_name
+    framework = file_name.removesuffix(".json")
+    VERSIONS = config[scope]["versions"]
+    for version in VERSIONS:
+        ACCOUNTS = config[scope]["versions"][version]["registries"]
+        py_versions = config[scope]["versions"][version]["py_versions"]
+        for py_version in py_versions:
+            for region in ACCOUNTS.keys():
+                _test_graviton_framework_uris(
+                    framework, version, py_version, ACCOUNTS[region], region
                 )
-            expectedErr = (
-                f"Unsupported framework: {framework}. Supported framework(s) for Graviton instances: "
-                f"{GRAVITON_ALLOWED_FRAMEWORKS}."
+
+
+def _test_graviton_unsupported_framework(framework, region, framework_version):
+    for instance_type in GRAVITON_INSTANCE_TYPES:
+        with pytest.raises(ValueError) as error:
+            image_uris.retrieve(
+                framework, region, version=framework_version, instance_type=instance_type
             )
-            assert expectedErr in str(error)
+        expectedErr = (
+            f"Unsupported framework: {framework}. Supported framework(s) for Graviton instances: "
+            f"{GRAVITON_ALLOWED_FRAMEWORKS}."
+        )
+        assert expectedErr in str(error)
 
 
-def test_graviton_unsupported_framework():
-    _test_graviton_unsupported_framework("autogluon", "0.6.1")
+@pytest.mark.parametrize("load_config", ["pytorch.json"], indirect=True)
+@pytest.mark.parametrize("scope", ["inference_graviton"])
+def test_graviton_unsupported_framework(load_config, scope):
+    VERSIONS = load_config[scope]["versions"]
+    for version in VERSIONS:
+        ACCOUNTS = load_config[scope]["versions"][version]["registries"]
+        for region in ACCOUNTS.keys():
+            _test_graviton_unsupported_framework("autogluon", region, version)
 
 
 def test_graviton_xgboost_instance_type_specified(graviton_xgboost_versions):
@@ -213,11 +183,11 @@ def test_graviton_sklearn_image_scope_specified_x86_instance(graviton_sklearn_un
             assert "Unsupported instance type: m5." in str(error)
 
 
-def _expected_graviton_framework_uri(framework, version, region):
+def _expected_graviton_framework_uri(framework, version, py_version, account, region):
     return expected_uris.graviton_framework_uri(
         "{}-inference-graviton".format(framework),
         fw_version=version,
-        py_version="py38",
-        account=ACCOUNTS[region],
+        py_version=py_version,
+        account=account,
         region=region,
     )

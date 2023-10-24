@@ -17,62 +17,30 @@ import pytest
 from sagemaker import image_uris
 from tests.unit.sagemaker.image_uris import expected_uris
 
-ACCOUNTS = {
-    "af-south-1": "510948584623",
-    "ap-east-1": "651117190479",
-    "ap-northeast-1": "354813040037",
-    "ap-northeast-2": "366743142698",
-    "ap-northeast-3": "867004704886",
-    "ap-south-1": "720646828776",
-    "ap-south-2": "628508329040",
-    "ap-southeast-1": "121021644041",
-    "ap-southeast-2": "783357654285",
-    "ap-southeast-3": "951798379941",
-    "ap-southeast-4": "106583098589",
-    "ca-central-1": "341280168497",
-    "cn-north-1": "450853457545",
-    "cn-northwest-1": "451049120500",
-    "eu-central-1": "492215442770",
-    "eu-central-2": "680994064768",
-    "eu-north-1": "662702820516",
-    "eu-west-1": "141502667606",
-    "eu-west-2": "764974769150",
-    "eu-west-3": "659782779980",
-    "eu-south-1": "978288397137",
-    "eu-south-2": "104374241257",
-    "il-central-1": "898809789911",
-    "me-south-1": "801668240914",
-    "me-central-1": "272398656194",
-    "sa-east-1": "737474898029",
-    "us-east-1": "683313688378",
-    "us-east-2": "257758044811",
-    "us-gov-west-1": "414596584902",
-    "us-gov-east-1": "237065988967",
-    "us-iso-east-1": "833128469047",
-    "us-isob-east-1": "281123927165",
-    "us-west-1": "746614075791",
-    "us-west-2": "246618743249",
-}
 
+@pytest.mark.parametrize("load_config", ["sklearn.json"], indirect=True)
+@pytest.mark.parametrize("scope", ["training", "inference"])
+def test_sklearn_uris(load_config, scope):
+    VERSIONS = load_config[scope]["versions"]
+    for version in VERSIONS:
+        ACCOUNTS = load_config[scope]["versions"][version]["registries"]
+        for region in ACCOUNTS.keys():
+            uri = image_uris.retrieve(
+                "sklearn",
+                region=region,
+                version=version,
+                py_version="py3",
+                instance_type="ml.c4.xlarge",
+            )
 
-def test_valid_uris(sklearn_version):
-    for region in ACCOUNTS.keys():
-        uri = image_uris.retrieve(
-            "sklearn",
-            region=region,
-            version=sklearn_version,
-            py_version="py3",
-            instance_type="ml.c4.xlarge",
-        )
-
-        expected = expected_uris.framework_uri(
-            "sagemaker-scikit-learn",
-            sklearn_version,
-            ACCOUNTS[region],
-            py_version="py3",
-            region=region,
-        )
-        assert expected == uri
+            expected = expected_uris.framework_uri(
+                "sagemaker-scikit-learn",
+                version,
+                ACCOUNTS[region],
+                py_version="py3",
+                region=region,
+            )
+            assert expected == uri
 
 
 def test_py2_error(sklearn_version):
