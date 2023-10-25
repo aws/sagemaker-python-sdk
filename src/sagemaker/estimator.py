@@ -577,9 +577,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.entry_point = entry_point
         self.dependencies = dependencies or []
         self.uploaded_code: Optional[UploadedCode] = None
-        self.tags = add_jumpstart_uri_tags(
-            tags=tags, training_model_uri=self.model_uri, training_script_uri=self.source_dir
-        )
+
         if self.instance_type in ("local", "local_gpu"):
             if self.instance_type == "local_gpu" and self.instance_count > 1:
                 raise RuntimeError("Distributed Training in Local GPU is not supported")
@@ -591,6 +589,15 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 )
         else:
             self.sagemaker_session = sagemaker_session or Session()
+
+        self.tags = (
+            add_jumpstart_uri_tags(
+                tags=tags, training_model_uri=self.model_uri, training_script_uri=self.source_dir
+            )
+            if getattr(self.sagemaker_session, "settings", None) is not None
+            and self.sagemaker_session.settings.include_jumpstart_tags
+            else tags
+        )
 
         self.base_job_name = base_job_name
         self._current_job_name = None

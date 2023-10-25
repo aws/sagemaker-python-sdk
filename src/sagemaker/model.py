@@ -1375,13 +1375,17 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             sagemaker_session=self.sagemaker_session,
         )
 
-        tags = add_jumpstart_uri_tags(
-            tags=tags,
-            inference_model_uri=self.model_data
-            if isinstance(self.model_data, (str, dict))
-            else None,
-            inference_script_uri=self.source_dir,
-        )
+        if (
+            getattr(self.sagemaker_session, "settings", None) is not None
+            and self.sagemaker_session.settings.include_jumpstart_tags
+        ):
+            tags = add_jumpstart_uri_tags(
+                tags=tags,
+                inference_model_uri=self.model_data
+                if isinstance(self.model_data, (str, dict))
+                else None,
+                inference_script_uri=self.source_dir,
+            )
 
         if self.role is None:
             raise ValueError("Role can not be null for deploying a model")

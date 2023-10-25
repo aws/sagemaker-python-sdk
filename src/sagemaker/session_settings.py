@@ -22,6 +22,7 @@ class SessionSettings(object):
         self,
         encrypt_repacked_artifacts=True,
         local_download_dir=None,
+        include_jumpstart_tags=True,
     ) -> None:
         """Initialize the ``SessionSettings`` of a SageMaker ``Session``.
 
@@ -31,9 +32,12 @@ class SessionSettings(object):
                 is not provided (Default: True).
             local_download_dir (str): Optional. A path specifying the local directory
                 for downloading artifacts. (Default: None).
+            include_jumpstart_tags (bool): Optional. By default, if a JumpStart model is identified,
+                it will receive special tags for tracking purposes
         """
         self._encrypt_repacked_artifacts = encrypt_repacked_artifacts
         self._local_download_dir = local_download_dir
+        self._include_jumpstart_tags = include_jumpstart_tags
 
     @property
     def encrypt_repacked_artifacts(self) -> bool:
@@ -44,3 +48,8 @@ class SessionSettings(object):
     def local_download_dir(self) -> str:
         """Return path specifying the local directory for downloading artifacts."""
         return self._local_download_dir
+
+    @property
+    def include_jumpstart_tags(self) -> bool:
+        """Return True if JumpStart tags should be attached to models with JumpStart artifacts."""
+        return self._include_jumpstart_tags

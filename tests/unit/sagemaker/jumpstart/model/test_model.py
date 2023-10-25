@@ -24,6 +24,7 @@ from sagemaker.jumpstart.enums import JumpStartScriptScope, JumpStartTag
 from sagemaker.jumpstart.model import JumpStartModel
 from sagemaker.model import Model
 from sagemaker.predictor import Predictor
+from sagemaker.session_settings import SessionSettings
 
 from tests.unit.sagemaker.jumpstart.utils import get_special_model_spec, overwrite_dictionary
 
@@ -626,6 +627,38 @@ class ModelTest(unittest.TestCase):
         self.assertEqual(
             mock_session.endpoint_from_production_variants.call_args[1]["tags"],
             js_tags,
+        )
+
+    @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_jumpstart_model_tags_disabled(
+        self,
+        mock_get_model_specs: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
+    ):
+
+        mock_is_valid_model_id.return_value = True
+
+        model_id, _ = "env-var-variant-model", "*"
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        settings = SessionSettings(include_jumpstart_tags=False)
+        mock_session = MagicMock(sagemaker_config={}, settings=settings)
+
+        model = JumpStartModel(model_id=model_id, sagemaker_session=mock_session)
+
+        model.deploy()
+
+        self.assertEqual(
+            mock_session.create_model.call_args[1]["tags"],
+            None,
+        )
+
+        self.assertEqual(
+            mock_session.endpoint_from_production_variants.call_args[1]["tags"],
+            None,
         )
 
     @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")

@@ -29,6 +29,7 @@ from sagemaker.jumpstart.enums import JumpStartScriptScope, JumpStartTag
 from sagemaker.jumpstart.estimator import JumpStartEstimator
 
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
+from sagemaker.session_settings import SessionSettings
 from tests.integ.sagemaker.jumpstart.utils import get_training_dataset_for_model_and_version
 from sagemaker.model import Model
 from sagemaker.predictor import Predictor
@@ -715,6 +716,41 @@ class EstimatorTest(unittest.TestCase):
         )
 
         mock_estimator_deploy.assert_called_once_with(**expected_deploy_kwargs)
+
+    @mock.patch("sagemaker.jumpstart.estimator.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_jumpstart_estimator_tags_disabled(
+        self,
+        mock_get_model_specs: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
+    ):
+
+        mock_is_valid_model_id.return_value = True
+
+        model_id, _ = "js-trainable-model-prepacked", "*"
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        settings = SessionSettings(include_jumpstart_tags=False)
+
+        mock_session = mock.MagicMock(
+            sagemaker_config={}, boto_region_name="us-west-2", settings=settings
+        )
+
+        estimator = JumpStartEstimator(model_id=model_id, sagemaker_session=mock_session)
+
+        channels = {
+            "training": f"s3://{get_jumpstart_content_bucket(region)}/"
+            f"some-training-dataset-doesn't-matter",
+        }
+
+        estimator.fit(channels)
+
+        self.assertEqual(
+            mock_session.train.call_args[1]["tags"],
+            None,
+        )
 
     @mock.patch("sagemaker.jumpstart.estimator.is_valid_model_id")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")

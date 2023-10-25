@@ -455,9 +455,10 @@ def _add_tags_to_kwargs(kwargs: JumpStartEstimatorInitKwargs) -> JumpStartEstima
         sagemaker_session=kwargs.sagemaker_session,
     ).version
 
-    kwargs.tags = add_jumpstart_model_id_version_tags(
-        kwargs.tags, kwargs.model_id, full_model_version
-    )
+    if kwargs.sagemaker_session.settings.include_jumpstart_tags:
+        kwargs.tags = add_jumpstart_model_id_version_tags(
+            kwargs.tags, kwargs.model_id, full_model_version
+        )
     return kwargs
 
 

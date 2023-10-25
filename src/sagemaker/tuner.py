@@ -816,11 +816,12 @@ class HyperparameterTuner(object):
             if tag not in self.tags:
                 self.tags.append(tag)
 
-        self.tags = add_jumpstart_uri_tags(
-            tags=self.tags,
-            training_script_uri=getattr(estimator, "source_dir", None),
-            training_model_uri=self._get_model_uri(estimator),
-        )
+        if self.sagemaker_session.settings.include_jumpstart_tags:
+            self.tags = add_jumpstart_uri_tags(
+                tags=self.tags,
+                training_script_uri=getattr(estimator, "source_dir", None),
+                training_model_uri=self._get_model_uri(estimator),
+            )
 
     def _prepare_job_name_for_tuning(self, job_name=None):
         """Set current job name before starting tuning."""
