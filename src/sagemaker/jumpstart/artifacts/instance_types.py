@@ -183,7 +183,6 @@ def _retrieve_instance_types(
             and hasattr(model_specs, "training_instance_type_variants")
             else []
         )
-        # pylint: enable
         instance_types = (
             instance_specific_instance_types
             if len(instance_specific_instance_types) > 0
