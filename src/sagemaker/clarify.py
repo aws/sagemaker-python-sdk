@@ -435,8 +435,8 @@ class TimeSeriesDataConfig:
         target_time_series: Union[str, int],
         item_id: Union[str, int],
         timestamp: Union[str, int],
-        related_time_series: Optional[Union[List[str], List[int]]] = None,
-        item_metadata: Optional[Union[List[str], List[int]]] = None,
+        related_time_series: Optional[List[Union[str, int]]] = None,
+        item_metadata: Optional[List[Union[str, int]]] = None,
     ):
         """Initialises TimeSeries explainability data configuration fields.
 
@@ -2329,10 +2329,20 @@ class _AnalysisConfigGenerator:
         ts_model_config_present = "time_series_predictor_config" in model_config.predictor_config
 
         if isinstance(explainability_config, AsymmetricSHAPConfig):
-            assert ts_data_config_present, "Please provide a TimeSeriesDataConfig"
-            assert ts_model_config_present, "Please provide a TimeSeriesModelConfig"
+            assert ts_data_config_present, "Please provide a TimeSeriesDataConfig to DataConfig."
+            assert ts_model_config_present, "Please provide a TimeSeriesModelConfig to ModelConfig."
             time_series_case = True
         else:
+            if ts_data_config_present:
+                raise ValueError(
+                    "Please provide an AsymmetricSHAPConfig for time series explainability cases."
+                    "For non time series cases, please do not provide a TimeSeriesDataConfig."
+                )
+            if ts_model_config_present:
+                raise ValueError(
+                    "Please provide an AsymmetricSHAPConfig for time series explainability cases."
+                    "For non time series cases, please do not provide a TimeSeriesModelConfig."
+                )
             time_series_case = False
 
         # construct whole analysis config

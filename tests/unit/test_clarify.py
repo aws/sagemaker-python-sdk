@@ -18,6 +18,7 @@ import copy
 import pytest
 from mock import MagicMock, Mock, patch
 from typing import List, NamedTuple, Optional, Union
+from unittest.mock import ANY
 
 from sagemaker import Processor, image_uris
 from sagemaker.clarify import (
@@ -37,7 +38,6 @@ from sagemaker.clarify import (
     DatasetType,
     ProcessingOutputHandler,
     SegmentationConfig,
-    ASYM_SHAP_DEFAULT_EXPLANATION_TYPE,
     ASYM_SHAP_EXPLANATION_TYPES,
 )
 
@@ -2458,16 +2458,144 @@ def _build_pdp_config_mock():
 
 def _build_asymmetric_shap_config_mock():
     asym_shap_config_dict = {
-        "asymmetric_shap": {
-            "explanation_type": ASYM_SHAP_DEFAULT_EXPLANATION_TYPE,
-        },
+        "explanation_type": "fine_grained",
+        "num_samples": 20,
     }
     asym_shap_config = Mock(spec=AsymmetricSHAPConfig)
-    asym_shap_config.get_explainability_config.return_value = asym_shap_config_dict
+    asym_shap_config.get_explainability_config.return_value = {
+        "asymmetric_shap": asym_shap_config_dict
+    }
     return asym_shap_config
 
 
+def _build_data_config_mock():
+    """
+    Builds a mock DataConfig for the time series _AnalysisConfigGenerator unit tests.
+    """
+    # setup a time_series_data_config dictionary
+    time_series_data_config = {
+        "target_time_series": 1,
+        "item_id": 2,
+        "timestamp": 3,
+        "related_time_series": [4, 5, 6],
+        "item_metadata": [7, 8, 9, 10],
+    }
+    # setup DataConfig mock
+    data_config = Mock(spec=DataConfig)
+    data_config.analysis_config = {"time_series_data_config": time_series_data_config}
+    return data_config
+
+
+def _build_model_config_mock():
+    """
+    Builds a mock ModelConfig for the time series _AnalysisConfigGenerator unit tests.
+    """
+    time_series_model_config = {"forecast": "mean"}
+    model_config = Mock(spec=ModelConfig)
+    model_config.predictor_config = {"time_series_predictor_config": time_series_model_config}
+    return model_config
+
+
 class TestAnalysisConfigGeneratorForTimeSeriesExplainability:
+    @patch("sagemaker.clarify._AnalysisConfigGenerator._add_methods")
+    @patch("sagemaker.clarify._AnalysisConfigGenerator._add_predictor")
+    def test_explainability_for_time_series(self, _add_predictor, _add_methods):
+        """
+        GIVEN a valid DataConfig and ModelConfig that contain time_series_data_config and
+            time_series_model_config respectively as well as an AsymmetricSHAPConfig
+        WHEN _AnalysisConfigGenerator.explainability() is called with those args
+        THEN _add_predictor and _add methods calls are as expected
+        """
+        # GIVEN
+        # get DataConfig mock
+        data_config_mock = _build_data_config_mock()
+        # get ModelConfig mock
+        model_config_mock = _build_model_config_mock()
+        # get AsymmetricSHAPConfig mock for explainability_config
+        explainability_config = _build_asymmetric_shap_config_mock()
+        # get time_series_data_config dict from mock
+        time_series_data_config = copy.deepcopy(
+            data_config_mock.analysis_config.get("time_series_data_config")
+        )
+        # get time_series_predictor_config from mock
+        time_series_model_config = copy.deepcopy(
+            model_config_mock.predictor_config.get("time_series_model_config")
+        )
+        # setup _add_predictor call to return what would be expected at that stage
+        analysis_config_after_add_predictor = {
+            "time_series_data_config": time_series_data_config,
+            "time_series_predictor_config": time_series_model_config,
+        }
+        _add_predictor.return_value = analysis_config_after_add_predictor
+        # WHEN
+        _AnalysisConfigGenerator.explainability(
+            data_config=data_config_mock,
+            model_config=model_config_mock,
+            model_predicted_label_config=None,
+            explainability_config=explainability_config,
+        )
+        # THEN
+        _add_predictor.assert_called_once_with(
+            data_config_mock.analysis_config,
+            model_config_mock,
+            ANY,
+        )
+        _add_methods.assert_called_once_with(
+            ANY,
+            explainability_config=explainability_config,
+            time_series_case=True,
+        )
+
+    def test_explainability_for_time_series_invalid(self):
+        # data config mocks
+        data_config_with_ts = _build_data_config_mock()
+        data_config_without_ts = Mock(spec=DataConfig)
+        data_config_without_ts.analysis_config = dict()
+        # model config mocks
+        model_config_with_ts = _build_model_config_mock()
+        model_config_without_ts = Mock(spec=ModelConfig)
+        model_config_without_ts.predictor_config = dict()
+        # asymmetric shap config mock (for ts)
+        asym_shap_config_mock = _build_asymmetric_shap_config_mock()
+        # pdp config mock (for non-ts)
+        pdp_config_mock = _build_pdp_config_mock()
+        # case 1: asymmetric shap (ts case) and no timeseries data config given
+        with pytest.raises(
+            AssertionError, match="Please provide a TimeSeriesDataConfig to DataConfig."
+        ):
+            _AnalysisConfigGenerator.explainability(
+                data_config=data_config_without_ts,
+                model_config=model_config_with_ts,
+                model_predicted_label_config=None,
+                explainability_config=asym_shap_config_mock,
+            )
+        # case 2: asymmetric shap (ts case) and no timeseries model config given
+        with pytest.raises(
+            AssertionError, match="Please provide a TimeSeriesModelConfig to ModelConfig."
+        ):
+            _AnalysisConfigGenerator.explainability(
+                data_config=data_config_with_ts,
+                model_config=model_config_without_ts,
+                model_predicted_label_config=None,
+                explainability_config=asym_shap_config_mock,
+            )
+        # case 3: pdp (non ts case) and timeseries data config given
+        with pytest.raises(ValueError, match="please do not provide a TimeSeriesDataConfig."):
+            _AnalysisConfigGenerator.explainability(
+                data_config=data_config_with_ts,
+                model_config=model_config_without_ts,
+                model_predicted_label_config=None,
+                explainability_config=pdp_config_mock,
+            )
+        # case 4: pdp (non ts case) and timeseries model config given
+        with pytest.raises(ValueError, match="please do not provide a TimeSeriesModelConfig."):
+            _AnalysisConfigGenerator.explainability(
+                data_config=data_config_without_ts,
+                model_config=model_config_with_ts,
+                model_predicted_label_config=None,
+                explainability_config=pdp_config_mock,
+            )
+
     @pytest.mark.parametrize(
         ("mock_config", "error", "error_message"),
         [
@@ -2494,7 +2622,7 @@ class TestAnalysisConfigGeneratorForTimeSeriesExplainability:
     ):
         """
         GIVEN _merge_explainability_configs is called with a explainability config or list thereof
-        WHEN the provided config(s) aren't the right type for the given case
+        WHEN explainability_config is or contains an AsymmetricSHAPConfig
         THEN the function will raise the appropriate error
         """
         with pytest.raises(error, match=error_message):
