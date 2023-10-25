@@ -40,6 +40,7 @@ from sagemaker.jumpstart.types import (
     JumpStartModelInitKwargs,
 )
 from sagemaker.jumpstart.utils import (
+    add_jumpstart_model_id_version_tags,
     update_dict_if_key_not_present,
     resolve_model_sagemaker_config_field,
 )
@@ -417,6 +418,15 @@ def _add_model_name_to_kwargs(
     return kwargs
 
 
+def _add_tags_to_kwargs(kwargs: JumpStartModelDeployKwargs) -> Dict[str, Any]:
+    """Sets extra kwargs based on default or override, returns full kwargs."""
+
+    kwargs.tags = add_jumpstart_model_id_version_tags(
+        kwargs.tags, kwargs.model_id, kwargs.model_version
+    )
+    return kwargs
+
+
 def _add_deploy_extra_kwargs(kwargs: JumpStartModelInitKwargs) -> Dict[str, Any]:
     """Sets extra kwargs based on default or override, returns full kwargs."""
 
@@ -503,6 +513,8 @@ def get_deploy_kwargs(
     deploy_kwargs.initial_instance_count = initial_instance_count or 1
 
     deploy_kwargs = _add_deploy_extra_kwargs(kwargs=deploy_kwargs)
+
+    deploy_kwargs = _add_tags_to_kwargs(kwargs=deploy_kwargs)
 
     return deploy_kwargs
 

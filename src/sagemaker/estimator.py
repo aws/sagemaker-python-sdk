@@ -71,7 +71,7 @@ from sagemaker.instance_group import InstanceGroup
 from sagemaker.utils import instance_supports_kms
 from sagemaker.job import _Job
 from sagemaker.jumpstart.utils import (
-    add_jumpstart_tags,
+    add_jumpstart_uri_tags,
     get_jumpstart_base_name_if_jumpstart_model,
     update_inference_tags_with_jumpstart_training_tags,
 )
@@ -576,7 +576,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.entry_point = entry_point
         self.dependencies = dependencies or []
         self.uploaded_code: Optional[UploadedCode] = None
-        self.tags = add_jumpstart_tags(
+        self.tags = add_jumpstart_uri_tags(
             tags=tags, training_model_uri=self.model_uri, training_script_uri=self.source_dir
         )
         if self.instance_type in ("local", "local_gpu"):

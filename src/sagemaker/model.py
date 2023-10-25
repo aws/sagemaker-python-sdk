@@ -54,7 +54,7 @@ from sagemaker.predictor import PredictorBase
 from sagemaker.serverless import ServerlessInferenceConfig
 from sagemaker.transformer import Transformer
 from sagemaker.jumpstart.utils import (
-    add_jumpstart_tags,
+    add_jumpstart_uri_tags,
     get_jumpstart_base_name_if_jumpstart_model,
 )
 from sagemaker.utils import (
@@ -1346,7 +1346,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             sagemaker_session=self.sagemaker_session,
         )
 
-        tags = add_jumpstart_tags(
+        tags = add_jumpstart_uri_tags(
             tags=tags,
             inference_model_uri=self.model_data
             if isinstance(self.model_data, (str, dict))

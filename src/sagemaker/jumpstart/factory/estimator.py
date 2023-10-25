@@ -60,6 +60,7 @@ from sagemaker.jumpstart.types import (
     JumpStartModelInitKwargs,
 )
 from sagemaker.jumpstart.utils import (
+    add_jumpstart_model_id_version_tags,
     update_dict_if_key_not_present,
     resolve_estimator_sagemaker_config_field,
 )
@@ -196,6 +197,7 @@ def get_init_kwargs(
     estimator_init_kwargs = _add_estimator_extra_kwargs(estimator_init_kwargs)
     estimator_init_kwargs = _add_role_to_kwargs(estimator_init_kwargs)
     estimator_init_kwargs = _add_env_to_kwargs(estimator_init_kwargs)
+    estimator_init_kwargs = _add_tags_to_kwargs(estimator_init_kwargs)
 
     return estimator_init_kwargs
 
@@ -436,6 +438,14 @@ def _add_instance_type_and_count_to_kwargs(
             "No instance type selected for training job. Defaulting to %s.", kwargs.instance_type
         )
 
+    return kwargs
+
+
+def _add_tags_to_kwargs(kwargs: JumpStartEstimatorInitKwargs) -> JumpStartEstimatorInitKwargs:
+    """Sets tags in kwargs based on default or override, returns full kwargs."""
+    kwargs.tags = add_jumpstart_model_id_version_tags(
+        kwargs.tags, kwargs.model_id, kwargs.model_version
+    )
     return kwargs
 
 

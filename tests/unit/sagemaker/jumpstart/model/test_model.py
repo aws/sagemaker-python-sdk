@@ -19,7 +19,7 @@ from mock import MagicMock
 import pytest
 from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
 from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
-from sagemaker.jumpstart.enums import JumpStartScriptScope
+from sagemaker.jumpstart.enums import JumpStartScriptScope, JumpStartTag
 
 from sagemaker.jumpstart.model import JumpStartModel
 from sagemaker.model import Model
@@ -102,6 +102,10 @@ class ModelTest(unittest.TestCase):
             instance_type="ml.p2.xlarge",
             wait=True,
             endpoint_name="blahblahblah-7777",
+            tags=[
+                {"Key": JumpStartTag.MODEL_ID, "Value": "js-trainable-model"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "*"},
+            ],
         )
 
     @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
@@ -156,6 +160,10 @@ class ModelTest(unittest.TestCase):
             initial_instance_count=1,
             instance_type="ml.p3.2xlarge",
             wait=True,
+            tags=[
+                {"Key": JumpStartTag.MODEL_ID, "Value": "js-model-class-model-prepacked"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "*"},
+            ],
         )
 
     @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
@@ -240,7 +248,7 @@ class ModelTest(unittest.TestCase):
             "deserializer": "BaseDeserializer()",
             "accelerator_type": "None",
             "endpoint_name": "None",
-            "tags": ["None"],
+            "tags": [],
             "kms_key": "None",
             "wait": True,
             "data_capture_config": "None",
@@ -322,7 +330,15 @@ class ModelTest(unittest.TestCase):
         model.deploy(**deploy_kwargs)
 
         expected_deploy_kwargs = overwrite_dictionary(
-            {"initial_instance_count": 1, "instance_type": "ml.p3.2xlarge"}, deploy_kwargs
+            {
+                "initial_instance_count": 1,
+                "instance_type": "ml.p3.2xlarge",
+                "tags": [
+                    {"Key": JumpStartTag.MODEL_ID, "Value": "js-model-class-model-prepacked"},
+                    {"Key": JumpStartTag.MODEL_VERSION, "Value": "*"},
+                ],
+            },
+            deploy_kwargs,
         )
 
         mock_model_deploy.assert_called_once_with(**expected_deploy_kwargs)

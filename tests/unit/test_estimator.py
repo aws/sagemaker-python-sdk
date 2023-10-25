@@ -4898,7 +4898,7 @@ def test_script_mode_estimator_tags_jumpstart_models_with_no_estimator_js_tags(
 @patch("sagemaker.estimator.tar_and_upload_dir")
 @patch("sagemaker.model.Model._upload_code")
 @patch("sagemaker.utils.repack_model")
-def test_all_framework_estimators_add_jumpstart_tags(
+def test_all_framework_estimators_add_jumpstart_uri_tags(
     patched_repack_model, patched_upload_code, patched_tar_and_upload_dir, sagemaker_session
 ):
     sagemaker_session.boto_region_name = REGION

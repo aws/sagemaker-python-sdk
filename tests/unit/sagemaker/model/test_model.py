@@ -595,7 +595,7 @@ def test_script_mode_model_tags_jumpstart_models(repack_model, sagemaker_session
 
 @patch("sagemaker.utils.repack_model")
 @patch("sagemaker.fw_utils.tar_and_upload_dir")
-def test_all_framework_models_add_jumpstart_tags(
+def test_all_framework_models_add_jumpstart_uri_tags(
     repack_model, tar_and_uload_dir, sagemaker_session
 ):
     framework_model_classes_to_kwargs = {
