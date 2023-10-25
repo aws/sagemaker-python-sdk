@@ -20,8 +20,8 @@ from sagemaker.jumpstart import utils
 from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE,
-    JUMPSTART_BUCKET_NAME_SET,
     JUMPSTART_DEFAULT_REGION_NAME,
+    JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET,
     JUMPSTART_REGION_NAME_SET,
     JUMPSTART_RESOURCE_BASE_NAME,
     JumpStartScriptScope,
@@ -38,7 +38,7 @@ from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec
 
 
 def random_jumpstart_s3_uri(key):
-    return f"s3://{random.choice(list(JUMPSTART_BUCKET_NAME_SET))}/{key}"
+    return f"s3://{random.choice(list(JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET))}/{key}"
 
 
 def test_get_jumpstart_content_bucket():
@@ -186,6 +186,69 @@ def test_is_jumpstart_model_uri():
         random_jumpstart_s3_uri("source_directory_tarballs/sourcedir.tar.gz")
     )
     assert utils.is_jumpstart_model_uri(random_jumpstart_s3_uri("random_key"))
+
+
+def test_add_jumpstart_model_id_version_tags():
+    tags = None
+    model_id = "model_id"
+    version = "version"
+    assert [
+        {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "model_id"},
+        {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "version"},
+    ] == utils.add_jumpstart_model_id_version_tags(
+        tags=tags, model_id=model_id, model_version=version
+    )
+
+    tags = [
+        {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "model_id_2"},
+        {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "version_2"},
+    ]
+    model_id = "model_id"
+    version = "version"
+    # If tags are already present, don't modify existing tags
+    assert [
+        {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "model_id_2"},
+        {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "version_2"},
+    ] == utils.add_jumpstart_model_id_version_tags(
+        tags=tags, model_id=model_id, model_version=version
+    )
+
+    tags = [
+        {"Key": "random key", "Value": "random_value"},
+    ]
+    model_id = "model_id"
+    version = "version"
+    assert [
+        {"Key": "random key", "Value": "random_value"},
+        {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "model_id"},
+        {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "version"},
+    ] == utils.add_jumpstart_model_id_version_tags(
+        tags=tags, model_id=model_id, model_version=version
+    )
+
+    tags = [
+        {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "model_id_2"},
+    ]
+    model_id = "model_id"
+    version = "version"
+    # If tags are already present, don't modify existing tags
+    assert [
+        {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "model_id_2"},
+        {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "version"},
+    ] == utils.add_jumpstart_model_id_version_tags(
+        tags=tags, model_id=model_id, model_version=version
+    )
+
+    tags = [
+        {"Key": "random key", "Value": "random_value"},
+    ]
+    model_id = None
+    version = None
+    assert [
+        {"Key": "random key", "Value": "random_value"},
+    ] == utils.add_jumpstart_model_id_version_tags(
+        tags=tags, model_id=model_id, model_version=version
+    )
 
 
 def test_add_jumpstart_uri_tags_inference():

@@ -104,7 +104,7 @@ class ModelTest(unittest.TestCase):
             endpoint_name="blahblahblah-7777",
             tags=[
                 {"Key": JumpStartTag.MODEL_ID, "Value": "js-trainable-model"},
-                {"Key": JumpStartTag.MODEL_VERSION, "Value": "*"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.1.1"},
             ],
         )
 
@@ -162,7 +162,7 @@ class ModelTest(unittest.TestCase):
             wait=True,
             tags=[
                 {"Key": JumpStartTag.MODEL_ID, "Value": "js-model-class-model-prepacked"},
-                {"Key": JumpStartTag.MODEL_VERSION, "Value": "*"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.1.0"},
             ],
         )
 
@@ -335,7 +335,7 @@ class ModelTest(unittest.TestCase):
                 "instance_type": "ml.p3.2xlarge",
                 "tags": [
                     {"Key": JumpStartTag.MODEL_ID, "Value": "js-model-class-model-prepacked"},
-                    {"Key": JumpStartTag.MODEL_VERSION, "Value": "*"},
+                    {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.1.0"},
                 ],
             },
             deploy_kwargs,
@@ -590,6 +590,42 @@ class ModelTest(unittest.TestCase):
                     sagemaker_session=None,
                 ),
             ]
+        )
+
+    @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_jumpstart_model_tags(
+        self,
+        mock_get_model_specs: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
+    ):
+
+        mock_is_valid_model_id.return_value = True
+
+        model_id, _ = "env-var-variant-model", "*"
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        mock_session = MagicMock(sagemaker_config={})
+
+        model = JumpStartModel(model_id=model_id, sagemaker_session=mock_session)
+
+        model.deploy()
+
+        js_tags = [
+            {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "env-var-variant-model"},
+            {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "1.0.0"},
+        ]
+
+        self.assertEqual(
+            mock_session.create_model.call_args[1]["tags"],
+            js_tags,
+        )
+
+        self.assertEqual(
+            mock_session.endpoint_from_production_variants.call_args[1]["tags"],
+            js_tags,
         )
 
     @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")

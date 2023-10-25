@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
+import random
 from unittest.mock import MagicMock
 
 import pytest
@@ -20,7 +21,10 @@ import sagemaker
 from sagemaker.async_inference import AsyncInferenceConfig
 from sagemaker.model import FrameworkModel, Model
 from sagemaker.huggingface.model import HuggingFaceModel
-from sagemaker.jumpstart.constants import JUMPSTART_BUCKET_NAME_SET, JUMPSTART_RESOURCE_BASE_NAME
+from sagemaker.jumpstart.constants import (
+    JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET,
+    JUMPSTART_RESOURCE_BASE_NAME,
+)
 from sagemaker.jumpstart.enums import JumpStartTag
 from sagemaker.mxnet.model import MXNetModel
 from sagemaker.pytorch.model import PyTorchModel
@@ -65,6 +69,7 @@ SUPPORTED_RESPONSE_MIME_TYPES = ["application/json", "text/csv", "application/js
 VALIDATION_FILE_NAME = "input.csv"
 VALIDATION_INPUT_PATH = "s3://" + BUCKET_NAME + "/validation-input-csv/"
 VALIDATION_OUTPUT_PATH = "s3://" + BUCKET_NAME + "/validation-output-csv/"
+
 
 VALIDATION_SPECIFICATION = {
     "ValidationRole": "some_role",
@@ -547,7 +552,7 @@ def test_git_support_succeed_model_class(tar_and_upload_dir, git_clone_repo, sag
 @patch("sagemaker.utils.repack_model")
 def test_script_mode_model_tags_jumpstart_models(repack_model, sagemaker_session):
 
-    jumpstart_source_dir = f"s3://{list(JUMPSTART_BUCKET_NAME_SET)[0]}/source_dirs/source.tar.gz"
+    jumpstart_source_dir = f"s3://{random.choice(JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET)}/source_dirs/source.tar.gz"
     t = Model(
         entry_point=ENTRY_POINT_INFERENCE,
         role=ROLE,
@@ -616,7 +621,9 @@ def test_all_framework_models_add_jumpstart_uri_tags(
             "framework_version": "1.3-1",
         },
     }
-    jumpstart_model_dir = f"s3://{list(JUMPSTART_BUCKET_NAME_SET)[0]}/model_dirs/model.tar.gz"
+    jumpstart_model_dir = (
+        f"s3://{random.choice(JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET)}/model_dirs/model.tar.gz"
+    )
     for framework_model_class, kwargs in framework_model_classes_to_kwargs.items():
         framework_model_class(
             entry_point=ENTRY_POINT_INFERENCE,
@@ -643,7 +650,7 @@ def test_all_framework_models_add_jumpstart_uri_tags(
 @patch("sagemaker.utils.repack_model")
 def test_script_mode_model_uses_jumpstart_base_name(repack_model, sagemaker_session):
 
-    jumpstart_source_dir = f"s3://{list(JUMPSTART_BUCKET_NAME_SET)[0]}/source_dirs/source.tar.gz"
+    jumpstart_source_dir = f"s3://{random.choice(JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET)}/source_dirs/source.tar.gz"
     t = Model(
         entry_point=ENTRY_POINT_INFERENCE,
         role=ROLE,
@@ -770,7 +777,9 @@ def test_all_framework_models_add_jumpstart_base_name(
             "framework_version": "1.3-1",
         },
     }
-    jumpstart_model_dir = f"s3://{list(JUMPSTART_BUCKET_NAME_SET)[0]}/model_dirs/model.tar.gz"
+    jumpstart_model_dir = (
+        f"s3://{random.choice(JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET)}/model_dirs/model.tar.gz"
+    )
     for framework_model_class, kwargs in framework_model_classes_to_kwargs.items():
         framework_model_class(
             entry_point=ENTRY_POINT_INFERENCE,

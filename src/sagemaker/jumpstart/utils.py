@@ -250,7 +250,7 @@ def is_jumpstart_model_uri(uri: Optional[str]) -> bool:
     if urlparse(uri).scheme == "s3":
         bucket, _ = parse_s3_url(uri)
 
-    return bucket in constants.JUMPSTART_BUCKET_NAME_SET
+    return bucket in constants.JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET
 
 
 def tag_key_in_array(tag_key: str, tag_array: List[Dict[str, str]]) -> bool:
@@ -346,6 +346,8 @@ def add_jumpstart_model_id_version_tags(
     model_version: str,
 ) -> List[Dict[str, str]]:
     """Add custom model id and version tags to JumpStart related resources"""
+    if model_id is None or model_version is None:
+        return tags
     tags = add_single_jumpstart_tag(
         model_id,
         enums.JumpStartTag.MODEL_ID,
