@@ -1,5 +1,38 @@
 # Changelog
 
+## v2.195.0 (2023-10-25)
+
+### Features
+
+ * jumpstart gated model artifacts
+ * jumpstart extract generated text from response
+ * jumpstart contruct payload utility
+
+### Bug Fixes and Other Changes
+
+ * relax upper bound on urllib in local mode requirements
+ * bump urllib3 version
+ * allow smdistributed to be enabled with torch_distributed.
+ * fix URL links
+
+### Documentation Changes
+
+ * remove python 2 reference
+ * update framework version links
+
+## v2.194.0 (2023-10-19)
+
+### Features
+
+ * Added register step in Jumpstart model
+ * jumpstart instance specific metric definitions
+
+### Bug Fixes and Other Changes
+
+ * Updates for DJL 0.24.0 Release
+ * use getter for resource-metadata dict
+ * add method to Model class to check if repack is needed
+
 ## v2.193.0 (2023-10-18)
 
 ### Features

@@ -16,6 +16,9 @@ from copy import deepcopy
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Union
 from sagemaker.utils import get_instance_type_family
+from sagemaker.model_metrics import ModelMetrics
+from sagemaker.metadata_properties import MetadataProperties
+from sagemaker.drift_check_baselines import DriftCheckBaselines
 
 from sagemaker.session import Session
 from sagemaker.workflow.entities import PipelineVariable
@@ -104,16 +107,21 @@ class JumpStartS3FileType(str, Enum):
 class JumpStartLaunchedRegionInfo(JumpStartDataHolderType):
     """Data class for launched region info."""
 
-    __slots__ = ["content_bucket", "region_name"]
+    __slots__ = ["content_bucket", "region_name", "gated_content_bucket"]
 
-    def __init__(self, content_bucket: str, region_name: str):
+    def __init__(
+        self, content_bucket: str, region_name: str, gated_content_bucket: Optional[str] = None
+    ):
         """Instantiates JumpStartLaunchedRegionInfo object.
 
         Args:
             content_bucket (str): Name of JumpStart s3 content bucket associated with region.
             region_name (str): Name of JumpStart launched region.
+            gated_content_bucket (Optional[str[]): Name of JumpStart gated s3 content bucket
+                optionally associated with region.
         """
         self.content_bucket = content_bucket
+        self.gated_content_bucket = gated_content_bucket
         self.region_name = region_name
 
 
@@ -331,9 +339,11 @@ class JumpStartSerializablePayload(JumpStartDataHolderType):
         "content_type",
         "accept",
         "body",
+        "generated_text_response_key",
+        "prompt_key",
     ]
 
-    _non_serializable_slots = ["raw_payload"]
+    _non_serializable_slots = ["raw_payload", "prompt_key"]
 
     def __init__(self, spec: Optional[Dict[str, Any]]):
         """Initializes a JumpStartSerializablePayload object from its json representation.
@@ -361,6 +371,8 @@ class JumpStartSerializablePayload(JumpStartDataHolderType):
         self.content_type = json_obj["content_type"]
         self.body = json_obj["body"]
         accept = json_obj.get("accept")
+        self.generated_text_response_key = json_obj.get("generated_text_response_key")
+        self.prompt_key = json_obj.get("prompt_key")
         if accept:
             self.accept = accept
 
@@ -402,6 +414,42 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
         """Returns json representation of JumpStartInstanceTypeVariants object."""
         json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
         return json_obj
+
+    def get_instance_specific_metric_definitions(
+        self, instance_type: str
+    ) -> List[JumpStartHyperparameter]:
+        """Returns instance specific metric definitions.
+
+        Returns empty list if a model, instance type tuple does not have specific
+        metric definitions.
+        """
+
+        if self.variants is None:
+            return []
+
+        instance_specific_metric_definitions: List[Dict[str, Union[str, Any]]] = (
+            self.variants.get(instance_type, {}).get("properties", {}).get("metrics", [])
+        )
+
+        instance_type_family = get_instance_type_family(instance_type)
+
+        instance_family_metric_definitions: List[Dict[str, Union[str, Any]]] = (
+            self.variants.get(instance_type_family, {}).get("properties", {}).get("metrics", [])
+            if instance_type_family not in {"", None}
+            else []
+        )
+
+        instance_specific_metric_names = {
+            metric_definition["Name"] for metric_definition in instance_specific_metric_definitions
+        }
+
+        metric_definitions_to_return = deepcopy(instance_specific_metric_definitions)
+
+        for instance_family_metric_definition in instance_family_metric_definitions:
+            if instance_family_metric_definition["Name"] not in instance_specific_metric_names:
+                metric_definitions_to_return.append(instance_family_metric_definition)
+
+        return metric_definitions_to_return
 
     def get_instance_specific_prepacked_artifact_key(self, instance_type: str) -> Optional[str]:
         """Returns instance specific model artifact key.
@@ -648,6 +696,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         "hosting_instance_type_variants",
         "training_instance_type_variants",
         "default_payloads",
+        "gated_bucket",
     ]
 
     def __init__(self, spec: Dict[str, Any]):
@@ -724,6 +773,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
             if json_obj.get("default_payloads")
             else None
         )
+        self.gated_bucket = json_obj.get("gated_bucket", False)
         self.inference_volume_size: Optional[int] = json_obj.get("inference_volume_size")
         self.inference_enable_network_isolation: bool = json_obj.get(
             "inference_enable_network_isolation", False
@@ -1450,3 +1500,107 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         self.tolerate_deprecated_model = tolerate_deprecated_model
         self.tolerate_vulnerable_model = tolerate_vulnerable_model
         self.use_compiled_model = use_compiled_model
+
+
+class JumpStartModelRegisterKwargs(JumpStartKwargs):
+    """Data class for the inputs to `JumpStartEstimator.deploy` method."""
+
+    __slots__ = [
+        "tolerate_vulnerable_model",
+        "tolerate_deprecated_model",
+        "region",
+        "model_id",
+        "model_version",
+        "sagemaker_session",
+        "content_types",
+        "response_types",
+        "inference_instances",
+        "transform_instances",
+        "model_package_group_name",
+        "image_uri",
+        "model_metrics",
+        "metadata_properties",
+        "approval_status",
+        "description",
+        "drift_check_baselines",
+        "customer_metadata_properties",
+        "validation_specification",
+        "domain",
+        "task",
+        "sample_payload_url",
+        "framework",
+        "framework_version",
+        "nearest_model_name",
+        "data_input_configuration",
+        "skip_model_validation",
+    ]
+
+    SERIALIZATION_EXCLUSION_SET = {
+        "tolerate_vulnerable_model",
+        "tolerate_deprecated_model",
+        "region",
+        "model_id",
+        "model_version",
+        "sagemaker_session",
+    }
+
+    def __init__(
+        self,
+        model_id: str,
+        model_version: Optional[str] = None,
+        region: Optional[str] = None,
+        tolerate_deprecated_model: Optional[bool] = None,
+        tolerate_vulnerable_model: Optional[bool] = None,
+        sagemaker_session: Optional[Any] = None,
+        content_types: List[str] = None,
+        response_types: List[str] = None,
+        inference_instances: Optional[List[str]] = None,
+        transform_instances: Optional[List[str]] = None,
+        model_package_group_name: Optional[str] = None,
+        image_uri: Optional[str] = None,
+        model_metrics: Optional[ModelMetrics] = None,
+        metadata_properties: Optional[MetadataProperties] = None,
+        approval_status: Optional[str] = None,
+        description: Optional[str] = None,
+        drift_check_baselines: Optional[DriftCheckBaselines] = None,
+        customer_metadata_properties: Optional[Dict[str, str]] = None,
+        validation_specification: Optional[str] = None,
+        domain: Optional[str] = None,
+        task: Optional[str] = None,
+        sample_payload_url: Optional[str] = None,
+        framework: Optional[str] = None,
+        framework_version: Optional[str] = None,
+        nearest_model_name: Optional[str] = None,
+        data_input_configuration: Optional[str] = None,
+        skip_model_validation: Optional[str] = None,
+    ) -> None:
+        """Instantiates JumpStartModelRegisterKwargs object."""
+
+        self.model_id = model_id
+        self.model_version = model_version
+        self.region = region
+        self.image_uri = image_uri
+        self.sagemaker_session = sagemaker_session
+        self.tolerate_deprecated_model = tolerate_deprecated_model
+        self.tolerate_vulnerable_model = tolerate_vulnerable_model
+        self.content_types = content_types
+        self.response_types = response_types
+        self.inference_instances = inference_instances
+        self.transform_instances = transform_instances
+        self.model_package_group_name = model_package_group_name
+        self.image_uri = image_uri
+        self.model_metrics = model_metrics
+        self.metadata_properties = metadata_properties
+        self.approval_status = approval_status
+        self.description = description
+        self.drift_check_baselines = drift_check_baselines
+        self.customer_metadata_properties = customer_metadata_properties
+        self.validation_specification = validation_specification
+        self.domain = domain
+        self.task = task
+        self.sample_payload_url = sample_payload_url
+        self.framework = framework
+        self.framework_version = framework_version
+        self.nearest_model_name = nearest_model_name
+        self.data_input_configuration = data_input_configuration
+        self.skip_model_validation = skip_model_validation

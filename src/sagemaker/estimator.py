@@ -101,6 +101,7 @@ from sagemaker.utils import (
 )
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.pipeline_context import PipelineSession, runnable_by_pipeline
 
 logger = logging.getLogger(__name__)
@@ -3198,6 +3199,7 @@ class Framework(EstimatorBase):
     """
 
     _framework_name = None
+    UNSUPPORTED_DLC_IMAGE_FOR_SM_PARALLELISM = ("2.0.1-gpu-py310-cu121", "2.0-gpu-py310-cu121")
 
     def __init__(
         self,
@@ -3843,16 +3845,43 @@ class Framework(EstimatorBase):
                 "custom_mpi_options", ""
             )
 
-            if get_mp_parameters(distribution):
-                distribution_config["mp_parameters"] = get_mp_parameters(distribution)
-
-        elif "modelparallel" in distribution.get("smdistributed", {}):
-            raise ValueError("Cannot use Model Parallelism without MPI enabled!")
-
         if "smdistributed" in distribution:
             # smdistributed strategy selected
+            if get_mp_parameters(distribution):
+                distribution_config["mp_parameters"] = get_mp_parameters(distribution)
+            # first make sure torch_distributed is enabled if instance type is p5
+            torch_distributed_enabled = False
+            if "torch_distributed" in distribution:
+                torch_distributed_enabled = distribution.get("torch_distributed").get(
+                    "enabled", False
+                )
             smdistributed = distribution["smdistributed"]
             smdataparallel_enabled = smdistributed.get("dataparallel", {}).get("enabled", False)
+            if isinstance(self.instance_type, ParameterString):
+                p5_enabled = "p5.48xlarge" in self.instance_type.default_value
+            elif isinstance(self.instance_type, str):
+                p5_enabled = "p5.48xlarge" in self.instance_type
+            else:
+                raise ValueError(
+                    "Invalid object type for instance_type argument. Expected "
+                    f"{type(str)} or {type(ParameterString)} but got {type(self.instance_type)}."
+                )
+            img_uri = "" if self.image_uri is None else self.image_uri
+            for unsupported_image in Framework.UNSUPPORTED_DLC_IMAGE_FOR_SM_PARALLELISM:
+                if (
+                    unsupported_image in img_uri and not torch_distributed_enabled
+                ):  # disabling DLC images with CUDA12
+                    raise ValueError(
+                        f"SMDistributed is currently incompatible with DLC image: {img_uri}. "
+                        "(Could be due to CUDA version being greater than 11.)"
+                    )
+            if (
+                not torch_distributed_enabled and p5_enabled
+            ):  # disabling p5 when torch distributed is disabled
+                raise ValueError(
+                    "SMModelParallel and SMDataParallel currently do not support p5 instances."
+                )
+            # smdistributed strategy selected with supported instance type
             distribution_config[self.LAUNCH_SM_DDP_ENV_NAME] = smdataparallel_enabled
             distribution_config[self.INSTANCE_TYPE] = self.instance_type
             if smdataparallel_enabled:

@@ -108,7 +108,7 @@ class Chainer(Framework):
             framework_version (str): Chainer version you want to use for
                 executing your model training code. Defaults to ``None``. Required unless
                 ``image_uri`` is provided. List of supported versions:
-                https://github.com/aws/sagemaker-python-sdk#chainer-sagemaker-estimators.
+                https://sagemaker.readthedocs.io/en/stable/frameworks/chainer/using_chainer.html#using-chainer-with-the-sagemaker-python-sdk.
             image_uri (str): If specified, the estimator will use this image
                 for training and hosting, instead of selecting the appropriate
                 SageMaker official image based on framework_version and

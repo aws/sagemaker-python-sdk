@@ -63,6 +63,30 @@ def test_get_jumpstart_content_bucket_override():
             mocked_info_log.assert_called_once_with("Using JumpStart bucket override: 'some-val'")
 
 
+def test_get_jumpstart_gated_content_bucket():
+    bad_region = "bad_region"
+    assert bad_region not in JUMPSTART_REGION_NAME_SET
+    with pytest.raises(ValueError):
+        utils.get_jumpstart_gated_content_bucket(bad_region)
+
+
+def test_get_jumpstart_gated_content_bucket_no_args():
+    assert (
+        utils.get_jumpstart_gated_content_bucket(JUMPSTART_DEFAULT_REGION_NAME)
+        == utils.get_jumpstart_gated_content_bucket()
+    )
+
+
+def test_get_jumpstart_gated_content_bucket_override():
+    with patch.dict(os.environ, {ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE: "some-val"}):
+        with patch("logging.Logger.info") as mocked_info_log:
+            random_region = "random_region"
+            assert "some-val" == utils.get_jumpstart_gated_content_bucket(random_region)
+            mocked_info_log.assert_called_once_with(
+                "Using JumpStart private bucket override: 'some-val'"
+            )
+
+
 def test_get_jumpstart_launched_regions_message():
 
     with patch("sagemaker.jumpstart.constants.JUMPSTART_REGION_NAME_SET", {}):

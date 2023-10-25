@@ -32,7 +32,52 @@ INSTANCE_TYPE_VARIANT = JumpStartInstanceTypeVariants(
             }
         },
         "variants": {
-            "p2": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
+            "ml.p2.12xlarge": {
+                "properties": {
+                    "environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"},
+                    "metrics": [
+                        {
+                            "Name": "huggingface-textgeneration:eval-loss",
+                            "Regex": "'eval_loss': ([0-9]+\\.[0-9]+)",
+                        },
+                        {
+                            "Name": "huggingface-textgeneration:instance-typemetric-loss",
+                            "Regex": "'eval_loss': ([0-9]+\\.[0-9]+)",
+                        },
+                        {
+                            "Name": "huggingface-textgeneration:train-loss",
+                            "Regex": "'instance type specific': ([0-9]+\\.[0-9]+)",
+                        },
+                        {
+                            "Name": "huggingface-textgeneration:noneyourbusiness-loss",
+                            "Regex": "'loss-noyb instance specific': ([0-9]+\\.[0-9]+)",
+                        },
+                    ],
+                }
+            },
+            "p2": {
+                "regional_properties": {"image_uri": "$gpu_image_uri"},
+                "properties": {
+                    "metrics": [
+                        {
+                            "Name": "huggingface-textgeneration:wtafigo",
+                            "Regex": "'evasadfasdl_loss': ([0-9]+\\.[0-9]+)",
+                        },
+                        {
+                            "Name": "huggingface-textgeneration:eval-loss",
+                            "Regex": "'eval_loss': ([0-9]+\\.[0-9]+)",
+                        },
+                        {
+                            "Name": "huggingface-textgeneration:train-loss",
+                            "Regex": "'instance family specific': ([0-9]+\\.[0-9]+)",
+                        },
+                        {
+                            "Name": "huggingface-textgeneration:noneyourbusiness-loss",
+                            "Regex": "'loss-noyb': ([0-9]+\\.[0-9]+)",
+                        },
+                    ]
+                },
+            },
             "p3": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
             "ml.p3.200xlarge": {"regional_properties": {"image_uri": "$gpu_image_uri_2"}},
             "p4": {
@@ -650,6 +695,61 @@ def test_jumpstart_environment_variables_instance_variants():
         )
         == {}
     )
+
+
+def test_jumpstart_metric_definitions_instance_variants():
+
+    metric_definitions = INSTANCE_TYPE_VARIANT.get_instance_specific_metric_definitions(
+        instance_type="ml.p2.2xlarge"
+    )
+    assert metric_definitions == [
+        {
+            "Name": "huggingface-textgeneration:wtafigo",
+            "Regex": "'evasadfasdl_loss': ([0-9]+\\.[0-9]+)",
+        },
+        {"Name": "huggingface-textgeneration:eval-loss", "Regex": "'eval_loss': ([0-9]+\\.[0-9]+)"},
+        {
+            "Name": "huggingface-textgeneration:train-loss",
+            "Regex": "'instance family specific': ([0-9]+\\.[0-9]+)",
+        },
+        {
+            "Name": "huggingface-textgeneration:noneyourbusiness-loss",
+            "Regex": "'loss-noyb': ([0-9]+\\.[0-9]+)",
+        },
+    ]
+
+    metric_definitions = INSTANCE_TYPE_VARIANT.get_instance_specific_metric_definitions(
+        instance_type="ml.p2.12xlarge"
+    )
+    assert metric_definitions == [
+        {"Name": "huggingface-textgeneration:eval-loss", "Regex": "'eval_loss': ([0-9]+\\.[0-9]+)"},
+        {
+            "Name": "huggingface-textgeneration:instance-typemetric-loss",
+            "Regex": "'eval_loss': ([0-9]+\\.[0-9]+)",
+        },
+        {
+            "Name": "huggingface-textgeneration:train-loss",
+            "Regex": "'instance type specific': ([0-9]+\\.[0-9]+)",
+        },
+        {
+            "Name": "huggingface-textgeneration:noneyourbusiness-loss",
+            "Regex": "'loss-noyb instance specific': ([0-9]+\\.[0-9]+)",
+        },
+        {
+            "Name": "huggingface-textgeneration:wtafigo",
+            "Regex": "'evasadfasdl_loss': ([0-9]+\\.[0-9]+)",
+        },
+    ]
+
+    metric_definitions = INSTANCE_TYPE_VARIANT.get_instance_specific_metric_definitions(
+        instance_type="ml.g77.2xlarge"
+    )
+    assert metric_definitions == []
+
+    metric_definitions = INSTANCE_TYPE_VARIANT.get_instance_specific_metric_definitions(
+        instance_type="ml.p3.2xlarge"
+    )
+    assert metric_definitions == []
 
 
 def test_jumpstart_hosting_prepacked_artifact_key_instance_variants():

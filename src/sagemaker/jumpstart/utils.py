@@ -63,13 +63,64 @@ def get_jumpstart_launched_regions_message() -> str:
     return f"JumpStart is available in {formatted_launched_regions_str} regions."
 
 
+def get_jumpstart_gated_content_bucket(
+    region: str = constants.JUMPSTART_DEFAULT_REGION_NAME,
+) -> str:
+    """Returns regionalized private content bucket name for JumpStart.
+
+    Raises:
+        ValueError: If JumpStart is not launched in ``region`` or private content
+            unavailable in that region.
+    """
+
+    old_gated_content_bucket: Optional[
+        str
+    ] = accessors.JumpStartModelsAccessor.get_jumpstart_gated_content_bucket()
+
+    info_logs: List[str] = []
+
+    gated_bucket_to_return: Optional[str] = None
+    if (
+        constants.ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE in os.environ
+        and len(os.environ[constants.ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE]) > 0
+    ):
+        gated_bucket_to_return = os.environ[
+            constants.ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE
+        ]
+        info_logs.append(f"Using JumpStart private bucket override: '{gated_bucket_to_return}'")
+    else:
+        try:
+            gated_bucket_to_return = constants.JUMPSTART_REGION_NAME_TO_LAUNCHED_REGION_DICT[
+                region
+            ].gated_content_bucket
+            if gated_bucket_to_return is None:
+                raise ValueError(
+                    f"No private content bucket for JumpStart exists in {region} region."
+                )
+        except KeyError:
+            formatted_launched_regions_str = get_jumpstart_launched_regions_message()
+            raise ValueError(
+                f"Unable to get private content bucket for JumpStart in {region} region. "
+                f"{formatted_launched_regions_str}"
+            )
+
+    accessors.JumpStartModelsAccessor.set_jumpstart_gated_content_bucket(gated_bucket_to_return)
+
+    if gated_bucket_to_return != old_gated_content_bucket:
+        accessors.JumpStartModelsAccessor.reset_cache()
+        for info_log in info_logs:
+            constants.JUMPSTART_LOGGER.info(info_log)
+
+    return gated_bucket_to_return
+
+
 def get_jumpstart_content_bucket(
     region: str = constants.JUMPSTART_DEFAULT_REGION_NAME,
 ) -> str:
     """Returns regionalized content bucket name for JumpStart.
 
     Raises:
-        RuntimeError: If JumpStart is not launched in ``region``.
+        ValueError: If JumpStart is not launched in ``region``.
     """
 
     old_content_bucket: Optional[
