@@ -402,6 +402,39 @@ def test_validate_smdistributed_backward_compat_p4_not_raises(sagemaker_session)
     f._distribution_configuration(DISTRIBUTION_SM_TORCH_DIST_AND_DDP_DISABLED)
 
 
+def test_validate_smdistributed_instance_groups_raises(sagemaker_session):
+    instance_group_1 = InstanceGroup("train_group", "ml.p4d.24xlarge", 2)
+    instance_group_2 = InstanceGroup("train_group", "ml.p5.48xlarge", 2)
+    f = DummyFramework(
+        "some_script.py",
+        role="DummyRole",
+        instance_groups=[instance_group_1, instance_group_2],
+        sagemaker_session=sagemaker_session,
+        output_path="outputpath",
+        image_uri="some_acceptable_image",
+    )
+    # Testing instance_group with p5 raises exception
+    with pytest.raises(ValueError):
+        f._distribution_configuration(DISTRIBUTION_SM_DDP_ENABLED)
+    with pytest.raises(ValueError):
+        f._distribution_configuration(DISTRIBUTION_SM_DDP_DISABLED)
+
+
+def test_validate_smdistributed_instance_groups_not_raises(sagemaker_session):
+    instance_group_1 = InstanceGroup("train_group", "ml.p4d.24xlarge", 2)
+    f = DummyFramework(
+        "some_script.py",
+        role="DummyRole",
+        instance_groups=[instance_group_1],
+        sagemaker_session=sagemaker_session,
+        output_path="outputpath",
+        image_uri="some_acceptable_image",
+    )
+    # Testing instance_group without p5 does not raise exception
+    f._distribution_configuration(DISTRIBUTION_SM_TORCH_DIST_AND_DDP_ENABLED)
+    f._distribution_configuration(DISTRIBUTION_SM_TORCH_DIST_AND_DDP_DISABLED)
+
+
 def test_framework_all_init_args(sagemaker_session):
     f = DummyFramework(
         "my_script.py",
