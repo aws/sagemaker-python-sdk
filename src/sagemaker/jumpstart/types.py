@@ -581,7 +581,7 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
 
         return instance_family_environment_variables
 
-    def get_instance_specific_default_inference_instance_type(
+    def get_training_instance_specific_default_inference_instance_type(
         self, instance_type: str
     ) -> Optional[str]:
         """Returns instance specific default inference instance type.
@@ -594,7 +594,7 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
             instance_type, "default_inference_instance_type"
         )
 
-    def get_instance_specific_supported_inference_instance_types(
+    def get_training_instance_specific_supported_inference_instance_types(
         self, instance_type: str
     ) -> List[str]:
         """Returns instance specific supported inference instance types.

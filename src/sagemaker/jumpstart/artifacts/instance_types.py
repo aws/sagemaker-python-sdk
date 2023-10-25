@@ -61,7 +61,8 @@ def _retrieve_default_instance_type(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
-        training_instance_type (str): The training instance type from which to deploy an endpoint.
+        training_instance_type (str): In the case of a model fine-tuned on SageMaker, the training
+            instance type used for the training job that produced the fine-tuned weights.
             Optionally supply this to get a inference instance type conditioned
             on the training instance, to ensure compatability of training artifact to inference
             instance. (Default: None).
@@ -89,7 +90,7 @@ def _retrieve_default_instance_type(
     if scope == JumpStartScriptScope.INFERENCE:
         instance_specific_default_instance_type = (
             (
-                model_specs.training_instance_type_variants.get_instance_specific_default_inference_instance_type(  # pylint: disable=C0301 # noqa: E501
+                model_specs.training_instance_type_variants.get_training_instance_specific_default_inference_instance_type(  # pylint: disable=C0301 # noqa: E501
                     training_instance_type
                 )
             )
@@ -146,7 +147,8 @@ def _retrieve_instance_types(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
-        training_instance_type (str): The training instance type from which to deploy an endpoint.
+        training_instance_type (str): In the case of a model fine-tuned on SageMaker, the training
+            instance type used for the training job that produced the fine-tuned weights.
             Optionally supply this to get a inference instance type conditioned
             on the training instance, to ensure compatability of training artifact to inference
             instance. (Default: None).
@@ -174,7 +176,7 @@ def _retrieve_instance_types(
     if scope == JumpStartScriptScope.INFERENCE:
         default_instance_types = model_specs.supported_inference_instance_types or []
         instance_specific_instance_types = (
-            model_specs.training_instance_type_variants.get_instance_specific_supported_inference_instance_types(  # pylint: disable=C0301 # noqa: E501
+            model_specs.training_instance_type_variants.get_training_instance_specific_supported_inference_instance_types(  # pylint: disable=C0301 # noqa: E501
                 training_instance_type
             )
             if training_instance_type is not None

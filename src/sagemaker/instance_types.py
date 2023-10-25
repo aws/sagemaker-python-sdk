@@ -57,7 +57,8 @@ def retrieve_default(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
-        training_instance_type (str): The training instance type from which to deploy an endpoint.
+        training_instance_type (str): In the case of a model fine-tuned on SageMaker, the training
+            instance type used for the training job that produced the fine-tuned weights.
             Optionally supply this to get a inference instance type conditioned
             on the training instance, to ensure compatability of training artifact to inference
             instance. (Default: None).
@@ -117,7 +118,8 @@ def retrieve(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
-        training_instance_type (str): The training instance type from which to deploy an endpoint.
+        training_instance_type (str): In the case of a model fine-tuned on SageMaker, the training
+            instance type used for the training job that produced the fine-tuned weights.
             Optionally supply this to get a inference instance type conditioned
             on the training instance, to ensure compatability of training artifact to inference
             instance. (Default: None).
