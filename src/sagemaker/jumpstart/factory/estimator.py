@@ -280,6 +280,7 @@ def get_deploy_kwargs(
     tolerate_vulnerable_model: Optional[bool] = None,
     use_compiled_model: Optional[bool] = None,
     model_name: Optional[str] = None,
+    training_instance_type: Optional[str] = None,
 ) -> JumpStartEstimatorDeployKwargs:
     """Returns kwargs required to call `deploy` on `sagemaker.estimator.Estimator` object."""
 
@@ -313,7 +314,7 @@ def get_deploy_kwargs(
         model_id=model_id,
         model_from_estimator=True,
         model_version=model_version,
-        instance_type=model_deploy_kwargs.instance_type,  # prevent excess logging
+        instance_type=model_deploy_kwargs.instance_type if training_instance_type is None else None,
         region=region,
         image_uri=image_uri,
         source_dir=source_dir,
@@ -333,6 +334,7 @@ def get_deploy_kwargs(
         git_config=git_config,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
+        training_instance_type=training_instance_type,
     )
 
     estimator_deploy_kwargs: JumpStartEstimatorDeployKwargs = JumpStartEstimatorDeployKwargs(

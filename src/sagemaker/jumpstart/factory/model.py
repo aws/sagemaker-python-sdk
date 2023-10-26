@@ -181,6 +181,7 @@ def _add_instance_type_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartM
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
         sagemaker_session=kwargs.sagemaker_session,
+        training_instance_type=kwargs.training_instance_type,
     )
 
     if orig_instance_type is None:
@@ -643,6 +644,7 @@ def get_init_kwargs(
     dependencies: Optional[List[str]] = None,
     git_config: Optional[Dict[str, str]] = None,
     model_package_arn: Optional[str] = None,
+    training_instance_type: Optional[str] = None,
 ) -> JumpStartModelInitKwargs:
     """Returns kwargs required to instantiate `sagemaker.estimator.Model` object."""
 
@@ -671,6 +673,7 @@ def get_init_kwargs(
         tolerate_deprecated_model=tolerate_deprecated_model,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         model_package_arn=model_package_arn,
+        training_instance_type=training_instance_type,
     )
 
     model_init_kwargs = _add_model_version_to_kwargs(kwargs=model_init_kwargs)

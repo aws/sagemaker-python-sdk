@@ -1136,6 +1136,67 @@ class EstimatorTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.deploy")
     @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_estimator_sets_different_inference_instance_depending_on_training_instance(
+        self,
+        mock_estimator_deploy: mock.Mock,
+        mock_estimator_fit: mock.Mock,
+        mock_estimator_init: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session_estimator: mock.Mock,
+        mock_session_model: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
+        mock_sagemaker_timestamp: mock.Mock,
+    ):
+        mock_is_valid_model_id.return_value = True
+
+        mock_sagemaker_timestamp.return_value = "3456"
+
+        mock_estimator_deploy.return_value = default_predictor
+
+        model_id = "inference-instance-types-variant-model"
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        mock_session_estimator.return_value = sagemaker_session
+        mock_session_model.return_value = sagemaker_session
+
+        estimator = JumpStartEstimator(
+            model_id=model_id, image_uri="blah", instance_type="ml.trn1.xlarge"
+        )
+        estimator.deploy(image_uri="blah")
+        assert mock_estimator_deploy.call_args[1]["instance_type"] == "ml.inf1.xlarge"
+        mock_estimator_deploy.reset_mock()
+
+        estimator = JumpStartEstimator(
+            model_id=model_id, image_uri="blah", instance_type="ml.p2.xlarge"
+        )
+        estimator.deploy(image_uri="blah")
+        assert mock_estimator_deploy.call_args[1]["instance_type"] == "ml.p2.xlarge"
+        mock_estimator_deploy.reset_mock()
+
+        estimator = JumpStartEstimator(
+            model_id=model_id, image_uri="blah", instance_type="ml.p2.12xlarge"
+        )
+        estimator.deploy(image_uri="blah")
+        assert mock_estimator_deploy.call_args[1]["instance_type"] == "ml.p5.xlarge"
+        mock_estimator_deploy.reset_mock()
+
+        estimator = JumpStartEstimator(
+            model_id=model_id, image_uri="blah", instance_type="ml.blah.xblah"
+        )
+        estimator.deploy(image_uri="blah")
+        assert mock_estimator_deploy.call_args[1]["instance_type"] == "ml.p4de.24xlarge"
+
+    @mock.patch("sagemaker.utils.sagemaker_timestamp")
+    @mock.patch("sagemaker.jumpstart.estimator.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.fit")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.deploy")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_training_passes_role_to_deploy(
         self,
         mock_estimator_deploy: mock.Mock,

@@ -581,6 +581,56 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
 
         return instance_family_environment_variables
 
+    def get_instance_specific_default_inference_instance_type(
+        self, instance_type: str
+    ) -> Optional[str]:
+        """Returns instance specific default inference instance type.
+
+        Returns None if a model, instance type tuple does not have instance
+        specific inference instance types.
+        """
+
+        return self._get_instance_specific_property(
+            instance_type, "default_inference_instance_type"
+        )
+
+    def get_instance_specific_supported_inference_instance_types(
+        self, instance_type: str
+    ) -> List[str]:
+        """Returns instance specific supported inference instance types.
+
+        Returns empty list if a model, instance type tuple does not have instance
+        specific inference instance types.
+        """
+
+        if self.variants is None:
+            return []
+
+        instance_specific_inference_instance_types: List[str] = (
+            self.variants.get(instance_type, {})
+            .get("properties", {})
+            .get("supported_inference_instance_types", [])
+        )
+
+        instance_type_family = get_instance_type_family(instance_type)
+
+        instance_family_inference_instance_types: List[str] = (
+            self.variants.get(instance_type_family, {})
+            .get("properties", {})
+            .get("supported_inference_instance_types", [])
+            if instance_type_family not in {"", None}
+            else []
+        )
+
+        return sorted(
+            list(
+                set(
+                    instance_specific_inference_instance_types
+                    + instance_family_inference_instance_types
+                )
+            )
+        )
+
     def get_image_uri(self, instance_type: str, region: str) -> Optional[str]:
         """Returns image uri from instance type and region.
 
@@ -971,6 +1021,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         "dependencies",
         "git_config",
         "model_package_arn",
+        "training_instance_type",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -981,6 +1032,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         "tolerate_deprecated_model",
         "region",
         "model_package_arn",
+        "training_instance_type",
     }
 
     def __init__(
@@ -1009,6 +1061,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         tolerate_vulnerable_model: Optional[bool] = None,
         tolerate_deprecated_model: Optional[bool] = None,
         model_package_arn: Optional[str] = None,
+        training_instance_type: Optional[str] = None,
     ) -> None:
         """Instantiates JumpStartModelInitKwargs object."""
 
@@ -1036,6 +1089,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         self.tolerate_deprecated_model = tolerate_deprecated_model
         self.tolerate_vulnerable_model = tolerate_vulnerable_model
         self.model_package_arn = model_package_arn
+        self.training_instance_type = training_instance_type
 
 
 class JumpStartModelDeployKwargs(JumpStartKwargs):
@@ -1065,6 +1119,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "tolerate_vulnerable_model",
         "tolerate_deprecated_model",
         "sagemaker_session",
+        "training_instance_type",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -1074,6 +1129,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "tolerate_deprecated_model",
         "tolerate_vulnerable_model",
         "sagemaker_session",
+        "training_instance_type",
     }
 
     def __init__(
@@ -1101,6 +1157,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         tolerate_deprecated_model: Optional[bool] = None,
         tolerate_vulnerable_model: Optional[bool] = None,
         sagemaker_session: Optional[Session] = None,
+        training_instance_type: Optional[str] = None,
     ) -> None:
         """Instantiates JumpStartModelDeployKwargs object."""
 
@@ -1127,6 +1184,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         self.tolerate_vulnerable_model = tolerate_vulnerable_model
         self.tolerate_deprecated_model = tolerate_deprecated_model
         self.sagemaker_session = sagemaker_session
+        self.training_instance_type = training_instance_type
 
 
 class JumpStartEstimatorInitKwargs(JumpStartKwargs):
