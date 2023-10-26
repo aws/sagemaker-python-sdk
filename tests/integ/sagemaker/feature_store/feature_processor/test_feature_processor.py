@@ -18,9 +18,8 @@ import subprocess
 import sys
 import time
 from typing import Dict
-from datetime import datetime
+from datetime import datetime, timezone
 from pyspark.sql import DataFrame
-import pytz
 
 import pytest
 import pandas as pd
@@ -850,7 +849,7 @@ def test_schedule_and_event_trigger(
         assert len(pipeline_definition["Steps"]) == 1
         for retry_policy in pipeline_definition["Steps"][0]["RetryPolicies"]:
             assert retry_policy["MaxAttempts"] == 2
-        now = datetime.now(tz=pytz.utc)
+        now = datetime.now(tz=timezone.utc)
         schedule_expression = f"at({now.strftime(SCHEDULE_EXPRESSION_TIMESTAMP_FORMAT)})"
         schedule(
             pipeline_name=pipeline_name,

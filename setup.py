@@ -57,7 +57,6 @@ required_packages = [
     "importlib-metadata>=1.4.0,<7.0",
     "packaging>=20.0",
     "pathos",
-    "pytz",
     "schema",
     "PyYAML~=6.0",
     "jsonschema",
