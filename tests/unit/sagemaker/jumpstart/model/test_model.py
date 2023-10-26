@@ -167,6 +167,69 @@ class ModelTest(unittest.TestCase):
             ],
         )
 
+    @mock.patch("sagemaker.utils.sagemaker_timestamp")
+    @mock.patch("sagemaker.session.Session.endpoint_from_production_variants")
+    @mock.patch("sagemaker.session.Session.create_model")
+    @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_eula_gated_conditional_s3_prefix_metadata_model(
+        self,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
+        mock_create_model: mock.Mock,
+        mock_endpoint_from_production_variants: mock.Mock,
+        mock_timestamp: mock.Mock,
+    ):
+
+        mock_timestamp.return_value = "1234"
+
+        mock_is_valid_model_id.return_value = True
+
+        model_id, _ = "gated_variant-model", "*"
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        mock_session.return_value = sagemaker_session
+
+        model = JumpStartModel(
+            model_id=model_id,
+        )
+
+        model.deploy(accept_eula=True, instance_type="ml.p2.xlarge")
+
+        mock_create_model.assert_called_once_with(
+            name="dfsdfsds-1234",
+            role="fake role! do not use!",
+            container_defs={
+                "Image": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-"
+                "inference:1.13.1-transformers4.26.0-gpu-py39-cu117-ubuntu20.04",
+                "Environment": {
+                    "SAGEMAKER_PROGRAM": "inference.py",
+                    "ENDPOINT_SERVER_TIMEOUT": "3600",
+                    "MODEL_CACHE_ROOT": "/opt/ml/model",
+                    "SAGEMAKER_ENV": "1",
+                    "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+                },
+                "ModelDataSource": {
+                    "S3DataSource": {
+                        "S3Uri": "s3://jumpstart-private-cache-prod-us-west-2/some-instance-specific/model/prefix/",
+                        "S3DataType": "S3Prefix",
+                        "CompressionType": "None",
+                        "ModelAccessConfig": {"AcceptEula": True},
+                    }
+                },
+            },
+            vpc_config=None,
+            enable_network_isolation=True,
+            tags=[
+                {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "gated_variant-model"},
+                {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "1.0.0"},
+            ],
+        )
+
     @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
