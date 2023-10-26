@@ -180,7 +180,7 @@ def _retrieve_instance_types(
                 training_instance_type
             )
             if training_instance_type is not None
-            and hasattr(model_specs, "training_instance_type_variants")
+            and getattr(model_specs, "training_instance_type_variants", None) is not None
             else []
         )
         instance_types = (
