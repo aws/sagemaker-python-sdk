@@ -5059,6 +5059,10 @@ def test_all_framework_estimators_add_jumpstart_uri_tags(
             "Value": jumpstart_model_uri,
         } in sagemaker_session.train.call_args_list[0][1]["tags"]
 
+        assert {"Key": "blah", "Value": "yoyoma"} in sagemaker_session.train.call_args_list[0][1][
+            "tags"
+        ]
+
         estimator.deploy(
             initial_instance_count=INSTANCE_COUNT,
             instance_type=kwargs["instance_type"],
@@ -5066,6 +5070,7 @@ def test_all_framework_estimators_add_jumpstart_uri_tags(
             source_dir=jumpstart_model_uri_2,
             entry_point="inference.py",
             role=ROLE,
+            tags=[{"Key": "blah", "Value": "yoyoma"}],
         )
 
         assert sagemaker_session.create_model.call_args_list[0][1]["tags"] == [
