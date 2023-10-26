@@ -39,7 +39,6 @@ logger = logging.getLogger(__name__)
 
 ENDPOINT_NAME_PREFIX_PATTERN = "^[a-zA-Z0-9](-*[a-zA-Z0-9])"
 
-# TODO: verify these are sensible/sound values
 # asym shap val config default values (timeseries)
 ASYM_SHAP_VAL_DEFAULT_EXPLANATION_TYPE = "timewise_chronological"
 ASYM_SHAP_VAL_EXPLANATION_TYPES = [
@@ -428,7 +427,7 @@ class SegmentationConfig:
 
 
 class TimeSeriesDataConfig:
-    """Config object for TimeSeries explainability specific data fields."""
+    """Config object for TimeSeries explainability data configuration fields."""
 
     def __init__(
         self,
@@ -440,21 +439,22 @@ class TimeSeriesDataConfig:
     ):
         """Initialises TimeSeries explainability data configuration fields.
 
-        Args: #TODO: verify param descriptions are accurate
+        Args:
             target_time_series (str or int): A string or a zero-based integer index.
-                Used to locate target time series in the shared input dataset. Also
-                used to determine the correct type of all succeeding arguments, as
-                parameters must either be all strings or all ints.
+                Used to locate the target time series in the shared input dataset.
+                If this parameter is a string, then all other parameters must also
+                be strings or lists of strings. If this parameter is an int, then
+                all others must be ints or lists of ints.
             item_id (str or int): A string or a zero-based integer index. Used to
                 locate item id in the shared input dataset.
             timestamp (str or int): A string or a zero-based integer index. Used to
                 locate timestamp in the shared input dataset.
             related_time_series (list[str] or list[int]): Optional. An array of strings
                 or array of zero-based integer indices. Used to locate all related time
-                series in the shared input dataset.
+                series in the shared input dataset (if present).
             item_metadata (list[str] or list[int]): Optional.  An array of strings or
                 array of zero-based integer indices. Used to locate all item metadata
-                fields in the shared input dataset.
+                fields in the shared input dataset (if present).
 
         Raises:
             AssertionError: If any required arguments are not provided.
@@ -1581,7 +1581,17 @@ class SHAPConfig(ExplainabilityConfig):
 
 
 class AsymmetricShapleyValueConfig(ExplainabilityConfig):
-    """Config class for Asymmetric Shapley value algorithm for time series explainability."""
+    """Config class for Asymmetric Shapley value algorithm for time series explainability.
+
+    Asymmetric Shapley Values are a variant of the Shapley Value that drop the symmetry axiom [1].
+    We use these to determine how features contribute to the forecasting outcome. Asymmetric
+    Shapley values can take into account the temporal dependencies of the time series that
+    forecasting models take as input.
+
+    [1] Frye, Christopher, Colin Rowat, and Ilya Feige. "Asymmetric shapley values: incorporating
+    causal knowledge into model-agnostic explainability." NeurIPS (2020).
+    https://doi.org/10.48550/arXiv.1910.06358
+    """
 
     def __init__(
         self,
@@ -1603,7 +1613,8 @@ class AsymmetricShapleyValueConfig(ExplainabilityConfig):
                 types are ``"timewise_chronological"``, ``"timewise_anti_chronological"``,
                 ``"timewise_bidirectional"``, and ``"fine_grained"``.
             num_samples (None or int): Number of samples to be used in the Asymmetric Shapley
-                Value algorithm. Only applicable when using ``"fine_grained"`` explanations.
+                Value forecasting algorithm. Only applicable when using ``"fine_grained"``
+                explanations.
 
         Raises:
             AssertionError: when ``explanation_type`` is not valid or ``num_samples``
