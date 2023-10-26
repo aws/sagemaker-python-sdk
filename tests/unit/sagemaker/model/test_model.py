@@ -639,13 +639,19 @@ def test_all_framework_models_support_disabling_jumpstart_uri_tags(
             sagemaker_session=sagemaker_session,
             model_data=jumpstart_model_dir,
             **kwargs,
-        ).deploy(instance_type="ml.m2.xlarge", initial_instance_count=INSTANCE_COUNT)
-
-        assert None is sagemaker_session.create_model.call_args_list[0][1]["tags"]
-
-        assert (
-            None is sagemaker_session.endpoint_from_production_variants.call_args_list[0][1]["tags"]
+        ).deploy(
+            instance_type="ml.m2.xlarge",
+            initial_instance_count=INSTANCE_COUNT,
+            tags=[{"Key": "blah", "Value": "yoyoma"}],
         )
+
+        assert [
+            {"Key": "blah", "Value": "yoyoma"}
+        ] == sagemaker_session.create_model.call_args_list[0][1]["tags"]
+
+        assert [
+            {"Key": "blah", "Value": "yoyoma"}
+        ] == sagemaker_session.endpoint_from_production_variants.call_args_list[0][1]["tags"]
 
         sagemaker_session.create_model.reset_mock()
         sagemaker_session.endpoint_from_production_variants.reset_mock()
@@ -685,17 +691,27 @@ def test_all_framework_models_add_jumpstart_uri_tags(
             sagemaker_session=sagemaker_session,
             model_data=jumpstart_model_dir,
             **kwargs,
-        ).deploy(instance_type="ml.m2.xlarge", initial_instance_count=INSTANCE_COUNT)
+        ).deploy(
+            instance_type="ml.m2.xlarge",
+            initial_instance_count=INSTANCE_COUNT,
+            tags=[{"Key": "blah", "Value": "yoyoma"}],
+        )
 
-        assert {
-            "Key": JumpStartTag.INFERENCE_MODEL_URI.value,
-            "Value": jumpstart_model_dir,
-        } in sagemaker_session.create_model.call_args_list[0][1]["tags"]
+        assert [
+            {"Key": "blah", "Value": "yoyoma"},
+            {
+                "Key": JumpStartTag.INFERENCE_MODEL_URI.value,
+                "Value": jumpstart_model_dir,
+            },
+        ] == sagemaker_session.create_model.call_args_list[0][1]["tags"]
 
-        assert {
-            "Key": JumpStartTag.INFERENCE_MODEL_URI.value,
-            "Value": jumpstart_model_dir,
-        } in sagemaker_session.endpoint_from_production_variants.call_args_list[0][1]["tags"]
+        assert [
+            {"Key": "blah", "Value": "yoyoma"},
+            {
+                "Key": JumpStartTag.INFERENCE_MODEL_URI.value,
+                "Value": jumpstart_model_dir,
+            },
+        ] == sagemaker_session.endpoint_from_production_variants.call_args_list[0][1]["tags"]
 
         sagemaker_session.create_model.reset_mock()
         sagemaker_session.endpoint_from_production_variants.reset_mock()

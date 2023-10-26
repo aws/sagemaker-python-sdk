@@ -738,7 +738,11 @@ class EstimatorTest(unittest.TestCase):
             sagemaker_config={}, boto_region_name="us-west-2", settings=settings
         )
 
-        estimator = JumpStartEstimator(model_id=model_id, sagemaker_session=mock_session)
+        estimator = JumpStartEstimator(
+            model_id=model_id,
+            sagemaker_session=mock_session,
+            tags=[{"Key": "blah", "Value": "blahagain"}],
+        )
 
         channels = {
             "training": f"s3://{get_jumpstart_content_bucket(region)}/"
@@ -749,7 +753,7 @@ class EstimatorTest(unittest.TestCase):
 
         self.assertEqual(
             mock_session.train.call_args[1]["tags"],
-            None,
+            [{"Key": "blah", "Value": "blahagain"}],
         )
 
     @mock.patch("sagemaker.jumpstart.estimator.is_valid_model_id")
@@ -769,7 +773,11 @@ class EstimatorTest(unittest.TestCase):
 
         mock_session = mock.MagicMock(sagemaker_config={}, boto_region_name="us-west-2")
 
-        estimator = JumpStartEstimator(model_id=model_id, sagemaker_session=mock_session)
+        estimator = JumpStartEstimator(
+            model_id=model_id,
+            sagemaker_session=mock_session,
+            tags=[{"Key": "blah", "Value": "blahagain"}],
+        )
 
         channels = {
             "training": f"s3://{get_jumpstart_content_bucket(region)}/"
@@ -785,7 +793,7 @@ class EstimatorTest(unittest.TestCase):
 
         self.assertEqual(
             mock_session.train.call_args[1]["tags"],
-            js_tags,
+            [{"Key": "blah", "Value": "blahagain"}] + js_tags,
         )
 
     def test_jumpstart_estimator_kwargs_match_parent_class(self):

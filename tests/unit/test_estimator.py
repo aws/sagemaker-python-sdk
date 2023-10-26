@@ -5048,6 +5048,7 @@ def test_all_framework_estimators_add_jumpstart_uri_tags(
             sagemaker_session=sagemaker_session,
             model_uri=jumpstart_model_uri,
             instance_count=INSTANCE_COUNT,
+            tags=[{"Key": "blah", "Value": "yoyoma"}],
             **kwargs,
         )
 
@@ -5068,10 +5069,14 @@ def test_all_framework_estimators_add_jumpstart_uri_tags(
         )
 
         assert sagemaker_session.create_model.call_args_list[0][1]["tags"] == [
+            {"Key": "blah", "Value": "yoyoma"}
+        ] + [
             {"Key": JumpStartTag.TRAINING_MODEL_URI.value, "Value": jumpstart_model_uri},
             {"Key": JumpStartTag.INFERENCE_SCRIPT_URI.value, "Value": jumpstart_model_uri_2},
         ]
         assert sagemaker_session.endpoint_from_production_variants.call_args_list[0][1]["tags"] == [
+            {"Key": "blah", "Value": "yoyoma"}
+        ] + [
             {"Key": JumpStartTag.TRAINING_MODEL_URI.value, "Value": jumpstart_model_uri},
             {"Key": JumpStartTag.INFERENCE_SCRIPT_URI.value, "Value": jumpstart_model_uri_2},
         ]
@@ -5131,12 +5136,15 @@ def test_all_framework_estimators_support_disabling_jumpstart_uri_tags(
             sagemaker_session=sagemaker_session,
             model_uri=jumpstart_model_uri,
             instance_count=INSTANCE_COUNT,
+            tags=[{"Key": "blah", "Value": "yoyoma"}],
             **kwargs,
         )
 
         estimator.fit()
 
-        assert None is sagemaker_session.train.call_args_list[0][1]["tags"]
+        assert [{"Key": "blah", "Value": "yoyoma"}] == sagemaker_session.train.call_args_list[0][1][
+            "tags"
+        ]
 
         estimator.deploy(
             initial_instance_count=INSTANCE_COUNT,
@@ -5147,10 +5155,12 @@ def test_all_framework_estimators_support_disabling_jumpstart_uri_tags(
             role=ROLE,
         )
 
-        assert sagemaker_session.create_model.call_args_list[0][1]["tags"] is None
-        assert (
-            sagemaker_session.endpoint_from_production_variants.call_args_list[0][1]["tags"] is None
-        )
+        assert sagemaker_session.create_model.call_args_list[0][1]["tags"] == [
+            {"Key": "blah", "Value": "yoyoma"}
+        ]
+        assert sagemaker_session.endpoint_from_production_variants.call_args_list[0][1]["tags"] == [
+            {"Key": "blah", "Value": "yoyoma"}
+        ]
         sagemaker_session.train.reset_mock()
 
 

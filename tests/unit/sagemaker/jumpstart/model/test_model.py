@@ -612,7 +612,7 @@ class ModelTest(unittest.TestCase):
 
         model = JumpStartModel(model_id=model_id, sagemaker_session=mock_session)
 
-        model.deploy()
+        model.deploy(tags=[{"Key": "blah", "Value": "blahagain"}])
 
         js_tags = [
             {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "env-var-variant-model"},
@@ -621,12 +621,12 @@ class ModelTest(unittest.TestCase):
 
         self.assertEqual(
             mock_session.create_model.call_args[1]["tags"],
-            js_tags,
+            [{"Key": "blah", "Value": "blahagain"}] + js_tags,
         )
 
         self.assertEqual(
             mock_session.endpoint_from_production_variants.call_args[1]["tags"],
-            js_tags,
+            [{"Key": "blah", "Value": "blahagain"}] + js_tags,
         )
 
     @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
@@ -649,16 +649,16 @@ class ModelTest(unittest.TestCase):
 
         model = JumpStartModel(model_id=model_id, sagemaker_session=mock_session)
 
-        model.deploy()
+        model.deploy(tags=[{"Key": "blah", "Value": "blahagain"}])
 
         self.assertEqual(
             mock_session.create_model.call_args[1]["tags"],
-            None,
+            [{"Key": "blah", "Value": "blahagain"}],
         )
 
         self.assertEqual(
             mock_session.endpoint_from_production_variants.call_args[1]["tags"],
-            None,
+            [{"Key": "blah", "Value": "blahagain"}],
         )
 
     @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
