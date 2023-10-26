@@ -424,7 +424,7 @@ def _add_model_name_to_kwargs(
 
 
 def _add_tags_to_kwargs(kwargs: JumpStartModelDeployKwargs) -> Dict[str, Any]:
-    """Sets extra kwargs based on default or override, returns full kwargs."""
+    """Sets tags based on default or override, returns full kwargs."""
 
     full_model_version = verify_model_region_and_return_specs(
         model_id=kwargs.model_id,

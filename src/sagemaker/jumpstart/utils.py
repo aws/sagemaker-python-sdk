@@ -345,7 +345,7 @@ def add_jumpstart_model_id_version_tags(
     model_id: str,
     model_version: str,
 ) -> List[Dict[str, str]]:
-    """Add custom model id and version tags to JumpStart related resources"""
+    """Add custom model ID and version tags to JumpStart related resources."""
     if model_id is None or model_version is None:
         return tags
     tags = add_single_jumpstart_tag(

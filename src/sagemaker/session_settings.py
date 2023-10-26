@@ -33,7 +33,7 @@ class SessionSettings(object):
             local_download_dir (str): Optional. A path specifying the local directory
                 for downloading artifacts. (Default: None).
             include_jumpstart_tags (bool): Optional. By default, if a JumpStart model is identified,
-                it will receive special tags for tracking purposes
+                it will receive special tags describing its properties.
         """
         self._encrypt_repacked_artifacts = encrypt_repacked_artifacts
         self._local_download_dir = local_download_dir
