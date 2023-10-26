@@ -76,6 +76,9 @@ class JumpStartTag(str, Enum):
     TRAINING_MODEL_URI = "aws-jumpstart-training-model-uri"
     TRAINING_SCRIPT_URI = "aws-jumpstart-training-script-uri"
 
+    MODEL_ID = "sagemaker-sdk:jumpstart-model-id"
+    MODEL_VERSION = "sagemaker-sdk:jumpstart-model-version"
+
 
 class SerializerType(str, Enum):
     """Enum class for serializers associated with JumpStart models."""

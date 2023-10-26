@@ -154,6 +154,10 @@ JUMPSTART_GATED_BUCKET_NAME_SET = {
     if region.gated_content_bucket is not None
 }
 
+JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET = JUMPSTART_BUCKET_NAME_SET.union(
+    JUMPSTART_GATED_BUCKET_NAME_SET
+)
+
 JUMPSTART_DEFAULT_REGION_NAME = boto3.session.Session().region_name or "us-west-2"
 
 JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY = "models_manifest.json"
