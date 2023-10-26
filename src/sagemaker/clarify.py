@@ -2302,6 +2302,13 @@ class _AnalysisConfigGenerator:
         post_training_methods: Union[str, List[str]] = "all",
     ):
         """Generates a config for Bias and Explainability"""
+        # TimeSeries bias metrics are not supported
+        if (
+            isinstance(explainability_config, AsymmetricSHAPConfig)
+            or "time_series_data_config" in data_config.analysis_config
+            or (model_config and "time_series_predictor_config" in model_config.predictor_config)
+        ):
+            raise ValueError("Bias metrics are unsupported for time series.")
         analysis_config = {**data_config.get_config(), **bias_config.get_config()}
         analysis_config = cls._add_methods(
             analysis_config,
@@ -2331,7 +2338,6 @@ class _AnalysisConfigGenerator:
         if isinstance(explainability_config, AsymmetricSHAPConfig):
             assert ts_data_config_present, "Please provide a TimeSeriesDataConfig to DataConfig."
             assert ts_model_config_present, "Please provide a TimeSeriesModelConfig to ModelConfig."
-            time_series_case = True
         else:
             if ts_data_config_present:
                 raise ValueError(
@@ -2343,7 +2349,6 @@ class _AnalysisConfigGenerator:
                     "Please provide an AsymmetricSHAPConfig for time series explainability cases."
                     "For non time series cases, please do not provide a TimeSeriesModelConfig."
                 )
-            time_series_case = False
 
         # construct whole analysis config
         analysis_config = data_config.analysis_config
@@ -2353,7 +2358,6 @@ class _AnalysisConfigGenerator:
         analysis_config = cls._add_methods(
             analysis_config,
             explainability_config=explainability_config,
-            time_series_case=time_series_case,
         )
         return analysis_config
 
@@ -2456,7 +2460,6 @@ class _AnalysisConfigGenerator:
         post_training_methods: Union[str, List[str]] = None,
         explainability_config: Union[ExplainabilityConfig, List[ExplainabilityConfig]] = None,
         report: bool = True,
-        time_series_case: bool = False,
     ):
         """Extends analysis config with methods."""
         # validate
@@ -2486,7 +2489,7 @@ class _AnalysisConfigGenerator:
             analysis_config["methods"]["post_training_bias"] = {"methods": post_training_methods}
 
         if explainability_config is not None:
-            if time_series_case:
+            if isinstance(explainability_config, AsymmetricSHAPConfig):
                 explainability_methods = explainability_config.get_explainability_config()
             else:
                 explainability_methods = cls._merge_explainability_configs(

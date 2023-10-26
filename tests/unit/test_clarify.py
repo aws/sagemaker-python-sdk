@@ -2543,7 +2543,6 @@ class TestAnalysisConfigGeneratorForTimeSeriesExplainability:
         _add_methods.assert_called_once_with(
             ANY,
             explainability_config=explainability_config,
-            time_series_case=True,
         )
 
     def test_explainability_for_time_series_invalid(self):
@@ -2594,6 +2593,54 @@ class TestAnalysisConfigGeneratorForTimeSeriesExplainability:
                 model_config=model_config_with_ts,
                 model_predicted_label_config=None,
                 explainability_config=pdp_config_mock,
+            )
+
+    def test_bias_and_explainability_invalid_for_time_series(self):
+        """
+        GIVEN user provides TimeSeriesDataConfig, TimeSeriesModelConfig, and/or
+            AsymmetricSHAPConfig for DataConfig, ModelConfig, and as explainability_config
+            respectively
+        WHEN _AnalysisConfigGenerator.bias_and_explainability is called
+        THEN the appropriate error is raised
+        """
+        # data config mocks
+        data_config_with_ts = _build_data_config_mock()
+        data_config_without_ts = Mock(spec=DataConfig)
+        data_config_without_ts.analysis_config = dict()
+        # model config mocks
+        model_config_with_ts = _build_model_config_mock()
+        model_config_without_ts = Mock(spec=ModelConfig)
+        model_config_without_ts.predictor_config = dict()
+        # asymmetric shap config mock (for ts)
+        asym_shap_config_mock = _build_asymmetric_shap_config_mock()
+        # pdp config mock (for non-ts)
+        pdp_config_mock = _build_pdp_config_mock()
+        # case 1: asymmetric shap is given as explainability_config
+        with pytest.raises(ValueError, match="Bias metrics are unsupported for time series."):
+            _AnalysisConfigGenerator.bias_and_explainability(
+                data_config=data_config_without_ts,
+                model_config=model_config_without_ts,
+                model_predicted_label_config=None,
+                explainability_config=asym_shap_config_mock,
+                bias_config=None,
+            )
+        # case 2: TimeSeriesModelConfig given to ModelConfig
+        with pytest.raises(ValueError, match="Bias metrics are unsupported for time series."):
+            _AnalysisConfigGenerator.bias_and_explainability(
+                data_config=data_config_without_ts,
+                model_config=model_config_with_ts,
+                model_predicted_label_config=None,
+                explainability_config=pdp_config_mock,
+                bias_config=None,
+            )
+        # case 3: TimeSeriesDataConfig given to DataConfig
+        with pytest.raises(ValueError, match="Bias metrics are unsupported for time series."):
+            _AnalysisConfigGenerator.bias_and_explainability(
+                data_config=data_config_with_ts,
+                model_config=model_config_without_ts,
+                model_predicted_label_config=None,
+                explainability_config=pdp_config_mock,
+                bias_config=None,
             )
 
     @pytest.mark.parametrize(
