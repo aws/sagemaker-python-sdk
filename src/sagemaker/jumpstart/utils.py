@@ -250,7 +250,7 @@ def is_jumpstart_model_uri(uri: Optional[str]) -> bool:
     if urlparse(uri).scheme == "s3":
         bucket, _ = parse_s3_url(uri)
 
-    return bucket in constants.JUMPSTART_BUCKET_NAME_SET
+    return bucket in constants.JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET
 
 
 def tag_key_in_array(tag_key: str, tag_array: List[Dict[str, str]]) -> bool:
@@ -287,7 +287,10 @@ def get_tag_value(tag_key: str, tag_array: List[Dict[str, str]]) -> str:
 
 
 def add_single_jumpstart_tag(
-    uri: str, tag_key: enums.JumpStartTag, curr_tags: Optional[List[Dict[str, str]]]
+    tag_value: str,
+    tag_key: enums.JumpStartTag,
+    curr_tags: Optional[List[Dict[str, str]]],
+    is_uri=False,
 ) -> Optional[List]:
     """Adds ``tag_key`` to ``curr_tags`` if ``uri`` corresponds to a JumpStart model.
 
@@ -296,17 +299,28 @@ def add_single_jumpstart_tag(
         tag_key (enums.JumpStartTag): Custom tag to apply to current tags if the URI
             corresponds to a JumpStart model.
         curr_tags (Optional[List]): Current tags associated with ``Estimator`` or ``Model``.
+        is_uri (boolean): Set to True to indicate a s3 uri is to be tagged. Set to False to indicate
+            tags for JumpStart model id / version are being added. (Default: False).
     """
-    if is_jumpstart_model_uri(uri):
+    if not is_uri or is_jumpstart_model_uri(tag_value):
         if curr_tags is None:
             curr_tags = []
         if not tag_key_in_array(tag_key, curr_tags):
-            curr_tags.append(
-                {
-                    "Key": tag_key,
-                    "Value": uri,
-                }
+            skip_adding_tag = (
+                (
+                    tag_key_in_array(enums.JumpStartTag.MODEL_ID, curr_tags)
+                    or tag_key_in_array(enums.JumpStartTag.MODEL_VERSION, curr_tags)
+                )
+                if is_uri
+                else False
             )
+            if not skip_adding_tag:
+                curr_tags.append(
+                    {
+                        "Key": tag_key,
+                        "Value": tag_value,
+                    }
+                )
     return curr_tags
 
 
@@ -326,14 +340,37 @@ def get_jumpstart_base_name_if_jumpstart_model(
     return None
 
 
-def add_jumpstart_tags(
+def add_jumpstart_model_id_version_tags(
+    tags: Optional[List[Dict[str, str]]],
+    model_id: str,
+    model_version: str,
+) -> List[Dict[str, str]]:
+    """Add custom model ID and version tags to JumpStart related resources."""
+    if model_id is None or model_version is None:
+        return tags
+    tags = add_single_jumpstart_tag(
+        model_id,
+        enums.JumpStartTag.MODEL_ID,
+        tags,
+        is_uri=False,
+    )
+    tags = add_single_jumpstart_tag(
+        model_version,
+        enums.JumpStartTag.MODEL_VERSION,
+        tags,
+        is_uri=False,
+    )
+    return tags
+
+
+def add_jumpstart_uri_tags(
     tags: Optional[List[Dict[str, str]]] = None,
     inference_model_uri: Optional[Union[str, dict]] = None,
     inference_script_uri: Optional[str] = None,
     training_model_uri: Optional[str] = None,
     training_script_uri: Optional[str] = None,
 ) -> Optional[List[Dict[str, str]]]:
-    """Add custom tags to JumpStart models, return the updated tags.
+    """Add custom uri tags to JumpStart models, return the updated tags.
 
     No-op if this is not a JumpStart model related resource.
 
@@ -362,7 +399,10 @@ def add_jumpstart_tags(
             logging.warning(warn_msg, "inference_model_uri")
         else:
             tags = add_single_jumpstart_tag(
-                inference_model_uri, enums.JumpStartTag.INFERENCE_MODEL_URI, tags
+                inference_model_uri,
+                enums.JumpStartTag.INFERENCE_MODEL_URI,
+                tags,
+                is_uri=True,
             )
 
     if inference_script_uri:
@@ -370,7 +410,10 @@ def add_jumpstart_tags(
             logging.warning(warn_msg, "inference_script_uri")
         else:
             tags = add_single_jumpstart_tag(
-                inference_script_uri, enums.JumpStartTag.INFERENCE_SCRIPT_URI, tags
+                inference_script_uri,
+                enums.JumpStartTag.INFERENCE_SCRIPT_URI,
+                tags,
+                is_uri=True,
             )
 
     if training_model_uri:
@@ -378,7 +421,10 @@ def add_jumpstart_tags(
             logging.warning(warn_msg, "training_model_uri")
         else:
             tags = add_single_jumpstart_tag(
-                training_model_uri, enums.JumpStartTag.TRAINING_MODEL_URI, tags
+                training_model_uri,
+                enums.JumpStartTag.TRAINING_MODEL_URI,
+                tags,
+                is_uri=True,
             )
 
     if training_script_uri:
@@ -386,7 +432,10 @@ def add_jumpstart_tags(
             logging.warning(warn_msg, "training_script_uri")
         else:
             tags = add_single_jumpstart_tag(
-                training_script_uri, enums.JumpStartTag.TRAINING_SCRIPT_URI, tags
+                training_script_uri,
+                enums.JumpStartTag.TRAINING_SCRIPT_URI,
+                tags,
+                is_uri=True,
             )
 
     return tags

@@ -20,8 +20,8 @@ from sagemaker.jumpstart import utils
 from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE,
-    JUMPSTART_BUCKET_NAME_SET,
     JUMPSTART_DEFAULT_REGION_NAME,
+    JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET,
     JUMPSTART_REGION_NAME_SET,
     JUMPSTART_RESOURCE_BASE_NAME,
     JumpStartScriptScope,
@@ -38,7 +38,7 @@ from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec
 
 
 def random_jumpstart_s3_uri(key):
-    return f"s3://{random.choice(list(JUMPSTART_BUCKET_NAME_SET))}/{key}"
+    return f"s3://{random.choice(list(JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET))}/{key}"
 
 
 def test_get_jumpstart_content_bucket():
@@ -188,12 +188,75 @@ def test_is_jumpstart_model_uri():
     assert utils.is_jumpstart_model_uri(random_jumpstart_s3_uri("random_key"))
 
 
-def test_add_jumpstart_tags_inference():
+def test_add_jumpstart_model_id_version_tags():
+    tags = None
+    model_id = "model_id"
+    version = "version"
+    assert [
+        {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "model_id"},
+        {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "version"},
+    ] == utils.add_jumpstart_model_id_version_tags(
+        tags=tags, model_id=model_id, model_version=version
+    )
+
+    tags = [
+        {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "model_id_2"},
+        {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "version_2"},
+    ]
+    model_id = "model_id"
+    version = "version"
+    # If tags are already present, don't modify existing tags
+    assert [
+        {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "model_id_2"},
+        {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "version_2"},
+    ] == utils.add_jumpstart_model_id_version_tags(
+        tags=tags, model_id=model_id, model_version=version
+    )
+
+    tags = [
+        {"Key": "random key", "Value": "random_value"},
+    ]
+    model_id = "model_id"
+    version = "version"
+    assert [
+        {"Key": "random key", "Value": "random_value"},
+        {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "model_id"},
+        {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "version"},
+    ] == utils.add_jumpstart_model_id_version_tags(
+        tags=tags, model_id=model_id, model_version=version
+    )
+
+    tags = [
+        {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "model_id_2"},
+    ]
+    model_id = "model_id"
+    version = "version"
+    # If tags are already present, don't modify existing tags
+    assert [
+        {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "model_id_2"},
+        {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "version"},
+    ] == utils.add_jumpstart_model_id_version_tags(
+        tags=tags, model_id=model_id, model_version=version
+    )
+
+    tags = [
+        {"Key": "random key", "Value": "random_value"},
+    ]
+    model_id = None
+    version = None
+    assert [
+        {"Key": "random key", "Value": "random_value"},
+    ] == utils.add_jumpstart_model_id_version_tags(
+        tags=tags, model_id=model_id, model_version=version
+    )
+
+
+def test_add_jumpstart_uri_tags_inference():
     tags = None
     inference_model_uri = "dfsdfsd"
     inference_script_uri = "dfsdfs"
     assert (
-        utils.add_jumpstart_tags(
+        utils.add_jumpstart_uri_tags(
             tags=tags,
             inference_model_uri=inference_model_uri,
             inference_script_uri=inference_script_uri,
@@ -205,7 +268,7 @@ def test_add_jumpstart_tags_inference():
     inference_model_uri = "dfsdfsd"
     inference_script_uri = "dfsdfs"
     assert (
-        utils.add_jumpstart_tags(
+        utils.add_jumpstart_uri_tags(
             tags=tags,
             inference_model_uri=inference_model_uri,
             inference_script_uri=inference_script_uri,
@@ -216,7 +279,7 @@ def test_add_jumpstart_tags_inference():
     tags = [{"Key": "some", "Value": "tag"}]
     inference_model_uri = "dfsdfsd"
     inference_script_uri = "dfsdfs"
-    assert utils.add_jumpstart_tags(
+    assert utils.add_jumpstart_uri_tags(
         tags=tags,
         inference_model_uri=inference_model_uri,
         inference_script_uri=inference_script_uri,
@@ -225,7 +288,7 @@ def test_add_jumpstart_tags_inference():
     tags = None
     inference_model_uri = random_jumpstart_s3_uri("random_key")
     inference_script_uri = "dfsdfs"
-    assert utils.add_jumpstart_tags(
+    assert utils.add_jumpstart_uri_tags(
         tags=tags,
         inference_model_uri=inference_model_uri,
         inference_script_uri=inference_script_uri,
@@ -234,7 +297,7 @@ def test_add_jumpstart_tags_inference():
     tags = []
     inference_model_uri = random_jumpstart_s3_uri("random_key")
     inference_script_uri = "dfsdfs"
-    assert utils.add_jumpstart_tags(
+    assert utils.add_jumpstart_uri_tags(
         tags=tags,
         inference_model_uri=inference_model_uri,
         inference_script_uri=inference_script_uri,
@@ -243,7 +306,7 @@ def test_add_jumpstart_tags_inference():
     tags = []
     inference_model_uri = {"S3DataSource": {"S3Uri": random_jumpstart_s3_uri("random_key")}}
     inference_script_uri = "dfsdfs"
-    assert utils.add_jumpstart_tags(
+    assert utils.add_jumpstart_uri_tags(
         tags=tags,
         inference_model_uri=inference_model_uri,
         inference_script_uri=inference_script_uri,
@@ -257,7 +320,7 @@ def test_add_jumpstart_tags_inference():
     tags = []
     inference_model_uri = {"S3DataSource": {"S3Uri": random_jumpstart_s3_uri("random_key/prefix/")}}
     inference_script_uri = "dfsdfs"
-    assert utils.add_jumpstart_tags(
+    assert utils.add_jumpstart_uri_tags(
         tags=tags,
         inference_model_uri=inference_model_uri,
         inference_script_uri=inference_script_uri,
@@ -271,7 +334,7 @@ def test_add_jumpstart_tags_inference():
     tags = [{"Key": "some", "Value": "tag"}]
     inference_model_uri = random_jumpstart_s3_uri("random_key")
     inference_script_uri = "dfsdfs"
-    assert utils.add_jumpstart_tags(
+    assert utils.add_jumpstart_uri_tags(
         tags=tags,
         inference_model_uri=inference_model_uri,
         inference_script_uri=inference_script_uri,
@@ -283,7 +346,7 @@ def test_add_jumpstart_tags_inference():
     tags = None
     inference_script_uri = random_jumpstart_s3_uri("random_key")
     inference_model_uri = "dfsdfs"
-    assert utils.add_jumpstart_tags(
+    assert utils.add_jumpstart_uri_tags(
         tags=tags,
         inference_model_uri=inference_model_uri,
         inference_script_uri=inference_script_uri,
@@ -292,7 +355,7 @@ def test_add_jumpstart_tags_inference():
     tags = []
     inference_script_uri = random_jumpstart_s3_uri("random_key")
     inference_model_uri = "dfsdfs"
-    assert utils.add_jumpstart_tags(
+    assert utils.add_jumpstart_uri_tags(
         tags=tags,
         inference_model_uri=inference_model_uri,
         inference_script_uri=inference_script_uri,
@@ -301,7 +364,7 @@ def test_add_jumpstart_tags_inference():
     tags = [{"Key": "some", "Value": "tag"}]
     inference_script_uri = random_jumpstart_s3_uri("random_key")
     inference_model_uri = "dfsdfs"
-    assert utils.add_jumpstart_tags(
+    assert utils.add_jumpstart_uri_tags(
         tags=tags,
         inference_model_uri=inference_model_uri,
         inference_script_uri=inference_script_uri,
@@ -313,7 +376,7 @@ def test_add_jumpstart_tags_inference():
     tags = None
     inference_script_uri = random_jumpstart_s3_uri("random_key")
     inference_model_uri = random_jumpstart_s3_uri("random_key")
-    assert utils.add_jumpstart_tags(
+    assert utils.add_jumpstart_uri_tags(
         tags=tags,
         inference_model_uri=inference_model_uri,
         inference_script_uri=inference_script_uri,
@@ -328,7 +391,7 @@ def test_add_jumpstart_tags_inference():
     tags = []
     inference_script_uri = random_jumpstart_s3_uri("random_key")
     inference_model_uri = random_jumpstart_s3_uri("random_key")
-    assert utils.add_jumpstart_tags(
+    assert utils.add_jumpstart_uri_tags(
         tags=tags,
         inference_model_uri=inference_model_uri,
         inference_script_uri=inference_script_uri,
@@ -343,7 +406,7 @@ def test_add_jumpstart_tags_inference():
     tags = [{"Key": "some", "Value": "tag"}]
     inference_script_uri = random_jumpstart_s3_uri("random_key")
     inference_model_uri = random_jumpstart_s3_uri("random_key")
-    assert utils.add_jumpstart_tags(
+    assert utils.add_jumpstart_uri_tags(
         tags=tags,
         inference_model_uri=inference_model_uri,
         inference_script_uri=inference_script_uri,
@@ -359,7 +422,7 @@ def test_add_jumpstart_tags_inference():
     tags = [{"Key": JumpStartTag.INFERENCE_MODEL_URI.value, "Value": "garbage-value"}]
     inference_script_uri = random_jumpstart_s3_uri("random_key")
     inference_model_uri = random_jumpstart_s3_uri("random_key")
-    assert utils.add_jumpstart_tags(
+    assert utils.add_jumpstart_uri_tags(
         tags=tags,
         inference_model_uri=inference_model_uri,
         inference_script_uri=inference_script_uri,
@@ -371,7 +434,7 @@ def test_add_jumpstart_tags_inference():
     tags = [{"Key": JumpStartTag.INFERENCE_SCRIPT_URI.value, "Value": "garbage-value"}]
     inference_script_uri = random_jumpstart_s3_uri("random_key")
     inference_model_uri = random_jumpstart_s3_uri("random_key")
-    assert utils.add_jumpstart_tags(
+    assert utils.add_jumpstart_uri_tags(
         tags=tags,
         inference_model_uri=inference_model_uri,
         inference_script_uri=inference_script_uri,
@@ -386,7 +449,7 @@ def test_add_jumpstart_tags_inference():
     ]
     inference_script_uri = random_jumpstart_s3_uri("random_key")
     inference_model_uri = random_jumpstart_s3_uri("random_key")
-    assert utils.add_jumpstart_tags(
+    assert utils.add_jumpstart_uri_tags(
         tags=tags,
         inference_model_uri=inference_model_uri,
         inference_script_uri=inference_script_uri,
@@ -396,12 +459,12 @@ def test_add_jumpstart_tags_inference():
     ]
 
 
-def test_add_jumpstart_tags_training():
+def test_add_jumpstart_uri_tags_training():
     tags = None
     training_model_uri = "dfsdfsd"
     training_script_uri = "dfsdfs"
     assert (
-        utils.add_jumpstart_tags(
+        utils.add_jumpstart_uri_tags(
             tags=tags,
             training_model_uri=training_model_uri,
             training_script_uri=training_script_uri,
@@ -413,7 +476,7 @@ def test_add_jumpstart_tags_training():
     training_model_uri = "dfsdfsd"
     training_script_uri = "dfsdfs"
     assert (
-        utils.add_jumpstart_tags(
+        utils.add_jumpstart_uri_tags(
             tags=tags,
             training_model_uri=training_model_uri,
             training_script_uri=training_script_uri,
@@ -424,7 +487,7 @@ def test_add_jumpstart_tags_training():
     tags = [{"Key": "some", "Value": "tag"}]
     training_model_uri = "dfsdfsd"
     training_script_uri = "dfsdfs"
-    assert utils.add_jumpstart_tags(
+    assert utils.add_jumpstart_uri_tags(
         tags=tags,
         training_model_uri=training_model_uri,
         training_script_uri=training_script_uri,
@@ -433,7 +496,7 @@ def test_add_jumpstart_tags_training():
     tags = None
     training_model_uri = random_jumpstart_s3_uri("random_key")
     training_script_uri = "dfsdfs"
-    assert utils.add_jumpstart_tags(
+    assert utils.add_jumpstart_uri_tags(
         tags=tags,
         training_model_uri=training_model_uri,
         training_script_uri=training_script_uri,
@@ -442,7 +505,7 @@ def test_add_jumpstart_tags_training():
     tags = []
     training_model_uri = random_jumpstart_s3_uri("random_key")
     training_script_uri = "dfsdfs"
-    assert utils.add_jumpstart_tags(
+    assert utils.add_jumpstart_uri_tags(
         tags=tags,
         training_model_uri=training_model_uri,
         training_script_uri=training_script_uri,
@@ -451,7 +514,7 @@ def test_add_jumpstart_tags_training():
     tags = [{"Key": "some", "Value": "tag"}]
     training_model_uri = random_jumpstart_s3_uri("random_key")
     training_script_uri = "dfsdfs"
-    assert utils.add_jumpstart_tags(
+    assert utils.add_jumpstart_uri_tags(
         tags=tags,
         training_model_uri=training_model_uri,
         training_script_uri=training_script_uri,
@@ -463,7 +526,7 @@ def test_add_jumpstart_tags_training():
     tags = None
     training_script_uri = random_jumpstart_s3_uri("random_key")
     training_model_uri = "dfsdfs"
-    assert utils.add_jumpstart_tags(
+    assert utils.add_jumpstart_uri_tags(
         tags=tags,
         training_model_uri=training_model_uri,
         training_script_uri=training_script_uri,
@@ -472,7 +535,7 @@ def test_add_jumpstart_tags_training():
     tags = []
     training_script_uri = random_jumpstart_s3_uri("random_key")
     training_model_uri = "dfsdfs"
-    assert utils.add_jumpstart_tags(
+    assert utils.add_jumpstart_uri_tags(
         tags=tags,
         training_model_uri=training_model_uri,
         training_script_uri=training_script_uri,
@@ -481,7 +544,7 @@ def test_add_jumpstart_tags_training():
     tags = [{"Key": "some", "Value": "tag"}]
     training_script_uri = random_jumpstart_s3_uri("random_key")
     training_model_uri = "dfsdfs"
-    assert utils.add_jumpstart_tags(
+    assert utils.add_jumpstart_uri_tags(
         tags=tags,
         training_model_uri=training_model_uri,
         training_script_uri=training_script_uri,
@@ -493,7 +556,7 @@ def test_add_jumpstart_tags_training():
     tags = None
     training_script_uri = random_jumpstart_s3_uri("random_key")
     training_model_uri = random_jumpstart_s3_uri("random_key")
-    assert utils.add_jumpstart_tags(
+    assert utils.add_jumpstart_uri_tags(
         tags=tags,
         training_model_uri=training_model_uri,
         training_script_uri=training_script_uri,
@@ -508,7 +571,7 @@ def test_add_jumpstart_tags_training():
     tags = []
     training_script_uri = random_jumpstart_s3_uri("random_key")
     training_model_uri = random_jumpstart_s3_uri("random_key")
-    assert utils.add_jumpstart_tags(
+    assert utils.add_jumpstart_uri_tags(
         tags=tags,
         training_model_uri=training_model_uri,
         training_script_uri=training_script_uri,
@@ -523,7 +586,7 @@ def test_add_jumpstart_tags_training():
     tags = [{"Key": "some", "Value": "tag"}]
     training_script_uri = random_jumpstart_s3_uri("random_key")
     training_model_uri = random_jumpstart_s3_uri("random_key")
-    assert utils.add_jumpstart_tags(
+    assert utils.add_jumpstart_uri_tags(
         tags=tags,
         training_model_uri=training_model_uri,
         training_script_uri=training_script_uri,
@@ -539,7 +602,7 @@ def test_add_jumpstart_tags_training():
     tags = [{"Key": JumpStartTag.TRAINING_MODEL_URI.value, "Value": "garbage-value"}]
     training_script_uri = random_jumpstart_s3_uri("random_key")
     training_model_uri = random_jumpstart_s3_uri("random_key")
-    assert utils.add_jumpstart_tags(
+    assert utils.add_jumpstart_uri_tags(
         tags=tags,
         training_model_uri=training_model_uri,
         training_script_uri=training_script_uri,
@@ -551,7 +614,7 @@ def test_add_jumpstart_tags_training():
     tags = [{"Key": JumpStartTag.TRAINING_SCRIPT_URI.value, "Value": "garbage-value"}]
     training_script_uri = random_jumpstart_s3_uri("random_key")
     training_model_uri = random_jumpstart_s3_uri("random_key")
-    assert utils.add_jumpstart_tags(
+    assert utils.add_jumpstart_uri_tags(
         tags=tags,
         training_model_uri=training_model_uri,
         training_script_uri=training_script_uri,
@@ -566,7 +629,7 @@ def test_add_jumpstart_tags_training():
     ]
     training_script_uri = random_jumpstart_s3_uri("random_key")
     training_model_uri = random_jumpstart_s3_uri("random_key")
-    assert utils.add_jumpstart_tags(
+    assert utils.add_jumpstart_uri_tags(
         tags=tags,
         training_model_uri=training_model_uri,
         training_script_uri=training_script_uri,

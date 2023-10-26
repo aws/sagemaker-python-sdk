@@ -24,11 +24,12 @@ from sagemaker.debugger.profiler_config import ProfilerConfig
 from sagemaker.estimator import Estimator
 from sagemaker.instance_group import InstanceGroup
 from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
-from sagemaker.jumpstart.enums import JumpStartScriptScope
+from sagemaker.jumpstart.enums import JumpStartScriptScope, JumpStartTag
 
 from sagemaker.jumpstart.estimator import JumpStartEstimator
 
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
+from sagemaker.session_settings import SessionSettings
 from tests.integ.sagemaker.jumpstart.utils import get_training_dataset_for_model_and_version
 from sagemaker.model import Model
 from sagemaker.predictor import Predictor
@@ -112,6 +113,10 @@ class EstimatorTest(unittest.TestCase):
             encrypt_inter_container_traffic=True,
             sagemaker_session=sagemaker_session,
             enable_network_isolation=False,
+            tags=[
+                {"Key": JumpStartTag.MODEL_ID, "Value": "js-trainable-model"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.1.1"},
+            ],
         )
 
         channels = {
@@ -148,6 +153,10 @@ class EstimatorTest(unittest.TestCase):
             enable_network_isolation=False,
             model_name="blahblahblah-9876",
             endpoint_name="blahblahblah-9876",
+            tags=[
+                {"Key": JumpStartTag.MODEL_ID, "Value": "js-trainable-model"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.1.1"},
+            ],
         )
 
     @mock.patch("sagemaker.jumpstart.estimator.is_valid_model_id")
@@ -209,6 +218,10 @@ class EstimatorTest(unittest.TestCase):
             encrypt_inter_container_traffic=False,
             sagemaker_session=sagemaker_session,
             enable_network_isolation=False,
+            tags=[
+                {"Key": JumpStartTag.MODEL_ID, "Value": "js-trainable-model-prepacked"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.2.0"},
+            ],
         )
 
         channels = {
@@ -239,6 +252,10 @@ class EstimatorTest(unittest.TestCase):
             wait=True,
             use_compiled_model=False,
             enable_network_isolation=False,
+            tags=[
+                {"Key": JumpStartTag.MODEL_ID, "Value": "js-trainable-model-prepacked"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.2.0"},
+            ],
         )
 
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
@@ -301,6 +318,13 @@ class EstimatorTest(unittest.TestCase):
                 "what am i": "doing",
                 "SageMakerGatedModelS3Uri": "none of your business",
             },
+            tags=[
+                {
+                    "Key": "sagemaker-sdk:jumpstart-model-id",
+                    "Value": "js-gated-artifact-trainable-model",
+                },
+                {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "2.0.0"},
+            ],
         )
 
         mock_estimator_init.reset_mock()
@@ -323,6 +347,13 @@ class EstimatorTest(unittest.TestCase):
                 "accept_eula": "true",
                 "SageMakerGatedModelS3Uri": "s3://jumpstart-cache-alpha-us-west-2/dummy.tar.gz",
             },
+            tags=[
+                {
+                    "Key": "sagemaker-sdk:jumpstart-model-id",
+                    "Value": "js-gated-artifact-trainable-model",
+                },
+                {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "2.0.0"},
+            ],
         )
 
         channels = {
@@ -351,6 +382,13 @@ class EstimatorTest(unittest.TestCase):
             enable_network_isolation=True,
             model_name="meta-textgeneration-llama-2-7b-f-8675309",
             use_compiled_model=False,
+            tags=[
+                {
+                    "Key": "sagemaker-sdk:jumpstart-model-id",
+                    "Value": "js-gated-artifact-trainable-model",
+                },
+                {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "2.0.0"},
+            ],
         )
 
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
@@ -479,7 +517,7 @@ class EstimatorTest(unittest.TestCase):
             "base_job_name": "Optional[str] = None",
             "sagemaker_session": DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
             "hyperparameters": {"hyp1": "val1"},
-            "tags": [{"1": "hum"}],
+            "tags": [],
             "subnets": ["1", "2"],
             "security_group_ids": ["1", "2"],
             "model_uri": "Optional[str] = None",
@@ -523,7 +561,7 @@ class EstimatorTest(unittest.TestCase):
             "deserializer": "BaseDeserializer()",
             "accelerator_type": "None",
             "endpoint_name": "None",
-            "tags": ["None"],
+            "tags": [],
             "kms_key": "None",
             "wait": True,
             "data_capture_config": "None",
@@ -623,6 +661,10 @@ class EstimatorTest(unittest.TestCase):
                 "encrypt_inter_container_traffic": True,
                 "sagemaker_session": sagemaker_session,
                 "enable_network_isolation": False,
+                "tags": [
+                    {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "js-trainable-model"},
+                    {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "1.1.1"},
+                ],
             },
             init_kwargs,
         )
@@ -665,11 +707,94 @@ class EstimatorTest(unittest.TestCase):
                 "use_compiled_model": False,
                 "model_name": "blahblahblah-1234",
                 "endpoint_name": "blahblahblah-1234",
+                "tags": [
+                    {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "js-trainable-model"},
+                    {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "1.1.1"},
+                ],
             },
             deploy_kwargs,
         )
 
         mock_estimator_deploy.assert_called_once_with(**expected_deploy_kwargs)
+
+    @mock.patch("sagemaker.jumpstart.estimator.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_jumpstart_estimator_tags_disabled(
+        self,
+        mock_get_model_specs: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
+    ):
+
+        mock_is_valid_model_id.return_value = True
+
+        model_id, _ = "js-trainable-model-prepacked", "*"
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        settings = SessionSettings(include_jumpstart_tags=False)
+
+        mock_session = mock.MagicMock(
+            sagemaker_config={}, boto_region_name="us-west-2", settings=settings
+        )
+
+        estimator = JumpStartEstimator(
+            model_id=model_id,
+            sagemaker_session=mock_session,
+            tags=[{"Key": "blah", "Value": "blahagain"}],
+        )
+
+        channels = {
+            "training": f"s3://{get_jumpstart_content_bucket(region)}/"
+            f"some-training-dataset-doesn't-matter",
+        }
+
+        estimator.fit(channels)
+
+        self.assertEqual(
+            mock_session.train.call_args[1]["tags"],
+            [{"Key": "blah", "Value": "blahagain"}],
+        )
+
+    @mock.patch("sagemaker.jumpstart.estimator.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_jumpstart_estimator_tags(
+        self,
+        mock_get_model_specs: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
+    ):
+
+        mock_is_valid_model_id.return_value = True
+
+        model_id, _ = "js-trainable-model-prepacked", "*"
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        mock_session = mock.MagicMock(sagemaker_config={}, boto_region_name="us-west-2")
+
+        estimator = JumpStartEstimator(
+            model_id=model_id,
+            sagemaker_session=mock_session,
+            tags=[{"Key": "blah", "Value": "blahagain"}],
+        )
+
+        channels = {
+            "training": f"s3://{get_jumpstart_content_bucket(region)}/"
+            f"some-training-dataset-doesn't-matter",
+        }
+
+        estimator.fit(channels)
+
+        js_tags = [
+            {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "js-trainable-model-prepacked"},
+            {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "1.2.0"},
+        ]
+
+        self.assertEqual(
+            mock_session.train.call_args[1]["tags"],
+            [{"Key": "blah", "Value": "blahagain"}] + js_tags,
+        )
 
     def test_jumpstart_estimator_kwargs_match_parent_class(self):
 
@@ -1133,6 +1258,10 @@ class EstimatorTest(unittest.TestCase):
             enable_network_isolation=False,
             model_name="blahblahblah-3456",
             endpoint_name="blahblahblah-3456",
+            tags=[
+                {"Key": JumpStartTag.MODEL_ID, "Value": "js-trainable-model"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.1.1"},
+            ],
         )
 
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
@@ -1208,6 +1337,10 @@ class EstimatorTest(unittest.TestCase):
             enable_network_isolation=False,
             model_name="blahblahblah-3456",
             endpoint_name="blahblahblah-3456",
+            tags=[
+                {"Key": JumpStartTag.MODEL_ID, "Value": "js-trainable-model"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.1.1"},
+            ],
         )
 
     @mock.patch("sagemaker.jumpstart.estimator.is_valid_model_id")
@@ -1335,6 +1468,10 @@ class EstimatorTest(unittest.TestCase):
             enable_network_isolation=False,
             encrypt_inter_container_traffic=True,
             volume_size=456,
+            tags=[
+                {"Key": JumpStartTag.MODEL_ID, "Value": "model-artifact-variant-model"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.0.0"},
+            ],
         )
 
         mock_estimator_init.reset_mock()
@@ -1358,6 +1495,13 @@ class EstimatorTest(unittest.TestCase):
             enable_network_isolation=False,
             encrypt_inter_container_traffic=True,
             volume_size=456,
+            tags=[
+                {
+                    "Key": "sagemaker-sdk:jumpstart-model-id",
+                    "Value": "model-artifact-variant-model",
+                },
+                {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "1.0.0"},
+            ],
         )
 
 
