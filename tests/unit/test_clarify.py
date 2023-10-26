@@ -31,14 +31,14 @@ from sagemaker.clarify import (
     PDPConfig,
     SageMakerClarifyProcessor,
     SHAPConfig,
-    AsymmetricSHAPConfig,
+    AsymmetricShapleyValueConfig,
     TextConfig,
     ImageConfig,
     _AnalysisConfigGenerator,
     DatasetType,
     ProcessingOutputHandler,
     SegmentationConfig,
-    ASYM_SHAP_EXPLANATION_TYPES,
+    ASYM_SHAP_VAL_EXPLANATION_TYPES,
 )
 
 JOB_NAME_PREFIX = "my-prefix"
@@ -1223,31 +1223,31 @@ def test_shap_config_no_parameters():
     assert expected_config == shap_config.get_explainability_config()
 
 
-class AsymmetricSHAPConfigCase(NamedTuple):
+class AsymmetricShapleyValueConfigCase(NamedTuple):
     explanation_type: str
     num_samples: Optional[int]
     error: Exception
     error_message: str
 
 
-class TestAsymmetricSHAPConfig:
+class TestAsymmetricShapleyValueConfig:
     @pytest.mark.parametrize(
         "test_case",
         [
-            AsymmetricSHAPConfigCase(  # cases for different explanation types
+            AsymmetricShapleyValueConfigCase(  # cases for different explanation types
                 explanation_type=explanation_type,
                 num_samples=1 if explanation_type == "fine_grained" else None,
                 error=None,
                 error_message=None,
             )
-            for explanation_type in ASYM_SHAP_EXPLANATION_TYPES
+            for explanation_type in ASYM_SHAP_VAL_EXPLANATION_TYPES
         ],
     )
-    def test_asymmetric_shap_config(self, test_case):
+    def test_asymmetric_shapley_value_config(self, test_case):
         """
-        GIVEN valid arguments for an AsymmetricSHAPConfig object
-        WHEN AsymmetricSHAPConfig object is instantiated with those arguments
-        THEN the asymmetric_shap_config dictionary matches expected
+        GIVEN valid arguments for an AsymmetricShapleyValueConfig object
+        WHEN AsymmetricShapleyValueConfig object is instantiated with those arguments
+        THEN the asymmetric_shapley_value_config dictionary matches expected
         """
         # test case is GIVEN
         # construct expected config
@@ -1255,36 +1255,36 @@ class TestAsymmetricSHAPConfig:
         if test_case.explanation_type == "fine_grained":
             expected_config["num_samples"] = test_case.num_samples
         # WHEN
-        asym_shap_config = AsymmetricSHAPConfig(
+        asym_shap_val_config = AsymmetricShapleyValueConfig(
             explanation_type=test_case.explanation_type,
             num_samples=test_case.num_samples,
         )
         # THEN
-        assert asym_shap_config.asymmetric_shap_config == expected_config
+        assert asym_shap_val_config.asymmetric_shapley_value_config == expected_config
 
     @pytest.mark.parametrize(
         "test_case",
         [
-            AsymmetricSHAPConfigCase(  # case for invalid explanation_type
+            AsymmetricShapleyValueConfigCase(  # case for invalid explanation_type
                 explanation_type="coarse_grained",
                 num_samples=None,
                 error=AssertionError,
                 error_message="Please provide a valid explanation type from: "
-                + ", ".join(ASYM_SHAP_EXPLANATION_TYPES),
+                + ", ".join(ASYM_SHAP_VAL_EXPLANATION_TYPES),
             ),
-            AsymmetricSHAPConfigCase(  # case for fine_grained and no num_samples
+            AsymmetricShapleyValueConfigCase(  # case for fine_grained and no num_samples
                 explanation_type="fine_grained",
                 num_samples=None,
                 error=AssertionError,
                 error_message="Please provide an integer for ``num_samples``.",
             ),
-            AsymmetricSHAPConfigCase(  # case for fine_grained and non-integer num_samples
+            AsymmetricShapleyValueConfigCase(  # case for fine_grained and non-integer num_samples
                 explanation_type="fine_grained",
                 num_samples="5",
                 error=AssertionError,
                 error_message="Please provide an integer for ``num_samples``.",
             ),
-            AsymmetricSHAPConfigCase(  # case for num_samples when non fine-grained explanation
+            AsymmetricShapleyValueConfigCase(  # case for num_samples when non fine-grained explanation
                 explanation_type="timewise_chronological",
                 num_samples=5,
                 error=ValueError,
@@ -1292,15 +1292,15 @@ class TestAsymmetricSHAPConfig:
             ),
         ],
     )
-    def test_asymmetric_shap_config_invalid(self, test_case):
+    def test_asymmetric_shapley_value_config_invalid(self, test_case):
         """
-        GIVEN invalid parameters for AsymmetricSHAP
-        WHEN AsymmetricSHAPConfig constructor is called with them
+        GIVEN invalid parameters for AsymmetricShapleyValue
+        WHEN AsymmetricShapleyValueConfig constructor is called with them
         THEN the expected error and message are raised
         """
         # test case is GIVEN
         with pytest.raises(test_case.error, match=test_case.error_message):  # THEN
-            AsymmetricSHAPConfig(  # WHEN
+            AsymmetricShapleyValueConfig(  # WHEN
                 explanation_type=test_case.explanation_type,
                 num_samples=test_case.num_samples,
             )
@@ -2456,16 +2456,16 @@ def _build_pdp_config_mock():
     return pdp_config
 
 
-def _build_asymmetric_shap_config_mock():
-    asym_shap_config_dict = {
+def _build_asymmetric_shapley_value_config_mock():
+    asym_shap_val_config_dict = {
         "explanation_type": "fine_grained",
         "num_samples": 20,
     }
-    asym_shap_config = Mock(spec=AsymmetricSHAPConfig)
-    asym_shap_config.get_explainability_config.return_value = {
-        "asymmetric_shap": asym_shap_config_dict
+    asym_shap_val_config = Mock(spec=AsymmetricShapleyValueConfig)
+    asym_shap_val_config.get_explainability_config.return_value = {
+        "asymmetric_shapley_value": asym_shap_val_config_dict
     }
-    return asym_shap_config
+    return asym_shap_val_config
 
 
 def _build_data_config_mock():
@@ -2502,7 +2502,7 @@ class TestAnalysisConfigGeneratorForTimeSeriesExplainability:
     def test_explainability_for_time_series(self, _add_predictor, _add_methods):
         """
         GIVEN a valid DataConfig and ModelConfig that contain time_series_data_config and
-            time_series_model_config respectively as well as an AsymmetricSHAPConfig
+            time_series_model_config respectively as well as an AsymmetricShapleyValueConfig
         WHEN _AnalysisConfigGenerator.explainability() is called with those args
         THEN _add_predictor and _add methods calls are as expected
         """
@@ -2511,8 +2511,8 @@ class TestAnalysisConfigGeneratorForTimeSeriesExplainability:
         data_config_mock = _build_data_config_mock()
         # get ModelConfig mock
         model_config_mock = _build_model_config_mock()
-        # get AsymmetricSHAPConfig mock for explainability_config
-        explainability_config = _build_asymmetric_shap_config_mock()
+        # get AsymmetricShapleyValueConfig mock for explainability_config
+        explainability_config = _build_asymmetric_shapley_value_config_mock()
         # get time_series_data_config dict from mock
         time_series_data_config = copy.deepcopy(
             data_config_mock.analysis_config.get("time_series_data_config")
@@ -2554,11 +2554,11 @@ class TestAnalysisConfigGeneratorForTimeSeriesExplainability:
         model_config_with_ts = _build_model_config_mock()
         model_config_without_ts = Mock(spec=ModelConfig)
         model_config_without_ts.predictor_config = dict()
-        # asymmetric shap config mock (for ts)
-        asym_shap_config_mock = _build_asymmetric_shap_config_mock()
+        # asymmetric shapley value config mock (for ts)
+        asym_shap_val_config_mock = _build_asymmetric_shapley_value_config_mock()
         # pdp config mock (for non-ts)
         pdp_config_mock = _build_pdp_config_mock()
-        # case 1: asymmetric shap (ts case) and no timeseries data config given
+        # case 1: ASV (ts case) and no timeseries data config given
         with pytest.raises(
             AssertionError, match="Please provide a TimeSeriesDataConfig to DataConfig."
         ):
@@ -2566,9 +2566,9 @@ class TestAnalysisConfigGeneratorForTimeSeriesExplainability:
                 data_config=data_config_without_ts,
                 model_config=model_config_with_ts,
                 model_predicted_label_config=None,
-                explainability_config=asym_shap_config_mock,
+                explainability_config=asym_shap_val_config_mock,
             )
-        # case 2: asymmetric shap (ts case) and no timeseries model config given
+        # case 2: ASV (ts case) and no timeseries model config given
         with pytest.raises(
             AssertionError, match="Please provide a TimeSeriesModelConfig to ModelConfig."
         ):
@@ -2576,7 +2576,7 @@ class TestAnalysisConfigGeneratorForTimeSeriesExplainability:
                 data_config=data_config_with_ts,
                 model_config=model_config_without_ts,
                 model_predicted_label_config=None,
-                explainability_config=asym_shap_config_mock,
+                explainability_config=asym_shap_val_config_mock,
             )
         # case 3: pdp (non ts case) and timeseries data config given
         with pytest.raises(ValueError, match="please do not provide a TimeSeriesDataConfig."):
@@ -2598,7 +2598,7 @@ class TestAnalysisConfigGeneratorForTimeSeriesExplainability:
     def test_bias_and_explainability_invalid_for_time_series(self):
         """
         GIVEN user provides TimeSeriesDataConfig, TimeSeriesModelConfig, and/or
-            AsymmetricSHAPConfig for DataConfig, ModelConfig, and as explainability_config
+            AsymmetricShapleyValueConfig for DataConfig, ModelConfig, and as explainability_config
             respectively
         WHEN _AnalysisConfigGenerator.bias_and_explainability is called
         THEN the appropriate error is raised
@@ -2612,7 +2612,7 @@ class TestAnalysisConfigGeneratorForTimeSeriesExplainability:
         model_config_without_ts = Mock(spec=ModelConfig)
         model_config_without_ts.predictor_config = dict()
         # asymmetric shap config mock (for ts)
-        asym_shap_config_mock = _build_asymmetric_shap_config_mock()
+        asym_shap_val_config_mock = _build_asymmetric_shapley_value_config_mock()
         # pdp config mock (for non-ts)
         pdp_config_mock = _build_pdp_config_mock()
         # case 1: asymmetric shap is given as explainability_config
@@ -2621,7 +2621,7 @@ class TestAnalysisConfigGeneratorForTimeSeriesExplainability:
                 data_config=data_config_without_ts,
                 model_config=model_config_without_ts,
                 model_predicted_label_config=None,
-                explainability_config=asym_shap_config_mock,
+                explainability_config=asym_shap_val_config_mock,
                 bias_config=None,
             )
         # case 2: TimeSeriesModelConfig given to ModelConfig
@@ -2647,17 +2647,17 @@ class TestAnalysisConfigGeneratorForTimeSeriesExplainability:
         ("mock_config", "error", "error_message"),
         [
             (  # single asym shap config for non TSX
-                _build_asymmetric_shap_config_mock(),
+                _build_asymmetric_shapley_value_config_mock(),
                 ValueError,
-                "Please do not provide Asymmetric SHAP configs for non-TimeSeries uses.",
+                "Please do not provide Asymmetric Shapley Value configs for non-TimeSeries uses.",
             ),
             (  # list with asym shap config for non-TSX
                 [
-                    _build_asymmetric_shap_config_mock(),
+                    _build_asymmetric_shapley_value_config_mock(),
                     _build_pdp_config_mock(),
                 ],
                 ValueError,
-                "Please do not provide Asymmetric SHAP configs for non-TimeSeries uses.",
+                "Please do not provide Asymmetric Shapley Value configs for non-TimeSeries uses.",
             ),
         ],
     )
@@ -2669,7 +2669,7 @@ class TestAnalysisConfigGeneratorForTimeSeriesExplainability:
     ):
         """
         GIVEN _merge_explainability_configs is called with a explainability config or list thereof
-        WHEN explainability_config is or contains an AsymmetricSHAPConfig
+        WHEN explainability_config is or contains an AsymmetricShapleyValueConfig
         THEN the function will raise the appropriate error
         """
         with pytest.raises(error, match=error_message):

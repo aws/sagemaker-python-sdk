@@ -40,9 +40,9 @@ logger = logging.getLogger(__name__)
 ENDPOINT_NAME_PREFIX_PATTERN = "^[a-zA-Z0-9](-*[a-zA-Z0-9])"
 
 # TODO: verify these are sensible/sound values
-# asymmetric shap default values (timeseries)
-ASYM_SHAP_DEFAULT_EXPLANATION_TYPE = "timewise_chronological"
-ASYM_SHAP_EXPLANATION_TYPES = [
+# asym shap val config default values (timeseries)
+ASYM_SHAP_VAL_DEFAULT_EXPLANATION_TYPE = "timewise_chronological"
+ASYM_SHAP_VAL_EXPLANATION_TYPES = [
     "timewise_chronological",
     "timewise_anti_chronological",
     "timewise_bidirectional",
@@ -294,7 +294,7 @@ ANALYSIS_CONFIG_SCHEMA_V1_0 = Schema(
                 SchemaOptional("top_k_features"): int,
             },
             SchemaOptional("report"): {"name": str, SchemaOptional("title"): str},
-            SchemaOptional("asymmetric_shap"): {
+            SchemaOptional("asymmetric_shapley_value"): {
                 "explanation_type": And(
                     str,
                     Use(str.lower),
@@ -1580,8 +1580,8 @@ class SHAPConfig(ExplainabilityConfig):
         return copy.deepcopy({"shap": self.shap_config})
 
 
-class AsymmetricSHAPConfig(ExplainabilityConfig):
-    """Config class for Asymmetric SHAP algorithm for TimeSeries explainability"""
+class AsymmetricShapleyValueConfig(ExplainabilityConfig):
+    """Config class for Asymmetric Shapley value algorithm for time series explainability."""
 
     def __init__(
         self,
@@ -1590,44 +1590,47 @@ class AsymmetricSHAPConfig(ExplainabilityConfig):
             "timewise_anti_chronological",
             "timewise_bidirectional",
             "fine_grained",
-        ] = ASYM_SHAP_DEFAULT_EXPLANATION_TYPE,
+        ] = ASYM_SHAP_VAL_DEFAULT_EXPLANATION_TYPE,
         num_samples: Optional[int] = None,
     ):
-        """Initialises config for asymmetric SHAP config.
+        """Initialises config for time series explainability with Asymmetric Shapley Values.
 
-        AsymmetricSHAPConfig is used specifically and only for TimeSeries explainability purposes.
+        AsymmetricShapleyValueConfig is used specifically and only for TimeSeries explainability
+        purposes.
 
         Args:
             explanation_type (str): Type of explanation to be used. Available explanation
                 types are ``"timewise_chronological"``, ``"timewise_anti_chronological"``,
                 ``"timewise_bidirectional"``, and ``"fine_grained"``.
-            num_samples (None or int): Number of samples to be used in the Asymmetric SHAP
-                algorithm. Only applicable when using ``"fine_grained"`` explanations.
+            num_samples (None or int): Number of samples to be used in the Asymmetric Shapley
+                Value algorithm. Only applicable when using ``"fine_grained"`` explanations.
 
         Raises:
             AssertionError: when ``explanation_type`` is not valid or ``num_samples``
                 is not provided for fine-grained explanations
             ValueError: when ``num_samples`` is provided for non fine-grained explanations
         """
-        self.asymmetric_shap_config = dict()
+        self.asymmetric_shapley_value_config = dict()
         # validate explanation type
         assert (
-            explanation_type in ASYM_SHAP_EXPLANATION_TYPES
-        ), "Please provide a valid explanation type from: " + ", ".join(ASYM_SHAP_EXPLANATION_TYPES)
+            explanation_type in ASYM_SHAP_VAL_EXPLANATION_TYPES
+        ), "Please provide a valid explanation type from: " + ", ".join(
+            ASYM_SHAP_VAL_EXPLANATION_TYPES
+        )
         # validate integer num_samples is provided when necessary
         if explanation_type == "fine_grained":
             assert isinstance(num_samples, int), "Please provide an integer for ``num_samples``."
         elif num_samples:  # validate num_samples is not provided when unnecessary
             raise ValueError("``num_samples`` is only used for fine-grained explanations.")
         # set explanation type and (if provided) num_samples in internal config dictionary
-        _set(explanation_type, "explanation_type", self.asymmetric_shap_config)
+        _set(explanation_type, "explanation_type", self.asymmetric_shapley_value_config)
         _set(
-            num_samples, "num_samples", self.asymmetric_shap_config
+            num_samples, "num_samples", self.asymmetric_shapley_value_config
         )  # _set() does nothing if a given argument is None
 
     def get_explainability_config(self):
         """Returns an asymmetric shap config dictionary."""
-        return copy.deepcopy({"asymmetric_shap": self.asymmetric_shap_config})
+        return copy.deepcopy({"asymmetric_shapley_value": self.asymmetric_shapley_value_config})
 
 
 class SageMakerClarifyProcessor(Processor):
@@ -2304,7 +2307,7 @@ class _AnalysisConfigGenerator:
         """Generates a config for Bias and Explainability"""
         # TimeSeries bias metrics are not supported
         if (
-            isinstance(explainability_config, AsymmetricSHAPConfig)
+            isinstance(explainability_config, AsymmetricShapleyValueConfig)
             or "time_series_data_config" in data_config.analysis_config
             or (model_config and "time_series_predictor_config" in model_config.predictor_config)
         ):
@@ -2335,19 +2338,21 @@ class _AnalysisConfigGenerator:
         ts_data_config_present = "time_series_data_config" in data_config.analysis_config
         ts_model_config_present = "time_series_predictor_config" in model_config.predictor_config
 
-        if isinstance(explainability_config, AsymmetricSHAPConfig):
+        if isinstance(explainability_config, AsymmetricShapleyValueConfig):
             assert ts_data_config_present, "Please provide a TimeSeriesDataConfig to DataConfig."
             assert ts_model_config_present, "Please provide a TimeSeriesModelConfig to ModelConfig."
         else:
             if ts_data_config_present:
                 raise ValueError(
-                    "Please provide an AsymmetricSHAPConfig for time series explainability cases."
-                    "For non time series cases, please do not provide a TimeSeriesDataConfig."
+                    "Please provide an AsymmetricShapleyValueConfig for time series "
+                    "explainability cases. For non time series cases, please do not provide a "
+                    "TimeSeriesDataConfig."
                 )
             if ts_model_config_present:
                 raise ValueError(
-                    "Please provide an AsymmetricSHAPConfig for time series explainability cases."
-                    "For non time series cases, please do not provide a TimeSeriesModelConfig."
+                    "Please provide an AsymmetricShapleyValueConfig for time series "
+                    "explainability cases. For non time series cases, please do not provide a "
+                    "TimeSeriesModelConfig."
                 )
 
         # construct whole analysis config
@@ -2427,7 +2432,7 @@ class _AnalysisConfigGenerator:
             if (
                 "shap" in analysis_config["methods"]
                 or "pdp" in analysis_config["methods"]
-                or "asymmetric_shap" in analysis_config["methods"]
+                or "asymmetric_shapley_value" in analysis_config["methods"]
             ):
                 raise ValueError(
                     "model_config must be provided when explainability methods are selected."
@@ -2489,7 +2494,7 @@ class _AnalysisConfigGenerator:
             analysis_config["methods"]["post_training_bias"] = {"methods": post_training_methods}
 
         if explainability_config is not None:
-            if isinstance(explainability_config, AsymmetricSHAPConfig):
+            if isinstance(explainability_config, AsymmetricShapleyValueConfig):
                 explainability_methods = explainability_config.get_explainability_config()
             else:
                 explainability_methods = cls._merge_explainability_configs(
@@ -2507,11 +2512,10 @@ class _AnalysisConfigGenerator:
         explainability_config: Union[ExplainabilityConfig, List[ExplainabilityConfig]],
     ):
         """Merges explainability configs, when more than one."""
+        non_ts = "Please do not provide Asymmetric Shapley Value configs for non-TimeSeries uses."
         # validation
-        if isinstance(explainability_config, AsymmetricSHAPConfig):
-            raise ValueError(
-                "Please do not provide Asymmetric SHAP configs for non-TimeSeries uses."
-            )
+        if isinstance(explainability_config, AsymmetricShapleyValueConfig):
+            raise ValueError(non_ts)
         if (
             isinstance(explainability_config, PDPConfig)
             and "features" not in explainability_config.get_explainability_config()["pdp"]
@@ -2522,11 +2526,9 @@ class _AnalysisConfigGenerator:
                 raise ValueError("Please provide at least one explainability config.")
             # list validation
             for config in explainability_config:
-                # ensure all provided explainability configs are not AsymmetricSHAPConfig
-                if isinstance(config, AsymmetricSHAPConfig):
-                    raise ValueError(
-                        "Please do not provide Asymmetric SHAP configs for non-TimeSeries uses."
-                    )
+                # ensure all provided explainability configs are not AsymmetricShapleyValueConfig
+                if isinstance(config, AsymmetricShapleyValueConfig):
+                    raise ValueError(non_ts)
             # main logic
             explainability_methods = {}
             for config in explainability_config:
