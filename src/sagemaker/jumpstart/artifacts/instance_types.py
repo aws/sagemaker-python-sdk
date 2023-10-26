@@ -90,7 +90,7 @@ def _retrieve_default_instance_type(
     if scope == JumpStartScriptScope.INFERENCE:
         instance_specific_default_instance_type = (
             (
-                model_specs.training_instance_type_variants.get_training_instance_specific_default_inference_instance_type(  # pylint: disable=C0301 # noqa: E501
+                model_specs.training_instance_type_variants.get_instance_specific_default_inference_instance_type(  # pylint: disable=C0301 # noqa: E501
                     training_instance_type
                 )
             )
@@ -176,7 +176,7 @@ def _retrieve_instance_types(
     if scope == JumpStartScriptScope.INFERENCE:
         default_instance_types = model_specs.supported_inference_instance_types or []
         instance_specific_instance_types = (
-            model_specs.training_instance_type_variants.get_training_instance_specific_supported_inference_instance_types(  # pylint: disable=C0301 # noqa: E501
+            model_specs.training_instance_type_variants.get_instance_specific_supported_inference_instance_types(  # pylint: disable=C0301 # noqa: E501
                 training_instance_type
             )
             if training_instance_type is not None

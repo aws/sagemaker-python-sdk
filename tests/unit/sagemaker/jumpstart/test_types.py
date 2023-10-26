@@ -676,44 +676,42 @@ def test_jumpstart_hyperparameter_instance_variants():
 
 
 def test_jumpstart_inference_instance_type_variants():
-    assert INSTANCE_TYPE_VARIANT.get_training_instance_specific_supported_inference_instance_types(
+    assert INSTANCE_TYPE_VARIANT.get_instance_specific_supported_inference_instance_types(
         "ml.p2.xlarge"
     ) == ["ml.p2.xlarge", "ml.p3.xlarge"]
     assert (
-        INSTANCE_TYPE_VARIANT.get_training_instance_specific_default_inference_instance_type(
-            "ml.p2.2xlarge"
-        )
+        INSTANCE_TYPE_VARIANT.get_instance_specific_default_inference_instance_type("ml.p2.2xlarge")
         == "ml.p2.xlarge"
     )
 
-    assert INSTANCE_TYPE_VARIANT.get_training_instance_specific_supported_inference_instance_types(
+    assert INSTANCE_TYPE_VARIANT.get_instance_specific_supported_inference_instance_types(
         "ml.p2.12xlarge"
     ) == ["ml.p2.xlarge", "ml.p3.xlarge", "ml.p5.xlarge"]
     assert (
-        INSTANCE_TYPE_VARIANT.get_training_instance_specific_default_inference_instance_type(
+        INSTANCE_TYPE_VARIANT.get_instance_specific_default_inference_instance_type(
             "ml.p2.12xlarge"
         )
         == "ml.p5.xlarge"
     )
 
     assert (
-        INSTANCE_TYPE_VARIANT.get_training_instance_specific_supported_inference_instance_types(
+        INSTANCE_TYPE_VARIANT.get_instance_specific_supported_inference_instance_types(
             "ml.sdfsad.12xlarge"
         )
         == []
     )
     assert (
-        INSTANCE_TYPE_VARIANT.get_training_instance_specific_default_inference_instance_type(
+        INSTANCE_TYPE_VARIANT.get_instance_specific_default_inference_instance_type(
             "ml.adfas.12xlarge"
         )
         is None
     )
 
-    assert INSTANCE_TYPE_VARIANT.get_training_instance_specific_supported_inference_instance_types(
+    assert INSTANCE_TYPE_VARIANT.get_instance_specific_supported_inference_instance_types(
         "ml.trn1.12xlarge"
     ) == ["ml.inf1.2xlarge", "ml.inf1.xlarge"]
     assert (
-        INSTANCE_TYPE_VARIANT.get_training_instance_specific_default_inference_instance_type(
+        INSTANCE_TYPE_VARIANT.get_instance_specific_default_inference_instance_type(
             "ml.trn1.12xlarge"
         )
         == "ml.inf1.xlarge"
