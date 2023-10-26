@@ -3825,6 +3825,7 @@ class Framework(EstimatorBase):
 
         mpi_enabled = False
         smdataparallel_enabled = False
+        p5_enabled = False
         if "instance_groups" in distribution:
             distribution_config["sagemaker_distribution_instance_groups"] = distribution[
                 "instance_groups"
@@ -3869,10 +3870,11 @@ class Framework(EstimatorBase):
             elif isinstance(self.instance_type, str):
                 p5_enabled = "p5.48xlarge" in self.instance_type
             else:
-                raise ValueError(
-                    "Invalid object type for instance_type argument. Expected "
-                    f"{type(str)} or {type(ParameterString)} but got {type(self.instance_type)}."
-                )
+                for instance in self.instance_groups:
+                    if "p5.48xlarge" in instance._to_request_dict().get("InstanceType", ()):
+                        p5_enabled = True
+                        break
+
             img_uri = "" if self.image_uri is None else self.image_uri
             for unsupported_image in Framework.UNSUPPORTED_DLC_IMAGE_FOR_SM_PARALLELISM:
                 if (
