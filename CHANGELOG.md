@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.195.1 (2023-10-26)
+
+### Bug Fixes and Other Changes
+
+ * Allow either instance_type or instance_group to be defined in…
+ * enhance image_uris unit tests
+
 ## v2.195.0 (2023-10-25)
 
 ### Features
