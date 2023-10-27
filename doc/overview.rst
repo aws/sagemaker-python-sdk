@@ -820,6 +820,120 @@ the
 
    predictor.predict("this is the best day of my life", {"ContentType": "application/x-text"})
 
+Deploy a pre-trained model using the SageMaker ModelBuilder class
+-----------------------------------------------------------------
+If you prefer a streamlined solution to build and deploy your model, SageMaker Python SDK offers additional APIs that apply intelligent defaults to help you create a SageMaker-deployable model in fewer steps. ``ModelBuilder`` simplifies model creation by performing the following tasks for you:
+
+- Converts machine learning models trained using various frameworks like XgBoost or PyTorch into SageMaker-deployable models with a single line of code.
+- Performs automatic container selection based on the model framework, so you don’t have to manually specify your container. You can still bring your own container by passing your own URI to `ModelBuilder`.
+- Handles the serializing of data on the client side before sending it to the server for inference, and deserializing the results returned by the server. Data is correctly formatted without manual processing.
+- Automated capture of dependencies, libraries and packages needed by your model. You don’t have to package the dependencies and upload to S3. The deployment environment matches the development environment to ensure a smooth transition from development to deployment.
+
+Build your model with ModelBuilder
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ``ModelBuilder`` class can take your framework (Xgboost or Pytorch) model and convert it into a SageMaker-deployable model, generating the artifacts according the model server. If you don’t want to supply a model directly, you can provide inference code to specify a model source - this method is discussed in the following sections. There are many available options for `ModelBuilder`, but if your model doesn’t require extensive customization and you want to deploy immediately, you can supply at minimum a framework model, input, and output.  If you did not set up a default role ARN, you need to provide it as well.  To view all options offered in `ModelBuilder`, see the `ModelBuilder documentation
+<https://sagemaker.readthedocs.io/en/stable/api/inference/model_builder.html>`_.
+
+In the following code example, ``ModelBuilder`` is called with a framework model and an instance of ``SchemaBuilder`` with minimum arguments (to infer the corresponding functions for serializing and deserializing the endpoint input and output). No container is specified and no packaged dependencies are passed - SageMaker saves you preparation time and effort by automatically inferring these resources when you build your model.
+
+.. code:: python
+
+    model_builder = ModelBuilder(
+        model=model,
+        schema_builder=SchemaBuilder(X_test, y_pred),
+    )
+
+    model_builder.build()
+
+If you want to bring your own container, you can also specify the image URI and set the mode argument to ``Mode.LOCAL_CONTAINER`` as shown in the following example. When you want to deploy to SageMaker, change the argument to ``Mode.SAGEMAKER_ENDPOINT``.
+
+.. code:: python
+
+    model_builder = ModelBuilder(
+        model=model,
+        model_server=ModelServer.TORCHSERVE,
+        schema_builder=SchemaBuilder(X_test, y_pred),
+        image_uri="12345678910.dkr.ecr.ap-southeast-2.amazonaws.com/byoc-image:xgb-1.7-1")
+    )
+
+Define serialization and deserialization methods with SchemaBuilder
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``SchemaBuilder`` accepts sample input and output and can infer corresponding functions for serializing and deserializing the endpoint input and output. For example, the following example would work:
+
+.. code:: python
+
+    input = "How is the demo going?"
+    output = "Comment la démo va-t-elle?"
+    schema = SchemaBuilder(input, output)
+
+However, you might want to further customize your serialization and deserialization functions. For example, you might want to pass an image and want your serializer to converts the image to a tensor before prediction. You can define this translation in ``CustomPayloadTranslator`` for input, output, or both, and pass them to ``SchemaBuilder``. For an example that creates custom input and output translators with ``CustomPayloadTranslator``, see `ModelBuilder examples
+<https://github.com/aws-samples/sagemaker-hosting/SageMaker-Model-Builder>`_.
+
+.. code:: python
+
+    class SchemaBuilder(
+        sample_input: Any,
+        sample_output: Any,
+        input_translator: CustomPayloadTranslator = None,
+        output_translator: CustomPayloadTranslator = None
+    )
+
+You can use ``SchemaBuilder`` to standardize the serialization and deserialization functions for endpoint input and output for a model server. Insert those functions into a one definition of ``SchemaBuilder`` and pass this definition to all instances of ``ModelBuilder`` for the same model server. As a result, you no longer have to maintain common implementation details in individualized scripts for each model.
+
+Load the model with a custom function using InferenceSpec
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+As previously mentioned, you don’t have to supply a framework model directly to ``ModelBuilder``.  You can instead pass an instance of ``InferenceSpec`` with the load and invoke functions defined.  The load function contains the custom logic that creates the model, and invoke instructs SageMaker how to pass the input payload to the endpoint.
+
+The following example uses ``InferenceSpec`` to generate a model with the HuggingFace pipeline.
+
+.. code:: python
+
+    from sagemaker.serve.spec.inference_spec import InferenceSpec
+    from transformers import pipeline
+
+    class MyInferenceSpec(InferenceSpec):
+        def load(self, model_dir: str):
+            return pipeline("translation_en_to_fr", model="t5-small")
+
+        def invoke(self, input, model):
+            return model(input)
+
+    inf_spec = MyInferenceSpec()
+
+    model_builder = ModelBuilder(
+        inference_spec=my_inference_spec,
+        schema_builder=SchemaBuilder(X_test, y_pred)
+    )
+
+For sample notebooks that demonstrate the use of ``InferenceSpec``, see `ModelBuilder
+examples <https://github.com/aws-samples/sagemaker-hosting/SageMaker-Model-Builder>`_.
+
+Build your model and deploy
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Call the build() function to create your deployable model.  This step creates an inference.py in your working directory with the code necessary to create your schema, run serialization and deserialization of inputs and outputs, and perform other user-specified custom logic.
+
+.. code:: python
+
+    # Build the model according to the model server specification and save it to as files in the working directory
+    model = model_builder.build()
+
+Deploy your model with the model’s existing ``deploy()`` method.  A model constructed from ``ModelBuilder`` enables live logging during deployment as an added feature.
+
+.. code:: python
+
+    predictor = model.deploy(
+        initial_instance_count=1,
+        instance_type="ml.c6i.xlarge"
+    )
+
+For more examples of using ``ModelBuilder`` to build your models, see
+  `ModelBuilder sample notebooks <https://github.com/aws-samples/sagemaker-hosting/SageMaker-Model-Builder>`_.
+
+
 Fine-tune a Model and Deploy to a SageMaker Endpoint
 ====================================================
 

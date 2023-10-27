@@ -28,6 +28,9 @@ from sagemaker.base_serializers import (  # noqa: F401 # pylint: disable=W0611
     NumpySerializer,
     SimpleBaseSerializer,
     SparseMatrixSerializer,
+    TorchTensorSerializer,
+    PickleSerializer,
+    StringSerializer,
 )
 
 from sagemaker.jumpstart import artifacts, utils as jumpstart_utils

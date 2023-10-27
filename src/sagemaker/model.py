@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Placeholder docstring"""
+# pylint: skip-file
 from __future__ import absolute_import
 
 import abc
@@ -377,6 +378,9 @@ class Model(ModelBase, InferenceRecommenderMixin):
             self.dependencies = updates["dependencies"]
         self.uploaded_code = None
         self.repacked_model_data = None
+        self.mode = None
+        self.modes = {}
+        self.serve_settings = None
         self.content_types = None
         self.response_types = None
         self.accept_eula = None
@@ -1263,6 +1267,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         inference_recommendation_id=None,
         explainer_config=None,
         accept_eula: Optional[bool] = None,
+        endpoint_logging=False,
         **kwargs,
     ):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
@@ -1511,6 +1516,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             data_capture_config_dict=data_capture_config_dict,
             explainer_config_dict=explainer_config_dict,
             async_inference_config_dict=async_inference_config_dict,
+            live_logging=endpoint_logging,
         )
 
         if self.predictor_cls:
@@ -1617,6 +1623,42 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             volume_kms_key=volume_kms_key,
             sagemaker_session=self.sagemaker_session,
         )
+
+    def tune(self, max_tuning_duration: Optional[int] = 1800):
+        """Tune a Model built in ``Mode.LOCAL_CONTAINER`` via ``ModelBuilder``.
+
+        ``tune()`` is available for DJL Models using Huggingface IDs.
+        In this use case, Tensor Parallel Degree is our tunable parameter. The tuning job
+        first generates all admissible Tensor Parallel Degrees and then benchmarks
+        on 10 invocations serially followed by 10 invocations concurrently. It starts first
+        at the highest admissible Tensor Parallel Degree and then scales down until failure.
+
+        Example:
+            Sample flow:
+
+            >>> sample_input = {
+            >>>                    "inputs": "sample_prompt",
+            >>>                    "parameters": {}
+            >>>                }
+            >>> sample_output = {
+            >>>                     "generated_text": "sample_text_generation"
+            >>>                 }
+            >>>
+            >>> builder = ModelBuilder(
+            >>>                        model=model,
+            >>>                        schema_builder=SchemaBuilder(sample_input, sample_output),
+            >>>                        model_path=path_to_model,
+            >>>                        mode=Mode.LOCAL_CONTAINER,
+            >>>                       )
+            >>>
+            >>> model = builder.build()
+            >>> tuned_model = model.tune()
+            >>> tuned_model.deploy()
+
+        Args:
+            max_tuning_duration (int): The time out for the ``Mode.LOCAL_CONTAINER`` tuning
+                job. Defaults to 1800.
+        """
 
     def delete_model(self):
         """Delete an Amazon SageMaker Model.

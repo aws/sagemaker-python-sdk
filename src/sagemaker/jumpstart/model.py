@@ -449,6 +449,7 @@ class JumpStartModel(Model):
         inference_recommendation_id: Optional[str] = None,
         explainer_config: Optional[ExplainerConfig] = None,
         accept_eula: Optional[bool] = None,
+        endpoint_logging: Optional[bool] = False,
     ) -> PredictorBase:
         """Creates endpoint by calling base ``Model`` class `deploy` method.
 
@@ -532,6 +533,8 @@ class JumpStartModel(Model):
                 The `accept_eula` value must be explicitly defined as `True` in order to
                 accept the end-user license agreement (EULA) that some
                 models require. (Default: None).
+            endpoint_logging (Optiona[bool]): If set to true, live logging will be emitted as
+                the SageMaker Endpoint starts up. (Default: False).
         """
 
         deploy_kwargs = get_deploy_kwargs(
@@ -559,6 +562,7 @@ class JumpStartModel(Model):
             explainer_config=explainer_config,
             sagemaker_session=self.sagemaker_session,
             accept_eula=accept_eula,
+            endpoint_logging=endpoint_logging,
         )
 
         predictor = super(JumpStartModel, self).deploy(**deploy_kwargs.to_kwargs_dict())

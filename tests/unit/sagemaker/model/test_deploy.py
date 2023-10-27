@@ -136,6 +136,7 @@ def test_deploy(name_from_base, prepare_container_def, production_variant, sagem
         explainer_config_dict=None,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
+        live_logging=False,
     )
 
 
@@ -185,6 +186,7 @@ def test_deploy_accelerator_type(
         explainer_config_dict=None,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
+        live_logging=False,
     )
 
 
@@ -211,6 +213,7 @@ def test_deploy_endpoint_name(sagemaker_session):
         explainer_config_dict=None,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
+        live_logging=False,
     )
 
 
@@ -291,6 +294,7 @@ def test_deploy_tags(create_sagemaker_model, production_variant, name_from_base,
         explainer_config_dict=None,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
+        live_logging=False,
     )
 
 
@@ -314,6 +318,7 @@ def test_deploy_kms_key(production_variant, name_from_base, sagemaker_session):
         explainer_config_dict=None,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
+        live_logging=False,
     )
 
 
@@ -336,6 +341,7 @@ def test_deploy_async(production_variant, name_from_base, sagemaker_session):
         explainer_config_dict=None,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
+        live_logging=False,
     )
 
 
@@ -366,6 +372,7 @@ def test_deploy_data_capture_config(production_variant, name_from_base, sagemake
         explainer_config_dict=None,
         data_capture_config_dict=data_capture_config_dict,
         async_inference_config_dict=None,
+        live_logging=False,
     )
 
 
@@ -400,6 +407,7 @@ def test_deploy_explainer_config(production_variant, name_from_base, sagemaker_s
         explainer_config_dict=explainer_config_dict,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
+        live_logging=False,
     )
 
 
@@ -448,6 +456,7 @@ def test_deploy_async_inference(production_variant, name_from_base, sagemaker_se
         explainer_config_dict=None,
         data_capture_config_dict=None,
         async_inference_config_dict=async_inference_config_dict,
+        live_logging=False,
     )
 
 
@@ -499,6 +508,7 @@ def test_deploy_serverless_inference(production_variant, create_sagemaker_model,
         explainer_config_dict=None,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
+        live_logging=False,
     )
 
 
@@ -939,4 +949,5 @@ def test_deploy_customized_volume_size_and_timeout(
         explainer_config_dict=None,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
+        live_logging=False,
     )

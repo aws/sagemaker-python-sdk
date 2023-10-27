@@ -1,0 +1,11 @@
+SchemaVersion: "1.0"
+SageMaker:
+  PythonSDK:
+    Modules:
+      Serve:
+        RoleArn: arn:aws:iam::123456789012:role/service-role/testing-role
+        S3ModelDataUri: s3://testing-s3-bucket
+        InstanceType: ml.m5.xlarge
+        EnvironmentVariables:
+          EnvVarKey: EnvVarValue
+      TelemetryOptOut: True

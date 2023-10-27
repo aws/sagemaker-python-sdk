@@ -29,7 +29,7 @@ import botocore
 import botocore.config
 from botocore.exceptions import ClientError
 import six
-from sagemaker.utils import instance_supports_kms
+from sagemaker.utils import instance_supports_kms, create_paginator_config
 
 import sagemaker.logs
 from sagemaker import vpc_utils, s3_utils
@@ -141,6 +141,8 @@ _STATUS_CODE_TABLE = {
     "STARTING": "Starting",
     "PENDING": "Pending",
 }
+EP_LOGGER_POLL = 10
+DEFAULT_EP_POLL = 30
 
 
 class LogState(object):
@@ -341,7 +343,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """Placeholder docstring"""
         return self._region_name
 
-    def upload_data(self, path, bucket=None, key_prefix="data", extra_args=None):
+    def upload_data(self, path, bucket=None, key_prefix="data", callback=None, extra_args=None):
         """Upload local file or directory to S3.
 
         If a single file is specified for upload, the resulting S3 object key is
@@ -397,7 +399,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             s3 = self.s3_resource
 
         for local_path, s3_key in files:
-            s3.Object(bucket, s3_key).upload_file(local_path, ExtraArgs=extra_args)
+            s3.Object(bucket, s3_key).upload_file(
+                local_path, Callback=callback, ExtraArgs=extra_args
+            )
 
         s3_uri = "s3://{}/{}".format(bucket, key_prefix)
         # If a specific file was used as input (instead of a directory), we return the full S3 key
@@ -4164,7 +4168,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         self.sagemaker_client.create_endpoint_config(**request)
 
-    def create_endpoint(self, endpoint_name, config_name, tags=None, wait=True):
+    def create_endpoint(self, endpoint_name, config_name, tags=None, wait=True, live_logging=False):
         """Create an Amazon SageMaker ``Endpoint`` according to the configuration in the request.
 
         Once the ``Endpoint`` is created, client applications can send requests to obtain
@@ -4193,7 +4197,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             EndpointName=endpoint_name, EndpointConfigName=config_name, Tags=tags
         )
         if wait:
-            self.wait_for_endpoint(endpoint_name)
+            self.wait_for_endpoint(endpoint_name, live_logging=live_logging)
         return endpoint_name
 
     def update_endpoint(self, endpoint_name, endpoint_config_name, wait=True):
@@ -4517,7 +4521,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 LOGGER.error("Error occurred while attempting to stop transform job: %s.", name)
                 raise
 
-    def wait_for_endpoint(self, endpoint, poll=30):
+    def wait_for_endpoint(self, endpoint, poll=DEFAULT_EP_POLL, live_logging=False):
         """Wait for an Amazon SageMaker endpoint deployment to complete.
 
         Args:
@@ -4531,13 +4535,28 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             dict: Return value from the ``DescribeEndpoint`` API.
         """
-        desc = _wait_until(lambda: _deploy_done(self.sagemaker_client, endpoint), poll)
+        if not live_logging:
+            desc = _wait_until(lambda: _deploy_done(self.sagemaker_client, endpoint), poll)
+        else:
+            cloudwatch_client = self.boto_session.client("logs")
+            paginator = cloudwatch_client.get_paginator("filter_log_events")
+            paginator_config = create_paginator_config()
+            desc = _wait_until(
+                lambda: _live_logging_deploy_done(
+                    self.sagemaker_client, endpoint, paginator, paginator_config, EP_LOGGER_POLL
+                ),
+                poll=EP_LOGGER_POLL,
+            )
         status = desc["EndpointStatus"]
 
         if status != "InService":
             reason = desc.get("FailureReason", None)
-            message = "Error hosting endpoint {endpoint}: {status}. Reason: {reason}.".format(
-                endpoint=endpoint, status=status, reason=reason
+            trouble_shooting = (
+                "Try changing the instance type or reference the troubleshooting page "
+                "https://docs.aws.amazon.com/sagemaker/latest/dg/async-inference-troubleshooting.html"
+            )
+            message = "Error hosting endpoint {}: {}. Reason: {}. {}".format(
+                endpoint, status, reason, trouble_shooting
             )
             if "CapacityError" in str(reason):
                 raise exceptions.CapacityError(
@@ -4773,6 +4792,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         data_capture_config_dict=None,
         async_inference_config_dict=None,
         explainer_config_dict=None,
+        live_logging=False,
     ):
         """Create an SageMaker ``Endpoint`` from a list of production variants.
 
@@ -4849,7 +4869,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
         self.sagemaker_client.create_endpoint_config(**config_options)
 
         return self.create_endpoint(
-            endpoint_name=name, config_name=name, tags=endpoint_tags, wait=wait
+            endpoint_name=name,
+            config_name=name,
+            tags=endpoint_tags,
+            wait=wait,
+            live_logging=live_logging,
         )
 
     def expand_role(self, role):
@@ -6701,6 +6725,55 @@ def _deploy_done(sagemaker_client, endpoint_name):
     sys.stdout.flush()
 
     return None if status in in_progress_statuses else desc
+
+
+# live log on endpoint in creation
+def _live_logging_deploy_done(sagemaker_client, endpoint_name, paginator, paginator_config, poll):
+    """Placeholder docstring"""
+    stop = False
+    endpoint_status = None
+    try:
+        desc = sagemaker_client.describe_endpoint(EndpointName=endpoint_name)
+        endpoint_status = desc["EndpointStatus"]
+    except ClientError as e:
+        if e.response["Error"]["Code"] == "ValidationException":
+            LOGGER.debug("Waiting for endpoint to become visible")
+            return None
+        raise e
+
+    try:
+        # if endpoint is in an invalid state -> set stop to true, sleep, and flush the logs
+        if endpoint_status != "Creating":
+            stop = True
+            if endpoint_status == "InService":
+                LOGGER.info("Created endpoint with name %s", endpoint_name)
+            else:
+                time.sleep(poll)
+
+        pages = paginator.paginate(
+            logGroupName=f"/aws/sagemaker/Endpoints/{endpoint_name}",
+            logStreamNamePrefix="AllTraffic/",
+            PaginationConfig=paginator_config,
+        )
+
+        for page in pages:
+            if "nextToken" in page:
+                paginator_config["StartingToken"] = page["nextToken"]
+                for event in page["events"]:
+                    LOGGER.info(event["message"])
+            else:
+                LOGGER.debug("No log events available")
+
+        # if stop is true -> return the describe response and stop polling
+        if stop:
+            return desc
+    except ClientError as e:
+        if e.response["Error"]["Code"] == "ResourceNotFoundException":
+            LOGGER.debug("Waiting for endpoint log group to appear")
+            return None
+        raise e
+
+    return None
 
 
 def _wait_until_training_done(callable_fn, desc, poll=5):

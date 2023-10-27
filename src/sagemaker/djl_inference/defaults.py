@@ -55,3 +55,5 @@ ALLOWED_INSTANCE_FAMILIES = {
     "ml.p4de",
     "local_gpu",
 }
+
+REVISION_MAPPING = {"fp16": "float16", "fp32": "float32"}
