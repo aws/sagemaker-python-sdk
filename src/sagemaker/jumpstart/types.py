@@ -1133,6 +1133,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "sagemaker_session",
         "training_instance_type",
         "accept_eula",
+        "endpoint_logging",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -1172,6 +1173,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         sagemaker_session: Optional[Session] = None,
         training_instance_type: Optional[str] = None,
         accept_eula: Optional[bool] = None,
+        endpoint_logging: Optional[bool] = None,
     ) -> None:
         """Instantiates JumpStartModelDeployKwargs object."""
 
@@ -1200,6 +1202,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         self.sagemaker_session = sagemaker_session
         self.training_instance_type = training_instance_type
         self.accept_eula = accept_eula
+        self.endpoint_logging = endpoint_logging
 
 
 class JumpStartEstimatorInitKwargs(JumpStartKwargs):

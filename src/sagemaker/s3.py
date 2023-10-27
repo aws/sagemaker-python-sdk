@@ -33,7 +33,7 @@ class S3Uploader(object):
     """Contains static methods for uploading directories or files to S3."""
 
     @staticmethod
-    def upload(local_path, desired_s3_uri, kms_key=None, sagemaker_session=None):
+    def upload(local_path, desired_s3_uri, kms_key=None, sagemaker_session=None, callback=None):
         """Static method that uploads a given file or directory to S3.
 
         Args:
@@ -59,7 +59,11 @@ class S3Uploader(object):
             extra_args = None
 
         return sagemaker_session.upload_data(
-            path=local_path, bucket=bucket, key_prefix=key_prefix, extra_args=extra_args
+            path=local_path,
+            bucket=bucket,
+            key_prefix=key_prefix,
+            callback=callback,
+            extra_args=extra_args,
         )
 
     @staticmethod

@@ -30,6 +30,9 @@ def test_jumpstart_default_metric_definitions(patched_get_model_specs):
 
     patched_get_model_specs.side_effect = get_spec_from_base_spec
 
+    mock_client = boto3.client("s3")
+    mock_session = Mock(s3_client=mock_client)
+
     model_id = "pytorch-ic-mobilenet-v2"
     region = "us-west-2"
 

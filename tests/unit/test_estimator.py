@@ -3419,6 +3419,7 @@ def test_fit_deploy_tags_in_estimator(name_from_base, sagemaker_session):
         data_capture_config_dict=None,
         async_inference_config_dict=None,
         explainer_config_dict=None,
+        live_logging=False,
     )
 
     sagemaker_session.create_model.assert_called_with(
@@ -3470,6 +3471,7 @@ def test_fit_deploy_tags(name_from_base, sagemaker_session):
         data_capture_config_dict=None,
         async_inference_config_dict=None,
         explainer_config_dict=None,
+        live_logging=False,
     )
 
     sagemaker_session.create_model.assert_called_with(
@@ -3528,6 +3530,7 @@ def test_fit_deploy_uncompressed_s3_model(name_from_base, sagemaker_session):
         async_inference_config_dict=None,
         explainer_config_dict=None,
         tags=None,
+        live_logging=False,
     )
 
     sagemaker_session.create_model.assert_called_with(

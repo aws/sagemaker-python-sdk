@@ -98,6 +98,9 @@ ENVIRONMENT = "Environment"
 CONTAINERS = "Containers"
 PRIMARY_CONTAINER = "PrimaryContainer"
 INFERENCE_SPECIFICATION = "InferenceSpecification"
+SERVE = "Serve"
+S3_MODEL_DATA_URI = "S3ModelDataUri"
+PORT = "Port"
 PROFILER_CONFIG = "ProfilerConfig"
 DISABLE_PROFILER = "DisableProfiler"
 ESTIMATOR = "Estimator"
@@ -108,6 +111,7 @@ SERVING_PORT = "serving_port"
 CONTAINER_CONFIG = "container_config"
 CONTAINER_ROOT = "container_root"
 REGION_NAME = "region_name"
+TELEMETRY_OPT_OUT = "TelemetryOptOut"
 
 
 def _simple_path(*args: str):
@@ -349,6 +353,16 @@ SESSION_DEFAULT_S3_OBJECT_KEY_PREFIX_PATH = _simple_path(
 ESTIMATOR_DEBUG_HOOK_CONFIG_PATH = _simple_path(
     SAGEMAKER, PYTHON_SDK, MODULES, ESTIMATOR, DEBUG_HOOK_CONFIG
 )
+SERVE_ROLE_ARN = _simple_path(SAGEMAKER, PYTHON_SDK, MODULES, SERVE, ROLE_ARN)
+SERVE_S3_MODEL_DATA_URI = _simple_path(SAGEMAKER, PYTHON_SDK, MODULES, SERVE, S3_MODEL_DATA_URI)
+SERVE_INSTANCE_TYPE = _simple_path(SAGEMAKER, PYTHON_SDK, MODULES, SERVE, INSTANCE_TYPE)
+SERVE_ENVIRONMENT_VARIABLES = _simple_path(
+    SAGEMAKER, PYTHON_SDK, MODULES, SERVE, ENVIRONMENT_VARIABLES
+)
+ESTIMATOR_DEBUG_HOOK_CONFIG_PATH = _simple_path(
+    SAGEMAKER, PYTHON_SDK, MODULES, ESTIMATOR, DEBUG_HOOK_CONFIG
+)
+TELEMETRY_OPT_OUT_PATH = _simple_path(SAGEMAKER, PYTHON_SDK, MODULES, TELEMETRY_OPT_OUT)
 
 
 SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
@@ -704,6 +718,21 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                         VOLUME_KMS_KEY_ID: {"$ref": "#/definitions/kmsKeyId"},
                                         VPC_CONFIG: {"$ref": "#/definitions/vpcConfig"},
                                     },
+                                },
+                                SERVE: {
+                                    TYPE: OBJECT,
+                                    ADDITIONAL_PROPERTIES: False,
+                                    PROPERTIES: {
+                                        ROLE_ARN: {"$ref": "#/definitions/roleArn"},
+                                        S3_MODEL_DATA_URI: {"$ref": "#/definitions/s3Uri"},
+                                        INSTANCE_TYPE: {TYPE: "string"},
+                                        ENVIRONMENT_VARIABLES: {
+                                            "$ref": "#/definitions/environmentVariables"
+                                        },
+                                    },
+                                },
+                                TELEMETRY_OPT_OUT: {
+                                    TYPE: "boolean",
                                 },
                             },
                         },

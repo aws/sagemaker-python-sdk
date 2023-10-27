@@ -15,6 +15,7 @@ from __future__ import absolute_import
 
 import os
 from glob import glob
+import sys
 
 from setuptools import find_packages, setup
 
@@ -63,6 +64,12 @@ required_packages = [
     "jsonschema",
     "platformdirs",
     "tblib==1.7.0",
+    "urllib3<1.27",
+    "uvicorn==0.22.0",
+    "fastapi==0.95.2",
+    "requests",
+    "docker",
+    "tqdm",
 ]
 
 # Specific use case dependencies
@@ -77,7 +84,21 @@ extras = {
 # Meta dependency groups
 extras["all"] = [item for group in extras.values() for item in group]
 # Tests specific dependencies (do not need to be included in 'all')
-extras["test"] = (read_requirements("requirements/extras/test_requirements.txt"),)
+test_dependencies = read_requirements("requirements/extras/test_requirements.txt")
+# remove torch and torchvision if python version is not 3.10
+if sys.version_info.minor != 10:
+    test_dependencies = [
+        module
+        for module in test_dependencies
+        if not (
+            module.startswith("transformers")
+            or module.startswith("sentencepiece")
+            or module.startswith("torch")
+            or module.startswith("torchvision")
+        )
+    ]
+
+extras["test"] = (test_dependencies,)
 
 setup(
     name="sagemaker",
@@ -110,4 +131,7 @@ setup(
             "sagemaker-upgrade-v2=sagemaker.cli.compatibility.v2.sagemaker_upgrade_v2:main",
         ]
     },
+    scripts=[
+        "src/sagemaker/serve/model_server/triton/pack_conda_env.sh",
+    ],
 )

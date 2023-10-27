@@ -110,6 +110,7 @@ class ModelTest(unittest.TestCase):
                 {"Key": JumpStartTag.MODEL_ID, "Value": "js-trainable-model"},
                 {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.1.1"},
             ],
+            endpoint_logging=False,
         )
 
     @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
@@ -168,6 +169,7 @@ class ModelTest(unittest.TestCase):
                 {"Key": JumpStartTag.MODEL_ID, "Value": "js-model-class-model-prepacked"},
                 {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.1.0"},
             ],
+            endpoint_logging=False,
         )
 
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
@@ -326,6 +328,7 @@ class ModelTest(unittest.TestCase):
             "container_startup_health_check_timeout": 2,
             "inference_recommendation_id": "None",
             "explainer_config": "None",
+            "endpoint_logging": False,
         }
 
         self.evaluate_model_workflow_with_kwargs(

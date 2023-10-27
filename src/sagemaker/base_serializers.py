@@ -21,6 +21,7 @@ import json
 import numpy as np
 from pandas import DataFrame
 from six import with_metaclass
+import cloudpickle
 
 from sagemaker.utils import DeferredError
 
@@ -352,7 +353,11 @@ class LibSVMSerializer(SimpleBaseSerializer):
 
         Returns:
             str: The data serialized as a LibSVM-formatted string.
+
+        Raises:
+            ValueError: If unable to handle input format
         """
+
         if isinstance(data, str):
             return data
 
@@ -383,6 +388,7 @@ class DataSerializer(SimpleBaseSerializer):
         Returns:
             raw-bytes: The data serialized as raw-bytes from the input.
         """
+
         if isinstance(data, str):
             try:
                 with open(data, "rb") as data_file:
@@ -394,3 +400,92 @@ class DataSerializer(SimpleBaseSerializer):
             return data
 
         raise ValueError(f"Object of type {type(data)} is not Data serializable.")
+
+
+class StringSerializer(SimpleBaseSerializer):
+    """Encode the string to utf-8 bytes."""
+
+    def __init__(self, content_type="text/plain"):
+        """Initialize a ``StringSerializer`` instance.
+
+        Args:
+            content_type (str): The MIME type to signal to the inference endpoint when sending
+                request data (default: "text/plain").
+        """
+        super(StringSerializer, self).__init__(content_type=content_type)
+
+    def serialize(self, data):
+        """Encode the string to utf-8 bytes.
+
+        Args:
+            data (object): Data to be serialized.
+        Returns:
+            raw-bytes: The data serialized as raw-bytes from the input.
+        """
+
+        if isinstance(data, str):
+            return data.encode("utf-8")
+
+        raise ValueError(f"Object of type {type(data)} is not String serializable.")
+
+
+class TorchTensorSerializer(SimpleBaseSerializer):
+    """Serialize torch.Tensor to a buffer by converting tensor to numpy and call NumpySerializer.
+
+    Args:
+        data (object): Data to be serialized. The data must be of torch.Tensor type.
+    Returns:
+        raw-bytes: The data serialized as raw-bytes from the input.
+    """
+
+    def __init__(self, content_type="tensor/pt"):
+        super(TorchTensorSerializer, self).__init__(content_type=content_type)
+        from torch import Tensor
+
+        self.torch_tensor = Tensor
+        self.numpy_serializer = NumpySerializer()
+
+    def serialize(self, data):
+        """Serialize torch.Tensor to a buffer.
+
+        Args:
+            data (object): Data to be serialized. The data must be of torch.Tensor type.
+
+        Returns:
+            raw-bytes: The data serialized as raw-bytes from the input.
+        """
+        if isinstance(data, self.torch_tensor):
+            try:
+                return self.numpy_serializer.serialize(data.detach().numpy())
+            except Exception as e:
+                raise ValueError(
+                    "Unable to serialize your data because: %s.\
+                        Please provide custom serialization in InferenceSpec. "
+                    % e
+                )
+
+        raise ValueError("Object of type %s is not a torch.Tensor" % type(data))
+
+
+class PickleSerializer(SimpleBaseSerializer):
+    """Serialize an arbitrary object using cloudpickle module."""
+
+    def __init__(self, content_type="application/x-pkl"):
+        super(PickleSerializer, self).__init__(content_type)
+
+    def serialize(self, data: object) -> bytes:
+        """Serialize an arbitrary object using cloudpickle module.
+
+        Args:
+            data (object): Data to be serialized. The data must be of torch.Tensor type.
+        Returns:
+            raw-bytes: The data serialized as raw-bytes from the input.
+        """
+        try:
+            return cloudpickle.dumps(data)
+        except Exception:
+            raise ValueError(
+                "Cannot serialize your object of type %s into bytes with cloudpickle.\
+                    Please provide custom serializer."
+                % type(data)
+            )
