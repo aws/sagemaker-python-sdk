@@ -46,29 +46,15 @@ def read_requirements(filename):
 
 
 # Declare minimal set for installation
-required_packages = [
-    "attrs>=23.1.0,<24",
-    "boto3>=1.26.131,<2.0",
-    "cloudpickle==2.2.1",
-    "google-pasta",
-    "numpy>=1.9.0,<2.0",
-    "protobuf>=3.12,<5.0",
-    "smdebug_rulesconfig==1.0.1",
-    "importlib-metadata>=1.4.0,<7.0",
-    "packaging>=20.0",
-    "pathos",
-    "schema",
-    "PyYAML~=6.0",
-    "jsonschema",
-    "platformdirs",
-    "tblib==1.7.0",
-]
+core_requirements = read_requirements("requirements/core_requirements.txt")
+pandas_requirements = read_requirements("requirements/extras/pandas_requirements.txt")
+
+required_packages = core_requirements + pandas_requirements
 
 # Specific use case dependencies
 # Keep format of *_requirements.txt to be tracked by dependabot
 extras = {
     "local": read_requirements("requirements/extras/local_requirements.txt"),
-    "pandas": read_requirements("requirements/extras/pandas_requirements.txt"),
     "scipy": read_requirements("requirements/extras/scipy_requirements.txt"),
     "feature-processor": read_requirements(
         "requirements/extras/feature-processor_requirements.txt"
