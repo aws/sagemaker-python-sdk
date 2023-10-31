@@ -58,6 +58,7 @@ _DEFINITION_CONFIG = PipelineDefinitionConfig(use_custom_job_prefix=False)
 MOCKED_PIPELINE_CONFIG = _PipelineConfig(
     "test-pipeline",
     "test-processing-step",
+    None,
     "code-hash-abcdefg",
     "config-hash-abcdefg",
     _DEFINITION_CONFIG,

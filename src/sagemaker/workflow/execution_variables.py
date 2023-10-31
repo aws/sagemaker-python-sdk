@@ -13,11 +13,14 @@
 """Pipeline parameters and conditions for workflow."""
 from __future__ import absolute_import
 
-from typing import List
+from typing import List, TYPE_CHECKING
 from sagemaker.workflow.entities import (
     RequestType,
     PipelineVariable,
 )
+
+if TYPE_CHECKING:
+    from sagemaker.workflow.steps import Step
 
 
 class ExecutionVariable(PipelineVariable):
@@ -50,8 +53,16 @@ class ExecutionVariable(PipelineVariable):
         return {"Get": f"Execution.{self.name}"}
 
     @property
-    def _referenced_steps(self) -> List[str]:
-        """List of step names that this function depends on."""
+    def _pickleable(self):
+        """The pickleable object that can be passed to a remote function invocation."""
+
+        from sagemaker.remote_function.core.pipeline_variables import _ExecutionVariable
+
+        return _ExecutionVariable(name=self.name)
+
+    @property
+    def _referenced_steps(self) -> List["Step"]:
+        """List of step that this function depends on."""
         return []
 
 

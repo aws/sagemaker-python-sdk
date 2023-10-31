@@ -215,7 +215,9 @@ class _LocalTrainingJob(object):
         """
         for channel in input_data_config:
             if channel["DataSource"] and "S3DataSource" in channel["DataSource"]:
-                data_distribution = channel["DataSource"]["S3DataSource"]["S3DataDistributionType"]
+                data_distribution = channel["DataSource"]["S3DataSource"].get(
+                    "S3DataDistributionType", None
+                )
                 data_uri = channel["DataSource"]["S3DataSource"]["S3Uri"]
             elif channel["DataSource"] and "FileDataSource" in channel["DataSource"]:
                 data_distribution = channel["DataSource"]["FileDataSource"][
@@ -230,7 +232,7 @@ class _LocalTrainingJob(object):
             # use a single Data URI - this makes handling S3 and File Data easier down the stack
             channel["DataUri"] = data_uri
 
-            if data_distribution != "FullyReplicated":
+            if data_distribution and data_distribution != "FullyReplicated":
                 raise RuntimeError(
                     "DataDistribution: %s is not currently supported in Local Mode"
                     % data_distribution

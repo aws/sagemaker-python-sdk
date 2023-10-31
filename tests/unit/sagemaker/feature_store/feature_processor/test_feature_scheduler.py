@@ -178,7 +178,7 @@ def config_uploader():
     return_value=("path_a", "path_b", "path_c", "path_d"),
 )
 @patch(
-    "sagemaker.feature_store.feature_processor._config_uploader.ConfigUploader._prepare_and_upload_dependencies",
+    "sagemaker.feature_store.feature_processor._config_uploader.ConfigUploader._prepare_and_upload_workspace",
     return_value="some_s3_uri",
 )
 @patch(
@@ -282,7 +282,15 @@ def test_to_pipeline(
     )
 
     mock_dependency_upload.assert_called_once_with(
-        local_dependencies_path, True, None, None, f"{S3_URI}/pipeline_name", None, session, None
+        local_dependencies_path,
+        True,
+        None,
+        None,
+        None,
+        f"{S3_URI}/pipeline_name",
+        None,
+        session,
+        None,
     )
 
     mock_spark_dependency_upload.assert_called_once_with(
@@ -880,6 +888,7 @@ def test_remote_decorator_fields_consistency(get_execution_role, session):
         "pre_execution_commands",
         "pre_execution_script",
         "include_local_workdir",
+        "workdir_config",
         "instance_type",
         "instance_count",
         "volume_size",

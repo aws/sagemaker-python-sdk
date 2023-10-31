@@ -31,6 +31,7 @@ from sagemaker.experiments._api_types import _TrialComponentStatusType
 
 from sagemaker.remote_function import remote
 from sagemaker.remote_function.spark_config import SparkConfig
+from sagemaker.remote_function.workdir_config import WorkdirConfig
 from sagemaker.remote_function.runtime_environment.runtime_environment_manager import (
     RuntimeEnvironmentError,
 )
@@ -135,7 +136,7 @@ def test_advanced_job_setting(
     assert divide(10, 2) == 5
 
 
-def test_with_local_dependencies(
+def test_with_workdir(
     sagemaker_session, dummy_container_without_error, cpu_instance_type, monkeypatch
 ):
     source_dir_path = os.path.join(os.path.dirname(__file__))
@@ -149,7 +150,8 @@ def test_with_local_dependencies(
             dependencies=dependencies_path,
             instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
-            include_local_workdir=True,
+            workdir_config=WorkdirConfig(),
+            keep_alive_period_in_seconds=300,
         )
         def train(x):
             from helpers import local_module
@@ -158,6 +160,34 @@ def test_with_local_dependencies(
             return local_module.square(x) + local_module2.cube(x)
 
         assert train(2) == 12
+
+
+def test_with_misconfigured_workdir(
+    sagemaker_session, dummy_container_without_error, cpu_instance_type, monkeypatch
+):
+    source_dir_path = os.path.join(os.path.dirname(__file__))
+    with monkeypatch.context() as m:
+        m.chdir(source_dir_path)
+        dependencies_path = os.path.join(DATA_DIR, "remote_function", "requirements.txt")
+
+        @remote(
+            role=ROLE,
+            image_uri=dummy_container_without_error,
+            dependencies=dependencies_path,
+            instance_type=cpu_instance_type,
+            sagemaker_session=sagemaker_session,
+            # exclude critical modules
+            workdir_config=WorkdirConfig(ignore_name_patterns=["helpers"]),
+            keep_alive_period_in_seconds=300,
+        )
+        def train(x):
+            from helpers import local_module
+            from helpers.nested_helper import local_module2
+
+            return local_module.square(x) + local_module2.cube(x)
+
+        with pytest.raises(ModuleNotFoundError):
+            train(2)
 
 
 def test_with_additional_dependencies(
