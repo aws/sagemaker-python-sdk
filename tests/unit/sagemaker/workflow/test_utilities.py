@@ -17,8 +17,14 @@ import tempfile
 
 from sagemaker.workflow.pipeline_context import _PipelineConfig
 from sagemaker.workflow.pipeline_definition_config import PipelineDefinitionConfig
-from sagemaker.workflow.utilities import hash_file, hash_files_or_dirs, trim_request_dict
+from sagemaker.workflow.utilities import (
+    hash_file,
+    hash_files_or_dirs,
+    trim_request_dict,
+    collect_parameters,
+)
 from pathlib import Path
+import unittest
 
 
 def test_hash_file():
@@ -107,8 +113,10 @@ def test_trim_request_dict():
     _pipeline_config = _PipelineConfig(
         pipeline_name="test",
         step_name="test-step",
+        sagemaker_session=None,
         code_hash="123467890",
         config_hash="123467890",
+        pipeline_build_time="some_time",
         pipeline_definition_config=config,
     )
     custom_job_prefix = "MyTrainingJobNamePrefix"
@@ -132,3 +140,46 @@ def test_trim_request_dict():
     assert request_dict == trim_request_dict(
         request_dict=request_dict, job_key="NotSupportedJobName", config=_pipeline_config
     )
+
+
+class TestCollectParametersDecorator(unittest.TestCase):
+    def setUp(self):
+        class BaseClass:
+            def __init__(self, param1):
+                self.param1 = param1
+
+        class SampleClass(BaseClass):
+            @collect_parameters
+            def __init__(self, param1, param2, param3="default_value"):
+                super(SampleClass, self).__init__(param1)
+                pass
+
+            @collect_parameters
+            def abc(self, param2, param4="default_value", param5=None):
+                pass
+
+        self.SampleClass = SampleClass
+
+    def test_collect_parameters_for_init(self):
+        obj = self.SampleClass(param1=42, param2="Hello")
+
+        self.assertEqual(obj.param1, 42)
+        self.assertEqual(obj.param2, "Hello")
+        self.assertEqual(obj.param3, "default_value")
+
+    def test_collect_parameters_override_for_init(self):
+        obj = self.SampleClass(param1=42, param2="Hello", param3="new_value")
+
+        self.assertEqual(obj.param1, 42)
+        self.assertEqual(obj.param2, "Hello")
+        self.assertEqual(obj.param3, "new_value")
+
+    def test_collect_parameters_function(self):
+        obj = self.SampleClass(param1=42, param2="Hello", param3="new_value")
+        obj.abc(param2="param2_overridden", param5="param5_value")
+
+        self.assertEqual(obj.param1, 42)
+        self.assertEqual(obj.param2, "param2_overridden")
+        self.assertEqual(obj.param3, "new_value")
+        self.assertEqual(obj.param4, "default_value")
+        self.assertEqual(obj.param5, "param5_value")

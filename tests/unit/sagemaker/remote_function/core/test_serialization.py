@@ -18,6 +18,8 @@ import pytest
 
 from mock import patch, Mock
 from sagemaker.experiments.run import Run
+from sagemaker.workflow.parameters import ParameterInteger
+from sagemaker.workflow.function_step import DelayedReturn
 from sagemaker.remote_function.core.serialization import (
     serialize_func_to_s3,
     deserialize_func_from_s3,
@@ -125,11 +127,38 @@ def test_serialize_func_referencing_to_run(*args, **kwargs):
         )
 
 
+@pytest.mark.parametrize(
+    "pipeline_variable",
+    [
+        ParameterInteger(name="var1", default_value=1),
+        DelayedReturn(function_step=Mock()),
+    ],
+)
 @patch("sagemaker.s3.S3Uploader.upload_bytes", new=upload)
 @patch("sagemaker.s3.S3Downloader.read_bytes", new=read)
-@patch("cloudpickle.dumps")
-def test_serialize_func_serialization_error(mock_cloudpickle_dumps):
-    mock_cloudpickle_dumps.side_effect = RuntimeError("some failure when dumps")
+def test_serialize_func_referencing_to_pipeline_variables(pipeline_variable):
+    def func(x):
+        print(pipeline_variable)
+
+    s3_uri = random_s3_uri()
+    with pytest.raises(
+        SerializationError,
+        match="Please pass the pipeline variable to the function decorated with @step as an argument",
+    ):
+        serialize_func_to_s3(
+            func=func,
+            sagemaker_session=Mock(),
+            s3_uri=s3_uri,
+            s3_kms_key=KMS_KEY,
+            hmac_key=HMAC_KEY,
+        )
+
+
+@patch("sagemaker.s3.S3Uploader.upload_bytes", new=upload)
+@patch("sagemaker.s3.S3Downloader.read_bytes", new=read)
+@patch("cloudpickle.CloudPickler")
+def test_serialize_func_serialization_error(mock_cloudpickler):
+    mock_cloudpickler.side_effect = RuntimeError("some failure when dumps")
 
     def square(x):
         return x * x
@@ -295,11 +324,35 @@ def test_serialize_run(*args, **kwargs):
             )
 
 
+@pytest.mark.parametrize(
+    "pipeline_variable",
+    [
+        ParameterInteger(name="var1", default_value=1),
+        DelayedReturn(function_step=Mock()),
+    ],
+)
 @patch("sagemaker.s3.S3Uploader.upload_bytes", new=upload)
 @patch("sagemaker.s3.S3Downloader.read_bytes", new=read)
-@patch("cloudpickle.dumps")
-def test_serialize_obj_serialization_error(mock_cloudpickle_dumps):
-    mock_cloudpickle_dumps.side_effect = RuntimeError("some failure when dumps")
+def test_serialize_pipeline_variables(pipeline_variable):
+    s3_uri = random_s3_uri()
+    with pytest.raises(
+        SerializationError,
+        match="Please pass the pipeline variable to the function decorated with @step as an argument",
+    ):
+        serialize_obj_to_s3(
+            obj=(pipeline_variable,),
+            sagemaker_session=Mock(),
+            s3_uri=s3_uri,
+            s3_kms_key=KMS_KEY,
+            hmac_key=HMAC_KEY,
+        )
+
+
+@patch("sagemaker.s3.S3Uploader.upload_bytes", new=upload)
+@patch("sagemaker.s3.S3Downloader.read_bytes", new=read)
+@patch("cloudpickle.CloudPickler")
+def test_serialize_obj_serialization_error(mock_cloudpickler):
+    mock_cloudpickler.side_effect = RuntimeError("some failure when dumps")
 
     class MyData:
         def __init__(self, x):

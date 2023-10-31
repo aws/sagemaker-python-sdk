@@ -39,6 +39,7 @@ from sagemaker.remote_function.job import _JobSettings, _Job, _RunInfo
 from sagemaker.remote_function import logging_config
 from sagemaker.utils import name_from_base, base_from_name
 from sagemaker.remote_function.spark_config import SparkConfig
+from sagemaker.remote_function.workdir_config import WorkdirConfig
 
 _API_CALL_LIMIT = {
     "SubmittingIntervalInSecs": 1,
@@ -65,6 +66,7 @@ def remote(
     environment_variables: Dict[str, str] = None,
     image_uri: str = None,
     include_local_workdir: bool = False,
+    workdir_config: WorkdirConfig = None,
     instance_count: int = 1,
     instance_type: str = None,
     job_conda_env: str = None,
@@ -190,7 +192,13 @@ def remote(
 
         include_local_workdir (bool): A flag to indicate that the remote function should include
           local directories. Set to ``True`` if the remote function code imports local modules and
-          methods that are not available via PyPI or conda. Default value is ``False``.
+          methods that are not available via PyPI or conda. Only python files are included.
+          Default value is ``False``.
+
+        workdir_config (WorkdirConfig): A ``WorkdirConfig`` object that specifies the
+          local directories and files to be included in the remote function.
+          workdir_config takes precedence over include_local_workdir.
+          Default value is ``None``.
 
         instance_count (int): The number of instances to use. Defaults to 1.
           NOTE: Remote function does not support instance_count > 1 for non Spark jobs.
@@ -282,6 +290,7 @@ def remote(
             environment_variables=environment_variables,
             image_uri=image_uri,
             include_local_workdir=include_local_workdir,
+            workdir_config=workdir_config,
             instance_count=instance_count,
             instance_type=instance_type,
             job_conda_env=job_conda_env,
@@ -492,6 +501,7 @@ class RemoteExecutor(object):
         environment_variables: Dict[str, str] = None,
         image_uri: str = None,
         include_local_workdir: bool = False,
+        workdir_config: WorkdirConfig = None,
         instance_count: int = 1,
         instance_type: str = None,
         job_conda_env: str = None,
@@ -618,6 +628,11 @@ class RemoteExecutor(object):
               local directories. Set to ``True`` if the remote function code imports local modules
               and methods that are not available via PyPI or conda. Default value is ``False``.
 
+            workdir_config (WorkdirConfig): A ``WorkdirConfig`` object that specifies the
+              local directories and files to be included in the remote function.
+              workdir_config takes precedence over include_local_workdir.
+              Default value is ``None``.
+
             instance_count (int): The number of instances to use. Defaults to 1.
               NOTE: Remote function does not support instance_count > 1 for non Spark jobs.
 
@@ -724,6 +739,7 @@ class RemoteExecutor(object):
             environment_variables=environment_variables,
             image_uri=image_uri,
             include_local_workdir=include_local_workdir,
+            workdir_config=workdir_config,
             instance_count=instance_count,
             instance_type=instance_type,
             job_conda_env=job_conda_env,

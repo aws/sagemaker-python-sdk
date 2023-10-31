@@ -32,9 +32,8 @@ sagemaker-feature-store-pyspark-3.3
 # TODO find workaround
 xgboost>=1.6.2,<=1.7.6
 pillow>=9.5.0,<=10.0.0
-torch@https://download.pytorch.org/whl/cpu/torch-2.0.0%2Bcpu-cp310-cp310-linux_x86_64.whl
-torchvision@https://download.pytorch.org/whl/cpu/torchvision-0.15.1%2Bcpu-cp310-cp310-linux_x86_64.whl
 transformers==4.32.0
 sentencepiece==0.1.99
 # https://github.com/triton-inference-server/server/issues/6246
 tritonclient[http]<2.37.0
+nbformat>=5.9,<6

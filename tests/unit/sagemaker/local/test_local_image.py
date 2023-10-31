@@ -434,6 +434,89 @@ def test_train(
 
 @patch("sagemaker.local.local_session.LocalSession", Mock())
 @patch("sagemaker.local.image._stream_output", Mock())
+@patch("sagemaker.local.image._SageMakerContainer._cleanup")
+@patch("sagemaker.local.image._SageMakerContainer.retrieve_artifacts")
+@patch(
+    "sagemaker.local.image._SageMakerContainer._get_compose_cmd_prefix",
+    Mock(return_value=["docker-compose"]),
+)
+@patch("sagemaker.local.data.get_data_source_instance")
+@patch("subprocess.Popen")
+def test_train_with_entry_point(
+    popen, get_data_source_instance, retrieve_artifacts, cleanup, tmpdir, sagemaker_session, caplog
+):
+    # This is to test the case of Pipeline function step,
+    # which is translated into a training job, with container_entrypoint configured
+    data_source = Mock()
+    data_source.get_root_dir.return_value = "foo"
+    get_data_source_instance.return_value = data_source
+
+    caplog.set_level(logging.INFO)
+
+    directories = [str(tmpdir.mkdir("container-root")), str(tmpdir.mkdir("data"))]
+    with patch(
+        "sagemaker.local.image._SageMakerContainer._create_tmp_folder", side_effect=directories
+    ):
+
+        instance_count = 2
+        image = "my-image"
+        container_entrypoint = [
+            "/bin/bash",
+            "/opt/ml/input/data/sagemaker_remote_function_bootstrap/job_driver.sh",
+        ]
+        container_args = ["--region", "us-west-2", "--client_python_version", "3.10"]
+        sagemaker_container = _SageMakerContainer(
+            instance_type="local",
+            instance_count=instance_count,
+            image=image,
+            sagemaker_session=sagemaker_session,
+            container_entrypoint=container_entrypoint,
+            container_arguments=container_args,
+        )
+        sagemaker_container.train(
+            INPUT_DATA_CONFIG, OUTPUT_DATA_CONFIG, HYPERPARAMETERS, ENVIRONMENT, TRAINING_JOB_NAME
+        )
+
+        docker_compose_file = os.path.join(
+            sagemaker_container.container_root, "docker-compose.yaml"
+        )
+        call_args = popen.call_args[0][0]
+        assert call_args is not None
+
+        expected = [
+            "docker-compose",
+            "-f",
+            docker_compose_file,
+            "up",
+            "--build",
+            "--abort-on-container-exit",
+        ]
+        for i, v in enumerate(expected):
+            assert call_args[i] == v
+
+        with open(docker_compose_file, "r") as f:
+            config = yaml.load(f, Loader=yaml.SafeLoader)
+            assert len(config["services"]) == instance_count
+            for h in sagemaker_container.hosts:
+                host_config = config["services"][h]
+                assert host_config["image"] == image
+                assert not host_config.get("command", None)
+                assert (
+                    "TRAINING_JOB_NAME={}".format(TRAINING_JOB_NAME) in host_config["environment"]
+                )
+                assert host_config["entrypoint"] == container_entrypoint + container_args
+
+        # assert that expected by sagemaker container output directories exist
+        assert os.path.exists(os.path.join(sagemaker_container.container_root, "output"))
+        assert os.path.exists(os.path.join(sagemaker_container.container_root, "output/data"))
+
+    retrieve_artifacts.assert_called_once()
+    cleanup.assert_called_once()
+    assert "[Masked]" in caplog.text
+
+
+@patch("sagemaker.local.local_session.LocalSession", Mock())
+@patch("sagemaker.local.image._stream_output", Mock())
 @patch("sagemaker.local.image._SageMakerContainer._cleanup", Mock())
 @patch("sagemaker.local.data.get_data_source_instance")
 def test_train_with_hyperparameters_without_job_name(

@@ -142,9 +142,8 @@ class ModelStep(StepCollection):
                 "the sagemaker_session of the model must be a PipelineSession object."
             )
 
-        self.name = name
+        super().__init__(name=name, depends_on=depends_on)
         self.step_args = step_args
-        self.depends_on = depends_on
         self.retry_policies = retry_policies
         self.display_name = display_name
         self.description = description

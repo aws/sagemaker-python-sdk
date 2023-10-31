@@ -192,6 +192,7 @@ _DEFINITION_CONFIG = PipelineDefinitionConfig(use_custom_job_prefix=False)
 MOCKED_PIPELINE_CONFIG = _PipelineConfig(
     "test-pipeline",
     "test-training-step",
+    None,
     "code-hash-0123456789",
     "config-hash-0123456789",
     _DEFINITION_CONFIG,

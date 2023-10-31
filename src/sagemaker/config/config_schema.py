@@ -112,6 +112,7 @@ CONTAINER_CONFIG = "container_config"
 CONTAINER_ROOT = "container_root"
 REGION_NAME = "region_name"
 TELEMETRY_OPT_OUT = "TelemetryOptOut"
+NOTEBOOK_JOB = "NotebookJob"
 
 
 def _simple_path(*args: str):
@@ -276,6 +277,7 @@ MODEL_PACKAGE_VALIDATION_ROLE_PATH = _simple_path(
 MODEL_PACKAGE_VALIDATION_PROFILES_PATH = _simple_path(
     SAGEMAKER, MODEL_PACKAGE, VALIDATION_SPECIFICATION, VALIDATION_PROFILES
 )
+REMOTE_FUNCTION_PATH = _simple_path(SAGEMAKER, PYTHON_SDK, MODULES, REMOTE_FUNCTION)
 REMOTE_FUNCTION_DEPENDENCIES = _simple_path(
     SAGEMAKER, PYTHON_SDK, MODULES, REMOTE_FUNCTION, DEPENDENCIES
 )
@@ -321,6 +323,20 @@ REMOTE_FUNCTION_ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION = _simple_path(
     MODULES,
     REMOTE_FUNCTION,
     ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION,
+)
+NOTEBOOK_JOB_ROLE_ARN = _simple_path(SAGEMAKER, PYTHON_SDK, MODULES, NOTEBOOK_JOB, ROLE_ARN)
+NOTEBOOK_JOB_S3_ROOT_URI = _simple_path(SAGEMAKER, PYTHON_SDK, MODULES, NOTEBOOK_JOB, S3_ROOT_URI)
+NOTEBOOK_JOB_S3_KMS_KEY_ID = _simple_path(
+    SAGEMAKER, PYTHON_SDK, MODULES, NOTEBOOK_JOB, S3_KMS_KEY_ID
+)
+NOTEBOOK_JOB_VOLUME_KMS_KEY_ID = _simple_path(
+    SAGEMAKER, PYTHON_SDK, MODULES, NOTEBOOK_JOB, VOLUME_KMS_KEY_ID
+)
+NOTEBOOK_JOB_VPC_CONFIG_SUBNETS = _simple_path(
+    SAGEMAKER, PYTHON_SDK, MODULES, NOTEBOOK_JOB, VPC_CONFIG, SUBNETS
+)
+NOTEBOOK_JOB_VPC_CONFIG_SECURITY_GROUP_IDS = _simple_path(
+    SAGEMAKER, PYTHON_SDK, MODULES, NOTEBOOK_JOB, VPC_CONFIG, SECURITY_GROUP_IDS
 )
 MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION_PATH = _simple_path(
     SAGEMAKER,
@@ -709,12 +725,33 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                         },
                                         IMAGE_URI: {TYPE: "string"},
                                         INCLUDE_LOCAL_WORKDIR: {TYPE: "boolean"},
+                                        "WorkdirConfig": {
+                                            TYPE: OBJECT,
+                                            ADDITIONAL_PROPERTIES: False,
+                                            PROPERTIES: {
+                                                "IgnoreNamePatterns": {
+                                                    TYPE: "array",
+                                                    "items": {"type": "string"},
+                                                }
+                                            },
+                                        },
                                         INSTANCE_TYPE: {TYPE: "string"},
                                         JOB_CONDA_ENV: {TYPE: "string"},
                                         ROLE_ARN: {"$ref": "#/definitions/roleArn"},
                                         S3_KMS_KEY_ID: {"$ref": "#/definitions/kmsKeyId"},
                                         S3_ROOT_URI: {"$ref": "#/definitions/s3Uri"},
                                         TAGS: {"$ref": "#/definitions/tags"},
+                                        VOLUME_KMS_KEY_ID: {"$ref": "#/definitions/kmsKeyId"},
+                                        VPC_CONFIG: {"$ref": "#/definitions/vpcConfig"},
+                                    },
+                                },
+                                NOTEBOOK_JOB: {
+                                    TYPE: OBJECT,
+                                    ADDITIONAL_PROPERTIES: False,
+                                    PROPERTIES: {
+                                        ROLE_ARN: {"$ref": "#/definitions/roleArn"},
+                                        S3_ROOT_URI: {"$ref": "#/definitions/s3Uri"},
+                                        S3_KMS_KEY_ID: {"$ref": "#/definitions/kmsKeyId"},
                                         VOLUME_KMS_KEY_ID: {"$ref": "#/definitions/kmsKeyId"},
                                         VPC_CONFIG: {"$ref": "#/definitions/vpcConfig"},
                                     },

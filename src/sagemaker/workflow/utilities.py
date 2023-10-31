@@ -17,7 +17,7 @@ import inspect
 import logging
 from functools import wraps
 from pathlib import Path
-from typing import List, Sequence, Union, Set, TYPE_CHECKING
+from typing import List, Sequence, Union, Set, TYPE_CHECKING, Optional
 import hashlib
 from urllib.parse import unquote, urlparse
 from contextlib import contextmanager
@@ -68,64 +68,63 @@ def list_to_request(entities: Sequence[Union[Entity, "StepCollection"]]) -> List
 
 
 @contextmanager
-def _pipeline_config_manager(
+def step_compilation_context_manager(
     pipeline_name: str,
     step_name: str,
+    sagemaker_session,
     code_hash: str,
     config_hash: str,
     pipeline_definition_config: PipelineDefinitionConfig,
+    upload_runtime_scripts: bool,
+    upload_workspace: bool,
+    pipeline_build_time: str,
+    function_step_secret_token: Optional[str] = None,
 ):
     """Expose static _pipeline_config variable to other modules
 
     Args:
         pipeline_name (str): pipeline name
         step_name (str): step name
+        sagemaker_session (sagemaker.session.Session): a sagemaker session
         code_hash (str): a hash of the code artifact for the particular step
         config_hash (str): a hash of the config artifact for the particular step (Processing)
+        pipeline_definition_config (PipelineDefinitionConfig): a configuration used to toggle
+            feature flags persistent in a pipeline definition
+        upload_runtime_scripts (bool): flag used to manage upload of runtime scripts to s3 for
+          a _FunctionStep in pipeline
+        upload_workspace (bool): flag used to manage the upload of workspace to s3 for a
+          _FunctionStep in pipeline
+        pipeline_build_time (str): timestamp when the pipeline is being built
+        function_step_secret_token (str): secret token used for the function step checksum
     """
 
     # pylint: disable=W0603
     global _pipeline_config
     _pipeline_config = _PipelineConfig(
-        pipeline_name, step_name, code_hash, config_hash, pipeline_definition_config
+        pipeline_name=pipeline_name,
+        step_name=step_name,
+        sagemaker_session=sagemaker_session,
+        code_hash=code_hash,
+        config_hash=config_hash,
+        pipeline_definition_config=pipeline_definition_config,
+        upload_runtime_scripts=upload_runtime_scripts,
+        upload_workspace=upload_workspace,
+        pipeline_build_time=pipeline_build_time,
+        function_step_secret_token=function_step_secret_token,
     )
     try:
-        yield
+        yield _pipeline_config
     finally:
         _pipeline_config = None
 
 
-def build_steps(
-    steps: Sequence[Entity],
-    pipeline_name: str,
-    pipeline_definition_config: PipelineDefinitionConfig,
-):
-    """Get the request structure for list of steps, with _pipeline_config_manager
+def load_step_compilation_context():
+    """Load the step compilation context from the static _pipeline_config variable
 
-    Args:
-        steps (Sequence[Entity]): A list of steps, (Entity type because Step causes circular import)
-        pipeline_name (str): The name of the pipeline, passed down from pipeline.to_request()
-        pipeline_definition_config (PipelineDefinitionConfig): A pipeline definition configuration
-            for a pipeline containing feature flag toggles
     Returns:
-        list: A request structure object for a service call for the list of pipeline steps
+        _PipelineConfig: a context object containing information about the current step
     """
-    from sagemaker.workflow.step_collections import StepCollection
-
-    request_dicts = []
-    for step in steps:
-        with _pipeline_config_manager(
-            pipeline_name,
-            step.name,
-            get_code_hash(step),
-            get_config_hash(step),
-            pipeline_definition_config,
-        ):
-            if isinstance(step, StepCollection):
-                request_dicts.extend(step.request_dicts())
-            else:
-                request_dicts.append(step.to_request())
-    return request_dicts
+    return _pipeline_config
 
 
 def get_code_hash(step: Entity) -> str:
@@ -462,3 +461,38 @@ def trim_request_dict(request_dict, job_key, config):
             request_dict[job_key] = base_from_name(request_dict[job_key])  # trim timestamp
 
     return request_dict
+
+
+def collect_parameters(func):
+    """The decorator function is to collect all the params passed into an invoked function of class.
+
+    These parameters are set as properties of the class instance. The use case is to simplify
+    parameter collecting when they are passed into the step __init__ method.
+
+    Usage:
+        class A:
+            @collect_parameters
+            def __init__(a, b='', c=None)
+                pass
+
+        In above case, the A instance would have a, b, c set as instance properties.
+        None value will be set as well. If the property exists, it will be overridden.
+    """
+
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):
+        # Get the parameters and values
+        signature = inspect.signature(func)
+        bound_args = signature.bind(self, *args, **kwargs)
+        bound_args.apply_defaults()
+
+        # Create a dictionary of parameters and their values
+        parameters_and_values = dict(bound_args.arguments)
+
+        for param, value in parameters_and_values.items():
+            if param not in ("self", "depends_on"):
+                setattr(self, param, value)
+
+        func(self, *args, **kwargs)
+
+    return wrapper

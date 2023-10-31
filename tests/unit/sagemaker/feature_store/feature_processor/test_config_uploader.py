@@ -64,6 +64,7 @@ def remote_decorator_config(sagemaker_session):
         spark_config=SparkConfig(),
         dependencies=None,
         include_local_workdir=True,
+        workdir_config=None,
         pre_execution_commands="some_commands",
         pre_execution_script="some_path",
         python_sdk_whl_s3_uri=SAGEMAKER_WHL_FILE_S3_PATH,
@@ -108,14 +109,15 @@ def test_prepare_and_upload_callable(mock_stored_function, config_uploader, wrap
 
 
 @patch(
-    "sagemaker.feature_store.feature_processor._config_uploader._prepare_and_upload_dependencies",
+    "sagemaker.feature_store.feature_processor._config_uploader._prepare_and_upload_workspace",
     return_value="some_s3_uri",
 )
-def test_prepare_and_upload_dependencies(mock_upload, config_uploader):
+def test_prepare_and_upload_workspace(mock_upload, config_uploader):
     remote_decorator_config = config_uploader.remote_decorator_config
-    s3_path = config_uploader._prepare_and_upload_dependencies(
+    s3_path = config_uploader._prepare_and_upload_workspace(
         local_dependencies_path="some/path/to/dependency",
         include_local_workdir=True,
+        workdir_config=None,
         pre_execution_commands=remote_decorator_config.pre_execution_commands,
         pre_execution_script_local_path=remote_decorator_config.pre_execution_script,
         s3_base_uri=remote_decorator_config.s3_root_uri,
@@ -126,6 +128,7 @@ def test_prepare_and_upload_dependencies(mock_upload, config_uploader):
     mock_upload.assert_called_once_with(
         local_dependencies_path="some/path/to/dependency",
         include_local_workdir=True,
+        workdir_config=None,
         pre_execution_commands=remote_decorator_config.pre_execution_commands,
         pre_execution_script_local_path=remote_decorator_config.pre_execution_script,
         s3_base_uri=remote_decorator_config.s3_root_uri,
@@ -136,10 +139,10 @@ def test_prepare_and_upload_dependencies(mock_upload, config_uploader):
 
 
 @patch(
-    "sagemaker.feature_store.feature_processor._config_uploader._prepare_and_upload_dependencies",
+    "sagemaker.feature_store.feature_processor._config_uploader._prepare_and_upload_workspace",
     return_value="some_s3_uri",
 )
-def test_prepare_and_upload_dependencies_with_filter(
+def test_prepare_and_upload_workspace_with_filter(
     mock_job_upload, remote_decorator_config_with_filter, runtime_env_manager
 ):
     config_uploader_with_filter = ConfigUploader(
@@ -147,9 +150,10 @@ def test_prepare_and_upload_dependencies_with_filter(
         runtime_env_manager=runtime_env_manager,
     )
     remote_decorator_config = config_uploader_with_filter.remote_decorator_config
-    config_uploader_with_filter._prepare_and_upload_dependencies(
+    config_uploader_with_filter._prepare_and_upload_workspace(
         local_dependencies_path="some/path/to/dependency",
         include_local_workdir=True,
+        workdir_config=None,
         pre_execution_commands=remote_decorator_config.pre_execution_commands,
         pre_execution_script_local_path=remote_decorator_config.pre_execution_script,
         s3_base_uri=remote_decorator_config.s3_root_uri,
@@ -161,6 +165,7 @@ def test_prepare_and_upload_dependencies_with_filter(
     mock_job_upload.assert_called_once_with(
         local_dependencies_path="some/path/to/dependency",
         include_local_workdir=True,
+        workdir_config=None,
         pre_execution_commands=remote_decorator_config.pre_execution_commands,
         pre_execution_script_local_path=remote_decorator_config.pre_execution_script,
         s3_base_uri=remote_decorator_config.s3_root_uri,
@@ -216,7 +221,7 @@ def test_prepare_and_upload_spark_dependent_files(mock_upload, config_uploader):
     return_value=("path_a", "path_b", "path_c", "path_d"),
 )
 @patch(
-    "sagemaker.feature_store.feature_processor._config_uploader._prepare_and_upload_dependencies",
+    "sagemaker.feature_store.feature_processor._config_uploader._prepare_and_upload_workspace",
     return_value="some_s3_uri",
 )
 @patch(
@@ -255,6 +260,7 @@ def test_prepare_step_input_channel(
     mock_dependency_upload.assert_called_once_with(
         local_dependencies_path="some_dependency_path",
         include_local_workdir=True,
+        workdir_config=None,
         pre_execution_commands=remote_decorator_config.pre_execution_commands,
         pre_execution_script_local_path=remote_decorator_config.pre_execution_script,
         s3_base_uri=remote_decorator_config.s3_root_uri,

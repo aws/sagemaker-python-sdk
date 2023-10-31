@@ -203,7 +203,7 @@ class EMRStep(Step):
         super(EMRStep, self).__init__(name, display_name, description, StepTypeEnum.EMR, depends_on)
 
         emr_step_args = {"StepConfig": step_config.to_request()}
-        root_property = Properties(step_name=name, shape_name="Step", service_name="emr")
+        root_property = Properties(step_name=name, step=self, shape_name="Step", service_name="emr")
 
         if cluster_id is None and cluster_config is None:
             raise ValueError(ERR_STR_WITHOUT_CLUSTER_ID_AND_CLUSTER_CFG.format(step_name=name))

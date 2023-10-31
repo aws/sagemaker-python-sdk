@@ -16,7 +16,10 @@ from __future__ import absolute_import
 import abc
 
 from enum import EnumMeta
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Union, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from sagemaker.workflow.steps import Step
 
 PrimitiveType = Union[str, int, bool, float, None]
 RequestType = Union[Dict[str, Any], List[Dict[str, Any]]]
@@ -68,6 +71,7 @@ class PipelineVariable(Expression):
     :class:`~sagemaker.workflow.functions.Join`,
     :class:`~sagemaker.workflow.functions.JsonGet`,
     :class:`~sagemaker.workflow.execution_variables.ExecutionVariable`.
+    :class:`~sagemaker.workflow.step_outputs.StepOutput`.
     """
 
     def __add__(self, other: Union[Expression, PrimitiveType]):
@@ -109,6 +113,11 @@ class PipelineVariable(Expression):
         """Get the expression structure for workflow service calls."""
 
     @property
+    def _pickleable(self):
+        """A pickleable object that can be used in a function step."""
+        raise NotImplementedError
+
+    @property
     @abc.abstractmethod
-    def _referenced_steps(self) -> List[str]:
-        """List of step names that this function depends on."""
+    def _referenced_steps(self) -> List[Union["Step", str]]:
+        """List of steps that this variable is generated from."""

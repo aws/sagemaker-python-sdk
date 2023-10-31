@@ -208,18 +208,18 @@ class QualityCheckStep(Step):
             ],
         )
 
-        root_prop = Properties(step_name=name)
+        root_prop = Properties(step_name=name, step=self)
         root_prop.__dict__["CalculatedBaselineConstraints"] = Properties(
-            step_name=name, path="CalculatedBaselineConstraints"
+            step_name=name, step=self, path="CalculatedBaselineConstraints"
         )
         root_prop.__dict__["CalculatedBaselineStatistics"] = Properties(
-            step_name=name, path="CalculatedBaselineStatistics"
+            step_name=name, step=self, path="CalculatedBaselineStatistics"
         )
         root_prop.__dict__["BaselineUsedForDriftCheckStatistics"] = Properties(
-            step_name=name, path="BaselineUsedForDriftCheckStatistics"
+            step_name=name, step=self, path="BaselineUsedForDriftCheckStatistics"
         )
         root_prop.__dict__["BaselineUsedForDriftCheckConstraints"] = Properties(
-            step_name=name, path="BaselineUsedForDriftCheckConstraints"
+            step_name=name, step=self, path="BaselineUsedForDriftCheckConstraints"
         )
         self._properties = root_prop
 
