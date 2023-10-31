@@ -44,6 +44,7 @@ from sagemaker.jumpstart.types import (
     JumpStartModelRegisterKwargs,
 )
 from sagemaker.jumpstart.utils import (
+    add_jumpstart_model_id_version_tags,
     update_dict_if_key_not_present,
     resolve_model_sagemaker_config_field,
     verify_model_region_and_return_specs,
@@ -180,6 +181,7 @@ def _add_instance_type_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartM
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
         sagemaker_session=kwargs.sagemaker_session,
+        training_instance_type=kwargs.training_instance_type,
     )
 
     if orig_instance_type is None:
@@ -422,6 +424,27 @@ def _add_model_name_to_kwargs(
     return kwargs
 
 
+def _add_tags_to_kwargs(kwargs: JumpStartModelDeployKwargs) -> Dict[str, Any]:
+    """Sets tags based on default or override, returns full kwargs."""
+
+    full_model_version = verify_model_region_and_return_specs(
+        model_id=kwargs.model_id,
+        version=kwargs.model_version,
+        scope=JumpStartScriptScope.INFERENCE,
+        region=kwargs.region,
+        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
+        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
+        sagemaker_session=kwargs.sagemaker_session,
+    ).version
+
+    if kwargs.sagemaker_session.settings.include_jumpstart_tags:
+        kwargs.tags = add_jumpstart_model_id_version_tags(
+            kwargs.tags, kwargs.model_id, full_model_version
+        )
+
+    return kwargs
+
+
 def _add_deploy_extra_kwargs(kwargs: JumpStartModelInitKwargs) -> Dict[str, Any]:
     """Sets extra kwargs based on default or override, returns full kwargs."""
 
@@ -508,6 +531,8 @@ def get_deploy_kwargs(
     deploy_kwargs.initial_instance_count = initial_instance_count or 1
 
     deploy_kwargs = _add_deploy_extra_kwargs(kwargs=deploy_kwargs)
+
+    deploy_kwargs = _add_tags_to_kwargs(kwargs=deploy_kwargs)
 
     return deploy_kwargs
 
@@ -619,6 +644,7 @@ def get_init_kwargs(
     dependencies: Optional[List[str]] = None,
     git_config: Optional[Dict[str, str]] = None,
     model_package_arn: Optional[str] = None,
+    training_instance_type: Optional[str] = None,
 ) -> JumpStartModelInitKwargs:
     """Returns kwargs required to instantiate `sagemaker.estimator.Model` object."""
 
@@ -647,6 +673,7 @@ def get_init_kwargs(
         tolerate_deprecated_model=tolerate_deprecated_model,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         model_package_arn=model_package_arn,
+        training_instance_type=training_instance_type,
     )
 
     model_init_kwargs = _add_model_version_to_kwargs(kwargs=model_init_kwargs)

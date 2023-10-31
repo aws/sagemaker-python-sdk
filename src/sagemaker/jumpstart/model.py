@@ -552,6 +552,7 @@ class JumpStartModel(Model):
             container_startup_health_check_timeout=container_startup_health_check_timeout,
             inference_recommendation_id=inference_recommendation_id,
             explainer_config=explainer_config,
+            sagemaker_session=self.sagemaker_session,
         )
 
         predictor = super(JumpStartModel, self).deploy(**deploy_kwargs.to_kwargs_dict())

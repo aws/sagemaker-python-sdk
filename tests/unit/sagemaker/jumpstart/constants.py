@@ -174,6 +174,448 @@ SPECIAL_MODEL_SPECS_DICT = {
             },
         },
     },
+    "inference-instance-types-variant-model": {
+        "model_id": "huggingface-llm-falcon-180b-bf16",
+        "url": "https://huggingface.co/tiiuae/falcon-180B",
+        "version": "1.0.0",
+        "min_sdk_version": "2.175.0",
+        "training_supported": True,
+        "incremental_training_supported": False,
+        "hosting_ecr_specs": {
+            "framework": "huggingface-llm",
+            "framework_version": "0.9.3",
+            "py_version": "py39",
+            "huggingface_transformers_version": "4.29.2",
+        },
+        "hosting_artifact_key": "huggingface-infer/infer-huggingface-llm-falcon-180b-bf16.tar.gz",
+        "hosting_script_key": "source-directory-tarballs/huggingface/inference/llm/v1.0.1/sourcedir.tar.gz",
+        "hosting_prepacked_artifact_key": "huggingface-infer/prepack/v1.0.1/infer-prepack"
+        "-huggingface-llm-falcon-180b-bf16.tar.gz",
+        "hosting_prepacked_artifact_version": "1.0.1",
+        "hosting_use_script_uri": False,
+        "inference_vulnerable": False,
+        "inference_dependencies": [],
+        "inference_vulnerabilities": [],
+        "training_vulnerable": False,
+        "training_dependencies": [],
+        "training_vulnerabilities": [],
+        "deprecated": False,
+        "inference_environment_variables": [
+            {
+                "name": "SAGEMAKER_PROGRAM",
+                "type": "text",
+                "default": "inference.py",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "SAGEMAKER_SUBMIT_DIRECTORY",
+                "type": "text",
+                "default": "/opt/ml/model/code",
+                "scope": "container",
+                "required_for_model_class": False,
+            },
+            {
+                "name": "SAGEMAKER_CONTAINER_LOG_LEVEL",
+                "type": "text",
+                "default": "20",
+                "scope": "container",
+                "required_for_model_class": False,
+            },
+            {
+                "name": "SAGEMAKER_MODEL_SERVER_TIMEOUT",
+                "type": "text",
+                "default": "3600",
+                "scope": "container",
+                "required_for_model_class": False,
+            },
+            {
+                "name": "ENDPOINT_SERVER_TIMEOUT",
+                "type": "int",
+                "default": 3600,
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "MODEL_CACHE_ROOT",
+                "type": "text",
+                "default": "/opt/ml/model",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "SAGEMAKER_ENV",
+                "type": "text",
+                "default": "1",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "HF_MODEL_ID",
+                "type": "text",
+                "default": "/opt/ml/model",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "SM_NUM_GPUS",
+                "type": "text",
+                "default": "8",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "MAX_INPUT_LENGTH",
+                "type": "text",
+                "default": "1024",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "MAX_TOTAL_TOKENS",
+                "type": "text",
+                "default": "2048",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "SAGEMAKER_MODEL_SERVER_WORKERS",
+                "type": "int",
+                "default": 1,
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+        ],
+        "metrics": [],
+        "default_inference_instance_type": "ml.p4de.24xlarge",
+        "supported_inference_instance_types": ["ml.p4de.24xlarge"],
+        "default_training_instance_type": "ml.p4de.24xlarge",
+        "supported_training_instance_types": ["ml.p4de.24xlarge"],
+        "model_kwargs": {},
+        "deploy_kwargs": {
+            "model_data_download_timeout": 3600,
+            "container_startup_health_check_timeout": 3600,
+        },
+        "predictor_specs": {
+            "supported_content_types": ["application/json"],
+            "supported_accept_types": ["application/json"],
+            "default_content_type": "application/json",
+            "default_accept_type": "application/json",
+        },
+        "inference_volume_size": 512,
+        "inference_enable_network_isolation": True,
+        "validation_supported": False,
+        "fine_tuning_supported": False,
+        "resource_name_base": "hf-llm-falcon-180b-bf16",
+        "training_instance_type_variants": {
+            "regional_aliases": {
+                "us-west-2": {
+                    "gpu_image_uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
+                    "huggingface-pytorch-inference:1.13.1-transformers4.26.0-gpu-py39-cu117-ubuntu20.04",
+                    "gpu_image_uri_2": "763104351884.dkr.ecr.us-west-2.amazonaws.com/stud-gpu",
+                    "cpu_image_uri": "867930986793.dkr.us-west-2.amazonaws.com/cpu-blah",
+                }
+            },
+            "variants": {
+                "ml.p2.12xlarge": {
+                    "properties": {
+                        "environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"},
+                        "supported_inference_instance_types": ["ml.p5.xlarge"],
+                        "default_inference_instance_type": "ml.p5.xlarge",
+                        "metrics": [
+                            {
+                                "Name": "huggingface-textgeneration:eval-loss",
+                                "Regex": "'eval_loss': ([0-9]+\\.[0-9]+)",
+                            },
+                            {
+                                "Name": "huggingface-textgeneration:instance-typemetric-loss",
+                                "Regex": "'eval_loss': ([0-9]+\\.[0-9]+)",
+                            },
+                            {
+                                "Name": "huggingface-textgeneration:train-loss",
+                                "Regex": "'instance type specific': ([0-9]+\\.[0-9]+)",
+                            },
+                            {
+                                "Name": "huggingface-textgeneration:noneyourbusiness-loss",
+                                "Regex": "'loss-noyb instance specific': ([0-9]+\\.[0-9]+)",
+                            },
+                        ],
+                    }
+                },
+                "p2": {
+                    "regional_properties": {"image_uri": "$gpu_image_uri"},
+                    "properties": {
+                        "supported_inference_instance_types": ["ml.p2.xlarge", "ml.p3.xlarge"],
+                        "default_inference_instance_type": "ml.p2.xlarge",
+                        "metrics": [
+                            {
+                                "Name": "huggingface-textgeneration:wtafigo",
+                                "Regex": "'evasadfasdl_loss': ([0-9]+\\.[0-9]+)",
+                            },
+                            {
+                                "Name": "huggingface-textgeneration:eval-loss",
+                                "Regex": "'eval_loss': ([0-9]+\\.[0-9]+)",
+                            },
+                            {
+                                "Name": "huggingface-textgeneration:train-loss",
+                                "Regex": "'instance family specific': ([0-9]+\\.[0-9]+)",
+                            },
+                            {
+                                "Name": "huggingface-textgeneration:noneyourbusiness-loss",
+                                "Regex": "'loss-noyb': ([0-9]+\\.[0-9]+)",
+                            },
+                        ],
+                    },
+                },
+                "p3": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
+                "ml.p3.200xlarge": {"regional_properties": {"image_uri": "$gpu_image_uri_2"}},
+                "p4": {
+                    "regional_properties": {"image_uri": "$gpu_image_uri"},
+                    "properties": {
+                        "prepacked_artifact_key": "path/to/prepacked/inference/artifact/prefix/number2/"
+                    },
+                },
+                "g4": {
+                    "regional_properties": {"image_uri": "$gpu_image_uri"},
+                    "properties": {
+                        "artifact_key": "path/to/prepacked/training/artifact/prefix/number2/"
+                    },
+                },
+                "g4dn": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
+                "g9": {
+                    "regional_properties": {"image_uri": "$gpu_image_uri"},
+                    "properties": {
+                        "prepacked_artifact_key": "asfs/adsf/sda/f",
+                        "hyperparameters": [
+                            {
+                                "name": "num_bag_sets",
+                                "type": "int",
+                                "default": 5,
+                                "min": 5,
+                                "scope": "algorithm",
+                            },
+                            {
+                                "name": "num_stack_levels",
+                                "type": "int",
+                                "default": 6,
+                                "min": 7,
+                                "max": 3,
+                                "scope": "algorithm",
+                            },
+                            {
+                                "name": "refit_full",
+                                "type": "text",
+                                "default": "False",
+                                "options": ["True", "False"],
+                                "scope": "algorithm",
+                            },
+                            {
+                                "name": "set_best_to_refit_full",
+                                "type": "text",
+                                "default": "False",
+                                "options": ["True", "False"],
+                                "scope": "algorithm",
+                            },
+                            {
+                                "name": "save_space",
+                                "type": "text",
+                                "default": "False",
+                                "options": ["True", "False"],
+                                "scope": "algorithm",
+                            },
+                            {
+                                "name": "verbosity",
+                                "type": "int",
+                                "default": 2,
+                                "min": 0,
+                                "max": 4,
+                                "scope": "algorithm",
+                            },
+                            {
+                                "name": "sagemaker_submit_directory",
+                                "type": "text",
+                                "default": "/opt/ml/input/data/code/sourcedir.tar.gz",
+                                "scope": "container",
+                            },
+                            {
+                                "name": "sagemaker_program",
+                                "type": "text",
+                                "default": "transfer_learning.py",
+                                "scope": "container",
+                            },
+                            {
+                                "name": "sagemaker_container_log_level",
+                                "type": "text",
+                                "default": "20",
+                                "scope": "container",
+                            },
+                        ],
+                    },
+                },
+                "p9": {
+                    "regional_properties": {"image_uri": "$gpu_image_uri"},
+                    "properties": {"artifact_key": "do/re/mi"},
+                },
+                "m2": {
+                    "regional_properties": {"image_uri": "$cpu_image_uri"},
+                    "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "400"}},
+                },
+                "c2": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
+                "local": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
+                "ml.g5.48xlarge": {
+                    "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "8"}}
+                },
+                "ml.g5.12xlarge": {
+                    "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"}}
+                },
+                "g5": {
+                    "properties": {
+                        "environment_variables": {"TENSOR_PARALLEL_DEGREE": "4", "JOHN": "DOE"}
+                    }
+                },
+                "ml.g9.12xlarge": {
+                    "properties": {
+                        "environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"},
+                        "prepacked_artifact_key": "nlahdasf/asdf/asd/f",
+                        "hyperparameters": [
+                            {
+                                "name": "eval_metric",
+                                "type": "text",
+                                "default": "auto",
+                                "scope": "algorithm",
+                            },
+                            {
+                                "name": "presets",
+                                "type": "text",
+                                "default": "medium_quality",
+                                "options": [
+                                    "best_quality",
+                                    "high_quality",
+                                    "good_quality",
+                                    "medium_quality",
+                                    "optimize_for_deployment",
+                                    "interpretable",
+                                ],
+                                "scope": "algorithm",
+                            },
+                            {
+                                "name": "auto_stack",
+                                "type": "text",
+                                "default": "False",
+                                "options": ["True", "False"],
+                                "scope": "algorithm",
+                            },
+                            {
+                                "name": "num_bag_folds",
+                                "type": "text",
+                                "default": "0",
+                                "options": ["0", "2", "3", "4", "5", "6", "7", "8", "9", "10"],
+                                "scope": "algorithm",
+                            },
+                            {
+                                "name": "num_bag_sets",
+                                "type": "int",
+                                "default": 1,
+                                "min": 1,
+                                "scope": "algorithm",
+                            },
+                            {
+                                "name": "num_stack_levels",
+                                "type": "int",
+                                "default": 0,
+                                "min": 0,
+                                "max": 3,
+                                "scope": "algorithm",
+                            },
+                        ],
+                    }
+                },
+                "ml.p9.12xlarge": {
+                    "properties": {
+                        "environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"},
+                        "artifact_key": "you/not/entertained",
+                    }
+                },
+                "g6": {
+                    "properties": {
+                        "environment_variables": {"BLAH": "4"},
+                        "artifact_key": "path/to/training/artifact.tar.gz",
+                        "prepacked_artifact_key": "path/to/prepacked/inference/artifact/prefix/",
+                    }
+                },
+                "trn1": {
+                    "properties": {
+                        "supported_inference_instance_types": ["ml.inf1.xlarge", "ml.inf1.2xlarge"],
+                        "default_inference_instance_type": "ml.inf1.xlarge",
+                    }
+                },
+            },
+        },
+        "training_ecr_specs": {
+            "framework": "pytorch",
+            "framework_version": "1.5.0",
+            "py_version": "py3",
+        },
+        "training_artifact_key": "pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz",
+        "training_script_key": "source-directory-tarballs/pytorch/transfer_learning/ic/v1.0.0/sourcedir.tar.gz",
+        "training_prepacked_script_key": None,
+        "training_model_package_artifact_uris": None,
+        "deprecate_warn_message": None,
+        "deprecated_message": None,
+        "hosting_eula_key": None,
+        "hyperparameters": [
+            {
+                "name": "epochs",
+                "type": "int",
+                "default": 3,
+                "min": 1,
+                "max": 1000,
+                "scope": "algorithm",
+            },
+            {
+                "name": "adam-learning-rate",
+                "type": "float",
+                "default": 0.05,
+                "min": 1e-08,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "batch-size",
+                "type": "int",
+                "default": 4,
+                "min": 1,
+                "max": 1024,
+                "scope": "algorithm",
+            },
+            {
+                "name": "sagemaker_submit_directory",
+                "type": "text",
+                "default": "/opt/ml/input/data/code/sourcedir.tar.gz",
+                "scope": "container",
+            },
+            {
+                "name": "sagemaker_program",
+                "type": "text",
+                "default": "transfer_learning.py",
+                "scope": "container",
+            },
+            {
+                "name": "sagemaker_container_log_level",
+                "type": "text",
+                "default": "20",
+                "scope": "container",
+            },
+        ],
+        "training_vulnerable": False,
+        "deprecated": False,
+        "estimator_kwargs": {
+            "encrypt_inter_container_traffic": True,
+        },
+        "training_volume_size": 456,
+        "inference_enable_network_isolation": True,
+        "training_enable_network_isolation": False,
+    },
     "variant-model": {
         "model_id": "pytorch-ic-mobilenet-v2",
         "url": "https://pytorch.org/hub/pytorch_vision_mobilenet_v2/",
