@@ -40,11 +40,15 @@ logger = logging.getLogger(__name__)
 ENDPOINT_NAME_PREFIX_PATTERN = "^[a-zA-Z0-9](-*[a-zA-Z0-9])"
 
 # asym shap val config default values (timeseries)
-ASYM_SHAP_VAL_DEFAULT_EXPLANATION_TYPE = "timewise_chronological"
-ASYM_SHAP_VAL_EXPLANATION_TYPES = [
-    "timewise_chronological",
-    "timewise_anti_chronological",
-    "timewise_bidirectional",
+ASYM_SHAP_VAL_DEFAULT_EXPLANATION_DIRECTION = "chronological"
+ASYM_SHAP_VAL_DEFAULT_EXPLANATION_GRANULARITY = "timewise"
+ASYM_SHAP_VAL_EXPLANATION_DIRECTIONS = [
+    "chronological",
+    "anti_chronological",
+    "bidirectional",
+]
+ASYM_SHAP_VAL_GRANULARITIES = [
+    "timewise",
     "fine_grained",
 ]
 
@@ -294,14 +298,22 @@ ANALYSIS_CONFIG_SCHEMA_V1_0 = Schema(
             },
             SchemaOptional("report"): {"name": str, SchemaOptional("title"): str},
             SchemaOptional("asymmetric_shapley_value"): {
-                "explanation_type": And(
+                "explanation_direction": And(
                     str,
                     Use(str.lower),
                     lambda s: s
                     in (
-                        "timewise_chronological",
-                        "timewise_anti_chronological",
-                        "timewise_bidirectional",
+                        "chronological",
+                        "anti_chronological",
+                        "bidirectional",
+                    ),
+                ),
+                "explanation_granularity": And(
+                    str,
+                    Use(str.lower),
+                    lambda s: s
+                    in (
+                        "timewise",
                         "fine_grained",
                     ),
                 ),
@@ -1595,12 +1607,15 @@ class AsymmetricShapleyValueConfig(ExplainabilityConfig):
 
     def __init__(
         self,
-        explanation_type: Literal[
-            "timewise_chronological",
-            "timewise_anti_chronological",
-            "timewise_bidirectional",
+        explanation_direction: Literal[
+            "chronological",
+            "anti_chronological",
+            "bidirectional",
+        ] = ASYM_SHAP_VAL_DEFAULT_EXPLANATION_DIRECTION,
+        granularity: Literal[
+            "timewise",
             "fine_grained",
-        ] = ASYM_SHAP_VAL_DEFAULT_EXPLANATION_TYPE,
+        ] = ASYM_SHAP_VAL_DEFAULT_EXPLANATION_GRANULARITY,
         num_samples: Optional[int] = None,
     ):
         """Initialises config for time series explainability with Asymmetric Shapley Values.
@@ -1609,32 +1624,42 @@ class AsymmetricShapleyValueConfig(ExplainabilityConfig):
         purposes.
 
         Args:
-            explanation_type (str): Type of explanation to be used. Available explanation
-                types are ``"timewise_chronological"``, ``"timewise_anti_chronological"``,
-                ``"timewise_bidirectional"``, and ``"fine_grained"``.
+            explanation_direction (str): Type of explanation to be used. Available explanation
+                types are ``"chronological"``, ``"anti_chronological"``, and ``"bidirectional"``.
+            granularity (str): Explanation granularity to be used. Available granularity options
+                are ``"timewise"`` and ``"fine_grained"``.
             num_samples (None or int): Number of samples to be used in the Asymmetric Shapley
                 Value forecasting algorithm. Only applicable when using ``"fine_grained"``
                 explanations.
 
         Raises:
-            AssertionError: when ``explanation_type`` is not valid or ``num_samples``
-                is not provided for fine-grained explanations
-            ValueError: when ``num_samples`` is provided for non fine-grained explanations
+            AssertionError: when ``explanation_direction`` or ``granularity`` are not valid,
+                or ``num_samples`` is not provided for fine-grained explanations
+            ValueError: when ``num_samples`` is provided for non fine-grained explanations, or
+                when explanation_direction is not ``"chronological"`` when granularity is
+                ``"fine_grained"``.
         """
         self.asymmetric_shapley_value_config = dict()
-        # validate explanation type
+        # validate explanation direction
         assert (
-            explanation_type in ASYM_SHAP_VAL_EXPLANATION_TYPES
-        ), "Please provide a valid explanation type from: " + ", ".join(
-            ASYM_SHAP_VAL_EXPLANATION_TYPES
+            explanation_direction in ASYM_SHAP_VAL_EXPLANATION_DIRECTIONS
+        ), "Please provide a valid explanation direction from: " + ", ".join(
+            ASYM_SHAP_VAL_EXPLANATION_DIRECTIONS
         )
-        # validate integer num_samples is provided when necessary
-        if explanation_type == "fine_grained":
+        # validate granularity
+        assert (
+            granularity in ASYM_SHAP_VAL_GRANULARITIES
+        ), "Please provide a valid granularity from: " + ", ".join(ASYM_SHAP_VAL_GRANULARITIES)
+        if granularity == "fine_grained":
             assert isinstance(num_samples, int), "Please provide an integer for ``num_samples``."
+            assert (
+                explanation_direction == "chronological"
+            ), f"{explanation_direction} and {granularity} granularity are not supported together."
         elif num_samples:  # validate num_samples is not provided when unnecessary
             raise ValueError("``num_samples`` is only used for fine-grained explanations.")
         # set explanation type and (if provided) num_samples in internal config dictionary
-        _set(explanation_type, "explanation_type", self.asymmetric_shapley_value_config)
+        _set(explanation_direction, "explanation_direction", self.asymmetric_shapley_value_config)
+        _set(granularity, "granularity", self.asymmetric_shapley_value_config)
         _set(
             num_samples, "num_samples", self.asymmetric_shapley_value_config
         )  # _set() does nothing if a given argument is None
