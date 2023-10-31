@@ -19,18 +19,16 @@ def compute_hash(buffer: bytes, secret_key: str) -> str:
     return hmac.new(secret_key.encode(), msg=buffer, digestmod=hashlib.sha256).hexdigest()
 
 
-def perform_integrity_check(buffer: bytes):
+def perform_integrity_check(buffer: bytes, metadata_path: Path):
     """Validates the integrity of bytes by comparing the hash value"""
     secret_key = os.environ.get("SAGEMAKER_SERVE_SECRET_KEY")
     actual_hash_value = compute_hash(buffer=buffer, secret_key=secret_key)
 
-    metadata_path = Path("/opt/ml/model/code/metadata.json").resolve()
-
     if not Path.exists(metadata_path):
-        raise Exception("Path to metadata.json does not exist")
+        raise ValueError("Path to metadata.json does not exist")
 
-    with open(metadata_path, "rb") as md:
+    with open(str(metadata_path), "rb") as md:
         expected_hash_value = _MetaData.from_json(md.read()).sha256_hash
 
     if not hmac.compare_digest(expected_hash_value, actual_hash_value):
-        raise Exception("Integrity check for the serialized function or data failed.")
+        raise ValueError("Integrity check for the serialized function or data failed.")

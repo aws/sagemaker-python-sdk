@@ -97,7 +97,9 @@ def _py_vs_parity_check():
 def _pickle_file_integrity_check():
     with open("/opt/ml/model/code/serve.pkl", "rb") as f:
         buffer = f.read()
-    perform_integrity_check(buffer=buffer)
+
+    metadeata_path = Path("/opt/ml/model/code/metadata.json")
+    perform_integrity_check(buffer=buffer, metadata_path=metadeata_path)
 
 
 # on import, execute

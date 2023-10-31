@@ -19,10 +19,9 @@ from __future__ import absolute_import
 
 from pathlib import Path
 import logging
-import shutil
 import subprocess
 import sys
-
+import re
 
 _SUPPORTED_SUFFIXES = [".txt"]
 # TODO : Move PKL_FILE_NAME to common location
@@ -31,7 +30,7 @@ PKL_FILE_NAME = "serve.pkl"
 logger = logging.getLogger(__name__)
 
 
-def capture_dependencies(dependencies: str, work_dir: Path, capture_all: bool = False):
+def capture_dependencies(dependencies: dict, work_dir: Path, capture_all: bool = False):
     """Placeholder docstring"""
     path = work_dir.joinpath("requirements.txt")
     if "auto" in dependencies and dependencies["auto"]:
@@ -53,24 +52,44 @@ def capture_dependencies(dependencies: str, work_dir: Path, capture_all: bool = 
             check=True,
         )
 
+        with open(path, "r") as f:
+            autodetect_depedencies = f.read().splitlines()
+    else:
+        autodetect_depedencies = []
+
+    module_version_dict = _parse_dependency_list(autodetect_depedencies)
+
     if "requirements" in dependencies:
-        _capture_from_customer_provided_requirements(dependencies["requirements"], path)
-
+        module_version_dict = _process_customer_provided_requirements(
+            requirements_file=dependencies["requirements"], module_version_dict=module_version_dict
+        )
     if "custom" in dependencies:
+        module_version_dict = _process_custom_dependencies(
+            custom_dependencies=dependencies.get("custom"), module_version_dict=module_version_dict
+        )
+    with open(path, "w") as f:
+        for module, version in module_version_dict.items():
+            f.write(f"{module}{version}\n")
 
-        with open(path, "a+") as f:
-            for package in dependencies["custom"]:
-                f.write(f"{package}\n")
 
-
-def _capture_from_customer_provided_requirements(requirements_file: str, output_path: Path):
+def _process_custom_dependencies(custom_dependencies: list, module_version_dict: dict):
     """Placeholder docstring"""
-    input_path = Path(requirements_file)
-    if not input_path.is_file() or not _is_valid_requirement_file(input_path):
+    custom_module_version_dict = _parse_dependency_list(custom_dependencies)
+    module_version_dict.update(custom_module_version_dict)
+    return module_version_dict
+
+
+def _process_customer_provided_requirements(requirements_file: str, module_version_dict: dict):
+    """Placeholder docstring"""
+    requirements_file = Path(requirements_file)
+    if not requirements_file.is_file() or not _is_valid_requirement_file(requirements_file):
         raise Exception(f"Path: {requirements_file} to requirements.txt doesn't exist")
     logger.debug("Packaging provided requirements.txt from %s", requirements_file)
-    with open(output_path, "a+") as f:
-        shutil.copyfileobj(open(input_path, "r"), f)
+    with open(requirements_file, "r") as f:
+        custom_dependencies = f.read().splitlines()
+
+    module_version_dict.update(_parse_dependency_list(custom_dependencies))
+    return module_version_dict
 
 
 def _is_valid_requirement_file(path):
@@ -80,6 +99,32 @@ def _is_valid_requirement_file(path):
         if path.name.endswith(suffix):
             return True
     return False
+
+
+def _parse_dependency_list(depedency_list: list) -> dict:
+    """Placeholder docstring"""
+
+    # Divide a string into 2 part, first part is the module name
+    # and second part is its version constraint or the url
+    # checkout tests/unit/sagemaker/serve/detector/test_dependency_manager.py
+    # for examples
+    pattern = r"^([\w.-]+)(@[^,\n]+|((?:[<>=!~]=?[\w.*-]+,?)+)?)$"
+
+    module_version_dict = {}
+
+    for dependency in depedency_list:
+        if dependency.startswith("#"):
+            continue
+        match = re.match(pattern, dependency)
+        if match:
+            package = match.group(1)
+            # Group 2 is either a URL or version constraint, if present
+            url_or_version = match.group(2) if match.group(2) else ""
+            module_version_dict.update({package: url_or_version})
+        else:
+            module_version_dict.update({dependency: ""})
+
+    return module_version_dict
 
 
 # only required for dev testing

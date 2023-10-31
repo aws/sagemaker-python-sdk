@@ -56,7 +56,6 @@ class ModelBuilder(Triton, DJL, JumpStart):
 
               * 1/Launch on SageMaker endpoint
               * 2/Launch locally with a container
-              * 3/Launch in process
 
         shared_libs (List[str]): Any shared libraries you want to bring into
             the model.
@@ -336,6 +335,7 @@ class ModelBuilder(Triton, DJL, JumpStart):
         self.pysdk_model.deploy = self._model_builder_deploy_wrapper
         self._original_register = self.pysdk_model.register
         self.pysdk_model.register = self._model_builder_register_wrapper
+        self.model_package = None
         return self.pysdk_model
 
     @_capture_telemetry("register")
@@ -347,8 +347,22 @@ class ModelBuilder(Triton, DJL, JumpStart):
         if "response_types" not in kwargs:
             self.pysdk_model.response_types = deserializer.ACCEPT.split()
         new_model_package = self._original_register(*args, **kwargs)
-        new_model_package.deploy = self._model_builder_deploy_wrapper
+        self.pysdk_model.model_package_arn = new_model_package.model_package_arn
+        new_model_package.deploy = self._model_builder_deploy_model_package_wrapper
+        self.model_package = new_model_package
         return new_model_package
+
+    def _model_builder_deploy_model_package_wrapper(self, *args, **kwargs):
+        """Placeholder docstring"""
+        if self.pysdk_model.model_package_arn is not None:
+            return self._model_builder_register_wrapper(*args, **kwargs)
+
+        # need to set the model_package_arn
+        # so that the model is created using the model_package's configs
+        self.pysdk_model.model_package_arn = self.model_package.model_package_arn
+        predictor = self._model_builder_register_wrapper(*args, **kwargs)
+        self.pysdk_model.model_package_arn = None
+        return predictor
 
     @_capture_telemetry("torchserve.deploy")
     def _model_builder_deploy_wrapper(

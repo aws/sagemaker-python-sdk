@@ -4,9 +4,11 @@ import os
 import logging
 import ssl
 from pathlib import Path
+import platform
 
 import triton_python_backend_utils as pb_utils
 import cloudpickle
+from sagemaker.serve.validations.check_integrity import perform_integrity_check
 
 logger = logging.getLogger(__name__)
 
@@ -52,3 +54,31 @@ class TritonPythonModel:
             responses.append(response)
 
         return responses
+
+
+def _run_preflight_diagnostics():
+    _py_vs_parity_check()
+    _pickle_file_integrity_check()
+
+
+def _py_vs_parity_check():
+    container_py_vs = platform.python_version()
+    local_py_vs = os.getenv("LOCAL_PYTHON")
+
+    if not local_py_vs or container_py_vs.split(".")[1] != local_py_vs.split(".")[1]:
+        logger.warning(
+            f"The local python version {local_py_vs} differs from the python version "
+            f"{container_py_vs} on the container. Please align the two to avoid unexpected behavior"
+        )
+
+
+def _pickle_file_integrity_check():
+    serve_path = Path(TRITON_MODEL_DIR).joinpath("serve.pkl")
+    metadata_path = Path(TRITON_MODEL_DIR).joinpath("metadata.json")
+    with open(str(serve_path), "rb") as f:
+        buffer = f.read()
+    perform_integrity_check(buffer=buffer, metadata_path=metadata_path)
+
+
+# on import, execute
+_run_preflight_diagnostics()
