@@ -30,6 +30,7 @@ _SHM_SIZE = "2G"
 PAYLOAD = np.random.rand(3, 4).astype(dtype=np.float32)
 S3_URI = "s3://mock_model_data_uri"
 DTYPE = "TYPE_FP32"
+SECRET_KEY = "secret_key"
 
 
 INFER_RESPONSE = {"outputs": [{"name": "output_name"}]}
@@ -59,6 +60,7 @@ class TritonServerTests(TestCase):
         local_triton_server._start_triton_server(
             docker_client=mock_docker_client,
             model_path=MODEL_PATH,
+            secret_key=SECRET_KEY,
             image_uri=GPU_TRITON_IMAGE,
             env_vars=ENV_VAR,
         )
@@ -116,6 +118,7 @@ class TritonServerTests(TestCase):
         local_triton_server._start_triton_server(
             docker_client=mock_docker_client,
             model_path=MODEL_PATH,
+            secret_key=SECRET_KEY,
             image_uri=CPU_TRITON_IMAGE,
             env_vars=ENV_VAR,
         )
@@ -150,15 +153,30 @@ class TritonServerTests(TestCase):
         mock_request.set_data_from_numpy.assert_called_once_with(PAYLOAD, binary_data=True)
         mock_client.infer.assert_called_with(model_name="model", inputs=[mock_request])
 
+    @patch("sagemaker.serve.model_server.triton.server.platform")
     @patch("sagemaker.serve.model_server.triton.server.upload")
-    def test_upload_artifacts_sagemaker_triton_server(self, mock_upload):
+    def test_upload_artifacts_sagemaker_triton_server(self, mock_upload, mock_platform):
         mock_session = Mock()
+        mock_platform.python_version.return_value = "3.8"
+        mock_upload.side_effect = (
+            lambda session, repo, bucket, prefix: S3_URI
+            if session == mock_session
+            and repo == MODEL_PATH + "/model_repository"
+            and bucket == "mock_model_data_uri"
+            else None
+        )
 
-        SageMakerTritonServer()._upload_triton_artifacts(
+        s3_upload_path, env_vars = SageMakerTritonServer()._upload_triton_artifacts(
             model_path=MODEL_PATH,
             sagemaker_session=mock_session,
+            secret_key=SECRET_KEY,
             s3_model_data_url=S3_URI,
             image=GPU_TRITON_IMAGE,
         )
 
         mock_upload.assert_called_once_with(mock_session, MODEL_REPO, "mock_model_data_uri", ANY)
+        self.assertEquals(s3_upload_path, S3_URI)
+        self.assertEquals(env_vars.get("SAGEMAKER_TRITON_DEFAULT_MODEL_NAME"), "model")
+        self.assertEquals(env_vars.get("TRITON_MODEL_DIR"), "/opt/ml/model/model")
+        self.assertEquals(env_vars.get("SAGEMAKER_SERVE_SECRET_KEY"), SECRET_KEY)
+        self.assertEquals(env_vars.get("LOCAL_PYTHON"), "3.8")

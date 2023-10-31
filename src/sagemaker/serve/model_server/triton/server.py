@@ -3,6 +3,7 @@ from __future__ import absolute_import
 import uuid
 import logging
 import importlib
+import platform
 
 from sagemaker import fw_utils
 from sagemaker import Session
@@ -29,13 +30,20 @@ class LocalTritonServer:
         self,
         docker_client: docker.DockerClient,
         model_path: str,
+        secret_key: str,
         image_uri: str,
         env_vars: dict,
     ):
         """Placeholder docstring"""
         self.container_name = "triton" + uuid.uuid1().hex
         model_repository = model_path + "/model_repository"
-        env_vars.update({"TRITON_MODEL_DIR": "/models/model"})
+        env_vars.update(
+            {
+                "TRITON_MODEL_DIR": "/models/model",
+                "SAGEMAKER_SERVE_SECRET_KEY": secret_key,
+                "LOCAL_PYTHON": platform.python_version(),
+            }
+        )
 
         if "cpu" not in image_uri:
             self.container = docker_client.containers.run(
@@ -102,6 +110,7 @@ class SageMakerTritonServer:
         self,
         model_path: str,
         sagemaker_session: Session,
+        secret_key: str,
         s3_model_data_url: str = None,
         image: str = None,
     ):
@@ -127,5 +136,7 @@ class SageMakerTritonServer:
         env_vars = {
             "SAGEMAKER_TRITON_DEFAULT_MODEL_NAME": "model",
             "TRITON_MODEL_DIR": "/opt/ml/model/model",
+            "SAGEMAKER_SERVE_SECRET_KEY": secret_key,
+            "LOCAL_PYTHON": platform.python_version(),
         }
         return s3_upload_path, env_vars

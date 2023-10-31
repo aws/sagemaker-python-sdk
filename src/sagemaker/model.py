@@ -801,7 +801,6 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 Specifies configuration related to serverless endpoint. Instance type is
                 not provided in serverless inference. So this is used to find image URIs.
         """
-
         if self.model_package_arn is not None or self.algorithm_arn is not None:
             model_package = ModelPackage(
                 role=self.role,

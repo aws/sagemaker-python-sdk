@@ -93,6 +93,7 @@ class LocalContainerMode(LocalTorchServe, LocalDJLServing, LocalTritonServer, Lo
                 docker_client=self.client,
                 model_path=model_path if model_path else self.model_path,
                 image_uri=image,
+                secret_key=secret_key,
                 env_vars=env_vars if env_vars else self.env_vars,
             )
             self._ping_container = self._triton_deep_ping

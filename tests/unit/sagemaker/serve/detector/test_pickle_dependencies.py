@@ -85,7 +85,7 @@ CURRENTLY_USED_FILES = {
         "scipy", "mock scipy module", "/tmp/to/site-packages/scipy/scipy/__init__.py"
     ),
 }
-EXPECTED_SM_WHL = "/opt/ml/model/whl/sagemaker-2.185.1.dev0-py2.py3-none-any.whl"
+EXPECTED_SM_WHL = "/opt/ml/model/whl/sagemaker-2.195.2.dev0-py2.py3-none-any.whl"
 EXPECTED_BOTO3_MAPPING = "boto3==1.26.131"
 EXPECTED_SUBPROCESS_CMD = [sys.executable, "-m", "pip", "--disable-pip-version-check"]
 
@@ -139,8 +139,8 @@ def test_generate_requirements_exact_match(monkeypatch):
         expected_calls = [
             call(f"{EXPECTED_SM_WHL}\n"),
             call(f"{EXPECTED_BOTO3_MAPPING}\n"),
-            call("xgboost\n"),
-            call("scipy\n"),
+            call("xgboost==1.2.3\n"),
+            call("scipy==1.2.3\n"),
         ]
         mocked_writes.assert_has_calls(expected_calls)
 
@@ -193,8 +193,8 @@ def test_generate_requirements_txt_pruning_unused_packages(monkeypatch):
         expected_calls = [
             call(f"{EXPECTED_SM_WHL}\n"),
             call(f"{EXPECTED_BOTO3_MAPPING}\n"),
-            call("xgboost\n"),
-            call("scipy\n"),
+            call("xgboost==1.2.3\n"),
+            call("scipy==1.2.3\n"),
         ]
         mocked_writes.assert_has_calls(expected_calls)
 

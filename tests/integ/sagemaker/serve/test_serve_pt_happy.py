@@ -38,6 +38,11 @@
 
 
 # @pytest.fixture
+# def pt_dependencies():
+#     return {"auto": True, "custom": ["boto3==1.26.*", "botocore==1.29.*", "s3transfer==0.6.*"]}
+
+
+# @pytest.fixture
 # def test_image():
 #     return Image.open(str(os.path.join(PYTORCH_SQUEEZENET_RESOURCE_DIR, "zidane.jpeg")))
 
@@ -82,11 +87,14 @@
 
 
 # @pytest.fixture
-# def model_builder_inference_spec_schema_builder(squeezenet_inference_spec, squeezenet_schema):
+# def model_builder_inference_spec_schema_builder(
+#     squeezenet_inference_spec, squeezenet_schema, pt_dependencies
+# ):
 #     return ModelBuilder(
 #         model_path=PYTORCH_SQUEEZENET_RESOURCE_DIR,
 #         inference_spec=squeezenet_inference_spec,
 #         schema_builder=squeezenet_schema,
+#         dependencies=pt_dependencies,
 #     )
 
 

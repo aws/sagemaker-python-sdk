@@ -108,13 +108,14 @@ def get_requirements_for_pkl_file(pkl_path: Path, dest: Path):
     with open(dest, mode="w+") as out:
         for x in get_all_installed_packages():
             name = x["name"]
+            version = x["version"]
             # skip only for dev
             if name == "sagemaker":
-                out.write("/opt/ml/model/whl/sagemaker-2.185.1.dev0-py2.py3-none-any.whl\n")
+                out.write("/opt/ml/model/whl/sagemaker-2.195.2.dev0-py2.py3-none-any.whl\n")
             elif name == "boto3":
                 out.write("boto3==1.26.131\n")
             elif name in currently_used_packages:
-                out.write(f"{name}\n")
+                out.write(f"{name}=={version}\n")
 
 
 def get_all_requirements(dest: Path):
@@ -128,10 +129,8 @@ def get_all_requirements(dest: Path):
             # skip only for dev
             if name == "sagemaker":
                 continue
-            if name == "boto3":
-                out.write("boto3==1.26.131\n")
-            else:
-                out.write(f"{name}=={version}\n")
+
+            out.write(f"{name}=={version}\n")
 
 
 def parse_args():

@@ -33,7 +33,10 @@
 
 # @pytest.fixture
 # def xgb_dependencies():
-#     return {"auto": True, "custom": ["protobuf==3.20.2"]}
+#     return {
+#         "auto": True,
+#         "custom": ["protobuf==3.20.2", "boto3==1.26.*", "botocore==1.29.*", "s3transfer==0.6.*"],
+#     }
 
 
 # @pytest.fixture
