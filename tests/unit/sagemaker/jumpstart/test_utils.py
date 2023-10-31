@@ -20,6 +20,7 @@ from sagemaker.jumpstart import utils
 from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE,
+    ENV_VARIABLE_JUMPSTART_GATED_CONTENT_BUCKET_OVERRIDE,
     JUMPSTART_DEFAULT_REGION_NAME,
     JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET,
     JUMPSTART_REGION_NAME_SET,
@@ -78,12 +79,12 @@ def test_get_jumpstart_gated_content_bucket_no_args():
 
 
 def test_get_jumpstart_gated_content_bucket_override():
-    with patch.dict(os.environ, {ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE: "some-val"}):
+    with patch.dict(os.environ, {ENV_VARIABLE_JUMPSTART_GATED_CONTENT_BUCKET_OVERRIDE: "some-val"}):
         with patch("logging.Logger.info") as mocked_info_log:
             random_region = "random_region"
             assert "some-val" == utils.get_jumpstart_gated_content_bucket(random_region)
             mocked_info_log.assert_called_once_with(
-                "Using JumpStart private bucket override: 'some-val'"
+                "Using JumpStart gated bucket override: 'some-val'"
             )
 
 

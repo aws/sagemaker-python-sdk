@@ -81,13 +81,13 @@ def get_jumpstart_gated_content_bucket(
 
     gated_bucket_to_return: Optional[str] = None
     if (
-        constants.ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE in os.environ
-        and len(os.environ[constants.ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE]) > 0
+        constants.ENV_VARIABLE_JUMPSTART_GATED_CONTENT_BUCKET_OVERRIDE in os.environ
+        and len(os.environ[constants.ENV_VARIABLE_JUMPSTART_GATED_CONTENT_BUCKET_OVERRIDE]) > 0
     ):
         gated_bucket_to_return = os.environ[
-            constants.ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE
+            constants.ENV_VARIABLE_JUMPSTART_GATED_CONTENT_BUCKET_OVERRIDE
         ]
-        info_logs.append(f"Using JumpStart private bucket override: '{gated_bucket_to_return}'")
+        info_logs.append(f"Using JumpStart gated bucket override: '{gated_bucket_to_return}'")
     else:
         try:
             gated_bucket_to_return = constants.JUMPSTART_REGION_NAME_TO_LAUNCHED_REGION_DICT[
