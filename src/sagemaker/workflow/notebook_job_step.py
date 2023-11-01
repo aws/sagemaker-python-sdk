@@ -102,9 +102,12 @@ class NotebookJobStep(ConfigurableRetryStep):
         """Constructs a `NotebookJobStep`.
 
         Args:
-            name (str): The name of the `NotebookJobStep`.
-            display_name (str): The display name of the `NotebookJobStep`.
-            description (str): The description of the `NotebookJobStep`.
+            name (Optional[str]): The name of the `NotebookJobStep`. If not provided,
+               it is derived from the notebook file name.
+            display_name (Optional[str]): The display name of the `NotebookJobStep`.
+               Default is ``None``.
+            description (Optional[str]): The description of the `NotebookJobStep`.
+               Default is ``None``.
 
             notebook_job_name (Optional[str]): An optional user-specified descriptive name
               for the notebook job. If provided, the sanitized notebook job name
