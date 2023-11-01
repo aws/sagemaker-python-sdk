@@ -40,7 +40,7 @@ from sagemaker.workflow.entities import (
     RequestType,
     PipelineVariable,
 )
-from sagemaker.workflow.utilities import collect_parameters, load_step_compilation_context
+from sagemaker.workflow.utilities import _collect_parameters, load_step_compilation_context
 from sagemaker.session import get_execution_role
 
 from sagemaker.s3_utils import s3_path_join
@@ -67,7 +67,7 @@ class NotebookJobStep(ConfigurableRetryStep):
     <https://docs.aws.amazon.com/sagemaker/latest/dg/notebook-auto-run.html>`_.
     """
 
-    @collect_parameters
+    @_collect_parameters
     def __init__(
         self,
         # Following parameters will set by @collect_parameters

@@ -463,7 +463,7 @@ def trim_request_dict(request_dict, job_key, config):
     return request_dict
 
 
-def collect_parameters(func):
+def _collect_parameters(func):
     """The decorator function is to collect all the params passed into an invoked function of class.
 
     These parameters are set as properties of the class instance. The use case is to simplify
