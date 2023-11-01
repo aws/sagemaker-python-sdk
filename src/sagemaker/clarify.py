@@ -308,7 +308,7 @@ ANALYSIS_CONFIG_SCHEMA_V1_0 = Schema(
                         "bidirectional",
                     ),
                 ),
-                "explanation_granularity": And(
+                "granularity": And(
                     str,
                     Use(str.lower),
                     lambda s: s
