@@ -19,11 +19,12 @@ from mock import MagicMock
 import pytest
 from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
 from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
-from sagemaker.jumpstart.enums import JumpStartScriptScope
+from sagemaker.jumpstart.enums import JumpStartScriptScope, JumpStartTag
 
 from sagemaker.jumpstart.model import JumpStartModel
 from sagemaker.model import Model
 from sagemaker.predictor import Predictor
+from sagemaker.session_settings import SessionSettings
 
 from tests.unit.sagemaker.jumpstart.utils import get_special_model_spec, overwrite_dictionary
 
@@ -102,6 +103,10 @@ class ModelTest(unittest.TestCase):
             instance_type="ml.p2.xlarge",
             wait=True,
             endpoint_name="blahblahblah-7777",
+            tags=[
+                {"Key": JumpStartTag.MODEL_ID, "Value": "js-trainable-model"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.1.1"},
+            ],
         )
 
     @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
@@ -156,6 +161,10 @@ class ModelTest(unittest.TestCase):
             initial_instance_count=1,
             instance_type="ml.p3.2xlarge",
             wait=True,
+            tags=[
+                {"Key": JumpStartTag.MODEL_ID, "Value": "js-model-class-model-prepacked"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.1.0"},
+            ],
         )
 
     @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
@@ -240,7 +249,7 @@ class ModelTest(unittest.TestCase):
             "deserializer": "BaseDeserializer()",
             "accelerator_type": "None",
             "endpoint_name": "None",
-            "tags": ["None"],
+            "tags": [],
             "kms_key": "None",
             "wait": True,
             "data_capture_config": "None",
@@ -322,7 +331,15 @@ class ModelTest(unittest.TestCase):
         model.deploy(**deploy_kwargs)
 
         expected_deploy_kwargs = overwrite_dictionary(
-            {"initial_instance_count": 1, "instance_type": "ml.p3.2xlarge"}, deploy_kwargs
+            {
+                "initial_instance_count": 1,
+                "instance_type": "ml.p3.2xlarge",
+                "tags": [
+                    {"Key": JumpStartTag.MODEL_ID, "Value": "js-model-class-model-prepacked"},
+                    {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.1.0"},
+                ],
+            },
+            deploy_kwargs,
         )
 
         mock_model_deploy.assert_called_once_with(**expected_deploy_kwargs)
@@ -331,7 +348,7 @@ class ModelTest(unittest.TestCase):
 
         """If you add arguments to <Model constructor>, this test will fail.
         Please add the new argument to the skip set below,
-        and cut a ticket sev-3 to JumpStart team: AWS > SageMaker > JumpStart"""
+        and reach out to JumpStart team."""
 
         init_args_to_skip: Set[str] = set()
         deploy_args_to_skip: Set[str] = set(["kwargs"])
@@ -579,6 +596,74 @@ class ModelTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_jumpstart_model_tags(
+        self,
+        mock_get_model_specs: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
+    ):
+
+        mock_is_valid_model_id.return_value = True
+
+        model_id, _ = "env-var-variant-model", "*"
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        mock_session = MagicMock(sagemaker_config={})
+
+        model = JumpStartModel(model_id=model_id, sagemaker_session=mock_session)
+
+        model.deploy(tags=[{"Key": "blah", "Value": "blahagain"}])
+
+        js_tags = [
+            {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "env-var-variant-model"},
+            {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "1.0.0"},
+        ]
+
+        self.assertEqual(
+            mock_session.create_model.call_args[1]["tags"],
+            [{"Key": "blah", "Value": "blahagain"}] + js_tags,
+        )
+
+        self.assertEqual(
+            mock_session.endpoint_from_production_variants.call_args[1]["tags"],
+            [{"Key": "blah", "Value": "blahagain"}] + js_tags,
+        )
+
+    @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_jumpstart_model_tags_disabled(
+        self,
+        mock_get_model_specs: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
+    ):
+
+        mock_is_valid_model_id.return_value = True
+
+        model_id, _ = "env-var-variant-model", "*"
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        settings = SessionSettings(include_jumpstart_tags=False)
+        mock_session = MagicMock(sagemaker_config={}, settings=settings)
+
+        model = JumpStartModel(model_id=model_id, sagemaker_session=mock_session)
+
+        model.deploy(tags=[{"Key": "blah", "Value": "blahagain"}])
+
+        self.assertEqual(
+            mock_session.create_model.call_args[1]["tags"],
+            [{"Key": "blah", "Value": "blahagain"}],
+        )
+
+        self.assertEqual(
+            mock_session.endpoint_from_production_variants.call_args[1]["tags"],
+            [{"Key": "blah", "Value": "blahagain"}],
+        )
+
+    @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_jumpstart_model_package_arn(
         self,
         mock_get_model_specs: mock.Mock,
@@ -787,6 +872,103 @@ class ModelTest(unittest.TestCase):
         )
 
         mock_js_info_logger.assert_not_called()
+
+    @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.model.Model.__init__")
+    @mock.patch("sagemaker.jumpstart.model.Model.deploy")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_LOGGER.info")
+    def test_model_artifact_variant_model(
+        self,
+        mock_js_info_logger: mock.Mock,
+        mock_model_deploy: mock.Mock,
+        mock_model_init: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
+    ):
+        mock_model_deploy.return_value = default_predictor
+
+        mock_is_valid_model_id.return_value = True
+        model_id, _ = "model-artifact-variant-model", "*"
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        mock_session.return_value = sagemaker_session
+
+        # this instance type has a special model artifact
+        JumpStartModel(model_id=model_id, instance_type="ml.p2.xlarge")
+
+        mock_model_init.assert_called_once_with(
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-"
+            "inference:1.13.1-transformers4.26.0-gpu-py39-cu117-ubuntu20.04",
+            model_data="s3://jumpstart-cache-prod-us-west-2/hello-world-1",
+            env={
+                "SAGEMAKER_PROGRAM": "inference.py",
+                "ENDPOINT_SERVER_TIMEOUT": "3600",
+                "MODEL_CACHE_ROOT": "/opt/ml/model",
+                "SAGEMAKER_ENV": "1",
+                "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+            },
+            predictor_cls=Predictor,
+            role=execution_role,
+            sagemaker_session=sagemaker_session,
+            enable_network_isolation=True,
+        )
+
+        mock_model_init.reset_mock()
+
+        JumpStartModel(model_id=model_id, instance_type="ml.p99.xlarge")
+
+        mock_model_init.assert_called_once_with(
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.5.0-gpu-py3",
+            model_data="s3://jumpstart-cache-prod-us-west-2/basfsdfssf",
+            env={
+                "SAGEMAKER_PROGRAM": "inference.py",
+                "ENDPOINT_SERVER_TIMEOUT": "3600",
+                "MODEL_CACHE_ROOT": "/opt/ml/model",
+                "SAGEMAKER_ENV": "1",
+                "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+            },
+            predictor_cls=Predictor,
+            role=execution_role,
+            sagemaker_session=sagemaker_session,
+            enable_network_isolation=True,
+        )
+
+    @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.model.Model.deploy")
+    @mock.patch("sagemaker.jumpstart.model.Model.register")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_model_registry_accept_and_response_types(
+        self,
+        mock_model_register: mock.Mock,
+        mock_model_deploy: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
+    ):
+        mock_model_deploy.return_value = default_predictor
+
+        mock_is_valid_model_id.return_value = True
+        model_id, _ = "model_data_s3_prefix_model", "*"
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        mock_session.return_value = sagemaker_session
+
+        model = JumpStartModel(model_id=model_id, instance_type="ml.p2.xlarge")
+
+        model.register()
+
+        mock_model_register.assert_called_once_with(
+            content_types=["application/x-text"],
+            response_types=["application/json;verbose", "application/json"],
+        )
 
 
 def test_jumpstart_model_requires_model_id():

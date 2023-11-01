@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 import logging
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 from urllib.parse import urlparse
 from packaging.version import Version
 import sagemaker
@@ -63,13 +63,64 @@ def get_jumpstart_launched_regions_message() -> str:
     return f"JumpStart is available in {formatted_launched_regions_str} regions."
 
 
+def get_jumpstart_gated_content_bucket(
+    region: str = constants.JUMPSTART_DEFAULT_REGION_NAME,
+) -> str:
+    """Returns regionalized private content bucket name for JumpStart.
+
+    Raises:
+        ValueError: If JumpStart is not launched in ``region`` or private content
+            unavailable in that region.
+    """
+
+    old_gated_content_bucket: Optional[
+        str
+    ] = accessors.JumpStartModelsAccessor.get_jumpstart_gated_content_bucket()
+
+    info_logs: List[str] = []
+
+    gated_bucket_to_return: Optional[str] = None
+    if (
+        constants.ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE in os.environ
+        and len(os.environ[constants.ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE]) > 0
+    ):
+        gated_bucket_to_return = os.environ[
+            constants.ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE
+        ]
+        info_logs.append(f"Using JumpStart private bucket override: '{gated_bucket_to_return}'")
+    else:
+        try:
+            gated_bucket_to_return = constants.JUMPSTART_REGION_NAME_TO_LAUNCHED_REGION_DICT[
+                region
+            ].gated_content_bucket
+            if gated_bucket_to_return is None:
+                raise ValueError(
+                    f"No private content bucket for JumpStart exists in {region} region."
+                )
+        except KeyError:
+            formatted_launched_regions_str = get_jumpstart_launched_regions_message()
+            raise ValueError(
+                f"Unable to get private content bucket for JumpStart in {region} region. "
+                f"{formatted_launched_regions_str}"
+            )
+
+    accessors.JumpStartModelsAccessor.set_jumpstart_gated_content_bucket(gated_bucket_to_return)
+
+    if gated_bucket_to_return != old_gated_content_bucket:
+        accessors.JumpStartModelsAccessor.reset_cache()
+        for info_log in info_logs:
+            constants.JUMPSTART_LOGGER.info(info_log)
+
+    return gated_bucket_to_return
+
+
 def get_jumpstart_content_bucket(
     region: str = constants.JUMPSTART_DEFAULT_REGION_NAME,
 ) -> str:
     """Returns regionalized content bucket name for JumpStart.
 
     Raises:
-        RuntimeError: If JumpStart is not launched in ``region``.
+        ValueError: If JumpStart is not launched in ``region``.
     """
 
     old_content_bucket: Optional[
@@ -199,7 +250,7 @@ def is_jumpstart_model_uri(uri: Optional[str]) -> bool:
     if urlparse(uri).scheme == "s3":
         bucket, _ = parse_s3_url(uri)
 
-    return bucket in constants.JUMPSTART_BUCKET_NAME_SET
+    return bucket in constants.JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET
 
 
 def tag_key_in_array(tag_key: str, tag_array: List[Dict[str, str]]) -> bool:
@@ -236,7 +287,10 @@ def get_tag_value(tag_key: str, tag_array: List[Dict[str, str]]) -> str:
 
 
 def add_single_jumpstart_tag(
-    uri: str, tag_key: enums.JumpStartTag, curr_tags: Optional[List[Dict[str, str]]]
+    tag_value: str,
+    tag_key: enums.JumpStartTag,
+    curr_tags: Optional[List[Dict[str, str]]],
+    is_uri=False,
 ) -> Optional[List]:
     """Adds ``tag_key`` to ``curr_tags`` if ``uri`` corresponds to a JumpStart model.
 
@@ -245,17 +299,28 @@ def add_single_jumpstart_tag(
         tag_key (enums.JumpStartTag): Custom tag to apply to current tags if the URI
             corresponds to a JumpStart model.
         curr_tags (Optional[List]): Current tags associated with ``Estimator`` or ``Model``.
+        is_uri (boolean): Set to True to indicate a s3 uri is to be tagged. Set to False to indicate
+            tags for JumpStart model id / version are being added. (Default: False).
     """
-    if is_jumpstart_model_uri(uri):
+    if not is_uri or is_jumpstart_model_uri(tag_value):
         if curr_tags is None:
             curr_tags = []
         if not tag_key_in_array(tag_key, curr_tags):
-            curr_tags.append(
-                {
-                    "Key": tag_key,
-                    "Value": uri,
-                }
+            skip_adding_tag = (
+                (
+                    tag_key_in_array(enums.JumpStartTag.MODEL_ID, curr_tags)
+                    or tag_key_in_array(enums.JumpStartTag.MODEL_VERSION, curr_tags)
+                )
+                if is_uri
+                else False
             )
+            if not skip_adding_tag:
+                curr_tags.append(
+                    {
+                        "Key": tag_key,
+                        "Value": tag_value,
+                    }
+                )
     return curr_tags
 
 
@@ -275,21 +340,44 @@ def get_jumpstart_base_name_if_jumpstart_model(
     return None
 
 
-def add_jumpstart_tags(
+def add_jumpstart_model_id_version_tags(
+    tags: Optional[List[Dict[str, str]]],
+    model_id: str,
+    model_version: str,
+) -> List[Dict[str, str]]:
+    """Add custom model ID and version tags to JumpStart related resources."""
+    if model_id is None or model_version is None:
+        return tags
+    tags = add_single_jumpstart_tag(
+        model_id,
+        enums.JumpStartTag.MODEL_ID,
+        tags,
+        is_uri=False,
+    )
+    tags = add_single_jumpstart_tag(
+        model_version,
+        enums.JumpStartTag.MODEL_VERSION,
+        tags,
+        is_uri=False,
+    )
+    return tags
+
+
+def add_jumpstart_uri_tags(
     tags: Optional[List[Dict[str, str]]] = None,
-    inference_model_uri: Optional[str] = None,
+    inference_model_uri: Optional[Union[str, dict]] = None,
     inference_script_uri: Optional[str] = None,
     training_model_uri: Optional[str] = None,
     training_script_uri: Optional[str] = None,
 ) -> Optional[List[Dict[str, str]]]:
-    """Add custom tags to JumpStart models, return the updated tags.
+    """Add custom uri tags to JumpStart models, return the updated tags.
 
     No-op if this is not a JumpStart model related resource.
 
     Args:
         tags (Optional[List[Dict[str,str]]): Current tags for JumpStart inference
             or training job. (Default: None).
-        inference_model_uri (Optional[str]): S3 URI for inference model artifact.
+        inference_model_uri (Optional[Union[dict, str]]): S3 URI for inference model artifact.
             (Default: None).
         inference_script_uri (Optional[str]): S3 URI for inference script tarball.
             (Default: None).
@@ -302,12 +390,19 @@ def add_jumpstart_tags(
         "The URI (%s) is a pipeline variable which is only interpreted at execution time. "
         "As a result, the JumpStart resources will not be tagged."
     )
+
+    if isinstance(inference_model_uri, dict):
+        inference_model_uri = inference_model_uri.get("S3DataSource", {}).get("S3Uri", None)
+
     if inference_model_uri:
         if is_pipeline_variable(inference_model_uri):
             logging.warning(warn_msg, "inference_model_uri")
         else:
             tags = add_single_jumpstart_tag(
-                inference_model_uri, enums.JumpStartTag.INFERENCE_MODEL_URI, tags
+                inference_model_uri,
+                enums.JumpStartTag.INFERENCE_MODEL_URI,
+                tags,
+                is_uri=True,
             )
 
     if inference_script_uri:
@@ -315,7 +410,10 @@ def add_jumpstart_tags(
             logging.warning(warn_msg, "inference_script_uri")
         else:
             tags = add_single_jumpstart_tag(
-                inference_script_uri, enums.JumpStartTag.INFERENCE_SCRIPT_URI, tags
+                inference_script_uri,
+                enums.JumpStartTag.INFERENCE_SCRIPT_URI,
+                tags,
+                is_uri=True,
             )
 
     if training_model_uri:
@@ -323,7 +421,10 @@ def add_jumpstart_tags(
             logging.warning(warn_msg, "training_model_uri")
         else:
             tags = add_single_jumpstart_tag(
-                training_model_uri, enums.JumpStartTag.TRAINING_MODEL_URI, tags
+                training_model_uri,
+                enums.JumpStartTag.TRAINING_MODEL_URI,
+                tags,
+                is_uri=True,
             )
 
     if training_script_uri:
@@ -331,7 +432,10 @@ def add_jumpstart_tags(
             logging.warning(warn_msg, "training_script_uri")
         else:
             tags = add_single_jumpstart_tag(
-                training_script_uri, enums.JumpStartTag.TRAINING_SCRIPT_URI, tags
+                training_script_uri,
+                enums.JumpStartTag.TRAINING_SCRIPT_URI,
+                tags,
+                is_uri=True,
             )
 
     return tags

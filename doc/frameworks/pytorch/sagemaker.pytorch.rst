@@ -24,3 +24,11 @@ PyTorch Predictor
     :members:
     :undoc-members:
     :show-inheritance:
+
+PyTorch Processor
+-----------------
+
+.. autoclass:: sagemaker.pytorch.processing.PyTorchProcessor
+    :members:
+    :undoc-members:
+    :show-inheritance:

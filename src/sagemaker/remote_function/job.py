@@ -20,7 +20,7 @@ import shutil
 import sys
 import json
 import secrets
-from typing import Dict, List, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 from io import BytesIO
 
@@ -46,6 +46,7 @@ from sagemaker.experiments._run_context import _RunContext
 from sagemaker.experiments.run import Run
 from sagemaker.image_uris import get_base_python_image_uri
 from sagemaker import image_uris
+from sagemaker.remote_function.checkpoint_location import CheckpointLocation
 from sagemaker.session import get_execution_role, _logs_for_job, Session
 from sagemaker.utils import name_from_base, _tmpdir, resolve_value_from_config
 from sagemaker.s3 import s3_path_join, S3Uploader
@@ -193,6 +194,7 @@ class _JobSettings:
         spark_config: SparkConfig = None,
         use_spot_instances=False,
         max_wait_time_in_seconds=None,
+        custom_file_filter: Optional[Callable[[str, List], List]] = None,
     ):
         """Initialize a _JobSettings instance which configures the remote job.
 
@@ -363,6 +365,11 @@ class _JobSettings:
             max_wait_time_in_seconds (int): Timeout in seconds waiting for spot training job.
               After this amount of time Amazon SageMaker will stop waiting for managed spot
               training job to complete. Defaults to ``None``.
+
+            custom_file_filter (Callable[[str, List], List]): A function that filters job
+              dependencies to be uploaded to S3. This function is passed to the ``ignore``
+              argument of ``shutil.copytree``. Defaults to ``None``, which means only python
+              files are accepted.
         """
         self.sagemaker_session = sagemaker_session or Session()
         self.environment_variables = resolve_value_from_config(
@@ -450,6 +457,7 @@ class _JobSettings:
         self.keep_alive_period_in_seconds = keep_alive_period_in_seconds
         self.spark_config = spark_config
         self.use_spot_instances = use_spot_instances
+        self.custom_file_filter = custom_file_filter
         self.max_wait_time_in_seconds = max_wait_time_in_seconds
         self.job_conda_env = resolve_value_from_config(
             direct_input=job_conda_env,
@@ -649,6 +657,7 @@ class _Job:
             s3_base_uri=s3_base_uri,
             s3_kms_key=job_settings.s3_kms_key,
             sagemaker_session=job_settings.sagemaker_session,
+            custom_file_filter=job_settings.custom_file_filter,
         )
 
         stored_function = StoredFunction(
@@ -672,6 +681,8 @@ class _Job:
             StoppingCondition=stopping_condition,
             RetryStrategy={"MaximumRetryAttempts": job_settings.max_retry_attempts},
         )
+
+        _update_job_request_with_checkpoint_config(func_args, func_kwargs, request_dict)
 
         if job_settings.tags:
             request_dict["Tags"] = job_settings.tags
@@ -860,7 +871,7 @@ def _prepare_and_upload_runtime_scripts(
             )
             shutil.copy2(spark_script_path, bootstrap_scripts)
 
-        with open(entrypoint_script_path, "w") as file:
+        with open(entrypoint_script_path, "w", newline="\n") as file:
             file.writelines(entry_point_script)
 
         bootstrap_script_path = os.path.join(
@@ -890,6 +901,7 @@ def _prepare_and_upload_dependencies(
     s3_base_uri: str,
     s3_kms_key: str,
     sagemaker_session: Session,
+    custom_file_filter: Optional[Callable[[str, List], List]] = None,
 ) -> str:
     """Upload the job dependencies to S3 if present"""
 
@@ -906,12 +918,12 @@ def _prepare_and_upload_dependencies(
         os.mkdir(tmp_workspace_dir)
         # TODO Remove the following hack to avoid dir_exists error in the copy_tree call below.
         tmp_workspace = os.path.join(tmp_workspace_dir, JOB_REMOTE_FUNCTION_WORKSPACE)
-
+        ignore = custom_file_filter if custom_file_filter is not None else _filter_non_python_files
         if include_local_workdir:
             shutil.copytree(
                 os.getcwd(),
                 tmp_workspace,
-                ignore=_filter_non_python_files,
+                ignore=ignore,
             )
             logger.info("Copied user workspace python scripts to '%s'", tmp_workspace)
 
@@ -1169,6 +1181,50 @@ def _extend_spark_config_to_request(
         container_entrypoint.extend([SPARK_APP_SCRIPT_PATH])
 
     return extended_request
+
+
+def _update_job_request_with_checkpoint_config(args, kwargs, request_dict):
+    """Extend job request with checkpoint config based on CheckpointLocation in function args.
+
+    Args:
+        args (tuple): The positional arguments of the remote function.
+        kwargs (Dict): The keyword arguments of the remote function.
+        request_dict (Dict): create training job request dict.
+    """
+    checkpoint_location_index_in_args = None
+    checkpoint_location_key_in_kwargs = None
+    checkpoint_location_count = 0
+
+    for index, arg in enumerate(args):
+        if isinstance(arg, CheckpointLocation):
+            checkpoint_location_index_in_args = index
+            checkpoint_location_count += 1
+
+    for key, value in kwargs.items():
+        if isinstance(value, CheckpointLocation):
+            checkpoint_location_key_in_kwargs = key
+            checkpoint_location_count += 1
+
+    if checkpoint_location_count < 1:
+        return
+
+    if checkpoint_location_count > 1:
+        raise ValueError(
+            "Remote function cannot have more than one argument of type CheckpointLocation."
+        )
+
+    if checkpoint_location_index_in_args is not None:
+        checkpoint_location_arg = args[checkpoint_location_index_in_args]
+    else:
+        checkpoint_location_arg = kwargs[checkpoint_location_key_in_kwargs]
+
+    checkpoint_s3_uri = checkpoint_location_arg._s3_uri
+    checkpoint_local_path = checkpoint_location_arg._local_path
+
+    request_dict["CheckpointConfig"] = {
+        "LocalPath": checkpoint_local_path,
+        "S3Uri": checkpoint_s3_uri,
+    }
 
 
 @dataclasses.dataclass

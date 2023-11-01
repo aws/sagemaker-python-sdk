@@ -20,10 +20,15 @@ from test_constants import (
     ARTIFACT_SUMMARY,
     PIPELINE_SCHEDULE,
     PIPELINE_SCHEDULE_2,
+    PIPELINE_TRIGGER,
+    PIPELINE_TRIGGER_2,
+    PIPELINE_TRIGGER_ARTIFACT,
+    PIPELINE_TRIGGER_ARTIFACT_SUMMARY,
     SCHEDULE_ARTIFACT_RESULT,
     TRANSFORMATION_CODE_ARTIFACT_1,
     TRANSFORMATION_CODE_INPUT_1,
     LAST_UPDATE_TIME,
+    MockDataSource,
 )
 from test_pipeline_lineage_entity_handler import SAGEMAKER_SESSION_MOCK
 
@@ -88,6 +93,60 @@ def test_retrieve_raw_data_artifact_when_artifact_does_not_exist():
         source_uri=raw_data.s3_uri,
         artifact_type="DataSet",
         artifact_name="sm-fs-fe-raw-data",
+        properties=None,
+        source_types=None,
+        sagemaker_session=SAGEMAKER_SESSION_MOCK,
+    )
+
+
+def test_retrieve_user_defined_raw_data_artifact_when_artifact_already_exist():
+    data_source = MockDataSource()
+    with patch.object(Artifact, "list", return_value=[ARTIFACT_SUMMARY]) as artifact_list_method:
+        with patch.object(Artifact, "load", return_value=ARTIFACT_RESULT) as artifact_load_method:
+            with patch.object(
+                Artifact, "create", return_value=ARTIFACT_RESULT
+            ) as artifact_create_method:
+                result = S3LineageEntityHandler.retrieve_raw_data_artifact(
+                    raw_data=data_source, sagemaker_session=SAGEMAKER_SESSION_MOCK
+                )
+
+    assert result == ARTIFACT_RESULT
+
+    artifact_list_method.assert_called_once_with(
+        source_uri=data_source.data_source_unique_id, sagemaker_session=SAGEMAKER_SESSION_MOCK
+    )
+
+    artifact_load_method.assert_called_once_with(
+        artifact_arn=ARTIFACT_SUMMARY.artifact_arn,
+        sagemaker_session=SAGEMAKER_SESSION_MOCK,
+    )
+
+    artifact_create_method.assert_not_called()
+
+
+def test_retrieve_user_defined_raw_data_artifact_when_artifact_does_not_exist():
+    data_source = MockDataSource()
+    with patch.object(Artifact, "list", return_value=[]) as artifact_list_method:
+        with patch.object(Artifact, "load", return_value=ARTIFACT_RESULT) as artifact_load_method:
+            with patch.object(
+                Artifact, "create", return_value=ARTIFACT_RESULT
+            ) as artifact_create_method:
+                result = S3LineageEntityHandler.retrieve_raw_data_artifact(
+                    raw_data=data_source, sagemaker_session=SAGEMAKER_SESSION_MOCK
+                )
+
+    assert result == ARTIFACT_RESULT
+
+    artifact_list_method.assert_called_once_with(
+        source_uri=data_source.data_source_unique_id, sagemaker_session=SAGEMAKER_SESSION_MOCK
+    )
+
+    artifact_load_method.assert_not_called()
+
+    artifact_create_method.assert_called_once_with(
+        source_uri=data_source.data_source_unique_id,
+        artifact_type="DataSet",
+        artifact_name=data_source.data_source_name,
         properties=None,
         source_types=None,
         sagemaker_session=SAGEMAKER_SESSION_MOCK,
@@ -260,6 +319,113 @@ def test_retrieve_pipeline_schedule_artifact_when_artifact_updated():
 
     artifact_load_method.assert_called_once_with(
         artifact_arn=ARTIFACT_SUMMARY.artifact_arn,
+        sagemaker_session=SAGEMAKER_SESSION_MOCK,
+    )
+
+    artifact_save_method.assert_called_once_with()
+
+    artifact_create_method.assert_not_called()
+
+
+def test_retrieve_pipeline_trigger_artifact_when_artifact_does_not_exist():
+    with patch.object(Artifact, "list", return_value=[]) as artifact_list_method:
+        with patch.object(
+            Artifact, "load", return_value=PIPELINE_TRIGGER_ARTIFACT
+        ) as artifact_load_method:
+            with patch.object(
+                Artifact, "create", return_value=PIPELINE_TRIGGER_ARTIFACT
+            ) as artifact_create_method:
+                result = S3LineageEntityHandler.retrieve_pipeline_trigger_artifact(
+                    pipeline_trigger=PIPELINE_TRIGGER,
+                    sagemaker_session=SAGEMAKER_SESSION_MOCK,
+                )
+
+    assert result == PIPELINE_TRIGGER_ARTIFACT
+
+    artifact_list_method.assert_called_once_with(
+        source_uri=PIPELINE_TRIGGER.trigger_arn,
+        sagemaker_session=SAGEMAKER_SESSION_MOCK,
+    )
+
+    artifact_load_method.assert_not_called()
+
+    artifact_create_method.assert_called_once_with(
+        source_uri=PIPELINE_TRIGGER.trigger_arn,
+        artifact_type="PipelineTrigger",
+        artifact_name=f"sm-fs-fe-trigger-{PIPELINE_TRIGGER.trigger_name}",
+        properties=dict(
+            pipeline_name=PIPELINE_TRIGGER.pipeline_name,
+            event_pattern=PIPELINE_TRIGGER.event_pattern,
+            state=PIPELINE_TRIGGER.state,
+        ),
+        source_types=None,
+        sagemaker_session=SAGEMAKER_SESSION_MOCK,
+    )
+
+
+def test_retrieve_pipeline_trigger_artifact_when_artifact_exists():
+    with patch.object(
+        Artifact, "list", return_value=[PIPELINE_TRIGGER_ARTIFACT_SUMMARY]
+    ) as artifact_list_method:
+        with patch.object(
+            Artifact, "load", return_value=PIPELINE_TRIGGER_ARTIFACT
+        ) as artifact_load_method:
+            with patch.object(PIPELINE_TRIGGER_ARTIFACT, "save") as artifact_save_method:
+                with patch.object(
+                    Artifact, "create", return_value=PIPELINE_TRIGGER_ARTIFACT
+                ) as artifact_create_method:
+                    result = S3LineageEntityHandler.retrieve_pipeline_trigger_artifact(
+                        pipeline_trigger=PIPELINE_TRIGGER,
+                        sagemaker_session=SAGEMAKER_SESSION_MOCK,
+                    )
+
+    assert result == PIPELINE_TRIGGER_ARTIFACT
+
+    artifact_list_method.assert_called_once_with(
+        source_uri=PIPELINE_TRIGGER.trigger_arn,
+        sagemaker_session=SAGEMAKER_SESSION_MOCK,
+    )
+
+    artifact_load_method.assert_called_once_with(
+        artifact_arn=PIPELINE_TRIGGER_ARTIFACT_SUMMARY.artifact_arn,
+        sagemaker_session=SAGEMAKER_SESSION_MOCK,
+    )
+
+    artifact_save_method.assert_called_once_with()
+
+    artifact_create_method.assert_not_called()
+
+
+def test_retrieve_pipeline_trigger_artifact_when_artifact_updated():
+    trigger_artifact_result = copy.deepcopy(PIPELINE_TRIGGER_ARTIFACT)
+    with patch.object(
+        Artifact, "list", return_value=[PIPELINE_TRIGGER_ARTIFACT_SUMMARY]
+    ) as artifact_list_method:
+        with patch.object(
+            Artifact, "load", return_value=trigger_artifact_result
+        ) as artifact_load_method:
+            with patch.object(trigger_artifact_result, "save") as artifact_save_method:
+                with patch.object(
+                    Artifact, "create", return_value=trigger_artifact_result
+                ) as artifact_create_method:
+                    result = S3LineageEntityHandler.retrieve_pipeline_trigger_artifact(
+                        pipeline_trigger=PIPELINE_TRIGGER_2,
+                        sagemaker_session=SAGEMAKER_SESSION_MOCK,
+                    )
+
+    assert result == trigger_artifact_result
+    assert trigger_artifact_result != PIPELINE_TRIGGER_ARTIFACT
+    assert result.properties["pipeline_name"] == PIPELINE_TRIGGER_2.pipeline_name
+    assert result.properties["event_pattern"] == PIPELINE_TRIGGER_2.event_pattern
+    assert result.properties["state"] == PIPELINE_TRIGGER_2.state
+
+    artifact_list_method.assert_called_once_with(
+        source_uri=PIPELINE_TRIGGER.trigger_arn,
+        sagemaker_session=SAGEMAKER_SESSION_MOCK,
+    )
+
+    artifact_load_method.assert_called_once_with(
+        artifact_arn=PIPELINE_TRIGGER_ARTIFACT_SUMMARY.artifact_arn,
         sagemaker_session=SAGEMAKER_SESSION_MOCK,
     )
 

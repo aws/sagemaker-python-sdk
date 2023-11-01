@@ -102,6 +102,7 @@ class JumpStartEstimator(Estimator):
         instance_groups: Optional[List[InstanceGroup]] = None,
         training_repository_access_mode: Optional[Union[str, PipelineVariable]] = None,
         training_repository_credentials_provider_arn: Optional[Union[str, PipelineVariable]] = None,
+        enable_infra_check: Optional[Union[bool, PipelineVariable]] = None,
         container_entry_point: Optional[List[str]] = None,
         container_arguments: Optional[List[str]] = None,
         disable_output_compression: Optional[bool] = None,
@@ -485,6 +486,8 @@ class JumpStartEstimator(Estimator):
                 private Docker registry where your training image is hosted (Default: None).
                 When it's set to None, SageMaker will not do authentication before pulling the image
                 in the private Docker registry. (Default: None).
+            enable_infra_check (Optional[Union[bool, PipelineVariable]]):
+                Specifies whether it is running Sagemaker built-in infra check jobs.
             container_entry_point (Optional[List[str]]): The entrypoint script for a Docker
                 container used to run a training job. This script takes precedence over
                 the default train processing instructions.
@@ -565,6 +568,7 @@ class JumpStartEstimator(Estimator):
             container_entry_point=container_entry_point,
             container_arguments=container_arguments,
             disable_output_compression=disable_output_compression,
+            enable_infra_check=enable_infra_check,
         )
 
         self.model_id = estimator_init_kwargs.model_id
@@ -984,7 +988,6 @@ class JumpStartEstimator(Estimator):
             use_compiled_model (bool): Flag to select whether to use compiled
                 (optimized) model. (Default: False).
         """
-
         self.orig_predictor_cls = predictor_cls
 
         sagemaker_session = sagemaker_session or self.sagemaker_session
@@ -1035,6 +1038,7 @@ class JumpStartEstimator(Estimator):
             dependencies=dependencies,
             git_config=git_config,
             use_compiled_model=use_compiled_model,
+            training_instance_type=self.instance_type,
         )
 
         predictor = super(JumpStartEstimator, self).deploy(

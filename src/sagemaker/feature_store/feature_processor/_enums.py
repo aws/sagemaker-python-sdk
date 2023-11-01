@@ -21,3 +21,13 @@ class FeatureProcessorMode(Enum):
 
     PYSPARK = "pyspark"  # Execute a pyspark job.
     PYTHON = "python"  # Execute a regular python script.
+
+
+class FeatureProcessorPipelineExecutionStatus(Enum):
+    """Enum of feature_processor pipeline execution status."""
+
+    EXECUTING = "Executing"
+    STOPPING = "Stopping"
+    STOPPED = "Stopped"
+    FAILED = "Failed"
+    SUCCEEDED = "Succeeded"

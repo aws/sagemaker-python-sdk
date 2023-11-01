@@ -15,7 +15,7 @@ from __future__ import absolute_import
 
 from abc import ABC, abstractmethod
 from inspect import signature
-from typing import Any, Callable, Dict, Generic, List, OrderedDict, TypeVar, Union
+from typing import Any, Callable, Dict, Generic, List, OrderedDict, TypeVar, Union, Optional
 
 import attr
 from pyspark.sql import DataFrame, SparkSession
@@ -24,6 +24,8 @@ from sagemaker.feature_store.feature_processor._data_source import (
     CSVDataSource,
     FeatureGroupDataSource,
     ParquetDataSource,
+    BaseDataSource,
+    PySparkDataSource,
 )
 from sagemaker.feature_store.feature_processor._feature_processor_config import (
     FeatureProcessorConfig,
@@ -119,6 +121,9 @@ class SparkArgProvider(UDFArgProvider[DataFrame]):
         """
         udf_parameter_names = list(signature(udf).parameters.keys())
         udf_input_names = self._get_input_parameters(udf_parameter_names)
+        udf_params = self.params_loader.get_parameter_args(fp_config).get(
+            self.PARAMS_ARG_NAME, None
+        )
 
         if len(udf_input_names) == 0:
             raise ValueError("Expected at least one input to the user defined function.")
@@ -130,7 +135,7 @@ class SparkArgProvider(UDFArgProvider[DataFrame]):
             )
 
         return OrderedDict(
-            (input_name, self._load_data_frame(input_uri))
+            (input_name, self._load_data_frame(data_source=input_uri, params=udf_params))
             for (input_name, input_uri) in zip(udf_input_names, fp_config.inputs)
         )
 
@@ -189,13 +194,19 @@ class SparkArgProvider(UDFArgProvider[DataFrame]):
 
     def _load_data_frame(
         self,
-        data_source: Union[FeatureGroupDataSource, CSVDataSource, ParquetDataSource],
+        data_source: Union[
+            FeatureGroupDataSource, CSVDataSource, ParquetDataSource, BaseDataSource
+        ],
+        params: Optional[Dict[str, Union[str, Dict]]] = None,
     ) -> DataFrame:
         """Given a data source definition, load the data as a Spark DataFrame.
 
         Args:
-            data_source (Union[FeatureGroupDataSource, CSVDataSource, ParquetDataSource]):
-                A user specified data source from the feature_processor decorator's parameters.
+            data_source (Union[FeatureGroupDataSource, CSVDataSource, ParquetDataSource,
+                BaseDataSource]): A user specified data source from the feature_processor
+                decorator's parameters.
+            params (Optional[Dict[str, Union[str, Dict]]]): Parameters provided to the
+                feature_processor decorator.
 
         Returns:
             DataFrame: The contents of the data source as a Spark DataFrame.
@@ -205,6 +216,13 @@ class SparkArgProvider(UDFArgProvider[DataFrame]):
 
         if isinstance(data_source, FeatureGroupDataSource):
             return self.input_loader.load_from_feature_group(data_source)
+
+        if isinstance(data_source, PySparkDataSource):
+            spark_session = self.spark_session_factory.spark_session
+            return data_source.read_data(spark=spark_session, params=params)
+
+        if isinstance(data_source, BaseDataSource):
+            return data_source.read_data(params=params)
 
         raise ValueError(f"Unknown data source type: {type(data_source)}")
 
