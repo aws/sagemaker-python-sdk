@@ -21,7 +21,7 @@ from sagemaker.workflow.utilities import (
     hash_file,
     hash_files_or_dirs,
     trim_request_dict,
-    collect_parameters,
+    _collect_parameters,
 )
 from pathlib import Path
 import unittest
@@ -149,12 +149,12 @@ class TestCollectParametersDecorator(unittest.TestCase):
                 self.param1 = param1
 
         class SampleClass(BaseClass):
-            @collect_parameters
+            @_collect_parameters
             def __init__(self, param1, param2, param3="default_value"):
                 super(SampleClass, self).__init__(param1)
                 pass
 
-            @collect_parameters
+            @_collect_parameters
             def abc(self, param2, param4="default_value", param5=None):
                 pass
 
