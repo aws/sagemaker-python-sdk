@@ -96,7 +96,7 @@
                 }
             },
             "4.34.1": {
-                "version_aliases": {"pytorch1.13": "pytorch1.13.1"},
+                "version_aliases": {"pytorch1.13.1": "pytorch1.13.1"},
                 "pytorch1.13.1": {
                     "py_versions": ["py310"],
                     "repository": "huggingface-pytorch-inference-neuronx",
