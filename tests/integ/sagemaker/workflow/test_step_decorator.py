@@ -20,6 +20,7 @@ import os
 import random
 
 from sagemaker import get_execution_role, utils
+from sagemaker.config import load_sagemaker_config
 from sagemaker.processing import ProcessingInput
 from sagemaker.sklearn import SKLearnProcessor
 from sagemaker.remote_function.core.serialization import CloudpickleSerializer
@@ -446,22 +447,26 @@ def test_step_decorator_with_pre_execution_script(
             pass
 
 
-@pytest.mark.skip("Need to fix this test with config.yml")
-def test_step_decorator_with_workdir_config(
+def test_step_decorator_with_include_local_workdir(
     sagemaker_session, role, pipeline_name, region_name, monkeypatch, dummy_container_without_error
 ):
     os.environ["AWS_DEFAULT_REGION"] = region_name
     source_dir_path = os.path.join(os.path.dirname(__file__))
+    original_sagemaker_config = sagemaker_session.sagemaker_config
     with monkeypatch.context() as m:
         m.chdir(source_dir_path)
+        sagemaker_config = load_sagemaker_config(
+            [os.path.join(DATA_DIR, "workflow", "config.yaml")]
+        )
+        sagemaker_session.sagemaker_config = sagemaker_config
         dependencies_path = os.path.join(DATA_DIR, "workflow", "requirements.txt")
 
         @step(
             role=role,
-            image_uri=dummy_container_without_error,
             instance_type=INSTANCE_TYPE,
             dependencies=dependencies_path,
             keep_alive_period_in_seconds=300,
+            image_uri=dummy_container_without_error,
         )
         def train(x):
             from workdir_helpers import local_module
@@ -497,6 +502,7 @@ def test_step_decorator_with_workdir_config(
                 pipeline.delete()
             except Exception:
                 pass
+    sagemaker_session.sagemaker_config = original_sagemaker_config
 
 
 def test_decorator_with_conda_env(

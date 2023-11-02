@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 """Contains classes for preparing and uploading configs for a scheduled feature processor."""
 from __future__ import absolute_import
-from typing import Callable, Dict, Optional, Tuple, List
+from typing import Callable, Dict, Optional, Tuple, List, Union
 
 import attr
 
@@ -38,7 +38,7 @@ from sagemaker.remote_function.runtime_environment.runtime_environment_manager i
     RuntimeEnvironmentManager,
 )
 from sagemaker.remote_function.spark_config import SparkConfig
-from sagemaker.remote_function.workdir_config import WorkdirConfig
+from sagemaker.remote_function.custom_file_filter import CustomFileFilter
 from sagemaker.s3 import s3_path_join
 
 
@@ -66,7 +66,6 @@ class ConfigUploader:
         user_workspace_s3uri = self._prepare_and_upload_workspace(
             dependencies_list_path,
             self.remote_decorator_config.include_local_workdir,
-            self.remote_decorator_config.workdir_config,
             self.remote_decorator_config.pre_execution_commands,
             self.remote_decorator_config.pre_execution_script,
             s3_base_uri,
@@ -132,19 +131,17 @@ class ConfigUploader:
         self,
         local_dependencies_path: str,
         include_local_workdir: bool,
-        workdir_config: WorkdirConfig,
         pre_execution_commands: List[str],
         pre_execution_script_local_path: str,
         s3_base_uri: str,
         s3_kms_key: str,
         sagemaker_session: Session,
-        custom_file_filter: Optional[Callable[[str, List], List]] = None,
+        custom_file_filter: Optional[Union[Callable[[str, List], List], CustomFileFilter]] = None,
     ) -> str:
         """Upload the training step dependencies to S3 if present"""
         return _prepare_and_upload_workspace(
             local_dependencies_path=local_dependencies_path,
             include_local_workdir=include_local_workdir,
-            workdir_config=workdir_config,
             pre_execution_commands=pre_execution_commands,
             pre_execution_script_local_path=pre_execution_script_local_path,
             s3_base_uri=s3_base_uri,

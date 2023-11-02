@@ -117,7 +117,6 @@ def test_prepare_and_upload_workspace(mock_upload, config_uploader):
     s3_path = config_uploader._prepare_and_upload_workspace(
         local_dependencies_path="some/path/to/dependency",
         include_local_workdir=True,
-        workdir_config=None,
         pre_execution_commands=remote_decorator_config.pre_execution_commands,
         pre_execution_script_local_path=remote_decorator_config.pre_execution_script,
         s3_base_uri=remote_decorator_config.s3_root_uri,
@@ -128,7 +127,6 @@ def test_prepare_and_upload_workspace(mock_upload, config_uploader):
     mock_upload.assert_called_once_with(
         local_dependencies_path="some/path/to/dependency",
         include_local_workdir=True,
-        workdir_config=None,
         pre_execution_commands=remote_decorator_config.pre_execution_commands,
         pre_execution_script_local_path=remote_decorator_config.pre_execution_script,
         s3_base_uri=remote_decorator_config.s3_root_uri,
@@ -153,7 +151,6 @@ def test_prepare_and_upload_workspace_with_filter(
     config_uploader_with_filter._prepare_and_upload_workspace(
         local_dependencies_path="some/path/to/dependency",
         include_local_workdir=True,
-        workdir_config=None,
         pre_execution_commands=remote_decorator_config.pre_execution_commands,
         pre_execution_script_local_path=remote_decorator_config.pre_execution_script,
         s3_base_uri=remote_decorator_config.s3_root_uri,
@@ -165,7 +162,6 @@ def test_prepare_and_upload_workspace_with_filter(
     mock_job_upload.assert_called_once_with(
         local_dependencies_path="some/path/to/dependency",
         include_local_workdir=True,
-        workdir_config=None,
         pre_execution_commands=remote_decorator_config.pre_execution_commands,
         pre_execution_script_local_path=remote_decorator_config.pre_execution_script,
         s3_base_uri=remote_decorator_config.s3_root_uri,
@@ -260,7 +256,6 @@ def test_prepare_step_input_channel(
     mock_dependency_upload.assert_called_once_with(
         local_dependencies_path="some_dependency_path",
         include_local_workdir=True,
-        workdir_config=None,
         pre_execution_commands=remote_decorator_config.pre_execution_commands,
         pre_execution_script_local_path=remote_decorator_config.pre_execution_script,
         s3_base_uri=remote_decorator_config.s3_root_uri,

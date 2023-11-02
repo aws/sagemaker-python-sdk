@@ -16,13 +16,12 @@ import os
 import pathlib
 import pytest
 
-from mock import Mock
+from mock import Mock, patch
 from sagemaker.utils import _tmpdir
-from sagemaker.remote_function.workdir_config import (
-    WorkdirConfig,
-    resolve_workdir_config_from_config_file,
+from sagemaker.remote_function.custom_file_filter import (
+    CustomFileFilter,
+    resolve_custom_file_filter_from_config_file,
     copy_workdir,
-    copy_local_files,
 )
 from sagemaker.config import load_sagemaker_config
 
@@ -34,17 +33,17 @@ WORK_DIR = os.path.join(
 
 
 def test_workdir_config_default_value():
-    workdir_config = WorkdirConfig()
+    workdir_config = CustomFileFilter()
     assert workdir_config.ignore_name_patterns == []
     assert workdir_config.workdir is not None
 
 
-def test_resolve_workdir_config():
+def test_resolve_custom_file_filter():
     sagemaker_session = Mock()
     sagemaker_session.sagemaker_config = load_sagemaker_config(
         additional_config_paths=[os.path.join(DATA_DIR, "remote_function")]
     )
-    workdir_config = resolve_workdir_config_from_config_file(
+    workdir_config = resolve_custom_file_filter_from_config_file(
         None, sagemaker_session=sagemaker_session
     )
     assert ["data", "test"] == workdir_config.ignore_name_patterns
@@ -75,18 +74,19 @@ def test_resolve_workdir_config():
     ],
 )
 def test_copy_workdir(expected, ignore_name_patterns):
-    workdir_config = WorkdirConfig(ignore_name_patterns=ignore_name_patterns)
+    workdir_config = CustomFileFilter(ignore_name_patterns=ignore_name_patterns)
     workdir_config._workdir = WORK_DIR
 
     with _tmpdir() as tmp_dir:
         target_dir = os.path.join(tmp_dir, "workdir")
-        copy_workdir(workdir_config, target_dir)
+        copy_workdir(target_dir, workdir_config)
         actual = sorted(str(path) for path in list(pathlib.Path(target_dir).rglob("*")))
         expected = sorted(os.path.join(target_dir, path) for path in expected)
         assert actual == sorted(expected)
 
 
-def test_copy_local_files():
+@patch("os.getcwd", return_value=WORK_DIR)
+def test_copy_workdir_default_behavior(mock_os_getcwd):
     expected = [
         "data",
         "module",
@@ -96,7 +96,7 @@ def test_copy_local_files():
     ]
     with _tmpdir() as tmp_dir:
         target_dir = os.path.join(tmp_dir, "workdir")
-        copy_local_files(None, WORK_DIR, target_dir)
+        copy_workdir(target_dir, None)
         actual = sorted(str(path) for path in list(pathlib.Path(target_dir).rglob("*")))
         expected = sorted(os.path.join(target_dir, path) for path in expected)
         assert actual == sorted(expected)
