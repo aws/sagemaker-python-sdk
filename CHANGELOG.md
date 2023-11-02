@@ -1,5 +1,42 @@
 # Changelog
 
+## v2.196.0 (2023-10-27)
+
+### Features
+
+ * inference instance type conditioned on training instance type
+
+### Bug Fixes and Other Changes
+
+ * improved jumpstart tagging
+
+## v2.195.1 (2023-10-26)
+
+### Bug Fixes and Other Changes
+
+ * Allow either instance_type or instance_group to be defined in…
+ * enhance image_uris unit tests
+
+## v2.195.0 (2023-10-25)
+
+### Features
+
+ * jumpstart gated model artifacts
+ * jumpstart extract generated text from response
+ * jumpstart contruct payload utility
+
+### Bug Fixes and Other Changes
+
+ * relax upper bound on urllib in local mode requirements
+ * bump urllib3 version
+ * allow smdistributed to be enabled with torch_distributed.
+ * fix URL links
+
+### Documentation Changes
+
+ * remove python 2 reference
+ * update framework version links
+
 ## v2.194.0 (2023-10-19)
 
 ### Features

@@ -19,11 +19,12 @@ from mock import MagicMock
 import pytest
 from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
 from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
-from sagemaker.jumpstart.enums import JumpStartScriptScope
+from sagemaker.jumpstart.enums import JumpStartScriptScope, JumpStartTag
 
 from sagemaker.jumpstart.model import JumpStartModel
 from sagemaker.model import Model
 from sagemaker.predictor import Predictor
+from sagemaker.session_settings import SessionSettings
 
 from tests.unit.sagemaker.jumpstart.utils import get_special_model_spec, overwrite_dictionary
 
@@ -102,6 +103,10 @@ class ModelTest(unittest.TestCase):
             instance_type="ml.p2.xlarge",
             wait=True,
             endpoint_name="blahblahblah-7777",
+            tags=[
+                {"Key": JumpStartTag.MODEL_ID, "Value": "js-trainable-model"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.1.1"},
+            ],
         )
 
     @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
@@ -156,6 +161,10 @@ class ModelTest(unittest.TestCase):
             initial_instance_count=1,
             instance_type="ml.p3.2xlarge",
             wait=True,
+            tags=[
+                {"Key": JumpStartTag.MODEL_ID, "Value": "js-model-class-model-prepacked"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.1.0"},
+            ],
         )
 
     @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
@@ -240,7 +249,7 @@ class ModelTest(unittest.TestCase):
             "deserializer": "BaseDeserializer()",
             "accelerator_type": "None",
             "endpoint_name": "None",
-            "tags": ["None"],
+            "tags": [],
             "kms_key": "None",
             "wait": True,
             "data_capture_config": "None",
@@ -322,7 +331,15 @@ class ModelTest(unittest.TestCase):
         model.deploy(**deploy_kwargs)
 
         expected_deploy_kwargs = overwrite_dictionary(
-            {"initial_instance_count": 1, "instance_type": "ml.p3.2xlarge"}, deploy_kwargs
+            {
+                "initial_instance_count": 1,
+                "instance_type": "ml.p3.2xlarge",
+                "tags": [
+                    {"Key": JumpStartTag.MODEL_ID, "Value": "js-model-class-model-prepacked"},
+                    {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.1.0"},
+                ],
+            },
+            deploy_kwargs,
         )
 
         mock_model_deploy.assert_called_once_with(**expected_deploy_kwargs)
@@ -574,6 +591,74 @@ class ModelTest(unittest.TestCase):
                     sagemaker_session=None,
                 ),
             ]
+        )
+
+    @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_jumpstart_model_tags(
+        self,
+        mock_get_model_specs: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
+    ):
+
+        mock_is_valid_model_id.return_value = True
+
+        model_id, _ = "env-var-variant-model", "*"
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        mock_session = MagicMock(sagemaker_config={})
+
+        model = JumpStartModel(model_id=model_id, sagemaker_session=mock_session)
+
+        model.deploy(tags=[{"Key": "blah", "Value": "blahagain"}])
+
+        js_tags = [
+            {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "env-var-variant-model"},
+            {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "1.0.0"},
+        ]
+
+        self.assertEqual(
+            mock_session.create_model.call_args[1]["tags"],
+            [{"Key": "blah", "Value": "blahagain"}] + js_tags,
+        )
+
+        self.assertEqual(
+            mock_session.endpoint_from_production_variants.call_args[1]["tags"],
+            [{"Key": "blah", "Value": "blahagain"}] + js_tags,
+        )
+
+    @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_jumpstart_model_tags_disabled(
+        self,
+        mock_get_model_specs: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
+    ):
+
+        mock_is_valid_model_id.return_value = True
+
+        model_id, _ = "env-var-variant-model", "*"
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        settings = SessionSettings(include_jumpstart_tags=False)
+        mock_session = MagicMock(sagemaker_config={}, settings=settings)
+
+        model = JumpStartModel(model_id=model_id, sagemaker_session=mock_session)
+
+        model.deploy(tags=[{"Key": "blah", "Value": "blahagain"}])
+
+        self.assertEqual(
+            mock_session.create_model.call_args[1]["tags"],
+            [{"Key": "blah", "Value": "blahagain"}],
+        )
+
+        self.assertEqual(
+            mock_session.endpoint_from_production_variants.call_args[1]["tags"],
+            [{"Key": "blah", "Value": "blahagain"}],
         )
 
     @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")

@@ -71,7 +71,7 @@ from sagemaker.instance_group import InstanceGroup
 from sagemaker.utils import instance_supports_kms
 from sagemaker.job import _Job
 from sagemaker.jumpstart.utils import (
-    add_jumpstart_tags,
+    add_jumpstart_uri_tags,
     get_jumpstart_base_name_if_jumpstart_model,
     update_inference_tags_with_jumpstart_training_tags,
 )
@@ -577,9 +577,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.entry_point = entry_point
         self.dependencies = dependencies or []
         self.uploaded_code: Optional[UploadedCode] = None
-        self.tags = add_jumpstart_tags(
-            tags=tags, training_model_uri=self.model_uri, training_script_uri=self.source_dir
-        )
+
         if self.instance_type in ("local", "local_gpu"):
             if self.instance_type == "local_gpu" and self.instance_count > 1:
                 raise RuntimeError("Distributed Training in Local GPU is not supported")
@@ -591,6 +589,15 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 )
         else:
             self.sagemaker_session = sagemaker_session or Session()
+
+        self.tags = (
+            add_jumpstart_uri_tags(
+                tags=tags, training_model_uri=self.model_uri, training_script_uri=self.source_dir
+            )
+            if getattr(self.sagemaker_session, "settings", None) is not None
+            and self.sagemaker_session.settings.include_jumpstart_tags
+            else tags
+        )
 
         self.base_job_name = base_job_name
         self._current_job_name = None
@@ -3818,6 +3825,7 @@ class Framework(EstimatorBase):
 
         mpi_enabled = False
         smdataparallel_enabled = False
+        p5_enabled = False
         if "instance_groups" in distribution:
             distribution_config["sagemaker_distribution_instance_groups"] = distribution[
                 "instance_groups"
@@ -3862,10 +3870,11 @@ class Framework(EstimatorBase):
             elif isinstance(self.instance_type, str):
                 p5_enabled = "p5.48xlarge" in self.instance_type
             else:
-                raise ValueError(
-                    "Invalid object type for instance_type argument. Expected "
-                    f"{type(str)} or {type(ParameterString)} but got {type(self.instance_type)}."
-                )
+                for instance in self.instance_groups:
+                    if "p5.48xlarge" in instance._to_request_dict().get("InstanceType", ()):
+                        p5_enabled = True
+                        break
+
             img_uri = "" if self.image_uri is None else self.image_uri
             for unsupported_image in Framework.UNSUPPORTED_DLC_IMAGE_FOR_SM_PARALLELISM:
                 if (
