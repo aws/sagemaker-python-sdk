@@ -17,7 +17,7 @@ from concurrent.futures import ThreadPoolExecutor
 from collections import deque
 import time
 import threading
-from typing import Callable, Dict, List, Optional, Tuple, Any
+from typing import Callable, Dict, List, Optional, Tuple, Any, Union
 import functools
 import itertools
 import inspect
@@ -39,7 +39,7 @@ from sagemaker.remote_function.job import _JobSettings, _Job, _RunInfo
 from sagemaker.remote_function import logging_config
 from sagemaker.utils import name_from_base, base_from_name
 from sagemaker.remote_function.spark_config import SparkConfig
-from sagemaker.remote_function.workdir_config import WorkdirConfig
+from sagemaker.remote_function.custom_file_filter import CustomFileFilter
 
 _API_CALL_LIMIT = {
     "SubmittingIntervalInSecs": 1,
@@ -66,7 +66,7 @@ def remote(
     environment_variables: Dict[str, str] = None,
     image_uri: str = None,
     include_local_workdir: bool = False,
-    workdir_config: WorkdirConfig = None,
+    custom_file_filter: Optional[Union[Callable[[str, List], List], CustomFileFilter]] = None,
     instance_count: int = 1,
     instance_type: str = None,
     job_conda_env: str = None,
@@ -87,7 +87,6 @@ def remote(
     spark_config: SparkConfig = None,
     use_spot_instances=False,
     max_wait_time_in_seconds=None,
-    custom_file_filter: Optional[Callable[[str, List], List]] = None,
 ):
     """Decorator for running the annotated function as a SageMaker training job.
 
@@ -195,10 +194,12 @@ def remote(
           methods that are not available via PyPI or conda. Only python files are included.
           Default value is ``False``.
 
-        workdir_config (WorkdirConfig): A ``WorkdirConfig`` object that specifies the
-          local directories and files to be included in the remote function.
-          workdir_config takes precedence over include_local_workdir.
-          Default value is ``None``.
+        custom_file_filter (Callable[[str, List], List], CustomFileFilter): Either a function
+          that filters job dependencies to be uploaded to S3 or a ``CustomFileFilter`` object
+          that specifies the local directories and files to be included in the remote function.
+          If a callable is passed in, that function is passed to the ``ignore``  argument of
+          ``shutil.copytree``. Defaults to ``None``, which means only python
+          files are accepted and uploaded to S3.
 
         instance_count (int): The number of instances to use. Defaults to 1.
           NOTE: Remote function does not support instance_count > 1 for non Spark jobs.
@@ -274,11 +275,6 @@ def remote(
         max_wait_time_in_seconds (int): Timeout in seconds waiting for spot training job.
           After this amount of time Amazon SageMaker will stop waiting for managed spot training
           job to complete. Defaults to ``None``.
-
-        custom_file_filter (Callable[[str, List], List]): A function that filters job
-          dependencies to be uploaded to S3. This function is passed to the ``ignore``
-          argument of ``shutil.copytree``. Defaults to ``None``, which means only python
-          files are accepted.
     """
 
     def _remote(func):
@@ -290,7 +286,7 @@ def remote(
             environment_variables=environment_variables,
             image_uri=image_uri,
             include_local_workdir=include_local_workdir,
-            workdir_config=workdir_config,
+            custom_file_filter=custom_file_filter,
             instance_count=instance_count,
             instance_type=instance_type,
             job_conda_env=job_conda_env,
@@ -311,7 +307,6 @@ def remote(
             spark_config=spark_config,
             use_spot_instances=use_spot_instances,
             max_wait_time_in_seconds=max_wait_time_in_seconds,
-            custom_file_filter=custom_file_filter,
         )
 
         @functools.wraps(func)
@@ -501,7 +496,7 @@ class RemoteExecutor(object):
         environment_variables: Dict[str, str] = None,
         image_uri: str = None,
         include_local_workdir: bool = False,
-        workdir_config: WorkdirConfig = None,
+        custom_file_filter: Optional[Union[Callable[[str, List], List], CustomFileFilter]] = None,
         instance_count: int = 1,
         instance_type: str = None,
         job_conda_env: str = None,
@@ -523,7 +518,6 @@ class RemoteExecutor(object):
         spark_config: SparkConfig = None,
         use_spot_instances=False,
         max_wait_time_in_seconds=None,
-        custom_file_filter: Optional[Callable[[str, List], List]] = None,
     ):
         """Constructor for RemoteExecutor
 
@@ -628,10 +622,12 @@ class RemoteExecutor(object):
               local directories. Set to ``True`` if the remote function code imports local modules
               and methods that are not available via PyPI or conda. Default value is ``False``.
 
-            workdir_config (WorkdirConfig): A ``WorkdirConfig`` object that specifies the
-              local directories and files to be included in the remote function.
-              workdir_config takes precedence over include_local_workdir.
-              Default value is ``None``.
+            custom_file_filter (Callable[[str, List], List], CustomFileFilter): Either a function
+              that filters job dependencies to be uploaded to S3 or a ``CustomFileFilter`` object
+              that specifies the local directories and files to be included in the remote function.
+              If a callable is passed in, that function is passed to the ``ignore``  argument of
+              ``shutil.copytree``. Defaults to ``None``, which means only python
+              files are accepted and uploaded to S3.
 
             instance_count (int): The number of instances to use. Defaults to 1.
               NOTE: Remote function does not support instance_count > 1 for non Spark jobs.
@@ -715,11 +711,6 @@ class RemoteExecutor(object):
             max_wait_time_in_seconds (int): Timeout in seconds waiting for spot training job.
               After this amount of time Amazon SageMaker will stop waiting for managed spot training
               job to complete. Defaults to ``None``.
-
-            custom_file_filter (Callable[[str, List], List]): A function that filters job
-              dependencies to be uploaded to S3. This function is passed to the ``ignore``
-              argument of ``shutil.copytree``. Defaults to ``None``, which means only python
-              files are accepted.
         """
         self.max_parallel_jobs = max_parallel_jobs
 
@@ -739,7 +730,7 @@ class RemoteExecutor(object):
             environment_variables=environment_variables,
             image_uri=image_uri,
             include_local_workdir=include_local_workdir,
-            workdir_config=workdir_config,
+            custom_file_filter=custom_file_filter,
             instance_count=instance_count,
             instance_type=instance_type,
             job_conda_env=job_conda_env,
@@ -760,7 +751,6 @@ class RemoteExecutor(object):
             spark_config=spark_config,
             use_spot_instances=use_spot_instances,
             max_wait_time_in_seconds=max_wait_time_in_seconds,
-            custom_file_filter=custom_file_filter,
         )
 
         self._state_condition = threading.Condition()

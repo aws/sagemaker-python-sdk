@@ -64,11 +64,10 @@ from sagemaker.remote_function.runtime_environment.runtime_environment_manager i
 from sagemaker.remote_function import logging_config
 from sagemaker.remote_function.spark_config import SparkConfig
 from sagemaker.spark import defaults
-from sagemaker.remote_function.workdir_config import (
-    WorkdirConfig,
+from sagemaker.remote_function.custom_file_filter import (
+    CustomFileFilter,
     copy_workdir,
-    resolve_workdir_config_from_config_file,
-    copy_local_files,
+    resolve_custom_file_filter_from_config_file,
 )
 
 if TYPE_CHECKING:
@@ -190,7 +189,7 @@ class _JobSettings:
         environment_variables: Dict[str, Union[str, "PipelineVariable"]] = None,
         image_uri: Union[str, "PipelineVariable"] = None,
         include_local_workdir: bool = None,
-        workdir_config: WorkdirConfig = None,
+        custom_file_filter: Optional[Union[Callable[[str, List], List], CustomFileFilter]] = None,
         instance_count: Union[int, "PipelineVariable"] = 1,
         instance_type: Union[str, "PipelineVariable"] = None,
         job_conda_env: Union[str, "PipelineVariable"] = None,
@@ -211,7 +210,6 @@ class _JobSettings:
         spark_config: SparkConfig = None,
         use_spot_instances=False,
         max_wait_time_in_seconds=None,
-        custom_file_filter: Optional[Callable[[str, List], List]] = None,
     ):
         """Initialize a _JobSettings instance which configures the remote job.
 
@@ -308,10 +306,12 @@ class _JobSettings:
               local directories. Set to ``True`` if the remote function code imports local modules
               and methods that are not available via PyPI or conda. Default value is ``False``.
 
-            workdir_config (WorkdirConfig): A ``WorkdirConfig`` object that specifies the
-              local directories and files to be included in the remote function.
-              workdir_config takes precedence over include_local_workdir.
-              Default value is ``None``.
+            custom_file_filter (Callable[[str, List], List], CustomFileFilter): Either a function
+              that filters job dependencies to be uploaded to S3 or a ``CustomFileFilter`` object
+              that specifies the local directories and files to be included in the remote function.
+              If a callable is passed in, that function is passed to the ``ignore``  argument of
+              ``shutil.copytree``. Defaults to ``None``, which means only python
+              files are accepted and uploaded to S3.
 
             instance_count (int, PipelineVariable): The number of instances to use. Defaults to 1.
 
@@ -392,11 +392,6 @@ class _JobSettings:
             max_wait_time_in_seconds (int): Timeout in seconds waiting for spot training job.
               After this amount of time Amazon SageMaker will stop waiting for managed spot
               training job to complete. Defaults to ``None``.
-
-            custom_file_filter (Callable[[str, List], List]): A function that filters job
-              dependencies to be uploaded to S3. This function is passed to the ``ignore``
-              argument of ``shutil.copytree``. Defaults to ``None``, which means only python
-              files are accepted.
         """
         self.sagemaker_session = sagemaker_session or Session()
         self.environment_variables = resolve_value_from_config(
@@ -473,8 +468,8 @@ class _JobSettings:
             sagemaker_session=self.sagemaker_session,
         )
 
-        self.workdir_config = resolve_workdir_config_from_config_file(
-            workdir_config, self.sagemaker_session
+        self.custom_file_filter = resolve_custom_file_filter_from_config_file(
+            custom_file_filter, self.sagemaker_session
         )
 
         self.instance_type = resolve_value_from_config(
@@ -492,7 +487,6 @@ class _JobSettings:
         self.keep_alive_period_in_seconds = keep_alive_period_in_seconds
         self.spark_config = spark_config
         self.use_spot_instances = use_spot_instances
-        self.custom_file_filter = custom_file_filter
         self.max_wait_time_in_seconds = max_wait_time_in_seconds
         self.job_conda_env = resolve_value_from_config(
             direct_input=job_conda_env,
@@ -1050,7 +1044,6 @@ def _generate_input_data_config(job_settings: _JobSettings, s3_base_uri: str):
     user_workspace_s3uri = _prepare_and_upload_workspace(
         local_dependencies_path=local_dependencies_path,
         include_local_workdir=job_settings.include_local_workdir,
-        workdir_config=job_settings.workdir_config,
         pre_execution_commands=job_settings.pre_execution_commands,
         pre_execution_script_local_path=job_settings.pre_execution_script,
         s3_base_uri=s3_base_uri,
@@ -1146,13 +1139,12 @@ def _prepare_dependencies_and_pre_execution_scripts(
 def _prepare_and_upload_workspace(
     local_dependencies_path: str,
     include_local_workdir: bool,
-    workdir_config: WorkdirConfig,
     pre_execution_commands: List[str],
     pre_execution_script_local_path: str,
     s3_base_uri: str,
     s3_kms_key: str,
     sagemaker_session: Session,
-    custom_file_filter: Optional[Callable[[str, List], List]] = None,
+    custom_file_filter: Optional[Union[Callable[[str, List], List], CustomFileFilter]] = None,
 ) -> str:
     """Prepare and upload the workspace to S3.
 
@@ -1167,7 +1159,6 @@ def _prepare_and_upload_workspace(
     if not (
         local_dependencies_path
         or include_local_workdir
-        or workdir_config
         or pre_execution_commands
         or pre_execution_script_local_path
     ):
@@ -1176,7 +1167,7 @@ def _prepare_and_upload_workspace(
     func_step_s3_dir = None
     if step_compilation_context:
         func_step_s3_dir = step_compilation_context.pipeline_build_time
-        if not (include_local_workdir or workdir_config):
+        if not include_local_workdir:
             return None
         if not step_compilation_context.upload_workspace:
             return s3_path_join(s3_base_uri, REMOTE_FUNCTION_WORKSPACE, func_step_s3_dir)
@@ -1187,12 +1178,9 @@ def _prepare_and_upload_workspace(
         # TODO Remove the following hack to avoid dir_exists error in the copy_tree call below.
         tmp_workspace = os.path.join(tmp_workspace_dir, JOB_REMOTE_FUNCTION_WORKSPACE)
 
-        if workdir_config:
-            copy_workdir(workdir_config, tmp_workspace)
-            logger.info("Copied user workspace '%s' to '%s'", workdir_config.workdir, tmp_workspace)
-        elif include_local_workdir:
-            copy_local_files(custom_file_filter, os.getcwd(), tmp_workspace)
-            logger.info("Copied user workspace python scripts to '%s'", tmp_workspace)
+        if include_local_workdir:
+            copy_workdir(tmp_workspace, custom_file_filter)
+            logger.info("Copied user workspace to '%s'", tmp_workspace)
 
         if not os.path.isdir(tmp_workspace):
             # create the directory if no workdir_path was provided in the input.

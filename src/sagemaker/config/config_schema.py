@@ -52,6 +52,7 @@ PRE_EXECUTION_COMMANDS = "PreExecutionCommands"
 ENVIRONMENT_VARIABLES = "EnvironmentVariables"
 IMAGE_URI = "ImageUri"
 INCLUDE_LOCAL_WORKDIR = "IncludeLocalWorkDir"
+CUSTOM_FILE_FILTER = "CustomFileFilter"
 INSTANCE_TYPE = "InstanceType"
 S3_KMS_KEY_ID = "S3KmsKeyId"
 S3_ROOT_URI = "S3RootUri"
@@ -733,7 +734,7 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                         },
                                         IMAGE_URI: {TYPE: "string"},
                                         INCLUDE_LOCAL_WORKDIR: {TYPE: "boolean"},
-                                        "WorkdirConfig": {
+                                        CUSTOM_FILE_FILTER: {
                                             TYPE: OBJECT,
                                             ADDITIONAL_PROPERTIES: False,
                                             PROPERTIES: {

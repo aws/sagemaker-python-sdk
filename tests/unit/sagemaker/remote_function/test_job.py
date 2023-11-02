@@ -23,7 +23,7 @@ from sagemaker.remote_function.checkpoint_location import CheckpointLocation
 from sagemaker.session_settings import SessionSettings
 
 from sagemaker.remote_function.spark_config import SparkConfig
-from sagemaker.remote_function.workdir_config import WorkdirConfig
+from sagemaker.remote_function.custom_file_filter import CustomFileFilter
 from sagemaker.remote_function.core.pipeline_variables import Context
 from sagemaker.workflow.pipeline_context import _PipelineConfig
 from sagemaker.workflow.pipeline_definition_config import PipelineDefinitionConfig
@@ -253,7 +253,7 @@ def test_sagemaker_config_job_settings_with_configuration_file(
     }
     assert job_settings.job_conda_env == "my_conda_env"
     assert job_settings.include_local_workdir is True
-    assert job_settings.workdir_config.ignore_name_patterns == ["data", "test"]
+    assert job_settings.custom_file_filter.ignore_name_patterns == ["data", "test"]
     assert job_settings.volume_kms_key == "someVolumeKmsKey"
     assert job_settings.s3_kms_key == "someS3KmsKey"
     assert job_settings.instance_type == "ml.m5.large"
@@ -384,7 +384,6 @@ def test_start(
     mock_dependency_upload.assert_called_once_with(
         local_dependencies_path=local_dependencies_path,
         include_local_workdir=True,
-        workdir_config=None,
         pre_execution_commands=None,
         pre_execution_script_local_path=None,
         s3_base_uri=f"{S3_URI}/{job.job_name}",
@@ -660,7 +659,6 @@ def test_start_with_complete_job_settings(
     mock_user_workspace_upload.assert_called_once_with(
         local_dependencies_path=local_dependencies_path,
         include_local_workdir=False,
-        workdir_config=None,
         pre_execution_commands=None,
         pre_execution_script_local_path="path/to/script.sh",
         s3_base_uri=f"{S3_URI}/{job.job_name}",
@@ -817,7 +815,6 @@ def test_get_train_args_under_pipeline_context(
     mock_user_workspace_upload.assert_called_once_with(
         local_dependencies_path=local_dependencies_path,
         include_local_workdir=False,
-        workdir_config=None,
         pre_execution_commands=None,
         pre_execution_script_local_path="path/to/script.sh",
         s3_base_uri=s3_base_uri,
@@ -1167,14 +1164,13 @@ def test_prepare_and_upload_runtime_scripts_under_pipeline_context(
 
 
 @patch("sagemaker.s3.S3Uploader.upload", return_value="some_uri")
-@patch("sagemaker.remote_function.job.copy_local_files")
+@patch("sagemaker.remote_function.job.copy_workdir")
 @patch("shutil.copy2")
 @patch("sagemaker.remote_function.job.Session", return_value=mock_session())
-def test_prepare_and_upload_workspace(session, mock_copy, mock_copy_python_files, mock_s3_upload):
+def test_prepare_and_upload_workspace(session, mock_shutil_copy, mock_copy_workdir, mock_s3_upload):
     s3_path = _prepare_and_upload_workspace(
         local_dependencies_path="some/path/to/dependency",
         include_local_workdir=True,
-        workdir_config=None,
         pre_execution_commands=["cmd_1", "cmd_2"],
         pre_execution_script_local_path=None,
         s3_base_uri=S3_URI,
@@ -1184,8 +1180,8 @@ def test_prepare_and_upload_workspace(session, mock_copy, mock_copy_python_files
 
     assert s3_path == mock_s3_upload.return_value
 
-    mock_copy_python_files.assert_called_with(None, os.getcwd(), ANY)
-    mock_copy.assert_called_with("some/path/to/dependency", ANY)
+    mock_copy_workdir.assert_called_with(ANY, None)
+    mock_shutil_copy.assert_called_with("some/path/to/dependency", ANY)
     mock_s3_upload.assert_called_once_with(
         ANY, S3_URI + "/" + REMOTE_FUNCTION_WORKSPACE, KMS_KEY_ARN, session
     )
@@ -1204,7 +1200,6 @@ def test_prepare_and_upload_dependencies_with_custom_filter(
     s3_path = _prepare_and_upload_workspace(
         local_dependencies_path="some/path/to/dependency",
         include_local_workdir=True,
-        workdir_config=None,
         pre_execution_commands=["cmd_1", "cmd_2"],
         pre_execution_script_local_path=None,
         s3_base_uri=S3_URI,
@@ -1220,16 +1215,15 @@ def test_prepare_and_upload_dependencies_with_custom_filter(
 
 @patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
 @patch("sagemaker.s3.S3Uploader.upload", return_value="some_uri")
-@patch("sagemaker.remote_function.job.copy_local_files")
+@patch("sagemaker.remote_function.job.copy_workdir")
 @patch("shutil.copy2")
 @patch("sagemaker.remote_function.job.Session", return_value=mock_session())
 def test_prepare_and_upload_workspace_under_pipeline_context(
-    session, mock_copy, mock_copy_local_files, mock_s3_upload
+    session, mock_copy, mock_copy_workdir, mock_s3_upload
 ):
     s3_path = _prepare_and_upload_workspace(
         local_dependencies_path="some/path/to/dependency",
         include_local_workdir=True,
-        workdir_config=None,
         pre_execution_commands=["cmd_1", "cmd_2"],
         pre_execution_script_local_path=None,
         s3_base_uri=S3_URI,
@@ -1239,7 +1233,7 @@ def test_prepare_and_upload_workspace_under_pipeline_context(
 
     assert s3_path == mock_s3_upload.return_value
 
-    mock_copy_local_files.assert_called_with(None, os.getcwd(), ANY)
+    mock_copy_workdir.assert_called_with(ANY, None)
     mock_copy.assert_not_called()
     # upload successful on the first call
     mock_s3_upload.assert_called_once_with(
@@ -1250,13 +1244,12 @@ def test_prepare_and_upload_workspace_under_pipeline_context(
     )
 
     mock_copy.reset_mock()
-    mock_copy_local_files.reset_mock()
+    mock_copy_workdir.reset_mock()
     mock_s3_upload.reset_mock()
 
     s3_path = _prepare_and_upload_workspace(
         local_dependencies_path="some/path/to/dependency",
         include_local_workdir=True,
-        workdir_config=None,
         pre_execution_commands=["cmd_1", "cmd_2"],
         pre_execution_script_local_path=None,
         s3_base_uri=S3_URI,
@@ -1268,7 +1261,7 @@ def test_prepare_and_upload_workspace_under_pipeline_context(
         f"{S3_URI}/{REMOTE_FUNCTION_WORKSPACE}/" f"{MOCKED_PIPELINE_CONFIG.pipeline_build_time}"
     )
 
-    mock_copy_local_files.assert_not_called()
+    mock_copy_workdir.assert_not_called()
     mock_copy.assert_not_called()
     # upload is skipped on the second call
     mock_s3_upload.assert_not_called()
@@ -1278,18 +1271,18 @@ def test_prepare_and_upload_workspace_under_pipeline_context(
 @patch("sagemaker.remote_function.job.copy_workdir")
 @patch("shutil.copy2")
 @patch("sagemaker.remote_function.job.Session", return_value=mock_session())
-def test_prepare_and_upload_workspace_with_workdir_config(
+def test_prepare_and_upload_workspace_with_custom_file_filter(
     session, mock_copy, mock_copy_workdir, mock_s3_upload
 ):
     s3_path = _prepare_and_upload_workspace(
         local_dependencies_path="some/path/to/dependency",
         include_local_workdir=True,
-        workdir_config=WorkdirConfig(),
         pre_execution_commands=["cmd_1", "cmd_2"],
         pre_execution_script_local_path=None,
         s3_base_uri=S3_URI,
         s3_kms_key=KMS_KEY_ARN,
         sagemaker_session=session,
+        custom_file_filter=CustomFileFilter(),
     )
 
     assert s3_path == mock_s3_upload.return_value

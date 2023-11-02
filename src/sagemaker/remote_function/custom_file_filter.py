@@ -16,17 +16,17 @@ from __future__ import absolute_import
 import fnmatch
 import os
 import shutil
-from typing import List, Optional, Callable
+from typing import List, Optional, Callable, Union
 
 from sagemaker.utils import resolve_value_from_config
-from sagemaker.config.config_schema import REMOTE_FUNCTION_PATH
+from sagemaker.config.config_schema import REMOTE_FUNCTION_PATH, CUSTOM_FILE_FILTER
 
 
-class WorkdirConfig:
+class CustomFileFilter:
     """Configuration that specifies how the local working directory should be packaged."""
 
     def __init__(self, *, ignore_name_patterns: List[str] = None):
-        """Initialize a WorkdirConfig.
+        """Initialize a CustomFileFilter.
 
         Args:
             ignore_name_patterns (List[str]): ignore files or directories with names
@@ -50,58 +50,50 @@ class WorkdirConfig:
         return self._workdir
 
 
-def resolve_workdir_config_from_config_file(
-    direct_input: WorkdirConfig = None, sagemaker_session=None
-) -> WorkdirConfig:
-    """Resolve the workdir configuration from the config file.
+def resolve_custom_file_filter_from_config_file(
+    direct_input: Union[Callable[[str, List], List], CustomFileFilter] = None,
+    sagemaker_session=None,
+) -> Union[Callable[[str, List], List], CustomFileFilter, None]:
+    """Resolve the CustomFileFilter configuration from the config file.
 
     Args:
-        direct_input (WorkdirConfig): direct input from the user.
+        direct_input (Callable[[str, List], List], CustomFileFilter): direct input from the user.
         sagemaker_session (sagemaker.session.Session): sagemaker session.
     Returns:
-        WorkdirConfig: configuration that specifies how the local
+        CustomFileFilter: configuration that specifies how the local
             working directory should be packaged.
     """
     if direct_input is not None:
         return direct_input
     ignore_name_patterns = resolve_value_from_config(
         direct_input=None,
-        config_path=".".join([REMOTE_FUNCTION_PATH, "WorkdirConfig", "IgnoreNamePatterns"]),
+        config_path=".".join([REMOTE_FUNCTION_PATH, CUSTOM_FILE_FILTER, "IgnoreNamePatterns"]),
         default_value=None,
         sagemaker_session=sagemaker_session,
     )
     if ignore_name_patterns is not None:
-        return WorkdirConfig(ignore_name_patterns=ignore_name_patterns)
+        return CustomFileFilter(ignore_name_patterns=ignore_name_patterns)
     return None
 
 
-def copy_workdir(workdir_config: WorkdirConfig, dst: str):
+def copy_workdir(
+    dst: str,
+    custom_file_filter: Optional[Union[Callable[[str, List], List], CustomFileFilter]] = None,
+):
     """Copy the local working directory to the destination.
 
     Args:
-        workdir_config (WorkdirConfig): configuration that specifies how the local
-            working directory should be packaged.
         dst (str): destination path.
+        custom_file_filter (Union[Callable[[str, List], List], CustomFileFilter): configuration that
+            specifies how the local working directory should be packaged.
     """
 
     def _ignore_patterns(path: str, names: List):  # pylint: disable=unused-argument
         ignored_names = set()
-        if workdir_config.ignore_name_patterns is not None:
-            for pattern in workdir_config.ignore_name_patterns:
+        if custom_file_filter.ignore_name_patterns is not None:
+            for pattern in custom_file_filter.ignore_name_patterns:
                 ignored_names.update(fnmatch.filter(names, pattern))
         return ignored_names
-
-    shutil.copytree(
-        workdir_config.workdir,
-        dst,
-        ignore=_ignore_patterns,
-    )
-
-
-def copy_local_files(
-    custom_file_filter: Optional[Callable[[str, List], List]], workdir: str, dst: str
-):
-    """Copy files from the local working directory to the destination."""
 
     def _filter_non_python_files(path: str, names: List) -> List:
         """Ignore function for filtering out non python files."""
@@ -119,9 +111,18 @@ def copy_local_files(
 
         return to_ignore
 
-    ignore = custom_file_filter if custom_file_filter is not None else _filter_non_python_files
+    _ignore = None
+    _src = os.getcwd()
+    if not custom_file_filter:
+        _ignore = _filter_non_python_files
+    elif callable(custom_file_filter):
+        _ignore = custom_file_filter
+    elif isinstance(custom_file_filter, CustomFileFilter):
+        _ignore = _ignore_patterns
+        _src = custom_file_filter.workdir
+
     shutil.copytree(
-        workdir,
+        _src,
         dst,
-        ignore=ignore,
+        ignore=_ignore,
     )

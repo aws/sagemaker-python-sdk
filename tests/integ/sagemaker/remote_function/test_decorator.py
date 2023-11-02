@@ -31,7 +31,7 @@ from sagemaker.experiments._api_types import _TrialComponentStatusType
 
 from sagemaker.remote_function import remote
 from sagemaker.remote_function.spark_config import SparkConfig
-from sagemaker.remote_function.workdir_config import WorkdirConfig
+from sagemaker.remote_function.custom_file_filter import CustomFileFilter
 from sagemaker.remote_function.runtime_environment.runtime_environment_manager import (
     RuntimeEnvironmentError,
 )
@@ -136,7 +136,7 @@ def test_advanced_job_setting(
     assert divide(10, 2) == 5
 
 
-def test_with_workdir(
+def test_with_custom_file_filter(
     sagemaker_session, dummy_container_without_error, cpu_instance_type, monkeypatch
 ):
     source_dir_path = os.path.join(os.path.dirname(__file__))
@@ -150,7 +150,8 @@ def test_with_workdir(
             dependencies=dependencies_path,
             instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
-            workdir_config=WorkdirConfig(),
+            include_local_workdir=True,
+            custom_file_filter=CustomFileFilter(),
             keep_alive_period_in_seconds=300,
         )
         def train(x):
@@ -162,7 +163,7 @@ def test_with_workdir(
         assert train(2) == 12
 
 
-def test_with_misconfigured_workdir(
+def test_with_misconfigured_custom_file_filter(
     sagemaker_session, dummy_container_without_error, cpu_instance_type, monkeypatch
 ):
     source_dir_path = os.path.join(os.path.dirname(__file__))
@@ -176,8 +177,9 @@ def test_with_misconfigured_workdir(
             dependencies=dependencies_path,
             instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
+            include_local_workdir=True,
             # exclude critical modules
-            workdir_config=WorkdirConfig(ignore_name_patterns=["helpers"]),
+            custom_file_filter=CustomFileFilter(ignore_name_patterns=["helpers"]),
             keep_alive_period_in_seconds=300,
         )
         def train(x):

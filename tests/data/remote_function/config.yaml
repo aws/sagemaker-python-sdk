@@ -8,7 +8,7 @@ SageMaker:
         EnableInterContainerTrafficEncryption: true
         EnvironmentVariables: {"EnvVarKey": "EnvVarValue"}
         IncludeLocalWorkDir: true
-        WorkdirConfig:
+        CustomFileFilter:
           IgnoreNamePatterns:
             - "data"
             - "test"
