@@ -461,7 +461,7 @@ def huggingface_neuronx_latest_inference_py_version():
 
 @pytest.fixture(scope="module")
 def huggingface_neuronx_latest_training_py_version():
-    return "py38"
+    return "py310"
 
 
 @pytest.fixture(scope="module")
