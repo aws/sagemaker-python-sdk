@@ -28,6 +28,7 @@ from sagemaker.jumpstart.model import JumpStartModel
 from sagemaker.model import Model
 from sagemaker.predictor import Predictor
 from sagemaker.session_settings import SessionSettings
+from sagemaker.enums import EndpointType
 
 from tests.unit.sagemaker.jumpstart.utils import get_special_model_spec, overwrite_dictionary
 
@@ -111,6 +112,7 @@ class ModelTest(unittest.TestCase):
                 {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.1.1"},
             ],
             endpoint_logging=False,
+            endpoint_type=EndpointType.OTHERS,
         )
 
     @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
@@ -170,6 +172,7 @@ class ModelTest(unittest.TestCase):
                 {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.1.0"},
             ],
             endpoint_logging=False,
+            endpoint_type=EndpointType.OTHERS,
         )
 
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
@@ -329,6 +332,7 @@ class ModelTest(unittest.TestCase):
             "inference_recommendation_id": "None",
             "explainer_config": "None",
             "endpoint_logging": False,
+            "endpoint_type": EndpointType.OTHERS,
         }
 
         self.evaluate_model_workflow_with_kwargs(
@@ -420,13 +424,12 @@ class ModelTest(unittest.TestCase):
         mock_model_deploy.assert_called_once_with(**expected_deploy_kwargs)
 
     def test_jumpstart_model_kwargs_match_parent_class(self):
-
         """If you add arguments to <Model constructor>, this test will fail.
         Please add the new argument to the skip set below,
         and reach out to JumpStart team."""
 
-        init_args_to_skip: Set[str] = set()
-        deploy_args_to_skip: Set[str] = set(["kwargs"])
+        init_args_to_skip: Set[str] = set([])
+        deploy_args_to_skip: Set[str] = set(["managed_instance_scaling", "kwargs"])
 
         parent_class_init = Model.__init__
         parent_class_init_args = set(signature(parent_class_init).parameters.keys())

@@ -19,9 +19,11 @@ import pytest
 from mock import Mock, call, patch
 
 from sagemaker.deserializers import CSVDeserializer, PandasDeserializer
+from sagemaker.enums import EndpointType
 from sagemaker.model_monitor.model_monitoring import DEFAULT_REPOSITORY_NAME
 from sagemaker.predictor import Predictor
 from sagemaker.serializers import JSONSerializer, CSVSerializer
+from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
 
 ENDPOINT = "mxnet_endpoint"
 BUCKET_NAME = "mxnet_endpoint"
@@ -282,6 +284,7 @@ def test_update_endpoint_no_args(name_from_base):
         new_kms_key=None,
         new_data_capture_config_dict=None,
         new_production_variants=None,
+        endpoint_type=EndpointType.OTHERS,
     )
     sagemaker_session.update_endpoint.assert_called_with(
         ENDPOINT, new_endpoint_config_name, wait=True
@@ -335,6 +338,7 @@ def test_update_endpoint_all_args(name_from_base, production_variant):
         new_kms_key=new_kms_key,
         new_data_capture_config_dict=new_data_capture_config_dict,
         new_production_variants=[production_variant.return_value],
+        endpoint_type=EndpointType.OTHERS,
     )
     sagemaker_session.update_endpoint.assert_called_with(
         ENDPOINT, new_endpoint_config_name, wait=False
@@ -379,6 +383,7 @@ def test_update_endpoint_instance_type_and_count(name_from_base, production_vari
         new_kms_key=None,
         new_data_capture_config_dict=None,
         new_production_variants=[production_variant.return_value],
+        endpoint_type=EndpointType.OTHERS,
     )
     sagemaker_session.update_endpoint.assert_called_with(
         ENDPOINT, new_endpoint_config_name, wait=True
@@ -633,3 +638,42 @@ def test_custom_attributes():
         CustomAttributes="custom-attribute",
         Body="payload",
     )
+
+
+def test_update_predictor():
+    sagemaker_session = empty_sagemaker_session()
+    component_name = "test_component_name"
+    predictor = Predictor(
+        ENDPOINT, sagemaker_session=sagemaker_session, component_name=component_name
+    )
+
+    resources = ResourceRequirements(
+        requests={
+            "num_cpus": 1,  # NumberOfCpuCoresRequired
+            "memory": 1024,  # MinMemoryRequiredInMb (required), differentiator for Goldfinch path
+            "copies": 1,
+        },
+        limits={"memory": 4096},
+    )
+
+    predictor.update_predictor(resources=resources)
+
+    request = {
+        "InferenceComponentName": component_name,
+        "Specification": {
+            "ComputeResourceRequirements": resources.get_compute_resource_requirements()
+        },
+        "RuntimeConfig": {"CopyCount": resources.copy_count},
+    }
+
+    sagemaker_session.update_inference_component.assert_called_with(**request)
+
+
+def test_list_colocated_models_empty_inference_components():
+    sagemaker_session = empty_sagemaker_session()
+    sagemaker_session.list_inference_components = Mock(return_value={})
+    predictor = Predictor(ENDPOINT, sagemaker_session=sagemaker_session)
+
+    _ = predictor.list_colocated_models()
+
+    sagemaker_session.list_inference_components(ENDPOINT)

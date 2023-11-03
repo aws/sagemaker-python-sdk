@@ -194,7 +194,6 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         self.inference_framework_version = training_inference_version_mismatch_dict.get(
             framework_version, framework_version
         )
-
         super(TensorFlowModel, self).__init__(
             model_data=model_data,
             role=role,
@@ -341,7 +340,6 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         **kwargs,
     ):
         """Deploy a Tensorflow ``Model`` to a SageMaker ``Endpoint``."""
-
         if accelerator_type and not self._eia_supported():
             msg = "The TensorFlow version %s doesn't support EIA." % self.framework_version
             raise AttributeError(msg)

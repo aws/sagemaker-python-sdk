@@ -73,6 +73,8 @@ from sagemaker.workflow.pipeline_context import runnable_by_pipeline, PipelineSe
 from sagemaker.inference_recommender.inference_recommender_mixin import (
     InferenceRecommenderMixin,
 )
+from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
+from sagemaker.enums import EndpointType
 
 LOGGER = logging.getLogger("sagemaker")
 
@@ -149,6 +151,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
         container_log_level: Union[int, PipelineVariable] = logging.INFO,
         dependencies: Optional[List[str]] = None,
         git_config: Optional[Dict[str, str]] = None,
+        resources: Optional[ResourceRequirements] = None,
     ):
         """Initialize an SageMaker ``Model``.
 
@@ -308,6 +311,9 @@ class Model(ModelBase, InferenceRecommenderMixin):
                 authentication if they are provided. If they are not provided,
                 the SageMaker Python SDK attempts to use either the CodeCommit
                 credential helper or local credential storage for authentication.
+            resources (Optional[ResourceRequirements]): The compute resource requirements
+                for a model to be deployed to an endpoint. Only EndpointType.Goldfinch supports
+                this feature. (Default: None).
 
         """
         self.model_data = model_data
@@ -381,6 +387,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
         self.mode = None
         self.modes = {}
         self.serve_settings = None
+        self.resources = resources
         self.content_types = None
         self.response_types = None
         self.accept_eula = None
@@ -1267,6 +1274,9 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         explainer_config=None,
         accept_eula: Optional[bool] = None,
         endpoint_logging=False,
+        resources: Optional[ResourceRequirements] = None,
+        endpoint_type: EndpointType = EndpointType.OTHERS,
+        managed_instance_scaling=None,
         **kwargs,
     ):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
@@ -1354,6 +1364,14 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 The `accept_eula` value must be explicitly defined as `True` in order to
                 accept the end-user license agreement (EULA) that some
                 models require. (Default: None).
+            endpoint_logging (Optiona[bool]): If set to true, live logging will be emitted as
+                the SageMaker Endpoint starts up. (Default: False).
+            resources (Optional[ResourceRequirements]): The compute resource requirements
+                for a model to be deployed to an endpoint. Only EndpointType.Goldfinch supports
+                this feature. (Default: None).
+            endpoint_type (Optional[EndpointType]): The type of an endpoint used to deploy models.
+                (Default: EndpointType.OTHERS).
+            managed_instance_scaling (Optional[Dict]): Managed intance scaling options [TODO: rewording]
         Raises:
              ValueError: If arguments combination check failed in these circumstances:
                 - If no role is specified or
@@ -1453,81 +1471,174 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             if self._base_name is not None:
                 self._base_name = "-".join((self._base_name, compiled_model_suffix))
 
-        self._create_sagemaker_model(
-            instance_type=instance_type,
-            accelerator_type=accelerator_type,
-            tags=tags,
-            serverless_inference_config=serverless_inference_config,
-        )
+        # Support multiple models on same endpoint
+        if endpoint_type == EndpointType.GOLDFINCH:
+            if endpoint_name:
+                self.endpoint_name = endpoint_name
+            else:
+                # no endpoint name given, create endpoint_name
+                self.endpoint_name = utils.name_from_base(self.name)
+            # [TODO]: Refactor to a module
+            managed_instance_scaling_config = {}
+            if managed_instance_scaling:
+                managed_instance_scaling_config["Status"] = "ENABLED"
+                if "MaxInstanceCount" in managed_instance_scaling:
+                    managed_instance_scaling_config["MaxInstanceCount"] = managed_instance_scaling[
+                        "MaxInstanceCount"
+                    ]
+                if "MinInstanceCount" in managed_instance_scaling:
+                    managed_instance_scaling_config["MinInstanceCount"] = managed_instance_scaling[
+                        "MinInstanceCount"
+                    ]
+                else:
+                    managed_instance_scaling_config["MinInstanceCount"] = initial_instance_count
 
-        serverless_inference_config_dict = (
-            serverless_inference_config._to_request_dict() if is_serverless else None
-        )
-        production_variant = sagemaker.production_variant(
-            self.name,
-            instance_type,
-            initial_instance_count,
-            accelerator_type=accelerator_type,
-            serverless_inference_config=serverless_inference_config_dict,
-            volume_size=volume_size,
-            model_data_download_timeout=model_data_download_timeout,
-            container_startup_health_check_timeout=container_startup_health_check_timeout,
-        )
-        if endpoint_name:
-            self.endpoint_name = endpoint_name
-        else:
-            base_endpoint_name = self._base_name or utils.base_from_name(self.name)
-            if self._is_compiled_model and not is_serverless:
-                if not base_endpoint_name.endswith(compiled_model_suffix):
-                    base_endpoint_name = "-".join((base_endpoint_name, compiled_model_suffix))
-            self.endpoint_name = utils.name_from_base(base_endpoint_name)
-
-        data_capture_config_dict = None
-        if data_capture_config is not None:
-            data_capture_config_dict = data_capture_config._to_request_dict()
-
-        async_inference_config_dict = None
-        if is_async:
-            if (
-                async_inference_config.output_path is None
-                or async_inference_config.failure_path is None
-            ):
-                async_inference_config = self._build_default_async_inference_config(
-                    async_inference_config
+            if not self.sagemaker_session.endpoint_in_service_or_not(self.endpoint_name):
+                production_variant = sagemaker.production_variant(
+                    instance_type=instance_type,
+                    initial_instance_count=initial_instance_count,
+                    volume_size=volume_size,
+                    model_data_download_timeout=model_data_download_timeout,
+                    container_startup_health_check_timeout=container_startup_health_check_timeout,
+                    managed_instance_scaling=managed_instance_scaling_config,
                 )
-            async_inference_config.kms_key_id = resolve_value_from_config(
-                async_inference_config.kms_key_id,
-                ENDPOINT_CONFIG_ASYNC_KMS_KEY_ID_PATH,
-                sagemaker_session=self.sagemaker_session,
+
+                self.sagemaker_session.endpoint_from_production_variants(
+                    name=self.endpoint_name,
+                    production_variants=[production_variant],
+                    tags=tags,
+                    kms_key=kms_key,
+                    vpc_config=self.vpc_config,
+                    enable_network_isolation=self._enable_network_isolation,
+                    role=self.role,
+                    live_logging=endpoint_logging,
+                    wait=wait,
+                )
+
+            self._create_sagemaker_model(
+                instance_type=instance_type,
+                accelerator_type=accelerator_type,
+                tags=tags,
             )
-            async_inference_config_dict = async_inference_config._to_request_dict()
 
-        explainer_config_dict = None
-        if is_explainer_enabled:
-            explainer_config_dict = explainer_config._to_request_dict()
+            # [TODO]: Refactor to a module
+            startup_parameters = {}
+            if model_data_download_timeout:
+                startup_parameters[
+                    "ModelDataDownloadTimeoutInSeconds"
+                ] = model_data_download_timeout
+            if container_startup_health_check_timeout:
+                startup_parameters[
+                    "ContainerStartupHealthCheckTimeoutInSeconds"
+                ] = container_startup_health_check_timeout
 
-        self.sagemaker_session.endpoint_from_production_variants(
-            name=self.endpoint_name,
-            production_variants=[production_variant],
-            tags=tags,
-            kms_key=kms_key,
-            wait=wait,
-            data_capture_config_dict=data_capture_config_dict,
-            explainer_config_dict=explainer_config_dict,
-            async_inference_config_dict=async_inference_config_dict,
-            live_logging=endpoint_logging,
-        )
+            inference_component_spec = {
+                "ModelName": self.name,
+                "StartupParameters": startup_parameters,
+                "ComputeResourceRequirements": resources.get_compute_resource_requirements(),
+            }
+            runtime_config = {"CopyCount": resources.copy_count}
+            inference_component_name = unique_name_from_base(self.name)
 
-        if self.predictor_cls:
-            predictor = self.predictor_cls(self.endpoint_name, self.sagemaker_session)
-            if serializer:
-                predictor.serializer = serializer
-            if deserializer:
-                predictor.deserializer = deserializer
+            # [TODO]: Add endpoint_logging support
+            self.sagemaker_session.create_inference_component(
+                inference_component_name=inference_component_name,
+                endpoint_name=self.endpoint_name,
+                variant_name="AllTraffic",  # default variant name
+                specification=inference_component_spec,
+                runtime_config=runtime_config,
+                tags=tags,
+                wait=wait,
+            )
+
+            if self.predictor_cls:
+                predictor = self.predictor_cls(
+                    self.endpoint_name,
+                    self.sagemaker_session,
+                    component_name=inference_component_name,
+                )
+                if serializer:
+                    predictor.serializer = serializer
+                if deserializer:
+                    predictor.deserializer = deserializer
+                return predictor
+            return None
+
+        else:  # existing single model endpoint path
+            self._create_sagemaker_model(
+                instance_type=instance_type,
+                accelerator_type=accelerator_type,
+                tags=tags,
+                serverless_inference_config=serverless_inference_config,
+            )
+            serverless_inference_config_dict = (
+                serverless_inference_config._to_request_dict() if is_serverless else None
+            )
+            production_variant = sagemaker.production_variant(
+                self.name,
+                instance_type,
+                initial_instance_count,
+                accelerator_type=accelerator_type,
+                serverless_inference_config=serverless_inference_config_dict,
+                volume_size=volume_size,
+                model_data_download_timeout=model_data_download_timeout,
+                container_startup_health_check_timeout=container_startup_health_check_timeout,
+            )
+            if endpoint_name:
+                self.endpoint_name = endpoint_name
+            else:
+                base_endpoint_name = self._base_name or utils.base_from_name(self.name)
+                if self._is_compiled_model and not is_serverless:
+                    if not base_endpoint_name.endswith(compiled_model_suffix):
+                        base_endpoint_name = "-".join((base_endpoint_name, compiled_model_suffix))
+                self.endpoint_name = utils.name_from_base(base_endpoint_name)
+
+            data_capture_config_dict = None
+            if data_capture_config is not None:
+                data_capture_config_dict = data_capture_config._to_request_dict()
+
+            async_inference_config_dict = None
             if is_async:
-                return AsyncPredictor(predictor, self.name)
-            return predictor
-        return None
+                if (
+                    async_inference_config.output_path is None
+                    or async_inference_config.failure_path is None
+                ):
+                    async_inference_config = self._build_default_async_inference_config(
+                        async_inference_config
+                    )
+                async_inference_config.kms_key_id = resolve_value_from_config(
+                    async_inference_config.kms_key_id,
+                    ENDPOINT_CONFIG_ASYNC_KMS_KEY_ID_PATH,
+                    sagemaker_session=self.sagemaker_session,
+                )
+                async_inference_config_dict = async_inference_config._to_request_dict()
+
+            explainer_config_dict = None
+            if is_explainer_enabled:
+                explainer_config_dict = explainer_config._to_request_dict()
+
+            self.sagemaker_session.endpoint_from_production_variants(
+                name=self.endpoint_name,
+                production_variants=[production_variant],
+                tags=tags,
+                kms_key=kms_key,
+                wait=wait,
+                data_capture_config_dict=data_capture_config_dict,
+                explainer_config_dict=explainer_config_dict,
+                async_inference_config_dict=async_inference_config_dict,
+                live_logging=endpoint_logging,
+            )
+
+            if self.predictor_cls:
+                predictor = self.predictor_cls(self.endpoint_name, self.sagemaker_session)
+                if serializer:
+                    predictor.serializer = serializer
+                if deserializer:
+                    predictor.deserializer = deserializer
+                if is_async:
+                    return AsyncPredictor(predictor, self.name)
+                return predictor
+            return None
 
     def _build_default_async_inference_config(self, async_inference_config):
         """Build default async inference config and return ``AsyncInferenceConfig``"""

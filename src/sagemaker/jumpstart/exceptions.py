@@ -21,6 +21,11 @@ NO_AVAILABLE_INSTANCES_ERROR_MSG = (
     "Please try another region."
 )
 
+NO_AVAILABLE_RESOURCE_REQUIREMENT_RECOMMENDATION_ERROR_MSG = (
+    "No available compute resource requirement recommendation for model ID '{model_id}'. "
+    "Please provide the resource requirements in the deploy method."
+)
+
 INVALID_MODEL_ID_ERROR_MSG = (
     "Invalid model ID: '{model_id}'. Please visit "
     f"{MODEL_ID_LIST_WEB_URL} for list of supported model IDs. "
