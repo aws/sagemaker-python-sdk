@@ -1224,7 +1224,7 @@ def test_shap_config_no_parameters():
 
 
 class AsymmetricShapleyValueConfigCase(NamedTuple):
-    explanation_direction: str
+    direction: str
     granularity: str
     num_samples: Optional[int]
     error: Exception
@@ -1236,17 +1236,17 @@ class TestAsymmetricShapleyValueConfig:
         "test_case",
         [
             AsymmetricShapleyValueConfigCase(  # cases for timewise granularity
-                explanation_direction=explanation_direction,
+                direction=direction,
                 granularity="timewise",
                 num_samples=None,
                 error=None,
                 error_message=None,
             )
-            for explanation_direction in ASYM_SHAP_VAL_EXPLANATION_DIRECTIONS
+            for direction in ASYM_SHAP_VAL_EXPLANATION_DIRECTIONS
         ]
         + [
             AsymmetricShapleyValueConfigCase(  # cases for fine_grained granularity
-                explanation_direction="chronological",
+                direction="chronological",
                 granularity="fine_grained",
                 num_samples=1,
                 error=None,
@@ -1263,14 +1263,14 @@ class TestAsymmetricShapleyValueConfig:
         # test case is GIVEN
         # construct expected config
         expected_config = {
-            "explanation_direction": test_case.explanation_direction,
+            "direction": test_case.direction,
             "granularity": test_case.granularity,
         }
         if test_case.granularity == "fine_grained":
             expected_config["num_samples"] = test_case.num_samples
         # WHEN
         asym_shap_val_config = AsymmetricShapleyValueConfig(
-            explanation_direction=test_case.explanation_direction,
+            direction=test_case.direction,
             granularity=test_case.granularity,
             num_samples=test_case.num_samples,
         )
@@ -1280,8 +1280,8 @@ class TestAsymmetricShapleyValueConfig:
     @pytest.mark.parametrize(
         "test_case",
         [
-            AsymmetricShapleyValueConfigCase(  # case for invalid explanation_direction
-                explanation_direction="non-directional",
+            AsymmetricShapleyValueConfigCase(  # case for invalid direction
+                direction="non-directional",
                 granularity="timewise",
                 num_samples=None,
                 error=AssertionError,
@@ -1289,35 +1289,35 @@ class TestAsymmetricShapleyValueConfig:
                 + ", ".join(ASYM_SHAP_VAL_EXPLANATION_DIRECTIONS),
             ),
             AsymmetricShapleyValueConfigCase(  # case for fine_grained and no num_samples
-                explanation_direction="chronological",
+                direction="chronological",
                 granularity="fine_grained",
                 num_samples=None,
                 error=AssertionError,
                 error_message="Please provide an integer for ``num_samples``.",
             ),
             AsymmetricShapleyValueConfigCase(  # case for fine_grained and non-integer num_samples
-                explanation_direction="chronological",
+                direction="chronological",
                 granularity="fine_grained",
                 num_samples="5",
                 error=AssertionError,
                 error_message="Please provide an integer for ``num_samples``.",
             ),
             AsymmetricShapleyValueConfigCase(  # case for num_samples when non fine-grained explanation
-                explanation_direction="chronological",
+                direction="chronological",
                 granularity="timewise",
                 num_samples=5,
                 error=ValueError,
                 error_message="``num_samples`` is only used for fine-grained explanations.",
             ),
             AsymmetricShapleyValueConfigCase(  # case for anti_chronological and fine_grained
-                explanation_direction="anti_chronological",
+                direction="anti_chronological",
                 granularity="fine_grained",
                 num_samples=5,
                 error=AssertionError,
                 error_message="not supported together.",
             ),
             AsymmetricShapleyValueConfigCase(  # case for bidirectional and fine_grained
-                explanation_direction="bidirectional",
+                direction="bidirectional",
                 granularity="fine_grained",
                 num_samples=5,
                 error=AssertionError,
@@ -1334,7 +1334,7 @@ class TestAsymmetricShapleyValueConfig:
         # test case is GIVEN
         with pytest.raises(test_case.error, match=test_case.error_message):  # THEN
             AsymmetricShapleyValueConfig(  # WHEN
-                explanation_direction=test_case.explanation_direction,
+                direction=test_case.direction,
                 granularity=test_case.granularity,
                 num_samples=test_case.num_samples,
             )

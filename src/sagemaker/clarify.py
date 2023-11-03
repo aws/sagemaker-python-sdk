@@ -298,7 +298,7 @@ ANALYSIS_CONFIG_SCHEMA_V1_0 = Schema(
             },
             SchemaOptional("report"): {"name": str, SchemaOptional("title"): str},
             SchemaOptional("asymmetric_shapley_value"): {
-                "explanation_direction": And(
+                "direction": And(
                     str,
                     Use(str.lower),
                     lambda s: s
@@ -1607,7 +1607,7 @@ class AsymmetricShapleyValueConfig(ExplainabilityConfig):
 
     def __init__(
         self,
-        explanation_direction: Literal[
+        direction: Literal[
             "chronological",
             "anti_chronological",
             "bidirectional",
@@ -1624,7 +1624,7 @@ class AsymmetricShapleyValueConfig(ExplainabilityConfig):
         purposes.
 
         Args:
-            explanation_direction (str): Type of explanation to be used. Available explanation
+            direction (str): Type of explanation to be used. Available explanation
                 types are ``"chronological"``, ``"anti_chronological"``, and ``"bidirectional"``.
             granularity (str): Explanation granularity to be used. Available granularity options
                 are ``"timewise"`` and ``"fine_grained"``.
@@ -1633,16 +1633,16 @@ class AsymmetricShapleyValueConfig(ExplainabilityConfig):
                 explanations.
 
         Raises:
-            AssertionError: when ``explanation_direction`` or ``granularity`` are not valid,
+            AssertionError: when ``direction`` or ``granularity`` are not valid,
                 or ``num_samples`` is not provided for fine-grained explanations
             ValueError: when ``num_samples`` is provided for non fine-grained explanations, or
-                when explanation_direction is not ``"chronological"`` when granularity is
+                when direction is not ``"chronological"`` when granularity is
                 ``"fine_grained"``.
         """
         self.asymmetric_shapley_value_config = dict()
         # validate explanation direction
         assert (
-            explanation_direction in ASYM_SHAP_VAL_EXPLANATION_DIRECTIONS
+            direction in ASYM_SHAP_VAL_EXPLANATION_DIRECTIONS
         ), "Please provide a valid explanation direction from: " + ", ".join(
             ASYM_SHAP_VAL_EXPLANATION_DIRECTIONS
         )
@@ -1653,12 +1653,12 @@ class AsymmetricShapleyValueConfig(ExplainabilityConfig):
         if granularity == "fine_grained":
             assert isinstance(num_samples, int), "Please provide an integer for ``num_samples``."
             assert (
-                explanation_direction == "chronological"
-            ), f"{explanation_direction} and {granularity} granularity are not supported together."
+                direction == "chronological"
+            ), f"{direction} and {granularity} granularity are not supported together."
         elif num_samples:  # validate num_samples is not provided when unnecessary
             raise ValueError("``num_samples`` is only used for fine-grained explanations.")
         # set explanation type and (if provided) num_samples in internal config dictionary
-        _set(explanation_direction, "explanation_direction", self.asymmetric_shapley_value_config)
+        _set(direction, "direction", self.asymmetric_shapley_value_config)
         _set(granularity, "granularity", self.asymmetric_shapley_value_config)
         _set(
             num_samples, "num_samples", self.asymmetric_shapley_value_config
