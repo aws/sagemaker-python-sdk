@@ -14,8 +14,10 @@
 from __future__ import print_function, absolute_import
 
 import abc
-from typing import Any, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union
+import logging
 
+from sagemaker.enums import EndpointType
 from sagemaker.deprecations import (
     deprecated_class,
     deprecated_deserialize,
@@ -55,6 +57,9 @@ from sagemaker.utils import name_from_base, stringify_object
 from sagemaker.model_monitor.model_monitoring import DEFAULT_REPOSITORY_NAME
 
 from sagemaker.lineage.context import EndpointContext
+from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
+
+LOGGER = logging.getLogger("sagemaker")
 
 
 class PredictorBase(abc.ABC):
@@ -92,6 +97,7 @@ class Predictor(PredictorBase):
         sagemaker_session=None,
         serializer=IdentitySerializer(),
         deserializer=BytesDeserializer(),
+        component_name=None,
         **kwargs,
     ):
         """Initialize a ``Predictor``.
@@ -115,11 +121,14 @@ class Predictor(PredictorBase):
             deserializer (:class:`~sagemaker.deserializers.BaseDeserializer`): A
                 deserializer object, used to decode data from an inference
                 endpoint (default: :class:`~sagemaker.deserializers.BytesDeserializer`).
+            component_name (str): Name of the Amazon SageMaker inference component
+                corresponding the predictor.
         """
         removed_kwargs("content_type", kwargs)
         removed_kwargs("accept", kwargs)
         endpoint_name = renamed_kwargs("endpoint", "endpoint_name", endpoint_name, kwargs)
         self.endpoint_name = endpoint_name
+        self.component_name = component_name
         self.sagemaker_session = sagemaker_session or Session()
         self.serializer = serializer
         self.deserializer = deserializer
@@ -137,6 +146,7 @@ class Predictor(PredictorBase):
         target_variant=None,
         inference_id=None,
         custom_attributes=None,
+        component_name: Optional[str] = None,
     ):
         """Return the inference from the specified endpoint.
 
@@ -169,6 +179,8 @@ class Predictor(PredictorBase):
                 value is returned. For example, if a custom attribute represents the trace ID, your
                 model can prepend the custom attribute with Trace ID: in your post-processing
                 function (Default: None).
+            component_name (str): Optional. Name of the Amazon SageMaker inference component
+                corresponding the predictor.
 
         Returns:
             object: Inference for the given input. If a deserializer was specified when creating
@@ -176,15 +188,20 @@ class Predictor(PredictorBase):
                 returned. Otherwise the response returns the sequence of bytes
                 as is.
         """
-
+        # [TODO]: clean up component_name in _create_request_args
         request_args = self._create_request_args(
-            data,
-            initial_args,
-            target_model,
-            target_variant,
-            inference_id,
-            custom_attributes,
+            data=data,
+            initial_args=initial_args,
+            target_model=target_model,
+            target_variant=target_variant,
+            inference_id=inference_id,
+            custom_attributes=custom_attributes,
         )
+
+        inference_component_name = component_name or self._get_component_name()
+        if inference_component_name:
+            request_args["InferenceComponentName"] = inference_component_name
+
         response = self.sagemaker_session.sagemaker_runtime_client.invoke_endpoint(**request_args)
         return self._handle_response(response)
 
@@ -260,6 +277,8 @@ class Predictor(PredictorBase):
             if isinstance(data, JumpStartSerializablePayload) and jumpstart_serialized_data
             else self.serializer.serialize(data)
         )
+        if self._get_component_name():
+            args["InferenceComponentName"] = self.component_name
 
         args["Body"] = data
         return args
@@ -273,6 +292,8 @@ class Predictor(PredictorBase):
         tags=None,
         kms_key=None,
         data_capture_config_dict=None,
+        max_instance_count=None,
+        min_instance_count=None,
         wait=True,
     ):
         """Update the existing endpoint with the provided attributes.
@@ -310,6 +331,8 @@ class Predictor(PredictorBase):
             data_capture_config_dict (dict): The endpoint data capture configuration
                 for use with Amazon SageMaker Model Monitoring. If not specified,
                 the data capture configuration of the existing endpoint configuration is used.
+            max_instance_count (int): The maximum instance count used for scaling instance.
+            min_instance_count (int): The minimum instance count used for scaling instance.
 
         Raises:
             ValueError: If there is not enough information to create a new ``ProductionVariant``:
@@ -348,16 +371,37 @@ class Predictor(PredictorBase):
             else:
                 self._model_names = [model_name]
 
-            production_variant_config = production_variant(
-                model_name,
-                instance_type,
-                initial_instance_count=initial_instance_count,
-                accelerator_type=accelerator_type,
-            )
+            managed_instance_scaling = {}
+            if max_instance_count:
+                managed_instance_scaling["MaxInstanceCount"] = max_instance_count
+            if min_instance_count:
+                managed_instance_scaling["MinInstanceCount"] = min_instance_count
+
+            if managed_instance_scaling and len(managed_instance_scaling) > 0:
+                production_variant_config = production_variant(
+                    model_name,
+                    instance_type,
+                    initial_instance_count=initial_instance_count,
+                    accelerator_type=accelerator_type,
+                    managed_instance_scaling=managed_instance_scaling,
+                )
+            else:
+                production_variant_config = production_variant(
+                    model_name,
+                    instance_type,
+                    initial_instance_count=initial_instance_count,
+                    accelerator_type=accelerator_type,
+                )
             production_variants = [production_variant_config]
 
         current_endpoint_config_name = self._get_endpoint_config_name()
         new_endpoint_config_name = name_from_base(current_endpoint_config_name)
+
+        if self._get_component_name():
+            endpoint_type = EndpointType.GOLDFINCH
+        else:
+            endpoint_type = EndpointType.OTHERS
+
         self.sagemaker_session.create_endpoint_config_from_existing(
             current_endpoint_config_name,
             new_endpoint_config_name,
@@ -365,6 +409,7 @@ class Predictor(PredictorBase):
             new_kms_key=kms_key,
             new_data_capture_config_dict=data_capture_config_dict,
             new_production_variants=production_variants,
+            endpoint_type=endpoint_type,
         )
         self.sagemaker_session.update_endpoint(
             self.endpoint_name, new_endpoint_config_name, wait=wait
@@ -393,10 +438,123 @@ class Predictor(PredictorBase):
 
         self.sagemaker_session.delete_endpoint(self.endpoint_name)
 
-    delete_predictor = delete_endpoint
+    def delete_predictor(self) -> None:
+        """Delete the Amazon SageMaker inference component or endpoint backing this predictor.
+
+        Delete the corresponding inference component if the endpoint is Goldfinch.
+        Otherwise delete the endpoint where this predictor is on.
+        """
+        # [TODO]: wait and describe inference component until not found to ensure
+        # it gets deleted successfully. Throw appropriate exception/error type.
+        if self.component_name:
+            self.sagemaker_session.delete_inference_component(self.component_name)
+        else:
+            self.delete_endpoint()
+
+    def update_predictor(
+        self,
+        image_uri: Optional[str] = None,
+        model_data: Optional[Union[str, dict]] = None,
+        env: Optional[Dict[str, str]] = None,
+        model_data_download_timeout: Optional[int] = None,
+        container_startup_health_check_timeout: Optional[int] = None,
+        resources: Optional[ResourceRequirements] = None,
+    ) -> str:
+        """Updates the predictor to deploy a new Model specification and apply new configurations.
+
+        This is done by updating the SageMaker InferenceComponent.
+
+        Args:
+            image_uri (Optional[str]): A Docker image URI. (Default: None).
+            model_data (Optional[Union[str, dict]]): Location
+                of SageMaker model data. (Default: None).
+            env (Optional[dict[str, str]]): Environment variables
+                to run with ``image_uri`` when hosted in SageMaker. (Default: None).
+            model_data_download_timeout (Optional[int]): The timeout value, in seconds, to download
+                and extract model data from Amazon S3 to the individual inference instance
+                associated with this production variant. (Default: None).
+            container_startup_health_check_timeout (Optional[int]): The timeout value, in seconds,
+                for your inference container to pass health check by SageMaker Hosting. For more
+                information about health check see:
+                https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-inference-code.html#your-algorithms-inference-algo-ping-requests
+                (Default: None).
+            resources (Optional[ResourceRequirements]): The compute resource requirements
+                for a model to be deployed to an endpoint. Only EndpointType.Goldfinch supports
+                this feature. (Default: None).
+
+        Returns:
+            String: The updated Amazon SageMaker Inference Component name
+        """
+        if self.component_name is None:
+            raise ValueError(
+                "No existing Inference Component; "
+                "Please ensure you deployed Inference Component first."
+            )
+        # [TODO]: Move to a module
+        request = {
+            "InferenceComponentName": self.component_name,
+            "Specification": {},
+        }
+
+        if resources:
+            request["Specification"][
+                "ComputeResourceRequirements"
+            ] = resources.get_compute_resource_requirements()
+
+        if image_uri:
+            request["Specification"]["Container"]["Image"] = image_uri
+
+        if env:
+            request["Specification"]["Container"]["Environment"] = env
+
+        if model_data:
+            request["Specification"]["Container"]["ArtifactUrl"] = model_data
+
+        if resources.copy_count:
+            request["RuntimeConfig"] = {"CopyCount": resources.copy_count}
+
+        if model_data_download_timeout:
+            request["Specification"]["StartupParameters"][
+                "ModelDataDownloadTimeoutInSeconds"
+            ] = model_data_download_timeout
+
+        if container_startup_health_check_timeout:
+            request["Specification"]["StartupParameters"][
+                "ContainerStartupHealthCheckTimeoutInSeconds"
+            ] = container_startup_health_check_timeout
+
+        empty_keys = []
+        for key, value in request["Specification"].items():
+            if not value:
+                empty_keys.append(key)
+        for key in empty_keys:
+            del request["Specification"][key]
+
+        self.sagemaker_session.update_inference_component(**request)
+        return self.component_name
+
+    # [TODO]: Check with doc writer for colocated vs collocated
+    def list_colocated_models(self):
+        """List the deployed models co-located with this predictor.
+
+        Calls SageMaker:ListInferenceComponents on the endpoint associated with the predictor.
+
+        Returns:
+            Dict[str, list]: A list of Amazon SageMaker Inference Component objects.
+        """
+
+        inference_component_dict = self.sagemaker_session.list_inference_components(
+            filters={"EndpointNameEquals": self.endpoint_name}
+        )
+
+        if len(inference_component_dict) == 0:
+            LOGGER.info("No deployed models found for endpoint %s.", self.endpoint_name)
+            return []
+
+        return inference_component_dict["InferenceComponents"]
 
     def delete_model(self):
-        """Deletes the Amazon SageMaker models backing this predictor."""
+        """Delete the Amazon SageMaker model backing this predictor."""
         request_failed = False
         failed_models = []
         current_model_names = self._get_model_names()
@@ -594,8 +752,15 @@ class Predictor(PredictorBase):
             EndpointConfigName=current_endpoint_config_name
         )
         production_variants = endpoint_config["ProductionVariants"]
-        self._model_names = [d["ModelName"] for d in production_variants]
+        self._model_names = []
+        for d in production_variants:
+            if "ModelName" in d:
+                self._model_names.append(d["ModelName"])
         return self._model_names
+
+    def _get_component_name(self) -> Optional[str]:
+        """Get the inference component name field if it exists in the Predictor object."""
+        return getattr(self, "component_name", None)
 
     @property
     def content_type(self):

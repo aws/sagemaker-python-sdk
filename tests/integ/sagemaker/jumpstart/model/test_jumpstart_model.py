@@ -28,8 +28,12 @@ from tests.integ.sagemaker.jumpstart.constants import (
 from tests.integ.sagemaker.jumpstart.utils import (
     download_inference_assets,
     get_sm_session,
+    # get_sm_session_with_override,
     get_tabular_data,
 )
+
+# from sagemaker.enums import EndpointType
+# from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
 
 MAX_INIT_TIME_SECONDS = 5
 
@@ -64,6 +68,56 @@ def test_non_prepacked_jumpstart_model(setup):
     response = predictor.predict(features)
 
     assert response is not None
+
+
+# def test_non_prepacked_jumpstart_model_deployed_on_goldfinch(setup):
+#     # [TODO]: remove local override once model spec is handy in s3
+#     os.environ.update(
+#         {
+#             "AWS_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE": "/Users/zhijiaol/git-projects/local_override/specs/"
+#         }
+#     )
+#     os.environ.update(
+#         {
+#             "AWS_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE": "/Users/zhijiaol/git-projects/local_override/manifests/"
+#         }
+#     )
+#     local_session = get_sm_session_with_override()
+
+#     # model_id = "huggingface-llm-falcon-40b-instruct-bf16" # default g5.12xlarge
+#     model_id = "huggingface-llm-falcon-7b-instruct-bf16"  # default g5.2xlarge
+
+#     model = JumpStartModel(
+#         model_id=model_id,
+#         role=local_session.get_caller_identity_arn(),
+#         sagemaker_session=local_session,
+#     )
+
+#     # [TODO]: Use JumpStart default resource requirements once model spec is ready
+#     resources = ResourceRequirements(
+#         requests={"num_accelerators": 1, "memory": 40 * 1024, "copies": 1}
+#     )
+
+#     predictor = model.deploy(
+#         endpoint_type=EndpointType.GOLDFINCH, resources=resources, instance_type="ml.g5.12xlarge"
+#     )
+
+#     # [TODO]: Verify prediction resaults once model spec is ready from JS
+#     inference_input = {
+#         "inputs": "Girafatron is obsessed with giraffes, the most glorious animal on the "
+#         + "face of this Earth. Giraftron believes all other animals are irrelevant when compared "
+#         + "to the glorious majesty of the giraffe.\nDaniel: Hello, Girafatron!\nGirafatron:",
+#         "parameters": {
+#             "max_new_tokens": 50,
+#             "top_k": 10,
+#             "return_full_text": False,
+#             "do_sample": True,
+#         },
+#     }
+
+#     response = predictor.predict(inference_input)
+#     print(f"Inference:\nInput: {inference_input}\nResponse: {response}\n")
+#     assert response is not None
 
 
 def test_prepacked_jumpstart_model(setup):

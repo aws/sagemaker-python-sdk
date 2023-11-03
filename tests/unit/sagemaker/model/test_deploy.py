@@ -22,6 +22,7 @@ from sagemaker.model import Model, ModelPackage
 from sagemaker.async_inference import AsyncInferenceConfig
 from sagemaker.serverless import ServerlessInferenceConfig
 from sagemaker.explainer import ExplainerConfig
+from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
 from tests.unit.sagemaker.inference_recommender.constants import (
     DESCRIBE_COMPILATION_JOB_RESPONSE,
     DESCRIBE_MODEL_PACKAGE_RESPONSE,
@@ -76,6 +77,14 @@ BASE_PRODUCTION_VARIANT = {
 SHAP_BASELINE = '1,2,3,"good product"'
 CSV_MIME_TYPE = "text/csv"
 BUCKET_NAME = "mybucket"
+RESOURCES = ResourceRequirements(
+    requests={
+        "num_cpus": 1,  # NumberOfCpuCoresRequired
+        "memory": 1024,  # MinMemoryRequiredInMb (required), differentiator for Goldfinch path
+        "copies": 1,
+    },
+    limits={},
+)
 
 
 @pytest.fixture
@@ -943,6 +952,74 @@ def test_deploy_customized_volume_size_and_timeout(
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
         name=MODEL_NAME,
         production_variants=[production_variant_result],
+        tags=None,
+        kms_key=None,
+        wait=True,
+        explainer_config_dict=None,
+        data_capture_config_dict=None,
+        async_inference_config_dict=None,
+        live_logging=False,
+    )
+
+
+@patch("sagemaker.production_variant")
+@patch("sagemaker.utils.name_from_base", return_value=ENDPOINT_NAME)
+@patch("sagemaker.model.Model._create_sagemaker_model", Mock())
+@patch("sagemaker.production_variant", return_value=BASE_PRODUCTION_VARIANT)
+def test_deploy_with_resources(sagemaker_session, name_from_base, production_variant):
+    production_variant.return_value = BASE_PRODUCTION_VARIANT
+    sagemaker_session.sagemaker_config = {}
+    model = Model(
+        MODEL_IMAGE, MODEL_DATA, name=MODEL_NAME, role=ROLE, sagemaker_session=sagemaker_session
+    )
+
+    model.deploy(
+        instance_type=INSTANCE_TYPE,
+        initial_instance_count=INSTANCE_COUNT,
+        resource=RESOURCES,
+    )
+    production_variant.assert_called_with(
+        MODEL_NAME,
+        INSTANCE_TYPE,
+        INSTANCE_COUNT,
+        accelerator_type=None,
+        serverless_inference_config=None,
+        volume_size=None,
+        model_data_download_timeout=None,
+        container_startup_health_check_timeout=None,
+    )
+    sagemaker_session.endpoint_from_production_variants.assert_called_with(
+        name=name_from_base(MODEL_NAME),
+        production_variants=[BASE_PRODUCTION_VARIANT],
+        tags=None,
+        kms_key=None,
+        wait=True,
+        explainer_config_dict=None,
+        data_capture_config_dict=None,
+        async_inference_config_dict=None,
+        live_logging=False,
+    )
+
+
+@patch("sagemaker.model.Model._create_sagemaker_model", Mock())
+@patch("sagemaker.production_variant", return_value=BASE_PRODUCTION_VARIANT)
+def test_deploy_with_name_and_resources(sagemaker_session):
+    sagemaker_session.sagemaker_config = {}
+    model = Model(
+        MODEL_IMAGE, MODEL_DATA, name=MODEL_NAME, role=ROLE, sagemaker_session=sagemaker_session
+    )
+    # base_from_name.assert_called_with(MODEL_NAME)
+
+    endpoint_name = "Goldfinch-endpoint-test"
+    model.deploy(
+        endpoint_name=endpoint_name,
+        instance_type=INSTANCE_TYPE,
+        initial_instance_count=INSTANCE_COUNT,
+        resource=RESOURCES,
+    )
+    sagemaker_session.endpoint_from_production_variants.assert_called_with(
+        name=endpoint_name,
+        production_variants=[BASE_PRODUCTION_VARIANT],
         tags=None,
         kms_key=None,
         wait=True,
