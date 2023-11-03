@@ -659,7 +659,6 @@ def test_decorator_step_with_json_get(
             pass
 
 
-@pytest.mark.skip(reason="Not ready yet. Will add back soon")
 def test_decorator_step_data_referenced_by_other_steps(
     pipeline_session,
     role,
@@ -724,10 +723,11 @@ def test_decorator_step_data_referenced_by_other_steps(
             last_step_name=process_step.name,
             execution_parameters=dict(),
             step_status="Succeeded",
+            wait_duration=1000,  # seconds
         )
 
         execution_proc_job = pipeline_session.describe_processing_job(
-            execution_steps[1]["MetaData"]["ProcessingJob"]["Arn"].split("/")[-1]
+            execution_steps[0]["Metadata"]["ProcessingJob"]["Arn"].split("/")[-1]
         )
         assert (
             execution_proc_job["ProcessingResources"]["ClusterConfig"]["InstanceCount"]
