@@ -42,6 +42,7 @@ from tests.unit.sagemaker.jumpstart.constants import (
     BASE_MANIFEST,
     BASE_SPEC,
 )
+from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
 
 
 @patch.object(JumpStartModelsCache, "_retrieval_function", patched_retrieval_function)
@@ -525,11 +526,14 @@ def test_jumpstart_cache_evaluates_md5_hash(mock_boto3_client):
         )
 
 
+@patch("sagemaker.jumpstart.cache.utils.emit_logs_based_on_model_specs")
 @patch("boto3.client")
-def test_jumpstart_cache_makes_correct_s3_calls(mock_boto3_client):
+def test_jumpstart_cache_makes_correct_s3_calls(
+    mock_boto3_client, mock_emit_logs_based_on_model_specs
+):
 
     # test get_header
-    mock_json = json.dumps(
+    mock_manifest_json = json.dumps(
         [
             {
                 "model_id": "pytorch-ic-imagenet-inception-v3-classification-4",
@@ -542,17 +546,17 @@ def test_jumpstart_cache_makes_correct_s3_calls(mock_boto3_client):
     )
     mock_boto3_client.return_value.get_object.return_value = {
         "Body": botocore.response.StreamingBody(
-            io.BytesIO(bytes(mock_json, "utf-8")), content_length=len(mock_json)
+            io.BytesIO(bytes(mock_manifest_json, "utf-8")), content_length=len(mock_manifest_json)
         ),
         "ETag": "etag",
     }
 
     mock_boto3_client.return_value.head_object.return_value = {"ETag": "some-hash"}
 
-    bucket_name = "bucket_name"
+    bucket_name = get_jumpstart_content_bucket("us-west-2")
     client_config = botocore.config.Config(signature_version="my_signature_version")
     cache = JumpStartModelsCache(
-        s3_bucket_name=bucket_name, s3_client_config=client_config, region="my_region"
+        s3_bucket_name=bucket_name, s3_client_config=client_config, region="us-west-2"
     )
     cache.get_header(
         model_id="pytorch-ic-imagenet-inception-v3-classification-4", semantic_version_str="*"
@@ -563,7 +567,7 @@ def test_jumpstart_cache_makes_correct_s3_calls(mock_boto3_client):
     )
     mock_boto3_client.return_value.head_object.assert_not_called()
 
-    mock_boto3_client.assert_called_with("s3", region_name="my_region", config=client_config)
+    mock_boto3_client.assert_called_with("s3", region_name="us-west-2", config=client_config)
 
     # test get_specs. manifest already in cache, so only s3 call will be to get specs.
     mock_json = json.dumps(BASE_SPEC)
@@ -576,9 +580,22 @@ def test_jumpstart_cache_makes_correct_s3_calls(mock_boto3_client):
         ),
         "ETag": "etag",
     }
-    cache.get_specs(
-        model_id="pytorch-ic-imagenet-inception-v3-classification-4", semantic_version_str="*"
-    )
+
+    with patch("logging.Logger.warning") as mocked_warning_log:
+        cache.get_specs(
+            model_id="pytorch-ic-imagenet-inception-v3-classification-4", semantic_version_str="*"
+        )
+        mocked_warning_log.assert_called_once_with(
+            "Using model 'pytorch-ic-imagenet-inception-v3-classification-4' with wildcard "
+            "version identifier '*'. Please consider pinning to version '2.0.0' to "
+            "ensure stable results. Note that models may have different input/output "
+            "signatures after a major version upgrade."
+        )
+        mocked_warning_log.reset_mock()
+        cache.get_specs(
+            model_id="pytorch-ic-imagenet-inception-v3-classification-4", semantic_version_str="*"
+        )
+        mocked_warning_log.assert_not_called()
 
     mock_boto3_client.return_value.get_object.assert_called_with(
         Bucket=bucket_name,
@@ -595,10 +612,18 @@ def test_jumpstart_cache_handles_bad_semantic_version_manifest_key_cache():
     cache.clear = MagicMock()
     cache._model_id_semantic_version_manifest_key_cache = MagicMock()
     cache._model_id_semantic_version_manifest_key_cache.get.side_effect = [
-        JumpStartVersionedModelId(
-            "tensorflow-ic-imagenet-inception-v3-classification-4", "999.0.0"
+        (
+            JumpStartVersionedModelId(
+                "tensorflow-ic-imagenet-inception-v3-classification-4", "999.0.0"
+            ),
+            True,
         ),
-        JumpStartVersionedModelId("tensorflow-ic-imagenet-inception-v3-classification-4", "1.0.0"),
+        (
+            JumpStartVersionedModelId(
+                "tensorflow-ic-imagenet-inception-v3-classification-4", "1.0.0"
+            ),
+            True,
+        ),
     ]
 
     assert JumpStartModelHeader(
@@ -616,11 +641,17 @@ def test_jumpstart_cache_handles_bad_semantic_version_manifest_key_cache():
     cache.clear.reset_mock()
 
     cache._model_id_semantic_version_manifest_key_cache.get.side_effect = [
-        JumpStartVersionedModelId(
-            "tensorflow-ic-imagenet-inception-v3-classification-4", "999.0.0"
+        (
+            JumpStartVersionedModelId(
+                "tensorflow-ic-imagenet-inception-v3-classification-4", "999.0.0"
+            ),
+            True,
         ),
-        JumpStartVersionedModelId(
-            "tensorflow-ic-imagenet-inception-v3-classification-4", "987.0.0"
+        (
+            JumpStartVersionedModelId(
+                "tensorflow-ic-imagenet-inception-v3-classification-4", "987.0.0"
+            ),
+            True,
         ),
     ]
     with pytest.raises(KeyError):
@@ -735,6 +766,7 @@ def test_jumpstart_local_metadata_override_header(
     mocked_get_json_file_and_etag_from_s3.assert_not_called()
 
 
+@patch("sagemaker.jumpstart.cache.utils.emit_logs_based_on_model_specs")
 @patch.object(JumpStartModelsCache, "_get_json_file_and_etag_from_s3")
 @patch("sagemaker.jumpstart.utils.get_sagemaker_version", lambda: "2.68.3")
 @patch.dict(
@@ -747,7 +779,10 @@ def test_jumpstart_local_metadata_override_header(
 @patch("sagemaker.jumpstart.cache.os.path.isdir")
 @patch("builtins.open")
 def test_jumpstart_local_metadata_override_specs(
-    mocked_open: Mock, mocked_is_dir: Mock, mocked_get_json_file_and_etag_from_s3: Mock
+    mocked_open: Mock,
+    mocked_is_dir: Mock,
+    mocked_get_json_file_and_etag_from_s3: Mock,
+    mock_emit_logs_based_on_model_specs,
 ):
 
     mocked_open.side_effect = [
@@ -776,6 +811,7 @@ def test_jumpstart_local_metadata_override_specs(
     mocked_get_json_file_and_etag_from_s3.assert_not_called()
 
 
+@patch("sagemaker.jumpstart.cache.utils.emit_logs_based_on_model_specs")
 @patch.object(JumpStartModelsCache, "_get_json_file_and_etag_from_s3")
 @patch("sagemaker.jumpstart.utils.get_sagemaker_version", lambda: "2.68.3")
 @patch.dict(
@@ -791,6 +827,7 @@ def test_jumpstart_local_metadata_override_specs_not_exist_both_directories(
     mocked_open: Mock,
     mocked_is_dir: Mock,
     mocked_get_json_file_and_etag_from_s3: Mock,
+    mocked_emit_logs_based_on_model_specs,
 ):
     model_id, version = "tensorflow-ic-imagenet-inception-v3-classification-4", "2.0.0"
 

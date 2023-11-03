@@ -30,6 +30,35 @@ INVALID_MODEL_ID_ERROR_MSG = (
 )
 
 
+_MAJOR_VERSION_WARNING_MSG = (
+    "Note that models may have different input/output signatures after a major version upgrade."
+)
+
+
+def get_wildcard_model_version_msg(
+    model_id: str, wildcard_model_version: str, full_model_version: str
+) -> str:
+    """Returns customer-facing message for using a model version with a wildcard character."""
+
+    return (
+        f"Using model '{model_id}' with wildcard version identifier '{wildcard_model_version}'. "
+        f"Please consider pinning to version '{full_model_version}' to "
+        f"ensure stable results. {_MAJOR_VERSION_WARNING_MSG}"
+    )
+
+
+def get_old_model_version_msg(
+    model_id: str, current_model_version: str, latest_model_version: str
+) -> str:
+    """Returns customer-facing message associated with using an old model version."""
+
+    return (
+        f"Using model '{model_id}' with old version '{current_model_version}'. "
+        f"Please consider upgrading to version '{latest_model_version}'"
+        f". {_MAJOR_VERSION_WARNING_MSG}"
+    )
+
+
 class JumpStartHyperparametersError(ValueError):
     """Exception raised for bad hyperparameters of a JumpStart model."""
 
