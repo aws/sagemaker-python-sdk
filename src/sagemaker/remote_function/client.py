@@ -197,8 +197,8 @@ def remote(
         custom_file_filter (Callable[[str, List], List], CustomFileFilter): Either a function
           that filters job dependencies to be uploaded to S3 or a ``CustomFileFilter`` object
           that specifies the local directories and files to be included in the remote function.
-          If a callable is passed in, that function is passed to the ``ignore``  argument of
-          ``shutil.copytree``. Defaults to ``None``, which means only python
+          If a callable is passed in, the function should follow the protocol of ``ignore`` argument
+          of ``shutil.copytree``. Defaults to ``None``, which means only python
           files are accepted and uploaded to S3.
 
         instance_count (int): The number of instances to use. Defaults to 1.
