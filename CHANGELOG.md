@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.197.0 (2023-11-07)
+
+### Features
+
+ * PT2.1 SM Training/Inference DLC Release
+
+### Bug Fixes and Other Changes
+
+ * Release HuggingFace PT Neuronx training image 1.13.1
+ * HuggingFace PT Neuronx release in SDK
+
 ## v2.196.0 (2023-10-27)
 
 ### Features
