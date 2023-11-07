@@ -1425,3 +1425,38 @@ def test_list_future(mock_session):
             call(TrainingJobName="job-3"),
         ]
     )
+
+
+def test_consistency_between_remote_and_step_decorator():
+    from sagemaker.workflow.function_step import step
+
+    remote_args_to_ignore = [
+        "_remote",
+        "include_local_workdir",
+        "custom_file_filter",
+        "s3_kms_key",
+        "s3_root_uri",
+        "sagemaker_session",
+    ]
+
+    step_args_to_ignore = ["_step", "name", "display_name", "description", "retry_policies"]
+
+    remote_decorator_args = remote.__code__.co_varnames
+    common_remote_decorator_args = set(remote_args_to_ignore) ^ set(remote_decorator_args)
+
+    step_decorator_args = step.__code__.co_varnames
+    common_step_decorator_args = set(step_args_to_ignore) ^ set(step_decorator_args)
+
+    assert common_remote_decorator_args == common_step_decorator_args
+
+
+def test_consistency_between_remote_and_executor():
+    executor_arg_list = list(RemoteExecutor.__init__.__code__.co_varnames)
+    executor_arg_list.remove("self")
+    executor_arg_list.remove("max_parallel_jobs")
+
+    remote_args_list = list(remote.__code__.co_varnames)
+    remote_args_list.remove("_remote")
+    remote_args_list.remove("_func")
+
+    assert executor_arg_list == remote_args_list
