@@ -1449,3 +1449,12 @@ def get_instance_type_family(instance_type: str) -> str:
         if match is not None:
             instance_type_family = match[1]
     return instance_type_family
+
+
+def is_likely_a_pandas_df(data: Any) -> bool:
+    """Return True if data is likely a pandas dataframe."""
+    return (
+        data.__class__.__name__ == "DataFrame"
+        and hasattr(data, "columns")
+        and hasattr(data, "iloc")
+    )

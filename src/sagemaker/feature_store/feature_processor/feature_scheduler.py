@@ -15,10 +15,9 @@ from __future__ import absolute_import
 import logging
 import json
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Callable, List, Optional, Dict, Sequence, Union, Any, Tuple
 
-import pytz
 from botocore.exceptions import ClientError
 
 from sagemaker.feature_store.feature_processor._config_uploader import ConfigUploader
@@ -303,7 +302,7 @@ def schedule(
 
     _sagemaker_session = sagemaker_session or Session()
     _validate_pipeline_lineage_resources(pipeline_name, _sagemaker_session)
-    _start_date = start_date or datetime.now(tz=pytz.utc)
+    _start_date = start_date or datetime.now(tz=timezone.utc)
     _role_arn = role_arn or get_execution_role(_sagemaker_session)
     event_bridge_scheduler_helper = EventBridgeSchedulerHelper(
         _sagemaker_session,
