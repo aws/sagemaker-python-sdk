@@ -71,7 +71,7 @@ def create_and_execute_pipeline(
     if step_result_value:
         result = execution.result(execution_steps[0]["StepName"])
         assert result == step_result_value, f"Expected {step_result_value}, instead found {result}"
-    return execution_steps
+    return execution, execution_steps
 
 
 def validate_scheduled_pipeline_execution(

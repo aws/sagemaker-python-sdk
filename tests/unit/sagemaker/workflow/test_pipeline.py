@@ -287,6 +287,7 @@ def test_pipeline_update(
                 "/opt/ml/input/data/sagemaker_remote_function_bootstrap/job_driver.sh",
             ]
         },
+        "TrainingJobStatus": "Completed",
         "OutputDataConfig": {"S3OutputPath": "s3:/my-bucket/my-key"},
         "Environment": {"REMOTE_FUNCTION_SECRET_KEY": "abcdefg"},
     }
