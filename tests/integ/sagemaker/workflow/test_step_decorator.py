@@ -22,6 +22,7 @@ import random
 from sagemaker import get_execution_role, utils
 from sagemaker.config import load_sagemaker_config
 from sagemaker.processing import ProcessingInput
+from sagemaker.remote_function.errors import RemoteFunctionError
 from sagemaker.sklearn import SKLearnProcessor
 from sagemaker.remote_function.core.serialization import CloudpickleSerializer
 from sagemaker.s3 import S3Uploader
@@ -577,7 +578,7 @@ def test_decorator_step_failed(
     )
 
     try:
-        create_and_execute_pipeline(
+        execution, execution_steps = create_and_execute_pipeline(
             pipeline=pipeline,
             pipeline_name=pipeline_name,
             region_name=region_name,
@@ -587,6 +588,11 @@ def test_decorator_step_failed(
             execution_parameters=dict(),
             step_status="Failed",
         )
+
+        step_name = execution_steps[0]["StepName"]
+        with pytest.raises(RemoteFunctionError) as e:
+            execution.result(step_name)
+            assert f"Pipeline step {step_name} is in Failed status." in str(e)
     finally:
         try:
             pipeline.delete()
@@ -720,7 +726,7 @@ def test_decorator_step_data_referenced_by_other_steps(
     )
 
     try:
-        execution_steps = create_and_execute_pipeline(
+        _, execution_steps = create_and_execute_pipeline(
             pipeline=pipeline,
             pipeline_name=pipeline_name,
             region_name=region_name,

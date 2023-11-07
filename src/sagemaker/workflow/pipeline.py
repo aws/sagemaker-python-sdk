@@ -22,13 +22,14 @@ from typing import Any, Dict, List, Set, Sequence, Union, Optional
 import attr
 import botocore
 import pytz
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, WaiterError
 
 from sagemaker import s3
 from sagemaker._studio import _append_project_tags
 from sagemaker.config import PIPELINE_ROLE_ARN_PATH, PIPELINE_TAGS_PATH
 from sagemaker.remote_function.core.serialization import deserialize_obj_from_s3
 from sagemaker.remote_function.core.stored_function import RESULTS_FOLDER
+from sagemaker.remote_function.errors import RemoteFunctionError
 from sagemaker.remote_function.job import JOBS_CONTAINER_ENTRYPOINT
 from sagemaker.s3_utils import s3_path_join
 from sagemaker.session import Session
@@ -965,8 +966,13 @@ sagemaker.html#SageMaker.Client.list_pipeline_execution_steps>`_.
 
         Raises:
               ValueError if the provided step is not a ``@step`` decorated function.
+              RemoteFunctionError if the provided step is not in "Completed" status
         """
-        self.wait()
+        try:
+            self.wait()
+        except WaiterError as e:
+            if "Waiter encountered a terminal failure state" in str(e):
+                pass
         step = next(filter(lambda x: x["StepName"] == step_name, self.list_steps()), None)
         if not step:
             raise ValueError(f"Invalid step name {step_name}")
@@ -986,15 +992,22 @@ sagemaker.html#SageMaker.Client.list_pipeline_execution_steps>`_.
         ]
         if container_args != JOBS_CONTAINER_ENTRYPOINT:
             raise ValueError(
-                "This method can only be used on pipeline steps created using @step" " decorator."
+                "This method can only be used on pipeline steps created using @step decorator."
             )
-
         s3_output_path = describe_training_job_response["OutputDataConfig"]["S3OutputPath"]
-        return deserialize_obj_from_s3(
-            sagemaker_session=self.sagemaker_session,
-            s3_uri=s3_path_join(s3_output_path, self.arn.split("/")[-1], step_name, RESULTS_FOLDER),
-            hmac_key=describe_training_job_response["Environment"]["REMOTE_FUNCTION_SECRET_KEY"],
-        )
+
+        job_status = describe_training_job_response["TrainingJobStatus"]
+        if job_status == "Completed":
+            return deserialize_obj_from_s3(
+                sagemaker_session=self.sagemaker_session,
+                s3_uri=s3_path_join(
+                    s3_output_path, self.arn.split("/")[-1], step_name, RESULTS_FOLDER
+                ),
+                hmac_key=describe_training_job_response["Environment"][
+                    "REMOTE_FUNCTION_SECRET_KEY"
+                ],
+            )
+        raise RemoteFunctionError(f"Pipeline step {step_name} is in {job_status} status.")
 
 
 class PipelineGraph:
