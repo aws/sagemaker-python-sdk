@@ -370,7 +370,7 @@ def test_bootstrap_runtime_env_for_remote_no_workspace(
     install_dependencies.assert_not_called()
 
 
-@patch("shutil.move")
+@patch("shutil.copy")
 @patch("os.listdir", return_value=[PRE_EXECUTION_SCRIPT_NAME, TEST_DEPENDENCY_FILE_NAME])
 @patch("os.path.exists", return_value=True)
 @patch(
@@ -384,7 +384,7 @@ def test_bootstrap_runtime_env_for_remote_no_workspace(
     return_value=pathlib.Path(TEST_DEPENDENCIES_PATH),
 )
 def test_bootstrap_runtime_env_for_step(
-    unpack_workspace, install_scripts, install_dependencies, path_exists, list_dir, move_files
+    unpack_workspace, install_scripts, install_dependencies, path_exists, list_dir, copy_files
 ):
     bootstrap._bootstrap_runtime_env_for_pipeline_step(
         TEST_PYTHON_VERSION,
@@ -397,7 +397,7 @@ def test_bootstrap_runtime_env_for_step(
     dependency_dir = TEST_BASE_CHANNEL_PATH + PIPELINE_STEP_CHANNEL
     path_exists.assert_called_once_with(dependency_dir)
     list_dir.assert_called_once_with(dependency_dir)
-    assert move_files.call_count == 2
+    assert copy_files.call_count == 2
     install_scripts.assert_called_once_with(unpack_workspace.return_value)
     install_dependencies.assert_called_once_with(
         unpack_workspace.return_value,
@@ -410,7 +410,7 @@ def test_bootstrap_runtime_env_for_step(
 
 @patch("os.getcwd", return_value=CURR_WORKING_DIR)
 @patch("os.mkdir")
-@patch("shutil.move")
+@patch("shutil.copy")
 @patch("os.listdir", return_value=[PRE_EXECUTION_SCRIPT_NAME, TEST_DEPENDENCY_FILE_NAME])
 @patch("os.path.exists", return_value=True)
 @patch(
@@ -429,7 +429,7 @@ def test_bootstrap_runtime_env_for_step_no_workspace(
     install_dependencies,
     path_exists,
     list_dir,
-    move_files,
+    copy_files,
     mkdir,
     get_cwd,
 ):
@@ -447,7 +447,7 @@ def test_bootstrap_runtime_env_for_step_no_workspace(
     dependency_dir = TEST_BASE_CHANNEL_PATH + PIPELINE_STEP_CHANNEL
     path_exists.assert_called_once_with(dependency_dir)
     list_dir.assert_called_once_with(dependency_dir)
-    assert move_files.call_count == 2
+    assert copy_files.call_count == 2
     install_scripts.assert_called_once_with(pathlib.Path(TEST_DEPENDENCIES_PATH))
     install_dependencies.assert_called_once_with(
         pathlib.Path(TEST_DEPENDENCIES_PATH),

@@ -813,3 +813,48 @@ def test_decorator_step_checksum_mismatch(
             pipeline.delete()
         except Exception:
             pass
+
+
+def test_with_user_and_workdir_set_in_the_image(
+    sagemaker_session, role, pipeline_name, region_name, dummy_container_with_user_and_workdir
+):
+    os.environ["AWS_DEFAULT_REGION"] = region_name
+    dependencies_path = os.path.join(DATA_DIR, "workflow", "requirements.txt")
+
+    @step(
+        role=role,
+        image_uri=dummy_container_with_user_and_workdir,
+        dependencies=dependencies_path,
+        instance_type=INSTANCE_TYPE,
+    )
+    def cuberoot(x):
+        from scipy.special import cbrt
+
+        return cbrt(x)
+
+    step_a = cuberoot(8)
+
+    pipeline = Pipeline(
+        name=pipeline_name,
+        steps=[step_a],
+        sagemaker_session=sagemaker_session,
+    )
+
+    try:
+        create_and_execute_pipeline(
+            pipeline=pipeline,
+            pipeline_name=pipeline_name,
+            region_name=region_name,
+            role=role,
+            no_of_steps=1,
+            last_step_name="cuberoot",
+            execution_parameters=dict(),
+            step_status="Succeeded",
+            step_result_type=numpy.float64,
+            step_result_value=2.0,
+        )
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
