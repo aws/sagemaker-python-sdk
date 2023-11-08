@@ -140,7 +140,7 @@ def _bootstrap_runtime_env_for_pipeline_step(
     for file in os.listdir(pre_exec_script_and_dependencies_dir):
         src_path = os.path.join(pre_exec_script_and_dependencies_dir, file)
         dest_path = os.path.join(workspace_dir, file)
-        shutil.move(src_path, dest_path)
+        shutil.copy(src_path, dest_path)
 
     _handle_pre_exec_scripts(workspace_dir)
 

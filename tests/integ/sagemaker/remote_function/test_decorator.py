@@ -727,6 +727,26 @@ def test_decorator_with_spot_instances_save_and_load_checkpoints(
     )
 
 
+def test_with_user_and_workdir_set_in_the_image(
+    sagemaker_session, dummy_container_with_user_and_workdir, cpu_instance_type
+):
+    dependencies_path = os.path.join(DATA_DIR, "remote_function", "requirements.txt")
+
+    @remote(
+        role=ROLE,
+        image_uri=dummy_container_with_user_and_workdir,
+        dependencies=dependencies_path,
+        instance_type=cpu_instance_type,
+        sagemaker_session=sagemaker_session,
+    )
+    def cuberoot(x):
+        from scipy.special import cbrt
+
+        return cbrt(27)
+
+    assert cuberoot(27) == 3
+
+
 @pytest.mark.skip
 def test_decorator_with_spark_job(sagemaker_session, cpu_instance_type):
     @remote(

@@ -61,6 +61,21 @@ DOCKERFILE_TEMPLATE_WITH_CONDA = (
     "ENV SAGEMAKER_JOB_CONDA_ENV=default_env\n"
 )
 
+DOCKERFILE_TEMPLATE_WITH_USER_AND_WORKDIR = (
+    "FROM public.ecr.aws/docker/library/python:{py_version}-slim\n\n"
+    "RUN apt-get update -y \
+        && apt-get install -y unzip curl\n\n"
+    "RUN curl 'https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip' -o 'awscliv2.zip' \
+        && unzip awscliv2.zip \
+        && ./aws/install\n\n"
+    "RUN useradd -ms /bin/bash integ-test-user\n"
+    "USER integ-test-user\n"
+    "WORKDIR /home/integ-test-user\n"
+    "COPY {source_archive} ./\n"
+    "RUN pip install '{source_archive}'\n"
+    "RUN rm {source_archive}\n"
+)
+
 AUTO_CAPTURE_CLIENT_DOCKER_TEMPLATE = (
     "FROM public.ecr.aws/docker/library/python:{py_version}-slim\n\n"
     'SHELL ["/bin/bash", "-c"]\n'
@@ -102,6 +117,14 @@ def incompatible_python_version():
 @pytest.fixture(scope="session")
 def dummy_container_without_error(sagemaker_session, compatible_python_version):
     ecr_uri = _build_container(sagemaker_session, compatible_python_version, DOCKERFILE_TEMPLATE)
+    return ecr_uri
+
+
+@pytest.fixture(scope="session")
+def dummy_container_with_user_and_workdir(sagemaker_session, compatible_python_version):
+    ecr_uri = _build_container(
+        sagemaker_session, compatible_python_version, DOCKERFILE_TEMPLATE_WITH_USER_AND_WORKDIR
+    )
     return ecr_uri
 
 
