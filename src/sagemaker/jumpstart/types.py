@@ -581,6 +581,16 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
 
         return instance_family_environment_variables
 
+    def get_instance_specific_gated_model_key_env_var_value(
+        self, instance_type: str
+    ) -> Optional[str]:
+        """Returns instance specific gated model env var s3 key.
+
+        Returns None if a model, instance type tuple does not have instance
+        specific property.
+        """
+        return self._get_instance_specific_property(instance_type, "gated_model_key_env_var_value")
+
     def get_instance_specific_default_inference_instance_type(
         self, instance_type: str
     ) -> Optional[str]:
@@ -901,10 +911,12 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
 
     def use_training_model_artifact(self) -> bool:
         """Returns True if the model should use a model uri when kicking off training job."""
-        return (
-            self.training_model_package_artifact_uris is None
-            or len(self.training_model_package_artifact_uris) == 0
-        )
+        # gated model never use training model artifact
+        if self.gated_bucket:
+            return False
+
+        # otherwise, return true is a training model package is not set
+        return len(self.training_model_package_artifact_uris or {}) == 0
 
     def supports_incremental_training(self) -> bool:
         """Returns True if the model supports incremental training."""

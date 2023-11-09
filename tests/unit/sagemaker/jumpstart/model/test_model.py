@@ -18,6 +18,9 @@ import unittest
 from mock import MagicMock
 import pytest
 from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
+from sagemaker.jumpstart.artifacts.environment_variables import (
+    _retrieve_default_environment_variables,
+)
 from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 from sagemaker.jumpstart.enums import JumpStartScriptScope, JumpStartTag
 
@@ -330,6 +333,7 @@ class ModelTest(unittest.TestCase):
             deploy_kwargs=all_deploy_kwargs_used,
         )
 
+    @mock.patch("sagemaker.jumpstart.factory.model.environment_variables.retrieve_default")
     @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -343,9 +347,12 @@ class ModelTest(unittest.TestCase):
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
         mock_is_valid_model_id: mock.Mock,
+        mock_retrieve_environment_variables: mock.Mock,
         init_kwargs: Optional[dict] = None,
         deploy_kwargs: Optional[dict] = None,
     ):
+
+        mock_retrieve_environment_variables.side_effect = _retrieve_default_environment_variables
 
         mock_model_deploy.return_value = default_predictor
 
@@ -392,6 +399,8 @@ class ModelTest(unittest.TestCase):
         mock_model_init.assert_called_once_with(**expected_init_kwargs)
 
         model.deploy(**deploy_kwargs)
+
+        mock_retrieve_environment_variables.assert_called_once()
 
         expected_deploy_kwargs = overwrite_dictionary(
             {

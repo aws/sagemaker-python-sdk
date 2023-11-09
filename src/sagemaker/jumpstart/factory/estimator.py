@@ -16,6 +16,7 @@ from __future__ import absolute_import
 
 from typing import Dict, List, Optional, Union
 from sagemaker import (
+    environment_variables,
     hyperparameters as hyperparameters_utils,
     image_uris,
     instance_types,
@@ -557,6 +558,18 @@ def _add_env_to_kwargs(
 ) -> JumpStartEstimatorInitKwargs:
     """Sets environment in kwargs based on default or override, returns full kwargs."""
 
+    extra_env_vars = environment_variables.retrieve_default(
+        model_id=kwargs.model_id,
+        model_version=kwargs.model_version,
+        region=kwargs.region,
+        include_aws_sdk_env_vars=False,
+        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
+        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
+        sagemaker_session=kwargs.sagemaker_session,
+        script=JumpStartScriptScope.TRAINING,
+        instance_type=kwargs.instance_type,
+    )
+
     model_package_artifact_uri = _retrieve_model_package_model_artifact_s3_uri(
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
@@ -568,12 +581,16 @@ def _add_env_to_kwargs(
     )
 
     if model_package_artifact_uri:
-        if kwargs.environment is None:
-            kwargs.environment = {}
-        kwargs.environment = {
-            **{SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY: model_package_artifact_uri},
-            **kwargs.environment,
-        }
+        extra_env_vars.update(
+            {SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY: model_package_artifact_uri}
+        )
+
+    for key, value in extra_env_vars.items():
+        update_dict_if_key_not_present(
+            kwargs.environment,
+            key,
+            value,
+        )
 
     return kwargs
 
