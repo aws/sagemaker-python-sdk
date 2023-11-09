@@ -971,8 +971,8 @@ sagemaker.html#SageMaker.Client.list_pipeline_execution_steps>`_.
         try:
             self.wait()
         except WaiterError as e:
-            if "Waiter encountered a terminal failure state" in str(e):
-                pass
+            if "Waiter encountered a terminal failure state" not in str(e):
+                raise
         step = next(filter(lambda x: x["StepName"] == step_name, self.list_steps()), None)
         if not step:
             raise ValueError(f"Invalid step name {step_name}")
