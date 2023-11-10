@@ -42,8 +42,8 @@ def get_wildcard_model_version_msg(
 
     return (
         f"Using model '{model_id}' with wildcard version identifier '{wildcard_model_version}'. "
-        f"Please consider pinning to version '{full_model_version}' to "
-        f"ensure stable results. {_MAJOR_VERSION_WARNING_MSG}"
+        f"You can pin to version '{full_model_version}' "
+        f"for more stable results. {_MAJOR_VERSION_WARNING_MSG}"
     )
 
 
@@ -53,9 +53,9 @@ def get_old_model_version_msg(
     """Returns customer-facing message associated with using an old model version."""
 
     return (
-        f"Using model '{model_id}' with old version '{current_model_version}'. "
-        f"Please consider upgrading to version '{latest_model_version}'"
-        f". {_MAJOR_VERSION_WARNING_MSG}"
+        f"Using model '{model_id}' with version '{current_model_version}'. "
+        f"You can upgrade to version '{latest_model_version}' to get the latest model "
+        f"specifications. {_MAJOR_VERSION_WARNING_MSG}"
     )
 
 

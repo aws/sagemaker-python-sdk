@@ -2777,7 +2777,8 @@ SPECIAL_MODEL_SPECS_DICT = {
                 "g5": {
                     "regional_properties": {"image_uri": "$gpu_ecr_uri_1"},
                     "properties": {
-                        "gated_model_key_env_var_value": "meta-training/train-meta-textgeneration-llama-2-7b.tar.gz"
+                        "gated_model_key_env_var_value": "meta-training/train-meta-textgeneration-llama-2-7b.tar.gz",
+                        "environment_variables": {"SELF_DESTRUCT": "true"},
                     },
                 },
                 "local_gpu": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},

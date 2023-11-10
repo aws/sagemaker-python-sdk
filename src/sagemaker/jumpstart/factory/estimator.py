@@ -586,7 +586,7 @@ def _add_env_to_kwargs(
         )
 
     for key, value in extra_env_vars.items():
-        update_dict_if_key_not_present(
+        kwargs.environment = update_dict_if_key_not_present(
             kwargs.environment,
             key,
             value,

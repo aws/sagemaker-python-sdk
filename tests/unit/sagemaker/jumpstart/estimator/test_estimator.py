@@ -495,6 +495,7 @@ class EstimatorTest(unittest.TestCase):
             encrypt_inter_container_traffic=True,
             enable_network_isolation=True,
             environment={
+                "SELF_DESTRUCT": "true",
                 "accept_eula": True,
                 "SageMakerGatedModelS3Uri": "s3://top-secret-private-"
                 "models-bucket/meta-training/train-meta-textgeneration-llama-2-7b.tar.gz",

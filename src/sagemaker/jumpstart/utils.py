@@ -755,13 +755,5 @@ def is_valid_model_id(
     if script == enums.JumpStartScriptScope.INFERENCE:
         return model_id in model_id_set
     if script == enums.JumpStartScriptScope.TRAINING:
-        return (
-            model_id in model_id_set
-            and accessors.JumpStartModelsAccessor.get_model_specs(
-                region=region,
-                model_id=model_id,
-                version=model_version,
-                s3_client=s3_client,
-            ).training_supported
-        )
+        return model_id in model_id_set
     raise ValueError(f"Unsupported script: {script}")

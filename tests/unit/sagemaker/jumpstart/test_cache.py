@@ -587,8 +587,8 @@ def test_jumpstart_cache_makes_correct_s3_calls(
         )
         mocked_warning_log.assert_called_once_with(
             "Using model 'pytorch-ic-imagenet-inception-v3-classification-4' with wildcard "
-            "version identifier '*'. Please consider pinning to version '2.0.0' to "
-            "ensure stable results. Note that models may have different input/output "
+            "version identifier '*'. You can pin to version '2.0.0' for more "
+            "stable results. Note that models may have different input/output "
             "signatures after a major version upgrade."
         )
         mocked_warning_log.reset_mock()

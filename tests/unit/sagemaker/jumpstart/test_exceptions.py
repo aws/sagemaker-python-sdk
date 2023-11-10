@@ -21,7 +21,7 @@ from sagemaker.jumpstart.exceptions import (
 def test_get_wildcard_model_version_msg():
     assert (
         "Using model 'mother_of_all_models' with wildcard version identifier '*'. "
-        "Please consider pinning to version '1.2.3' to ensure stable results. "
+        "You can pin to version '1.2.3' for more stable results. "
         "Note that models may have different input/output signatures after a "
         "major version upgrade."
         == get_wildcard_model_version_msg("mother_of_all_models", "*", "1.2.3")
@@ -30,8 +30,8 @@ def test_get_wildcard_model_version_msg():
 
 def test_get_old_model_version_msg():
     assert (
-        "Using model 'mother_of_all_models' with old version '1.0.0'. "
-        "Please consider upgrading to version '1.2.3'. Note that models "
-        "may have different input/output signatures after a major "
+        "Using model 'mother_of_all_models' with version '1.0.0'. "
+        "You can upgrade to version '1.2.3' to get the latest model specifications. "
+        "Note that models may have different input/output signatures after a major "
         "version upgrade." == get_old_model_version_msg("mother_of_all_models", "1.0.0", "1.2.3")
     )

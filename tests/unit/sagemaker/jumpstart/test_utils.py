@@ -967,9 +967,9 @@ def test_jumpstart_old_model_spec(mock_get_manifest):
         )
 
         mocked_info_log.assert_called_once_with(
-            "Using model 'tensorflow-ic-imagenet-inception-v3-classification-4' with old version '1.0.0'. "
-            "Please consider upgrading to version '1.1.0'. Note that models may have different "
-            "input/output signatures after a major version upgrade."
+            "Using model 'tensorflow-ic-imagenet-inception-v3-classification-4' with version '1.0.0'. "
+            "You can upgrade to version '1.1.0' to get the latest model specifications. Note that models "
+            "may have different input/output signatures after a major version upgrade."
         )
 
         mocked_info_log.reset_mock()
@@ -1191,12 +1191,6 @@ class TestIsValidModelId(TestCase):
             mock_get_manifest.assert_called_once_with(
                 region=JUMPSTART_DEFAULT_REGION_NAME, s3_client=mock_s3_client_value
             )
-            mock_get_model_specs.assert_called_once_with(
-                region=JUMPSTART_DEFAULT_REGION_NAME,
-                model_id="bee",
-                version="*",
-                s3_client=mock_s3_client_value,
-            )
 
     @patch("sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor._get_manifest")
     @patch("sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -1254,13 +1248,7 @@ class TestIsValidModelId(TestCase):
             mock_get_model_specs.reset_mock()
 
             mock_get_model_specs.return_value = Mock(training_supported=False)
-            self.assertFalse(utils.is_valid_model_id("ay", script=JumpStartScriptScope.TRAINING))
+            self.assertTrue(utils.is_valid_model_id("ay", script=JumpStartScriptScope.TRAINING))
             mock_get_manifest.assert_called_once_with(
                 region=JUMPSTART_DEFAULT_REGION_NAME, s3_client=mock_s3_client_value
-            )
-            mock_get_model_specs.assert_called_once_with(
-                region=JUMPSTART_DEFAULT_REGION_NAME,
-                model_id="ay",
-                version="*",
-                s3_client=mock_s3_client_value,
             )
