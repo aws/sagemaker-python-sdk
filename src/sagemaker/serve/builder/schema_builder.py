@@ -87,12 +87,18 @@ class SchemaBuilder(TritonSchemaBuilder):
     ``CustomPayloadTranslator`` and provide it to ``SchemaBuilder``.
 
     Args:
-       sample_input (object): A sample of input.
-       sample_output (object): A sample of output.
-       input_translator (Optional[CustomPayloadTranslator]): A
-         ``CustomPayloadTranslator`` for translation of inputs.
-       output_translator (Optional[CustomPayloadTranslator]): A
-         ``CustomPayloadTranslator`` for translation of outputs.
+       sample_input (object): Sample input to the model which can be used
+           for testing. The schema builder internally generates the content
+           type and corresponding serializing functions.
+       sample_output (object): Sample output to the model which can be
+           used for testing. The schema builder internally generates
+           the accept type and corresponding serializing functions.
+       input_translator (Optional[CustomPayloadTranslator]): If you
+           want to define your own serialization method for the payload,
+           you can implement your functions for translation.
+       output_translator (Optional[CustomPayloadTranslator]): If
+           you want to define your own serialization method for the output,
+           you can implement your functions for translation.
     """
 
     def __init__(
