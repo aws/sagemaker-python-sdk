@@ -74,28 +74,59 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI):
         sagemaker_session (Optional[sagemaker.session.Session]): The
             SageMaker session to use for the execution.
         name (Optional[str]): The model name.
-        mode (Optional[Mode]): The following three modes are supported:
+        mode (Optional[Mode]): The mode of operation. The following
+            modes are supported:
 
-              * 1/Launch on SageMaker endpoint
-              * 2/Launch locally with a container
+            * ``Mode.SAGEMAKER_ENDPOINT``: Launch on a SageMaker endpoint
+            * ``Mode.LOCAL_CONTAINER``: Launch locally with a container
 
         shared_libs (List[str]): Any shared libraries you want to bring into
-            the model.
+            the model packaging.
         dependencies (Optional[Dict[str, Any]): The dependencies of the model
-            or container.
-        env_vars (Optional[Dict[str, str]): The environment variables.
-        log_level (Optional[int]): The log level.
-        content_type (Optional[str]): The content type of the endpoint input data.
+            or container. Takes a dict as an input where you can specify
+            autocapture as ``True`` or ``False``, a requirements file, or custom
+            dependencies as a list. A sample ``dependencies`` dict:
+
+            .. code:: python
+
+                {
+                    "auto": False,
+                    "requirements": "/path/to/requirements.txt",
+                    "custom": ["custom_module==1.2.3",
+                      "other_module@http://some/website.whl"],
+                }
+
+        env_vars (Optional[Dict[str, str]): The environment variables for the runtime
+            execution.
+        log_level (Optional[int]): The log level. Possible values are ``CRITICAL``,
+            ``ERROR``, ``WARNING``, ``INFO``, ``DEBUG``, and ``NOTSET``.
+        content_type (Optional[str]): The content type of the endpoint input data. This value
+            is automatically derived from the input sample, but you can override it.
         accept_type (Optional[str]): The content type of the data accepted from the endpoint.
+            This value is automatically derived from the output sample, but you can override
+            the value.
         s3_model_data_url (Optional[str]): The S3 location where you want to upload the model
-            package.
-        instance_type (Optional[str]): The instance_type of the endpoint.
-        schema_builder (Optional[SchemaBuilder]): The i/o schema of the model.
-        model (Optional[Union[object, str]): Model object with "predict" method to perform inference
-            or HuggingFace/JumpStart Model ID.
-        inference_spec (InferenceSpec): The inference spec file for all customizations.
-        image_uri (Optional[str]): The container image uri.
-        model_server (Optional[ModelServer]): The model server to deploy to.
+            package. Defaults to a S3 bucket prefixed with the account ID.
+        instance_type (Optional[str]): The instance type of the endpoint. Defaults to the CPU
+            instance type to help narrow the container type based on the instance family.
+        schema_builder (Optional[SchemaBuilder]): The input/output schema of the model.
+            The schema builder translates the input into bytes and converts the response
+            into a stream. All translations between the server and the client are handled
+            automatically with the specified input and output.
+        model (Optional[Union[object, str]): Model object (with ``predict`` method to perform
+            inference) or a HuggingFace/JumpStart Model ID. Either ``model`` or
+            ``inference_spec`` is required for the model builder to build the artifact.
+        inference_spec (InferenceSpec): The inference spec file with your customized
+            ``invoke`` and ``load`` functions.
+        image_uri (Optional[str]): The container image uri (which is derived from a
+            SageMaker-based container).
+        model_server (Optional[ModelServer]): The model server to which to deploy.
+            You need to provide this argument when you specify an ``image_uri``
+            in order for model builder to build the artifacts correctly (according
+            to the model server). Possible values for this argument are
+            ``TORCHSERVE``, ``MMS``, ``TENSORFLOW_SERVING``, ``DJL_SERVING``,
+            ``TRITON``, and ``TGI``.
+
     """
 
     model_path: Optional[str] = field(
