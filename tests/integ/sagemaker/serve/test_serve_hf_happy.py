@@ -12,18 +12,26 @@
 # language governing permissions and limitations under the License.
 # from __future__ import absolute_import
 
+# import os
 # import pytest
-# from sagemaker.serve.builder.model_builder import ModelBuilder, Mode, ModelServer
+# import platform
+# from sagemaker.serve.builder.model_builder import ModelBuilder, Mode, ModelServer, InferenceSpec
 # from sagemaker.serve.builder.schema_builder import SchemaBuilder
 # from sagemaker import image_uris
 # from tests.integ.sagemaker.serve.constants import (
 #     SERVE_LOCAL_CONTAINER_TIMEOUT,
 #     SERVE_SAGEMAKER_ENDPOINT_TIMEOUT,
+#     NOT_RUNNING_ON_PY310,
+#     NOT_RUNNING_ON_INF_EXP_DEV_PIPELINE,
+#     HF_DIR,
 # )
 
 # from tests.integ.timeout import timeout
 # from tests.integ.utils import cleanup_model_resources
 # import logging
+
+# if platform.python_version_tuple()[1] == "10":
+#     from transformers import T5Tokenizer, T5ForConditionalGeneration
 
 # logger = logging.getLogger(__name__)
 
@@ -31,6 +39,31 @@
 # HF_SAMPLE_ENG_INPUT = "translate English to French: hello world"
 # HF_SAMPLE_FR_OUTPUT = "bonjour monde"
 # ROLE_NAME = "SageMakerRole"
+
+# GH_USER_NAME = os.getenv("GH_USER_NAME")
+# GH_ACCESS_TOKEN = os.getenv("GH_ACCESS_TOKEN")
+
+
+# @pytest.fixture
+# def huggingface_inference_spec():
+#     class HuggingFaceModel(InferenceSpec):
+#         def load(self, model_dir: str):
+#             logger.info("Loading model!")
+#             tokenizer = T5Tokenizer.from_pretrained("t5-small")
+#             model = T5ForConditionalGeneration.from_pretrained("t5-small")
+#             logger.info(f"model loaded {model}, {tokenizer}")
+#             return {"model": model, "tokenizer": tokenizer}
+
+#         def invoke(self, input_data: object, model: object):
+#             tokenizer = model["tokenizer"]
+#             t5_model = model["model"]
+
+#             input_ids = tokenizer(input_data, return_tensors="pt").input_ids
+#             outputs = t5_model.generate(input_ids)
+
+#             return tokenizer.decode(outputs[0], skip_special_tokens=True)
+
+#     return HuggingFaceModel()
 
 
 # @pytest.fixture
@@ -48,12 +81,24 @@
 # @pytest.fixture
 # def model_builder_inference_spec_schema_builder(huggingface_inference_spec, pt_dlc):
 #     return ModelBuilder(
+#         model_path=HF_DIR,
 #         inference_spec=huggingface_inference_spec,
 #         schema_builder=SchemaBuilder(HF_SAMPLE_ENG_INPUT, HF_SAMPLE_FR_OUTPUT),
 #         image_uri=pt_dlc,
 #         model_server=ModelServer.TORCHSERVE,
 #         env_vars={
 #             "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+#         },
+#         dependencies={
+#             "auto": False,
+#             "custom": [
+#                 "transformers==4.35.*",
+#                 "sentencepiece==0.1.*",
+#                 (
+#                     f"git+https://{GH_USER_NAME}:{GH_ACCESS_TOKEN}@github.com"
+#                     "/aws/sagemaker-python-sdk-staging.git@inference-experience-dev"
+#                 ),
+#             ],
 #         },
 #     )
 
@@ -64,7 +109,7 @@
 
 
 # @pytest.mark.skipif(
-#     True,
+#     NOT_RUNNING_ON_INF_EXP_DEV_PIPELINE or NOT_RUNNING_ON_PY310,
 #     reason="The goal of these test are to test the serving components of our feature",
 # )
 # @pytest.mark.parametrize(
@@ -94,7 +139,7 @@
 
 
 # @pytest.mark.skipif(
-#     True,
+#     NOT_RUNNING_ON_INF_EXP_DEV_PIPELINE or NOT_RUNNING_ON_PY310,
 #     reason="The goal of these test are to test the serving components of our feature",
 # )
 # @pytest.mark.parametrize(

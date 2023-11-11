@@ -47,6 +47,7 @@ class SageMakerEndpointMode(
         s3_model_data_url: str = None,
         sagemaker_session: Session = None,
         image: str = None,
+        jumpstart: bool = False,
     ):
         """Placeholder docstring"""
         try:
@@ -89,6 +90,7 @@ class SageMakerEndpointMode(
                 sagemaker_session=sagemaker_session,
                 s3_model_data_url=s3_model_data_url,
                 image=image,
+                jumpstart=jumpstart,
             )
 
         raise ValueError("%s model server is not supported" % self.model_server)

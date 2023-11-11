@@ -36,4 +36,6 @@ transformers==4.32.0
 sentencepiece==0.1.99
 # https://github.com/triton-inference-server/server/issues/6246
 tritonclient[http]<2.37.0
+onnx==1.14.1
+# tf2onnx==1.15.1
 nbformat>=5.9,<6

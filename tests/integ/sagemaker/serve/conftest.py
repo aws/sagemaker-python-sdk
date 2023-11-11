@@ -19,8 +19,6 @@
 # from numpy import loadtxt
 # from sagemaker.serve.spec.inference_spec import InferenceSpec
 
-# if platform.python_version_tuple()[1] == "10":
-#     from transformers import T5Tokenizer, T5ForConditionalGeneration
 # if platform.python_version_tuple()[1] == "8":
 #     from xgboost import XGBClassifier
 #     from sklearn.model_selection import train_test_split
@@ -56,27 +54,6 @@
 #             return predictions
 
 #     return MyXGBoostModel()
-
-
-# @pytest.fixture(scope="session")
-# def huggingface_inference_spec():
-#     class HuggingFaceModel(InferenceSpec):
-#         def load(self, model_dir: str):
-#             tokenizer = T5Tokenizer.from_pretrained("t5-small")
-#             model = T5ForConditionalGeneration.from_pretrained("t5-small")
-
-#             return {"model": model, "tokenizer": tokenizer}
-
-#         def invoke(self, input: object, model: object):
-#             tokenizer = model["tokenizer"]
-#             t5_model = model["model"]
-
-#             input_ids = tokenizer(input, return_tensors="pt").input_ids
-#             outputs = t5_model.generate(input_ids)
-
-#             return tokenizer.decode(outputs[0], skip_special_tokens=True)
-
-#     return HuggingFaceModel()
 
 
 # @pytest.fixture(scope="session")

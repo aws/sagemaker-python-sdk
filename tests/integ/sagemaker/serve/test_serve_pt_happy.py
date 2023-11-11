@@ -26,7 +26,8 @@
 # from tests.integ.sagemaker.serve.constants import (
 #     PYTORCH_SQUEEZENET_RESOURCE_DIR,
 #     SERVE_SAGEMAKER_ENDPOINT_TIMEOUT,
-#     SERVE_LOCAL_CONTAINER_TIMEOUT,
+#     NOT_RUNNING_ON_INF_EXP_DEV_PIPELINE,
+#     NOT_RUNNING_ON_PY310,
 # )
 # from tests.integ.timeout import timeout
 # from tests.integ.utils import cleanup_model_resources
@@ -34,12 +35,26 @@
 
 # logger = logging.getLogger(__name__)
 
-# ROLE_NAME = "SageMakerRole"
+# ROLE_NAME = "Admin"
+
+# GH_USER_NAME = os.getenv("GH_USER_NAME")
+# GH_ACCESS_TOKEN = os.getenv("GH_ACCESS_TOKEN")
 
 
 # @pytest.fixture
 # def pt_dependencies():
-#     return {"auto": True, "custom": ["boto3==1.26.*", "botocore==1.29.*", "s3transfer==0.6.*"]}
+#     return {
+#         "auto": True,
+#         "custom": [
+#             "boto3==1.26.*",
+#             "botocore==1.29.*",
+#             "s3transfer==0.6.*",
+#             (
+#                 f"git+https://{GH_USER_NAME}:{GH_ACCESS_TOKEN}@github.com"
+#                 "/aws/sagemaker-python-sdk-staging.git@inference-experience-dev"
+#             ),
+#         ],
+#     }
 
 
 # @pytest.fixture
@@ -104,7 +119,7 @@
 
 
 # @pytest.mark.skipif(
-#     True,
+#     NOT_RUNNING_ON_INF_EXP_DEV_PIPELINE or NOT_RUNNING_ON_PY310,
 #     reason="The goal of these test are to test the serving components of our feature",
 # )
 # @pytest.mark.parametrize(
@@ -135,7 +150,7 @@
 
 
 # @pytest.mark.skipif(
-#     True,
+#     NOT_RUNNING_ON_INF_EXP_DEV_PIPELINE or NOT_RUNNING_ON_PY310,
 #     reason="The goal of these test are to test the serving components of our feature",
 # )
 # @pytest.mark.parametrize(
@@ -176,7 +191,7 @@
 
 
 # @pytest.mark.skipif(
-#     True,
+#     NOT_RUNNING_ON_INF_EXP_DEV_PIPELINE or NOT_RUNNING_ON_PY310,
 #     reason="The goal of these test are to test the serving components of our feature",
 # )
 # @pytest.mark.parametrize(
@@ -222,7 +237,7 @@
 
 
 # @pytest.mark.skipif(
-#     True,
+#     NOT_RUNNING_ON_INF_EXP_DEV_PIPELINE or NOT_RUNNING_ON_PY310,
 #     reason="The goal of these test are to test the serving components of our feature",
 # )
 # @pytest.mark.parametrize(

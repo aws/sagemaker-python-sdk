@@ -9,6 +9,7 @@ from sagemaker.serve.utils.exceptions import (
     LocalModelLoadException,
     LocalModelOutOfMemoryException,
     LocalModelInvocationException,
+    SkipTuningComboException,
 )
 
 logger = logging.getLogger(__name__)
@@ -61,6 +62,10 @@ def pull_logs(generator, stop, until, final_pull):
                 raise LocalModelInvocationException(top)
             if "[ERROR]" in top or "Failed register workflow" in top:
                 raise LocalModelLoadException(top)
+            if "Address already in use" in top:
+                raise LocalModelLoadException(top)
+            if "not compatible with sharding" in top:
+                raise SkipTuningComboException(top)
         except (
             LocalModelLoadException,
             LocalModelOutOfMemoryException,

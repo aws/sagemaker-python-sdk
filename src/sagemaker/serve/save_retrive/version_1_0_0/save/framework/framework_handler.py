@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 from abc import ABC, abstractmethod
 from typing import Type
+from sagemaker import Session
 from sagemaker.model import Model
 
 
@@ -30,5 +31,7 @@ class FrameworkHandler(ABC):
         """Placeholder docstring"""
 
     @abstractmethod
-    def get_pysdk_model(self) -> Type[Model]:
+    def get_pysdk_model(
+        self, s3_path: str, role_arn: str, sagemaker_session: Session
+    ) -> Type[Model]:
         """Placeholder docstring"""

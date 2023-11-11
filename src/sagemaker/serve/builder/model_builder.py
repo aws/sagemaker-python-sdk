@@ -1,3 +1,15 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
 """Holds the ModelBuilder class and the ModelServer enum."""
 from __future__ import absolute_import
 import uuid
@@ -17,20 +29,30 @@ from sagemaker.serve.builder.schema_builder import SchemaBuilder
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.mode.sagemaker_endpoint_mode import SageMakerEndpointMode
 from sagemaker.serve.mode.local_container_mode import LocalContainerMode
-from sagemaker.serve.detector.pickler import save_pkl
+from sagemaker.serve.detector.pickler import save_pkl, save_xgboost
 from sagemaker.serve.builder.serve_settings import _ServeSettings
 from sagemaker.serve.builder.djl_builder import DJL
+from sagemaker.serve.builder.tgi_builder import TGI
 from sagemaker.serve.builder.jumpstart_builder import JumpStart
 from sagemaker.predictor import Predictor
+from sagemaker.serve.save_retrive.version_1_0_0.metadata.metadata import Metadata
 from sagemaker.serve.spec.inference_spec import InferenceSpec
 from sagemaker.serve.utils.predictors import _get_local_mode_predictor
-from sagemaker.serve.detector.image_detector import auto_detect_container
+from sagemaker.serve.detector.image_detector import (
+    auto_detect_container,
+    _detect_framework_and_version,
+    _get_model_base,
+)
 from sagemaker.serve.model_server.torchserve.prepare import prepare_for_torchserve
 from sagemaker.serve.model_server.triton.triton_builder import Triton
 from sagemaker.serve.utils.telemetry_logger import _capture_telemetry
 from sagemaker.serve.utils.types import ModelServer
+from sagemaker.serve.validations.check_image_uri import is_1p_image_uri
 from sagemaker.serve.save_retrive.version_1_0_0.save.save_handler import SaveHandler
 from sagemaker.serve.save_retrive.version_1_0_0.metadata.metadata import get_metadata
+from sagemaker.serve.validations.check_image_and_hardware_type import (
+    validate_image_uri_and_hardware,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +65,7 @@ supported_model_server = {
 
 # pylint: disable=attribute-defined-outside-init
 @dataclass
-class ModelBuilder(Triton, DJL, JumpStart):
+class ModelBuilder(Triton, DJL, JumpStart, TGI):
     """Class that builds a deployable model.
 
     Args:
@@ -105,7 +127,7 @@ class ModelBuilder(Triton, DJL, JumpStart):
         metadata={"help": "Define any shared lib you want to bring into the model " "packaging"},
     )
     dependencies: Optional[Dict[str, Any]] = field(
-        default_factory=lambda: {"auto": True},
+        default_factory=lambda: {"auto": False},
         metadata={"help": "Define the dependencies of the model/container"},
     )
     env_vars: Optional[Dict[str, str]] = field(
@@ -163,10 +185,10 @@ class ModelBuilder(Triton, DJL, JumpStart):
         if self.inference_spec and self.model:
             raise ValueError("Cannot have both the Model and Inference spec in the builder")
 
-        if self.image_uri and self.model_server is None:
+        if self.image_uri and not is_1p_image_uri(self.image_uri) and self.model_server is None:
             raise ValueError(
-                "Model_server must be set when image_uri is set. Supported model servers: %s"
-                % supported_model_server
+                "Model_server must be set when non-first-party image_uri is set. "
+                + "Supported model servers: %s" % supported_model_server
             )
 
         # Set TorchServe as default model server
@@ -190,9 +212,21 @@ class ModelBuilder(Triton, DJL, JumpStart):
         if self.inference_spec:
             save_pkl(code_path, (self.inference_spec, self.schema_builder))
         elif self.model:
-            save_pkl(code_path, (self.model, self.schema_builder))
+            self._framework, _ = _detect_framework_and_version(str(_get_model_base(self.model)))
+            self.env_vars.update(
+                {
+                    "MODEL_CLASS_NAME": f"{self.model.__class__.__module__}.{self.model.__class__.__name__}"
+                }
+            )
+
+            # TODO: use framework built-in method to save and load the model for all frameworks
+            if self._framework == "xgboost":
+                save_xgboost(code_path, self.model)
+                save_pkl(code_path, (self._framework, self.schema_builder))
+            else:
+                save_pkl(code_path, (self.model, self.schema_builder))
         else:
-            raise Exception("Cannot detect required model or inference spec")
+            raise ValueError("Cannot detect required model or inference spec")
 
     def _auto_detect_container(self):
         """Placeholder docstring"""
@@ -212,7 +246,8 @@ class ModelBuilder(Triton, DJL, JumpStart):
             self.image_uri = auto_detect_container(
                 self.model, self.sagemaker_session.boto_region_name, self.instance_type
             )
-        else:
+
+        elif self.inference_spec:
             # TODO: this won't work for larger image.
             # Fail and let the customer include the image uri
             logger.warning(
@@ -224,6 +259,8 @@ class ModelBuilder(Triton, DJL, JumpStart):
                 self.sagemaker_session.boto_region_name,
                 self.instance_type,
             )
+        else:
+            raise ValueError("Cannot detect required model or inference spec")
 
     def _get_serve_setting(self):
         """Placeholder docstring"""
@@ -252,6 +289,7 @@ class ModelBuilder(Triton, DJL, JumpStart):
                 self.serve_settings.s3_model_data_url,
                 self.sagemaker_session,
                 self.image_uri,
+                self.jumpstart if hasattr(self, "jumpstart") else False,
             )
             self.env_vars.update(env_vars_sagemaker)
             return self.s3_upload_path, env_vars_sagemaker
@@ -355,22 +393,28 @@ class ModelBuilder(Triton, DJL, JumpStart):
     def _model_builder_deploy_model_package_wrapper(self, *args, **kwargs):
         """Placeholder docstring"""
         if self.pysdk_model.model_package_arn is not None:
-            return self._model_builder_register_wrapper(*args, **kwargs)
+            return self._model_builder_deploy_wrapper(*args, **kwargs)
 
         # need to set the model_package_arn
         # so that the model is created using the model_package's configs
         self.pysdk_model.model_package_arn = self.model_package.model_package_arn
-        predictor = self._model_builder_register_wrapper(*args, **kwargs)
+        predictor = self._model_builder_deploy_wrapper(*args, **kwargs)
         self.pysdk_model.model_package_arn = None
         return predictor
 
     @_capture_telemetry("torchserve.deploy")
     def _model_builder_deploy_wrapper(
-        self, *args, container_timeout_in_second: int = 300, **kwargs
+        self,
+        *args,
+        container_timeout_in_second: int = 300,
+        instance_type: str = None,
+        initial_instance_count: int = None,
+        mode: str = None,
+        **kwargs,
     ) -> Type[PredictorBase]:
         """Placeholder docstring"""
-        if "mode" in kwargs and kwargs.get("mode") != self.mode:
-            self._overwrite_mode_in_deploy(overwrite_mode=kwargs.get("mode"))
+        if mode and mode != self.mode:
+            self._overwrite_mode_in_deploy(overwrite_mode=mode)
 
         if self.mode == Mode.LOCAL_CONTAINER:
             serializer, deserializer = self._get_client_translators()
@@ -385,9 +429,29 @@ class ModelBuilder(Triton, DJL, JumpStart):
                 self.image_uri, container_timeout_in_second, self.secret_key, predictor
             )
             return predictor
+        if self.mode == Mode.SAGEMAKER_ENDPOINT:
+            # Validate parameters
+            if not instance_type:
+                raise ValueError("Missing required parameter `instance_type`")
 
-        kwargs["endpoint_logging"] = True
-        return self._original_deploy(*args, **kwargs)
+            if not initial_instance_count:
+                raise ValueError("Missing required parameter `initial_instance_count`")
+
+            if is_1p_image_uri(image_uri=self.image_uri):
+                validate_image_uri_and_hardware(
+                    image_uri=self.image_uri,
+                    instance_type=instance_type,
+                    model_server=self.model_server,
+                )
+
+        if "endpoint_logging" not in kwargs:
+            kwargs["endpoint_logging"] = True
+        return self._original_deploy(
+            *args,
+            instance_type=instance_type,
+            initial_instance_count=initial_instance_count,
+            **kwargs,
+        )
 
     def _overwrite_mode_in_deploy(self, overwrite_mode: str):
         """Mode overwritten by customer during model.deploy()"""
@@ -463,8 +527,11 @@ class ModelBuilder(Triton, DJL, JumpStart):
             self.mode = mode
         if role_arn:
             self.role_arn = role_arn
+        if sagemaker_session:
+            self.sagemaker_session = sagemaker_session
+        elif not self.sagemaker_session:
+            self.sagemaker_session = Session()
 
-        self.sagemaker_session = sagemaker_session if sagemaker_session else Session()
         self.sagemaker_session.settings._local_download_dir = self.model_path
 
         # https://github.com/boto/botocore/blob/develop/botocore/useragent.py#L258
@@ -479,7 +546,9 @@ class ModelBuilder(Triton, DJL, JumpStart):
         if isinstance(self.model, str):
             if self._is_jumpstart_model_id():
                 return self._build_for_jumpstart()
-            return self._build_for_djl()
+            if self._is_djl():
+                return self._build_for_djl()
+            return self._build_for_tgi()
 
         self._build_validations()
 
@@ -491,8 +560,14 @@ class ModelBuilder(Triton, DJL, JumpStart):
 
         raise ValueError("%s model server is not supported" % self.model_server)
 
-    def save(self, save_path: Optional[str] = None, s3_path: Optional[str] = None) -> Type[Model]:
-        """Captures the model, its attributes, and parameters used during its build.
+    def save(
+        self,
+        save_path: Optional[str] = None,
+        s3_path: Optional[str] = None,
+        sagemaker_session: Optional[str] = None,
+        role_arn: Optional[str] = None,
+    ) -> Type[Model]:
+        """WARNING: This function is expremental and not intended for production use.
 
         This function is available for models served by DJL serving.
 
@@ -500,6 +575,11 @@ class ModelBuilder(Triton, DJL, JumpStart):
             save_path (Optional[str]): The path where you want to save resources.
             s3_path (Optional[str]): The path where you want to upload resources.
         """
+        self.sagemaker_session = sagemaker_session if sagemaker_session else Session()
+
+        if role_arn:
+            self.role_arn = role_arn
+
         save_handler = SaveHandler(
             model=self.model,
             schema_builder=self.schema_builder,
@@ -508,6 +588,8 @@ class ModelBuilder(Triton, DJL, JumpStart):
             save_path=save_path,
             s3_path=s3_path,
             sagemaker_session=self.sagemaker_session,
+            role_arn=self.role_arn,
+            metadata=Metadata(),
         )
 
         return save_handler.save()
@@ -521,15 +603,3 @@ class ModelBuilder(Triton, DJL, JumpStart):
         """
 
         return get_metadata(model_dir)
-
-    def retrive(self) -> Type[InferenceSpec]:
-        """WARNING: This function is expremental and not intended for production use.
-
-        The intention of this function is to retrive the model that is saved using
-        save() function. This function is not intended to be used for
-        production use now and is subject to change.
-
-        We will be using this function to retrive the model in each model server
-        """
-
-        raise NotImplementedError("retrive() is not implemented yet!")

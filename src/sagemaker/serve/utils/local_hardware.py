@@ -3,8 +3,11 @@ from __future__ import absolute_import
 
 import subprocess
 import multiprocessing
-from math import ceil, floor
 import logging
+import shutil
+from math import ceil, floor
+from platform import system
+from pathlib import Path
 import psutil
 
 logger = logging.getLogger(__name__)
@@ -102,3 +105,54 @@ def _get_nb_instance():
 def _get_ram_usage_mb():
     """Placeholder docstring"""
     return psutil.virtual_memory()[3] / 1000000
+
+
+def _check_disk_space(model_path: str):
+    """Placeholder docstring"""
+    usage = shutil.disk_usage(model_path)
+    percentage_used = usage[1] / usage[0]
+    if percentage_used >= 0.5:
+        logger.warning(
+            "%s percent of disk space used. Please consider freeing up disk space "
+            "or increasing the EBS volume if you are on a SageMaker Notebook.",
+            percentage_used * 100,
+        )
+
+
+def _check_docker_disk_usage():
+    """Fetch the local docker container disk usage.
+
+    Args:
+        None
+    Returns:
+        None
+    """
+    try:
+        docker_path = "/var/lib/docker"
+        # Windows, MacOS and Linux based docker installations work differently.
+        if system().lower() == "windows":
+            docker_path = str(Path.home()) + "C:\\ProgramData\\Docker"
+        elif system().lower() == "darwin":
+            docker_path = str(Path.home()) + "/Library/Containers/com.docker.docker/Data/vms/0/"
+        elif system().lower() == "linux":
+            docker_path = "/var/lib/docker"
+        usage = shutil.disk_usage(docker_path)
+        percentage_used = usage[1] / usage[0]
+        if percentage_used >= 0.5:
+            logger.warning(
+                "%s percent of docker disk space at %s is used. "
+                "Please consider freeing up disk space or increasing the EBS volume if you "
+                "are on a SageMaker Notebook.",
+                percentage_used * 100,
+                docker_path,
+            )
+        else:
+            logger.info(
+                "%s percent of docker disk space at %s is used.", percentage_used * 100, docker_path
+            )
+    except Exception as e:  # pylint: disable=W0703
+        logger.warning(
+            "Unable to check docker volume utilization at the expected path %s. %s",
+            docker_path,
+            str(e),
+        )

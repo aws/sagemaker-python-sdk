@@ -21,7 +21,6 @@ import json
 import numpy as np
 from pandas import DataFrame
 from six import with_metaclass
-import cloudpickle
 
 from sagemaker.utils import DeferredError
 
@@ -465,27 +464,3 @@ class TorchTensorSerializer(SimpleBaseSerializer):
                 )
 
         raise ValueError("Object of type %s is not a torch.Tensor" % type(data))
-
-
-class PickleSerializer(SimpleBaseSerializer):
-    """Serialize an arbitrary object using cloudpickle module."""
-
-    def __init__(self, content_type="application/x-pkl"):
-        super(PickleSerializer, self).__init__(content_type)
-
-    def serialize(self, data: object) -> bytes:
-        """Serialize an arbitrary object using cloudpickle module.
-
-        Args:
-            data (object): Data to be serialized. The data must be of torch.Tensor type.
-        Returns:
-            raw-bytes: The data serialized as raw-bytes from the input.
-        """
-        try:
-            return cloudpickle.dumps(data)
-        except Exception:
-            raise ValueError(
-                "Cannot serialize your object of type %s into bytes with cloudpickle.\
-                    Please provide custom serializer."
-                % type(data)
-            )

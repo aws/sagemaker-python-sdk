@@ -48,6 +48,8 @@ def _auto_detect_engine(model_id: str, hf_hub_token: str) -> tuple:
             "The provided HuggingFace Model ID could not be accessed from HuggingFace Hub. %s",
             str(e),
         )
+    except ValueError as e:
+        raise e
     except Exception as e:
         logger.warning(
             "Unable to detect the model's architecture: %s. Defaulting to HuggingFaceAccelerate."

@@ -29,3 +29,14 @@ class _DjlEngine(Enum):
     DEEPSPEED = 1
     FASTER_TRANSFORMER = 2
     HUGGINGFACE_ACCELERATE = 3
+
+
+class HardwareType(Enum):
+    """An enum for hardware type"""
+
+    def __str__(self) -> str:
+        """Placeholder docstring"""
+        return str(self.name)
+
+    CPU = 1
+    GPU = 2

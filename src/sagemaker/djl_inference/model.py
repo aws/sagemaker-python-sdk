@@ -180,6 +180,11 @@ def _get_model_config_properties_from_hf(model_id: str, hf_hub_token: str = None
                 model_config = json.load(response)
                 break
         except (HTTPError, URLError, TimeoutError, JSONDecodeError) as e:
+            if "HTTP Error 401: Unauthorized" in str(e):
+                raise ValueError(
+                    "Trying to access a gated/private HuggingFace model without valid credentials. "
+                    "Please provide a HUGGING_FACE_HUB_TOKEN in env_vars"
+                )
             logger.warning(
                 "Exception encountered while trying to read config file %s. " "Details: %s",
                 config_file_url,

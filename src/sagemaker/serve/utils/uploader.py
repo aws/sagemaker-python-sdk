@@ -1,15 +1,15 @@
 """Upload model artifacts to S3"""
 from __future__ import absolute_import
 import logging
-import multiprocessing as mp
 import os
-import tarfile
+import tempfile
 import botocore
 import boto3
 import tqdm
 from sagemaker.session import Session
 from sagemaker.s3_utils import s3_path_join
 from sagemaker.s3 import S3Uploader
+from sagemaker.utils import create_tar_file
 
 logger = logging.getLogger(__name__)
 
@@ -43,8 +43,7 @@ class Uploader(object):
 
     def upload(
         self,
-        input_fileno: int,
-        output_fileno: int,
+        model_dir,
         total_size: int,
         credentials: botocore.credentials.Credentials,
         region_name: str,
@@ -52,22 +51,25 @@ class Uploader(object):
         key: str,
     ):
         """Compress and upload the model tar object to S3"""
-        os.close(output_fileno)
         self.total_left = total_size
         with tqdm.tqdm(
             total=total_size, desc="Uploading model artifacts", unit="bytes", ncols=100
         ) as self.pbar:
-            with os.fdopen(input_fileno, mode="rb") as input_fileobj:
-                s3 = boto3.session.Session(
-                    region_name=region_name,
-                    aws_access_key_id=credentials.access_key,
-                    aws_secret_access_key=credentials.secret_key,
-                    aws_session_token=credentials.token,
-                ).client("s3")
-                s3.upload_fileobj(input_fileobj, bucket, key, Callback=self.observe)
-                self.pbar.update(self.total_left)
-                self.pbar.close()
-                self.pbar = None
+            files = [os.path.join(model_dir, name) for name in os.listdir(model_dir)]
+            temp = tempfile.mkdtemp()
+            tar_file = create_tar_file(files, os.path.join(temp, "model.tar.gz"))
+
+            s3 = boto3.session.Session(
+                region_name=region_name,
+                aws_access_key_id=credentials.access_key,
+                aws_secret_access_key=credentials.secret_key,
+                aws_session_token=credentials.token,
+            ).client("s3")
+            s3.upload_file(os.path.join(temp, "model.tar.gz"), bucket, key, Callback=self.observe)
+            os.remove(tar_file)
+            self.pbar.update(self.total_left)
+            self.pbar.close()
+            self.pbar = None
 
     def upload_uncompressed(
         self,
@@ -94,28 +96,15 @@ class Uploader(object):
 def upload(sagemaker_session: Session, model_dir: str, bucket: str, key_prefix: str) -> str:
     """Wrapper function of method upload"""
     key = key_prefix + "/serve.tar.gz"
-    input_fileno, output_fileno = os.pipe()
     uploader = Uploader()
-    p = mp.Process(
-        target=uploader.upload,
-        args=(
-            input_fileno,
-            output_fileno,
-            _get_dir_size(model_dir),
-            sagemaker_session.boto_session.get_credentials(),
-            sagemaker_session.boto_session.region_name,
-            bucket,
-            key,
-        ),
+    uploader.upload(
+        model_dir,
+        _get_dir_size(model_dir),
+        sagemaker_session.boto_session.get_credentials(),
+        sagemaker_session.boto_session.region_name,
+        bucket,
+        key,
     )
-    p.start()
-
-    os.close(input_fileno)
-    with os.fdopen(output_fileno, mode="ab") as output_fileobj:
-        with tarfile.open(fileobj=output_fileobj, mode="w|gz", bufsize=BUF_SIZE) as tar:
-            tar.add(model_dir, arcname="./")
-
-    p.join()
     return s3_path_join("s3://", bucket, key)
 
 

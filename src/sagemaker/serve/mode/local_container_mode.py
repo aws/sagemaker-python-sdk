@@ -81,12 +81,15 @@ class LocalContainerMode(LocalTorchServe, LocalDJLServing, LocalTritonServer, Lo
         predictor: PredictorBase,
         env_vars: Dict[str, str] = None,
         model_path: str = None,
+        jumpstart: bool = False,
     ):
         """Placeholder docstring"""
 
         self._pull_image(image=image)
 
         self.destroy_server()
+
+        logger.info("Waiting for model server %s to start up...", self.model_server)
 
         if self.model_server == ModelServer.TRITON:
             self._start_triton_server(
@@ -122,6 +125,7 @@ class LocalContainerMode(LocalTorchServe, LocalDJLServing, LocalTritonServer, Lo
                 model_path=model_path if model_path else self.model_path,
                 secret_key=secret_key,
                 env_vars=env_vars if env_vars else self.env_vars,
+                jumpstart=jumpstart,
             )
             self._ping_container = self._tgi_deep_ping
 
@@ -184,6 +188,7 @@ class LocalContainerMode(LocalTorchServe, LocalDJLServing, LocalTritonServer, Lo
 
         self.client = docker.from_env()
         try:
+            logger.info("Pulling image %s from repository...", image)
             self.client.images.pull(image)
         except docker.errors.NotFound:
             logger.warning("Could not find remote image to pull")

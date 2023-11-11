@@ -13,6 +13,9 @@
 # from __future__ import absolute_import
 
 # import pytest
+# import os
+
+# import docker
 # from sagemaker.serve.builder.model_builder import ModelBuilder, Mode
 # from sagemaker.serve.builder.schema_builder import SchemaBuilder
 # from tests.integ.sagemaker.serve.constants import (
@@ -21,6 +24,8 @@
 #     SERVE_SAGEMAKER_ENDPOINT_TIMEOUT,
 #     XGB_RESOURCE_DIR,
 #     SERVE_MODEL_PACKAGE_TIMEOUT,
+#     NOT_RUNNING_ON_INF_EXP_DEV_PIPELINE,
+#     NOT_RUNNING_ON_PY38,
 # )
 # from tests.integ.timeout import timeout
 # from tests.integ.utils import cleanup_model_resources
@@ -30,12 +35,41 @@
 
 # ROLE_NAME = "SageMakerRole"
 
+# GH_USER_NAME = os.getenv("GH_USER_NAME")
+# GH_ACCESS_TOKEN = os.getenv("GH_ACCESS_TOKEN")
+
+
+# def terminate_all_container():
+#     client = docker.from_env()
+#     # List all container IDs (including stopped containers)
+#     container_ids = [container.id for container in client.containers.list(all=True)]
+
+#     for container_id in container_ids:
+#         container = client.containers.get(container_id=container_id)
+#         container.stop()
+
+
+# @pytest.fixture(autouse=True)
+# def setup():
+#     # This code runs before each test
+#     terminate_all_container()
+#     yield
+
 
 # @pytest.fixture
 # def xgb_dependencies():
 #     return {
 #         "auto": True,
-#         "custom": ["protobuf==3.20.2", "boto3==1.26.*", "botocore==1.29.*", "s3transfer==0.6.*"],
+#         "custom": [
+#             "protobuf==3.20.2",
+#             "boto3==1.26.*",
+#             "botocore==1.29.*",
+#             "s3transfer==0.6.*",
+#             (
+#                 f"git+https://{GH_USER_NAME}:{GH_ACCESS_TOKEN}@github.com"
+#                 "/aws/sagemaker-python-sdk-staging.git@inference-experience-dev"
+#             ),
+#         ],
 #     }
 
 
@@ -82,7 +116,7 @@
 
 
 # @pytest.mark.skipif(
-#     True,
+#     NOT_RUNNING_ON_INF_EXP_DEV_PIPELINE or NOT_RUNNING_ON_PY38,
 #     reason="The goal of these test are to test the serving components of our feature",
 # )
 # @pytest.mark.parametrize(
@@ -93,6 +127,7 @@
 # def test_happy_xgb_local_container(sagemaker_session, xgb_test_sets, model_builder):
 #     logger.info("Running in LOCAL_CONTAINER mode...")
 #     caught_ex = None
+#     predictor = None
 #     model = model_builder.build(mode=Mode.LOCAL_CONTAINER, sagemaker_session=sagemaker_session)
 
 #     with timeout(minutes=SERVE_LOCAL_CONTAINER_TIMEOUT):
@@ -104,15 +139,15 @@
 #         except Exception as e:
 #             caught_ex = e
 #         finally:
-#             if model.modes[str(Mode.LOCAL_CONTAINER)].container:
-#                 model.modes[str(Mode.LOCAL_CONTAINER)].container.kill()
+#             if predictor:
+#                 predictor.delete_predictor()
 #             if caught_ex:
 #                 logger.exception(caught_ex)
 #                 assert False, f"{caught_ex} was thrown when running xgb local container test"
 
 
 # @pytest.mark.skipif(
-#     True,
+#     NOT_RUNNING_ON_INF_EXP_DEV_PIPELINE or NOT_RUNNING_ON_PY38,
 #     reason="The goal of these test are to test the serving components of our feature",
 # )
 # @pytest.mark.parametrize(
@@ -153,7 +188,7 @@
 
 
 # @pytest.mark.skipif(
-#     True,
+#     NOT_RUNNING_ON_INF_EXP_DEV_PIPELINE or NOT_RUNNING_ON_PY38,
 #     reason="The goal of these test are to test the serving components of our feature",
 # )
 # @pytest.mark.parametrize(
@@ -198,7 +233,7 @@
 
 
 # @pytest.mark.skipif(
-#     True,
+#     NOT_RUNNING_ON_INF_EXP_DEV_PIPELINE or NOT_RUNNING_ON_PY38,
 #     reason="The goal of these test are to test the serving components of our feature",
 # )
 # @pytest.mark.parametrize(

@@ -30,7 +30,6 @@ mock_session = Mock()
 
 class PrepareForTorchServeTests(TestCase):
     @patch("builtins.open", new_callable=mock_open, read_data=b"{}")
-    @patch("sagemaker.serve.model_server.torchserve.prepare.prepare_wheel")
     @patch("sagemaker.serve.model_server.torchserve.prepare._MetaData")
     @patch("sagemaker.serve.model_server.torchserve.prepare.compute_hash")
     @patch("sagemaker.serve.model_server.torchserve.prepare.generate_secret_key")
@@ -45,7 +44,6 @@ class PrepareForTorchServeTests(TestCase):
         mock_generate_secret_key,
         mock_compute_hash,
         mock_metadata,
-        mock_prepare_whl,
         mock_open,
     ):
 
@@ -65,4 +63,4 @@ class PrepareForTorchServeTests(TestCase):
 
         mock_path_instance.mkdir.assert_not_called()
         INFERENCE_SPEC.prepare.assert_called_once()
-        self.assertEquals(secret_key, SECRET_KEY)
+        self.assertEqual(secret_key, SECRET_KEY)

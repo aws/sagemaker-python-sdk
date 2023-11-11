@@ -1,3 +1,15 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
 """Placeholder docstring"""
 from __future__ import absolute_import
 
@@ -8,7 +20,7 @@ import logging
 from sagemaker.model import Model
 from sagemaker import model_uris
 from sagemaker.serve.model_server.djl_serving.prepare import prepare_djl_js_resources
-from sagemaker.serve.model_server.tgi.prepare import prepare_tgi_js_resources
+from sagemaker.serve.model_server.tgi.prepare import prepare_tgi_js_resources, _create_dir_structure
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.utils.predictors import (
     DjlLocalModePredictor,
@@ -20,7 +32,6 @@ from sagemaker.serve.utils.types import ModelServer
 from sagemaker.base_predictor import PredictorBase
 from sagemaker.jumpstart.model import JumpStartModel
 
-_JUMP_START_HUGGING_FACE_PREFIX = "huggingface"
 _DJL_MODEL_BUILDER_ENTRY_POINT = "inference.py"
 _NO_JS_MODEL_EX = "HuggingFace JumpStart Model ID not detected. Building for HuggingFace Model ID."
 _JS_SCOPE = "inference"
@@ -60,6 +71,7 @@ class JumpStart(ABC):
         self.schema_builder = None
         self.nb_instance_type = None
         self.ram_usage_model_load = None
+        self.jumpstart = None
 
     @abstractmethod
     def _prepare_for_mode(self):
@@ -74,10 +86,6 @@ class JumpStart(ABC):
         try:
             model_uris.retrieve(model_id=self.model, model_version="*", model_scope=_JS_SCOPE)
         except KeyError:
-            logger.warning(_NO_JS_MODEL_EX)
-            return False
-
-        if not self.model.startswith(_JUMP_START_HUGGING_FACE_PREFIX):
             logger.warning(_NO_JS_MODEL_EX)
             return False
 
@@ -156,17 +164,16 @@ class JumpStart(ABC):
                 None,
                 predictor,
                 self.pysdk_model.env,
+                jumpstart=True,
             )
             ram_usage_after = _get_ram_usage_mb()
 
             self.ram_usage_model_load = max(ram_usage_after - ram_usage_before, 0)
-            logger.info(
-                "RAM used to load the %s locally was %s MB", self.model, self.ram_usage_model_load
-            )
 
             return predictor
 
-        kwargs["endpoint_logging"] = True
+        if "endpoint_logging" not in kwargs:
+            kwargs["endpoint_logging"] = True
         if hasattr(self, "nb_instance_type"):
             kwargs.update({"instance_type": self.nb_instance_type})
 
@@ -186,6 +193,7 @@ class JumpStart(ABC):
         """Placeholder docstring"""
 
         env = {}
+        _create_dir_structure(self.model_path)
         if self.mode == Mode.LOCAL_CONTAINER:
             if not hasattr(self, "prepared_for_djl"):
                 (
@@ -227,6 +235,7 @@ class JumpStart(ABC):
         """Placeholder docstring"""
         # we do not pickle for jumpstart. set to none
         self.secret_key = None
+        self.jumpstart = True
 
         pysdk_model = self._create_pre_trained_js_model()
 

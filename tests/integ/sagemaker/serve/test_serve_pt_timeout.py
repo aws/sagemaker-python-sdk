@@ -26,6 +26,8 @@
 # from tests.integ.sagemaker.serve.constants import (
 #     PYTORCH_SQUEEZENET_RESOURCE_DIR,
 #     SERVE_LOCAL_CONTAINER_TIMEOUT,
+#     NOT_RUNNING_ON_INF_EXP_DEV_PIPELINE,
+#     NOT_RUNNING_ON_PY310,
 # )
 # from tests.integ.timeout import timeout
 # import logging
@@ -33,6 +35,9 @@
 # logger = logging.getLogger(__name__)
 
 # ROLE_NAME = "SageMakerRole"
+
+# GH_USER_NAME = os.getenv("GH_USER_NAME")
+# GH_ACCESS_TOKEN = os.getenv("GH_ACCESS_TOKEN")
 
 
 # @pytest.fixture
@@ -64,6 +69,19 @@
 
 
 # @pytest.fixture
+# def dependency_config():
+#     return {
+#         "auto": False,
+#         "custom": [
+#             (
+#                 f"git+https://{GH_USER_NAME}:{GH_ACCESS_TOKEN}@github.com"
+#                 "/aws/sagemaker-python-sdk-staging.git@inference-experience-dev"
+#             )
+#         ],
+#     }
+
+
+# @pytest.fixture
 # def model_builder_inference_spec_schema_builder(squeezenet_inference_spec, squeezenet_schema):
 #     return ModelBuilder(
 #         image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:2.0.0-cpu-py310",
@@ -80,7 +98,7 @@
 
 
 # @pytest.mark.skipif(
-#     True,
+#     NOT_RUNNING_ON_INF_EXP_DEV_PIPELINE or NOT_RUNNING_ON_PY310,
 #     reason="The goal of these test are to test the serving components of our feature",
 # )
 # @pytest.mark.parametrize(
@@ -98,7 +116,7 @@
 #             logger.info("Local container successfully deployed.")
 #             assert False, "do not expect this deployment to pass"
 #         except LocalModelLoadException as e:
-#             assert "Number or consecutive unsuccessful inference 1" in str(e)
+#             assert "Number or consecutive unsuccessful inference" in str(e)
 #         except Exception:
 #             assert False, "Exception was not of LocalModelLoadException"
 #         finally:

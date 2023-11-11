@@ -10,6 +10,7 @@ from functools import partial
 from sagemaker.serve.validations.check_integrity import perform_integrity_check
 from sagemaker.serve.spec.inference_spec import InferenceSpec
 from sagemaker.serve.detector.image_detector import _detect_framework_and_version, _get_model_base
+from sagemaker.serve.detector.pickler import load_xgboost_from_json
 import logging
 
 logger = logging.getLogger(__name__)
@@ -33,6 +34,13 @@ def model_fn(model_dir):
         obj = cloudpickle.load(file)
         if isinstance(obj[0], InferenceSpec):
             inference_spec, schema_builder = obj
+        elif isinstance(obj[0], str) and obj[0] == "xgboost":
+            model_class_name = os.getenv("MODEL_CLASS_NAME")
+            model_save_path = Path(__file__).parent.joinpath("model.json")
+            native_model = load_xgboost_from_json(
+                model_save_path=str(model_save_path), class_name=model_class_name
+            )
+            schema_builder = obj[1]
         else:
             native_model, schema_builder = obj
     if native_model:

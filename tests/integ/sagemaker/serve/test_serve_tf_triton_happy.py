@@ -27,6 +27,7 @@
 #     TF_EFFICIENT_RESOURCE_DIR,
 #     NOT_RUNNING_ON_PY310,
 #     SERVE_SAGEMAKER_ENDPOINT_TIMEOUT,
+#     NOT_RUNNING_ON_INF_EXP_DEV_PIPELINE,
 # )
 
 # from tests.integ.timeout import timeout
@@ -61,13 +62,19 @@
 
 
 # @pytest.fixture
-# def model_builder_model_schema_builder(efficientnet_model, efficientnet_schema):
+# def dependency_config():
+#     return {"auto": False, "custom": ["protobuf=3.20.*", "dill>=0.3.7"]}
+
+
+# @pytest.fixture
+# def model_builder_model_schema_builder(efficientnet_model, efficientnet_schema, dependency_config):
 #     return ModelBuilder(
 #         model_path=TF_EFFICIENT_RESOURCE_DIR,
 #         model=efficientnet_model,
 #         schema_builder=efficientnet_schema,
 #         image_uri="301217895009.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tritonserver:23.02-py3",
 #         model_server=ModelServer.TRITON,
+#         dependencies=dependency_config,
 #     )
 
 
@@ -77,7 +84,7 @@
 
 
 # @pytest.mark.skipif(
-#     NOT_RUNNING_ON_PY310,
+#     NOT_RUNNING_ON_INF_EXP_DEV_PIPELINE or NOT_RUNNING_ON_PY310,
 #     reason="The goal of these test are to test the serving components of our feature",
 # )
 # @pytest.mark.parametrize("model_builder", ["model_builder_model_schema_builder"], indirect=True)

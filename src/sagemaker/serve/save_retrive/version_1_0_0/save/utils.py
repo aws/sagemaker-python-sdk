@@ -9,11 +9,14 @@ import sys
 import platform
 from collections import defaultdict
 from pathlib import Path
+import tempfile
 import yaml
 
 from sagemaker.model import Model
 from sagemaker.session import Session
 from sagemaker.serve.builder.schema_builder import SchemaBuilder
+from sagemaker.s3_utils import parse_s3_url
+from sagemaker.utils import create_tar_file
 
 logger = logging.getLogger(__name__)
 
@@ -32,14 +35,23 @@ def save_yaml(path: str, obj: dict) -> None:
         yaml.dump(obj, file)
 
 
-def upload_to_s3(s3_path: str, local_path: str, session: Session) -> bool:
+def upload_to_s3(s3_path: str, local_path: str, session: Session) -> str:
     """Sync local path to S3 path using sagemaker session"""
     if not session or not s3_path or not local_path:
         logger.info("Skipping upload to s3. Missing required parameters")
-        return False
+        return ""
 
-    session.upload_data(path=local_path, key_prefix=s3_path)
-    return True
+    bucket, key_prefix = parse_s3_url(url=s3_path)
+    files = [os.path.join(local_path, name) for name in os.listdir(local_path)]
+    tmp = tempfile.mkdtemp(dir="/tmp")
+
+    tar_file = create_tar_file(files, os.path.join(tmp, "model.tar.gz"))
+    s3_model_url = session.upload_data(
+        path=os.path.join(tmp, "model.tar.gz"), bucket=bucket, key_prefix=key_prefix
+    )
+    os.remove(tar_file)
+    logger.info("Model file has uploaded to s3")
+    return s3_model_url
 
 
 def capture_schema(schema_path: str, schema_format: str, schema_builder: SchemaBuilder):
@@ -65,6 +77,26 @@ def capture_schema(schema_path: str, schema_format: str, schema_builder: SchemaB
 def capture_dependencies(requirements_path: str):
     """Placeholder docstring"""
     logger.info("Capturing dependencies...")
+
+    try:
+        import pigar
+
+        pigar.__version__  # pylint: disable=W0104
+    except ModuleNotFoundError:
+        logger.warning(
+            "pigar module is not installed in python environment, "
+            "dependency generation may be incomplete"
+            "Checkout the instructions on the installation page of its repo: "
+            "https://github.com/damnever/pigar "
+            "And follow the ones that match your environment."
+            "Please note that you may need to restart your runtime after installation."
+        )
+        import sagemaker
+
+        sagemaker_dependency = f"{sagemaker.__package__}=={sagemaker.__version__}"
+        with open(requirements_path, "w") as f:
+            f.write(sagemaker_dependency)
+        return
 
     command = f"pigar gen -f {Path(requirements_path)} {os.getcwd()}"
     logging.info("Running command %s", command)
@@ -146,3 +178,13 @@ def detect_framework_and_its_versions(model: object) -> bool:
     logger.info("Inferred framework and its version: %s %s", fw, vs)
 
     return [(fw, vs), py_tuple]
+
+
+def get_image_url(model_server: str) -> str:
+    """Placeholder docstring"""
+    supported_image = {
+        "DJLServing": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.25.0-cpu-full"
+    }
+    if model_server in supported_image:
+        return supported_image.get("model_server")
+    raise Exception("Model server specified is not supported in SageMaker save format")

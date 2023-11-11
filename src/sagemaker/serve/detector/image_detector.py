@@ -2,7 +2,9 @@
 from __future__ import absolute_import
 from typing import Tuple, List
 import platform
+import re
 import logging
+from packaging import version
 from sagemaker import image_uris
 
 logger = logging.getLogger(__name__)
@@ -37,66 +39,90 @@ def auto_detect_container(model, region: str, instance_type: str) -> str:
     logger.info("Autodetected framework is %s", fw)
     logger.info("Autodetected framework version is %s", fw_version)
 
-    try:
-        dlc = image_uris.retrieve(
-            framework=fw,
-            region=region,
-            version=fw_version if not fw_version else _cast_to_compatible_version(fw, fw_version),
-            image_scope="inference",
-            py_version=f"py{py_tuple[0]}{py_tuple[1]}",
-            instance_type=instance_type,
-        )
-    except ValueError as e:
-        logger.exception(e)
-        raise ValueError(
-            "Unable to auto detect a DLC for framework %s, framework version %s.\
-                Please manually provide image_uri to ModelBuilder()"
-            % (fw, fw_version)
-        )
+    casted_versions = _cast_to_compatible_version(fw, fw_version) if fw_version else (None,)
+    dlc = None
 
-    logger.info("Auto detected %s. Proceeding with the the deployment.", dlc)
+    for casted_version in casted_versions:
+        try:
+            dlc = image_uris.retrieve(
+                framework=fw,
+                region=region,
+                version=casted_version,
+                image_scope="inference",
+                py_version=f"py{py_tuple[0]}{py_tuple[1]}",
+                instance_type=instance_type,
+            )
+            break
+        except ValueError:
+            pass
 
-    return dlc
-
-
-def _cast_to_compatible_version(framework: str, fw_version: str) -> str:
-    """Placeholder docstring"""
-    config = image_uris._config_for_framework_and_scope(framework, "inference", None)
-    available_versions = list(config["versions"].keys())
-    earliest_upcast_version = None
-    latest_downcast_version = None
-
-    split_vs = list(map(int, fw_version.split(".")))
-
-    for version in available_versions:
-        up_cast, down_cast, found = _find_compatible_vs(split_vs, version)
-        if found:
-            logger.info("Framework version %s found in available versions", version)
-            return found
-        if up_cast:
-            if not earliest_upcast_version or _later_version(earliest_upcast_version, up_cast):
-                logger.info("set to %s", up_cast)
-                earliest_upcast_version = up_cast
-        if down_cast:
-            if not latest_downcast_version or not _later_version(
-                latest_downcast_version, down_cast
-            ):
-                latest_downcast_version = down_cast
-
-    if earliest_upcast_version:
-        logger.warning(_CASTING_WARNING, fw_version, available_versions)
-        return earliest_upcast_version
-
-    if latest_downcast_version:
-        logger.warning(_CASTING_WARNING, fw_version, available_versions)
-        return latest_downcast_version
+    if dlc:
+        logger.info("Auto detected %s. Proceeding with the the deployment.", dlc)
+        return dlc
 
     raise ValueError(
-        "Auto detection could not find a compatible DLC version mapped to framework %s,\
-            framework version %s. The available compatible versions\
-                are as follows %s."
-        % (framework, fw_version, available_versions)
+        (
+            "Unable to auto detect a DLC for framework %s, framework version %s "
+            "and python version %s. "
+            "Please manually provide image_uri to ModelBuilder()"
+        )
+        % (fw, f"py{py_tuple[0]}{py_tuple[1]}", fw_version)
     )
+
+
+def _cast_to_compatible_version(framework: str, fw_version: str) -> Tuple[str]:
+    """Given fw_version, detect the available versions"""
+    config = image_uris._config_for_framework_and_scope(framework, "inference", None)
+    available_versions = [version.parse(ver) for ver in list(config["versions"].keys())]
+    available_versions.sort()
+
+    earliest_upcast_version = None
+    exact_match_version = None
+    latest_downcast_version = None
+
+    major_version_pattern = r"^(\d+)"
+    parsed_fw_version = version.parse(fw_version)
+    major_verson = int(re.match(major_version_pattern, str(parsed_fw_version)).group(1))
+
+    for available_version in available_versions:
+        candidate_major_version = int(
+            re.match(major_version_pattern, str(available_version)).group(1)
+        )
+        if candidate_major_version != major_verson:
+            continue
+        if available_version < parsed_fw_version:
+            latest_downcast_version = available_version
+
+        elif available_version == parsed_fw_version:
+            exact_match_version = parsed_fw_version
+        else:
+            earliest_upcast_version = available_version
+            break
+
+    if not latest_downcast_version and not earliest_upcast_version and not exact_match_version:
+        logger.warning(
+            (
+                "Auto detection could not find a compatible DLC version mapped to framework %s, "
+                "framework version %s. The available compatible versions "
+                "are as follows %s."
+            ),
+            framework,
+            fw_version,
+            list(config["versions"].keys()),
+        )
+
+    exact_match_version = _process_version(exact_match_version)
+    latest_downcast_version = _process_version(latest_downcast_version)
+    earliest_upcast_version = _process_version(earliest_upcast_version)
+
+    return (exact_match_version, latest_downcast_version, earliest_upcast_version)
+
+
+def _process_version(ver: version.Version) -> str:
+    """Placeholder docstring"""
+    if not ver:
+        return None
+    return str(ver).replace(".post", "-")
 
 
 def _later_version(current: str, found: str) -> bool:

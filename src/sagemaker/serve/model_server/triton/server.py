@@ -11,6 +11,7 @@ from sagemaker.base_predictor import PredictorBase
 from sagemaker.serve.utils.uploader import upload
 from sagemaker.serve.utils.exceptions import LocalModelInvocationException
 from sagemaker.s3_utils import determine_bucket_and_prefix, parse_s3_url
+from sagemaker.local.utils import get_docker_host
 import docker
 from docker.types import DeviceRequest
 
@@ -75,7 +76,7 @@ class LocalTritonServer:
         httpClient = importlib.import_module("tritonclient.http")
 
         if not self.triton_client:
-            self.triton_client = httpClient.InferenceServerClient(url="localhost:8000")
+            self.triton_client = httpClient.InferenceServerClient(url=f"{get_docker_host()}:8000")
 
         payload = self.schema_builder.input_serializer.serialize(payload)
         dtype = self.schema_builder._input_triton_dtype.split("_")[-1]

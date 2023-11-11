@@ -13,7 +13,6 @@ from sagemaker.deserializers import (
     JSONDeserializer,
     PandasDeserializer,
     TorchTensorDeserializer,
-    PickleDeserializer,
     StringDeserializer,
 )
 from sagemaker.serializers import (
@@ -22,7 +21,6 @@ from sagemaker.serializers import (
     JSONSerializer,
     CSVSerializer,
     TorchTensorSerializer,
-    PickleSerializer,
     StringSerializer,
 )
 
@@ -53,8 +51,6 @@ translation_mapping = {
     BytesDeserializer: DataSerializer,
     CSVSerializer: PandasDeserializer,
     PandasDeserializer: CSVSerializer,
-    PickleSerializer: PickleDeserializer,
-    PickleDeserializer: PickleSerializer,
     StringSerializer: StringDeserializer,
     StringDeserializer: StringSerializer,
 }
@@ -155,7 +151,14 @@ class SchemaBuilder(TritonSchemaBuilder):
         if _is_jsonable(obj):
             return JSONSerializerWrapper()
 
-        return PickleSerializer()
+        raise ValueError(
+            (
+                "SchemaBuilder cannot determine the serializer of type %s "
+                "Please provide your own marshalling code"
+                "to SchemaBuilder via CustomPayloadTranslator"
+            )
+            % type(obj)
+        )
 
     def _get_deserializer(self, obj):
         # pylint: disable=too-many-return-statements
@@ -173,7 +176,14 @@ class SchemaBuilder(TritonSchemaBuilder):
         if _is_jsonable(obj):
             return JSONDeserializer()
 
-        return PickleDeserializer()
+        raise ValueError(
+            (
+                "SchemaBuilder cannot determine deserializer of type %s "
+                "Please provide your own marshalling code"
+                "to SchemaBuilder via CustomPayloadTranslator"
+            )
+            % type(obj)
+        )
 
     def _get_inverse(self, obj):
         """Placeholder docstring"""

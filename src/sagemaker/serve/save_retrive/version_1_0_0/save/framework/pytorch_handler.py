@@ -1,5 +1,6 @@
 """Experimental"""
 from __future__ import absolute_import
+import platform
 import logging
 import sys
 from pathlib import Path
@@ -10,9 +11,12 @@ from sagemaker.serve.save_retrive.version_1_0_0.save.utils import (
     save_pkl,
     save_yaml,
     capture_schema,
+    get_image_url,
 )
+from sagemaker import Session
+from sagemaker.predictor import Predictor
 from sagemaker.serve.save_retrive.version_1_0_0.metadata.metadata import PyTorchMetadata
-from sagemaker.pytorch import PyTorchModel as Model
+from sagemaker.model import Model
 from sagemaker.serve.save_retrive.version_1_0_0.save.framework.framework_handler import (
     FrameworkHandler,
 )
@@ -22,6 +26,7 @@ from sagemaker.serve.spec.inference_spec import InferenceSpec
 logger = logging.getLogger(__name__)
 
 
+# pylint: disable=attribute-defined-outside-init
 class PyTorchHandler(FrameworkHandler):
     """Experimental"""
 
@@ -134,24 +139,74 @@ class PyTorchHandler(FrameworkHandler):
     def _pytorch_generate_hmac(self) -> None:
         """Placeholder docstring"""
         logger.info("Generating Pytorch model hmac...")
-        secret_key = generate_secret_key()
+        self.secret_key = generate_secret_key()
         if self.model:
             with open(Path(f"{self.model_path}.{self.model_format}").absolute(), "rb") as f:
                 buffer = f.read()
-                self.model_hmac = compute_hash(buffer=buffer, secret_key=secret_key)
+                self.model_hmac = compute_hash(buffer=buffer, secret_key=self.secret_key)
 
         with open(Path(f"{self.schema_path}.{self.schema_format}").absolute(), "rb") as f:
             buffer = f.read()
-            self.schema_hmac = compute_hash(buffer=buffer, secret_key=secret_key)
+            self.schema_hmac = compute_hash(buffer=buffer, secret_key=self.secret_key)
 
         if self.inference_spec:
             with open(
                 Path(f"{self.inference_spec_path}.{self.inference_spec_format}").absolute(), "rb"
             ) as f:
                 buffer = f.read()
-                self.inference_spec_hmac = compute_hash(buffer=buffer, secret_key=secret_key)
+                self.inference_spec_hmac = compute_hash(buffer=buffer, secret_key=self.secret_key)
 
         logger.info("Pytorch model hmac generated successfully")
 
-    def get_pysdk_model(self) -> Type[Model]:
+    def get_pysdk_model(
+        self, s3_path: str, role_arn: str, sagemaker_session: Session
+    ) -> Type[Model]:
         """Create a PyTorchModel object from the saved model"""
+        self.env_vars = {
+            "SAGEMAKER_REGION": sagemaker_session.boto_region_name,
+            "SAGEMAKER_CONTAINER_LOG_LEVEL": "10",
+            "SAGEMAKER_SERVE_SECRET_KEY": self.secret_key,
+            "LOCAL_PYTHON": platform.python_version(),
+        }
+
+        self.pysdk_model = Model(
+            model_data=s3_path,
+            image_uri=get_image_url("DJLServing"),
+            role=role_arn,
+            env=self.env_vars,
+            sagemaker_session=sagemaker_session,
+            predictor_cls=self._get_predictor,
+        )
+
+        return self.pysdk_model
+
+    def _get_client_translators(self):
+        """Placeholder docstring"""
+        serializer = None
+        if self.schema and hasattr(self.schema, "custom_input_translator"):
+            serializer = self.schema.custom_input_translator
+        elif self.schema:
+            serializer = self.schema.input_serializer
+        else:
+            raise Exception("Cannot serialize")
+
+        deserializer = None
+        if self.schema and hasattr(self.schema, "custom_output_translator"):
+            deserializer = self.schema.custom_output_translator
+        elif self.schema:
+            deserializer = self.schema.output_deserializer
+        else:
+            raise Exception("Cannot deserialize")
+
+        return serializer, deserializer
+
+    def _get_predictor(self, endpoint_name: str, sagemaker_session: Session) -> Predictor:
+        """Placeholder docstring"""
+        serializer, deserializer = self._get_client_translators()
+
+        return Predictor(
+            endpoint_name=endpoint_name,
+            sagemaker_session=sagemaker_session,
+            serializer=serializer,
+            deserializer=deserializer,
+        )

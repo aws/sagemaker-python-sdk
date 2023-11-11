@@ -37,7 +37,7 @@ class LocalModelLoadException(ModelBuilderException):
     """Raise when local model serving fails to load the model"""
 
     fmt = "Error Message: {message}"
-    model_builder_error_code = 2
+    model_builder_error_code = 3
 
     def __init__(self, message):
         super().__init__(message=message)
@@ -47,7 +47,16 @@ class LocalModelInvocationException(ModelBuilderException):
     """Raise when local model serving fails to invoke the model"""
 
     fmt = "Error Message: {message}"
-    model_builder_error_code = 2
+    model_builder_error_code = 4
+
+    def __init__(self, message):
+        super().__init__(message=message)
+
+
+class SkipTuningComboException(ModelBuilderException):
+    """Raise when tuning combination should be admissible but is not"""
+
+    fmt = "Error Message: {message}"
 
     def __init__(self, message):
         super().__init__(message=message)

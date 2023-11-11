@@ -100,8 +100,8 @@ def _send_telemetry(
         accountId = _get_accountId(session)
         region = _get_region_or_default(session)
         url = _construct_url(accountId, str(mode), status, failure_reason, extra_info, region)
-        response = _requests_helper(url, 2)
-        logger.debug("ModelBuilder metrics emitted: %s", response)
+        _requests_helper(url, 2)
+        logger.debug("ModelBuilder metrics emitted.")
     except Exception:  # pylint: disable=W0703
         logger.debug("ModelBuilder metrics not emitted")
 

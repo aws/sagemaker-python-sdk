@@ -175,8 +175,8 @@ class TritonServerTests(TestCase):
         )
 
         mock_upload.assert_called_once_with(mock_session, MODEL_REPO, "mock_model_data_uri", ANY)
-        self.assertEquals(s3_upload_path, S3_URI)
-        self.assertEquals(env_vars.get("SAGEMAKER_TRITON_DEFAULT_MODEL_NAME"), "model")
-        self.assertEquals(env_vars.get("TRITON_MODEL_DIR"), "/opt/ml/model/model")
-        self.assertEquals(env_vars.get("SAGEMAKER_SERVE_SECRET_KEY"), SECRET_KEY)
-        self.assertEquals(env_vars.get("LOCAL_PYTHON"), "3.8")
+        self.assertEqual(s3_upload_path, S3_URI)
+        self.assertEqual(env_vars.get("SAGEMAKER_TRITON_DEFAULT_MODEL_NAME"), "model")
+        self.assertEqual(env_vars.get("TRITON_MODEL_DIR"), "/opt/ml/model/model")
+        self.assertEqual(env_vars.get("SAGEMAKER_SERVE_SECRET_KEY"), SECRET_KEY)
+        self.assertEqual(env_vars.get("LOCAL_PYTHON"), "3.8")

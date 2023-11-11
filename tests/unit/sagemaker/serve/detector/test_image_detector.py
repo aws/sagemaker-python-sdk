@@ -82,6 +82,17 @@ class TestImageDetector(unittest.TestCase):
             pt_model,
         )
 
+    @patch.dict(sys.modules, {"torch": MagicMock(__version__="2.1.0")})
+    @patch("sagemaker.serve.detector.image_detector.platform")
+    def test_detect_latest_downcast_pt_2_1_0(self, platform):
+        platform.python_version_tuple.return_value = (3, 10)
+        pt_model = Mock()
+        pt_model.__class__.__bases__ = (torch,)
+        self.assert_dlc_is_expected(
+            "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:2.0.1-cpu-py310",
+            pt_model,
+        )
+
     @patch.dict(sys.modules, {"torch": MagicMock(__version__="1.13.0")})
     @patch("sagemaker.serve.detector.image_detector.platform")
     def test_detect_earliest_upcast_pt(self, platform):
@@ -89,7 +100,7 @@ class TestImageDetector(unittest.TestCase):
         pt_model = Mock()
         pt_model.__class__.__bases__ = (torch,)
         self.assert_dlc_is_expected(
-            "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.13.1-cpu-py39",
+            "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.12.1-cpu-py38",
             pt_model,
         )
 
@@ -201,9 +212,9 @@ class TestImageDetector(unittest.TestCase):
         expected_ecr_uri, expected_repo, expected_tag = self.parse_image_uri(expected_dlc)
         actual_ecr_uri, actual_repo, actual_tag = self.parse_image_uri(dlc)
 
-        self.assertEquals(expected_ecr_uri, actual_ecr_uri)
-        self.assertEquals(expected_repo, actual_repo)
-        self.assertEquals(expected_tag[0], actual_tag[0])
+        self.assertEqual(expected_ecr_uri, actual_ecr_uri)
+        self.assertEqual(expected_repo, actual_repo)
+        self.assertEqual(expected_tag[0], actual_tag[0])
 
     def parse_image_uri(self, image_uri: str) -> Tuple:
         ecr_uri, repo_tag = image_uri.split("/")

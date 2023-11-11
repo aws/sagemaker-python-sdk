@@ -54,8 +54,9 @@ def capture_dependencies(dependencies: dict, work_dir: Path, capture_all: bool =
 
         with open(path, "r") as f:
             autodetect_depedencies = f.read().splitlines()
+        autodetect_depedencies.append("sagemaker")
     else:
-        autodetect_depedencies = []
+        autodetect_depedencies = ["sagemaker"]
 
     module_version_dict = _parse_dependency_list(autodetect_depedencies)
 
@@ -125,24 +126,3 @@ def _parse_dependency_list(depedency_list: list) -> dict:
             module_version_dict.update({dependency: ""})
 
     return module_version_dict
-
-
-# only required for dev testing
-def prepare_wheel(code_artifact_client, whl_dir: str):
-    """Placeholder docstring"""
-    # pull from code artifact
-    input_dict = {
-        "domain": "galactus-preview-builds",
-        "domainOwner": "661407751302",
-        "repository": "dev",
-        "format": "pypi",
-        "package": "sagemaker",
-        "packageVersion": "2.193.1.dev0",
-        "asset": "sagemaker-2.193.1.dev0-py2.py3-none-any.whl",
-    }
-
-    response = code_artifact_client.get_package_version_asset(**input_dict)
-    whl_binary = response.get("asset").read()
-
-    with open(f"{whl_dir}/sagemaker-2.185.1.dev0-py2.py3-none-any.whl", "wb") as binary_file:
-        binary_file.write(whl_binary)

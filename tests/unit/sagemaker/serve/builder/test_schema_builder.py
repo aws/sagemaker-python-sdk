@@ -26,13 +26,11 @@ from sagemaker.deserializers import (
     NumpyDeserializer,
     JSONDeserializer,
     PandasDeserializer,
-    PickleDeserializer,
 )
 from sagemaker.serializers import (
     DataSerializer,
     NumpySerializer,
     CSVSerializer,
-    PickleSerializer,
 )
 
 NUMPY_CONTENT_TYPE = "application/x-npy"
@@ -140,13 +138,8 @@ def test_schema_builder_with_bytes(some_bytes):
 
 
 def test_schema_builder_with_cloudpickle(unsupported_object):
-    schema_builder = SchemaBuilder(unsupported_object, unsupported_object)
-    assert isinstance(schema_builder.input_serializer, PickleSerializer)
-    assert isinstance(schema_builder.output_serializer, PickleSerializer)
-    assert isinstance(schema_builder.input_deserializer._deserializer, PickleDeserializer)
-    assert schema_builder.input_deserializer.ACCEPT == CLOUDPICKLE_CONTENT_TYPE
-    assert isinstance(schema_builder.output_deserializer._deserializer, PickleDeserializer)
-    assert schema_builder.output_deserializer.ACCEPT == CLOUDPICKLE_CONTENT_TYPE
+    with pytest.raises(ValueError, match="SchemaBuilder cannot determine"):
+        SchemaBuilder(unsupported_object, unsupported_object)
 
 
 @pytest.mark.parametrize("jsonable", ["jsonable_obj", "jsonable_obj_2"])
@@ -154,16 +147,6 @@ def test_json_serializer_wrapper(jsonable):
     b = JSONSerializerWrapper().serialize(jsonable)
     stream = BytesIO(b)
     JSONDeserializer().deserialize(stream, content_type="application/json")
-
-
-# def test_schema_builder_with_torch_tensor(torch_tensor):
-#     schema_builder = SchemaBuilder(torch_tensor, torch_tensor)
-#     assert isinstance(schema_builder.input_serializer, TorchTensorSerializer)
-#     assert isinstance(schema_builder.output_serializer, TorchTensorSerializer)
-#     assert isinstance(schema_builder.input_deserializer._deserializer, TorchTensorDeserializer)
-#     assert schema_builder.input_deserializer.ACCEPT == TORCH_TENSOR_CONTENT_TYPE
-#     assert isinstance(schema_builder.output_deserializer._deserializer, TorchTensorDeserializer)
-#     assert schema_builder.output_deserializer.ACCEPT == TORCH_TENSOR_CONTENT_TYPE
 
 
 def test_schema_builder_with_payload_translator(custom_translator):
