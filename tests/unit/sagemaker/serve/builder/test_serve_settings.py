@@ -48,18 +48,18 @@ class ServeSettingsTest(TestCase):
         )
         serve_settings = _ServeSettings()
 
-        self.assertEquals(
+        self.assertEqual(
             serve_settings.role_arn, "arn:aws:iam::123456789012:role/service-role/testing-role"
         )
 
-        self.assertEquals(
+        self.assertEqual(
             serve_settings.role_arn, "arn:aws:iam::123456789012:role/service-role/testing-role"
         )
-        self.assertEquals(serve_settings.s3_model_data_url, "s3://testing-s3-bucket")
-        self.assertEquals(serve_settings.instance_type, "ml.m5.xlarge")
+        self.assertEqual(serve_settings.s3_model_data_url, "s3://testing-s3-bucket")
+        self.assertEqual(serve_settings.instance_type, "ml.m5.xlarge")
         self.assertTrue("EnvVarKey" in serve_settings.env_vars)
-        self.assertEquals(serve_settings.env_vars.get("EnvVarKey"), "EnvVarValue")
-        self.assertEquals(serve_settings.telemetry_opt_out, True)
+        self.assertEqual(serve_settings.env_vars.get("EnvVarKey"), "EnvVarValue")
+        self.assertEqual(serve_settings.telemetry_opt_out, True)
 
     @patch("sagemaker.serve.builder.serve_settings.Session", return_value=mock_session())
     def test_serve_settings_with_config_file_overridden(self, session):
@@ -73,9 +73,9 @@ class ServeSettingsTest(TestCase):
             env_vars=ENV_VAR,
         )
 
-        self.assertEquals(serve_settings.role_arn, ROLE_ARN)
-        self.assertEquals(serve_settings.s3_model_data_url, S3_MODEL_DATA_URI)
-        self.assertEquals(serve_settings.instance_type, INSTANCE_TYPE)
+        self.assertEqual(serve_settings.role_arn, ROLE_ARN)
+        self.assertEqual(serve_settings.s3_model_data_url, S3_MODEL_DATA_URI)
+        self.assertEqual(serve_settings.instance_type, INSTANCE_TYPE)
         self.assertTrue("key" in serve_settings.env_vars)
-        self.assertEquals(serve_settings.env_vars.get("key"), "value")
+        self.assertEqual(serve_settings.env_vars.get("key"), "value")
         self.assertTrue("EnvVarKey" not in serve_settings.env_vars)

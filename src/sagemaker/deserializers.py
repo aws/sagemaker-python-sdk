@@ -31,7 +31,6 @@ from sagemaker.base_deserializers import (  # noqa: F401 # pylint: disable=W0611
     StreamDeserializer,
     StringDeserializer,
     TorchTensorDeserializer,
-    PickleDeserializer,
 )
 
 from sagemaker.jumpstart import artifacts, utils as jumpstart_utils

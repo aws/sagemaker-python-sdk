@@ -29,7 +29,6 @@ from sagemaker.base_serializers import (  # noqa: F401 # pylint: disable=W0611
     SimpleBaseSerializer,
     SparseMatrixSerializer,
     TorchTensorSerializer,
-    PickleSerializer,
     StringSerializer,
 )
 

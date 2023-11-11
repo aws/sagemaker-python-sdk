@@ -70,6 +70,7 @@ required_packages = [
     "requests",
     "docker",
     "tqdm",
+    "psutil",
 ]
 
 # Specific use case dependencies
@@ -106,6 +107,7 @@ setup(
     description="Open source library for training and deploying models on Amazon SageMaker.",
     packages=find_packages("src"),
     package_dir={"": "src"},
+    package_data={"": ["*.whl"]},
     py_modules=[os.path.splitext(os.path.basename(path))[0] for path in glob("src/*.py")],
     include_package_data=True,
     long_description=read("README.rst"),

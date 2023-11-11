@@ -15,6 +15,7 @@ import tqdm
 # non native imports. Ideally add as little as possible here
 # because it will add to requirements.txt
 import cloudpickle
+import boto3
 
 pipcmd = [sys.executable, "-m", "pip", "--disable-pip-version-check"]
 
@@ -110,10 +111,9 @@ def get_requirements_for_pkl_file(pkl_path: Path, dest: Path):
             name = x["name"]
             version = x["version"]
             # skip only for dev
-            if name == "sagemaker":
-                out.write("/opt/ml/model/whl/sagemaker-2.195.2.dev0-py2.py3-none-any.whl\n")
-            elif name == "boto3":
-                out.write("boto3==1.26.131\n")
+            if name == "boto3":
+                boto3_version = boto3.__version__
+                out.write(f"boto3=={boto3_version}\n")
             elif name in currently_used_packages:
                 out.write(f"{name}=={version}\n")
 
@@ -126,9 +126,6 @@ def get_all_requirements(dest: Path):
         for package_info in all_installed_packages:
             name = package_info.get("name")
             version = package_info.get("version")
-            # skip only for dev
-            if name == "sagemaker":
-                continue
 
             out.write(f"{name}=={version}\n")
 

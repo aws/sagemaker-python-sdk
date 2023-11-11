@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 # from __future__ import absolute_import
 
+# import os
 # import pytest
 # from sagemaker.serve.builder.model_builder import ModelBuilder, Mode, ModelServer
 # from sagemaker.serve.builder.schema_builder import SchemaBuilder
@@ -19,6 +20,8 @@
 #     SERVE_LOCAL_CONTAINER_TIMEOUT,
 #     SERVE_SAGEMAKER_ENDPOINT_TIMEOUT,
 #     BYOC_IMAGE_URI_TEMPLATE,
+#     NOT_RUNNING_ON_PY38,
+#     NOT_RUNNING_ON_INF_EXP_DEV_PIPELINE,
 # )
 # from tests.integ.timeout import timeout
 # from tests.integ.utils import cleanup_model_resources
@@ -28,10 +31,22 @@
 
 # ROLE_NAME = "SageMakerRole"
 
+# GH_USER_NAME = os.getenv("GH_USER_NAME")
+# GH_ACCESS_TOKEN = os.getenv("GH_ACCESS_TOKEN")
+
 
 # @pytest.fixture
 # def xgb_dependencies():
-#     return {"auto": True, "custom": ["protobuf==3.20.2"]}
+#     return {
+#         "auto": True,
+#         "custom": [
+#             "protobuf==3.20.2",
+#             (
+#                 f"git+https://{GH_USER_NAME}:{GH_ACCESS_TOKEN}@github.com"
+#                 "/aws/sagemaker-python-sdk-staging.git@inference-experience-dev"
+#             ),
+#         ],
+#     }
 
 
 # @pytest.fixture
@@ -67,7 +82,7 @@
 
 
 # @pytest.mark.skipif(
-#     True,
+#     NOT_RUNNING_ON_INF_EXP_DEV_PIPELINE or NOT_RUNNING_ON_PY38,
 #     reason="The goal of these test are to test the serving components of our feature",
 # )
 # @pytest.mark.parametrize(
@@ -106,7 +121,7 @@
 
 
 # @pytest.mark.skipif(
-#     True,
+#     NOT_RUNNING_ON_INF_EXP_DEV_PIPELINE or NOT_RUNNING_ON_PY38,
 #     reason="The goal of these test are to test the serving components of our feature",
 # )
 # @pytest.mark.parametrize(

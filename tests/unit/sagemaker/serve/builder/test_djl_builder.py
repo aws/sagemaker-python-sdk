@@ -17,6 +17,7 @@ import unittest
 from sagemaker.serve.builder.model_builder import ModelBuilder
 from sagemaker.serve.utils.types import _DjlEngine
 from sagemaker.serve.mode.function_pointers import Mode
+from sagemaker.serve import ModelServer
 from sagemaker.djl_inference.model import (
     DeepSpeedModel,
     FasterTransformerModel,
@@ -111,6 +112,7 @@ class TestDjlBuilder(unittest.TestCase):
             model=mock_model_id,
             schema_builder=mock_schema_builder,
             mode=Mode.LOCAL_CONTAINER,
+            model_server=ModelServer.DJL_SERVING,
         )
         builder._prepare_for_mode = MagicMock()
         builder._prepare_for_mode.side_effect = None
@@ -171,6 +173,7 @@ class TestDjlBuilder(unittest.TestCase):
             model=mock_t5_model_id,
             schema_builder=mock_schema_builder,
             mode=Mode.LOCAL_CONTAINER,
+            model_server=ModelServer.DJL_SERVING,
         )
         model = builder.build()
 
@@ -205,6 +208,7 @@ class TestDjlBuilder(unittest.TestCase):
             model=mock_model_id,
             schema_builder=mock_schema_builder,
             mode=Mode.LOCAL_CONTAINER,
+            model_server=ModelServer.DJL_SERVING,
         )
         model = builder.build()
 
@@ -257,6 +261,7 @@ class TestDjlBuilder(unittest.TestCase):
             model=mock_model_id,
             schema_builder=mock_schema_builder,
             mode=Mode.LOCAL_CONTAINER,
+            model_server=ModelServer.DJL_SERVING,
         )
         builder._prepare_for_mode = MagicMock()
         builder._prepare_for_mode.side_effect = None
@@ -306,6 +311,7 @@ class TestDjlBuilder(unittest.TestCase):
             model=mock_model_id,
             schema_builder=mock_schema_builder,
             mode=Mode.LOCAL_CONTAINER,
+            model_server=ModelServer.DJL_SERVING,
         )
         builder._prepare_for_mode = MagicMock()
         builder._prepare_for_mode.side_effect = None
@@ -357,6 +363,7 @@ class TestDjlBuilder(unittest.TestCase):
             model=mock_model_id,
             schema_builder=mock_schema_builder,
             mode=Mode.LOCAL_CONTAINER,
+            model_server=ModelServer.DJL_SERVING,
         )
         builder._prepare_for_mode = MagicMock()
         builder._prepare_for_mode.side_effect = None
@@ -408,6 +415,7 @@ class TestDjlBuilder(unittest.TestCase):
             model=mock_model_id,
             schema_builder=mock_schema_builder,
             mode=Mode.LOCAL_CONTAINER,
+            model_server=ModelServer.DJL_SERVING,
         )
         builder._prepare_for_mode = MagicMock()
         builder._prepare_for_mode.side_effect = None
@@ -459,6 +467,7 @@ class TestDjlBuilder(unittest.TestCase):
             model=mock_model_id,
             schema_builder=mock_schema_builder,
             mode=Mode.LOCAL_CONTAINER,
+            model_server=ModelServer.DJL_SERVING,
         )
         builder._prepare_for_mode = MagicMock()
         builder._prepare_for_mode.side_effect = None
@@ -479,6 +488,7 @@ class TestDjlBuilder(unittest.TestCase):
             model=mock_model_id,
             schema_builder=mock_schema_builder_invalid,
             mode=Mode.LOCAL_CONTAINER,
+            model_server=ModelServer.DJL_SERVING,
         )
 
         with self.assertRaises(ValueError) as _:

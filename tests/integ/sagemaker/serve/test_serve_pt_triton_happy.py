@@ -26,6 +26,9 @@
 # from tests.integ.sagemaker.serve.constants import (
 #     PYTORCH_SQUEEZENET_RESOURCE_DIR,
 #     SERVE_SAGEMAKER_ENDPOINT_TIMEOUT,
+#     NOT_RUNNING_ON_PY310,
+#     NOT_RUNNING_ON_INF_EXP_DEV_PIPELINE,
+#     SERVE_LOCAL_CONTAINER_TIMEOUT,
 # )
 
 # from tests.integ.timeout import timeout
@@ -87,7 +90,7 @@
 
 
 # @pytest.mark.skipif(
-#     NOT_RUNNING_ON_PY310,
+#     NOT_RUNNING_ON_INF_EXP_DEV_PIPELINE or NOT_RUNNING_ON_PY310,
 #     reason="The goal of these test are to test the serving components of our feature",
 # )
 # @pytest.mark.parametrize("model_builder", ["model_builder_model_schema_builder"], indirect=True)
@@ -116,7 +119,7 @@
 
 
 # @pytest.mark.skipif(
-#     True,
+#     NOT_RUNNING_ON_INF_EXP_DEV_PIPELINE or NOT_RUNNING_ON_PY310,
 #     reason="The goal of these test are to test the serving components of our feature",
 # )
 # @pytest.mark.parametrize("model_builder", ["model_builder_model_schema_builder"], indirect=True)

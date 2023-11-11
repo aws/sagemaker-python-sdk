@@ -80,7 +80,7 @@ class XGBoostMetadata(Metadata):
         },
     )
     optimizer_metadata: Optional[dict] = field(
-        default_factory=dict,
+        default=None,
         metadata={
             "help": "Define the optimizer metadata of the model. "
             "model-size, model-size-in-memory, model-accuracy, model-latency, etc."
@@ -89,6 +89,10 @@ class XGBoostMetadata(Metadata):
 
     def to_dict(self):
         """Placeholder docstring"""
+
+        if self.optimizer_metadata is None:
+            self.optimizer_metadata = {}
+
         base = {
             "Version": self.version,
             "PythonVersion": self.python_version,

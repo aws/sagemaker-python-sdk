@@ -10,9 +10,14 @@ from sagemaker.serve.utils.exceptions import LocalModelInvocationException
 from sagemaker.base_predictor import PredictorBase
 from sagemaker.s3_utils import determine_bucket_and_prefix, parse_s3_url, s3_path_join
 from sagemaker.s3 import S3Uploader
+from sagemaker.local.utils import get_docker_host
 
 MODE_DIR_BINDING = "/opt/ml/model/"
 _SHM_SIZE = "2G"
+_DEFAULT_ENV_VARS = {
+    "TRANSFORMERS_CACHE": "/opt/ml/model/",
+    "HUGGINGFACE_HUB_CACHE": "/opt/ml/model/",
+}
 
 logger = logging.getLogger(__name__)
 
@@ -21,39 +26,61 @@ class LocalTgiServing:
     """Placeholder docstring"""
 
     def _start_tgi_serving(
-        self, client: object, image: str, model_path: str, secret_key: str, env_vars: dict
+        self,
+        client: object,
+        image: str,
+        model_path: str,
+        secret_key: str,
+        env_vars: dict,
+        jumpstart: bool,
     ):
         """Placeholder docstring"""
-        self.container = client.containers.run(
-            image,
-            ["--model-id", MODE_DIR_BINDING],
-            shm_size=_SHM_SIZE,
-            device_requests=[DeviceRequest(count=-1, capabilities=[["gpu"]])],
-            network_mode="host",
-            detach=True,
-            auto_remove=True,
-            volumes={
-                Path(model_path).joinpath("code"): {
-                    "bind": MODE_DIR_BINDING,
-                    "mode": "rw",
+        if jumpstart:
+            self.container = client.containers.run(
+                image,
+                ["--model-id", MODE_DIR_BINDING],
+                shm_size=_SHM_SIZE,
+                device_requests=[DeviceRequest(count=-1, capabilities=[["gpu"]])],
+                network_mode="host",
+                detach=True,
+                auto_remove=True,
+                volumes={
+                    Path(model_path).joinpath("code"): {
+                        "bind": MODE_DIR_BINDING,
+                        "mode": "rw",
+                    },
                 },
-            },
-            environment=env_vars,
-        )
+                environment=env_vars,
+            )
+        else:
+            self.container = client.containers.run(
+                image,
+                shm_size=_SHM_SIZE,
+                device_requests=[DeviceRequest(count=-1, capabilities=[["gpu"]])],
+                network_mode="host",
+                detach=True,
+                auto_remove=True,
+                volumes={
+                    Path(model_path).joinpath("code"): {
+                        "bind": MODE_DIR_BINDING,
+                        "mode": "rw",
+                    },
+                },
+                environment=_update_env_vars(env_vars),
+            )
 
     def _invoke_tgi_serving(self, request: object, content_type: str, accept: str):
         """Placeholder docstring"""
         try:
             response = requests.post(
-                "http://localhost:8080/generate",
+                f"http://{get_docker_host()}:8080/generate",
                 data=request,
                 headers={"Content-Type": content_type, "Accept": accept},
-                timeout=60,
+                timeout=600,
             )
             response.raise_for_status()
             return response.content
         except Exception as e:
-
             raise Exception("Unable to send request to the local container server") from e
 
     def _tgi_deep_ping(self, predictor: PredictorBase):
@@ -78,8 +105,10 @@ class SageMakerTgiServing:
         self,
         model_path: str,
         sagemaker_session: Session,
+        jumpstart: bool,
         s3_model_data_url: str = None,
         image: str = None,
+        env_vars: dict = None,
     ):
         if s3_model_data_url:
             bucket, key_prefix = parse_s3_url(url=s3_model_data_url)
@@ -112,4 +141,15 @@ class SageMakerTgiServing:
                 "S3Uri": model_data_url + "/",
             }
         }
-        return (model_data, {})
+        if jumpstart:
+            return (model_data, {})
+        return (model_data, _update_env_vars(env_vars))
+
+
+def _update_env_vars(env_vars: dict) -> dict:
+    """Placeholder docstring"""
+    updated_env_vars = {}
+    updated_env_vars.update(_DEFAULT_ENV_VARS)
+    if env_vars:
+        updated_env_vars.update(env_vars)
+    return updated_env_vars

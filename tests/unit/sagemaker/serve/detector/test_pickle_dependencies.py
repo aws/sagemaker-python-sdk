@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 from sagemaker.serve.detector.pickle_dependencies import get_requirements_for_pkl_file
 
+import boto3
 import json
 import io
 import sys
@@ -85,8 +86,8 @@ CURRENTLY_USED_FILES = {
         "scipy", "mock scipy module", "/tmp/to/site-packages/scipy/scipy/__init__.py"
     ),
 }
-EXPECTED_SM_WHL = "/opt/ml/model/whl/sagemaker-2.195.2.dev0-py2.py3-none-any.whl"
-EXPECTED_BOTO3_MAPPING = "boto3==1.26.131"
+EXPECTED_SM_WHL = "/opt/ml/model/whl/sagemaker-2.197.1.dev0-py2.py3-none-any.whl"
+EXPECTED_BOTO3_MAPPING = f"boto3=={boto3.__version__}"
 EXPECTED_SUBPROCESS_CMD = [sys.executable, "-m", "pip", "--disable-pip-version-check"]
 
 
@@ -137,7 +138,7 @@ def test_generate_requirements_exact_match(monkeypatch):
         assert 4 == mocked_writes.call_count
 
         expected_calls = [
-            call(f"{EXPECTED_SM_WHL}\n"),
+            call("sagemaker==1.2.3\n"),
             call(f"{EXPECTED_BOTO3_MAPPING}\n"),
             call("xgboost==1.2.3\n"),
             call("scipy==1.2.3\n"),
@@ -191,7 +192,7 @@ def test_generate_requirements_txt_pruning_unused_packages(monkeypatch):
         assert 4 == mocked_writes.call_count
 
         expected_calls = [
-            call(f"{EXPECTED_SM_WHL}\n"),
+            call("sagemaker==1.2.3\n"),
             call(f"{EXPECTED_BOTO3_MAPPING}\n"),
             call("xgboost==1.2.3\n"),
             call("scipy==1.2.3\n"),
@@ -239,4 +240,5 @@ def test_generate_requirements_txt_no_currently_used_packages(monkeypatch):
         assert 0 == subprocess_popen.call_count
 
         mocked_writes = open_dest_file.return_value.__enter__().write
+
         assert 0 == mocked_writes.call_count

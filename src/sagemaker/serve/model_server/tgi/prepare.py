@@ -7,6 +7,7 @@ import logging
 from typing import List
 from pathlib import Path
 
+from sagemaker.serve.utils.local_hardware import _check_disk_space, _check_docker_disk_usage
 from sagemaker.utils import _tmpdir
 
 logger = logging.getLogger(__name__)
@@ -33,12 +34,15 @@ def _create_dir_structure(model_path: str) -> tuple:
     """Placeholder Docstring"""
     model_path = Path(model_path)
     if not model_path.exists():
-        model_path.mkdir()
+        model_path.mkdir(parents=True)
     elif not model_path.is_dir():
         raise ValueError("model_dir is not a valid directory")
 
     code_dir = model_path.joinpath("code")
-    code_dir.mkdir(exist_ok=True)
+    code_dir.mkdir(exist_ok=True, parents=True)
+
+    _check_disk_space(model_path)
+    _check_docker_disk_usage()
 
     return (model_path, code_dir)
 

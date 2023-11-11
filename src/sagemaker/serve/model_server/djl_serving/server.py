@@ -10,6 +10,7 @@ from sagemaker.serve.utils.exceptions import LocalModelInvocationException
 from sagemaker.base_predictor import PredictorBase
 from sagemaker.s3_utils import determine_bucket_and_prefix, parse_s3_url, s3_path_join
 from sagemaker.s3 import S3Uploader
+from sagemaker.local.utils import get_docker_host
 
 logger = logging.getLogger(__name__)
 MODE_DIR_BINDING = "/opt/ml/model/"
@@ -53,7 +54,7 @@ class LocalDJLServing:
         """Placeholder docstring"""
         try:
             response = requests.post(
-                "http://localhost:8080/predictions/model",
+                f"http://{get_docker_host()}:8080/predictions/model",
                 data=request,
                 headers={"Content-Type": content_type, "Accept": accept},
                 timeout=300,

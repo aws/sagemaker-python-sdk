@@ -22,7 +22,6 @@ import json
 
 import numpy as np
 from six import with_metaclass
-import cloudpickle
 
 from sagemaker.utils import DeferredError
 
@@ -377,37 +376,4 @@ class TorchTensorDeserializer(SimpleBaseDeserializer):
             raise ValueError(
                 "Unable to deserialize your data to torch.Tensor.\
                     Please provide custom deserializer in InferenceSpec."
-            )
-
-
-class PickleDeserializer(SimpleBaseDeserializer):
-    """Deserialize stream to object using cloudpickle module.
-
-    Args:
-           stream (botocore.response.StreamingBody): Data to be deserialized.
-           content_type (str): The MIME type of the data.
-
-       Returns:
-           object: The data deserialized into a torch Tensor.
-    """
-
-    def __init__(self, accept="application/x-pkl"):
-        super(PickleDeserializer, self).__init__(accept)
-
-    def deserialize(self, stream, content_type="application/x-pkl"):
-        """Deserialize pickle data from an inference endpoint.
-
-        Args:
-            stream (botocore.response.StreamingBody): Data to be deserialized.
-            content_type (str): The MIME type of the data.
-
-        Returns:
-            list: A list of piclke serializable objects.
-        """
-        try:
-            return cloudpickle.loads(stream.read())
-        except Exception:
-            raise ValueError(
-                "Cannot deserialize bytes to object with cloudpickle.\
-                    Please provide custom deserializer."
             )

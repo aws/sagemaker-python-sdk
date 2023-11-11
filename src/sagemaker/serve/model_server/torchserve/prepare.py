@@ -10,10 +10,7 @@ from typing import List
 
 from sagemaker.session import Session
 from sagemaker.serve.spec.inference_spec import InferenceSpec
-from sagemaker.serve.detector.dependency_manager import (
-    capture_dependencies,
-    prepare_wheel,
-)
+from sagemaker.serve.detector.dependency_manager import capture_dependencies
 from sagemaker.serve.validations.check_integrity import (
     generate_secret_key,
     compute_hash,
@@ -56,14 +53,6 @@ def prepare_for_torchserve(
     code_dir.mkdir(exist_ok=True)
 
     shutil.copy2(Path(__file__).parent.joinpath("inference.py"), code_dir)
-    whl_dir = model_path.joinpath("whl")
-    whl_dir.mkdir(exist_ok=True)
-
-    local_whl_path = "src/sagemaker/serve/sagemaker-2.185.1.dev0-py2.py3-none-any.whl"
-    if Path(local_whl_path).resolve().is_file():
-        shutil.copy(local_whl_path, whl_dir)
-    else:
-        prepare_wheel(session.boto_session.client("codeartifact"), whl_dir=whl_dir)
 
     shared_libs_dir = model_path.joinpath("shared_libs")
     shared_libs_dir.mkdir(exist_ok=True)

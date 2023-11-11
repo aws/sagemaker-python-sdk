@@ -77,7 +77,7 @@ class SaveHandler:
         default="",
     )
     metadata: Optional[Metadata] = field(
-        default=Metadata(),
+        default=None,
         metadata={"help": "define the metadata of the storage"},
     )
     framework: Optional[str] = field(
@@ -130,6 +130,8 @@ class SaveHandler:
         save_path: Optional[str] = None,
         s3_path: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
+        role_arn: Optional[str] = None,
+        metadata: Optional[Metadata] = None,
     ):
         self.model = model
         self.schema_builder = schema_builder
@@ -139,6 +141,8 @@ class SaveHandler:
         self._update_save_path(save_path)
         self.sagemaker_session = sagemaker_session
         self.py_version = None
+        self.role_arn = role_arn
+        self.metadata = metadata
 
     def _update_save_path(self, save_path=None):
         """Placeholder docstring"""
@@ -220,6 +224,6 @@ class SaveHandler:
         handler.save_metadata()
 
         # upload to s3
-        upload_to_s3(self.s3_path, self.save_path, self.sagemaker_session)
+        s3_model_url = upload_to_s3(self.s3_path, self.save_path, self.sagemaker_session)
 
-        return handler.get_pysdk_model()
+        return handler.get_pysdk_model(s3_model_url, self.role_arn, self.sagemaker_session)

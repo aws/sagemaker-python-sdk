@@ -49,12 +49,22 @@ DEPENDENCY_CONFIG = {
     "requirements": "/path/to/requirements.txt",
     "custom": ["custom_module==1.2.3", "other_module@http://some/website.whl"],
 }
+
+NO_AUTO_DEPENDENCY_CONFIG = {
+    "auto": False,
+    "requirements": "/path/to/requirements.txt",
+    "custom": ["custom_module==1.2.3", "other_module@http://some/website.whl"],
+}
+
 WORK_DIR = Path("/path/to/working/dir")
 
 AUTODETECTED_REQUIREMENTS = """module==1.2
 custom_module==1.2.0
 numpy==4.5
 boto3==1.26.135
+"""
+
+NO_AUTODETECTED_REQUIREMENTS = """
 """
 
 CUSTOM_REQUIREMENT_FILE = """boto3=1.28.*
@@ -82,13 +92,43 @@ class DepedencyManagerTest(unittest.TestCase):
 
         mocked_writes = mock_open_write.return_value.__enter__().write
 
-        assert 5 == mocked_writes.call_count
+        assert 6 == mocked_writes.call_count
 
         expected_calls = [
             call("module==1.2\n"),
             call("custom_module==1.2.3\n"),
             call("numpy==4.5\n"),
             call("boto3=1.28.*\n"),
+            call("sagemaker\n"),
+            call("other_module@http://some/website.whl\n"),
+        ]
+        mocked_writes.assert_has_calls(expected_calls)
+
+    @patch("sagemaker.serve.detector.dependency_manager.Path")
+    @patch("builtins.open", new_callable=mock_open, read_data=NO_AUTODETECTED_REQUIREMENTS)
+    @patch("sagemaker.serve.detector.dependency_manager.subprocess")
+    def test_capture_dependencies_no_auto_detect(self, mock_path, mock_file, mock_subprocess):
+        mock_open_custom_file = mock_open(read_data=CUSTOM_REQUIREMENT_FILE)
+        mock_open_write = mock_open(read_data="")
+        handlers = (
+            mock_open_custom_file.return_value,
+            mock_open_write.return_value,
+        )
+        mock_file.side_effect = handlers
+
+        mock_path.is_file.return_value = True
+
+        capture_dependencies(
+            dependencies=NO_AUTO_DEPENDENCY_CONFIG, work_dir=WORK_DIR, capture_all=False
+        )
+        mock_subprocess.run().assert_not_called()
+        mocked_writes = mock_open_write.return_value.__enter__().write
+
+        assert 4 == mocked_writes.call_count
+
+        expected_calls = [
+            call("boto3=1.28.*\n"),
+            call("custom_module==1.2.3\n"),
             call("other_module@http://some/website.whl\n"),
         ]
         mocked_writes.assert_has_calls(expected_calls)

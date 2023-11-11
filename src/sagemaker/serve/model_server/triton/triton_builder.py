@@ -174,12 +174,12 @@ class Triton:
             )
 
         if self.model:
-            self.framework, self.version = _detect_framework_and_version(
+            self._framework, self._version = _detect_framework_and_version(
                 str(_get_model_base(self.model))
             )
 
-            if self.framework not in SUPPORTED_TRITON_FRAMEWORK:
-                raise ValueError("%s is not supported with Triton model server" % self.framework)
+            if self._framework not in SUPPORTED_TRITON_FRAMEWORK:
+                raise ValueError("%s is not supported with Triton model server" % self._framework)
 
         if self.inference_spec:
             if "conda" not in sys.executable.lower():
@@ -214,19 +214,19 @@ class Triton:
         if self.model:
             self.secret_key = "dummy secret key for onnx backend"
 
-            if self.framework == "pytorch":
+            if self._framework == "pytorch":
                 self._export_pytorch_to_onnx(
                     export_path=export_path, model=self.model, schema_builder=self.schema_builder
                 )
                 return
 
-            if self.framework == "tensorflow":
+            if self._framework == "tensorflow":
                 self._export_tf_to_onnx(
                     export_path=export_path, model=self.model, schema_builder=self.schema_builder
                 )
                 return
 
-            raise ValueError("%s is not supported" % self.framework)
+            raise ValueError("%s is not supported" % self._framework)
 
         if self.inference_spec:
             triton_model_path = Path(__file__).parent.joinpath("model.py")
@@ -387,8 +387,8 @@ class Triton:
 
         if (
             not self.inference_spec
-            and self.framework == "tensorflow"
-            and self.version.startswith("1")
+            and self._framework == "tensorflow"
+            and self._version.startswith("1")
         ):
             self.image_uri = TRITON_IMAGE_BASE.format(
                 account_id=TRITON_IMAGE_ACCOUNT_ID_MAP.get(region),
