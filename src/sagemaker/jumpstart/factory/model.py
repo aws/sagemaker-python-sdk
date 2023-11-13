@@ -169,7 +169,7 @@ def _add_vulnerable_and_deprecated_status_to_kwargs(
 
 
 def _add_instance_type_to_kwargs(
-    kwargs: JumpStartModelInitKwargs, disable_logging: bool = False
+    kwargs: JumpStartModelInitKwargs, disable_instance_type_logging: bool = False
 ) -> JumpStartModelInitKwargs:
     """Sets instance type based on default or override, returns full kwargs."""
 
@@ -186,7 +186,7 @@ def _add_instance_type_to_kwargs(
         training_instance_type=kwargs.training_instance_type,
     )
 
-    if not disable_logging and orig_instance_type is None:
+    if not disable_instance_type_logging and orig_instance_type is None:
         JUMPSTART_LOGGER.info(
             "No instance type selected for inference hosting endpoint. Defaulting to %s.",
             kwargs.instance_type,
@@ -687,7 +687,7 @@ def get_init_kwargs(
     model_init_kwargs = _add_model_name_to_kwargs(kwargs=model_init_kwargs)
 
     model_init_kwargs = _add_instance_type_to_kwargs(
-        kwargs=model_init_kwargs, disable_logging=disable_instance_type_logging
+        kwargs=model_init_kwargs, disable_instance_type_logging=disable_instance_type_logging
     )
 
     model_init_kwargs = _add_image_uri_to_kwargs(kwargs=model_init_kwargs)
