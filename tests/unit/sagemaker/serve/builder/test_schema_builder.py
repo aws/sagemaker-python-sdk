@@ -20,7 +20,7 @@ import numpy as np
 from pandas import DataFrame
 
 from sagemaker.serve import SchemaBuilder, CustomPayloadTranslator
-from sagemaker.serve.builder.schema_builder import JSONSerializerWrapper
+from sagemaker.serve.builder.schema_builder import JSONSerializerWrapper, CSVSerializerWrapper
 from sagemaker.deserializers import (
     BytesDeserializer,
     NumpyDeserializer,
@@ -30,7 +30,6 @@ from sagemaker.deserializers import (
 from sagemaker.serializers import (
     DataSerializer,
     NumpySerializer,
-    CSVSerializer,
 )
 
 NUMPY_CONTENT_TYPE = "application/x-npy"
@@ -94,13 +93,9 @@ def custom_translator():
     return MyPayloadTranslator()
 
 
-# @pytest.fixture
-# def torch_tensor():
-#     return torch.rand(3, 4)
-
-
 def test_schema_builder_with_numpy(numpy_array):
     schema_builder = SchemaBuilder(numpy_array, numpy_array)
+    _validate_marshalling_function(schema_builder=schema_builder)
     assert isinstance(schema_builder.input_serializer, NumpySerializer)
     assert isinstance(schema_builder.output_serializer, NumpySerializer)
     assert isinstance(schema_builder.input_deserializer._deserializer, NumpyDeserializer)
@@ -111,8 +106,9 @@ def test_schema_builder_with_numpy(numpy_array):
 
 def test_schema_builder_with_pandas_dataframe(pandas_df):
     schema_builder = SchemaBuilder(pandas_df, pandas_df)
-    assert isinstance(schema_builder.input_serializer, CSVSerializer)
-    assert isinstance(schema_builder.output_serializer, CSVSerializer)
+    _validate_marshalling_function(schema_builder=schema_builder)
+    assert isinstance(schema_builder.input_serializer, CSVSerializerWrapper)
+    assert isinstance(schema_builder.output_serializer, CSVSerializerWrapper)
     assert isinstance(schema_builder.input_deserializer._deserializer, PandasDeserializer)
     assert schema_builder.input_deserializer.ACCEPT == DATAFRAME_CONTENT_TYPE
     assert isinstance(schema_builder.output_deserializer._deserializer, PandasDeserializer)
@@ -121,6 +117,7 @@ def test_schema_builder_with_pandas_dataframe(pandas_df):
 
 def test_schema_builder_with_jsonable(jsonable_obj):
     schema_builder = SchemaBuilder(jsonable_obj, jsonable_obj)
+    _validate_marshalling_function(schema_builder=schema_builder)
     assert isinstance(schema_builder.input_serializer, JSONSerializerWrapper)
     assert isinstance(schema_builder.output_serializer, JSONSerializerWrapper)
     assert isinstance(schema_builder.input_deserializer._deserializer, JSONDeserializer)
@@ -131,13 +128,14 @@ def test_schema_builder_with_jsonable(jsonable_obj):
 
 def test_schema_builder_with_bytes(some_bytes):
     schema_builder = SchemaBuilder(some_bytes, some_bytes)
+    _validate_marshalling_function(schema_builder=schema_builder)
     assert isinstance(schema_builder.input_serializer, DataSerializer)
     assert isinstance(schema_builder.output_serializer, DataSerializer)
     assert isinstance(schema_builder.input_deserializer._deserializer, BytesDeserializer)
     assert isinstance(schema_builder.output_deserializer._deserializer, BytesDeserializer)
 
 
-def test_schema_builder_with_cloudpickle(unsupported_object):
+def test_schema_builder_unsupported_type(unsupported_object):
     with pytest.raises(ValueError, match="SchemaBuilder cannot determine"):
         SchemaBuilder(unsupported_object, unsupported_object)
 
@@ -147,6 +145,19 @@ def test_json_serializer_wrapper(jsonable):
     b = JSONSerializerWrapper().serialize(jsonable)
     stream = BytesIO(b)
     JSONDeserializer().deserialize(stream, content_type="application/json")
+
+
+def _validate_marshalling_function(schema_builder: SchemaBuilder):
+    """Invoke serializer and deserializer to validate the payload"""
+    # Validate sample_input
+    b = schema_builder.input_serializer.serialize(schema_builder.sample_input)
+    stream = BytesIO(b)
+    schema_builder.input_deserializer.deserialize(stream=stream)
+
+    # Validate sample_output
+    b = schema_builder.output_serializer.serialize(schema_builder.sample_output)
+    stream = BytesIO(b)
+    schema_builder.output_deserializer.deserialize(stream=stream)
 
 
 def test_schema_builder_with_payload_translator(custom_translator):
