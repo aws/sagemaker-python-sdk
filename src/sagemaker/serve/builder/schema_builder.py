@@ -34,9 +34,17 @@ logger = logging.getLogger(__name__)
 class JSONSerializerWrapper(JSONSerializer):
     """Wraps the JSONSerializer because it does not convert jsonable to bytes"""
 
-    def serialize(self, data):
+    def serialize(self, data) -> bytes:
         """Placeholder docstring"""
 
+        return super().serialize(data).encode("utf-8")
+
+
+class CSVSerializerWrapper(CSVSerializer):
+    """Wraps the CSVSerializer because it does not convert dataframe to bytes"""
+
+    def serialize(self, data) -> bytes:
+        """Placeholder docstring"""
         return super().serialize(data).encode("utf-8")
 
 
@@ -49,8 +57,8 @@ translation_mapping = {
     TorchTensorDeserializer: TorchTensorSerializer,
     DataSerializer: BytesDeserializer,
     BytesDeserializer: DataSerializer,
-    CSVSerializer: PandasDeserializer,
-    PandasDeserializer: CSVSerializer,
+    CSVSerializerWrapper: PandasDeserializer,
+    PandasDeserializer: CSVSerializerWrapper,
     StringSerializer: StringDeserializer,
     StringDeserializer: StringSerializer,
 }
@@ -147,7 +155,7 @@ class SchemaBuilder(TritonSchemaBuilder):
         if isinstance(obj, np.ndarray):
             return NumpySerializer()
         if isinstance(obj, DataFrame):
-            return CSVSerializer()
+            return CSVSerializerWrapper()
         if isinstance(obj, bytes) or _is_path_to_file(obj):
             return DataSerializer()
         if _is_torch_tensor(obj):
