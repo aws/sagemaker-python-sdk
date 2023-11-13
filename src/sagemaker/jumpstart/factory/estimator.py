@@ -335,6 +335,7 @@ def get_deploy_kwargs(
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
         training_instance_type=training_instance_type,
+        disable_instance_type_logging=True,
     )
 
     estimator_deploy_kwargs: JumpStartEstimatorDeployKwargs = JumpStartEstimatorDeployKwargs(

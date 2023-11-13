@@ -50,6 +50,8 @@ default_predictor_with_presets = Predictor(
 
 
 class EstimatorTest(unittest.TestCase):
+    @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_LOGGER")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_LOGGER")
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
     @mock.patch("sagemaker.jumpstart.estimator.is_valid_model_id")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
@@ -70,6 +72,8 @@ class EstimatorTest(unittest.TestCase):
         mock_session_model: mock.Mock,
         mock_is_valid_model_id: mock.Mock,
         mock_sagemaker_timestamp: mock.Mock,
+        mock_jumpstart_model_factory_logger: mock.Mock,
+        mock_jumpstart_estimator_factory_logger: mock.Mock,
     ):
         mock_is_valid_model_id.return_value = True
 
@@ -86,6 +90,9 @@ class EstimatorTest(unittest.TestCase):
 
         estimator = JumpStartEstimator(
             model_id=model_id,
+        )
+        mock_jumpstart_estimator_factory_logger.info.assert_called_once_with(
+            "No instance type selected for training job. Defaulting to %s.", "ml.p3.2xlarge"
         )
 
         mock_estimator_init.assert_called_once_with(
@@ -124,13 +131,22 @@ class EstimatorTest(unittest.TestCase):
             f"{get_training_dataset_for_model_and_version(model_id, model_version)}",
         }
 
+        mock_jumpstart_estimator_factory_logger.info.reset_mock()
         estimator.fit(channels)
+        mock_jumpstart_estimator_factory_logger.info.assert_not_called()
 
         mock_estimator_fit.assert_called_once_with(
             inputs=channels, wait=True, job_name="blahblahblah-9876"
         )
 
+        mock_jumpstart_model_factory_logger.info.reset_mock()
+        mock_jumpstart_estimator_factory_logger.info.reset_mock()
         estimator.deploy()
+        mock_jumpstart_model_factory_logger.info.assert_called_once_with(
+            "No instance type selected for inference hosting endpoint. Defaulting to %s.",
+            "ml.p2.xlarge",
+        )
+        mock_jumpstart_estimator_factory_logger.info.assert_not_called()
 
         mock_estimator_deploy.assert_called_once_with(
             instance_type="ml.p2.xlarge",
