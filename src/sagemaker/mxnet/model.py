@@ -68,7 +68,7 @@ class MXNetPredictor(Predictor):
             deserializer (callable): Optional. Default parses the response using
                 ``json.load(...)``.
             component_name (str): Optional. Name of the Amazon SageMaker inference
-                component corresponding the predictor.
+                component corresponding to the predictor.
         """
         super(MXNetPredictor, self).__init__(
             endpoint_name,

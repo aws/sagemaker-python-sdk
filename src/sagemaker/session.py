@@ -4337,20 +4337,19 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """Create an Amazon SageMaker Inference Component.
 
         Args:
-            inference_component_name (str): Name of the Amazon SageMaker Inference Component
+            inference_component_name (str): Name of the Amazon SageMaker inference component
                 to create.
-            endpoint_name (str): Name of Amazon SageMaker Endpoint that Inference Component
+            endpoint_name (str): Name of the Amazon SageMaker endpoint that the inference component
                 will deploy to.
-            variant_name (str): Name of Amazons SageMaker Variant that Inference Component
+            variant_name (str): Name of the Amazon SageMaker variant that the inference component
                 will deploy to.
-            specification (Dict[str, Any]): Amazon SageMaker Inference Component
-                Specification.
-            runtime_config (Optional[Dict[str, Any]]): Optional. Amazon SageMaker Inference
-                Component RuntimeConfig. (Default: None).
+            specification (Dict[str, Any]): The inference component specification.
+            runtime_config (Optional[Dict[str, Any]]): Optional. The inference component
+                runtime configuration. (Default: None).
             tags (Optional[Dict[str, str]]): Optional. A list of dictionaries containing key-value
                 pairs. (Default: None).
-            wait (bool) : Optional. Wait for inference component to be created before return.
-                Default is True. (Default: True).
+            wait (bool) : Optional. Wait for the inference component to finish being created before
+                returning a value. (Default: True).
 
         Returns:
             str: Name of the Amazon SageMaker ``InferenceComponent`` if created.
@@ -4470,7 +4469,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """Wait for an Amazon SageMaker ``Inference Component`` deployment to complete.
 
         Args:
-            inference_component_name (str): Name of the ``Inference Component`` to wait for.
+            inference_component_name (str): Name of the inference component to wait for.
             poll (int): Polling interval in seconds (default: 20).
 
         """
@@ -4487,7 +4486,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Args:
             sagemaker_client (boto3.SageMaker.Client): Client which makes Amazon SageMaker
                 service calls
-            inference_component_name (str): Name of the Amazon SageMaker ``InferenceComponent``.
+            inference_component_name (str): Name of the Amazon SageMaker inference component.
         Returns:
             bool: True if deletion is done. None otherwise.
         """
@@ -4595,34 +4594,34 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """List inference components under current endpoint.
 
         Args:
-            endpoint_name_equals (str): Optional. A string that matches the endpoint
-                name deployed those Inference Components. (Default: None).
-            variant_name_equals (str): Optional. A string that matches the variant
-                name deployed those Inference Components. (Default: None).
-            name_contains (str): Optional. A string that partially matches one or
-                more Inference Components' names. Filters InferenceComponents by name.
+            endpoint_name_equals (str): Optional. A string that matches the name of the
+                endpoint that the inference components are deployed to. (Default: None).
+            variant_name_equals (str): Optional. A string that matches the name of the variant
+                associated with the inference components. (Default: None).
+            name_contains (str): Optional. A string that partially matches the names of one or
+                more inference components. Filters inference components by name.
                 (Default: None).
             creation_time_after (datetime.datetime): Optional. Use this parameter to
-                search for InferenceComponents created after a specific date and time.
+                search for inference components that were created after a specific date and time.
                 (Default: None).
             creation_time_before (datetime.datetime): Optional. Use this parameter to
-                search for InferenceComponents created before a specific date and time.
+                search for inference components that were created before a specific date and time.
                 (Default: None).
             last_modified_time_after (datetime.datetime): Optional. Use this parameter to
-                search for InferenceComponents last modified after a specific date and time.
-                (Default: None).
+                search for inference components that were last modified after a specific date
+                and time. (Default: None).
             last_modified_time_before (datetime.datetime): Optional. Use this parameter to
-                search for InferenceComponents last modified before a specific date and time.
-                (Default: None).
-            status_equals (str): Optional. The Inference Component status. Filters
-                InferenceComponents by status. (Default: None).
-            sort_order (str): Optional. The order in which InferenceComponents are listed.
-                (Default: None).
-            sort_by (str): Optional. The value on which the InferenceComponent list is
+                search for inference components that were last modified before a specific date
+                and time. (Default: None).
+            status_equals (str): Optional. The inference component status to apply as a filter
+                to the response. (Default: None).
+            sort_order (str): Optional. The order in which inference components are listed in the
+                response. (Default: None).
+            sort_by (str): Optional. The value on which the inference component list is
                 sorted. (Default: None).
             max_results (int): Optional. The maximum number of results returned by
-                ListInferenceComponents. (Default: None).
-            next_token (str): Optional. A token to resume pagination of ListInferenceComponents
+                list_inference_components. (Default: None).
+            next_token (str): Optional. A token to resume pagination of list_inference_components
                 results. (Default: None).
 
         Return:
@@ -5222,7 +5221,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
             enable_network_isolation (Boolean): Default False.
-                if True, enables network isolation in the endpoint, isolating the model
+                If True, enables network isolation in the endpoint, isolating the model
                 container. No inbound or outbound network calls can be made to
                 or from the model container.
             role (str): An AWS IAM role (either name or full ARN). The Amazon

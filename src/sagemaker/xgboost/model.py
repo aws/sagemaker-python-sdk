@@ -62,7 +62,7 @@ class XGBoostPredictor(Predictor):
             deserializer (sagemaker.deserializers.BaseDeserializer): Optional.
                 Default parses the response from text/csv to a Python list.
             component_name (str): Optional. Name of the Amazon SageMaker inference
-                component corresponding the predictor.
+                component corresponding to the predictor.
         """
         super(XGBoostPredictor, self).__init__(
             endpoint_name,

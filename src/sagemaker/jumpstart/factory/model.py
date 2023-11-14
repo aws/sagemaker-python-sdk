@@ -469,7 +469,7 @@ def _add_deploy_extra_kwargs(kwargs: JumpStartModelInitKwargs) -> Dict[str, Any]
 
 
 def _add_resources_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelInitKwargs:
-    """Sets resource requirements based on default or override, returns full kwargs."""
+    """Sets the resource requirements based on the default or an override. Returns full kwargs."""
 
     kwargs.resources = kwargs.resources or resource_requirements.retrieve_default(
         region=kwargs.region,

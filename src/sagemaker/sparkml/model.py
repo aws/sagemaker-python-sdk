@@ -58,7 +58,7 @@ class SparkMLPredictor(Predictor):
             serializer (sagemaker.serializers.BaseSerializer): Optional. Default
                 serializes input data to text/csv.
             component_name (str): Optional. Name of the Amazon SageMaker inference
-                component corresponding the predictor.
+                component corresponding to the predictor.
         """
         sagemaker_session = sagemaker_session or Session()
         super(SparkMLPredictor, self).__init__(

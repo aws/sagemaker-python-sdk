@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Defines the ResourceRequirements class that configures a compute resources for Model."""
+"""Defines the ResourceRequirements class that configures the compute resources for the Model."""
 
 from __future__ import absolute_import
 
@@ -23,14 +23,14 @@ LOGGER = logging.getLogger("sagemaker")
 
 
 class ResourceRequirements(object):
-    """The class to ResourceRequirements class that configures a compute resources for Model"""
+    """Configures the compute resources for a Model."""
 
     def __init__(
         self,
         requests: Optional[Dict[str, int]] = None,
         limits: Optional[Dict[str, int]] = None,
     ):
-        """It initializes a ``ResourceRequirements`` for Amazon SageMaker Inference Component.
+        """Initializes a ResourceRequirements object for an Amazon SageMaker inference component.
 
         Args:
             requests (dict): Basic resource to be requested, including num_cpus, memory (in MB),
@@ -77,10 +77,7 @@ class ResourceRequirements(object):
         return self.requests == other.requests and self.limits == other.limits
 
     def get_compute_resource_requirements(self) -> dict:
-        """Return a dict of resource requirements
-
-        It is structured as ComputeResourceRequirements in SageMaker InferenceComponent APIs.
-        """
+        """Returns a dict of resource requirements."""
         resource_requirements = {
             "MinMemoryRequiredInMb": self.min_memory,
         }
