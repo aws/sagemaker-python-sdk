@@ -66,7 +66,7 @@ class HuggingFacePredictor(Predictor):
             deserializer (sagemaker.deserializers.BaseDeserializer): Optional.
                 Default parses the response from .npy format to numpy array.
             component_name (str): Optional. Name of the Amazon SageMaker inference
-                component corresponding the predictor.
+                component corresponding to the predictor.
         """
         super(HuggingFacePredictor, self).__init__(
             endpoint_name,

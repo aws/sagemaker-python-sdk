@@ -67,7 +67,7 @@ class TensorFlowPredictor(Predictor):
                 that should handle the request. If not specified, the latest
                 version of the model will be used.
             component_name (str): Optional. Name of the Amazon SageMaker inference
-                component corresponding the predictor.
+                component corresponding to the predictor.
         """
         removed_kwargs("content_type", kwargs)
         removed_kwargs("accept", kwargs)

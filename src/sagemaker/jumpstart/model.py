@@ -551,8 +551,8 @@ class JumpStartModel(Model):
                 this feature. (Default: None).
             managed_instance_scaling (Optional[Dict]): Managed intance scaling options,
                 if configured Amazon SageMaker will manage the instance number behind the
-                Endpoint
-            endpoint_type (EndpointType): The type of an endpoint used to deploy models.
+                endpoint.
+            endpoint_type (EndpointType): The type of endpoint used to deploy models.
                 (Default: EndpointType.GEN1).
         """
 

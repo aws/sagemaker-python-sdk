@@ -442,9 +442,9 @@ class Predictor(PredictorBase):
     def delete_predictor(self, wait: bool = False) -> None:
         """Delete the Amazon SageMaker inference component or endpoint backing this predictor.
 
-        Delete the corresponding inference component if the endpoint is Generation2
+        Delete the corresponding inference component if the endpoint is a Generation2
         endpoint.
-        Otherwise delete the endpoint where this predictor is on.
+        Otherwise delete the endpoint where this predictor is hosted.
         """
 
         if self.component_name:
@@ -462,13 +462,15 @@ class Predictor(PredictorBase):
         container_startup_health_check_timeout: Optional[int] = None,
         resources: Optional[ResourceRequirements] = None,
     ):
-        """Updates the predictor to deploy a new Model specification and apply new configurations.
+        """Updates the predictor.
 
-        This is done by updating the SageMaker InferenceComponent.
+        You can deploy a new Model specification or apply new configurations. The SDK
+        applies your updates by updating the inference component that's associated with
+        the model.
 
         Args:
-            model_name (Optional[str]): The model name to use to update
-                for the predictor. (Default: None).
+            model_name (Optional[str]): The model name to use to update the
+                predictor. (Default: None).
             image_uri (Optional[str]): A Docker image URI. (Default: None).
             model_data (Optional[Union[str, dict]]): Location
                 of SageMaker model data. (Default: None).
@@ -488,8 +490,8 @@ class Predictor(PredictorBase):
         """
         if self.component_name is None:
             raise ValueError(
-                "No existing Inference Component; "
-                "Please ensure you deployed Inference Component first."
+                "No inference component exists for the specified model. "
+                "Ensure that you deployed the inference component, and try again."
             )
         # [TODO]: Move to a module
         request = {
@@ -561,38 +563,38 @@ class Predictor(PredictorBase):
             the predictor.
 
         Args:
-            variant_name_equals (str): Optional. A string that matches the variant
-                name deployed those Inference Components. (Default: None).
-            name_contains (str): Optional. A string that partially matches one or
-                more Inference Components' names. Filters InferenceComponents by name.
+            variant_name_equals (str): Optional. A string that matches the name of the
+                variant that was assigned to the inference component. (Default: None).
+            name_contains (str): Optional. A string that partially matches the names of one or
+                more inference components. Filters inference components by name.
                 (Default: None).
             creation_time_after (datetime.datetime): Optional. Use this parameter to
-                search for InferenceComponents created after a specific date and time.
+                search for inference components created after a specific date and time.
                 (Default: None).
             creation_time_before (datetime.datetime): Optional. Use this parameter to
-                search for InferenceComponents created before a specific date and time.
+                search for inference components created before a specific date and time.
                 (Default: None).
             last_modified_time_after (datetime.datetime): Optional. Use this parameter to
-                search for InferenceComponents last modified after a specific date and time.
-                (Default: None).
+                search for inference components that were last modified after a specific date
+                and time. (Default: None).
             last_modified_time_before (datetime.datetime): Optional. Use this parameter to
-                search for InferenceComponents last modified before a specific date and time.
+                search for inference components that were last modified before a specific date
+                and time. (Default: None).
+            status_equals (str): Optional. The inference component status. Filters
+                inference components by status. (Default: None).
+            sort_order (str): Optional. The order in which inference components are listed.
                 (Default: None).
-            status_equals (str): Optional. The Inference Component status. Filters
-                InferenceComponents by status. (Default: None).
-            sort_order (str): Optional. The order in which InferenceComponents are listed.
-                (Default: None).
-            sort_by (str): Optional. The value on which the InferenceComponent list is
-                sorted. (Default: None).
+            sort_order (str): Optional. The order in which inference components are listed in
+                the response. (Default: None).
             max_results (int): Optional. The maximum number of results returned by
-                ListInferenceComponents. (Default: None).
-            next_token (str): Optional. A token to resume pagination of ListInferenceComponents
+                list_related_models. (Default: None).
+            next_token (str): Optional. A token to resume pagination of list_related_models
                 results. (Default: None).
 
         Returns:
-            Tuple[List[Dict[str, Any]], Optional[str]]: A list of Amazon SageMaker Inference
-                Component objects associated to the Endpoint. If NextToken is returned,
-                there are more results available. The value of nextToken is a unique
+            Tuple[List[Dict[str, Any]], Optional[str]]: A list of Amazon SageMaker inference
+                component objects associated with the endpoint. If a next token is returned,
+                there are more results available. The value of the next token is a unique
                 pagination token.
         """
 

@@ -61,7 +61,7 @@ def _retrieve_default_resources(
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     Returns:
-        str: the default resource requirements to use for the model or None.
+        str: The default resource requirements to use for the model or None.
 
     Raises:
         ValueError: If the model is not available in the

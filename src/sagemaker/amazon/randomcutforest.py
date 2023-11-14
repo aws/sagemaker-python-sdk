@@ -199,7 +199,7 @@ class RandomCutForestPredictor(Predictor):
             deserializer (sagemaker.deserializers.BaseDeserializer): Optional.
                 Default parses responses from x-recordio-protobuf format.
             component_name (str): Optional. Name of the Amazon SageMaker inference
-                component corresponding the predictor.
+                component corresponding to the predictor.
         """
         super(RandomCutForestPredictor, self).__init__(
             endpoint_name,

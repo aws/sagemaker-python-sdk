@@ -23,7 +23,7 @@ NO_AVAILABLE_INSTANCES_ERROR_MSG = (
 
 NO_AVAILABLE_RESOURCE_REQUIREMENT_RECOMMENDATION_ERROR_MSG = (
     "No available compute resource requirement recommendation for model ID '{model_id}'. "
-    "Please provide the resource requirements in the deploy method."
+    "Provide the resource requirements in the deploy method."
 )
 
 INVALID_MODEL_ID_ERROR_MSG = (
