@@ -4934,7 +4934,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             dict: Return value from the ``DescribeEndpoint`` API.
         """
-        if not live_logging:
+
+        if not live_logging or not _has_permission_for_live_logging(self.boto_session, endpoint):
             desc = _wait_until(lambda: _deploy_done(self.sagemaker_client, endpoint), poll)
         else:
             cloudwatch_client = self.boto_session.client("logs")
@@ -7612,6 +7613,26 @@ def _flush_log_streams(
         dot = True
         print(".", end="")
         sys.stdout.flush()
+
+
+def _has_permission_for_live_logging(boto_session, endpoint_name) -> bool:
+    """Validate if customer's role has the right permission to access logs from CloudWatch"""
+    try:
+        cloudwatch_client = boto_session.client("logs")
+        cloudwatch_client.filter_log_events(
+            logGroupName=f"/aws/sagemaker/Endpoints/{endpoint_name}",
+            logStreamNamePrefix="AllTraffic/",
+        )
+        return True
+    except ClientError as e:
+        if e.response["Error"]["Code"] == "AccessDeniedException":
+            LOGGER.warning(
+                ("Failed to enable live logging: %s. Fallback to default logging..."),
+                e,
+            )
+
+            return False
+        return True
 
 
 s3_input = deprecated_class(TrainingInput, "sagemaker.session.s3_input")
