@@ -52,6 +52,7 @@ class PyTorchPredictor(Predictor):
         sagemaker_session=None,
         serializer=NumpySerializer(),
         deserializer=NumpyDeserializer(),
+        component_name=None,
     ):
         """Initialize an ``PyTorchPredictor``.
 
@@ -67,12 +68,15 @@ class PyTorchPredictor(Predictor):
                 arrays.
             deserializer (sagemaker.deserializers.BaseDeserializer): Optional.
                 Default parses the response from .npy format to numpy array.
+            component_name (str): Optional. Name of the Amazon SageMaker inference
+                component corresponding the predictor.
         """
         super(PyTorchPredictor, self).__init__(
             endpoint_name,
             sagemaker_session,
             serializer=serializer,
             deserializer=deserializer,
+            component_name=component_name,
         )
 
 

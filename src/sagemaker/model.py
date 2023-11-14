@@ -312,7 +312,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
                 the SageMaker Python SDK attempts to use either the CodeCommit
                 credential helper or local credential storage for authentication.
             resources (Optional[ResourceRequirements]): The compute resource requirements
-                for a model to be deployed to an endpoint. Only EndpointType.Goldfinch supports
+                for a model to be deployed to an endpoint. Only EndpointType.GEN2 supports
                 this feature. (Default: None).
 
         """
@@ -1275,8 +1275,8 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         accept_eula: Optional[bool] = None,
         endpoint_logging=False,
         resources: Optional[ResourceRequirements] = None,
-        endpoint_type: EndpointType = EndpointType.OTHERS,
-        managed_instance_scaling=None,
+        endpoint_type: EndpointType = EndpointType.GEN1,
+        managed_instance_scaling: Optional[str] = None,
         **kwargs,
     ):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
@@ -1297,12 +1297,12 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 in the ``Endpoint`` created from this ``Model``. If not using
                 serverless inference or the model has not called ``right_size()``,
                 then it need to be a number larger or equals
-                to 1 (default: None)
+                to 1 (default: None).
             instance_type (str): The EC2 instance type to deploy this Model to.
                 For example, 'ml.p2.xlarge', or 'local' for local mode. If not using
                 serverless inference or the model has not called ``right_size()``,
                 then it is required to deploy a model.
-                (default: None)
+                (default: None).
             serializer (:class:`~sagemaker.serializers.BaseSerializer`): A
                 serializer object, used to encode data for an inference endpoint
                 (default: None). If ``serializer`` is not None, then
@@ -1330,18 +1330,18 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 this model completes (default: True).
             data_capture_config (sagemaker.model_monitor.DataCaptureConfig): Specifies
                 configuration related to Endpoint data capture for use with
-                Amazon SageMaker Model Monitoring. Default: None.
+                Amazon SageMaker Model Monitoring. (Default: None).
             async_inference_config (sagemaker.model_monitor.AsyncInferenceConfig): Specifies
                 configuration related to async endpoint. Use this configuration when trying
                 to create async endpoint and make async inference. If empty config object
                 passed through, will use default config to deploy async endpoint. Deploy a
-                real-time endpoint if it's None. (default: None)
+                real-time endpoint if it's None. (default: None).
             serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
                 Specifies configuration related to serverless endpoint. Use this configuration
                 when trying to create serverless endpoint and make serverless inference. If
                 empty object passed through, will use pre-defined values in
                 ``ServerlessInferenceConfig`` class to deploy serverless endpoint. Deploy an
-                instance based endpoint if it's None. (default: None)
+                instance based endpoint if it's None. (default: None).
             volume_size (int): The size, in GB, of the ML storage volume attached to individual
                 inference instance associated with the production variant. Currenly only Amazon EBS
                 gp2 storage volumes are supported.
@@ -1367,11 +1367,13 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             endpoint_logging (Optiona[bool]): If set to true, live logging will be emitted as
                 the SageMaker Endpoint starts up. (Default: False).
             resources (Optional[ResourceRequirements]): The compute resource requirements
-                for a model to be deployed to an endpoint. Only EndpointType.Goldfinch supports
+                for a model to be deployed to an endpoint. Only EndpointType.GEN2 supports
                 this feature. (Default: None).
+            managed_instance_scaling (Optional[Dict]): Managed instance scaling options,
+                if configured Amazon SageMaker will manage the instance number behind the
+                Endpoint. (Default: None).
             endpoint_type (Optional[EndpointType]): The type of an endpoint used to deploy models.
-                (Default: EndpointType.OTHERS).
-            managed_instance_scaling (Optional[Dict]): Managed intance scaling options [TODO: rewording]
+                (Default: EndpointType.GEN1).
         Raises:
              ValueError: If arguments combination check failed in these circumstances:
                 - If no role is specified or
@@ -1472,12 +1474,13 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 self._base_name = "-".join((self._base_name, compiled_model_suffix))
 
         # Support multiple models on same endpoint
-        if endpoint_type == EndpointType.GOLDFINCH:
+        if endpoint_type == EndpointType.GEN2:
             if endpoint_name:
                 self.endpoint_name = endpoint_name
             else:
                 # no endpoint name given, create endpoint_name
-                self.endpoint_name = utils.name_from_base(self.name)
+                if self.name:
+                    self.endpoint_name = utils.name_from_base(self.name)
             # [TODO]: Refactor to a module
             managed_instance_scaling_config = {}
             if managed_instance_scaling:

@@ -24,5 +24,5 @@ LOGGER = logging.getLogger("sagemaker")
 class EndpointType(Enum):
     """Types of endpoint"""
 
-    GOLDFINCH = "goldfinch"
-    OTHERS = "others"
+    GEN1 = "gen1"  # Amazon SageMaker Endpoint Generation 1
+    GEN2 = "gen2"  # Amazon SageMaker Endpoint Generation 2

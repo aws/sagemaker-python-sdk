@@ -40,6 +40,7 @@ class SparkMLPredictor(Predictor):
         endpoint_name,
         sagemaker_session=None,
         serializer=CSVSerializer(),
+        component_name=None,
         **kwargs,
     ):
         """Initializes a SparkMLPredictor which should be used with SparkMLModel.
@@ -56,12 +57,15 @@ class SparkMLPredictor(Predictor):
                 using the default AWS configuration chain.
             serializer (sagemaker.serializers.BaseSerializer): Optional. Default
                 serializes input data to text/csv.
+            component_name (str): Optional. Name of the Amazon SageMaker inference
+                component corresponding the predictor.
         """
         sagemaker_session = sagemaker_session or Session()
         super(SparkMLPredictor, self).__init__(
             endpoint_name=endpoint_name,
             sagemaker_session=sagemaker_session,
             serializer=serializer,
+            component_name=component_name,
             **kwargs,
         )
 

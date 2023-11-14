@@ -197,6 +197,7 @@ class LDAPredictor(Predictor):
         sagemaker_session=None,
         serializer=RecordSerializer(),
         deserializer=RecordDeserializer(),
+        component_name=None,
     ):
         """Creates "LDAPredictor" object to be used for transforming input vectors.
 
@@ -211,12 +212,15 @@ class LDAPredictor(Predictor):
                 serializes input data to x-recordio-protobuf format.
             deserializer (sagemaker.deserializers.BaseDeserializer): Optional.
                 Default parses responses from x-recordio-protobuf format.
+            component_name (str): Optional. Name of the Amazon SageMaker inference
+                component corresponding the predictor.
         """
         super(LDAPredictor, self).__init__(
             endpoint_name,
             sagemaker_session,
             serializer=serializer,
             deserializer=deserializer,
+            component_name=component_name,
         )
 
 

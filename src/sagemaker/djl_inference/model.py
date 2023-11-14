@@ -71,6 +71,7 @@ class DJLPredictor(Predictor):
         sagemaker_session: Session = None,
         serializer: BaseSerializer = JSONSerializer(),
         deserializer: BaseDeserializer = JSONDeserializer(),
+        component_name=None,
     ):
         """Initialize a ``DJLPredictor``
 
@@ -85,12 +86,15 @@ class DJLPredictor(Predictor):
                 serializes input data to json format.
             deserializer (sagemaker.deserializers.BaseDeserializer): Optional.
                 Default parses the response from json format to dictionary.
+            component_name (str): Optional. Name of the Amazon SageMaker inference
+                component corresponding the predictor.
         """
         super(DJLPredictor, self).__init__(
             endpoint_name,
             sagemaker_session,
             serializer=serializer,
             deserializer=deserializer,
+            component_name=component_name,
         )
 
 

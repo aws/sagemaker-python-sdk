@@ -74,7 +74,7 @@ STS_ENDPOINT = "sts.us-west-2.amazonaws.com"
 RESOURCES = ResourceRequirements(
     requests={
         "num_cpus": 1,  # NumberOfCpuCoresRequired
-        "memory": 1024,  # MinMemoryRequiredInMb (required), differentiator for Goldfinch path
+        "memory": 1024,  # MinMemoryRequiredInMb (required)
         "copies": 1,
     },
     limits={},
@@ -6065,15 +6065,13 @@ def test_list_inference_components(sagemaker_session):
     variant_name = "test-variant-name"
 
     sagemaker_session.list_inference_components(
-        filters={
-            "EndpointNameEquals": endpoint_name,
-            "VariantNameEquals": variant_name,
-            "SortBy": "Status",
-            "SortOrder": "Ascending",
-            "MaxResults": "5",
-            "NameContains": "model",
-            "StatusEquals": "InService",
-        },
+        endpoint_name_equals=endpoint_name,
+        variant_name_equals=variant_name,
+        sort_by="Status",
+        sort_order="Ascending",
+        max_results="5",
+        name_contains="model",
+        status_equals="InService",
     )
 
     request = {

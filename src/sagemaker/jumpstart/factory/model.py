@@ -511,6 +511,7 @@ def get_deploy_kwargs(
     accept_eula: Optional[bool] = None,
     endpoint_logging: Optional[bool] = None,
     resources: Optional[ResourceRequirements] = None,
+    managed_instance_scaling: Optional[str] = None,
     endpoint_type: Optional[EndpointType] = None,
 ) -> JumpStartModelDeployKwargs:
     """Returns kwargs required to call `deploy` on `sagemaker.estimator.Model` object."""
@@ -542,7 +543,6 @@ def get_deploy_kwargs(
         accept_eula=accept_eula,
         endpoint_logging=endpoint_logging,
         resources=resources,
-        endpoint_type=endpoint_type,
     )
 
     deploy_kwargs = _add_sagemaker_session_to_kwargs(kwargs=deploy_kwargs)
@@ -561,8 +561,10 @@ def get_deploy_kwargs(
 
     deploy_kwargs = _add_tags_to_kwargs(kwargs=deploy_kwargs)
 
-    if endpoint_type == EndpointType.GOLDFINCH:
+    if endpoint_type == EndpointType.GEN2:
         deploy_kwargs = _add_resources_to_kwargs(kwargs=deploy_kwargs)
+        deploy_kwargs.endpoint_type = endpoint_type
+        deploy_kwargs.managed_instance_scaling = managed_instance_scaling
 
     return deploy_kwargs
 
