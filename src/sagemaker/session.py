@@ -22,6 +22,8 @@ import time
 import typing
 import warnings
 import uuid
+import datetime
+
 from copy import deepcopy
 from typing import List, Dict, Any, Sequence, Optional
 
@@ -4067,7 +4069,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         new_data_capture_config_dict=None,
         new_production_variants=None,
         new_explainer_config_dict=None,
-        endpoint_type=EndpointType.OTHERS,
+        endpoint_type=EndpointType.GEN1,
     ):
         """Create an Amazon SageMaker endpoint configuration from an existing one.
 
@@ -4117,7 +4119,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         production_variants = (
             new_production_variants or existing_endpoint_config_desc["ProductionVariants"]
         )
-        if endpoint_type == EndpointType.GOLDFINCH:
+        if endpoint_type == EndpointType.GEN2:
             # Make a copy of Production variants and remove the InitialVariantWeight
             # in the copy
             copy_production_variants = deepcopy(production_variants)
@@ -4324,50 +4326,43 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
     def create_inference_component(
         self,
-        inference_component_name,
-        endpoint_name,
-        variant_name,
-        specification=None,
-        runtime_config=None,
-        tags=None,
-        wait=True,
+        inference_component_name: str,
+        endpoint_name: str,
+        variant_name: str,
+        specification: Dict[str, Any],
+        runtime_config: Optional[Dict[str, Any]] = None,
+        tags: Optional[Dict[str, str]] = None,
+        wait: bool = True,
     ):
-        """Create an Amazon SageMaker ``Inference Component``.
+        """Create an Amazon SageMaker Inference Component.
 
         Args:
-            inference_component_name (str): Name for inference component. Required.
-
-            endpoint_name (str): The name of the endpoint to deploy on. Required.
-
-            variant_name (str): Endpoint variant name. Required
-
-            specification (dict[str,int]): Resource configuration. Optional.
-            Example: {
-                "MinMemoryRequiredInMb": 1024,
-                "NumberOfCpuCoresRequired": 1,
-                "NumberOfAcceleratorDevicesRequired": 1,
-                "MaxMemoryRequiredInMb": 4096,
-            },
-
-            runtime_config (dict[str,int]): Number of copies. Optional.
-            Default: {
-                "copyCount": 1
-            }
-
-            tags (dict[str,str]): A list of dictionaries containing key-value
-                pairs.
-
-            wait: Wait for inference component to be created before return. Optional. Default is
-            True.
+            inference_component_name (str): Name of the Amazon SageMaker Inference Component
+                to create.
+            endpoint_name (str): Name of Amazon SageMaker Endpoint that Inference Component
+                will deploy to.
+            variant_name (str): Name of Amazons SageMaker Variant that Inference Component
+                will deploy to.
+            specification (Dict[str, Any]): Amazon SageMaker Inference Component
+                Specification.
+            runtime_config (Optional[Dict[str, Any]]): Optional. Amazon SageMaker Inference
+                Component RuntimeConfig. (Default: None).
+            tags (Optional[Dict[str, str]]): Optional. A list of dictionaries containing key-value
+                pairs. (Default: None).
+            wait (bool) : Optional. Wait for inference component to be created before return.
+                Default is True. (Default: True).
 
         Returns:
-            str: Arn of the Amazon SageMaker ``InferenceComponent`` if created.
+            str: Name of the Amazon SageMaker ``InferenceComponent`` if created.
         """
         LOGGER.info(
             "Creating inference component with name %s for endpoint %s",
             inference_component_name,
             endpoint_name,
         )
+
+        if runtime_config is None:
+            runtime_config = {"CopyCount": 1}
 
         request = {
             "InferenceComponentName": inference_component_name,
@@ -4388,6 +4383,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         self.sagemaker_client.create_inference_component(**request)
         if wait:
             self.wait_for_inference_component(inference_component_name)
+        return inference_component_name
 
     def wait_for_inference_component(self, inference_component_name, poll=20):
         """Wait for an Amazon SageMaker ``Inference Component`` deployment to complete.
@@ -4470,6 +4466,42 @@ class Session(object):  # pylint: disable=too-many-public-methods
             InferenceComponentName=inference_component_name
         )
 
+    def wait_for_inference_component_deletion(self, inference_component_name: str, poll: int = 20):
+        """Wait for an Amazon SageMaker ``Inference Component`` deployment to complete.
+
+        Args:
+            inference_component_name (str): Name of the ``Inference Component`` to wait for.
+            poll (int): Polling interval in seconds (default: 20).
+
+        """
+        _wait_until(
+            lambda: self._inference_component_deletion_done(
+                self.sagemaker_client, inference_component_name
+            ),
+            poll,
+        )
+
+    def _inference_component_deletion_done(self, sagemaker_client, inference_component_name: str):
+        """Check if deletion of inference component is done.
+
+        Args:
+            sagemaker_client (boto3.SageMaker.Client): Client which makes Amazon SageMaker
+                service calls
+            inference_component_name (str): Name of the Amazon SageMaker ``InferenceComponent``.
+        Returns:
+            bool: True if deletion is done. None otherwise.
+        """
+        try:
+            sagemaker_client.describe_inference_component(
+                InferenceComponentName=inference_component_name
+            )
+        except botocore.exceptions.ClientError as e:
+            str_err = str(e).lower()
+            if "could not find" in str_err or "not found" in str_err:
+                return True
+            raise
+        return None
+
     def update_inference_component(
         self, inference_component_name, specification=None, runtime_config=None, wait=True
     ):
@@ -4521,12 +4553,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
             self.wait_for_inference_component(inference_component_name)
         return inference_component_name
 
-    def delete_inference_component(self, inference_component_name):
+    def delete_inference_component(self, inference_component_name: str, wait: bool = False):
         """Deletes a InferenceComponent.
 
         Args:
             inference_component_name (str): Name of the Amazon SageMaker ``InferenceComponent``
-            to delete.
+                to delete.
+            wait (bool): wait delete inference component operation finish. (default: False)
 
         Return:
             None
@@ -4536,39 +4569,86 @@ class Session(object):  # pylint: disable=too-many-public-methods
         self.sagemaker_client.delete_inference_component(
             InferenceComponentName=inference_component_name
         )
+        if wait:
+            _wait_until(
+                lambda: self._inference_component_deletion_done(
+                    self.sagemaker_client, inference_component_name
+                ),
+                poll=20,
+            )
 
-    def list_inference_components(self, filters=None):
+    def list_inference_components(
+        self,
+        endpoint_name_equals: Optional[str] = None,
+        variant_name_equals: Optional[str] = None,
+        name_contains: Optional[str] = None,
+        creation_time_after: Optional[datetime.datetime] = None,
+        creation_time_before: Optional[datetime.datetime] = None,
+        last_modified_time_after: Optional[datetime.datetime] = None,
+        last_modified_time_before: Optional[datetime.datetime] = None,
+        status_equals: Optional[str] = None,
+        sort_order: Optional[str] = None,
+        sort_by: Optional[str] = None,
+        max_results: Optional[int] = None,
+        next_token: Optional[str] = None,
+    ) -> Dict[str, Any]:
         """List inference components under current endpoint.
 
         Args:
-            filters ([dict[str,str]]): Filters that needs to be applied to the list operation.
+            endpoint_name_equals (str): Optional. A string that matches the endpoint
+                name deployed those Inference Components. (Default: None).
+            variant_name_equals (str): Optional. A string that matches the variant
+                name deployed those Inference Components. (Default: None).
+            name_contains (str): Optional. A string that partially matches one or
+                more Inference Components' names. Filters InferenceComponents by name.
+                (Default: None).
+            creation_time_after (datetime.datetime): Optional. Use this parameter to
+                search for InferenceComponents created after a specific date and time.
+                (Default: None).
+            creation_time_before (datetime.datetime): Optional. Use this parameter to
+                search for InferenceComponents created before a specific date and time.
+                (Default: None).
+            last_modified_time_after (datetime.datetime): Optional. Use this parameter to
+                search for InferenceComponents last modified after a specific date and time.
+                (Default: None).
+            last_modified_time_before (datetime.datetime): Optional. Use this parameter to
+                search for InferenceComponents last modified before a specific date and time.
+                (Default: None).
+            status_equals (str): Optional. The Inference Component status. Filters
+                InferenceComponents by status. (Default: None).
+            sort_order (str): Optional. The order in which InferenceComponents are listed.
+                (Default: None).
+            sort_by (str): Optional. The value on which the InferenceComponent list is
+                sorted. (Default: None).
+            max_results (int): Optional. The maximum number of results returned by
+                ListInferenceComponents. (Default: None).
+            next_token (str): Optional. A token to resume pagination of ListInferenceComponents
+                results. (Default: None).
 
         Return:
-            [dict[str,str]]: List of inference component details.
+            [dict[str,Any]]: Dict of inference component details.
         """
-        request = {}
 
-        options = [
-            "SortBy",
-            "SortOrder",
-            "NextToken",
-            "MaxResults",
-            "NameContains",
-            "CreationTimeBefore",
-            "CreationTimeAfter",
-            "LastModifiedTimeBefore",
-            "LastModifiedTimeBefore",
-            "LastModifiedTimeAfter",
-            "StatusEquals",
-            "EndpointNameEquals",
-            "VariantNameEquals",
-        ]
-        if filters:
-            for option in options:
-                if option in filters:
-                    request[option] = filters[option]
+        list_inference_component_args = {}
 
-        return self.sagemaker_client.list_inference_components(**request)
+        def check_object(key, value):
+            if value is not None:
+                list_inference_component_args[key] = value
+
+        check_object("SortBy", sort_by)
+        check_object("SortOrder", sort_order)
+        check_object("NameContains", name_contains)
+        check_object("CreationTimeBefore", creation_time_before)
+        check_object("CreationTimeAfter", creation_time_after)
+        check_object("LastModifiedTimeBefore", last_modified_time_before)
+        check_object("LastModifiedTimeAfter", last_modified_time_after)
+        check_object("StatusEquals", status_equals)
+        check_object("EndpointNameEquals", endpoint_name_equals)
+        check_object("VariantNameEquals", variant_name_equals)
+        check_object("NextToken", next_token)
+        check_object("MaxResults", max_results)
+
+        return self.sagemaker_client.list_inference_components(**list_inference_component_args)
 
     def delete_model(self, model_name):
         """Delete an Amazon SageMaker Model.
@@ -5135,7 +5215,21 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 (default: None)
             explainer_config_dict (dict) : Specifies configuration related to explainer.
                 Use this configuration when trying to use online explainability.
-                (default: None)
+                (default: None).
+            vpc_config (dict[str, list[str]]:
+                The VpcConfig set on the model (default: None).
+                * 'Subnets' (list[str]): List of subnet ids.
+                * 'SecurityGroupIds' (list[str]): List of security group ids.
+            enable_network_isolation (Boolean): Default False.
+                if True, enables network isolation in the endpoint, isolating the model
+                container. No inbound or outbound network calls can be made to
+                or from the model container.
+            role (str): An AWS IAM role (either name or full ARN). The Amazon
+                SageMaker training jobs and APIs that create Amazon SageMaker
+                endpoints use this role to access training data and model
+                artifacts. After the endpoint is created, the inference code
+                might use the IAM role if it needs to access some AWS resources.
+                (default: None).
         Returns:
             str: The name of the created ``Endpoint``.
         """
@@ -5156,8 +5250,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
         )
 
         config_options = {"EndpointConfigName": name, "ProductionVariants": production_variants}
-        if not production_variants[0].get("ModelName"):
-            config_options["ExecutionRoleArn"] = role
 
         kms_key = (
             resolve_value_from_config(
@@ -5186,6 +5278,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
             sagemaker_config=load_sagemaker_config() if (self is None) else None,
         )
 
+        # For Amazon SageMaker Generation 2 Endpoint, it will not pass Model names
+        # during Endpoint creation. Instead, ExecutionRoleArn will be needed in the
+        # EndpointConfig to create Endpoint
+        model_names = [pv["ModelName"] for pv in production_variants if "ModelName" in pv]
+        if len(model_names) == 0:
+            # Currently, SageMaker Python SDK allow using RoleName to deploy models.
+            # Use expand_role method to handle this situation.
+            role = self.expand_role(role)
+            config_options["ExecutionRoleArn"] = role
         endpoint_config_tags = _append_project_tags(tags)
         endpoint_tags = _append_project_tags(tags)
 

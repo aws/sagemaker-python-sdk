@@ -42,6 +42,7 @@ class TensorFlowPredictor(Predictor):
         deserializer=JSONDeserializer(),
         model_name=None,
         model_version=None,
+        component_name=None,
         **kwargs,
     ):
         """Initialize a ``TensorFlowPredictor``.
@@ -65,6 +66,8 @@ class TensorFlowPredictor(Predictor):
             model_version (str): Optional. The version of the SavedModel model
                 that should handle the request. If not specified, the latest
                 version of the model will be used.
+            component_name (str): Optional. Name of the Amazon SageMaker inference
+                component corresponding the predictor.
         """
         removed_kwargs("content_type", kwargs)
         removed_kwargs("accept", kwargs)
@@ -73,6 +76,7 @@ class TensorFlowPredictor(Predictor):
             sagemaker_session,
             serializer,
             deserializer,
+            component_name=component_name,
         )
 
         attributes = []

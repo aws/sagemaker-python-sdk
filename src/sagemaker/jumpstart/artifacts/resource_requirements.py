@@ -99,5 +99,11 @@ def _retrieve_default_resources(
             requests["num_accelerators"] = default_resource_requirements["num_accelerators"]
         if "min_memory_mb" in default_resource_requirements:
             requests["memory"] = default_resource_requirements["min_memory_mb"]
-        return ResourceRequirements(requests=requests)
+        if "num_cpus" in default_resource_requirements:
+            requests["num_cpus"] = default_resource_requirements["num_cpus"]
+
+        limits = {}
+        if "max_memory_mb" in default_resource_requirements:
+            limits["memory"] = default_resource_requirements["max_memory_mb"]
+        return ResourceRequirements(requests=requests, limits=limits)
     return None

@@ -263,7 +263,7 @@ class JumpStartModel(Model):
                 can be just the name if your account owns the Model Package.
                 ``model_data`` is not required. (Default: None).
             resources (Optional[ResourceRequirements]): The compute resource requirements
-                for a model to be deployed to an endpoint. Only EndpointType.Goldfinch supports
+                for a model to be deployed to an endpoint. Only EndpointType.GEN2 supports
                 this feature. (Default: None).
         Raises:
             ValueError: If the model ID is not recognized by JumpStart.
@@ -459,7 +459,8 @@ class JumpStartModel(Model):
         accept_eula: Optional[bool] = None,
         endpoint_logging: Optional[bool] = False,
         resources: Optional[ResourceRequirements] = None,
-        endpoint_type: EndpointType = EndpointType.OTHERS,
+        managed_instance_scaling: Optional[str] = None,
+        endpoint_type: EndpointType = EndpointType.GEN1,
     ) -> PredictorBase:
         """Creates endpoint by calling base ``Model`` class `deploy` method.
 
@@ -546,10 +547,13 @@ class JumpStartModel(Model):
             endpoint_logging (Optiona[bool]): If set to true, live logging will be emitted as
                 the SageMaker Endpoint starts up. (Default: False).
             resources (Optional[ResourceRequirements]): The compute resource requirements
-                for a model to be deployed to an endpoint. Only EndpointType.Goldfinch supports
+                for a model to be deployed to an endpoint. Only EndpointType.GEN2 supports
                 this feature. (Default: None).
-            endpoint_type (Optional[EndpointType]): The type of an endpoint used to deploy models.
-                (Default: EndpointType.OTHERS).
+            managed_instance_scaling (Optional[Dict]): Managed intance scaling options,
+                if configured Amazon SageMaker will manage the instance number behind the
+                Endpoint
+            endpoint_type (EndpointType): The type of an endpoint used to deploy models.
+                (Default: EndpointType.GEN1).
         """
 
         deploy_kwargs = get_deploy_kwargs(
@@ -579,6 +583,7 @@ class JumpStartModel(Model):
             accept_eula=accept_eula,
             endpoint_logging=endpoint_logging,
             resources=resources,
+            managed_instance_scaling=managed_instance_scaling,
             endpoint_type=endpoint_type,
         )
 

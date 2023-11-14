@@ -49,6 +49,7 @@ class HuggingFacePredictor(Predictor):
         sagemaker_session=None,
         serializer=JSONSerializer(),
         deserializer=JSONDeserializer(),
+        component_name=None,
     ):
         """Initialize an ``HuggingFacePredictor``.
 
@@ -64,12 +65,15 @@ class HuggingFacePredictor(Predictor):
                 arrays.
             deserializer (sagemaker.deserializers.BaseDeserializer): Optional.
                 Default parses the response from .npy format to numpy array.
+            component_name (str): Optional. Name of the Amazon SageMaker inference
+                component corresponding the predictor.
         """
         super(HuggingFacePredictor, self).__init__(
             endpoint_name,
             sagemaker_session,
             serializer=serializer,
             deserializer=deserializer,
+            component_name=component_name,
         )
 
 

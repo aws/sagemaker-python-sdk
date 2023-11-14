@@ -14,6 +14,7 @@
 from __future__ import print_function, absolute_import
 
 import abc
+import datetime
 from typing import Any, Dict, Optional, Tuple, Union
 import logging
 
@@ -371,7 +372,7 @@ class Predictor(PredictorBase):
             else:
                 self._model_names = [model_name]
 
-            managed_instance_scaling = {}
+            managed_instance_scaling: Dict[str, int] = {}
             if max_instance_count:
                 managed_instance_scaling["MaxInstanceCount"] = max_instance_count
             if min_instance_count:
@@ -398,9 +399,9 @@ class Predictor(PredictorBase):
         new_endpoint_config_name = name_from_base(current_endpoint_config_name)
 
         if self._get_component_name():
-            endpoint_type = EndpointType.GOLDFINCH
+            endpoint_type = EndpointType.GEN2
         else:
-            endpoint_type = EndpointType.OTHERS
+            endpoint_type = EndpointType.GEN1
 
         self.sagemaker_session.create_endpoint_config_from_existing(
             current_endpoint_config_name,
@@ -438,33 +439,36 @@ class Predictor(PredictorBase):
 
         self.sagemaker_session.delete_endpoint(self.endpoint_name)
 
-    def delete_predictor(self) -> None:
+    def delete_predictor(self, wait: bool = False) -> None:
         """Delete the Amazon SageMaker inference component or endpoint backing this predictor.
 
-        Delete the corresponding inference component if the endpoint is Goldfinch.
+        Delete the corresponding inference component if the endpoint is Generation2
+        endpoint.
         Otherwise delete the endpoint where this predictor is on.
         """
-        # [TODO]: wait and describe inference component until not found to ensure
-        # it gets deleted successfully. Throw appropriate exception/error type.
+
         if self.component_name:
-            self.sagemaker_session.delete_inference_component(self.component_name)
+            self.sagemaker_session.delete_inference_component(self.component_name, wait=wait)
         else:
             self.delete_endpoint()
 
     def update_predictor(
         self,
+        model_name: Optional[str] = None,
         image_uri: Optional[str] = None,
         model_data: Optional[Union[str, dict]] = None,
         env: Optional[Dict[str, str]] = None,
         model_data_download_timeout: Optional[int] = None,
         container_startup_health_check_timeout: Optional[int] = None,
         resources: Optional[ResourceRequirements] = None,
-    ) -> str:
+    ):
         """Updates the predictor to deploy a new Model specification and apply new configurations.
 
         This is done by updating the SageMaker InferenceComponent.
 
         Args:
+            model_name (Optional[str]): The model name to use to update
+                for the predictor. (Default: None).
             image_uri (Optional[str]): A Docker image URI. (Default: None).
             model_data (Optional[Union[str, dict]]): Location
                 of SageMaker model data. (Default: None).
@@ -479,11 +483,8 @@ class Predictor(PredictorBase):
                 https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-inference-code.html#your-algorithms-inference-algo-ping-requests
                 (Default: None).
             resources (Optional[ResourceRequirements]): The compute resource requirements
-                for a model to be deployed to an endpoint. Only EndpointType.Goldfinch supports
+                for a model to be deployed to an endpoint. Only EndpointType.GEN2 supports
                 this feature. (Default: None).
-
-        Returns:
-            String: The updated Amazon SageMaker Inference Component name
         """
         if self.component_name is None:
             raise ValueError(
@@ -492,66 +493,135 @@ class Predictor(PredictorBase):
             )
         # [TODO]: Move to a module
         request = {
-            "InferenceComponentName": self.component_name,
-            "Specification": {},
+            "inference_component_name": self.component_name,
+            "specification": {
+                "Container": {},
+                "StartupParameters": {},
+            },
         }
 
         if resources:
-            request["Specification"][
+            request["specification"][
                 "ComputeResourceRequirements"
             ] = resources.get_compute_resource_requirements()
 
-        if image_uri:
-            request["Specification"]["Container"]["Image"] = image_uri
+        # ModelName XOR Container
+        if model_name:
+            request["specification"]["ModelName"] = model_name
+        else:
+            if image_uri:
+                request["specification"]["Container"]["Image"] = image_uri
 
-        if env:
-            request["Specification"]["Container"]["Environment"] = env
+            if env:
+                request["specification"]["Container"]["Environment"] = env
 
-        if model_data:
-            request["Specification"]["Container"]["ArtifactUrl"] = model_data
+            if model_data:
+                request["specification"]["Container"]["ArtifactUrl"] = model_data
 
         if resources.copy_count:
-            request["RuntimeConfig"] = {"CopyCount": resources.copy_count}
+            request["runtime_config"] = {"CopyCount": resources.copy_count}
 
         if model_data_download_timeout:
-            request["Specification"]["StartupParameters"][
+            request["specification"]["StartupParameters"][
                 "ModelDataDownloadTimeoutInSeconds"
             ] = model_data_download_timeout
 
         if container_startup_health_check_timeout:
-            request["Specification"]["StartupParameters"][
+            request["specification"]["StartupParameters"][
                 "ContainerStartupHealthCheckTimeoutInSeconds"
             ] = container_startup_health_check_timeout
 
-        empty_keys = []
-        for key, value in request["Specification"].items():
-            if not value:
-                empty_keys.append(key)
-        for key in empty_keys:
-            del request["Specification"][key]
+        if "specification" in request:
+            empty_keys = []
+            for key, value in request["specification"].items():
+                if not value:
+                    empty_keys.append(key)
+            for key in empty_keys:
+                del request["specification"][key]
 
         self.sagemaker_session.update_inference_component(**request)
-        return self.component_name
 
-    # [TODO]: Check with doc writer for colocated vs collocated
-    def list_colocated_models(self):
+    def list_related_models(
+        self,
+        variant_name_equals: Optional[str] = None,
+        name_contains: Optional[str] = None,
+        creation_time_after: Optional[datetime.datetime] = None,
+        creation_time_before: Optional[datetime.datetime] = None,
+        last_modified_time_after: Optional[datetime.datetime] = None,
+        last_modified_time_before: Optional[datetime.datetime] = None,
+        status_equals: Optional[str] = None,
+        sort_order: Optional[str] = None,
+        sort_by: Optional[str] = None,
+        max_results: Optional[int] = None,
+        next_token: Optional[str] = None,
+    ):
         """List the deployed models co-located with this predictor.
 
-        Calls SageMaker:ListInferenceComponents on the endpoint associated with the predictor.
+        Calls SageMaker:ListInferenceComponents on the endpoint associated with
+            the predictor.
+
+        Args:
+            variant_name_equals (str): Optional. A string that matches the variant
+                name deployed those Inference Components. (Default: None).
+            name_contains (str): Optional. A string that partially matches one or
+                more Inference Components' names. Filters InferenceComponents by name.
+                (Default: None).
+            creation_time_after (datetime.datetime): Optional. Use this parameter to
+                search for InferenceComponents created after a specific date and time.
+                (Default: None).
+            creation_time_before (datetime.datetime): Optional. Use this parameter to
+                search for InferenceComponents created before a specific date and time.
+                (Default: None).
+            last_modified_time_after (datetime.datetime): Optional. Use this parameter to
+                search for InferenceComponents last modified after a specific date and time.
+                (Default: None).
+            last_modified_time_before (datetime.datetime): Optional. Use this parameter to
+                search for InferenceComponents last modified before a specific date and time.
+                (Default: None).
+            status_equals (str): Optional. The Inference Component status. Filters
+                InferenceComponents by status. (Default: None).
+            sort_order (str): Optional. The order in which InferenceComponents are listed.
+                (Default: None).
+            sort_by (str): Optional. The value on which the InferenceComponent list is
+                sorted. (Default: None).
+            max_results (int): Optional. The maximum number of results returned by
+                ListInferenceComponents. (Default: None).
+            next_token (str): Optional. A token to resume pagination of ListInferenceComponents
+                results. (Default: None).
 
         Returns:
-            Dict[str, list]: A list of Amazon SageMaker Inference Component objects.
+            Tuple[List[Dict[str, Any]], Optional[str]]: A list of Amazon SageMaker Inference
+                Component objects associated to the Endpoint. If NextToken is returned,
+                there are more results available. The value of nextToken is a unique
+                pagination token.
         """
 
-        inference_component_dict = self.sagemaker_session.list_inference_components(
-            filters={"EndpointNameEquals": self.endpoint_name}
+        response_dict = self.sagemaker_session.list_inference_components(
+            endpoint_name_equals=self.endpoint_name,
+            variant_name_equals=variant_name_equals,
+            name_contains=name_contains,
+            creation_time_after=creation_time_after,
+            creation_time_before=creation_time_before,
+            last_modified_time_after=last_modified_time_after,
+            last_modified_time_before=last_modified_time_before,
+            status_equals=status_equals,
+            sort_order=sort_order,
+            sort_by=sort_by,
+            max_results=max_results,
+            next_token=next_token,
         )
 
-        if len(inference_component_dict) == 0:
+        if len(response_dict) == 0:
             LOGGER.info("No deployed models found for endpoint %s.", self.endpoint_name)
-            return []
+            return {}, None
 
-        return inference_component_dict["InferenceComponents"]
+        # parse list result if returned list inference components are not None
+        inference_components = response_dict["InferenceComponents"]
+        next_token_from_response = None
+        if "NextToken" in response_dict:
+            next_token_from_response = response_dict["NextToken"]
+
+        return inference_components, next_token_from_response
 
     def delete_model(self):
         """Delete the Amazon SageMaker model backing this predictor."""
@@ -747,12 +817,22 @@ class Predictor(PredictorBase):
         """Placeholder docstring"""
         if self._model_names is not None:
             return self._model_names
+        self._model_names = []
+
+        # If the predictor is for Inference Component, return the model behind the
+        # Inference Component. Otherwise, fetch all models behind the Endpoint
+        component_name = self._get_component_name()
+        if component_name:
+            desc = self.sagemaker_session.describe_inference_component(component_name)
+            if "Specification" in desc and "ModelName" in desc["Specification"]:
+                self._model_names.append(desc["Specification"]["ModelName"])
+            return self._model_names
+
         current_endpoint_config_name = self._get_endpoint_config_name()
         endpoint_config = self.sagemaker_session.sagemaker_client.describe_endpoint_config(
             EndpointConfigName=current_endpoint_config_name
         )
         production_variants = endpoint_config["ProductionVariants"]
-        self._model_names = []
         for d in production_variants:
             if "ModelName" in d:
                 self._model_names.append(d["ModelName"])

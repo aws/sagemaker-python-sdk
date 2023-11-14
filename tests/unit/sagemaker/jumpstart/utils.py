@@ -112,6 +112,27 @@ def get_special_model_spec(
     return specs
 
 
+def get_special_model_spec_for_gen2_endpoint(
+    region: str = None,
+    model_id: str = None,
+    version: str = None,
+    s3_client: boto3.client = None,
+) -> JumpStartModelSpecs:
+    """This function mocks cache accessor functions. For this mock,
+    we only retrieve model specs based on the model ID and adding
+    generation 2 endpoint specific specification. This is reserved
+    for special specs.
+    """
+    model_spec_dict = SPECIAL_MODEL_SPECS_DICT[model_id]
+    model_spec_dict["hosting_resource_requirements"] = {
+        "num_accelerators": 1,
+        "min_memory_mb": 34360,
+    }
+    model_spec_dict["dynamic_container_deployment_supported"] = True
+    specs = JumpStartModelSpecs(model_spec_dict)
+    return specs
+
+
 def get_spec_from_base_spec(
     _obj: JumpStartModelsCache = None,
     region: str = None,

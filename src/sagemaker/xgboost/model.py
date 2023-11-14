@@ -47,6 +47,7 @@ class XGBoostPredictor(Predictor):
         sagemaker_session=None,
         serializer=LibSVMSerializer(),
         deserializer=CSVDeserializer(),
+        component_name=None,
     ):
         """Initialize an ``XGBoostPredictor``.
 
@@ -60,12 +61,15 @@ class XGBoostPredictor(Predictor):
                 serializes input data to LibSVM format
             deserializer (sagemaker.deserializers.BaseDeserializer): Optional.
                 Default parses the response from text/csv to a Python list.
+            component_name (str): Optional. Name of the Amazon SageMaker inference
+                component corresponding the predictor.
         """
         super(XGBoostPredictor, self).__init__(
             endpoint_name,
             sagemaker_session,
             serializer=serializer,
             deserializer=deserializer,
+            component_name=component_name,
         )
 
 

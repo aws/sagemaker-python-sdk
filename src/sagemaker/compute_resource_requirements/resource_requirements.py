@@ -15,7 +15,7 @@
 from __future__ import absolute_import
 
 import logging
-from typing import Optional
+from typing import Optional, Dict
 
 from sagemaker.utils import stringify_object
 
@@ -27,15 +27,15 @@ class ResourceRequirements(object):
 
     def __init__(
         self,
-        requests=None,
-        limits=None,
+        requests: Optional[Dict[str, int]] = None,
+        limits: Optional[Dict[str, int]] = None,
     ):
         """It initializes a ``ResourceRequirements`` for Amazon SageMaker Inference Component.
 
         Args:
             requests (dict): Basic resource to be requested, including num_cpus, memory (in MB),
                 accelerator_memory (in MB), copies.
-            limits (dict): Max resource, including memory(in MB)
+            limits (dict): Max resource limit to be requested, including memory (in MB).
 
             Example:
                 requests = {
@@ -71,6 +71,10 @@ class ResourceRequirements(object):
     def __str__(self) -> str:
         """Overriding str(*) method to make more human-readable."""
         return stringify_object(self)
+
+    def __eq__(self, other) -> bool:
+        """Implement equal method for easy unit testing."""
+        return self.requests == other.requests and self.limits == other.limits
 
     def get_compute_resource_requirements(self) -> dict:
         """Return a dict of resource requirements

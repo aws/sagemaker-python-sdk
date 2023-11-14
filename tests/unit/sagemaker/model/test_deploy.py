@@ -80,7 +80,7 @@ BUCKET_NAME = "mybucket"
 RESOURCES = ResourceRequirements(
     requests={
         "num_cpus": 1,  # NumberOfCpuCoresRequired
-        "memory": 1024,  # MinMemoryRequiredInMb (required), differentiator for Goldfinch path
+        "memory": 1024,  # MinMemoryRequiredInMb (required)
         "copies": 1,
     },
     limits={},
@@ -1008,9 +1008,8 @@ def test_deploy_with_name_and_resources(sagemaker_session):
     model = Model(
         MODEL_IMAGE, MODEL_DATA, name=MODEL_NAME, role=ROLE, sagemaker_session=sagemaker_session
     )
-    # base_from_name.assert_called_with(MODEL_NAME)
 
-    endpoint_name = "Goldfinch-endpoint-test"
+    endpoint_name = "Gen2-endpoint-test"
     model.deploy(
         endpoint_name=endpoint_name,
         instance_type=INSTANCE_TYPE,

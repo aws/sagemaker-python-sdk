@@ -52,6 +52,7 @@ class MXNetPredictor(Predictor):
         sagemaker_session=None,
         serializer=JSONSerializer(),
         deserializer=JSONDeserializer(),
+        component_name=None,
     ):
         """Initialize an ``MXNetPredictor``.
 
@@ -66,12 +67,15 @@ class MXNetPredictor(Predictor):
                 json. Handles dicts, lists, and numpy arrays.
             deserializer (callable): Optional. Default parses the response using
                 ``json.load(...)``.
+            component_name (str): Optional. Name of the Amazon SageMaker inference
+                component corresponding the predictor.
         """
         super(MXNetPredictor, self).__init__(
             endpoint_name,
             sagemaker_session,
             serializer=serializer,
             deserializer=deserializer,
+            component_name=component_name,
         )
 
 
