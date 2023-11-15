@@ -21,6 +21,8 @@ from sagemaker.huggingface.model import HuggingFaceModel, HuggingFacePredictor
 from sagemaker.utils import unique_name_from_base
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
+from sagemaker.enums import EndpointType
+from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
 
 ROLE = "SageMakerRole"
 
@@ -172,3 +174,57 @@ def test_huggingface_inference(
         }
         output = predictor.predict(data)
         assert "score" in output[0]
+
+
+@pytest.mark.skip(
+    reason="re-enable when above GEN1 endpoint hugging face inference test enabled",
+)
+def test_huggingface_inference_gen2_endpoint(
+    sagemaker_session,
+    gpu_pytorch_instance_type,
+    huggingface_inference_latest_version,
+    huggingface_inference_pytorch_latest_version,
+    huggingface_pytorch_latest_inference_py_version,
+):
+    env = {
+        "HF_MODEL_ID": "philschmid/tiny-distilbert-classification",
+        "HF_TASK": "text-classification",
+    }
+    endpoint_name = unique_name_from_base("test-hf-inference")
+
+    model = HuggingFaceModel(
+        sagemaker_session=sagemaker_session,
+        role="SageMakerRole",
+        env=env,
+        py_version=huggingface_pytorch_latest_inference_py_version,
+        transformers_version=huggingface_inference_latest_version,
+        pytorch_version=huggingface_inference_pytorch_latest_version,
+    )
+    predictor = model.deploy(
+        instance_type=gpu_pytorch_instance_type,
+        initial_instance_count=1,
+        endpoint_name=endpoint_name,
+        endpoint_type=EndpointType.GEN2,
+        resources=ResourceRequirements(
+            requests={
+                "num_accelerators": 1,  # NumberOfCpuCoresRequired
+                "memory": 8192,  # MinMemoryRequiredInMb (required)
+                "copies": 1,
+            },
+            limits={},
+        ),
+    )
+
+    data = {
+        "inputs": "Camera - You are awarded a SiPix Digital Camera!"
+        "call 09061221066 fromm landline. Delivery within 28 days."
+    }
+
+    output = predictor.predict(data)
+    assert "score" in output[0]
+
+    # delete predictor
+    predictor.delete_predictor(wait=True)
+
+    # delete endpoint
+    predictor.delete_endpoint()
