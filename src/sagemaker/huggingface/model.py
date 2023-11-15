@@ -331,6 +331,9 @@ class HuggingFaceModel(FrameworkModel):
             inference_recommendation_id=inference_recommendation_id,
             explainer_config=explainer_config,
             endpoint_logging=kwargs.get("endpoint_logging", False),
+            endpoint_type=kwargs.get("endpoint_type", None),
+            resources=kwargs.get("resources", None),
+            managed_instance_scaling=kwargs.get("managed_instance_scaling", None),
         )
 
     def register(
