@@ -190,5 +190,5 @@ class LocalContainerMode(LocalTorchServe, LocalDJLServing, LocalTritonServer, Lo
         try:
             logger.info("Pulling image %s from repository...", image)
             self.client.images.pull(image)
-        except docker.errors.NotFound:
-            logger.warning("Could not find remote image to pull")
+        except docker.errors.NotFound as e:
+            raise ValueError("Could not find remote image to pull") from e

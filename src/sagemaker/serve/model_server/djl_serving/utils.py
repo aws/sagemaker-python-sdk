@@ -60,9 +60,11 @@ def _auto_detect_engine(model_id: str, hf_hub_token: str) -> tuple:
     return (engine, hf_model_config)
 
 
-def _get_default_tensor_parallel_degree(hf_model_config: dict) -> int:
+def _get_default_tensor_parallel_degree(hf_model_config: dict, gpu_count: int = None) -> int:
     """Placeholder docstring"""
     available_gpus = _get_available_gpus()
+    if not available_gpus and not gpu_count:
+        return None
 
     attention_heads = None
     for variant in ATTENTION_HEAD_NAME_VARIENTS:
@@ -73,7 +75,8 @@ def _get_default_tensor_parallel_degree(hf_model_config: dict) -> int:
     if not attention_heads:
         return 1
 
-    for i in (n + 1 for n in reversed(range(len(available_gpus)))):
+    tot_gpus = len(available_gpus) if available_gpus else gpu_count
+    for i in (n + 1 for n in reversed(range(tot_gpus))):
         if attention_heads % i == 0:
             logger.info(
                 "Max GPU parallelism of %s is allowed. Total attention heads %s", i, attention_heads

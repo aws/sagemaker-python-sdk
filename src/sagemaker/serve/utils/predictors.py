@@ -137,16 +137,18 @@ class TgiLocalModePredictor(PredictorBase):
 
     def predict(self, data):
         """Placeholder docstring"""
-        return self.deserializer.deserialize(
-            io.BytesIO(
-                self._mode_obj._invoke_tgi_serving(
-                    self.serializer.serialize(data),
-                    self.content_type,
-                    self.deserializer.ACCEPT[0],
-                )
-            ),
-            self.content_type,
-        )
+        return [
+            self.deserializer.deserialize(
+                io.BytesIO(
+                    self._mode_obj._invoke_tgi_serving(
+                        self.serializer.serialize(data),
+                        self.content_type,
+                        self.deserializer.ACCEPT[0],
+                    )
+                ),
+                self.content_type,
+            )
+        ]
 
     @property
     def content_type(self):

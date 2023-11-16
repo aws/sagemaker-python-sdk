@@ -1,3 +1,15 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
 """Utilites for identifying and analyzing local gpu hardware"""
 from __future__ import absolute_import
 
@@ -9,6 +21,8 @@ from math import ceil, floor
 from platform import system
 from pathlib import Path
 import psutil
+
+from sagemaker import Session
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +68,34 @@ hardware_lookup = {
 }
 
 
+fallback_gpu_resource_mapping = {
+    "ml.p5.48xlarge": 8,
+    "ml.p4d.24xlarge": 8,
+    "ml.p4de.24xlarge": 8,
+    "ml.p3.2xlarge": 1,
+    "ml.p3.8xlarge": 4,
+    "ml.p3.16xlarge": 8,
+    "ml.p3dn.24xlarge": 8,
+    "ml.p2.xlarge": 1,
+    "ml.p2.8xlarge": 8,
+    "ml.p2.16xlarge": 16,
+    "ml.g4dn.xlarge": 1,
+    "ml.g4dn.2xlarge": 1,
+    "ml.g4dn.4xlarge": 1,
+    "ml.g4dn.8xlarge": 1,
+    "ml.g4dn.16xlarge": 1,
+    "ml.g4dn.12xlarge": 4,
+    "ml.g5n.xlarge": 1,
+    "ml.g5.2xlarge": 1,
+    "ml.g5.4xlarge": 1,
+    "ml.g5.8xlarge": 1,
+    "ml.g5.16xlarge": 1,
+    "ml.g5.12xlarge": 4,
+    "ml.g5.24xlarge": 4,
+    "ml.g5.48xlarge": 8,
+}
+
+
 def _get_available_gpus(log=True):
     """Detect the GPUs available on the device and their available resources"""
     try:
@@ -63,16 +105,24 @@ def _get_available_gpus(log=True):
 
         if log:
             logger.info("CUDA enabled hardware on the device: %s", gpu_info)
-
         return gpu_info
-    except Exception as e:
+    except Exception as e:  # pylint: disable=W0703
         # for nvidia-smi to run, a cuda driver must be present
-        raise ValueError("CUDA is not enabled on your device. %s" % str(e))
+        logger.warning(
+            "CUDA is not enabled on your device. %s. "
+            "Please run ModelBuilder on CUDA enabled hardware "
+            "to deploy locally.",
+            str(e),
+        )
+        return None
 
 
 def _get_nb_instance():
     """Placeholder docstring"""
     gpu_info = _get_available_gpus(False)
+    if not gpu_info:
+        return None
+
     gpu_name, gpu_mem = gpu_info[0].split(", ")
     cpu_count = multiprocessing.cpu_count()
 
@@ -156,3 +206,29 @@ def _check_docker_disk_usage():
             docker_path,
             str(e),
         )
+
+
+def _get_gpu_info(instance_type: str, session: Session) -> int:
+    """Get GPU info for the provided instance"""
+    ec2_client = session.boto_session.client("ec2")
+
+    split_instance = instance_type.split(".")
+    split_instance.pop(0)
+
+    ec2_instance = ".".join(split_instance)
+
+    instance_info = ec2_client.describe_instance_types(InstanceTypes=[ec2_instance])
+
+    gpus_info = instance_info.get("InstanceTypes")[0].get("GpuInfo")
+
+    if gpus_info:
+        return gpus_info.get("Gpus")[0].get("Count")
+    raise ValueError("Provided instance_type is not GPU enabled.")
+
+
+def _get_gpu_info_fallback(instance_type: str) -> int:
+    """Get GPU info for the provided instance fallback"""
+    available_gpus = fallback_gpu_resource_mapping.get(instance_type)
+    if not available_gpus:
+        raise ValueError("Provided instance_type is not GPU enabled.")
+    return available_gpus
