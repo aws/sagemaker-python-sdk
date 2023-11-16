@@ -132,8 +132,9 @@ class ModelExplainabilityCheckConfig(ClarifyCheckConfig):
 
     Attributes:
         model_config (ModelConfig): Config of the model and its endpoint to be created.
-        explainability_config (SHAPConfig): Config of the specific explainability method.
-            Currently, only SHAP is supported.
+        explainability_config (SHAPConfig or PDPConfig): Config of the specific explainability method.
+            Supports SHAP or PDP.
+            For `PDPConfig`, `features` must be specified. `top_k_features` based on SHAP is currently not supported.
         model_scores (str or int or ModelPredictedLabelConfig): Index or JMESPath expression
             to locate the predicted scores in the model output (default: None).
             This is not required if the model output is a single score. Alternatively,
