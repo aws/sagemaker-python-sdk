@@ -23,10 +23,19 @@ def _get_default_tgi_configurations(
         schema_builder.sample_input, schema_builder.sample_output
     )
 
+    if default_num_shard:
+        return (
+            {
+                "SHARDED": "true" if default_num_shard > 1 else "false",
+                "NUM_SHARD": str(default_num_shard),
+                "DTYPE": _get_default_dtype(),
+            },
+            default_max_new_tokens,
+        )
     return (
         {
-            "SHARDED": "true" if default_num_shard > 1 else "false",
-            "NUM_SHARD": str(default_num_shard),
+            "SHARDED": None,
+            "NUM_SHARD": None,
             "DTYPE": _get_default_dtype(),
         },
         default_max_new_tokens,

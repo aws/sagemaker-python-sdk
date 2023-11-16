@@ -1,3 +1,15 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
 """Prepare DjlModel for Deployment"""
 
 from __future__ import absolute_import
@@ -55,7 +67,9 @@ def _copy_jumpstart_artifacts(model_data: str, js_id: str, code_dir: Path):
     return (existing_properties, hf_model_config, True)
 
 
-def _generate_properties_file(model: DJLModel, code_dir: Path, overwrite_props_from_file: bool):
+def _generate_properties_file(
+    model: DJLModel, code_dir: Path, overwrite_props_from_file: bool, manual_set_props: dict
+):
     """Placeholder Docstring"""
     if _has_serving_properties_file(code_dir):
         existing_properties = _read_existing_serving_properties(code_dir)
@@ -67,6 +81,13 @@ def _generate_properties_file(model: DJLModel, code_dir: Path, overwrite_props_f
 
     with open(serving_properties_file, mode="w+") as file:
         covered_keys = set()
+
+        if manual_set_props:
+            for key, value in manual_set_props.items():
+                logger.info(_SETTING_PROPERTY_STMT, key, value.strip())
+                covered_keys.add(key)
+                file.write(f"{key}={value}")
+
         for key, value in serving_properties_dict.items():
             if not overwrite_props_from_file:
                 logger.info(_SETTING_PROPERTY_STMT, key, value)
@@ -129,6 +150,7 @@ def prepare_for_djl_serving(
     shared_libs: List[str] = None,
     dependencies: str = None,
     overwrite_props_from_file: bool = True,
+    manual_set_props: dict = None,
 ):
     """Prepare serving when a HF model id is given
 
@@ -149,7 +171,7 @@ def prepare_for_djl_serving(
 
     _copy_inference_script(code_dir)
 
-    _generate_properties_file(model, code_dir, overwrite_props_from_file)
+    _generate_properties_file(model, code_dir, overwrite_props_from_file, manual_set_props)
 
 
 def prepare_djl_js_resources(

@@ -32,13 +32,21 @@ from sagemaker.serve.utils.tuning import (
     _pretty_print_results_tgi,
 )
 from sagemaker.djl_inference.model import _get_model_config_properties_from_hf
-from sagemaker.serve.model_server.djl_serving.utils import _get_admissible_tensor_parallel_degrees
+from sagemaker.serve.model_server.djl_serving.utils import (
+    _get_admissible_tensor_parallel_degrees,
+    _get_default_tensor_parallel_degree,
+)
 from sagemaker.serve.model_server.tgi.utils import (
     _get_default_tgi_configurations,
     _get_admissible_dtypes,
 )
 from sagemaker.huggingface import HuggingFaceModel, get_huggingface_llm_image_uri
-from sagemaker.serve.utils.local_hardware import _get_nb_instance, _get_ram_usage_mb
+from sagemaker.serve.utils.local_hardware import (
+    _get_nb_instance,
+    _get_ram_usage_mb,
+    _get_gpu_info,
+    _get_gpu_info_fallback,
+)
 from sagemaker.serve.model_server.tgi.prepare import _create_dir_structure
 from sagemaker.serve.utils.predictors import TgiLocalModePredictor
 from sagemaker.serve.utils.types import ModelServer
@@ -202,8 +210,26 @@ class TGI(ABC):
 
         if "endpoint_logging" not in kwargs:
             kwargs["endpoint_logging"] = True
+
         if self.nb_instance_type and "instance_type" not in kwargs:
             kwargs.update({"instance_type": self.nb_instance_type})
+        elif not self.nb_instance_type and "instance_type" not in kwargs:
+            raise ValueError(
+                "Instance type must be provided when deploying " "to SageMaker Endpoint mode."
+            )
+        else:
+            try:
+                tot_gpus = _get_gpu_info(kwargs.get("instance_type"), self.sagemaker_session)
+            except Exception:  # pylint: disable=W0703
+                tot_gpus = _get_gpu_info_fallback(kwargs.get("instance_type"))
+            default_num_shard = _get_default_tensor_parallel_degree(self.hf_model_config, tot_gpus)
+            self.pysdk_model.env.update(
+                {
+                    "NUM_SHARD": str(default_num_shard),
+                    "SHARDED": "true" if default_num_shard > 1 else "false",
+                }
+            )
+
         if "initial_instance_count" not in kwargs:
             kwargs.update({"initial_instance_count": 1})
 
@@ -218,6 +244,7 @@ class TGI(ABC):
     def _build_for_hf_tgi(self):
         """Placeholder docstring"""
         self.nb_instance_type = _get_nb_instance()
+
         _create_dir_structure(self.model_path)
         if not hasattr(self, "pysdk_model"):
             self.env_vars.update({"HF_MODEL_ID": self.model})

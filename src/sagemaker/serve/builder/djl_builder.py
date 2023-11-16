@@ -36,8 +36,14 @@ from sagemaker.serve.model_server.djl_serving.utils import (
     _set_serve_properties,
     _get_admissible_tensor_parallel_degrees,
     _get_admissible_dtypes,
+    _get_default_tensor_parallel_degree,
 )
-from sagemaker.serve.utils.local_hardware import _get_nb_instance, _get_ram_usage_mb
+from sagemaker.serve.utils.local_hardware import (
+    _get_nb_instance,
+    _get_ram_usage_mb,
+    _get_gpu_info,
+    _get_gpu_info_fallback,
+)
 from sagemaker.serve.model_server.djl_serving.prepare import (
     prepare_for_djl_serving,
     _create_dir_structure,
@@ -164,13 +170,6 @@ class DJL(ABC):
     @_capture_telemetry("djl.deploy")
     def _djl_model_builder_deploy_wrapper(self, *args, **kwargs) -> Type[PredictorBase]:
         """Placeholder docstring"""
-        prepare_for_djl_serving(
-            model_path=self.model_path,
-            model=self.pysdk_model,
-            dependencies=self.dependencies,
-            overwrite_props_from_file=self.overwrite_props_from_file,
-        )
-
         timeout = kwargs.get("model_data_download_timeout")
         if timeout:
             self.env_vars.update({"MODEL_LOADING_TIMEOUT": str(timeout)})
@@ -191,6 +190,34 @@ class DJL(ABC):
                 self.mode = self.pysdk_model.mode = Mode.LOCAL_CONTAINER
             else:
                 raise ValueError("Mode %s is not supported!" % overwrite_mode)
+
+        manual_set_props = None
+        if self.mode == Mode.SAGEMAKER_ENDPOINT:
+            if self.nb_instance_type and "instance_type" not in kwargs:
+                kwargs.update({"instance_type": self.nb_instance_type})
+            elif not self.nb_instance_type and "instance_type" not in kwargs:
+                raise ValueError(
+                    "Instance type must be provided when deploying " "to SageMaker Endpoint mode."
+                )
+            else:
+                try:
+                    tot_gpus = _get_gpu_info(kwargs.get("instance_type"), self.sagemaker_session)
+                except Exception:  # pylint: disable=W0703
+                    tot_gpus = _get_gpu_info_fallback(kwargs.get("instance_type"))
+                default_tensor_parallel_degree = _get_default_tensor_parallel_degree(
+                    self.hf_model_config, tot_gpus
+                )
+                manual_set_props = {
+                    "option.tensor_parallel_degree": str(default_tensor_parallel_degree) + "\n"
+                }
+
+        prepare_for_djl_serving(
+            model_path=self.model_path,
+            model=self.pysdk_model,
+            dependencies=self.dependencies,
+            overwrite_props_from_file=self.overwrite_props_from_file,
+            manual_set_props=manual_set_props,
+        )
 
         serializer = self.schema_builder.input_serializer
         deserializer = self.schema_builder._output_deserializer
@@ -237,8 +264,6 @@ class DJL(ABC):
 
         if "endpoint_logging" not in kwargs:
             kwargs["endpoint_logging"] = True
-        if self.nb_instance_type and "instance_type" not in kwargs:
-            kwargs.update({"instance_type": self.nb_instance_type})
 
         predictor = self._original_deploy(*args, **kwargs)
 
@@ -252,6 +277,7 @@ class DJL(ABC):
         """Placeholder docstring"""
         self.overwrite_props_from_file = True
         self.nb_instance_type = _get_nb_instance()
+
         _create_dir_structure(self.model_path)
         self.engine, self.hf_model_config = _auto_detect_engine(
             self.model, self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
