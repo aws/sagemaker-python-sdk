@@ -34,7 +34,7 @@ from sagemaker.compute_resource_requirements.resource_requirements import Resour
 from tests.unit.sagemaker.jumpstart.utils import (
     get_special_model_spec,
     overwrite_dictionary,
-    get_special_model_spec_for_gen2_endpoint,
+    get_special_model_spec_for_inference_component_based_endpoint,
 )
 
 execution_role = "fake role! do not use!"
@@ -125,7 +125,7 @@ class ModelTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.model.Model.deploy")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
-    def test_non_prepacked_gen2_endpoint(
+    def test_non_prepacked_inference_component_based_endpoint(
         self,
         mock_model_deploy: mock.Mock,
         mock_model_init: mock.Mock,
@@ -141,7 +141,9 @@ class ModelTest(unittest.TestCase):
         mock_is_valid_model_id.return_value = True
         model_id, _ = "js-trainable-model", "*"
 
-        mock_get_model_specs.side_effect = get_special_model_spec_for_gen2_endpoint
+        mock_get_model_specs.side_effect = (
+            get_special_model_spec_for_inference_component_based_endpoint
+        )
 
         mock_session.return_value = sagemaker_session
 
@@ -180,7 +182,7 @@ class ModelTest(unittest.TestCase):
             resources=resource_requirements,
         )
 
-        model.deploy(endpoint_type=EndpointType.GEN2)
+        model.deploy(endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED)
 
         mock_model_deploy.assert_called_once_with(
             initial_instance_count=1,
@@ -193,7 +195,7 @@ class ModelTest(unittest.TestCase):
             ],
             endpoint_logging=False,
             resources=resource_requirements,
-            endpoint_type=EndpointType.GEN2,
+            endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
         )
 
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
@@ -203,7 +205,7 @@ class ModelTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.model.Model.deploy")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
-    def test_non_prepacked_gen2_endpoint_no_default_pass_custom_resources(
+    def test_non_prepacked_inference_component_based_endpoint_no_default_pass_custom_resources(
         self,
         mock_model_deploy: mock.Mock,
         mock_model_init: mock.Mock,
@@ -254,7 +256,7 @@ class ModelTest(unittest.TestCase):
         )
 
         model.deploy(
-            endpoint_type=EndpointType.GEN2,
+            endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
             resources=custom_resource_requirements,
         )
 
@@ -268,7 +270,7 @@ class ModelTest(unittest.TestCase):
             ],
             endpoint_logging=False,
             resources=custom_resource_requirements,
-            endpoint_type=EndpointType.GEN2,
+            endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
         )
 
     @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")

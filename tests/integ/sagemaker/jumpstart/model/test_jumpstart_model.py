@@ -67,7 +67,7 @@ def test_non_prepacked_jumpstart_model(setup):
     assert response is not None
 
 
-def test_non_prepacked_jumpstart_model_deployed_on_gen2_endpoint(setup):
+def test_non_prepacked_jumpstart_model_deployed_on_inference_component_based_endpoint(setup):
 
     model_id = "huggingface-llm-falcon-7b-instruct-bf16"  # default g5.2xlarge
 
@@ -77,7 +77,7 @@ def test_non_prepacked_jumpstart_model_deployed_on_gen2_endpoint(setup):
         sagemaker_session=get_sm_session(),
     )
 
-    predictor = model.deploy(endpoint_type=EndpointType.GEN2)
+    predictor = model.deploy(endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED)
 
     inference_input = {
         "inputs": "Girafatron is obsessed with giraffes, the most glorious animal on the "

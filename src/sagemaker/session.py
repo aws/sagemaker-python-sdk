@@ -4069,7 +4069,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         new_data_capture_config_dict=None,
         new_production_variants=None,
         new_explainer_config_dict=None,
-        endpoint_type=EndpointType.GEN1,
+        endpoint_type=EndpointType.MODEL_BASED,
     ):
         """Create an Amazon SageMaker endpoint configuration from an existing one.
 
@@ -4119,7 +4119,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         production_variants = (
             new_production_variants or existing_endpoint_config_desc["ProductionVariants"]
         )
-        if endpoint_type == EndpointType.GEN2:
+        if endpoint_type == EndpointType.INFERENCE_COMPONENT_BASED:
             # Make a copy of Production variants and remove the InitialVariantWeight
             # in the copy
             copy_production_variants = deepcopy(production_variants)
@@ -5278,9 +5278,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             sagemaker_config=load_sagemaker_config() if (self is None) else None,
         )
 
-        # For Amazon SageMaker Generation 2 Endpoint, it will not pass Model names
-        # during Endpoint creation. Instead, ExecutionRoleArn will be needed in the
-        # EndpointConfig to create Endpoint
+        # For Amazon SageMaker inference component based endpoint, it will not pass
+        # Model names during endpoint creation. Instead, ExecutionRoleArn will be
+        # needed in the endpoint config to create Endpoint
         model_names = [pv["ModelName"] for pv in production_variants if "ModelName" in pv]
         if len(model_names) == 0:
             # Currently, SageMaker Python SDK allow using RoleName to deploy models.

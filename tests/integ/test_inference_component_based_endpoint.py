@@ -120,7 +120,7 @@ def test_deploy_single_model_with_endpoint_name(tfs_model, resources):
         1,
         "ml.m5.large",
         endpoint_name=endpoint_name,
-        endpoint_type=EndpointType.GEN2,
+        endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
         resources=resources,
     )
 
@@ -140,10 +140,7 @@ def test_deploy_single_model_with_endpoint_name(tfs_model, resources):
     predictor.delete_endpoint()
 
 
-@pytest.mark.slow_test
-@pytest.mark.skip(
-    reason="Disable until us-west-2 production become stable",
-)
+@pytest.mark.release
 def test_deploy_update_predictor_with_other_model(
     tfs_model,
     resources,
@@ -155,7 +152,7 @@ def test_deploy_update_predictor_with_other_model(
         1,
         "ml.m5.4xlarge",
         endpoint_name=endpoint_name,
-        endpoint_type=EndpointType.GEN2,
+        endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
         resources=resources,
     )
 
@@ -172,7 +169,7 @@ def test_deploy_update_predictor_with_other_model(
         1,
         "ml.m5.4xlarge",
         endpoint_name=endpoint_name,
-        endpoint_type=EndpointType.GEN2,
+        endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
         resources=resources,
     )
     xgboost_predictor.serializer = CSVSerializer()
@@ -208,7 +205,7 @@ def test_deploy_multi_models_without_endpoint_name(tfs_model, resources):
     tfs_predictor1 = tfs_model.deploy(
         1,
         "ml.m5.large",
-        endpoint_type=EndpointType.GEN2,
+        endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
         resources=resources,
     )
 
@@ -221,7 +218,7 @@ def test_deploy_multi_models_without_endpoint_name(tfs_model, resources):
         1,
         "ml.m5.large",
         endpoint_name=endpoint_name,
-        endpoint_type=EndpointType.GEN2,
+        endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
         resources=resources,
     )
 

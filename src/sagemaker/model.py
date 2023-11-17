@@ -312,8 +312,9 @@ class Model(ModelBase, InferenceRecommenderMixin):
                 the SageMaker Python SDK attempts to use either the CodeCommit
                 credential helper or local credential storage for authentication.
             resources (Optional[ResourceRequirements]): The compute resource requirements
-                for a model to be deployed to an endpoint. Only EndpointType.GEN2 supports
-                this feature. (Default: None).
+                for a model to be deployed to an endpoint. Only
+                EndpointType.INFERENCE_COMPONENT_BASED supports this feature.
+                (Default: None).
 
         """
         self.model_data = model_data
@@ -1275,7 +1276,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         accept_eula: Optional[bool] = None,
         endpoint_logging=False,
         resources: Optional[ResourceRequirements] = None,
-        endpoint_type: EndpointType = EndpointType.GEN1,
+        endpoint_type: EndpointType = EndpointType.MODEL_BASED,
         managed_instance_scaling: Optional[str] = None,
         **kwargs,
     ):
@@ -1367,13 +1368,13 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             endpoint_logging (Optiona[bool]): If set to true, live logging will be emitted as
                 the SageMaker Endpoint starts up. (Default: False).
             resources (Optional[ResourceRequirements]): The compute resource requirements
-                for a model to be deployed to an endpoint. Only EndpointType.GEN2 supports
-                this feature. (Default: None).
+                for a model to be deployed to an endpoint. Only
+                EndpointType.INFERENCE_COMPONENT_BASED supports this feature. (Default: None).
             managed_instance_scaling (Optional[Dict]): Managed instance scaling options,
                 if configured Amazon SageMaker will manage the instance number behind the
                 Endpoint. (Default: None).
             endpoint_type (Optional[EndpointType]): The type of an endpoint used to deploy models.
-                (Default: EndpointType.GEN1).
+                (Default: EndpointType.MODEL_BASED).
         Raises:
              ValueError: If arguments combination check failed in these circumstances:
                 - If no role is specified or
@@ -1474,7 +1475,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 self._base_name = "-".join((self._base_name, compiled_model_suffix))
 
         # Support multiple models on same endpoint
-        if endpoint_type == EndpointType.GEN2:
+        if endpoint_type == EndpointType.INFERENCE_COMPONENT_BASED:
             if endpoint_name:
                 self.endpoint_name = endpoint_name
             else:

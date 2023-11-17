@@ -263,8 +263,9 @@ class JumpStartModel(Model):
                 can be just the name if your account owns the Model Package.
                 ``model_data`` is not required. (Default: None).
             resources (Optional[ResourceRequirements]): The compute resource requirements
-                for a model to be deployed to an endpoint. Only EndpointType.GEN2 supports
-                this feature. (Default: None).
+                for a model to be deployed to an endpoint.
+                Only EndpointType.INFERENCE_COMPONENT_BASED supports this feature.
+                (Default: None).
         Raises:
             ValueError: If the model ID is not recognized by JumpStart.
         """
@@ -460,7 +461,7 @@ class JumpStartModel(Model):
         endpoint_logging: Optional[bool] = False,
         resources: Optional[ResourceRequirements] = None,
         managed_instance_scaling: Optional[str] = None,
-        endpoint_type: EndpointType = EndpointType.GEN1,
+        endpoint_type: EndpointType = EndpointType.MODEL_BASED,
     ) -> PredictorBase:
         """Creates endpoint by calling base ``Model`` class `deploy` method.
 
@@ -547,13 +548,14 @@ class JumpStartModel(Model):
             endpoint_logging (Optiona[bool]): If set to true, live logging will be emitted as
                 the SageMaker Endpoint starts up. (Default: False).
             resources (Optional[ResourceRequirements]): The compute resource requirements
-                for a model to be deployed to an endpoint. Only EndpointType.GEN2 supports
-                this feature. (Default: None).
+                for a model to be deployed to an endpoint. Only
+                EndpointType.INFERENCE_COMPONENT_BASED supports this feature.
+                (Default: None).
             managed_instance_scaling (Optional[Dict]): Managed intance scaling options,
                 if configured Amazon SageMaker will manage the instance number behind the
                 endpoint.
             endpoint_type (EndpointType): The type of endpoint used to deploy models.
-                (Default: EndpointType.GEN1).
+                (Default: EndpointType.MODEL_BASED).
         """
 
         deploy_kwargs = get_deploy_kwargs(

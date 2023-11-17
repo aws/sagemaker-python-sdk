@@ -858,7 +858,7 @@ def test_script_mode_model_uses_jumpstart_base_name(repack_model, sagemaker_sess
 
 @patch("sagemaker.utils.repack_model")
 @patch("sagemaker.fw_utils.tar_and_upload_dir")
-def test_all_framework_models_generation_two_endpoint_deploy_path(
+def test_all_framework_models_inference_component_based_endpoint_deploy_path(
     repack_model, tar_and_uload_dir, sagemaker_session
 ):
     framework_model_classes_to_kwargs = {
@@ -893,7 +893,7 @@ def test_all_framework_models_generation_two_endpoint_deploy_path(
         ).deploy(
             instance_type="ml.m2.xlarge",
             initial_instance_count=INSTANCE_COUNT,
-            endpoint_type=EndpointType.GEN2,
+            endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
             resources=ResourceRequirements(
                 requests={
                     "num_accelerators": 1,
@@ -904,7 +904,7 @@ def test_all_framework_models_generation_two_endpoint_deploy_path(
             ),
         )
 
-        # Verified Generation2 endpoint and inference component creation
+        # Verified inference component based endpoint and inference component creation
         # path
         sagemaker_session.endpoint_in_service_or_not.assert_called_once()
         sagemaker_session.create_model.assert_called_once()

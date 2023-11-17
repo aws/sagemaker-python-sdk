@@ -399,9 +399,9 @@ class Predictor(PredictorBase):
         new_endpoint_config_name = name_from_base(current_endpoint_config_name)
 
         if self._get_component_name():
-            endpoint_type = EndpointType.GEN2
+            endpoint_type = EndpointType.INFERENCE_COMPONENT_BASED
         else:
-            endpoint_type = EndpointType.GEN1
+            endpoint_type = EndpointType.MODEL_BASED
 
         self.sagemaker_session.create_endpoint_config_from_existing(
             current_endpoint_config_name,
@@ -442,8 +442,8 @@ class Predictor(PredictorBase):
     def delete_predictor(self, wait: bool = False) -> None:
         """Delete the Amazon SageMaker inference component or endpoint backing this predictor.
 
-        Delete the corresponding inference component if the endpoint is a Generation2
-        endpoint.
+        Delete the corresponding inference component if the endpoint is a inference component
+        based endpoint.
         Otherwise delete the endpoint where this predictor is hosted.
         """
 
@@ -485,8 +485,9 @@ class Predictor(PredictorBase):
                 https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-inference-code.html#your-algorithms-inference-algo-ping-requests
                 (Default: None).
             resources (Optional[ResourceRequirements]): The compute resource requirements
-                for a model to be deployed to an endpoint. Only EndpointType.GEN2 supports
-                this feature. (Default: None).
+                for a model to be deployed to an endpoint.
+                Only EndpointType.INFERENCE_COMPONENT_BASED supports this feature.
+                (Default: None).
         """
         if self.component_name is None:
             raise ValueError(
