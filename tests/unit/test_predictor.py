@@ -284,7 +284,7 @@ def test_update_endpoint_no_args(name_from_base):
         new_kms_key=None,
         new_data_capture_config_dict=None,
         new_production_variants=None,
-        endpoint_type=EndpointType.GEN1,
+        endpoint_type=EndpointType.MODEL_BASED,
     )
     sagemaker_session.update_endpoint.assert_called_with(
         ENDPOINT, new_endpoint_config_name, wait=True
@@ -338,7 +338,7 @@ def test_update_endpoint_all_args(name_from_base, production_variant):
         new_kms_key=new_kms_key,
         new_data_capture_config_dict=new_data_capture_config_dict,
         new_production_variants=[production_variant.return_value],
-        endpoint_type=EndpointType.GEN1,
+        endpoint_type=EndpointType.MODEL_BASED,
     )
     sagemaker_session.update_endpoint.assert_called_with(
         ENDPOINT, new_endpoint_config_name, wait=False
@@ -383,7 +383,7 @@ def test_update_endpoint_instance_type_and_count(name_from_base, production_vari
         new_kms_key=None,
         new_data_capture_config_dict=None,
         new_production_variants=[production_variant.return_value],
-        endpoint_type=EndpointType.GEN1,
+        endpoint_type=EndpointType.MODEL_BASED,
     )
     sagemaker_session.update_endpoint.assert_called_with(
         ENDPOINT, new_endpoint_config_name, wait=True

@@ -177,9 +177,9 @@ def test_huggingface_inference(
 
 
 @pytest.mark.skip(
-    reason="re-enable when above GEN1 endpoint hugging face inference test enabled",
+    reason="re-enable when above MODEL_BASED endpoint hugging face inference test enabled",
 )
-def test_huggingface_inference_gen2_endpoint(
+def test_huggingface_inference_inference_component_based_endpoint(
     sagemaker_session,
     gpu_pytorch_instance_type,
     huggingface_inference_latest_version,
@@ -204,7 +204,7 @@ def test_huggingface_inference_gen2_endpoint(
         instance_type=gpu_pytorch_instance_type,
         initial_instance_count=1,
         endpoint_name=endpoint_name,
-        endpoint_type=EndpointType.GEN2,
+        endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
         resources=ResourceRequirements(
             requests={
                 "num_accelerators": 1,  # NumberOfCpuCoresRequired

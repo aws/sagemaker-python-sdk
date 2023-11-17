@@ -561,7 +561,7 @@ def get_deploy_kwargs(
 
     deploy_kwargs = _add_tags_to_kwargs(kwargs=deploy_kwargs)
 
-    if endpoint_type == EndpointType.GEN2:
+    if endpoint_type == EndpointType.INFERENCE_COMPONENT_BASED:
         deploy_kwargs = _add_resources_to_kwargs(kwargs=deploy_kwargs)
         deploy_kwargs.endpoint_type = endpoint_type
         deploy_kwargs.managed_instance_scaling = managed_instance_scaling

@@ -1009,7 +1009,7 @@ def test_deploy_with_name_and_resources(sagemaker_session):
         MODEL_IMAGE, MODEL_DATA, name=MODEL_NAME, role=ROLE, sagemaker_session=sagemaker_session
     )
 
-    endpoint_name = "Gen2-endpoint-test"
+    endpoint_name = "inference-component-based-endpoint-test"
     model.deploy(
         endpoint_name=endpoint_name,
         instance_type=INSTANCE_TYPE,

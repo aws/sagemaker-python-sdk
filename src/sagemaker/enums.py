@@ -24,5 +24,7 @@ LOGGER = logging.getLogger("sagemaker")
 class EndpointType(Enum):
     """Types of endpoint"""
 
-    GEN1 = "gen1"  # Amazon SageMaker Endpoint Generation 1
-    GEN2 = "gen2"  # Amazon SageMaker Endpoint Generation 2
+    MODEL_BASED = "ModelBased"  # Amazon SageMaker Model Based Endpoint
+    INFERENCE_COMPONENT_BASED = (
+        "InferenceComponentBased"  # Amazon SageMaker Inference Component Based Endpoint
+    )
