@@ -592,7 +592,7 @@ def test_decorator_step_failed(
         step_name = execution_steps[0]["StepName"]
         with pytest.raises(RemoteFunctionError) as e:
             execution.result(step_name)
-            assert f"Pipeline step {step_name} is in Failed status." in str(e)
+            assert f"step {step_name} is not in Completed status." in str(e)
     finally:
         try:
             pipeline.delete()

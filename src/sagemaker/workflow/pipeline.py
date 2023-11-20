@@ -24,7 +24,7 @@ import botocore
 import pytz
 from botocore.exceptions import ClientError, WaiterError
 
-from sagemaker import s3
+from sagemaker import s3, LocalSession
 from sagemaker._studio import _append_project_tags
 from sagemaker.config import PIPELINE_ROLE_ARN_PATH, PIPELINE_TAGS_PATH
 from sagemaker.remote_function.core.serialization import deserialize_obj_from_s3
@@ -973,41 +973,81 @@ sagemaker.html#SageMaker.Client.list_pipeline_execution_steps>`_.
         except WaiterError as e:
             if "Waiter encountered a terminal failure state" not in str(e):
                 raise
-        step = next(filter(lambda x: x["StepName"] == step_name, self.list_steps()), None)
-        if not step:
-            raise ValueError(f"Invalid step name {step_name}")
-        step_type = next(iter(step["Metadata"]))
-        step_metadata = next(iter(step["Metadata"].values()))
-        if step_type != "TrainingJob":
-            raise ValueError(
-                "This method can only be used on pipeline steps created using " "@step decorator."
-            )
 
-        job_arn = step_metadata["Arn"]
-        job_name = job_arn.split("/")[-1]
+        return get_function_step_result(
+            step_name=step_name,
+            step_list=self.list_steps(),
+            execution_id=self.arn.split("/")[-1],
+            sagemaker_session=self.sagemaker_session,
+        )
 
-        describe_training_job_response = self.sagemaker_session.describe_training_job(job_name)
-        container_args = describe_training_job_response["AlgorithmSpecification"][
-            "ContainerEntrypoint"
-        ]
-        if container_args != JOBS_CONTAINER_ENTRYPOINT:
-            raise ValueError(
-                "This method can only be used on pipeline steps created using @step decorator."
-            )
-        s3_output_path = describe_training_job_response["OutputDataConfig"]["S3OutputPath"]
 
-        job_status = describe_training_job_response["TrainingJobStatus"]
-        if job_status == "Completed":
-            return deserialize_obj_from_s3(
-                sagemaker_session=self.sagemaker_session,
-                s3_uri=s3_path_join(
-                    s3_output_path, self.arn.split("/")[-1], step_name, RESULTS_FOLDER
-                ),
-                hmac_key=describe_training_job_response["Environment"][
-                    "REMOTE_FUNCTION_SECRET_KEY"
-                ],
-            )
-        raise RemoteFunctionError(f"Pipeline step {step_name} is in {job_status} status.")
+def get_function_step_result(
+    step_name: str,
+    step_list: list,
+    execution_id: str,
+    sagemaker_session: Session,
+):
+    """Helper function to retrieve the output of a ``@step`` decorated function.
+
+    Args:
+        step_name (str): The name of the pipeline step.
+        step_list (list): A list of executed pipeline steps of the specified execution.
+        execution_id (str): The specified id of the pipeline execution.
+        sagemaker_session (Session): Session object which manages interactions
+            with Amazon SageMaker APIs and any other AWS services needed.
+    Returns:
+        The step output.
+
+    Raises:
+        ValueError if the provided step is not a ``@step`` decorated function.
+        RemoteFunctionError if the provided step is not in "Completed" status
+    """
+    _ERROR_MSG_OF_WRONG_STEP_TYPE = (
+        "This method can only be used on pipeline steps created using @step decorator."
+    )
+    _ERROR_MSG_OF_STEP_INCOMPLETE = (
+        f"Unable to retrieve step output as the step {step_name} is not in Completed status."
+    )
+
+    step = next(filter(lambda x: x["StepName"] == step_name, step_list), None)
+    if not step:
+        raise ValueError(f"Invalid step name {step_name}")
+
+    if isinstance(sagemaker_session, LocalSession) and not step.get("Metadata", None):
+        # In local mode, if the training job failed,
+        # it's not tracked in LocalSagemakerClient and it's not describable.
+        # Thus, the step Metadata is not set.
+        raise RuntimeError(_ERROR_MSG_OF_STEP_INCOMPLETE)
+
+    step_type = next(iter(step["Metadata"]))
+    step_metadata = next(iter(step["Metadata"].values()))
+    if step_type != "TrainingJob":
+        raise ValueError(_ERROR_MSG_OF_WRONG_STEP_TYPE)
+
+    job_arn = step_metadata["Arn"]
+    job_name = job_arn.split("/")[-1]
+
+    if isinstance(sagemaker_session, LocalSession):
+        describe_training_job_response = sagemaker_session.sagemaker_client.describe_training_job(
+            job_name
+        )
+    else:
+        describe_training_job_response = sagemaker_session.describe_training_job(job_name)
+    container_args = describe_training_job_response["AlgorithmSpecification"]["ContainerEntrypoint"]
+    if container_args != JOBS_CONTAINER_ENTRYPOINT:
+        raise ValueError(_ERROR_MSG_OF_WRONG_STEP_TYPE)
+    s3_output_path = describe_training_job_response["OutputDataConfig"]["S3OutputPath"]
+
+    job_status = describe_training_job_response["TrainingJobStatus"]
+    if job_status == "Completed":
+        return deserialize_obj_from_s3(
+            sagemaker_session=sagemaker_session,
+            s3_uri=s3_path_join(s3_output_path, execution_id, step_name, RESULTS_FOLDER),
+            hmac_key=describe_training_job_response["Environment"]["REMOTE_FUNCTION_SECRET_KEY"],
+        )
+
+    raise RemoteFunctionError(_ERROR_MSG_OF_STEP_INCOMPLETE)
 
 
 class PipelineGraph:
