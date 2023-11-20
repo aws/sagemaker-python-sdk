@@ -18,6 +18,7 @@ from __future__ import absolute_import
 
 import logging
 import sys
+from types import MethodType
 
 
 def get_sagemaker_config_logger():
@@ -46,7 +47,7 @@ def get_sagemaker_config_logger():
         # if a handler is being added, we dont want the root handler to also process the same events
         sagemaker_config_logger.propagate = False
 
-    return sagemaker_config_logger
+    return non_repeating_logger(sagemaker_config_logger)
 
 
 def _log_sagemaker_config_single_substitution(source_value, config_value, config_key_path: str):
@@ -197,3 +198,25 @@ def _log_sagemaker_config_merge(
     else:
         # nothing was specified in the config and nothing is being automatically applied
         logger.debug("Skipped value because no value defined\n  config key = %s", config_key_path)
+
+
+def non_repeating_logger(logger: logging.Logger) -> logging.Logger:
+    """Patch the logger to remove repeating info logs.
+
+    Args:
+        logger (logging.Logger): the logger to be patched
+
+    Returns:
+        (logging.Logger): the patched logger
+    """
+    _caches = set()
+    _old_impl = logger.info
+
+    def _new_impl(_, msg, *args, **kwargs):
+        key = f"{msg}:{args}"
+        if key not in _caches:
+            _old_impl(msg, *args, **kwargs)
+            _caches.add(key)
+
+    logger.info = MethodType(_new_impl, logger)
+    return logger
