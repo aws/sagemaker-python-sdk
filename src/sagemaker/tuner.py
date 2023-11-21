@@ -34,7 +34,7 @@ from sagemaker.estimator import Framework, EstimatorBase
 from sagemaker.inputs import TrainingInput, FileSystemInput
 from sagemaker.job import _Job
 from sagemaker.jumpstart.utils import (
-    add_jumpstart_tags,
+    add_jumpstart_uri_tags,
     get_jumpstart_base_name_if_jumpstart_model,
 )
 from sagemaker.parameter import (
@@ -816,11 +816,12 @@ class HyperparameterTuner(object):
             if tag not in self.tags:
                 self.tags.append(tag)
 
-        self.tags = add_jumpstart_tags(
-            tags=self.tags,
-            training_script_uri=getattr(estimator, "source_dir", None),
-            training_model_uri=self._get_model_uri(estimator),
-        )
+        if self.sagemaker_session.settings.include_jumpstart_tags:
+            self.tags = add_jumpstart_uri_tags(
+                tags=self.tags,
+                training_script_uri=getattr(estimator, "source_dir", None),
+                training_model_uri=self._get_model_uri(estimator),
+            )
 
     def _prepare_job_name_for_tuning(self, job_name=None):
         """Set current job name before starting tuning."""

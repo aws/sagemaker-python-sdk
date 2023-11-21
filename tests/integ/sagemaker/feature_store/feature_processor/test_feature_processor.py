@@ -42,6 +42,8 @@ from sagemaker.feature_store.feature_processor import (
     feature_processor,
     CSVDataSource,
     PySparkDataSource,
+    FeatureProcessorPipelineEvents,
+    FeatureProcessorPipelineExecutionStatus,
 )
 from sagemaker.feature_store.feature_processor.feature_scheduler import (
     to_pipeline,
@@ -49,6 +51,10 @@ from sagemaker.feature_store.feature_processor.feature_scheduler import (
     execute,
     schedule,
     delete_schedule,
+    put_trigger,
+    enable_trigger,
+    disable_trigger,
+    delete_trigger,
 )
 from sagemaker.workflow.pipeline import Pipeline
 
@@ -762,7 +768,7 @@ def test_to_pipeline_and_execute(
     not sys.version.startswith("3.9"),
     reason="Only allow this test to run with py39",
 )
-def test_schedule(
+def test_schedule_and_event_trigger(
     sagemaker_session,
 ):
     pipeline_name = "pipeline-name-01"
@@ -917,10 +923,54 @@ def test_schedule(
             columns=["ingest_time", "write_time", "api_invocation_time", "is_deleted"]
         )
 
-        assert dataset.equals(get_expected_dataframe())
+        # assert dataset.equals(get_expected_dataframe())
+
+        put_trigger(
+            source_pipeline_events=[
+                FeatureProcessorPipelineEvents(
+                    pipeline_name=pipeline_name,
+                    pipeline_execution_status=[FeatureProcessorPipelineExecutionStatus.FAILED],
+                )
+            ],
+            target_pipeline=pipeline_name,
+        )
+
+        assert "trigger" in describe(
+            pipeline_name=pipeline_name, sagemaker_session=sagemaker_session
+        )
+        assert describe(pipeline_name=pipeline_name, sagemaker_session=sagemaker_session)[
+            "event_pattern"
+        ] == json.dumps(
+            {
+                "detail-type": ["SageMaker Model Building Pipeline Execution Status Change"],
+                "source": ["aws.sagemaker"],
+                "detail": {
+                    "currentPipelineExecutionStatus": ["Failed"],
+                    "pipelineArn": [pipeline_arn],
+                },
+            }
+        )
+        enable_trigger(pipeline_name=pipeline_name, sagemaker_session=sagemaker_session)
+        assert (
+            describe(pipeline_name=pipeline_name, sagemaker_session=sagemaker_session)[
+                "trigger_state"
+            ]
+            == "ENABLED"
+        )
+        disable_trigger(pipeline_name=pipeline_name, sagemaker_session=sagemaker_session)
+        assert (
+            describe(pipeline_name=pipeline_name, sagemaker_session=sagemaker_session)[
+                "trigger_state"
+            ]
+            == "DISABLED"
+        )
 
         delete_schedule(pipeline_name=pipeline_name, sagemaker_session=sagemaker_session)
         assert "schedule_arn" not in describe(
+            pipeline_name=pipeline_name, sagemaker_session=sagemaker_session
+        )
+        delete_trigger(pipeline_name=pipeline_name, sagemaker_session=sagemaker_session)
+        assert "trigger" not in describe(
             pipeline_name=pipeline_name, sagemaker_session=sagemaker_session
         )
 

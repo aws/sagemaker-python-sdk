@@ -1,5 +1,89 @@
 # Changelog
 
+## v2.197.0 (2023-11-07)
+
+### Features
+
+ * PT2.1 SM Training/Inference DLC Release
+
+### Bug Fixes and Other Changes
+
+ * Release HuggingFace PT Neuronx training image 1.13.1
+ * HuggingFace PT Neuronx release in SDK
+
+## v2.196.0 (2023-10-27)
+
+### Features
+
+ * inference instance type conditioned on training instance type
+
+### Bug Fixes and Other Changes
+
+ * improved jumpstart tagging
+
+## v2.195.1 (2023-10-26)
+
+### Bug Fixes and Other Changes
+
+ * Allow either instance_type or instance_group to be defined in…
+ * enhance image_uris unit tests
+
+## v2.195.0 (2023-10-25)
+
+### Features
+
+ * jumpstart gated model artifacts
+ * jumpstart extract generated text from response
+ * jumpstart contruct payload utility
+
+### Bug Fixes and Other Changes
+
+ * relax upper bound on urllib in local mode requirements
+ * bump urllib3 version
+ * allow smdistributed to be enabled with torch_distributed.
+ * fix URL links
+
+### Documentation Changes
+
+ * remove python 2 reference
+ * update framework version links
+
+## v2.194.0 (2023-10-19)
+
+### Features
+
+ * Added register step in Jumpstart model
+ * jumpstart instance specific metric definitions
+
+### Bug Fixes and Other Changes
+
+ * Updates for DJL 0.24.0 Release
+ * use getter for resource-metadata dict
+ * add method to Model class to check if repack is needed
+
+## v2.193.0 (2023-10-18)
+
+### Features
+
+ * jumpstart model artifact instance type variants
+ * jumpstart instance specific hyperparameters
+ * Feature Processor event based triggers (#1132)
+ * Support job checkpoint in remote function
+ * jumpstart model package arn instance type variants
+
+### Bug Fixes and Other Changes
+
+ * Fix hyperlinks in feature_processor.scheduler parameter descriptions
+ * add image_uris_unit_test pytest mark
+ * bump apache-airflow to `v2.7.2`
+ * clone distribution in validate_distribution
+ * fix flaky Inference Recommender integration tests
+
+### Documentation Changes
+
+ * Update PipelineModel.register documentation
+ * specify that input_shape in no longer required for torch 2.0 mod…
+
 ## v2.192.1 (2023-10-13)
 
 ### Bug Fixes and Other Changes

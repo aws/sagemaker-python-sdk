@@ -18,6 +18,9 @@ from typing import Optional, Iterator, List, Dict, Set, Sequence, Union
 import attr
 from botocore.exceptions import ClientError
 
+from sagemaker.feature_store.feature_processor._event_bridge_rule_helper import (
+    EventBridgeRuleHelper,
+)
 from sagemaker.feature_store.feature_processor._event_bridge_scheduler_helper import (
     EventBridgeSchedulerHelper,
 )
@@ -37,6 +40,9 @@ from sagemaker.feature_store.feature_processor.lineage._pipeline_lineage_entity_
 )
 from sagemaker.feature_store.feature_processor.lineage._pipeline_schedule import (
     PipelineSchedule,
+)
+from sagemaker.feature_store.feature_processor.lineage._pipeline_trigger import (
+    PipelineTrigger,
 )
 
 # pylint: disable=C0301
@@ -64,6 +70,7 @@ from sagemaker.feature_store.feature_processor.lineage.constants import (
     LAST_MODIFIED_TIME,
     TRANSFORMATION_CODE_STATUS_INACTIVE,
     TRANSFORMATION_CODE_STATUS_ACTIVE,
+    CONTRIBUTED_TO,
 )
 from sagemaker.lineage.context import Context
 from sagemaker.lineage.artifact import Artifact
@@ -210,6 +217,50 @@ class FeatureProcessorLineageHandler:
             sagemaker_session=self.sagemaker_session,
         )
 
+    def create_trigger_lineage(
+        self,
+        pipeline_name: str,
+        trigger_arn: str,
+        event_pattern: str,
+        state: str,
+        tags: Optional[List[Dict[str, str]]] = None,
+    ) -> None:
+        """Class to Create and Update FeatureProcessor Pipeline Trigger Lineage Entities.
+
+        Arguments:
+            pipeline_name (str): Pipeline Name.
+            trigger_arn (str): The ARN of the EventBridge Rule.
+            event_pattern (str): The event pattern for the rule.
+            state (str): Specifies whether the trigger is enabled or disabled. Valid values are
+                ENABLED and DISABLED. If not specified, it will default to ENABLED.
+            tags (Optional[List[Dict[str, str]]]): Custom tags to be attached to trigger
+                lineage resource.
+        """
+        pipeline_context: Context = self._get_pipeline_context()
+        pipeline_version_context: Context = self._get_pipeline_version_context(
+            last_update_time=pipeline_context.properties[LAST_UPDATE_TIME]
+        )
+        pipeline_trigger: PipelineTrigger = PipelineTrigger(
+            trigger_name=pipeline_name,
+            trigger_arn=trigger_arn,
+            event_pattern=event_pattern,
+            pipeline_name=pipeline_name,
+            state=state,
+        )
+        trigger_artifact: Artifact = S3LineageEntityHandler.retrieve_pipeline_trigger_artifact(
+            pipeline_trigger=pipeline_trigger,
+            sagemaker_session=self.sagemaker_session,
+        )
+        if tags:
+            trigger_artifact.set_tags(tags)
+
+        LineageAssociationHandler._add_association(
+            source_arn=trigger_artifact.artifact_arn,
+            destination_arn=pipeline_version_context.context_arn,
+            association_type=CONTRIBUTED_TO,
+            sagemaker_session=self.sagemaker_session,
+        )
+
     def upsert_tags_for_lineage_resources(self, tags: List[Dict[str, str]]) -> None:
         """Add or update tags for lineage resources using tags attached to sagemaker pipeline as
 
@@ -236,6 +287,12 @@ class FeatureProcessorLineageHandler:
         )
         event_bridge_schedule = event_bridge_scheduler_helper.describe_schedule(self.pipeline_name)
 
+        event_bridge_rule_helper = EventBridgeRuleHelper(
+            self.sagemaker_session,
+            self.sagemaker_session.boto_session.client("events"),
+        )
+        event_bridge_rule = event_bridge_rule_helper.describe_rule(self.pipeline_name)
+
         if event_bridge_schedule:
             schedule_artifact_summary = S3LineageEntityHandler._load_artifact_from_s3_uri(
                 s3_uri=event_bridge_schedule["Arn"],
@@ -249,6 +306,18 @@ class FeatureProcessorLineageHandler:
                     )
                 )
                 pipeline_schedule_artifact.set_tags(tags)
+
+        if event_bridge_rule:
+            rule_artifact_summary = S3LineageEntityHandler._load_artifact_from_s3_uri(
+                s3_uri=event_bridge_rule["Arn"],
+                sagemaker_session=self.sagemaker_session,
+            )
+            if rule_artifact_summary:
+                pipeline_trigger_artifact: Artifact = S3LineageEntityHandler.load_artifact_from_arn(
+                    artifact_arn=rule_artifact_summary.artifact_arn,
+                    sagemaker_session=self.sagemaker_session,
+                )
+                pipeline_trigger_artifact.set_tags(tags)
 
     def _create_new_pipeline_lineage(
         self,

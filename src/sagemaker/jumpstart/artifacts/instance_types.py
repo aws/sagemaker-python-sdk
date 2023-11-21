@@ -37,6 +37,7 @@ def _retrieve_default_instance_type(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    training_instance_type: Optional[str] = None,
 ) -> str:
     """Retrieves the default instance type for the model.
 
@@ -60,6 +61,11 @@ def _retrieve_default_instance_type(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        training_instance_type (str): In the case of a model fine-tuned on SageMaker, the training
+            instance type used for the training job that produced the fine-tuned weights.
+            Optionally supply this to get a inference instance type conditioned
+            on the training instance, to ensure compatability of training artifact to inference
+            instance. (Default: None).
     Returns:
         str: the default instance type to use for the model or None.
 
@@ -82,7 +88,21 @@ def _retrieve_default_instance_type(
     )
 
     if scope == JumpStartScriptScope.INFERENCE:
-        default_instance_type = model_specs.default_inference_instance_type
+        instance_specific_default_instance_type = (
+            (
+                model_specs.training_instance_type_variants.get_instance_specific_default_inference_instance_type(  # pylint: disable=C0301 # noqa: E501
+                    training_instance_type
+                )
+            )
+            if training_instance_type is not None
+            and getattr(model_specs, "training_instance_type_variants", None) is not None
+            else None
+        )
+        default_instance_type = (
+            instance_specific_default_instance_type
+            if instance_specific_default_instance_type is not None
+            else model_specs.default_inference_instance_type
+        )
     elif scope == JumpStartScriptScope.TRAINING:
         default_instance_type = model_specs.default_training_instance_type
     else:
@@ -103,6 +123,7 @@ def _retrieve_instance_types(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    training_instance_type: Optional[str] = None,
 ) -> List[str]:
     """Retrieves the supported instance types for the model.
 
@@ -126,6 +147,11 @@ def _retrieve_instance_types(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        training_instance_type (str): In the case of a model fine-tuned on SageMaker, the training
+            instance type used for the training job that produced the fine-tuned weights.
+            Optionally supply this to get a inference instance type conditioned
+            on the training instance, to ensure compatability of training artifact to inference
+            instance. (Default: None).
     Returns:
         list: the supported instance types to use for the model or None.
 
@@ -148,8 +174,24 @@ def _retrieve_instance_types(
     )
 
     if scope == JumpStartScriptScope.INFERENCE:
-        instance_types = model_specs.supported_inference_instance_types
+        default_instance_types = model_specs.supported_inference_instance_types or []
+        instance_specific_instance_types = (
+            model_specs.training_instance_type_variants.get_instance_specific_supported_inference_instance_types(  # pylint: disable=C0301 # noqa: E501
+                training_instance_type
+            )
+            if training_instance_type is not None
+            and getattr(model_specs, "training_instance_type_variants", None) is not None
+            else []
+        )
+        instance_types = (
+            instance_specific_instance_types
+            if len(instance_specific_instance_types) > 0
+            else default_instance_types
+        )
+
     elif scope == JumpStartScriptScope.TRAINING:
+        if training_instance_type is not None:
+            raise ValueError("Cannot use `training_instance_type` argument " "with training scope.")
         instance_types = model_specs.supported_training_instance_types
     else:
         raise NotImplementedError(

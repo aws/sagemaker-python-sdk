@@ -33,6 +33,7 @@ from sagemaker.feature_store.feature_processor.lineage._feature_group_contexts i
 from sagemaker.feature_store.feature_processor.lineage._pipeline_schedule import (
     PipelineSchedule,
 )
+from sagemaker.feature_store.feature_processor.lineage._pipeline_trigger import PipelineTrigger
 from sagemaker.feature_store.feature_processor.lineage._transformation_code import (
     TransformationCode,
 )
@@ -110,6 +111,44 @@ PIPELINE_SCHEDULE_2 = PipelineSchedule(
     pipeline_name="pipeline-name",
     state="state-2",
     start_date="234234234",
+)
+
+PIPELINE_TRIGGER = PipelineTrigger(
+    trigger_name="trigger-name",
+    trigger_arn="trigger-arn",
+    pipeline_name="pipeline-name",
+    event_pattern="event-pattern",
+    state="Enabled",
+)
+
+PIPELINE_TRIGGER_2 = PipelineTrigger(
+    trigger_name="trigger-name-2",
+    trigger_arn="trigger-arn",
+    pipeline_name="pipeline-name",
+    event_pattern="event-pattern-2",
+    state="Enabled",
+)
+
+PIPELINE_TRIGGER_ARTIFACT: Artifact = Artifact(
+    artifact_arn="arn:aws:sagemaker:us-west-2:789975069016:artifact/7be06af3274fd01d1c18c96f97141f32",
+    artifact_name="sm-fs-fe-trigger-trigger-name",
+    artifact_type="PipelineTrigger",
+    source={"source_uri": "trigger-arn"},
+    properties=dict(
+        pipeline_name=PIPELINE_TRIGGER.pipeline_name,
+        event_pattern=PIPELINE_TRIGGER.event_pattern,
+        state=PIPELINE_TRIGGER.state,
+    ),
+)
+
+PIPELINE_TRIGGER_ARTIFACT_SUMMARY: ArtifactSummary = ArtifactSummary(
+    artifact_arn="arn:aws:sagemaker:us-west-2:789975069016:artifact/7be06af3274fd01d1c18c96f97141f32",
+    artifact_name="sm-fs-fe-trigger-trigger-name",
+    source=ArtifactSource(
+        source_uri="trigger-arn",
+    ),
+    artifact_type="PipelineTrigger",
+    creation_time=datetime.datetime(2023, 4, 27, 21, 4, 17, 926000),
 )
 
 ARTIFACT_RESULT: Artifact = Artifact(

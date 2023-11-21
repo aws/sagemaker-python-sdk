@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 FEATURE_PROCESSOR_CREATED_PREFIX = "sm-fs-fe"
+FEATURE_PROCESSOR_CREATED_TRIGGER_PREFIX = "sm-fs-fe-trigger"
 FEATURE_GROUP_PIPELINE_CONTEXT_SUFFIX = "feature-group-pipeline"
 FEATURE_GROUP_PIPELINE_CONTEXT_VERSION_SUFFIX = "feature-group-pipeline-version"
 FEATURE_PROCESSOR_PIPELINE_CONTEXT_SUFFIX = "fep"
@@ -93,3 +94,8 @@ def _get_feature_processor_pipeline_version_lineage_context_name(
 def _get_feature_processor_schedule_lineage_artifact_name(schedule_name: str) -> str:
     """Generate artifact name for feature processor pipeline schedule."""
     return "-".join([FEATURE_PROCESSOR_CREATED_PREFIX, schedule_name])
+
+
+def _get_feature_processor_trigger_lineage_artifact_name(trigger_name: str) -> str:
+    """Generate artifact name for feature processor pipeline trigger."""
+    return "-".join([FEATURE_PROCESSOR_CREATED_TRIGGER_PREFIX, trigger_name])

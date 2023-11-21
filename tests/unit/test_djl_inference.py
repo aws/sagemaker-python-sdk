@@ -46,7 +46,7 @@ ENV = {"ENV_VAR": "env_value"}
 ROLE = "dummy_role"
 REGION = "us-west-2"
 BUCKET = "mybucket"
-IMAGE_URI = "763104351884.dkr.ecr.us-west-2.amazon.com/djl-inference:0.23.0-deepspeed0.9.5-cu118"
+IMAGE_URI = "763104351884.dkr.ecr.us-west-2.amazon.com/djl-inference:0.24.0-deepspeed0.10.0-cu118"
 GPU_INSTANCE = "ml.g5.12xlarge"
 
 

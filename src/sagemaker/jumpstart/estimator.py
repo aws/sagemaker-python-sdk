@@ -988,7 +988,6 @@ class JumpStartEstimator(Estimator):
             use_compiled_model (bool): Flag to select whether to use compiled
                 (optimized) model. (Default: False).
         """
-
         self.orig_predictor_cls = predictor_cls
 
         sagemaker_session = sagemaker_session or self.sagemaker_session
@@ -1039,6 +1038,7 @@ class JumpStartEstimator(Estimator):
             dependencies=dependencies,
             git_config=git_config,
             use_compiled_model=use_compiled_model,
+            training_instance_type=self.instance_type,
         )
 
         predictor = super(JumpStartEstimator, self).deploy(

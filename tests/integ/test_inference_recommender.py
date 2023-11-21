@@ -460,7 +460,8 @@ def test_deploy_inference_recommendation_id_with_registered_model_sklearn(
     rec_res = sagemaker_session.sagemaker_client.describe_inference_recommendations_job(
         JobName=ir_job_name
     )
-    rec_id = rec_res["InferenceRecommendations"][0]["RecommendationId"]
+
+    rec_id = get_realtime_recommendation_id(recommendation_list=rec_res["InferenceRecommendations"])
 
     with timeout(minutes=45):
         try:
@@ -537,3 +538,11 @@ def poll_for_deployment_recommendation(created_base_model, sagemaker_session):
         except Exception as e:
             created_base_model.delete_model()
             raise e
+
+
+def get_realtime_recommendation_id(recommendation_list):
+    """Search recommendation based on recommendation id"""
+    next(
+        (rec["RecommendationId"] for rec in recommendation_list if "InstanceType" in rec),
+        None,
+    )

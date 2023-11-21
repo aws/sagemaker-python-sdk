@@ -51,6 +51,6 @@ def get_huggingface_llm_image_uri(
             image_scope="inference",
         )
     if backend == "lmi":
-        version = version or "0.23.0"
+        version = version or "0.24.0"
         return image_uris.retrieve(framework="djl-deepspeed", region=region, version=version)
     raise ValueError("Unsupported backend: %s" % backend)

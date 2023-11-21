@@ -17,18 +17,25 @@ import json
 import pytest
 
 
-@pytest.fixture(scope="module")
-def config_dir():
-    return "src/sagemaker/image_uri_config/"
+CONFIG_DIR = "src/sagemaker/image_uri_config/"
 
 
-@pytest.fixture(scope="module")
-def load_config(config_dir, request):
-    config_file_name = request.param
-    config_file_path = os.path.join(config_dir, config_file_name)
-
+def get_config(config_file_name):
+    config_file_path = os.path.join(CONFIG_DIR, config_file_name)
     with open(config_file_path, "r") as config_file:
         return json.load(config_file)
+
+
+@pytest.fixture(scope="module")
+def load_config(request):
+    config_file_name = request.param
+    return get_config(config_file_name)
+
+
+@pytest.fixture(scope="module")
+def load_config_and_file_name(request):
+    config_file_name = request.param
+    return get_config(config_file_name), config_file_name
 
 
 @pytest.fixture(scope="module")

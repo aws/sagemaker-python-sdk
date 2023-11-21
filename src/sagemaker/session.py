@@ -4877,7 +4877,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if os.path.exists(NOTEBOOK_METADATA_FILE):
             with open(NOTEBOOK_METADATA_FILE, "rb") as f:
                 metadata = json.loads(f.read())
-                instance_name = metadata["ResourceName"]
+                instance_name = metadata.get("ResourceName")
                 domain_id = metadata.get("DomainId")
                 user_profile_name = metadata.get("UserProfileName")
                 space_name = metadata.get("SpaceName")

@@ -17,43 +17,22 @@ import pytest
 from sagemaker.stabilityai import get_stabilityai_image_uri
 from tests.unit.sagemaker.image_uris import expected_uris
 
-ACCOUNTS = {
-    "af-south-1": "626614931356",
-    "il-central-1": "780543022126",
-    "ap-east-1": "871362719292",
-    "ap-northeast-1": "763104351884",
-    "ap-northeast-2": "763104351884",
-    "ap-northeast-3": "364406365360",
-    "ap-south-1": "763104351884",
-    "ap-southeast-1": "763104351884",
-    "ap-southeast-2": "763104351884",
-    "ap-southeast-3": "907027046896",
-    "ca-central-1": "763104351884",
-    "eu-central-1": "763104351884",
-    "eu-north-1": "763104351884",
-    "eu-west-1": "763104351884",
-    "eu-west-2": "763104351884",
-    "eu-west-3": "763104351884",
-    "eu-south-1": "692866216735",
-    "me-south-1": "217643126080",
-    "sa-east-1": "763104351884",
-    "us-east-1": "763104351884",
-    "us-east-2": "763104351884",
-    "us-west-1": "763104351884",
-    "us-west-2": "763104351884",
-}
-SAI_VERSIONS = ["0.1.0"]
+
 SAI_VERSIONS_MAPPING = {"0.1.0": "2.0.1-sgm0.1.0-gpu-py310-cu118-ubuntu20.04-sagemaker"}
 
 
-@pytest.mark.parametrize("version", SAI_VERSIONS)
-def test_stabilityai_image_uris(version):
-    for region in ACCOUNTS.keys():
-        result = get_stabilityai_image_uri(region=region, version=version)
-        expected = expected_uris.stabilityai_framework_uri(
-            "stabilityai-pytorch-inference",
-            ACCOUNTS[region],
-            SAI_VERSIONS_MAPPING[version],
-            region=region,
-        )
-        assert expected == result
+@pytest.mark.parametrize("load_config", ["stabilityai.json"], indirect=True)
+@pytest.mark.parametrize("scope", ["inference"])
+def test_stabilityai_image_uris(load_config, scope):
+    VERSIONS = load_config[scope]["versions"]
+    for version in VERSIONS:
+        ACCOUNTS = load_config[scope]["versions"][version]["registries"]
+        for region in ACCOUNTS.keys():
+            uri = get_stabilityai_image_uri(region=region, version=version)
+            expected = expected_uris.stabilityai_framework_uri(
+                "stabilityai-pytorch-inference",
+                ACCOUNTS[region],
+                SAI_VERSIONS_MAPPING[version],
+                region=region,
+            )
+            assert expected == uri

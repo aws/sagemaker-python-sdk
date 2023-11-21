@@ -32,12 +32,145 @@ INSTANCE_TYPE_VARIANT = JumpStartInstanceTypeVariants(
             }
         },
         "variants": {
-            "p2": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
+            "ml.p2.12xlarge": {
+                "properties": {
+                    "environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"},
+                    "supported_inference_instance_types": ["ml.p5.xlarge"],
+                    "default_inference_instance_type": "ml.p5.xlarge",
+                    "metrics": [
+                        {
+                            "Name": "huggingface-textgeneration:eval-loss",
+                            "Regex": "'eval_loss': ([0-9]+\\.[0-9]+)",
+                        },
+                        {
+                            "Name": "huggingface-textgeneration:instance-typemetric-loss",
+                            "Regex": "'eval_loss': ([0-9]+\\.[0-9]+)",
+                        },
+                        {
+                            "Name": "huggingface-textgeneration:train-loss",
+                            "Regex": "'instance type specific': ([0-9]+\\.[0-9]+)",
+                        },
+                        {
+                            "Name": "huggingface-textgeneration:noneyourbusiness-loss",
+                            "Regex": "'loss-noyb instance specific': ([0-9]+\\.[0-9]+)",
+                        },
+                    ],
+                }
+            },
+            "p2": {
+                "regional_properties": {"image_uri": "$gpu_image_uri"},
+                "properties": {
+                    "supported_inference_instance_types": ["ml.p2.xlarge", "ml.p3.xlarge"],
+                    "default_inference_instance_type": "ml.p2.xlarge",
+                    "metrics": [
+                        {
+                            "Name": "huggingface-textgeneration:wtafigo",
+                            "Regex": "'evasadfasdl_loss': ([0-9]+\\.[0-9]+)",
+                        },
+                        {
+                            "Name": "huggingface-textgeneration:eval-loss",
+                            "Regex": "'eval_loss': ([0-9]+\\.[0-9]+)",
+                        },
+                        {
+                            "Name": "huggingface-textgeneration:train-loss",
+                            "Regex": "'instance family specific': ([0-9]+\\.[0-9]+)",
+                        },
+                        {
+                            "Name": "huggingface-textgeneration:noneyourbusiness-loss",
+                            "Regex": "'loss-noyb': ([0-9]+\\.[0-9]+)",
+                        },
+                    ],
+                },
+            },
             "p3": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
             "ml.p3.200xlarge": {"regional_properties": {"image_uri": "$gpu_image_uri_2"}},
-            "p4": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
+            "p4": {
+                "regional_properties": {"image_uri": "$gpu_image_uri"},
+                "properties": {
+                    "prepacked_artifact_key": "path/to/prepacked/inference/artifact/prefix/number2/"
+                },
+            },
+            "g4": {
+                "regional_properties": {"image_uri": "$gpu_image_uri"},
+                "properties": {
+                    "artifact_key": "path/to/prepacked/training/artifact/prefix/number2/"
+                },
+            },
             "g4dn": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
-            "g9": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
+            "g9": {
+                "regional_properties": {"image_uri": "$gpu_image_uri"},
+                "properties": {
+                    "prepacked_artifact_key": "asfs/adsf/sda/f",
+                    "hyperparameters": [
+                        {
+                            "name": "num_bag_sets",
+                            "type": "int",
+                            "default": 5,
+                            "min": 5,
+                            "scope": "algorithm",
+                        },
+                        {
+                            "name": "num_stack_levels",
+                            "type": "int",
+                            "default": 6,
+                            "min": 7,
+                            "max": 3,
+                            "scope": "algorithm",
+                        },
+                        {
+                            "name": "refit_full",
+                            "type": "text",
+                            "default": "False",
+                            "options": ["True", "False"],
+                            "scope": "algorithm",
+                        },
+                        {
+                            "name": "set_best_to_refit_full",
+                            "type": "text",
+                            "default": "False",
+                            "options": ["True", "False"],
+                            "scope": "algorithm",
+                        },
+                        {
+                            "name": "save_space",
+                            "type": "text",
+                            "default": "False",
+                            "options": ["True", "False"],
+                            "scope": "algorithm",
+                        },
+                        {
+                            "name": "verbosity",
+                            "type": "int",
+                            "default": 2,
+                            "min": 0,
+                            "max": 4,
+                            "scope": "algorithm",
+                        },
+                        {
+                            "name": "sagemaker_submit_directory",
+                            "type": "text",
+                            "default": "/opt/ml/input/data/code/sourcedir.tar.gz",
+                            "scope": "container",
+                        },
+                        {
+                            "name": "sagemaker_program",
+                            "type": "text",
+                            "default": "transfer_learning.py",
+                            "scope": "container",
+                        },
+                        {
+                            "name": "sagemaker_container_log_level",
+                            "type": "text",
+                            "default": "20",
+                            "scope": "container",
+                        },
+                    ],
+                },
+            },
+            "p9": {
+                "regional_properties": {"image_uri": "$gpu_image_uri"},
+                "properties": {"artifact_key": "do/re/mi"},
+            },
             "m2": {
                 "regional_properties": {"image_uri": "$cpu_image_uri"},
                 "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "400"}},
@@ -56,9 +189,81 @@ INSTANCE_TYPE_VARIANT = JumpStartInstanceTypeVariants(
                 }
             },
             "ml.g9.12xlarge": {
-                "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"}}
+                "properties": {
+                    "environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"},
+                    "prepacked_artifact_key": "nlahdasf/asdf/asd/f",
+                    "hyperparameters": [
+                        {
+                            "name": "eval_metric",
+                            "type": "text",
+                            "default": "auto",
+                            "scope": "algorithm",
+                        },
+                        {
+                            "name": "presets",
+                            "type": "text",
+                            "default": "medium_quality",
+                            "options": [
+                                "best_quality",
+                                "high_quality",
+                                "good_quality",
+                                "medium_quality",
+                                "optimize_for_deployment",
+                                "interpretable",
+                            ],
+                            "scope": "algorithm",
+                        },
+                        {
+                            "name": "auto_stack",
+                            "type": "text",
+                            "default": "False",
+                            "options": ["True", "False"],
+                            "scope": "algorithm",
+                        },
+                        {
+                            "name": "num_bag_folds",
+                            "type": "text",
+                            "default": "0",
+                            "options": ["0", "2", "3", "4", "5", "6", "7", "8", "9", "10"],
+                            "scope": "algorithm",
+                        },
+                        {
+                            "name": "num_bag_sets",
+                            "type": "int",
+                            "default": 1,
+                            "min": 1,
+                            "scope": "algorithm",
+                        },
+                        {
+                            "name": "num_stack_levels",
+                            "type": "int",
+                            "default": 0,
+                            "min": 0,
+                            "max": 3,
+                            "scope": "algorithm",
+                        },
+                    ],
+                }
             },
-            "g6": {"properties": {"environment_variables": {"BLAH": "4"}}},
+            "ml.p9.12xlarge": {
+                "properties": {
+                    "environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"},
+                    "artifact_key": "you/not/entertained",
+                }
+            },
+            "g6": {
+                "properties": {
+                    "environment_variables": {"BLAH": "4"},
+                    "artifact_key": "path/to/training/artifact.tar.gz",
+                    "prepacked_artifact_key": "path/to/prepacked/inference/artifact/prefix/",
+                }
+            },
+            "trn1": {
+                "properties": {
+                    "supported_inference_instance_types": ["ml.inf1.xlarge", "ml.inf1.2xlarge"],
+                    "default_inference_instance_type": "ml.inf1.xlarge",
+                }
+            },
         },
     }
 )
@@ -260,6 +465,259 @@ def test_jumpstart_image_uri_instance_variants():
     )
 
 
+def test_jumpstart_hyperparameter_instance_variants():
+
+    hyperparams = INSTANCE_TYPE_VARIANT.get_instance_specific_hyperparameters(
+        instance_type="ml.g9.2xlarge"
+    )
+    assert hyperparams == [
+        JumpStartHyperparameter(
+            {"name": "num_bag_sets", "type": "int", "default": 5, "min": 5, "scope": "algorithm"}
+        ),
+        JumpStartHyperparameter(
+            {
+                "name": "num_stack_levels",
+                "type": "int",
+                "default": 6,
+                "min": 7,
+                "max": 3,
+                "scope": "algorithm",
+            }
+        ),
+        JumpStartHyperparameter(
+            {
+                "name": "refit_full",
+                "type": "text",
+                "default": "False",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            }
+        ),
+        JumpStartHyperparameter(
+            {
+                "name": "set_best_to_refit_full",
+                "type": "text",
+                "default": "False",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            }
+        ),
+        JumpStartHyperparameter(
+            {
+                "name": "save_space",
+                "type": "text",
+                "default": "False",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            }
+        ),
+        JumpStartHyperparameter(
+            {
+                "name": "verbosity",
+                "type": "int",
+                "default": 2,
+                "min": 0,
+                "max": 4,
+                "scope": "algorithm",
+            }
+        ),
+        JumpStartHyperparameter(
+            {
+                "name": "sagemaker_submit_directory",
+                "type": "text",
+                "default": "/opt/ml/input/data/code/sourcedir.tar.gz",
+                "scope": "container",
+            }
+        ),
+        JumpStartHyperparameter(
+            {
+                "name": "sagemaker_program",
+                "type": "text",
+                "default": "transfer_learning.py",
+                "scope": "container",
+            }
+        ),
+        JumpStartHyperparameter(
+            {
+                "name": "sagemaker_container_log_level",
+                "type": "text",
+                "default": "20",
+                "scope": "container",
+            }
+        ),
+    ]
+
+    hyperparams = INSTANCE_TYPE_VARIANT.get_instance_specific_hyperparameters(
+        instance_type="ml.g9.12xlarge"
+    )
+    assert hyperparams == [
+        JumpStartHyperparameter(
+            {"name": "eval_metric", "type": "text", "default": "auto", "scope": "algorithm"}
+        ),
+        JumpStartHyperparameter(
+            {
+                "name": "presets",
+                "type": "text",
+                "default": "medium_quality",
+                "options": [
+                    "best_quality",
+                    "high_quality",
+                    "good_quality",
+                    "medium_quality",
+                    "optimize_for_deployment",
+                    "interpretable",
+                ],
+                "scope": "algorithm",
+            }
+        ),
+        JumpStartHyperparameter(
+            {
+                "name": "auto_stack",
+                "type": "text",
+                "default": "False",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            }
+        ),
+        JumpStartHyperparameter(
+            {
+                "name": "num_bag_folds",
+                "type": "text",
+                "default": "0",
+                "options": ["0", "2", "3", "4", "5", "6", "7", "8", "9", "10"],
+                "scope": "algorithm",
+            }
+        ),
+        JumpStartHyperparameter(
+            {"name": "num_bag_sets", "type": "int", "default": 1, "min": 1, "scope": "algorithm"}
+        ),
+        JumpStartHyperparameter(
+            {
+                "name": "num_stack_levels",
+                "type": "int",
+                "default": 0,
+                "min": 0,
+                "max": 3,
+                "scope": "algorithm",
+            }
+        ),
+        JumpStartHyperparameter(
+            {
+                "name": "refit_full",
+                "type": "text",
+                "default": "False",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            }
+        ),
+        JumpStartHyperparameter(
+            {
+                "name": "set_best_to_refit_full",
+                "type": "text",
+                "default": "False",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            }
+        ),
+        JumpStartHyperparameter(
+            {
+                "name": "save_space",
+                "type": "text",
+                "default": "False",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            }
+        ),
+        JumpStartHyperparameter(
+            {
+                "name": "verbosity",
+                "type": "int",
+                "default": 2,
+                "min": 0,
+                "max": 4,
+                "scope": "algorithm",
+            }
+        ),
+        JumpStartHyperparameter(
+            {
+                "name": "sagemaker_submit_directory",
+                "type": "text",
+                "default": "/opt/ml/input/data/code/sourcedir.tar.gz",
+                "scope": "container",
+            }
+        ),
+        JumpStartHyperparameter(
+            {
+                "name": "sagemaker_program",
+                "type": "text",
+                "default": "transfer_learning.py",
+                "scope": "container",
+            }
+        ),
+        JumpStartHyperparameter(
+            {
+                "name": "sagemaker_container_log_level",
+                "type": "text",
+                "default": "20",
+                "scope": "container",
+            }
+        ),
+    ]
+
+    hyperparams = INSTANCE_TYPE_VARIANT.get_instance_specific_hyperparameters(
+        instance_type="ml.g77.2xlarge"
+    )
+    assert hyperparams == []
+
+    hyperparams = INSTANCE_TYPE_VARIANT.get_instance_specific_hyperparameters(
+        instance_type="ml.p2.2xlarge"
+    )
+    assert hyperparams == []
+
+
+def test_jumpstart_inference_instance_type_variants():
+    assert INSTANCE_TYPE_VARIANT.get_instance_specific_supported_inference_instance_types(
+        "ml.p2.xlarge"
+    ) == ["ml.p2.xlarge", "ml.p3.xlarge"]
+    assert (
+        INSTANCE_TYPE_VARIANT.get_instance_specific_default_inference_instance_type("ml.p2.2xlarge")
+        == "ml.p2.xlarge"
+    )
+
+    assert INSTANCE_TYPE_VARIANT.get_instance_specific_supported_inference_instance_types(
+        "ml.p2.12xlarge"
+    ) == ["ml.p2.xlarge", "ml.p3.xlarge", "ml.p5.xlarge"]
+    assert (
+        INSTANCE_TYPE_VARIANT.get_instance_specific_default_inference_instance_type(
+            "ml.p2.12xlarge"
+        )
+        == "ml.p5.xlarge"
+    )
+
+    assert (
+        INSTANCE_TYPE_VARIANT.get_instance_specific_supported_inference_instance_types(
+            "ml.sdfsad.12xlarge"
+        )
+        == []
+    )
+    assert (
+        INSTANCE_TYPE_VARIANT.get_instance_specific_default_inference_instance_type(
+            "ml.adfas.12xlarge"
+        )
+        is None
+    )
+
+    assert INSTANCE_TYPE_VARIANT.get_instance_specific_supported_inference_instance_types(
+        "ml.trn1.12xlarge"
+    ) == ["ml.inf1.2xlarge", "ml.inf1.xlarge"]
+    assert (
+        INSTANCE_TYPE_VARIANT.get_instance_specific_default_inference_instance_type(
+            "ml.trn1.12xlarge"
+        )
+        == "ml.inf1.xlarge"
+    )
+
+
 def test_jumpstart_environment_variables_instance_variants():
     assert INSTANCE_TYPE_VARIANT.get_instance_specific_environment_variables(
         instance_type="ml.g9.12xlarge"
@@ -289,4 +747,125 @@ def test_jumpstart_environment_variables_instance_variants():
             instance_type="safh8ads9fhsad89fh"
         )
         == {}
+    )
+
+
+def test_jumpstart_metric_definitions_instance_variants():
+
+    metric_definitions = INSTANCE_TYPE_VARIANT.get_instance_specific_metric_definitions(
+        instance_type="ml.p2.2xlarge"
+    )
+    assert metric_definitions == [
+        {
+            "Name": "huggingface-textgeneration:wtafigo",
+            "Regex": "'evasadfasdl_loss': ([0-9]+\\.[0-9]+)",
+        },
+        {"Name": "huggingface-textgeneration:eval-loss", "Regex": "'eval_loss': ([0-9]+\\.[0-9]+)"},
+        {
+            "Name": "huggingface-textgeneration:train-loss",
+            "Regex": "'instance family specific': ([0-9]+\\.[0-9]+)",
+        },
+        {
+            "Name": "huggingface-textgeneration:noneyourbusiness-loss",
+            "Regex": "'loss-noyb': ([0-9]+\\.[0-9]+)",
+        },
+    ]
+
+    metric_definitions = INSTANCE_TYPE_VARIANT.get_instance_specific_metric_definitions(
+        instance_type="ml.p2.12xlarge"
+    )
+    assert metric_definitions == [
+        {"Name": "huggingface-textgeneration:eval-loss", "Regex": "'eval_loss': ([0-9]+\\.[0-9]+)"},
+        {
+            "Name": "huggingface-textgeneration:instance-typemetric-loss",
+            "Regex": "'eval_loss': ([0-9]+\\.[0-9]+)",
+        },
+        {
+            "Name": "huggingface-textgeneration:train-loss",
+            "Regex": "'instance type specific': ([0-9]+\\.[0-9]+)",
+        },
+        {
+            "Name": "huggingface-textgeneration:noneyourbusiness-loss",
+            "Regex": "'loss-noyb instance specific': ([0-9]+\\.[0-9]+)",
+        },
+        {
+            "Name": "huggingface-textgeneration:wtafigo",
+            "Regex": "'evasadfasdl_loss': ([0-9]+\\.[0-9]+)",
+        },
+    ]
+
+    metric_definitions = INSTANCE_TYPE_VARIANT.get_instance_specific_metric_definitions(
+        instance_type="ml.g77.2xlarge"
+    )
+    assert metric_definitions == []
+
+    metric_definitions = INSTANCE_TYPE_VARIANT.get_instance_specific_metric_definitions(
+        instance_type="ml.p3.2xlarge"
+    )
+    assert metric_definitions == []
+
+
+def test_jumpstart_hosting_prepacked_artifact_key_instance_variants():
+    assert (
+        INSTANCE_TYPE_VARIANT.get_instance_specific_prepacked_artifact_key(
+            instance_type="ml.g6.xlarge"
+        )
+        == "path/to/prepacked/inference/artifact/prefix/"
+    )
+
+    assert (
+        INSTANCE_TYPE_VARIANT.get_instance_specific_prepacked_artifact_key(
+            instance_type="ml.p4.9xlarge"
+        )
+        == "path/to/prepacked/inference/artifact/prefix/number2/"
+    )
+
+    assert (
+        INSTANCE_TYPE_VARIANT.get_instance_specific_prepacked_artifact_key(
+            instance_type="ml.g9.9xlarge"
+        )
+        == "asfs/adsf/sda/f"
+    )
+
+    assert (
+        INSTANCE_TYPE_VARIANT.get_instance_specific_prepacked_artifact_key(
+            instance_type="ml.g9.12xlarge"
+        )
+        == "nlahdasf/asdf/asd/f"
+    )
+
+    assert (
+        INSTANCE_TYPE_VARIANT.get_instance_specific_prepacked_artifact_key(
+            instance_type="ml.g9dsfsdfs.12xlarge"
+        )
+        is None
+    )
+
+
+def test_jumpstart_training_artifact_key_instance_variants():
+    assert (
+        INSTANCE_TYPE_VARIANT.get_instance_specific_artifact_key(instance_type="ml.g6.xlarge")
+        == "path/to/training/artifact.tar.gz"
+    )
+
+    assert (
+        INSTANCE_TYPE_VARIANT.get_instance_specific_artifact_key(instance_type="ml.g4.9xlarge")
+        == "path/to/prepacked/training/artifact/prefix/number2/"
+    )
+
+    assert (
+        INSTANCE_TYPE_VARIANT.get_instance_specific_artifact_key(instance_type="ml.p9.9xlarge")
+        == "do/re/mi"
+    )
+
+    assert (
+        INSTANCE_TYPE_VARIANT.get_instance_specific_artifact_key(instance_type="ml.p9.12xlarge")
+        == "you/not/entertained"
+    )
+
+    assert (
+        INSTANCE_TYPE_VARIANT.get_instance_specific_artifact_key(
+            instance_type="ml.g9dsfsdfs.12xlarge"
+        )
+        is None
     )

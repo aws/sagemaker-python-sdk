@@ -74,9 +74,8 @@ def graviton_framework_uri(
     return IMAGE_URI_FORMAT.format(account, region, domain, repo, tag)
 
 
-def djl_framework_uri(repo, account, djl_version, primary_framework, region=REGION):
+def djl_framework_uri(repo, account, tag, region=REGION):
     domain = ALTERNATE_DOMAINS.get(region, DOMAIN)
-    tag = f"{djl_version}-{primary_framework}"
     return IMAGE_URI_FORMAT.format(account, region, domain, repo, tag)
 
 

@@ -408,7 +408,8 @@ class PipelineModel(object):
                 validation. Values can be "All" or "None" (default: None).
 
         Returns:
-            A `sagemaker.model.ModelPackage` instance.
+            If ``sagemaker_session`` is a ``PipelineSession`` instance, returns pipeline step
+                arguments. Otherwise, returns ``None``
         """
         for model in self.models:
             if model.model_data is None:
