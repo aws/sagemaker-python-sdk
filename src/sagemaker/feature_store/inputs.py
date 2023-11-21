@@ -453,3 +453,65 @@ class ExpirationTimeResponseEnum(Enum):
 
     DISABLED = "Disabled"
     ENABLED = "Enabled"
+
+
+class ThroughputModeEnum(Enum):
+    """Enum of throughput modes supported by feature group.
+
+    Throughput mode of feature group can be ON_DEMAND or PROVISIONED.
+    """
+
+    ON_DEMAND = "OnDemand"
+    PROVISIONED = "Provisioned"
+
+
+@attr.s
+class ThroughputConfig(Config):
+    """Throughput configuration of the feature group.
+
+    Throughput configuration can be ON_DEMAND, or PROVISIONED with valid values for
+    read and write capacity units. ON_DEMAND works best for less predictable traffic,
+    while PROVISIONED works best for consistent and predictable traffic.
+    """
+
+    mode: ThroughputModeEnum = attr.ib(default=None)
+    provisioned_read_capacity_units: int = attr.ib(default=None)
+    provisioned_write_capacity_units: int = attr.ib(default=None)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Construct a dictionary based on the attributes provided.
+
+        Returns:
+            dict represents the attributes.
+        """
+        return Config.construct_dict(
+            ThroughputMode=self.mode.value if self.mode else None,
+            ProvisionedReadCapacityUnits=self.provisioned_read_capacity_units,
+            ProvisionedWriteCapacityUnits=self.provisioned_write_capacity_units,
+        )
+
+
+@attr.s
+class ThroughputConfigUpdate(Config):
+    """Target throughput configuration of the feature group being updated.
+
+    Target throughput configuration can be ON_DEMAND, or PROVISIONED with valid values for
+    read and write capacity units. ON_DEMAND works best for less predictable traffic,
+    while PROVISIONED works best for consistent and predictable traffic.
+    """
+
+    mode: ThroughputModeEnum = attr.ib(default=None)
+    provisioned_read_capacity_units: int = attr.ib(default=None)
+    provisioned_write_capacity_units: int = attr.ib(default=None)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Construct a dictionary based on the attributes provided.
+
+        Returns:
+            dict represents the attributes.
+        """
+        return Config.construct_dict(
+            ThroughputMode=self.mode.value if self.mode else None,
+            ProvisionedReadCapacityUnits=self.provisioned_read_capacity_units,
+            ProvisionedWriteCapacityUnits=self.provisioned_write_capacity_units,
+        )
