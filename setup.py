@@ -62,7 +62,7 @@ required_packages = [
     "PyYAML~=6.0",
     "jsonschema",
     "platformdirs",
-    "tblib==1.7.0",
+    "tblib==2.0.0",
 ]
 
 # Specific use case dependencies
