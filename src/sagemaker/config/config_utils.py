@@ -201,7 +201,7 @@ def _log_sagemaker_config_merge(
 
 
 def non_repeating_logger(logger: logging.Logger) -> logging.Logger:
-    """Patch the logger to remove repeating info logs.
+    """Patch the info method of input logger to remove repeating message.
 
     Args:
         logger (logging.Logger): the logger to be patched
