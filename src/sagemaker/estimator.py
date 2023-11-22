@@ -585,7 +585,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             or security_group_ids is not None
             and subnets is None
         ):
-            raise RuntimeError("When setting up custom VPC, both subnets and security_group_ids must be set")
+            raise RuntimeError(
+                "When setting up custom VPC, both subnets and security_group_ids must be set"
+            )
 
         if self.instance_type in ("local", "local_gpu"):
             if self.instance_type == "local_gpu" and self.instance_count > 1:
