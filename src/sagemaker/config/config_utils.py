@@ -18,7 +18,7 @@ from __future__ import absolute_import
 
 import logging
 import sys
-from types import MethodType
+from typing import Callable
 
 
 def get_sagemaker_config_logger():
@@ -200,23 +200,26 @@ def _log_sagemaker_config_merge(
         logger.debug("Skipped value because no value defined\n  config key = %s", config_key_path)
 
 
-def non_repeating_logger(logger: logging.Logger) -> logging.Logger:
-    """Patch the info method of input logger to remove repeating message.
+def non_repeating_log(logger: logging.Logger, method: str) -> Callable:
+    """Create log function that filters the repeated messages.
 
     Args:
-        logger (logging.Logger): the logger to be patched
+        logger (logging.Logger): the logger to be used to dispatch the message.
+        method (str): the log method, can be info, warning or debug.
 
     Returns:
-        (logging.Logger): the patched logger
+        (Callable): the new log method
     """
-    _caches = set()
-    _old_impl = logger.info
+    if method not in ["info", "warning", "debug"]:
+        raise ValueError("Not supported logging method.")
 
-    def _new_impl(_, msg, *args, **kwargs):
+    _caches = set()
+    log_method = getattr(logger, method)
+
+    def new_log_method(msg, *args, **kwargs):
         key = f"{msg}:{args}"
         if key not in _caches:
-            _old_impl(msg, *args, **kwargs)
+            log_method(msg, *args, **kwargs)
             _caches.add(key)
 
-    logger.info = MethodType(_new_impl, logger)
-    return logger
+    return new_log_method
