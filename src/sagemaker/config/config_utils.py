@@ -200,7 +200,7 @@ def _log_sagemaker_config_merge(
         logger.debug("Skipped value because no value defined\n  config key = %s", config_key_path)
 
 
-def non_repeating_log(logger: logging.Logger, method: str) -> Callable:
+def non_repeating_log_factory(logger: logging.Logger, method: str) -> Callable:
     """Create log function that filters the repeated messages.
 
     Args:

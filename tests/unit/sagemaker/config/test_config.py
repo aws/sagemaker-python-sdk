@@ -16,12 +16,13 @@ import os
 import pytest
 import yaml
 import logging
-from mock import Mock, MagicMock, patch
+from mock import Mock, MagicMock, patch, call
 
 from sagemaker.config.config import (
     load_local_mode_config,
     load_sagemaker_config,
     logger,
+    non_repeating_log_factory,
     _DEFAULT_ADMIN_CONFIG_FILE_PATH,
     _DEFAULT_USER_CONFIG_FILE_PATH,
     _DEFAULT_LOCAL_MODE_CONFIG_FILE_PATH,
@@ -349,6 +350,26 @@ def test_logging_when_default_admin_not_found_and_default_user_config_not_found(
     logger.propagate = False
 
 
+@patch("sagemaker.config.config.log_info_function")
+def test_load_config_without_repeating_log(log_info):
+
+    load_sagemaker_config(repeat_log=False)
+    assert log_info.call_count == 2
+    log_info.assert_has_calls(
+        [
+            call(
+                "Not applying SDK defaults from location: %s",
+                _DEFAULT_ADMIN_CONFIG_FILE_PATH,
+            ),
+            call(
+                "Not applying SDK defaults from location: %s",
+                _DEFAULT_USER_CONFIG_FILE_PATH,
+            ),
+        ],
+        any_order=True,
+    )
+
+
 def test_logging_when_default_admin_not_found_and_overriden_user_config_not_found(
     get_data_dir, caplog
 ):
@@ -421,3 +442,19 @@ def test_load_local_mode_config(mock_load_config):
 
 def test_load_local_mode_config_when_config_file_is_not_found():
     assert load_local_mode_config() is None
+
+
+@pytest.mark.parametrize(
+    "method_name",
+    ["info", "warning", "debug"],
+)
+def test_non_repeating_log_factory(method_name):
+    tmp_logger = logging.getLogger("test-logger")
+    mock = MagicMock()
+    setattr(tmp_logger, method_name, mock)
+
+    log_function = non_repeating_log_factory(tmp_logger, method_name)
+    log_function("foo")
+    log_function("foo")
+
+    mock.assert_called_once()
