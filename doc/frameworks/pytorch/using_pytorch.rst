@@ -140,7 +140,7 @@ The function of installing packages using ``requirements.txt`` is supported for 
 
 A ``requirements.txt`` file is a text file that contains a list of items that are installed by using ``pip install``. You can also specify the version of an item to install. For information about the format of a ``requirements.txt`` file, see `Requirements Files <https://pip.pypa.io/en/stable/user_guide/#requirements-files>`__ in the pip documentation.
 
-If you were to use your own custom Docker Image, the `SageMaker Python SDK` and the `SageMaker Training Toolkit <https://github.com/aws/sagemaker-training-toolkit/>`_ need to be installed.
+If you were to use your own custom Docker Image, the `SageMaker Python SDK` and the `SageMaker Training Toolkit <https://github.com/aws/sagemaker-training-toolkit/>`__ need to be installed.
 
 To do so, you can add the following lines to your ``requirements.txt`` file:
 
