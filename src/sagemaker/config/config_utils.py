@@ -47,7 +47,7 @@ def get_sagemaker_config_logger():
         # if a handler is being added, we dont want the root handler to also process the same events
         sagemaker_config_logger.propagate = False
 
-    return non_repeating_logger(sagemaker_config_logger)
+    return sagemaker_config_logger
 
 
 def _log_sagemaker_config_single_substitution(source_value, config_value, config_key_path: str):
