@@ -132,7 +132,6 @@ Using third-party libraries
 ---------------------------
 
 When running your training script on SageMaker, it will have access to some pre-installed third-party libraries including ``torch``, ``torchvision``, and ``numpy``.
-For more information on the runtime environment, including specific package versions, see `SageMaker PyTorch Docker containers <https://github.com/aws/deep-learning-containers/tree/master/pytorch>`_.
 
 If there are other packages you want to use with your script, you can include a ``requirements.txt`` file in the same directory as your training script to install other dependencies at runtime. Both ``requirements.txt`` and your training script should be put in the same folder. You must specify this folder in ``source_dir`` argument when creating PyTorch estimator.
 
@@ -148,6 +147,32 @@ To do so, you can add the following lines to your ``requirements.txt`` file:
 
     sagemaker
     sagemaker-training
+
+Deep Learning Framework-Specific SageMaker Toolkits and Containers
+------------------------------------------------------------------
+
+Framework-specific Toolkits exist. You might want to use them in your applications for framework-specific features.
+
+For Training Toolkits, see:
+
+- `SageMaker PyTorch Training Toolkit <https://github.com/aws/sagemaker-pytorch-training-toolkit>`__
+- `SageMaker MXNet Training Toolkit <https://github.com/aws/sagemaker-mxnet-training-toolkit>`__
+- `SageMaker TensorFlow Training Toolkit <https://github.com/aws/sagemaker-tensorflow-training-toolkit>`__
+
+For Inference Toolkits, see:
+
+- `SageMaker PyTorch Inference Toolkit <https://github.com/aws/sagemaker-pytorch-inference-toolkit>`__
+- `SageMaker MXNet Inference Toolkit <https://github.com/aws/sagemaker-mxnet-training-toolkit>`__
+- `SageMaker TensorFlow Inference Toolkit <https://github.com/aws/sagemaker-tensorflow-inference-toolkit>`__
+- `SageMaker HuggingFace Inference Toolkit <https://github.com/aws/sagemaker-huggingface-inference-toolkit>`__
+
+Moreover, for more information on the container runtime environment, including specific framework versions and configurations,
+see `AWS Deep Learning Containers <https://github.com/aws/deep-learning-containers/>`_. More specifically, see:
+
+- `Images for PyTorch <https://github.com/aws/deep-learning-containers/tree/master/pytorch>`__
+- `Images for MXNet <https://github.com/aws/deep-learning-containers/tree/master/mxnet>`__
+- `Images for TensorFlow <https://github.com/aws/deep-learning-containers/tree/master/tensorflow>`__
+- `Images for HuggingFace <https://github.com/aws/deep-learning-containers/tree/master/huggingface>`__
 
 
 Create an Estimator
