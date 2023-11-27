@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.198.0 (2023-11-27)
+
+### Features
+
+ * re:Invent 2023 keynote1
+
 ## v2.197.0 (2023-11-07)
 
 ### Features
