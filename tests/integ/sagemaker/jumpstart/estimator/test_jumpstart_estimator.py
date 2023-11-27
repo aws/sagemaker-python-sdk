@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 import os
 import time
+import mock
 
 import pytest
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
@@ -127,7 +128,8 @@ def test_gated_model_training(setup):
     assert response is not None
 
 
-def test_instatiating_estimator_not_too_slow(setup):
+@mock.patch("sagemaker.jumpstart.cache.JUMPSTART_LOGGER.warning")
+def test_instatiating_estimator(mock_warning_logger, setup):
 
     model_id = "xgboost-classification-model"
 
@@ -142,3 +144,5 @@ def test_instatiating_estimator_not_too_slow(setup):
     elapsed_time = time.perf_counter() - start_time
 
     assert elapsed_time <= MAX_INIT_TIME_SECONDS
+
+    mock_warning_logger.assert_called_once()

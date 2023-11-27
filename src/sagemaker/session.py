@@ -6128,7 +6128,14 @@ def update_args(args: Dict[str, Any], **kwargs):
             args.update({key: value})
 
 
-def container_def(image_uri, model_data_url=None, env=None, container_mode=None, image_config=None):
+def container_def(
+    image_uri,
+    model_data_url=None,
+    env=None,
+    container_mode=None,
+    image_config=None,
+    accept_eula=None,
+):
     """Create a definition for executing a container as part of a SageMaker model.
 
     Args:
@@ -6145,6 +6152,11 @@ def container_def(image_uri, model_data_url=None, env=None, container_mode=None,
         image_config (dict[str, str]): Specifies whether the image of model container is pulled
             from ECR, or private registry in your VPC. By default it is set to pull model
             container image from ECR. (default: None).
+        accept_eula (bool): For models that require a Model Access Config, specify True or
+            False to indicate whether model terms of use have been accepted.
+            The `accept_eula` value must be explicitly defined as `True` in order to
+            accept the end-user license agreement (EULA) that some
+            models require. (Default: None).
 
     Returns:
         dict[str, str]: A complete container definition object usable with the CreateModel API if
@@ -6154,9 +6166,28 @@ def container_def(image_uri, model_data_url=None, env=None, container_mode=None,
         env = {}
     c_def = {"Image": image_uri, "Environment": env}
 
-    if isinstance(model_data_url, dict):
-        c_def["ModelDataSource"] = model_data_url
-    elif model_data_url:
+    if isinstance(model_data_url, str) and (
+        not (model_data_url.startswith("s3://") and model_data_url.endswith("tar.gz"))
+        or accept_eula is None
+    ):
+        c_def["ModelDataUrl"] = model_data_url
+
+    elif isinstance(model_data_url, (dict, str)):
+        if isinstance(model_data_url, dict):
+            c_def["ModelDataSource"] = model_data_url
+        else:
+            c_def["ModelDataSource"] = {
+                "S3DataSource": {
+                    "S3Uri": model_data_url,
+                    "S3DataType": "S3Object",
+                    "CompressionType": "Gzip",
+                }
+            }
+        if accept_eula is not None:
+            c_def["ModelDataSource"]["S3DataSource"]["ModelAccessConfig"] = {
+                "AcceptEula": accept_eula
+            }
+    elif model_data_url is not None:
         c_def["ModelDataUrl"] = model_data_url
 
     if container_mode:

@@ -379,6 +379,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
         self.repacked_model_data = None
         self.content_types = None
         self.response_types = None
+        self.accept_eula = None
 
     @runnable_by_pipeline
     def register(
@@ -634,6 +635,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             self.repacked_model_data or self.model_data,
             deploy_env,
             image_config=self.image_config,
+            accept_eula=getattr(self, "accept_eula", None),
         )
 
     def is_repack(self) -> bool:
@@ -1260,6 +1262,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         container_startup_health_check_timeout=None,
         inference_recommendation_id=None,
         explainer_config=None,
+        accept_eula: Optional[bool] = None,
         **kwargs,
     ):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
@@ -1342,6 +1345,11 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 a list of ``RealtimeInferenceRecommendations`` within ``DeploymentRecommendation``
             explainer_config (sagemaker.explainer.ExplainerConfig): Specifies online explainability
                 configuration for use with Amazon SageMaker Clarify. Default: None.
+            accept_eula (bool): For models that require a Model Access Config, specify True or
+                False to indicate whether model terms of use have been accepted.
+                The `accept_eula` value must be explicitly defined as `True` in order to
+                accept the end-user license agreement (EULA) that some
+                models require. (Default: None).
         Raises:
              ValueError: If arguments combination check failed in these circumstances:
                 - If no role is specified or
@@ -1355,6 +1363,8 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 ``self.predictor_cls`` on the created endpoint name, if ``self.predictor_cls``
                 is not None. Otherwise, return None.
         """
+        self.accept_eula = accept_eula
+
         removed_kwargs("update_endpoint", kwargs)
 
         self._init_sagemaker_session_if_does_not_exist(instance_type)

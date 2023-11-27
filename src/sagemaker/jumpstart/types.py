@@ -581,6 +581,16 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
 
         return instance_family_environment_variables
 
+    def get_instance_specific_gated_model_key_env_var_value(
+        self, instance_type: str
+    ) -> Optional[str]:
+        """Returns instance specific gated model env var s3 key.
+
+        Returns None if a model, instance type tuple does not have instance
+        specific property.
+        """
+        return self._get_instance_specific_property(instance_type, "gated_model_key_env_var_value")
+
     def get_instance_specific_default_inference_instance_type(
         self, instance_type: str
     ) -> Optional[str]:
@@ -901,10 +911,12 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
 
     def use_training_model_artifact(self) -> bool:
         """Returns True if the model should use a model uri when kicking off training job."""
-        return (
-            self.training_model_package_artifact_uris is None
-            or len(self.training_model_package_artifact_uris) == 0
-        )
+        # gated model never use training model artifact
+        if self.gated_bucket:
+            return False
+
+        # otherwise, return true is a training model package is not set
+        return len(self.training_model_package_artifact_uris or {}) == 0
 
     def supports_incremental_training(self) -> bool:
         """Returns True if the model supports incremental training."""
@@ -1120,6 +1132,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "tolerate_deprecated_model",
         "sagemaker_session",
         "training_instance_type",
+        "accept_eula",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -1158,6 +1171,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         tolerate_vulnerable_model: Optional[bool] = None,
         sagemaker_session: Optional[Session] = None,
         training_instance_type: Optional[str] = None,
+        accept_eula: Optional[bool] = None,
     ) -> None:
         """Instantiates JumpStartModelDeployKwargs object."""
 
@@ -1185,6 +1199,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         self.tolerate_deprecated_model = tolerate_deprecated_model
         self.sagemaker_session = sagemaker_session
         self.training_instance_type = training_instance_type
+        self.accept_eula = accept_eula
 
 
 class JumpStartEstimatorInitKwargs(JumpStartKwargs):

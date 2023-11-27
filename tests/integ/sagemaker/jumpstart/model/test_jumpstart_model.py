@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 import os
 import time
+from unittest import mock
 
 import pytest
 
@@ -114,7 +115,8 @@ def test_model_package_arn_jumpstart_model(setup):
     assert response is not None
 
 
-def test_instatiating_model_not_too_slow(setup):
+@mock.patch("sagemaker.jumpstart.cache.JUMPSTART_LOGGER.warning")
+def test_instatiating_model(mock_warning_logger, setup):
 
     model_id = "catboost-regression-model"
 
@@ -130,12 +132,15 @@ def test_instatiating_model_not_too_slow(setup):
 
     assert elapsed_time <= MAX_INIT_TIME_SECONDS
 
+    mock_warning_logger.assert_called_once()
+
 
 def test_jumpstart_model_register(setup):
     model_id = "huggingface-txt2img-conflictx-complex-lineart"
 
     model = JumpStartModel(
         model_id=model_id,
+        model_version="1.1.0",
         role=get_sm_session().get_caller_identity_arn(),
         sagemaker_session=get_sm_session(),
     )
