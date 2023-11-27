@@ -32,14 +32,14 @@ def test_cache_retrieves_item():
     )
 
     my_cache.put(5)
-    assert my_cache.get(5, False) == retrieval_function(key=5)
+    assert my_cache.get(5, False) == (retrieval_function(key=5), True)
 
     my_cache.put(6, 7)
-    assert my_cache.get(6, False) == 7
+    assert my_cache.get(6, False) == (7, True)
     assert len(my_cache) == 2
 
     my_cache.put(5, 6)
-    assert my_cache.get(5, False) == 6
+    assert my_cache.get(5, False) == (6, True)
     assert len(my_cache) == 2
 
     with pytest.raises(KeyError):
@@ -65,7 +65,7 @@ def test_cache_invalidates_old_item():
         mock_datetime.now.return_value = mock_curr_time
         my_cache.put(5)
         mock_datetime.now.return_value += datetime.timedelta(milliseconds=0.5)
-        assert my_cache.get(5, False) == retrieval_function(key=5)
+        assert my_cache.get(5, False) == (retrieval_function(key=5), True)
 
 
 def test_cache_fetches_new_item():
@@ -80,13 +80,13 @@ def test_cache_fetches_new_item():
         mock_datetime.now.return_value = mock_curr_time
         my_cache.put(5, 10)
         mock_datetime.now.return_value += datetime.timedelta(milliseconds=2)
-        assert my_cache.get(5) == retrieval_function(key=5)
+        assert my_cache.get(5) == (retrieval_function(key=5), True)
 
     with patch("datetime.datetime") as mock_datetime:
         mock_datetime.now.return_value = mock_curr_time
         my_cache.put(5, 10)
         mock_datetime.now.return_value += datetime.timedelta(milliseconds=0.5)
-        assert my_cache.get(5, False) == 10
+        assert my_cache.get(5, False) == (10, True)
         mock_datetime.now.return_value += datetime.timedelta(milliseconds=0.75)
         with pytest.raises(KeyError):
             my_cache.get(5, False)
@@ -108,7 +108,7 @@ def test_cache_removes_old_items_once_size_limit_reached():
     assert len(my_cache) == 5
     with pytest.raises(KeyError):
         my_cache.get(1, False)
-    assert my_cache.get(2, False) == retrieval_function(key=2)
+    assert my_cache.get(2, False) == (retrieval_function(key=2), True)
 
 
 def test_cache_get_with_data_source_fallback():
@@ -120,7 +120,7 @@ def test_cache_get_with_data_source_fallback():
 
     for i in range(10):
         val = my_cache.get(i)
-        assert val == retrieval_function(key=i)
+        assert val == (retrieval_function(key=i), False)
 
     assert len(my_cache) == 5
 

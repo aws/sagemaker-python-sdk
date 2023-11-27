@@ -152,11 +152,100 @@ def test_prepare_container_def_with_model_data():
     assert expected == container_def
 
 
-def test_prepare_container_def_with_model_data_and_env():
+@patch("sagemaker.session.Session.endpoint_from_production_variants")
+@patch("sagemaker.session.Session.create_model")
+def test_prepare_container_def_with_accept_eula(
+    mock_create_model, mock_endpoint_from_production_variants
+):
+    env = {"FOO": "BAR"}
+    model = Model(MODEL_IMAGE, MODEL_DATA, env=env, role=ROLE)
+
+    model.deploy(
+        accept_eula=True, instance_type=INSTANCE_TYPE, initial_instance_count=INSTANCE_COUNT
+    )
+
+    expected = {
+        "Image": MODEL_IMAGE,
+        "Environment": env,
+        "ModelDataSource": {
+            "S3DataSource": {
+                "CompressionType": "Gzip",
+                "S3DataType": "S3Object",
+                "S3Uri": MODEL_DATA,
+                "ModelAccessConfig": {"AcceptEula": True},
+            }
+        },
+    }
+
+    container_def = model.prepare_container_def(INSTANCE_TYPE, "ml.eia.medium")
+    assert expected == container_def
+
+    container_def = model.prepare_container_def()
+    assert expected == container_def
+
+
+@patch("sagemaker.session.Session.endpoint_from_production_variants")
+@patch("sagemaker.session.Session.create_model")
+def test_prepare_container_def_with_accept_eula_s3_prefix(
+    mock_create_model, mock_endpoint_from_production_variants
+):
+    env = {"FOO": "BAR"}
+    model_data = {
+        "S3DataSource": {
+            "S3Uri": "s3://blah-cache-prod-us-west-2/huggingface-infer/prepack/v1.0.1/",
+            "S3DataType": "S3Prefix",
+            "CompressionType": "None",
+        }
+    }
+    model = Model(MODEL_IMAGE, model_data, env=env, role=ROLE)
+
+    model.deploy(
+        accept_eula=True, instance_type=INSTANCE_TYPE, initial_instance_count=INSTANCE_COUNT
+    )
+
+    expected = {
+        "Environment": {"FOO": "BAR"},
+        "Image": "mi",
+        "ModelDataSource": {
+            "S3DataSource": {
+                "CompressionType": "None",
+                "ModelAccessConfig": {"AcceptEula": True},
+                "S3DataType": "S3Prefix",
+                "S3Uri": "s3://blah-cache-prod-us-west-2/huggingface-infer/prepack/v1.0.1/",
+            },
+        },
+    }
+
+    container_def = model.prepare_container_def(INSTANCE_TYPE, "ml.eia.medium")
+    assert expected == container_def
+
+    container_def = model.prepare_container_def()
+    assert expected == container_def
+
+
+def test_prepare_container_def_with_model_data_and_env_s3_gzip():
     env = {"FOO": "BAR"}
     model = Model(MODEL_IMAGE, MODEL_DATA, env=env)
 
-    expected = {"Image": MODEL_IMAGE, "Environment": env, "ModelDataUrl": MODEL_DATA}
+    expected = {
+        "Image": MODEL_IMAGE,
+        "Environment": env,
+        "ModelDataUrl": MODEL_DATA,
+    }
+
+    container_def = model.prepare_container_def(INSTANCE_TYPE, "ml.eia.medium")
+    assert expected == container_def
+
+    container_def = model.prepare_container_def()
+    assert expected == container_def
+
+
+def test_prepare_container_def_with_model_data_and_env():
+    env = {"FOO": "BAR"}
+    model_data = "s3://my-bucket/my-model"
+    model = Model(MODEL_IMAGE, model_data, env=env)
+
+    expected = {"Image": MODEL_IMAGE, "Environment": env, "ModelDataUrl": model_data}
 
     container_def = model.prepare_container_def(INSTANCE_TYPE, "ml.eia.medium")
     assert expected == container_def

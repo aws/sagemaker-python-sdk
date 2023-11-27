@@ -6,6 +6,6 @@ print("Trying to import local module...")
 import local_module
 
 print("Trying to import module from requirements.txt...")
-import stepfunctions
+from aws_xray_sdk.core import xray_recorder
 
 print("Done")

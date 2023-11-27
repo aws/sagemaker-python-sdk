@@ -448,6 +448,7 @@ class JumpStartModel(Model):
         container_startup_health_check_timeout: Optional[int] = None,
         inference_recommendation_id: Optional[str] = None,
         explainer_config: Optional[ExplainerConfig] = None,
+        accept_eula: Optional[bool] = None,
     ) -> PredictorBase:
         """Creates endpoint by calling base ``Model`` class `deploy` method.
 
@@ -526,7 +527,11 @@ class JumpStartModel(Model):
                 (Default: None).
             explainer_config (Optional[sagemaker.explainer.ExplainerConfig]): Specifies online
                 explainability configuration for use with Amazon SageMaker Clarify. (Default: None).
-
+            accept_eula (bool): For models that require a Model Access Config, specify True or
+                False to indicate whether model terms of use have been accepted.
+                The `accept_eula` value must be explicitly defined as `True` in order to
+                accept the end-user license agreement (EULA) that some
+                models require. (Default: None).
         """
 
         deploy_kwargs = get_deploy_kwargs(
@@ -553,6 +558,7 @@ class JumpStartModel(Model):
             inference_recommendation_id=inference_recommendation_id,
             explainer_config=explainer_config,
             sagemaker_session=self.sagemaker_session,
+            accept_eula=accept_eula,
         )
 
         predictor = super(JumpStartModel, self).deploy(**deploy_kwargs.to_kwargs_dict())
