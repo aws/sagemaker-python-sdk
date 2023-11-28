@@ -866,16 +866,10 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 # _base_name, model_name are not needed under PipelineSession.
                 # the model_data may be Pipeline variable
                 # which may break the _base_name generation
-                model_uri = None
-                if isinstance(self.model_data, (str, PipelineVariable)):
-                    model_uri = self.model_data
-                elif isinstance(self.model_data, dict):
-                    model_uri = self.model_data.get("S3DataSource", {}).get("S3Uri", None)
-
                 self._ensure_base_name_if_needed(
                     image_uri=container_def["Image"],
                     script_uri=self.source_dir,
-                    model_uri=model_uri,
+                    model_uri=self._get_model_uri(),
                 )
                 self._set_model_name_if_needed()
 
@@ -911,6 +905,14 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 tags=tags,
             )
             self.sagemaker_session.create_model(**create_model_args)
+
+    def _get_model_uri(self):
+        model_uri = None
+        if isinstance(self.model_data, (str, PipelineVariable)):
+            model_uri = self.model_data
+        elif isinstance(self.model_data, dict):
+            model_uri = self.model_data.get("S3DataSource", {}).get("S3Uri", None)
+        return model_uri
 
     def _ensure_base_name_if_needed(self, image_uri, script_uri, model_uri):
         """Create a base name from the image URI if there is no model name provided.
@@ -1496,7 +1498,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             self._ensure_base_name_if_needed(
                 image_uri=self.image_uri,
                 script_uri=self.source_dir,
-                model_uri=self.model_data,
+                model_uri=self._get_model_uri(),
             )
             if self._base_name is not None:
                 self._base_name = "-".join((self._base_name, compiled_model_suffix))
