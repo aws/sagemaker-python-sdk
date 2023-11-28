@@ -15,6 +15,7 @@ from __future__ import absolute_import
 import os
 
 import pytest
+import tests.integ
 
 from sagemaker.huggingface import HuggingFace, HuggingFaceProcessor
 from sagemaker.huggingface.model import HuggingFaceModel, HuggingFacePredictor
@@ -178,6 +179,10 @@ def test_huggingface_inference(
 
 @pytest.mark.skip(
     reason="re-enable when above MODEL_BASED endpoint hugging face inference test enabled",
+)
+@pytest.mark.skipif(
+    tests.integ.test_region() not in tests.integ.INFERENCE_COMPONENT_SUPPORTED_REGIONS,
+    reason="inference component based endpoint is not supported in certain regions",
 )
 def test_huggingface_inference_inference_component_based_endpoint(
     sagemaker_session,
