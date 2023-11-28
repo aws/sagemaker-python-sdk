@@ -472,6 +472,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         # Initialize the variables used to loop through the contents of the S3 bucket.
         keys = []
+        directories = []
         next_token = ""
         base_parameters = {"Bucket": bucket, "Prefix": key_prefix}
 
@@ -490,20 +491,26 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 return []
             # For each object, save its key or directory.
             for s3_object in contents:
-                key = s3_object.get("Key")
-                keys.append(key)
+                key: str = s3_object.get("Key")
+                obj_size = s3_object.get("Size")
+                if key.endswith("/") and int(obj_size) == 0:
+                    directories.append(key)
+                else:
+                    keys.append(key)
             next_token = response.get("NextContinuationToken")
 
         # For each object key, create the directory on the local machine if needed, and then
         # download the file.
         downloaded_paths = []
+        for dir_path in directories:
+            os.makedirs(os.path.join(path, dir_path), exist_ok=True)
         for key in keys:
             tail_s3_uri_path = os.path.basename(key)
             if not os.path.splitext(key_prefix)[1]:
                 tail_s3_uri_path = os.path.relpath(key, key_prefix)
             destination_path = os.path.join(path, tail_s3_uri_path)
             if not os.path.exists(os.path.dirname(destination_path)):
-                os.makedirs(os.path.dirname(destination_path))
+                os.makedirs(os.path.dirname(destination_path), exist_ok=True)
             s3.download_file(
                 Bucket=bucket, Key=key, Filename=destination_path, ExtraArgs=extra_args
             )
