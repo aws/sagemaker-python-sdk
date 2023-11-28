@@ -24,12 +24,13 @@ from sagemaker import image_uris, Session
 from sagemaker.processing import ScriptProcessor
 from sagemaker.sklearn import defaults
 from sagemaker.workflow.entities import PipelineVariable
-from sagemaker.utils import format_tags, Tags
+from sagemaker.utils import format_tags, Tags, validate_call_inputs
 
 
 class SKLearnProcessor(ScriptProcessor):
     """Handles Amazon SageMaker processing tasks for jobs using scikit-learn."""
 
+    @validate_call_inputs
     def __init__(
         self,
         framework_version: str,  # New arg

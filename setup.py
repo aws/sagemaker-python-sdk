@@ -59,6 +59,7 @@ required_packages = [
     "packaging>=20.0",
     "pandas",
     "pathos",
+    "pydantic",
     "schema",
     "PyYAML~=6.0",
     "jsonschema",

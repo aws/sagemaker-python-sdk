@@ -19,11 +19,14 @@ import pytest
 from mock import ANY, MagicMock, Mock, patch
 from packaging.version import Version
 
+from pydantic import ValidationError
+
 from sagemaker import image_uris
 from sagemaker.pytorch import defaults
 from sagemaker.pytorch import PyTorch, PyTorchPredictor, PyTorchModel
 from sagemaker.instance_group import InstanceGroup
 from sagemaker.session_settings import SessionSettings
+from sagemaker.session import Session
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 SCRIPT_PATH = os.path.join(DATA_DIR, "dummy_script.py")
@@ -66,8 +69,10 @@ def fixture_sagemaker_session():
     boto_mock = Mock(name="boto_session", region_name=REGION)
     session = Mock(
         name="sagemaker_session",
+        spec=Session,
         boto_session=boto_mock,
         boto_region_name=REGION,
+        sagemaker_client=Mock(),
         config=None,
         local_mode=False,
         s3_resource=None,
@@ -227,6 +232,17 @@ def test_create_model(
     assert model.vpc_config is None
 
     name_from_base.assert_called_with(base_job_name)
+
+    with pytest.raises(ValidationError):
+        PyTorch(entry_point=3, py_version="py3", framework_version=pytorch_inference_version)
+
+    with pytest.raises(ValidationError):
+        PyTorch(
+            entry_point="",
+            py_version="py3",
+            framework_version=pytorch_inference_version,
+            role=5,
+        )
 
 
 def test_create_model_with_optional_params(

@@ -20,7 +20,7 @@ import packaging.version
 
 import sagemaker
 from sagemaker import image_uris, ModelMetrics
-from sagemaker.deserializers import NumpyDeserializer
+from sagemaker.deserializers import BaseDeserializer, NumpyDeserializer
 from sagemaker.drift_check_baselines import DriftCheckBaselines
 from sagemaker.fw_utils import (
     model_code_key_prefix,
@@ -31,8 +31,10 @@ from sagemaker.metadata_properties import MetadataProperties
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.pytorch import defaults
 from sagemaker.predictor import Predictor
-from sagemaker.serializers import NumpySerializer
-from sagemaker.utils import to_string
+from sagemaker.serializers import BaseSerializer, NumpySerializer
+from sagemaker.session import Session
+from sagemaker.serverless import ServerlessInferenceConfig
+from sagemaker.utils import to_string, validate_call_inputs
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
 
@@ -46,13 +48,14 @@ class PyTorchPredictor(Predictor):
     multidimensional tensors for PyTorch inference.
     """
 
+    @validate_call_inputs
     def __init__(
         self,
-        endpoint_name,
-        sagemaker_session=None,
-        serializer=NumpySerializer(),
-        deserializer=NumpyDeserializer(),
-        component_name=None,
+        endpoint_name: str,
+        sagemaker_session: Optional[Session] = None,
+        serializer: BaseSerializer = NumpySerializer(),
+        deserializer: BaseDeserializer = NumpyDeserializer(),
+        component_name: Optional[str] = None,
     ):
         """Initialize an ``PyTorchPredictor``.
 
@@ -86,12 +89,13 @@ class PyTorchModel(FrameworkModel):
     _framework_name = "pytorch"
     _LOWEST_MMS_VERSION = "1.2"
 
+    @validate_call_inputs
     def __init__(
         self,
         model_data: Union[str, PipelineVariable],
         role: Optional[str] = None,
         entry_point: Optional[str] = None,
-        framework_version: str = "1.3",
+        framework_version: Optional[str] = "1.3",
         py_version: Optional[str] = None,
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         predictor_cls: callable = PyTorchPredictor,
@@ -154,6 +158,7 @@ class PyTorchModel(FrameworkModel):
 
         self.model_server_workers = model_server_workers
 
+    @validate_call_inputs
     def register(
         self,
         content_types: List[Union[str, PipelineVariable]] = None,
@@ -268,12 +273,13 @@ class PyTorchModel(FrameworkModel):
             skip_model_validation=skip_model_validation,
         )
 
+    @validate_call_inputs
     def prepare_container_def(
         self,
-        instance_type=None,
-        accelerator_type=None,
-        serverless_inference_config=None,
-        accept_eula=None,
+        instance_type: Optional[str] = None,
+        accelerator_type: Optional[str] = None,
+        serverless_inference_config: Optional[ServerlessInferenceConfig] = None,
+        accept_eula: Optional[bool] = None,
     ):
         """A container definition with framework configuration set in model environment variables.
 
@@ -327,8 +333,13 @@ class PyTorchModel(FrameworkModel):
             accept_eula=accept_eula,
         )
 
+    @validate_call_inputs
     def serving_image_uri(
-        self, region_name, instance_type, accelerator_type=None, serverless_inference_config=None
+        self,
+        region_name: str,
+        instance_type: str,
+        accelerator_type: Optional[str] = None,
+        serverless_inference_config: Optional[ServerlessInferenceConfig] = None,
     ):
         """Create a URI for the serving image.
 

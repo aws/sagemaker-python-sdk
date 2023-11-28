@@ -100,6 +100,7 @@ from sagemaker.utils import (
     resolve_value_from_config,
     format_tags,
     Tags,
+    validate_call_inputs,
 )
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
@@ -132,6 +133,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
     CONTAINER_CODE_CHANNEL_SOURCEDIR_PATH = "/opt/ml/input/data/code/sourcedir.tar.gz"
     JOB_CLASS_NAME = "training-job"
 
+    @validate_call_inputs
     def __init__(
         self,
         role: str = None,
@@ -152,7 +154,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         model_uri: Optional[str] = None,
         model_channel_name: Union[str, PipelineVariable] = "model",
         metric_definitions: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
-        encrypt_inter_container_traffic: Union[bool, PipelineVariable] = None,
+        encrypt_inter_container_traffic: Optional[Union[bool, PipelineVariable]] = None,
         use_spot_instances: Union[bool, PipelineVariable] = False,
         max_wait: Optional[Union[int, PipelineVariable]] = None,
         checkpoint_s3_uri: Optional[Union[str, PipelineVariable]] = None,
@@ -161,7 +163,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         debugger_hook_config: Optional[Union[bool, DebuggerHookConfig]] = None,
         tensorboard_output_config: Optional[TensorBoardOutputConfig] = None,
         enable_sagemaker_metrics: Optional[Union[bool, PipelineVariable]] = None,
-        enable_network_isolation: Union[bool, PipelineVariable] = None,
+        enable_network_isolation: Optional[Union[bool, PipelineVariable]] = None,
         profiler_config: Optional[ProfilerConfig] = None,
         disable_profiler: bool = None,
         environment: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
@@ -2728,7 +2730,7 @@ class Estimator(EstimatorBase):
         model_uri: Optional[str] = None,
         model_channel_name: Union[str, PipelineVariable] = "model",
         metric_definitions: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
-        encrypt_inter_container_traffic: Union[bool, PipelineVariable] = None,
+        encrypt_inter_container_traffic: Optional[Union[bool, PipelineVariable]] = None,
         use_spot_instances: Union[bool, PipelineVariable] = False,
         max_wait: Optional[Union[int, PipelineVariable]] = None,
         checkpoint_s3_uri: Optional[Union[str, PipelineVariable]] = None,

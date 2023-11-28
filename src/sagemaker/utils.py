@@ -34,6 +34,7 @@ from datetime import datetime
 from importlib import import_module
 import botocore
 from botocore.utils import merge_dicts
+from pydantic import validate_call, ConfigDict
 from six.moves.urllib import parse
 
 from sagemaker import deprecations
@@ -1482,10 +1483,28 @@ def create_paginator_config(max_items: int = None, page_size: int = None) -> Dic
         "PageSize": page_size if page_size else PAGE_SIZE,
     }
 
-
 def format_tags(tags: Tags) -> List[TagsDict]:
     """Process tags to turn them into the expected format for Sagemaker."""
     if isinstance(tags, dict):
         return [{"Key": str(k), "Value": str(v)} for k, v in tags.items()]
 
     return tags
+
+
+def validate_call_inputs(
+    __func: callable,
+    *args,
+    config: Optional[ConfigDict] = None,
+    validate_return: bool = False,
+):
+    """Decorator for function input types using pydantic.
+
+    This calls pydantic.validate_call under the hood, with "arbitrary_types_allowed" enabled.
+    See its documentation for more information.
+    """
+    if config is None:
+        config = ConfigDict()
+
+    config.setdefault("arbitrary_types_allowed", True)
+
+    return validate_call(__func, *args, config=config, validate_return=validate_return)
