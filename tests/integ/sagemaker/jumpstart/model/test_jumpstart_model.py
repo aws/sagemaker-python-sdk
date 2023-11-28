@@ -67,6 +67,10 @@ def test_non_prepacked_jumpstart_model(setup):
     assert response is not None
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() not in tests.integ.INFERENCE_COMPONENT_SUPPORTED_REGIONS,
+    reason="inference component based endpoint is not supported in certain regions",
+)
 def test_non_prepacked_jumpstart_model_deployed_on_inference_component_based_endpoint(setup):
 
     model_id = "huggingface-llm-falcon-7b-instruct-bf16"  # default g5.2xlarge
