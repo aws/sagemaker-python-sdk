@@ -323,6 +323,21 @@ def test_create_sagemaker_model_accelerator_type(prepare_container_def, sagemake
 
 
 @patch("sagemaker.model.Model.prepare_container_def")
+def test_create_sagemaker_model_with_eula(prepare_container_def, sagemaker_session):
+    model = Model(MODEL_IMAGE, MODEL_DATA, name=MODEL_NAME, sagemaker_session=sagemaker_session)
+
+    accelerator_type = "ml.eia.medium"
+    model.create(INSTANCE_TYPE, accelerator_type=accelerator_type, accept_eula=True)
+
+    prepare_container_def.assert_called_with(
+        INSTANCE_TYPE,
+        accelerator_type=accelerator_type,
+        serverless_inference_config=None,
+        accept_eula=True,
+    )
+
+
+@patch("sagemaker.model.Model.prepare_container_def")
 def test_create_sagemaker_model_tags(prepare_container_def, sagemaker_session):
     container_def = {"Image": MODEL_IMAGE, "Environment": {}, "ModelDataUrl": MODEL_DATA}
     prepare_container_def.return_value = container_def
