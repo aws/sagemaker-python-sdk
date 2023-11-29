@@ -4129,7 +4129,6 @@ SPECIAL_MODEL_SPECS_DICT = {
             "Dog": {
                 "content_type": "application/json",
                 "prompt_key": "hello.prompt",
-                "generated_text_response_key": "key1.key2.generated_text",
                 "body": {
                     "hello": {"prompt": "a dog"},
                     "seed": 43,
