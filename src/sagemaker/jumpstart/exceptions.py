@@ -118,8 +118,9 @@ class VulnerableJumpStartModelError(ValueError):
                 self.message = (
                     f"Version '{version}' of JumpStart model '{model_id}' "  # type: ignore
                     "has at least 1 vulnerable dependency in the training script. "
-                    "Please try targeting a higher version of the model or using a "
-                    "different model. List of vulnerabilities: "
+                    "Please try targeting a higher version of the model, upgrading "
+                    "SageMaker Python SDK version or using a different model. "
+                    "List of vulnerabilities: "
                     f"{', '.join(vulnerabilities)}"  # type: ignore
                 )
             else:
@@ -154,8 +155,8 @@ class DeprecatedJumpStartModelError(ValueError):
                 raise RuntimeError("Must specify `model_id` and `version` arguments.")
             self.message = (
                 f"Version '{version}' of JumpStart model '{model_id}' is deprecated. "
-                "Please try targeting a higher version of the model or using a "
-                "different model."
+                "Please try targeting a higher version of the model, upgrading "
+                "SageMaker Python SDK version or using a different model."
             )
 
         super().__init__(self.message)
