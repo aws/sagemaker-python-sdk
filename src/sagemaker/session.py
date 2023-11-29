@@ -494,7 +494,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 key: str = s3_object.get("Key")
                 obj_size = s3_object.get("Size")
                 if key.endswith("/") and int(obj_size) == 0:
-                    directories.append(key)
+                    directories.append(os.path.join(path, key))
                 else:
                     keys.append(key)
             next_token = response.get("NextContinuationToken")
@@ -503,7 +503,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         # download the file.
         downloaded_paths = []
         for dir_path in directories:
-            os.makedirs(os.path.join(path, dir_path), exist_ok=True)
+            os.makedirs(os.path.dirname(dir_path), exist_ok=True)
         for key in keys:
             tail_s3_uri_path = os.path.basename(key)
             if not os.path.splitext(key_prefix)[1]:
