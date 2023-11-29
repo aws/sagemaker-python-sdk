@@ -14,7 +14,6 @@ from __future__ import absolute_import
 import base64
 from unittest import TestCase
 from mock.mock import patch
-import pytest
 
 from sagemaker.jumpstart.payload_utils import (
     PayloadSerializer,
