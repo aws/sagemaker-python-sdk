@@ -22,6 +22,8 @@ from sagemaker.drift_check_baselines import DriftCheckBaselines
 
 from sagemaker.session import Session
 from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
+from sagemaker.enums import EndpointType
 
 
 class JumpStartDataHolderType:
@@ -732,6 +734,8 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         "deprecate_warn_message",
         "default_inference_instance_type",
         "supported_inference_instance_types",
+        "dynamic_container_deployment_supported",
+        "hosting_resource_requirements",
         "default_training_instance_type",
         "supported_training_instance_types",
         "metrics",
@@ -808,6 +812,12 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         )
         self.supported_training_instance_types: Optional[List[str]] = json_obj.get(
             "supported_training_instance_types"
+        )
+        self.dynamic_container_deployment_supported: Optional[bool] = bool(
+            json_obj.get("dynamic_container_deployment_supported")
+        )
+        self.hosting_resource_requirements: Optional[Dict[str, int]] = json_obj.get(
+            "hosting_resource_requirements", None
         )
         self.metrics: Optional[List[Dict[str, str]]] = json_obj.get("metrics", None)
         self.training_prepacked_script_key: Optional[str] = json_obj.get(
@@ -1032,6 +1042,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         "git_config",
         "model_package_arn",
         "training_instance_type",
+        "resources",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -1072,6 +1083,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         tolerate_deprecated_model: Optional[bool] = None,
         model_package_arn: Optional[str] = None,
         training_instance_type: Optional[str] = None,
+        resources: Optional[ResourceRequirements] = None,
     ) -> None:
         """Instantiates JumpStartModelInitKwargs object."""
 
@@ -1100,6 +1112,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         self.tolerate_vulnerable_model = tolerate_vulnerable_model
         self.model_package_arn = model_package_arn
         self.training_instance_type = training_instance_type
+        self.resources = resources
 
 
 class JumpStartModelDeployKwargs(JumpStartKwargs):
@@ -1131,6 +1144,9 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "sagemaker_session",
         "training_instance_type",
         "accept_eula",
+        "endpoint_logging",
+        "resources",
+        "endpoint_type",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -1170,6 +1186,9 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         sagemaker_session: Optional[Session] = None,
         training_instance_type: Optional[str] = None,
         accept_eula: Optional[bool] = None,
+        endpoint_logging: Optional[bool] = None,
+        resources: Optional[ResourceRequirements] = None,
+        endpoint_type: Optional[EndpointType] = None,
     ) -> None:
         """Instantiates JumpStartModelDeployKwargs object."""
 
@@ -1198,6 +1217,9 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         self.sagemaker_session = sagemaker_session
         self.training_instance_type = training_instance_type
         self.accept_eula = accept_eula
+        self.endpoint_logging = endpoint_logging
+        self.resources = resources
+        self.endpoint_type = endpoint_type
 
 
 class JumpStartEstimatorInitKwargs(JumpStartKwargs):

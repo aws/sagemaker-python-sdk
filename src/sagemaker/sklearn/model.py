@@ -46,6 +46,7 @@ class SKLearnPredictor(Predictor):
         sagemaker_session=None,
         serializer=NumpySerializer(),
         deserializer=NumpyDeserializer(),
+        component_name=None,
     ):
         """Initialize an ``SKLearnPredictor``.
 
@@ -61,12 +62,15 @@ class SKLearnPredictor(Predictor):
                 arrays.
             deserializer (sagemaker.deserializers.BaseDeserializer): Optional.
                 Default parses the response from .npy format to numpy array.
+            component_name (str): Optional. Name of the Amazon SageMaker inference
+                component corresponding to the predictor.
         """
         super(SKLearnPredictor, self).__init__(
             endpoint_name,
             sagemaker_session,
             serializer=serializer,
             deserializer=deserializer,
+            component_name=component_name,
         )
 
 

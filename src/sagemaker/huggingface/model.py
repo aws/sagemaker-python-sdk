@@ -49,6 +49,7 @@ class HuggingFacePredictor(Predictor):
         sagemaker_session=None,
         serializer=JSONSerializer(),
         deserializer=JSONDeserializer(),
+        component_name=None,
     ):
         """Initialize an ``HuggingFacePredictor``.
 
@@ -64,12 +65,15 @@ class HuggingFacePredictor(Predictor):
                 arrays.
             deserializer (sagemaker.deserializers.BaseDeserializer): Optional.
                 Default parses the response from .npy format to numpy array.
+            component_name (str): Optional. Name of the Amazon SageMaker inference
+                component corresponding to the predictor.
         """
         super(HuggingFacePredictor, self).__init__(
             endpoint_name,
             sagemaker_session,
             serializer=serializer,
             deserializer=deserializer,
+            component_name=component_name,
         )
 
 
@@ -326,6 +330,10 @@ class HuggingFaceModel(FrameworkModel):
             container_startup_health_check_timeout=container_startup_health_check_timeout,
             inference_recommendation_id=inference_recommendation_id,
             explainer_config=explainer_config,
+            endpoint_logging=kwargs.get("endpoint_logging", False),
+            endpoint_type=kwargs.get("endpoint_type", None),
+            resources=kwargs.get("resources", None),
+            managed_instance_scaling=kwargs.get("managed_instance_scaling", None),
         )
 
     def register(

@@ -6239,6 +6239,8 @@ BASE_SPEC = {
     "inference_enable_network_isolation": True,
     "training_enable_network_isolation": False,
     "resource_name_base": "dfsdfsds",
+    "hosting_resource_requirements": {"num_accelerators": 1, "min_memory_mb": 34360},
+    "dynamic_container_deployment_supported": True,
 }
 
 BASE_HEADER = {

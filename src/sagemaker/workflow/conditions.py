@@ -38,7 +38,9 @@ from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.entities import PipelineVariable
 
 # TODO: consider base class for those with an expr method, rather than defining a type here
-ConditionValueType = Union[ExecutionVariable, Parameter, Properties]
+from sagemaker.workflow.step_outputs import StepOutput
+
+ConditionValueType = Union[ExecutionVariable, Parameter, Properties, StepOutput]
 
 
 class ConditionTypeEnum(Enum, metaclass=DefaultEnumMeta):
@@ -76,9 +78,9 @@ class ConditionComparison(Condition):
 
     Attributes:
         left (Union[ConditionValueType, PrimitiveType]): The execution variable, parameter,
-            property, or Python primitive value to use in the comparison.
+            property, step output or Python primitive value to use in the comparison.
         right (Union[ConditionValueType, PrimitiveType]): The execution variable,
-            parameter, property, or Python primitive value to compare to.
+            parameter, property, step output or Python primitive value to compare to.
     """
 
     left: Union[ConditionValueType, PrimitiveType] = attr.ib(default=None)
@@ -294,7 +296,7 @@ class ConditionOr(Condition):
 
 
 def primitive_or_expr(
-    value: Union[ExecutionVariable, Expression, PrimitiveType, Parameter, Properties]
+    value: Union[ExecutionVariable, Expression, PrimitiveType, Parameter, Properties, StepOutput]
 ) -> Union[Dict[str, str], PrimitiveType]:
     """Provide the expression of the value or return value if it is a primitive.
 

@@ -21,6 +21,8 @@ import docker
 import re
 import sys
 
+from docker.errors import BuildError
+
 from sagemaker.utils import sagemaker_timestamp, _tmpdir, sts_regional_endpoint
 
 REPO_ACCOUNT_ID = "033110030271"
@@ -59,6 +61,21 @@ DOCKERFILE_TEMPLATE_WITH_CONDA = (
     "ENV SAGEMAKER_JOB_CONDA_ENV=default_env\n"
 )
 
+DOCKERFILE_TEMPLATE_WITH_USER_AND_WORKDIR = (
+    "FROM public.ecr.aws/docker/library/python:{py_version}-slim\n\n"
+    "RUN apt-get update -y \
+        && apt-get install -y unzip curl\n\n"
+    "RUN curl 'https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip' -o 'awscliv2.zip' \
+        && unzip awscliv2.zip \
+        && ./aws/install\n\n"
+    "RUN useradd -ms /bin/bash integ-test-user\n"
+    "USER integ-test-user\n"
+    "WORKDIR /home/integ-test-user\n"
+    "COPY {source_archive} ./\n"
+    "RUN pip install '{source_archive}'\n"
+    "RUN rm {source_archive}\n"
+)
+
 AUTO_CAPTURE_CLIENT_DOCKER_TEMPLATE = (
     "FROM public.ecr.aws/docker/library/python:{py_version}-slim\n\n"
     'SHELL ["/bin/bash", "-c"]\n'
@@ -87,29 +104,37 @@ CONDA_YML_FILE_TEMPLATE = (
 )
 
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="session")
 def compatible_python_version():
     return "{}.{}".format(sys.version_info.major, sys.version_info.minor)
 
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="session")
 def incompatible_python_version():
     return "{}.{}".format(sys.version_info.major, sys.version_info.minor + 1)
 
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="session")
 def dummy_container_without_error(sagemaker_session, compatible_python_version):
     ecr_uri = _build_container(sagemaker_session, compatible_python_version, DOCKERFILE_TEMPLATE)
     return ecr_uri
 
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="session")
+def dummy_container_with_user_and_workdir(sagemaker_session, compatible_python_version):
+    ecr_uri = _build_container(
+        sagemaker_session, compatible_python_version, DOCKERFILE_TEMPLATE_WITH_USER_AND_WORKDIR
+    )
+    return ecr_uri
+
+
+@pytest.fixture(scope="session")
 def dummy_container_incompatible_python_runtime(sagemaker_session, incompatible_python_version):
     ecr_uri = _build_container(sagemaker_session, incompatible_python_version, DOCKERFILE_TEMPLATE)
     return ecr_uri
 
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="session")
 def dummy_container_with_conda(sagemaker_session, compatible_python_version):
     ecr_uri = _build_container(
         sagemaker_session, compatible_python_version, DOCKERFILE_TEMPLATE_WITH_CONDA
@@ -117,19 +142,19 @@ def dummy_container_with_conda(sagemaker_session, compatible_python_version):
     return ecr_uri
 
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="session")
 def auto_capture_test_container(sagemaker_session):
     ecr_uri = _build_auto_capture_client_container("3.10", AUTO_CAPTURE_CLIENT_DOCKER_TEMPLATE)
     return ecr_uri
 
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="session")
 def spark_test_container(sagemaker_session):
     ecr_uri = _build_container("3.9", DOCKERFILE_TEMPLATE)
     return ecr_uri
 
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="session")
 def conda_env_yml():
     """Write conda yml file needed for tests"""
 
@@ -157,7 +182,7 @@ def _build_container(sagemaker_session, py_version, docker_templete):
     with _tmpdir() as tmpdir:
         print("building docker image locally in ", tmpdir)
         print("building source archive...")
-        source_archive = _generate_and_move_sagemaker_sdk_tar(tmpdir)
+        source_archive = _generate_sagemaker_sdk_tar(tmpdir)
         with open(os.path.join(tmpdir, "Dockerfile"), "w") as file:
             file.writelines(
                 docker_templete.format(py_version=py_version, source_archive=source_archive)
@@ -166,7 +191,17 @@ def _build_container(sagemaker_session, py_version, docker_templete):
         docker_client = docker.from_env()
 
         print("building docker image...")
-        image, build_logs = docker_client.images.build(path=tmpdir, tag=REPO_NAME, rm=True)
+        # platform is provided to make sure that the image builds correctly across different OS platforms
+        try:
+            image, build_logs = docker_client.images.build(
+                path=tmpdir, tag=REPO_NAME, rm=True, platform="linux/amd64"
+            )
+        except BuildError as e:
+            print("docker build failed!")
+            for line in e.build_log:
+                if "stream" in line:
+                    print(line["stream"].strip())
+            raise
 
     if _is_repository_exists(ecr_client, REPO_NAME):
         sts_client = sagemaker_session.boto_session.client(
@@ -232,17 +267,17 @@ def _ecr_image_uri(account, region, image_name, tag):
     return "{}.dkr.ecr.{}.amazonaws.com/{}:{}".format(account, region, image_name, tag)
 
 
-def _generate_and_move_sagemaker_sdk_tar(destination_folder):
+def _generate_sagemaker_sdk_tar(destination_folder):
     """
-    Run setup.py sdist to generate the PySDK tar file and
-    copy it to appropriate test data folder
+    Run setup.py sdist to generate the PySDK tar file
     """
-    subprocess.run("python3 setup.py sdist", shell=True)
-    dist_dir = "dist"
-    source_archive = os.listdir(dist_dir)[0]
-    source_path = os.path.join(dist_dir, source_archive)
-    destination_path = os.path.join(destination_folder, source_archive)
-    shutil.copy2(source_path, destination_path)
+    subprocess.run(
+        f"python3 setup.py egg_info --egg-base {destination_folder} sdist -d {destination_folder} -k",
+        shell=True,
+        check=True,
+    )
+    destination_folder_contents = os.listdir(destination_folder)
+    source_archive = [file for file in destination_folder_contents if file.endswith("tar.gz")][0]
 
     return source_archive
 
@@ -270,7 +305,7 @@ def _generate_sdk_tar_with_public_version(destination_folder):
     if os.path.exists(dist_folder_path):
         shutil.rmtree(dist_folder_path)
 
-    source_archive = _generate_and_move_sagemaker_sdk_tar(destination_folder)
+    source_archive = _generate_sagemaker_sdk_tar(destination_folder)
 
     with open(os.path.join(os.getcwd(), "VERSION"), "r+") as version_file:
         version_file.seek(0)
@@ -287,7 +322,7 @@ def _move_auto_capture_test_file(destination_folder):
     Move the test file for autocapture tests to a temp folder along with the docker file.
     """
 
-    test_file_name = "test_auto_capture.py"
+    test_file_name = "remote_function/test_auto_capture.py"
     source_path = os.path.join(
         os.getcwd(), "tests", "integ", "sagemaker", "remote_function", test_file_name
     )
