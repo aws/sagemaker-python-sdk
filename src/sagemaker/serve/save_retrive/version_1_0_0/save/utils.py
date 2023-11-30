@@ -186,5 +186,5 @@ def get_image_url(model_server: str) -> str:
         "DJLServing": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.25.0-cpu-full"
     }
     if model_server in supported_image:
-        return supported_image.get("model_server")
+        return supported_image.get(model_server)
     raise Exception("Model server specified is not supported in SageMaker save format")
