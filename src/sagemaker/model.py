@@ -648,7 +648,9 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             self.repacked_model_data or self.model_data,
             deploy_env,
             image_config=self.image_config,
-            accept_eula=accept_eula or getattr(self, "accept_eula", None),
+            accept_eula=accept_eula
+            if accept_eula is not None
+            else getattr(self, "accept_eula", None),
         )
 
     def is_repack(self) -> bool:
