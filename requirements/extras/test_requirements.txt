@@ -12,7 +12,7 @@ awslogs==0.14.0
 black==22.3.0
 stopit==1.1.2
 # Update tox.ini to have correct version of airflow constraints file
-apache-airflow==2.7.2
+apache-airflow==2.7.3
 apache-airflow-providers-amazon==7.2.1
 attrs>=23.1.0,<24
 fabric==2.6.0
@@ -31,7 +31,7 @@ pyspark==3.3.1
 sagemaker-feature-store-pyspark-3.3
 # TODO find workaround
 xgboost>=1.6.2,<=1.7.6
-pillow>=9.5.0,<=10.0.0
+pillow>=10.0.1,<=11
 transformers==4.32.0
 sentencepiece==0.1.99
 # https://github.com/triton-inference-server/server/issues/6246
