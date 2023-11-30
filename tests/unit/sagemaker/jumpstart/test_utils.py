@@ -1052,7 +1052,10 @@ def test_jumpstart_vulnerable_model_errors(patched_get_model_specs):
     assert (
         "Version '*' of JumpStart model 'pytorch-eqa-bert-base-cased' has at least 1 "
         "vulnerable dependency in the inference script. "
-        "Please try targeting a higher version of the model or using a different model. "
+        "We recommend that you specify a more recent model version or "
+        "choose a different model. To access the "
+        "latest models and model versions, be sure to upgrade "
+        "to the latest version of the SageMaker Python SDK. "
         "List of vulnerabilities: some, vulnerability"
     ) == str(e.value.message)
 
@@ -1074,8 +1077,10 @@ def test_jumpstart_vulnerable_model_errors(patched_get_model_specs):
     assert (
         "Version '*' of JumpStart model 'pytorch-eqa-bert-base-cased' has at least 1 "
         "vulnerable dependency in the training script. "
-        "Please try targeting a higher version of the model, "
-        "upgrading SageMaker Python SDK version or using a different model. "
+        "We recommend that you specify a more recent model version or "
+        "choose a different model. To access the "
+        "latest models and model versions, be sure to upgrade "
+        "to the latest version of the SageMaker Python SDK. "
         "List of vulnerabilities: some, vulnerability"
     ) == str(e.value.message)
 
