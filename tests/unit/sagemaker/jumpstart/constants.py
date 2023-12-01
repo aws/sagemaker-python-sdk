@@ -6221,6 +6221,7 @@ BASE_SPEC = {
         "ml.c5.2xlarge",
     ],
     "hosting_use_script_uri": True,
+    "info_message": None,
     "metrics": [{"Regex": "val_accuracy: ([0-9\\.]+)", "Name": "pytorch-ic:val-accuracy"}],
     "model_kwargs": {"some-model-kwarg-key": "some-model-kwarg-value"},
     "deploy_kwargs": {"some-model-deploy-kwarg-key": "some-model-deploy-kwarg-value"},
