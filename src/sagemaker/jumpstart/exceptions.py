@@ -21,6 +21,11 @@ NO_AVAILABLE_INSTANCES_ERROR_MSG = (
     "Please try another region."
 )
 
+NO_AVAILABLE_RESOURCE_REQUIREMENT_RECOMMENDATION_ERROR_MSG = (
+    "No available compute resource requirement recommendation for model ID '{model_id}'. "
+    "Provide the resource requirements in the deploy method."
+)
+
 INVALID_MODEL_ID_ERROR_MSG = (
     "Invalid model ID: '{model_id}'. Please visit "
     f"{MODEL_ID_LIST_WEB_URL} for list of supported model IDs. "
@@ -28,6 +33,35 @@ INVALID_MODEL_ID_ERROR_MSG = (
     "fetching model IDs. We recommend upgrading to the latest version of sagemaker "
     "to get access to the most models."
 )
+
+
+_MAJOR_VERSION_WARNING_MSG = (
+    "Note that models may have different input/output signatures after a major version upgrade."
+)
+
+
+def get_wildcard_model_version_msg(
+    model_id: str, wildcard_model_version: str, full_model_version: str
+) -> str:
+    """Returns customer-facing message for using a model version with a wildcard character."""
+
+    return (
+        f"Using model '{model_id}' with wildcard version identifier '{wildcard_model_version}'. "
+        f"You can pin to version '{full_model_version}' "
+        f"for more stable results. {_MAJOR_VERSION_WARNING_MSG}"
+    )
+
+
+def get_old_model_version_msg(
+    model_id: str, current_model_version: str, latest_model_version: str
+) -> str:
+    """Returns customer-facing message associated with using an old model version."""
+
+    return (
+        f"Using model '{model_id}' with version '{current_model_version}'. "
+        f"You can upgrade to version '{latest_model_version}' to get the latest model "
+        f"specifications. {_MAJOR_VERSION_WARNING_MSG}"
+    )
 
 
 class JumpStartHyperparametersError(ValueError):

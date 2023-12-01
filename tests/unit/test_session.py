@@ -40,6 +40,7 @@ from sagemaker.tuner import WarmStartConfig, WarmStartTypes
 from sagemaker.inputs import BatchDataCaptureConfig
 from sagemaker.config import MODEL_CONTAINERS_PATH
 from sagemaker.utils import update_list_of_dicts_with_values_from_config
+from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
 from tests.unit import (
     SAGEMAKER_CONFIG_MONITORING_SCHEDULE,
     SAGEMAKER_CONFIG_COMPILATION_JOB,
@@ -69,6 +70,15 @@ ENV_INPUT = {"env_key1": "env_val1", "env_key2": "env_val2", "env_key3": "env_va
 
 REGION = "us-west-2"
 STS_ENDPOINT = "sts.us-west-2.amazonaws.com"
+
+RESOURCES = ResourceRequirements(
+    requests={
+        "num_cpus": 1,  # NumberOfCpuCoresRequired
+        "memory": 1024,  # MinMemoryRequiredInMb (required)
+        "copies": 1,
+    },
+    limits={},
+)
 
 
 @pytest.fixture()
@@ -3124,10 +3134,10 @@ def test_create_endpoint_config_with_sagemaker_config_injection(sagemaker_sessio
 
     # This method does not support ASYNC_INFERENCE_CONFIG or multiple PRODUCTION_VARIANTS
     sagemaker_session.create_endpoint_config(
-        "endpoint-test",
-        "simple-model",
-        1,
-        "ml.p2.xlarge",
+        name="endpoint-test",
+        initial_instance_count=1,
+        instance_type="ml.p2.xlarge",
+        model_name="simple-model",
         data_capture_config_dict=data_capture_config_dict,
     )
     expected_data_capture_kms_key_id = SAGEMAKER_CONFIG_ENDPOINT_CONFIG["SageMaker"][
@@ -3169,10 +3179,10 @@ def test_create_endpoint_config_with_sagemaker_config_injection_no_kms_support(
 
     # This method does not support ASYNC_INFERENCE_CONFIG or multiple PRODUCTION_VARIANTS
     sagemaker_session.create_endpoint_config(
-        "endpoint-test",
-        "simple-model",
-        1,
-        "ml.g5.xlarge",
+        name="endpoint-test",
+        initial_instance_count=1,
+        instance_type="ml.g5.xlarge",
+        model_name="simple-model",
         data_capture_config_dict=data_capture_config_dict,
     )
     expected_data_capture_kms_key_id = SAGEMAKER_CONFIG_ENDPOINT_CONFIG["SageMaker"][
@@ -3576,7 +3586,13 @@ def test_endpoint_from_production_variants_with_sagemaker_config_injection_no_km
 def test_create_endpoint_config_with_tags(sagemaker_session):
     tags = [{"Key": "TagtestKey", "Value": "TagtestValue"}]
 
-    sagemaker_session.create_endpoint_config("endpoint-test", "simple-model", 1, "local", tags=tags)
+    sagemaker_session.create_endpoint_config(
+        name="endpoint-test",
+        initial_instance_count=1,
+        instance_type="local",
+        model_name="simple-model",
+        tags=tags,
+    )
 
     sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
         EndpointConfigName="endpoint-test", ProductionVariants=ANY, Tags=tags
@@ -3587,10 +3603,10 @@ def test_create_endpoint_config_with_explainer_config(sagemaker_session):
     explainer_config = ExplainerConfig
 
     sagemaker_session.create_endpoint_config(
-        "endpoint-test",
-        "simple-model",
-        1,
-        "local",
+        name="endpoint-test",
+        model_name="simple-model",
+        initial_instance_count=1,
+        instance_type="local",
         explainer_config_dict=explainer_config,
     )
 
@@ -5984,3 +6000,116 @@ def test_upload_data_default_bucket_and_prefix_combinations(
         expected__with_user_input__with_default_bucket_only=expected__with_user_input__with_default_bucket_only,
     )
     assert actual == expected
+
+
+def test_create_inference_component(sagemaker_session):
+    tags = [{"Key": "TagtestKey", "Value": "TagtestValue"}]
+    sagemaker_session.sagemaker_client.describe_inference_component = Mock(
+        return_value={"InferenceComponentStatus": "InService"}
+    )
+    model_name = "test_model"
+    inference_component_name = "test_inference_component"
+    endpoint_name = "test_endpoint"
+
+    resources = RESOURCES.get_compute_resource_requirements()
+    specification = {"ModelName": model_name, "ComputeResourceRequirements": resources}
+    runtime_config = {"CopyCount": RESOURCES.copy_count}
+
+    request = {
+        "InferenceComponentName": inference_component_name,
+        "EndpointName": endpoint_name,
+        "VariantName": "AllTraffic",
+        "Specification": specification,
+        "RuntimeConfig": runtime_config,
+        "Tags": tags,
+    }
+
+    sagemaker_session.create_inference_component(
+        inference_component_name=inference_component_name,
+        endpoint_name=endpoint_name,
+        variant_name="AllTraffic",
+        specification=specification,
+        runtime_config=runtime_config,
+        tags=tags,
+    )
+
+    sagemaker_session.sagemaker_client.create_inference_component.assert_called_with(**request)
+
+
+def test_delete_inference_component(boto_session):
+    sess = Session(boto_session)
+
+    inference_component_name = "my_inference_component"
+
+    sess.delete_inference_component(inference_component_name)
+
+    boto_session.client().delete_inference_component.assert_called_with(
+        InferenceComponentName=inference_component_name
+    )
+
+
+def test_describe_inference_component(sagemaker_session):
+    inference_component_name = "sagemaker_inference_component_name"
+
+    sagemaker_session.describe_inference_component(
+        inference_component_name=inference_component_name
+    )
+
+    sagemaker_session.sagemaker_client.describe_inference_component.assert_called_with(
+        InferenceComponentName=inference_component_name
+    )
+
+
+def test_list_inference_components(sagemaker_session):
+    endpoint_name = "test-endpoint"
+    variant_name = "test-variant-name"
+
+    sagemaker_session.list_inference_components(
+        endpoint_name_equals=endpoint_name,
+        variant_name_equals=variant_name,
+        sort_by="Status",
+        sort_order="Ascending",
+        max_results="5",
+        name_contains="model",
+        status_equals="InService",
+    )
+
+    request = {
+        "EndpointNameEquals": endpoint_name,
+        "VariantNameEquals": variant_name,
+        "SortBy": "Status",
+        "SortOrder": "Ascending",
+        "MaxResults": "5",
+        "NameContains": "model",
+        "StatusEquals": "InService",
+    }
+
+    sagemaker_session.sagemaker_client.list_inference_components.assert_called_with(**request)
+
+
+def test_update_inference_component(sagemaker_session):
+    sagemaker_session.sagemaker_client.describe_inference_component = Mock(
+        return_value={"InferenceComponentStatus": "InService"}
+    )
+    inference_component_name = "test_inference_component"
+
+    model_name = "test_model"
+    inference_component_name = "test_inference_component"
+
+    resources = RESOURCES.get_compute_resource_requirements()
+    specification = {"ModelName": model_name, "ComputeResourceRequirements": resources}
+    runtime_config = {"CopyCount": RESOURCES.copy_count}
+
+    request = {
+        "InferenceComponentName": inference_component_name,
+        "Specification": specification,
+        "RuntimeConfig": runtime_config,
+    }
+
+    sagemaker_session.update_inference_component(
+        inference_component_name=inference_component_name,
+        specification=specification,
+        runtime_config=runtime_config,
+    )
+
+    sagemaker_session.sagemaker_client.update_inference_component.assert_called_with(**request)

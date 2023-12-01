@@ -26,7 +26,9 @@ from tests.unit.sagemaker.workflow.helpers import CustomStep, ordered
 
 @pytest.fixture
 def sagemaker_session_mock():
-    return Mock()
+    session_mock = Mock()
+    session_mock.boto_session.client = Mock()
+    return session_mock
 
 
 def test_callback_step():
@@ -97,7 +99,7 @@ def test_callback_step_output_expr():
     }
 
 
-def test_pipeline_interpolates_callback_outputs():
+def test_pipeline_interpolates_callback_outputs(sagemaker_session_mock):
     parameter = ParameterString("MyStr")
     custom_step = CustomStep("TestStep")
     outputParam1 = CallbackOutput(output_name="output1", output_type=CallbackOutputTypeEnum.String)

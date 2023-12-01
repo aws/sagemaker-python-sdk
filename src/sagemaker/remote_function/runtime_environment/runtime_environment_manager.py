@@ -21,6 +21,8 @@ import shlex
 import os
 import subprocess
 import time
+import dataclasses
+import json
 
 
 class _UTCFormatter(logging.Formatter):
@@ -45,6 +47,48 @@ def get_logger():
 
 
 logger = get_logger()
+
+
+@dataclasses.dataclass
+class _DependencySettings:
+    """Dependency settings for the remote function.
+
+    Instructs the runtime environment script on how to handle dependencies.
+    If ``dependency_file`` is set, the runtime environment script will attempt
+    to install the dependencies. If ``dependency_file`` is not set, the runtime
+    environment script will assume no dependencies are required.
+    """
+
+    dependency_file: str = None
+
+    def to_string(self):
+        """Converts the dependency settings to a string."""
+        return json.dumps(dataclasses.asdict(self))
+
+    @staticmethod
+    def from_string(dependency_settings_string):
+        """Converts a json string to dependency settings.
+
+        Args:
+            dependency_settings_string (str): The json string to convert.
+        """
+        if dependency_settings_string is None:
+            return None
+        dependency_settings_dict = json.loads(dependency_settings_string)
+        return _DependencySettings(dependency_settings_dict.get("dependency_file"))
+
+    @staticmethod
+    def from_dependency_file_path(dependency_file_path):
+        """Converts a dependency file path to dependency settings.
+
+        Args:
+            dependency_file_path (str): The path to the dependency file.
+        """
+        if dependency_file_path is None:
+            return _DependencySettings()
+        if dependency_file_path == "auto_capture":
+            return _DependencySettings("env_snapshot.yml")
+        return _DependencySettings(os.path.basename(dependency_file_path))
 
 
 class RuntimeEnvironmentManager:

@@ -29,7 +29,10 @@ from sagemaker.workflow.fail_step import FailStep
 from sagemaker.workflow.functions import Join, JsonGet
 from sagemaker.workflow.parameters import ParameterString, ParameterInteger
 from sagemaker.workflow.pipeline import Pipeline
-from sagemaker.workflow.properties import PropertyFile, Properties
+from sagemaker.workflow.properties import PropertyFile
+
+
+from tests.unit.sagemaker.workflow.helpers import CustomStep
 
 
 class CustomEntity(Entity):
@@ -68,17 +71,18 @@ def test_pipeline_variable_in_pipeline_definition(sagemaker_session):
     param_str = ParameterString(name="MyString", default_value="1")
     param_int = ParameterInteger(name="MyInteger", default_value=3)
 
+    step = CustomStep(name="MyStep")
+
     property_file = PropertyFile(
         name="name",
         output_name="result",
         path="output",
     )
     json_get_func2 = JsonGet(
-        step_name="my-step",
+        step_name="MyStep",
         property_file=property_file,
         json_path="my-json-path",
     )
-    prop = Properties(step_name="MyStep", shape_name="DescribeProcessingJobResponse")
 
     cond = ConditionGreaterThan(left=param_str, right=param_int.to_string())
     step_fail = FailStep(
@@ -88,7 +92,7 @@ def test_pipeline_variable_in_pipeline_definition(sagemaker_session):
             values=[
                 "Execution failed due to condition check fails, see:",
                 json_get_func2.to_string(),
-                prop.ProcessingOutputConfig.Outputs["MyOutputName"].S3Output.S3Uri.to_string(),
+                step.properties.TrainingJobName.to_string(),
                 param_int,
             ],
         ),
@@ -102,7 +106,7 @@ def test_pipeline_variable_in_pipeline_definition(sagemaker_session):
     pipeline = Pipeline(
         name="MyPipeline",
         parameters=[param_str, param_int],
-        steps=[step_cond],
+        steps=[step, step_cond],
         sagemaker_session=sagemaker_session,
     )
 
@@ -111,8 +115,8 @@ def test_pipeline_variable_in_pipeline_definition(sagemaker_session):
         {"Name": "MyString", "Type": "String", "DefaultValue": "1"},
         {"Name": "MyInteger", "Type": "Integer", "DefaultValue": 3},
     ]
-    assert len(dsl["Steps"]) == 1
-    assert dsl["Steps"][0] == {
+    assert len(dsl["Steps"]) == 2
+    assert dsl["Steps"][1] == {
         "Name": "MyCondStep",
         "Type": "Condition",
         "Arguments": {
@@ -146,7 +150,7 @@ def test_pipeline_variable_in_pipeline_definition(sagemaker_session):
                                                 {
                                                     "Std:JsonGet": {
                                                         "PropertyFile": {
-                                                            "Get": "Steps.my-step.PropertyFiles.name"
+                                                            "Get": "Steps.MyStep.PropertyFiles.name"
                                                         },
                                                         "Path": "my-json-path",
                                                     }
@@ -159,8 +163,7 @@ def test_pipeline_variable_in_pipeline_definition(sagemaker_session):
                                             "On": "",
                                             "Values": [
                                                 {
-                                                    "Get": "Steps.MyStep.ProcessingOutputConfig."
-                                                    + "Outputs['MyOutputName'].S3Output.S3Uri"
+                                                    "Get": "Steps.MyStep.TrainingJobName",
                                                 },
                                             ],
                                         },

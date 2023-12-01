@@ -182,6 +182,26 @@ TRAINING_COMPILER_SUPPORTED_REGIONS = [
     "us-west-1",
     "us-west-2",
 ]
+
+INFERENCE_COMPONENT_SUPPORTED_REGIONS = [
+    "ap-south-1",
+    "us-west-2",
+    "ca-central-1",
+    "us-east-1",
+    "us-east-2",
+    "ap-northeast-2",
+    "eu-west-2",
+    "ap-southeast-2",
+    "eu-west-1",
+    "ap-northeast-1",
+    "eu-central-1",
+    "eu-north-1",
+    "ap-southeast-1",
+    "sa-east-1",
+    "me-central-1",
+    "ap-southeast-3",
+]
+
 # Data parallelism need to be tested with p3.16xlarge.
 # The instance type is expensive and not supported in all the regions.
 # Limiting the test to run in IAD and CMH
