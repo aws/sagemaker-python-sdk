@@ -28,9 +28,14 @@ from sagemaker.jumpstart.model import JumpStartModel
 from sagemaker.model import Model
 from sagemaker.predictor import Predictor
 from sagemaker.session_settings import SessionSettings
+from sagemaker.enums import EndpointType
+from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
 
-from tests.unit.sagemaker.jumpstart.utils import get_special_model_spec, overwrite_dictionary
-
+from tests.unit.sagemaker.jumpstart.utils import (
+    get_special_model_spec,
+    overwrite_dictionary,
+    get_special_model_spec_for_inference_component_based_endpoint,
+)
 
 execution_role = "fake role! do not use!"
 region = "us-west-2"
@@ -110,6 +115,162 @@ class ModelTest(unittest.TestCase):
                 {"Key": JumpStartTag.MODEL_ID, "Value": "js-trainable-model"},
                 {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.1.1"},
             ],
+            endpoint_logging=False,
+        )
+
+    @mock.patch("sagemaker.utils.sagemaker_timestamp")
+    @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.model.Model.__init__")
+    @mock.patch("sagemaker.jumpstart.model.Model.deploy")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_non_prepacked_inference_component_based_endpoint(
+        self,
+        mock_model_deploy: mock.Mock,
+        mock_model_init: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
+        mock_sagemaker_timestamp: mock.Mock,
+    ):
+        mock_model_deploy.return_value = default_predictor
+
+        mock_sagemaker_timestamp.return_value = "7777"
+
+        mock_is_valid_model_id.return_value = True
+        model_id, _ = "js-trainable-model", "*"
+
+        mock_get_model_specs.side_effect = (
+            get_special_model_spec_for_inference_component_based_endpoint
+        )
+
+        mock_session.return_value = sagemaker_session
+
+        model = JumpStartModel(
+            model_id=model_id,
+        )
+
+        resource_requirements = ResourceRequirements(
+            requests={
+                "num_accelerators": 1,
+                "memory": 34360,
+            },
+            limits={},
+        )
+
+        mock_model_init.assert_called_once_with(
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/"
+            "autogluon-inference:0.4.3-gpu-py38",
+            model_data="s3://jumpstart-cache-prod-us-west-2/autogluon-infer/"
+            "v1.1.0/infer-autogluon-classification-ensemble.tar.gz",
+            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-"
+            "tarballs/autogluon/inference/classification/v1.0.0/sourcedir.tar.gz",
+            entry_point="inference.py",
+            env={
+                "SAGEMAKER_PROGRAM": "inference.py",
+                "ENDPOINT_SERVER_TIMEOUT": "3600",
+                "MODEL_CACHE_ROOT": "/opt/ml/model",
+                "SAGEMAKER_ENV": "1",
+                "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+            },
+            predictor_cls=Predictor,
+            role=execution_role,
+            sagemaker_session=sagemaker_session,
+            enable_network_isolation=False,
+            name="blahblahblah-7777",
+            resources=resource_requirements,
+        )
+
+        model.deploy(endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED)
+
+        mock_model_deploy.assert_called_once_with(
+            initial_instance_count=1,
+            instance_type="ml.p2.xlarge",
+            wait=True,
+            endpoint_name="blahblahblah-7777",
+            tags=[
+                {"Key": JumpStartTag.MODEL_ID, "Value": "js-trainable-model"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.1.1"},
+            ],
+            endpoint_logging=False,
+            resources=resource_requirements,
+            endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
+        )
+
+    @mock.patch("sagemaker.utils.sagemaker_timestamp")
+    @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.model.Model.__init__")
+    @mock.patch("sagemaker.jumpstart.model.Model.deploy")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_non_prepacked_inference_component_based_endpoint_no_default_pass_custom_resources(
+        self,
+        mock_model_deploy: mock.Mock,
+        mock_model_init: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
+        mock_sagemaker_timestamp: mock.Mock,
+    ):
+        mock_model_deploy.return_value = default_predictor
+
+        mock_sagemaker_timestamp.return_value = "7777"
+
+        mock_is_valid_model_id.return_value = True
+        model_id, _ = "js-model-class-model-prepacked", "*"
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        mock_session.return_value = sagemaker_session
+
+        model = JumpStartModel(
+            model_id=model_id,
+        )
+
+        mock_model_init.assert_called_once_with(
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-inference:"
+            "1.10.2-transformers4.17.0-gpu-py38-cu113-ubuntu20.04",
+            model_data="s3://jumpstart-cache-prod-us-west-2/huggingface-infer/prepack/"
+            "v1.0.0/infer-prepack-huggingface-txt2img-conflictx-complex-lineart.tar.gz",
+            env={
+                "SAGEMAKER_PROGRAM": "inference.py",
+                "ENDPOINT_SERVER_TIMEOUT": "3600",
+                "MODEL_CACHE_ROOT": "/opt/ml/model",
+                "SAGEMAKER_ENV": "1",
+                "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+            },
+            predictor_cls=Predictor,
+            role=execution_role,
+            sagemaker_session=sagemaker_session,
+            enable_network_isolation=False,
+        )
+
+        custom_resource_requirements = ResourceRequirements(
+            requests={
+                "num_accelerators": 2,
+                "memory": 20480,
+            },
+            limits={},
+        )
+
+        model.deploy(
+            endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
+            resources=custom_resource_requirements,
+        )
+
+        mock_model_deploy.assert_called_once_with(
+            initial_instance_count=1,
+            instance_type="ml.p3.2xlarge",
+            wait=True,
+            tags=[
+                {"Key": JumpStartTag.MODEL_ID, "Value": "js-model-class-model-prepacked"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.1.0"},
+            ],
+            endpoint_logging=False,
+            resources=custom_resource_requirements,
+            endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
         )
 
     @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
@@ -168,6 +329,7 @@ class ModelTest(unittest.TestCase):
                 {"Key": JumpStartTag.MODEL_ID, "Value": "js-model-class-model-prepacked"},
                 {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.1.0"},
             ],
+            endpoint_logging=False,
         )
 
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
@@ -326,6 +488,7 @@ class ModelTest(unittest.TestCase):
             "container_startup_health_check_timeout": 2,
             "inference_recommendation_id": "None",
             "explainer_config": "None",
+            "endpoint_logging": False,
         }
 
         self.evaluate_model_workflow_with_kwargs(
@@ -417,12 +580,11 @@ class ModelTest(unittest.TestCase):
         mock_model_deploy.assert_called_once_with(**expected_deploy_kwargs)
 
     def test_jumpstart_model_kwargs_match_parent_class(self):
-
         """If you add arguments to <Model constructor>, this test will fail.
         Please add the new argument to the skip set below,
         and reach out to JumpStart team."""
 
-        init_args_to_skip: Set[str] = set()
+        init_args_to_skip: Set[str] = set([])
         deploy_args_to_skip: Set[str] = set(["kwargs"])
 
         parent_class_init = Model.__init__

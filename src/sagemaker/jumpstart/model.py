@@ -44,6 +44,8 @@ from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.model_metrics import ModelMetrics
 from sagemaker.metadata_properties import MetadataProperties
 from sagemaker.drift_check_baselines import DriftCheckBaselines
+from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
+from sagemaker.enums import EndpointType
 
 
 class JumpStartModel(Model):
@@ -78,6 +80,7 @@ class JumpStartModel(Model):
         dependencies: Optional[List[str]] = None,
         git_config: Optional[Dict[str, str]] = None,
         model_package_arn: Optional[str] = None,
+        resources: Optional[ResourceRequirements] = None,
     ):
         """Initializes a ``JumpStartModel``.
 
@@ -259,6 +262,10 @@ class JumpStartModel(Model):
             model_package_arn (Optional[str]): An existing SageMaker Model Package arn,
                 can be just the name if your account owns the Model Package.
                 ``model_data`` is not required. (Default: None).
+            resources (Optional[ResourceRequirements]): The compute resource requirements
+                for a model to be deployed to an endpoint.
+                Only EndpointType.INFERENCE_COMPONENT_BASED supports this feature.
+                (Default: None).
         Raises:
             ValueError: If the model ID is not recognized by JumpStart.
         """
@@ -305,6 +312,7 @@ class JumpStartModel(Model):
             dependencies=dependencies,
             git_config=git_config,
             model_package_arn=model_package_arn,
+            resources=resources,
         )
 
         self.orig_predictor_cls = predictor_cls
@@ -312,6 +320,7 @@ class JumpStartModel(Model):
         self.model_id = model_init_kwargs.model_id
         self.model_version = model_init_kwargs.model_version
         self.instance_type = model_init_kwargs.instance_type
+        self.resources = model_init_kwargs.resources
         self.tolerate_vulnerable_model = model_init_kwargs.tolerate_vulnerable_model
         self.tolerate_deprecated_model = model_init_kwargs.tolerate_deprecated_model
         self.region = model_init_kwargs.region
@@ -449,6 +458,10 @@ class JumpStartModel(Model):
         inference_recommendation_id: Optional[str] = None,
         explainer_config: Optional[ExplainerConfig] = None,
         accept_eula: Optional[bool] = None,
+        endpoint_logging: Optional[bool] = False,
+        resources: Optional[ResourceRequirements] = None,
+        managed_instance_scaling: Optional[str] = None,
+        endpoint_type: EndpointType = EndpointType.MODEL_BASED,
     ) -> PredictorBase:
         """Creates endpoint by calling base ``Model`` class `deploy` method.
 
@@ -532,6 +545,17 @@ class JumpStartModel(Model):
                 The `accept_eula` value must be explicitly defined as `True` in order to
                 accept the end-user license agreement (EULA) that some
                 models require. (Default: None).
+            endpoint_logging (Optiona[bool]): If set to true, live logging will be emitted as
+                the SageMaker Endpoint starts up. (Default: False).
+            resources (Optional[ResourceRequirements]): The compute resource requirements
+                for a model to be deployed to an endpoint. Only
+                EndpointType.INFERENCE_COMPONENT_BASED supports this feature.
+                (Default: None).
+            managed_instance_scaling (Optional[Dict]): Managed intance scaling options,
+                if configured Amazon SageMaker will manage the instance number behind the
+                endpoint.
+            endpoint_type (EndpointType): The type of endpoint used to deploy models.
+                (Default: EndpointType.MODEL_BASED).
         """
 
         deploy_kwargs = get_deploy_kwargs(
@@ -559,6 +583,10 @@ class JumpStartModel(Model):
             explainer_config=explainer_config,
             sagemaker_session=self.sagemaker_session,
             accept_eula=accept_eula,
+            endpoint_logging=endpoint_logging,
+            resources=resources,
+            managed_instance_scaling=managed_instance_scaling,
+            endpoint_type=endpoint_type,
         )
 
         predictor = super(JumpStartModel, self).deploy(**deploy_kwargs.to_kwargs_dict())

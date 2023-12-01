@@ -58,6 +58,7 @@ _DEFINITION_CONFIG = PipelineDefinitionConfig(use_custom_job_prefix=False)
 MOCKED_PIPELINE_CONFIG = _PipelineConfig(
     "test-pipeline",
     "test-processing-step",
+    None,
     "code-hash-abcdefg",
     "config-hash-abcdefg",
     _DEFINITION_CONFIG,
@@ -831,6 +832,7 @@ def test_script_processor_code_path_with_pipeline_config(
         path="/local/path/to/processing_code.py",
         bucket="mybucket",
         key_prefix="test-pipeline/code/code-hash-abcdefg",
+        callback=None,
         extra_args=None,
     )
 
@@ -1032,6 +1034,7 @@ def test_processor_input_path_with_pipeline_config(pipeline_session):
         path=None,
         bucket="mybucket",
         key_prefix="test-pipeline/test-processing-step/input/s3_input",
+        callback=None,
         extra_args=None,
     )
 

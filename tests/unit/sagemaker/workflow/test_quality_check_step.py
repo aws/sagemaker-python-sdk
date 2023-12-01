@@ -351,6 +351,10 @@ def test_quality_check_step_properties(
     assert model_quality_check_step.properties.BaselineUsedForDriftCheckConstraints.expr == {
         "Get": "Steps.ModelQualityCheckStep.BaselineUsedForDriftCheckConstraints"
     }
+    assert (
+        model_quality_check_step.properties.BaselineUsedForDriftCheckConstraints._referenced_steps
+        == [model_quality_check_step]
+    )
 
 
 def test_quality_check_step_invalid_config(

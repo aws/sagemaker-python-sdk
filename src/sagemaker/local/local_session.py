@@ -197,6 +197,10 @@ class LocalSagemakerClient(object):  # pylint: disable=too-many-public-methods
             AlgorithmSpecification["TrainingImage"],
             sagemaker_session=self.sagemaker_session,
         )
+        if AlgorithmSpecification.get("ContainerEntrypoint", None):
+            container.container_entrypoint = AlgorithmSpecification["ContainerEntrypoint"]
+        if AlgorithmSpecification.get("ContainerArguments", None):
+            container.container_arguments = AlgorithmSpecification["ContainerArguments"]
         training_job = _LocalTrainingJob(container)
         hyperparameters = kwargs["HyperParameters"] if "HyperParameters" in kwargs else {}
         logger.info("Starting training job")
@@ -718,6 +722,8 @@ class LocalSession(Session):
                 else load_sagemaker_config(s3_resource=self.s3_resource)
             )
         else:
+            self.s3_resource = self.boto_session.resource("s3", region_name=self._region_name)
+            self.s3_client = self.boto_session.client("s3", region_name=self._region_name)
             self.sagemaker_config = (
                 sagemaker_config if sagemaker_config else load_sagemaker_config()
             )

@@ -15,6 +15,7 @@ from __future__ import absolute_import
 
 import os
 from glob import glob
+import sys
 
 from setuptools import find_packages, setup
 
@@ -48,7 +49,7 @@ def read_requirements(filename):
 # Declare minimal set for installation
 required_packages = [
     "attrs>=23.1.0,<24",
-    "boto3>=1.29.6,<2.0",
+    "boto3>=1.33.3,<2.0",
     "cloudpickle==2.2.1",
     "google-pasta",
     "numpy>=1.9.0,<2.0",
@@ -63,6 +64,13 @@ required_packages = [
     "jsonschema",
     "platformdirs",
     "tblib==1.7.0",
+    "urllib3<1.27",
+    "uvicorn==0.22.0",
+    "fastapi==0.95.2",
+    "requests",
+    "docker",
+    "tqdm",
+    "psutil",
 ]
 
 # Specific use case dependencies
@@ -77,7 +85,21 @@ extras = {
 # Meta dependency groups
 extras["all"] = [item for group in extras.values() for item in group]
 # Tests specific dependencies (do not need to be included in 'all')
-extras["test"] = (read_requirements("requirements/extras/test_requirements.txt"),)
+test_dependencies = read_requirements("requirements/extras/test_requirements.txt")
+# remove torch and torchvision if python version is not 3.10
+if sys.version_info.minor != 10:
+    test_dependencies = [
+        module
+        for module in test_dependencies
+        if not (
+            module.startswith("transformers")
+            or module.startswith("sentencepiece")
+            or module.startswith("torch")
+            or module.startswith("torchvision")
+        )
+    ]
+
+extras["test"] = (test_dependencies,)
 
 setup(
     name="sagemaker",
@@ -85,6 +107,7 @@ setup(
     description="Open source library for training and deploying models on Amazon SageMaker.",
     packages=find_packages("src"),
     package_dir={"": "src"},
+    package_data={"": ["*.whl"]},
     py_modules=[os.path.splitext(os.path.basename(path))[0] for path in glob("src/*.py")],
     include_package_data=True,
     long_description=read("README.rst"),
@@ -110,4 +133,7 @@ setup(
             "sagemaker-upgrade-v2=sagemaker.cli.compatibility.v2.sagemaker_upgrade_v2:main",
         ]
     },
+    scripts=[
+        "src/sagemaker/serve/model_server/triton/pack_conda_env.sh",
+    ],
 )

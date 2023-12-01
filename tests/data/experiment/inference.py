@@ -10,20 +10,20 @@
 #  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
 #  express or implied. See the License for the specific language governing
 #  permissions and limitations under the License.
-import json
-import logging
 import os
-import pickle as pkl
-
-import boto3
-import numpy as np
-import sagemaker_xgboost_container.encoder as xgb_encoders
 
 sdk_name = "sagemaker-dev-1.0.tar.gz"
 code_dir = "/opt/ml/code"
 
 sdk_file = f"{code_dir}/{sdk_name}"
 os.system(f"pip install {sdk_file}")
+
+import json
+import logging
+import pickle as pkl
+import boto3
+import numpy as np
+import sagemaker_xgboost_container.encoder as xgb_encoders
 
 
 def _get_client_config_in_dict(cfg_in_str) -> dict:

@@ -15,12 +15,12 @@ from __future__ import absolute_import
 from abc import ABC, abstractmethod
 
 import json
-from copy import deepcopy
 from datetime import datetime
 from typing import Dict, List, Union
 from botocore.exceptions import ClientError
 
 from sagemaker.workflow.conditions import ConditionTypeEnum
+from sagemaker.workflow.function_step import DelayedReturn
 from sagemaker.workflow.steps import StepTypeEnum, Step
 from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.entities import PipelineVariable
@@ -87,7 +87,7 @@ class LocalPipelineExecutor(object):
     def _parse_arguments(self, obj, step_name):
         """Parse and evaluate arguments field"""
         if isinstance(obj, dict):
-            obj_copy = deepcopy(obj)
+            obj_copy = {}
             for k, v in obj.items():
                 obj_copy[k] = self._parse_arguments(v, step_name)
             return obj_copy
@@ -108,16 +108,17 @@ class LocalPipelineExecutor(object):
         elif isinstance(pipeline_variable, Parameter):
             value = self.execution.pipeline_parameters.get(pipeline_variable.name)
         elif isinstance(pipeline_variable, Join):
-            evaluated = [
-                str(self.evaluate_pipeline_variable(v, step_name)) for v in pipeline_variable.values
-            ]
-            value = pipeline_variable.on.join(evaluated)
+            value = self._evaluate_join_function(pipeline_variable, step_name)
         elif isinstance(pipeline_variable, Properties):
             value = self._evaluate_property_reference(pipeline_variable, step_name)
         elif isinstance(pipeline_variable, ExecutionVariable):
             value = self._evaluate_execution_variable(pipeline_variable)
         elif isinstance(pipeline_variable, JsonGet):
             value = self._evaluate_json_get_function(pipeline_variable, step_name)
+        elif isinstance(pipeline_variable, DelayedReturn):
+            # DelayedReturn showing up in arguments, meaning that it's data referenced
+            # We should convert it to JsonGet and evaluate the JsonGet object
+            value = self._evaluate_json_get_function(pipeline_variable._to_json_get(), step_name)
         else:
             self.execution.update_step_failure(
                 step_name, f"Unrecognized pipeline variable {pipeline_variable.expr}."
@@ -126,6 +127,13 @@ class LocalPipelineExecutor(object):
         if value is None:
             self.execution.update_step_failure(step_name, f"{pipeline_variable.expr} is undefined.")
         return value
+
+    def _evaluate_join_function(self, pipeline_variable, step_name):
+        """Evaluate join function runtime value"""
+        evaluated = [
+            str(self.evaluate_pipeline_variable(v, step_name)) for v in pipeline_variable.values
+        ]
+        return pipeline_variable.on.join(evaluated)
 
     def _evaluate_property_reference(self, pipeline_variable, step_name):
         """Evaluate property reference runtime value."""
@@ -156,6 +164,43 @@ class LocalPipelineExecutor(object):
 
     def _evaluate_json_get_function(self, pipeline_variable, step_name):
         """Evaluate join function runtime value."""
+        s3_bucket = None
+        s3_key = None
+        try:
+            if pipeline_variable.property_file:
+                s3_bucket, s3_key = self._evaluate_json_get_property_file_reference(
+                    pipeline_variable=pipeline_variable, step_name=step_name
+                )
+            else:
+                # JsonGet's s3_uri can only be a Join function
+                # This has been validated in _validate_json_get_function
+                s3_uri = self._evaluate_join_function(pipeline_variable.s3_uri, step_name)
+                s3_bucket, s3_key = parse_s3_url(s3_uri)
+
+            file_content = self.sagemaker_session.read_s3_file(s3_bucket, s3_key)
+            file_json = json.loads(file_content)
+            return get_using_dot_notation(file_json, pipeline_variable.json_path)
+        except ClientError as e:
+            self.execution.update_step_failure(
+                step_name,
+                f"Received an error while reading file {s3_path_join('s3://', s3_bucket, s3_key)} "
+                f"from S3: {e.response.get('Code')}: {e.response.get('Message')}",
+            )
+        except json.JSONDecodeError:
+            self.execution.update_step_failure(
+                step_name,
+                f"Contents of file {s3_path_join('s3://', s3_bucket, s3_key)} are not "
+                f"in valid JSON format.",
+            )
+        except ValueError:
+            self.execution.update_step_failure(
+                step_name, f"Invalid json path '{pipeline_variable.json_path}'"
+            )
+
+    def _evaluate_json_get_property_file_reference(
+        self, pipeline_variable: JsonGet, step_name: str
+    ):
+        """Evaluate JsonGet's property file reference to get s3 bucket and key"""
         property_file_reference = pipeline_variable.property_file
         property_file = None
         if isinstance(property_file_reference, str):
@@ -180,28 +225,9 @@ class LocalPipelineExecutor(object):
         processing_output_s3_bucket = processing_step_response["ProcessingOutputConfig"]["Outputs"][
             property_file.output_name
         ]["S3Output"]["S3Uri"]
-        try:
-            s3_bucket, s3_key_prefix = parse_s3_url(processing_output_s3_bucket)
-            file_content = self.sagemaker_session.read_s3_file(
-                s3_bucket, s3_path_join(s3_key_prefix, property_file.path)
-            )
-            file_json = json.loads(file_content)
-            return get_using_dot_notation(file_json, pipeline_variable.json_path)
-        except ClientError as e:
-            self.execution.update_step_failure(
-                step_name,
-                f"Received an error while file reading file '{property_file.path}' from S3: "
-                f"{e.response.get('Code')}: {e.response.get('Message')}",
-            )
-        except json.JSONDecodeError:
-            self.execution.update_step_failure(
-                step_name,
-                f"Contents of property file '{property_file.name}' are not in valid JSON format.",
-            )
-        except ValueError:
-            self.execution.update_step_failure(
-                step_name, f"Invalid json path '{pipeline_variable.json_path}'"
-            )
+        s3_bucket, s3_key_prefix = parse_s3_url(processing_output_s3_bucket)
+        s3_key = s3_path_join(s3_key_prefix, property_file.path)
+        return s3_bucket, s3_key
 
 
 class _StepExecutor(ABC):

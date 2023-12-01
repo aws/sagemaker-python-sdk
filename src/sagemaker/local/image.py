@@ -812,7 +812,13 @@ class _SageMakerContainer(object):
             "networks": {"sagemaker-local": {"aliases": [host]}},
         }
 
-        if command != "process":
+        is_train_with_entrypoint = False
+        if command == "train" and self.container_entrypoint:
+            # Remote function or Pipeline function step is translated into a training job
+            # with container_entrypoint configured
+            is_train_with_entrypoint = True
+
+        if command != "process" and not is_train_with_entrypoint:
             host_config["command"] = command
         else:
             if self.container_entrypoint:

@@ -597,6 +597,7 @@ def test_deploy_right_size_with_model_package_succeeds(
         production_variants=IR_PRODUCTION_VARIANTS,
         tags=None,
         wait=True,
+        live_logging=False,
     )
 
 
@@ -628,6 +629,7 @@ def test_deploy_right_size_with_both_overrides_succeeds(
         production_variants=IR_OVERRIDDEN_PRODUCTION_VARIANTS,
         tags=None,
         wait=True,
+        live_logging=False,
     )
 
 
@@ -685,6 +687,7 @@ def test_deploy_right_size_serverless_override(sagemaker_session, default_right_
         data_capture_config_dict=None,
         async_inference_config_dict=None,
         explainer_config_dict=None,
+        live_logging=False,
     )
 
 
@@ -723,6 +726,7 @@ def test_deploy_right_size_async_override(sagemaker_session, default_right_sized
             }
         },
         explainer_config_dict=None,
+        live_logging=False,
     )
 
 
@@ -761,6 +765,7 @@ def test_deploy_right_size_explainer_config_override(sagemaker_session, default_
         data_capture_config_dict=None,
         async_inference_config_dict=None,
         explainer_config_dict=explainer_config_dict,
+        live_logging=False,
     )
 
 

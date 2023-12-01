@@ -22,6 +22,9 @@ import time
 import typing
 import warnings
 import uuid
+import datetime
+
+from copy import deepcopy
 from typing import List, Dict, Any, Sequence, Optional
 
 import boto3
@@ -29,7 +32,7 @@ import botocore
 import botocore.config
 from botocore.exceptions import ClientError
 import six
-from sagemaker.utils import instance_supports_kms
+from sagemaker.utils import instance_supports_kms, create_paginator_config
 
 import sagemaker.logs
 from sagemaker import vpc_utils, s3_utils
@@ -97,7 +100,11 @@ from sagemaker.config import (
     ENDPOINT_CONFIG,
     ENDPOINT_CONFIG_DATA_CAPTURE_PATH,
     ENDPOINT_CONFIG_ASYNC_INFERENCE_PATH,
+    ENDPOINT_CONFIG_VPC_CONFIG_PATH,
+    ENDPOINT_CONFIG_ENABLE_NETWORK_ISOLATION_PATH,
+    ENDPOINT_CONFIG_EXECUTION_ROLE_ARN_PATH,
     ENDPOINT,
+    INFERENCE_COMPONENT,
     SAGEMAKER,
     FEATURE_GROUP,
     TAGS,
@@ -109,6 +116,7 @@ from sagemaker.config import (
 )
 from sagemaker.config.config_utils import _log_sagemaker_config_merge
 from sagemaker.deprecations import deprecated_class
+from sagemaker.enums import EndpointType
 from sagemaker.inputs import ShuffleConfig, TrainingInput, BatchDataCaptureConfig
 from sagemaker.user_agent import prepend_user_agent
 from sagemaker.utils import (
@@ -141,6 +149,8 @@ _STATUS_CODE_TABLE = {
     "STARTING": "Starting",
     "PENDING": "Pending",
 }
+EP_LOGGER_POLL = 10
+DEFAULT_EP_POLL = 30
 
 
 class LogState(object):
@@ -341,7 +351,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """Placeholder docstring"""
         return self._region_name
 
-    def upload_data(self, path, bucket=None, key_prefix="data", extra_args=None):
+    def upload_data(self, path, bucket=None, key_prefix="data", callback=None, extra_args=None):
         """Upload local file or directory to S3.
 
         If a single file is specified for upload, the resulting S3 object key is
@@ -397,7 +407,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             s3 = self.s3_resource
 
         for local_path, s3_key in files:
-            s3.Object(bucket, s3_key).upload_file(local_path, ExtraArgs=extra_args)
+            s3.Object(bucket, s3_key).upload_file(
+                local_path, Callback=callback, ExtraArgs=extra_args
+            )
 
         s3_uri = "s3://{}/{}".format(bucket, key_prefix)
         # If a specific file was used as input (instead of a directory), we return the full S3 key
@@ -831,7 +843,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 * `RunName` is used to record an experiment run.
             enable_sagemaker_metrics (bool): enable SageMaker Metrics Time
                 Series. For more information see:
-                https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html
+                #SageMaker-Type
+                -AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
                 (default: ``None``).
             profiler_rule_configs (list[dict]): A list of profiler rule
                 configurations.src/sagemaker/lineage/artifact.py:285
@@ -1075,7 +1089,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 * `RunName` is used to record an experiment run.
             enable_sagemaker_metrics (bool): enable SageMaker Metrics Time
                 Series. For more information see:
-                https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html
+                #SageMaker-Type
+                -AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
                 (default: ``None``).
             profiler_rule_configs (list[dict]): A list of profiler rule configurations.
             profiler_config(dict): Configuration for how profiling information is emitted with
@@ -3972,14 +3988,18 @@ class Session(object):  # pylint: disable=too-many-public-methods
             container_startup_health_check_timeout (int): The timeout value, in seconds, for your
                 inference container to pass health check by SageMaker Hosting. For more information
                 about health check see:
-                https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-inference-code.html#your-algorithms-inference-algo-ping-requests
+                https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-inference-code
+                .html#your-algorithms
+                -inference-algo-ping-requests
             explainer_config_dict (dict): Specifies configuration to enable explainers.
                 Default: None.
 
         Example:
             >>> tags = [{'Key': 'tagname', 'Value': 'tagvalue'}]
             For more information about tags, see
-            https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags
+            https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker
+            .html#SageMaker
+            .Client.add_tags
 
         Returns:
             str: Name of the endpoint point configuration created.
@@ -4049,6 +4069,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         new_data_capture_config_dict=None,
         new_production_variants=None,
         new_explainer_config_dict=None,
+        endpoint_type=EndpointType.MODEL_BASED,
     ):
         """Create an Amazon SageMaker endpoint configuration from an existing one.
 
@@ -4079,6 +4100,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             new_explainer_config_dict (dict): Specifies configuration to enable explainers.
                 (default: None). If not specified, the explainer configuration of the existing
                 endpoint configuration is used.
+            endpoint_type (EndpointType): The Endpoint type to determine whether model will be
+                deployed as Amazon SageMaker Inference Component to the endpoint
 
         Returns:
             str: Name of the endpoint point configuration created.
@@ -4096,6 +4119,18 @@ class Session(object):  # pylint: disable=too-many-public-methods
         production_variants = (
             new_production_variants or existing_endpoint_config_desc["ProductionVariants"]
         )
+        if endpoint_type == EndpointType.INFERENCE_COMPONENT_BASED:
+            # Make a copy of Production variants and remove the InitialVariantWeight
+            # in the copy
+            copy_production_variants = deepcopy(production_variants)
+            for prod_var in copy_production_variants:
+                if "InitialVariantWeight" in prod_var:
+                    del prod_var["InitialVariantWeight"]
+            # assign production_variants with copy_production_variants,
+            # so it will not have InitialVariantWeight and the new_production_variants
+            # will not be mutated
+            production_variants = copy_production_variants
+
         update_list_of_dicts_with_values_from_config(
             production_variants,
             ENDPOINT_CONFIG_PRODUCTION_VARIANTS_PATH,
@@ -4103,6 +4138,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
             sagemaker_session=self,
         )
         request["ProductionVariants"] = production_variants
+
+        for pv in production_variants:
+            if "ModelName" not in pv or not pv["ModelName"]:
+                request["ExecutionRoleArn"] = self.get_caller_identity_arn()
 
         request_tags = new_tags or self.list_tags(
             existing_endpoint_config_desc["EndpointConfigArn"]
@@ -4164,7 +4203,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         self.sagemaker_client.create_endpoint_config(**request)
 
-    def create_endpoint(self, endpoint_name, config_name, tags=None, wait=True):
+    def create_endpoint(self, endpoint_name, config_name, tags=None, wait=True, live_logging=False):
         """Create an Amazon SageMaker ``Endpoint`` according to the configuration in the request.
 
         Once the ``Endpoint`` is created, client applications can send requests to obtain
@@ -4193,8 +4232,37 @@ class Session(object):  # pylint: disable=too-many-public-methods
             EndpointName=endpoint_name, EndpointConfigName=config_name, Tags=tags
         )
         if wait:
-            self.wait_for_endpoint(endpoint_name)
+            self.wait_for_endpoint(endpoint_name, live_logging=live_logging)
         return endpoint_name
+
+    def endpoint_in_service_or_not(self, endpoint_name: str):
+        """Check whether an Amazon SageMaker ``Endpoint``` is in IN_SERVICE status.
+
+        Raise any exception that is not recognized as "not found".
+
+        Args:
+            endpoint_name (str): Name of the Amazon SageMaker ``Endpoint`` to
+            check status.
+
+        Returns:
+            bool: True if ``Endpoint`` is IN_SERVICE, False if ``Endpoint`` not exists
+            or it's in other status.
+
+        Raises:
+
+        """
+        try:
+            desc = self.sagemaker_client.describe_endpoint(EndpointName=endpoint_name)
+            status = desc["EndpointStatus"]
+            if status == "InService":
+                return True
+            return False
+
+        except botocore.exceptions.ClientError as e:
+            str_err = str(e).lower()
+            if "could not find" in str_err or "not found" in str_err:
+                return False
+            raise
 
     def update_endpoint(self, endpoint_name, endpoint_config_name, wait=True):
         """Update an Amazon SageMaker ``Endpoint`` , Raise an error endpoint_name does not exist.
@@ -4228,6 +4296,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
             self.wait_for_endpoint(endpoint_name)
         return endpoint_name
 
+    def describe_endpoint(self, endpoint_name):
+        """Describe an Amazon SageMaker ``Endpoint``.
+
+        Args:
+            endpoint_name (str): Name of the Amazon SageMaker ``Endpoint`` to describe.
+        """
+        response = self.sagemaker_client.describe_endpoint(EndpointName=endpoint_name)
+        return response
+
     def delete_endpoint(self, endpoint_name):
         """Delete an Amazon SageMaker ``Endpoint``.
 
@@ -4246,6 +4323,331 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """
         LOGGER.info("Deleting endpoint configuration with name: %s", endpoint_config_name)
         self.sagemaker_client.delete_endpoint_config(EndpointConfigName=endpoint_config_name)
+
+    def create_inference_component(
+        self,
+        inference_component_name: str,
+        endpoint_name: str,
+        variant_name: str,
+        specification: Dict[str, Any],
+        runtime_config: Optional[Dict[str, Any]] = None,
+        tags: Optional[Dict[str, str]] = None,
+        wait: bool = True,
+    ):
+        """Create an Amazon SageMaker Inference Component.
+
+        Args:
+            inference_component_name (str): Name of the Amazon SageMaker inference component
+                to create.
+            endpoint_name (str): Name of the Amazon SageMaker endpoint that the inference component
+                will deploy to.
+            variant_name (str): Name of the Amazon SageMaker variant that the inference component
+                will deploy to.
+            specification (Dict[str, Any]): The inference component specification.
+            runtime_config (Optional[Dict[str, Any]]): Optional. The inference component
+                runtime configuration. (Default: None).
+            tags (Optional[Dict[str, str]]): Optional. A list of dictionaries containing key-value
+                pairs. (Default: None).
+            wait (bool) : Optional. Wait for the inference component to finish being created before
+                returning a value. (Default: True).
+
+        Returns:
+            str: Name of the Amazon SageMaker ``InferenceComponent`` if created.
+        """
+        LOGGER.info(
+            "Creating inference component with name %s for endpoint %s",
+            inference_component_name,
+            endpoint_name,
+        )
+
+        if runtime_config is None:
+            runtime_config = {"CopyCount": 1}
+
+        request = {
+            "InferenceComponentName": inference_component_name,
+            "EndpointName": endpoint_name,
+            "VariantName": variant_name,
+            "Specification": specification,
+            "RuntimeConfig": runtime_config,
+        }
+
+        tags = tags or []
+        tags = _append_project_tags(tags)
+        tags = self._append_sagemaker_config_tags(
+            tags, "{}.{}.{}".format(SAGEMAKER, INFERENCE_COMPONENT, TAGS)
+        )
+        if len(tags) != 0:
+            request["Tags"] = tags
+
+        self.sagemaker_client.create_inference_component(**request)
+        if wait:
+            self.wait_for_inference_component(inference_component_name)
+        return inference_component_name
+
+    def wait_for_inference_component(self, inference_component_name, poll=20):
+        """Wait for an Amazon SageMaker ``Inference Component`` deployment to complete.
+
+        Args:
+            inference_component_name (str): Name of the ``Inference Component`` to wait for.
+            poll (int): Polling interval in seconds (default: 20).
+
+        Raises:
+            exceptions.CapacityError: If the inference component creation fails with CapacityError.
+            exceptions.UnexpectedStatusException: If the inference component creation fails.
+
+        Returns:
+            dict: Return value from the ``DescribeInferenceComponent`` API.
+        """
+        desc = _wait_until(
+            lambda: self._inference_component_done(self.sagemaker_client, inference_component_name),
+            poll,
+        )
+        status = desc["InferenceComponentStatus"]
+
+        if status != "InService":
+            message = f"Error creating inference component '{inference_component_name}'"
+            reason = desc.get("FailureReason")
+            if reason:
+                message = f"{message}: {reason}"
+            if "CapacityError" in str(reason):
+                raise exceptions.CapacityError(
+                    message=message,
+                    allowed_statuses=["InService"],
+                    actual_status=status,
+                )
+            raise exceptions.UnexpectedStatusException(
+                message=message,
+                allowed_statuses=["InService"],
+                actual_status=status,
+            )
+        return desc
+
+    def _inference_component_done(self, sagemaker_client, inference_component_name):
+        """Check if creation of inference component is done.
+
+        Args:
+            sagemaker_client (boto3.SageMaker.Client): Client which makes Amazon SageMaker
+                service calls
+            inference_component_name (str): Name of the Amazon SageMaker ``InferenceComponent``.
+        Returns:
+            dict[str,str]: Inference component details.
+        """
+
+        create_inference_component_codes = {
+            "InService": "!",
+            "Creating": "-",
+            "Updating": "-",
+            "Failed": "*",
+            "Deleting": "o",
+        }
+        in_progress_statuses = ["Creating", "Updating", "Deleting"]
+
+        desc = sagemaker_client.describe_inference_component(
+            InferenceComponentName=inference_component_name
+        )
+        status = desc["InferenceComponentStatus"]
+
+        print(create_inference_component_codes.get(status, "?"), end="", flush=True)
+
+        return None if status in in_progress_statuses else desc
+
+    def describe_inference_component(self, inference_component_name):
+        """Describe an Amazon SageMaker ``InferenceComponent``
+
+        Args:
+            inference_component_name (str): Name of the Amazon SageMaker ``InferenceComponent``.
+
+        Returns:
+            dict[str,str]: Inference component details.
+        """
+
+        return self.sagemaker_client.describe_inference_component(
+            InferenceComponentName=inference_component_name
+        )
+
+    def wait_for_inference_component_deletion(self, inference_component_name: str, poll: int = 20):
+        """Wait for an Amazon SageMaker ``Inference Component`` deployment to complete.
+
+        Args:
+            inference_component_name (str): Name of the inference component to wait for.
+            poll (int): Polling interval in seconds (default: 20).
+
+        """
+        _wait_until(
+            lambda: self._inference_component_deletion_done(
+                self.sagemaker_client, inference_component_name
+            ),
+            poll,
+        )
+
+    def _inference_component_deletion_done(self, sagemaker_client, inference_component_name: str):
+        """Check if deletion of inference component is done.
+
+        Args:
+            sagemaker_client (boto3.SageMaker.Client): Client which makes Amazon SageMaker
+                service calls
+            inference_component_name (str): Name of the Amazon SageMaker inference component.
+        Returns:
+            bool: True if deletion is done. None otherwise.
+        """
+        try:
+            sagemaker_client.describe_inference_component(
+                InferenceComponentName=inference_component_name
+            )
+        except botocore.exceptions.ClientError as e:
+            str_err = str(e).lower()
+            if "could not find" in str_err or "not found" in str_err:
+                return True
+            raise
+        return None
+
+    def update_inference_component(
+        self, inference_component_name, specification=None, runtime_config=None, wait=True
+    ):
+        """Update an Amazon SageMaker ``InferenceComponent``
+
+        Args:
+            inference_component_name (str): Name of the Amazon SageMaker ``InferenceComponent``.
+            specification ([dict[str,int]]): Resource configuration. Optional.
+            Example: {
+                "MinMemoryRequiredInMb": 1024,
+                "NumberOfCpuCoresRequired": 1,
+                "NumberOfAcceleratorDevicesRequired": 1,
+                "MaxMemoryRequiredInMb": 4096,
+            },
+
+            runtime_config ([dict[str,int]]): Number of copies. Optional.
+            Default: {
+                "copyCount": 1
+            }
+
+            wait: Wait for inference component to be created before return. Optional. Default is
+            True.
+
+        Return:
+            str: inference component name
+
+        Raises:
+            ValueError: If the inference_component_name does not exist.
+        """
+        if not _deployment_entity_exists(
+            lambda: self.sagemaker_client.describe_inference_component(
+                InferenceComponentName=inference_component_name
+            )
+        ):
+            raise ValueError(
+                "InferenceComponent with name '{}' does not exist; please use an "
+                "existing model name".format(inference_component_name)
+            )
+
+        request = {
+            "InferenceComponentName": inference_component_name,
+            "Specification": specification,
+            "RuntimeConfig": runtime_config,
+        }
+
+        self.sagemaker_client.update_inference_component(**request)
+
+        if wait:
+            self.wait_for_inference_component(inference_component_name)
+        return inference_component_name
+
+    def delete_inference_component(self, inference_component_name: str, wait: bool = False):
+        """Deletes a InferenceComponent.
+
+        Args:
+            inference_component_name (str): Name of the Amazon SageMaker ``InferenceComponent``
+                to delete.
+            wait (bool): wait delete inference component operation finish. (default: False)
+
+        Return:
+            None
+        """
+
+        LOGGER.info("Deleting inference component with name: %s", inference_component_name)
+        self.sagemaker_client.delete_inference_component(
+            InferenceComponentName=inference_component_name
+        )
+        if wait:
+            _wait_until(
+                lambda: self._inference_component_deletion_done(
+                    self.sagemaker_client, inference_component_name
+                ),
+                poll=20,
+            )
+
+    def list_inference_components(
+        self,
+        endpoint_name_equals: Optional[str] = None,
+        variant_name_equals: Optional[str] = None,
+        name_contains: Optional[str] = None,
+        creation_time_after: Optional[datetime.datetime] = None,
+        creation_time_before: Optional[datetime.datetime] = None,
+        last_modified_time_after: Optional[datetime.datetime] = None,
+        last_modified_time_before: Optional[datetime.datetime] = None,
+        status_equals: Optional[str] = None,
+        sort_order: Optional[str] = None,
+        sort_by: Optional[str] = None,
+        max_results: Optional[int] = None,
+        next_token: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """List inference components under current endpoint.
+
+        Args:
+            endpoint_name_equals (str): Optional. A string that matches the name of the
+                endpoint that the inference components are deployed to. (Default: None).
+            variant_name_equals (str): Optional. A string that matches the name of the variant
+                associated with the inference components. (Default: None).
+            name_contains (str): Optional. A string that partially matches the names of one or
+                more inference components. Filters inference components by name.
+                (Default: None).
+            creation_time_after (datetime.datetime): Optional. Use this parameter to
+                search for inference components that were created after a specific date and time.
+                (Default: None).
+            creation_time_before (datetime.datetime): Optional. Use this parameter to
+                search for inference components that were created before a specific date and time.
+                (Default: None).
+            last_modified_time_after (datetime.datetime): Optional. Use this parameter to
+                search for inference components that were last modified after a specific date
+                and time. (Default: None).
+            last_modified_time_before (datetime.datetime): Optional. Use this parameter to
+                search for inference components that were last modified before a specific date
+                and time. (Default: None).
+            status_equals (str): Optional. The inference component status to apply as a filter
+                to the response. (Default: None).
+            sort_order (str): Optional. The order in which inference components are listed in the
+                response. (Default: None).
+            sort_by (str): Optional. The value on which the inference component list is
+                sorted. (Default: None).
+            max_results (int): Optional. The maximum number of results returned by
+                list_inference_components. (Default: None).
+            next_token (str): Optional. A token to resume pagination of list_inference_components
+                results. (Default: None).
+
+        Return:
+            [dict[str,Any]]: Dict of inference component details.
+        """
+
+        list_inference_component_args = {}
+
+        def check_object(key, value):
+            if value is not None:
+                list_inference_component_args[key] = value
+
+        check_object("SortBy", sort_by)
+        check_object("SortOrder", sort_order)
+        check_object("NameContains", name_contains)
+        check_object("CreationTimeBefore", creation_time_before)
+        check_object("CreationTimeAfter", creation_time_after)
+        check_object("LastModifiedTimeBefore", last_modified_time_before)
+        check_object("LastModifiedTimeAfter", last_modified_time_after)
+        check_object("StatusEquals", status_equals)
+        check_object("EndpointNameEquals", endpoint_name_equals)
+        check_object("VariantNameEquals", variant_name_equals)
+        check_object("NextToken", next_token)
+        check_object("MaxResults", max_results)
+
+        return self.sagemaker_client.list_inference_components(**list_inference_component_args)
 
     def delete_model(self, model_name):
         """Delete an Amazon SageMaker Model.
@@ -4517,7 +4919,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 LOGGER.error("Error occurred while attempting to stop transform job: %s.", name)
                 raise
 
-    def wait_for_endpoint(self, endpoint, poll=30):
+    def wait_for_endpoint(self, endpoint, poll=DEFAULT_EP_POLL, live_logging=False):
         """Wait for an Amazon SageMaker endpoint deployment to complete.
 
         Args:
@@ -4531,13 +4933,30 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             dict: Return value from the ``DescribeEndpoint`` API.
         """
-        desc = _wait_until(lambda: _deploy_done(self.sagemaker_client, endpoint), poll)
+
+        if not live_logging or not _has_permission_for_live_logging(self.boto_session, endpoint):
+            desc = _wait_until(lambda: _deploy_done(self.sagemaker_client, endpoint), poll)
+        else:
+            cloudwatch_client = self.boto_session.client("logs")
+            paginator = cloudwatch_client.get_paginator("filter_log_events")
+            paginator_config = create_paginator_config()
+            desc = _wait_until(
+                lambda: _live_logging_deploy_done(
+                    self.sagemaker_client, endpoint, paginator, paginator_config, EP_LOGGER_POLL
+                ),
+                poll=EP_LOGGER_POLL,
+            )
         status = desc["EndpointStatus"]
 
         if status != "InService":
             reason = desc.get("FailureReason", None)
-            message = "Error hosting endpoint {endpoint}: {status}. Reason: {reason}.".format(
-                endpoint=endpoint, status=status, reason=reason
+            trouble_shooting = (
+                "Try changing the instance type or reference the troubleshooting page "
+                "https://docs.aws.amazon.com/sagemaker/latest/dg/async-inference-troubleshooting"
+                ".html"
+            )
+            message = "Error hosting endpoint {}: {}. Reason: {}. {}".format(
+                endpoint, status, reason, trouble_shooting
             )
             if "CapacityError" in str(reason):
                 raise exceptions.CapacityError(
@@ -4773,6 +5192,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
         data_capture_config_dict=None,
         async_inference_config_dict=None,
         explainer_config_dict=None,
+        live_logging=False,
+        vpc_config=None,
+        enable_network_isolation=None,
+        role=None,
     ):
         """Create an SageMaker ``Endpoint`` from a list of production variants.
 
@@ -4792,7 +5215,21 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 (default: None)
             explainer_config_dict (dict) : Specifies configuration related to explainer.
                 Use this configuration when trying to use online explainability.
-                (default: None)
+                (default: None).
+            vpc_config (dict[str, list[str]]:
+                The VpcConfig set on the model (default: None).
+                * 'Subnets' (list[str]): List of subnet ids.
+                * 'SecurityGroupIds' (list[str]): List of security group ids.
+            enable_network_isolation (Boolean): Default False.
+                If True, enables network isolation in the endpoint, isolating the model
+                container. No inbound or outbound network calls can be made to
+                or from the model container.
+            role (str): An AWS IAM role (either name or full ARN). The Amazon
+                SageMaker training jobs and APIs that create Amazon SageMaker
+                endpoints use this role to access training data and model
+                artifacts. After the endpoint is created, the inference code
+                might use the IAM role if it needs to access some AWS resources.
+                (default: None).
         Returns:
             str: The name of the created ``Endpoint``.
         """
@@ -4811,7 +5248,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             required_key_paths=["CoreDumpConfig.DestinationS3Uri"],
             sagemaker_session=self,
         )
+
         config_options = {"EndpointConfigName": name, "ProductionVariants": production_variants}
+
         kms_key = (
             resolve_value_from_config(
                 kms_key, ENDPOINT_CONFIG_KMS_KEY_ID_PATH, sagemaker_session=self
@@ -4820,6 +5259,34 @@ class Session(object):  # pylint: disable=too-many-public-methods
             else kms_key
         )
 
+        vpc_config = resolve_value_from_config(
+            vpc_config,
+            ENDPOINT_CONFIG_VPC_CONFIG_PATH,
+            sagemaker_session=self,
+        )
+
+        enable_network_isolation = resolve_value_from_config(
+            enable_network_isolation,
+            ENDPOINT_CONFIG_ENABLE_NETWORK_ISOLATION_PATH,
+            sagemaker_session=self,
+        )
+
+        role = resolve_value_from_config(
+            role,
+            ENDPOINT_CONFIG_EXECUTION_ROLE_ARN_PATH,
+            sagemaker_session=self,
+            sagemaker_config=load_sagemaker_config() if (self is None) else None,
+        )
+
+        # For Amazon SageMaker inference component based endpoint, it will not pass
+        # Model names during endpoint creation. Instead, ExecutionRoleArn will be
+        # needed in the endpoint config to create Endpoint
+        model_names = [pv["ModelName"] for pv in production_variants if "ModelName" in pv]
+        if len(model_names) == 0:
+            # Currently, SageMaker Python SDK allow using RoleName to deploy models.
+            # Use expand_role method to handle this situation.
+            role = self.expand_role(role)
+            config_options["ExecutionRoleArn"] = role
         endpoint_config_tags = _append_project_tags(tags)
         endpoint_tags = _append_project_tags(tags)
 
@@ -4844,12 +5311,22 @@ class Session(object):  # pylint: disable=too-many-public-methods
             config_options["AsyncInferenceConfig"] = inferred_async_inference_config_dict
         if explainer_config_dict is not None:
             config_options["ExplainerConfig"] = explainer_config_dict
+        if vpc_config is not None:
+            config_options["VpcConfig"] = vpc_config
+        if enable_network_isolation is not None:
+            config_options["EnableNetworkIsolation"] = enable_network_isolation
+        if role is not None:
+            config_options["ExecutionRoleArn"] = role
 
         LOGGER.info("Creating endpoint-config with name %s", name)
         self.sagemaker_client.create_endpoint_config(**config_options)
 
         return self.create_endpoint(
-            endpoint_name=name, config_name=name, tags=endpoint_tags, wait=wait
+            endpoint_name=name,
+            config_name=name,
+            tags=endpoint_tags,
+            wait=wait,
+            live_logging=live_logging,
         )
 
     def expand_role(self, role):
@@ -6217,7 +6694,7 @@ def pipeline_container_def(models, instance_type=None):
 
 
 def production_variant(
-    model_name,
+    model_name=None,
     instance_type=None,
     initial_instance_count=None,
     variant_name="AllTraffic",
@@ -6227,6 +6704,8 @@ def production_variant(
     volume_size=None,
     model_data_download_timeout=None,
     container_startup_health_check_timeout=None,
+    managed_instance_scaling=None,
+    routing_config=None,
 ):
     """Create a production variant description suitable for use in a ``ProductionVariant`` list.
 
@@ -6257,18 +6736,25 @@ def production_variant(
         container_startup_health_check_timeout (int): The timeout value, in seconds, for your
             inference container to pass health check by SageMaker Hosting. For more information
             about health check see:
-            https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-inference-code.html#your-algorithms-inference-algo-ping-requests
+            https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-inference-code.html
+            #your-algorithms
+            -inference-algo-ping-requests
+
     Returns:
         dict[str, str]: An SageMaker ``ProductionVariant`` description
     """
     production_variant_configuration = {
-        "ModelName": model_name,
         "VariantName": variant_name,
-        "InitialVariantWeight": initial_weight,
     }
+    if model_name:
+        production_variant_configuration["ModelName"] = model_name
+        production_variant_configuration["InitialVariantWeight"] = initial_weight
 
     if accelerator_type:
         production_variant_configuration["AcceleratorType"] = accelerator_type
+
+    if managed_instance_scaling:
+        production_variant_configuration["ManagedInstanceScaling"] = managed_instance_scaling
 
     if serverless_inference_config:
         production_variant_configuration["ServerlessConfig"] = serverless_inference_config
@@ -6281,6 +6767,7 @@ def production_variant(
             VolumeSizeInGB=volume_size,
             ModelDataDownloadTimeoutInSeconds=model_data_download_timeout,
             ContainerStartupHealthCheckTimeoutInSeconds=container_startup_health_check_timeout,
+            RoutingConfig=routing_config,
         )
 
     return production_variant_configuration
@@ -6703,6 +7190,55 @@ def _deploy_done(sagemaker_client, endpoint_name):
     return None if status in in_progress_statuses else desc
 
 
+# live log on endpoint in creation
+def _live_logging_deploy_done(sagemaker_client, endpoint_name, paginator, paginator_config, poll):
+    """Placeholder docstring"""
+    stop = False
+    endpoint_status = None
+    try:
+        desc = sagemaker_client.describe_endpoint(EndpointName=endpoint_name)
+        endpoint_status = desc["EndpointStatus"]
+    except ClientError as e:
+        if e.response["Error"]["Code"] == "ValidationException":
+            LOGGER.debug("Waiting for endpoint to become visible")
+            return None
+        raise e
+
+    try:
+        # if endpoint is in an invalid state -> set stop to true, sleep, and flush the logs
+        if endpoint_status != "Creating":
+            stop = True
+            if endpoint_status == "InService":
+                LOGGER.info("Created endpoint with name %s", endpoint_name)
+            else:
+                time.sleep(poll)
+
+        pages = paginator.paginate(
+            logGroupName=f"/aws/sagemaker/Endpoints/{endpoint_name}",
+            logStreamNamePrefix="AllTraffic/",
+            PaginationConfig=paginator_config,
+        )
+
+        for page in pages:
+            if "nextToken" in page:
+                paginator_config["StartingToken"] = page["nextToken"]
+                for event in page["events"]:
+                    LOGGER.info(event["message"])
+            else:
+                LOGGER.debug("No log events available")
+
+        # if stop is true -> return the describe response and stop polling
+        if stop:
+            return desc
+    except ClientError as e:
+        if e.response["Error"]["Code"] == "ResourceNotFoundException":
+            LOGGER.debug("Waiting for endpoint log group to appear")
+            return None
+        raise e
+
+    return None
+
+
 def _wait_until_training_done(callable_fn, desc, poll=5):
     """Placeholder docstring"""
     elapsed_time = 0
@@ -7076,6 +7612,26 @@ def _flush_log_streams(
         dot = True
         print(".", end="")
         sys.stdout.flush()
+
+
+def _has_permission_for_live_logging(boto_session, endpoint_name) -> bool:
+    """Validate if customer's role has the right permission to access logs from CloudWatch"""
+    try:
+        cloudwatch_client = boto_session.client("logs")
+        cloudwatch_client.filter_log_events(
+            logGroupName=f"/aws/sagemaker/Endpoints/{endpoint_name}",
+            logStreamNamePrefix="AllTraffic/",
+        )
+        return True
+    except ClientError as e:
+        if e.response["Error"]["Code"] == "AccessDeniedException":
+            LOGGER.warning(
+                ("Failed to enable live logging: %s. Fallback to default logging..."),
+                e,
+            )
+
+            return False
+        return True
 
 
 s3_input = deprecated_class(TrainingInput, "sagemaker.session.s3_input")

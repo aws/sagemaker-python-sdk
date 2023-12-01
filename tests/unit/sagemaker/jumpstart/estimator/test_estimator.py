@@ -1017,6 +1017,7 @@ class EstimatorTest(unittest.TestCase):
             "model_data",
             "self",
             "name",
+            "resources",
         }
         assert parent_class_deploy_args - js_class_deploy_args == deploy_args_to_skip
 
