@@ -458,3 +458,21 @@ def test_non_repeating_log_factory(method_name):
     log_function("foo")
 
     mock.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "method_name",
+    ["info", "warning", "debug"],
+)
+def test_non_repeating_log_factory_cache_size(method_name):
+    tmp_logger = logging.getLogger("test-logger")
+    mock = MagicMock()
+    setattr(tmp_logger, method_name, mock)
+
+    log_function = non_repeating_log_factory(tmp_logger, method_name, cache_size=2)
+    log_function("foo")
+    log_function("bar")
+    log_function("foo2")
+    log_function("foo")
+
+    assert mock.call_count == 4
