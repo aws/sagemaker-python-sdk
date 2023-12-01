@@ -17,16 +17,21 @@ def _copy_jumpstart_artifacts(model_data: str, js_id: str, code_dir: Path) -> bo
     """Placeholder Docstring"""
     logger.info("Downloading JumpStart artifacts from S3...")
     with _tmpdir(directory=str(code_dir)) as js_model_dir:
-        js_model_data_loc = model_data.get("S3DataSource").get("S3Uri")
-        # TODO: leave this check here until we are sure every js model has moved to uncompressed
-        if js_model_data_loc.endswith("tar.gz"):
-            subprocess.run(["aws", "s3", "cp", js_model_data_loc, js_model_dir])
-            logger.info("Uncompressing JumpStart artifacts for faster loading...")
-            tmp_sourcedir = Path(js_model_dir).joinpath(f"infer-prepack-{js_id}.tar.gz")
-            with tarfile.open(str(tmp_sourcedir)) as resources:
-                resources.extractall(path=code_dir)
+        if isinstance(model_data, str): # if str could be both compression formats
+            if model_data.endswith("tar.gz"):
+                logger.info("Uncompressing JumpStart artifacts for faster loading...")
+                subprocess.run(["aws", "s3", "cp", model_data, js_model_dir])
+                tmp_sourcedir = Path(js_model_dir).joinpath(f"infer-prepack-{js_id}.tar.gz")
+                with tarfile.open(str(tmp_sourcedir)) as resources:
+                    resources.extractall(path=code_dir)
+            else:
+                logger.info("Copying uncompressed JumpStart artifacts...")
+                subprocess.run(["aws", "s3", "cp", model_data, js_model_dir, "--recursive"])
+        elif isinstance(model_data, dict): # if dict assume that it is uncompressed
+            logger.info("Copying uncompressed JumpStart artifacts...")
+            subprocess.run(["aws", "s3", "cp", model_data.get("S3DataSource").get("S3Uri"), js_model_dir, "--recursive"])
         else:
-            subprocess.run(["aws", "s3", "cp", js_model_data_loc, js_model_dir, "--recursive"])
+            raise ValueError("JumpStart model data compression format is unsupported: %s", model_data)
     return True
 
 
