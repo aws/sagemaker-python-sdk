@@ -430,6 +430,7 @@ class _SageMakerContainer(object):
                 output_data_config["S3OutputPath"],
                 job_name,
                 self.sagemaker_session,
+                prefix="output",
             )
 
         _delete_tree(model_artifacts)
