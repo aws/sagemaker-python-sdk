@@ -91,6 +91,8 @@ def output_fn(predictions, accept_type):
 
 
 def _run_preflight_diagnostics():
+    install_package("sagemaker")
+    install_package("boto3", "1.17.52")
     _py_vs_parity_check()
     _pickle_file_integrity_check()
 
@@ -128,10 +130,6 @@ def install_package(package_name, version=None):
     except subprocess.CalledProcessError as e:
         print(f"Failed to install {package_name}. Error: {e}")
 
-
-# Example usage
-install_package("sagemaker")
-install_package("boto3", "1.17.52")
 
 # on import, execute
 _run_preflight_diagnostics()
