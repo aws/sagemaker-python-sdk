@@ -18,6 +18,7 @@ schema_builder = None
 
 
 def model_fn(model_dir):
+    """Placeholder docstring"""
     from sagemaker.serve.spec.inference_spec import InferenceSpec
     from sagemaker.serve.detector.image_detector import (
         _detect_framework_and_version,
@@ -25,7 +26,6 @@ def model_fn(model_dir):
     )
     from sagemaker.serve.detector.pickler import load_xgboost_from_json
 
-    """Placeholder docstring"""
     shared_libs_path = Path(model_dir + "/shared_libs")
 
     if shared_libs_path.exists():
@@ -119,6 +119,7 @@ def _pickle_file_integrity_check():
 
 
 def install_package(package_name, version=None):
+    """Placeholder docstring"""
     if version:
         command = f"pip install {package_name}=={version}"
     else:
