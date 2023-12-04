@@ -27,7 +27,7 @@ class LocalTorchServe:
             image,
             "serve",
             detach=True,
-            auto_remove=True,
+            # auto_remove=True,
             network_mode="host",
             volumes={
                 Path(model_path): {
