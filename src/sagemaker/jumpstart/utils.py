@@ -511,8 +511,8 @@ def emit_logs_based_on_model_specs(
     if model_specs.deprecate_warn_message:
         constants.JUMPSTART_LOGGER.warning(model_specs.deprecate_warn_message)
 
-    if model_specs.info_message:
-        constants.JUMPSTART_LOGGER.info(model_specs.info_message)
+    if model_specs.usage_info_message:
+        constants.JUMPSTART_LOGGER.info(model_specs.usage_info_message)
 
     if model_specs.inference_vulnerable or model_specs.training_vulnerable:
         constants.JUMPSTART_LOGGER.warning(

@@ -1034,20 +1034,20 @@ def test_jumpstart_deprecated_model_warnings(mock_get_manifest):
 
 
 @patch("sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor._get_manifest")
-def test_jumpstart_info_message(mock_get_manifest):
+def test_jumpstart_usage_info_message(mock_get_manifest):
     mock_get_manifest.return_value = []
 
-    info_message = "This model might change your life."
+    usage_info_message = "This model might change your life."
 
     def make_info_spec(*largs, **kwargs):
         spec = get_spec_from_base_spec(model_id="pytorch-eqa-bert-base-cased", version="*")
-        spec.info_message = info_message
+        spec.usage_info_message = usage_info_message
         return spec
 
     with patch("logging.Logger.info") as mocked_info_log:
         utils.emit_logs_based_on_model_specs(make_info_spec(), "us-west-2", MOCK_CLIENT)
 
-        mocked_info_log.assert_called_with(info_message)
+        mocked_info_log.assert_called_with(usage_info_message)
 
 
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")

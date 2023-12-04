@@ -730,7 +730,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         "training_dependencies",
         "training_vulnerabilities",
         "deprecated",
-        "info_message",
+        "usage_info_message",
         "deprecated_message",
         "deprecate_warn_message",
         "default_inference_instance_type",
@@ -802,7 +802,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         self.deprecated: bool = bool(json_obj["deprecated"])
         self.deprecated_message: Optional[str] = json_obj.get("deprecated_message")
         self.deprecate_warn_message: Optional[str] = json_obj.get("deprecate_warn_message")
-        self.info_message: Optional[str] = json_obj.get("info_message")
+        self.usage_info_message: Optional[str] = json_obj.get("usage_info_message")
         self.default_inference_instance_type: Optional[str] = json_obj.get(
             "default_inference_instance_type"
         )
