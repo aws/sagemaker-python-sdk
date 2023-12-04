@@ -298,7 +298,7 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
         def __enter__(self, *args, **kwargs):
             """Enter context.
 
-            JumpStart logs get disabled to avoid excessive logging.
+            Disable JumpStart logs to avoid excessive logging.
             """
 
             os.environ[ENV_VARIABLE_DISABLE_JUMPSTART_LOGGING] = "true"
