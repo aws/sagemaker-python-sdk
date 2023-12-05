@@ -45,7 +45,6 @@ class SpecialSupportedFilterKeys(str, Enum):
 
     TASK = "task"
     FRAMEWORK = "framework"
-    SUPPORTED_MODEL = "supported_model"
 
 
 FILTER_OPERATOR_STRING_MAPPINGS = {
@@ -74,7 +73,6 @@ SPECIAL_SUPPORTED_FILTER_KEYS = set(
     [
         SpecialSupportedFilterKeys.TASK,
         SpecialSupportedFilterKeys.FRAMEWORK,
-        SpecialSupportedFilterKeys.SUPPORTED_MODEL,
     ]
 )
 

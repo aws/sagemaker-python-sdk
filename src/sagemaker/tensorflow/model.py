@@ -379,7 +379,11 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         )
 
     def prepare_container_def(
-        self, instance_type=None, accelerator_type=None, serverless_inference_config=None
+        self,
+        instance_type=None,
+        accelerator_type=None,
+        serverless_inference_config=None,
+        accept_eula=None,
     ):
         """Prepare the container definition.
 
@@ -389,6 +393,11 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
                 Specifies configuration related to serverless endpoint. Instance type is
                 not provided in serverless inference. So this is used to find image URIs.
+            accept_eula (bool): For models that require a Model Access Config, specify True or
+                False to indicate whether model terms of use have been accepted.
+                The `accept_eula` value must be explicitly defined as `True` in order to
+                accept the end-user license agreement (EULA) that some
+                models require. (Default: None).
 
         Returns:
             A container definition for deploying a ``Model`` to an ``Endpoint``.
@@ -446,7 +455,12 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         else:
             model_data = self.model_data
 
-        return sagemaker.container_def(image_uri, model_data, env)
+        return sagemaker.container_def(
+            image_uri,
+            model_data,
+            env,
+            accept_eula=accept_eula,
+        )
 
     def _get_container_env(self):
         """Placeholder docstring."""

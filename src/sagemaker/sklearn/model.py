@@ -262,7 +262,11 @@ class SKLearnModel(FrameworkModel):
         )
 
     def prepare_container_def(
-        self, instance_type=None, accelerator_type=None, serverless_inference_config=None
+        self,
+        instance_type=None,
+        accelerator_type=None,
+        serverless_inference_config=None,
+        accept_eula=None,
     ):
         """Container definition with framework configuration set in model environment variables.
 
@@ -276,6 +280,11 @@ class SKLearnModel(FrameworkModel):
             serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
                 Specifies configuration related to serverless endpoint. Instance type is
                 not provided in serverless inference. So this is used to find image URIs.
+            accept_eula (bool): For models that require a Model Access Config, specify True or
+                False to indicate whether model terms of use have been accepted.
+                The `accept_eula` value must be explicitly defined as `True` in order to
+                accept the end-user license agreement (EULA) that some
+                models require. (Default: None).
 
         Returns:
             dict[str, str]: A container definition object usable with the
@@ -302,7 +311,12 @@ class SKLearnModel(FrameworkModel):
         model_data_uri = (
             self.repacked_model_data if self.enable_network_isolation() else self.model_data
         )
-        return sagemaker.container_def(deploy_image, model_data_uri, deploy_env)
+        return sagemaker.container_def(
+            deploy_image,
+            model_data_uri,
+            deploy_env,
+            accept_eula=accept_eula,
+        )
 
     def serving_image_uri(self, region_name, instance_type, serverless_inference_config=None):
         """Create a URI for the serving image.

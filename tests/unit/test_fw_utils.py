@@ -135,12 +135,6 @@ def test_tar_and_upload_dir_s3_without_kms_with_overridden_settings(utils, sagem
     obj.upload_file.assert_called_with(utils.create_tar_file(), ExtraArgs=None)
 
 
-def test_mp_config_partition_exists():
-    mp_parameters = {}
-    with pytest.raises(ValueError):
-        fw_utils.validate_mp_config(mp_parameters)
-
-
 @pytest.mark.parametrize(
     "pipeline, placement_strategy, optimize, trace_device",
     [

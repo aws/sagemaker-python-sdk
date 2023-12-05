@@ -19,15 +19,16 @@ import random
 from sagemaker.jumpstart import utils
 from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    ENV_VARIABLE_DISABLE_JUMPSTART_LOGGING,
     ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE,
     ENV_VARIABLE_JUMPSTART_GATED_CONTENT_BUCKET_OVERRIDE,
     JUMPSTART_DEFAULT_REGION_NAME,
     JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET,
+    JUMPSTART_LOGGER,
     JUMPSTART_REGION_NAME_SET,
     JUMPSTART_RESOURCE_BASE_NAME,
     JumpStartScriptScope,
 )
-
 from functools import partial
 from sagemaker.jumpstart.enums import JumpStartTag, MIMEType
 from sagemaker.jumpstart.exceptions import (
@@ -1032,6 +1033,23 @@ def test_jumpstart_deprecated_model_warnings(mock_get_manifest):
         )
 
 
+@patch("sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor._get_manifest")
+def test_jumpstart_usage_info_message(mock_get_manifest):
+    mock_get_manifest.return_value = []
+
+    usage_info_message = "This model might change your life."
+
+    def make_info_spec(*largs, **kwargs):
+        spec = get_spec_from_base_spec(model_id="pytorch-eqa-bert-base-cased", version="*")
+        spec.usage_info_message = usage_info_message
+        return spec
+
+    with patch("logging.Logger.info") as mocked_info_log:
+        utils.emit_logs_based_on_model_specs(make_info_spec(), "us-west-2", MOCK_CLIENT)
+
+        mocked_info_log.assert_called_with(usage_info_message)
+
+
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
 def test_jumpstart_vulnerable_model_errors(patched_get_model_specs):
     def make_vulnerable_inference_spec(*largs, **kwargs):
@@ -1052,7 +1070,10 @@ def test_jumpstart_vulnerable_model_errors(patched_get_model_specs):
     assert (
         "Version '*' of JumpStart model 'pytorch-eqa-bert-base-cased' has at least 1 "
         "vulnerable dependency in the inference script. "
-        "Please try targeting a higher version of the model or using a different model. "
+        "We recommend that you specify a more recent model version or "
+        "choose a different model. To access the "
+        "latest models and model versions, be sure to upgrade "
+        "to the latest version of the SageMaker Python SDK. "
         "List of vulnerabilities: some, vulnerability"
     ) == str(e.value.message)
 
@@ -1074,7 +1095,10 @@ def test_jumpstart_vulnerable_model_errors(patched_get_model_specs):
     assert (
         "Version '*' of JumpStart model 'pytorch-eqa-bert-base-cased' has at least 1 "
         "vulnerable dependency in the training script. "
-        "Please try targeting a higher version of the model or using a different model. "
+        "We recommend that you specify a more recent model version or "
+        "choose a different model. To access the "
+        "latest models and model versions, be sure to upgrade "
+        "to the latest version of the SageMaker Python SDK. "
         "List of vulnerabilities: some, vulnerability"
     ) == str(e.value.message)
 
@@ -1470,3 +1494,23 @@ class TestGetJumpstartModelIdVersionFromEndpoint(TestCase):
             "arn:aws:sagemaker:us-west-2:123456789012:endpoint/some-endpoint-name",
             mock_sagemaker_session,
         )
+
+
+class TestJumpStartLogger(TestCase):
+    @patch.dict("os.environ", {})
+    @patch("logging.StreamHandler.emit")
+    @patch("sagemaker.jumpstart.constants.JUMPSTART_LOGGER.propagate", False)
+    def test_logger_normal_mode(self, mocked_emit: Mock):
+
+        JUMPSTART_LOGGER.warning("Self destruct in 3...2...1...")
+
+        mocked_emit.assert_called_once()
+
+    @patch.dict("os.environ", {ENV_VARIABLE_DISABLE_JUMPSTART_LOGGING: "true"})
+    @patch("logging.StreamHandler.emit")
+    @patch("sagemaker.jumpstart.constants.JUMPSTART_LOGGER.propagate", False)
+    def test_logger_disabled(self, mocked_emit: Mock):
+
+        JUMPSTART_LOGGER.warning("Self destruct in 3...2...1...")
+
+        mocked_emit.assert_not_called()

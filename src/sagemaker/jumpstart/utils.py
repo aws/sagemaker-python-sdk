@@ -109,7 +109,8 @@ def get_jumpstart_gated_content_bucket(
     accessors.JumpStartModelsAccessor.set_jumpstart_gated_content_bucket(gated_bucket_to_return)
 
     if gated_bucket_to_return != old_gated_content_bucket:
-        accessors.JumpStartModelsAccessor.reset_cache()
+        if old_gated_content_bucket is not None:
+            accessors.JumpStartModelsAccessor.reset_cache()
         for info_log in info_logs:
             constants.JUMPSTART_LOGGER.info(info_log)
 
@@ -153,7 +154,8 @@ def get_jumpstart_content_bucket(
     accessors.JumpStartModelsAccessor.set_jumpstart_content_bucket(bucket_to_return)
 
     if bucket_to_return != old_content_bucket:
-        accessors.JumpStartModelsAccessor.reset_cache()
+        if old_content_bucket is not None:
+            accessors.JumpStartModelsAccessor.reset_cache()
         for info_log in info_logs:
             constants.JUMPSTART_LOGGER.info(info_log)
     return bucket_to_return
@@ -508,6 +510,9 @@ def emit_logs_based_on_model_specs(
 
     if model_specs.deprecate_warn_message:
         constants.JUMPSTART_LOGGER.warning(model_specs.deprecate_warn_message)
+
+    if model_specs.usage_info_message:
+        constants.JUMPSTART_LOGGER.info(model_specs.usage_info_message)
 
     if model_specs.inference_vulnerable or model_specs.training_vulnerable:
         constants.JUMPSTART_LOGGER.warning(

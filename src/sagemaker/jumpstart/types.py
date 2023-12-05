@@ -341,7 +341,6 @@ class JumpStartSerializablePayload(JumpStartDataHolderType):
         "content_type",
         "accept",
         "body",
-        "generated_text_response_key",
         "prompt_key",
     ]
 
@@ -373,7 +372,6 @@ class JumpStartSerializablePayload(JumpStartDataHolderType):
         self.content_type = json_obj["content_type"]
         self.body = json_obj["body"]
         accept = json_obj.get("accept")
-        self.generated_text_response_key = json_obj.get("generated_text_response_key")
         self.prompt_key = json_obj.get("prompt_key")
         if accept:
             self.accept = accept
@@ -732,6 +730,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         "training_dependencies",
         "training_vulnerabilities",
         "deprecated",
+        "usage_info_message",
         "deprecated_message",
         "deprecate_warn_message",
         "default_inference_instance_type",
@@ -803,6 +802,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         self.deprecated: bool = bool(json_obj["deprecated"])
         self.deprecated_message: Optional[str] = json_obj.get("deprecated_message")
         self.deprecate_warn_message: Optional[str] = json_obj.get("deprecate_warn_message")
+        self.usage_info_message: Optional[str] = json_obj.get("usage_info_message")
         self.default_inference_instance_type: Optional[str] = json_obj.get(
             "default_inference_instance_type"
         )
