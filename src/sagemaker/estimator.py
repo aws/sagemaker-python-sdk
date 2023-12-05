@@ -769,7 +769,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
         self.tensorboard_app = TensorBoardApp(region=self.sagemaker_session.boto_region_name)
 
-        self.enable_remote_debug = enable_remote_debug
+        self._enable_remote_debug = enable_remote_debug
 
     @abstractmethod
     def training_image_uri(self):
@@ -2291,21 +2291,31 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
         _TrainingJob.update(self, profiler_rule_configs, profiler_config_request_dict)
 
-    def update_remote_debug(self, enable_remote_debug: bool):
-        """Update training jobs to enable remote debug.
+    def get_remote_debug_config(self):
+        """dict: Return the configuration of RemoteDebug"""
+        return (
+            None
+            if self._enable_remote_debug is None
+            else {"EnableRemoteDebug": self._enable_remote_debug}
+        )
 
-        This method updates the ``enable_remote_debug`` parameter
+    def enable_remote_debug(self):
+        """Enable remote debug for a training job."""
+        self._update_remote_debug(True)
+
+    def disable_remote_debug(self):
+        """Disable remote debug for a training job."""
+        self._update_remote_debug(False)
+
+    def _update_remote_debug(self, enable_remote_debug: bool):
+        """Update to enable or disable remote debug for a training job.
+
+        This method updates the ``_enable_remote_debug`` parameter
         and enables or disables remote debug for a training job
-
-        Args:
-            enable_remote_debug (bool):
-            Specifies whether RemoteDebug is to be enabled for the training job
         """
         self._ensure_latest_training_job()
-        self.enable_remote_debug = enable_remote_debug
-        _TrainingJob.update(
-            self, remote_debug_config={"EnableRemoteDebug": self.enable_remote_debug}
-        )
+        _TrainingJob.update(self, remote_debug_config={"EnableRemoteDebug": enable_remote_debug})
+        self._enable_remote_debug = enable_remote_debug
 
     def get_app_url(
         self,
@@ -2535,8 +2545,8 @@ class _TrainingJob(_Job):
         if estimator.profiler_config:
             train_args["profiler_config"] = estimator.profiler_config._to_request_dict()
 
-        if estimator.enable_remote_debug is not None:
-            train_args["remote_debug_config"] = {"EnableRemoteDebug": estimator.enable_remote_debug}
+        if estimator.get_remote_debug_config() is not None:
+            train_args["remote_debug_config"] = estimator.get_remote_debug_config()
 
         return train_args
 
