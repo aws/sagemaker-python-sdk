@@ -40,3 +40,6 @@ class HardwareType(Enum):
 
     CPU = 1
     GPU = 2
+    INFERENTIA_1 = 3
+    INFERENTIA_2 = 4
+    GRAVITON = 5
