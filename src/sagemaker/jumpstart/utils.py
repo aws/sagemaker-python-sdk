@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 import logging
 import os
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 from urllib.parse import urlparse
 import boto3
 from packaging.version import Version
@@ -41,7 +41,7 @@ from sagemaker.jumpstart.types import (
 )
 from sagemaker.session import Session
 from sagemaker.config import load_sagemaker_config
-from sagemaker.utils import resolve_value_from_config
+from sagemaker.utils import aws_partition, resolve_value_from_config
 from sagemaker.workflow import is_pipeline_variable
 
 
@@ -757,3 +757,66 @@ def is_valid_model_id(
     if script == enums.JumpStartScriptScope.TRAINING:
         return model_id in model_id_set
     raise ValueError(f"Unsupported script: {script}")
+
+
+def _get_jumpstart_model_id_version_from_resource_arn(
+    resource_arn: str,
+    sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+) -> Tuple[Optional[str], Optional[str]]:
+
+    list_tags_result = sagemaker_session.list_tags(resource_arn)
+
+    model_id: Optional[str] = None
+    model_version: Optional[str] = None
+
+    if tag_key_in_array(enums.JumpStartTag.MODEL_ID, list_tags_result):
+        try:
+            model_id = get_tag_value(enums.JumpStartTag.MODEL_ID, list_tags_result)
+        except KeyError:
+            model_id = None
+
+    if tag_key_in_array(enums.JumpStartTag.MODEL_VERSION, list_tags_result):
+        try:
+            model_version = get_tag_value(enums.JumpStartTag.MODEL_VERSION, list_tags_result)
+        except KeyError:
+            model_version = None
+
+    return model_id, model_version
+
+
+def get_jumpstart_model_id_version_from_training_job(
+    training_job_name: str,
+    sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+) -> Tuple[Optional[str], Optional[str]]:
+    """Inspects tags of training job to return JumpStart model ID and version.
+
+    Returns None if information cannot be inferred.
+    """
+
+    region: str = sagemaker_session.boto_region_name
+    partition: str = aws_partition(region)
+    account_id: str = sagemaker_session.account_id()
+
+    training_job_arn = (
+        f"arn:{partition}:sagemaker:{region}:{account_id}:training-job/{training_job_name}"
+    )
+
+    return _get_jumpstart_model_id_version_from_resource_arn(training_job_arn, sagemaker_session)
+
+
+def get_jumpstart_model_id_version_from_endpoint(
+    endpoint_name: str,
+    sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+) -> Tuple[Optional[str], Optional[str]]:
+    """Inspects tags of endpoint to return JumpStart model ID and version.
+
+    Returns None if information cannot be inferred.
+    """
+
+    region: str = sagemaker_session.boto_region_name
+    partition: str = aws_partition(region)
+    account_id: str = sagemaker_session.account_id()
+
+    endpoint_arn = f"arn:{partition}:sagemaker:{region}:{account_id}:endpoint/{endpoint_name}"
+
+    return _get_jumpstart_model_id_version_from_resource_arn(endpoint_arn, sagemaker_session)

@@ -2,8 +2,11 @@ from __future__ import absolute_import
 import base64
 from unittest import mock
 
-from unittest.mock import patch
+from unittest.mock import Mock, patch
+
+import pytest
 from sagemaker.deserializers import JSONDeserializer
+from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 from sagemaker.jumpstart.enums import MIMEType
 
 from sagemaker import predictor
@@ -38,6 +41,74 @@ def test_jumpstart_predictor_support(
 
     assert isinstance(js_predictor.deserializer, JSONDeserializer)
     assert js_predictor.accept == MIMEType.JSON
+
+
+@patch("sagemaker.predictor.Predictor")
+@patch("sagemaker.predictor.get_default_predictor")
+@patch("sagemaker.predictor.get_jumpstart_model_id_version_from_endpoint")
+@patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
+@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+def test_jumpstart_predictor_support_no_model_id_supplied_happy_case(
+    patched_get_model_specs,
+    patched_verify_model_region_and_return_specs,
+    patched_get_jumpstart_model_id_version_from_endpoint,
+    patched_get_default_predictor,
+    patched_predictor,
+):
+
+    patched_verify_model_region_and_return_specs.side_effect = verify_model_region_and_return_specs
+    patched_get_model_specs.side_effect = get_special_model_spec
+
+    patched_get_jumpstart_model_id_version_from_endpoint.return_value = (
+        "predictor-specs-model",
+        "1.2.3",
+    )
+
+    mock_session = Mock()
+
+    predictor.retrieve_default(endpoint_name="blah", sagemaker_session=mock_session)
+
+    patched_get_jumpstart_model_id_version_from_endpoint.assert_called_once_with(
+        endpoint_name="blah", sagemaker_session=mock_session
+    )
+
+    patched_get_default_predictor.assert_called_once_with(
+        predictor=patched_predictor.return_value,
+        model_id="predictor-specs-model",
+        model_version="1.2.3",
+        region=None,
+        tolerate_deprecated_model=False,
+        tolerate_vulnerable_model=False,
+        sagemaker_session=mock_session,
+    )
+
+
+@patch("sagemaker.predictor.get_default_predictor")
+@patch("sagemaker.predictor.get_jumpstart_model_id_version_from_endpoint")
+@patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
+@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+def test_jumpstart_predictor_support_no_model_id_supplied_sad_case(
+    patched_get_model_specs,
+    patched_verify_model_region_and_return_specs,
+    patched_get_jumpstart_model_id_version_from_endpoint,
+    patched_get_default_predictor,
+):
+
+    patched_verify_model_region_and_return_specs.side_effect = verify_model_region_and_return_specs
+    patched_get_model_specs.side_effect = get_special_model_spec
+
+    # no JS tags attached to endpoint
+    patched_get_jumpstart_model_id_version_from_endpoint.return_value = (None, None)
+
+    with pytest.raises(ValueError):
+        predictor.retrieve_default(
+            endpoint_name="blah",
+        )
+
+    patched_get_jumpstart_model_id_version_from_endpoint.assert_called_once_with(
+        endpoint_name="blah", sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+    )
+    patched_get_default_predictor.assert_not_called()
 
 
 @patch("sagemaker.jumpstart.payload_utils.JumpStartS3PayloadAccessor.get_object_cached")

@@ -34,6 +34,7 @@ from sagemaker.jumpstart.exceptions import INVALID_MODEL_ID_ERROR_MSG
 from sagemaker.jumpstart.factory.estimator import get_deploy_kwargs, get_fit_kwargs, get_init_kwargs
 from sagemaker.jumpstart.factory.model import get_default_predictor
 from sagemaker.jumpstart.utils import (
+    get_jumpstart_model_id_version_from_training_job,
     is_valid_model_id,
     resolve_model_sagemaker_config_field,
 )
@@ -664,8 +665,8 @@ class JumpStartEstimator(Estimator):
     def attach(
         cls,
         training_job_name: str,
-        model_id: str,
-        model_version: str = "*",
+        model_id: Optional[str] = None,
+        model_version: Optional[str] = None,
         sagemaker_session: session.Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
         model_channel_name: str = "model",
     ) -> "JumpStartEstimator":
@@ -708,6 +709,20 @@ class JumpStartEstimator(Estimator):
             Instance of the calling ``JumpStartEstimator`` Class with the attached
             training job.
         """
+
+        if model_id is None:
+            model_id, inferred_model_version = get_jumpstart_model_id_version_from_training_job(
+                training_job_name=training_job_name,
+                sagemaker_session=sagemaker_session,
+            )
+            model_version = model_version or inferred_model_version
+            if not model_id:
+                raise ValueError(
+                    f"Cannot infer JumpStart model ID from training job '{training_job_name}'. "
+                    "Please specify JumpStart `model_id` when retrieving Estimator for this training job."
+                )
+
+        model_version = model_version or "*"
 
         return cls._attach(
             training_job_name=training_job_name,

@@ -17,7 +17,9 @@ from typing import Optional
 from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 
 from sagemaker.jumpstart.factory.model import get_default_predictor
-from sagemaker.jumpstart.utils import is_jumpstart_model_input
+from sagemaker.jumpstart.utils import (
+    get_jumpstart_model_id_version_from_endpoint,
+)
 
 from sagemaker.session import Session
 
@@ -66,11 +68,19 @@ def retrieve_default(
         ValueError: If the combination of arguments specified is not supported.
     """
 
-    if not is_jumpstart_model_input(model_id, model_version):
-        raise ValueError(
-            "Must specify JumpStart `model_id` and `model_version` "
-            "when retrieving default predictor."
+    if model_id is None:
+        model_id, inferred_model_version = get_jumpstart_model_id_version_from_endpoint(
+            endpoint_name=endpoint_name,
+            sagemaker_session=sagemaker_session,
         )
+        model_version = model_version or inferred_model_version
+        if not model_id:
+            raise ValueError(
+                f"Cannot infer JumpStart model ID from endpoint '{endpoint_name}'. "
+                "Please specify JumpStart `model_id` when retrieving default predictor for this endpoint."
+            )
+
+    model_version = model_version or "*"
 
     predictor = Predictor(endpoint_name=endpoint_name, sagemaker_session=sagemaker_session)
 
