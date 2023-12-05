@@ -383,8 +383,14 @@ class ListJumpStartModels(TestCase):
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @patch("sagemaker.jumpstart.notebook_utils.get_sagemaker_version")
-    def test_list_jumpstart_models_unsupported_models(
+    @patch("sagemaker.jumpstart.notebook_utils.accessors.JumpStartModelsAccessor.reset_cache")
+    @patch.dict("os.environ", {})
+    @patch("logging.StreamHandler.emit")
+    @patch("sagemaker.jumpstart.constants.JUMPSTART_LOGGER.propagate", False)
+    def test_list_jumpstart_models_disables_logging_resets_cache(
         self,
+        patched_emit: Mock,
+        patched_reset_cache: Mock,
         patched_get_sagemaker_version: Mock,
         patched_get_model_specs: Mock,
         patched_get_manifest: Mock,
@@ -392,25 +398,12 @@ class ListJumpStartModels(TestCase):
         patched_get_model_specs.side_effect = get_prototype_model_spec
         patched_get_manifest.side_effect = get_prototype_manifest
 
-        patched_get_sagemaker_version.return_value = "0.0.0"
+        patched_get_sagemaker_version.return_value = "3.0.0"
 
-        assert [] == list_jumpstart_models("supported_model == True")
-        patched_get_model_specs.assert_not_called()
-        assert [] == list_jumpstart_models(
-            And("supported_model == True", "training_supported in [False, True]")
-        )
-        patched_get_model_specs.assert_not_called()
+        list_jumpstart_models("deprecate_warn_message is blah")
 
-        assert [] != list_jumpstart_models("supported_model == False")
-
-        patched_get_sagemaker_version.return_value = "999999.0.0"
-
-        assert [] != list_jumpstart_models("supported_model == True")
-
-        patched_get_model_specs.reset_mock()
-
-        assert [] != list_jumpstart_models("training_supported in [False, True]")
-        patched_get_model_specs.assert_called()
+        patched_emit.assert_not_called()
+        patched_reset_cache.assert_called_once()
 
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")

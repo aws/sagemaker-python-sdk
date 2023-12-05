@@ -259,7 +259,11 @@ class DummyFrameworkModel(FrameworkModel):
         return None
 
     def prepare_container_def(
-        self, instance_type, accelerator_type=None, serverless_inference_config=None
+        self,
+        instance_type,
+        accelerator_type=None,
+        serverless_inference_config=None,
+        accept_eula=None,
     ):
         return MODEL_CONTAINER_DEF
 

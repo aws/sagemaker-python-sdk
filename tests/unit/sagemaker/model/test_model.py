@@ -287,7 +287,7 @@ def test_create_sagemaker_model(prepare_container_def, sagemaker_session):
     model._create_sagemaker_model()
 
     prepare_container_def.assert_called_with(
-        None, accelerator_type=None, serverless_inference_config=None
+        None, accelerator_type=None, serverless_inference_config=None, accept_eula=None
     )
     sagemaker_session.create_model.assert_called_with(
         name=MODEL_NAME,
@@ -305,7 +305,7 @@ def test_create_sagemaker_model_instance_type(prepare_container_def, sagemaker_s
     model._create_sagemaker_model(INSTANCE_TYPE)
 
     prepare_container_def.assert_called_with(
-        INSTANCE_TYPE, accelerator_type=None, serverless_inference_config=None
+        INSTANCE_TYPE, accelerator_type=None, serverless_inference_config=None, accept_eula=None
     )
 
 
@@ -317,7 +317,40 @@ def test_create_sagemaker_model_accelerator_type(prepare_container_def, sagemake
     model._create_sagemaker_model(INSTANCE_TYPE, accelerator_type=accelerator_type)
 
     prepare_container_def.assert_called_with(
-        INSTANCE_TYPE, accelerator_type=accelerator_type, serverless_inference_config=None
+        INSTANCE_TYPE,
+        accelerator_type=accelerator_type,
+        serverless_inference_config=None,
+        accept_eula=None,
+    )
+
+
+@patch("sagemaker.model.Model.prepare_container_def")
+def test_create_sagemaker_model_with_eula(prepare_container_def, sagemaker_session):
+    model = Model(MODEL_IMAGE, MODEL_DATA, name=MODEL_NAME, sagemaker_session=sagemaker_session)
+
+    accelerator_type = "ml.eia.medium"
+    model.create(INSTANCE_TYPE, accelerator_type=accelerator_type, accept_eula=True)
+
+    prepare_container_def.assert_called_with(
+        INSTANCE_TYPE,
+        accelerator_type=accelerator_type,
+        serverless_inference_config=None,
+        accept_eula=True,
+    )
+
+
+@patch("sagemaker.model.Model.prepare_container_def")
+def test_create_sagemaker_model_with_eula_false(prepare_container_def, sagemaker_session):
+    model = Model(MODEL_IMAGE, MODEL_DATA, name=MODEL_NAME, sagemaker_session=sagemaker_session)
+
+    accelerator_type = "ml.eia.medium"
+    model.create(INSTANCE_TYPE, accelerator_type=accelerator_type, accept_eula=False)
+
+    prepare_container_def.assert_called_with(
+        INSTANCE_TYPE,
+        accelerator_type=accelerator_type,
+        serverless_inference_config=None,
+        accept_eula=False,
     )
 
 

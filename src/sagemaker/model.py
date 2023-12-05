@@ -559,6 +559,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
         accelerator_type: Optional[str] = None,
         serverless_inference_config: Optional[ServerlessInferenceConfig] = None,
         tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+        accept_eula: Optional[bool] = None,
     ):
         """Create a SageMaker Model Entity
 
@@ -582,6 +583,11 @@ class Model(ModelBase, InferenceRecommenderMixin):
                 For more information about tags, see
                 `boto3 documentation <https://boto3.amazonaws.com/v1/documentation/\
 api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
+            accept_eula (bool): For models that require a Model Access Config, specify True or
+                False to indicate whether model terms of use have been accepted.
+                The `accept_eula` value must be explicitly defined as `True` in order to
+                accept the end-user license agreement (EULA) that some
+                models require. (Default: None).
 
         Returns:
             None or pipeline step arguments in case the Model instance is built with
@@ -593,6 +599,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             accelerator_type=accelerator_type,
             tags=tags,
             serverless_inference_config=serverless_inference_config,
+            accept_eula=accept_eula,
         )
 
     def _init_sagemaker_session_if_does_not_exist(self, instance_type=None):
@@ -613,6 +620,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         instance_type=None,
         accelerator_type=None,
         serverless_inference_config=None,
+        accept_eula=None,
     ):  # pylint: disable=unused-argument
         """Return a dict created by ``sagemaker.container_def()``.
 
@@ -630,6 +638,11 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
                 Specifies configuration related to serverless endpoint. Instance type is
                 not provided in serverless inference. So this is used to find image URIs.
+            accept_eula (bool): For models that require a Model Access Config, specify True or
+                False to indicate whether model terms of use have been accepted.
+                The `accept_eula` value must be explicitly defined as `True` in order to
+                accept the end-user license agreement (EULA) that some
+                models require. (Default: None).
 
         Returns:
             dict: A container definition object usable with the CreateModel API.
@@ -647,7 +660,9 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             self.repacked_model_data or self.model_data,
             deploy_env,
             image_config=self.image_config,
-            accept_eula=getattr(self, "accept_eula", None),
+            accept_eula=accept_eula
+            if accept_eula is not None
+            else getattr(self, "accept_eula", None),
         )
 
     def is_repack(self) -> bool:
@@ -789,6 +804,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         accelerator_type=None,
         tags=None,
         serverless_inference_config=None,
+        accept_eula=None,
     ):
         """Create a SageMaker Model Entity
 
@@ -808,6 +824,11 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
                 Specifies configuration related to serverless endpoint. Instance type is
                 not provided in serverless inference. So this is used to find image URIs.
+            accept_eula (bool): For models that require a Model Access Config, specify True or
+                False to indicate whether model terms of use have been accepted.
+                The `accept_eula` value must be explicitly defined as `True` in order to
+                accept the end-user license agreement (EULA) that some
+                models require. (Default: None).
         """
         if self.model_package_arn is not None or self.algorithm_arn is not None:
             model_package = ModelPackage(
@@ -838,6 +859,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 instance_type,
                 accelerator_type=accelerator_type,
                 serverless_inference_config=serverless_inference_config,
+                accept_eula=accept_eula,
             )
 
             if not isinstance(self.sagemaker_session, PipelineSession):
@@ -1459,7 +1481,12 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 "serverless_inference_config needs to be a ServerlessInferenceConfig object"
             )
 
-        if instance_type and instance_type.startswith("ml.inf") and not self._is_compiled_model:
+        if (
+            getattr(self, "model_id", None) in {"", None}
+            and instance_type
+            and instance_type.startswith("ml.inf")
+            and not self._is_compiled_model
+        ):
             LOGGER.warning(
                 "Your model is not compiled. Please compile your model before using Inferentia."
             )
