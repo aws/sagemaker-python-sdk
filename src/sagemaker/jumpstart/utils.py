@@ -768,6 +768,10 @@ def _get_jumpstart_model_id_version_from_resource_arn(
     resource_arn: str,
     sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> Tuple[Optional[str], Optional[str]]:
+    """Returns the JumpStart model ID and version if in resource tags.
+
+    Returns None if model ID or version cannot be inferred from tags.
+    """
 
     list_tags_result = sagemaker_session.list_tags(resource_arn)
 

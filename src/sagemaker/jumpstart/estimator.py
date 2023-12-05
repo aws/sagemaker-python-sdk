@@ -719,7 +719,8 @@ class JumpStartEstimator(Estimator):
             if not model_id:
                 raise ValueError(
                     f"Cannot infer JumpStart model ID from training job '{training_job_name}'. "
-                    "Please specify JumpStart `model_id` when retrieving Estimator for this training job."
+                    "Please specify JumpStart `model_id` when retrieving Estimator "
+                    "for this training job."
                 )
 
         model_version = model_version or "*"

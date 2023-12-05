@@ -77,7 +77,8 @@ def retrieve_default(
         if not model_id:
             raise ValueError(
                 f"Cannot infer JumpStart model ID from endpoint '{endpoint_name}'. "
-                "Please specify JumpStart `model_id` when retrieving default predictor for this endpoint."
+                "Please specify JumpStart `model_id` when retrieving default "
+                "predictor for this endpoint."
             )
 
     model_version = model_version or "*"
