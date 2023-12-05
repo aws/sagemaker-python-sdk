@@ -71,6 +71,7 @@ class DJLPredictor(Predictor):
         sagemaker_session: Session = None,
         serializer: BaseSerializer = JSONSerializer(),
         deserializer: BaseDeserializer = JSONDeserializer(),
+        component_name=None,
     ):
         """Initialize a ``DJLPredictor``
 
@@ -85,12 +86,15 @@ class DJLPredictor(Predictor):
                 serializes input data to json format.
             deserializer (sagemaker.deserializers.BaseDeserializer): Optional.
                 Default parses the response from json format to dictionary.
+            component_name (str): Optional. Name of the Amazon SageMaker inference
+                component corresponding the predictor.
         """
         super(DJLPredictor, self).__init__(
             endpoint_name,
             sagemaker_session,
             serializer=serializer,
             deserializer=deserializer,
+            component_name=component_name,
         )
 
 
@@ -164,7 +168,7 @@ def _get_model_config_properties_from_s3(model_s3_uri: str, sagemaker_session: S
     return model_config
 
 
-def _get_model_config_properties_from_hf(model_id: str):
+def _get_model_config_properties_from_hf(model_id: str, hf_hub_token: str = None):
     """Placeholder docstring"""
 
     config_url_prefix = f"https://huggingface.co/{model_id}/raw/main/"
@@ -172,10 +176,19 @@ def _get_model_config_properties_from_hf(model_id: str):
     for config in defaults.VALID_MODEL_CONFIG_FILES:
         config_file_url = config_url_prefix + config
         try:
+            if hf_hub_token:
+                config_file_url = urllib.request.Request(
+                    config_file_url, None, {"Authorization": "Bearer " + hf_hub_token}
+                )
             with urllib.request.urlopen(config_file_url) as response:
                 model_config = json.load(response)
                 break
         except (HTTPError, URLError, TimeoutError, JSONDecodeError) as e:
+            if "HTTP Error 401: Unauthorized" in str(e):
+                raise ValueError(
+                    "Trying to access a gated/private HuggingFace model without valid credentials. "
+                    "Please provide a HUGGING_FACE_HUB_TOKEN in env_vars"
+                )
             logger.warning(
                 "Exception encountered while trying to read config file %s. " "Details: %s",
                 config_file_url,
@@ -247,7 +260,6 @@ class DJLModel(FrameworkModel):
         **kwargs,
     ):  # pylint: disable=W0613
         """Create a specific subclass of DJLModel for a given engine"""
-
         if model_id.endswith("tar.gz"):
             raise ValueError(
                 "DJLModel does not support model artifacts in tar.gz format."
@@ -258,7 +270,8 @@ class DJLModel(FrameworkModel):
             sagemaker_session = kwargs.get("sagemaker_session")
             model_config = _get_model_config_properties_from_s3(model_id, sagemaker_session)
         else:
-            model_config = _get_model_config_properties_from_hf(model_id)
+            hf_hub_token = kwargs.get("hf_hub_token")
+            model_config = _get_model_config_properties_from_hf(model_id, hf_hub_token)
         if model_config.get("_class_name") == "StableDiffusionPipeline":
             model_type = defaults.STABLE_DIFFUSION_MODEL_TYPE
             num_heads = 0
@@ -372,7 +385,8 @@ class DJLModel(FrameworkModel):
             :class:`~sagemaker.djl_inference.DeepSpeedModel` or
             :class:`~sagemaker.djl_inference.HuggingFaceAccelerateModel`
         """
-
+        if "hf_hub_token" in kwargs:
+            kwargs.pop("hf_hub_token")
         if kwargs.get("model_data"):
             logger.warning(
                 "DJLModels do not use model_data parameter. model_data parameter will be ignored."
@@ -563,6 +577,7 @@ class DJLModel(FrameworkModel):
         volume_size=None,
         model_data_download_timeout=None,
         container_startup_health_check_timeout=None,
+        **kwargs,
     ):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
 
@@ -643,6 +658,7 @@ class DJLModel(FrameworkModel):
             volume_size=volume_size,
             model_data_download_timeout=model_data_download_timeout,
             container_startup_health_check_timeout=container_startup_health_check_timeout,
+            **kwargs,
         )
 
     def _upload_model_to_s3(self, upload_as_tar: bool = True):
@@ -725,7 +741,11 @@ class DJLModel(FrameworkModel):
             CreateModel API.
         """
 
-        return self._upload_model_to_s3(upload_as_tar=True)
+        if not self.model_data and not isinstance(self.model_data, dict):
+            return self._upload_model_to_s3(upload_as_tar=True)
+        return super().prepare_container_def(
+            instance_type, accelerator_type, serverless_inference_config
+        )
 
     def generate_serving_properties(self, serving_properties=None) -> Dict[str, str]:
         """Generates the DJL Serving configuration to use for the model.
@@ -864,7 +884,8 @@ class DeepSpeedModel(DJLModel):
             :class:`~sagemaker.model.FrameworkModel`, and
             :class:`~sagemaker.model.Model`.
         """
-
+        if "hf_hub_token" in kwargs:
+            kwargs.pop("hf_hub_token")
         super(DeepSpeedModel, self).__init__(
             model_id,
             role,
@@ -1051,7 +1072,8 @@ class HuggingFaceAccelerateModel(DJLModel):
             :class:`~sagemaker.model.FrameworkModel`, and
             :class:`~sagemaker.model.Model`.
         """
-
+        if "hf_hub_token" in kwargs:
+            kwargs.pop("hf_hub_token")
         super(HuggingFaceAccelerateModel, self).__init__(
             model_id,
             role,
@@ -1211,7 +1233,8 @@ class FasterTransformerModel(DJLModel):
             :class:`~sagemaker.model.FrameworkModel`, and
             :class:`~sagemaker.model.Model`.
         """
-
+        if "hf_hub_token" in kwargs:
+            kwargs.pop("hf_hub_token")
         super(FasterTransformerModel, self).__init__(
             model_id,
             role,

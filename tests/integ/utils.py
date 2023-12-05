@@ -12,12 +12,14 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 import logging
+import shutil
 from functools import wraps
 
 from botocore.exceptions import ClientError
 
 from tests.conftest import NO_P3_REGIONS, NO_M4_REGIONS
 from sagemaker.exceptions import CapacityError
+from sagemaker.session import Session
 
 P2_INSTANCES = ["ml.p2.xlarge", "ml.p2.8xlarge", "ml.p2.16xlarge"]
 P3_INSTANCES = ["ml.p3.2xlarge"]
@@ -92,3 +94,23 @@ def create_repository(ecr_client, repository_name):
             return response["repositories"][0]["repositoryUri"]
         else:
             raise
+
+
+# takes functions attached to a predictor, model, etc where the
+# resource names are available via class variables
+# delete in the order of creation to avoid floating resources
+def cleanup_model_resources(sagemaker_session: Session, model_name: str, endpoint_name: str):
+    try:
+        sagemaker_session.delete_model(model_name=model_name)
+        sagemaker_session.delete_endpoint_config(endpoint_config_name=endpoint_name)
+        sagemaker_session.delete_endpoint(endpoint_name=endpoint_name)
+    except Exception:
+        return
+
+
+# takes a path which need to be deleted
+def cleanup_dir(path: str):
+    try:
+        shutil.rmtree(path)
+    except Exception:
+        return

@@ -75,6 +75,7 @@ DUMMY_S3_SCRIPT_PATH = "s3://dummy-s3/dummy_script.py"
 MOCKED_PIPELINE_CONFIG = _PipelineConfig(
     "MyPipeline",
     "MyTrainingStep",
+    None,
     hash_files_or_dirs([LOCAL_SOURCE_DIR] + LOCAL_DEPS),
     "config-hash-abcdefg",
     None,
@@ -84,6 +85,7 @@ _DEFINITION_CONFIG = PipelineDefinitionConfig(use_custom_job_prefix=True)
 MOCKED_PIPELINE_CONFIG_WITH_CUSTOM_PREFIX = _PipelineConfig(
     "MyPipelineWithCustomPrefix",
     "MyProcessingStep",
+    None,
     None,
     None,
     _DEFINITION_CONFIG,

@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 import os
+import sys
 import tarfile
 
 import boto3
@@ -23,8 +24,10 @@ import tempfile
 import stopit
 
 import tests.integ.lock as lock
+from tests.integ.sagemaker.conftest import _build_container, DOCKERFILE_TEMPLATE
 from sagemaker.config import SESSION_DEFAULT_S3_BUCKET_PATH
 from sagemaker.utils import resolve_value_from_config
+from sagemaker.workflow.function_step import step
 from tests.integ import DATA_DIR
 from mock import Mock, ANY
 
@@ -40,7 +43,11 @@ from sagemaker.workflow.model_step import ModelStep
 from sagemaker.workflow.parameters import ParameterInteger, ParameterString
 from sagemaker.workflow.condition_step import ConditionStep
 from sagemaker.workflow.fail_step import FailStep
-from sagemaker.workflow.conditions import ConditionLessThanOrEqualTo
+from sagemaker.workflow.conditions import (
+    ConditionLessThanOrEqualTo,
+    ConditionGreaterThan,
+    ConditionEquals,
+)
 from sagemaker.workflow.functions import JsonGet, PropertyFile, Join
 from sagemaker.workflow.pipeline_context import LocalPipelineSession
 from sagemaker.local import LocalSession, LocalSagemakerRuntimeClient, LocalSagemakerClient
@@ -58,7 +65,7 @@ class LocalNoS3Session(LocalSession):
     """
 
     def __init__(self):
-        super(LocalSession, self).__init__()
+        super(LocalNoS3Session, self).__init__()
 
     def _initialize(self, boto_session, sagemaker_client, sagemaker_runtime_client, **kwargs):
         self.boto_session = boto3.Session(region_name=DEFAULT_REGION)
@@ -86,7 +93,7 @@ class LocalPipelineNoS3Session(LocalPipelineSession):
     """
 
     def __init__(self):
-        super(LocalPipelineSession, self).__init__()
+        super(LocalPipelineNoS3Session, self).__init__()
 
     def _initialize(self, boto_session, sagemaker_client, sagemaker_runtime_client, **kwargs):
         self.boto_session = boto3.Session(region_name=DEFAULT_REGION)
@@ -732,12 +739,243 @@ def test_local_pipeline_with_eval_cond_fail_steps(sklearn_image_uri, local_pipel
 
     pipeline_execution_list_steps_result = execution.list_steps()
     assert len(pipeline_execution_list_steps_result["PipelineExecutionSteps"]) == 3
-    for step in pipeline_execution_list_steps_result["PipelineExecutionSteps"]:
-        if step["StepName"] == "mxnet_mnist_eval":
-            assert step["StepStatus"] == "Succeeded"
-        elif step["StepName"] == "mxnet_mnist_condition":
-            assert step["StepStatus"] == "Succeeded"
-            assert step["Metadata"]["Condition"]["Outcome"] is True
+    for exe_step in pipeline_execution_list_steps_result["PipelineExecutionSteps"]:
+        if exe_step["StepName"] == "mxnet_mnist_eval":
+            assert exe_step["StepStatus"] == "Succeeded"
+        elif exe_step["StepName"] == "mxnet_mnist_condition":
+            assert exe_step["StepStatus"] == "Succeeded"
+            assert exe_step["Metadata"]["Condition"]["Outcome"] is True
         else:
-            assert step["StepStatus"] == "Failed"
-            assert step["FailureReason"] == "F1 score too low:0.7"
+            assert exe_step["StepStatus"] == "Failed"
+            assert exe_step["FailureReason"] == "F1 score too low:0.7"
+
+
+@pytest.fixture(scope="module")
+def dummy_container(sagemaker_session):
+    compatible_python_version = "{}.{}".format(sys.version_info.major, sys.version_info.minor)
+    ecr_uri = _build_container(sagemaker_session, compatible_python_version, DOCKERFILE_TEMPLATE)
+    return ecr_uri
+
+
+@pytest.mark.local_mode
+def test_local_pipeline_with_step_decorator_and_step_dependency(
+    local_pipeline_session, dummy_container
+):
+    step_settings = dict(
+        role="SageMakerRole",
+        instance_type="ml.m5.xlarge",
+        image_uri=dummy_container,
+        keep_alive_period_in_seconds=60,
+    )
+
+    @step(**step_settings)
+    def generator() -> tuple:
+        return 3, 4
+
+    @step(**step_settings)
+    def sum(a, b):
+        """adds two numbers"""
+        return a + b
+
+    step_output_a = generator()
+    step_output_b = sum(step_output_a[0], step_output_a[1])
+
+    pipeline = Pipeline(
+        name="local_pipeline_step_decorator",
+        steps=[step_output_b],
+        sagemaker_session=local_pipeline_session,
+    )
+
+    pipeline.create("SageMakerRole", "pipeline for sdk integ testing")
+
+    with lock.lock(LOCK_PATH):
+        execution = pipeline.start()
+
+    pipeline_execution_describe_result = execution.describe()
+    assert not pipeline_execution_describe_result.get("FailureReason", None)
+    assert pipeline_execution_describe_result["PipelineExecutionStatus"] == "Succeeded"
+
+    pipeline_execution_list_steps_result = execution.list_steps()
+    assert len(pipeline_execution_list_steps_result["PipelineExecutionSteps"]) == 2
+
+
+@pytest.mark.local_mode
+def test_local_pipeline_with_step_decorator_and_pre_exe_script(
+    local_pipeline_session, dummy_container
+):
+    step_settings = dict(
+        role="SageMakerRole",
+        instance_type="local",
+        image_uri=dummy_container,
+        keep_alive_period_in_seconds=60,
+        pre_execution_script=os.path.join(DATA_DIR, "workflow", "pre_exec_commands"),
+    )
+
+    @step(**step_settings)
+    def validate_file_exists(files_exists, files_does_not_exist):
+        for file_name in files_exists:
+            if not os.path.exists(file_name):
+                raise ValueError(f"file {file_name} should exist")
+
+        for file_name in files_does_not_exist:
+            if os.path.exists(file_name):
+                raise ValueError(f"file {file_name} should not exist")
+
+    step_output_a = validate_file_exists(["test_file_1", "test_file_3"], ["test_file_2"])
+
+    pipeline = Pipeline(
+        name="local_pipeline_step_decorator_with_pre_exe_script",
+        steps=[step_output_a],
+        sagemaker_session=local_pipeline_session,
+    )
+
+    pipeline.create("SageMakerRole", "pipeline for sdk integ testing")
+
+    with lock.lock(LOCK_PATH):
+        execution = pipeline.start()
+
+    pipeline_execution_describe_result = execution.describe()
+    assert not pipeline_execution_describe_result.get("FailureReason", None)
+    assert pipeline_execution_describe_result["PipelineExecutionStatus"] == "Succeeded"
+
+    pipeline_execution_list_steps_result = execution.list_steps()
+    assert len(pipeline_execution_list_steps_result["PipelineExecutionSteps"]) == 1
+
+
+@pytest.mark.local_mode
+def test_local_pipeline_with_step_decorator_and_condition_step(
+    local_pipeline_session, dummy_container
+):
+    step_settings = dict(
+        role="SageMakerRole",
+        instance_type="local",
+        image_uri=dummy_container,
+        keep_alive_period_in_seconds=60,
+    )
+
+    @step(**step_settings)
+    def left_condition() -> tuple:
+        return 1, 2, 3
+
+    @step(**step_settings)
+    def if_step():
+        return "In if branch"
+
+    @step(**step_settings)
+    def else_step():
+        return "In else branch"
+
+    step_output = left_condition()
+
+    if_step_output = if_step()
+    else_step_output = else_step()
+
+    cond_gt = ConditionGreaterThan(left=step_output[1], right=1)
+    cond_step = ConditionStep(
+        name="MyConditionStep",
+        conditions=[cond_gt],
+        if_steps=[if_step_output],
+        else_steps=[else_step_output],
+    )
+
+    pipeline = Pipeline(
+        name="local_pipeline_step_decorator_with_json_get_and_cond_step",
+        steps=[cond_step, step_output],
+        sagemaker_session=local_pipeline_session,
+    )
+
+    pipeline.create("SageMakerRole", "pipeline for sdk integ testing")
+
+    with lock.lock(LOCK_PATH):
+        execution = pipeline.start()
+
+    pipeline_execution_describe_result = execution.describe()
+    assert not pipeline_execution_describe_result.get("FailureReason", None)
+    assert pipeline_execution_describe_result["PipelineExecutionStatus"] == "Succeeded"
+
+    pipeline_execution_list_steps_result = execution.list_steps()
+    assert len(pipeline_execution_list_steps_result["PipelineExecutionSteps"]) == 3
+
+    for exe_step_result in pipeline_execution_list_steps_result["PipelineExecutionSteps"]:
+        assert exe_step_result["StepStatus"] == "Succeeded"
+        if exe_step_result["StepName"] == cond_step.name:
+            assert exe_step_result["Metadata"]["Condition"]["Outcome"] is True
+
+
+def test_local_pipeline_with_step_decorator_data_referenced_by_other_steps(
+    local_pipeline_session,
+    dummy_container,
+    sklearn_latest_version,
+):
+    processing_job_instance_counts = 2
+
+    @step(
+        name="step1",
+        image_uri=dummy_container,
+        role="SageMakerRole",
+        instance_type="ml.m5.xlarge",
+        keep_alive_period_in_seconds=60,
+    )
+    def func(var: int):
+        return 1, var
+
+    step_output = func(processing_job_instance_counts)
+
+    script_path = os.path.join(DATA_DIR, "dummy_script.py")
+    input_file_path = os.path.join(DATA_DIR, "dummy_input.txt")
+    inputs = [
+        ProcessingInput(source=input_file_path, destination="/opt/ml/processing/inputs/"),
+    ]
+
+    sklearn_processor = SKLearnProcessor(
+        framework_version=sklearn_latest_version,
+        role="SageMakerRole",
+        instance_type="local",
+        instance_count=step_output[1],
+        command=["python3"],
+        sagemaker_session=local_pipeline_session,
+        base_job_name="test-sklearn",
+    )
+
+    step_args = sklearn_processor.run(
+        inputs=inputs,
+        code=script_path,
+    )
+    process_step = ProcessingStep(
+        name="MyProcessStep",
+        step_args=step_args,
+    )
+
+    cond_eq = ConditionEquals(
+        left=process_step.properties.ProcessingResources.ClusterConfig.InstanceCount,
+        right=processing_job_instance_counts,
+    )
+    cond_step = ConditionStep(
+        name="MyConditionStep",
+        conditions=[cond_eq],
+        if_steps=[],
+        else_steps=[],
+    )
+
+    pipeline = Pipeline(
+        name="Local_Pipeline_step_decorator_with_json_get_and_proc_step",
+        steps=[cond_step],
+        sagemaker_session=local_pipeline_session,
+    )
+
+    pipeline.create("SageMakerRole", "pipeline for sdk integ testing")
+
+    with lock.lock(LOCK_PATH):
+        execution = pipeline.start()
+
+    pipeline_execution_describe_result = execution.describe()
+    assert not pipeline_execution_describe_result.get("FailureReason", None)
+    assert pipeline_execution_describe_result["PipelineExecutionStatus"] == "Succeeded"
+
+    pipeline_execution_list_steps_result = execution.list_steps()
+    assert len(pipeline_execution_list_steps_result["PipelineExecutionSteps"]) == 3
+
+    for exe_step_result in pipeline_execution_list_steps_result["PipelineExecutionSteps"]:
+        assert exe_step_result["StepStatus"] == "Succeeded"
+        if exe_step_result["StepName"] == cond_step.name:
+            assert exe_step_result["Metadata"]["Condition"]["Outcome"] is True

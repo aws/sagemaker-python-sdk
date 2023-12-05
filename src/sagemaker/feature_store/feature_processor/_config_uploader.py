@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 """Contains classes for preparing and uploading configs for a scheduled feature processor."""
 from __future__ import absolute_import
-from typing import Callable, Dict, Optional, Tuple, List
+from typing import Callable, Dict, Optional, Tuple, List, Union
 
 import attr
 
@@ -26,7 +26,7 @@ from sagemaker.feature_store.feature_processor._constants import (
 from sagemaker.inputs import TrainingInput
 from sagemaker.remote_function.core.stored_function import StoredFunction
 from sagemaker.remote_function.job import (
-    _prepare_and_upload_dependencies,
+    _prepare_and_upload_workspace,
     _prepare_and_upload_runtime_scripts,
     _JobSettings,
     RUNTIME_SCRIPTS_CHANNEL_NAME,
@@ -38,6 +38,7 @@ from sagemaker.remote_function.runtime_environment.runtime_environment_manager i
     RuntimeEnvironmentManager,
 )
 from sagemaker.remote_function.spark_config import SparkConfig
+from sagemaker.remote_function.custom_file_filter import CustomFileFilter
 from sagemaker.s3 import s3_path_join
 
 
@@ -62,7 +63,7 @@ class ConfigUploader:
         dependencies_list_path = self.runtime_env_manager.snapshot(
             self.remote_decorator_config.dependencies
         )
-        user_dependencies_s3uri = self._prepare_and_upload_dependencies(
+        user_workspace_s3uri = self._prepare_and_upload_workspace(
             dependencies_list_path,
             self.remote_decorator_config.include_local_workdir,
             self.remote_decorator_config.pre_execution_commands,
@@ -92,7 +93,7 @@ class ConfigUploader:
                 distribution=S3_DATA_DISTRIBUTION_TYPE,
             )
         }
-        if user_dependencies_s3uri:
+        if user_workspace_s3uri:
             input_data_config[REMOTE_FUNCTION_WORKSPACE] = TrainingInput(
                 s3_data=s3_path_join(s3_base_uri, REMOTE_FUNCTION_WORKSPACE),
                 s3_data_type="S3Prefix",
@@ -126,7 +127,7 @@ class ConfigUploader:
         )
         stored_function.save(func)
 
-    def _prepare_and_upload_dependencies(
+    def _prepare_and_upload_workspace(
         self,
         local_dependencies_path: str,
         include_local_workdir: bool,
@@ -135,10 +136,10 @@ class ConfigUploader:
         s3_base_uri: str,
         s3_kms_key: str,
         sagemaker_session: Session,
-        custom_file_filter: Optional[Callable[[str, List], List]] = None,
+        custom_file_filter: Optional[Union[Callable[[str, List], List], CustomFileFilter]] = None,
     ) -> str:
         """Upload the training step dependencies to S3 if present"""
-        return _prepare_and_upload_dependencies(
+        return _prepare_and_upload_workspace(
             local_dependencies_path=local_dependencies_path,
             include_local_workdir=include_local_workdir,
             pre_execution_commands=pre_execution_commands,

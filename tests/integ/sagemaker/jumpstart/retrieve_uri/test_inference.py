@@ -43,18 +43,27 @@ def test_jumpstart_inference_retrieve_functions(setup):
         model_id=model_id,
         model_version=model_version,
         instance_type=instance_type,
+        tolerate_vulnerable_model=True,
     )
 
     script_uri = script_uris.retrieve(
-        model_id=model_id, model_version=model_version, script_scope="inference"
+        model_id=model_id,
+        model_version=model_version,
+        script_scope="inference",
+        tolerate_vulnerable_model=True,
     )
 
     model_uri = model_uris.retrieve(
-        model_id=model_id, model_version=model_version, model_scope="inference"
+        model_id=model_id,
+        model_version=model_version,
+        model_scope="inference",
+        tolerate_vulnerable_model=True,
     )
 
     environment_vars = environment_variables.retrieve_default(
-        model_id=model_id, model_version=model_version
+        model_id=model_id,
+        model_version=model_version,
+        tolerate_vulnerable_model=True,
     )
 
     inference_job = InferenceJobLauncher(

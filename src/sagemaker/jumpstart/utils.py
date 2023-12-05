@@ -16,6 +16,7 @@ import logging
 import os
 from typing import Any, Dict, List, Optional, Union
 from urllib.parse import urlparse
+import boto3
 from packaging.version import Version
 import sagemaker
 from sagemaker.config.config_schema import (
@@ -31,6 +32,7 @@ from sagemaker.s3 import parse_s3_url
 from sagemaker.jumpstart.exceptions import (
     DeprecatedJumpStartModelError,
     VulnerableJumpStartModelError,
+    get_old_model_version_msg,
 )
 from sagemaker.jumpstart.types import (
     JumpStartModelHeader,
@@ -81,13 +83,13 @@ def get_jumpstart_gated_content_bucket(
 
     gated_bucket_to_return: Optional[str] = None
     if (
-        constants.ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE in os.environ
-        and len(os.environ[constants.ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE]) > 0
+        constants.ENV_VARIABLE_JUMPSTART_GATED_CONTENT_BUCKET_OVERRIDE in os.environ
+        and len(os.environ[constants.ENV_VARIABLE_JUMPSTART_GATED_CONTENT_BUCKET_OVERRIDE]) > 0
     ):
         gated_bucket_to_return = os.environ[
-            constants.ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE
+            constants.ENV_VARIABLE_JUMPSTART_GATED_CONTENT_BUCKET_OVERRIDE
         ]
-        info_logs.append(f"Using JumpStart private bucket override: '{gated_bucket_to_return}'")
+        info_logs.append(f"Using JumpStart gated bucket override: '{gated_bucket_to_return}'")
     else:
         try:
             gated_bucket_to_return = constants.JUMPSTART_REGION_NAME_TO_LAUNCHED_REGION_DICT[
@@ -462,7 +464,9 @@ def update_inference_tags_with_jumpstart_training_tags(
     return inference_tags
 
 
-def emit_logs_based_on_model_specs(model_specs: JumpStartModelSpecs, region: str) -> None:
+def emit_logs_based_on_model_specs(
+    model_specs: JumpStartModelSpecs, region: str, s3_client: boto3.client
+) -> None:
     """Emits logs based on model specs and region."""
 
     if model_specs.hosting_eula_key:
@@ -474,6 +478,24 @@ def emit_logs_based_on_model_specs(model_specs: JumpStartModelSpecs, region: str
             region,
             ".cn" if region.startswith("cn-") else "",
             model_specs.hosting_eula_key,
+        )
+
+    full_version: str = model_specs.version
+
+    models_manifest_list = accessors.JumpStartModelsAccessor._get_manifest(
+        region=region, s3_client=s3_client
+    )
+    max_version_for_model_id: Optional[str] = None
+    for header in models_manifest_list:
+        if header.model_id == model_specs.model_id:
+            if max_version_for_model_id is None or Version(header.version) > Version(
+                max_version_for_model_id
+            ):
+                max_version_for_model_id = header.version
+
+    if full_version != max_version_for_model_id:
+        constants.JUMPSTART_LOGGER.info(
+            get_old_model_version_msg(model_specs.model_id, full_version, max_version_for_model_id)
         )
 
     if model_specs.deprecated:
@@ -589,11 +611,18 @@ def verify_model_region_and_return_specs(
 
 
 def update_dict_if_key_not_present(
-    dict_to_update: dict, key_to_add: Any, value_to_add: Any
-) -> dict:
-    """If a key is not present in the dict, add the new (key, value) pair, and return dict."""
+    dict_to_update: Optional[dict], key_to_add: Any, value_to_add: Any
+) -> Optional[dict]:
+    """If a key is not present in the dict, add the new (key, value) pair, and return dict.
+
+    If dict is empty, return None.
+    """
+    if dict_to_update is None:
+        dict_to_update = {}
     if key_to_add not in dict_to_update:
         dict_to_update[key_to_add] = value_to_add
+    if dict_to_update == {}:
+        dict_to_update = None
 
     return dict_to_update
 
@@ -726,13 +755,5 @@ def is_valid_model_id(
     if script == enums.JumpStartScriptScope.INFERENCE:
         return model_id in model_id_set
     if script == enums.JumpStartScriptScope.TRAINING:
-        return (
-            model_id in model_id_set
-            and accessors.JumpStartModelsAccessor.get_model_specs(
-                region=region,
-                model_id=model_id,
-                version=model_version,
-                s3_client=s3_client,
-            ).training_supported
-        )
+        return model_id in model_id_set
     raise ValueError(f"Unsupported script: {script}")

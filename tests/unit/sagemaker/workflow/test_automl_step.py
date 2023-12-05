@@ -202,6 +202,10 @@ def test_single_automl_step_with_parameter(pipeline_session):
     assert automl_step.properties.BestCandidateProperties.ModelInsightsJsonReportPath.expr == {
         "Get": "Steps.MyAutoMLStep.BestCandidateProperties.ModelInsightsJsonReportPath"
     }
+    assert (
+        automl_step.properties.BestCandidateProperties.ModelInsightsJsonReportPath._referenced_steps
+        == [automl_step]
+    )
     assert automl_step.properties.BestCandidateProperties.ExplainabilityJsonReportPath.expr == {
         "Get": "Steps.MyAutoMLStep.BestCandidateProperties.ExplainabilityJsonReportPath"
     }
