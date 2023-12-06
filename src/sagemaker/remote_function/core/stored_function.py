@@ -142,7 +142,7 @@ class StoredFunction:
 
         logger.info(
             "Serializing the function return and uploading to %s",
-            s3_path_join(self.func_upload_path, RESULTS_FOLDER),
+            s3_path_join(self.results_upload_path, RESULTS_FOLDER),
         )
         serialization.serialize_obj_to_s3(
             obj=result,

@@ -465,6 +465,7 @@ class HuggingFaceModel(FrameworkModel):
         accelerator_type=None,
         serverless_inference_config=None,
         inference_tool=None,
+        accept_eula=None,
     ):
         """A container definition with framework configuration set in model environment variables.
 
@@ -479,6 +480,11 @@ class HuggingFaceModel(FrameworkModel):
                 not provided in serverless inference. So this is used to find image URIs.
             inference_tool (str): the tool that will be used to aid in the inference.
                 Valid values: "neuron, neuronx, None" (default: None).
+            accept_eula (bool): For models that require a Model Access Config, specify True or
+                False to indicate whether model terms of use have been accepted.
+                The `accept_eula` value must be explicitly defined as `True` in order to
+                accept the end-user license agreement (EULA) that some
+                models require. (Default: None).
 
         Returns:
             dict[str, str]: A container definition object usable with the
@@ -510,7 +516,10 @@ class HuggingFaceModel(FrameworkModel):
                 self.model_server_workers
             )
         return sagemaker.container_def(
-            deploy_image, self.repacked_model_data or self.model_data, deploy_env
+            deploy_image,
+            self.repacked_model_data or self.model_data,
+            deploy_env,
+            accept_eula=accept_eula,
         )
 
     def serving_image_uri(

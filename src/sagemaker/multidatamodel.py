@@ -121,7 +121,11 @@ class MultiDataModel(Model):
             )
 
     def prepare_container_def(
-        self, instance_type=None, accelerator_type=None, serverless_inference_config=None
+        self,
+        instance_type=None,
+        accelerator_type=None,
+        serverless_inference_config=None,
+        accept_eula=None,
     ):
         """Return a container definition set.
 
@@ -149,6 +153,7 @@ class MultiDataModel(Model):
             env=environment,
             model_data_url=self.model_data_prefix,
             container_mode=self.container_mode,
+            accept_eula=accept_eula,
         )
 
     def deploy(
