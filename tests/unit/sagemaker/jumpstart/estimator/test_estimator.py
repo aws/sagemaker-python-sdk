@@ -977,7 +977,7 @@ class EstimatorTest(unittest.TestCase):
         Please add the new argument to the skip set below,
         and reach out to JumpStart team."""
 
-        init_args_to_skip: Set[str] = set(["kwargs"])
+        init_args_to_skip: Set[str] = set(["kwargs", "enable_remote_debug"])
         fit_args_to_skip: Set[str] = set()
         deploy_args_to_skip: Set[str] = set(["kwargs"])
 
