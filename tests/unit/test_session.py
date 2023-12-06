@@ -2497,9 +2497,7 @@ def sagemaker_session_full_lifecycle(boto_session_full_lifecycle):
 def test_logs_for_job_no_wait(cw, sagemaker_session_complete):
     ims = sagemaker_session_complete
     ims.logs_for_job(JOB_NAME)
-    ims.boto_session.client.return_value.describe_training_job.assert_called_once_with(
-        TrainingJobName=JOB_NAME
-    )
+    ims.sagemaker_client.describe_training_job.assert_called_once_with(TrainingJobName=JOB_NAME)
     cw().assert_called_with(0, "hi there #1")
 
 
@@ -2507,9 +2505,7 @@ def test_logs_for_job_no_wait(cw, sagemaker_session_complete):
 def test_logs_for_job_no_wait_stopped_job(cw, sagemaker_session_stopped):
     ims = sagemaker_session_stopped
     ims.logs_for_job(JOB_NAME)
-    ims.boto_session.client.return_value.describe_training_job.assert_called_once_with(
-        TrainingJobName=JOB_NAME
-    )
+    ims.sagemaker_client.describe_training_job.assert_called_once_with(TrainingJobName=JOB_NAME)
     cw().assert_called_with(0, "hi there #1")
 
 
@@ -2517,7 +2513,7 @@ def test_logs_for_job_no_wait_stopped_job(cw, sagemaker_session_stopped):
 def test_logs_for_job_wait_on_completed(cw, sagemaker_session_complete):
     ims = sagemaker_session_complete
     ims.logs_for_job(JOB_NAME, wait=True, poll=0)
-    assert ims.boto_session.client.return_value.describe_training_job.call_args_list == [
+    assert ims.sagemaker_client.describe_training_job.call_args_list == [
         call(TrainingJobName=JOB_NAME)
     ]
     cw().assert_called_with(0, "hi there #1")
@@ -2527,7 +2523,7 @@ def test_logs_for_job_wait_on_completed(cw, sagemaker_session_complete):
 def test_logs_for_job_wait_on_stopped(cw, sagemaker_session_stopped):
     ims = sagemaker_session_stopped
     ims.logs_for_job(JOB_NAME, wait=True, poll=0)
-    assert ims.boto_session.client.return_value.describe_training_job.call_args_list == [
+    assert ims.sagemaker_client.describe_training_job.call_args_list == [
         call(TrainingJobName=JOB_NAME)
     ]
     cw().assert_called_with(0, "hi there #1")
@@ -2537,7 +2533,7 @@ def test_logs_for_job_wait_on_stopped(cw, sagemaker_session_stopped):
 def test_logs_for_job_no_wait_on_running(cw, sagemaker_session_ready_lifecycle):
     ims = sagemaker_session_ready_lifecycle
     ims.logs_for_job(JOB_NAME)
-    assert ims.boto_session.client.return_value.describe_training_job.call_args_list == [
+    assert ims.sagemaker_client.describe_training_job.call_args_list == [
         call(TrainingJobName=JOB_NAME)
     ]
     cw().assert_called_with(0, "hi there #1")
@@ -2549,7 +2545,7 @@ def test_logs_for_job_full_lifecycle(time, cw, sagemaker_session_full_lifecycle)
     ims = sagemaker_session_full_lifecycle
     ims.logs_for_job(JOB_NAME, wait=True, poll=0)
     assert (
-        ims.boto_session.client.return_value.describe_training_job.call_args_list
+        ims.sagemaker_client.describe_training_job.call_args_list
         == [call(TrainingJobName=JOB_NAME)] * 3
     )
     assert cw().call_args_list == [

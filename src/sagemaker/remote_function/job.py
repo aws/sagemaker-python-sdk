@@ -891,7 +891,7 @@ class _Job:
         """
 
         self._last_describe_response = _logs_for_job(
-            boto_session=self.sagemaker_session.boto_session,
+            sagemaker_session=self.sagemaker_session,
             job_name=self.job_name,
             wait=True,
             timeout=timeout,
