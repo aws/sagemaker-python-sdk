@@ -46,6 +46,7 @@ from sagemaker.utils import format_tags, Tags, validate_call_inputs
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.pipeline_context import runnable_by_pipeline
 from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.functions import Join
 
 logger = logging.getLogger(__name__)
@@ -689,7 +690,7 @@ class PySparkProcessor(_SparkProcessorBase):
     @validate_call_inputs
     def __init__(
         self,
-        role: str = None,
+        role: Union[str, ParameterString] = None,
         instance_type: Union[str, PipelineVariable] = None,
         instance_count: Union[int, PipelineVariable] = None,
         framework_version: Optional[str] = None,

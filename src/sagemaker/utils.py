@@ -1483,6 +1483,7 @@ def create_paginator_config(max_items: int = None, page_size: int = None) -> Dic
         "PageSize": page_size if page_size else PAGE_SIZE,
     }
 
+
 def format_tags(tags: Tags) -> List[TagsDict]:
     """Process tags to turn them into the expected format for Sagemaker."""
     if isinstance(tags, dict):

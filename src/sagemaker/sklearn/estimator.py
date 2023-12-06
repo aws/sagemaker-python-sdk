@@ -30,6 +30,7 @@ from sagemaker.sklearn.model import SKLearnModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow import is_pipeline_variable
+from sagemaker.workflow.parameters import ParameterString
 from sagemaker.utils import validate_call_inputs
 
 logger = logging.getLogger("sagemaker")
@@ -173,7 +174,7 @@ class SKLearn(Framework):
     def create_model(
         self,
         model_server_workers: Optional[int] = None,
-        role: Optional[str] = None,
+        role: Optional[Union[str, ParameterString]] = None,
         vpc_config_override: Optional[Union[str, Dict[str, List[str]]]] = VPC_CONFIG_DEFAULT,
         entry_point: Optional[str] = None,
         source_dir: Optional[str] = None,

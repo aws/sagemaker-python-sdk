@@ -30,6 +30,7 @@ from sagemaker.session import Session
 from sagemaker.sklearn import defaults
 from sagemaker.utils import to_string, validate_call_inputs
 from sagemaker.workflow import is_pipeline_variable
+from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.entities import PipelineVariable
 
 logger = logging.getLogger("sagemaker")
@@ -86,7 +87,7 @@ class SKLearnModel(FrameworkModel):
     def __init__(
         self,
         model_data: Union[str, PipelineVariable],
-        role: Optional[str] = None,
+        role: Optional[Union[str, ParameterString]] = None,
         entry_point: Optional[str] = None,
         framework_version: Optional[str] = None,
         py_version: Optional[str] = "py3",

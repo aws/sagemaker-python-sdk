@@ -33,6 +33,7 @@ from sagemaker.pytorch.model import PyTorchModel
 from sagemaker.pytorch.training_compiler.config import TrainingCompilerConfig
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.workflow.parameters import ParameterString
 from sagemaker.utils import validate_call_inputs
 
 logger = logging.getLogger("sagemaker")
@@ -369,7 +370,7 @@ class PyTorch(Framework):
     def create_model(
         self,
         model_server_workers: Optional[int] = None,
-        role: Optional[str] = None,
+        role: Optional[Union[str, ParameterString]] = None,
         vpc_config_override: Optional[Dict[str, List[str]]] = VPC_CONFIG_DEFAULT,
         entry_point: Optional[str] = None,
         source_dir: Optional[str] = None,

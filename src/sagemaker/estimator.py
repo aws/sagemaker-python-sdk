@@ -136,7 +136,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
     @validate_call_inputs
     def __init__(
         self,
-        role: str = None,
+        role: Union[str, ParameterString] = None,
         instance_count: Optional[Union[int, PipelineVariable]] = None,
         instance_type: Optional[Union[str, PipelineVariable]] = None,
         keep_alive_period_in_seconds: Optional[Union[int, PipelineVariable]] = None,
