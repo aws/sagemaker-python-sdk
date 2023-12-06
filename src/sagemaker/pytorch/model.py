@@ -338,7 +338,7 @@ class PyTorchModel(FrameworkModel):
     def serving_image_uri(
         self,
         region_name: str,
-        instance_type: str,
+        instance_type: Optional[str] = None,
         accelerator_type: Optional[str] = None,
         serverless_inference_config: Optional[ServerlessInferenceConfig] = None,
     ):
