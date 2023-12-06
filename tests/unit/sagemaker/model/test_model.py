@@ -32,6 +32,8 @@ from sagemaker.session_settings import SessionSettings
 from sagemaker.sklearn.model import SKLearnModel
 from sagemaker.tensorflow.model import TensorFlowModel
 from sagemaker.xgboost.model import XGBoostModel
+from sagemaker.enums import EndpointType
+from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
 from sagemaker.workflow.properties import Properties
 from tests.unit import (
     _test_default_bucket_and_prefix_combinations,
@@ -152,11 +154,100 @@ def test_prepare_container_def_with_model_data():
     assert expected == container_def
 
 
-def test_prepare_container_def_with_model_data_and_env():
+@patch("sagemaker.session.Session.endpoint_from_production_variants")
+@patch("sagemaker.session.Session.create_model")
+def test_prepare_container_def_with_accept_eula(
+    mock_create_model, mock_endpoint_from_production_variants
+):
+    env = {"FOO": "BAR"}
+    model = Model(MODEL_IMAGE, MODEL_DATA, env=env, role=ROLE)
+
+    model.deploy(
+        accept_eula=True, instance_type=INSTANCE_TYPE, initial_instance_count=INSTANCE_COUNT
+    )
+
+    expected = {
+        "Image": MODEL_IMAGE,
+        "Environment": env,
+        "ModelDataSource": {
+            "S3DataSource": {
+                "CompressionType": "Gzip",
+                "S3DataType": "S3Object",
+                "S3Uri": MODEL_DATA,
+                "ModelAccessConfig": {"AcceptEula": True},
+            }
+        },
+    }
+
+    container_def = model.prepare_container_def(INSTANCE_TYPE, "ml.eia.medium")
+    assert expected == container_def
+
+    container_def = model.prepare_container_def()
+    assert expected == container_def
+
+
+@patch("sagemaker.session.Session.endpoint_from_production_variants")
+@patch("sagemaker.session.Session.create_model")
+def test_prepare_container_def_with_accept_eula_s3_prefix(
+    mock_create_model, mock_endpoint_from_production_variants
+):
+    env = {"FOO": "BAR"}
+    model_data = {
+        "S3DataSource": {
+            "S3Uri": "s3://blah-cache-prod-us-west-2/huggingface-infer/prepack/v1.0.1/",
+            "S3DataType": "S3Prefix",
+            "CompressionType": "None",
+        }
+    }
+    model = Model(MODEL_IMAGE, model_data, env=env, role=ROLE)
+
+    model.deploy(
+        accept_eula=True, instance_type=INSTANCE_TYPE, initial_instance_count=INSTANCE_COUNT
+    )
+
+    expected = {
+        "Environment": {"FOO": "BAR"},
+        "Image": "mi",
+        "ModelDataSource": {
+            "S3DataSource": {
+                "CompressionType": "None",
+                "ModelAccessConfig": {"AcceptEula": True},
+                "S3DataType": "S3Prefix",
+                "S3Uri": "s3://blah-cache-prod-us-west-2/huggingface-infer/prepack/v1.0.1/",
+            },
+        },
+    }
+
+    container_def = model.prepare_container_def(INSTANCE_TYPE, "ml.eia.medium")
+    assert expected == container_def
+
+    container_def = model.prepare_container_def()
+    assert expected == container_def
+
+
+def test_prepare_container_def_with_model_data_and_env_s3_gzip():
     env = {"FOO": "BAR"}
     model = Model(MODEL_IMAGE, MODEL_DATA, env=env)
 
-    expected = {"Image": MODEL_IMAGE, "Environment": env, "ModelDataUrl": MODEL_DATA}
+    expected = {
+        "Image": MODEL_IMAGE,
+        "Environment": env,
+        "ModelDataUrl": MODEL_DATA,
+    }
+
+    container_def = model.prepare_container_def(INSTANCE_TYPE, "ml.eia.medium")
+    assert expected == container_def
+
+    container_def = model.prepare_container_def()
+    assert expected == container_def
+
+
+def test_prepare_container_def_with_model_data_and_env():
+    env = {"FOO": "BAR"}
+    model_data = "s3://my-bucket/my-model"
+    model = Model(MODEL_IMAGE, model_data, env=env)
+
+    expected = {"Image": MODEL_IMAGE, "Environment": env, "ModelDataUrl": model_data}
 
     container_def = model.prepare_container_def(INSTANCE_TYPE, "ml.eia.medium")
     assert expected == container_def
@@ -196,7 +287,7 @@ def test_create_sagemaker_model(prepare_container_def, sagemaker_session):
     model._create_sagemaker_model()
 
     prepare_container_def.assert_called_with(
-        None, accelerator_type=None, serverless_inference_config=None
+        None, accelerator_type=None, serverless_inference_config=None, accept_eula=None
     )
     sagemaker_session.create_model.assert_called_with(
         name=MODEL_NAME,
@@ -214,7 +305,7 @@ def test_create_sagemaker_model_instance_type(prepare_container_def, sagemaker_s
     model._create_sagemaker_model(INSTANCE_TYPE)
 
     prepare_container_def.assert_called_with(
-        INSTANCE_TYPE, accelerator_type=None, serverless_inference_config=None
+        INSTANCE_TYPE, accelerator_type=None, serverless_inference_config=None, accept_eula=None
     )
 
 
@@ -226,7 +317,40 @@ def test_create_sagemaker_model_accelerator_type(prepare_container_def, sagemake
     model._create_sagemaker_model(INSTANCE_TYPE, accelerator_type=accelerator_type)
 
     prepare_container_def.assert_called_with(
-        INSTANCE_TYPE, accelerator_type=accelerator_type, serverless_inference_config=None
+        INSTANCE_TYPE,
+        accelerator_type=accelerator_type,
+        serverless_inference_config=None,
+        accept_eula=None,
+    )
+
+
+@patch("sagemaker.model.Model.prepare_container_def")
+def test_create_sagemaker_model_with_eula(prepare_container_def, sagemaker_session):
+    model = Model(MODEL_IMAGE, MODEL_DATA, name=MODEL_NAME, sagemaker_session=sagemaker_session)
+
+    accelerator_type = "ml.eia.medium"
+    model.create(INSTANCE_TYPE, accelerator_type=accelerator_type, accept_eula=True)
+
+    prepare_container_def.assert_called_with(
+        INSTANCE_TYPE,
+        accelerator_type=accelerator_type,
+        serverless_inference_config=None,
+        accept_eula=True,
+    )
+
+
+@patch("sagemaker.model.Model.prepare_container_def")
+def test_create_sagemaker_model_with_eula_false(prepare_container_def, sagemaker_session):
+    model = Model(MODEL_IMAGE, MODEL_DATA, name=MODEL_NAME, sagemaker_session=sagemaker_session)
+
+    accelerator_type = "ml.eia.medium"
+    model.create(INSTANCE_TYPE, accelerator_type=accelerator_type, accept_eula=False)
+
+    prepare_container_def.assert_called_with(
+        INSTANCE_TYPE,
+        accelerator_type=accelerator_type,
+        serverless_inference_config=None,
+        accept_eula=False,
     )
 
 
@@ -763,6 +887,65 @@ def test_script_mode_model_uses_jumpstart_base_name(repack_model, sagemaker_sess
     assert not sagemaker_session.endpoint_from_production_variants.call_args_list[0][1][
         "name"
     ].startswith(JUMPSTART_RESOURCE_BASE_NAME)
+
+
+@patch("sagemaker.utils.repack_model")
+@patch("sagemaker.fw_utils.tar_and_upload_dir")
+def test_all_framework_models_inference_component_based_endpoint_deploy_path(
+    repack_model, tar_and_uload_dir, sagemaker_session
+):
+    framework_model_classes_to_kwargs = {
+        PyTorchModel: {"framework_version": "1.5.0", "py_version": "py3"},
+        TensorFlowModel: {
+            "framework_version": "2.3",
+        },
+        HuggingFaceModel: {
+            "pytorch_version": "1.7.1",
+            "py_version": "py36",
+            "transformers_version": "4.6.1",
+        },
+        MXNetModel: {"framework_version": "1.7.0", "py_version": "py3"},
+        SKLearnModel: {
+            "framework_version": "0.23-1",
+        },
+        XGBoostModel: {
+            "framework_version": "1.3-1",
+        },
+    }
+
+    sagemaker_session.settings = SessionSettings(include_jumpstart_tags=False)
+
+    source_dir = "s3://blah/blah/blah"
+    for framework_model_class, kwargs in framework_model_classes_to_kwargs.items():
+        framework_model_class(
+            entry_point=ENTRY_POINT_INFERENCE,
+            role=ROLE,
+            sagemaker_session=sagemaker_session,
+            model_data=source_dir,
+            **kwargs,
+        ).deploy(
+            instance_type="ml.m2.xlarge",
+            initial_instance_count=INSTANCE_COUNT,
+            endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
+            resources=ResourceRequirements(
+                requests={
+                    "num_accelerators": 1,
+                    "memory": 8192,
+                    "copies": 1,
+                },
+                limits={},
+            ),
+        )
+
+        # Verified inference component based endpoint and inference component creation
+        # path
+        sagemaker_session.endpoint_in_service_or_not.assert_called_once()
+        sagemaker_session.create_model.assert_called_once()
+        sagemaker_session.create_inference_component.assert_called_once()
+
+        sagemaker_session.create_inference_component.reset_mock()
+        sagemaker_session.endpoint_in_service_or_not.reset_mock()
+        sagemaker_session.create_model.reset_mock()
 
 
 @patch("sagemaker.utils.repack_model")

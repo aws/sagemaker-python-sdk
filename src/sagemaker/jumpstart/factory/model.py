@@ -58,6 +58,9 @@ from sagemaker.serverless.serverless_inference_config import ServerlessInference
 from sagemaker.session import Session
 from sagemaker.utils import name_from_base
 from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
+from sagemaker import resource_requirements
+from sagemaker.enums import EndpointType
 
 
 def get_default_predictor(
@@ -467,6 +470,22 @@ def _add_deploy_extra_kwargs(kwargs: JumpStartModelInitKwargs) -> Dict[str, Any]
     return kwargs
 
 
+def _add_resources_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelInitKwargs:
+    """Sets the resource requirements based on the default or an override. Returns full kwargs."""
+
+    kwargs.resources = kwargs.resources or resource_requirements.retrieve_default(
+        region=kwargs.region,
+        model_id=kwargs.model_id,
+        model_version=kwargs.model_version,
+        scope=JumpStartScriptScope.INFERENCE,
+        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
+        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
+        sagemaker_session=kwargs.sagemaker_session,
+    )
+
+    return kwargs
+
+
 def get_deploy_kwargs(
     model_id: str,
     model_version: Optional[str] = None,
@@ -491,6 +510,11 @@ def get_deploy_kwargs(
     tolerate_vulnerable_model: Optional[bool] = None,
     tolerate_deprecated_model: Optional[bool] = None,
     sagemaker_session: Optional[Session] = None,
+    accept_eula: Optional[bool] = None,
+    endpoint_logging: Optional[bool] = None,
+    resources: Optional[ResourceRequirements] = None,
+    managed_instance_scaling: Optional[str] = None,
+    endpoint_type: Optional[EndpointType] = None,
 ) -> JumpStartModelDeployKwargs:
     """Returns kwargs required to call `deploy` on `sagemaker.estimator.Model` object."""
 
@@ -518,6 +542,9 @@ def get_deploy_kwargs(
         tolerate_deprecated_model=tolerate_deprecated_model,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         sagemaker_session=sagemaker_session,
+        accept_eula=accept_eula,
+        endpoint_logging=endpoint_logging,
+        resources=resources,
     )
 
     deploy_kwargs = _add_sagemaker_session_to_kwargs(kwargs=deploy_kwargs)
@@ -533,6 +560,11 @@ def get_deploy_kwargs(
     deploy_kwargs = _add_deploy_extra_kwargs(kwargs=deploy_kwargs)
 
     deploy_kwargs = _add_tags_to_kwargs(kwargs=deploy_kwargs)
+
+    if endpoint_type == EndpointType.INFERENCE_COMPONENT_BASED:
+        deploy_kwargs = _add_resources_to_kwargs(kwargs=deploy_kwargs)
+        deploy_kwargs.endpoint_type = endpoint_type
+        deploy_kwargs.managed_instance_scaling = managed_instance_scaling
 
     return deploy_kwargs
 
@@ -646,6 +678,7 @@ def get_init_kwargs(
     model_package_arn: Optional[str] = None,
     training_instance_type: Optional[str] = None,
     disable_instance_type_logging: bool = False,
+    resources: Optional[ResourceRequirements] = None,
 ) -> JumpStartModelInitKwargs:
     """Returns kwargs required to instantiate `sagemaker.estimator.Model` object."""
 
@@ -675,6 +708,7 @@ def get_init_kwargs(
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         model_package_arn=model_package_arn,
         training_instance_type=training_instance_type,
+        resources=resources,
     )
 
     model_init_kwargs = _add_model_version_to_kwargs(kwargs=model_init_kwargs)
@@ -704,5 +738,7 @@ def get_init_kwargs(
     model_init_kwargs = _add_role_to_kwargs(kwargs=model_init_kwargs)
 
     model_init_kwargs = _add_model_package_arn_to_kwargs(kwargs=model_init_kwargs)
+
+    model_init_kwargs = _add_resources_to_kwargs(kwargs=model_init_kwargs)
 
     return model_init_kwargs

@@ -412,7 +412,9 @@ class _RegisterModelStep(ConfigurableRetryStep):
         self.container_def_list = container_def_list
         self.skip_model_validation = skip_model_validation
 
-        self._properties = Properties(step_name=name, shape_name="DescribeModelPackageOutput")
+        self._properties = Properties(
+            step_name=name, step=self, shape_name="DescribeModelPackageOutput"
+        )
 
     @property
     def arguments(self) -> RequestType:

@@ -24,6 +24,7 @@ from sagemaker import PipelineModel
 from sagemaker.predictor import Predictor
 from sagemaker.transformer import Transformer
 from sagemaker.workflow.entities import RequestType
+from sagemaker.workflow.step_outputs import StepOutput
 from sagemaker.workflow.steps import Step, CreateModelStep, TransformStep
 from sagemaker.workflow._utils import _RegisterModelStep, _RepackModelStep
 from sagemaker.workflow.retry import RetryPolicy
@@ -37,10 +38,14 @@ class StepCollection:
     Attributes:
         name (str): The name of the `StepCollection`.
         steps (List[Step]): A list of steps.
+        depends_on (List[Union[str, Step, StepCollection, StepOutput]]):
+            The list of `Step`/`StepCollection` names or `Step`/`StepCollection`/`StepOutput`
+            instances that the current `Step` depends on.
     """
 
     name: str = attr.ib()
     steps: List[Step] = attr.ib(factory=list)
+    depends_on: List[Union[str, Step, "StepCollection", StepOutput]] = attr.ib(default=None)
 
     def request_dicts(self) -> List[RequestType]:
         """Get the request structure for workflow service calls."""
@@ -151,7 +156,7 @@ class RegisterModel(StepCollection):  # pragma: no cover
 
             **kwargs: additional arguments to `create_model`.
         """
-        self.name = name
+        super().__init__(name=name, depends_on=depends_on)
         steps: List[Step] = []
         repack_model = False
         self.model_list = None
@@ -383,7 +388,7 @@ class EstimatorTransformer(StepCollection):
             transform_step_retry_policies (List[RetryPolicy]): The list of retry policies for
                 transform step
         """
-        self.name = name
+        super().__init__(name=name, depends_on=depends_on)
         steps = []
         if "entry_point" in kwargs:
             entry_point = kwargs.get("entry_point", None)

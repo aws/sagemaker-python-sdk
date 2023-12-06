@@ -229,7 +229,9 @@ def test_start_local_pipeline(mock_local_pipeline_executor, sagemaker_local_sess
 
 
 def test_start_local_pipeline_with_unsupported_step_type(sagemaker_local_session):
-    step = LambdaStep(name="MyLambdaStep", lambda_func=Mock())
+    mock_lambda_func = Mock()
+    mock_lambda_func.update.return_value = {"FunctionArn": "function_arn"}
+    step = LambdaStep(name="MyLambdaStep", lambda_func=mock_lambda_func)
     pipeline = Pipeline(
         name="MyPipeline",
         parameters=[],

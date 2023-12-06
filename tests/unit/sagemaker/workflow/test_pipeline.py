@@ -13,6 +13,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import copy
 import json
 
 import pytest
@@ -20,18 +21,27 @@ import pytest
 from mock import Mock, call, patch
 
 from sagemaker import s3
+from sagemaker.remote_function.job import _JobSettings
 from sagemaker.session_settings import SessionSettings
 from sagemaker.workflow.condition_step import ConditionStep
 from sagemaker.workflow.conditions import ConditionEquals
 from sagemaker.workflow.execution_variables import ExecutionVariables
+from sagemaker.workflow.function_step import DelayedReturn, step
+from sagemaker.workflow.functions import JsonGet, Join
 from sagemaker.workflow.parameters import ParameterString
-from sagemaker.workflow.pipeline import Pipeline, PipelineGraph
+from sagemaker.workflow.pipeline import (
+    Pipeline,
+    PipelineGraph,
+    _replace_pipeline_name_in_json_get_s3_uri,
+)
+from sagemaker.workflow.pipeline_context import _PipelineConfig
+from sagemaker.workflow.pipeline_definition_config import PipelineDefinitionConfig
 from sagemaker.workflow.pipeline_experiment_config import (
     PipelineExperimentConfig,
     PipelineExperimentConfigProperties,
 )
 from sagemaker.workflow.step_collections import StepCollection
-from tests.unit.sagemaker.workflow.helpers import ordered, CustomStep
+from tests.unit.sagemaker.workflow.helpers import ordered, CustomStep, CustomFunctionStep
 from sagemaker.local.local_session import LocalSession
 from botocore.exceptions import ClientError
 from sagemaker.workflow.selective_execution_config import SelectiveExecutionConfig
@@ -42,25 +52,14 @@ def role_arn():
     return "arn:role"
 
 
-@pytest.fixture
-def sagemaker_session_mock():
-    session_mock = Mock()
-    session_mock.default_bucket = Mock(name="default_bucket", return_value="s3_bucket")
-    session_mock.local_mode = False
-    # For tests which doesn't verify config file injection, operate with empty config
-    session_mock.sagemaker_config = {}
-    session_mock._append_sagemaker_config_tags = Mock(
-        name="_append_sagemaker_config_tags", side_effect=lambda tags, config_path_to_tags: tags
-    )
-    return session_mock
-
-
 def test_pipeline_create_and_update_without_role_arn(sagemaker_session_mock):
+    mock_session = copy.deepcopy(sagemaker_session_mock)
+    mock_session.sagemaker_config = {}
     pipeline = Pipeline(
         name="MyPipeline",
         parameters=[],
         steps=[],
-        sagemaker_session=sagemaker_session_mock,
+        sagemaker_session=mock_session,
     )
     with pytest.raises(ValueError):
         pipeline.create()
@@ -199,7 +198,12 @@ def test_large_pipeline_create(sagemaker_session_mock, role_arn):
     )
 
 
-def test_pipeline_update(sagemaker_session_mock, role_arn):
+@patch("botocore.waiter.create_waiter_with_client")
+@patch("sagemaker.workflow.pipeline.deserialize_obj_from_s3")
+@patch("sagemaker.s3.S3Downloader")
+def test_pipeline_update(
+    waiter_mock, deserializer_mock, s3_downloader_mock, sagemaker_session_mock, role_arn
+):
     sagemaker_session_mock.sagemaker_config = {}
     pipeline = Pipeline(
         name="MyPipeline",
@@ -207,6 +211,7 @@ def test_pipeline_update(sagemaker_session_mock, role_arn):
         steps=[],
         sagemaker_session=sagemaker_session_mock,
     )
+    assert not pipeline.steps
     pipeline.update(role_arn=role_arn)
     assert len(json.loads(pipeline.definition())["Steps"]) == 0
     assert sagemaker_session_mock.sagemaker_client.update_pipeline.called_with(
@@ -224,11 +229,74 @@ def test_pipeline_update(sagemaker_session_mock, role_arn):
         else_steps=[],
     )
     step3 = CustomStep(name="MyStep3", depends_on=[step_collection])
-    pipeline.steps = [cond_step, step3]
+    dr_step_4 = DelayedReturn(
+        function_step=CustomFunctionStep(
+            func_args=(1, 2),
+            func=lambda x, y: x + y + 3,
+            job_settings=_JobSettings(
+                image_uri="image",
+                instance_type="ml.m4.xlarge",
+                sagemaker_session=sagemaker_session_mock,
+            ),
+            name="stepC",
+            description="",
+            display_name="",
+            depends_on=[step3],
+        )
+    )
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[],
+        steps=[
+            cond_step,
+            # step3, # this step is an upstream step, can be auto fetched
+            dr_step_4,
+        ],
+        sagemaker_session=sagemaker_session_mock,
+    )
+    assert len(pipeline.steps) == 2
+
     pipeline.update(role_arn=role_arn)
-    assert len(json.loads(pipeline.definition())["Steps"]) > 0
+    assert len(json.loads(pipeline.definition())["Steps"]) == 3
     assert sagemaker_session_mock.sagemaker_client.update_pipeline.called_with(
         PipelineName="MyPipeline", PipelineDefinition=pipeline.definition(), RoleArn=role_arn
+    )
+
+    sagemaker_session_mock.sagemaker_client.start_pipeline_execution.return_value = {
+        "PipelineExecutionArn": "arn:aws:sagemaker:us-west-2:111111111111:pipeline/mypipeline/execution/myexecution",
+    }
+    execution = pipeline.start()
+
+    sagemaker_session_mock.sagemaker_client.list_pipeline_execution_steps.return_value = {
+        "PipelineExecutionSteps": [
+            {
+                "StepName": "stepC",
+                "Metadata": {
+                    "TrainingJob": {
+                        "Arn": "arn:aws:sagemaker:us-west-2:111111111111:training-job/foo"
+                    }
+                },
+            }
+        ]
+    }
+
+    sagemaker_session_mock.describe_training_job.return_value = {
+        "AlgorithmSpecification": {
+            "ContainerEntrypoint": [
+                "/bin/bash",
+                "/opt/ml/input/data/sagemaker_remote_function_bootstrap/job_driver.sh",
+            ]
+        },
+        "TrainingJobStatus": "Completed",
+        "OutputDataConfig": {"S3OutputPath": "s3:/my-bucket/my-key"},
+        "Environment": {"REMOTE_FUNCTION_SECRET_KEY": "abcdefg"},
+    }
+    execution.result("stepC")
+    assert s3_downloader_mock.read_bytes(
+        "s3:/my-bucket/my-key/myexecution/stepC/results/metadata.json"
+    )
+    assert s3_downloader_mock.read_bytes(
+        "s3:/my-bucket/my-key/myexecution/stepC/results/payload.pkl"
     )
 
 
@@ -548,7 +616,7 @@ def test_pipeline_start_selective_execution(sagemaker_session_mock):
     sagemaker_session_mock.reset_mock()
 
 
-def test_pipeline_basic():
+def test_pipeline_basic(sagemaker_session_mock):
     parameter = ParameterString("MyStr")
     pipeline = Pipeline(
         name="MyPipeline",
@@ -556,16 +624,7 @@ def test_pipeline_basic():
         steps=[CustomStep(name="MyStep", input_data=parameter)],
         sagemaker_session=sagemaker_session_mock,
     )
-    assert pipeline.to_request() == {
-        "Version": "2020-12-01",
-        "Metadata": {},
-        "Parameters": [{"Name": "MyStr", "Type": "String"}],
-        "PipelineExperimentConfig": {
-            "ExperimentName": ExecutionVariables.PIPELINE_NAME,
-            "TrialName": ExecutionVariables.PIPELINE_EXECUTION_ID,
-        },
-        "Steps": [{"Name": "MyStep", "Type": "Training", "Arguments": {"input_data": parameter}}],
-    }
+
     assert ordered(json.loads(pipeline.definition())) == ordered(
         {
             "Version": "2020-12-01",
@@ -605,33 +664,6 @@ def test_pipeline_two_step(sagemaker_session_mock):
         steps=[step1, step2],
         sagemaker_session=sagemaker_session_mock,
     )
-    assert pipeline.to_request() == {
-        "Version": "2020-12-01",
-        "Metadata": {},
-        "Parameters": [{"Name": "MyStr", "Type": "String"}],
-        "PipelineExperimentConfig": {
-            "ExperimentName": ExecutionVariables.PIPELINE_NAME,
-            "TrialName": ExecutionVariables.PIPELINE_EXECUTION_ID,
-        },
-        "Steps": [
-            {
-                "Name": "MyStep1",
-                "Type": "Training",
-                "Arguments": {
-                    "input_data": [
-                        parameter,
-                        ExecutionVariables.PIPELINE_EXECUTION_ID,
-                        PipelineExperimentConfigProperties.EXPERIMENT_NAME,
-                    ]
-                },
-            },
-            {
-                "Name": "MyStep2",
-                "Type": "Training",
-                "Arguments": {"input_data": [step1.properties.ModelArtifacts.S3ModelArtifacts]},
-            },
-        ],
-    }
     assert ordered(json.loads(pipeline.definition())) == ordered(
         {
             "Version": "2020-12-01",
@@ -668,7 +700,7 @@ def test_pipeline_two_step(sagemaker_session_mock):
     assert ordered(adjacency_list) == ordered({"MyStep1": ["MyStep2"], "MyStep2": []})
 
 
-def test_pipeline_override_experiment_config():
+def test_pipeline_override_experiment_config(sagemaker_session_mock):
     pipeline = Pipeline(
         name="MyPipeline",
         pipeline_experiment_config=PipelineExperimentConfig("MyExperiment", "MyTrial"),
@@ -692,7 +724,7 @@ def test_pipeline_override_experiment_config():
     )
 
 
-def test_pipeline_disable_experiment_config():
+def test_pipeline_disable_experiment_config(sagemaker_session_mock):
     pipeline = Pipeline(
         name="MyPipeline",
         pipeline_experiment_config=None,
@@ -900,3 +932,61 @@ def test_local_pipeline():
     pipeline_execution_describe_response = pipeline.start().describe()
     assert pipeline_execution_describe_response["PipelineArn"] == "MyPipeline"
     assert pipeline_execution_describe_response["PipelineExecutionArn"] is not None
+
+
+_PIPELINE_NAME = "MyPipeline"
+_DEFINITION_CONFIG = PipelineDefinitionConfig(use_custom_job_prefix=False)
+MOCKED_PIPELINE_CONFIG = _PipelineConfig(
+    _PIPELINE_NAME,
+    "test-function-step",
+    Mock(),
+    "code-hash-0123456789",
+    "config-hash-0123456789",
+    _DEFINITION_CONFIG,
+    True,
+    True,
+)
+
+
+def _generate_parameters_for_replace_pipeline_name_test() -> list:
+    json_get = JsonGet(
+        s3_uri=Join(
+            "/",
+            [
+                "s3://",
+                ExecutionVariables.PIPELINE_NAME,
+                ExecutionVariables.PIPELINE_EXECUTION_ID,
+                "step-name",
+                "results",
+                "result.json",
+            ],
+        ),
+    )
+    parameter = ParameterString(name="MyParam", default_value="default")
+
+    @step(instance_type="ml.m4.xlarge", image_uri="image")
+    def func():
+        return 1
+
+    delayed_return = func()
+    return [
+        (json_get, False),
+        (parameter, False),
+        (delayed_return, True),
+    ]
+
+
+@patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
+@patch("sagemaker.remote_function.job._JobSettings", Mock())
+@pytest.mark.parametrize("obj, is_replaced", _generate_parameters_for_replace_pipeline_name_test())
+def test_replace_pipeline_name_in_json_get_s3_uri(obj, is_replaced):
+    updated_obj = _replace_pipeline_name_in_json_get_s3_uri(
+        obj=obj,
+        pipeline_name=_PIPELINE_NAME,
+    )
+    if is_replaced:
+        assert updated_obj != obj
+        assert "Execution.PipelineName" not in str(updated_obj.expr)
+        assert _PIPELINE_NAME in str(updated_obj.expr)
+    else:
+        assert updated_obj == obj

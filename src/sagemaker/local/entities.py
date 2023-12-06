@@ -201,6 +201,7 @@ class _LocalTrainingJob(object):
         self.end_time = None
         self.environment = None
         self.training_job_name = ""
+        self.output_data_config = None
 
     def start(self, input_data_config, output_data_config, hyperparameters, environment, job_name):
         """Starts a local training job.
@@ -215,7 +216,9 @@ class _LocalTrainingJob(object):
         """
         for channel in input_data_config:
             if channel["DataSource"] and "S3DataSource" in channel["DataSource"]:
-                data_distribution = channel["DataSource"]["S3DataSource"]["S3DataDistributionType"]
+                data_distribution = channel["DataSource"]["S3DataSource"].get(
+                    "S3DataDistributionType", None
+                )
                 data_uri = channel["DataSource"]["S3DataSource"]["S3Uri"]
             elif channel["DataSource"] and "FileDataSource" in channel["DataSource"]:
                 data_distribution = channel["DataSource"]["FileDataSource"][
@@ -230,7 +233,7 @@ class _LocalTrainingJob(object):
             # use a single Data URI - this makes handling S3 and File Data easier down the stack
             channel["DataUri"] = data_uri
 
-            if data_distribution != "FullyReplicated":
+            if data_distribution and data_distribution != "FullyReplicated":
                 raise RuntimeError(
                     "DataDistribution: %s is not currently supported in Local Mode"
                     % data_distribution
@@ -246,6 +249,7 @@ class _LocalTrainingJob(object):
         self.end_time = datetime.datetime.now()
         self.state = self._COMPLETED
         self.training_job_name = job_name
+        self.output_data_config = output_data_config
 
     def describe(self):
         """Placeholder docstring"""
@@ -257,6 +261,11 @@ class _LocalTrainingJob(object):
             "TrainingStartTime": self.start_time,
             "TrainingEndTime": self.end_time,
             "ModelArtifacts": {"S3ModelArtifacts": self.model_artifacts},
+            "OutputDataConfig": self.output_data_config,
+            "Environment": self.environment,
+            "AlgorithmSpecification": {
+                "ContainerEntrypoint": self.container.container_entrypoint,
+            },
         }
         return response
 
@@ -666,7 +675,12 @@ class _LocalPipeline(object):
         from sagemaker.local.pipeline import LocalPipelineExecutor
 
         execution_id = str(uuid4())
-        execution = _LocalPipelineExecution(execution_id, self.pipeline, **kwargs)
+        execution = _LocalPipelineExecution(
+            execution_id=execution_id,
+            pipeline=self.pipeline,
+            local_session=self.local_session,
+            **kwargs,
+        )
 
         self._executions[execution_id] = execution
         print(
@@ -687,13 +701,16 @@ class _LocalPipelineExecution(object):
         PipelineParameters=None,
         PipelineExecutionDescription=None,
         PipelineExecutionDisplayName=None,
+        local_session=None,
     ):
         from sagemaker.workflow.pipeline import PipelineGraph
+        from sagemaker import LocalSession
 
         self.pipeline = pipeline
         self.pipeline_execution_name = execution_id
         self.pipeline_execution_description = PipelineExecutionDescription
         self.pipeline_execution_display_name = PipelineExecutionDisplayName
+        self.local_session = local_session or LocalSession()
         self.status = _LocalExecutionStatus.EXECUTING.value
         self.failure_reason = None
         self.creation_time = datetime.datetime.now().timestamp()
@@ -728,6 +745,27 @@ class _LocalPipelineExecution(object):
                 if step.status is not None
             ]
         }
+
+    def result(self, step_name: str):
+        """Retrieves the output of the provided step if it is a ``@step`` decorated function.
+
+        Args:
+            step_name (str): The name of the pipeline step.
+        Returns:
+            The step output.
+
+        Raises:
+              ValueError if the provided step is not a ``@step`` decorated function.
+              RuntimeError if the provided step is not in "Completed" status.
+        """
+        from sagemaker.workflow.pipeline import get_function_step_result
+
+        return get_function_step_result(
+            step_name=step_name,
+            step_list=self.list_steps()["PipelineExecutionSteps"],
+            execution_id=self.pipeline_execution_name,
+            sagemaker_session=self.local_session,
+        )
 
     def update_execution_success(self):
         """Mark execution as succeeded."""

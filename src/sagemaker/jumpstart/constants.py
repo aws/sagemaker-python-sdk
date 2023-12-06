@@ -13,6 +13,7 @@
 """This module stores constants related to SageMaker JumpStart."""
 from __future__ import absolute_import
 import logging
+import os
 from typing import Dict, Set, Type
 import boto3
 from sagemaker.base_deserializers import BaseDeserializer, JSONDeserializer
@@ -32,6 +33,8 @@ from sagemaker.base_serializers import (
 )
 from sagemaker.session import Session
 
+
+ENV_VARIABLE_DISABLE_JUMPSTART_LOGGING = "DISABLE_JUMPSTART_LOGGING"
 
 JUMPSTART_LAUNCHED_REGIONS: Set[JumpStartLaunchedRegionInfo] = set(
     [
@@ -168,6 +171,7 @@ TRAINING_ENTRY_POINT_SCRIPT_NAME = "transfer_learning.py"
 SUPPORTED_JUMPSTART_SCOPES = set(scope.value for scope in JumpStartScriptScope)
 
 ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE = "AWS_JUMPSTART_CONTENT_BUCKET_OVERRIDE"
+ENV_VARIABLE_JUMPSTART_GATED_CONTENT_BUCKET_OVERRIDE = "AWS_JUMPSTART_GATED_CONTENT_BUCKET_OVERRIDE"
 ENV_VARIABLE_JUMPSTART_MODEL_ARTIFACT_BUCKET_OVERRIDE = "AWS_JUMPSTART_MODEL_BUCKET_OVERRIDE"
 ENV_VARIABLE_JUMPSTART_SCRIPT_ARTIFACT_BUCKET_OVERRIDE = "AWS_JUMPSTART_SCRIPT_BUCKET_OVERRIDE"
 ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE = (
@@ -207,6 +211,19 @@ DESERIALIZER_TYPE_TO_CLASS_MAP: Dict[DeserializerType, Type[BaseDeserializer]] =
 MODEL_ID_LIST_WEB_URL = "https://sagemaker.readthedocs.io/en/stable/doc_utils/pretrainedmodels.html"
 
 JUMPSTART_LOGGER = logging.getLogger("sagemaker.jumpstart")
+
+# disable logging if env var is set
+JUMPSTART_LOGGER.addHandler(
+    type(
+        "",
+        (logging.StreamHandler,),
+        {
+            "emit": lambda self, *args, **kwargs: logging.StreamHandler.emit(self, *args, **kwargs)
+            if not os.environ.get(ENV_VARIABLE_DISABLE_JUMPSTART_LOGGING)
+            else None
+        },
+    )()
+)
 
 try:
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION = Session(

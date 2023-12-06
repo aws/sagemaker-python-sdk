@@ -16,22 +16,34 @@ from __future__ import absolute_import
 import json
 
 import logging
-from copy import deepcopy
+from datetime import datetime
 from typing import Any, Dict, List, Set, Sequence, Union, Optional
 
 import attr
 import botocore
-from botocore.exceptions import ClientError
+import pytz
+from botocore.exceptions import ClientError, WaiterError
 
-from sagemaker import s3
+from sagemaker import s3, LocalSession
 from sagemaker._studio import _append_project_tags
 from sagemaker.config import PIPELINE_ROLE_ARN_PATH, PIPELINE_TAGS_PATH
+from sagemaker.remote_function.core.serialization import deserialize_obj_from_s3
+from sagemaker.remote_function.core.stored_function import RESULTS_FOLDER
+from sagemaker.remote_function.errors import RemoteFunctionError
+from sagemaker.remote_function.job import JOBS_CONTAINER_ENTRYPOINT
+from sagemaker.s3_utils import s3_path_join
 from sagemaker.session import Session
 from sagemaker.utils import resolve_value_from_config, retry_with_backoff
 from sagemaker.workflow.callback_step import CallbackOutput, CallbackStep
+from sagemaker.workflow._event_bridge_client_helper import (
+    EventBridgeSchedulerHelper,
+    RESOURCE_NOT_FOUND,
+    RESOURCE_NOT_FOUND_EXCEPTION,
+    EXECUTION_TIME_PIPELINE_PARAMETER_FORMAT,
+)
+from sagemaker.workflow.function_step import DelayedReturn
 from sagemaker.workflow.lambda_step import LambdaOutput, LambdaStep
 from sagemaker.workflow.entities import (
-    Entity,
     Expression,
     RequestType,
 )
@@ -42,10 +54,17 @@ from sagemaker.workflow.pipeline_experiment_config import PipelineExperimentConf
 from sagemaker.workflow.parallelism_config import ParallelismConfiguration
 from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.selective_execution_config import SelectiveExecutionConfig
-from sagemaker.workflow.steps import Step, StepTypeEnum
+from sagemaker.workflow.step_outputs import StepOutput
+from sagemaker.workflow.steps import Step
 from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.condition_step import ConditionStep
-from sagemaker.workflow.utilities import list_to_request, build_steps
+from sagemaker.workflow.triggers import (
+    PipelineSchedule,
+    Trigger,
+    validate_default_parameters_for_schedules,
+)
+from sagemaker.workflow.utilities import list_to_request
+from sagemaker.workflow._steps_compiler import StepsCompiler
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +75,7 @@ _DEFAULT_EXPERIMENT_CFG = PipelineExperimentConfig(
 _DEFAULT_DEFINITION_CFG = PipelineDefinitionConfig(use_custom_job_prefix=False)
 
 
-class Pipeline(Entity):
+class Pipeline:
     """Pipeline for workflow."""
 
     def __init__(
@@ -64,7 +83,7 @@ class Pipeline(Entity):
         name: str = "",
         parameters: Optional[Sequence[Parameter]] = None,
         pipeline_experiment_config: Optional[PipelineExperimentConfig] = _DEFAULT_EXPERIMENT_CFG,
-        steps: Optional[Sequence[Union[Step, StepCollection]]] = None,
+        steps: Optional[Sequence[Union[Step, StepCollection, StepOutput]]] = None,
         sagemaker_session: Optional[Session] = None,
         pipeline_definition_config: Optional[PipelineDefinitionConfig] = _DEFAULT_DEFINITION_CFG,
     ):
@@ -79,8 +98,8 @@ class Pipeline(Entity):
                 the same name already exists. By default, pipeline name is used as
                 experiment name and execution id is used as the trial name.
                 If set to None, no experiment or trial will be created automatically.
-            steps (Sequence[Union[Step, StepCollection]]): The list of the non-conditional steps
-                associated with the pipeline. Any steps that are within the
+            steps (Sequence[Union[Step, StepCollection, StepOutput]]): The list of the
+                non-conditional steps associated with the pipeline. Any steps that are within the
                 `if_steps` or `else_steps` of a `ConditionStep` cannot be listed in the steps of a
                 pipeline. Of particular note, the workflow service rejects any pipeline definitions
                 that specify a step in the list of steps of a pipeline and that step in the
@@ -101,24 +120,11 @@ class Pipeline(Entity):
 
         self._version = "2020-12-01"
         self._metadata = dict()
-        self._step_map = dict()
-        _generate_step_map(self.steps, self._step_map)
 
-    def to_request(self) -> RequestType:
-        """Gets the request structure for workflow service calls."""
-        return {
-            "Version": self._version,
-            "Metadata": self._metadata,
-            "Parameters": list_to_request(self.parameters),
-            "PipelineExperimentConfig": self.pipeline_experiment_config.to_request()
-            if self.pipeline_experiment_config is not None
-            else None,
-            "Steps": build_steps(
-                self.steps,
-                self.name,
-                self.pipeline_definition_config,
-            ),
-        }
+        # EventBridge helper for client.create() calls
+        self._event_bridge_scheduler_helper = EventBridgeSchedulerHelper(
+            self.sagemaker_session.boto_session.client("scheduler"),
+        )
 
     def create(
         self,
@@ -251,9 +257,6 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
                 logger.warning("Pipeline parallelism config is not supported in the local mode.")
             return self.sagemaker_session.sagemaker_client.update_pipeline(self, description)
 
-        self._step_map = dict()
-        _generate_step_map(self.steps, self._step_map)
-
         kwargs = self._create_args(role_arn, description, parallelism_config)
         return self.sagemaker_session.sagemaker_client.update_pipeline(**kwargs)
 
@@ -272,7 +275,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             tags (List[Dict[str, str]]): A list of {"Key": "string", "Value": "string"} dicts as
                 tags.
             parallelism_config (Optional[Config for parallel steps, Parallelism configuration that
-                is applied to each of. the executions
+                is applied to each of the executions
 
         Returns:
             response dict from service
@@ -317,6 +320,10 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         Returns:
             A response dict from the service.
         """
+        logger.info(
+            "If triggers have been setup for this target, they will become orphaned."
+            "You will need to clean them up manually via the CLI or EventBridge console."
+        )
         return self.sagemaker_session.sagemaker_client.delete_pipeline(PipelineName=self.name)
 
     def start(
@@ -378,10 +385,25 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
 
     def definition(self) -> str:
         """Converts a request structure to string representation for workflow service calls."""
-        request_dict = self.to_request()
-        self._interpolate_step_collection_name_in_depends_on(request_dict["Steps"])
+        compiled_steps = StepsCompiler(
+            pipeline_name=self.name,
+            sagemaker_session=self.sagemaker_session,
+            steps=self.steps,
+            pipeline_definition_config=self.pipeline_definition_config,
+        ).build()
+
+        request_dict = {
+            "Version": self._version,
+            "Metadata": self._metadata,
+            "Parameters": list_to_request(self.parameters),
+            "PipelineExperimentConfig": self.pipeline_experiment_config.to_request()
+            if self.pipeline_experiment_config is not None
+            else None,
+            "Steps": list_to_request(compiled_steps),
+        }
+
         request_dict["PipelineExperimentConfig"] = interpolate(
-            request_dict["PipelineExperimentConfig"], {}, {}
+            request_dict["PipelineExperimentConfig"], {}, {}, pipeline_name=self.name
         )
         callback_output_to_step_map = _map_callback_outputs(self.steps)
         lambda_output_to_step_name = _map_lambda_outputs(self.steps)
@@ -389,31 +411,10 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             request_dict["Steps"],
             callback_output_to_step_map=callback_output_to_step_map,
             lambda_output_to_step_map=lambda_output_to_step_name,
+            pipeline_name=self.name,
         )
 
         return json.dumps(request_dict)
-
-    def _interpolate_step_collection_name_in_depends_on(self, step_requests: list):
-        """Insert step names as per `StepCollection` name in depends_on list
-
-        Args:
-            step_requests (list): The list of raw step request dicts without any interpolation.
-        """
-        for step_request in step_requests:
-            depends_on = []
-            for depend_step_name in step_request.get("DependsOn", []):
-                if isinstance(self._step_map[depend_step_name], StepCollection):
-                    depends_on.extend([s.name for s in self._step_map[depend_step_name].steps])
-                else:
-                    depends_on.append(depend_step_name)
-            if depends_on:
-                step_request["DependsOn"] = depends_on
-
-            if step_request["Type"] == StepTypeEnum.CONDITION.value:
-                sub_step_requests = (
-                    step_request["Arguments"]["IfSteps"] + step_request["Arguments"]["ElseSteps"]
-                )
-                self._interpolate_step_collection_name_in_depends_on(sub_step_requests)
 
     def list_executions(
         self,
@@ -536,6 +537,134 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
                 + f"are not present in the pipeline execution: {pipeline_execution_arn}"
             )
 
+    def put_triggers(
+        self,
+        triggers: List[Trigger],
+        role_arn: str = None,
+    ) -> List[str]:
+        """Attach triggers to a parent SageMaker Pipeline.
+
+        Args:
+            triggers (List[Trigger]): List of supported triggers. Currently, this can only be of
+                type PipelineSchedule.
+            role_arn (str): The role arn that is assumed by EventBridge service.
+
+        Returns:
+            List[str]: Successfully created trigger Arn(s). Currently, the pythonSDK only supports
+                PipelineSchedule triggers, thus, this is a list of EventBridge Schedule Arn(s)
+                that were created/upserted.
+        """
+        _role_arn = role_arn or resolve_value_from_config(
+            role_arn, PIPELINE_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
+        )
+        if not _role_arn:
+            # Originally IAM role was a required parameter.
+            # Now we marked that as Optional because we can fetch it from SageMakerConfig
+            # Because of marking that parameter as optional, we should validate if it is None, even
+            # after fetching the config.
+            raise ValueError("An AWS IAM role is required to create triggers for a pipeline.")
+        if not triggers:
+            raise TypeError(
+                "No Triggers provided. Please specify at least one to setup pipeline triggers."
+            )
+
+        # Ensure pipeline exists first
+        try:
+            describe_pipeline_response = self.describe()
+        except ClientError as e:
+            if RESOURCE_NOT_FOUND == e.response["Error"]["Code"]:
+                raise RuntimeError(
+                    f"Cannot create triggers for pipeline {self.name} that does not exist. "
+                    f"Please create the pipeline before assigning triggers to it."
+                )
+            raise e
+
+        validate_default_parameters_for_schedules(self.parameters)
+        created_triggers = set()
+        for trigger in triggers:
+            if isinstance(trigger, PipelineSchedule):
+                _start_date = trigger.start_date or datetime.now(tz=pytz.utc)
+                _schedule_expression = trigger.resolve_schedule_expression()
+                _state = trigger.resolve_trigger_state()
+                _schedule_name = trigger.resolve_trigger_name(self.name)
+
+                logger.info("Creating/Updating EventBridge Schedule for pipeline: %s.", self.name)
+                event_bridge_schedule_arn = self._event_bridge_scheduler_helper.upsert_schedule(
+                    schedule_name=_schedule_name,
+                    pipeline_arn=describe_pipeline_response["PipelineArn"],
+                    schedule_expression=_schedule_expression,
+                    state=_state,
+                    start_date=_start_date,
+                    role=_role_arn,
+                )
+                logger.info(
+                    "Created/Updated EventBridge Schedule for pipeline: %s with ScheduleName: %s",
+                    self.name,
+                    _schedule_name,
+                )
+                created_triggers.add(event_bridge_schedule_arn["ScheduleArn"])
+            else:
+                raise TypeError(f"Unsupported TriggerType: {trigger.__class__.__name__}")
+
+        return list(created_triggers)
+
+    def describe_trigger(self, trigger_name: str) -> Dict[str, Any]:
+        """Describe Trigger for a parent SageMaker Pipeline.
+
+        Args:
+            trigger_name (str): Trigger name to be described. Currently, this can only
+                be an EventBridge schedule name.
+
+        Returns:
+            Dict[str, str]: Trigger describe responses from EventBridge.
+        """
+        if not trigger_name:
+            raise TypeError(
+                "No trigger name provided. Please specify at least one to describe pipeline "
+                "triggers."
+            )
+
+        event_bridge_schedule = self._event_bridge_scheduler_helper.describe_schedule(
+            schedule_name=trigger_name
+        )
+        describe_response_dict = {}
+        if event_bridge_schedule:
+            describe_response_dict.update(
+                dict(
+                    Schedule_Arn=event_bridge_schedule["Arn"],
+                    Schedule_Expression=event_bridge_schedule["ScheduleExpression"],
+                    Schedule_State=event_bridge_schedule["State"],
+                    Schedule_Start_Date=event_bridge_schedule["StartDate"].strftime(
+                        EXECUTION_TIME_PIPELINE_PARAMETER_FORMAT
+                    ),
+                    Schedule_Role=event_bridge_schedule["Target"]["RoleArn"],
+                )
+            )
+        return describe_response_dict
+
+    def delete_triggers(self, trigger_names: List[str]):
+        """Delete Triggers for a parent SageMaker Pipeline if they exist.
+
+        Args:
+            trigger_names (List[str]): List of trigger names to be deleted. Currently, these can
+                only be EventBridge schedule names.
+        """
+        for trigger_name in trigger_names:
+            #  /default group is used
+            logger.info("Deleting Pipeline Schedule: %s ...", trigger_name)
+            try:
+                self._event_bridge_scheduler_helper.delete_schedule(schedule_name=trigger_name)
+            except ClientError as e:
+                if RESOURCE_NOT_FOUND_EXCEPTION == e.response["Error"]["Code"]:
+                    logger.warning(
+                        "Pipeline Schedule %s does not exist. The schedule could have "
+                        "been already deleted or never created in the first place.",
+                        trigger_name,
+                    )
+                    continue
+                raise e
+            logger.info("Deleted Pipeline Schedule: %s ...", trigger_name)
+
 
 def format_start_parameters(parameters: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Formats start parameter overrides as a list of dicts.
@@ -557,6 +686,7 @@ def interpolate(
     request_obj: RequestType,
     callback_output_to_step_map: Dict[str, str],
     lambda_output_to_step_map: Dict[str, str],
+    pipeline_name: str,  # TODO: remove it once its ExecutionVariable fixed in backend
 ) -> RequestType:
     """Replaces Parameter values in a list of nested Dict[str, Any] with their workflow expression.
 
@@ -564,16 +694,17 @@ def interpolate(
         request_obj (RequestType): The request dict.
         callback_output_to_step_map (Dict[str, str]): A dict of output name -> step name.
         lambda_output_to_step_map (Dict[str, str]): A dict of output name -> step name.
+        pipeline_name (str): The name of the pipeline to be interpolated.
 
     Returns:
         RequestType: The request dict with Parameter values replaced by their expression.
     """
     try:
-        request_obj_copy = deepcopy(request_obj)
         return _interpolate(
-            request_obj_copy,
+            request_obj,
             callback_output_to_step_map=callback_output_to_step_map,
             lambda_output_to_step_map=lambda_output_to_step_map,
+            pipeline_name=pipeline_name,
         )
     except TypeError as type_err:
         raise TypeError("Not able to interpolate Pipeline definition: %s" % type_err)
@@ -583,15 +714,21 @@ def _interpolate(
     obj: Union[RequestType, Any],
     callback_output_to_step_map: Dict[str, str],
     lambda_output_to_step_map: Dict[str, str],
+    pipeline_name: str,
 ):
     """Walks the nested request dict, replacing Parameter type values with workflow expressions.
 
     Args:
         obj (Union[RequestType, Any]): The request dict.
         callback_output_to_step_map (Dict[str, str]): A dict of output name -> step name.
+        lambda_output_to_step_map (Dict[str, str]): A dict of output name -> step name.
+        pipeline_name (str): The name of the pipeline to be interpolated.
     """
-    if isinstance(obj, (Expression, Parameter, Properties)):
-        return obj.expr
+    if isinstance(obj, (Expression, Parameter, Properties, StepOutput)):
+        updated_obj = _replace_pipeline_name_in_json_get_s3_uri(
+            obj=obj, pipeline_name=pipeline_name
+        )
+        return updated_obj.expr
 
     if isinstance(obj, CallbackOutput):
         step_name = callback_output_to_step_map[obj.output_name]
@@ -602,10 +739,20 @@ def _interpolate(
     if isinstance(obj, dict):
         new = obj.__class__()
         for key, value in obj.items():
-            new[key] = interpolate(value, callback_output_to_step_map, lambda_output_to_step_map)
+            new[key] = interpolate(
+                value,
+                callback_output_to_step_map,
+                lambda_output_to_step_map,
+                pipeline_name=pipeline_name,
+            )
     elif isinstance(obj, (list, set, tuple)):
         new = obj.__class__(
-            interpolate(value, callback_output_to_step_map, lambda_output_to_step_map)
+            interpolate(
+                value,
+                callback_output_to_step_map,
+                lambda_output_to_step_map,
+                pipeline_name=pipeline_name,
+            )
             for value in obj
         )
     else:
@@ -613,11 +760,32 @@ def _interpolate(
     return new
 
 
+# TODO: we should remove this once the ExecutionVariables.PIPELINE_NAME is fixed in backend
+def _replace_pipeline_name_in_json_get_s3_uri(obj: Union[RequestType, Any], pipeline_name: str):
+    """Replace the ExecutionVariables.PIPELINE_NAME in DelayedReturn's JsonGet s3_uri
+
+    with the pipeline_name, because ExecutionVariables.PIPELINE_NAME
+    is parsed as all lower-cased str in backend.
+    """
+    if not isinstance(obj, DelayedReturn):
+        return obj
+
+    json_get = obj._to_json_get()
+
+    if not json_get.s3_uri:
+        return obj
+    # the s3 uri has to be a Join, which has been validated in JsonGet init
+    for i in range(len(json_get.s3_uri.values)):
+        if json_get.s3_uri.values[i] == ExecutionVariables.PIPELINE_NAME:
+            json_get.s3_uri.values[i] = pipeline_name
+    return json_get
+
+
 def _map_callback_outputs(steps: List[Step]):
     """Iterate over the provided steps, building a map of callback output parameters to step names.
 
     Args:
-        step (List[Step]): The steps list.
+        steps (List[Step]): The steps list.
     """
 
     callback_output_map = {}
@@ -634,7 +802,7 @@ def _map_lambda_outputs(steps: List[Step]):
     """Iterate over the provided steps, building a map of lambda output parameters to step names.
 
     Args:
-        step (List[Step]): The steps list.
+        steps (List[Step]): The steps list.
     """
 
     lambda_output_map = {}
@@ -661,9 +829,7 @@ def update_args(args: Dict[str, Any], **kwargs):
             args.update({key: value})
 
 
-def _generate_step_map(
-    steps: Sequence[Union[Step, StepCollection]], step_map: dict
-) -> Dict[str, Any]:
+def _generate_step_map(steps: Sequence[Union[Step, StepCollection]], step_map: dict):
     """Helper method to create a mapping from Step/Step Collection name to itself."""
     for step in steps:
         if step.name in step_map:
@@ -790,6 +956,99 @@ sagemaker.html#SageMaker.Client.list_pipeline_execution_steps>`_.
         )
         waiter.wait(PipelineExecutionArn=self.arn)
 
+    def result(self, step_name: str):
+        """Retrieves the output of the provided step if it is a ``@step`` decorated function.
+
+        Args:
+            step_name (str): The name of the pipeline step.
+        Returns:
+            The step output.
+
+        Raises:
+              ValueError if the provided step is not a ``@step`` decorated function.
+              RemoteFunctionError if the provided step is not in "Completed" status
+        """
+        try:
+            self.wait()
+        except WaiterError as e:
+            if "Waiter encountered a terminal failure state" not in str(e):
+                raise
+
+        return get_function_step_result(
+            step_name=step_name,
+            step_list=self.list_steps(),
+            execution_id=self.arn.split("/")[-1],
+            sagemaker_session=self.sagemaker_session,
+        )
+
+
+def get_function_step_result(
+    step_name: str,
+    step_list: list,
+    execution_id: str,
+    sagemaker_session: Session,
+):
+    """Helper function to retrieve the output of a ``@step`` decorated function.
+
+    Args:
+        step_name (str): The name of the pipeline step.
+        step_list (list): A list of executed pipeline steps of the specified execution.
+        execution_id (str): The specified id of the pipeline execution.
+        sagemaker_session (Session): Session object which manages interactions
+            with Amazon SageMaker APIs and any other AWS services needed.
+    Returns:
+        The step output.
+
+    Raises:
+        ValueError if the provided step is not a ``@step`` decorated function.
+        RemoteFunctionError if the provided step is not in "Completed" status
+    """
+    _ERROR_MSG_OF_WRONG_STEP_TYPE = (
+        "This method can only be used on pipeline steps created using @step decorator."
+    )
+    _ERROR_MSG_OF_STEP_INCOMPLETE = (
+        f"Unable to retrieve step output as the step {step_name} is not in Completed status."
+    )
+
+    step = next(filter(lambda x: x["StepName"] == step_name, step_list), None)
+    if not step:
+        raise ValueError(f"Invalid step name {step_name}")
+
+    if isinstance(sagemaker_session, LocalSession) and not step.get("Metadata", None):
+        # In local mode, if the training job failed,
+        # it's not tracked in LocalSagemakerClient and it's not describable.
+        # Thus, the step Metadata is not set.
+        raise RuntimeError(_ERROR_MSG_OF_STEP_INCOMPLETE)
+
+    step_type = next(iter(step["Metadata"]))
+    step_metadata = next(iter(step["Metadata"].values()))
+    if step_type != "TrainingJob":
+        raise ValueError(_ERROR_MSG_OF_WRONG_STEP_TYPE)
+
+    job_arn = step_metadata["Arn"]
+    job_name = job_arn.split("/")[-1]
+
+    if isinstance(sagemaker_session, LocalSession):
+        describe_training_job_response = sagemaker_session.sagemaker_client.describe_training_job(
+            job_name
+        )
+    else:
+        describe_training_job_response = sagemaker_session.describe_training_job(job_name)
+    container_args = describe_training_job_response["AlgorithmSpecification"]["ContainerEntrypoint"]
+    if container_args != JOBS_CONTAINER_ENTRYPOINT:
+        raise ValueError(_ERROR_MSG_OF_WRONG_STEP_TYPE)
+    s3_output_path = describe_training_job_response["OutputDataConfig"]["S3OutputPath"]
+
+    job_status = describe_training_job_response["TrainingJobStatus"]
+    if job_status == "Completed":
+        return deserialize_obj_from_s3(
+            sagemaker_session=sagemaker_session,
+            s3_uri=s3_path_join(s3_output_path, execution_id, step_name, RESULTS_FOLDER),
+            hmac_key=describe_training_job_response["Environment"]["REMOTE_FUNCTION_SECRET_KEY"],
+        )
+
+    raise RemoteFunctionError(_ERROR_MSG_OF_STEP_INCOMPLETE)
+
 
 class PipelineGraph:
     """Helper class representing the Pipeline Directed Acyclic Graph (DAG)
@@ -809,7 +1068,13 @@ class PipelineGraph:
     @classmethod
     def from_pipeline(cls, pipeline: Pipeline):
         """Create a PipelineGraph object from the Pipeline object."""
-        return cls(pipeline.steps)
+        compiled_steps = StepsCompiler(
+            pipeline_name=pipeline.name,
+            sagemaker_session=pipeline.sagemaker_session,
+            pipeline_definition_config=pipeline.pipeline_definition_config,
+            steps=pipeline.steps,
+        ).build()
+        return cls(compiled_steps)
 
     def _initialize_adjacency_list(self) -> Dict[str, List[str]]:
         """Generate an adjacency list representing the step dependency DAG in this pipeline."""

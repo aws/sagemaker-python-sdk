@@ -81,30 +81,65 @@ class _ModelStepArguments(_StepArguments):
 
 
 class _PipelineConfig:
-    """Config object that associates a step with its containing pipeline
+    """Context for building a step.
 
     Args:
         pipeline_name (str): pipeline name
         step_name (str): step name
+        sagemaker_session (Session): a SageMaker Session
         code_hash (str): a hash of the code artifact for the particular step
         config_hash (str): a hash of the config artifact for the particular step (Processing)
         pipeline_definition_config (PipelineDefinitionConfig): a configuration used to toggle
             feature flags persistent in a pipeline definition
+        upload_runtime_scripts (bool): flag used to manage upload of runtime scripts to s3 for
+          a _FunctionStep in pipeline
+        upload_workspace (bool): flag used to manage the upload of workspace to s3 for a
+          _FunctionStep in pipeline
     """
 
     def __init__(
         self,
         pipeline_name: str,
         step_name: str,
+        sagemaker_session: Session,
         code_hash: str,
         config_hash: str,
         pipeline_definition_config: PipelineDefinitionConfig,
+        pipeline_build_time: str = None,
+        upload_runtime_scripts: bool = True,
+        upload_workspace: bool = True,
+        function_step_secret_token: Optional[str] = None,
     ):
-        self.pipeline_name = pipeline_name
-        self.step_name = step_name
+        self._pipeline_name = pipeline_name
+        self._step_name = step_name
+        self._sagemaker_session = sagemaker_session
         self.code_hash = code_hash
         self.config_hash = config_hash
         self.pipeline_definition_config = pipeline_definition_config
+        self.upload_runtime_scripts = upload_runtime_scripts
+        self.upload_workspace = upload_workspace
+        self._function_step_secret_token = function_step_secret_token
+        self.pipeline_build_time = pipeline_build_time
+
+    @property
+    def pipeline_name(self):
+        """str: pipeline name"""
+        return self._pipeline_name
+
+    @property
+    def step_name(self):
+        """str: step name"""
+        return self._step_name
+
+    @property
+    def sagemaker_session(self):
+        """Session: a SageMaker Session"""
+        return self._sagemaker_session
+
+    @property
+    def function_step_secret_token(self):
+        """str: a secret token for a function step"""
+        return self._function_step_secret_token
 
 
 class PipelineSession(Session):

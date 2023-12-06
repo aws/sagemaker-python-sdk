@@ -96,6 +96,7 @@ def test_emr_step_with_one_step_config(sagemaker_session, execution_role_arn):
     assert emr_step.properties.Status.FailureDetails.Reason.expr == {
         "Get": "Steps.MyEMRStep.Status.FailureDetails.Reason"
     }
+    assert emr_step.properties.Status.FailureDetails.Reason._referenced_steps == [emr_step]
 
 
 def test_pipeline_interpolates_emr_outputs(sagemaker_session):
@@ -136,56 +137,59 @@ def test_pipeline_interpolates_emr_outputs(sagemaker_session):
         sagemaker_session=sagemaker_session,
     )
 
-    assert json.loads(pipeline.definition()) == {
-        "Version": "2020-12-01",
-        "Metadata": {},
-        "Parameters": [{"Name": "MyStr", "Type": "String"}],
-        "PipelineExperimentConfig": {
-            "ExperimentName": {"Get": "Execution.PipelineName"},
-            "TrialName": {"Get": "Execution.PipelineExecutionId"},
-        },
-        "Steps": [
-            {
-                "Name": "emr_step_1",
-                "Type": "EMR",
-                "Arguments": {
-                    "ClusterId": "MyClusterID",
-                    "StepConfig": {
-                        "HadoopJarStep": {
-                            "Args": ["--arg_0", "arg_0_value"],
-                            "Jar": "s3:/script-runner/script-runner_1.jar",
-                            "MainClass": "com.my.main",
-                            "Properties": [
-                                {"Key": "Foo", "Value": "Foo_value"},
-                                {"Key": "Bar", "Value": "Bar_value"},
-                            ],
-                        }
+    pipeline_def = json.loads(pipeline.definition())
+    assert ordered(pipeline_def) == ordered(
+        {
+            "Version": "2020-12-01",
+            "Metadata": {},
+            "Parameters": [{"Name": "MyStr", "Type": "String"}],
+            "PipelineExperimentConfig": {
+                "ExperimentName": {"Get": "Execution.PipelineName"},
+                "TrialName": {"Get": "Execution.PipelineExecutionId"},
+            },
+            "Steps": [
+                {
+                    "Name": "emr_step_1",
+                    "Type": "EMR",
+                    "Arguments": {
+                        "ClusterId": "MyClusterID",
+                        "StepConfig": {
+                            "HadoopJarStep": {
+                                "Args": ["--arg_0", "arg_0_value"],
+                                "Jar": "s3:/script-runner/script-runner_1.jar",
+                                "MainClass": "com.my.main",
+                                "Properties": [
+                                    {"Key": "Foo", "Value": "Foo_value"},
+                                    {"Key": "Bar", "Value": "Bar_value"},
+                                ],
+                            }
+                        },
                     },
+                    "DependsOn": ["TestStep"],
+                    "Description": "MyEMRStepDescription",
+                    "DisplayName": "emr_step_1",
                 },
-                "DependsOn": ["TestStep"],
-                "Description": "MyEMRStepDescription",
-                "DisplayName": "emr_step_1",
-            },
-            {
-                "Name": "emr_step_2",
-                "Type": "EMR",
-                "Arguments": {
-                    "ClusterId": "MyClusterID",
-                    "StepConfig": {
-                        "HadoopJarStep": {"Jar": "s3:/script-runner/script-runner_2.jar"}
+                {
+                    "Name": "emr_step_2",
+                    "Type": "EMR",
+                    "Arguments": {
+                        "ClusterId": "MyClusterID",
+                        "StepConfig": {
+                            "HadoopJarStep": {"Jar": "s3:/script-runner/script-runner_2.jar"}
+                        },
                     },
+                    "Description": "MyEMRStepDescription",
+                    "DisplayName": "emr_step_2",
+                    "DependsOn": ["TestStep"],
                 },
-                "Description": "MyEMRStepDescription",
-                "DisplayName": "emr_step_2",
-                "DependsOn": ["TestStep"],
-            },
-            {
-                "Name": "TestStep",
-                "Type": "Training",
-                "Arguments": {},
-            },
-        ],
-    }
+                {
+                    "Name": "TestStep",
+                    "Type": "Training",
+                    "Arguments": {},
+                },
+            ],
+        }
+    )
     adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
     assert ordered(adjacency_list) == ordered(
         {"emr_step_1": [], "emr_step_2": [], "TestStep": ["emr_step_1", "emr_step_2"]}

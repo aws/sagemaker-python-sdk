@@ -19,14 +19,16 @@ import random
 from sagemaker.jumpstart import utils
 from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    ENV_VARIABLE_DISABLE_JUMPSTART_LOGGING,
     ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE,
+    ENV_VARIABLE_JUMPSTART_GATED_CONTENT_BUCKET_OVERRIDE,
     JUMPSTART_DEFAULT_REGION_NAME,
     JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET,
+    JUMPSTART_LOGGER,
     JUMPSTART_REGION_NAME_SET,
     JUMPSTART_RESOURCE_BASE_NAME,
     JumpStartScriptScope,
 )
-
 from functools import partial
 from sagemaker.jumpstart.enums import JumpStartTag, MIMEType
 from sagemaker.jumpstart.exceptions import (
@@ -35,6 +37,10 @@ from sagemaker.jumpstart.exceptions import (
 )
 from sagemaker.jumpstart.types import JumpStartModelHeader, JumpStartVersionedModelId
 from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec
+from mock import MagicMock
+
+
+MOCK_CLIENT = MagicMock()
 
 
 def random_jumpstart_s3_uri(key):
@@ -78,12 +84,12 @@ def test_get_jumpstart_gated_content_bucket_no_args():
 
 
 def test_get_jumpstart_gated_content_bucket_override():
-    with patch.dict(os.environ, {ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE: "some-val"}):
+    with patch.dict(os.environ, {ENV_VARIABLE_JUMPSTART_GATED_CONTENT_BUCKET_OVERRIDE: "some-val"}):
         with patch("logging.Logger.info") as mocked_info_log:
             random_region = "random_region"
             assert "some-val" == utils.get_jumpstart_gated_content_bucket(random_region)
             mocked_info_log.assert_called_once_with(
-                "Using JumpStart private bucket override: 'some-val'"
+                "Using JumpStart gated bucket override: 'some-val'"
             )
 
 
@@ -883,15 +889,20 @@ def test_update_inference_tags_with_jumpstart_training_model_tags_inference():
     )
 
 
-def test_jumpstart_accept_eula_logs():
+@patch("sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor._get_manifest")
+def test_jumpstart_accept_eula_logs(mock_get_manifest):
+    mock_get_manifest.return_value = []
+
     def make_accept_eula_inference_spec(*largs, **kwargs):
         spec = get_spec_from_base_spec(model_id="pytorch-eqa-bert-base-cased", version="*")
         spec.hosting_eula_key = "read/the/fine/print.txt"
         return spec
 
     with patch("logging.Logger.info") as mocked_info_log:
-        utils.emit_logs_based_on_model_specs(make_accept_eula_inference_spec(), "us-east-1")
-        mocked_info_log.assert_called_once_with(
+        utils.emit_logs_based_on_model_specs(
+            make_accept_eula_inference_spec(), "us-east-1", MOCK_CLIENT
+        )
+        mocked_info_log.assert_any_call(
             "Model '%s' requires accepting end-user license agreement (EULA). "
             "See https://%s.s3.%s.amazonaws.com%s/%s for terms of use.",
             "pytorch-eqa-bert-base-cased",
@@ -902,7 +913,10 @@ def test_jumpstart_accept_eula_logs():
         )
 
 
-def test_jumpstart_vulnerable_model_warnings():
+@patch("sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor._get_manifest")
+def test_jumpstart_vulnerable_model_warnings(mock_get_manifest):
+    mock_get_manifest.return_value = []
+
     def make_vulnerable_inference_spec(*largs, **kwargs):
         spec = get_spec_from_base_spec(model_id="pytorch-eqa-bert-base-cased", version="*")
         spec.inference_vulnerable = True
@@ -910,7 +924,9 @@ def test_jumpstart_vulnerable_model_warnings():
         return spec
 
     with patch("logging.Logger.warning") as mocked_warning_log:
-        utils.emit_logs_based_on_model_specs(make_vulnerable_inference_spec(), "some-region")
+        utils.emit_logs_based_on_model_specs(
+            make_vulnerable_inference_spec(), "us-west-2", MOCK_CLIENT
+        )
         mocked_warning_log.assert_called_once_with(
             "Using vulnerable JumpStart model '%s' and version '%s'.",
             "pytorch-eqa-bert-base-cased",
@@ -918,14 +934,69 @@ def test_jumpstart_vulnerable_model_warnings():
         )
 
 
-def test_jumpstart_deprecated_model_warnings():
+@patch("sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor._get_manifest")
+def test_jumpstart_old_model_spec(mock_get_manifest):
+
+    mock_get_manifest.return_value = [
+        JumpStartModelHeader(
+            {
+                "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
+                "version": "1.1.0",
+                "min_version": "2.49.0",
+                "spec_key": "community_models_specs/tensorflow-ic-imagenet-in"
+                "ception-v3-classification-4/specs_v1.1.0.json",
+            }
+        ),
+        JumpStartModelHeader(
+            {
+                "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
+                "version": "1.0.0",
+                "min_version": "2.49.0",
+                "spec_key": "community_models_specs/tensorflow-ic-imagenet-"
+                "inception-v3-classification-4/specs_v1.0.0.json",
+            }
+        ),
+    ]
+
+    with patch("logging.Logger.info") as mocked_info_log:
+        utils.emit_logs_based_on_model_specs(
+            get_spec_from_base_spec(
+                model_id="tensorflow-ic-imagenet-inception-v3-classification-4", version="1.0.0"
+            ),
+            "us-west-2",
+            MOCK_CLIENT,
+        )
+
+        mocked_info_log.assert_called_once_with(
+            "Using model 'tensorflow-ic-imagenet-inception-v3-classification-4' with version '1.0.0'. "
+            "You can upgrade to version '1.1.0' to get the latest model specifications. Note that models "
+            "may have different input/output signatures after a major version upgrade."
+        )
+
+        mocked_info_log.reset_mock()
+
+        utils.emit_logs_based_on_model_specs(
+            get_spec_from_base_spec(
+                model_id="tensorflow-ic-imagenet-inception-v3-classification-4", version="1.1.0"
+            ),
+            "us-west-2",
+            MOCK_CLIENT,
+        )
+
+        mocked_info_log.assert_not_called()
+
+
+@patch("sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor._get_manifest")
+def test_jumpstart_deprecated_model_warnings(mock_get_manifest):
+    mock_get_manifest.return_value = []
+
     def make_deprecated_spec(*largs, **kwargs):
         spec = get_spec_from_base_spec(model_id="pytorch-eqa-bert-base-cased", version="*")
         spec.deprecated = True
         return spec
 
     with patch("logging.Logger.warning") as mocked_warning_log:
-        utils.emit_logs_based_on_model_specs(make_deprecated_spec(), "some-region")
+        utils.emit_logs_based_on_model_specs(make_deprecated_spec(), "us-west-2", MOCK_CLIENT)
 
         mocked_warning_log.assert_called_once_with(
             "Using deprecated JumpStart model 'pytorch-eqa-bert-base-cased' and version '*'."
@@ -940,7 +1011,9 @@ def test_jumpstart_deprecated_model_warnings():
         return spec
 
     with patch("logging.Logger.warning") as mocked_warning_log:
-        utils.emit_logs_based_on_model_specs(make_deprecated_message_spec(), "some-region")
+        utils.emit_logs_based_on_model_specs(
+            make_deprecated_message_spec(), "us-west-2", MOCK_CLIENT
+        )
 
         mocked_warning_log.assert_called_once_with(deprecated_message)
 
@@ -952,10 +1025,29 @@ def test_jumpstart_deprecated_model_warnings():
         return spec
 
     with patch("logging.Logger.warning") as mocked_warning_log:
-        utils.emit_logs_based_on_model_specs(make_deprecated_warning_message_spec(), "some-region")
+        utils.emit_logs_based_on_model_specs(
+            make_deprecated_warning_message_spec(), "us-west-2", MOCK_CLIENT
+        )
         mocked_warning_log.assert_called_once_with(
             deprecate_warn_message,
         )
+
+
+@patch("sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor._get_manifest")
+def test_jumpstart_usage_info_message(mock_get_manifest):
+    mock_get_manifest.return_value = []
+
+    usage_info_message = "This model might change your life."
+
+    def make_info_spec(*largs, **kwargs):
+        spec = get_spec_from_base_spec(model_id="pytorch-eqa-bert-base-cased", version="*")
+        spec.usage_info_message = usage_info_message
+        return spec
+
+    with patch("logging.Logger.info") as mocked_info_log:
+        utils.emit_logs_based_on_model_specs(make_info_spec(), "us-west-2", MOCK_CLIENT)
+
+        mocked_info_log.assert_called_with(usage_info_message)
 
 
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -978,7 +1070,10 @@ def test_jumpstart_vulnerable_model_errors(patched_get_model_specs):
     assert (
         "Version '*' of JumpStart model 'pytorch-eqa-bert-base-cased' has at least 1 "
         "vulnerable dependency in the inference script. "
-        "Please try targeting a higher version of the model or using a different model. "
+        "We recommend that you specify a more recent model version or "
+        "choose a different model. To access the "
+        "latest models and model versions, be sure to upgrade "
+        "to the latest version of the SageMaker Python SDK. "
         "List of vulnerabilities: some, vulnerability"
     ) == str(e.value.message)
 
@@ -1000,7 +1095,10 @@ def test_jumpstart_vulnerable_model_errors(patched_get_model_specs):
     assert (
         "Version '*' of JumpStart model 'pytorch-eqa-bert-base-cased' has at least 1 "
         "vulnerable dependency in the training script. "
-        "Please try targeting a higher version of the model or using a different model. "
+        "We recommend that you specify a more recent model version or "
+        "choose a different model. To access the "
+        "latest models and model versions, be sure to upgrade "
+        "to the latest version of the SageMaker Python SDK. "
         "List of vulnerabilities: some, vulnerability"
     ) == str(e.value.message)
 
@@ -1117,12 +1215,6 @@ class TestIsValidModelId(TestCase):
             mock_get_manifest.assert_called_once_with(
                 region=JUMPSTART_DEFAULT_REGION_NAME, s3_client=mock_s3_client_value
             )
-            mock_get_model_specs.assert_called_once_with(
-                region=JUMPSTART_DEFAULT_REGION_NAME,
-                model_id="bee",
-                version="*",
-                s3_client=mock_s3_client_value,
-            )
 
     @patch("sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor._get_manifest")
     @patch("sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -1180,13 +1272,27 @@ class TestIsValidModelId(TestCase):
             mock_get_model_specs.reset_mock()
 
             mock_get_model_specs.return_value = Mock(training_supported=False)
-            self.assertFalse(utils.is_valid_model_id("ay", script=JumpStartScriptScope.TRAINING))
+            self.assertTrue(utils.is_valid_model_id("ay", script=JumpStartScriptScope.TRAINING))
             mock_get_manifest.assert_called_once_with(
                 region=JUMPSTART_DEFAULT_REGION_NAME, s3_client=mock_s3_client_value
             )
-            mock_get_model_specs.assert_called_once_with(
-                region=JUMPSTART_DEFAULT_REGION_NAME,
-                model_id="ay",
-                version="*",
-                s3_client=mock_s3_client_value,
-            )
+
+
+class TestJumpStartLogger(TestCase):
+    @patch.dict("os.environ", {})
+    @patch("logging.StreamHandler.emit")
+    @patch("sagemaker.jumpstart.constants.JUMPSTART_LOGGER.propagate", False)
+    def test_logger_normal_mode(self, mocked_emit: Mock):
+
+        JUMPSTART_LOGGER.warning("Self destruct in 3...2...1...")
+
+        mocked_emit.assert_called_once()
+
+    @patch.dict("os.environ", {ENV_VARIABLE_DISABLE_JUMPSTART_LOGGING: "true"})
+    @patch("logging.StreamHandler.emit")
+    @patch("sagemaker.jumpstart.constants.JUMPSTART_LOGGER.propagate", False)
+    def test_logger_disabled(self, mocked_emit: Mock):
+
+        JUMPSTART_LOGGER.warning("Self destruct in 3...2...1...")
+
+        mocked_emit.assert_not_called()

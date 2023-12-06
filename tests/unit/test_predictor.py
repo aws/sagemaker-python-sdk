@@ -19,9 +19,11 @@ import pytest
 from mock import Mock, call, patch
 
 from sagemaker.deserializers import CSVDeserializer, PandasDeserializer
+from sagemaker.enums import EndpointType
 from sagemaker.model_monitor.model_monitoring import DEFAULT_REPOSITORY_NAME
 from sagemaker.predictor import Predictor
 from sagemaker.serializers import JSONSerializer, CSVSerializer
+from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
 
 ENDPOINT = "mxnet_endpoint"
 BUCKET_NAME = "mxnet_endpoint"
@@ -282,6 +284,7 @@ def test_update_endpoint_no_args(name_from_base):
         new_kms_key=None,
         new_data_capture_config_dict=None,
         new_production_variants=None,
+        endpoint_type=EndpointType.MODEL_BASED,
     )
     sagemaker_session.update_endpoint.assert_called_with(
         ENDPOINT, new_endpoint_config_name, wait=True
@@ -335,6 +338,7 @@ def test_update_endpoint_all_args(name_from_base, production_variant):
         new_kms_key=new_kms_key,
         new_data_capture_config_dict=new_data_capture_config_dict,
         new_production_variants=[production_variant.return_value],
+        endpoint_type=EndpointType.MODEL_BASED,
     )
     sagemaker_session.update_endpoint.assert_called_with(
         ENDPOINT, new_endpoint_config_name, wait=False
@@ -379,6 +383,7 @@ def test_update_endpoint_instance_type_and_count(name_from_base, production_vari
         new_kms_key=None,
         new_data_capture_config_dict=None,
         new_production_variants=[production_variant.return_value],
+        endpoint_type=EndpointType.MODEL_BASED,
     )
     sagemaker_session.update_endpoint.assert_called_with(
         ENDPOINT, new_endpoint_config_name, wait=True
@@ -633,3 +638,155 @@ def test_custom_attributes():
         CustomAttributes="custom-attribute",
         Body="payload",
     )
+
+
+def test_update_predictor():
+    sagemaker_session = empty_sagemaker_session()
+    component_name = "test_component_name"
+    predictor = Predictor(
+        ENDPOINT, sagemaker_session=sagemaker_session, component_name=component_name
+    )
+
+    resources = ResourceRequirements(
+        requests={
+            "num_cpus": 1,  # NumberOfCpuCoresRequired
+            "memory": 1024,  # MinMemoryRequiredInMb (required)
+            "copies": 1,
+        },
+        limits={"memory": 4096},
+    )
+
+    predictor.update_predictor(resources=resources)
+
+    request = {
+        "inference_component_name": component_name,
+        "specification": {
+            "ComputeResourceRequirements": resources.get_compute_resource_requirements()
+        },
+        "runtime_config": {"CopyCount": resources.copy_count},
+    }
+
+    sagemaker_session.update_inference_component.assert_called_with(**request)
+
+
+def test_list_related_models_empty_inference_components():
+    sagemaker_session = empty_sagemaker_session()
+    sagemaker_session.list_inference_components = Mock(return_value={})
+    predictor = Predictor(ENDPOINT, sagemaker_session=sagemaker_session)
+
+    models, _ = predictor.list_related_models()
+    request = {
+        "endpoint_name_equals": ENDPOINT,
+        "variant_name_equals": None,
+        "name_contains": None,
+        "creation_time_after": None,
+        "creation_time_before": None,
+        "last_modified_time_after": None,
+        "last_modified_time_before": None,
+        "status_equals": None,
+        "sort_order": None,
+        "sort_by": None,
+        "max_results": None,
+        "next_token": None,
+    }
+    sagemaker_session.list_inference_components.assert_called_with(**request)
+    assert len(models) == 0
+
+
+def test_list_related_models_only_inference_components():
+    sagemaker_session = empty_sagemaker_session()
+    sagemaker_session.list_inference_components = Mock(
+        return_value={
+            "InferenceComponents": [
+                {
+                    "InferenceComponentName": "test_component_name",
+                }
+            ],
+        }
+    )
+    predictor = Predictor(ENDPOINT, sagemaker_session=sagemaker_session)
+
+    models, _ = predictor.list_related_models()
+    request = {
+        "endpoint_name_equals": ENDPOINT,
+        "variant_name_equals": None,
+        "name_contains": None,
+        "creation_time_after": None,
+        "creation_time_before": None,
+        "last_modified_time_after": None,
+        "last_modified_time_before": None,
+        "status_equals": None,
+        "sort_order": None,
+        "sort_by": None,
+        "max_results": None,
+        "next_token": None,
+    }
+    sagemaker_session.list_inference_components.assert_called_with(**request)
+    assert len(models) == 1
+
+
+def test_list_related_models_inference_components_and_next_token():
+    sagemaker_session = empty_sagemaker_session()
+    sagemaker_session.list_inference_components = Mock(
+        return_value={
+            "InferenceComponents": [
+                {
+                    "InferenceComponentName": "test_component_name",
+                }
+            ],
+            "NextToken": "next_token",
+        }
+    )
+    predictor = Predictor(ENDPOINT, sagemaker_session=sagemaker_session)
+
+    models, next_token_returned = predictor.list_related_models()
+    request = {
+        "endpoint_name_equals": ENDPOINT,
+        "variant_name_equals": None,
+        "name_contains": None,
+        "creation_time_after": None,
+        "creation_time_before": None,
+        "last_modified_time_after": None,
+        "last_modified_time_before": None,
+        "status_equals": None,
+        "sort_order": None,
+        "sort_by": None,
+        "max_results": None,
+        "next_token": None,
+    }
+    sagemaker_session.list_inference_components.assert_called_with(**request)
+    assert len(models) == 1 and next_token_returned == "next_token"
+
+
+def test_list_related_models_inference_components_with_token_and_return_next_token():
+    sagemaker_session = empty_sagemaker_session()
+    sagemaker_session.list_inference_components = Mock(
+        return_value={
+            "InferenceComponents": [
+                {
+                    "InferenceComponentName": "test_component_name",
+                }
+            ],
+            "NextToken": "next_token",
+        }
+    )
+    predictor = Predictor(ENDPOINT, sagemaker_session=sagemaker_session)
+
+    mockToken = "current_token"
+    models, next_token_returned = predictor.list_related_models(next_token=mockToken)
+    request = {
+        "endpoint_name_equals": ENDPOINT,
+        "variant_name_equals": None,
+        "name_contains": None,
+        "creation_time_after": None,
+        "creation_time_before": None,
+        "last_modified_time_after": None,
+        "last_modified_time_before": None,
+        "status_equals": None,
+        "sort_order": None,
+        "sort_by": None,
+        "max_results": None,
+        "next_token": mockToken,
+    }
+    sagemaker_session.list_inference_components.assert_called_with(**request)
+    assert len(models) == 1 and next_token_returned == "next_token"
