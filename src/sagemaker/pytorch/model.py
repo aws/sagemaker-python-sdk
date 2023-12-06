@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 import logging
-from typing import Optional, Union, List, Dict
+from typing import Callable, Optional, Union, List, Dict
 
 import packaging.version
 
@@ -99,7 +99,7 @@ class PyTorchModel(FrameworkModel):
         framework_version: Optional[str] = "1.3",
         py_version: Optional[str] = None,
         image_uri: Optional[Union[str, PipelineVariable]] = None,
-        predictor_cls: callable = PyTorchPredictor,
+        predictor_cls: Callable = PyTorchPredictor,
         model_server_workers: Optional[Union[int, PipelineVariable]] = None,
         **kwargs
     ):

@@ -25,7 +25,7 @@ import shutil
 import tarfile
 import tempfile
 import time
-from typing import Union, Any, List, Optional, Dict
+from typing import Union, Any, Callable, List, Optional, Dict
 import json
 import abc
 import uuid
@@ -1493,7 +1493,7 @@ def format_tags(tags: Tags) -> List[TagsDict]:
 
 
 def validate_call_inputs(
-    __func: callable,
+    __func: Callable,
     *args,
     config: Optional[ConfigDict] = None,
     validate_return: bool = False,

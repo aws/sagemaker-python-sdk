@@ -1317,8 +1317,7 @@ class SparkConfigUtils:
     ]
 
     @staticmethod
-    @validate_call_inputs
-    def validate_configuration(configuration: Union[Dict, list]):
+    def validate_configuration(configuration: Union[Dict, List]):
         """Validates the user-provided Hadoop/Spark/Hive configuration.
 
         This ensures that the list or dictionary the user provides will serialize to

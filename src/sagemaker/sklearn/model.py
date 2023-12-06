@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 import logging
-from typing import Union, Optional, List, Dict
+from typing import Callable, Union, Optional, List, Dict
 
 import sagemaker
 from sagemaker import image_uris, ModelMetrics
@@ -92,7 +92,7 @@ class SKLearnModel(FrameworkModel):
         framework_version: Optional[str] = None,
         py_version: Optional[str] = "py3",
         image_uri: Optional[Union[str, PipelineVariable]] = None,
-        predictor_cls: callable = SKLearnPredictor,
+        predictor_cls: Callable = SKLearnPredictor,
         model_server_workers: Optional[Union[int, PipelineVariable]] = None,
         **kwargs
     ):
