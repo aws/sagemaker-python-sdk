@@ -102,7 +102,16 @@ ANALYSIS_CONFIG_SCHEMA_V1_0 = Schema(
             "item_id": Or(str, int),
             "timestamp": Or(str, int),
             SchemaOptional("related_time_series"): Or([str], [int]),
-            SchemaOptional("item_metadata"): Or([str], [int]),
+            SchemaOptional("static_covariates"): Or([str], [int]),
+            SchemaOptional("dataset_format"): And(
+                str,
+                Use(str.lower),
+                lambda s: s
+                in (
+                    "columns",
+                    "timestamp_records",
+                ),
+            ),
         },
         "methods": {
             SchemaOptional("shap"): {
@@ -370,6 +379,13 @@ class DatasetType(Enum):
     IMAGE = "application/x-image"
 
 
+class TimeSeriesJSONDatasetFormat(Enum):
+    """Possible dataset formats for JSON time series data files."""
+
+    COLUMNS = "columns"
+    TIMESTAMP_RECORDS = "timestamp_records"
+
+
 class SegmentationConfig:
     """Config object that defines segment(s) of the dataset on which metrics are computed."""
 
@@ -447,16 +463,18 @@ class TimeSeriesDataConfig:
         item_id: Union[str, int],
         timestamp: Union[str, int],
         related_time_series: Optional[List[Union[str, int]]] = None,
-        item_metadata: Optional[List[Union[str, int]]] = None,
+        static_covariates: Optional[List[Union[str, int]]] = None,
+        dataset_format: Optional[TimeSeriesJSONDatasetFormat] = None,
     ):
         """Initialises TimeSeries explainability data configuration fields.
 
         Args:
             target_time_series (str or int): A string or a zero-based integer index.
                 Used to locate the target time series in the shared input dataset.
-                If this parameter is a string, then all other parameters must also
-                be strings or lists of strings. If this parameter is an int, then
-                all others must be ints or lists of ints.
+                If this parameter is a string, then all other parameters except 
+                `dataset_format` must be strings or lists of strings. If 
+                this parameter is an int, then all other parameters except
+                `dataset_format` must be ints or lists of ints.
             item_id (str or int): A string or a zero-based integer index. Used to
                 locate item id in the shared input dataset.
             timestamp (str or int): A string or a zero-based integer index. Used to
@@ -464,9 +482,12 @@ class TimeSeriesDataConfig:
             related_time_series (list[str] or list[int]): Optional. An array of strings
                 or array of zero-based integer indices. Used to locate all related time
                 series in the shared input dataset (if present).
-            item_metadata (list[str] or list[int]): Optional.  An array of strings or
-                array of zero-based integer indices. Used to locate all item metadata
+            static_covariates (list[str] or list[int]): Optional.  An array of strings or
+                array of zero-based integer indices. Used to locate all static covariate
                 fields in the shared input dataset (if present).
+            dataset_format (TimeSeriesJSONDatasetFormat): Describes the format
+                of the data files provided for analysis. Should only be provided
+                when dataset is in JSON format.
 
         Raises:
             AssertionError: If any required arguments are not provided.
@@ -484,7 +505,7 @@ class TimeSeriesDataConfig:
             raise ValueError(f"Please provide {params_type} for ``item_id``")
         if not isinstance(timestamp, params_type):
             raise ValueError(f"Please provide {params_type} for ``timestamp``")
-        # add remaining fields to an internal dictionary
+        # add mandatory fields to an internal dictionary
         self.time_series_data_config = dict()
         _set(target_time_series, "target_time_series", self.time_series_data_config)
         _set(item_id, "item_id", self.time_series_data_config)
@@ -502,22 +523,32 @@ class TimeSeriesDataConfig:
                 raise ValueError(
                     related_time_series_error_message
                 )  # related_time_series is not a list of strings or list of ints
+            if params_type == str and not all(related_time_series):
+                raise ValueError("Please do not provide empty strings in ``related_time_series``.")
             _set(
                 related_time_series, "related_time_series", self.time_series_data_config
             )  # related_time_series is valid, add it
-        item_metadata_series_error_message = (
-            f"Please provide a list of {params_type} for ``item_metadata``"
+        static_covariates_series_error_message = (
+            f"Please provide a list of {params_type} for ``static_covariates``"
         )
-        if item_metadata:
-            if not isinstance(item_metadata, list):
-                raise ValueError(item_metadata_series_error_message)  # item_metadata is not a list
-            if not all([isinstance(value, params_type) for value in item_metadata]):
+        if static_covariates:
+            if not isinstance(static_covariates, list):
+                raise ValueError(static_covariates_series_error_message)  # static_covariates is not a list
+            if not all([isinstance(value, params_type) for value in static_covariates]):
                 raise ValueError(
-                    item_metadata_series_error_message
-                )  # item_metadata is not a list of strings or list of ints
+                    static_covariates_series_error_message
+                )  # static_covariates is not a list of strings or list of ints
+            if params_type == str and not all(static_covariates):
+                raise ValueError("Please do not provide empty strings in ``static_covariates``.")
             _set(
-                item_metadata, "item_metadata", self.time_series_data_config
-            )  # item_metadata is valid, add it
+                static_covariates, "static_covariates", self.time_series_data_config
+            )  # static_covariates is valid, add it
+        if params_type == str:
+            # check dataset_format is provided and valid
+            assert isinstance(dataset_format, TimeSeriesJSONDatasetFormat), "Please provide a valid dataset format."
+            _set(dataset_format.value, "dataset_format", self.time_series_data_config)
+        else:
+            assert not dataset_format, "Dataset format should only be provided when data files are JSONs."
 
     def get_time_series_data_config(self):
         """Returns part of an analysis config dictionary."""
@@ -666,8 +697,11 @@ class DataConfig:
                     f" are not supported for dataset_type '{dataset_type}'."
                     f" Please check the API documentation for the supported dataset types."
                 )
+        # check if any other format other than JSON is provided for time series case
+        if time_series_data_config and dataset_type != "application/json":
+            raise ValueError("Currently time series explainability only supports JSON format data")
         # features JMESPath is required for JSON as we can't derive it ourselves
-        if dataset_type == "application/json" and features is None:
+        if dataset_type == "application/json" and features is None and not time_series_data_config:
             raise ValueError("features JMESPath is required for application/json dataset_type")
         self.s3_data_input_path = s3_data_input_path
         self.s3_output_path = s3_output_path

@@ -16,9 +16,8 @@ from __future__ import absolute_import, print_function
 import copy
 
 import pytest
-from mock import MagicMock, Mock, patch
+from mock import ANY, MagicMock, Mock, patch
 from typing import List, NamedTuple, Optional, Union
-from unittest.mock import ANY
 
 from sagemaker import Processor, image_uris
 from sagemaker.clarify import (
@@ -39,6 +38,7 @@ from sagemaker.clarify import (
     ProcessingOutputHandler,
     SegmentationConfig,
     ASYM_SHAP_VAL_EXPLANATION_DIRECTIONS,
+    TimeSeriesJSONDatasetFormat,
 )
 
 JOB_NAME_PREFIX = "my-prefix"
@@ -332,7 +332,8 @@ class TimeSeriesDataConfigCase(NamedTuple):
     item_id: Union[str, int]
     timestamp: Union[str, int]
     related_time_series: Optional[List[Union[str, int]]]
-    item_metadata: Optional[List[Union[str, int]]]
+    static_covariates: Optional[List[Union[str, int]]]
+    dataset_format: Optional[TimeSeriesJSONDatasetFormat]
     error: Exception
     error_message: Optional[str]
 
@@ -344,7 +345,8 @@ class TestTimeSeriesDataConfig:
             item_id="item_id",
             timestamp="timestamp",
             related_time_series=None,
-            item_metadata=None,
+            static_covariates=None,
+            dataset_format=TimeSeriesJSONDatasetFormat.COLUMNS,
             error=None,
             error_message=None,
         ),
@@ -353,25 +355,28 @@ class TestTimeSeriesDataConfig:
             item_id="item_id",
             timestamp="timestamp",
             related_time_series=["ts1", "ts2", "ts3"],
-            item_metadata=None,
+            static_covariates=None,
+            dataset_format=TimeSeriesJSONDatasetFormat.COLUMNS,
             error=None,
             error_message=None,
         ),
-        TimeSeriesDataConfigCase(  # item_metadata provided str case
+        TimeSeriesDataConfigCase(  # static_covariates provided str case
             target_time_series="target_time_series",
             item_id="item_id",
             timestamp="timestamp",
             related_time_series=None,
-            item_metadata=["a", "b", "c", "d"],
+            static_covariates=["a", "b", "c", "d"],
+            dataset_format=TimeSeriesJSONDatasetFormat.COLUMNS,
             error=None,
             error_message=None,
         ),
-        TimeSeriesDataConfigCase(  # both related_time_series and item_metadata provided str case
+        TimeSeriesDataConfigCase(  # both related_time_series and static_covariates provided str case
             target_time_series="target_time_series",
             item_id="item_id",
             timestamp="timestamp",
             related_time_series=["ts1", "ts2", "ts3"],
-            item_metadata=["a", "b", "c", "d"],
+            static_covariates=["a", "b", "c", "d"],
+            dataset_format=TimeSeriesJSONDatasetFormat.COLUMNS,
             error=None,
             error_message=None,
         ),
@@ -380,7 +385,8 @@ class TestTimeSeriesDataConfig:
             item_id=2,
             timestamp=3,
             related_time_series=None,
-            item_metadata=None,
+            static_covariates=None,
+            dataset_format=None,
             error=None,
             error_message=None,
         ),
@@ -389,32 +395,35 @@ class TestTimeSeriesDataConfig:
             item_id=2,
             timestamp=3,
             related_time_series=[4, 5, 6],
-            item_metadata=None,
+            static_covariates=None,
+            dataset_format=None,
             error=None,
             error_message=None,
         ),
-        TimeSeriesDataConfigCase(  # item_metadata provided int case
+        TimeSeriesDataConfigCase(  # static_covariates provided int case
             target_time_series=1,
             item_id=2,
             timestamp=3,
             related_time_series=None,
-            item_metadata=[7, 8, 9, 10],
+            static_covariates=[7, 8, 9, 10],
+            dataset_format=None,
             error=None,
             error_message=None,
         ),
-        TimeSeriesDataConfigCase(  # both related_time_series and item_metadata provided int case
+        TimeSeriesDataConfigCase(  # both related_time_series and static_covariates provided int case
             target_time_series=1,
             item_id=2,
             timestamp=3,
             related_time_series=[4, 5, 6],
-            item_metadata=[7, 8, 9, 10],
+            static_covariates=[7, 8, 9, 10],
+            dataset_format=None,
             error=None,
             error_message=None,
         ),
     ]
 
     @pytest.mark.parametrize("test_case", valid_ts_data_config_case_list)
-    def test_time_series_data_config(self, test_case):
+    def test_time_series_data_config(self, test_case: TimeSeriesDataConfigCase):
         """
         GIVEN A set of valid parameters are given
         WHEN A TimeSeriesDataConfig object is instantiated
@@ -426,17 +435,20 @@ class TestTimeSeriesDataConfig:
             "item_id": test_case.item_id,
             "timestamp": test_case.timestamp,
         }
+        if isinstance(test_case.target_time_series, str):
+            expected_output["dataset_format"] = test_case.dataset_format.value
         if test_case.related_time_series:
             expected_output["related_time_series"] = test_case.related_time_series
-        if test_case.item_metadata:
-            expected_output["item_metadata"] = test_case.item_metadata
+        if test_case.static_covariates:
+            expected_output["static_covariates"] = test_case.static_covariates
         # GIVEN, WHEN
         ts_data_config = TimeSeriesDataConfig(
             target_time_series=test_case.target_time_series,
             item_id=test_case.item_id,
             timestamp=test_case.timestamp,
             related_time_series=test_case.related_time_series,
-            item_metadata=test_case.item_metadata,
+            static_covariates=test_case.static_covariates,
+            dataset_format=test_case.dataset_format,
         )
         # THEN
         assert ts_data_config.time_series_data_config == expected_output
@@ -449,7 +461,8 @@ class TestTimeSeriesDataConfig:
                 item_id="item_id",
                 timestamp="timestamp",
                 related_time_series=None,
-                item_metadata=None,
+                static_covariates=None,
+                dataset_format=TimeSeriesJSONDatasetFormat.COLUMNS,
                 error=AssertionError,
                 error_message="Please provide a target time series.",
             ),
@@ -458,7 +471,8 @@ class TestTimeSeriesDataConfig:
                 item_id=None,
                 timestamp="timestamp",
                 related_time_series=None,
-                item_metadata=None,
+                static_covariates=None,
+                dataset_format=TimeSeriesJSONDatasetFormat.COLUMNS,
                 error=AssertionError,
                 error_message="Please provide an item id.",
             ),
@@ -467,7 +481,8 @@ class TestTimeSeriesDataConfig:
                 item_id="item_id",
                 timestamp=None,
                 related_time_series=None,
-                item_metadata=None,
+                static_covariates=None,
+                dataset_format=TimeSeriesJSONDatasetFormat.COLUMNS,
                 error=AssertionError,
                 error_message="Please provide a timestamp.",
             ),
@@ -476,7 +491,8 @@ class TestTimeSeriesDataConfig:
                 item_id="item_id",
                 timestamp="timestamp",
                 related_time_series=None,
-                item_metadata=None,
+                static_covariates=None,
+                dataset_format=TimeSeriesJSONDatasetFormat.COLUMNS,
                 error=ValueError,
                 error_message="Please provide a string or an int for ``target_time_series``",
             ),
@@ -485,7 +501,8 @@ class TestTimeSeriesDataConfig:
                 item_id=5,
                 timestamp="timestamp",
                 related_time_series=None,
-                item_metadata=None,
+                static_covariates=None,
+                dataset_format=TimeSeriesJSONDatasetFormat.COLUMNS,
                 error=ValueError,
                 error_message=f"Please provide {str} for ``item_id``",
             ),
@@ -494,7 +511,8 @@ class TestTimeSeriesDataConfig:
                 item_id="item_id",
                 timestamp=10,
                 related_time_series=None,
-                item_metadata=None,
+                static_covariates=None,
+                dataset_format=TimeSeriesJSONDatasetFormat.COLUMNS,
                 error=ValueError,
                 error_message=f"Please provide {str} for ``timestamp``",
             ),
@@ -503,25 +521,28 @@ class TestTimeSeriesDataConfig:
                 item_id="item_id",
                 timestamp="timestamp",
                 related_time_series=["ts1", "ts2", "ts3", 4],
-                item_metadata=None,
+                static_covariates=None,
+                dataset_format=TimeSeriesJSONDatasetFormat.COLUMNS,
                 error=ValueError,
                 error_message=f"Please provide a list of {str} for ``related_time_series``",
             ),
-            TimeSeriesDataConfigCase(  # item_metadata not str list if str target_time_series
+            TimeSeriesDataConfigCase(  # static_covariates not str list if str target_time_series
                 target_time_series="target_time_series",
                 item_id="item_id",
                 timestamp="timestamp",
                 related_time_series=None,
-                item_metadata=[4, 5, 6.0],
+                static_covariates=[4, 5, 6.0],
+                dataset_format=TimeSeriesJSONDatasetFormat.COLUMNS,
                 error=ValueError,
-                error_message=f"Please provide a list of {str} for ``item_metadata``",
+                error_message=f"Please provide a list of {str} for ``static_covariates``",
             ),
             TimeSeriesDataConfigCase(  # item_id differing type from int target_time_series
                 target_time_series=1,
                 item_id="item_id",
                 timestamp=3,
                 related_time_series=None,
-                item_metadata=None,
+                static_covariates=None,
+                dataset_format=None,
                 error=ValueError,
                 error_message=f"Please provide {int} for ``item_id``",
             ),
@@ -530,7 +551,8 @@ class TestTimeSeriesDataConfig:
                 item_id=2,
                 timestamp="timestamp",
                 related_time_series=None,
-                item_metadata=None,
+                static_covariates=None,
+                dataset_format=None,
                 error=ValueError,
                 error_message=f"Please provide {int} for ``timestamp``",
             ),
@@ -539,22 +561,74 @@ class TestTimeSeriesDataConfig:
                 item_id=2,
                 timestamp=3,
                 related_time_series=[4, 5, 6, "ts7"],
-                item_metadata=None,
+                static_covariates=None,
+                dataset_format=None,
                 error=ValueError,
                 error_message=f"Please provide a list of {int} for ``related_time_series``",
             ),
-            TimeSeriesDataConfigCase(  # item_metadata not int list if int target_time_series
+            TimeSeriesDataConfigCase(  # static_covariates not int list if int target_time_series
                 target_time_series=1,
                 item_id=2,
                 timestamp=3,
                 related_time_series=[4, 5, 6, 7],
-                item_metadata=[8, 9, "10"],
+                static_covariates=[8, 9, "10"],
+                dataset_format=None,
                 error=ValueError,
-                error_message=f"Please provide a list of {int} for ``item_metadata``",
+                error_message=f"Please provide a list of {int} for ``static_covariates``",
+            ),
+            TimeSeriesDataConfigCase(  # related_time_series contains blank string
+                target_time_series="target_time_series",
+                item_id="item_id",
+                timestamp="timestamp",
+                related_time_series=["ts1", "ts2", "ts3", ""],
+                static_covariates=None,
+                dataset_format=TimeSeriesJSONDatasetFormat.COLUMNS,
+                error=ValueError,
+                error_message=f"Please do not provide empty strings in ``related_time_series``",
+            ),
+            TimeSeriesDataConfigCase(  # static_covariates contains blank string
+                target_time_series="target_time_series",
+                item_id="item_id",
+                timestamp="timestamp",
+                related_time_series=None,
+                static_covariates=["scv4", "scv5", "scv6", ""],
+                dataset_format=TimeSeriesJSONDatasetFormat.COLUMNS,
+                error=ValueError,
+                error_message=f"Please do not provide empty strings in ``static_covariates``",
+            ),
+            TimeSeriesDataConfigCase(  # dataset_format provided int case
+                target_time_series=1,
+                item_id=2,
+                timestamp=3,
+                related_time_series=[4, 5, 6],
+                static_covariates=[7, 8, 9, 10],
+                dataset_format=TimeSeriesJSONDatasetFormat.COLUMNS,
+                error=AssertionError,
+                error_message="Dataset format should only be provided when data files are JSONs.",
+            ),
+            TimeSeriesDataConfigCase(  # dataset_format not provided str case
+                target_time_series="target_time_series",
+                item_id="item_id",
+                timestamp="timestamp",
+                related_time_series=["ts1", "ts2", "ts3"],
+                static_covariates=["a", "b", "c", "d"],
+                dataset_format=None,
+                error=AssertionError,
+                error_message="Please provide a valid dataset format.",
+            ),
+            TimeSeriesDataConfigCase(  # dataset_format wrong type str case
+                target_time_series="target_time_series",
+                item_id="item_id",
+                timestamp="timestamp",
+                related_time_series=["ts1", "ts2", "ts3"],
+                static_covariates=["a", "b", "c", "d"],
+                dataset_format="made_up_format",
+                error=AssertionError,
+                error_message="Please provide a valid dataset format.",
             ),
         ],
     )
-    def test_time_series_data_config_invalid(self, test_case):
+    def test_time_series_data_config_invalid(self, test_case: TimeSeriesDataConfigCase):
         """
         GIVEN required parameters are incomplete or invalid
         WHEN TimeSeriesDataConfig constructor is called
@@ -566,52 +640,40 @@ class TestTimeSeriesDataConfig:
                 item_id=test_case.item_id,
                 timestamp=test_case.timestamp,
                 related_time_series=test_case.related_time_series,
-                item_metadata=test_case.item_metadata,
+                static_covariates=test_case.static_covariates,
+                dataset_format=test_case.dataset_format,
             )
 
     @pytest.mark.parametrize("test_case", valid_ts_data_config_case_list)
-    def test_data_config_with_time_series(self, test_case):
+    def test_data_config_with_time_series(self, test_case: TimeSeriesDataConfigCase):
         """
         GIVEN a TimeSeriesDataConfig object is created
         WHEN a DataConfig object is created and given valid params + the TimeSeriesDataConfig
         THEN the internal config dictionary matches what's expected
         """
+        # currently TSX only supports json so skip non-json tests
+        if isinstance(test_case.target_time_series, int):
+            return
         # setup
-        headers = ["Label", "F1", "F2", "F3", "F4", "Predicted Label"]
-        dataset_type = "application/json"
-        segment_config = [
-            SegmentationConfig(
-                name_or_index="F1",
-                segments=[[0]],
-                config_name="c1",
-                display_aliases=["a1"],
-            )
-        ]
+        headers = ["item_id", "timestamp", "target_ts", "rts1", "scv1"]
         # construct expected output
         mock_ts_data_config_dict = {
             "target_time_series": test_case.target_time_series,
             "item_id": test_case.item_id,
             "timestamp": test_case.timestamp,
         }
+        if isinstance(test_case.target_time_series, str):
+            dataset_type = "application/json"
+            mock_ts_data_config_dict["dataset_format"] = test_case.dataset_format.value
+        else:
+            dataset_type = "text/csv"
         if test_case.related_time_series:
             mock_ts_data_config_dict["related_time_series"] = test_case.related_time_series
-        if test_case.item_metadata:
-            mock_ts_data_config_dict["item_metadata"] = test_case.item_metadata
+        if test_case.static_covariates:
+            mock_ts_data_config_dict["static_covariates"] = test_case.static_covariates
         expected_config = {
             "dataset_type": dataset_type,
             "headers": headers,
-            "label": "Label",
-            "segment_config": [
-                {
-                    "config_name": "c1",
-                    "display_aliases": ["a1"],
-                    "name_or_index": "F1",
-                    "segments": [[0]],
-                }
-            ],
-            "excluded_columns": ["F4"],
-            "features": "[*].[F1,F2,F3]",
-            "predicted_label": "Predicted Label",
             "time_series_data_config": mock_ts_data_config_dict,
         }
         # GIVEN
@@ -623,13 +685,8 @@ class TestTimeSeriesDataConfig:
         data_config = DataConfig(
             s3_data_input_path="s3://path/to/input.csv",
             s3_output_path="s3://path/to/output",
-            features="[*].[F1,F2,F3]",
-            label="Label",
             headers=headers,
-            dataset_type="application/json",
-            excluded_columns=["F4"],
-            predicted_label="Predicted Label",
-            segmentation_config=segment_config,
+            dataset_type=dataset_type,
             time_series_data_config=ts_data_config,
         )
         # THEN
@@ -2508,11 +2565,12 @@ def _build_data_config_mock():
     """
     # setup a time_series_data_config dictionary
     time_series_data_config = {
-        "target_time_series": 1,
-        "item_id": 2,
-        "timestamp": 3,
-        "related_time_series": [4, 5, 6],
-        "item_metadata": [7, 8, 9, 10],
+        "target_time_series": "target_ts",
+        "item_id": "id",
+        "timestamp": "timestamp",
+        "related_time_series": ["rts1", "rts2", "rts3"],
+        "static_covariates": ["scv1", "scv2", "scv3"],
+        "dataset_format": TimeSeriesJSONDatasetFormat.COLUMNS,
     }
     # setup DataConfig mock
     data_config = Mock(spec=DataConfig)
