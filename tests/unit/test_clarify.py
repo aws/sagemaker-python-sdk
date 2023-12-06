@@ -584,7 +584,7 @@ class TestTimeSeriesDataConfig:
                 static_covariates=None,
                 dataset_format=TimeSeriesJSONDatasetFormat.COLUMNS,
                 error=ValueError,
-                error_message=f"Please do not provide empty strings in ``related_time_series``",
+                error_message="Please do not provide empty strings in ``related_time_series``",
             ),
             TimeSeriesDataConfigCase(  # static_covariates contains blank string
                 target_time_series="target_time_series",
@@ -594,7 +594,7 @@ class TestTimeSeriesDataConfig:
                 static_covariates=["scv4", "scv5", "scv6", ""],
                 dataset_format=TimeSeriesJSONDatasetFormat.COLUMNS,
                 error=ValueError,
-                error_message=f"Please do not provide empty strings in ``static_covariates``",
+                error_message="Please do not provide empty strings in ``static_covariates``",
             ),
             TimeSeriesDataConfigCase(  # dataset_format provided int case
                 target_time_series=1,

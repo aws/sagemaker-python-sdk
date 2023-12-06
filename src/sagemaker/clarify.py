@@ -471,8 +471,8 @@ class TimeSeriesDataConfig:
         Args:
             target_time_series (str or int): A string or a zero-based integer index.
                 Used to locate the target time series in the shared input dataset.
-                If this parameter is a string, then all other parameters except 
-                `dataset_format` must be strings or lists of strings. If 
+                If this parameter is a string, then all other parameters except
+                `dataset_format` must be strings or lists of strings. If
                 this parameter is an int, then all other parameters except
                 `dataset_format` must be ints or lists of ints.
             item_id (str or int): A string or a zero-based integer index. Used to
@@ -533,7 +533,9 @@ class TimeSeriesDataConfig:
         )
         if static_covariates:
             if not isinstance(static_covariates, list):
-                raise ValueError(static_covariates_series_error_message)  # static_covariates is not a list
+                raise ValueError(
+                    static_covariates_series_error_message
+                )  # static_covariates is not a list
             if not all([isinstance(value, params_type) for value in static_covariates]):
                 raise ValueError(
                     static_covariates_series_error_message
@@ -545,10 +547,14 @@ class TimeSeriesDataConfig:
             )  # static_covariates is valid, add it
         if params_type == str:
             # check dataset_format is provided and valid
-            assert isinstance(dataset_format, TimeSeriesJSONDatasetFormat), "Please provide a valid dataset format."
+            assert isinstance(
+                dataset_format, TimeSeriesJSONDatasetFormat
+            ), "Please provide a valid dataset format."
             _set(dataset_format.value, "dataset_format", self.time_series_data_config)
         else:
-            assert not dataset_format, "Dataset format should only be provided when data files are JSONs."
+            assert (
+                not dataset_format
+            ), "Dataset format should only be provided when data files are JSONs."
 
     def get_time_series_data_config(self):
         """Returns part of an analysis config dictionary."""
