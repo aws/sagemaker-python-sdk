@@ -16,6 +16,8 @@ class TorchTensorTranslator:
         import torch
 
         self.convert_from_numpy = torch.from_numpy  # pylint: disable=E1101
+        self.CONTENT_TYPE = "tensor/pt"
+        self.ACCEPT = "tensor/pt"
 
     def serialize(self, data, content_type: str = "tensor/pt"):
         """Translate torch.Tensor to numpy ndarray"""
@@ -45,6 +47,8 @@ class TensorflowTensorTranslator:
         import tensorflow as tf
 
         self.convert_to_tensor = tf.convert_to_tensor
+        self.CONTENT_TYPE = "tensor/tf"
+        self.ACCEPT = "tensor/tf"
 
     def serialize(self, data, content_type: str = "tensor/tf"):
         """Translate tf.Tensor to numpy ndarray"""
@@ -70,6 +74,10 @@ class TensorflowTensorTranslator:
 class NumpyTranslator:
     """A dummy class to make sure the translator interface is aligned"""
 
+    def __init__(self) -> None:
+        self.CONTENT_TYPE = "application/x-npy"
+        self.ACCEPT = "application/x-npy"
+
     def serialize(self, data, content_type: str = "application/x-npy"):
         """Placeholder docstring"""
         return data
@@ -85,6 +93,10 @@ class NumpyTranslator:
 
 class ListTranslator:
     """Translate python list from and to numpy.ndarray"""
+
+    def __init__(self) -> None:
+        self.CONTENT_TYPE = "application/list"
+        self.ACCEPT = "application/list"
 
     def serialize(self, data, content_type: str = "application/list"):
         """Placeholder docstring"""
