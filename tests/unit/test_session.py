@@ -6113,6 +6113,8 @@ def test_update_inference_component(sagemaker_session):
     )
 
     sagemaker_session.sagemaker_client.update_inference_component.assert_called_with(**request)
+
+
 @patch("os.makedirs")
 def test_download_data_with_only_directory(makedirs, sagemaker_session):
     sagemaker_session.s3_client = Mock()
