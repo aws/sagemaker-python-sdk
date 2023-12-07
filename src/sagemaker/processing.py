@@ -1242,7 +1242,7 @@ class ProcessingInput(object):
             input_name (str or PipelineVariable): The name for the input. If a name
                 is not provided, one will be generated (eg. "input-1").
             s3_data_type (str or PipelineVariable): Valid options are "ManifestFile" or "S3Prefix".
-            s3_input_mode (str or PipelineVariable): Valid options are "Pipe" or "File".
+            s3_input_mode (str or PipelineVariable): Valid options are "Pipe", "File" or "FastFile".
             s3_data_distribution_type (str or PipelineVariable): Valid options are "FullyReplicated"
                 or "ShardedByS3Key".
             s3_compression_type (str or PipelineVariable): Valid options are "None" or "Gzip".
