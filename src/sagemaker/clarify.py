@@ -704,8 +704,12 @@ class DataConfig:
                     f" Please check the API documentation for the supported dataset types."
                 )
         # check if any other format other than JSON is provided for time series case
-        if time_series_data_config and dataset_type != "application/json":
-            raise ValueError("Currently time series explainability only supports JSON format data")
+        if time_series_data_config:
+            if dataset_type != "application/json":
+                raise ValueError(
+                    "Currently time series explainability only supports JSON format data"
+                )
+            assert headers, "Headers are required for time series explainability"
         # features JMESPath is required for JSON as we can't derive it ourselves
         if dataset_type == "application/json" and features is None and not time_series_data_config:
             raise ValueError("features JMESPath is required for application/json dataset_type")
