@@ -3933,7 +3933,8 @@ class EndpointInput(object):
         Args:
             endpoint_name (str): The name of the endpoint.
             destination (str): The destination of the input.
-            s3_input_mode (str): The S3 input mode. Can be one of: "File", "Pipe. Default: "File".
+            s3_input_mode (str): The S3 input mode. Can be one of: "File", "Pipe" or "FastFile".
+                Default: "File".
             s3_data_distribution_type (str): The S3 Data Distribution Type. Can be one of:
                 "FullyReplicated", "ShardedByS3Key"
             start_time_offset (str): Monitoring start time offset, e.g. "-PT1H"
@@ -4043,7 +4044,8 @@ class BatchTransformInput(MonitoringInput):
             data_captured_destination_s3_uri (str): Location to the batch transform captured data
                 file which needs to be analysed.
             destination (str): The destination of the input.
-            s3_input_mode (str): The S3 input mode. Can be one of: "File", "Pipe. (default: File)
+            s3_input_mode (str): The S3 input mode. Can be one of: "File", "Pipe" or
+                "FastFile". (default: File)
             s3_data_distribution_type (str): The S3 Data Distribution Type. Can be one of:
                 "FullyReplicated", "ShardedByS3Key" (default: FullyReplicated)
             start_time_offset (str): Monitoring start time offset, e.g. "-PT1H" (default: None)
