@@ -15,6 +15,7 @@ from __future__ import absolute_import
 
 import logging
 import re
+from numbers import Number
 from typing import Optional, Union, Dict
 
 from sagemaker.estimator import Framework, EstimatorBase
@@ -47,7 +48,7 @@ class HuggingFace(Framework):
         tensorflow_version: Optional[str] = None,
         pytorch_version: Optional[str] = None,
         source_dir: Optional[Union[str, PipelineVariable]] = None,
-        hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        hyperparameters: Optional[Dict[str, Union[str, PipelineVariable, Number]]] = None,
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         distribution: Optional[Dict] = None,
         compiler_config: Optional[TrainingCompilerConfig] = None,

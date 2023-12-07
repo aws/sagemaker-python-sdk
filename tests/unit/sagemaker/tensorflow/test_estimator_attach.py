@@ -16,7 +16,7 @@ import pytest
 from mock import MagicMock, Mock, patch
 from packaging.version import Version
 
-from sagemaker import image_uris
+from sagemaker import image_uris, Session
 from sagemaker.tensorflow import TensorFlow
 
 BUCKET_NAME = "mybucket"
@@ -29,7 +29,9 @@ ROLE = "Dummy"
 def sagemaker_session():
     boto_mock = Mock(name="boto_session", region_name=REGION)
     session = Mock(
+        spec=Session,
         name="sagemaker_session",
+        sagemaker_client=Mock(),
         boto_session=boto_mock,
         boto_region_name=REGION,
         config=None,

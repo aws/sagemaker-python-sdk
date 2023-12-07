@@ -54,6 +54,7 @@ from sagemaker.model import FrameworkModel
 from sagemaker.mxnet.estimator import MXNet
 from sagemaker.predictor import Predictor
 from sagemaker.pytorch.estimator import PyTorch
+from sagemaker.session import Session
 from sagemaker.session_settings import SessionSettings
 from sagemaker.sklearn.estimator import SKLearn
 from sagemaker.tensorflow.estimator import TensorFlow
@@ -282,6 +283,8 @@ def sagemaker_session():
         boto_session=boto_mock,
         boto_region_name=REGION,
         config=None,
+        spec=Session,
+        sagemaker_client=Mock(),
         local_mode=False,
         s3_client=None,
         s3_resource=None,
@@ -1337,10 +1340,13 @@ def test_framework_with_no_default_profiler_in_unsupported_region(region):
         boto_session=boto_mock,
         boto_region_name=region,
         config=None,
+        spec=Session,
+        sagemaker_client=Mock(),
         local_mode=False,
         s3_client=None,
         s3_resource=None,
         settings=SessionSettings(),
+        default_bucket_prefix=None,
     )
     sms.sagemaker_config = {}
     f = DummyFramework(
@@ -1368,10 +1374,13 @@ def test_framework_with_debugger_config_set_up_in_unsupported_region(region):
             boto_session=boto_mock,
             boto_region_name=region,
             config=None,
+            spec=Session,
+            sagemaker_client=Mock(),
             local_mode=False,
             s3_client=None,
             s3_resource=None,
             settings=SessionSettings(),
+            default_bucket_prefix=None,
         )
         sms.sagemaker_config = {}
         f = DummyFramework(
@@ -1396,10 +1405,13 @@ def test_framework_enable_profiling_in_unsupported_region(region):
             boto_session=boto_mock,
             boto_region_name=region,
             config=None,
+            spec=Session,
+            sagemaker_client=Mock(),
             local_mode=False,
             s3_client=None,
             s3_resource=None,
             settings=SessionSettings(),
+            default_bucket_prefix=None,
         )
         sms.sagemaker_config = {}
         f = DummyFramework(
@@ -1424,10 +1436,13 @@ def test_framework_update_profiling_in_unsupported_region(region):
             boto_session=boto_mock,
             boto_region_name=region,
             config=None,
+            spec=Session,
+            sagemaker_client=Mock(),
             local_mode=False,
             s3_client=None,
             s3_resource=None,
             settings=SessionSettings(),
+            default_bucket_prefix=None,
         )
         sms.sagemaker_config = {}
         f = DummyFramework(
@@ -1452,10 +1467,13 @@ def test_framework_disable_profiling_in_unsupported_region(region):
             boto_session=boto_mock,
             boto_region_name=region,
             config=None,
+            spec=Session,
+            sagemaker_client=Mock(),
             local_mode=False,
             s3_client=None,
             s3_resource=None,
             settings=SessionSettings(),
+            default_bucket_prefix=None,
         )
         sms.sagemaker_config = {}
         f = DummyFramework(
@@ -4867,7 +4885,7 @@ def test_script_mode_estimator(patched_stage_user_code, sagemaker_session):
 @patch("time.time", return_value=TIME)
 @patch("sagemaker.estimator.tar_and_upload_dir")
 def test_script_mode_estimator_same_calls_as_framework(
-    patched_tar_and_upload_dir, sagemaker_session
+    patched_tar_and_upload_dir, time_patched, sagemaker_session
 ):
     patched_tar_and_upload_dir.return_value = UploadedCode(
         s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
@@ -4936,7 +4954,7 @@ def test_script_mode_estimator_same_calls_as_framework(
 @patch("sagemaker.estimator.tar_and_upload_dir")
 @patch("sagemaker.model.Model._upload_code")
 def test_script_mode_estimator_tags_jumpstart_estimators_and_models(
-    patched_upload_code, patched_tar_and_upload_dir, sagemaker_session
+    patched_upload_code, patched_tar_and_upload_dir, time_patched, sagemaker_session
 ):
     patched_tar_and_upload_dir.return_value = UploadedCode(
         s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
@@ -5014,7 +5032,7 @@ def test_script_mode_estimator_tags_jumpstart_estimators_and_models(
 @patch("sagemaker.estimator.tar_and_upload_dir")
 @patch("sagemaker.model.Model._upload_code")
 def test_script_mode_estimator_tags_jumpstart_models(
-    patched_upload_code, patched_tar_and_upload_dir, sagemaker_session
+    patched_upload_code, patched_tar_and_upload_dir, time_patched, sagemaker_session
 ):
     patched_tar_and_upload_dir.return_value = UploadedCode(
         s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
@@ -5076,7 +5094,7 @@ def test_script_mode_estimator_tags_jumpstart_models(
 @patch("sagemaker.estimator.tar_and_upload_dir")
 @patch("sagemaker.model.Model._upload_code")
 def test_script_mode_estimator_tags_jumpstart_models_with_no_estimator_js_tags(
-    patched_upload_code, patched_tar_and_upload_dir, sagemaker_session
+    patched_upload_code, patched_tar_and_upload_dir, time_patched, sagemaker_session
 ):
     patched_tar_and_upload_dir.return_value = UploadedCode(
         s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
@@ -5308,7 +5326,7 @@ def test_all_framework_estimators_support_disabling_jumpstart_uri_tags(
 @patch("sagemaker.estimator.tar_and_upload_dir")
 @patch("sagemaker.model.Model._upload_code")
 def test_script_mode_estimator_uses_jumpstart_base_name_with_js_models(
-    patched_upload_code, patched_tar_and_upload_dir, sagemaker_session
+    patched_upload_code, patched_tar_and_upload_dir, time_patched, sagemaker_session
 ):
     patched_tar_and_upload_dir.return_value = UploadedCode(
         s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
@@ -5523,7 +5541,7 @@ def test_insert_invalid_source_code_args():
 @patch("sagemaker.estimator.tar_and_upload_dir")
 @patch("sagemaker.model.Model._upload_code")
 def test_script_mode_estimator_escapes_hyperparameters_as_json(
-    patched_upload_code, patched_tar_and_upload_dir, sagemaker_session
+    patched_upload_code, patched_tar_and_upload_dir, time_patched, sagemaker_session
 ):
     patched_tar_and_upload_dir.return_value = UploadedCode(
         s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
@@ -5574,7 +5592,7 @@ def test_script_mode_estimator_escapes_hyperparameters_as_json(
 @patch("sagemaker.estimator.tar_and_upload_dir")
 @patch("sagemaker.model.Model._upload_code")
 def test_estimator_local_download_dir(
-    patched_upload_code, patched_tar_and_upload_dir, sagemaker_session
+    patched_upload_code, patched_tar_and_upload_dir, time_patched, sagemaker_session
 ):
     patched_tar_and_upload_dir.return_value = UploadedCode(
         s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
@@ -5584,7 +5602,7 @@ def test_estimator_local_download_dir(
 
     local_download_dir = "some/download/dir"
 
-    sagemaker_session.settings.local_download_dir = local_download_dir
+    sagemaker_session.settings = SessionSettings(local_download_dir=local_download_dir)
 
     instance_type = "ml.p2.xlarge"
     instance_count = 1

@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 
+from numbers import Number
 from typing import Dict, List, Optional, Union
 from sagemaker import (
     environment_variables,
@@ -93,7 +94,7 @@ def get_init_kwargs(
     output_kms_key: Optional[Union[str, PipelineVariable]] = None,
     base_job_name: Optional[str] = None,
     sagemaker_session: Optional[Session] = None,
-    hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+    hyperparameters: Optional[Dict[str, Union[str, PipelineVariable, Number]]] = None,
     tags: Optional[Tags] = None,
     subnets: Optional[List[Union[str, PipelineVariable]]] = None,
     security_group_ids: Optional[List[Union[str, PipelineVariable]]] = None,
@@ -107,7 +108,7 @@ def get_init_kwargs(
     checkpoint_local_path: Optional[Union[str, PipelineVariable]] = None,
     enable_network_isolation: Union[bool, PipelineVariable] = None,
     rules: Optional[List[RuleBase]] = None,
-    debugger_hook_config: Optional[Union[DebuggerHookConfig, bool]] = None,
+    debugger_hook_config: Optional[Union[DebuggerHookConfig, bool, Dict]] = None,
     tensorboard_output_config: Optional[TensorBoardOutputConfig] = None,
     enable_sagemaker_metrics: Optional[Union[bool, PipelineVariable]] = None,
     profiler_config: Optional[ProfilerConfig] = None,

@@ -25,6 +25,7 @@ from sagemaker.chainer import defaults
 from sagemaker.chainer import Chainer
 from sagemaker.chainer import ChainerPredictor, ChainerModel
 from sagemaker.session_settings import SessionSettings
+from sagemaker import Session
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 SCRIPT_PATH = os.path.join(DATA_DIR, "dummy_script.py")
@@ -57,6 +58,8 @@ def sagemaker_session():
     boto_mock = Mock(name="boto_session", region_name=REGION)
     session = Mock(
         name="sagemaker_session",
+        spec=Session,
+        sagemaker_client=Mock(),
         boto_session=boto_mock,
         boto_region_name=REGION,
         config=None,

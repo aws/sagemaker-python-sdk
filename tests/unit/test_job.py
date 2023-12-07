@@ -16,7 +16,7 @@ import pytest
 import os
 from mock import Mock
 
-from sagemaker import TrainingInput
+from sagemaker import TrainingInput, Session
 from sagemaker.amazon.amazon_estimator import RecordSet, FileSystemRecordSet
 from sagemaker.estimator import Estimator, Framework
 from sagemaker.inputs import FileSystemInput
@@ -80,6 +80,9 @@ def sagemaker_session():
     mock_session = Mock(
         name="sagemaker_session",
         boto_session=boto_mock,
+        spec=Session,
+        sagemaker_client=Mock(),
+        local_mode=False,
         s3_client=None,
         s3_resource=None,
         default_bucket_prefix=None,

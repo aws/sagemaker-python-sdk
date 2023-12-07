@@ -25,6 +25,7 @@ from packaging.version import Version
 from sagemaker.fw_utils import UploadedCode
 from sagemaker.session_settings import SessionSettings
 from sagemaker.xgboost import XGBoost, XGBoostModel, XGBoostPredictor
+from sagemaker import Session
 
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
@@ -67,6 +68,8 @@ def sagemaker_session():
         boto_session=boto_mock,
         boto_region_name=REGION,
         config=None,
+        spec=Session,
+        sagemaker_client=Mock(),
         local_mode=False,
         s3_resource=None,
         s3_client=None,

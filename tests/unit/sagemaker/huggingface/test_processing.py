@@ -15,6 +15,7 @@ from __future__ import absolute_import
 import pytest
 from mock import Mock, patch, MagicMock
 
+from sagemaker import Session
 from sagemaker.huggingface.processing import HuggingFaceProcessor
 from sagemaker.fw_utils import UploadedCode
 from sagemaker.session_settings import SessionSettings
@@ -39,9 +40,12 @@ def sagemaker_session():
     boto_mock = Mock(name="boto_session", region_name=REGION)
     session_mock = MagicMock(
         name="sagemaker_session",
+        spec=Session,
+        sagemaker_client=MagicMock(),
         boto_session=boto_mock,
         boto_region_name=REGION,
         config=None,
+        s3_resource=None,
         local_mode=False,
         settings=SessionSettings(),
         default_bucket_prefix=None,

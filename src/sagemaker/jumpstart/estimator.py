@@ -13,7 +13,7 @@
 """This module stores JumpStart implementation of Estimator class."""
 from __future__ import absolute_import
 
-
+from numbers import Number
 from typing import Dict, List, Optional, Union
 from sagemaker import session
 from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
@@ -72,7 +72,7 @@ class JumpStartEstimator(Estimator):
         output_kms_key: Optional[Union[str, PipelineVariable]] = None,
         base_job_name: Optional[str] = None,
         sagemaker_session: Optional[session.Session] = None,
-        hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        hyperparameters: Optional[Dict[str, Union[str, PipelineVariable, Number]]] = None,
         tags: Optional[Tags] = None,
         subnets: Optional[List[Union[str, PipelineVariable]]] = None,
         security_group_ids: Optional[List[Union[str, PipelineVariable]]] = None,
@@ -86,7 +86,7 @@ class JumpStartEstimator(Estimator):
         checkpoint_local_path: Optional[Union[str, PipelineVariable]] = None,
         enable_network_isolation: Union[bool, PipelineVariable] = None,
         rules: Optional[List[RuleBase]] = None,
-        debugger_hook_config: Optional[Union[DebuggerHookConfig, bool]] = None,
+        debugger_hook_config: Optional[Union[DebuggerHookConfig, bool, Dict]] = None,
         tensorboard_output_config: Optional[TensorBoardOutputConfig] = None,
         enable_sagemaker_metrics: Optional[Union[bool, PipelineVariable]] = None,
         profiler_config: Optional[ProfilerConfig] = None,

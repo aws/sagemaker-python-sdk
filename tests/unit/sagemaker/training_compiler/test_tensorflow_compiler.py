@@ -20,7 +20,7 @@ from packaging import version
 import pytest
 from mock import MagicMock, Mock, patch
 
-from sagemaker import image_uris
+from sagemaker import image_uris, Session
 from sagemaker.session_settings import SessionSettings
 from sagemaker.tensorflow import TensorFlow, TrainingCompilerConfig
 
@@ -73,9 +73,11 @@ def fixture_sagemaker_session():
     boto_mock = Mock(name="boto_session", region_name=REGION)
     session = Mock(
         name="sagemaker_session",
+        spec=Session,
         boto_session=boto_mock,
         boto_region_name=REGION,
         config=None,
+        sagemaker_client=Mock(),
         local_mode=False,
         s3_resource=None,
         s3_client=None,

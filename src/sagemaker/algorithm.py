@@ -13,6 +13,7 @@
 """Test docstring"""
 from __future__ import absolute_import
 
+from numbers import Number
 from typing import Optional, Union, Dict, List
 
 import sagemaker
@@ -58,7 +59,7 @@ class AlgorithmEstimator(EstimatorBase):
         output_kms_key: Optional[Union[str, PipelineVariable]] = None,
         base_job_name: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
-        hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        hyperparameters: Optional[Dict[str, Union[str, PipelineVariable, Number]]] = None,
         tags: Optional[Tags] = None,
         subnets: Optional[List[Union[str, PipelineVariable]]] = None,
         security_group_ids: Optional[List[Union[str, PipelineVariable]]] = None,

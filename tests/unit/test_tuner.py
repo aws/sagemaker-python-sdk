@@ -54,6 +54,9 @@ def sagemaker_session():
     boto_mock = Mock(name="boto_session", region_name=REGION)
     sms = Mock(
         name="sagemaker_session",
+        spec=Session,
+        sagemaker_client=Mock(),
+        local_mode=False,
         boto_session=boto_mock,
         s3_client=None,
         s3_resource=None,
@@ -1893,7 +1896,7 @@ def _convert_tuning_job_details(job_details, estimator_name):
 @patch("sagemaker.estimator.tar_and_upload_dir")
 @patch("sagemaker.model.Model._upload_code")
 def test_tags_prefixes_jumpstart_models(
-    patched_upload_code, patched_tar_and_upload_dir, sagemaker_session
+    patched_upload_code, patched_tar_and_upload_dir, time_patched, sagemaker_session
 ):
 
     jumpstart_source_dir = f"s3://{list(JUMPSTART_BUCKET_NAME_SET)[0]}/source_dirs/source.tar.gz"
@@ -1921,6 +1924,9 @@ def test_tags_prefixes_jumpstart_models(
     sagemaker_session.boto_region_name = REGION
     sagemaker_session.sagemaker_config = {}
 
+    sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job.return_value = {
+        "BestTrainingJob": {"TrainingJobName": "some-name"}
+    }
     sagemaker_session.sagemaker_client.describe_training_job.return_value = {
         "AlgorithmSpecification": {
             "TrainingInputMode": "File",
@@ -2034,7 +2040,7 @@ def test_tags_prefixes_jumpstart_models(
 @patch("sagemaker.estimator.tar_and_upload_dir")
 @patch("sagemaker.model.Model._upload_code")
 def test_no_tags_prefixes_non_jumpstart_models(
-    patched_upload_code, patched_tar_and_upload_dir, sagemaker_session
+    patched_upload_code, patched_tar_and_upload_dir, time_patched, sagemaker_session
 ):
 
     non_jumpstart_source_dir = "s3://blah1/source_dirs/source.tar.gz"

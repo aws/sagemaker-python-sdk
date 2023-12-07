@@ -35,6 +35,7 @@ from sagemaker.xgboost.model import XGBoostModel
 from sagemaker.enums import EndpointType
 from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
 from sagemaker.workflow.properties import Properties
+from sagemaker import Session
 from tests.unit import (
     _test_default_bucket_and_prefix_combinations,
     DEFAULT_S3_BUCKET_NAME,
@@ -115,8 +116,11 @@ def sagemaker_session():
     boto_mock = Mock(name="boto_session", region_name=REGION)
     sms = MagicMock(
         name="sagemaker_session",
+        spec=Session,
+        sagemaker_client=Mock(),
         boto_session=boto_mock,
         boto_region_name=REGION,
+        settings=Mock(),
         config=None,
         local_mode=False,
         s3_client=None,
@@ -924,6 +928,7 @@ def test_all_framework_models_inference_component_based_endpoint_deploy_path(
             model_data=source_dir,
             **kwargs,
         ).deploy(
+            endpoint_name="test_endpoint",
             instance_type="ml.m2.xlarge",
             initial_instance_count=INSTANCE_COUNT,
             endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,

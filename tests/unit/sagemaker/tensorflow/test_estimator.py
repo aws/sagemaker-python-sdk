@@ -25,6 +25,7 @@ from sagemaker.session_settings import SessionSettings
 from sagemaker.tensorflow import TensorFlow
 from sagemaker.instance_group import InstanceGroup
 from sagemaker.workflow.parameters import ParameterString, ParameterBoolean
+from sagemaker import Session
 from tests.unit import DATA_DIR
 
 SCRIPT_FILE = "dummy_script.py"
@@ -70,6 +71,8 @@ def sagemaker_session():
         boto_session=boto_mock,
         boto_region_name=REGION,
         config=None,
+        spec=Session,
+        sagemaker_client=Mock(),
         local_mode=False,
         s3_resource=None,
         s3_client=None,

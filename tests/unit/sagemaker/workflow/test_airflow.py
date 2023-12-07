@@ -15,7 +15,17 @@ from __future__ import absolute_import
 import pytest
 from mock import Mock, MagicMock, patch
 
-from sagemaker import chainer, estimator, model, mxnet, tensorflow, transformer, tuner, processing
+from sagemaker import (
+    Session,
+    chainer,
+    estimator,
+    model,
+    mxnet,
+    tensorflow,
+    transformer,
+    tuner,
+    processing,
+)
 from sagemaker.network import NetworkConfig
 from sagemaker.processing import ProcessingInput, ProcessingOutput
 from sagemaker.workflow import airflow
@@ -32,9 +42,12 @@ def sagemaker_session():
     boto_mock = Mock(name="boto_session", region_name=REGION)
     session = Mock(
         name="sagemaker_session",
+        spec=Session,
+        sagemaker_client=Mock(),
         boto_session=boto_mock,
         boto_region_name=REGION,
         config=None,
+        settings=Mock(),
         local_mode=False,
         s3_resource=None,
         s3_client=None,
@@ -53,7 +66,7 @@ def test_byo_training_config_required_args(sagemaker_session):
     byo = estimator.Estimator(
         image_uri="byo",
         role="{{ role }}",
-        instance_count="{{ instance_count }}",
+        instance_count=1,
         instance_type="ml.c4.2xlarge",
         sagemaker_session=sagemaker_session,
     )
@@ -69,7 +82,7 @@ def test_byo_training_config_required_args(sagemaker_session):
         "TrainingJobName": "byo-%s" % TIME_STAMP,
         "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
         "ResourceConfig": {
-            "InstanceCount": "{{ instance_count }}",
+            "InstanceCount": 1,
             "InstanceType": "ml.c4.2xlarge",
             "VolumeSizeInGB": 30,
         },
@@ -96,11 +109,11 @@ def test_byo_training_config_all_args(sagemaker_session):
     byo = estimator.Estimator(
         image_uri="byo",
         role="{{ role }}",
-        instance_count="{{ instance_count }}",
+        instance_count=1,
         instance_type="ml.c4.2xlarge",
-        volume_size="{{ volume_size }}",
+        volume_size=1024,
         volume_kms_key="{{ volume_kms_key }}",
-        max_run="{{ max_run }}",
+        max_run=1000,
         input_mode="Pipe",
         output_path="{{ output_path }}",
         output_kms_key="{{ output_volume_kms_key }}",
@@ -126,11 +139,11 @@ def test_byo_training_config_all_args(sagemaker_session):
             "KmsKeyId": "{{ output_volume_kms_key }}",
         },
         "TrainingJobName": "{{ base_job_name }}-%s" % TIME_STAMP,
-        "StoppingCondition": {"MaxRuntimeInSeconds": "{{ max_run }}"},
+        "StoppingCondition": {"MaxRuntimeInSeconds": 1000},
         "ResourceConfig": {
-            "InstanceCount": "{{ instance_count }}",
+            "InstanceCount": 1,
             "InstanceType": "ml.c4.2xlarge",
-            "VolumeSizeInGB": "{{ volume_size }}",
+            "VolumeSizeInGB": 1024,
             "VolumeKmsKeyId": "{{ volume_kms_key }}",
         },
         "RoleArn": "{{ role }}",
@@ -188,7 +201,7 @@ def test_framework_training_config_required_args(retrieve_image_uri, sagemaker_s
         framework_version="1.15.2",
         py_version="py3",
         role="{{ role }}",
-        instance_count="{{ instance_count }}",
+        instance_count=1,
         instance_type="ml.c4.2xlarge",
         sagemaker_session=sagemaker_session,
     )
@@ -205,7 +218,7 @@ def test_framework_training_config_required_args(retrieve_image_uri, sagemaker_s
         "TrainingJobName": "tensorflow-training-%s" % TIME_STAMP,
         "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
         "ResourceConfig": {
-            "InstanceCount": "{{ instance_count }}",
+            "InstanceCount": 1,
             "InstanceType": "ml.c4.2xlarge",
             "VolumeSizeInGB": 30,
         },
@@ -268,9 +281,9 @@ def test_framework_training_config_all_args(retrieve_image_uri, sagemaker_sessio
         role="{{ role }}",
         instance_count=1,
         instance_type="ml.c4.2xlarge",
-        volume_size="{{ volume_size }}",
+        volume_size=1024,
         volume_kms_key="{{ volume_kms_key }}",
-        max_run="{{ max_run }}",
+        max_run=1000,
         input_mode="Pipe",
         output_path="{{ output_path }}",
         output_kms_key="{{ output_volume_kms_key }}",
@@ -298,11 +311,11 @@ def test_framework_training_config_all_args(retrieve_image_uri, sagemaker_sessio
             "KmsKeyId": "{{ output_volume_kms_key }}",
         },
         "TrainingJobName": "{{ base_job_name }}-%s" % TIME_STAMP,
-        "StoppingCondition": {"MaxRuntimeInSeconds": "{{ max_run }}"},
+        "StoppingCondition": {"MaxRuntimeInSeconds": 1000},
         "ResourceConfig": {
             "InstanceCount": 1,
             "InstanceType": "ml.c4.2xlarge",
-            "VolumeSizeInGB": "{{ volume_size }}",
+            "VolumeSizeInGB": 1024,
             "VolumeKmsKeyId": "{{ volume_kms_key }}",
         },
         "RoleArn": "{{ role }}",
@@ -357,7 +370,7 @@ def test_amazon_alg_training_config_required_args(sagemaker_session):
     ntm_estimator = ntm.NTM(
         role="{{ role }}",
         num_topics=10,
-        instance_count="{{ instance_count }}",
+        instance_count=1,
         instance_type="ml.c4.2xlarge",
         sagemaker_session=sagemaker_session,
     )
@@ -376,7 +389,7 @@ def test_amazon_alg_training_config_required_args(sagemaker_session):
         "TrainingJobName": "ntm-%s" % TIME_STAMP,
         "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
         "ResourceConfig": {
-            "InstanceCount": "{{ instance_count }}",
+            "InstanceCount": 1,
             "InstanceType": "ml.c4.2xlarge",
             "VolumeSizeInGB": 30,
         },
@@ -408,11 +421,11 @@ def test_amazon_alg_training_config_all_args(sagemaker_session):
     ntm_estimator = ntm.NTM(
         role="{{ role }}",
         num_topics=10,
-        instance_count="{{ instance_count }}",
+        instance_count=1,
         instance_type="ml.c4.2xlarge",
-        volume_size="{{ volume_size }}",
+        volume_size=1024,
         volume_kms_key="{{ volume_kms_key }}",
-        max_run="{{ max_run }}",
+        max_run=1000,
         input_mode="Pipe",
         output_path="{{ output_path }}",
         output_kms_key="{{ output_volume_kms_key }}",
@@ -438,11 +451,11 @@ def test_amazon_alg_training_config_all_args(sagemaker_session):
             "KmsKeyId": "{{ output_volume_kms_key }}",
         },
         "TrainingJobName": "{{ base_job_name }}-%s" % TIME_STAMP,
-        "StoppingCondition": {"MaxRuntimeInSeconds": "{{ max_run }}"},
+        "StoppingCondition": {"MaxRuntimeInSeconds": 1000},
         "ResourceConfig": {
-            "InstanceCount": "{{ instance_count }}",
+            "InstanceCount": 1,
             "InstanceType": "ml.c4.2xlarge",
-            "VolumeSizeInGB": "{{ volume_size }}",
+            "VolumeSizeInGB": 1024,
             "VolumeKmsKeyId": "{{ volume_kms_key }}",
         },
         "RoleArn": "{{ role }}",
@@ -1092,7 +1105,7 @@ def test_model_config_from_framework_estimator(retrieve_image_uri, sagemaker_ses
 def test_model_config_from_amazon_alg_estimator(sagemaker_session):
     knn_estimator = knn.KNN(
         role="{{ role }}",
-        instance_count="{{ instance_count }}",
+        instance_count=1,
         instance_type="ml.m4.xlarge",
         k=16,
         sample_size=128,
@@ -1126,7 +1139,7 @@ def test_model_config_from_amazon_alg_estimator(sagemaker_session):
 def test_transform_config(sagemaker_session):
     tf_transformer = transformer.Transformer(
         model_name="tensorflow-model",
-        instance_count="{{ instance_count }}",
+        instance_count=1,
         instance_type="ml.p2.xlarge",
         strategy="SingleRecord",
         assemble_with="Line",
@@ -1173,7 +1186,7 @@ def test_transform_config(sagemaker_session):
             "Accept": "{{ accept }}",
         },
         "TransformResources": {
-            "InstanceCount": "{{ instance_count }}",
+            "InstanceCount": 1,
             "InstanceType": "ml.p2.xlarge",
             "VolumeKmsKeyId": "{{ kms_key }}",
         },
@@ -1232,7 +1245,7 @@ def test_transform_config_from_framework_estimator(retrieve_image_uri, sagemaker
         estimator=mxnet_estimator,
         task_id="task_id",
         task_type="training",
-        instance_count="{{ instance_count }}",
+        instance_count=1,
         instance_type="ml.p2.xlarge",
         data=transform_data,
         input_filter="{{ input_filter }}",
@@ -1267,7 +1280,7 @@ def test_transform_config_from_framework_estimator(retrieve_image_uri, sagemaker
             },
             "TransformOutput": {"S3OutputPath": "s3://output/{{ base_job_name }}-%s" % TIME_STAMP},
             "TransformResources": {
-                "InstanceCount": "{{ instance_count }}",
+                "InstanceCount": 1,
                 "InstanceType": "ml.p2.xlarge",
             },
             "Environment": {},
@@ -1286,7 +1299,7 @@ def test_transform_config_from_framework_estimator(retrieve_image_uri, sagemaker
 def test_transform_config_from_amazon_alg_estimator(sagemaker_session):
     knn_estimator = knn.KNN(
         role="{{ role }}",
-        instance_count="{{ instance_count }}",
+        instance_count=1,
         instance_type="ml.m4.xlarge",
         k=16,
         sample_size=128,
@@ -1304,7 +1317,7 @@ def test_transform_config_from_amazon_alg_estimator(sagemaker_session):
         estimator=knn_estimator,
         task_id="task_id",
         task_type="training",
-        instance_count="{{ instance_count }}",
+        instance_count=1,
         instance_type="ml.p2.xlarge",
         data=transform_data,
     )
@@ -1329,7 +1342,7 @@ def test_transform_config_from_amazon_alg_estimator(sagemaker_session):
             },
             "TransformOutput": {"S3OutputPath": "s3://output/knn-%s" % TIME_STAMP},
             "TransformResources": {
-                "InstanceCount": "{{ instance_count }}",
+                "InstanceCount": 1,
                 "InstanceType": "ml.p2.xlarge",
             },
         },
@@ -1353,7 +1366,7 @@ def test_deploy_framework_model_config(sagemaker_session):
     )
 
     config = airflow.deploy_config(
-        chainer_model, initial_instance_count="{{ instance_count }}", instance_type="ml.m4.xlarge"
+        chainer_model, initial_instance_count=1, instance_type="ml.m4.xlarge"
     )
     expected_config = {
         "Model": {
@@ -1377,7 +1390,7 @@ def test_deploy_framework_model_config(sagemaker_session):
             "ProductionVariants": [
                 {
                     "InstanceType": "ml.m4.xlarge",
-                    "InitialInstanceCount": "{{ instance_count }}",
+                    "InitialInstanceCount": 1,
                     "ModelName": "sagemaker-chainer-%s" % TIME_STAMP,
                     "VariantName": "AllTraffic",
                     "InitialVariantWeight": 1,
@@ -1410,7 +1423,7 @@ def test_deploy_amazon_alg_model_config(sagemaker_session):
     )
 
     config = airflow.deploy_config(
-        pca_model, initial_instance_count="{{ instance_count }}", instance_type="ml.c4.xlarge"
+        pca_model, initial_instance_count=1, instance_type="ml.c4.xlarge"
     )
     expected_config = {
         "Model": {
@@ -1427,7 +1440,7 @@ def test_deploy_amazon_alg_model_config(sagemaker_session):
             "ProductionVariants": [
                 {
                     "InstanceType": "ml.c4.xlarge",
-                    "InitialInstanceCount": "{{ instance_count }}",
+                    "InitialInstanceCount": 1,
                     "ModelName": "pca-%s" % TIME_STAMP,
                     "VariantName": "AllTraffic",
                     "InitialVariantWeight": 1,
@@ -1528,7 +1541,7 @@ def test_deploy_config_from_framework_estimator(retrieve_image_uri, sagemaker_se
 def test_deploy_config_from_amazon_alg_estimator(sagemaker_session):
     knn_estimator = knn.KNN(
         role="{{ role }}",
-        instance_count="{{ instance_count }}",
+        instance_count=1,
         instance_type="ml.m4.xlarge",
         k=16,
         sample_size=128,
@@ -1545,7 +1558,7 @@ def test_deploy_config_from_amazon_alg_estimator(sagemaker_session):
         estimator=knn_estimator,
         task_id="task_id",
         task_type="tuning",
-        initial_instance_count="{{ instance_count }}",
+        initial_instance_count=1,
         instance_type="ml.p2.xlarge",
     )
     expected_config = {
@@ -1564,7 +1577,7 @@ def test_deploy_config_from_amazon_alg_estimator(sagemaker_session):
             "ProductionVariants": [
                 {
                     "InstanceType": "ml.p2.xlarge",
-                    "InitialInstanceCount": "{{ instance_count }}",
+                    "InitialInstanceCount": 1,
                     "ModelName": "knn-%s" % TIME_STAMP,
                     "VariantName": "AllTraffic",
                     "InitialVariantWeight": 1,

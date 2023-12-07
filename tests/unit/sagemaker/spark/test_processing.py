@@ -17,6 +17,7 @@ from unittest.mock import (
 
 import pytest
 
+from sagemaker import Session
 from sagemaker.processing import ProcessingInput, ProcessingOutput
 from sagemaker.session_settings import SessionSettings
 from sagemaker.spark.processing import (
@@ -31,6 +32,10 @@ from sagemaker.spark.processing import (
 SPARK_EVENT_LOGS_S3_URI = "s3://bucket/spark-events"
 REGION = "us-east-1"
 BUCKET_NAME = "bucket"
+PROCESSING_INPUT = ProcessingInput(
+    source="s3_uri",
+    destination="destination",
+)
 
 
 @pytest.fixture
@@ -42,19 +47,13 @@ def processing_output():
     )
 
 
-@pytest.fixture
-def processing_input():
-    return ProcessingInput(
-        source="s3_uri",
-        destination="destination",
-    )
-
-
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = MagicMock(name="boto_session", region_name=REGION)
     session_mock = MagicMock(
         name="sagemaker_session",
+        spec=Session,
+        sagemaker_client=Mock(),
         boto_session=boto_mock,
         boto_region_name=REGION,
         config=None,
@@ -225,7 +224,7 @@ def test_spark_processor_base_run(mock_super_run, spark_processor_base):
                 "inputs": None,
                 "outputs": None,
             },
-            {"inputs": [processing_input], "outputs": None},
+            {"inputs": [PROCESSING_INPUT], "outputs": None},
         ),
         (
             {
@@ -234,7 +233,7 @@ def test_spark_processor_base_run(mock_super_run, spark_processor_base):
                 "inputs": [],
                 "outputs": None,
             },
-            {"inputs": [processing_input], "outputs": None},
+            {"inputs": [PROCESSING_INPUT], "outputs": None},
         ),
     ],
 )
@@ -248,7 +247,7 @@ def test_spark_processor_base_extend_processing_args(
     expected,
     sagemaker_session,
 ):
-    mock_stage_configuration.return_value = processing_input
+    mock_stage_configuration.return_value = PROCESSING_INPUT
     mock_processing_output.return_value = processing_output
 
     extended_inputs, extended_outputs = spark_processor_base._extend_processing_args(
@@ -732,7 +731,7 @@ def test_check_history_server(
             {
                 "inputs": None,
                 "submit_files": None,
-                "files_input": [processing_input],
+                "files_input": [PROCESSING_INPUT],
                 "files_opt": "opt",
                 "file_type": FileType.JAR,
             },
@@ -742,34 +741,34 @@ def test_check_history_server(
             {
                 "inputs": None,
                 "submit_files": ["file1"],
-                "files_input": processing_input,
+                "files_input": PROCESSING_INPUT,
                 "files_opt": "opt",
                 "file_type": FileType.JAR,
             },
-            {"command": ["smspark-submit", "--jars", "opt"], "inputs": [processing_input]},
+            {"command": ["smspark-submit", "--jars", "opt"], "inputs": [PROCESSING_INPUT]},
         ),
         (
             {
-                "inputs": [processing_input],
+                "inputs": [PROCESSING_INPUT],
                 "submit_files": ["file1"],
-                "files_input": processing_input,
+                "files_input": PROCESSING_INPUT,
                 "files_opt": "opt",
                 "file_type": FileType.PYTHON,
             },
             {
                 "command": ["smspark-submit", "--py-files", "opt"],
-                "inputs": [processing_input, processing_input],
+                "inputs": [PROCESSING_INPUT, PROCESSING_INPUT],
             },
         ),
         (
             {
-                "inputs": [processing_input],
+                "inputs": [PROCESSING_INPUT],
                 "submit_files": ["file1"],
                 "files_input": None,
                 "files_opt": "",
                 "file_type": FileType.PYTHON,
             },
-            {"command": ["smspark-submit"], "inputs": [processing_input]},
+            {"command": ["smspark-submit"], "inputs": [PROCESSING_INPUT]},
         ),
     ],
 )
@@ -829,25 +828,25 @@ def test_config_aws_credentials(py_spark_processor):
     [
         ({"submit_app": None, "files": ["test"], "inputs": [], "opt": None}, ValueError),
         (
-            {"submit_app": "test.py", "files": None, "inputs": [processing_input], "opt": None},
-            [processing_input],
+            {"submit_app": "test.py", "files": None, "inputs": [PROCESSING_INPUT], "opt": None},
+            [PROCESSING_INPUT],
         ),
         (
             {
                 "submit_app": "test.py",
                 "files": ["test"],
-                "inputs": [processing_input],
+                "inputs": [PROCESSING_INPUT],
                 "opt": None,
             },
-            [processing_input, processing_input, processing_input, processing_input],
+            [PROCESSING_INPUT, PROCESSING_INPUT, PROCESSING_INPUT, PROCESSING_INPUT],
         ),
         (
             {"submit_app": "test.py", "files": ["test"], "inputs": None, "opt": None},
-            [processing_input, processing_input, processing_input],
+            [PROCESSING_INPUT, PROCESSING_INPUT, PROCESSING_INPUT],
         ),
         (
             {"submit_app": "test.py", "files": ["test"], "inputs": None, "opt": "opt"},
-            [processing_input, processing_input, processing_input],
+            [PROCESSING_INPUT, PROCESSING_INPUT, PROCESSING_INPUT],
         ),
     ],
 )
@@ -862,7 +861,7 @@ def test_py_spark_processor_run(
     config,
     expected,
 ):
-    mock_stage_submit_deps.return_value = (processing_input, "opt")
+    mock_stage_submit_deps.return_value = (PROCESSING_INPUT, "opt")
     mock_generate_current_job_name.return_value = "jobName"
 
     if expected is ValueError:
@@ -913,21 +912,21 @@ def test_py_spark_processor_run(
             {
                 "submit_app": "test.py",
                 "files": None,
-                "inputs": [processing_input],
+                "inputs": [PROCESSING_INPUT],
                 "opt": None,
                 "arguments": ["arg1"],
             },
-            [processing_input],
+            [PROCESSING_INPUT],
         ),
         (
             {
                 "submit_app": "test.py",
                 "files": ["test"],
-                "inputs": [processing_input],
+                "inputs": [PROCESSING_INPUT],
                 "opt": None,
                 "arguments": ["arg1"],
             },
-            [processing_input, processing_input, processing_input, processing_input],
+            [PROCESSING_INPUT, PROCESSING_INPUT, PROCESSING_INPUT, PROCESSING_INPUT],
         ),
         (
             {
@@ -937,7 +936,7 @@ def test_py_spark_processor_run(
                 "opt": None,
                 "arguments": ["arg1"],
             },
-            [processing_input, processing_input, processing_input],
+            [PROCESSING_INPUT, PROCESSING_INPUT, PROCESSING_INPUT],
         ),
         (
             {
@@ -947,7 +946,7 @@ def test_py_spark_processor_run(
                 "opt": "opt",
                 "arguments": ["arg1"],
             },
-            [processing_input, processing_input, processing_input],
+            [PROCESSING_INPUT, PROCESSING_INPUT, PROCESSING_INPUT],
         ),
     ],
 )
@@ -962,7 +961,7 @@ def test_py_spark_processor_get_run_args(
     config,
     expected,
 ):
-    mock_stage_submit_deps.return_value = (processing_input, "opt")
+    mock_stage_submit_deps.return_value = (PROCESSING_INPUT, "opt")
     mock_generate_current_job_name.return_value = "jobName"
 
     if expected is ValueError:
@@ -999,22 +998,22 @@ def test_py_spark_processor_get_run_args(
 def test_py_spark_processor_run_twice(
     mock_generate_current_job_name, mock_stage_submit_deps, mock_super_run, py_spark_processor
 ):
-    mock_stage_submit_deps.return_value = (processing_input, "opt")
+    mock_stage_submit_deps.return_value = (PROCESSING_INPUT, "opt")
     mock_generate_current_job_name.return_value = "jobName"
     expected_command = ["smspark-submit", "--py-files", "opt", "--jars", "opt", "--files", "opt"]
     py_spark_processor.run(
         submit_app="submit_app",
-        submit_py_files="files",
-        submit_jars="test",
-        submit_files="test",
+        submit_py_files=["files"],
+        submit_jars=["test"],
+        submit_files=["test"],
         inputs=[],
     )
 
     py_spark_processor.run(
         submit_app="submit_app",
-        submit_py_files="files",
-        submit_jars="test",
-        submit_files="test",
+        submit_py_files=["files"],
+        submit_jars=["test"],
+        submit_files=["test"],
         inputs=[],
     )
 
@@ -1049,20 +1048,20 @@ def test_py_spark_processor_run_twice(
                 "submit_app": "test.py",
                 "submit_class": "_class",
                 "files": None,
-                "inputs": [processing_input],
+                "inputs": [PROCESSING_INPUT],
                 "opt": None,
             },
-            [processing_input],
+            [PROCESSING_INPUT],
         ),
         (
             {
                 "submit_app": "test.py",
                 "submit_class": "_class",
                 "files": ["test"],
-                "inputs": [processing_input],
+                "inputs": [PROCESSING_INPUT],
                 "opt": None,
             },
-            [processing_input, processing_input, processing_input],
+            [PROCESSING_INPUT, PROCESSING_INPUT, PROCESSING_INPUT],
         ),
         (
             {
@@ -1072,7 +1071,7 @@ def test_py_spark_processor_run_twice(
                 "inputs": None,
                 "opt": None,
             },
-            [processing_input, processing_input],
+            [PROCESSING_INPUT, PROCESSING_INPUT],
         ),
         (
             {
@@ -1082,7 +1081,7 @@ def test_py_spark_processor_run_twice(
                 "inputs": None,
                 "opt": "opt",
             },
-            [processing_input, processing_input],
+            [PROCESSING_INPUT, PROCESSING_INPUT],
         ),
     ],
 )
@@ -1097,7 +1096,7 @@ def test_spark_jar_processor_run(
     expected,
     sagemaker_session,
 ):
-    mock_stage_submit_deps.return_value = (processing_input, "opt")
+    mock_stage_submit_deps.return_value = (PROCESSING_INPUT, "opt")
     mock_generate_current_job_name.return_value = "jobName"
 
     spark_jar_processor = SparkJarProcessor(
@@ -1173,24 +1172,24 @@ def test_spark_jar_processor_run(
                 "submit_app": "test.py",
                 "submit_class": "_class",
                 "files": None,
-                "inputs": [processing_input],
+                "inputs": [PROCESSING_INPUT],
                 "opt": None,
                 "arguments": ["arg1"],
                 "kms_key": "test_kms_key",
             },
-            [processing_input],
+            [PROCESSING_INPUT],
         ),
         (
             {
                 "submit_app": "test.py",
                 "submit_class": "_class",
                 "files": ["test"],
-                "inputs": [processing_input],
+                "inputs": [PROCESSING_INPUT],
                 "opt": None,
                 "arguments": ["arg1"],
                 "kms_key": "test_kms_key",
             },
-            [processing_input, processing_input, processing_input],
+            [PROCESSING_INPUT, PROCESSING_INPUT, PROCESSING_INPUT],
         ),
         (
             {
@@ -1202,7 +1201,7 @@ def test_spark_jar_processor_run(
                 "arguments": ["arg1"],
                 "kms_key": "test_kms_key",
             },
-            [processing_input, processing_input],
+            [PROCESSING_INPUT, PROCESSING_INPUT],
         ),
         (
             {
@@ -1214,7 +1213,7 @@ def test_spark_jar_processor_run(
                 "arguments": ["arg1"],
                 "kms_key": "test_kms_key",
             },
-            [processing_input, processing_input],
+            [PROCESSING_INPUT, PROCESSING_INPUT],
         ),
     ],
 )
@@ -1229,7 +1228,7 @@ def test_spark_jar_processor_get_run_args(
     expected,
     sagemaker_session,
 ):
-    mock_stage_submit_deps.return_value = (processing_input, "opt")
+    mock_stage_submit_deps.return_value = (PROCESSING_INPUT, "opt")
     mock_generate_current_job_name.return_value = "jobName"
 
     spark_jar_processor = SparkJarProcessor(

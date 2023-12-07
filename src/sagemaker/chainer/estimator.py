@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 import logging
+from numbers import Number
 from typing import Union, Optional, Dict
 
 from sagemaker.estimator import Framework, EstimatorBase
@@ -50,7 +51,7 @@ class Chainer(Framework):
         process_slots_per_host: Optional[Union[int, PipelineVariable]] = None,
         additional_mpi_options: Optional[Union[str, PipelineVariable]] = None,
         source_dir: Optional[Union[str, PipelineVariable]] = None,
-        hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        hyperparameters: Optional[Dict[str, Union[str, PipelineVariable, Number]]] = None,
         framework_version: Optional[str] = None,
         py_version: Optional[str] = None,
         image_uri: Optional[Union[str, PipelineVariable]] = None,

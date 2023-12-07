@@ -19,6 +19,7 @@ from sagemaker import image_uris
 from sagemaker.amazon.randomcutforest import RandomCutForest, RandomCutForestPredictor
 from sagemaker.amazon.amazon_estimator import RecordSet
 from sagemaker.session_settings import SessionSettings
+from sagemaker import Session
 
 ROLE = "myrole"
 INSTANCE_COUNT = 1
@@ -52,6 +53,8 @@ def sagemaker_session():
         boto_session=boto_mock,
         region_name=REGION,
         config=None,
+        spec=Session,
+        sagemaker_client=Mock(),
         local_mode=False,
         settings=SessionSettings(),
         default_bucket_prefix=None,

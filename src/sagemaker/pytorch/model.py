@@ -93,7 +93,7 @@ class PyTorchModel(FrameworkModel):
     @validate_call_inputs
     def __init__(
         self,
-        model_data: Union[str, PipelineVariable],
+        model_data: Union[str, PipelineVariable, dict],
         role: Optional[Union[str, ParameterString]] = None,
         entry_point: Optional[str] = None,
         framework_version: Optional[str] = "1.3",

@@ -29,6 +29,7 @@ from sagemaker.mxnet import defaults
 from sagemaker.mxnet import MXNet
 from sagemaker.mxnet import MXNetPredictor, MXNetModel
 from sagemaker.session_settings import SessionSettings
+from sagemaker.session import Session
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 SCRIPT_NAME = "dummy_script.py"
@@ -81,6 +82,8 @@ def sagemaker_session():
         boto_session=boto_mock,
         boto_region_name=REGION,
         config=None,
+        spec=Session,
+        sagemaker_client=Mock(),
         local_mode=False,
         s3_resource=None,
         s3_client=None,

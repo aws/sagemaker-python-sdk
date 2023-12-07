@@ -19,6 +19,7 @@ import os
 import re
 import uuid
 from abc import ABCMeta, abstractmethod
+from numbers import Number
 from typing import Any, Dict, Union, Optional, List
 from packaging.specifiers import SpecifierSet
 from packaging.version import Version
@@ -136,7 +137,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
     @validate_call_inputs
     def __init__(
         self,
-        role: Union[str, ParameterString] = None,
+        role: Optional[Union[str, ParameterString]] = None,
         instance_count: Optional[Union[int, PipelineVariable]] = None,
         instance_type: Optional[Union[str, PipelineVariable]] = None,
         keep_alive_period_in_seconds: Optional[Union[int, PipelineVariable]] = None,
@@ -160,7 +161,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         checkpoint_s3_uri: Optional[Union[str, PipelineVariable]] = None,
         checkpoint_local_path: Optional[Union[str, PipelineVariable]] = None,
         rules: Optional[List[RuleBase]] = None,
-        debugger_hook_config: Optional[Union[bool, DebuggerHookConfig]] = None,
+        debugger_hook_config: Optional[Union[bool, DebuggerHookConfig, Dict]] = None,
         tensorboard_output_config: Optional[TensorBoardOutputConfig] = None,
         enable_sagemaker_metrics: Optional[Union[bool, PipelineVariable]] = None,
         enable_network_isolation: Optional[Union[bool, PipelineVariable]] = None,
@@ -170,7 +171,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         max_retry_attempts: Optional[Union[int, PipelineVariable]] = None,
         source_dir: Optional[Union[str, PipelineVariable]] = None,
         git_config: Optional[Dict[str, str]] = None,
-        hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        hyperparameters: Optional[Dict[str, Union[str, PipelineVariable, Number]]] = None,
         container_log_level: Union[int, PipelineVariable] = logging.INFO,
         code_location: Optional[str] = None,
         entry_point: Optional[Union[str, PipelineVariable]] = None,
@@ -2711,7 +2712,7 @@ class Estimator(EstimatorBase):
     def __init__(
         self,
         image_uri: Union[str, PipelineVariable],
-        role: str = None,
+        role: Optional[str] = None,
         instance_count: Optional[Union[int, PipelineVariable]] = None,
         instance_type: Optional[Union[str, PipelineVariable]] = None,
         keep_alive_period_in_seconds: Optional[Union[int, PipelineVariable]] = None,
@@ -2723,7 +2724,7 @@ class Estimator(EstimatorBase):
         output_kms_key: Optional[Union[str, PipelineVariable]] = None,
         base_job_name: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
-        hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        hyperparameters: Optional[Dict[str, Union[str, PipelineVariable, Number]]] = None,
         tags: Optional[Tags] = None,
         subnets: Optional[List[Union[str, PipelineVariable]]] = None,
         security_group_ids: Optional[List[Union[str, PipelineVariable]]] = None,
@@ -2737,7 +2738,7 @@ class Estimator(EstimatorBase):
         checkpoint_local_path: Optional[Union[str, PipelineVariable]] = None,
         enable_network_isolation: Union[bool, PipelineVariable] = None,
         rules: Optional[List[RuleBase]] = None,
-        debugger_hook_config: Optional[Union[DebuggerHookConfig, bool]] = None,
+        debugger_hook_config: Optional[Union[DebuggerHookConfig, bool, Dict]] = None,
         tensorboard_output_config: Optional[TensorBoardOutputConfig] = None,
         enable_sagemaker_metrics: Optional[Union[bool, PipelineVariable]] = None,
         profiler_config: Optional[ProfilerConfig] = None,
@@ -3290,7 +3291,7 @@ class Framework(EstimatorBase):
         self,
         entry_point: Union[str, PipelineVariable],
         source_dir: Optional[Union[str, PipelineVariable]] = None,
-        hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        hyperparameters: Optional[Dict[str, Union[str, PipelineVariable, Number]]] = None,
         container_log_level: Union[int, PipelineVariable] = logging.INFO,
         code_location: Optional[str] = None,
         image_uri: Optional[Union[str, PipelineVariable]] = None,
