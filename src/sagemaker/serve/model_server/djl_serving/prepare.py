@@ -15,13 +15,13 @@
 from __future__ import absolute_import
 import shutil
 import tarfile
-import subprocess
 import json
 import logging
 from typing import List
 from pathlib import Path
 
 from sagemaker.utils import _tmpdir
+from sagemaker.s3 import S3Downloader
 from sagemaker.djl_inference import DJLModel
 from sagemaker.djl_inference.model import _read_existing_serving_properties
 from sagemaker.serve.utils.local_hardware import _check_disk_space, _check_docker_disk_usage
@@ -38,23 +38,39 @@ def _has_serving_properties_file(code_dir: Path) -> bool:
     return code_dir.joinpath(_SERVING_PROPERTIES_FILE).is_file()
 
 
-def _members(resources: object, depth: int):
+def _move_to_code_dir(js_model_dir: str, code_dir: Path):
     """Placeholder Docstring"""
-    for member in resources.getmembers():
-        member.path = member.path.split("/", depth)[-1]
-        yield member
+    js_model_resources = Path(js_model_dir).joinpath("model")
+    for resource in js_model_resources.glob("*"):
+        try:
+            shutil.move(resource, code_dir)
+        except shutil.Error as e:
+            if "already exists" in str(e):
+                continue
 
 
 def _copy_jumpstart_artifacts(model_data: str, js_id: str, code_dir: Path):
     """Placeholder Docstring"""
     logger.info("Downloading JumpStart artifacts from S3...")
-    with _tmpdir(directory=str(code_dir)) as js_model_dir:
-        subprocess.run(["aws", "s3", "cp", model_data, js_model_dir])
 
-        logger.info("Uncompressing JumpStart artifacts for faster loading...")
-        tmp_sourcedir = Path(js_model_dir).joinpath(f"infer-prepack-{js_id}.tar.gz")
-        with tarfile.open(str(tmp_sourcedir)) as resources:
-            resources.extractall(path=code_dir, members=_members(resources, 1))
+    s3_downloader = S3Downloader()
+    with _tmpdir(directory=str(code_dir)) as js_model_dir:
+        if isinstance(model_data, str):
+            if model_data.endswith("tar.gz"):
+                logger.info("Uncompressing JumpStart artifacts for faster loading...")
+                s3_downloader.download(model_data, js_model_dir)
+                tmp_sourcedir = Path(js_model_dir).joinpath(f"infer-prepack-{js_id}.tar.gz")
+                with tarfile.open(str(tmp_sourcedir)) as resources:
+                    resources.extractall(path=js_model_dir)
+                _move_to_code_dir(js_model_dir, code_dir)
+            else:
+                logger.info("Copying uncompressed JumpStart artifacts...")
+                s3_downloader.download(model_data, js_model_dir)
+                _move_to_code_dir(js_model_dir, code_dir)
+        else:
+            logger.info("Copying uncompressed JumpStart artifacts...")
+            s3_downloader.download(model_data.get("S3DataSource").get("S3Uri"), js_model_dir)
+            _move_to_code_dir(js_model_dir, code_dir)
 
     existing_properties = _read_existing_serving_properties(code_dir)
     config_json_file = code_dir.joinpath("config.json")

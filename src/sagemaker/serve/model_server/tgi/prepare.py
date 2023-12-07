@@ -1,14 +1,26 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
 """Prepare TgiModel for Deployment"""
 
 from __future__ import absolute_import
 import tarfile
-import subprocess
 import logging
 from typing import List
 from pathlib import Path
 
 from sagemaker.serve.utils.local_hardware import _check_disk_space, _check_docker_disk_usage
 from sagemaker.utils import _tmpdir
+from sagemaker.s3 import S3Downloader
 
 logger = logging.getLogger(__name__)
 
@@ -16,22 +28,26 @@ logger = logging.getLogger(__name__)
 def _copy_jumpstart_artifacts(model_data: str, js_id: str, code_dir: Path) -> bool:
     """Placeholder Docstring"""
     logger.info("Downloading JumpStart artifacts from S3...")
-    with _tmpdir(directory=str(code_dir)) as js_model_dir:
-        if isinstance(model_data, str): # if str could be both compression formats
-            if model_data.endswith("tar.gz"):
-                logger.info("Uncompressing JumpStart artifacts for faster loading...")
-                subprocess.run(["aws", "s3", "cp", model_data, js_model_dir])
+
+    s3_downloader = S3Downloader()
+    if isinstance(model_data, str):
+        if model_data.endswith("tar.gz"):
+            logger.info("Uncompressing JumpStart artifacts for faster loading...")
+            with _tmpdir(directory=str(code_dir)) as js_model_dir:
+                s3_downloader.download(model_data, js_model_dir)
                 tmp_sourcedir = Path(js_model_dir).joinpath(f"infer-prepack-{js_id}.tar.gz")
                 with tarfile.open(str(tmp_sourcedir)) as resources:
                     resources.extractall(path=code_dir)
-            else:
-                logger.info("Copying uncompressed JumpStart artifacts...")
-                subprocess.run(["aws", "s3", "cp", model_data, js_model_dir, "--recursive"])
-        elif isinstance(model_data, dict): # if dict assume that it is uncompressed
-            logger.info("Copying uncompressed JumpStart artifacts...")
-            subprocess.run(["aws", "s3", "cp", model_data.get("S3DataSource").get("S3Uri"), js_model_dir, "--recursive"])
         else:
-            raise ValueError("JumpStart model data compression format is unsupported: %s", model_data)
+            logger.info("Copying uncompressed JumpStart artifacts...")
+            raise Exception(s3_downloader)
+            s3_downloader.download(model_data, code_dir)
+    elif isinstance(model_data, dict):  # if dict assume that it is uncompressed
+        logger.info("Copying uncompressed JumpStart artifacts...")
+        s3_downloader.download(model_data.get("S3DataSource").get("S3Uri"), code_dir)
+    else:
+        raise ValueError("JumpStart model data compression format is unsupported: %s", model_data)
+
     return True
 
 
