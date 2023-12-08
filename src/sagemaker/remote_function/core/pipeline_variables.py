@@ -78,6 +78,17 @@ class _ExecutionVariable:
 
 
 @dataclass
+class _S3BaseUriIdentifier:
+    """Identifies that the class refers to function step s3 base uri.
+
+    The s3_base_uri = s3_root_uri + pipeline_name.
+    This identifier is resolved in function step runtime by SDK.
+    """
+
+    NAME = "S3_BASE_URI"
+
+
+@dataclass
 class _DelayedReturn:
     """Delayed return from a function."""
 
@@ -155,6 +166,7 @@ class _DelayedReturnResolver:
         hmac_key: str,
         parameter_resolver: _ParameterResolver,
         execution_variable_resolver: _ExecutionVariableResolver,
+        s3_base_uri: str,
         **settings,
     ):
         """Resolve delayed return.
@@ -164,8 +176,12 @@ class _DelayedReturnResolver:
             hmac_key: key used to encrypt serialized and deserialized function and arguments.
             parameter_resolver: resolver used to pipeline parameters.
             execution_variable_resolver: resolver used to resolve execution variables.
+            s3_base_uri (str): the s3 base uri of the function step that
+                the serialized artifacts will be uploaded to.
+                The s3_base_uri = s3_root_uri + pipeline_name.
             **settings: settings to pass to the deserialization function.
         """
+        self._s3_base_uri = s3_base_uri
         self._parameter_resolver = parameter_resolver
         self._execution_variable_resolver = execution_variable_resolver
         # different delayed returns can have the same uri, so we need to dedupe
@@ -205,6 +221,8 @@ class _DelayedReturnResolver:
                 uri.append(self._parameter_resolver.resolve(component))
             elif isinstance(component, _ExecutionVariable):
                 uri.append(self._execution_variable_resolver.resolve(component))
+            elif isinstance(component, _S3BaseUriIdentifier):
+                uri.append(self._s3_base_uri)
             else:
                 uri.append(component)
         return s3_path_join(*uri)
@@ -219,7 +237,12 @@ def _retrieve_child_item(delayed_return: _DelayedReturn, deserialized_obj: Any):
 
 
 def resolve_pipeline_variables(
-    context: Context, func_args: Tuple, func_kwargs: Dict, hmac_key: str, **settings
+    context: Context,
+    func_args: Tuple,
+    func_kwargs: Dict,
+    hmac_key: str,
+    s3_base_uri: str,
+    **settings,
 ):
     """Resolve pipeline variables.
 
@@ -228,6 +251,8 @@ def resolve_pipeline_variables(
         func_args: function args.
         func_kwargs: function kwargs.
         hmac_key: key used to encrypt serialized and deserialized function and arguments.
+        s3_base_uri: the s3 base uri of the function step that the serialized artifacts
+            will be uploaded to. The s3_base_uri = s3_root_uri + pipeline_name.
         **settings: settings to pass to the deserialization function.
     """
 
@@ -251,6 +276,7 @@ def resolve_pipeline_variables(
         hmac_key=hmac_key,
         parameter_resolver=parameter_resolver,
         execution_variable_resolver=execution_variable_resolver,
+        s3_base_uri=s3_base_uri,
         **settings,
     )
 
@@ -289,11 +315,10 @@ def resolve_pipeline_variables(
     return resolved_func_args, resolved_func_kwargs
 
 
-def convert_pipeline_variables_to_pickleable(s3_base_uri: str, func_args: Tuple, func_kwargs: Dict):
+def convert_pipeline_variables_to_pickleable(func_args: Tuple, func_kwargs: Dict):
     """Convert pipeline variables to pickleable.
 
     Args:
-        s3_base_uri: s3 base uri where artifacts are stored.
         func_args: function args.
         func_kwargs: function kwargs.
     """
@@ -304,11 +329,19 @@ def convert_pipeline_variables_to_pickleable(s3_base_uri: str, func_args: Tuple,
 
     from sagemaker.workflow.function_step import DelayedReturn
 
+    # Notes:
+    # 1. The s3_base_uri = s3_root_uri + pipeline_name, but the two may be unknown
+    # when defining function steps. After step-level arg serialization,
+    # it's hard to update the s3_base_uri in pipeline compile time.
+    # Thus set a placeholder: _S3BaseUriIdentifier, and let the runtime job to resolve it.
+    # 2. For saying s3_root_uri is unknown, it's because when defining function steps,
+    # the pipeline's sagemaker_session is not passed in, but the default s3_root_uri
+    # should be retrieved from the pipeline's sagemaker_session.
     def convert(arg):
         if isinstance(arg, DelayedReturn):
             return _DelayedReturn(
                 uri=[
-                    s3_base_uri,
+                    _S3BaseUriIdentifier(),
                     ExecutionVariables.PIPELINE_EXECUTION_ID._pickleable,
                     arg._step.name,
                     "results",
