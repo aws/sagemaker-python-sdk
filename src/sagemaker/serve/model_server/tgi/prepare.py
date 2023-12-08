@@ -40,7 +40,6 @@ def _copy_jumpstart_artifacts(model_data: str, js_id: str, code_dir: Path) -> bo
                     resources.extractall(path=code_dir)
         else:
             logger.info("Copying uncompressed JumpStart artifacts...")
-            raise Exception(s3_downloader)
             s3_downloader.download(model_data, code_dir)
     elif isinstance(model_data, dict):  # if dict assume that it is uncompressed
         logger.info("Copying uncompressed JumpStart artifacts...")
