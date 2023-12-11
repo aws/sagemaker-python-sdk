@@ -133,7 +133,10 @@ class TGI(ABC):
             logger.info("Auto detected %s. Proceeding with the the deployment.", self.image_uri)
 
         pysdk_model = HuggingFaceModel(
-            image_uri=self.image_uri, env=self.env_vars, role=self.role_arn
+            image_uri=self.image_uri,
+            env=self.env_vars,
+            role=self.role_arn,
+            sagemaker_session=self.sagemaker_session,
         )
 
         self._original_deploy = pysdk_model.deploy
