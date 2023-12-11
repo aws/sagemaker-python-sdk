@@ -114,6 +114,7 @@ class TestDjlBuilder(unittest.TestCase):
             mode=Mode.LOCAL_CONTAINER,
             model_server=ModelServer.DJL_SERVING,
         )
+        builder.serve_settings.telemetry_opt_out = True
         builder._prepare_for_mode = MagicMock()
         builder._prepare_for_mode.side_effect = None
 
@@ -175,6 +176,7 @@ class TestDjlBuilder(unittest.TestCase):
             mode=Mode.LOCAL_CONTAINER,
             model_server=ModelServer.DJL_SERVING,
         )
+        builder.serve_settings.telemetry_opt_out = True
         model = builder.build()
 
         assert isinstance(model, FasterTransformerModel)
@@ -210,6 +212,7 @@ class TestDjlBuilder(unittest.TestCase):
             mode=Mode.LOCAL_CONTAINER,
             model_server=ModelServer.DJL_SERVING,
         )
+        builder.serve_settings.telemetry_opt_out = True
         model = builder.build()
 
         assert isinstance(model, DeepSpeedModel)
@@ -263,6 +266,7 @@ class TestDjlBuilder(unittest.TestCase):
             mode=Mode.LOCAL_CONTAINER,
             model_server=ModelServer.DJL_SERVING,
         )
+        builder.serve_settings.telemetry_opt_out = True
         builder._prepare_for_mode = MagicMock()
         builder._prepare_for_mode.side_effect = None
         builder._djl_model_builder_deploy_wrapper = MagicMock()
@@ -313,6 +317,7 @@ class TestDjlBuilder(unittest.TestCase):
             mode=Mode.LOCAL_CONTAINER,
             model_server=ModelServer.DJL_SERVING,
         )
+        builder.serve_settings.telemetry_opt_out = True
         builder._prepare_for_mode = MagicMock()
         builder._prepare_for_mode.side_effect = None
 
@@ -365,6 +370,7 @@ class TestDjlBuilder(unittest.TestCase):
             mode=Mode.LOCAL_CONTAINER,
             model_server=ModelServer.DJL_SERVING,
         )
+        builder.serve_settings.telemetry_opt_out = True
         builder._prepare_for_mode = MagicMock()
         builder._prepare_for_mode.side_effect = None
 
@@ -417,6 +423,7 @@ class TestDjlBuilder(unittest.TestCase):
             mode=Mode.LOCAL_CONTAINER,
             model_server=ModelServer.DJL_SERVING,
         )
+        builder.serve_settings.telemetry_opt_out = True
         builder._prepare_for_mode = MagicMock()
         builder._prepare_for_mode.side_effect = None
 
@@ -469,6 +476,7 @@ class TestDjlBuilder(unittest.TestCase):
             mode=Mode.LOCAL_CONTAINER,
             model_server=ModelServer.DJL_SERVING,
         )
+        builder.serve_settings.telemetry_opt_out = True
         builder._prepare_for_mode = MagicMock()
         builder._prepare_for_mode.side_effect = None
 
@@ -490,6 +498,7 @@ class TestDjlBuilder(unittest.TestCase):
             mode=Mode.LOCAL_CONTAINER,
             model_server=ModelServer.DJL_SERVING,
         )
+        builder.serve_settings.telemetry_opt_out = True
 
         with self.assertRaises(ValueError) as _:
             builder.build()
