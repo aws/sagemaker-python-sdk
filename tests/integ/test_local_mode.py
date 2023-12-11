@@ -24,6 +24,7 @@ import tempfile
 import stopit
 
 import tests.integ.lock as lock
+from sagemaker.remote_function import remote
 from sagemaker.workflow.step_outputs import get_step
 from tests.integ.sagemaker.conftest import _build_container, DOCKERFILE_TEMPLATE
 from sagemaker.config import SESSION_DEFAULT_S3_BUCKET_PATH
@@ -58,6 +59,7 @@ from sagemaker.mxnet import MXNet
 LOCK_PATH = os.path.join(tempfile.gettempdir(), "sagemaker_test_local_mode_lock")
 DATA_PATH = os.path.join(DATA_DIR, "iris", "data")
 DEFAULT_REGION = "us-west-2"
+ROLE = "SageMakerRole"
 
 
 class LocalNoS3Session(LocalSession):
@@ -147,7 +149,7 @@ def mxnet_model(
 
         mx = MXNet(
             entry_point=script_path,
-            role="SageMakerRole",
+            role=ROLE,
             instance_count=1,
             instance_type="local",
             output_path=output_path,
@@ -218,7 +220,7 @@ def test_mxnet_local_mode(
 
     mx = MXNet(
         entry_point=script_path,
-        role="SageMakerRole",
+        role=ROLE,
         py_version=mxnet_training_latest_py_version,
         instance_count=1,
         instance_type="local",
@@ -254,7 +256,7 @@ def test_mxnet_distributed_local_mode(
 
     mx = MXNet(
         entry_point=script_path,
-        role="SageMakerRole",
+        role=ROLE,
         py_version=mxnet_training_latest_py_version,
         instance_count=2,
         instance_type="local",
@@ -289,7 +291,7 @@ def test_mxnet_local_data_local_script(
 
     mx = MXNet(
         entry_point=script_path,
-        role="SageMakerRole",
+        role=ROLE,
         instance_count=1,
         instance_type="local",
         framework_version=mxnet_training_latest_version,
@@ -324,7 +326,7 @@ def test_mxnet_local_training_env(mxnet_training_latest_version, mxnet_training_
 
     mx = MXNet(
         entry_point=script_path,
-        role="SageMakerRole",
+        role=ROLE,
         instance_count=1,
         instance_type="local",
         framework_version=mxnet_training_latest_version,
@@ -347,7 +349,7 @@ def test_mxnet_training_failure(
 
     mx = MXNet(
         entry_point=script_path,
-        role="SageMakerRole",
+        role=ROLE,
         framework_version=mxnet_training_latest_version,
         py_version=mxnet_training_latest_py_version,
         instance_count=1,
@@ -377,7 +379,7 @@ def test_local_transform_mxnet(
 
     mx = MXNet(
         entry_point=script_path,
-        role="SageMakerRole",
+        role=ROLE,
         instance_count=1,
         instance_type="local",
         framework_version=mxnet_inference_latest_version,
@@ -426,7 +428,7 @@ def test_local_processing_sklearn(sagemaker_local_session_no_local_code, sklearn
 
     sklearn_processor = SKLearnProcessor(
         framework_version=sklearn_latest_version,
-        role="SageMakerRole",
+        role=ROLE,
         instance_type="local",
         instance_count=1,
         command=["python3"],
@@ -457,7 +459,7 @@ def test_local_processing_script_processor(sagemaker_local_session, sklearn_imag
     input_file_path = os.path.join(DATA_DIR, "dummy_input.txt")
 
     script_processor = ScriptProcessor(
-        role="SageMakerRole",
+        role=ROLE,
         image_uri=sklearn_image_uri,
         command=["python3"],
         instance_count=1,
@@ -527,7 +529,7 @@ def test_local_pipeline_with_processing_step(sklearn_latest_version, local_pipel
     string_container_arg = ParameterString(name="ProcessingContainerArg", default_value="foo")
     sklearn_processor = SKLearnProcessor(
         framework_version=sklearn_latest_version,
-        role="SageMakerRole",
+        role=ROLE,
         instance_type="local",
         instance_count=1,
         command=["python3"],
@@ -549,7 +551,7 @@ def test_local_pipeline_with_processing_step(sklearn_latest_version, local_pipel
         sagemaker_session=local_pipeline_session,
         parameters=[string_container_arg],
     )
-    pipeline.create("SageMakerRole", "pipeline for sdk integ testing")
+    pipeline.create(ROLE, "pipeline for sdk integ testing")
 
     with lock.lock(LOCK_PATH):
         execution = pipeline.start()
@@ -586,7 +588,7 @@ def test_local_pipeline_with_training_and_transform_steps(
     # define Estimator
     mx = MXNet(
         entry_point=script_path,
-        role="SageMakerRole",
+        role=ROLE,
         instance_count=instance_count,
         instance_type="local",
         framework_version=mxnet_training_latest_version,
@@ -614,7 +616,7 @@ def test_local_pipeline_with_training_and_transform_steps(
         image_uri=inference_image_uri,
         model_data=training_step.properties.ModelArtifacts.S3ModelArtifacts,
         sagemaker_session=session,
-        role="SageMakerRole",
+        role=ROLE,
     )
 
     # define create model step
@@ -647,7 +649,7 @@ def test_local_pipeline_with_training_and_transform_steps(
         sagemaker_session=session,
     )
 
-    pipeline.create("SageMakerRole", "pipeline for sdk integ testing")
+    pipeline.create(ROLE, "pipeline for sdk integ testing")
 
     with lock.lock(LOCK_PATH):
         execution = pipeline.start(parameters={"InstanceCountParam": 1})
@@ -667,7 +669,7 @@ def test_local_pipeline_with_training_and_transform_steps(
 def test_local_pipeline_with_eval_cond_fail_steps(sklearn_image_uri, local_pipeline_session):
     processor = ScriptProcessor(
         image_uri=sklearn_image_uri,
-        role="SageMakerRole",
+        role=ROLE,
         instance_count=1,
         instance_type="local",
         sagemaker_session=local_pipeline_session,
@@ -729,7 +731,7 @@ def test_local_pipeline_with_eval_cond_fail_steps(sklearn_image_uri, local_pipel
         sagemaker_session=local_pipeline_session,
     )
 
-    pipeline.create("SageMakerRole", "pipeline for sdk integ testing")
+    pipeline.create(ROLE, "pipeline for sdk integ testing")
 
     with lock.lock(LOCK_PATH):
         execution = pipeline.start()
@@ -763,7 +765,7 @@ def test_local_pipeline_with_step_decorator_and_step_dependency(
     local_pipeline_session, dummy_container
 ):
     step_settings = dict(
-        role="SageMakerRole",
+        role=ROLE,
         instance_type="ml.m5.xlarge",
         image_uri=dummy_container,
         keep_alive_period_in_seconds=60,
@@ -787,7 +789,7 @@ def test_local_pipeline_with_step_decorator_and_step_dependency(
         sagemaker_session=local_pipeline_session,
     )
 
-    pipeline.create("SageMakerRole", "pipeline for sdk integ testing")
+    pipeline.create(ROLE, "pipeline for sdk integ testing")
 
     with lock.lock(LOCK_PATH):
         execution = pipeline.start()
@@ -808,7 +810,7 @@ def test_local_pipeline_with_step_decorator_and_pre_exe_script(
     local_pipeline_session, dummy_container
 ):
     step_settings = dict(
-        role="SageMakerRole",
+        role=ROLE,
         instance_type="local",
         image_uri=dummy_container,
         keep_alive_period_in_seconds=60,
@@ -833,7 +835,7 @@ def test_local_pipeline_with_step_decorator_and_pre_exe_script(
         sagemaker_session=local_pipeline_session,
     )
 
-    pipeline.create("SageMakerRole", "pipeline for sdk integ testing")
+    pipeline.create(ROLE, "pipeline for sdk integ testing")
 
     with lock.lock(LOCK_PATH):
         execution = pipeline.start()
@@ -851,7 +853,7 @@ def test_local_pipeline_with_step_decorator_and_condition_step(
     local_pipeline_session, dummy_container
 ):
     step_settings = dict(
-        role="SageMakerRole",
+        role=ROLE,
         instance_type="local",
         image_uri=dummy_container,
         keep_alive_period_in_seconds=60,
@@ -888,7 +890,7 @@ def test_local_pipeline_with_step_decorator_and_condition_step(
         sagemaker_session=local_pipeline_session,
     )
 
-    pipeline.create("SageMakerRole", "pipeline for sdk integ testing")
+    pipeline.create(ROLE, "pipeline for sdk integ testing")
 
     with lock.lock(LOCK_PATH):
         execution = pipeline.start()
@@ -916,7 +918,7 @@ def test_local_pipeline_with_step_decorator_data_referenced_by_other_steps(
     @step(
         name="step1",
         image_uri=dummy_container,
-        role="SageMakerRole",
+        role=ROLE,
         instance_type="ml.m5.xlarge",
         keep_alive_period_in_seconds=60,
     )
@@ -933,7 +935,7 @@ def test_local_pipeline_with_step_decorator_data_referenced_by_other_steps(
 
     sklearn_processor = SKLearnProcessor(
         framework_version=sklearn_latest_version,
-        role="SageMakerRole",
+        role=ROLE,
         instance_type="local",
         instance_count=step_output[1],
         command=["python3"],
@@ -967,7 +969,7 @@ def test_local_pipeline_with_step_decorator_data_referenced_by_other_steps(
         sagemaker_session=local_pipeline_session,
     )
 
-    pipeline.create("SageMakerRole", "pipeline for sdk integ testing")
+    pipeline.create(ROLE, "pipeline for sdk integ testing")
 
     with lock.lock(LOCK_PATH):
         execution = pipeline.start()
@@ -983,3 +985,23 @@ def test_local_pipeline_with_step_decorator_data_referenced_by_other_steps(
         assert exe_step_result["StepStatus"] == "Succeeded"
         if exe_step_result["StepName"] == cond_step.name:
             assert exe_step_result["Metadata"]["Condition"]["Outcome"] is True
+
+
+def test_local_remote_function_with_additional_dependencies(
+    local_pipeline_session, dummy_container
+):
+    dependencies_path = os.path.join(DATA_DIR, "remote_function", "requirements.txt")
+
+    @remote(
+        role=ROLE,
+        image_uri=dummy_container,
+        dependencies=dependencies_path,
+        instance_type="local",
+        sagemaker_session=local_pipeline_session,
+    )
+    def cuberoot(x):
+        from scipy.special import cbrt
+
+        return cbrt(x)
+
+    assert cuberoot(27) == 3

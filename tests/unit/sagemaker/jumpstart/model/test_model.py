@@ -51,6 +51,7 @@ class ModelTest(unittest.TestCase):
 
     mock_session_empty_config = MagicMock(sagemaker_config={})
 
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_LOGGER")
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
     @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
@@ -66,6 +67,7 @@ class ModelTest(unittest.TestCase):
         mock_session: mock.Mock,
         mock_is_valid_model_id: mock.Mock,
         mock_sagemaker_timestamp: mock.Mock,
+        mock_jumpstart_model_factory_logger: mock.Mock,
     ):
         mock_model_deploy.return_value = default_predictor
 
@@ -78,8 +80,13 @@ class ModelTest(unittest.TestCase):
 
         mock_session.return_value = sagemaker_session
 
+        mock_jumpstart_model_factory_logger.info.reset_mock()
         model = JumpStartModel(
             model_id=model_id,
+        )
+        mock_jumpstart_model_factory_logger.info.assert_called_once_with(
+            "No " "instance type selected for inference hosting endpoint. " "Defaulting to %s.",
+            "ml.p2.xlarge",
         )
 
         mock_model_init.assert_called_once_with(
@@ -104,7 +111,9 @@ class ModelTest(unittest.TestCase):
             name="blahblahblah-7777",
         )
 
+        mock_jumpstart_model_factory_logger.info.reset_mock()
         model.deploy()
+        mock_jumpstart_model_factory_logger.info.assert_not_called()
 
         mock_model_deploy.assert_called_once_with(
             initial_instance_count=1,
