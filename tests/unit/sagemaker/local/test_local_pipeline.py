@@ -18,15 +18,18 @@ import pytest
 from mock import Mock, patch, PropertyMock
 
 from botocore.exceptions import ClientError
+from mock.mock import MagicMock
 
 from sagemaker.estimator import Estimator
 from sagemaker.inputs import TrainingInput
 from sagemaker.debugger import ProfilerConfig
 from sagemaker.processing import ProcessingInput, ProcessingOutput, Processor
+from sagemaker.remote_function.core.stored_function import RESULTS_FOLDER
 from sagemaker.remote_function.job import (
     SCRIPT_AND_DEPENDENCIES_CHANNEL_NAME,
     RUNTIME_SCRIPTS_CHANNEL_NAME,
 )
+from sagemaker.s3_utils import s3_path_join
 from sagemaker.transformer import Transformer
 from sagemaker.workflow.condition_step import ConditionStep
 from sagemaker.workflow.conditions import (
@@ -656,12 +659,18 @@ def test_execute_pipeline_training_step(train, local_sagemaker_session, training
     assert step_execution["MyTrainingStep"].status == "Succeeded"
     assert expected_must_have.items() <= step_execution["MyTrainingStep"].properties.items()
 
+    with pytest.raises(ValueError) as e:
+        execution.result(step_name=training_step.name)
+
+    assert "This method can only be used on pipeline steps created using @step decorator." in str(e)
+
 
 @patch(
     "sagemaker.local.image._SageMakerContainer.train",
     return_value="/some/path/to/model",
 )
-def test_execute_pipeline_step_decorator(mock_train, local_sagemaker_session):
+@patch("sagemaker.workflow.pipeline.deserialize_obj_from_s3")
+def test_execute_pipeline_step_decorator(mock_deserialize, mock_train, local_sagemaker_session):
     dependencies_path = os.path.join(DATA_DIR, "workflow", "requirements.txt")
     step_settings = dict(
         role="SageMakerRole",
@@ -672,7 +681,7 @@ def test_execute_pipeline_step_decorator(mock_train, local_sagemaker_session):
     )
 
     @step(**step_settings)
-    def generator() -> tuple:
+    def generator():
         return 3, 4
 
     @step(**step_settings)
@@ -683,13 +692,17 @@ def test_execute_pipeline_step_decorator(mock_train, local_sagemaker_session):
     step_output_a = generator()
     step_output_b = sum(step_output_a[0], step_output_a[1])
 
+    pipeline_name = "MyPipeline1"
+    execution_id = "my-execution-1"
+
     pipeline = Pipeline(
-        name="MyPipeline1",
+        name=pipeline_name,
         steps=[step_output_b],
         sagemaker_session=local_sagemaker_session,
     )
     execution = LocalPipelineExecutor(
-        _LocalPipelineExecution("my-execution-1", pipeline), local_sagemaker_session
+        _LocalPipelineExecution(execution_id, pipeline, local_session=local_sagemaker_session),
+        local_sagemaker_session,
     ).execute()
 
     input_data_configs = mock_train.call_args[0][0]
@@ -709,10 +722,68 @@ def test_execute_pipeline_step_decorator(mock_train, local_sagemaker_session):
         "TrainingJobStatus": "Completed",
         "ModelArtifacts": {"S3ModelArtifacts": "/some/path/to/model"},
     }
-    assert step_execution[step_output_a._step.name].status == "Succeeded"
-    assert step_execution[step_output_b._step.name].status == "Succeeded"
-    assert expected_must_have.items() <= step_execution[step_output_a._step.name].properties.items()
-    assert expected_must_have.items() <= step_execution[step_output_b._step.name].properties.items()
+    assert step_execution[get_step(step_output_a).name].status == "Succeeded"
+    assert step_execution[get_step(step_output_b).name].status == "Succeeded"
+    assert (
+        expected_must_have.items()
+        <= step_execution[get_step(step_output_a).name].properties.items()
+    )
+    assert (
+        expected_must_have.items()
+        <= step_execution[get_step(step_output_b).name].properties.items()
+    )
+
+    execution.result(step_name=get_step(step_output_a).name)
+
+    assert mock_deserialize.call_args[1]["sagemaker_session"] == local_sagemaker_session
+    assert mock_deserialize.call_args[1]["s3_uri"] == s3_path_join(
+        "s3://",
+        local_sagemaker_session.default_bucket(),
+        pipeline_name,
+        execution_id,
+        get_step(step_output_a).name,
+        RESULTS_FOLDER,
+    )
+
+
+@patch(
+    "sagemaker.local.image._SageMakerContainer.train",
+    MagicMock(side_effect=Exception()),
+)
+def test_execute_pipeline_step_decorator_failure_case(local_sagemaker_session):
+    step_settings = dict(
+        role="SageMakerRole",
+        instance_type="local",
+        image_uri=IMAGE_URI,
+        keep_alive_period_in_seconds=60,
+    )
+
+    @step(**step_settings)
+    def generator():
+        return 3, 4
+
+    step_output_a = generator()
+
+    pipeline = Pipeline(
+        name="MyPipeline",
+        steps=[step_output_a],
+        sagemaker_session=local_sagemaker_session,
+    )
+    execution = LocalPipelineExecutor(
+        _LocalPipelineExecution("my-execution", pipeline, local_session=local_sagemaker_session),
+        local_sagemaker_session,
+    ).execute()
+
+    assert execution.status == _LocalExecutionStatus.FAILED.value
+
+    step_execution = execution.step_execution
+    assert step_execution[get_step(step_output_a).name].status == "Failed"
+
+    step_name = get_step(step_output_a).name
+    with pytest.raises(RuntimeError) as e:
+        execution.result(step_name=step_name)
+
+    assert f"step {step_name} is not in Completed status." in str(e)
 
 
 @patch(
@@ -839,6 +910,11 @@ def test_execute_pipeline_processing_step(process, local_sagemaker_session, proc
     }
     processing_output = step_properties["ProcessingOutputConfig"]["Outputs"]["output1"]
     assert processing_output == expected_processing_output
+
+    with pytest.raises(ValueError) as e:
+        execution.result(step_name=processing_step.name)
+
+    assert "This method can only be used on pipeline steps created using @step decorator." in str(e)
 
 
 @patch("sagemaker.local.local_session._LocalTransformJob")

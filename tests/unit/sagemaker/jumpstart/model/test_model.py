@@ -332,6 +332,43 @@ class ModelTest(unittest.TestCase):
             endpoint_logging=False,
         )
 
+    @mock.patch("sagemaker.model.LOGGER.warning")
+    @mock.patch("sagemaker.utils.sagemaker_timestamp")
+    @mock.patch("sagemaker.session.Session.endpoint_from_production_variants")
+    @mock.patch("sagemaker.session.Session.create_model")
+    @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_no_compiled_model_warning_log_js_models(
+        self,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
+        mock_create_model: mock.Mock,
+        mock_endpoint_from_production_variants: mock.Mock,
+        mock_timestamp: mock.Mock,
+        mock_warning: mock.Mock(),
+    ):
+
+        mock_timestamp.return_value = "1234"
+
+        mock_is_valid_model_id.return_value = True
+
+        model_id, _ = "gated_llama_neuron_model", "*"
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        mock_session.return_value = sagemaker_session
+
+        model = JumpStartModel(
+            model_id=model_id,
+        )
+
+        model.deploy(accept_eula=True)
+
+        mock_warning.assert_not_called()
+
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
     @mock.patch("sagemaker.session.Session.endpoint_from_production_variants")
     @mock.patch("sagemaker.session.Session.create_model")

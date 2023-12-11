@@ -76,7 +76,7 @@ def test_jumpstart_serializable_payload_with_predictor(
         "JumpStartSerializablePayload: {'content_type': 'application/json', 'accept': 'application/json'"
         ", 'body': {'prompt': 'a dog', 'num_images_per_prompt': 2, 'num_inference_steps':"
         " 20, 'guidance_scale': 7.5, 'seed': 43, 'eta': 0.7, 'image':"
-        " '$s3_b64<inference-notebook-assets/inpainting_cow.jpg>'}, 'generated_text_response_key': None}"
+        " '$s3_b64<inference-notebook-assets/inpainting_cow.jpg>'}}"
     )
 
     js_predictor.predict(default_payload)

@@ -39,6 +39,12 @@ _MAJOR_VERSION_WARNING_MSG = (
     "Note that models may have different input/output signatures after a major version upgrade."
 )
 
+_VULNERABLE_DEPRECATED_ERROR_RECOMMENDATION = (
+    "We recommend that you specify a more recent "
+    "model version or choose a different model. To access the latest models "
+    "and model versions, be sure to upgrade to the latest version of the SageMaker Python SDK."
+)
+
 
 def get_wildcard_model_version_msg(
     model_id: str, wildcard_model_version: str, full_model_version: str
@@ -115,16 +121,16 @@ class VulnerableJumpStartModelError(ValueError):
                 self.message = (
                     f"Version '{version}' of JumpStart model '{model_id}' "  # type: ignore
                     "has at least 1 vulnerable dependency in the inference script. "
-                    "Please try targeting a higher version of the model or using a "
-                    "different model. List of vulnerabilities: "
+                    f"{_VULNERABLE_DEPRECATED_ERROR_RECOMMENDATION} "
+                    "List of vulnerabilities: "
                     f"{', '.join(vulnerabilities)}"  # type: ignore
                 )
             elif scope == JumpStartScriptScope.TRAINING:
                 self.message = (
                     f"Version '{version}' of JumpStart model '{model_id}' "  # type: ignore
                     "has at least 1 vulnerable dependency in the training script. "
-                    "Please try targeting a higher version of the model or using a "
-                    "different model. List of vulnerabilities: "
+                    f"{_VULNERABLE_DEPRECATED_ERROR_RECOMMENDATION} "
+                    "List of vulnerabilities: "
                     f"{', '.join(vulnerabilities)}"  # type: ignore
                 )
             else:
@@ -159,8 +165,7 @@ class DeprecatedJumpStartModelError(ValueError):
                 raise RuntimeError("Must specify `model_id` and `version` arguments.")
             self.message = (
                 f"Version '{version}' of JumpStart model '{model_id}' is deprecated. "
-                "Please try targeting a higher version of the model or using a "
-                "different model."
+                f"{_VULNERABLE_DEPRECATED_ERROR_RECOMMENDATION}"
             )
 
         super().__init__(self.message)

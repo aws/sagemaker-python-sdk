@@ -1023,6 +1023,602 @@ SPECIAL_MODEL_SPECS_DICT = {
         "training_enable_network_isolation": False,
         "resource_name_base": "dfsdfsds",
     },
+    "gated_llama_neuron_model": {
+        "model_id": "meta-textgenerationneuron-llama-2-7b",
+        "url": "https://ai.meta.com/resources/models-and-libraries/llama-downloads/",
+        "version": "1.0.0",
+        "min_sdk_version": "2.198.0",
+        "training_supported": True,
+        "incremental_training_supported": False,
+        "hosting_ecr_specs": {
+            "framework": "djl-neuronx",
+            "framework_version": "0.24.0",
+            "py_version": "py39",
+        },
+        "hosting_artifact_key": "meta-textgenerationneuron/meta-textgenerationneuron-llama-2-7b/artifac"
+        "ts/inference/v1.0.0/",
+        "hosting_script_key": "source-directory-tarballs/meta/inference/textgenerationneuron/v1.0.0/sourcedir.tar.gz",
+        "hosting_prepacked_artifact_key": "meta-textgenerationneuron/meta-textgenerationneuro"
+        "n-llama-2-7b/artifacts/inference-prepack/v1.0.0/",
+        "hosting_prepacked_artifact_version": "1.0.0",
+        "hosting_use_script_uri": False,
+        "hosting_eula_key": "fmhMetadata/eula/llamaEula.txt",
+        "inference_vulnerable": False,
+        "inference_dependencies": [
+            "sagemaker_jumpstart_huggingface_script_utilities==1.0.8",
+            "sagemaker_jumpstart_script_utilities==1.1.8",
+        ],
+        "inference_vulnerabilities": [],
+        "training_vulnerable": False,
+        "training_dependencies": [
+            "sagemaker_jumpstart_huggingface_script_utilities==1.1.3",
+            "sagemaker_jumpstart_script_utilities==1.1.9",
+            "sagemaker_jumpstart_tabular_script_utilities==1.0.0",
+        ],
+        "training_vulnerabilities": [],
+        "deprecated": False,
+        "hyperparameters": [
+            {
+                "name": "max_input_length",
+                "type": "int",
+                "default": 2048,
+                "min": 128,
+                "scope": "algorithm",
+            },
+            {
+                "name": "preprocessing_num_workers",
+                "type": "text",
+                "default": "None",
+                "scope": "algorithm",
+            },
+            {
+                "name": "learning_rate",
+                "type": "float",
+                "default": 6e-06,
+                "min": 1e-08,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "min_learning_rate",
+                "type": "float",
+                "default": 1e-06,
+                "min": 1e-12,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {"name": "max_steps", "type": "int", "default": 20, "min": 2, "scope": "algorithm"},
+            {
+                "name": "global_train_batch_size",
+                "type": "int",
+                "default": 256,
+                "min": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "per_device_train_batch_size",
+                "type": "int",
+                "default": 1,
+                "min": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "layer_norm_epilson",
+                "type": "float",
+                "default": 1e-05,
+                "min": 1e-12,
+                "scope": "algorithm",
+            },
+            {
+                "name": "weight_decay",
+                "type": "float",
+                "default": 0.1,
+                "min": 1e-08,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "lr_scheduler_type",
+                "type": "text",
+                "default": "CosineAnnealing",
+                "options": ["CosineAnnealing"],
+                "scope": "algorithm",
+            },
+            {"name": "warmup_steps", "type": "int", "default": 10, "min": 0, "scope": "algorithm"},
+            {"name": "constant_steps", "type": "int", "default": 0, "min": 0, "scope": "algorithm"},
+            {
+                "name": "adam_beta1",
+                "type": "float",
+                "default": 0.9,
+                "min": 1e-08,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "adam_beta2",
+                "type": "float",
+                "default": 0.95,
+                "min": 1e-08,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "mixed_precision",
+                "type": "text",
+                "default": "True",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "tensor_parallel_degree",
+                "type": "text",
+                "default": "8",
+                "options": ["8"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "pipeline_parallel_degree",
+                "type": "text",
+                "default": "1",
+                "options": ["1"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "append_eod",
+                "type": "text",
+                "default": "False",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "sagemaker_submit_directory",
+                "type": "text",
+                "default": "/opt/ml/input/data/code/sourcedir.tar.gz",
+                "scope": "container",
+            },
+            {
+                "name": "sagemaker_program",
+                "type": "text",
+                "default": "transfer_learning.py",
+                "scope": "container",
+            },
+            {
+                "name": "sagemaker_container_log_level",
+                "type": "text",
+                "default": "20",
+                "scope": "container",
+            },
+        ],
+        "training_script_key": "source-directory-tarballs/meta/transfer_learning/textgenerati"
+        "onneuron/v1.0.0/sourcedir.tar.gz",
+        "training_prepacked_script_key": "source-directory-tarballs/meta/tra"
+        "nsfer_learning/textgenerationneuron/prepack/v1.0.0/sourcedir.tar.gz",
+        "training_prepacked_script_version": "1.0.0",
+        "training_ecr_specs": {
+            "framework": "huggingface",
+            "framework_version": "2.0.0",
+            "py_version": "py310",
+            "huggingface_transformers_version": "4.28.1",
+        },
+        "training_artifact_key": "meta-training/train-meta-textgenerationneuron-llama-2-7b.tar.gz",
+        "inference_environment_variables": [
+            {
+                "name": "SAGEMAKER_PROGRAM",
+                "type": "text",
+                "default": "inference.py",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "SAGEMAKER_SUBMIT_DIRECTORY",
+                "type": "text",
+                "default": "/opt/ml/model/code",
+                "scope": "container",
+                "required_for_model_class": False,
+            },
+            {
+                "name": "SAGEMAKER_CONTAINER_LOG_LEVEL",
+                "type": "text",
+                "default": "20",
+                "scope": "container",
+                "required_for_model_class": False,
+            },
+            {
+                "name": "MODEL_CACHE_ROOT",
+                "type": "text",
+                "default": "/opt/ml/model",
+                "scope": "container",
+                "required_for_model_class": False,
+            },
+            {
+                "name": "SAGEMAKER_ENV",
+                "type": "text",
+                "default": "1",
+                "scope": "container",
+                "required_for_model_class": False,
+            },
+            {
+                "name": "SAGEMAKER_MODEL_SERVER_TIMEOUT",
+                "type": "text",
+                "default": "3600",
+                "scope": "container",
+                "required_for_model_class": False,
+            },
+            {
+                "name": "SAGEMAKER_MODEL_SERVER_WORKERS",
+                "type": "int",
+                "default": 1,
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+        ],
+        "metrics": [
+            {
+                "Name": "meta-textgenerationneuron:train-loss",
+                "Regex": "reduced_train_loss=([0-9]+\\.[0-9]+)",
+            }
+        ],
+        "default_inference_instance_type": "ml.inf2.xlarge",
+        "supported_inference_instance_types": [
+            "ml.inf2.xlarge",
+            "ml.inf2.8xlarge",
+            "ml.inf2.24xlarge",
+            "ml.inf2.48xlarge",
+        ],
+        "default_training_instance_type": "ml.trn1.32xlarge",
+        "supported_training_instance_types": ["ml.trn1.32xlarge", "ml.trn1n.32xlarge"],
+        "model_kwargs": {},
+        "deploy_kwargs": {
+            "model_data_download_timeout": 3600,
+            "container_startup_health_check_timeout": 3600,
+        },
+        "estimator_kwargs": {
+            "encrypt_inter_container_traffic": True,
+            "disable_output_compression": True,
+            "max_run": 360000,
+        },
+        "fit_kwargs": {},
+        "predictor_specs": {
+            "supported_content_types": ["application/json"],
+            "supported_accept_types": ["application/json"],
+            "default_content_type": "application/json",
+            "default_accept_type": "application/json",
+        },
+        "inference_volume_size": 256,
+        "training_volume_size": 256,
+        "inference_enable_network_isolation": True,
+        "training_enable_network_isolation": True,
+        "default_training_dataset_key": "training-datasets/sec_amazon/",
+        "validation_supported": False,
+        "fine_tuning_supported": True,
+        "resource_name_base": "meta-textgenerationneuron-llama-2-7b",
+        "default_payloads": {
+            "meaningOfLife": {
+                "content_type": "application/json",
+                "prompt_key": "inputs",
+                "output_keys": {"generated_text": "generated_text"},
+                "body": {
+                    "inputs": "I believe the meaning of life is",
+                    "parameters": {"max_new_tokens": 64, "top_p": 0.9, "temperature": 0.6},
+                },
+            },
+            "theoryOfRelativity": {
+                "content_type": "application/json",
+                "prompt_key": "inputs",
+                "output_keys": {"generated_text": "generated_text"},
+                "body": {
+                    "inputs": "Simply put, the theory of relativity states that ",
+                    "parameters": {"max_new_tokens": 64, "top_p": 0.9, "temperature": 0.6},
+                },
+            },
+            "teamMessage": {
+                "content_type": "application/json",
+                "prompt_key": "inputs",
+                "output_keys": {"generated_text": "generated_text"},
+                "body": {
+                    "inputs": "A brief message congratulating the team on the launch:\n\nHi "
+                    "everyone,\n\nI just ",
+                    "parameters": {"max_new_tokens": 64, "top_p": 0.9, "temperature": 0.6},
+                },
+            },
+            "englishToFrench": {
+                "content_type": "application/json",
+                "prompt_key": "inputs",
+                "output_keys": {"generated_text": "generated_text"},
+                "body": {
+                    "inputs": "Translate English to French:\nsea otter => loutre de mer\npep"
+                    "permint => menthe poivr\u00e9e\nplush girafe => girafe peluche\ncheese =>",
+                    "parameters": {"max_new_tokens": 64, "top_p": 0.9, "temperature": 0.6},
+                },
+            },
+        },
+        "gated_bucket": True,
+        "hosting_instance_type_variants": {
+            "regional_aliases": {
+                "af-south-1": {
+                    "alias_ecr_uri_1": "626614931356.dkr.ecr.af-south-1.amazonaws.com/djl-in"
+                    "ference:0.24.0-neuronx-sdk2.14.1"
+                },
+                "ap-east-1": {
+                    "alias_ecr_uri_1": "871362719292.dkr.ecr.ap-east-1.amazonaws.com/djl-in"
+                    "ference:0.24.0-neuronx-sdk2.14.1"
+                },
+                "ap-northeast-1": {
+                    "alias_ecr_uri_1": "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/d"
+                    "jl-inference:0.24.0-neuronx-sdk2.14.1"
+                },
+                "ap-northeast-2": {
+                    "alias_ecr_uri_1": "763104351884.dkr.ecr.ap-northeast-2.amazonaws.com"
+                    "/djl-inference:0.24.0-neuronx-sdk2.14.1"
+                },
+                "ap-south-1": {
+                    "alias_ecr_uri_1": "763104351884.dkr.ecr.ap-south-1.amazonaws.com/"
+                    "djl-inference:0.24.0-neuronx-sdk2.14.1"
+                },
+                "ap-southeast-1": {
+                    "alias_ecr_uri_1": "763104351884.dkr.ecr.ap-southeast-1.amazonaws.com"
+                    "/djl-inference:0.24.0-neuronx-sdk2.14.1"
+                },
+                "ap-southeast-2": {
+                    "alias_ecr_uri_1": "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com"
+                    "/djl-inference:0.24.0-neuronx-sdk2.14.1"
+                },
+                "ca-central-1": {
+                    "alias_ecr_uri_1": "763104351884.dkr.ecr.ca-central-1.amazonaws.com/"
+                    "djl-inference:0.24.0-neuronx-sdk2.14.1"
+                },
+                "cn-north-1": {
+                    "alias_ecr_uri_1": "727897471807.dkr.ecr.cn-north-1.amazonaws.com.cn/"
+                    "djl-inference:0.24.0-neuronx-sdk2.14.1"
+                },
+                "eu-central-1": {
+                    "alias_ecr_uri_1": "763104351884.dkr.ecr.eu-central-1.amazonaws.com/"
+                    "djl-inference:0.24.0-neuronx-sdk2.14.1"
+                },
+                "eu-north-1": {
+                    "alias_ecr_uri_1": "763104351884.dkr.ecr.eu-north-1.amazonaws.com/"
+                    "djl-inference:0.24.0-neuronx-sdk2.14.1"
+                },
+                "eu-south-1": {
+                    "alias_ecr_uri_1": "692866216735.dkr.ecr.eu-south-1.amazonaws.com/"
+                    "djl-inference:0.24.0-neuronx-sdk2.14.1"
+                },
+                "eu-west-1": {
+                    "alias_ecr_uri_1": "763104351884.dkr.ecr.eu-west-1.amazonaws.com/d"
+                    "jl-inference:0.24.0-neuronx-sdk2.14.1"
+                },
+                "eu-west-2": {
+                    "alias_ecr_uri_1": "763104351884.dkr.ecr.eu-west-2.amazonaws.com/d"
+                    "jl-inference:0.24.0-neuronx-sdk2.14.1"
+                },
+                "eu-west-3": {
+                    "alias_ecr_uri_1": "763104351884.dkr.ecr.eu-west-3.amazonaws.com/d"
+                    "jl-inference:0.24.0-neuronx-sdk2.14.1"
+                },
+                "me-south-1": {
+                    "alias_ecr_uri_1": "217643126080.dkr.ecr.me-south-1.amazonaws.com"
+                    "/djl-inference:0.24.0-neuronx-sdk2.14.1"
+                },
+                "sa-east-1": {
+                    "alias_ecr_uri_1": "763104351884.dkr.ecr.sa-east-1.amazonaws.com"
+                    "/djl-inference:0.24.0-neuronx-sdk2.14.1"
+                },
+                "us-east-1": {
+                    "alias_ecr_uri_1": "763104351884.dkr.ecr.us-east-1.amazonaws.com/"
+                    "djl-inference:0.24.0-neuronx-sdk2.14.1"
+                },
+                "us-east-2": {
+                    "alias_ecr_uri_1": "763104351884.dkr.ecr.us-east-2.amazonaws.com"
+                    "/djl-inference:0.24.0-neuronx-sdk2.14.1"
+                },
+                "us-west-1": {
+                    "alias_ecr_uri_1": "763104351884.dkr.ecr.us-west-1.amazonaws.co"
+                    "m/djl-inference:0.24.0-neuronx-sdk2.14.1"
+                },
+                "us-west-2": {
+                    "alias_ecr_uri_1": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-"
+                    "inference:0.24.0-neuronx-sdk2.14.1"
+                },
+            },
+            "variants": {
+                "c4": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "c5": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "c5d": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "c5n": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "c6i": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "g4dn": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "g5": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "inf1": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "inf2": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "local": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "local_gpu": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "m4": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "m5": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "m5d": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "p2": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "p3": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "p3dn": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "p4d": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "p4de": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "p5": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "r5": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "r5d": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "t2": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "t3": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "ml.inf2.xlarge": {
+                    "properties": {
+                        "environment_variables": {
+                            "OPTION_TENSOR_PARALLEL_DEGREE": "2",
+                            "OPTION_N_POSITIONS": "1024",
+                            "OPTION_DTYPE": "fp16",
+                            "OPTION_ROLLING_BATCH": "auto",
+                            "OPTION_MAX_ROLLING_BATCH_SIZE": "1",
+                            "OPTION_NEURON_OPTIMIZE_LEVEL": "2",
+                        }
+                    }
+                },
+                "ml.inf2.8xlarge": {
+                    "properties": {
+                        "environment_variables": {
+                            "OPTION_TENSOR_PARALLEL_DEGREE": "2",
+                            "OPTION_N_POSITIONS": "2048",
+                            "OPTION_DTYPE": "fp16",
+                            "OPTION_ROLLING_BATCH": "auto",
+                            "OPTION_MAX_ROLLING_BATCH_SIZE": "4",
+                            "OPTION_NEURON_OPTIMIZE_LEVEL": "2",
+                        }
+                    }
+                },
+                "ml.inf2.24xlarge": {
+                    "properties": {
+                        "environment_variables": {
+                            "OPTION_TENSOR_PARALLEL_DEGREE": "12",
+                            "OPTION_N_POSITIONS": "4096",
+                            "OPTION_DTYPE": "fp16",
+                            "OPTION_ROLLING_BATCH": "auto",
+                            "OPTION_MAX_ROLLING_BATCH_SIZE": "4",
+                            "OPTION_NEURON_OPTIMIZE_LEVEL": "2",
+                        }
+                    }
+                },
+                "ml.inf2.48xlarge": {
+                    "properties": {
+                        "environment_variables": {
+                            "OPTION_TENSOR_PARALLEL_DEGREE": "24",
+                            "OPTION_N_POSITIONS": "4096",
+                            "OPTION_DTYPE": "fp16",
+                            "OPTION_ROLLING_BATCH": "auto",
+                            "OPTION_MAX_ROLLING_BATCH_SIZE": "4",
+                            "OPTION_NEURON_OPTIMIZE_LEVEL": "2",
+                        }
+                    }
+                },
+            },
+        },
+        "training_instance_type_variants": {
+            "regional_aliases": {
+                "af-south-1": {
+                    "gpu_ecr_uri_1": "626614931356.dkr.ecr.af-south-1.amazonaws.com/huggingface-pytorc"
+                    "h-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                },
+                "ap-east-1": {
+                    "gpu_ecr_uri_1": "871362719292.dkr.ecr.ap-east-1.amazonaws.com/huggingface-pytorch"
+                    "-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                },
+                "ap-northeast-1": {
+                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/huggingface-"
+                    "pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                },
+                "ap-northeast-2": {
+                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.ap-northeast-2.amazonaws.com/huggingfa"
+                    "ce-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                },
+                "ap-south-1": {
+                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.ap-south-1.amazonaws.com/huggingface-pytorch"
+                    "-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                },
+                "ap-southeast-1": {
+                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.ap-southeast-1.amazonaws.com/"
+                    "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                },
+                "ap-southeast-2": {
+                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/"
+                    "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                },
+                "ca-central-1": {
+                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.ca-central-1.amazonaws.com/hu"
+                    "ggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                },
+                "cn-north-1": {
+                    "gpu_ecr_uri_1": "727897471807.dkr.ecr.cn-north-1.amazonaws.com.cn/"
+                    "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                },
+                "eu-central-1": {
+                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.eu-central-1.amazonaws.com/hug"
+                    "gingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                },
+                "eu-north-1": {
+                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.eu-north-1.amazonaws.com/hu"
+                    "ggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                },
+                "eu-south-1": {
+                    "gpu_ecr_uri_1": "692866216735.dkr.ecr.eu-south-1.amazonaws.com/hu"
+                    "ggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                },
+                "eu-west-1": {
+                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.eu-west-1.amazonaws.com/hug"
+                    "gingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                },
+                "eu-west-2": {
+                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.eu-west-2.amazonaws.com/hug"
+                    "gingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                },
+                "eu-west-3": {
+                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.eu-west-3.amazonaws.com/huggi"
+                    "ngface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                },
+                "me-south-1": {
+                    "gpu_ecr_uri_1": "217643126080.dkr.ecr.me-south-1.amazonaws.com/huggin"
+                    "gface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                },
+                "sa-east-1": {
+                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.sa-east-1.amazonaws.com/hugg"
+                    "ingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                },
+                "us-east-1": {
+                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.us-east-1.amazonaws.com/hu"
+                    "ggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04",
+                    "neuron_ecr_uri": "763104351884.dkr.ecr.us-east-1.amazonaws.com/pytorch-"
+                    "training-neuronx:1.13.1-neuronx-py310-sdk2.14.1-ubuntu20.04",
+                },
+                "us-east-2": {
+                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.us-east-2.amazonaws.com/huggingface-py"
+                    "torch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04",
+                    "neuron_ecr_uri": "763104351884.dkr.ecr.us-east-2.amazonaws.com/pytorch-trai"
+                    "ning-neuronx:1.13.1-neuronx-py310-sdk2.14.1-ubuntu20.04",
+                },
+                "us-west-1": {
+                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.us-west-1.amazonaws.com/huggingface-pytor"
+                    "ch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                },
+                "us-west-2": {
+                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface"
+                    "-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04",
+                    "neuron_ecr_uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch"
+                    "-training-neuronx:1.13.1-neuronx-py310-sdk2.14.1-ubuntu20.04",
+                },
+            },
+            "variants": {
+                "g4dn": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "g5": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "local_gpu": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p2": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p3": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p3dn": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p4d": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p4de": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p5": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "trn1": {
+                    "regional_properties": {"image_uri": "$neuron_ecr_uri"},
+                    "properties": {
+                        "gated_model_key_env_var_value": "meta-training/trn1/v1.0."
+                        "0/train-meta-textgenerationneuron-llama-2-7b.tar.gz"
+                    },
+                },
+                "trn1n": {
+                    "regional_properties": {"image_uri": "$neuron_ecr_uri"},
+                    "properties": {
+                        "gated_model_key_env_var_value": "meta-training/trn1n/v1.0.0"
+                        "/train-meta-textgenerationneuron-llama-2-7b.tar.gz"
+                    },
+                },
+            },
+        },
+        "hosting_artifact_s3_data_type": "S3Prefix",
+        "hosting_artifact_compression_type": "None",
+        "hosting_resource_requirements": {"min_memory_mb": 8192, "num_accelerators": 1},
+        "dynamic_container_deployment_supported": True,
+    },
     "gated_variant-model": {
         "model_id": "pytorch-ic-mobilenet-v2",
         "gated_bucket": True,
@@ -3533,7 +4129,6 @@ SPECIAL_MODEL_SPECS_DICT = {
             "Dog": {
                 "content_type": "application/json",
                 "prompt_key": "hello.prompt",
-                "generated_text_response_key": "key1.key2.generated_text",
                 "body": {
                     "hello": {"prompt": "a dog"},
                     "seed": 43,
@@ -5626,6 +6221,7 @@ BASE_SPEC = {
         "ml.c5.2xlarge",
     ],
     "hosting_use_script_uri": True,
+    "usage_info_message": None,
     "metrics": [{"Regex": "val_accuracy: ([0-9\\.]+)", "Name": "pytorch-ic:val-accuracy"}],
     "model_kwargs": {"some-model-kwarg-key": "some-model-kwarg-value"},
     "deploy_kwargs": {"some-model-deploy-kwarg-key": "some-model-deploy-kwarg-value"},

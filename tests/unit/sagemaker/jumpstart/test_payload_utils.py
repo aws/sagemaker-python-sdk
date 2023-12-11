@@ -14,11 +14,9 @@ from __future__ import absolute_import
 import base64
 from unittest import TestCase
 from mock.mock import patch
-import pytest
 
 from sagemaker.jumpstart.payload_utils import (
     PayloadSerializer,
-    _extract_generated_text_from_response,
     _construct_payload,
 )
 from sagemaker.jumpstart.types import JumpStartSerializablePayload
@@ -57,77 +55,6 @@ class TestConstructPayload(TestCase):
                 region=region,
             )
         )
-
-
-class TestResponseExtraction(TestCase):
-    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-    def test_extract_generated_text(self, patched_get_model_specs):
-        patched_get_model_specs.side_effect = get_special_model_spec
-
-        model_id = "response-keys"
-        region = "us-west-2"
-        generated_text = _extract_generated_text_from_response(
-            response={"key1": {"key2": {"generated_text": "top secret"}}},
-            model_id=model_id,
-            model_version="*",
-            region=region,
-        )
-
-        self.assertEqual(
-            _extract_generated_text_from_response(
-                response={"key1": {"key2": {"generated_text": "top secret"}}},
-                model_id=model_id,
-                model_version="*",
-                region=region,
-                accept_type="application/json",
-            ),
-            generated_text,
-        )
-
-        self.assertEqual(
-            generated_text,
-            "top secret",
-        )
-
-        with pytest.raises(ValueError):
-            _extract_generated_text_from_response(
-                response={"key1": {"key2": {"generated_texts": "top secret"}}},
-                model_id=model_id,
-                model_version="*",
-                region=region,
-            )
-
-        with pytest.raises(ValueError):
-            _extract_generated_text_from_response(
-                response={"key1": {"key2": {"generated_text": "top secret"}}},
-                model_id=model_id,
-                model_version="*",
-                region=region,
-                accept_type="blah/blah",
-            )
-
-        with pytest.raises(ValueError):
-            _extract_generated_text_from_response(
-                response={"key1": {"key2": {"generated_text": "top secret"}}},
-                model_id="env-var-variant-model",  # some model without the required metadata
-                model_version="*",
-                region=region,
-            )
-        with pytest.raises(ValueError):
-            _extract_generated_text_from_response(
-                response={"key1": {"generated_texts": "top secret"}},
-                model_id=model_id,
-                model_version="*",
-                region=region,
-            )
-
-        with pytest.raises(ValueError):
-            _extract_generated_text_from_response(
-                response="blah",
-                model_id=model_id,
-                model_version="*",
-                region=region,
-            )
 
 
 class TestPayloadSerializer(TestCase):

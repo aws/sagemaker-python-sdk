@@ -430,6 +430,9 @@ class Triton:
         # unique method to models created via ModelBuilder()
         self._original_deploy = self.pysdk_model.deploy
         self.pysdk_model.deploy = self._model_builder_deploy_wrapper
+        self._original_register = self.pysdk_model.register
+        self.pysdk_model.register = self._model_builder_register_wrapper
+        self.model_package = None
         return self.pysdk_model
 
     def _get_triton_predictor(self, endpoint_name: str, sagemaker_session: Session) -> Predictor:

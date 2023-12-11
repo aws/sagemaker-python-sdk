@@ -17,6 +17,21 @@ GPU_INSTANCE_FAMILIES = {
 }
 
 
+INF1_INSTANCE_FAMILIES = {"ml.inf1"}
+INF2_INSTANCE_FAMILIES = {"ml.inf2"}
+
+GRAVITON_INSTANCE_FAMILIES = {
+    "ml.c7g",
+    "ml.m6g",
+    "ml.m6gd",
+    "ml.c6g",
+    "ml.c6gd",
+    "ml.c6gn",
+    "ml.r6g",
+    "ml.r6gd",
+}
+
+
 def validate_image_uri_and_hardware(image_uri: str, instance_type: str, model_server: ModelServer):
     """Placeholder docstring"""
     if "xgboost" in image_uri:
@@ -57,6 +72,12 @@ def detect_hardware_type_of_instance(instance_type: str) -> HardwareType:
     instance_family = instance_type.rsplit(".", 1)[0]
     if instance_family in GPU_INSTANCE_FAMILIES:
         return HardwareType.GPU
+    if instance_family in INF1_INSTANCE_FAMILIES:
+        return HardwareType.INFERENTIA_1
+    if instance_family in INF2_INSTANCE_FAMILIES:
+        return HardwareType.INFERENTIA_2
+    if instance_family in GRAVITON_INSTANCE_FAMILIES:
+        return HardwareType.GRAVITON
     return HardwareType.CPU
 
 
@@ -67,4 +88,13 @@ def detect_triton_image_hardware_type(image_uri: str) -> HardwareType:
 
 def detect_torchserve_image_hardware_type(image_uri: str) -> HardwareType:
     """Placeholder docstring"""
-    return HardwareType.CPU if "cpu" in image_uri else HardwareType.GPU
+    if "neuronx" in image_uri:
+        return HardwareType.INFERENTIA_2
+    if "neuron" in image_uri:
+        return HardwareType.INFERENTIA_1
+    if "graviton" in image_uri:
+        return HardwareType.GRAVITON
+    if "cpu" in image_uri:
+        return HardwareType.CPU
+
+    return HardwareType.GPU

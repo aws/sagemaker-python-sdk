@@ -4,6 +4,7 @@ Extended discussion of my module.
 """
 
 from __future__ import absolute_import
+import os
 from pathlib import Path
 import shutil
 from typing import List
@@ -15,7 +16,7 @@ from sagemaker.serve.validations.check_integrity import (
     generate_secret_key,
     compute_hash,
 )
-
+from sagemaker.serve.validations.check_image_uri import is_1p_image_uri
 from sagemaker.remote_function.core.serialization import _MetaData
 
 
@@ -24,6 +25,7 @@ def prepare_for_torchserve(
     shared_libs: List[str],
     dependencies: dict,
     session: Session,
+    image_uri: str,
     inference_spec: InferenceSpec = None,
 ) -> str:
     """This is a one-line summary of the function.
@@ -51,8 +53,14 @@ def prepare_for_torchserve(
 
     code_dir = model_path.joinpath("code")
     code_dir.mkdir(exist_ok=True)
-
-    shutil.copy2(Path(__file__).parent.joinpath("inference.py"), code_dir)
+    # https://github.com/aws/sagemaker-python-sdk/issues/4288
+    if is_1p_image_uri(image_uri=image_uri) and "xgboost" in image_uri:
+        shutil.copy2(Path(__file__).parent.joinpath("xgboost_inference.py"), code_dir)
+        os.rename(
+            str(code_dir.joinpath("xgboost_inference.py")), str(code_dir.joinpath("inference.py"))
+        )
+    else:
+        shutil.copy2(Path(__file__).parent.joinpath("inference.py"), code_dir)
 
     shared_libs_dir = model_path.joinpath("shared_libs")
     shared_libs_dir.mkdir(exist_ok=True)

@@ -16,7 +16,11 @@ from typing import List
 import boto3
 
 from sagemaker.jumpstart.cache import JumpStartModelsCache
-from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME, JUMPSTART_REGION_NAME_SET
+from sagemaker.jumpstart.constants import (
+    JUMPSTART_DEFAULT_REGION_NAME,
+    JUMPSTART_LOGGER,
+    JUMPSTART_REGION_NAME_SET,
+)
 from sagemaker.jumpstart.types import (
     JumpStartCachedS3ContentKey,
     JumpStartCachedS3ContentValue,
@@ -93,6 +97,7 @@ def get_prototype_model_spec(
     we only retrieve model specs based on the model ID.
     """
 
+    JUMPSTART_LOGGER.warning("some-logging-msg")
     specs = JumpStartModelSpecs(PROTOTYPICAL_MODEL_SPECS_DICT[model_id])
     return specs
 

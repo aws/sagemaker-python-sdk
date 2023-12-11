@@ -24,6 +24,7 @@ import tempfile
 import stopit
 
 import tests.integ.lock as lock
+from sagemaker.workflow.step_outputs import get_step
 from tests.integ.sagemaker.conftest import _build_container, DOCKERFILE_TEMPLATE
 from sagemaker.config import SESSION_DEFAULT_S3_BUCKET_PATH
 from sagemaker.utils import resolve_value_from_config
@@ -769,7 +770,7 @@ def test_local_pipeline_with_step_decorator_and_step_dependency(
     )
 
     @step(**step_settings)
-    def generator() -> tuple:
+    def generator():
         return 3, 4
 
     @step(**step_settings)
@@ -797,6 +798,9 @@ def test_local_pipeline_with_step_decorator_and_step_dependency(
 
     pipeline_execution_list_steps_result = execution.list_steps()
     assert len(pipeline_execution_list_steps_result["PipelineExecutionSteps"]) == 2
+
+    assert execution.result(step_name=get_step(step_output_a).name) == (3, 4)
+    assert execution.result(step_name=get_step(step_output_b).name) == 7
 
 
 @pytest.mark.local_mode
