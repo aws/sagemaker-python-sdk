@@ -6113,3 +6113,75 @@ def test_update_inference_component(sagemaker_session):
     )
 
     sagemaker_session.sagemaker_client.update_inference_component.assert_called_with(**request)
+
+
+@patch("os.makedirs")
+def test_download_data_with_only_directory(makedirs, sagemaker_session):
+    sagemaker_session.s3_client = Mock()
+    sagemaker_session.s3_client.list_objects_v2 = Mock(
+        return_value={
+            "Contents": [
+                {
+                    "Key": "foo/bar/",
+                    "Size": 0,
+                }
+            ]
+        }
+    )
+    sagemaker_session.download_data(path=".", bucket="foo-bucket")
+
+    makedirs.assert_called_with("./foo/bar", exist_ok=True)
+    sagemaker_session.s3_client.download_file.assert_not_called()
+
+
+@patch("os.makedirs")
+def test_download_data_with_only_file(makedirs, sagemaker_session):
+    sagemaker_session.s3_client = Mock()
+    sagemaker_session.s3_client.list_objects_v2 = Mock(
+        return_value={
+            "Contents": [
+                {
+                    "Key": "foo/bar/mode.tar.gz",
+                    "Size": 100,
+                }
+            ]
+        }
+    )
+    sagemaker_session.download_data(path=".", bucket="foo-bucket")
+
+    makedirs.assert_called_with("./foo/bar", exist_ok=True)
+    sagemaker_session.s3_client.download_file.assert_called_with(
+        Bucket="foo-bucket",
+        Key="foo/bar/mode.tar.gz",
+        Filename="./foo/bar/mode.tar.gz",
+        ExtraArgs=None,
+    )
+
+
+@patch("os.makedirs")
+def test_download_data_with_file_and_directory(makedirs, sagemaker_session):
+    sagemaker_session.s3_client = Mock()
+    sagemaker_session.s3_client.list_objects_v2 = Mock(
+        return_value={
+            "Contents": [
+                {
+                    "Key": "foo/bar/",
+                    "Size": 0,
+                },
+                {
+                    "Key": "foo/bar/mode.tar.gz",
+                    "Size": 100,
+                },
+            ]
+        }
+    )
+    sagemaker_session.download_data(path=".", bucket="foo-bucket")
+
+    makedirs.assert_called_with("./foo/bar", exist_ok=True)
+    makedirs.assert_has_calls([call("./foo/bar", exist_ok=True), call("./foo/bar", exist_ok=True)])
+    sagemaker_session.s3_client.download_file.assert_called_with(
+        Bucket="foo-bucket",
+        Key="foo/bar/mode.tar.gz",
+        Filename="./foo/bar/mode.tar.gz",
+        ExtraArgs=None,
+    )
