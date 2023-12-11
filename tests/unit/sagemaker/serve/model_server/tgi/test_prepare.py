@@ -21,9 +21,12 @@ MOCK_MODEL_PATH = "/path/to/mock/model/dir"
 MOCK_CODE_DIR = "/path/to/mock/model/dir/code"
 MOCK_JUMPSTART_ID = "mock_llm_js_id"
 MOCK_TMP_DIR = "tmp123456"
-MOCK_COMPRESSED_MODEL_DATA_STR = "s3://jumpstart-cache-prod-us-west-2/huggingface-infer/prepack/v1.0.1/infer-prepack-huggingface-llm-falcon-7b-bf16.tar.gz"
-MOCK_UNCOMPRESSED_MODEL_DATA_STR = "s3://jumpstart-cache-prod-us-west-2/huggingface-llm/huggingface-llm-falcon-7b-bf16/artifacts/inference-prepack/v1.0.1/"
-MOCK_UNCOMPRESSED_MODEL_DATA_STR_FOR_DICT = "s3://jumpstart-cache-prod-us-west-2/huggingface-llm/huggingface-llm-falcon-7b-bf16/artifacts/inference-prepack/v1.0.1/dict/"
+MOCK_COMPRESSED_MODEL_DATA_STR = "s3://jumpstart-cache-prod-us-west-2/huggingface-infer"
+"/prepack/v1.0.1/infer-prepack-huggingface-llm-falcon-7b-bf16.tar.gz"
+MOCK_UNCOMPRESSED_MODEL_DATA_STR = "s3://jumpstart-cache-prod-us-west-2/huggingface-llm"
+"/huggingface-llm-falcon-7b-bf16/artifacts/inference-prepack/v1.0.1/"
+MOCK_UNCOMPRESSED_MODEL_DATA_STR_FOR_DICT = "s3://jumpstart-cache-prod-us-west-2/huggingface-llm"
+"/huggingface-llm-falcon-7b-bf16/artifacts/inference-prepack/v1.0.1/dict/"
 MOCK_UNCOMPRESSED_MODEL_DATA_DICT = {
     "S3DataSource": {
         "S3Uri": MOCK_UNCOMPRESSED_MODEL_DATA_STR_FOR_DICT,
