@@ -1108,7 +1108,7 @@ def test_wait(session, mock_stored_function, mock_logs_for_job, *args):
     job.wait(timeout=10)
 
     mock_logs_for_job.assert_called_with(
-        boto_session=ANY, job_name=job.job_name, wait=True, timeout=10
+        sagemaker_session=ANY, job_name=job.job_name, wait=True, timeout=10
     )
 
 

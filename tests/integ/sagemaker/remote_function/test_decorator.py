@@ -207,7 +207,7 @@ def test_with_additional_dependencies(
     def cuberoot(x):
         from scipy.special import cbrt
 
-        return cbrt(27)
+        return cbrt(x)
 
     assert cuberoot(27) == 3
 
@@ -742,7 +742,7 @@ def test_with_user_and_workdir_set_in_the_image(
     def cuberoot(x):
         from scipy.special import cbrt
 
-        return cbrt(27)
+        return cbrt(x)
 
     assert cuberoot(27) == 3
 

@@ -472,6 +472,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         # Initialize the variables used to loop through the contents of the S3 bucket.
         keys = []
+        directories = []
         next_token = ""
         base_parameters = {"Bucket": bucket, "Prefix": key_prefix}
 
@@ -490,20 +491,26 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 return []
             # For each object, save its key or directory.
             for s3_object in contents:
-                key = s3_object.get("Key")
-                keys.append(key)
+                key: str = s3_object.get("Key")
+                obj_size = s3_object.get("Size")
+                if key.endswith("/") and int(obj_size) == 0:
+                    directories.append(os.path.join(path, key))
+                else:
+                    keys.append(key)
             next_token = response.get("NextContinuationToken")
 
         # For each object key, create the directory on the local machine if needed, and then
         # download the file.
         downloaded_paths = []
+        for dir_path in directories:
+            os.makedirs(os.path.dirname(dir_path), exist_ok=True)
         for key in keys:
             tail_s3_uri_path = os.path.basename(key)
             if not os.path.splitext(key_prefix)[1]:
                 tail_s3_uri_path = os.path.relpath(key, key_prefix)
             destination_path = os.path.join(path, tail_s3_uri_path)
             if not os.path.exists(os.path.dirname(destination_path)):
-                os.makedirs(os.path.dirname(destination_path))
+                os.makedirs(os.path.dirname(destination_path), exist_ok=True)
             s3.download_file(
                 Bucket=bucket, Key=key, Filename=destination_path, ExtraArgs=extra_args
             )
@@ -5495,7 +5502,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             exceptions.CapacityError: If the training job fails with CapacityError.
             exceptions.UnexpectedStatusException: If waiting and the training job fails.
         """
-        _logs_for_job(self.boto_session, job_name, wait, poll, log_type, timeout)
+        _logs_for_job(self, job_name, wait, poll, log_type, timeout)
 
     def logs_for_processing_job(self, job_name, wait=False, poll=10):
         """Display logs for a given processing job, optionally tailing them until the is complete.
@@ -7378,7 +7385,7 @@ def _rule_statuses_changed(current_statuses, last_statuses):
 
 
 def _logs_for_job(  # noqa: C901 - suppress complexity warning for this method
-    boto_session, job_name, wait=False, poll=10, log_type="All", timeout=None
+    sagemaker_session, job_name, wait=False, poll=10, log_type="All", timeout=None
 ):
     """Display logs for a given training job, optionally tailing them until job is complete.
 
@@ -7386,9 +7393,8 @@ def _logs_for_job(  # noqa: C901 - suppress complexity warning for this method
     based on which instance the log entry is from.
 
     Args:
-        boto_session (boto3.session.Session): The underlying Boto3 session which AWS service
-                calls are delegated to (default: None). If not provided, one is created with
-                default AWS configuration chain.
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions.
         job_name (str): Name of the training job to display the logs for.
         wait (bool): Whether to keep looking for new log entries until the job completes
             (default: False).
@@ -7405,13 +7411,13 @@ def _logs_for_job(  # noqa: C901 - suppress complexity warning for this method
         exceptions.CapacityError: If the training job fails with CapacityError.
         exceptions.UnexpectedStatusException: If waiting and the training job fails.
     """
-    sagemaker_client = boto_session.client("sagemaker")
+    sagemaker_client = sagemaker_session.sagemaker_client
     request_end_time = time.time() + timeout if timeout else None
     description = sagemaker_client.describe_training_job(TrainingJobName=job_name)
     print(secondary_training_status_message(description, None), end="")
 
     instance_count, stream_names, positions, client, log_group, dot, color_wrap = _logs_init(
-        boto_session, description, job="Training"
+        sagemaker_session.boto_session, description, job="Training"
     )
 
     state = _get_initial_job_state(description, "TrainingJobStatus", wait)
