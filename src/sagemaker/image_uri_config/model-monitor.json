@@ -1,5 +1,7 @@
 {
-    "scope": ["monitoring"],
+    "scope": [
+        "monitoring"
+    ],
     "versions": {
         "": {
             "registries": {
@@ -21,13 +23,13 @@
                 "eu-west-1": "468650794304",
                 "eu-west-2": "749857270468",
                 "eu-west-3": "680080141114",
+                "il-central-1": "843974653677",
                 "me-south-1": "607024016150",
                 "sa-east-1": "539772159869",
                 "us-east-1": "156813124566",
                 "us-east-2": "777275614652",
                 "us-west-1": "890145073186",
-                "us-west-2": "159807026194",
-                "il-central-1": "843974653677"
+                "us-west-2": "159807026194"
             },
             "repository": "sagemaker-model-monitor-analyzer"
         }

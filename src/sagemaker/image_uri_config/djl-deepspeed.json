@@ -1,5 +1,7 @@
 {
-    "scope": ["inference"],
+    "scope": [
+        "inference"
+    ],
     "versions": {
         "0.25.0": {
             "registries": {
@@ -27,12 +29,13 @@
                 "us-east-1": "763104351884",
                 "us-east-2": "763104351884",
                 "us-west-1": "763104351884",
-                "us-west-2": "763104351884"
+                "us-west-2": "763104351884",
+                "ca-west-1": "204538143572"
             },
             "repository": "djl-inference",
             "tag_prefix": "0.25.0-deepspeed0.11.0-cu118"
         },
-         "0.24.0": {
+        "0.24.0": {
             "registries": {
                 "af-south-1": "626614931356",
                 "il-central-1": "780543022126",
@@ -58,12 +61,13 @@
                 "us-east-1": "763104351884",
                 "us-east-2": "763104351884",
                 "us-west-1": "763104351884",
-                "us-west-2": "763104351884"
+                "us-west-2": "763104351884",
+                "ca-west-1": "204538143572"
             },
             "repository": "djl-inference",
             "tag_prefix": "0.24.0-deepspeed0.10.0-cu118"
         },
-         "0.23.0": {
+        "0.23.0": {
             "registries": {
                 "af-south-1": "626614931356",
                 "il-central-1": "780543022126",
@@ -89,7 +93,8 @@
                 "us-east-1": "763104351884",
                 "us-east-2": "763104351884",
                 "us-west-1": "763104351884",
-                "us-west-2": "763104351884"
+                "us-west-2": "763104351884",
+                "ca-west-1": "204538143572"
             },
             "repository": "djl-inference",
             "tag_prefix": "0.23.0-deepspeed0.9.5-cu118"
@@ -120,7 +125,8 @@
                 "us-east-1": "763104351884",
                 "us-east-2": "763104351884",
                 "us-west-1": "763104351884",
-                "us-west-2": "763104351884"
+                "us-west-2": "763104351884",
+                "ca-west-1": "204538143572"
             },
             "repository": "djl-inference",
             "tag_prefix": "0.22.1-deepspeed0.9.2-cu118"
@@ -151,7 +157,8 @@
                 "us-east-1": "763104351884",
                 "us-east-2": "763104351884",
                 "us-west-1": "763104351884",
-                "us-west-2": "763104351884"
+                "us-west-2": "763104351884",
+                "ca-west-1": "204538143572"
             },
             "repository": "djl-inference",
             "tag_prefix": "0.21.0-deepspeed0.8.3-cu117"
@@ -182,7 +189,8 @@
                 "us-east-1": "763104351884",
                 "us-east-2": "763104351884",
                 "us-west-1": "763104351884",
-                "us-west-2": "763104351884"
+                "us-west-2": "763104351884",
+                "ca-west-1": "204538143572"
             },
             "repository": "djl-inference",
             "tag_prefix": "0.20.0-deepspeed0.7.5-cu116"
@@ -213,7 +221,8 @@
                 "us-east-1": "763104351884",
                 "us-east-2": "763104351884",
                 "us-west-1": "763104351884",
-                "us-west-2": "763104351884"
+                "us-west-2": "763104351884",
+                "ca-west-1": "204538143572"
             },
             "repository": "djl-inference",
             "tag_prefix": "0.19.0-deepspeed0.7.3-cu113"
