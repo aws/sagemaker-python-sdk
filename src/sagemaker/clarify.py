@@ -332,7 +332,7 @@ ANALYSIS_CONFIG_SCHEMA_V1_0 = Schema(
                     {
                         SchemaOptional("target_time_series", default="zero"): str,
                         SchemaOptional("related_time_series"): str,
-                        SchemaOptional("static_covariates"): [Or(str, int, float)],
+                        SchemaOptional("static_covariates"): {Or(str, int): [Or(str, int, float)]},
                     },
                 ),
             },
