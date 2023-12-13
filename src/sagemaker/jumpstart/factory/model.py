@@ -171,7 +171,9 @@ def _add_vulnerable_and_deprecated_status_to_kwargs(
     return kwargs
 
 
-def _add_instance_type_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelInitKwargs:
+def _add_instance_type_to_kwargs(
+    kwargs: JumpStartModelInitKwargs, disable_instance_type_logging: bool = False
+) -> JumpStartModelInitKwargs:
     """Sets instance type based on default or override, returns full kwargs."""
 
     orig_instance_type = kwargs.instance_type
@@ -187,7 +189,7 @@ def _add_instance_type_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartM
         training_instance_type=kwargs.training_instance_type,
     )
 
-    if orig_instance_type is None:
+    if not disable_instance_type_logging and orig_instance_type is None:
         JUMPSTART_LOGGER.info(
             "No instance type selected for inference hosting endpoint. Defaulting to %s.",
             kwargs.instance_type,
@@ -551,9 +553,7 @@ def get_deploy_kwargs(
 
     deploy_kwargs = _add_endpoint_name_to_kwargs(kwargs=deploy_kwargs)
 
-    deploy_kwargs = _add_instance_type_to_kwargs(
-        kwargs=deploy_kwargs,
-    )
+    deploy_kwargs = _add_instance_type_to_kwargs(kwargs=deploy_kwargs)
 
     deploy_kwargs.initial_instance_count = initial_instance_count or 1
 
@@ -677,6 +677,7 @@ def get_init_kwargs(
     git_config: Optional[Dict[str, str]] = None,
     model_package_arn: Optional[str] = None,
     training_instance_type: Optional[str] = None,
+    disable_instance_type_logging: bool = False,
     resources: Optional[ResourceRequirements] = None,
 ) -> JumpStartModelInitKwargs:
     """Returns kwargs required to instantiate `sagemaker.estimator.Model` object."""
@@ -720,7 +721,7 @@ def get_init_kwargs(
     model_init_kwargs = _add_model_name_to_kwargs(kwargs=model_init_kwargs)
 
     model_init_kwargs = _add_instance_type_to_kwargs(
-        kwargs=model_init_kwargs,
+        kwargs=model_init_kwargs, disable_instance_type_logging=disable_instance_type_logging
     )
 
     model_init_kwargs = _add_image_uri_to_kwargs(kwargs=model_init_kwargs)

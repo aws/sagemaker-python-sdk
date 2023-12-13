@@ -1307,3 +1307,33 @@ def test_package_for_edge_with_sagemaker_config_injection(sagemaker_session):
         role=SAGEMAKER_CONFIG_EDGE_PACKAGING_JOB["SageMaker"]["EdgePackagingJob"]["RoleArn"],
         tags=None,
     )
+
+
+def test_model_source(
+    sagemaker_session,
+):
+    model = Model(
+        entry_point=ENTRY_POINT_INFERENCE,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        image_uri=IMAGE_URI,
+        model_data={
+            "S3DataSource": {
+                "S3Uri": "s3://tmybuckaet",
+                "S3DataType": "S3Prefix",
+                "CompressionType": "None",
+            }
+        },
+    )
+
+    assert model._get_model_uri() == "s3://tmybuckaet"
+
+    model_1 = Model(
+        entry_point=ENTRY_POINT_INFERENCE,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        image_uri=IMAGE_URI,
+        model_data="s3://tmybuckaet",
+    )
+
+    assert model_1._get_model_uri() == "s3://tmybuckaet"
