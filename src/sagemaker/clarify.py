@@ -330,8 +330,8 @@ ANALYSIS_CONFIG_SCHEMA_V1_0 = Schema(
                 SchemaOptional("baseline"): Or(
                     str,
                     {
-                        SchemaOptional("target_ts", default="zero"): str,
-                        SchemaOptional("related_ts"): str,
+                        SchemaOptional("target_time_series", default="zero"): str,
+                        SchemaOptional("related_time_series"): str,
                         SchemaOptional("static_covariates"): [Or(str, int, float)],
                     },
                 ),
