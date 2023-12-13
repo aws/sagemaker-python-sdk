@@ -327,6 +327,14 @@ ANALYSIS_CONFIG_SCHEMA_V1_0 = Schema(
                     ),
                 ),
                 SchemaOptional("num_samples"): int,
+                SchemaOptional("baseline"): Or(
+                    str,
+                    {
+                        SchemaOptional("target_ts", default="zero"): str,
+                        SchemaOptional("related_ts"): str,
+                        SchemaOptional("static_covariates"): [Or(str, int, float)],
+                    },
+                ),
             },
         },
         SchemaOptional("predictor"): {
@@ -1661,6 +1669,7 @@ class AsymmetricShapleyValueConfig(ExplainabilityConfig):
             "fine_grained",
         ] = ASYM_SHAP_VAL_DEFAULT_EXPLANATION_GRANULARITY,
         num_samples: Optional[int] = None,
+        baseline: Optional[Union[str, Dict[str, Any]]] = None,
     ):
         """Initialises config for time series explainability with Asymmetric Shapley Values.
 
@@ -1675,6 +1684,8 @@ class AsymmetricShapleyValueConfig(ExplainabilityConfig):
             num_samples (None or int): Number of samples to be used in the Asymmetric Shapley
                 Value forecasting algorithm. Only applicable when using ``"fine_grained"``
                 explanations.
+            baseline (str or dict): Link to a baseline configuration or a dictionary for it.
+            # TODO: improve above.
 
         Raises:
             AssertionError: when ``direction`` or ``granularity`` are not valid,
@@ -1707,6 +1718,8 @@ class AsymmetricShapleyValueConfig(ExplainabilityConfig):
         _set(
             num_samples, "num_samples", self.asymmetric_shapley_value_config
         )  # _set() does nothing if a given argument is None
+        # TODO: add sdk-side validation to baseline
+        _set(baseline, "baseline", self.asymmetric_shapley_value_config)
 
     def get_explainability_config(self):
         """Returns an asymmetric shap config dictionary."""
