@@ -186,7 +186,7 @@ def test_validate_source_dir_is_not_directory(sagemaker_session):
 
 
 def test_validate_source_dir_file_not_in_dir():
-    script = " !@#$%^&*() .myscript. !@#$%^&*() "
+    script = " !@#$%^&*() .myscript. !@#$%^&*().py"
     directory = "."
     with pytest.raises(ValueError):
         fw_utils.validate_source_dir(script, directory)
