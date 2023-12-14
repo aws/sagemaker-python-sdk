@@ -38,7 +38,8 @@
                     "us-east-1": "763104351884",
                     "us-east-2": "763104351884",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-trcomp-training"
             },
@@ -69,7 +70,8 @@
                     "us-east-1": "763104351884",
                     "us-east-2": "763104351884",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-trcomp-training"
             }

@@ -172,7 +172,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference-eia"
             },
@@ -211,7 +212,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference-eia"
             },
@@ -250,7 +252,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference-eia"
             },
@@ -289,7 +292,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference-eia"
             }
@@ -457,7 +461,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference"
             },
@@ -496,7 +501,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference"
             },
@@ -535,7 +541,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference"
             },
@@ -574,7 +581,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference"
             },
@@ -613,7 +621,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference"
             },
@@ -652,7 +661,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference"
             },
@@ -691,7 +701,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference"
             },
@@ -928,7 +939,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference"
             },
@@ -967,7 +979,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference"
             },
@@ -1006,7 +1019,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference"
             },
@@ -1045,7 +1059,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference"
             },
@@ -1084,7 +1099,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference"
             },
@@ -1123,7 +1139,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference"
             },
@@ -1162,7 +1179,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference"
             },
@@ -1201,7 +1219,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference"
             },
@@ -1240,7 +1259,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference"
             },
@@ -1279,7 +1299,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference"
             },
@@ -1318,7 +1339,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference"
             },
@@ -1357,7 +1379,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference"
             },
@@ -1396,7 +1419,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference"
             },
@@ -1435,7 +1459,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference"
             },
@@ -1474,7 +1499,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference"
             },
@@ -1513,7 +1539,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference"
             },
@@ -1552,7 +1579,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference"
             },
@@ -1591,7 +1619,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference"
             },
@@ -1630,7 +1659,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference"
             },
@@ -1669,7 +1699,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference"
             },
@@ -1708,7 +1739,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference"
             },
@@ -1747,7 +1779,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference"
             },
@@ -1786,7 +1819,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference"
             },
@@ -1824,7 +1858,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference"
             },
@@ -1862,7 +1897,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference"
             },
@@ -1900,7 +1936,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference"
             },
@@ -1938,7 +1975,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference"
             },
@@ -1976,7 +2014,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference"
             },
@@ -2014,7 +2053,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference"
             },
@@ -2052,7 +2092,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference"
             },
@@ -2090,7 +2131,8 @@
                     "us-gov-east-1": "446045086412",
                     "us-gov-west-1": "442386744353",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference"
             }
@@ -2143,10 +2185,13 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference-graviton",
-                "container_version": {"cpu": "ubuntu20.04"}
+                "container_version": {
+                    "cpu": "ubuntu20.04"
+                }
             },
             "2.12.1": {
                 "py_versions": [
@@ -2185,10 +2230,13 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference-graviton",
-                "container_version": {"cpu": "ubuntu20.04"}
+                "container_version": {
+                    "cpu": "ubuntu20.04"
+                }
             },
             "2.13.0": {
                 "py_versions": [
@@ -2227,10 +2275,13 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-inference-graviton",
-                "container_version": {"cpu": "ubuntu20.04"}
+                "container_version": {
+                    "cpu": "ubuntu20.04"
+                }
             }
         }
     },
@@ -2403,7 +2454,7 @@
                 "py3": {
                     "registries": {
                         "af-south-1": "626614931356",
-                    "il-central-1": "780543022126",
+                        "il-central-1": "780543022126",
                         "ap-east-1": "871362719292",
                         "ap-northeast-1": "763104351884",
                         "ap-northeast-2": "763104351884",
@@ -2435,7 +2486,8 @@
                         "us-iso-east-1": "886529160074",
                         "us-isob-east-1": "094389454867",
                         "us-west-1": "763104351884",
-                        "us-west-2": "763104351884"
+                        "us-west-2": "763104351884",
+                        "ca-west-1": "204538143572"
                     },
                     "repository": "tensorflow-training"
                 }
@@ -2479,7 +2531,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-training"
             },
@@ -2522,7 +2575,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-training"
             },
@@ -2566,7 +2620,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-training"
             },
@@ -2610,7 +2665,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-training"
             },
@@ -2654,7 +2710,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-training"
             },
@@ -2698,7 +2755,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-training"
             },
@@ -2939,7 +2997,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-training"
             },
@@ -2982,7 +3041,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-training"
             },
@@ -3025,7 +3085,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-training"
             },
@@ -3067,7 +3128,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-training"
             },
@@ -3109,7 +3171,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-training"
             },
@@ -3152,7 +3215,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-training"
             },
@@ -3195,7 +3259,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-training"
             },
@@ -3237,7 +3302,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-training"
             },
@@ -3279,7 +3345,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-training"
             },
@@ -3321,7 +3388,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-training"
             },
@@ -3363,7 +3431,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-training"
             },
@@ -3405,7 +3474,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-training"
             },
@@ -3447,7 +3517,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-training"
             },
@@ -3489,7 +3560,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-training"
             },
@@ -3531,7 +3603,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-training"
             },
@@ -3573,7 +3646,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-training"
             },
@@ -3615,7 +3689,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-training"
             },
@@ -3657,7 +3732,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-training"
             },
@@ -3699,7 +3775,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-training"
             },
@@ -3741,7 +3818,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-training"
             },
@@ -3783,7 +3861,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-training"
             },
@@ -3825,7 +3904,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-training"
             },
@@ -3867,7 +3947,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-training"
             },
@@ -3909,7 +3990,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-training"
             },
@@ -3951,7 +4033,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-training"
             },
@@ -3992,7 +4075,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-training"
             },
@@ -4030,7 +4114,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-training"
             },
@@ -4062,7 +4147,8 @@
                     "us-east-1": "763104351884",
                     "us-east-2": "763104351884",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-training"
             },
@@ -4100,7 +4186,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "tensorflow-training"
             }
