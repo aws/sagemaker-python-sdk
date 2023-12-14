@@ -6908,8 +6908,8 @@ def get_execution_role(sagemaker_session=None, use_default=False):
     Throws an exception if role doesn't exist.
 
     Args:
-        sagemaker_session(Session): Current sagemaker session.
-        use_default(bool): Use a default role if `get_caller_identity_arn does not
+        sagemaker_session (Session): Current sagemaker session.
+        use_default (bool): Use a default role if ``get_caller_identity_arn`` does not
             return a correct role. This default role will be created if needed.
             Defaults to ``False``.
 
