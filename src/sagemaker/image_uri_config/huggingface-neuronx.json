@@ -1,12 +1,20 @@
 {
     "training": {
-        "processors": ["trn"],
-        "version_aliases": {"4.28": "4.28.1"},
+        "processors": [
+            "trn"
+        ],
+        "version_aliases": {
+            "4.28": "4.28.1"
+        },
         "versions": {
             "4.28.1": {
-                "version_aliases": {"pytorch1.13": "pytorch1.13.0"},
+                "version_aliases": {
+                    "pytorch1.13": "pytorch1.13.0"
+                },
                 "pytorch1.13.0": {
-                    "py_versions": ["py38"],
+                    "py_versions": [
+                        "py38"
+                    ],
                     "repository": "huggingface-pytorch-training-neuronx",
                     "registries": {
                         "ap-northeast-1": "763104351884",
@@ -24,16 +32,25 @@
                         "sa-east-1": "763104351884",
                         "us-east-1": "763104351884",
                         "us-east-2": "763104351884",
-                        "us-west-2": "763104351884"
+                        "us-west-2": "763104351884",
+                        "ca-west-1": "204538143572"
                     },
-                    "container_version": {"trn": "ubuntu20.04"},
-                    "sdk_versions": ["sdk2.9.1"]
+                    "container_version": {
+                        "trn": "ubuntu20.04"
+                    },
+                    "sdk_versions": [
+                        "sdk2.9.1"
+                    ]
                 }
             },
             "4.34.1": {
-                "version_aliases": {"pytorch1.13": "pytorch1.13.1"},
+                "version_aliases": {
+                    "pytorch1.13": "pytorch1.13.1"
+                },
                 "pytorch1.13.1": {
-                    "py_versions": ["py310"],
+                    "py_versions": [
+                        "py310"
+                    ],
                     "repository": "huggingface-pytorch-inference-neuronx",
                     "registries": {
                         "ap-northeast-1": "763104351884",
@@ -51,22 +68,35 @@
                         "sa-east-1": "763104351884",
                         "us-east-1": "763104351884",
                         "us-east-2": "763104351884",
-                        "us-west-2": "763104351884"
+                        "us-west-2": "763104351884",
+                        "ca-west-1": "204538143572"
                     },
-                    "container_version": {"inf": "ubuntu20.04"},
-                    "sdk_versions": ["sdk2.15.0"]
+                    "container_version": {
+                        "inf": "ubuntu20.04"
+                    },
+                    "sdk_versions": [
+                        "sdk2.15.0"
+                    ]
                 }
             }
         }
     },
     "inference": {
-        "processors": ["inf"],
-        "version_aliases": {"4.28": "4.28.1"},
+        "processors": [
+            "inf"
+        ],
+        "version_aliases": {
+            "4.28": "4.28.1"
+        },
         "versions": {
             "4.28.1": {
-                "version_aliases": {"pytorch1.13": "pytorch1.13.0"},
+                "version_aliases": {
+                    "pytorch1.13": "pytorch1.13.0"
+                },
                 "pytorch1.13.0": {
-                    "py_versions": ["py38"],
+                    "py_versions": [
+                        "py38"
+                    ],
                     "repository": "huggingface-pytorch-inference-neuronx",
                     "registries": {
                         "af-south-1": "626614931356",
@@ -100,16 +130,25 @@
                         "us-iso-east-1": "886529160074",
                         "us-isob-east-1": "094389454867",
                         "us-west-1": "763104351884",
-                        "us-west-2": "763104351884"
+                        "us-west-2": "763104351884",
+                        "ca-west-1": "204538143572"
                     },
-                    "container_version": {"inf": "ubuntu20.04"},
-                    "sdk_versions": ["sdk2.9.1"]
+                    "container_version": {
+                        "inf": "ubuntu20.04"
+                    },
+                    "sdk_versions": [
+                        "sdk2.9.1"
+                    ]
                 }
             },
             "4.34.1": {
-                "version_aliases": {"pytorch1.13": "pytorch1.13.1"},
+                "version_aliases": {
+                    "pytorch1.13": "pytorch1.13.1"
+                },
                 "pytorch1.13.1": {
-                    "py_versions": ["py310"],
+                    "py_versions": [
+                        "py310"
+                    ],
                     "repository": "huggingface-pytorch-inference-neuronx",
                     "registries": {
                         "af-south-1": "626614931356",
@@ -143,10 +182,15 @@
                         "us-iso-east-1": "886529160074",
                         "us-isob-east-1": "094389454867",
                         "us-west-1": "763104351884",
-                        "us-west-2": "763104351884"
+                        "us-west-2": "763104351884",
+                        "ca-west-1": "204538143572"
                     },
-                    "container_version": {"inf": "ubuntu20.04"},
-                    "sdk_versions": ["sdk2.15.0"]
+                    "container_version": {
+                        "inf": "ubuntu20.04"
+                    },
+                    "sdk_versions": [
+                        "sdk2.15.0"
+                    ]
                 }
             }
         }

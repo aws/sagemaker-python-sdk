@@ -581,6 +581,17 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.dependencies = dependencies or []
         self.uploaded_code: Optional[UploadedCode] = None
 
+        # Check that the user properly sets both subnet and secutiry_groupe_ids
+        if (
+            subnets is not None
+            and security_group_ids is None
+            or security_group_ids is not None
+            and subnets is None
+        ):
+            raise RuntimeError(
+                "When setting up custom VPC, both subnets and security_group_ids must be set"
+            )
+
         if self.instance_type in ("local", "local_gpu"):
             if self.instance_type == "local_gpu" and self.instance_count > 1:
                 raise RuntimeError("Distributed Training in Local GPU is not supported")

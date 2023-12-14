@@ -512,6 +512,24 @@ def test_framework_all_init_args(sagemaker_session):
     }
 
 
+def test_subnets_without_security_groups(sagemaker_session):
+    with pytest.raises(RuntimeError):
+        DummyFramework(
+            entry_point=SCRIPT_PATH,
+            sagemaker_session=sagemaker_session,
+            subnets=["123"],
+        )
+
+
+def test_security_groups_without_subnets(sagemaker_session):
+    with pytest.raises(RuntimeError):
+        DummyFramework(
+            entry_point=SCRIPT_PATH,
+            sagemaker_session=sagemaker_session,
+            security_group_ids=["123"],
+        )
+
+
 def test_framework_without_role_parameter(sagemaker_session):
     with pytest.raises(ValueError):
         DummyFramework(
