@@ -1,5 +1,7 @@
 {
-    "scope": ["inference"],
+    "scope": [
+        "inference"
+    ],
     "versions": {
         "0.24.0": {
             "registries": {
@@ -27,7 +29,8 @@
                 "us-east-1": "763104351884",
                 "us-east-2": "763104351884",
                 "us-west-1": "763104351884",
-                "us-west-2": "763104351884"
+                "us-west-2": "763104351884",
+                "ca-west-1": "204538143572"
             },
             "repository": "djl-inference",
             "tag_prefix": "0.24.0-fastertransformer5.3.0-cu118"
@@ -58,7 +61,8 @@
                 "us-east-1": "763104351884",
                 "us-east-2": "763104351884",
                 "us-west-1": "763104351884",
-                "us-west-2": "763104351884"
+                "us-west-2": "763104351884",
+                "ca-west-1": "204538143572"
             },
             "repository": "djl-inference",
             "tag_prefix": "0.23.0-fastertransformer5.3.0-cu118"
@@ -89,7 +93,8 @@
                 "us-east-1": "763104351884",
                 "us-east-2": "763104351884",
                 "us-west-1": "763104351884",
-                "us-west-2": "763104351884"
+                "us-west-2": "763104351884",
+                "ca-west-1": "204538143572"
             },
             "repository": "djl-inference",
             "tag_prefix": "0.22.1-fastertransformer5.3.0-cu118"
@@ -120,7 +125,8 @@
                 "us-east-1": "763104351884",
                 "us-east-2": "763104351884",
                 "us-west-1": "763104351884",
-                "us-west-2": "763104351884"
+                "us-west-2": "763104351884",
+                "ca-west-1": "204538143572"
             },
             "repository": "djl-inference",
             "tag_prefix": "0.21.0-fastertransformer5.3.0-cu117"
