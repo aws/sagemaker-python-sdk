@@ -1,5 +1,14 @@
 # Changelog
 
+## v2.200.1 (2023-12-14)
+
+### Bug Fixes and Other Changes
+
+ * Merge branch 'master-rba' into local_merge
+ * Fix user agent tag issue
+ * update image_uri_configs  12-13-2023 14:04:54 PST
+ * update image_uri_configs  12-13-2023 12:23:06 PST
+
 ## v2.200.0 (2023-12-13)
 
 ### Deprecations and Removals
