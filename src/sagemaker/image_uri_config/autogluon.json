@@ -1,6 +1,9 @@
 {
     "training": {
-        "processors": ["cpu", "gpu"],
+        "processors": [
+            "cpu",
+            "gpu"
+        ],
         "version_aliases": {
             "0.3": "0.3.2",
             "0.4": "0.4.3",
@@ -43,10 +46,13 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "autogluon-training",
-                "py_versions": ["py37"]
+                "py_versions": [
+                    "py37"
+                ]
             },
             "0.3.2": {
                 "registries": {
@@ -81,10 +87,13 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "autogluon-training",
-                "py_versions": ["py38"]
+                "py_versions": [
+                    "py38"
+                ]
             },
             "0.4.0": {
                 "registries": {
@@ -119,11 +128,17 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "autogluon-training",
-                "processors": ["cpu", "gpu"],
-                "py_versions": ["py38"]
+                "processors": [
+                    "cpu",
+                    "gpu"
+                ],
+                "py_versions": [
+                    "py38"
+                ]
             },
             "0.4.2": {
                 "registries": {
@@ -158,11 +173,17 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "autogluon-training",
-                "processors": ["cpu", "gpu"],
-                "py_versions": ["py38"]
+                "processors": [
+                    "cpu",
+                    "gpu"
+                ],
+                "py_versions": [
+                    "py38"
+                ]
             },
             "0.4.3": {
                 "registries": {
@@ -197,11 +218,17 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "autogluon-training",
-                "processors": ["cpu", "gpu"],
-                "py_versions": ["py38"]
+                "processors": [
+                    "cpu",
+                    "gpu"
+                ],
+                "py_versions": [
+                    "py38"
+                ]
             },
             "0.5.2": {
                 "registries": {
@@ -236,11 +263,17 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "autogluon-training",
-                "processors": ["cpu", "gpu"],
-                "py_versions": ["py38"]
+                "processors": [
+                    "cpu",
+                    "gpu"
+                ],
+                "py_versions": [
+                    "py38"
+                ]
             },
             "0.6.1": {
                 "registries": {
@@ -271,11 +304,17 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "autogluon-training",
-                "processors": ["cpu", "gpu"],
-                "py_versions": ["py38"]
+                "processors": [
+                    "cpu",
+                    "gpu"
+                ],
+                "py_versions": [
+                    "py38"
+                ]
             },
             "0.6.2": {
                 "registries": {
@@ -306,11 +345,17 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "autogluon-training",
-                "processors": ["cpu", "gpu"],
-                "py_versions": ["py38"]
+                "processors": [
+                    "cpu",
+                    "gpu"
+                ],
+                "py_versions": [
+                    "py38"
+                ]
             },
             "0.7.0": {
                 "registries": {
@@ -341,11 +386,17 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "autogluon-training",
-                "processors": ["cpu", "gpu"],
-                "py_versions": ["py39"]
+                "processors": [
+                    "cpu",
+                    "gpu"
+                ],
+                "py_versions": [
+                    "py39"
+                ]
             },
             "0.8.2": {
                 "registries": {
@@ -376,11 +427,17 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "autogluon-training",
-                "processors": ["cpu", "gpu"],
-                "py_versions": ["py39"]
+                "processors": [
+                    "cpu",
+                    "gpu"
+                ],
+                "py_versions": [
+                    "py39"
+                ]
             }
         }
     },
@@ -429,11 +486,16 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "autogluon-inference",
-                "processors": ["cpu"],
-                "py_versions": ["py37"]
+                "processors": [
+                    "cpu"
+                ],
+                "py_versions": [
+                    "py37"
+                ]
             },
             "0.3.2": {
                 "registries": {
@@ -470,11 +532,16 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "autogluon-inference",
-                "processors": ["cpu"],
-                "py_versions": ["py38"]
+                "processors": [
+                    "cpu"
+                ],
+                "py_versions": [
+                    "py38"
+                ]
             },
             "0.4.0": {
                 "registries": {
@@ -511,11 +578,16 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "autogluon-inference",
-                "processors": ["cpu"],
-                "py_versions": ["py38"]
+                "processors": [
+                    "cpu"
+                ],
+                "py_versions": [
+                    "py38"
+                ]
             },
             "0.4.2": {
                 "registries": {
@@ -552,11 +624,17 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "autogluon-inference",
-                "processors": ["cpu", "gpu"],
-                "py_versions": ["py38"]
+                "processors": [
+                    "cpu",
+                    "gpu"
+                ],
+                "py_versions": [
+                    "py38"
+                ]
             },
             "0.4.3": {
                 "registries": {
@@ -593,11 +671,17 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "autogluon-inference",
-                "processors": ["cpu", "gpu"],
-                "py_versions": ["py38"]
+                "processors": [
+                    "cpu",
+                    "gpu"
+                ],
+                "py_versions": [
+                    "py38"
+                ]
             },
             "0.5.2": {
                 "registries": {
@@ -634,11 +718,17 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "autogluon-inference",
-                "processors": ["cpu", "gpu"],
-                "py_versions": ["py38"]
+                "processors": [
+                    "cpu",
+                    "gpu"
+                ],
+                "py_versions": [
+                    "py38"
+                ]
             },
             "0.6.1": {
                 "registries": {
@@ -671,11 +761,17 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "autogluon-inference",
-                "processors": ["cpu", "gpu"],
-                "py_versions": ["py38"]
+                "processors": [
+                    "cpu",
+                    "gpu"
+                ],
+                "py_versions": [
+                    "py38"
+                ]
             },
             "0.6.2": {
                 "registries": {
@@ -708,11 +804,17 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "autogluon-inference",
-                "processors": ["cpu", "gpu"],
-                "py_versions": ["py38"]
+                "processors": [
+                    "cpu",
+                    "gpu"
+                ],
+                "py_versions": [
+                    "py38"
+                ]
             },
             "0.7.0": {
                 "registries": {
@@ -745,11 +847,17 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "autogluon-inference",
-                "processors": ["cpu", "gpu"],
-                "py_versions": ["py39"]
+                "processors": [
+                    "cpu",
+                    "gpu"
+                ],
+                "py_versions": [
+                    "py39"
+                ]
             },
             "0.8.2": {
                 "registries": {
@@ -782,11 +890,17 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "autogluon-inference",
-                "processors": ["cpu", "gpu"],
-                "py_versions": ["py39"]
+                "processors": [
+                    "cpu",
+                    "gpu"
+                ],
+                "py_versions": [
+                    "py39"
+                ]
             }
         }
     }

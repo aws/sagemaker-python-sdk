@@ -1,5 +1,7 @@
 {
-    "scope": ["inference"],
+    "scope": [
+        "inference"
+    ],
     "versions": {
         "0.25.0": {
             "registries": {
@@ -13,7 +15,8 @@
                 "sa-east-1": "763104351884",
                 "us-east-1": "763104351884",
                 "us-east-2": "763104351884",
-                "us-west-2": "763104351884"
+                "us-west-2": "763104351884",
+                "ca-west-1": "204538143572"
             },
             "repository": "djl-inference",
             "tag_prefix": "0.25.0-neuronx-sdk2.15.0"
@@ -30,7 +33,8 @@
                 "sa-east-1": "763104351884",
                 "us-east-1": "763104351884",
                 "us-east-2": "763104351884",
-                "us-west-2": "763104351884"
+                "us-west-2": "763104351884",
+                "ca-west-1": "204538143572"
             },
             "repository": "djl-inference",
             "tag_prefix": "0.24.0-neuronx-sdk2.14.1"
@@ -47,7 +51,8 @@
                 "sa-east-1": "763104351884",
                 "us-east-1": "763104351884",
                 "us-east-2": "763104351884",
-                "us-west-2": "763104351884"
+                "us-west-2": "763104351884",
+                "ca-west-1": "204538143572"
             },
             "repository": "djl-inference",
             "tag_prefix": "0.23.0-neuronx-sdk2.12.0"
@@ -64,7 +69,8 @@
                 "sa-east-1": "763104351884",
                 "us-east-1": "763104351884",
                 "us-east-2": "763104351884",
-                "us-west-2": "763104351884"
+                "us-west-2": "763104351884",
+                "ca-west-1": "204538143572"
             },
             "repository": "djl-inference",
             "tag_prefix": "0.22.1-neuronx-sdk2.10.0"
