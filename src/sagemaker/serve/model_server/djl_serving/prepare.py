@@ -14,8 +14,8 @@
 
 from __future__ import absolute_import
 import shutil
-import tarfile
 import json
+import tarfile
 import logging
 from typing import List
 from pathlib import Path
@@ -34,12 +34,12 @@ logger = logging.getLogger(__name__)
 
 
 def _has_serving_properties_file(code_dir: Path) -> bool:
-    """Placeholder Docstring"""
+    """Check for existing serving properties in the directory"""
     return code_dir.joinpath(_SERVING_PROPERTIES_FILE).is_file()
 
 
 def _move_to_code_dir(js_model_dir: str, code_dir: Path):
-    """Placeholder Docstring"""
+    """Move DJL Jumpstart resources from model to code_dir"""
     js_model_resources = Path(js_model_dir).joinpath("model")
     for resource in js_model_resources.glob("*"):
         try:
@@ -49,28 +49,42 @@ def _move_to_code_dir(js_model_dir: str, code_dir: Path):
                 continue
 
 
+def _extract_js_resource(js_model_dir, js_id: str):
+    """Uncompress the jumpstart resource"""
+    tmp_sourcedir = Path(js_model_dir).joinpath(f"infer-prepack-{js_id}.tar.gz")
+    with tarfile.open(str(tmp_sourcedir)) as resources:
+        resources.extractall(path=js_model_dir)
+
+
 def _copy_jumpstart_artifacts(model_data: str, js_id: str, code_dir: Path):
-    """Placeholder Docstring"""
+    """Copy the associated JumpStart Resource into the code directory"""
     logger.info("Downloading JumpStart artifacts from S3...")
 
     s3_downloader = S3Downloader()
+    invalid_model_data_format = False
     with _tmpdir(directory=str(code_dir)) as js_model_dir:
         if isinstance(model_data, str):
-            if model_data.endswith("tar.gz"):
+            if model_data.endswith(".tar.gz"):
                 logger.info("Uncompressing JumpStart artifacts for faster loading...")
                 s3_downloader.download(model_data, js_model_dir)
-                tmp_sourcedir = Path(js_model_dir).joinpath(f"infer-prepack-{js_id}.tar.gz")
-                with tarfile.open(str(tmp_sourcedir)) as resources:
-                    resources.extractall(path=js_model_dir)
-                _move_to_code_dir(js_model_dir, code_dir)
+                _extract_js_resource(js_model_dir, js_id)
             else:
                 logger.info("Copying uncompressed JumpStart artifacts...")
                 s3_downloader.download(model_data, js_model_dir)
-                _move_to_code_dir(js_model_dir, code_dir)
-        else:
+        elif (
+            isinstance(model_data, dict)
+            and model_data.get("S3DataSource")
+            and model_data.get("S3DataSource").get("S3Uri")
+        ):
             logger.info("Copying uncompressed JumpStart artifacts...")
             s3_downloader.download(model_data.get("S3DataSource").get("S3Uri"), js_model_dir)
+        else:
+            invalid_model_data_format = True
+        if not invalid_model_data_format:
             _move_to_code_dir(js_model_dir, code_dir)
+
+    if invalid_model_data_format:
+        raise ValueError("JumpStart model data compression format is unsupported: %s", model_data)
 
     existing_properties = _read_existing_serving_properties(code_dir)
     config_json_file = code_dir.joinpath("config.json")
@@ -86,7 +100,7 @@ def _copy_jumpstart_artifacts(model_data: str, js_id: str, code_dir: Path):
 def _generate_properties_file(
     model: DJLModel, code_dir: Path, overwrite_props_from_file: bool, manual_set_props: dict
 ):
-    """Placeholder Docstring"""
+    """Construct serving properties file taking into account of overrides or manual specs"""
     if _has_serving_properties_file(code_dir):
         existing_properties = _read_existing_serving_properties(code_dir)
     else:

@@ -25,23 +25,32 @@ from sagemaker.s3 import S3Downloader
 logger = logging.getLogger(__name__)
 
 
+def _extract_js_resource(js_model_dir: str, code_dir: Path, js_id: str):
+    """Uncompress the jumpstart resource"""
+    tmp_sourcedir = Path(js_model_dir).joinpath(f"infer-prepack-{js_id}.tar.gz")
+    with tarfile.open(str(tmp_sourcedir)) as resources:
+        resources.extractall(path=code_dir)
+
+
 def _copy_jumpstart_artifacts(model_data: str, js_id: str, code_dir: Path) -> bool:
-    """Placeholder Docstring"""
+    """Copy the associated JumpStart Resource into the code directory"""
     logger.info("Downloading JumpStart artifacts from S3...")
 
     s3_downloader = S3Downloader()
     if isinstance(model_data, str):
-        if model_data.endswith("tar.gz"):
+        if model_data.endswith(".tar.gz"):
             logger.info("Uncompressing JumpStart artifacts for faster loading...")
             with _tmpdir(directory=str(code_dir)) as js_model_dir:
                 s3_downloader.download(model_data, js_model_dir)
-                tmp_sourcedir = Path(js_model_dir).joinpath(f"infer-prepack-{js_id}.tar.gz")
-                with tarfile.open(str(tmp_sourcedir)) as resources:
-                    resources.extractall(path=code_dir)
+                _extract_js_resource(js_model_dir, code_dir, js_id)
         else:
             logger.info("Copying uncompressed JumpStart artifacts...")
             s3_downloader.download(model_data, code_dir)
-    elif isinstance(model_data, dict):  # if dict assume that it is uncompressed
+    elif (
+        isinstance(model_data, dict)
+        and model_data.get("S3DataSource")
+        and model_data.get("S3DataSource").get("S3Uri")
+    ):
         logger.info("Copying uncompressed JumpStart artifacts...")
         s3_downloader.download(model_data.get("S3DataSource").get("S3Uri"), code_dir)
     else:
@@ -51,7 +60,7 @@ def _copy_jumpstart_artifacts(model_data: str, js_id: str, code_dir: Path) -> bo
 
 
 def _create_dir_structure(model_path: str) -> tuple:
-    """Placeholder Docstring"""
+    """Create the expected model directory structure for the TGI server"""
     model_path = Path(model_path)
     if not model_path.exists():
         model_path.mkdir(parents=True)
