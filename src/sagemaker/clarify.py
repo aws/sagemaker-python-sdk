@@ -765,8 +765,6 @@ class DataConfig:
                 "time_series_data_config",
                 self.analysis_config,
             )
-        # Temporary bug fix
-        _set(s3_data_input_path, "dataset_uri", self.analysis_config)
 
     def get_config(self):
         """Returns part of an analysis config dictionary."""
