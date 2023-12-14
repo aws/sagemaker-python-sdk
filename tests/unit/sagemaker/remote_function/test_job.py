@@ -17,9 +17,11 @@ import sys
 
 import pytest
 from mock import patch, Mock, ANY, mock_open
+from mock.mock import MagicMock
 
 from sagemaker.config import load_sagemaker_config
 from sagemaker.remote_function.checkpoint_location import CheckpointLocation
+from sagemaker.remote_function.core.stored_function import _SerializedData
 from sagemaker.session_settings import SessionSettings
 
 from sagemaker.remote_function.spark_config import SparkConfig
@@ -147,6 +149,10 @@ def job_function(a, b=1, *, c, d=3):
 
 def job_function_with_checkpoint(a, checkpoint_1=None, *, b, checkpoint_2=None):
     return a + b
+
+
+def serialized_data():
+    return _SerializedData(func=b"serialized_func", args=b"serialized_args")
 
 
 @patch("secrets.token_hex", return_value=HMAC_KEY)
@@ -731,7 +737,7 @@ def test_start_with_complete_job_settings(
 
 
 @patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
-@patch("secrets.token_hex", return_value=HMAC_KEY)
+@patch("secrets.token_hex", MagicMock(return_value=HMAC_KEY))
 @patch(
     "sagemaker.remote_function.job._prepare_dependencies_and_pre_execution_scripts",
     return_value="some_s3_uri",
@@ -750,11 +756,9 @@ def test_get_train_args_under_pipeline_context(
     mock_bootstrap_scripts_upload,
     mock_user_workspace_upload,
     mock_user_dependencies_upload,
-    secret_token,
 ):
 
     from sagemaker.workflow.parameters import ParameterInteger
-    from sagemaker.remote_function.core.pipeline_variables import _ParameterInteger
 
     mock_stored_function = Mock()
     mock_stored_function_ctr.return_value = mock_stored_function
@@ -776,6 +780,7 @@ def test_get_train_args_under_pipeline_context(
         security_group_ids=["sg"],
     )
 
+    mocked_serialized_data = serialized_data()
     s3_base_uri = f"{S3_URI}/{TEST_PIPELINE_NAME}"
     train_args = _Job.compile(
         job_settings=job_settings,
@@ -784,6 +789,7 @@ def test_get_train_args_under_pipeline_context(
         func=job_function,
         func_args=(1, ParameterInteger(name="b", default_value=2)),
         func_kwargs={"c": 3, "d": ParameterInteger(name="d", default_value=4)},
+        serialized_data=mocked_serialized_data,
     )
 
     mock_stored_function_ctr.assert_called_once_with(
@@ -796,11 +802,7 @@ def test_get_train_args_under_pipeline_context(
             func_step_s3_dir=MOCKED_PIPELINE_CONFIG.pipeline_build_time,
         ),
     )
-    mock_stored_function.save.assert_called_once_with(
-        job_function,
-        *(1, _ParameterInteger(name="b")),
-        **{"c": 3, "d": _ParameterInteger(name="d")},
-    )
+    mock_stored_function.save_pipeline_step_function.assert_called_once_with(mocked_serialized_data)
 
     local_dependencies_path = mock_runtime_manager().snapshot()
     mock_python_version = mock_runtime_manager()._current_python_version()
