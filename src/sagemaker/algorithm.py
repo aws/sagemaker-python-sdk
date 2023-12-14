@@ -28,6 +28,7 @@ from sagemaker.predictor import Predictor
 from sagemaker.session import Session
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.pipeline_context import runnable_by_pipeline
+from sagemaker.utils import format_tags, Tags
 
 from sagemaker.workflow import is_pipeline_variable
 
@@ -58,7 +59,7 @@ class AlgorithmEstimator(EstimatorBase):
         base_job_name: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
         hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
-        tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+        tags: Optional[Tags] = None,
         subnets: Optional[List[Union[str, PipelineVariable]]] = None,
         security_group_ids: Optional[List[Union[str, PipelineVariable]]] = None,
         model_uri: Optional[str] = None,
@@ -121,7 +122,7 @@ class AlgorithmEstimator(EstimatorBase):
                 interactions with Amazon SageMaker APIs and any other AWS services needed. If
                 not specified, the estimator creates one using the default
                 AWS configuration chain.
-            tags (list[dict[str, str] or list[dict[str, PipelineVariable]]): List of tags for
+            tags (Union[Tags]): Tags for
                 labeling a training job. For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
             subnets (list[str] or list[PipelineVariable]): List of subnet ids. If not specified
@@ -170,7 +171,7 @@ class AlgorithmEstimator(EstimatorBase):
             output_kms_key=output_kms_key,
             base_job_name=base_job_name,
             sagemaker_session=sagemaker_session,
-            tags=tags,
+            tags=format_tags(tags),
             subnets=subnets,
             security_group_ids=security_group_ids,
             model_uri=model_uri,

@@ -15,7 +15,7 @@ from __future__ import absolute_import
 from copy import deepcopy
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Union
-from sagemaker.utils import get_instance_type_family
+from sagemaker.utils import get_instance_type_family, format_tags, Tags
 from sagemaker.model_metrics import ModelMetrics
 from sagemaker.metadata_properties import MetadataProperties
 from sagemaker.drift_check_baselines import DriftCheckBaselines
@@ -1172,7 +1172,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         deserializer: Optional[Any] = None,
         accelerator_type: Optional[str] = None,
         endpoint_name: Optional[str] = None,
-        tags: List[Dict[str, str]] = None,
+        tags: Optional[Tags] = None,
         kms_key: Optional[str] = None,
         wait: Optional[bool] = None,
         data_capture_config: Optional[Any] = None,
@@ -1203,7 +1203,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         self.deserializer = deserializer
         self.accelerator_type = accelerator_type
         self.endpoint_name = endpoint_name
-        self.tags = deepcopy(tags)
+        self.tags = format_tags(tags)
         self.kms_key = kms_key
         self.wait = wait
         self.data_capture_config = data_capture_config
@@ -1310,7 +1310,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         base_job_name: Optional[str] = None,
         sagemaker_session: Optional[Any] = None,
         hyperparameters: Optional[Dict[str, Union[str, Any]]] = None,
-        tags: Optional[List[Dict[str, Union[str, Any]]]] = None,
+        tags: Optional[Tags] = None,
         subnets: Optional[List[Union[str, Any]]] = None,
         security_group_ids: Optional[List[Union[str, Any]]] = None,
         model_uri: Optional[str] = None,
@@ -1370,7 +1370,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         self.output_kms_key = output_kms_key
         self.base_job_name = base_job_name
         self.sagemaker_session = sagemaker_session
-        self.tags = deepcopy(tags)
+        self.tags = format_tags(tags)
         self.subnets = subnets
         self.security_group_ids = security_group_ids
         self.model_channel_name = model_channel_name
@@ -1526,7 +1526,7 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         deserializer: Optional[Any] = None,
         accelerator_type: Optional[str] = None,
         endpoint_name: Optional[str] = None,
-        tags: List[Dict[str, str]] = None,
+        tags: Optional[Tags] = None,
         kms_key: Optional[str] = None,
         wait: Optional[bool] = None,
         data_capture_config: Optional[Any] = None,
@@ -1573,7 +1573,7 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         self.deserializer = deserializer
         self.accelerator_type = accelerator_type
         self.endpoint_name = endpoint_name
-        self.tags = deepcopy(tags)
+        self.tags = format_tags(tags)
         self.kms_key = kms_key
         self.wait = wait
         self.data_capture_config = data_capture_config

@@ -45,7 +45,7 @@ from sagemaker.session import get_execution_role
 
 from sagemaker.s3_utils import s3_path_join
 from sagemaker.s3 import S3Uploader
-from sagemaker.utils import _tmpdir, name_from_base, resolve_value_from_config
+from sagemaker.utils import _tmpdir, name_from_base, resolve_value_from_config, format_tags, Tags
 from sagemaker import vpc_utils
 
 from sagemaker.config.config_schema import (
@@ -93,7 +93,7 @@ class NotebookJobStep(ConfigurableRetryStep):
         subnets: Optional[List[Union[str, PipelineVariable]]] = None,
         max_retry_attempts: int = 1,
         max_runtime_in_seconds: int = 2 * 24 * 60 * 60,
-        tags: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        tags: Optional[Tags] = None,
         additional_dependencies: Optional[List[str]] = None,
         # pylint: enable=W0613
         retry_policies: Optional[List[RetryPolicy]] = None,
@@ -187,10 +187,9 @@ class NotebookJobStep(ConfigurableRetryStep):
               time and max retry attempts, the run time applies to each retry. If a job does not
               complete in this time, its status is set to ``Failed``. Defaults to ``172800 seconds(2
               days)``.
-            tags (dict[str, str] or dict[str, PipelineVariable]): A list of tags attached to the
-              job. Defaults to ``None`` and the training job is created without tags. Your tags
-              control how the Studio UI captures and displays the job created by
-              the pipeline in the following ways:
+            tags (Optional[Tags]): Tags attached to the job. Defaults to ``None`` and the training
+                job is created without tags. Your tags control how the Studio UI captures and
+                displays the job created by the pipeline in the following ways:
 
               * If you only attach the domain tag, then the notebook job is displayed to all user
                 profiles and spaces.
@@ -359,7 +358,7 @@ class NotebookJobStep(ConfigurableRetryStep):
         This function converts the custom tags into training API required format and also
         attach the system tags.
         """
-        custom_tags = [{"Key": k, "Value": v} for k, v in self.tags.items()] if self.tags else []
+        custom_tags = format_tags(self.tags)
         system_tags = [
             {"Key": "sagemaker:name", "Value": self.notebook_job_name},
             {"Key": "sagemaker:notebook-name", "Value": os.path.basename(self.input_notebook)},

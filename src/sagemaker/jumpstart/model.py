@@ -31,7 +31,7 @@ from sagemaker.jumpstart.factory.model import (
 )
 from sagemaker.jumpstart.types import JumpStartSerializablePayload
 from sagemaker.jumpstart.utils import is_valid_model_id
-from sagemaker.utils import stringify_object
+from sagemaker.utils import stringify_object, format_tags, Tags
 from sagemaker.model import (
     Model,
     ModelPackage,
@@ -446,7 +446,7 @@ class JumpStartModel(Model):
         deserializer: Optional[BaseDeserializer] = None,
         accelerator_type: Optional[str] = None,
         endpoint_name: Optional[str] = None,
-        tags: List[Dict[str, str]] = None,
+        tags: Optional[Tags] = None,
         kms_key: Optional[str] = None,
         wait: Optional[bool] = True,
         data_capture_config: Optional[DataCaptureConfig] = None,
@@ -502,7 +502,7 @@ class JumpStartModel(Model):
             endpoint_name (Optional[str]): The name of the endpoint to create (default:
                 None). If not specified, a unique endpoint name will be created.
                 (Default: None).
-            tags (Optional[List[dict[str, str]]]): The list of tags to attach to this
+            tags (Optional[Tags]): Tags to attach to this
                 specific endpoint. (Default: None).
             kms_key (Optional[str]): The ARN of the KMS key that is used to encrypt the
                 data on the storage volume attached to the instance hosting the
@@ -570,7 +570,7 @@ class JumpStartModel(Model):
             deserializer=deserializer,
             accelerator_type=accelerator_type,
             endpoint_name=endpoint_name,
-            tags=tags,
+            tags=format_tags(tags),
             kms_key=kms_key,
             wait=wait,
             data_capture_config=data_capture_config,

@@ -32,6 +32,7 @@ from sagemaker.feature_store.feature_processor._constants import (
 from sagemaker.feature_store.feature_processor._enums import (
     FeatureProcessorPipelineExecutionStatus,
 )
+from sagemaker.utils import TagsDict
 
 logger = logging.getLogger("sagemaker")
 
@@ -175,7 +176,7 @@ class EventBridgeRuleHelper:
         self.event_bridge_rule_client.disable_rule(Name=rule_name)
         logger.info("Disabled EventBridge Rule for pipeline %s.", rule_name)
 
-    def add_tags(self, rule_arn: str, tags: List[Dict[str, str]]) -> None:
+    def add_tags(self, rule_arn: str, tags: List[TagsDict]) -> None:
         """Adds tags to the EventBridge Rule.
 
         Args:

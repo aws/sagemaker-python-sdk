@@ -52,6 +52,8 @@ from sagemaker.utils import (
     base_name_from_image,
     name_from_base,
     to_string,
+    format_tags,
+    Tags,
 )
 
 AMAZON_ESTIMATOR_MODULE = "sagemaker"
@@ -603,7 +605,7 @@ class HyperparameterTuner(object):
         max_jobs: Union[int, PipelineVariable] = None,
         max_parallel_jobs: Union[int, PipelineVariable] = 1,
         max_runtime_in_seconds: Optional[Union[int, PipelineVariable]] = None,
-        tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+        tags: Optional[Tags] = None,
         base_tuning_job_name: Optional[str] = None,
         warm_start_config: Optional[WarmStartConfig] = None,
         strategy_config: Optional[StrategyConfig] = None,
@@ -651,9 +653,8 @@ class HyperparameterTuner(object):
                 start (default: 1).
             max_runtime_in_seconds (int or PipelineVariable): The maximum time in seconds
                  that a hyperparameter tuning job can run.
-            tags (list[dict[str, str] or list[dict[str, PipelineVariable]]): List of tags for
-                labeling the tuning job (default: None). For more, see
-                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            tags (Optional[Tags]): Tags for labeling the tuning job (default: None).
+                For more, see https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
             base_tuning_job_name (str): Prefix for the hyperparameter tuning job
                 name when the :meth:`~sagemaker.tuner.HyperparameterTuner.fit`
                 method launches. If not specified, a default job name is
@@ -746,7 +747,7 @@ class HyperparameterTuner(object):
         self.max_parallel_jobs = max_parallel_jobs
         self.max_runtime_in_seconds = max_runtime_in_seconds
 
-        self.tags = tags
+        self.tags = format_tags(tags)
         self.base_tuning_job_name = base_tuning_job_name
         self._current_job_name = None
         self.latest_tuning_job = None

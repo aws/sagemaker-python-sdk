@@ -131,6 +131,9 @@ from sagemaker.utils import (
     resolve_nested_dict_value_from_config,
     update_nested_dictionary_with_values_from_config,
     update_list_of_dicts_with_values_from_config,
+    format_tags,
+    Tags,
+    TagsDict,
 )
 from sagemaker import exceptions
 from sagemaker.session_settings import SessionSettings
@@ -677,7 +680,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                     )
                     raise
 
-    def _append_sagemaker_config_tags(self, tags: list, config_path_to_tags: str):
+    def _append_sagemaker_config_tags(self, tags: List[TagsDict], config_path_to_tags: str):
         """Appends tags specified in the sagemaker_config to the given list of tags.
 
         To minimize the chance of duplicate tags being applied, this is intended to be used
@@ -4384,7 +4387,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         variant_name: str,
         specification: Dict[str, Any],
         runtime_config: Optional[Dict[str, Any]] = None,
-        tags: Optional[Dict[str, str]] = None,
+        tags: Optional[Tags] = None,
         wait: bool = True,
     ):
         """Create an Amazon SageMaker Inference Component.
@@ -4399,8 +4402,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             specification (Dict[str, Any]): The inference component specification.
             runtime_config (Optional[Dict[str, Any]]): Optional. The inference component
                 runtime configuration. (Default: None).
-            tags (Optional[Dict[str, str]]): Optional. A list of dictionaries containing key-value
-                pairs. (Default: None).
+            tags (Optional[Tags]): Optional. Either a dictionary or a list
+                of dictionaries containing key-value pairs. (Default: None).
             wait (bool) : Optional. Wait for the inference component to finish being created before
                 returning a value. (Default: True).
 
@@ -4424,7 +4427,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             "RuntimeConfig": runtime_config,
         }
 
-        tags = tags or []
+        tags = format_tags(tags)
         tags = _append_project_tags(tags)
         tags = self._append_sagemaker_config_tags(
             tags, "{}.{}.{}".format(SAGEMAKER, INFERENCE_COMPONENT, TAGS)
@@ -5679,7 +5682,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         online_store_config: Dict[str, str] = None,
         offline_store_config: Dict[str, str] = None,
         description: str = None,
-        tags: List[Dict[str, str]] = None,
+        tags: Optional[Tags] = None,
     ) -> Dict[str, Any]:
         """Creates a FeatureGroup in the FeatureStore service.
 
@@ -5694,11 +5697,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
             offline_store_config (Dict[str, str]): dict contains configuration of the
                 feature offline store.
             description (str): description of the FeatureGroup.
-            tags (List[Dict[str, str]]): list of tags for labeling a FeatureGroup.
+            tags (Optional[Tags]): tags for labeling a FeatureGroup.
 
         Returns:
             Response dict from service.
         """
+        tags = format_tags(tags)
         tags = _append_project_tags(tags)
         tags = self._append_sagemaker_config_tags(
             tags, "{}.{}.{}".format(SAGEMAKER, FEATURE_GROUP, TAGS)
@@ -6155,7 +6159,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         framework: str,
         sample_payload_url: str,
         supported_content_types: List[str],
-        tags: Dict[str, str],
+        tags: Optional[Tags],
         model_name: str = None,
         model_package_version_arn: str = None,
         job_duration_in_seconds: int = None,
@@ -6191,8 +6195,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 benchmarked by Amazon SageMaker Inference Recommender that matches your model.
             supported_instance_types (List[str]): A list of the instance types that are used
                 to generate inferences in real-time.
-            tags (Dict[str, str]): Tags used to identify where the Inference Recommendatons Call
-                was made from.
+            tags (Optional[Tags]): Tags used to identify where
+                the Inference Recommendatons Call was made from.
             endpoint_configurations (List[Dict[str, any]]): Specifies the endpoint configurations
                 to use for a job. Will be used for `Advanced` jobs.
             traffic_pattern (Dict[str, any]): Specifies the traffic pattern for the job.
@@ -6231,7 +6235,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             "InputConfig": {
                 "ContainerConfig": containerConfig,
             },
-            "Tags": tags,
+            "Tags": format_tags(tags),
         }
 
         request.get("InputConfig").update(

@@ -56,7 +56,7 @@ from sagemaker import accept_types, content_types, serializers, deserializers
 
 from sagemaker.serverless.serverless_inference_config import ServerlessInferenceConfig
 from sagemaker.session import Session
-from sagemaker.utils import name_from_base
+from sagemaker.utils import name_from_base, format_tags, Tags
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
 from sagemaker import resource_requirements
@@ -496,7 +496,7 @@ def get_deploy_kwargs(
     deserializer: Optional[BaseDeserializer] = None,
     accelerator_type: Optional[str] = None,
     endpoint_name: Optional[str] = None,
-    tags: List[Dict[str, str]] = None,
+    tags: Optional[Tags] = None,
     kms_key: Optional[str] = None,
     wait: Optional[bool] = None,
     data_capture_config: Optional[DataCaptureConfig] = None,
@@ -528,7 +528,7 @@ def get_deploy_kwargs(
         deserializer=deserializer,
         accelerator_type=accelerator_type,
         endpoint_name=endpoint_name,
-        tags=tags,
+        tags=format_tags(tags),
         kms_key=kms_key,
         wait=wait,
         data_capture_config=data_capture_config,

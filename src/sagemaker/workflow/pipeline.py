@@ -33,7 +33,7 @@ from sagemaker.remote_function.errors import RemoteFunctionError
 from sagemaker.remote_function.job import JOBS_CONTAINER_ENTRYPOINT
 from sagemaker.s3_utils import s3_path_join
 from sagemaker.session import Session
-from sagemaker.utils import resolve_value_from_config, retry_with_backoff
+from sagemaker.utils import resolve_value_from_config, retry_with_backoff, format_tags, Tags
 from sagemaker.workflow.callback_step import CallbackOutput, CallbackStep
 from sagemaker.workflow._event_bridge_client_helper import (
     EventBridgeSchedulerHelper,
@@ -130,7 +130,7 @@ class Pipeline:
         self,
         role_arn: str = None,
         description: str = None,
-        tags: List[Dict[str, str]] = None,
+        tags: Optional[Tags] = None,
         parallelism_config: ParallelismConfiguration = None,
     ) -> Dict[str, Any]:
         """Creates a Pipeline in the Pipelines service.
@@ -138,8 +138,7 @@ class Pipeline:
         Args:
             role_arn (str): The role arn that is assumed by the pipeline to create step artifacts.
             description (str): A description of the pipeline.
-            tags (List[Dict[str, str]]): A list of {"Key": "string", "Value": "string"} dicts as
-                tags.
+            tags (Optional[Tags]): Tags to be passed to the pipeline.
             parallelism_config (Optional[ParallelismConfiguration]): Parallelism configuration
                 that is applied to each of the executions of the pipeline. It takes precedence
                 over the parallelism configuration of the parent pipeline.
@@ -160,6 +159,7 @@ class Pipeline:
             if parallelism_config:
                 logger.warning("Pipeline parallelism config is not supported in the local mode.")
             return self.sagemaker_session.sagemaker_client.create_pipeline(self, description)
+        tags = format_tags(tags)
         tags = _append_project_tags(tags)
         tags = self.sagemaker_session._append_sagemaker_config_tags(tags, PIPELINE_TAGS_PATH)
         kwargs = self._create_args(role_arn, description, parallelism_config)
@@ -264,7 +264,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         self,
         role_arn: str = None,
         description: str = None,
-        tags: List[Dict[str, str]] = None,
+        tags: Optional[Tags] = None,
         parallelism_config: ParallelismConfiguration = None,
     ) -> Dict[str, Any]:
         """Creates a pipeline or updates it, if it already exists.
@@ -272,8 +272,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         Args:
             role_arn (str): The role arn that is assumed by workflow to create step artifacts.
             description (str): A description of the pipeline.
-            tags (List[Dict[str, str]]): A list of {"Key": "string", "Value": "string"} dicts as
-                tags.
+            tags (Optional[Tags]): Tags to be passed.
             parallelism_config (Optional[Config for parallel steps, Parallelism configuration that
                 is applied to each of the executions
 
@@ -283,6 +282,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         role_arn = resolve_value_from_config(
             role_arn, PIPELINE_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
         )
+        tags = format_tags(tags)
         if not role_arn:
             # Originally IAM role was a required parameter.
             # Now we marked that as Optional because we can fetch it from SageMakerConfig
