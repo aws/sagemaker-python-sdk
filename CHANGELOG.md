@@ -1,5 +1,42 @@
 # Changelog
 
+## v2.200.0 (2023-12-13)
+
+### Deprecations and Removals
+
+ * remove explicit `partitions` key requirement on pysdk side.
+
+### Features
+
+ * add non-repeating config logger
+ * Add SageMaker Geospatial verison 1.x images
+ * TGI 1.2.0 Image Uri
+ * support model.register() with triton model
+ * Enable retrieving function step results for local mode
+
+### Bug Fixes and Other Changes
+
+ * TGI 1.3.1
+ * excessive jumpstart instance type logging
+ * Support local mode for remote function
+ * `Session.download_data` can not download nested objects
+ * Fix writing into non-closed file with git clone command
+ * mitigation of xgboost container incompatibility with new version
+ * update image and hardware validation with inf and graviton
+ * remove two setuptools deprecations
+ * minor jumpstart dev ex improvements
+ * save utils fix
+ * Correct DJL neuronx regions
+ * delete unused file inference-experience-dev-tester.sh
+ * Fix Experiment Run integ test w.r.t unexpected boto3 version
+ * Bump test dependencies versions
+ * fast follow on js uncompressed support - ModelBuilder
+ * Modify Region List for Neuron Images (HF neuron/neuronx, PT Neuron)
+
+### Documentation Changes
+
+ * Mention for custom Docker Image
+
 ## v2.199.0 (2023-11-30)
 
 ### Features
