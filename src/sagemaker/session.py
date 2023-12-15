@@ -6557,15 +6557,21 @@ def get_create_model_package_request(
     if task is not None:
         request_dict["Task"] = task
     if containers is not None:
-        if not all([content_types, response_types]):
-            raise ValueError(
-                "content_types and response_types " "must be provided if containers is present."
-            )
         inference_specification = {
             "Containers": containers,
-            "SupportedContentTypes": content_types,
-            "SupportedResponseMIMETypes": response_types,
         }
+        if content_types is not None:
+            inference_specification.update(
+                {
+                    "SupportedContentTypes": content_types,
+                }
+            )
+        if response_types is not None:
+            inference_specification.update(
+                {
+                    "SupportedResponseMIMETypes": response_types,
+                }
+            )
         if model_package_group_name is not None:
             if inference_instances is not None:
                 inference_specification.update(
@@ -6595,6 +6601,76 @@ def get_create_model_package_request(
     request_dict["CertifyForMarketplace"] = marketplace_cert
     request_dict["ModelApprovalStatus"] = approval_status
     request_dict["SkipModelValidation"] = skip_model_validation
+    return request_dict
+
+
+def get_add_model_package_inference_args(
+    model_package_arn,
+    name,
+    containers=None,
+    content_types=None,
+    response_types=None,
+    inference_instances=None,
+    transform_instances=None,
+    description=None,
+):
+    """Get request dictionary for UpdateModelPackage API for additional inference.
+
+    Args:
+        model_package_arn (str): Arn for the model package.
+        name (str): Name to identify the additional inference specification
+        containers (dict): The Amazon ECR registry path of the Docker image
+            that contains the inference code.
+        image_uris (List[str]): The ECR path where inference code is stored.
+        description (str): Description for the additional inference specification
+        content_types (list[str]): The supported MIME types
+            for the input data.
+        response_types (list[str]): The supported MIME types
+            for the output data.
+        inference_instances (list[str]): A list of the instance
+            types that are used to generate inferences in real-time (default: None).
+        transform_instances (list[str]): A list of the instance
+            types on which a transformation job can be run or on which an endpoint can be
+            deployed (default: None).
+    """
+
+    request_dict = {}
+    if containers is not None:
+        inference_specification = {
+            "Containers": containers,
+        }
+
+        if name is not None:
+            inference_specification.update({"Name": name})
+
+        if description is not None:
+            inference_specification.update({"Description": description})
+        if content_types is not None:
+            inference_specification.update(
+                {
+                    "SupportedContentTypes": content_types,
+                }
+            )
+        if response_types is not None:
+            inference_specification.update(
+                {
+                    "SupportedResponseMIMETypes": response_types,
+                }
+            )
+        if inference_instances is not None:
+            inference_specification.update(
+                {
+                    "SupportedRealtimeInferenceInstanceTypes": inference_instances,
+                }
+            )
+        if transform_instances is not None:
+            inference_specification.update(
+                {
+                    "SupportedTransformInstanceTypes": transform_instances,
+                }
+            )
+        request_dict["AdditionalInferenceSpecificationsToAdd"] = [inference_specification]
+        request_dict.update({"ModelPackageArn": model_package_arn})
     return request_dict
 
 
