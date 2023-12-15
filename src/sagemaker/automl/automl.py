@@ -580,7 +580,7 @@ class AutoML(object):
                 be selected on each ``deploy``.
             endpoint_name (str): The name of the endpoint to create (default:
                 None). If not specified, a unique endpoint name will be created.
-            tags (List[dict[str, str]]): The list of tags to attach to this
+            tags (Optional[Tags]): The list of tags to attach to this
                 specific endpoint.
             wait (bool): Whether the call should wait until the deployment of
                 model completes (default: True).
@@ -632,7 +632,7 @@ class AutoML(object):
             deserializer=deserializer,
             endpoint_name=endpoint_name,
             kms_key=model_kms_key,
-            tags=tags,
+            tags=format_tags(tags),
             wait=wait,
             volume_size=volume_size,
             model_data_download_timeout=model_data_download_timeout,

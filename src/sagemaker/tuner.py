@@ -1925,7 +1925,8 @@ class HyperparameterTuner(object):
                 (default: 1).
             max_runtime_in_seconds (int): The maximum time in seconds
                  that a hyperparameter tuning job can run.
-            tags (list[dict]): List of tags for labeling the tuning job (default: None). For more,
+            tags (Optional[Tags]): List of tags for labeling the tuning job (default: None).
+                For more,
                 see https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
             warm_start_config (sagemaker.tuner.WarmStartConfig): A ``WarmStartConfig`` object that
                 has been initialized with the configuration defining the nature of warm start
@@ -1989,7 +1990,7 @@ class HyperparameterTuner(object):
             max_jobs=max_jobs,
             max_parallel_jobs=max_parallel_jobs,
             max_runtime_in_seconds=max_runtime_in_seconds,
-            tags=tags,
+            tags=format_tags(tags),
             warm_start_config=warm_start_config,
             early_stopping_type=early_stopping_type,
             random_seed=random_seed,

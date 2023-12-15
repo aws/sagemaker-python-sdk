@@ -136,7 +136,7 @@ class _SparkProcessorBase(ScriptProcessor):
                 SageMaker APIs and any other AWS services needed. If not specified,
                 the processor creates one using the default AWS configuration chain.
             env (dict): Environment variables to be passed to the processing job.
-            tags ([dict]): List of tags to be passed to the processing job.
+            tags (Optional[Tags]): List of tags to be passed to the processing job.
             network_config (sagemaker.network.NetworkConfig): A NetworkConfig
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
@@ -169,7 +169,7 @@ class _SparkProcessorBase(ScriptProcessor):
             base_job_name=base_job_name,
             sagemaker_session=session,
             env=env,
-            tags=tags,
+            tags=format_tags(tags),
             network_config=network_config,
         )
 

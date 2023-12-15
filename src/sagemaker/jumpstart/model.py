@@ -388,7 +388,7 @@ class JumpStartModel(Model):
                 attach to an endpoint for model loading and inference, for
                 example, 'ml.eia1.medium'. If not specified, no Elastic
                 Inference accelerator will be attached to the endpoint. (Default: None).
-            tags (List[dict[str, str]]): Optional. The list of tags to add to
+            tags (Optional[Tags]): Optional. The list of tags to add to
                 the model. Example: >>> tags = [{'Key': 'tagname', 'Value':
                 'tagvalue'}] For more information about tags, see
                 https://boto3.amazonaws.com/v1/documentation
@@ -401,6 +401,8 @@ class JumpStartModel(Model):
             kwargs: Keyword arguments coming from the caller. This class does not require
                 any so they are ignored.
         """
+
+        tags = format_tags(tags)
 
         # if the user inputs a model artifact uri, do not use model package arn to create
         # inference endpoint.

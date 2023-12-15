@@ -392,7 +392,7 @@ class AlgorithmEstimator(EstimatorBase):
             if self._is_marketplace():
                 transform_env = None
 
-            tags = tags or self.tags
+            tags = format_tags(tags) or self.tags
         else:
             raise RuntimeError("No finished training job found associated with this estimator")
 

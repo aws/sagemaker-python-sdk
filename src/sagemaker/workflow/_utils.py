@@ -32,7 +32,7 @@ from sagemaker.workflow.steps import (
     Step,
     ConfigurableRetryStep,
 )
-from sagemaker.utils import _save_model, download_file_from_url
+from sagemaker.utils import _save_model, download_file_from_url, format_tags
 from sagemaker.workflow.retry import RetryPolicy
 from sagemaker.workflow.utilities import trim_request_dict
 
@@ -359,7 +359,7 @@ class _RegisterModelStep(ConfigurableRetryStep):
                 depends on (default: None).
             retry_policies (List[RetryPolicy]): The list of retry policies for the current step
                 (default: None).
-            tags (List[dict[str, str]]): A list of dictionaries containing key-value pairs used to
+            tags (Optional[Tags]): A list of dictionaries containing key-value pairs used to
                 configure the create model package request (default: None).
             container_def_list (list): A list of container definitions (default: None).
             drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
@@ -395,7 +395,7 @@ class _RegisterModelStep(ConfigurableRetryStep):
         self.inference_instances = inference_instances
         self.transform_instances = transform_instances
         self.model_package_group_name = model_package_group_name
-        self.tags = tags
+        self.tags = format_tags(tags)
         self.model_metrics = model_metrics
         self.drift_check_baselines = drift_check_baselines
         self.customer_metadata_properties = customer_metadata_properties
@@ -407,7 +407,6 @@ class _RegisterModelStep(ConfigurableRetryStep):
         self.image_uri = image_uri
         self.compile_model_family = compile_model_family
         self.description = description
-        self.tags = tags
         self.kwargs = kwargs
         self.container_def_list = container_def_list
         self.skip_model_validation = skip_model_validation
