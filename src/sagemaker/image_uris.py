@@ -660,6 +660,11 @@ def get_training_image_uri(
         container_version = None
         base_framework_version = None
 
+    # Check for smp library
+    if "torch_distributed" and "smdistributed" in distribution:
+        if "modelparallel" in distribution["smdistributed"]:
+            framework = "pytorch_smp"
+
     return retrieve(
         framework,
         region,
