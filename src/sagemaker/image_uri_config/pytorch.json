@@ -32,7 +32,8 @@
                     "eu-south-2": "503227376785",
                     "us-east-1": "763104351884",
                     "us-east-2": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-inference-eia"
             },
@@ -51,7 +52,8 @@
                     "eu-south-2": "503227376785",
                     "us-east-1": "763104351884",
                     "us-east-2": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-inference-eia"
             }
@@ -223,7 +225,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-inference"
             },
@@ -266,7 +269,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-inference"
             },
@@ -308,7 +312,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-inference"
             },
@@ -350,7 +355,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-inference"
             },
@@ -393,7 +399,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-inference"
             },
@@ -436,7 +443,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-inference"
             },
@@ -479,7 +487,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-inference"
             },
@@ -522,7 +531,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-inference"
             },
@@ -564,7 +574,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-inference"
             },
@@ -606,7 +617,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-inference"
             },
@@ -648,7 +660,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-inference"
             },
@@ -690,7 +703,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-inference"
             },
@@ -732,7 +746,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-inference"
             },
@@ -774,7 +789,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-inference"
             },
@@ -815,7 +831,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-inference"
             },
@@ -853,7 +870,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-inference"
             },
@@ -891,7 +909,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-inference"
             },
@@ -929,7 +948,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-inference"
             },
@@ -967,7 +987,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-inference"
             }
@@ -1020,10 +1041,13 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-inference-graviton",
-                "container_version": {"cpu": "ubuntu20.04"}
+                "container_version": {
+                    "cpu": "ubuntu20.04"
+                }
             },
             "2.0.0": {
                 "py_versions": [
@@ -1056,10 +1080,13 @@
                     "us-east-1": "763104351884",
                     "us-east-2": "763104351884",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-inference-graviton",
-                "container_version": {"cpu": "ubuntu20.04"}
+                "container_version": {
+                    "cpu": "ubuntu20.04"
+                }
             },
             "2.0.1": {
                 "py_versions": [
@@ -1092,10 +1119,13 @@
                     "us-east-1": "763104351884",
                     "us-east-2": "763104351884",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-inference-graviton",
-                "container_version": {"cpu": "ubuntu20.04"}
+                "container_version": {
+                    "cpu": "ubuntu20.04"
+                }
             },
             "2.1.0": {
                 "py_versions": [
@@ -1128,10 +1158,13 @@
                     "us-east-1": "763104351884",
                     "us-east-2": "763104351884",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-inference-graviton",
-                "container_version": {"cpu": "ubuntu20.04"}
+                "container_version": {
+                    "cpu": "ubuntu20.04"
+                }
             }
         }
     },
@@ -1301,7 +1334,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-training"
             },
@@ -1344,7 +1378,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-training"
             },
@@ -1387,7 +1422,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-training"
             },
@@ -1429,7 +1465,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-training"
             },
@@ -1472,7 +1509,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-training"
             },
@@ -1515,7 +1553,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-training"
             },
@@ -1558,7 +1597,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-training"
             },
@@ -1601,7 +1641,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-training"
             },
@@ -1643,7 +1684,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-training"
             },
@@ -1685,7 +1727,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-training"
             },
@@ -1727,7 +1770,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-training"
             },
@@ -1769,7 +1813,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-training"
             },
@@ -1811,7 +1856,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-training"
             },
@@ -1853,7 +1899,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-training"
             },
@@ -1894,7 +1941,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-training"
             },
@@ -1932,7 +1980,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-training"
             },
@@ -1970,7 +2019,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-training"
             },
@@ -2008,7 +2058,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-training"
             },
@@ -2046,7 +2097,8 @@
                     "us-iso-east-1": "886529160074",
                     "us-isob-east-1": "094389454867",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "repository": "pytorch-training"
             }

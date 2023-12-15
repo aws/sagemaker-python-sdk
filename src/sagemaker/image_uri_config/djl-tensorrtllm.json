@@ -1,5 +1,7 @@
 {
-    "scope": ["inference"],
+    "scope": [
+        "inference"
+    ],
     "versions": {
         "0.25.0": {
             "registries": {
@@ -27,7 +29,8 @@
                 "us-east-1": "763104351884",
                 "us-east-2": "763104351884",
                 "us-west-1": "763104351884",
-                "us-west-2": "763104351884"
+                "us-west-2": "763104351884",
+                "ca-west-1": "204538143572"
             },
             "repository": "djl-inference",
             "tag_prefix": "0.25.0-tensorrtllm0.5.0-cu122"

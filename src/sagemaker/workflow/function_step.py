@@ -83,6 +83,11 @@ class _FunctionStep(ConfigurableRetryStep):
             func_kwargs (dict): keyword arguments of the python function.
             **kwargs: Additional arguments to be passed to the `step` decorator.
         """
+        from sagemaker.remote_function.core.pipeline_variables import (
+            convert_pipeline_variables_to_pickleable,
+        )
+        from sagemaker.remote_function.core.serialization import CloudpickleSerializer
+        from sagemaker.remote_function.core.stored_function import _SerializedData
 
         super(_FunctionStep, self).__init__(
             name, StepTypeEnum.TRAINING, display_name, description, depends_on, retry_policies
@@ -95,6 +100,21 @@ class _FunctionStep(ConfigurableRetryStep):
         self._step_kwargs = kwargs
 
         self.__job_settings = None
+
+        (
+            self._converted_func_args,
+            self._converted_func_kwargs,
+        ) = convert_pipeline_variables_to_pickleable(
+            func_args=self._func_args,
+            func_kwargs=self._func_kwargs,
+        )
+
+        self._serialized_data = _SerializedData(
+            func=CloudpickleSerializer.serialize(self._func),
+            args=CloudpickleSerializer.serialize(
+                (self._converted_func_args, self._converted_func_kwargs)
+            ),
+        )
 
     @property
     def func(self):
@@ -185,6 +205,7 @@ class _FunctionStep(ConfigurableRetryStep):
             func=self.func,
             func_args=self.func_args,
             func_kwargs=self.func_kwargs,
+            serialized_data=self._serialized_data,
         )
         # Continue to pop job name if not explicitly opted-in via config
         request_dict = trim_request_dict(request_dict, "TrainingJobName", step_compilation_context)

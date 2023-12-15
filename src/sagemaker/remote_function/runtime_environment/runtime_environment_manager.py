@@ -216,6 +216,32 @@ class RuntimeEnvironmentManager:
                 pre_exec_script_path,
             )
 
+    def change_dir_permission(self, dirs: list, new_permission: str):
+        """Change the permission of given directories
+
+        Args:
+            dirs (list[str]): A list of directories for permission update.
+            new_permission (str): The new permission for the given directories.
+        """
+
+        _ERROR_MSG_PREFIX = "Failed to change directory permissions due to: "
+        command = ["sudo", "chmod", "-R", new_permission] + dirs
+        logger.info("Executing '%s'.", " ".join(command))
+
+        try:
+            subprocess.run(command, check=True, stderr=subprocess.PIPE)
+        except subprocess.CalledProcessError as called_process_err:
+            err_msg = called_process_err.stderr.decode("utf-8")
+            raise RuntimeEnvironmentError(f"{_ERROR_MSG_PREFIX} {err_msg}")
+        except FileNotFoundError as file_not_found_err:
+            if "[Errno 2] No such file or directory: 'sudo'" in str(file_not_found_err):
+                raise RuntimeEnvironmentError(
+                    f"{_ERROR_MSG_PREFIX} {file_not_found_err}. "
+                    "Please contact the image owner to install 'sudo' in the job container "
+                    "and provide sudo privilege to the container user."
+                )
+            raise RuntimeEnvironmentError(file_not_found_err)
+
     def _is_file_exists(self, dependencies):
         """Check whether the dependencies file exists at the given location.
 

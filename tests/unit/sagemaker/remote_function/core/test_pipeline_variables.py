@@ -28,6 +28,7 @@ from sagemaker.remote_function.core.pipeline_variables import (
     _DelayedReturnResolver,
     resolve_pipeline_variables,
     convert_pipeline_variables_to_pickleable,
+    _S3BaseUriIdentifier,
 )
 
 from sagemaker.workflow.parameters import (
@@ -38,6 +39,8 @@ from sagemaker.workflow.parameters import (
 )
 from sagemaker.workflow.function_step import DelayedReturn
 from sagemaker.workflow.properties import Properties
+
+PIPELINE_NAME = "some-pipeline"
 
 
 @patch("sagemaker.remote_function.core.pipeline_variables.deserialize_obj_from_s3")
@@ -70,6 +73,7 @@ def test_resolve_delayed_returns(mock_deserializer):
         _ParameterResolver(Context()),
         _ExecutionVariableResolver(Context()),
         sagemaker_session=None,
+        s3_base_uri=f"s3://my-bucket/{PIPELINE_NAME}",
     )
 
     assert resolver.resolve(delayed_returns[0]) == 1
@@ -99,6 +103,7 @@ def test_deserializer_fails(mock_deserializer):
             _ParameterResolver(Context()),
             _ExecutionVariableResolver(Context()),
             sagemaker_session=None,
+            s3_base_uri=f"s3://my-bucket/{PIPELINE_NAME}",
         )
 
 
@@ -116,7 +121,12 @@ def test_no_pipeline_variables_to_resolve(mock_deserializer, func_args, func_kwa
     mock_deserializer.return_value = (1.0, 2.0, 3.0)
 
     resolved_args, resolved_kwargs = resolve_pipeline_variables(
-        Context(), func_args, func_kwargs, hmac_key="1234", sagemaker_session=None
+        Context(),
+        func_args,
+        func_kwargs,
+        hmac_key="1234",
+        s3_base_uri="s3://my-bucket",
+        sagemaker_session=None,
     )
 
     assert resolved_args == func_args
@@ -133,11 +143,19 @@ def test_no_pipeline_variables_to_resolve(mock_deserializer, func_args, func_kwa
                 _ParameterFloat("parameter_2"),
                 _ParameterBoolean("parameter_4"),
                 _DelayedReturn(
-                    uri=["s3://my-bucket/", _ExecutionVariable("ExecutionId"), "sub-folder-1/"],
+                    uri=[
+                        _S3BaseUriIdentifier(),
+                        _ExecutionVariable("ExecutionId"),
+                        "sub-folder-1/",
+                    ],
                     reference_path=(("__getitem__", 0),),
                 ),
                 _DelayedReturn(
-                    uri=["s3://my-bucket/", _ExecutionVariable("ExecutionId"), "sub-folder-1/"],
+                    uri=[
+                        _S3BaseUriIdentifier(),
+                        _ExecutionVariable("ExecutionId"),
+                        "sub-folder-1/",
+                    ],
                     reference_path=(("__getitem__", 1),),
                 ),
                 _Properties("Steps.step_name.TrainingJobName"),
@@ -154,11 +172,19 @@ def test_no_pipeline_variables_to_resolve(mock_deserializer, func_args, func_kwa
                 "c": _ParameterFloat("parameter_2"),
                 "d": _ParameterBoolean("parameter_4"),
                 "e": _DelayedReturn(
-                    uri=["s3://my-bucket/", _ExecutionVariable("ExecutionId"), "sub-folder-1/"],
+                    uri=[
+                        _S3BaseUriIdentifier(),
+                        _ExecutionVariable("ExecutionId"),
+                        "sub-folder-1/",
+                    ],
                     reference_path=(("__getitem__", 0),),
                 ),
                 "f": _DelayedReturn(
-                    uri=["s3://my-bucket/", _ExecutionVariable("ExecutionId"), "sub-folder-1/"],
+                    uri=[
+                        _S3BaseUriIdentifier(),
+                        _ExecutionVariable("ExecutionId"),
+                        "sub-folder-1/",
+                    ],
                     reference_path=(("__getitem__", 1),),
                 ),
                 "g": _Properties("Steps.step_name.TrainingJobName"),
@@ -184,6 +210,7 @@ def test_resolve_pipeline_variables(
     expected_resolved_args,
     expected_resolved_kwargs,
 ):
+    s3_base_uri = f"s3://my-bucket/{PIPELINE_NAME}"
     context = Context(
         property_references={
             "Parameters.parameter_1": "1",
@@ -192,20 +219,25 @@ def test_resolve_pipeline_variables(
             "Parameters.parameter_4": "true",
             "Execution.ExecutionId": "execution-id",
             "Steps.step_name.TrainingJobName": "a-cool-name",
-        }
+        },
     )
 
     mock_deserializer.return_value = (1.0, 2.0, 3.0)
 
     resolved_args, resolved_kwargs = resolve_pipeline_variables(
-        context, func_args, func_kwargs, hmac_key="1234", sagemaker_session=None
+        context,
+        func_args,
+        func_kwargs,
+        hmac_key="1234",
+        s3_base_uri=s3_base_uri,
+        sagemaker_session=None,
     )
 
     assert resolved_args == expected_resolved_args
     assert resolved_kwargs == expected_resolved_kwargs
     mock_deserializer.assert_called_once_with(
         sagemaker_session=None,
-        s3_uri="s3://my-bucket/execution-id/sub-folder-1",
+        s3_uri=f"{s3_base_uri}/execution-id/sub-folder-1",
         hmac_key="1234",
     )
 
@@ -237,15 +269,13 @@ def test_convert_pipeline_variables_to_pickleable():
     }
 
     converted_args, converted_kwargs = convert_pipeline_variables_to_pickleable(
-        "base_uri", func_args, func_kwargs
+        func_args, func_kwargs
     )
-
-    print(converted_args)
 
     assert converted_args == (
         _DelayedReturn(
             uri=[
-                "base_uri",
+                _S3BaseUriIdentifier(),
                 _ExecutionVariable(name="PipelineExecutionId"),
                 "parent_step",
                 "results",
@@ -264,7 +294,7 @@ def test_convert_pipeline_variables_to_pickleable():
     assert converted_kwargs == {
         "a": _DelayedReturn(
             uri=[
-                "base_uri",
+                _S3BaseUriIdentifier(),
                 _ExecutionVariable(name="PipelineExecutionId"),
                 "parent_step",
                 "results",

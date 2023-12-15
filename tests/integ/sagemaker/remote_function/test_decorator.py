@@ -747,6 +747,25 @@ def test_with_user_and_workdir_set_in_the_image(
     assert cuberoot(27) == 3
 
 
+def test_with_user_and_workdir_set_in_the_image_client_error_case(
+    sagemaker_session, dummy_container_with_user_and_workdir, cpu_instance_type
+):
+    client_error_message = "Testing client error in job."
+
+    @remote(
+        role=ROLE,
+        image_uri=dummy_container_with_user_and_workdir,
+        instance_type=cpu_instance_type,
+        sagemaker_session=sagemaker_session,
+    )
+    def my_func():
+        raise RuntimeError(client_error_message)
+
+    with pytest.raises(RuntimeError) as error:
+        my_func()
+    assert client_error_message in str(error)
+
+
 @pytest.mark.skip
 def test_decorator_with_spark_job(sagemaker_session, cpu_instance_type):
     @remote(

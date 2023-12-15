@@ -528,6 +528,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI):
         def wrapper(*args, **kwargs):
             # Call the original function
             result = func(*args, **kwargs)
+            if "ModelBuilder" in result:
+                return result
             return result + " ModelBuilder"
 
         return wrapper
