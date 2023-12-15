@@ -24,10 +24,12 @@ from sagemaker.experiments.trial_component import _TrialComponent
 from sagemaker.remote_function.core.stored_function import (
     StoredFunction,
     JSON_SERIALIZED_RESULT_KEY,
+    _SerializedData,
 )
 from sagemaker.remote_function.core.serialization import (
     deserialize_obj_from_s3,
     serialize_obj_to_s3,
+    CloudpickleSerializer,
 )
 from sagemaker.remote_function.core.pipeline_variables import (
     Context,
@@ -308,19 +310,13 @@ def test_load_and_invoke_json_serialization(
 
 @patch("sagemaker.s3.S3Uploader.upload_bytes", new=upload_bytes)
 @patch("sagemaker.s3.S3Downloader.read_bytes", new=read_bytes)
-@patch("sagemaker.s3.S3Uploader.upload")
-@patch("sagemaker.s3.S3Downloader.download")
-def test_save_and_load_with_pipeline_variable(
-    s3_source_dir_download, s3_source_dir_upload, monkeypatch
-):
+@patch("sagemaker.s3.S3Uploader.upload", MagicMock())
+@patch("sagemaker.s3.S3Downloader.download", MagicMock())
+def test_save_and_load_with_pipeline_variable(monkeypatch):
     session = Mock()
     s3_base_uri = random_s3_uri()
 
-    job_settings = Mock()
-    job_settings.s3_root_uri = s3_base_uri
-    function_step = _FunctionStep(
-        name="func_1", display_name=None, description=None, job_settings=job_settings
-    )
+    function_step = _FunctionStep(name="func_1", display_name=None, description=None)
     x = DelayedReturn(function_step=function_step)
     serialize_obj_to_s3(
         3.0, session, f"{s3_base_uri}/execution-id/func_1/results", HMAC_KEY, KMS_KEY
@@ -337,12 +333,11 @@ def test_save_and_load_with_pipeline_variable(
                 "Parameters.b": "2.0",
                 "Parameters.c": "3.0",
                 "Execution.PipelineExecutionId": "execution-id",
-            }
+            },
         ),
     )
 
     func_args, func_kwargs = convert_pipeline_variables_to_pickleable(
-        s3_base_uri=s3_base_uri,
         func_args=(x,),
         func_kwargs={
             "a": ParameterFloat("a"),
@@ -350,9 +345,50 @@ def test_save_and_load_with_pipeline_variable(
             "c": ParameterFloat("c"),
         },
     )
-    stored_function.save(quadratic, *func_args, **func_kwargs)
+
+    test_serialized_data = _SerializedData(
+        func=CloudpickleSerializer.serialize(quadratic),
+        args=CloudpickleSerializer.serialize((func_args, func_kwargs)),
+    )
+
+    stored_function.save_pipeline_step_function(test_serialized_data)
     stored_function.load_and_invoke()
 
     assert deserialize_obj_from_s3(
         session, s3_uri=f"{s3_base_uri}/results", hmac_key=HMAC_KEY
     ) == quadratic(3.0, a=1.0, b=2.0, c=3.0)
+
+
+@patch("sagemaker.remote_function.core.serialization._upload_payload_and_metadata_to_s3")
+@patch("sagemaker.remote_function.job._JobSettings")
+def test_save_pipeline_step_function(mock_job_settings, upload_payload):
+    session = Mock()
+    s3_base_uri = random_s3_uri()
+    mock_job_settings.s3_root_uri = s3_base_uri
+
+    stored_function = StoredFunction(
+        sagemaker_session=session,
+        s3_base_uri=s3_base_uri,
+        s3_kms_key=KMS_KEY,
+        hmac_key=HMAC_KEY,
+        context=Context(
+            step_name="step_name",
+            execution_id="execution_id",
+        ),
+    )
+
+    func_args, func_kwargs = convert_pipeline_variables_to_pickleable(
+        func_args=(1,),
+        func_kwargs={
+            "a": 2,
+            "b": 3,
+        },
+    )
+
+    test_serialized_data = _SerializedData(
+        func=CloudpickleSerializer.serialize(quadratic),
+        args=CloudpickleSerializer.serialize((func_args, func_kwargs)),
+    )
+    stored_function.save_pipeline_step_function(test_serialized_data)
+
+    assert upload_payload.call_count == 2

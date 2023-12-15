@@ -25,6 +25,7 @@ HF_VERSIONS_MAPPING = {
     "1.0.3": "2.0.1-tgi1.0.3-gpu-py39-cu118-ubuntu20.04",
     "1.1.0": "2.0.1-tgi1.1.0-gpu-py39-cu118-ubuntu20.04",
     "1.2.0": "2.1.1-tgi1.2.0-gpu-py310-cu121-ubuntu20.04",
+    "1.3.1": "2.1.1-tgi1.3.1-gpu-py310-cu121-ubuntu20.04",
 }
 
 
