@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 import argparse
+import getpass
 import sys
 import os
 import shutil
@@ -38,6 +39,7 @@ DEFAULT_FAILURE_CODE = 1
 REMOTE_FUNCTION_WORKSPACE = "sm_rf_user_ws"
 BASE_CHANNEL_PATH = "/opt/ml/input/data"
 FAILURE_REASON_PATH = "/opt/ml/output/failure"
+JOB_OUTPUT_DIRS = ["/opt/ml/output", "/opt/ml/model", "/tmp"]
 PRE_EXECUTION_SCRIPT_NAME = "pre_exec.sh"
 JOB_REMOTE_FUNCTION_WORKSPACE = "sagemaker_remote_function_workspace"
 SCRIPT_AND_DEPENDENCIES_CHANNEL_NAME = "pre_exec_script_and_dependencies"
@@ -62,6 +64,17 @@ def main(sys_args=None):
         conda_env = job_conda_env or os.getenv("SAGEMAKER_JOB_CONDA_ENV")
 
         RuntimeEnvironmentManager()._validate_python_version(client_python_version, conda_env)
+
+        user = getpass.getuser()
+        if user != "root":
+            log_message = (
+                "The job is running on non-root user: %s. Adding write permissions to the "
+                "following job output directories: %s."
+            )
+            logger.info(log_message, user, JOB_OUTPUT_DIRS)
+            RuntimeEnvironmentManager().change_dir_permission(
+                dirs=JOB_OUTPUT_DIRS, new_permission="777"
+            )
 
         if pipeline_execution_id:
             _bootstrap_runtime_env_for_pipeline_step(
