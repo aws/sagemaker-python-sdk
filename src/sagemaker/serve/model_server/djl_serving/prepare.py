@@ -49,7 +49,7 @@ def _move_to_code_dir(js_model_dir: str, code_dir: Path):
                 continue
 
 
-def _extract_js_resource(js_model_dir, js_id: str):
+def _extract_js_resource(js_model_dir: str, js_id: str):
     """Uncompress the jumpstart resource"""
     tmp_sourcedir = Path(js_model_dir).joinpath(f"infer-prepack-{js_id}.tar.gz")
     with tarfile.open(str(tmp_sourcedir)) as resources:
