@@ -21,7 +21,6 @@ COMMON_INSTANCE_TYPES = {"cpu": "ml.c4.xlarge", "gpu": "ml.p4d.24xlarge"}
 
 @pytest.mark.parametrize("load_config", ["pytorch-smp.json"], indirect=True)
 def test_smp_v2(load_config):
-    print('Running test_smp_v2')
     VERSIONS = load_config["training"]["versions"]
     PROCESSORS = load_config["training"]["processors"]
     distribution = {"torch_distributed":
