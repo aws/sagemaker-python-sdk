@@ -664,7 +664,8 @@ def get_training_image_uri(
     if distribution is not None:
         if "torch_distributed" in distribution and "smdistributed" in distribution:
             if "modelparallel" in distribution["smdistributed"]:
-                framework = "pytorch-smp"
+                if distribution["smdistributed"]["modelparallel"].get("enabled", True):
+                    framework = "pytorch-smp"
 
     return retrieve(
         framework,
