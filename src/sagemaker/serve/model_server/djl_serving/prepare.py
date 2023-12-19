@@ -14,14 +14,14 @@
 
 from __future__ import absolute_import
 import shutil
-import tarfile
-import subprocess
 import json
+import tarfile
 import logging
 from typing import List
 from pathlib import Path
 
 from sagemaker.utils import _tmpdir
+from sagemaker.s3 import S3Downloader
 from sagemaker.djl_inference import DJLModel
 from sagemaker.djl_inference.model import _read_existing_serving_properties
 from sagemaker.serve.utils.local_hardware import _check_disk_space, _check_docker_disk_usage
@@ -34,27 +34,57 @@ logger = logging.getLogger(__name__)
 
 
 def _has_serving_properties_file(code_dir: Path) -> bool:
-    """Placeholder Docstring"""
+    """Check for existing serving properties in the directory"""
     return code_dir.joinpath(_SERVING_PROPERTIES_FILE).is_file()
 
 
-def _members(resources: object, depth: int):
-    """Placeholder Docstring"""
-    for member in resources.getmembers():
-        member.path = member.path.split("/", depth)[-1]
-        yield member
+def _move_to_code_dir(js_model_dir: str, code_dir: Path):
+    """Move DJL Jumpstart resources from model to code_dir"""
+    js_model_resources = Path(js_model_dir).joinpath("model")
+    for resource in js_model_resources.glob("*"):
+        try:
+            shutil.move(resource, code_dir)
+        except shutil.Error as e:
+            if "already exists" in str(e):
+                continue
+
+
+def _extract_js_resource(js_model_dir: str, js_id: str):
+    """Uncompress the jumpstart resource"""
+    tmp_sourcedir = Path(js_model_dir).joinpath(f"infer-prepack-{js_id}.tar.gz")
+    with tarfile.open(str(tmp_sourcedir)) as resources:
+        resources.extractall(path=js_model_dir)
 
 
 def _copy_jumpstart_artifacts(model_data: str, js_id: str, code_dir: Path):
-    """Placeholder Docstring"""
+    """Copy the associated JumpStart Resource into the code directory"""
     logger.info("Downloading JumpStart artifacts from S3...")
-    with _tmpdir(directory=str(code_dir)) as js_model_dir:
-        subprocess.run(["aws", "s3", "cp", model_data, js_model_dir])
 
-        logger.info("Uncompressing JumpStart artifacts for faster loading...")
-        tmp_sourcedir = Path(js_model_dir).joinpath(f"infer-prepack-{js_id}.tar.gz")
-        with tarfile.open(str(tmp_sourcedir)) as resources:
-            resources.extractall(path=code_dir, members=_members(resources, 1))
+    s3_downloader = S3Downloader()
+    invalid_model_data_format = False
+    with _tmpdir(directory=str(code_dir)) as js_model_dir:
+        if isinstance(model_data, str):
+            if model_data.endswith(".tar.gz"):
+                logger.info("Uncompressing JumpStart artifacts for faster loading...")
+                s3_downloader.download(model_data, js_model_dir)
+                _extract_js_resource(js_model_dir, js_id)
+            else:
+                logger.info("Copying uncompressed JumpStart artifacts...")
+                s3_downloader.download(model_data, js_model_dir)
+        elif (
+            isinstance(model_data, dict)
+            and model_data.get("S3DataSource")
+            and model_data.get("S3DataSource").get("S3Uri")
+        ):
+            logger.info("Copying uncompressed JumpStart artifacts...")
+            s3_downloader.download(model_data.get("S3DataSource").get("S3Uri"), js_model_dir)
+        else:
+            invalid_model_data_format = True
+        if not invalid_model_data_format:
+            _move_to_code_dir(js_model_dir, code_dir)
+
+    if invalid_model_data_format:
+        raise ValueError("JumpStart model data compression format is unsupported: %s", model_data)
 
     existing_properties = _read_existing_serving_properties(code_dir)
     config_json_file = code_dir.joinpath("config.json")
@@ -70,7 +100,7 @@ def _copy_jumpstart_artifacts(model_data: str, js_id: str, code_dir: Path):
 def _generate_properties_file(
     model: DJLModel, code_dir: Path, overwrite_props_from_file: bool, manual_set_props: dict
 ):
-    """Placeholder Docstring"""
+    """Construct serving properties file taking into account of overrides or manual specs"""
     if _has_serving_properties_file(code_dir):
         existing_properties = _read_existing_serving_properties(code_dir)
     else:
