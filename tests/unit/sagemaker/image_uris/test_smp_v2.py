@@ -16,7 +16,7 @@ import pytest
 from sagemaker import image_uris
 from tests.unit.sagemaker.image_uris import expected_uris
 
-CONTAINER_VERSIONS = {"ml.p4d.24xlarge": "cu118", "ml.p5d.24xlarge": "cu12"}
+CONTAINER_VERSIONS = {"ml.p4d.24xlarge": "cu118", "ml.p5d.24xlarge": "cu121"}
 
 
 @pytest.mark.parametrize("load_config", ["pytorch-smp.json"], indirect=True)
