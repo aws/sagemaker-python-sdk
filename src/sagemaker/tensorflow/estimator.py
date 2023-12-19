@@ -86,56 +86,7 @@ class TensorFlow(Framework):
                 ``image_uri`` is required. If also ``None``, then a ``ValueError``
                 will be raised.
             distribution (dict): A dictionary with information on how to run distributed training
-                (default: None). Currently, the following are supported:
-                distributed training with parameter servers, SageMaker Distributed (SMD) Data
-                and Model Parallelism, and MPI. SMD Model Parallelism can only be used with MPI.
-
-                **To enable the SageMaker distributed data parallelism:**
-
-                    .. code:: python
-
-                        { "smdistributed": { "dataparallel": { "enabled": True } } }
-
-                    .. seealso::
-
-                        To learn more, see :ref:`sdp_api_docs_toc`.
-
-                **To enable the SageMaker distributed model parallelism:**
-
-                    .. code:: python
-
-                        {
-                            "smdistributed": {
-                                "modelparallel": {
-                                    "enabled":True,
-                                    "parameters": {
-                                        "partitions": 2,
-                                        "microbatches": 4,
-                                        "placement_strategy": "spread",
-                                        "pipeline": "interleaved",
-                                        "optimize": "speed",
-                                        "ddp": True,
-                                    }
-                            },
-                            "mpi": {
-                                "enabled" : True,
-                                "processes_per_host" : 8,
-                            }
-                        }
-
-                    .. note::
-
-                        The SageMaker distributed model parallel library internally uses MPI.
-                        In order to use model parallelism, MPI also must be enabled.
-
-                    .. seealso::
-
-                        To learn more, see :ref:`smp_api_docs_toc`.
-
-                    .. seealso::
-
-                        To find a complete list of parameters for SageMaker model parallelism,
-                        see :ref:`sm-sdk-modelparallel-general`.
+                (default: None).
 
                 **To enable Multi Worker Mirrored Strategy:**
 
@@ -179,6 +130,31 @@ class TensorFlow(Framework):
 
                     To learn more, see `Training with parameter servers
                     <https://sagemaker.readthedocs.io/en/stable/frameworks/tensorflow/using_tf.html#training-with-parameter-servers>`_.
+
+                .. note::
+
+                    The SageMaker distributed data parallelism (SMDDP) library
+                    discontinued support for TensorFlow.
+                    The documentation for the SMDDP library v1.x is still available at
+                    `Use the SMDDP library in your TensorFlow training script (deprecated)
+                    <https://docs.aws.amazon.com/sagemaker/latest/dg/data-parallel-modify-sdp-tf2.html>`_
+                    in the *Amazon SageMaker User Guide*,
+                    and the `SMDDP v1 API reference in the
+                    SageMaker Python SDK v2.199.0 documentation
+                    <https://sagemaker.readthedocs.io/en/v2.199.0/api/training/distributed.html#the-sagemaker-distributed-data-parallel-library>`_.
+
+                .. note::
+
+                    The SageMaker model parallelism (SMP) library v2 discontinued support
+                    for TensorFlow.
+                    The documentation for the SMP library v1.x is archived and available at
+                    `Run distributed training with the SageMaker model parallelism library
+                    <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel.html>`_
+                    in the *Amazon SageMaker User Guide*,
+                    and the `SMP v1 API reference in the
+                    SageMaker Python SDK v2.199.0 documentation
+                    <https://sagemaker.readthedocs.io/en/v2.199.0/api/training/distributed.html#the-sagemaker-distributed-model-parallel-library>`_.
+
             compiler_config (:class:`~sagemaker.tensorflow.TrainingCompilerConfig`):
                 Configures SageMaker Training Compiler to accelerate training.
 
