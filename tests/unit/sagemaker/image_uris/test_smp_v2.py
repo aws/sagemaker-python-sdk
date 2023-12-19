@@ -16,7 +16,7 @@ import pytest
 from sagemaker import image_uris
 from tests.unit.sagemaker.image_uris import expected_uris
 
-COMMON_INSTANCE_TYPES = {"cpu": "ml.c4.xlarge", "gpu": "ml.p4d.24xlarge"}
+CONTAINER_VERSIONS = {"ml.p4d.24xlarge": "cu118", "ml.p5d.24xlarge": "cu12"}
 
 
 @pytest.mark.parametrize("load_config", ["pytorch-smp.json"], indirect=True)
@@ -40,20 +40,21 @@ def test_smp_v2(load_config):
             PY_VERSIONS = load_config["training"]["versions"][version]["py_versions"]
             for py_version in PY_VERSIONS:
                 for region in ACCOUNTS.keys():
-                    uri = image_uris.get_training_image_uri(
-                        region,
-                        framework="pytorch",
-                        framework_version=version,
-                        py_version=py_version,
-                        distribution=distribution,
-                        instance_type=COMMON_INSTANCE_TYPES[processor]
-                    )
-                    expected = expected_uris.framework_uri(
-                        repo="smdistributed-modelparallel",
-                        fw_version=version,
-                        py_version=py_version,
-                        processor=processor,
-                        region=region,
-                        account=ACCOUNTS[region],
-                    )
-                    assert expected == uri
+                    for instance_type in CONTAINER_VERSIONS.keys():
+                        uri = image_uris.get_training_image_uri(
+                            region,
+                            framework="pytorch",
+                            framework_version=version,
+                            py_version=py_version,
+                            distribution=distribution,
+                            instance_type=instance_type
+                        )
+                        expected = expected_uris.framework_uri(
+                            repo="smdistributed-modelparallel",
+                            fw_version=version,
+                            py_version=f"{py_version}-{CONTAINER_VERSIONS[instance_type]}",
+                            processor=processor,
+                            region=region,
+                            account=ACCOUNTS[region],
+                        )
+                        assert expected == uri

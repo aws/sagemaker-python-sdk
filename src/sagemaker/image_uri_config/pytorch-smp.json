@@ -1,7 +1,6 @@
 {
     "training": {
         "processors": [
-            "cpu",
             "gpu"
         ],
         "version_aliases": {
