@@ -23,17 +23,10 @@ CONTAINER_VERSIONS = {"ml.p4d.24xlarge": "cu118", "ml.p5d.24xlarge": "cu121"}
 def test_smp_v2(load_config):
     VERSIONS = load_config["training"]["versions"]
     PROCESSORS = load_config["training"]["processors"]
-    distribution = {"torch_distributed":
-                        {
-                            "enabled": True
-                        },
-                    "smdistributed": {
-                        "modelparallel":
-                            {
-                                "enabled": True
-                            }
-                        }
-                    }
+    distribution = {
+        "torch_distributed": {"enabled": True},
+        "smdistributed": {"modelparallel": {"enabled": True}},
+    }
     for processor in PROCESSORS:
         for version in VERSIONS:
             ACCOUNTS = load_config["training"]["versions"][version]["registries"]
@@ -47,7 +40,7 @@ def test_smp_v2(load_config):
                             framework_version=version,
                             py_version=py_version,
                             distribution=distribution,
-                            instance_type=instance_type
+                            instance_type=instance_type,
                         )
                         expected = expected_uris.framework_uri(
                             repo="smdistributed-modelparallel",

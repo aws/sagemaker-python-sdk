@@ -27,7 +27,10 @@ from sagemaker.spark import defaults
 from sagemaker.jumpstart import artifacts
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.utilities import override_pipeline_parameter_var
-from sagemaker.fw_utils import GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY, GRAVITON_ALLOWED_FRAMEWORKS
+from sagemaker.fw_utils import (
+    GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY,
+    GRAVITON_ALLOWED_FRAMEWORKS,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -164,13 +167,20 @@ def retrieve(
         )
     else:
         _framework = framework
-        if framework == HUGGING_FACE_FRAMEWORK or framework in TRAINIUM_ALLOWED_FRAMEWORKS:
+        if (
+            framework == HUGGING_FACE_FRAMEWORK
+            or framework in TRAINIUM_ALLOWED_FRAMEWORKS
+        ):
             inference_tool = _get_inference_tool(inference_tool, instance_type)
             if inference_tool in ["neuron", "neuronx"]:
                 _framework = f"{framework}-{inference_tool}"
-        final_image_scope = _get_final_image_scope(framework, instance_type, image_scope)
+        final_image_scope = _get_final_image_scope(
+            framework, instance_type, image_scope
+        )
         _validate_for_suppported_frameworks_and_instance_type(framework, instance_type)
-        config = _config_for_framework_and_scope(_framework, final_image_scope, accelerator_type)
+        config = _config_for_framework_and_scope(
+            _framework, final_image_scope, accelerator_type
+        )
 
     original_version = version
     version = _validate_version_and_set_if_needed(version, config, framework)
@@ -181,10 +191,14 @@ def retrieve(
             full_base_framework_version = version_config["version_aliases"].get(
                 base_framework_version, base_framework_version
             )
-        _validate_arg(full_base_framework_version, list(version_config.keys()), "base framework")
+        _validate_arg(
+            full_base_framework_version, list(version_config.keys()), "base framework"
+        )
         version_config = version_config.get(full_base_framework_version)
 
-    py_version = _validate_py_version_and_set_if_needed(py_version, version_config, framework)
+    py_version = _validate_py_version_and_set_if_needed(
+        py_version, version_config, framework
+    )
     version_config = version_config.get(py_version) or version_config
     registry = _registry_from_region(region, version_config["registries"])
     endpoint_data = utils._botocore_resolver().construct_endpoint("ecr", region)
@@ -212,7 +226,9 @@ def retrieve(
 
     if framework == HUGGING_FACE_FRAMEWORK:
         pt_or_tf_version = (
-            re.compile("^(pytorch|tensorflow)(.*)$").match(base_framework_version).group(2)
+            re.compile("^(pytorch|tensorflow)(.*)$")
+            .match(base_framework_version)
+            .group(2)
         )
         _version = original_version
 
@@ -236,11 +252,13 @@ def retrieve(
                 .get("version_aliases", {})
                 .get(base_framework_version, {})
             ):
-                _base_framework_version = config.get("versions")[_version]["version_aliases"][
-                    base_framework_version
-                ]
+                _base_framework_version = config.get("versions")[_version][
+                    "version_aliases"
+                ][base_framework_version]
                 pt_or_tf_version = (
-                    re.compile("^(pytorch|tensorflow)(.*)$").match(_base_framework_version).group(2)
+                    re.compile("^(pytorch|tensorflow)(.*)$")
+                    .match(_base_framework_version)
+                    .group(2)
                 )
 
         tag_prefix = f"{pt_or_tf_version}-transformers{_version}"
@@ -267,7 +285,9 @@ def retrieve(
     if tag:
         repo += ":{}".format(tag)
 
-    return ECR_URI_TEMPLATE.format(registry=registry, hostname=hostname, repository=repo)
+    return ECR_URI_TEMPLATE.format(
+        registry=registry, hostname=hostname, repository=repo
+    )
 
 
 def _get_image_tag(
@@ -306,9 +326,13 @@ def _get_image_tag(
             }
             tag = version_to_arm64_tag_mapping[framework][version]
         else:
-            tag = _format_tag(tag_prefix, processor, py_version, container_version, inference_tool)
+            tag = _format_tag(
+                tag_prefix, processor, py_version, container_version, inference_tool
+            )
     else:
-        tag = _format_tag(tag_prefix, processor, py_version, container_version, inference_tool)
+        tag = _format_tag(
+            tag_prefix, processor, py_version, container_version, inference_tool
+        )
 
         if instance_type is not None and _should_auto_select_container_version(
             instance_type, distribution
@@ -343,7 +367,8 @@ def _config_for_framework_and_scope(framework, image_scope, accelerator_type=Non
 
         if image_scope not in ("eia", "inference"):
             logger.warning(
-                "Elastic inference is for inference only. Ignoring image scope: %s.", image_scope
+                "Elastic inference is for inference only. Ignoring image scope: %s.",
+                image_scope,
             )
         image_scope = "eia"
 
@@ -358,7 +383,11 @@ def _config_for_framework_and_scope(framework, image_scope, accelerator_type=Non
             )
         image_scope = available_scopes[0]
 
-    if not image_scope and "scope" in config and set(available_scopes) == {"training", "inference"}:
+    if (
+        not image_scope
+        and "scope" in config
+        and set(available_scopes) == {"training", "inference"}
+    ):
         logger.info(
             "Same images used for training and inference. Defaulting to image scope: %s.",
             available_scopes[0],
@@ -390,20 +419,27 @@ def _validate_for_suppported_frameworks_and_instance_type(framework, instance_ty
         and "trn" in instance_type
         and framework not in TRAINIUM_ALLOWED_FRAMEWORKS
     ):
-        _validate_framework(framework, TRAINIUM_ALLOWED_FRAMEWORKS, "framework", "Trainium")
+        _validate_framework(
+            framework, TRAINIUM_ALLOWED_FRAMEWORKS, "framework", "Trainium"
+        )
 
     # Validate for Graviton allowed frameowrks
     if (
         instance_type is not None
-        and utils.get_instance_type_family(instance_type) in GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY
+        and utils.get_instance_type_family(instance_type)
+        in GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY
         and framework not in GRAVITON_ALLOWED_FRAMEWORKS
     ):
-        _validate_framework(framework, GRAVITON_ALLOWED_FRAMEWORKS, "framework", "Graviton")
+        _validate_framework(
+            framework, GRAVITON_ALLOWED_FRAMEWORKS, "framework", "Graviton"
+        )
 
 
 def config_for_framework(framework):
     """Loads the JSON config for the given framework."""
-    fname = os.path.join(os.path.dirname(__file__), "image_uri_config", "{}.json".format(framework))
+    fname = os.path.join(
+        os.path.dirname(__file__), "image_uri_config", "{}.json".format(framework)
+    )
     with open(fname) as f:
         return json.load(f)
 
@@ -412,7 +448,8 @@ def _get_final_image_scope(framework, instance_type, image_scope):
     """Return final image scope based on provided framework and instance type."""
     if (
         framework in GRAVITON_ALLOWED_FRAMEWORKS
-        and utils.get_instance_type_family(instance_type) in GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY
+        and utils.get_instance_type_family(instance_type)
+        in GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY
     ):
         return INFERENCE_GRAVITON
     if image_scope is None and framework in (XGBOOST_FRAMEWORK, SKLEARN_FRAMEWORK):
@@ -428,7 +465,9 @@ def _get_inference_tool(inference_tool, instance_type):
     """Extract the inference tool name from instance type."""
     if not inference_tool:
         instance_type_family = utils.get_instance_type_family(instance_type)
-        if instance_type_family.startswith("inf") or instance_type_family.startswith("trn"):
+        if instance_type_family.startswith("inf") or instance_type_family.startswith(
+            "trn"
+        ):
             return "neuron"
     return inference_tool
 
@@ -440,10 +479,15 @@ def _get_latest_versions(list_of_versions):
 
 def _validate_accelerator_type(accelerator_type):
     """Raises a ``ValueError`` if ``accelerator_type`` is invalid."""
-    if not accelerator_type.startswith("ml.eia") and accelerator_type != "local_sagemaker_notebook":
+    if (
+        not accelerator_type.startswith("ml.eia")
+        and accelerator_type != "local_sagemaker_notebook"
+    ):
         raise ValueError(
             "Invalid SageMaker Elastic Inference accelerator type: {}. "
-            "See https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html".format(accelerator_type)
+            "See https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html".format(
+                accelerator_type
+            )
         )
 
 
@@ -453,11 +497,15 @@ def _validate_version_and_set_if_needed(version, config, framework):
     aliased_versions = list(config.get("version_aliases", {}).keys())
 
     if len(available_versions) == 1 and version not in aliased_versions:
-        log_message = "Defaulting to the only supported framework/algorithm version: {}.".format(
-            available_versions[0]
+        log_message = (
+            "Defaulting to the only supported framework/algorithm version: {}.".format(
+                available_versions[0]
+            )
         )
         if version and version != available_versions[0]:
-            logger.warning("%s Ignoring framework/algorithm version: %s.", log_message, version)
+            logger.warning(
+                "%s Ignoring framework/algorithm version: %s.", log_message, version
+            )
         elif not version:
             logger.info(log_message)
 
@@ -470,7 +518,9 @@ def _validate_version_and_set_if_needed(version, config, framework):
     ]:
         version = _get_latest_versions(available_versions)
 
-    _validate_arg(version, available_versions + aliased_versions, "{} version".format(framework))
+    _validate_arg(
+        version, available_versions + aliased_versions, "{} version".format(framework)
+    )
     return version
 
 
@@ -496,7 +546,9 @@ def _processor(instance_type, available_processors, serverless_inference_config=
         return None
 
     if len(available_processors) == 1 and not instance_type:
-        logger.info("Defaulting to only supported image scope: %s.", available_processors[0])
+        logger.info(
+            "Defaulting to only supported image scope: %s.", available_processors[0]
+        )
         return available_processors[0]
 
     if serverless_inference_config is not None:
@@ -533,7 +585,9 @@ def _processor(instance_type, available_processors, serverless_inference_config=
         else:
             raise ValueError(
                 "Invalid SageMaker instance type: {}. For options, see: "
-                "https://aws.amazon.com/sagemaker/pricing/instance-types".format(instance_type)
+                "https://aws.amazon.com/sagemaker/pricing/instance-types".format(
+                    instance_type
+                )
             )
 
     _validate_arg(processor, available_processors, "processor")
@@ -572,7 +626,9 @@ def _validate_py_version_and_set_if_needed(py_version, version_config, framework
         return None
 
     if py_version is None and len(available_versions) == 1:
-        logger.info("Defaulting to only available Python version: %s", available_versions[0])
+        logger.info(
+            "Defaulting to only available Python version: %s", available_versions[0]
+        )
         return available_versions[0]
 
     _validate_arg(py_version, available_versions, "Python version")
@@ -585,7 +641,9 @@ def _validate_arg(arg, available_options, arg_name):
         raise ValueError(
             "Unsupported {arg_name}: {arg}. You may need to upgrade your SDK version "
             "(pip install -U sagemaker) for newer {arg_name}s. Supported {arg_name}(s): "
-            "{options}.".format(arg_name=arg_name, arg=arg, options=", ".join(available_options))
+            "{options}.".format(
+                arg_name=arg_name, arg=arg, options=", ".join(available_options)
+            )
         )
 
 
@@ -598,11 +656,17 @@ def _validate_framework(framework, allowed_frameworks, arg_name, hardware_name):
         )
 
 
-def _format_tag(tag_prefix, processor, py_version, container_version, inference_tool=None):
+def _format_tag(
+    tag_prefix, processor, py_version, container_version, inference_tool=None
+):
     """Creates a tag for the image URI."""
     if inference_tool:
-        return "-".join(x for x in (tag_prefix, inference_tool, py_version, container_version) if x)
-    return "-".join(x for x in (tag_prefix, processor, py_version, container_version) if x)
+        return "-".join(
+            x for x in (tag_prefix, inference_tool, py_version, container_version) if x
+        )
+    return "-".join(
+        x for x in (tag_prefix, processor, py_version, container_version) if x
+    )
 
 
 @override_pipeline_parameter_var
@@ -670,7 +734,7 @@ def get_training_image_uri(
                         container_version = "cu121"
                     else:
                         container_version = "cu118"
-                    
+
     return retrieve(
         framework,
         region,
@@ -711,4 +775,6 @@ def get_base_python_image_uri(region, py_version="310") -> str:
     repo = version_config["repository"] + "-" + py_version
     repo_and_tag = repo + ":" + version
 
-    return ECR_URI_TEMPLATE.format(registry=registry, hostname=hostname, repository=repo_and_tag)
+    return ECR_URI_TEMPLATE.format(
+        registry=registry, hostname=hostname, repository=repo_and_tag
+    )
