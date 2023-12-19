@@ -17,6 +17,7 @@ from sagemaker.serve import Mode, ModelServer
 from sagemaker.serve.utils.telemetry_logger import (
     _send_telemetry,
     _capture_telemetry,
+    _construct_url,
 )
 from sagemaker.serve.utils.exceptions import ModelBuilderException, LocalModelOutOfMemoryException
 
@@ -30,6 +31,7 @@ MOCK_TGI_CONTAINER = (
     "huggingface-pytorch-inference:2.0.0-transformers4.28.1-cpu-py310-ubuntu20.04"
 )
 MOCK_HUGGINGFACE_ID = "meta-llama/Llama-2-7b-hf"
+MOCK_EXCEPTION = LocalModelOutOfMemoryException("mock raise ex")
 
 
 class ModelBuilderMock:
@@ -63,7 +65,7 @@ class TestTelemetryLogger(unittest.TestCase):
         self.assertRaises(Exception)
 
     @patch("sagemaker.serve.utils.telemetry_logger._send_telemetry")
-    def test_capture_telemetry_decorator_djl_local_container_success(self, mock_send_telemetry):
+    def test_capture_telemetry_decorator_djl_success(self, mock_send_telemetry):
         mock_model_builder = ModelBuilderMock()
         mock_model_builder.serve_settings.telemetry_opt_out = False
         mock_model_builder.image_uri = MOCK_DJL_CONTAINER
@@ -84,7 +86,7 @@ class TestTelemetryLogger(unittest.TestCase):
         )
 
     @patch("sagemaker.serve.utils.telemetry_logger._send_telemetry")
-    def test_capture_telemetry_decorator_tgi_local_container_success(self, mock_send_telemetry):
+    def test_capture_telemetry_decorator_tgi_success(self, mock_send_telemetry):
         mock_model_builder = ModelBuilderMock()
         mock_model_builder.serve_settings.telemetry_opt_out = False
         mock_model_builder.image_uri = MOCK_TGI_CONTAINER
@@ -126,7 +128,7 @@ class TestTelemetryLogger(unittest.TestCase):
         mock_model_builder.model_server = ModelServer.DJL_SERVING
 
         mock_exception = Mock()
-        mock_exception_obj = LocalModelOutOfMemoryException("mock raise ex")
+        mock_exception_obj = MOCK_EXCEPTION
         mock_exception.side_effect = mock_exception_obj
 
         with self.assertRaises(ModelBuilderException) as _:
@@ -146,3 +148,33 @@ class TestTelemetryLogger(unittest.TestCase):
             mock_exception_obj.__class__.__name__,
             expected_extra_str,
         )
+
+    def test_construct_url_with_failure_reason_and_extra_info(self):
+        mock_accountId = "12345678910"
+        mock_mode = Mode.LOCAL_CONTAINER
+        mock_status = "0"
+        mock_failure_reason = str(MOCK_EXCEPTION)
+        mock_failure_type = MOCK_EXCEPTION.__class__.__name__
+        mock_extra_info = "mock_extra_info"
+        mock_region = "us-west-2"
+
+        ret_url = _construct_url(
+            accountId=mock_accountId,
+            mode=mock_mode,
+            status=mock_status,
+            failure_reason=mock_failure_reason,
+            failure_type=mock_failure_type,
+            extra_info=mock_extra_info,
+            region=mock_region,
+        )
+
+        expected_base_url = (
+            f"https://dev-exp-t-{mock_region}.s3.{mock_region}.amazonaws.com/telemetry?"
+            f"x-accountId={mock_accountId}"
+            f"&x-mode={mock_mode}"
+            f"&x-status={mock_status}"
+            f"&x-failureReason={mock_failure_reason}"
+            f"&x-failureType={mock_failure_type}"
+            f"&x-extra={mock_extra_info}"
+        )
+        self.assertEquals(ret_url, expected_base_url)
