@@ -712,6 +712,10 @@ class JumpStartEstimator(Estimator):
         Returns:
             Instance of the calling ``JumpStartEstimator`` Class with the attached
             training job.
+
+        Raises:
+            ValueError: if the model ID or version cannot be inferred from the training job.
+
         """
 
         if model_id is None:

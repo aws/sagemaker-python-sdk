@@ -67,7 +67,8 @@ def retrieve_default(
         Predictor: The default predictor to use for the model.
 
     Raises:
-        ValueError: If the combination of arguments specified is not supported.
+        ValueError: If the combination of arguments specified is not supported, or if a model ID or
+            version cannot be inferred from the endpoint.
     """
 
     if model_id is None:
