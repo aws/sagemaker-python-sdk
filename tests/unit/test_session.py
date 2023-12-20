@@ -3670,7 +3670,7 @@ def test_create_endpoint_config_with_tags_list(sagemaker_session):
 
 
 def test_create_endpoint_config_with_tags_dict(sagemaker_session):
-    tags = {"TagtestKey", "TagtestValue"}
+    tags = {"TagtestKey": "TagtestValue"}
     call_tags = [{"Key": "TagtestKey", "Value": "TagtestValue"}]
 
     sagemaker_session.create_endpoint_config(

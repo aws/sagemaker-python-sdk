@@ -358,7 +358,7 @@ class NotebookJobStep(ConfigurableRetryStep):
         This function converts the custom tags into training API required format and also
         attach the system tags.
         """
-        custom_tags = format_tags(self.tags)
+        custom_tags = format_tags(self.tags) or []
         system_tags = [
             {"Key": "sagemaker:name", "Value": self.notebook_job_name},
             {"Key": "sagemaker:notebook-name", "Value": os.path.basename(self.input_notebook)},
