@@ -59,21 +59,35 @@ def _capture_telemetry(func_name: str):
             caught_ex = None
 
             image_uri_tail = self.image_uri.split("/")[1]
-            extra = f"{func_name}&{MODEL_SERVER_TO_CODE[str(self.model_server)]}&{image_uri_tail}"
+            extra = (
+                f"{func_name}"
+                f"&x-modelServer={MODEL_SERVER_TO_CODE[str(self.model_server)]}"
+                f"&x-imageTag={image_uri_tail}"
+            )
 
             if self.model_server == ModelServer.DJL_SERVING or self.model_server == ModelServer.TGI:
-                extra += f"&{self.model}"
+                extra += f"&x-modelName={self.model}"
 
             try:
                 response = func(self, *args, **kwargs)
                 if not self.serve_settings.telemetry_opt_out:
                     _send_telemetry(
-                        "1", MODE_TO_CODE[str(self.mode)], self.sagemaker_session, None, extra
+                        "1",
+                        MODE_TO_CODE[str(self.mode)],
+                        self.sagemaker_session,
+                        None,
+                        None,
+                        extra,
                     )
             except ModelBuilderException as e:
                 if not self.serve_settings.telemetry_opt_out:
                     _send_telemetry(
-                        "0", MODE_TO_CODE[str(self.mode)], self.sagemaker_session, str(e), extra
+                        "0",
+                        MODE_TO_CODE[str(self.mode)],
+                        self.sagemaker_session,
+                        str(e),
+                        e.__class__.__name__,
+                        extra,
                     )
                 caught_ex = e
             except Exception as e:  # pylint: disable=W0703
@@ -93,13 +107,22 @@ def _send_telemetry(
     mode: int,
     session: Session,
     failure_reason: str = None,
+    failure_type: str = None,
     extra_info: str = None,
 ) -> None:
     """Make GET request to an empty object in S3 bucket"""
     try:
         accountId = _get_accountId(session)
         region = _get_region_or_default(session)
-        url = _construct_url(accountId, str(mode), status, failure_reason, extra_info, region)
+        url = _construct_url(
+            accountId,
+            str(mode),
+            status,
+            failure_reason,
+            failure_type,
+            extra_info,
+            region,
+        )
         _requests_helper(url, 2)
         logger.debug("ModelBuilder metrics emitted.")
     except Exception:  # pylint: disable=W0703
@@ -111,6 +134,7 @@ def _construct_url(
     mode: str,
     status: str,
     failure_reason: str,
+    failure_type: str,
     extra_info: str,
     region: str,
 ) -> str:
@@ -124,6 +148,7 @@ def _construct_url(
     )
     if failure_reason:
         base_url += f"&x-failureReason={failure_reason}"
+        base_url += f"&x-failureType={failure_type}"
     if extra_info:
         base_url += f"&x-extra={extra_info}"
     return base_url
