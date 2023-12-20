@@ -32,7 +32,7 @@ sagemaker-feature-store-pyspark-3.3
 # TODO find workaround
 xgboost>=1.6.2,<=1.7.6
 pillow>=10.0.1,<=11
-transformers==4.32.0
+transformers==4.36.0
 sentencepiece==0.1.99
 # https://github.com/triton-inference-server/server/issues/6246
 tritonclient[http]<2.37.0
