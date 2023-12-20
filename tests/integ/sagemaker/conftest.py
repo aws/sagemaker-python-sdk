@@ -68,7 +68,12 @@ DOCKERFILE_TEMPLATE_WITH_USER_AND_WORKDIR = (
     "RUN curl 'https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip' -o 'awscliv2.zip' \
         && unzip awscliv2.zip \
         && ./aws/install\n\n"
+    "RUN apt install sudo\n"
     "RUN useradd -ms /bin/bash integ-test-user\n"
+    # Add the user to sudo group
+    "RUN usermod -aG sudo integ-test-user\n"
+    # Ensure passwords are not required for sudo group users
+    "RUN echo '%sudo ALL= (ALL) NOPASSWD:ALL' >> /etc/sudoers\n"
     "USER integ-test-user\n"
     "WORKDIR /home/integ-test-user\n"
     "COPY {source_archive} ./\n"

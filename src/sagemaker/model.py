@@ -75,6 +75,7 @@ from sagemaker.inference_recommender.inference_recommender_mixin import (
 )
 from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
 from sagemaker.enums import EndpointType
+from sagemaker.session import get_add_model_package_inference_args
 
 LOGGER = logging.getLogger("sagemaker")
 
@@ -485,12 +486,6 @@ class Model(ModelBase, InferenceRecommenderMixin):
         if response_types is not None:
             self.response_types = response_types
 
-        if self.content_types is None:
-            raise ValueError("The supported MIME types for the input data is not set")
-
-        if self.response_types is None:
-            raise ValueError("The supported MIME types for the output data is not set")
-
         if image_uri is not None:
             self.image_uri = image_uri
 
@@ -866,16 +861,10 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 # _base_name, model_name are not needed under PipelineSession.
                 # the model_data may be Pipeline variable
                 # which may break the _base_name generation
-                model_uri = None
-                if isinstance(self.model_data, (str, PipelineVariable)):
-                    model_uri = self.model_data
-                elif isinstance(self.model_data, dict):
-                    model_uri = self.model_data.get("S3DataSource", {}).get("S3Uri", None)
-
                 self._ensure_base_name_if_needed(
                     image_uri=container_def["Image"],
                     script_uri=self.source_dir,
-                    model_uri=model_uri,
+                    model_uri=self._get_model_uri(),
                 )
                 self._set_model_name_if_needed()
 
@@ -911,6 +900,14 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 tags=tags,
             )
             self.sagemaker_session.create_model(**create_model_args)
+
+    def _get_model_uri(self):
+        model_uri = None
+        if isinstance(self.model_data, (str, PipelineVariable)):
+            model_uri = self.model_data
+        elif isinstance(self.model_data, dict):
+            model_uri = self.model_data.get("S3DataSource", {}).get("S3Uri", None)
+        return model_uri
 
     def _ensure_base_name_if_needed(self, image_uri, script_uri, model_uri):
         """Create a base name from the image URI if there is no model name provided.
@@ -1496,7 +1493,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             self._ensure_base_name_if_needed(
                 image_uri=self.image_uri,
                 script_uri=self.source_dir,
-                model_uri=self.model_data,
+                model_uri=self._get_model_uri(),
             )
             if self._base_name is not None:
                 self._base_name = "-".join((self._base_name, compiled_model_suffix))
@@ -2179,7 +2176,7 @@ class ModelPackage(Model):
         """Update the approval status for the model package
 
         Args:
-            approval_status (str or PipelineVariable): Model Approval Status, values can be
+            approval_status (str): Model Approval Status, values can be
                 "Approved", "Rejected", or "PendingManualApproval".
             approval_description (str): Optional. Description for the approval status of the model
                 (default: None).
@@ -2200,3 +2197,96 @@ class ModelPackage(Model):
             update_approval_args["ApprovalDescription"] = approval_description
 
         sagemaker_session.sagemaker_client.update_model_package(**update_approval_args)
+
+    def update_customer_metadata(self, customer_metadata_properties: Dict[str, str]):
+        """Updating customer metadata properties for the model package
+
+        Args:
+            customer_metadata_properties (dict[str, str]):
+                A dictionary of key-value paired metadata properties (default: None).
+        """
+
+        update_metadata_args = {
+            "ModelPackageArn": self.model_package_arn,
+            "CustomerMetadataProperties": customer_metadata_properties,
+        }
+
+        sagemaker_session = self.sagemaker_session or sagemaker.Session()
+        sagemaker_session.sagemaker_client.update_model_package(**update_metadata_args)
+
+    def remove_customer_metadata_properties(
+        self, customer_metadata_properties_to_remove: List[str]
+    ):
+        """Removes the specified keys from customer metadata properties
+
+        Args:
+            customer_metadata_properties (list[str, str]):
+                list of keys of customer metadata properties to remove.
+        """
+
+        delete_metadata_args = {
+            "ModelPackageArn": self.model_package_arn,
+            "CustomerMetadataPropertiesToRemove": customer_metadata_properties_to_remove,
+        }
+
+        sagemaker_session = self.sagemaker_session or sagemaker.Session()
+        sagemaker_session.sagemaker_client.update_model_package(**delete_metadata_args)
+
+    def add_inference_specification(
+        self,
+        name: str,
+        containers: Dict = None,
+        image_uris: List[str] = None,
+        description: str = None,
+        content_types: List[str] = None,
+        response_types: List[str] = None,
+        inference_instances: List[str] = None,
+        transform_instances: List[str] = None,
+    ):
+        """Additional inference specification to be added for the model package
+
+        Args:
+            name (str): Name to identify the additional inference specification
+            containers (dict): The Amazon ECR registry path of the Docker image
+                that contains the inference code.
+            image_uris (List[str]): The ECR path where inference code is stored.
+            description (str): Description for the additional inference specification
+            content_types (list[str]): The supported MIME types
+                for the input data.
+            response_types (list[str]): The supported MIME types
+                for the output data.
+            inference_instances (list[str]): A list of the instance
+                types that are used to generate inferences in real-time (default: None).
+            transform_instances (list[str]): A list of the instance
+                types on which a transformation job can be run or on which an endpoint can be
+                deployed (default: None).
+
+        """
+        sagemaker_session = self.sagemaker_session or sagemaker.Session()
+        if containers is not None and image_uris is not None:
+            raise ValueError("Cannot have both containers and image_uris.")
+        if containers is None and image_uris is None:
+            raise ValueError("Should have either containers or image_uris for inference.")
+        container_def = []
+        if image_uris:
+            for uri in image_uris:
+                container_def.append(
+                    {
+                        "Image": uri,
+                    }
+                )
+        else:
+            container_def = containers
+
+        model_package_update_args = get_add_model_package_inference_args(
+            model_package_arn=self.model_package_arn,
+            name=name,
+            containers=container_def,
+            content_types=content_types,
+            description=description,
+            response_types=response_types,
+            inference_instances=inference_instances,
+            transform_instances=transform_instances,
+        )
+
+        sagemaker_session.sagemaker_client.update_model_package(**model_package_update_args)

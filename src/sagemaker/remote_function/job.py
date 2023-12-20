@@ -52,11 +52,8 @@ from sagemaker.session import get_execution_role, _logs_for_job, Session
 from sagemaker.utils import name_from_base, _tmpdir, resolve_value_from_config
 from sagemaker.s3 import s3_path_join, S3Uploader
 from sagemaker import vpc_utils
-from sagemaker.remote_function.core.stored_function import StoredFunction
-from sagemaker.remote_function.core.pipeline_variables import (
-    Context,
-    convert_pipeline_variables_to_pickleable,
-)
+from sagemaker.remote_function.core.stored_function import StoredFunction, _SerializedData
+from sagemaker.remote_function.core.pipeline_variables import Context
 from sagemaker.remote_function.runtime_environment.runtime_environment_manager import (
     RuntimeEnvironmentManager,
     _DependencySettings,
@@ -695,6 +692,7 @@ class _Job:
         func_args: tuple,
         func_kwargs: dict,
         run_info=None,
+        serialized_data: _SerializedData = None,
     ) -> dict:
         """Build the artifacts and generate the training job request."""
         from sagemaker.workflow.properties import Properties
@@ -732,12 +730,8 @@ class _Job:
                     func_step_s3_dir=step_compilation_context.pipeline_build_time,
                 ),
             )
-            converted_func_args, converted_func_kwargs = convert_pipeline_variables_to_pickleable(
-                s3_base_uri=s3_base_uri,
-                func_args=func_args,
-                func_kwargs=func_kwargs,
-            )
-            stored_function.save(func, *converted_func_args, **converted_func_kwargs)
+
+            stored_function.save_pipeline_step_function(serialized_data)
 
         stopping_condition = {
             "MaxRuntimeInSeconds": job_settings.max_runtime_in_seconds,
@@ -891,7 +885,7 @@ class _Job:
         """
 
         self._last_describe_response = _logs_for_job(
-            boto_session=self.sagemaker_session.boto_session,
+            sagemaker_session=self.sagemaker_session,
             job_name=self.job_name,
             wait=True,
             timeout=timeout,

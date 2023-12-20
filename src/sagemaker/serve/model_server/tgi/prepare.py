@@ -1,37 +1,66 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
 """Prepare TgiModel for Deployment"""
 
 from __future__ import absolute_import
 import tarfile
-import subprocess
 import logging
 from typing import List
 from pathlib import Path
 
 from sagemaker.serve.utils.local_hardware import _check_disk_space, _check_docker_disk_usage
 from sagemaker.utils import _tmpdir
+from sagemaker.s3 import S3Downloader
 
 logger = logging.getLogger(__name__)
 
 
+def _extract_js_resource(js_model_dir: str, code_dir: Path, js_id: str):
+    """Uncompress the jumpstart resource"""
+    tmp_sourcedir = Path(js_model_dir).joinpath(f"infer-prepack-{js_id}.tar.gz")
+    with tarfile.open(str(tmp_sourcedir)) as resources:
+        resources.extractall(path=code_dir)
+
+
 def _copy_jumpstart_artifacts(model_data: str, js_id: str, code_dir: Path) -> bool:
-    """Placeholder Docstring"""
+    """Copy the associated JumpStart Resource into the code directory"""
     logger.info("Downloading JumpStart artifacts from S3...")
-    with _tmpdir(directory=str(code_dir)) as js_model_dir:
-        js_model_data_loc = model_data.get("S3DataSource").get("S3Uri")
-        # TODO: leave this check here until we are sure every js model has moved to uncompressed
-        if js_model_data_loc.endswith("tar.gz"):
-            subprocess.run(["aws", "s3", "cp", js_model_data_loc, js_model_dir])
+
+    s3_downloader = S3Downloader()
+    if isinstance(model_data, str):
+        if model_data.endswith(".tar.gz"):
             logger.info("Uncompressing JumpStart artifacts for faster loading...")
-            tmp_sourcedir = Path(js_model_dir).joinpath(f"infer-prepack-{js_id}.tar.gz")
-            with tarfile.open(str(tmp_sourcedir)) as resources:
-                resources.extractall(path=code_dir)
+            with _tmpdir(directory=str(code_dir)) as js_model_dir:
+                s3_downloader.download(model_data, js_model_dir)
+                _extract_js_resource(js_model_dir, code_dir, js_id)
         else:
-            subprocess.run(["aws", "s3", "cp", js_model_data_loc, js_model_dir, "--recursive"])
+            logger.info("Copying uncompressed JumpStart artifacts...")
+            s3_downloader.download(model_data, code_dir)
+    elif (
+        isinstance(model_data, dict)
+        and model_data.get("S3DataSource")
+        and model_data.get("S3DataSource").get("S3Uri")
+    ):
+        logger.info("Copying uncompressed JumpStart artifacts...")
+        s3_downloader.download(model_data.get("S3DataSource").get("S3Uri"), code_dir)
+    else:
+        raise ValueError("JumpStart model data compression format is unsupported: %s", model_data)
+
     return True
 
 
 def _create_dir_structure(model_path: str) -> tuple:
-    """Placeholder Docstring"""
+    """Create the expected model directory structure for the TGI server"""
     model_path = Path(model_path)
     if not model_path.exists():
         model_path.mkdir(parents=True)

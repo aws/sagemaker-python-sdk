@@ -472,6 +472,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         # Initialize the variables used to loop through the contents of the S3 bucket.
         keys = []
+        directories = []
         next_token = ""
         base_parameters = {"Bucket": bucket, "Prefix": key_prefix}
 
@@ -490,20 +491,26 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 return []
             # For each object, save its key or directory.
             for s3_object in contents:
-                key = s3_object.get("Key")
-                keys.append(key)
+                key: str = s3_object.get("Key")
+                obj_size = s3_object.get("Size")
+                if key.endswith("/") and int(obj_size) == 0:
+                    directories.append(os.path.join(path, key))
+                else:
+                    keys.append(key)
             next_token = response.get("NextContinuationToken")
 
         # For each object key, create the directory on the local machine if needed, and then
         # download the file.
         downloaded_paths = []
+        for dir_path in directories:
+            os.makedirs(os.path.dirname(dir_path), exist_ok=True)
         for key in keys:
             tail_s3_uri_path = os.path.basename(key)
             if not os.path.splitext(key_prefix)[1]:
                 tail_s3_uri_path = os.path.relpath(key, key_prefix)
             destination_path = os.path.join(path, tail_s3_uri_path)
             if not os.path.exists(os.path.dirname(destination_path)):
-                os.makedirs(os.path.dirname(destination_path))
+                os.makedirs(os.path.dirname(destination_path), exist_ok=True)
             s3.download_file(
                 Bucket=bucket, Key=key, Filename=destination_path, ExtraArgs=extra_args
             )
@@ -741,6 +748,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         profiler_config=None,
         environment: Optional[Dict[str, str]] = None,
         retry_strategy=None,
+        remote_debug_config=None,
     ):
         """Create an Amazon SageMaker training job.
 
@@ -851,6 +859,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 configurations.src/sagemaker/lineage/artifact.py:285
             profiler_config (dict): Configuration for how profiling information is emitted
                 with SageMaker Profiler. (default: ``None``).
+            remote_debug_config(dict): Configuration for RemoteDebug. (default: ``None``)
+                The dict can contain 'EnableRemoteDebug'(bool).
+                For example,
+
+                .. code:: python
+
+                    remote_debug_config = {
+                        "EnableRemoteDebug": True,
+                    }
             environment (dict[str, str]) : Environment variables to be set for
                 use during training job (default: ``None``)
             retry_strategy(dict): Defines RetryStrategy for InternalServerFailures.
@@ -943,6 +960,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             enable_sagemaker_metrics=enable_sagemaker_metrics,
             profiler_rule_configs=profiler_rule_configs,
             profiler_config=inferred_profiler_config,
+            remote_debug_config=remote_debug_config,
             environment=environment,
             retry_strategy=retry_strategy,
         )
@@ -985,6 +1003,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         enable_sagemaker_metrics=None,
         profiler_rule_configs=None,
         profiler_config=None,
+        remote_debug_config=None,
         environment=None,
         retry_strategy=None,
     ):
@@ -1096,6 +1115,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
             profiler_rule_configs (list[dict]): A list of profiler rule configurations.
             profiler_config(dict): Configuration for how profiling information is emitted with
                 SageMaker Profiler. (default: ``None``).
+            remote_debug_config(dict): Configuration for RemoteDebug. (default: ``None``)
+                The dict can contain 'EnableRemoteDebug'(bool).
+                For example,
+
+                .. code:: python
+
+                    remote_debug_config = {
+                        "EnableRemoteDebug": True,
+                    }
             environment (dict[str, str]) : Environment variables to be set for
                 use during training job (default: ``None``)
             retry_strategy(dict): Defines RetryStrategy for InternalServerFailures.
@@ -1199,6 +1227,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if profiler_config is not None:
             train_request["ProfilerConfig"] = profiler_config
 
+        if remote_debug_config is not None:
+            train_request["RemoteDebugConfig"] = remote_debug_config
+
         if retry_strategy is not None:
             train_request["RetryStrategy"] = retry_strategy
 
@@ -1210,6 +1241,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         profiler_rule_configs=None,
         profiler_config=None,
         resource_config=None,
+        remote_debug_config=None,
     ):
         """Calls the UpdateTrainingJob API for the given job name and returns the response.
 
@@ -1221,6 +1253,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
             resource_config (dict): Configuration of the resources for the training job. You can
                 update the keep-alive period if the warm pool status is `Available`. No other fields
                 can be updated. (default: ``None``).
+            remote_debug_config(dict): Configuration for RemoteDebug. (default: ``None``)
+                The dict can contain 'EnableRemoteDebug'(bool).
+                For example,
+
+                .. code:: python
+
+                    remote_debug_config = {
+                        "EnableRemoteDebug": True,
+                    }
         """
         # No injections from sagemaker_config because the UpdateTrainingJob API's resource_config
         # object accepts fewer parameters than the CreateTrainingJob API, and none that the
@@ -1233,6 +1274,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             profiler_rule_configs=profiler_rule_configs,
             profiler_config=inferred_profiler_config,
             resource_config=resource_config,
+            remote_debug_config=remote_debug_config,
         )
         LOGGER.info("Updating training job with name %s", job_name)
         LOGGER.debug("Update request: %s", json.dumps(update_training_job_request, indent=4))
@@ -1244,6 +1286,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         profiler_rule_configs=None,
         profiler_config=None,
         resource_config=None,
+        remote_debug_config=None,
     ):
         """Constructs a request compatible for updating an Amazon SageMaker training job.
 
@@ -1255,6 +1298,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
             resource_config (dict): Configuration of the resources for the training job. You can
                 update the keep-alive period if the warm pool status is `Available`. No other fields
                 can be updated. (default: ``None``).
+            remote_debug_config(dict): Configuration for RemoteDebug. (default: ``None``)
+                The dict can contain 'EnableRemoteDebug'(bool).
+                For example,
+
+                .. code:: python
+
+                    remote_debug_config = {
+                        "EnableRemoteDebug": True,
+                    }
 
         Returns:
             Dict: an update training request dict
@@ -1271,6 +1323,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if resource_config is not None:
             update_training_job_request["ResourceConfig"] = resource_config
+
+        if remote_debug_config is not None:
+            update_training_job_request["RemoteDebugConfig"] = remote_debug_config
 
         return update_training_job_request
 
@@ -5468,7 +5523,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             exceptions.CapacityError: If the training job fails with CapacityError.
             exceptions.UnexpectedStatusException: If waiting and the training job fails.
         """
-        _logs_for_job(self.boto_session, job_name, wait, poll, log_type, timeout)
+        _logs_for_job(self, job_name, wait, poll, log_type, timeout)
 
     def logs_for_processing_job(self, job_name, wait=False, poll=10):
         """Display logs for a given processing job, optionally tailing them until the is complete.
@@ -6571,15 +6626,21 @@ def get_create_model_package_request(
     if task is not None:
         request_dict["Task"] = task
     if containers is not None:
-        if not all([content_types, response_types]):
-            raise ValueError(
-                "content_types and response_types " "must be provided if containers is present."
-            )
         inference_specification = {
             "Containers": containers,
-            "SupportedContentTypes": content_types,
-            "SupportedResponseMIMETypes": response_types,
         }
+        if content_types is not None:
+            inference_specification.update(
+                {
+                    "SupportedContentTypes": content_types,
+                }
+            )
+        if response_types is not None:
+            inference_specification.update(
+                {
+                    "SupportedResponseMIMETypes": response_types,
+                }
+            )
         if model_package_group_name is not None:
             if inference_instances is not None:
                 inference_specification.update(
@@ -6609,6 +6670,76 @@ def get_create_model_package_request(
     request_dict["CertifyForMarketplace"] = marketplace_cert
     request_dict["ModelApprovalStatus"] = approval_status
     request_dict["SkipModelValidation"] = skip_model_validation
+    return request_dict
+
+
+def get_add_model_package_inference_args(
+    model_package_arn,
+    name,
+    containers=None,
+    content_types=None,
+    response_types=None,
+    inference_instances=None,
+    transform_instances=None,
+    description=None,
+):
+    """Get request dictionary for UpdateModelPackage API for additional inference.
+
+    Args:
+        model_package_arn (str): Arn for the model package.
+        name (str): Name to identify the additional inference specification
+        containers (dict): The Amazon ECR registry path of the Docker image
+            that contains the inference code.
+        image_uris (List[str]): The ECR path where inference code is stored.
+        description (str): Description for the additional inference specification
+        content_types (list[str]): The supported MIME types
+            for the input data.
+        response_types (list[str]): The supported MIME types
+            for the output data.
+        inference_instances (list[str]): A list of the instance
+            types that are used to generate inferences in real-time (default: None).
+        transform_instances (list[str]): A list of the instance
+            types on which a transformation job can be run or on which an endpoint can be
+            deployed (default: None).
+    """
+
+    request_dict = {}
+    if containers is not None:
+        inference_specification = {
+            "Containers": containers,
+        }
+
+        if name is not None:
+            inference_specification.update({"Name": name})
+
+        if description is not None:
+            inference_specification.update({"Description": description})
+        if content_types is not None:
+            inference_specification.update(
+                {
+                    "SupportedContentTypes": content_types,
+                }
+            )
+        if response_types is not None:
+            inference_specification.update(
+                {
+                    "SupportedResponseMIMETypes": response_types,
+                }
+            )
+        if inference_instances is not None:
+            inference_specification.update(
+                {
+                    "SupportedRealtimeInferenceInstanceTypes": inference_instances,
+                }
+            )
+        if transform_instances is not None:
+            inference_specification.update(
+                {
+                    "SupportedTransformInstanceTypes": transform_instances,
+                }
+            )
+        request_dict["AdditionalInferenceSpecificationsToAdd"] = [inference_specification]
+        request_dict.update({"ModelPackageArn": model_package_arn})
     return request_dict
 
 
@@ -7351,7 +7482,7 @@ def _rule_statuses_changed(current_statuses, last_statuses):
 
 
 def _logs_for_job(  # noqa: C901 - suppress complexity warning for this method
-    boto_session, job_name, wait=False, poll=10, log_type="All", timeout=None
+    sagemaker_session, job_name, wait=False, poll=10, log_type="All", timeout=None
 ):
     """Display logs for a given training job, optionally tailing them until job is complete.
 
@@ -7359,9 +7490,8 @@ def _logs_for_job(  # noqa: C901 - suppress complexity warning for this method
     based on which instance the log entry is from.
 
     Args:
-        boto_session (boto3.session.Session): The underlying Boto3 session which AWS service
-                calls are delegated to (default: None). If not provided, one is created with
-                default AWS configuration chain.
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions.
         job_name (str): Name of the training job to display the logs for.
         wait (bool): Whether to keep looking for new log entries until the job completes
             (default: False).
@@ -7378,13 +7508,13 @@ def _logs_for_job(  # noqa: C901 - suppress complexity warning for this method
         exceptions.CapacityError: If the training job fails with CapacityError.
         exceptions.UnexpectedStatusException: If waiting and the training job fails.
     """
-    sagemaker_client = boto_session.client("sagemaker")
+    sagemaker_client = sagemaker_session.sagemaker_client
     request_end_time = time.time() + timeout if timeout else None
     description = sagemaker_client.describe_training_job(TrainingJobName=job_name)
     print(secondary_training_status_message(description, None), end="")
 
     instance_count, stream_names, positions, client, log_group, dot, color_wrap = _logs_init(
-        boto_session, description, job="Training"
+        sagemaker_session.boto_session, description, job="Training"
     )
 
     state = _get_initial_job_state(description, "TrainingJobStatus", wait)

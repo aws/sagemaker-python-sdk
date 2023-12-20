@@ -59,6 +59,11 @@ def monitor_uri(account, region=REGION):
     return MONITOR_URI_FORMAT.format(account, region, domain)
 
 
+def algo_uri_with_tag(algo, account, region, tag):
+    domain = ALTERNATE_DOMAINS.get(region, DOMAIN)
+    return IMAGE_URI_FORMAT.format(account, region, domain, algo, tag)
+
+
 def graviton_framework_uri(
     repo,
     fw_version,

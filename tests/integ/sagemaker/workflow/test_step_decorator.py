@@ -592,7 +592,7 @@ def test_decorator_step_failed(
         step_name = execution_steps[0]["StepName"]
         with pytest.raises(RemoteFunctionError) as e:
             execution.result(step_name)
-            assert f"Pipeline step {step_name} is in Failed status." in str(e)
+            assert f"step {step_name} is not in Completed status." in str(e)
     finally:
         try:
             pipeline.delete()
@@ -852,6 +852,110 @@ def test_with_user_and_workdir_set_in_the_image(
             step_status="Succeeded",
             step_result_type=numpy.float64,
             step_result_value=2.0,
+        )
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
+
+
+def test_with_user_and_workdir_set_in_the_image_client_error_case(
+    sagemaker_session, role, pipeline_name, region_name, dummy_container_with_user_and_workdir
+):
+    # This test aims to ensure client error in step decorated function
+    # can be successfully surfaced and the job can be failed.
+    os.environ["AWS_DEFAULT_REGION"] = region_name
+    client_error_message = "Testing client error in job."
+
+    @step(
+        role=role,
+        image_uri=dummy_container_with_user_and_workdir,
+        instance_type=INSTANCE_TYPE,
+    )
+    def my_func():
+        raise RuntimeError(client_error_message)
+
+    step_a = my_func()
+
+    pipeline = Pipeline(
+        name=pipeline_name,
+        steps=[step_a],
+        sagemaker_session=sagemaker_session,
+    )
+
+    try:
+        _, execution_steps = create_and_execute_pipeline(
+            pipeline=pipeline,
+            pipeline_name=pipeline_name,
+            region_name=region_name,
+            role=role,
+            no_of_steps=1,
+            last_step_name=get_step(step_a).name,
+            execution_parameters=dict(),
+            step_status="Failed",
+        )
+        assert (
+            f"ClientError: AlgorithmError: RuntimeError('{client_error_message}')"
+            in execution_steps[0]["FailureReason"]
+        )
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
+
+
+def test_step_level_serialization(
+    sagemaker_session, role, pipeline_name, region_name, dummy_container_without_error
+):
+    os.environ["AWS_DEFAULT_REGION"] = region_name
+
+    _EXPECTED_STEP_A_OUTPUT = "This pipeline is a function."
+    _EXPECTED_STEP_B_OUTPUT = "This generates a function arg."
+
+    step_config = dict(
+        role=role,
+        image_uri=dummy_container_without_error,
+        instance_type=INSTANCE_TYPE,
+    )
+
+    # This pipeline function may clash with the pipeline object
+    # defined below.
+    # However, if the function and args serialization happen in
+    # step level, this clash won't happen.
+    def pipeline():
+        return _EXPECTED_STEP_A_OUTPUT
+
+    @step(**step_config)
+    def generator():
+        return _EXPECTED_STEP_B_OUTPUT
+
+    @step(**step_config)
+    def func_with_collision(var: str):
+        return f"{pipeline()} {var}"
+
+    step_output_a = generator()
+    step_output_b = func_with_collision(step_output_a)
+
+    pipeline = Pipeline(  # noqa: F811
+        name=pipeline_name,
+        steps=[step_output_b],
+        sagemaker_session=sagemaker_session,
+    )
+
+    try:
+        create_and_execute_pipeline(
+            pipeline=pipeline,
+            pipeline_name=pipeline_name,
+            region_name=region_name,
+            role=role,
+            no_of_steps=2,
+            last_step_name=get_step(step_output_b).name,
+            execution_parameters=dict(),
+            step_status="Succeeded",
+            step_result_type=str,
+            step_result_value=f"{_EXPECTED_STEP_A_OUTPUT} {_EXPECTED_STEP_B_OUTPUT}",
         )
     finally:
         try:

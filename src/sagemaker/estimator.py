@@ -178,6 +178,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         container_entry_point: Optional[List[str]] = None,
         container_arguments: Optional[List[str]] = None,
         disable_output_compression: bool = False,
+        enable_remote_debug: Optional[Union[bool, PipelineVariable]] = None,
         **kwargs,
     ):
         """Initialize an ``EstimatorBase`` instance.
@@ -540,6 +541,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 to Amazon S3 without compression after training finishes.
             enable_infra_check (bool or PipelineVariable): Optional.
                 Specifies whether it is running Sagemaker built-in infra check jobs.
+            enable_remote_debug (bool or PipelineVariable): Optional.
+                Specifies whether RemoteDebug is enabled for the training job
         """
         instance_count = renamed_kwargs(
             "train_instance_count", "instance_count", instance_count, kwargs
@@ -577,6 +580,17 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.entry_point = entry_point
         self.dependencies = dependencies or []
         self.uploaded_code: Optional[UploadedCode] = None
+
+        # Check that the user properly sets both subnet and secutiry_groupe_ids
+        if (
+            subnets is not None
+            and security_group_ids is None
+            or security_group_ids is not None
+            and subnets is None
+        ):
+            raise RuntimeError(
+                "When setting up custom VPC, both subnets and security_group_ids must be set"
+            )
 
         if self.instance_type in ("local", "local_gpu"):
             if self.instance_type == "local_gpu" and self.instance_count > 1:
@@ -765,6 +779,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self._is_output_path_set_from_default_bucket_and_prefix = False
 
         self.tensorboard_app = TensorBoardApp(region=self.sagemaker_session.boto_region_name)
+
+        self._enable_remote_debug = enable_remote_debug
 
     @abstractmethod
     def training_image_uri(self):
@@ -1947,6 +1963,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             max_wait = job_details.get("StoppingCondition", {}).get("MaxWaitTimeInSeconds")
             if max_wait:
                 init_params["max_wait"] = max_wait
+
+        if "RemoteDebugConfig" in job_details:
+            init_params["enable_remote_debug"] = job_details["RemoteDebugConfig"].get(
+                "EnableRemoteDebug"
+            )
         return init_params
 
     def _get_instance_type(self):
@@ -2281,6 +2302,32 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
         _TrainingJob.update(self, profiler_rule_configs, profiler_config_request_dict)
 
+    def get_remote_debug_config(self):
+        """dict: Return the configuration of RemoteDebug"""
+        return (
+            None
+            if self._enable_remote_debug is None
+            else {"EnableRemoteDebug": self._enable_remote_debug}
+        )
+
+    def enable_remote_debug(self):
+        """Enable remote debug for a training job."""
+        self._update_remote_debug(True)
+
+    def disable_remote_debug(self):
+        """Disable remote debug for a training job."""
+        self._update_remote_debug(False)
+
+    def _update_remote_debug(self, enable_remote_debug: bool):
+        """Update to enable or disable remote debug for a training job.
+
+        This method updates the ``_enable_remote_debug`` parameter
+        and enables or disables remote debug for a training job
+        """
+        self._ensure_latest_training_job()
+        _TrainingJob.update(self, remote_debug_config={"EnableRemoteDebug": enable_remote_debug})
+        self._enable_remote_debug = enable_remote_debug
+
     def get_app_url(
         self,
         app_type,
@@ -2509,6 +2556,9 @@ class _TrainingJob(_Job):
         if estimator.profiler_config:
             train_args["profiler_config"] = estimator.profiler_config._to_request_dict()
 
+        if estimator.get_remote_debug_config() is not None:
+            train_args["remote_debug_config"] = estimator.get_remote_debug_config()
+
         return train_args
 
     @classmethod
@@ -2538,7 +2588,12 @@ class _TrainingJob(_Job):
 
     @classmethod
     def update(
-        cls, estimator, profiler_rule_configs=None, profiler_config=None, resource_config=None
+        cls,
+        estimator,
+        profiler_rule_configs=None,
+        profiler_config=None,
+        resource_config=None,
+        remote_debug_config=None,
     ):
         """Update a running Amazon SageMaker training job.
 
@@ -2551,20 +2606,31 @@ class _TrainingJob(_Job):
             resource_config (dict): Configuration of the resources for the training job. You can
                 update the keep-alive period if the warm pool status is `Available`. No other fields
                 can be updated. (default: None).
+            remote_debug_config (dict): Configuration for RemoteDebug. (default: ``None``)
+                The dict can contain 'EnableRemoteDebug'(bool).
+                For example,
+
+                .. code:: python
+
+                    remote_debug_config = {
+                        "EnableRemoteDebug": True,
+                    } (default: None).
 
         Returns:
             sagemaker.estimator._TrainingJob: Constructed object that captures
             all information about the updated training job.
         """
         update_args = cls._get_update_args(
-            estimator, profiler_rule_configs, profiler_config, resource_config
+            estimator, profiler_rule_configs, profiler_config, resource_config, remote_debug_config
         )
         estimator.sagemaker_session.update_training_job(**update_args)
 
         return estimator.latest_training_job
 
     @classmethod
-    def _get_update_args(cls, estimator, profiler_rule_configs, profiler_config, resource_config):
+    def _get_update_args(
+        cls, estimator, profiler_rule_configs, profiler_config, resource_config, remote_debug_config
+    ):
         """Constructs a dict of arguments for updating an Amazon SageMaker training job.
 
         Args:
@@ -2585,6 +2651,7 @@ class _TrainingJob(_Job):
         update_args.update(build_dict("profiler_rule_configs", profiler_rule_configs))
         update_args.update(build_dict("profiler_config", profiler_config))
         update_args.update(build_dict("resource_config", resource_config))
+        update_args.update(build_dict("remote_debug_config", remote_debug_config))
 
         return update_args
 
@@ -2683,6 +2750,7 @@ class Estimator(EstimatorBase):
         container_arguments: Optional[List[str]] = None,
         disable_output_compression: bool = False,
         enable_infra_check: Optional[Union[bool, PipelineVariable]] = None,
+        enable_remote_debug: Optional[Union[bool, PipelineVariable]] = None,
         **kwargs,
     ):
         """Initialize an ``Estimator`` instance.
@@ -3044,6 +3112,8 @@ class Estimator(EstimatorBase):
                 to Amazon S3 without compression after training finishes.
             enable_infra_check (bool or PipelineVariable): Optional.
                 Specifies whether it is running Sagemaker built-in infra check jobs.
+            enable_remote_debug (bool or PipelineVariable): Optional.
+                Specifies whether RemoteDebug is enabled for the training job
         """
         self.image_uri = image_uri
         self._hyperparameters = hyperparameters.copy() if hyperparameters else {}
@@ -3095,6 +3165,7 @@ class Estimator(EstimatorBase):
             container_entry_point=container_entry_point,
             container_arguments=container_arguments,
             disable_output_compression=disable_output_compression,
+            enable_remote_debug=enable_remote_debug,
             **kwargs,
         )
 

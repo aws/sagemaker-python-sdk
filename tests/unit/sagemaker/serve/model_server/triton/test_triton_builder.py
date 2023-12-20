@@ -33,6 +33,7 @@ MOCK_SERVE_SETTINGS.role_arn = ROLE_ARN
 MOCK_SESSION = Mock()
 MOCK_MODES = Mock()
 MOCK_DEPLOY_WRAPPER = Mock()
+MOCK_RESIGTER_WRAPPER = Mock()
 
 
 class pytorch:
@@ -56,6 +57,7 @@ class TritonBuilderTests(TestCase):
         triton_builder.sagemaker_session = MOCK_SESSION
         triton_builder.modes = MOCK_MODES
         triton_builder._model_builder_deploy_wrapper = MOCK_DEPLOY_WRAPPER
+        triton_builder._model_builder_register_wrapper = MOCK_RESIGTER_WRAPPER
         triton_builder.inference_spec = None
 
         mock_export = Mock()

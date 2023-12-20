@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 import os
+from dataclasses import dataclass
 from typing import Any
 
 
@@ -34,6 +35,14 @@ RESULTS_FOLDER = "results"
 EXCEPTION_FOLDER = "exception"
 JSON_SERIALIZED_RESULT_KEY = "Result"
 JSON_RESULTS_FILE = "results.json"
+
+
+@dataclass
+class _SerializedData:
+    """Data class to store serialized function and arguments"""
+
+    func: bytes
+    args: bytes
 
 
 class StoredFunction:
@@ -105,6 +114,38 @@ class StoredFunction:
             s3_kms_key=self.s3_kms_key,
         )
 
+    def save_pipeline_step_function(self, serialized_data):
+        """Upload serialized function and arguments to s3.
+
+        Args:
+            serialized_data (_SerializedData): The serialized function
+                and function arguments of a function step.
+        """
+
+        logger.info(
+            "Uploading serialized function code to %s",
+            s3_path_join(self.func_upload_path, FUNCTION_FOLDER),
+        )
+        serialization._upload_payload_and_metadata_to_s3(
+            bytes_to_upload=serialized_data.func,
+            hmac_key=self.hmac_key,
+            s3_uri=s3_path_join(self.func_upload_path, FUNCTION_FOLDER),
+            sagemaker_session=self.sagemaker_session,
+            s3_kms_key=self.s3_kms_key,
+        )
+
+        logger.info(
+            "Uploading serialized function arguments to %s",
+            s3_path_join(self.func_upload_path, ARGUMENTS_FOLDER),
+        )
+        serialization._upload_payload_and_metadata_to_s3(
+            bytes_to_upload=serialized_data.args,
+            hmac_key=self.hmac_key,
+            s3_uri=s3_path_join(self.func_upload_path, ARGUMENTS_FOLDER),
+            sagemaker_session=self.sagemaker_session,
+            s3_kms_key=self.s3_kms_key,
+        )
+
     def load_and_invoke(self) -> Any:
         """Load and deserialize the function and the arguments and then execute it."""
 
@@ -134,6 +175,7 @@ class StoredFunction:
             args,
             kwargs,
             hmac_key=self.hmac_key,
+            s3_base_uri=self.s3_base_uri,
             sagemaker_session=self.sagemaker_session,
         )
 
@@ -142,7 +184,7 @@ class StoredFunction:
 
         logger.info(
             "Serializing the function return and uploading to %s",
-            s3_path_join(self.func_upload_path, RESULTS_FOLDER),
+            s3_path_join(self.results_upload_path, RESULTS_FOLDER),
         )
         serialization.serialize_obj_to_s3(
             obj=result,

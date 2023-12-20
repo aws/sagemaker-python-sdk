@@ -1876,6 +1876,15 @@ def test_update_training_job_with_sagemaker_config_injection(sagemaker_session):
     )
 
 
+def test_update_training_job_with_remote_debug_config(sagemaker_session):
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
+    sagemaker_session.update_training_job(
+        job_name="MyTestJob", remote_debug_config={"EnableRemoteDebug": False}
+    )
+    _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
+    assert not actual_train_args["RemoteDebugConfig"]["EnableRemoteDebug"]
+
+
 def test_train_with_sagemaker_config_injection(sagemaker_session):
     sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
 
@@ -2128,6 +2137,7 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
     }
     CONTAINER_ENTRY_POINT = ["bin/bash", "test.sh"]
     CONTAINER_ARGUMENTS = ["--arg1", "value1", "--arg2", "value2"]
+    remote_debug_config = {"EnableRemoteDebug": True}
 
     sagemaker_session.train(
         image_uri=IMAGE,
@@ -2152,6 +2162,7 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
         training_image_config=TRAINING_IMAGE_CONFIG,
         container_entry_point=CONTAINER_ENTRY_POINT,
         container_arguments=CONTAINER_ARGUMENTS,
+        remote_debug_config=remote_debug_config,
     )
 
     _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
@@ -2174,6 +2185,7 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
         actual_train_args["AlgorithmSpecification"]["ContainerEntrypoint"] == CONTAINER_ENTRY_POINT
     )
     assert actual_train_args["AlgorithmSpecification"]["ContainerArguments"] == CONTAINER_ARGUMENTS
+    assert actual_train_args["RemoteDebugConfig"]["EnableRemoteDebug"]
 
 
 def test_create_transform_job_with_sagemaker_config_injection(sagemaker_session):
@@ -2497,9 +2509,7 @@ def sagemaker_session_full_lifecycle(boto_session_full_lifecycle):
 def test_logs_for_job_no_wait(cw, sagemaker_session_complete):
     ims = sagemaker_session_complete
     ims.logs_for_job(JOB_NAME)
-    ims.boto_session.client.return_value.describe_training_job.assert_called_once_with(
-        TrainingJobName=JOB_NAME
-    )
+    ims.sagemaker_client.describe_training_job.assert_called_once_with(TrainingJobName=JOB_NAME)
     cw().assert_called_with(0, "hi there #1")
 
 
@@ -2507,9 +2517,7 @@ def test_logs_for_job_no_wait(cw, sagemaker_session_complete):
 def test_logs_for_job_no_wait_stopped_job(cw, sagemaker_session_stopped):
     ims = sagemaker_session_stopped
     ims.logs_for_job(JOB_NAME)
-    ims.boto_session.client.return_value.describe_training_job.assert_called_once_with(
-        TrainingJobName=JOB_NAME
-    )
+    ims.sagemaker_client.describe_training_job.assert_called_once_with(TrainingJobName=JOB_NAME)
     cw().assert_called_with(0, "hi there #1")
 
 
@@ -2517,7 +2525,7 @@ def test_logs_for_job_no_wait_stopped_job(cw, sagemaker_session_stopped):
 def test_logs_for_job_wait_on_completed(cw, sagemaker_session_complete):
     ims = sagemaker_session_complete
     ims.logs_for_job(JOB_NAME, wait=True, poll=0)
-    assert ims.boto_session.client.return_value.describe_training_job.call_args_list == [
+    assert ims.sagemaker_client.describe_training_job.call_args_list == [
         call(TrainingJobName=JOB_NAME)
     ]
     cw().assert_called_with(0, "hi there #1")
@@ -2527,7 +2535,7 @@ def test_logs_for_job_wait_on_completed(cw, sagemaker_session_complete):
 def test_logs_for_job_wait_on_stopped(cw, sagemaker_session_stopped):
     ims = sagemaker_session_stopped
     ims.logs_for_job(JOB_NAME, wait=True, poll=0)
-    assert ims.boto_session.client.return_value.describe_training_job.call_args_list == [
+    assert ims.sagemaker_client.describe_training_job.call_args_list == [
         call(TrainingJobName=JOB_NAME)
     ]
     cw().assert_called_with(0, "hi there #1")
@@ -2537,7 +2545,7 @@ def test_logs_for_job_wait_on_stopped(cw, sagemaker_session_stopped):
 def test_logs_for_job_no_wait_on_running(cw, sagemaker_session_ready_lifecycle):
     ims = sagemaker_session_ready_lifecycle
     ims.logs_for_job(JOB_NAME)
-    assert ims.boto_session.client.return_value.describe_training_job.call_args_list == [
+    assert ims.sagemaker_client.describe_training_job.call_args_list == [
         call(TrainingJobName=JOB_NAME)
     ]
     cw().assert_called_with(0, "hi there #1")
@@ -2549,7 +2557,7 @@ def test_logs_for_job_full_lifecycle(time, cw, sagemaker_session_full_lifecycle)
     ims = sagemaker_session_full_lifecycle
     ims.logs_for_job(JOB_NAME, wait=True, poll=0)
     assert (
-        ims.boto_session.client.return_value.describe_training_job.call_args_list
+        ims.sagemaker_client.describe_training_job.call_args_list
         == [call(TrainingJobName=JOB_NAME)] * 3
     )
     assert cw().call_args_list == [
@@ -6208,3 +6216,75 @@ def test_update_inference_component(sagemaker_session):
     )
 
     sagemaker_session.sagemaker_client.update_inference_component.assert_called_with(**request)
+
+
+@patch("os.makedirs")
+def test_download_data_with_only_directory(makedirs, sagemaker_session):
+    sagemaker_session.s3_client = Mock()
+    sagemaker_session.s3_client.list_objects_v2 = Mock(
+        return_value={
+            "Contents": [
+                {
+                    "Key": "foo/bar/",
+                    "Size": 0,
+                }
+            ]
+        }
+    )
+    sagemaker_session.download_data(path=".", bucket="foo-bucket")
+
+    makedirs.assert_called_with("./foo/bar", exist_ok=True)
+    sagemaker_session.s3_client.download_file.assert_not_called()
+
+
+@patch("os.makedirs")
+def test_download_data_with_only_file(makedirs, sagemaker_session):
+    sagemaker_session.s3_client = Mock()
+    sagemaker_session.s3_client.list_objects_v2 = Mock(
+        return_value={
+            "Contents": [
+                {
+                    "Key": "foo/bar/mode.tar.gz",
+                    "Size": 100,
+                }
+            ]
+        }
+    )
+    sagemaker_session.download_data(path=".", bucket="foo-bucket")
+
+    makedirs.assert_called_with("./foo/bar", exist_ok=True)
+    sagemaker_session.s3_client.download_file.assert_called_with(
+        Bucket="foo-bucket",
+        Key="foo/bar/mode.tar.gz",
+        Filename="./foo/bar/mode.tar.gz",
+        ExtraArgs=None,
+    )
+
+
+@patch("os.makedirs")
+def test_download_data_with_file_and_directory(makedirs, sagemaker_session):
+    sagemaker_session.s3_client = Mock()
+    sagemaker_session.s3_client.list_objects_v2 = Mock(
+        return_value={
+            "Contents": [
+                {
+                    "Key": "foo/bar/",
+                    "Size": 0,
+                },
+                {
+                    "Key": "foo/bar/mode.tar.gz",
+                    "Size": 100,
+                },
+            ]
+        }
+    )
+    sagemaker_session.download_data(path=".", bucket="foo-bucket")
+
+    makedirs.assert_called_with("./foo/bar", exist_ok=True)
+    makedirs.assert_has_calls([call("./foo/bar", exist_ok=True), call("./foo/bar", exist_ok=True)])
+    sagemaker_session.s3_client.download_file.assert_called_with(
+        Bucket="foo-bucket",
+        Key="foo/bar/mode.tar.gz",
+        Filename="./foo/bar/mode.tar.gz",
+        ExtraArgs=None,
+    )

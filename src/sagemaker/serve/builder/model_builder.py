@@ -514,6 +514,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI):
             shared_libs=self.shared_libs,
             dependencies=self.dependencies,
             session=self.sagemaker_session,
+            image_uri=self.image_uri,
             inference_spec=self.inference_spec,
         )
 
@@ -527,6 +528,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI):
         def wrapper(*args, **kwargs):
             # Call the original function
             result = func(*args, **kwargs)
+            if "ModelBuilder" in result:
+                return result
             return result + " ModelBuilder"
 
         return wrapper

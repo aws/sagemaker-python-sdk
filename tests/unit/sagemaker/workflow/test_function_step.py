@@ -19,6 +19,8 @@ import re
 from mock import patch, Mock, ANY
 from typing import List, Tuple
 
+from mock.mock import MagicMock
+
 from sagemaker.workflow.parameters import ParameterInteger
 from sagemaker.workflow.execution_variables import ExecutionVariables
 from sagemaker.workflow.functions import Join
@@ -105,6 +107,8 @@ def test_step_decorator(mock_job_settings):
 
     assert function_step._job_settings is not None
     assert mock_job_settings.call_args[1]["image_uri"] == "test_image_uri"
+    assert function_step._serialized_data.func is not None
+    assert function_step._serialized_data.args is not None
 
 
 @patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
@@ -127,6 +131,8 @@ def test_step_decorator_with_default_step_configs(mock_job_settings):
     assert function_step.description == "Returns sum of numbers"
     assert function_step.retry_policies == []
     assert function_step.depends_on == []
+    assert function_step._serialized_data.func is not None
+    assert function_step._serialized_data.args is not None
 
 
 @patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
@@ -261,11 +267,13 @@ def test_function_step_to_request(mock_job_settings_ctr, mock_compile, *args):
         func=ANY,
         func_args=(2, 3),
         func_kwargs={},
+        serialized_data=step_output._step._serialized_data,
     )
 
     mock_job_settings_ctr.assert_called_once()
 
 
+@patch("sagemaker.remote_function.job._JobSettings", MagicMock())
 @pytest.mark.parametrize(
     "type_hint",
     [
@@ -278,8 +286,7 @@ def test_function_step_to_request(mock_job_settings_ctr, mock_compile, *args):
         Tuple[int, ...],
     ],
 )
-@patch("sagemaker.remote_function.job._JobSettings")
-def test_step_function_with_sequence_return_value(mock_job_settings, type_hint):
+def test_step_function_with_sequence_return_value(type_hint):
     @step
     def func() -> type_hint:
         return 1, 2, 3
@@ -366,8 +373,9 @@ def test_step_function_with_no_hint_on_return_values(mock_job_settings_ctr):
             pass
 
 
-@patch("sagemaker.remote_function.job._JobSettings")
-def test_step_function_take_in_delayed_return_as_positional_arguments(mock_job_settings):
+@patch("sagemaker.remote_function.core.serialization.CloudpickleSerializer.serialize", MagicMock())
+@patch("sagemaker.remote_function.job._JobSettings", MagicMock())
+def test_step_function_take_in_delayed_return_as_positional_arguments():
     @step
     def func_1() -> Tuple:
         return 1, 2, 3
@@ -390,8 +398,9 @@ def test_step_function_take_in_delayed_return_as_positional_arguments(mock_job_s
         get_step(func_2_output).depends_on = []
 
 
-@patch("sagemaker.remote_function.job._JobSettings")
-def test_step_function_take_in_delayed_return_as_keyword_arguments(mock_job_settings):
+@patch("sagemaker.remote_function.core.serialization.CloudpickleSerializer.serialize", MagicMock())
+@patch("sagemaker.remote_function.job._JobSettings", MagicMock())
+def test_step_function_take_in_delayed_return_as_keyword_arguments():
     @step
     def func_1() -> Tuple:
         return 1, 2, 3
@@ -414,8 +423,9 @@ def test_step_function_take_in_delayed_return_as_keyword_arguments(mock_job_sett
         get_step(func_2_output).depends_on = []
 
 
-@patch("sagemaker.remote_function.job._JobSettings")
-def test_delayed_returns_in_nested_object_are_ignored(mock_job_settings):
+@patch("sagemaker.remote_function.core.serialization.CloudpickleSerializer.serialize", MagicMock())
+@patch("sagemaker.remote_function.job._JobSettings", MagicMock())
+def test_delayed_returns_in_nested_object_are_ignored():
     @step
     def func_1() -> Tuple:
         return 1, 2, 3
@@ -438,8 +448,9 @@ def test_delayed_returns_in_nested_object_are_ignored(mock_job_settings):
     assert get_step(func_2_output).depends_on == []
 
 
-@patch("sagemaker.remote_function.job._JobSettings")
-def test_unsupported_pipeline_variables_as_function_arguments(mock_job_settings):
+@patch("sagemaker.remote_function.core.serialization.CloudpickleSerializer.serialize", MagicMock())
+@patch("sagemaker.remote_function.job._JobSettings", MagicMock())
+def test_unsupported_pipeline_variables_as_function_arguments():
     @step
     def func_1() -> Tuple:
         return 1, 2, 3
@@ -461,8 +472,9 @@ def test_unsupported_pipeline_variables_as_function_arguments(mock_job_settings)
         assert "Properties attribute is not supported for _FunctionStep" in str(e.value)
 
 
-@patch("sagemaker.remote_function.job._JobSettings")
-def test_both_data_and_execution_dependency_between_steps(mock_job_settings):
+@patch("sagemaker.remote_function.core.serialization.CloudpickleSerializer.serialize", MagicMock())
+@patch("sagemaker.remote_function.job._JobSettings", MagicMock())
+def test_both_data_and_execution_dependency_between_steps():
     @step
     def func_0() -> None:
         pass
@@ -491,8 +503,8 @@ def test_both_data_and_execution_dependency_between_steps(mock_job_settings):
         get_step(func_2_output).depends_on = []
 
 
-@patch("sagemaker.remote_function.job._JobSettings")
-def test_disable_deepcopy_of_delayed_return(mock_job_settings):
+@patch("sagemaker.remote_function.job._JobSettings", MagicMock())
+def test_disable_deepcopy_of_delayed_return():
     @step
     def func():
         return 1
