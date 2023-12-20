@@ -6002,6 +6002,101 @@ def test_upload_data_default_bucket_and_prefix_combinations(
     assert actual == expected
 
 
+def test_is_ic_based_endpoint_affirmative(sagemaker_session):
+
+    describe_endpoint_response = {"EndpointConfigName": "some-endpoint-config"}
+    describe_endpoint_config_response = {
+        "ExecutionRoleArn": "some-role-arn",
+        "ProductionVariants": [{"VariantName": "AllTraffic"}],
+    }
+
+    sagemaker_session.sagemaker_client.describe_endpoint = Mock(
+        return_value=describe_endpoint_response
+    )
+    sagemaker_session.sagemaker_client.describe_endpoint_config = Mock(
+        return_value=describe_endpoint_config_response
+    )
+
+    assert sagemaker_session.is_ic_based_endpoint("endpoint-name")
+    sagemaker_session.sagemaker_client.describe_endpoint.assert_called_once_with(
+        EndpointName="endpoint-name"
+    )
+    sagemaker_session.sagemaker_client.describe_endpoint_config.assert_called_once_with(
+        EndpointConfigName="some-endpoint-config"
+    )
+
+
+def test_is_ic_based_endpoint_negative_no_role(sagemaker_session):
+
+    describe_endpoint_response = {"EndpointConfigName": "some-endpoint-config"}
+    describe_endpoint_config_response = {
+        "ProductionVariants": [{"VariantName": "AllTraffic"}],
+    }
+
+    sagemaker_session.sagemaker_client.describe_endpoint = Mock(
+        return_value=describe_endpoint_response
+    )
+    sagemaker_session.sagemaker_client.describe_endpoint_config = Mock(
+        return_value=describe_endpoint_config_response
+    )
+
+    assert not sagemaker_session.is_ic_based_endpoint("endpoint-name")
+    sagemaker_session.sagemaker_client.describe_endpoint.assert_called_once_with(
+        EndpointName="endpoint-name"
+    )
+    sagemaker_session.sagemaker_client.describe_endpoint_config.assert_called_once_with(
+        EndpointConfigName="some-endpoint-config"
+    )
+
+
+def test_is_ic_based_endpoint_negative_multiple_variants(sagemaker_session):
+
+    describe_endpoint_response = {"EndpointConfigName": "some-endpoint-config"}
+    describe_endpoint_config_response = {
+        "ExecutionRoleArn": "some-role-arn",
+        "ProductionVariants": [{"VariantName": "AllTraffic"}, {"VariantName": "AllTraffic"}],
+    }
+
+    sagemaker_session.sagemaker_client.describe_endpoint = Mock(
+        return_value=describe_endpoint_response
+    )
+    sagemaker_session.sagemaker_client.describe_endpoint_config = Mock(
+        return_value=describe_endpoint_config_response
+    )
+
+    assert not sagemaker_session.is_ic_based_endpoint("endpoint-name")
+    sagemaker_session.sagemaker_client.describe_endpoint.assert_called_once_with(
+        EndpointName="endpoint-name"
+    )
+    sagemaker_session.sagemaker_client.describe_endpoint_config.assert_called_once_with(
+        EndpointConfigName="some-endpoint-config"
+    )
+
+
+def test_is_ic_based_endpoint_negative_model_name_present(sagemaker_session):
+
+    describe_endpoint_response = {"EndpointConfigName": "some-endpoint-config"}
+    describe_endpoint_config_response = {
+        "ExecutionRoleArn": "some-role-arn",
+        "ProductionVariants": [{"VariantName": "AllTraffic", "ModelName": "blah"}],
+    }
+
+    sagemaker_session.sagemaker_client.describe_endpoint = Mock(
+        return_value=describe_endpoint_response
+    )
+    sagemaker_session.sagemaker_client.describe_endpoint_config = Mock(
+        return_value=describe_endpoint_config_response
+    )
+
+    assert not sagemaker_session.is_ic_based_endpoint("endpoint-name")
+    sagemaker_session.sagemaker_client.describe_endpoint.assert_called_once_with(
+        EndpointName="endpoint-name"
+    )
+    sagemaker_session.sagemaker_client.describe_endpoint_config.assert_called_once_with(
+        EndpointConfigName="some-endpoint-config"
+    )
+
+
 def test_create_inference_component(sagemaker_session):
     tags = [{"Key": "TagtestKey", "Value": "TagtestValue"}]
     sagemaker_session.sagemaker_client.describe_inference_component = Mock(

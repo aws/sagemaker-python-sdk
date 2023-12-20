@@ -41,7 +41,7 @@ from sagemaker.jumpstart.types import (
 )
 from sagemaker.session import Session
 from sagemaker.config import load_sagemaker_config
-from sagemaker.utils import aws_partition, resolve_value_from_config
+from sagemaker.utils import resolve_value_from_config
 from sagemaker.workflow import is_pipeline_variable
 
 
@@ -764,7 +764,7 @@ def is_valid_model_id(
     raise ValueError(f"Unsupported script: {script}")
 
 
-def _get_jumpstart_model_id_version_from_resource_arn(
+def get_jumpstart_model_id_version_from_resource_arn(
     resource_arn: str,
     sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> Tuple[Optional[str], Optional[str]]:
@@ -778,54 +778,35 @@ def _get_jumpstart_model_id_version_from_resource_arn(
     model_id: Optional[str] = None
     model_version: Optional[str] = None
 
-    if tag_key_in_array(enums.JumpStartTag.MODEL_ID, list_tags_result):
-        try:
-            model_id = get_tag_value(enums.JumpStartTag.MODEL_ID, list_tags_result)
-        except KeyError:
-            model_id = None
+    model_id_keys = [enums.JumpStartTag.MODEL_ID, *constants.EXTRA_MODEL_ID_TAGS]
+    model_version_keys = [enums.JumpStartTag.MODEL_VERSION, *constants.EXTRA_MODEL_VERSION_TAGS]
 
-    if tag_key_in_array(enums.JumpStartTag.MODEL_VERSION, list_tags_result):
+    for model_id_key in model_id_keys:
         try:
-            model_version = get_tag_value(enums.JumpStartTag.MODEL_VERSION, list_tags_result)
+            model_id_from_tag = get_tag_value(model_id_key, list_tags_result)
         except KeyError:
-            model_version = None
+            continue
+        if model_id_from_tag is not None:
+            if model_id is not None and model_id_from_tag != model_id:
+                constants.JUMPSTART_LOGGER.warning(
+                    "Found multiple model ID tags on the following resource: %s", resource_arn
+                )
+                model_id = None
+                break
+            model_id = model_id_from_tag
+
+    for model_version_key in model_version_keys:
+        try:
+            model_version_from_tag = get_tag_value(model_version_key, list_tags_result)
+        except KeyError:
+            continue
+        if model_version_from_tag is not None:
+            if model_version is not None and model_version_from_tag != model_version:
+                constants.JUMPSTART_LOGGER.warning(
+                    "Found multiple model version tags on the following resource: %s", resource_arn
+                )
+                model_version = None
+                break
+            model_version = model_version_from_tag
 
     return model_id, model_version
-
-
-def get_jumpstart_model_id_version_from_training_job(
-    training_job_name: str,
-    sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-) -> Tuple[Optional[str], Optional[str]]:
-    """Inspects tags of training job to return JumpStart model ID and version.
-
-    Returns None if information cannot be inferred.
-    """
-
-    region: str = sagemaker_session.boto_region_name
-    partition: str = aws_partition(region)
-    account_id: str = sagemaker_session.account_id()
-
-    training_job_arn = (
-        f"arn:{partition}:sagemaker:{region}:{account_id}:training-job/{training_job_name}"
-    )
-
-    return _get_jumpstart_model_id_version_from_resource_arn(training_job_arn, sagemaker_session)
-
-
-def get_jumpstart_model_id_version_from_endpoint(
-    endpoint_name: str,
-    sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-) -> Tuple[Optional[str], Optional[str]]:
-    """Inspects tags of endpoint to return JumpStart model ID and version.
-
-    Returns None if information cannot be inferred.
-    """
-
-    region: str = sagemaker_session.boto_region_name
-    partition: str = aws_partition(region)
-    account_id: str = sagemaker_session.account_id()
-
-    endpoint_arn = f"arn:{partition}:sagemaker:{region}:{account_id}:endpoint/{endpoint_name}"
-
-    return _get_jumpstart_model_id_version_from_resource_arn(endpoint_arn, sagemaker_session)

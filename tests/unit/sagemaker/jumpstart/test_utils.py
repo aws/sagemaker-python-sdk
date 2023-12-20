@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 import os
-from unittest import TestCase, mock
+from unittest import TestCase
 from mock.mock import Mock, patch
 import pytest
 import random
@@ -22,6 +22,8 @@ from sagemaker.jumpstart.constants import (
     ENV_VARIABLE_DISABLE_JUMPSTART_LOGGING,
     ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE,
     ENV_VARIABLE_JUMPSTART_GATED_CONTENT_BUCKET_OVERRIDE,
+    EXTRA_MODEL_ID_TAGS,
+    EXTRA_MODEL_VERSION_TAGS,
     JUMPSTART_DEFAULT_REGION_NAME,
     JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET,
     JUMPSTART_LOGGER,
@@ -1286,7 +1288,7 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
         mock_list_tags.return_value = [{"Key": "blah", "Value": "blah1"}]
 
         self.assertEquals(
-            utils._get_jumpstart_model_id_version_from_resource_arn(
+            utils.get_jumpstart_model_id_version_from_resource_arn(
                 "some-arn", mock_sagemaker_session
             ),
             (None, None),
@@ -1303,7 +1305,7 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
         ]
 
         self.assertEquals(
-            utils._get_jumpstart_model_id_version_from_resource_arn(
+            utils.get_jumpstart_model_id_version_from_resource_arn(
                 "some-arn", mock_sagemaker_session
             ),
             ("model_id", None),
@@ -1320,7 +1322,7 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
         ]
 
         self.assertEquals(
-            utils._get_jumpstart_model_id_version_from_resource_arn(
+            utils.get_jumpstart_model_id_version_from_resource_arn(
                 "some-arn", mock_sagemaker_session
             ),
             (None, "model_version"),
@@ -1338,7 +1340,7 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
         ]
 
         self.assertEquals(
-            utils._get_jumpstart_model_id_version_from_resource_arn(
+            utils.get_jumpstart_model_id_version_from_resource_arn(
                 "some-arn", mock_sagemaker_session
             ),
             ("model_id", "model_version"),
@@ -1358,142 +1360,52 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
         ]
 
         self.assertEquals(
-            utils._get_jumpstart_model_id_version_from_resource_arn(
+            utils.get_jumpstart_model_id_version_from_resource_arn(
                 "some-arn", mock_sagemaker_session
             ),
             (None, None),
         )
         mock_list_tags.assert_called_once_with("some-arn")
 
-
-class TestGetJumpstartModelIdVersionFromTrainingJob(TestCase):
-    @mock.patch("sagemaker.jumpstart.utils._get_jumpstart_model_id_version_from_resource_arn")
-    def test_not_jumpstart_training_job(
-        self, mock__get_jumpstart_model_id_version_from_resource_arn
-    ):
+    def test_multiple_model_id_versions_found_aliases_consistent(self):
+        mock_list_tags = Mock()
         mock_sagemaker_session = Mock()
-        mock_sagemaker_session.boto_region_name = "us-west-2"
-        mock_sagemaker_session.account_id = Mock(return_value="123456789012")
-        mock__get_jumpstart_model_id_version_from_resource_arn.return_value = None, None
+        mock_sagemaker_session.list_tags = mock_list_tags
+        mock_list_tags.return_value = [
+            {"Key": "blah", "Value": "blah1"},
+            {"Key": JumpStartTag.MODEL_ID, "Value": "model_id_1"},
+            {"Key": JumpStartTag.MODEL_VERSION, "Value": "model_version_1"},
+            {"Key": random.choice(EXTRA_MODEL_ID_TAGS), "Value": "model_id_1"},
+            {"Key": random.choice(EXTRA_MODEL_VERSION_TAGS), "Value": "model_version_1"},
+        ]
 
         self.assertEquals(
-            utils.get_jumpstart_model_id_version_from_training_job(
-                "some-training-job-name", mock_sagemaker_session
+            utils.get_jumpstart_model_id_version_from_resource_arn(
+                "some-arn", mock_sagemaker_session
+            ),
+            ("model_id_1", "model_version_1"),
+        )
+        mock_list_tags.assert_called_once_with("some-arn")
+
+    def test_multiple_model_id_versions_found_aliases_inconsistent(self):
+        mock_list_tags = Mock()
+        mock_sagemaker_session = Mock()
+        mock_sagemaker_session.list_tags = mock_list_tags
+        mock_list_tags.return_value = [
+            {"Key": "blah", "Value": "blah1"},
+            {"Key": JumpStartTag.MODEL_ID, "Value": "model_id_1"},
+            {"Key": JumpStartTag.MODEL_VERSION, "Value": "model_version_1"},
+            {"Key": random.choice(EXTRA_MODEL_ID_TAGS), "Value": "model_id_2"},
+            {"Key": random.choice(EXTRA_MODEL_VERSION_TAGS), "Value": "model_version_2"},
+        ]
+
+        self.assertEquals(
+            utils.get_jumpstart_model_id_version_from_resource_arn(
+                "some-arn", mock_sagemaker_session
             ),
             (None, None),
         )
-
-        mock__get_jumpstart_model_id_version_from_resource_arn.assert_called_once_with(
-            "arn:aws:sagemaker:us-west-2:123456789012:training-job/some-training-job-name",
-            mock_sagemaker_session,
-        )
-
-    @mock.patch("sagemaker.jumpstart.utils._get_jumpstart_model_id_version_from_resource_arn")
-    def test_not_jumpstart_training_job_china_partition(
-        self, mock__get_jumpstart_model_id_version_from_resource_arn
-    ):
-        mock_sagemaker_session = Mock()
-        mock_sagemaker_session.boto_region_name = "cn-north-1"
-        mock_sagemaker_session.account_id = Mock(return_value="123456789012")
-        mock__get_jumpstart_model_id_version_from_resource_arn.return_value = None, None
-
-        self.assertEquals(
-            utils.get_jumpstart_model_id_version_from_training_job(
-                "some-training-job-name", mock_sagemaker_session
-            ),
-            (None, None),
-        )
-
-        mock__get_jumpstart_model_id_version_from_resource_arn.assert_called_once_with(
-            "arn:aws-cn:sagemaker:cn-north-1:123456789012:training-job/some-training-job-name",
-            mock_sagemaker_session,
-        )
-
-    @mock.patch("sagemaker.jumpstart.utils._get_jumpstart_model_id_version_from_resource_arn")
-    def test_jumpstart_training_job(self, mock__get_jumpstart_model_id_version_from_resource_arn):
-        mock_sagemaker_session = Mock()
-        mock_sagemaker_session.boto_region_name = "us-west-2"
-        mock_sagemaker_session.account_id = Mock(return_value="123456789012")
-        mock__get_jumpstart_model_id_version_from_resource_arn.return_value = (
-            "model_id",
-            "model_version",
-        )
-
-        self.assertEquals(
-            utils.get_jumpstart_model_id_version_from_training_job(
-                "some-training-job-name", mock_sagemaker_session
-            ),
-            ("model_id", "model_version"),
-        )
-
-        mock__get_jumpstart_model_id_version_from_resource_arn.assert_called_once_with(
-            "arn:aws:sagemaker:us-west-2:123456789012:training-job/some-training-job-name",
-            mock_sagemaker_session,
-        )
-
-
-class TestGetJumpstartModelIdVersionFromEndpoint(TestCase):
-    @mock.patch("sagemaker.jumpstart.utils._get_jumpstart_model_id_version_from_resource_arn")
-    def test_not_jumpstart_endpoint(self, mock__get_jumpstart_model_id_version_from_resource_arn):
-        mock_sagemaker_session = Mock()
-        mock_sagemaker_session.boto_region_name = "us-west-2"
-        mock_sagemaker_session.account_id = Mock(return_value="123456789012")
-        mock__get_jumpstart_model_id_version_from_resource_arn.return_value = None, None
-
-        self.assertEquals(
-            utils.get_jumpstart_model_id_version_from_endpoint(
-                "some-endpoint-name", mock_sagemaker_session
-            ),
-            (None, None),
-        )
-
-        mock__get_jumpstart_model_id_version_from_resource_arn.assert_called_once_with(
-            "arn:aws:sagemaker:us-west-2:123456789012:endpoint/some-endpoint-name",
-            mock_sagemaker_session,
-        )
-
-    @mock.patch("sagemaker.jumpstart.utils._get_jumpstart_model_id_version_from_resource_arn")
-    def test_not_jumpstart_endpoint_china_partition(
-        self, mock__get_jumpstart_model_id_version_from_resource_arn
-    ):
-        mock_sagemaker_session = Mock()
-        mock_sagemaker_session.boto_region_name = "cn-north-1"
-        mock_sagemaker_session.account_id = Mock(return_value="123456789012")
-        mock__get_jumpstart_model_id_version_from_resource_arn.return_value = None, None
-
-        self.assertEquals(
-            utils.get_jumpstart_model_id_version_from_endpoint(
-                "some-endpoint-name", mock_sagemaker_session
-            ),
-            (None, None),
-        )
-
-        mock__get_jumpstart_model_id_version_from_resource_arn.assert_called_once_with(
-            "arn:aws-cn:sagemaker:cn-north-1:123456789012:endpoint/some-endpoint-name",
-            mock_sagemaker_session,
-        )
-
-    @mock.patch("sagemaker.jumpstart.utils._get_jumpstart_model_id_version_from_resource_arn")
-    def test_jumpstart_endpoint(self, mock__get_jumpstart_model_id_version_from_resource_arn):
-        mock_sagemaker_session = Mock()
-        mock_sagemaker_session.boto_region_name = "us-west-2"
-        mock_sagemaker_session.account_id = Mock(return_value="123456789012")
-        mock__get_jumpstart_model_id_version_from_resource_arn.return_value = (
-            "model_id",
-            "model_version",
-        )
-
-        self.assertEquals(
-            utils.get_jumpstart_model_id_version_from_endpoint(
-                "some-endpoint-name", mock_sagemaker_session
-            ),
-            ("model_id", "model_version"),
-        )
-
-        mock__get_jumpstart_model_id_version_from_resource_arn.assert_called_once_with(
-            "arn:aws:sagemaker:us-west-2:123456789012:endpoint/some-endpoint-name",
-            mock_sagemaker_session,
-        )
+        mock_list_tags.assert_called_once_with("some-arn")
 
 
 class TestJumpStartLogger(TestCase):

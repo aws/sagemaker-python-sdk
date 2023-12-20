@@ -4296,6 +4296,27 @@ class Session(object):  # pylint: disable=too-many-public-methods
             self.wait_for_endpoint(endpoint_name)
         return endpoint_name
 
+    def is_ic_based_endpoint(self, endpoint_name):
+        """Returns True if endpoint is inference component based, False otherwise.
+
+        An endpoint is inference component based if and only if the associated endpoint config
+        has a role associated with it and a single production variant with no ``ModelName`` field.
+
+        Args:
+            endpoint_name (str): Name of the Amazon SageMaker ``Endpoint`` to determine
+                if IC based.
+        """
+        describe_endpoint_response = self.describe_endpoint(endpoint_name)
+        endpoint_config_name = describe_endpoint_response["EndpointConfigName"]
+        describe_endpoint_config_response = self.sagemaker_client.describe_endpoint_config(
+            EndpointConfigName=endpoint_config_name
+        )
+        production_variants = describe_endpoint_config_response.get("ProductionVariants", [])
+        execution_role_arn = describe_endpoint_config_response.get("ExecutionRoleArn")
+        if len(production_variants) != 1 or execution_role_arn is None:
+            return False
+        return production_variants[0].get("ModelName") is None
+
     def describe_endpoint(self, endpoint_name):
         """Describe an Amazon SageMaker ``Endpoint``.
 

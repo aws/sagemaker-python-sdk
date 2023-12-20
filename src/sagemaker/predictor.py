@@ -17,9 +17,8 @@ from typing import Optional
 from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 
 from sagemaker.jumpstart.factory.model import get_default_predictor
-from sagemaker.jumpstart.utils import (
-    get_jumpstart_model_id_version_from_endpoint,
-)
+from sagemaker.jumpstart.session_utils import get_model_id_version_from_endpoint
+
 
 from sagemaker.session import Session
 
@@ -35,6 +34,7 @@ from sagemaker.base_predictor import (  # noqa: F401 # pylint: disable=W0611
 
 def retrieve_default(
     endpoint_name: str,
+    inference_component_name: Optional[str] = None,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     region: Optional[str] = None,
     model_id: Optional[str] = None,
@@ -46,6 +46,8 @@ def retrieve_default(
 
     Args:
         endpoint_name (str): Endpoint name for which to create a predictor.
+        inference_component_name (str): Name of the Amazon SageMaker inference component
+            from which to optionally create a predictor. (Default: None).
         sagemaker_session (Session): The SageMaker Session to attach to the Predictor.
             (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
         region (str): The AWS Region for which to retrieve the default predictor.
@@ -69,21 +71,32 @@ def retrieve_default(
     """
 
     if model_id is None:
-        model_id, inferred_model_version = get_jumpstart_model_id_version_from_endpoint(
-            endpoint_name=endpoint_name,
-            sagemaker_session=sagemaker_session,
+        (
+            inferred_model_id,
+            inferred_model_version,
+            inferred_inference_component_name,
+        ) = get_model_id_version_from_endpoint(
+            endpoint_name, inference_component_name, sagemaker_session
         )
-        model_version = model_version or inferred_model_version
-        if not model_id:
+
+        if not inferred_model_id:
             raise ValueError(
                 f"Cannot infer JumpStart model ID from endpoint '{endpoint_name}'. "
                 "Please specify JumpStart `model_id` when retrieving default "
                 "predictor for this endpoint."
             )
 
-    model_version = model_version or "*"
+        model_id = inferred_model_id
+        model_version = model_version or inferred_model_version or "*"
+        inference_component_name = inference_component_name or inferred_inference_component_name
+    else:
+        model_version = model_version or "*"
 
-    predictor = Predictor(endpoint_name=endpoint_name, sagemaker_session=sagemaker_session)
+    predictor = Predictor(
+        endpoint_name=endpoint_name,
+        component_name=inference_component_name,
+        sagemaker_session=sagemaker_session,
+    )
 
     return get_default_predictor(
         predictor=predictor,
