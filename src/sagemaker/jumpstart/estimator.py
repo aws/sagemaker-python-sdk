@@ -106,6 +106,7 @@ class JumpStartEstimator(Estimator):
         container_entry_point: Optional[List[str]] = None,
         container_arguments: Optional[List[str]] = None,
         disable_output_compression: Optional[bool] = None,
+        enable_remote_debug: Optional[Union[bool, PipelineVariable]] = None,
     ):
         """Initializes a ``JumpStartEstimator``.
 
@@ -495,6 +496,8 @@ class JumpStartEstimator(Estimator):
                 a training job.
             disable_output_compression (Optional[bool]): When set to true, Model is uploaded
                 to Amazon S3 without compression after training finishes.
+            enable_remote_debug (bool or PipelineVariable): Optional.
+                Specifies whether RemoteDebug is enabled for the training job
 
         Raises:
             ValueError: If the model ID is not recognized by JumpStart.
@@ -569,6 +572,7 @@ class JumpStartEstimator(Estimator):
             container_arguments=container_arguments,
             disable_output_compression=disable_output_compression,
             enable_infra_check=enable_infra_check,
+            enable_remote_debug=enable_remote_debug,
         )
 
         self.model_id = estimator_init_kwargs.model_id

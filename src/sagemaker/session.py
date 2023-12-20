@@ -748,6 +748,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         profiler_config=None,
         environment: Optional[Dict[str, str]] = None,
         retry_strategy=None,
+        remote_debug_config=None,
     ):
         """Create an Amazon SageMaker training job.
 
@@ -858,6 +859,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 configurations.src/sagemaker/lineage/artifact.py:285
             profiler_config (dict): Configuration for how profiling information is emitted
                 with SageMaker Profiler. (default: ``None``).
+            remote_debug_config(dict): Configuration for RemoteDebug. (default: ``None``)
+                The dict can contain 'EnableRemoteDebug'(bool).
+                For example,
+
+                .. code:: python
+
+                    remote_debug_config = {
+                        "EnableRemoteDebug": True,
+                    }
             environment (dict[str, str]) : Environment variables to be set for
                 use during training job (default: ``None``)
             retry_strategy(dict): Defines RetryStrategy for InternalServerFailures.
@@ -950,6 +960,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             enable_sagemaker_metrics=enable_sagemaker_metrics,
             profiler_rule_configs=profiler_rule_configs,
             profiler_config=inferred_profiler_config,
+            remote_debug_config=remote_debug_config,
             environment=environment,
             retry_strategy=retry_strategy,
         )
@@ -992,6 +1003,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         enable_sagemaker_metrics=None,
         profiler_rule_configs=None,
         profiler_config=None,
+        remote_debug_config=None,
         environment=None,
         retry_strategy=None,
     ):
@@ -1103,6 +1115,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
             profiler_rule_configs (list[dict]): A list of profiler rule configurations.
             profiler_config(dict): Configuration for how profiling information is emitted with
                 SageMaker Profiler. (default: ``None``).
+            remote_debug_config(dict): Configuration for RemoteDebug. (default: ``None``)
+                The dict can contain 'EnableRemoteDebug'(bool).
+                For example,
+
+                .. code:: python
+
+                    remote_debug_config = {
+                        "EnableRemoteDebug": True,
+                    }
             environment (dict[str, str]) : Environment variables to be set for
                 use during training job (default: ``None``)
             retry_strategy(dict): Defines RetryStrategy for InternalServerFailures.
@@ -1206,6 +1227,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if profiler_config is not None:
             train_request["ProfilerConfig"] = profiler_config
 
+        if remote_debug_config is not None:
+            train_request["RemoteDebugConfig"] = remote_debug_config
+
         if retry_strategy is not None:
             train_request["RetryStrategy"] = retry_strategy
 
@@ -1217,6 +1241,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         profiler_rule_configs=None,
         profiler_config=None,
         resource_config=None,
+        remote_debug_config=None,
     ):
         """Calls the UpdateTrainingJob API for the given job name and returns the response.
 
@@ -1228,6 +1253,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
             resource_config (dict): Configuration of the resources for the training job. You can
                 update the keep-alive period if the warm pool status is `Available`. No other fields
                 can be updated. (default: ``None``).
+            remote_debug_config(dict): Configuration for RemoteDebug. (default: ``None``)
+                The dict can contain 'EnableRemoteDebug'(bool).
+                For example,
+
+                .. code:: python
+
+                    remote_debug_config = {
+                        "EnableRemoteDebug": True,
+                    }
         """
         # No injections from sagemaker_config because the UpdateTrainingJob API's resource_config
         # object accepts fewer parameters than the CreateTrainingJob API, and none that the
@@ -1240,6 +1274,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             profiler_rule_configs=profiler_rule_configs,
             profiler_config=inferred_profiler_config,
             resource_config=resource_config,
+            remote_debug_config=remote_debug_config,
         )
         LOGGER.info("Updating training job with name %s", job_name)
         LOGGER.debug("Update request: %s", json.dumps(update_training_job_request, indent=4))
@@ -1251,6 +1286,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         profiler_rule_configs=None,
         profiler_config=None,
         resource_config=None,
+        remote_debug_config=None,
     ):
         """Constructs a request compatible for updating an Amazon SageMaker training job.
 
@@ -1262,6 +1298,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
             resource_config (dict): Configuration of the resources for the training job. You can
                 update the keep-alive period if the warm pool status is `Available`. No other fields
                 can be updated. (default: ``None``).
+            remote_debug_config(dict): Configuration for RemoteDebug. (default: ``None``)
+                The dict can contain 'EnableRemoteDebug'(bool).
+                For example,
+
+                .. code:: python
+
+                    remote_debug_config = {
+                        "EnableRemoteDebug": True,
+                    }
 
         Returns:
             Dict: an update training request dict
@@ -1278,6 +1323,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if resource_config is not None:
             update_training_job_request["ResourceConfig"] = resource_config
+
+        if remote_debug_config is not None:
+            update_training_job_request["RemoteDebugConfig"] = remote_debug_config
 
         return update_training_job_request
 
