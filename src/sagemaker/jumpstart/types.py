@@ -1280,6 +1280,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         "container_arguments",
         "disable_output_compression",
         "enable_infra_check",
+        "enable_remote_debug",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -1344,6 +1345,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         container_arguments: Optional[List[str]] = None,
         disable_output_compression: Optional[bool] = None,
         enable_infra_check: Optional[Union[bool, PipelineVariable]] = None,
+        enable_remote_debug: Optional[Union[bool, PipelineVariable]] = None,
     ) -> None:
         """Instantiates JumpStartEstimatorInitKwargs object."""
 
@@ -1401,6 +1403,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         self.container_arguments = container_arguments
         self.disable_output_compression = disable_output_compression
         self.enable_infra_check = enable_infra_check
+        self.enable_remote_debug = enable_remote_debug
 
 
 class JumpStartEstimatorFitKwargs(JumpStartKwargs):

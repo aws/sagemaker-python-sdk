@@ -1876,6 +1876,15 @@ def test_update_training_job_with_sagemaker_config_injection(sagemaker_session):
     )
 
 
+def test_update_training_job_with_remote_debug_config(sagemaker_session):
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
+    sagemaker_session.update_training_job(
+        job_name="MyTestJob", remote_debug_config={"EnableRemoteDebug": False}
+    )
+    _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
+    assert not actual_train_args["RemoteDebugConfig"]["EnableRemoteDebug"]
+
+
 def test_train_with_sagemaker_config_injection(sagemaker_session):
     sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
 
@@ -2128,6 +2137,7 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
     }
     CONTAINER_ENTRY_POINT = ["bin/bash", "test.sh"]
     CONTAINER_ARGUMENTS = ["--arg1", "value1", "--arg2", "value2"]
+    remote_debug_config = {"EnableRemoteDebug": True}
 
     sagemaker_session.train(
         image_uri=IMAGE,
@@ -2152,6 +2162,7 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
         training_image_config=TRAINING_IMAGE_CONFIG,
         container_entry_point=CONTAINER_ENTRY_POINT,
         container_arguments=CONTAINER_ARGUMENTS,
+        remote_debug_config=remote_debug_config,
     )
 
     _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
@@ -2174,6 +2185,7 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
         actual_train_args["AlgorithmSpecification"]["ContainerEntrypoint"] == CONTAINER_ENTRY_POINT
     )
     assert actual_train_args["AlgorithmSpecification"]["ContainerArguments"] == CONTAINER_ARGUMENTS
+    assert actual_train_args["RemoteDebugConfig"]["EnableRemoteDebug"]
 
 
 def test_create_transform_job_with_sagemaker_config_injection(sagemaker_session):
