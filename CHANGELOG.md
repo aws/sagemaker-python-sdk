@@ -1,5 +1,22 @@
 # Changelog
 
+## v2.201.0 (2023-12-20)
+
+### Features
+
+ * Use specific images for SMP v2 jobs
+ * Added update for model package
+
+### Bug Fixes and Other Changes
+
+ * Add write permission to job output dirs for remote and step decorator running on non-root job user
+ * Move func and args serialization of function step to step level
+
+### Documentation Changes
+
+ * SMP v2 doc updates (#1423)
+ * fix ModelBuilder sample notebook links
+
 ## v2.200.1 (2023-12-14)
 
 ### Bug Fixes and Other Changes
