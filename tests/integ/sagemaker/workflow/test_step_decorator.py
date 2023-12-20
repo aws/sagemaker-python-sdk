@@ -860,6 +860,52 @@ def test_with_user_and_workdir_set_in_the_image(
             pass
 
 
+def test_with_user_and_workdir_set_in_the_image_client_error_case(
+    sagemaker_session, role, pipeline_name, region_name, dummy_container_with_user_and_workdir
+):
+    # This test aims to ensure client error in step decorated function
+    # can be successfully surfaced and the job can be failed.
+    os.environ["AWS_DEFAULT_REGION"] = region_name
+    client_error_message = "Testing client error in job."
+
+    @step(
+        role=role,
+        image_uri=dummy_container_with_user_and_workdir,
+        instance_type=INSTANCE_TYPE,
+    )
+    def my_func():
+        raise RuntimeError(client_error_message)
+
+    step_a = my_func()
+
+    pipeline = Pipeline(
+        name=pipeline_name,
+        steps=[step_a],
+        sagemaker_session=sagemaker_session,
+    )
+
+    try:
+        _, execution_steps = create_and_execute_pipeline(
+            pipeline=pipeline,
+            pipeline_name=pipeline_name,
+            region_name=region_name,
+            role=role,
+            no_of_steps=1,
+            last_step_name=get_step(step_a).name,
+            execution_parameters=dict(),
+            step_status="Failed",
+        )
+        assert (
+            f"ClientError: AlgorithmError: RuntimeError('{client_error_message}')"
+            in execution_steps[0]["FailureReason"]
+        )
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
+
+
 def test_step_level_serialization(
     sagemaker_session, role, pipeline_name, region_name, dummy_container_without_error
 ):
