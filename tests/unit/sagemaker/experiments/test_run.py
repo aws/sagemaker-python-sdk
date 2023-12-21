@@ -592,11 +592,11 @@ def test_log_output_artifact(run_obj):
     run_obj._artifact_uploader.upload_artifact.return_value = ("s3uri_value", "etag_value")
     with run_obj:
         run_obj.log_file("foo.txt", "name", "whizz/bang")
-        run_obj._artifact_uploader.upload_artifact.assert_called_with("foo.txt")
+        run_obj._artifact_uploader.upload_artifact.assert_called_with("foo.txt", extra_args=None)
         assert "whizz/bang" == run_obj._trial_component.output_artifacts["name"].media_type
 
         run_obj.log_file("foo.txt")
-        run_obj._artifact_uploader.upload_artifact.assert_called_with("foo.txt")
+        run_obj._artifact_uploader.upload_artifact.assert_called_with("foo.txt", extra_args=None)
         assert "foo.txt" in run_obj._trial_component.output_artifacts
         assert "text/plain" == run_obj._trial_component.output_artifacts["foo.txt"].media_type
 
@@ -611,11 +611,11 @@ def test_log_input_artifact(run_obj):
     run_obj._artifact_uploader.upload_artifact.return_value = ("s3uri_value", "etag_value")
     with run_obj:
         run_obj.log_file("foo.txt", "name", "whizz/bang", is_output=False)
-        run_obj._artifact_uploader.upload_artifact.assert_called_with("foo.txt")
+        run_obj._artifact_uploader.upload_artifact.assert_called_with("foo.txt", extra_args=None)
         assert "whizz/bang" == run_obj._trial_component.input_artifacts["name"].media_type
 
         run_obj.log_file("foo.txt", is_output=False)
-        run_obj._artifact_uploader.upload_artifact.assert_called_with("foo.txt")
+        run_obj._artifact_uploader.upload_artifact.assert_called_with("foo.txt", extra_args=None)
         assert "foo.txt" in run_obj._trial_component.input_artifacts
         assert "text/plain" == run_obj._trial_component.input_artifacts["foo.txt"].media_type
 
@@ -655,7 +655,7 @@ def test_log_multiple_input_artifacts(run_obj):
             run_obj.log_file(
                 file_path, "name" + str(index), "whizz/bang" + str(index), is_output=False
             )
-            run_obj._artifact_uploader.upload_artifact.assert_called_with(file_path)
+            run_obj._artifact_uploader.upload_artifact.assert_called_with(file_path, extra_args=None)
 
         run_obj._artifact_uploader.upload_artifact.return_value = (
             "s3uri_value",
@@ -680,7 +680,7 @@ def test_log_multiple_output_artifacts(run_obj):
                 "etag_value" + str(index),
             )
             run_obj.log_file(file_path, "name" + str(index), "whizz/bang" + str(index))
-            run_obj._artifact_uploader.upload_artifact.assert_called_with(file_path)
+            run_obj._artifact_uploader.upload_artifact.assert_called_with(file_path, extra_args=None)
 
         run_obj._artifact_uploader.upload_artifact.return_value = (
             "s3uri_value",
