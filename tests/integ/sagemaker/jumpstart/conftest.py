@@ -65,12 +65,17 @@ def _teardown():
         endpoint_info["Endpoint"]["EndpointConfigName"]
         for endpoint_info in search_endpoints_result["Results"]
     ]
-    model_names = [
-        sagemaker_client.describe_endpoint_config(EndpointConfigName=endpoint_config_name)[
-            "ProductionVariants"
-        ][0]["ModelName"]
-        for endpoint_config_name in endpoint_config_names
-    ]
+    model_names = list(
+        filter(
+            lambda elt: elt is not None,
+            [
+                sagemaker_client.describe_endpoint_config(EndpointConfigName=endpoint_config_name)[
+                    "ProductionVariants"
+                ][0].get("ModelName")
+                for endpoint_config_name in endpoint_config_names
+            ],
+        )
+    )
 
     # delete test-suite-tagged endpoints
     for endpoint_name in endpoint_names:
