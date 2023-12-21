@@ -63,7 +63,7 @@ required_packages = [
     "PyYAML~=6.0",
     "jsonschema",
     "platformdirs",
-    "tblib==1.7.0",
+    "tblib>=1.7.0,<3",
     "urllib3<1.27",
     "uvicorn==0.22.0",
     "fastapi==0.95.2",
