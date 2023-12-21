@@ -398,9 +398,9 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
             f"{(model_manifest.model_id, model_manifest.version)}."
         )
 
-    max_memory = int(100 * 1e6)
-    average_memory_per_thread = int(25 * 1e3)
-    max_workers = int(max_memory / average_memory_per_thread)
+    max_memory_bytes = int(100 * 1e6)
+    average_memory_bytes_per_thread = int(25 * 1e3)
+    max_workers = int(max_memory_bytes / average_memory_bytes_per_thread)
 
     executor = ThreadPoolExecutor(max_workers=max_workers)
 
