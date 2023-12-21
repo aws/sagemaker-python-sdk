@@ -14,13 +14,15 @@
 from __future__ import absolute_import
 import copy
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 from functools import cmp_to_key
-import os
+import json
 from typing import Any, Generator, List, Optional, Tuple, Union, Set, Dict
 from packaging.version import Version
 from sagemaker.jumpstart import accessors
 from sagemaker.jumpstart.constants import (
-    ENV_VARIABLE_DISABLE_JUMPSTART_LOGGING,
+    DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     JUMPSTART_DEFAULT_REGION_NAME,
 )
 from sagemaker.jumpstart.enums import JumpStartScriptScope
@@ -31,7 +33,8 @@ from sagemaker.jumpstart.filters import (
     SpecialSupportedFilterKeys,
 )
 from sagemaker.jumpstart.filters import Constant, ModelFilter, Operator, evaluate_filter_expression
-from sagemaker.jumpstart.utils import get_sagemaker_version
+from sagemaker.jumpstart.types import JumpStartModelHeader, JumpStartModelSpecs
+from sagemaker.jumpstart.utils import get_jumpstart_content_bucket, get_sagemaker_version
 
 
 def _compare_model_version_tuples(  # pylint: disable=too-many-return-statements
@@ -285,160 +288,130 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
             results. (Default: False).
     """
 
-    class _ModelSearchContext:
-        """Context manager for conducting model searches."""
+    models_manifest_list = accessors.JumpStartModelsAccessor._get_manifest(region=region)
 
-        def __init__(self):
-            """Initialize context manager."""
+    if isinstance(filter, str):
+        filter = Identity(filter)
 
-            self.old_disable_js_logging_env_var_value = os.environ.get(
-                ENV_VARIABLE_DISABLE_JUMPSTART_LOGGING
-            )
+    manifest_keys = set(models_manifest_list[0].__slots__)
 
-        def __enter__(self, *args, **kwargs):
-            """Enter context.
+    all_keys: Set[str] = set()
 
-            Disable JumpStart logs to avoid excessive logging.
-            """
+    model_filters: Set[ModelFilter] = set()
 
-            os.environ[ENV_VARIABLE_DISABLE_JUMPSTART_LOGGING] = "true"
+    for operator in _model_filter_in_operator_generator(filter):
+        model_filter = operator.unresolved_value
+        key = model_filter.key
+        all_keys.add(key)
+        model_filters.add(model_filter)
 
-        def __exit__(self, *args, **kwargs):
-            """Exit context.
+    for key in all_keys:
+        if "." in key:
+            raise NotImplementedError(f"No support for multiple level metadata indexing ('{key}').")
 
-            Restore JumpStart logging settings, and reset cache so
-            new logs would appear for models previously searched.
-            """
+    metadata_filter_keys = all_keys - SPECIAL_SUPPORTED_FILTER_KEYS
 
-            if self.old_disable_js_logging_env_var_value:
-                os.environ[
-                    ENV_VARIABLE_DISABLE_JUMPSTART_LOGGING
-                ] = self.old_disable_js_logging_env_var_value
-            else:
-                os.environ.pop(ENV_VARIABLE_DISABLE_JUMPSTART_LOGGING, None)
-            accessors.JumpStartModelsAccessor.reset_cache()
+    required_manifest_keys = manifest_keys.intersection(metadata_filter_keys)
+    possible_spec_keys = metadata_filter_keys - manifest_keys
 
-    with _ModelSearchContext():
+    is_task_filter = SpecialSupportedFilterKeys.TASK in all_keys
+    is_framework_filter = SpecialSupportedFilterKeys.FRAMEWORK in all_keys
 
-        if isinstance(filter, str):
-            filter = Identity(filter)
+    def evaluate_model(model_manifest: JumpStartModelHeader) -> Optional[Tuple[str, str]]:
 
-        models_manifest_list = accessors.JumpStartModelsAccessor._get_manifest(region=region)
-        manifest_keys = set(models_manifest_list[0].__slots__)
+        copied_filter = copy.deepcopy(filter)
 
-        all_keys: Set[str] = set()
+        manifest_specs_cached_values: Dict[str, Union[bool, int, float, str, dict, list]] = {}
 
-        model_filters: Set[ModelFilter] = set()
+        model_filters_to_resolved_values: Dict[ModelFilter, BooleanValues] = {}
 
-        for operator in _model_filter_in_operator_generator(filter):
-            model_filter = operator.unresolved_value
-            key = model_filter.key
-            all_keys.add(key)
-            model_filters.add(model_filter)
+        for val in required_manifest_keys:
+            manifest_specs_cached_values[val] = getattr(model_manifest, val)
 
-        for key in all_keys:
-            if "." in key:
-                raise NotImplementedError(
-                    f"No support for multiple level metadata indexing ('{key}')."
-                )
+        if is_task_filter:
+            manifest_specs_cached_values[
+                SpecialSupportedFilterKeys.TASK
+            ] = extract_framework_task_model(model_manifest.model_id)[1]
 
-        metadata_filter_keys = all_keys - SPECIAL_SUPPORTED_FILTER_KEYS
+        if is_framework_filter:
+            manifest_specs_cached_values[
+                SpecialSupportedFilterKeys.FRAMEWORK
+            ] = extract_framework_task_model(model_manifest.model_id)[0]
 
-        required_manifest_keys = manifest_keys.intersection(metadata_filter_keys)
-        possible_spec_keys = metadata_filter_keys - manifest_keys
+        if Version(model_manifest.min_version) > Version(get_sagemaker_version()):
+            return None
 
-        unrecognized_keys: Set[str] = set()
+        _populate_model_filters_to_resolved_values(
+            manifest_specs_cached_values,
+            model_filters_to_resolved_values,
+            model_filters,
+        )
 
-        is_task_filter = SpecialSupportedFilterKeys.TASK in all_keys
-        is_framework_filter = SpecialSupportedFilterKeys.FRAMEWORK in all_keys
+        _put_resolved_booleans_into_filter(copied_filter, model_filters_to_resolved_values)
 
-        for model_manifest in models_manifest_list:
+        copied_filter.eval()
 
-            copied_filter = copy.deepcopy(filter)
+        if copied_filter.resolved_value in [BooleanValues.TRUE, BooleanValues.FALSE]:
+            if copied_filter.resolved_value == BooleanValues.TRUE:
+                return (model_manifest.model_id, model_manifest.version)
+            return None
 
-            manifest_specs_cached_values: Dict[str, Union[bool, int, float, str, dict, list]] = {}
-
-            model_filters_to_resolved_values: Dict[ModelFilter, BooleanValues] = {}
-
-            for val in required_manifest_keys:
-                manifest_specs_cached_values[val] = getattr(model_manifest, val)
-
-            if is_task_filter:
-                manifest_specs_cached_values[
-                    SpecialSupportedFilterKeys.TASK
-                ] = extract_framework_task_model(model_manifest.model_id)[1]
-
-            if is_framework_filter:
-                manifest_specs_cached_values[
-                    SpecialSupportedFilterKeys.FRAMEWORK
-                ] = extract_framework_task_model(model_manifest.model_id)[0]
-
-            if Version(model_manifest.min_version) > Version(get_sagemaker_version()):
-                continue
-
-            _populate_model_filters_to_resolved_values(
-                manifest_specs_cached_values,
-                model_filters_to_resolved_values,
-                model_filters,
-            )
-
-            _put_resolved_booleans_into_filter(copied_filter, model_filters_to_resolved_values)
-
-            copied_filter.eval()
-
-            if copied_filter.resolved_value in [BooleanValues.TRUE, BooleanValues.FALSE]:
-                if copied_filter.resolved_value == BooleanValues.TRUE:
-                    yield (model_manifest.model_id, model_manifest.version)
-                continue
-
-            if copied_filter.resolved_value == BooleanValues.UNEVALUATED:
-                raise RuntimeError(
-                    "Filter expression in unevaluated state after using "
-                    "values from model manifest. Model ID and version that "
-                    f"is failing: {(model_manifest.model_id, model_manifest.version)}."
-                )
-            copied_filter_2 = copy.deepcopy(filter)
-
-            model_specs = accessors.JumpStartModelsAccessor.get_model_specs(
-                region=region,
-                model_id=model_manifest.model_id,
-                version=model_manifest.version,
-            )
-
-            model_specs_keys = set(model_specs.__slots__)
-
-            unrecognized_keys -= model_specs_keys
-            unrecognized_keys_for_single_spec = possible_spec_keys - model_specs_keys
-            unrecognized_keys.update(unrecognized_keys_for_single_spec)
-
-            for val in possible_spec_keys:
-                if hasattr(model_specs, val):
-                    manifest_specs_cached_values[val] = getattr(model_specs, val)
-
-            _populate_model_filters_to_resolved_values(
-                manifest_specs_cached_values,
-                model_filters_to_resolved_values,
-                model_filters,
-            )
-            _put_resolved_booleans_into_filter(copied_filter_2, model_filters_to_resolved_values)
-
-            copied_filter_2.eval()
-
-            if copied_filter_2.resolved_value != BooleanValues.UNEVALUATED:
-                if copied_filter_2.resolved_value == BooleanValues.TRUE or (
-                    BooleanValues.UNKNOWN and list_incomplete_models
-                ):
-                    yield (model_manifest.model_id, model_manifest.version)
-                continue
-
+        if copied_filter.resolved_value == BooleanValues.UNEVALUATED:
             raise RuntimeError(
-                "Filter expression in unevaluated state after using values from model specs. "
-                "Model ID and version that is failing: "
-                f"{(model_manifest.model_id, model_manifest.version)}."
+                "Filter expression in unevaluated state after using "
+                "values from model manifest. Model ID and version that "
+                f"is failing: {(model_manifest.model_id, model_manifest.version)}."
             )
+        copied_filter_2 = copy.deepcopy(filter)
 
-        if len(unrecognized_keys) > 0:
-            raise RuntimeError(f"Unrecognized keys: {str(unrecognized_keys)}")
+        model_specs = JumpStartModelSpecs(
+            json.loads(
+                DEFAULT_JUMPSTART_SAGEMAKER_SESSION.read_s3_file(
+                    get_jumpstart_content_bucket(), model_manifest.spec_key
+                )
+            )
+        )
+
+        for val in possible_spec_keys:
+            if hasattr(model_specs, val):
+                manifest_specs_cached_values[val] = getattr(model_specs, val)
+
+        _populate_model_filters_to_resolved_values(
+            manifest_specs_cached_values,
+            model_filters_to_resolved_values,
+            model_filters,
+        )
+        _put_resolved_booleans_into_filter(copied_filter_2, model_filters_to_resolved_values)
+
+        copied_filter_2.eval()
+
+        if copied_filter_2.resolved_value != BooleanValues.UNEVALUATED:
+            if copied_filter_2.resolved_value == BooleanValues.TRUE or (
+                BooleanValues.UNKNOWN and list_incomplete_models
+            ):
+                return (model_manifest.model_id, model_manifest.version)
+            return None
+
+        raise RuntimeError(
+            "Filter expression in unevaluated state after using values from model specs. "
+            "Model ID and version that is failing: "
+            f"{(model_manifest.model_id, model_manifest.version)}."
+        )
+
+    max_memory = int(100 * 1e6)
+    average_memory_per_thread = int(25 * 1e3)
+    max_workers = int(max_memory / average_memory_per_thread)
+
+    executor = ThreadPoolExecutor(max_workers=max_workers)
+
+    futures = []
+    for header in models_manifest_list:
+        futures.append(executor.submit(evaluate_model, header))
+
+    for future in as_completed(futures):
+        result = future.result()
+        if result:
+            yield result
 
 
 def get_model_url(
