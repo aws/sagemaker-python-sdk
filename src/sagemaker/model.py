@@ -77,7 +77,8 @@ from sagemaker.compute_resource_requirements.resource_requirements import Resour
 from sagemaker.enums import EndpointType
 from sagemaker.session import get_add_model_package_inference_args
 
-LOGGER = logging.getLogger("sagemaker")
+# Setting LOGGER for backward compatibility, in case users import it...
+logger = LOGGER = logging.getLogger("sagemaker")
 
 NEO_ALLOWED_FRAMEWORKS = set(
     ["mxnet", "tensorflow", "keras", "pytorch", "onnx", "xgboost", "tflite"]
@@ -737,7 +738,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                     script_name=os.path.basename(self.entry_point),
                 )
 
-            LOGGER.info(
+            logger.info(
                 "Repacking model artifact (%s), script artifact "
                 "(%s), and dependencies (%s) "
                 "into single tar.gz file located at %s. "
@@ -1258,13 +1259,13 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 self.image_uri = job_status.get("InferenceImage", None)
                 self._is_compiled_model = True
             else:
-                LOGGER.warning(
+                logger.warning(
                     "The instance type %s is not supported for deployment via SageMaker."
                     "Please deploy the model manually.",
                     target_instance_family,
                 )
         else:
-            LOGGER.warning(
+            logger.warning(
                 "Devices described by Target Platform OS, Architecture and Accelerator are not"
                 "supported for deployment via SageMaker. Please deploy the model manually."
             )
@@ -1484,7 +1485,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             and instance_type.startswith("ml.inf")
             and not self._is_compiled_model
         ):
-            LOGGER.warning(
+            logger.warning(
                 "Your model is not compiled. Please compile your model before using Inferentia."
             )
 

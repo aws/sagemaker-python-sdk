@@ -63,6 +63,9 @@ from sagemaker.compute_resource_requirements.resource_requirements import Resour
 LOGGER = logging.getLogger("sagemaker")
 
 
+logger = logging.getLogger(__name__)
+
+
 class PredictorBase(abc.ABC):
     """An object that encapsulates a deployed model."""
 
@@ -714,7 +717,7 @@ class Predictor(PredictorBase):
             endpoint_name=self.endpoint_name
         )
         if len(monitoring_schedules_dict["MonitoringScheduleSummaries"]) == 0:
-            print("No monitors found for endpoint. endpoint: {}".format(self.endpoint_name))
+            logger.debug("No monitors found for endpoint. endpoint: %s", self.endpoint_name)
             return []
 
         monitors = []
