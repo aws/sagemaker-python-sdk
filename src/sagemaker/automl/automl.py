@@ -332,7 +332,7 @@ class AutoML(object):
             total_job_runtime_in_seconds=auto_ml_job_desc.get("AutoMLJobConfig", {})
             .get("CompletionCriteria", {})
             .get("MaxAutoMLJobRuntimeInSeconds"),
-            job_objective=auto_ml_job_desc.get("AutoMLJobObjective", {}).get("MetricName"),
+            job_objective=auto_ml_job_desc.get("AutoMLJobObjective", {}),
             generate_candidate_definitions_only=auto_ml_job_desc.get(
                 "GenerateCandidateDefinitionsOnly", False
             ),
