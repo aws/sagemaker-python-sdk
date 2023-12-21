@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 import os
+import time
 import boto3
 import pytest
 from botocore.config import Config
@@ -76,6 +77,20 @@ def _teardown():
             ],
         )
     )
+
+    inference_component_names = []
+    for endpoint_name in endpoint_names:
+        for inference_component in sagemaker_client.list_inference_components(
+            EndpointNameEquals=endpoint_name
+        ).get("InferenceComponents", []):
+            inference_component_names.append(inference_component["InferenceComponentName"])
+
+    # delete inference components for test-suite-tagged endpoints
+    for inference_component_name in inference_component_names:
+        sagemaker_client.delete_inference_component(InferenceComponentName=inference_component_name)
+
+    # wait for sagemaker to detect IC has been deleted
+    time.sleep(60 * 5)
 
     # delete test-suite-tagged endpoints
     for endpoint_name in endpoint_names:
