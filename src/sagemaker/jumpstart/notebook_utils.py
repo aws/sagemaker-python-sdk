@@ -409,6 +409,9 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
         futures.append(executor.submit(evaluate_model, header))
 
     for future in as_completed(futures):
+        error = future.exception()
+        if error:
+            raise error
         result = future.result()
         if result:
             yield result
