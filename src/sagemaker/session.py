@@ -135,7 +135,8 @@ from sagemaker.utils import (
 from sagemaker import exceptions
 from sagemaker.session_settings import SessionSettings
 
-LOGGER = logging.getLogger("sagemaker")
+# Setting LOGGER for backward compatibility, in case users import it...
+logger = LOGGER = logging.getLogger("sagemaker")
 
 NOTEBOOK_METADATA_FILE = "/opt/ml/metadata/resource-metadata.json"
 MODEL_MONITOR_ONE_TIME_SCHEDULE = "NOW"
@@ -485,7 +486,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             response = s3.list_objects_v2(**request_parameters)
             contents = response.get("Contents", None)
             if not contents:
-                LOGGER.info(
+                logger.info(
                     "Nothing to download from bucket: %s, key_prefix: %s.", bucket, key_prefix
                 )
                 return []
@@ -630,7 +631,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                                 CreateBucketConfiguration={"LocationConstraint": region},
                             )
 
-                        LOGGER.info("Created S3 bucket: %s", bucket_name)
+                        logger.info("Created S3 bucket: %s", bucket_name)
                     except ClientError as e:
                         error_code = e.response["Error"]["Code"]
                         message = e.response["Error"]["Message"]
@@ -645,7 +646,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                         else:
                             raise
                 elif error_code == "403" and message == "Forbidden":
-                    LOGGER.error(
+                    logger.error(
                         "Bucket %s exists, but access is forbidden. Please try again after "
                         "adding appropriate access.",
                         bucket.name,
@@ -966,8 +967,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         )
 
         def submit(request):
-            LOGGER.info("Creating training-job with name: %s", job_name)
-            LOGGER.debug("train request: %s", json.dumps(request, indent=4))
+            logger.info("Creating training-job with name: %s", job_name)
+            logger.debug("train request: %s", json.dumps(request, indent=4))
             self.sagemaker_client.create_training_job(**request)
 
         self._intercept_create_request(train_request, submit, self.train.__name__)
@@ -1276,8 +1277,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             resource_config=resource_config,
             remote_debug_config=remote_debug_config,
         )
-        LOGGER.info("Updating training job with name %s", job_name)
-        LOGGER.debug("Update request: %s", json.dumps(update_training_job_request, indent=4))
+        logger.info("Updating training job with name %s", job_name)
+        logger.debug("Update request: %s", json.dumps(update_training_job_request, indent=4))
         self.sagemaker_client.update_training_job(**update_training_job_request)
 
     def _get_update_training_job_request(
@@ -1444,8 +1445,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         )
 
         def submit(request):
-            LOGGER.info("Creating processing-job with name %s", job_name)
-            LOGGER.debug("process request: %s", json.dumps(request, indent=4))
+            logger.info("Creating processing-job with name %s", job_name)
+            logger.debug("process request: %s", json.dumps(request, indent=4))
             self.sagemaker_client.create_processing_job(**request)
 
         self._intercept_create_request(process_request, submit, self.process.__name__)
@@ -1723,8 +1724,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if tags is not None:
             monitoring_schedule_request["Tags"] = tags
 
-        LOGGER.info("Creating monitoring schedule name %s.", monitoring_schedule_name)
-        LOGGER.debug(
+        logger.info("Creating monitoring schedule name %s.", monitoring_schedule_name)
+        logger.debug(
             "monitoring_schedule_request= %s", json.dumps(monitoring_schedule_request, indent=4)
         )
         self.sagemaker_client.create_monitoring_schedule(**monitoring_schedule_request)
@@ -2059,8 +2060,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 "NetworkConfig"
             ] = _network_config
 
-        LOGGER.info("Updating monitoring schedule with name: %s .", monitoring_schedule_name)
-        LOGGER.debug(
+        logger.info("Updating monitoring schedule with name: %s .", monitoring_schedule_name)
+        logger.debug(
             "monitoring_schedule_request= %s", json.dumps(monitoring_schedule_request, indent=4)
         )
         self.sagemaker_client.update_monitoring_schedule(**monitoring_schedule_request)
@@ -2072,8 +2073,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             monitoring_schedule_name (str): The name of the Amazon SageMaker Monitoring
                 Schedule to start.
         """
-        print()
-        print("Starting Monitoring Schedule with name: {}".format(monitoring_schedule_name))
+        logger.info("Starting Monitoring Schedule with name: %s", monitoring_schedule_name)
         self.sagemaker_client.start_monitoring_schedule(
             MonitoringScheduleName=monitoring_schedule_name
         )
@@ -2085,8 +2085,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             monitoring_schedule_name (str): The name of the Amazon SageMaker Monitoring
                 Schedule to stop.
         """
-        print()
-        print("Stopping Monitoring Schedule with name: {}".format(monitoring_schedule_name))
+        logger.info("Stopping Monitoring Schedule with name: %s", monitoring_schedule_name)
         self.sagemaker_client.stop_monitoring_schedule(
             MonitoringScheduleName=monitoring_schedule_name
         )
@@ -2098,8 +2097,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             monitoring_schedule_name (str): The name of the Amazon SageMaker Monitoring
                 Schedule to delete.
         """
-        print()
-        print("Deleting Monitoring Schedule with name: {}".format(monitoring_schedule_name))
+        logger.info("Deleting Monitoring Schedule with name: %s", monitoring_schedule_name)
         self.sagemaker_client.delete_monitoring_schedule(
             MonitoringScheduleName=monitoring_schedule_name
         )
@@ -2397,8 +2395,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         )
 
         def submit(request):
-            LOGGER.info("Creating auto-ml-job with name: %s", job_name)
-            LOGGER.debug("auto ml request: %s", json.dumps(request), indent=4)
+            logger.info("Creating auto-ml-job with name: %s", job_name)
+            logger.debug("auto ml request: %s", json.dumps(request), indent=4)
             self.sagemaker_client.create_auto_ml_job(**request)
 
         self._intercept_create_request(auto_ml_job_request, submit, self.auto_ml.__name__)
@@ -2684,7 +2682,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if tags is not None:
             compilation_job_request["Tags"] = tags
 
-        LOGGER.info("Creating compilation-job with name: %s", job_name)
+        logger.info("Creating compilation-job with name: %s", job_name)
         self.sagemaker_client.create_compilation_job(**compilation_job_request)
 
     def package_model_for_edge(
@@ -2736,7 +2734,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if resource_key is not None:
             edge_packaging_job_request["ResourceKey"] = resource_key
 
-        LOGGER.info("Creating edge-packaging-job with name: %s", job_name)
+        logger.info("Creating edge-packaging-job with name: %s", job_name)
         self.sagemaker_client.create_edge_packaging_job(**edge_packaging_job_request)
 
     def tune(  # noqa: C901
@@ -2935,8 +2933,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if tags is not None:
             tune_request["Tags"] = tags
 
-        LOGGER.info("Creating hyperparameter tuning job with name: %s", job_name)
-        LOGGER.debug("tune request: %s", json.dumps(tune_request, indent=4))
+        logger.info("Creating hyperparameter tuning job with name: %s", job_name)
+        logger.debug("tune request: %s", json.dumps(tune_request, indent=4))
         self.sagemaker_client.create_hyper_parameter_tuning_job(**tune_request)
 
     def create_tuning_job(
@@ -2989,8 +2987,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         )
 
         def submit(request):
-            LOGGER.info("Creating hyperparameter tuning job with name: %s", job_name)
-            LOGGER.debug("tune request: %s", json.dumps(request, indent=4))
+            logger.info("Creating hyperparameter tuning job with name: %s", job_name)
+            logger.debug("tune request: %s", json.dumps(request, indent=4))
             self.sagemaker_client.create_hyper_parameter_tuning_job(**request)
 
         self._intercept_create_request(tune_request, submit, self.create_tuning_job.__name__)
@@ -3346,15 +3344,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
             ClientError: If an error occurs while trying to stop the hyperparameter tuning job.
         """
         try:
-            LOGGER.info("Stopping tuning job: %s", name)
+            logger.info("Stopping tuning job: %s", name)
             self.sagemaker_client.stop_hyper_parameter_tuning_job(HyperParameterTuningJobName=name)
         except ClientError as e:
             error_code = e.response["Error"]["Code"]
             # allow to pass if the job already stopped
             if error_code == "ValidationException":
-                LOGGER.info("Tuning job: %s is already stopped or not running.", name)
+                logger.info("Tuning job: %s is already stopped or not running.", name)
             else:
-                LOGGER.error(
+                logger.error(
                     "Error occurred while attempting to stop tuning job: %s. Please try again.",
                     name,
                 )
@@ -3554,8 +3552,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         )
 
         def submit(request):
-            LOGGER.info("Creating transform job with name: %s", job_name)
-            LOGGER.debug("Transform request: %s", json.dumps(request, indent=4))
+            logger.info("Creating transform job with name: %s", job_name)
+            logger.debug("Transform request: %s", json.dumps(request, indent=4))
             self.sagemaker_client.create_transform_job(**request)
 
         self._intercept_create_request(transform_request, submit, self.transform.__name__)
@@ -3697,8 +3695,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         )
 
         def submit(request):
-            LOGGER.info("Creating model with name: %s", name)
-            LOGGER.debug("CreateModel request: %s", json.dumps(request, indent=4))
+            logger.info("Creating model with name: %s", name)
+            logger.debug("CreateModel request: %s", json.dumps(request, indent=4))
             try:
                 self.sagemaker_client.create_model(**request)
             except ClientError as e:
@@ -3708,7 +3706,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                     error_code == "ValidationException"
                     and "Cannot create already existing model" in message
                 ):
-                    LOGGER.warning("Using already existing model: %s", name)
+                    logger.warning("Using already existing model: %s", name)
                 else:
                     raise
 
@@ -3808,14 +3806,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
             },
         }
         try:
-            LOGGER.info("Creating model package with name: %s", name)
+            logger.info("Creating model package with name: %s", name)
             self.sagemaker_client.create_model_package(**request)
         except ClientError as e:
             error_code = e.response["Error"]["Code"]
             message = e.response["Error"]["Message"]
 
             if error_code == "ValidationException" and "ModelPackage already exists" in message:
-                LOGGER.warning("Using already existing model package: %s", name)
+                logger.warning("Using already existing model package: %s", name)
             else:
                 raise
 
@@ -4059,7 +4057,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             str: Name of the endpoint point configuration created.
         """
-        LOGGER.info("Creating endpoint-config with name %s", name)
+        logger.info("Creating endpoint-config with name %s", name)
 
         tags = tags or []
         provided_production_variant = production_variant(
@@ -4161,7 +4159,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             str: Name of the endpoint point configuration created.
         """
-        LOGGER.info("Creating endpoint-config with name %s", new_config_name)
+        logger.info("Creating endpoint-config with name %s", new_config_name)
 
         existing_endpoint_config_desc = self.sagemaker_client.describe_endpoint_config(
             EndpointConfigName=existing_config_name
@@ -4275,7 +4273,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             str: Name of the Amazon SageMaker ``Endpoint`` created.
         """
-        LOGGER.info("Creating endpoint with name %s", endpoint_name)
+        logger.info("Creating endpoint with name %s", endpoint_name)
 
         tags = tags or []
         tags = _append_project_tags(tags)
@@ -4366,7 +4364,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Args:
             endpoint_name (str): Name of the Amazon SageMaker ``Endpoint`` to delete.
         """
-        LOGGER.info("Deleting endpoint with name: %s", endpoint_name)
+        logger.info("Deleting endpoint with name: %s", endpoint_name)
         self.sagemaker_client.delete_endpoint(EndpointName=endpoint_name)
 
     def delete_endpoint_config(self, endpoint_config_name):
@@ -4376,7 +4374,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             endpoint_config_name (str): Name of the Amazon SageMaker endpoint configuration to
                 delete.
         """
-        LOGGER.info("Deleting endpoint configuration with name: %s", endpoint_config_name)
+        logger.info("Deleting endpoint configuration with name: %s", endpoint_config_name)
         self.sagemaker_client.delete_endpoint_config(EndpointConfigName=endpoint_config_name)
 
     def create_inference_component(
@@ -4710,7 +4708,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Args:
             model_name (str): Name of the Amazon SageMaker model to delete.
         """
-        LOGGER.info("Deleting model with name: %s", model_name)
+        logger.info("Deleting model with name: %s", model_name)
         self.sagemaker_client.delete_model(ModelName=model_name)
 
     def list_group_resources(self, group, filters, next_token: str = ""):
@@ -4829,7 +4827,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                     non_aws_tags.append(tag)
             return non_aws_tags
         except ClientError as error:
-            print("Error retrieving tags. resource_arn: {}".format(resource_arn))
+            logger.error("Error retrieving tags. resource_arn: %s", resource_arn)
             raise error
 
     def wait_for_job(self, job, poll=5):
@@ -4963,15 +4961,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
             ClientError: If an error occurs while trying to stop the batch transform job.
         """
         try:
-            LOGGER.info("Stopping transform job: %s", name)
+            logger.info("Stopping transform job: %s", name)
             self.sagemaker_client.stop_transform_job(TransformJobName=name)
         except ClientError as e:
             error_code = e.response["Error"]["Code"]
             # allow to pass if the job already stopped
             if error_code == "ValidationException":
-                LOGGER.info("Transform job: %s is already stopped or not running.", name)
+                logger.info("Transform job: %s is already stopped or not running.", name)
             else:
-                LOGGER.error("Error occurred while attempting to stop transform job: %s.", name)
+                logger.error("Error occurred while attempting to stop transform job: %s.", name)
                 raise
 
     def wait_for_endpoint(self, endpoint, poll=DEFAULT_EP_POLL, live_logging=False):
@@ -5373,7 +5371,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if role is not None:
             config_options["ExecutionRoleArn"] = role
 
-        LOGGER.info("Creating endpoint-config with name %s", name)
+        logger.info("Creating endpoint-config with name %s", name)
         self.sagemaker_client.create_endpoint_config(**config_options)
 
         return self.create_endpoint(
@@ -5437,7 +5435,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 domain_desc = self.sagemaker_client.describe_domain(DomainId=domain_id)
                 return domain_desc["DefaultUserSettings"]["ExecutionRole"]
             except ClientError:
-                LOGGER.debug(
+                logger.debug(
                     "Couldn't call 'describe_notebook_instance' to get the Role "
                     "ARN of the instance %s.",
                     instance_name,
@@ -5456,7 +5454,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         try:
             role = self.boto_session.client("iam").get_role(RoleName=role_name)["Role"]["Arn"]
         except ClientError:
-            LOGGER.warning(
+            logger.warning(
                 "Couldn't call 'get_role' to get Role ARN from role name %s to get Role path.",
                 role_name,
             )
@@ -5465,7 +5463,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             # Guessing this conditional's purpose was to handle lack of IAM permissions
             # https://github.com/aws/sagemaker-python-sdk/issues/2089#issuecomment-791802713
             if "AmazonSageMaker-ExecutionRole" in assumed_role:
-                LOGGER.warning(
+                logger.warning(
                     "Assuming role was created in SageMaker AWS console, "
                     "as the name contains `AmazonSageMaker-ExecutionRole`. "
                     "Defaulting to Role ARN with service-role in path. "
@@ -6084,7 +6082,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             .get("State")
         )
         while query_state not in ("SUCCEEDED", "FAILED"):
-            LOGGER.info("Query %s is being executed.", query_execution_id)
+            logger.info("Query %s is being executed.", query_execution_id)
             time.sleep(poll)
             query_state = (
                 self.get_query_execution(query_execution_id=query_execution_id)
@@ -6093,9 +6091,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 .get("State")
             )
         if query_state == "SUCCEEDED":
-            LOGGER.info("Query %s successfully executed.", query_execution_id)
+            logger.info("Query %s successfully executed.", query_execution_id)
         else:
-            LOGGER.error("Failed to execute query %s.", query_execution_id)
+            logger.error("Failed to execute query %s.", query_execution_id)
 
     def download_athena_query_result(
         self,
@@ -6351,8 +6349,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         )
 
         def submit(request):
-            LOGGER.info("Creating Inference Recommendations job with name: %s", job_name)
-            LOGGER.debug("process request: %s", json.dumps(request, indent=4))
+            logger.info("Creating Inference Recommendations job with name: %s", job_name)
+            logger.debug("process request: %s", json.dumps(request, indent=4))
             self.sagemaker_client.create_inference_recommendations_job(**request)
 
         self._intercept_create_request(
@@ -7386,7 +7384,7 @@ def _wait_until_training_done(callable_fn, desc, poll=5):
             # access policy based on resource tags, The caveat here is for true AccessDenied
             # cases the routine will fail after 5 mins
             if err.response["Error"]["Code"] == "AccessDeniedException" and elapsed_time <= 300:
-                LOGGER.warning(
+                logger.warning(
                     "Received AccessDeniedException. This could mean the IAM role does not "
                     "have the resource permissions, in which case please add resource access "
                     "and retry. For cases where the role has tag based resource policy, "
@@ -7412,7 +7410,7 @@ def _wait_until(callable_fn, poll=5):
             # access policy based on resource tags, The caveat here is for true AccessDenied
             # cases the routine will fail after 5 mins
             if err.response["Error"]["Code"] == "AccessDeniedException" and elapsed_time <= 300:
-                LOGGER.warning(
+                logger.warning(
                     "Received AccessDeniedException. This could mean the IAM role does not "
                     "have the resource permissions, in which case please add resource access "
                     "and retry. For cases where the role has tag based resource policy, "
@@ -7627,7 +7625,7 @@ def _check_job_status(job, desc, status_key_name):
     status = _STATUS_CODE_TABLE.get(status, status)
 
     if status == "Stopped":
-        LOGGER.warning(
+        logger.warning(
             "Job ended with status 'Stopped' rather than 'Completed'. "
             "This could mean the job timed out or stopped early for some other reason: "
             "Consider checking whether it completed as you expect."
