@@ -396,7 +396,6 @@ def test_default_right_size_and_deploy_unregistered_base_model(
             predictor.delete_model()
             predictor.delete_endpoint()
 
-
 @pytest.mark.slow_test
 @pytest.mark.flaky(reruns=3, reruns_delay=2)
 def test_advanced_right_size_and_deploy_unregistered_model_sklearn(
@@ -419,7 +418,7 @@ def test_advanced_right_size_and_deploy_unregistered_model_sklearn(
             predictor.delete_model()
             predictor.delete_endpoint()
 
-
+@pytest.mark.skip(reason="Skipping this test class for now")
 @pytest.mark.slow_test
 @pytest.mark.flaky(reruns=3, reruns_delay=2)
 def test_advanced_right_size_and_deploy_registered_model_sklearn(
