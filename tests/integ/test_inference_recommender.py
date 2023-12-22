@@ -165,13 +165,14 @@ def advanced_right_sized_model(sagemaker_session, cpu_instance_type):
                 ),
                 model_package_group_name,
             )
-        except Exception:
+        except Exception as e:
             sagemaker_session.sagemaker_client.delete_model_package(
                 ModelPackageName=sklearn_model_package.model_package_arn
             )
             sagemaker_session.sagemaker_client.delete_model_package_group(
                 ModelPackageGroupName=model_package_group_name
             )
+            raise e
 
 
 @pytest.fixture(scope="module")
