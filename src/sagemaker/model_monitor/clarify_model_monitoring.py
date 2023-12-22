@@ -25,7 +25,7 @@ import uuid
 from sagemaker.model_monitor import model_monitoring as mm
 from sagemaker import image_uris, s3
 from sagemaker.session import Session
-from sagemaker.utils import name_from_base
+from sagemaker.utils import name_from_base, format_tags
 from sagemaker.clarify import SageMakerClarifyProcessor, ModelPredictedLabelConfig
 from sagemaker.lineage._utils import get_resource_name_from_arn
 
@@ -81,7 +81,7 @@ class ClarifyModelMonitor(mm.ModelMonitor):
                 AWS services needed. If not specified, one is created using
                 the default AWS configuration chain.
             env (dict): Environment variables to be passed to the job.
-            tags ([dict]): List of tags to be passed to the job.
+            tags (Optional[Tags]): List of tags to be passed to the job.
             network_config (sagemaker.network.NetworkConfig): A NetworkConfig
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
@@ -108,7 +108,7 @@ class ClarifyModelMonitor(mm.ModelMonitor):
             base_job_name=base_job_name,
             sagemaker_session=session,
             env=env,
-            tags=tags,
+            tags=format_tags(tags),
             network_config=network_config,
         )
         self.latest_baselining_job_config = None
@@ -296,7 +296,7 @@ class ClarifyModelMonitor(mm.ModelMonitor):
                 time, Amazon SageMaker terminates the job regardless of its current status.
                 Default: 3600
             env (dict): Environment variables to be passed to the job.
-            tags ([dict]): List of tags to be passed to the job.
+            tags (Optional[Tags]): List of tags to be passed to the job.
             network_config (sagemaker.network.NetworkConfig): A NetworkConfig
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
@@ -458,7 +458,7 @@ class ClarifyModelMonitor(mm.ModelMonitor):
             request_dict["StoppingCondition"] = stop_condition
 
         if tags is not None:
-            request_dict["Tags"] = tags
+            request_dict["Tags"] = format_tags(tags)
 
         return request_dict
 

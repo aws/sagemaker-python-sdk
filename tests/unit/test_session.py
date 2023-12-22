@@ -3653,7 +3653,7 @@ def test_endpoint_from_production_variants_with_sagemaker_config_injection_no_km
     )
 
 
-def test_create_endpoint_config_with_tags(sagemaker_session):
+def test_create_endpoint_config_with_tags_list(sagemaker_session):
     tags = [{"Key": "TagtestKey", "Value": "TagtestValue"}]
 
     sagemaker_session.create_endpoint_config(
@@ -3666,6 +3666,23 @@ def test_create_endpoint_config_with_tags(sagemaker_session):
 
     sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
         EndpointConfigName="endpoint-test", ProductionVariants=ANY, Tags=tags
+    )
+
+
+def test_create_endpoint_config_with_tags_dict(sagemaker_session):
+    tags = {"TagtestKey": "TagtestValue"}
+    call_tags = [{"Key": "TagtestKey", "Value": "TagtestValue"}]
+
+    sagemaker_session.create_endpoint_config(
+        name="endpoint-test",
+        initial_instance_count=1,
+        instance_type="local",
+        model_name="simple-model",
+        tags=tags,
+    )
+
+    sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
+        EndpointConfigName="endpoint-test", ProductionVariants=ANY, Tags=call_tags
     )
 
 
