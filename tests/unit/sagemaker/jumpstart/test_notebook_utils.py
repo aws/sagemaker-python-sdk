@@ -5,7 +5,10 @@ from unittest import TestCase
 from unittest.mock import Mock, patch
 
 import pytest
-from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
+from sagemaker.jumpstart.constants import (
+    DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    JUMPSTART_DEFAULT_REGION_NAME,
+)
 from sagemaker.jumpstart.filters import And, Identity, Not, Or
 from tests.unit.sagemaker.jumpstart.constants import PROTOTYPICAL_MODEL_SPECS_DICT
 from tests.unit.sagemaker.jumpstart.utils import (
@@ -34,7 +37,9 @@ def test_list_jumpstart_scripts(
     patched_read_s3_file: Mock,
 ):
     patched_get_model_specs.side_effect = get_prototype_model_spec
-    patched_get_manifest.side_effect = get_prototype_manifest
+    patched_get_manifest.side_effect = lambda region, *args, **kwargs: get_prototype_manifest(
+        region
+    )
     patched_generate_jumpstart_models.side_effect = _generate_jumpstart_model_versions
     patched_read_s3_file.side_effect = lambda *args, **kwargs: json.dumps(
         get_prototype_model_spec(None, "pytorch-eqa-bert-base-cased").to_json()
@@ -54,7 +59,9 @@ def test_list_jumpstart_scripts(
         "region": "sa-east-1",
     }
     assert list_jumpstart_scripts(**kwargs) == sorted(["inference", "training"])
-    patched_generate_jumpstart_models.assert_called_once_with(**kwargs)
+    patched_generate_jumpstart_models.assert_called_once_with(
+        **kwargs, sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+    )
     patched_get_manifest.assert_called_once()
     assert patched_get_model_specs.call_count == 1
 
@@ -67,7 +74,9 @@ def test_list_jumpstart_scripts(
         "region": "sa-east-1",
     }
     assert list_jumpstart_scripts(**kwargs) == []
-    patched_generate_jumpstart_models.assert_called_once_with(**kwargs)
+    patched_generate_jumpstart_models.assert_called_once_with(
+        **kwargs, sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+    )
     patched_get_manifest.assert_called_once()
     assert patched_read_s3_file.call_count == len(PROTOTYPICAL_MODEL_SPECS_DICT)
 
@@ -81,7 +90,9 @@ def test_list_jumpstart_tasks(
     patched_get_manifest: Mock,
 ):
     patched_get_model_specs.side_effect = get_prototype_model_spec
-    patched_get_manifest.side_effect = get_prototype_manifest
+    patched_get_manifest.side_effect = lambda region, *args, **kwargs: get_prototype_manifest(
+        region
+    )
     patched_generate_jumpstart_models.side_effect = _generate_jumpstart_model_versions
 
     assert list_jumpstart_tasks() == sorted(
@@ -107,7 +118,9 @@ def test_list_jumpstart_tasks(
         "region": "sa-east-1",
     }
     assert list_jumpstart_tasks(**kwargs) == ["ic"]
-    patched_generate_jumpstart_models.assert_called_once_with(**kwargs)
+    patched_generate_jumpstart_models.assert_called_once_with(
+        **kwargs, sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+    )
     patched_get_manifest.assert_called_once()
     patched_get_model_specs.assert_not_called()
 
@@ -121,7 +134,9 @@ def test_list_jumpstart_frameworks(
     patched_get_manifest: Mock,
 ):
     patched_get_model_specs.side_effect = get_prototype_model_spec
-    patched_get_manifest.side_effect = get_prototype_manifest
+    patched_get_manifest.side_effect = lambda region, *args, **kwargs: get_prototype_manifest(
+        region
+    )
     patched_generate_jumpstart_models.side_effect = _generate_jumpstart_model_versions
 
     assert list_jumpstart_frameworks() == sorted(
@@ -161,7 +176,9 @@ def test_list_jumpstart_frameworks(
         ]
     )
 
-    patched_generate_jumpstart_models.assert_called_once_with(**kwargs)
+    patched_generate_jumpstart_models.assert_called_once_with(
+        **kwargs, sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+    )
     patched_get_manifest.assert_called_once()
     patched_get_model_specs.assert_not_called()
 
@@ -173,7 +190,9 @@ class ListJumpStartModels(TestCase):
         self, patched_get_model_specs: Mock, patched_get_manifest: Mock
     ):
         patched_get_model_specs.side_effect = get_prototype_model_spec
-        patched_get_manifest.side_effect = get_prototype_manifest
+        patched_get_manifest.side_effect = lambda region, *args, **kwargs: get_prototype_manifest(
+            region
+        )
         assert list_jumpstart_models(list_versions=True) == [
             ("catboost-classification-model", "1.0.0"),
             ("huggingface-spc-bert-base-cased", "1.0.0"),
@@ -196,7 +215,9 @@ class ListJumpStartModels(TestCase):
         patched_read_s3_file.side_effect = lambda *args, **kwargs: json.dumps(
             get_prototype_model_spec(None, "pytorch-eqa-bert-base-cased").to_json()
         )
-        patched_get_manifest.side_effect = get_prototype_manifest
+        patched_get_manifest.side_effect = lambda region, *args, **kwargs: get_prototype_manifest(
+            region
+        )
 
         manifest_length = len(get_prototype_manifest())
         vals = [True, False]
@@ -246,7 +267,9 @@ class ListJumpStartModels(TestCase):
         self, patched_get_model_specs: Mock, patched_get_manifest: Mock
     ):
         patched_get_model_specs.side_effect = get_prototype_model_spec
-        patched_get_manifest.side_effect = get_prototype_manifest
+        patched_get_manifest.side_effect = lambda region, *args, **kwargs: get_prototype_manifest(
+            region
+        )
 
         vals = [
             "classification",
@@ -303,7 +326,9 @@ class ListJumpStartModels(TestCase):
         patched_read_s3_file.side_effect = lambda *args, **kwargs: json.dumps(
             get_prototype_model_spec(None, "pytorch-eqa-bert-base-cased").to_json()
         )
-        patched_get_manifest.side_effect = get_prototype_manifest
+        patched_get_manifest.side_effect = lambda region, *args, **kwargs: get_prototype_manifest(
+            region
+        )
 
         vals = [
             "catboost",
@@ -384,11 +409,15 @@ class ListJumpStartModels(TestCase):
     ):
         patched_get_model_specs.side_effect = get_prototype_model_spec
 
-        patched_get_manifest.side_effect = lambda region: get_prototype_manifest(region="us-west-2")
+        patched_get_manifest.side_effect = lambda region, *args, **kwargs: get_prototype_manifest(
+            region="us-west-2"
+        )
 
         list_jumpstart_models(region="some-region")
 
-        patched_get_manifest.assert_called_once_with(region="some-region")
+        patched_get_manifest.assert_called_once_with(
+            region="some-region", s3_client=DEFAULT_JUMPSTART_SAGEMAKER_SESSION.s3_client
+        )
 
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -404,7 +433,9 @@ class ListJumpStartModels(TestCase):
                 for version in ["2.400.0", "1.4.0", "2.5.1", "1.300.0"]
             ]
 
-        patched_get_manifest.side_effect = get_manifest_more_versions
+        patched_get_manifest.side_effect = (
+            lambda region, *args, **kwargs: get_manifest_more_versions(region)
+        )
 
         assert [
             ("catboost-classification-model", "2.400.0"),
@@ -469,14 +500,16 @@ class ListJumpStartModels(TestCase):
         patched_get_manifest: Mock,
     ):
 
-        patched_get_manifest.side_effect = get_prototype_manifest
+        patched_get_manifest.side_effect = lambda region, *args, **kwargs: get_prototype_manifest(
+            region
+        )
 
-        def vulnerable_inference_model_spec(bucket, key) -> str:
+        def vulnerable_inference_model_spec(bucket, key, *args, **kwargs) -> str:
             spec = get_prototype_model_spec(None, "pytorch-eqa-bert-base-cased")
             spec.inference_vulnerable = True
             return json.dumps(spec.to_json())
 
-        def vulnerable_training_model_spec(bucket, key):
+        def vulnerable_training_model_spec(bucket, key, *args, **kwargs):
             spec = get_prototype_model_spec(None, "pytorch-eqa-bert-base-cased")
             spec.training_vulnerable = True
             return json.dumps(spec.to_json())
@@ -518,9 +551,11 @@ class ListJumpStartModels(TestCase):
         patched_get_manifest: Mock,
     ):
 
-        patched_get_manifest.side_effect = get_prototype_manifest
+        patched_get_manifest.side_effect = lambda region, *args, **kwargs: get_prototype_manifest(
+            region
+        )
 
-        def deprecated_model_spec(bucket, key) -> str:
+        def deprecated_model_spec(bucket, key, *args, **kwargs) -> str:
             spec = get_prototype_model_spec(None, "pytorch-eqa-bert-base-cased")
             spec.deprecated = True
             return json.dumps(spec.to_json())
@@ -548,7 +583,9 @@ class ListJumpStartModels(TestCase):
         patched_get_manifest: Mock,
     ):
         patched_get_model_specs.side_effect = get_prototype_model_spec
-        patched_get_manifest.side_effect = get_prototype_manifest
+        patched_get_manifest.side_effect = lambda region, *args, **kwargs: get_prototype_manifest(
+            region
+        )
 
         all_model_ids = [
             "catboost-classification-model",
@@ -575,7 +612,9 @@ class ListJumpStartModels(TestCase):
         patched_read_s3_file.side_effect = lambda *args, **kwargs: json.dumps(
             get_prototype_model_spec(None, "pytorch-eqa-bert-base-cased").to_json()
         )
-        patched_get_manifest.side_effect = get_prototype_manifest
+        patched_get_manifest.side_effect = lambda region, *args, **kwargs: get_prototype_manifest(
+            region
+        )
 
         assert list_jumpstart_models(
             Or(
@@ -618,7 +657,9 @@ class ListJumpStartModels(TestCase):
         patched_get_manifest: Mock,
     ):
         patched_get_model_specs.side_effect = get_prototype_model_spec
-        patched_get_manifest.side_effect = get_prototype_manifest
+        patched_get_manifest.side_effect = lambda region, *args, **kwargs: get_prototype_manifest(
+            region
+        )
 
         with pytest.raises(NotImplementedError):
             list_jumpstart_models("hosting_ecr_specs.py_version == py3")
@@ -652,5 +693,8 @@ def test_get_model_url(
     get_model_url(model_id, version, region=region)
 
     patched_get_model_specs.assert_called_once_with(
-        model_id=model_id, version=version, region=region
+        model_id=model_id,
+        version=version,
+        region=region,
+        s3_client=DEFAULT_JUMPSTART_SAGEMAKER_SESSION.s3_client,
     )
