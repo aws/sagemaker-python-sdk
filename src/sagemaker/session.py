@@ -6902,13 +6902,16 @@ def production_variant(
     return production_variant_configuration
 
 
-def get_execution_role(sagemaker_session=None):
+def get_execution_role(sagemaker_session=None, use_default=False):
     """Return the role ARN whose credentials are used to call the API.
 
     Throws an exception if role doesn't exist.
 
     Args:
-        sagemaker_session(Session): Current sagemaker session
+        sagemaker_session (Session): Current sagemaker session.
+        use_default (bool): Use a default role if ``get_caller_identity_arn`` does not
+            return a correct role. This default role will be created if needed.
+            Defaults to ``False``.
 
     Returns:
         (str): The role ARN
@@ -6919,6 +6922,41 @@ def get_execution_role(sagemaker_session=None):
 
     if ":role/" in arn:
         return arn
+
+    if use_default:
+        default_role_name = "AmazonSageMaker-DefaultRole"
+
+        LOGGER.warning("Using default role: %s", default_role_name)
+
+        boto3_session = sagemaker_session.boto_session
+        permissions_policy = json.dumps(
+            {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Principal": {"Service": ["sagemaker.amazonaws.com"]},
+                        "Action": "sts:AssumeRole",
+                    }
+                ],
+            }
+        )
+        iam_client = boto3_session.client("iam")
+        try:
+            iam_client.get_role(RoleName=default_role_name)
+        except iam_client.exceptions.NoSuchEntityException:
+            iam_client.create_role(
+                RoleName=default_role_name, AssumeRolePolicyDocument=str(permissions_policy)
+            )
+
+            LOGGER.warning("Created new sagemaker execution role: %s", default_role_name)
+
+        iam_client.attach_role_policy(
+            PolicyArn="arn:aws:iam::aws:policy/AmazonSageMakerFullAccess",
+            RoleName=default_role_name,
+        )
+        return iam_client.get_role(RoleName=default_role_name)["Role"]["Arn"]
+
     message = (
         "The current AWS identity is not a role: {}, therefore it cannot be used as a "
         "SageMaker execution role"
