@@ -1,5 +1,17 @@
 # Changelog
 
+## v2.202.1 (2023-12-22)
+
+### Bug Fixes and Other Changes
+
+ * update image_uri_configs  12-22-2023 06:17:35 PST
+ * update model path in local mode
+ * Using logging instead of prints
+
+### Documentation Changes
+
+ * update issue template.
+
 ## v2.202.0 (2023-12-21)
 
 ### Features
