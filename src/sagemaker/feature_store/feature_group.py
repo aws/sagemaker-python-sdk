@@ -28,7 +28,7 @@ import os
 import tempfile
 from concurrent.futures import as_completed
 from concurrent.futures import ThreadPoolExecutor
-from typing import Sequence, List, Dict, Any, Union
+from typing import Optional, Sequence, List, Dict, Any, Union
 from urllib.parse import urlparse
 
 from multiprocessing.pool import AsyncResult
@@ -65,7 +65,7 @@ from sagemaker.feature_store.inputs import (
     OnlineStoreConfigUpdate,
     OnlineStoreStorageTypeEnum,
 )
-from sagemaker.utils import resolve_value_from_config
+from sagemaker.utils import resolve_value_from_config, format_tags, Tags
 
 logger = logging.getLogger(__name__)
 
@@ -538,7 +538,7 @@ class FeatureGroup:
         disable_glue_table_creation: bool = False,
         data_catalog_config: DataCatalogConfig = None,
         description: str = None,
-        tags: List[Dict[str, str]] = None,
+        tags: Optional[Tags] = None,
         table_format: TableFormatEnum = None,
         online_store_storage_type: OnlineStoreStorageTypeEnum = None,
     ) -> Dict[str, Any]:
@@ -566,7 +566,7 @@ class FeatureGroup:
             data_catalog_config (DataCatalogConfig): configuration for
                 Metadata store (default: None).
             description (str): description of the FeatureGroup (default: None).
-            tags (List[Dict[str, str]]): list of tags for labeling a FeatureGroup (default: None).
+            tags (Optional[Tags]): Tags for labeling a FeatureGroup (default: None).
             table_format (TableFormatEnum): format of the offline store table (default: None).
             online_store_storage_type (OnlineStoreStorageTypeEnum): storage type for the
                 online store (default: None).
@@ -602,7 +602,7 @@ class FeatureGroup:
             ],
             role_arn=role_arn,
             description=description,
-            tags=tags,
+            tags=format_tags(tags),
         )
 
         # online store configuration

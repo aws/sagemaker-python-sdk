@@ -201,7 +201,7 @@ def test_create_sagemaker_model_include_tags(sagemaker_session):
     env_key = "env_key"
     env_value = "env_value"
     environment = {env_key: env_value}
-    tags = {"Key": "foo", "Value": "bar"}
+    tags = [{"Key": "foo", "Value": "bar"}]
 
     model_package = ModelPackage(
         role="role",
@@ -314,7 +314,7 @@ def test_model_package_create_transformer_with_product_id(sagemaker_session):
 
 @patch("sagemaker.model.ModelPackage.update_approval_status")
 def test_model_package_auto_approve_on_deploy(update_approval_status, sagemaker_session):
-    tags = {"Key": "foo", "Value": "bar"}
+    tags = [{"Key": "foo", "Value": "bar"}]
     model_package = ModelPackage(
         role="role",
         model_package_arn=MODEL_PACKAGE_VERSIONED_ARN,

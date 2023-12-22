@@ -44,6 +44,9 @@ from sagemaker.experiments.trial_component import _TrialComponent
 from sagemaker.utils import (
     get_module,
     unique_name_from_base,
+    format_tags,
+    Tags,
+    TagsDict,
 )
 
 from sagemaker.experiments._utils import (
@@ -97,7 +100,7 @@ class Run(object):
         run_name: Optional[str] = None,
         experiment_display_name: Optional[str] = None,
         run_display_name: Optional[str] = None,
-        tags: Optional[List[Dict[str, str]]] = None,
+        tags: Optional[Tags] = None,
         sagemaker_session: Optional["Session"] = None,
         artifact_bucket: Optional[str] = None,
         artifact_prefix: Optional[str] = None,
@@ -152,7 +155,7 @@ class Run(object):
             run_display_name (str): The display name of the run used in UI (default: None).
                 This display name is used in a create run call. If a run with the
                 specified name already exists, this display name won't take effect.
-            tags (List[Dict[str, str]]): A list of tags to be used for all create calls,
+            tags (Optional[Tags]): Tags to be used for all create calls,
                 e.g. to create an experiment, a run group, etc. (default: None).
             sagemaker_session (sagemaker.session.Session): Session object which
                 manages interactions with Amazon SageMaker APIs and any other
@@ -171,6 +174,8 @@ class Run(object):
 
         # avoid confusion due to mis-match in casing between run name and TC name
         self.run_name = self.run_name.lower()
+
+        tags = format_tags(tags)
 
         trial_component_name = Run._generate_trial_component_name(
             run_name=self.run_name, experiment_name=self.experiment_name
@@ -503,7 +508,8 @@ class Run(object):
         file_path: str,
         name: Optional[str] = None,
         media_type: Optional[str] = None,
-        is_output: bool = True,
+        is_output: Optional[bool] = True,
+        extra_args: Optional[dict] = None,
     ):
         """Upload a file to s3 and store it as an input/output artifact in this run.
 
@@ -516,11 +522,15 @@ class Run(object):
             is_output (bool): Determines direction of association to the
                 run. Defaults to True (output artifact).
                 If set to False then represented as input association.
+            extra_args (dict): Optional extra arguments that may be passed to the upload operation.
+                Similar to ExtraArgs parameter in S3 upload_file function. Please refer to the
+                ExtraArgs parameter documentation here:
+                https://boto3.amazonaws.com/v1/documentation/api/latest/guide/s3-uploading-files.html#the-extraargs-parameter
         """
         self._verify_trial_component_artifacts_length(is_output)
         media_type = media_type or guess_media_type(file_path)
         name = name or resolve_artifact_name(file_path)
-        s3_uri, _ = self._artifact_uploader.upload_artifact(file_path)
+        s3_uri, _ = self._artifact_uploader.upload_artifact(file_path, extra_args=extra_args)
         if is_output:
             self._trial_component.output_artifacts[name] = TrialComponentArtifact(
                 value=s3_uri, media_type=media_type
@@ -676,11 +686,11 @@ class Run(object):
         )
 
     @staticmethod
-    def _append_run_tc_label_to_tags(tags: Optional[List[Dict[str, str]]] = None) -> list:
+    def _append_run_tc_label_to_tags(tags: Optional[List[TagsDict]] = None) -> list:
         """Append the run trial component label to tags used to create a trial component.
 
         Args:
-            tags (List[Dict[str, str]]): The tags supplied by users to initialize a Run object.
+            tags (List[TagsDict]): The tags supplied by users to initialize a Run object.
 
         Returns:
             list: The updated tags with the appended run trial component label.
