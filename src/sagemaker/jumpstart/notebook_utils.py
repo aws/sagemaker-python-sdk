@@ -367,7 +367,7 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
         model_specs = JumpStartModelSpecs(
             json.loads(
                 DEFAULT_JUMPSTART_SAGEMAKER_SESSION.read_s3_file(
-                    get_jumpstart_content_bucket(), model_manifest.spec_key
+                    get_jumpstart_content_bucket(region), model_manifest.spec_key
                 )
             )
         )
