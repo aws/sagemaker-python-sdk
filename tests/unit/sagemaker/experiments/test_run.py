@@ -655,7 +655,9 @@ def test_log_multiple_input_artifacts(run_obj):
             run_obj.log_file(
                 file_path, "name" + str(index), "whizz/bang" + str(index), is_output=False
             )
-            run_obj._artifact_uploader.upload_artifact.assert_called_with(file_path, extra_args=None)
+            run_obj._artifact_uploader.upload_artifact.assert_called_with(
+                file_path, extra_args=None
+            )
 
         run_obj._artifact_uploader.upload_artifact.return_value = (
             "s3uri_value",
@@ -680,7 +682,9 @@ def test_log_multiple_output_artifacts(run_obj):
                 "etag_value" + str(index),
             )
             run_obj.log_file(file_path, "name" + str(index), "whizz/bang" + str(index))
-            run_obj._artifact_uploader.upload_artifact.assert_called_with(file_path, extra_args=None)
+            run_obj._artifact_uploader.upload_artifact.assert_called_with(
+                file_path, extra_args=None
+            )
 
         run_obj._artifact_uploader.upload_artifact.return_value = (
             "s3uri_value",
