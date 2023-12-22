@@ -53,7 +53,7 @@ def copy_directory_structure(destination_directory, relative_path):
     os.makedirs(destination_directory, relative_path)
 
 
-def move_to_destination(source, destination, job_name, sagemaker_session):
+def move_to_destination(source, destination, job_name, sagemaker_session, prefix=""):
     """Move source to destination.
 
     Can handle uploading to S3.
@@ -64,6 +64,8 @@ def move_to_destination(source, destination, job_name, sagemaker_session):
         job_name (str): SageMaker job name.
         sagemaker_session (sagemaker.Session): a sagemaker_session to interact
             with S3 if needed
+        prefix (str, optional): the directory on S3 used to save files, default
+            to the root of  ``destination``
 
     Returns:
         (str): destination URI
@@ -75,7 +77,7 @@ def move_to_destination(source, destination, job_name, sagemaker_session):
         final_uri = destination
     elif parsed_uri.scheme == "s3":
         bucket = parsed_uri.netloc
-        path = s3.s3_path_join(parsed_uri.path, job_name)
+        path = s3.s3_path_join(parsed_uri.path, job_name, prefix)
         final_uri = s3.s3_path_join("s3://", bucket, path)
         sagemaker_session.upload_data(source, bucket, path)
     else:
