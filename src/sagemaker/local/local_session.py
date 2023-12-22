@@ -42,7 +42,12 @@ from sagemaker.local.entities import (
     _LocalPipeline,
 )
 from sagemaker.session import Session
-from sagemaker.utils import get_config_value, _module_import_error, resolve_value_from_config
+from sagemaker.utils import (
+    get_config_value,
+    _module_import_error,
+    resolve_value_from_config,
+    format_tags,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -336,7 +341,7 @@ class LocalSagemakerClient(object):  # pylint: disable=too-many-public-methods
 
         """
         LocalSagemakerClient._endpoint_configs[EndpointConfigName] = _LocalEndpointConfig(
-            EndpointConfigName, ProductionVariants, Tags
+            EndpointConfigName, ProductionVariants, format_tags(Tags)
         )
 
     def describe_endpoint(self, EndpointName):
@@ -366,7 +371,12 @@ class LocalSagemakerClient(object):  # pylint: disable=too-many-public-methods
         Returns:
 
         """
-        endpoint = _LocalEndpoint(EndpointName, EndpointConfigName, Tags, self.sagemaker_session)
+        endpoint = _LocalEndpoint(
+            EndpointName,
+            EndpointConfigName,
+            format_tags(Tags),
+            self.sagemaker_session,
+        )
         LocalSagemakerClient._endpoints[EndpointName] = endpoint
         endpoint.serve()
 

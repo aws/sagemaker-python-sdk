@@ -24,6 +24,7 @@ from sagemaker.network import NetworkConfig
 from sagemaker.processing import FrameworkProcessor
 from sagemaker.tensorflow.estimator import TensorFlow
 from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.utils import format_tags, Tags
 
 
 class TensorFlowProcessor(FrameworkProcessor):
@@ -48,7 +49,7 @@ class TensorFlowProcessor(FrameworkProcessor):
         base_job_name: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
         env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
-        tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+        tags: Optional[Tags] = None,
         network_config: Optional[NetworkConfig] = None,
     ):
         """This processor executes a Python script in a TensorFlow execution environment.
@@ -81,6 +82,6 @@ class TensorFlowProcessor(FrameworkProcessor):
             base_job_name,
             sagemaker_session,
             env,
-            tags,
+            format_tags(tags),
             network_config,
         )

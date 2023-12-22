@@ -28,7 +28,7 @@ import sagemaker.local.data
 
 from sagemaker.local.image import _SageMakerContainer
 from sagemaker.local.utils import copy_directory_structure, move_to_destination, get_docker_host
-from sagemaker.utils import DeferredError, get_config_value
+from sagemaker.utils import DeferredError, get_config_value, format_tags
 from sagemaker.local.exceptions import StepExecutionException
 
 logger = logging.getLogger(__name__)
@@ -552,7 +552,7 @@ class _LocalEndpointConfig(object):
     def __init__(self, config_name, production_variants, tags=None):
         self.name = config_name
         self.production_variants = production_variants
-        self.tags = tags
+        self.tags = format_tags(tags)
         self.creation_time = datetime.datetime.now()
 
     def describe(self):
@@ -584,7 +584,7 @@ class _LocalEndpoint(object):
         self.name = endpoint_name
         self.endpoint_config = local_client.describe_endpoint_config(endpoint_config_name)
         self.production_variant = self.endpoint_config["ProductionVariants"][0]
-        self.tags = tags
+        self.tags = format_tags(tags)
 
         model_name = self.production_variant["ModelName"]
         self.primary_container = local_client.describe_model(model_name)["PrimaryContainer"]
