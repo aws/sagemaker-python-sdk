@@ -66,6 +66,18 @@ def test_move_to_destination_s3(recursive_copy):
     sms.upload_data.assert_called_with("/tmp/data", "bucket", "job")
 
 
+@patch("shutil.rmtree", Mock())
+def test_move_to_destination_s3_with_prefix():
+    sms = Mock(
+        settings=SessionSettings(),
+    )
+    uri = sagemaker.local.utils.move_to_destination(
+        "/tmp/data", "s3://bucket/path", "job", sms, "foo_prefix"
+    )
+    sms.upload_data.assert_called_with("/tmp/data", "bucket", "path/job/foo_prefix")
+    assert uri == "s3://bucket/path/job/foo_prefix"
+
+
 def test_move_to_destination_illegal_destination():
     with pytest.raises(ValueError):
         sagemaker.local.utils.move_to_destination("/tmp/data", "ftp://ftp/in/2018", "job", None)
