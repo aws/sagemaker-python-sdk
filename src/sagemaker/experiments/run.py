@@ -210,7 +210,9 @@ class Run(object):
             )
 
         if not _TrialComponent._trial_component_is_associated_to_trial(
-            self._trial_component.trial_component_name, self._trial.trial_name, sagemaker_session
+            self._trial_component.trial_component_name,
+            self._trial.trial_name,
+            sagemaker_session,
         ):
             self._trial.add_trial_component(self._trial_component)
 
@@ -781,6 +783,7 @@ def load_run(
     sagemaker_session: Optional["Session"] = None,
     artifact_bucket: Optional[str] = None,
     artifact_prefix: Optional[str] = None,
+    tags: Optional[List[Dict[str, str]]] = None,
 ) -> Run:
     """Load an existing run.
 
@@ -849,6 +852,8 @@ def load_run(
                 will be used.
         artifact_prefix (str): The S3 key prefix used to generate the S3 path
             to upload the artifact to (default: "trial-component-artifacts").
+        tags (List[Dict[str, str]]): A list of tags to be used for all create calls,
+            e.g. to create an experiment, a run group, etc. (default: None).
 
     Returns:
         Run: The loaded Run object.
@@ -870,6 +875,7 @@ def load_run(
             sagemaker_session=sagemaker_session or _utils.default_session(),
             artifact_bucket=artifact_bucket,
             artifact_prefix=artifact_prefix,
+            tags=tags,
         )
     elif _RunContext.get_current_run():
         run_instance = _RunContext.get_current_run()
@@ -889,6 +895,7 @@ def load_run(
             sagemaker_session=sagemaker_session or _utils.default_session(),
             artifact_bucket=artifact_bucket,
             artifact_prefix=artifact_prefix,
+            tags=tags,
         )
     else:
         raise RuntimeError(
