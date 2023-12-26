@@ -6057,7 +6057,7 @@ def test_is_ic_based_endpoint_negative_no_role(sagemaker_session):
     )
 
 
-def test_is_ic_based_endpoint_negative_multiple_variants(sagemaker_session):
+def test_is_ic_based_endpoint_positive_multiple_variants(sagemaker_session):
 
     describe_endpoint_response = {"EndpointConfigName": "some-endpoint-config"}
     describe_endpoint_config_response = {
@@ -6072,7 +6072,7 @@ def test_is_ic_based_endpoint_negative_multiple_variants(sagemaker_session):
         return_value=describe_endpoint_config_response
     )
 
-    assert not sagemaker_session.is_ic_based_endpoint("endpoint-name")
+    assert sagemaker_session.is_ic_based_endpoint("endpoint-name")
     sagemaker_session.sagemaker_client.describe_endpoint.assert_called_once_with(
         EndpointName="endpoint-name"
     )

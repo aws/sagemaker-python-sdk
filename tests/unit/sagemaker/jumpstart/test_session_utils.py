@@ -25,7 +25,7 @@ def test_get_model_id_version_from_non_ic_endpoint_happy_case(
     )
 
     retval = _get_model_id_version_from_non_ic_endpoint(
-        "blah", inference_component_name=None, sagemaker_session=mock_sm_session
+        "bLaH", inference_component_name=None, sagemaker_session=mock_sm_session
     )
 
     assert retval == ("model_id", "model_version")
@@ -87,13 +87,13 @@ def test_get_model_id_version_from_ic_endpoint_with_ic_name_happy_case(
     )
 
     retval = _get_model_id_version_from_ic_endpoint_with_ic_name(
-        "blah", sagemaker_session=mock_sm_session
+        "bLaH", sagemaker_session=mock_sm_session
     )
 
     assert retval == ("model_id", "model_version")
 
     mock_get_jumpstart_model_id_version_from_resource_arn.assert_called_once_with(
-        "arn:aws:sagemaker:us-west-2:123456789012:inference-component/blah", mock_sm_session
+        "arn:aws:sagemaker:us-west-2:123456789012:inference-component/bLaH", mock_sm_session
     )
 
 

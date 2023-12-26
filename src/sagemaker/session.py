@@ -4368,9 +4368,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
         )
         production_variants = describe_endpoint_config_response.get("ProductionVariants", [])
         execution_role_arn = describe_endpoint_config_response.get("ExecutionRoleArn")
-        if len(production_variants) != 1 or execution_role_arn is None:
-            return False
-        return production_variants[0].get("ModelName") is None
+        return execution_role_arn is not None and all(
+            production_variant.get("ModelName") is None
+            for production_variant in production_variants
+        )
 
     def describe_endpoint(self, endpoint_name):
         """Describe an Amazon SageMaker ``Endpoint``.

@@ -143,6 +143,9 @@ def _get_model_id_version_from_non_ic_endpoint(
     partition: str = aws_partition(region)
     account_id: str = sagemaker_session.account_id()
 
+    # SageMaker Tagging requires endpoint names to be lower cased
+    endpoint_name = endpoint_name.lower()
+
     endpoint_arn = f"arn:{partition}:sagemaker:{region}:{account_id}:endpoint/{endpoint_name}"
 
     model_id, model_version = get_jumpstart_model_id_version_from_resource_arn(
