@@ -171,7 +171,7 @@ def test_artifact_uploader_upload_artifact(tempdir, artifact_uploader):
     )
 
     artifact_uploader._s3_client.upload_file.assert_called_with(
-        path, artifact_uploader.artifact_bucket, expected_key
+        path, artifact_uploader.artifact_bucket, expected_key, ExtraArgs=None
     )
 
     expected_uri = "s3://{}/{}".format(artifact_uploader.artifact_bucket, expected_key)

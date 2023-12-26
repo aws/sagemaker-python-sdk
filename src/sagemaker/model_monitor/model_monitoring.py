@@ -62,6 +62,7 @@ from sagemaker.utils import (
     retries,
     resolve_value_from_config,
     resolve_class_attribute_from_config,
+    format_tags,
 )
 from sagemaker.lineage._utils import get_resource_name_from_arn
 from sagemaker.model_monitor.cron_expression_generator import CronExpressionGenerator
@@ -103,7 +104,8 @@ _PROBABILITY_ATTRIBUTE_ENV_NAME = "probability_attribute"
 _PROBABILITY_THRESHOLD_ATTRIBUTE_ENV_NAME = "probability_threshold_attribute"
 _CATEGORICAL_DRIFT_METHOD_ENV_NAME = "categorical_drift_method"
 
-_LOGGER = logging.getLogger(__name__)
+# Setting _LOGGER for backward compatibility, in case users import it...
+logger = _LOGGER = logging.getLogger(__name__)
 
 framework_name = "model-monitor"
 
@@ -162,7 +164,7 @@ class ModelMonitor(object):
                 AWS services needed. If not specified, one is created using
                 the default AWS configuration chain.
             env (dict): Environment variables to be passed to the job.
-            tags ([dict]): List of tags to be passed to the job.
+            tags (Optional[Tags]): List of tags to be passed to the job.
             network_config (sagemaker.network.NetworkConfig): A NetworkConfig
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
@@ -176,7 +178,7 @@ class ModelMonitor(object):
         self.max_runtime_in_seconds = max_runtime_in_seconds
         self.base_job_name = base_job_name
         self.sagemaker_session = sagemaker_session or Session()
-        self.tags = tags
+        self.tags = format_tags(tags)
 
         self.baselining_jobs = []
         self.latest_baselining_job = None
@@ -348,7 +350,7 @@ class ModelMonitor(object):
                 "Monitoring Schedule. To create another, first delete the existing one "
                 "using my_monitor.delete_monitoring_schedule()."
             )
-            print(message)
+            logger.warning(message)
             raise ValueError(message)
 
         if not output:
@@ -360,7 +362,7 @@ class ModelMonitor(object):
                 "Amazon Model Monitoring Schedule. "
                 "Please provide only one of the above required inputs"
             )
-            _LOGGER.error(message)
+            logger.error(message)
             raise ValueError(message)
 
         self._check_monitoring_schedule_cron_validity(
@@ -518,7 +520,7 @@ class ModelMonitor(object):
                 "Amazon Model Monitoring Schedule. "
                 "Please provide atmost one of the above required inputs"
             )
-            _LOGGER.error(message)
+            logger.error(message)
             raise ValueError(message)
 
         if endpoint_input is not None:
@@ -696,10 +698,9 @@ class ModelMonitor(object):
         """
         executions = self.list_executions()
         if len(executions) == 0:
-            print(
-                "No executions found for schedule. monitoring_schedule_name: {}".format(
-                    self.monitoring_schedule_name
-                )
+            logger.warning(
+                "No executions found for schedule. monitoring_schedule_name: %s",
+                self.monitoring_schedule_name,
             )
             return None
 
@@ -724,10 +725,9 @@ class ModelMonitor(object):
         """
         executions = self.list_executions()
         if len(executions) == 0:
-            print(
-                "No executions found for schedule. monitoring_schedule_name: {}".format(
-                    self.monitoring_schedule_name
-                )
+            logger.warning(
+                "No executions found for schedule. monitoring_schedule_name: %s",
+                self.monitoring_schedule_name,
             )
             return None
 
@@ -770,10 +770,9 @@ class ModelMonitor(object):
         )
 
         if len(monitoring_executions_dict["MonitoringExecutionSummaries"]) == 0:
-            print(
-                "No executions found for schedule. monitoring_schedule_name: {}".format(
-                    self.monitoring_schedule_name
-                )
+            logger.warning(
+                "No executions found for schedule. monitoring_schedule_name: %s",
+                self.monitoring_schedule_name,
             )
             return []
 
@@ -833,7 +832,7 @@ class ModelMonitor(object):
 
         if self.monitoring_schedule_name is None:
             message = "Nothing to update, please create a schedule first."
-            _LOGGER.error(message)
+            logger.error(message)
             raise ValueError(message)
 
         if not data_points_to_alert and not evaluation_period:
@@ -862,7 +861,7 @@ class ModelMonitor(object):
         """
         if self.monitoring_schedule_name is None:
             message = "No alert to list, please create a schedule first."
-            _LOGGER.warning(message)
+            logger.warning(message)
             return [], None
 
         monitoring_alert_dict: Dict = self.sagemaker_session.list_monitoring_alerts(
@@ -931,7 +930,7 @@ class ModelMonitor(object):
         """
         if self.monitoring_schedule_name is None:
             message = "No alert history to list, please create a schedule first."
-            _LOGGER.warning(message)
+            logger.warning(message)
             return [], None
 
         monitoring_alert_history_dict: Dict = self.sagemaker_session.list_monitoring_alert_history(
@@ -1554,7 +1553,7 @@ class ModelMonitor(object):
                 for the one time monitoring schedule (NOW), e.g. "-PT1H" (default: None)
         """
         message = "Creating Monitoring Schedule with name: {}".format(monitor_schedule_name)
-        _LOGGER.info(message)
+        logger.info(message)
 
         self._check_monitoring_schedule_cron_validity(
             schedule_cron_expression=schedule_cron_expression,
@@ -1653,7 +1652,7 @@ class ModelMonitor(object):
         """
         if self.job_definition_name is None or self.monitoring_schedule_name is None:
             message = "Nothing to update, please create a schedule first."
-            _LOGGER.error(message)
+            logger.error(message)
             raise ValueError(message)
 
         self._check_monitoring_schedule_cron_validity(
@@ -1740,7 +1739,7 @@ class DefaultModelMonitor(ModelMonitor):
                 AWS services needed. If not specified, one is created using
                 the default AWS configuration chain.
             env (dict): Environment variables to be passed to the job.
-            tags ([dict]): List of tags to be passed to the job.
+            tags (Optional[Tags]): List of tags to be passed to the job.
             network_config (sagemaker.network.NetworkConfig): A NetworkConfig
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
@@ -1759,7 +1758,7 @@ class DefaultModelMonitor(ModelMonitor):
             base_job_name=base_job_name,
             sagemaker_session=sagemaker_session,
             env=env,
-            tags=tags,
+            tags=format_tags(tags),
             network_config=network_config,
         )
 
@@ -1991,7 +1990,7 @@ class DefaultModelMonitor(ModelMonitor):
                 "Monitoring Schedule. To create another, first delete the existing one "
                 "using my_monitor.delete_monitoring_schedule()."
             )
-            _LOGGER.error(message)
+            logger.error(message)
             raise ValueError(message)
 
         if (batch_transform_input is not None) ^ (endpoint_input is None):
@@ -2000,7 +1999,7 @@ class DefaultModelMonitor(ModelMonitor):
                 "Amazon Model Monitoring Schedule. "
                 "Please provide only one of the above required inputs"
             )
-            _LOGGER.error(message)
+            logger.error(message)
             raise ValueError(message)
 
         self._check_monitoring_schedule_cron_validity(
@@ -2054,7 +2053,7 @@ class DefaultModelMonitor(ModelMonitor):
             self.job_definition_name = new_job_definition_name
             self.monitoring_schedule_name = monitor_schedule_name
         except Exception:
-            _LOGGER.exception("Failed to create monitoring schedule.")
+            logger.exception("Failed to create monitoring schedule.")
             # noinspection PyBroadException
             try:
                 self.sagemaker_session.sagemaker_client.delete_data_quality_job_definition(
@@ -2062,7 +2061,7 @@ class DefaultModelMonitor(ModelMonitor):
                 )
             except Exception:  # pylint: disable=W0703
                 message = "Failed to delete job definition {}.".format(new_job_definition_name)
-                _LOGGER.exception(message)
+                logger.exception(message)
             raise
 
     def update_monitoring_schedule(
@@ -2143,7 +2142,7 @@ class DefaultModelMonitor(ModelMonitor):
                 "Amazon Model Monitoring Schedule. "
                 "Please provide atmost one of the above required inputs"
             )
-            _LOGGER.error(message)
+            logger.error(message)
             raise ValueError(message)
 
         # check if this schedule is in v2 format and update as per v2 format if it is
@@ -2430,7 +2429,7 @@ class DefaultModelMonitor(ModelMonitor):
             if network_config is not None:
                 self.network_config = network_config
         except Exception:
-            _LOGGER.exception("Failed to update monitoring schedule.")
+            logger.exception("Failed to update monitoring schedule.")
             # noinspection PyBroadException
             try:
                 self.sagemaker_session.sagemaker_client.delete_data_quality_job_definition(
@@ -2438,7 +2437,7 @@ class DefaultModelMonitor(ModelMonitor):
                 )
             except Exception:  # pylint: disable=W0703
                 message = "Failed to delete job definition {}.".format(new_job_definition_name)
-                _LOGGER.exception(message)
+                logger.exception(message)
             raise
 
     def delete_monitoring_schedule(self):
@@ -2449,7 +2448,7 @@ class DefaultModelMonitor(ModelMonitor):
             message = "Deleting Data Quality Job Definition with name: {}".format(
                 self.job_definition_name
             )
-            _LOGGER.info(message)
+            logger.info(message)
             self.sagemaker_session.sagemaker_client.delete_data_quality_job_definition(
                 JobDefinitionName=self.job_definition_name
             )
@@ -2570,10 +2569,9 @@ class DefaultModelMonitor(ModelMonitor):
         """
         executions = self.list_executions()
         if len(executions) == 0:
-            print(
-                "No executions found for schedule. monitoring_schedule_name: {}".format(
-                    self.monitoring_schedule_name
-                )
+            logger.warning(
+                "No executions found for schedule. monitoring_schedule_name: %s",
+                self.monitoring_schedule_name,
             )
             return None
 
@@ -2583,9 +2581,10 @@ class DefaultModelMonitor(ModelMonitor):
             return latest_monitoring_execution.statistics()
         except ClientError:
             status = latest_monitoring_execution.describe()["ProcessingJobStatus"]
-            print(
-                "Unable to retrieve statistics as job is in status '{}'. Latest statistics only "
-                "available for completed executions.".format(status)
+            logger.warning(
+                "Unable to retrieve statistics as job is in status '%s'. Latest statistics only "
+                "available for completed executions.",
+                status,
             )
 
     def latest_monitoring_constraint_violations(self):
@@ -2600,10 +2599,9 @@ class DefaultModelMonitor(ModelMonitor):
         """
         executions = self.list_executions()
         if len(executions) == 0:
-            print(
-                "No executions found for schedule. monitoring_schedule_name: {}".format(
-                    self.monitoring_schedule_name
-                )
+            logger.warning(
+                "No executions found for schedule. monitoring_schedule_name: %s",
+                self.monitoring_schedule_name,
             )
             return None
 
@@ -2612,9 +2610,10 @@ class DefaultModelMonitor(ModelMonitor):
             return latest_monitoring_execution.constraint_violations()
         except ClientError:
             status = latest_monitoring_execution.describe()["ProcessingJobStatus"]
-            print(
-                "Unable to retrieve constraint violations as job is in status '{}'. Latest "
-                "violations only available for completed executions.".format(status)
+            logger.warning(
+                "Unable to retrieve constraint violations as job is in status '%s'. Latest "
+                "violations only available for completed executions.",
+                status,
             )
 
     @staticmethod
@@ -2687,7 +2686,7 @@ class DefaultModelMonitor(ModelMonitor):
                 time, Amazon SageMaker terminates the job regardless of its current status.
                 Default: 3600
             env (dict): Environment variables to be passed to the job.
-            tags ([dict]): List of tags to be passed to the job.
+            tags (Optional[Tags]): List of tags to be passed to the job.
             network_config (sagemaker.network.NetworkConfig): A NetworkConfig
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
@@ -2819,7 +2818,7 @@ class DefaultModelMonitor(ModelMonitor):
             request_dict["StoppingCondition"] = stop_condition
 
         if tags is not None:
-            request_dict["Tags"] = tags
+            request_dict["Tags"] = format_tags(tags)
 
         return request_dict
 
@@ -2873,7 +2872,7 @@ class ModelQualityMonitor(ModelMonitor):
                 AWS services needed. If not specified, one is created using
                 the default AWS configuration chain.
             env (dict): Environment variables to be passed to the job.
-            tags ([dict]): List of tags to be passed to the job.
+            tags (Optional[Tags]): List of tags to be passed to the job.
             network_config (sagemaker.network.NetworkConfig): A NetworkConfig
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
@@ -2892,7 +2891,7 @@ class ModelQualityMonitor(ModelMonitor):
             base_job_name=base_job_name,
             sagemaker_session=session,
             env=env,
-            tags=tags,
+            tags=format_tags(tags),
             network_config=network_config,
         )
 
@@ -3109,7 +3108,7 @@ class ModelQualityMonitor(ModelMonitor):
                 "Monitoring Schedule. To create another, first delete the existing one "
                 "using my_monitor.delete_monitoring_schedule()."
             )
-            _LOGGER.error(message)
+            logger.error(message)
             raise ValueError(message)
 
         if (batch_transform_input is not None) ^ (endpoint_input is None):
@@ -3118,7 +3117,7 @@ class ModelQualityMonitor(ModelMonitor):
                 "Amazon Model Monitoring Schedule. "
                 "Please provide only one of the above required inputs"
             )
-            _LOGGER.error(message)
+            logger.error(message)
             raise ValueError(message)
 
         self._check_monitoring_schedule_cron_validity(
@@ -3173,7 +3172,7 @@ class ModelQualityMonitor(ModelMonitor):
             self.job_definition_name = new_job_definition_name
             self.monitoring_schedule_name = monitor_schedule_name
         except Exception:
-            _LOGGER.exception("Failed to create monitoring schedule.")
+            logger.exception("Failed to create monitoring schedule.")
             # noinspection PyBroadException
             try:
                 self.sagemaker_session.sagemaker_client.delete_model_quality_job_definition(
@@ -3181,7 +3180,7 @@ class ModelQualityMonitor(ModelMonitor):
                 )
             except Exception:  # pylint: disable=W0703
                 message = "Failed to delete job definition {}.".format(new_job_definition_name)
-                _LOGGER.exception(message)
+                logger.exception(message)
             raise
 
     def update_monitoring_schedule(
@@ -3279,7 +3278,7 @@ class ModelQualityMonitor(ModelMonitor):
                 "Amazon Model Monitoring Schedule. "
                 "Please provide atmost one of the above required inputs"
             )
-            _LOGGER.error(message)
+            logger.error(message)
             raise ValueError(message)
 
         # Need to update schedule with a new job definition
@@ -3340,7 +3339,7 @@ class ModelQualityMonitor(ModelMonitor):
             if network_config is not None:
                 self.network_config = network_config
         except Exception:
-            _LOGGER.exception("Failed to update monitoring schedule.")
+            logger.exception("Failed to update monitoring schedule.")
             # noinspection PyBroadException
             try:
                 self.sagemaker_session.sagemaker_client.delete_model_quality_job_definition(
@@ -3348,7 +3347,7 @@ class ModelQualityMonitor(ModelMonitor):
                 )
             except Exception:  # pylint: disable=W0703
                 message = "Failed to delete job definition {}.".format(new_job_definition_name)
-                _LOGGER.exception(message)
+                logger.exception(message)
             raise
 
     def delete_monitoring_schedule(self):
@@ -3358,7 +3357,7 @@ class ModelQualityMonitor(ModelMonitor):
         message = "Deleting Model Quality Job Definition with name: {}".format(
             self.job_definition_name
         )
-        _LOGGER.info(message)
+        logger.info(message)
         self.sagemaker_session.sagemaker_client.delete_model_quality_job_definition(
             JobDefinitionName=self.job_definition_name
         )
@@ -3464,7 +3463,7 @@ class ModelQualityMonitor(ModelMonitor):
                 time, Amazon SageMaker terminates the job regardless of its current status.
                 Default: 3600
             env (dict): Environment variables to be passed to the job.
-            tags ([dict]): List of tags to be passed to the job.
+            tags (Optional[Tags]): List of tags to be passed to the job.
             network_config (sagemaker.network.NetworkConfig): A NetworkConfig
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
@@ -3596,7 +3595,7 @@ class ModelQualityMonitor(ModelMonitor):
             request_dict["StoppingCondition"] = stop_condition
 
         if tags is not None:
-            request_dict["Tags"] = tags
+            request_dict["Tags"] = format_tags(tags)
 
         return request_dict
 

@@ -98,6 +98,8 @@ from sagemaker.utils import (
     to_string,
     check_and_get_run_experiment_config,
     resolve_value_from_config,
+    format_tags,
+    Tags,
 )
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
@@ -144,7 +146,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         output_kms_key: Optional[Union[str, PipelineVariable]] = None,
         base_job_name: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
-        tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+        tags: Optional[Tags] = None,
         subnets: Optional[List[Union[str, PipelineVariable]]] = None,
         security_group_ids: Optional[List[Union[str, PipelineVariable]]] = None,
         model_uri: Optional[str] = None,
@@ -270,8 +272,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 manages interactions with Amazon SageMaker APIs and any other
                 AWS services needed. If not specified, the estimator creates one
                 using the default AWS configuration chain.
-            tags (list[dict[str, str] or list[dict[str, PipelineVariable]]):
-                List of tags for labeling a training job. For more, see
+            tags (Optional[Tags]):
+                Tags for labeling a training job. For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
             subnets (list[str] or list[PipelineVariable]): List of subnet ids. If not
                 specified training job will be created without VPC config.
@@ -604,6 +606,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         else:
             self.sagemaker_session = sagemaker_session or Session()
 
+        tags = format_tags(tags)
         self.tags = (
             add_jumpstart_uri_tags(
                 tags=tags, training_model_uri=self.model_uri, training_script_uri=self.source_dir
@@ -1352,7 +1355,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         framework=None,
         framework_version=None,
         compile_max_run=15 * 60,
-        tags=None,
+        tags: Optional[Tags] = None,
         target_platform_os=None,
         target_platform_arch=None,
         target_platform_accelerator=None,
@@ -1378,7 +1381,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             compile_max_run (int): Timeout in seconds for compilation (default:
                 15 * 60). After this amount of time Amazon SageMaker Neo
                 terminates the compilation job regardless of its current status.
-            tags (list[dict]): List of tags for labeling a compilation job. For
+            tags (list[dict]): Tags for labeling a compilation job. For
                 more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
             target_platform_os (str): Target Platform OS, for example: 'LINUX'.
@@ -1420,7 +1423,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             input_shape,
             output_path,
             self.role,
-            tags,
+            format_tags(tags),
             self._compilation_job_name(),
             compile_max_run,
             framework=framework,
@@ -1532,7 +1535,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         model_name=None,
         kms_key=None,
         data_capture_config=None,
-        tags=None,
+        tags: Optional[Tags] = None,
         serverless_inference_config=None,
         async_inference_config=None,
         volume_size=None,
@@ -1601,8 +1604,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 empty object passed through, will use pre-defined values in
                 ``ServerlessInferenceConfig`` class to deploy serverless endpoint. Deploy an
                 instance based endpoint if it's None. (default: None)
-            tags(List[dict[str, str]]): Optional. The list of tags to attach to this specific
+            tags(Optional[Tags]): Optional. Tags to attach to this specific
                 endpoint. Example:
+                >>> tags = {'tagname', 'tagvalue'}
+                Or
                 >>> tags = [{'Key': 'tagname', 'Value': 'tagvalue'}]
                 For more information about tags, see
                 https://boto3.amazonaws.com/v1/documentation\
@@ -1664,7 +1669,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         model.name = model_name
 
         tags = update_inference_tags_with_jumpstart_training_tags(
-            inference_tags=tags, training_tags=self.tags
+            inference_tags=format_tags(tags), training_tags=self.tags
         )
 
         return model.deploy(
@@ -2017,7 +2022,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         env=None,
         max_concurrent_transforms=None,
         max_payload=None,
-        tags=None,
+        tags: Optional[Tags] = None,
         role=None,
         volume_kms_key=None,
         vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
@@ -2051,7 +2056,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 to be made to each individual transform container at one time.
             max_payload (int): Maximum size of the payload in a single HTTP
                 request to the container in MB.
-            tags (list[dict]): List of tags for labeling a transform job. If
+            tags (Optional[Tags]): Tags for labeling a transform job. If
                 none specified, then the tags used for the training job are used
                 for the transform job.
             role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``,
@@ -2078,7 +2083,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 model. If not specified, the estimator generates a default job name
                 based on the training image name and current timestamp.
         """
-        tags = tags or self.tags
+        tags = format_tags(tags) or self.tags
         model_name = self._get_or_create_name(model_name)
 
         if self.latest_training_job is None:
@@ -2717,7 +2722,7 @@ class Estimator(EstimatorBase):
         base_job_name: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
         hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
-        tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+        tags: Optional[Tags] = None,
         subnets: Optional[List[Union[str, PipelineVariable]]] = None,
         security_group_ids: Optional[List[Union[str, PipelineVariable]]] = None,
         model_uri: Optional[str] = None,
@@ -2847,7 +2852,7 @@ class Estimator(EstimatorBase):
                     hyperparameters. SageMaker rejects the training job request and returns an
                     validation error for detected credentials, if such user input is found.
 
-            tags (list[dict[str, str] or list[dict[str, PipelineVariable]]): List of tags for
+            tags (Optional[Tags]): Tags for
                 labeling a training job. For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
             subnets (list[str] or list[PipelineVariable]): List of subnet ids.
@@ -3130,7 +3135,7 @@ class Estimator(EstimatorBase):
             output_kms_key,
             base_job_name,
             sagemaker_session,
-            tags,
+            format_tags(tags),
             subnets,
             security_group_ids,
             model_uri=model_uri,
@@ -3762,7 +3767,7 @@ class Framework(EstimatorBase):
         env=None,
         max_concurrent_transforms=None,
         max_payload=None,
-        tags=None,
+        tags: Optional[Tags] = None,
         role=None,
         model_server_workers=None,
         volume_kms_key=None,
@@ -3798,7 +3803,7 @@ class Framework(EstimatorBase):
                 to be made to each individual transform container at one time.
             max_payload (int): Maximum size of the payload in a single HTTP
                 request to the container in MB.
-            tags (list[dict]): List of tags for labeling a transform job. If
+            tags (Optional[Tags]): Tags for labeling a transform job. If
                 none specified, then the tags used for the training job are used
                 for the transform job.
             role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``,
@@ -3837,7 +3842,7 @@ class Framework(EstimatorBase):
                 SageMaker Batch Transform job.
         """
         role = role or self.role
-        tags = tags or self.tags
+        tags = format_tags(tags) or self.tags
         model_name = self._get_or_create_name(model_name)
 
         if self.latest_training_job is not None:

@@ -38,7 +38,7 @@ from sagemaker.jumpstart.utils import (
     is_valid_model_id,
     resolve_model_sagemaker_config_field,
 )
-from sagemaker.utils import aws_partition, stringify_object
+from sagemaker.utils import aws_partition, stringify_object, format_tags, Tags
 from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
 from sagemaker.predictor import PredictorBase
 
@@ -74,7 +74,7 @@ class JumpStartEstimator(Estimator):
         base_job_name: Optional[str] = None,
         sagemaker_session: Optional[session.Session] = None,
         hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
-        tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+        tags: Optional[Tags] = None,
         subnets: Optional[List[Union[str, PipelineVariable]]] = None,
         security_group_ids: Optional[List[Union[str, PipelineVariable]]] = None,
         model_uri: Optional[str] = None,
@@ -226,8 +226,8 @@ class JumpStartEstimator(Estimator):
                     validation error for detected credentials, if such user input is found.
 
                 (Default: None).
-            tags (Optional[Union[list[dict[str, str], list[dict[str, PipelineVariable]]]]):
-                List of tags for labeling a training job. For more, see
+            tags (Optional[Tags]):
+                Tags for labeling a training job. For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
                 (Default: None).
             subnets (Optional[Union[list[str], list[PipelineVariable]]]): List of subnet ids.
@@ -536,7 +536,7 @@ class JumpStartEstimator(Estimator):
             output_kms_key=output_kms_key,
             base_job_name=base_job_name,
             sagemaker_session=sagemaker_session,
-            tags=tags,
+            tags=format_tags(tags),
             subnets=subnets,
             security_group_ids=security_group_ids,
             model_uri=model_uri,
@@ -757,7 +757,7 @@ class JumpStartEstimator(Estimator):
         deserializer: Optional[BaseDeserializer] = None,
         accelerator_type: Optional[str] = None,
         endpoint_name: Optional[str] = None,
-        tags: List[Dict[str, str]] = None,
+        tags: Optional[Tags] = None,
         kms_key: Optional[str] = None,
         wait: Optional[bool] = True,
         data_capture_config: Optional[DataCaptureConfig] = None,
@@ -823,7 +823,7 @@ class JumpStartEstimator(Estimator):
             endpoint_name (Optional[str]): The name of the endpoint to create (default:
                 None). If not specified, a unique endpoint name will be created.
                 (Default: None).
-            tags (Optional[List[dict[str, str]]]): The list of tags to attach to this
+            tags (Optional[Tags]): Tags to attach to this
                 specific endpoint. (Default: None).
             kms_key (Optional[str]): The ARN of the KMS key that is used to encrypt the
                 data on the storage volume attached to the instance hosting the
@@ -1043,7 +1043,7 @@ class JumpStartEstimator(Estimator):
             deserializer=deserializer,
             accelerator_type=accelerator_type,
             endpoint_name=endpoint_name,
-            tags=tags,
+            tags=format_tags(tags),
             kms_key=kms_key,
             wait=wait,
             data_capture_config=data_capture_config,

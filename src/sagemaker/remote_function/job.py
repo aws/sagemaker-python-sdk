@@ -49,7 +49,13 @@ from sagemaker.image_uris import get_base_python_image_uri
 from sagemaker import image_uris
 from sagemaker.remote_function.checkpoint_location import CheckpointLocation
 from sagemaker.session import get_execution_role, _logs_for_job, Session
-from sagemaker.utils import name_from_base, _tmpdir, resolve_value_from_config
+from sagemaker.utils import (
+    name_from_base,
+    _tmpdir,
+    resolve_value_from_config,
+    format_tags,
+    Tags,
+)
 from sagemaker.s3 import s3_path_join, S3Uploader
 from sagemaker import vpc_utils
 from sagemaker.remote_function.core.stored_function import StoredFunction, _SerializedData
@@ -200,7 +206,7 @@ class _JobSettings:
         sagemaker_session: Session = None,
         security_group_ids: List[Union[str, "PipelineVariable"]] = None,
         subnets: List[Union[str, "PipelineVariable"]] = None,
-        tags: List[Dict[str, Union[str, "PipelineVariable"]]] = None,
+        tags: Optional[Tags] = None,
         volume_kms_key: Union[str, "PipelineVariable"] = None,
         volume_size: Union[int, "PipelineVariable"] = 30,
         encrypt_inter_container_traffic: Union[bool, "PipelineVariable"] = None,
@@ -362,9 +368,8 @@ class _JobSettings:
             subnets (List[str, PipelineVariable]): A list of subnet IDs. Defaults to ``None``
               and the job is created without VPC config.
 
-            tags (list[dict[str, str] or list[dict[str, PipelineVariable]]): A list of tags
-              attached to the job. Defaults to ``None`` and the training job is created
-              without tags.
+            tags (Optional[Tags]): Tags attached to the job. Defaults to ``None``
+                and the training job is created without tags.
 
             volume_kms_key (str, PipelineVariable): An Amazon Key Management Service (KMS) key
               used to encrypt an Amazon Elastic Block Storage (EBS) volume attached to the
@@ -544,9 +549,8 @@ class _JobSettings:
         vpc_config = vpc_utils.to_dict(subnets=_subnets, security_group_ids=_security_group_ids)
         self.vpc_config = vpc_utils.sanitize(vpc_config)
 
-        self.tags = self.sagemaker_session._append_sagemaker_config_tags(
-            [{"Key": k, "Value": v} for k, v in tags] if tags else None, REMOTE_FUNCTION_TAGS
-        )
+        tags = format_tags(tags)
+        self.tags = self.sagemaker_session._append_sagemaker_config_tags(tags, REMOTE_FUNCTION_TAGS)
 
     @staticmethod
     def _get_default_image(session):

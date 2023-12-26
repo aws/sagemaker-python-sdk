@@ -41,6 +41,7 @@ from sagemaker.s3 import S3Uploader
 from sagemaker.session import Session
 from sagemaker.network import NetworkConfig
 from sagemaker.spark import defaults
+from sagemaker.utils import format_tags, Tags
 
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.pipeline_context import runnable_by_pipeline
@@ -135,7 +136,7 @@ class _SparkProcessorBase(ScriptProcessor):
                 SageMaker APIs and any other AWS services needed. If not specified,
                 the processor creates one using the default AWS configuration chain.
             env (dict): Environment variables to be passed to the processing job.
-            tags ([dict]): List of tags to be passed to the processing job.
+            tags (Optional[Tags]): List of tags to be passed to the processing job.
             network_config (sagemaker.network.NetworkConfig): A NetworkConfig
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
@@ -168,7 +169,7 @@ class _SparkProcessorBase(ScriptProcessor):
             base_job_name=base_job_name,
             sagemaker_session=session,
             env=env,
-            tags=tags,
+            tags=format_tags(tags),
             network_config=network_config,
         )
 
@@ -703,7 +704,7 @@ class PySparkProcessor(_SparkProcessorBase):
         base_job_name: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
         env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
-        tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+        tags: Optional[Tags] = None,
         network_config: Optional[NetworkConfig] = None,
     ):
         """Initialize an ``PySparkProcessor`` instance.
@@ -747,7 +748,7 @@ class PySparkProcessor(_SparkProcessorBase):
                 using the default AWS configuration chain.
             env (dict[str, str] or dict[str, PipelineVariable]): Environment variables to
                 be passed to the processing job.
-            tags (list[dict[str, str] or list[dict[str, PipelineVariable]]): List of tags to
+            tags (Optional[Tags]): List of tags to
                 be passed to the processing job.
             network_config (sagemaker.network.NetworkConfig): A NetworkConfig
                 object that configures network isolation, encryption of
@@ -771,7 +772,7 @@ class PySparkProcessor(_SparkProcessorBase):
             base_job_name=base_job_name,
             sagemaker_session=sagemaker_session,
             env=env,
-            tags=tags,
+            tags=format_tags(tags),
             network_config=network_config,
         )
 
@@ -980,7 +981,7 @@ class SparkJarProcessor(_SparkProcessorBase):
         base_job_name: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
         env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
-        tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+        tags: Optional[Tags] = None,
         network_config: Optional[NetworkConfig] = None,
     ):
         """Initialize a ``SparkJarProcessor`` instance.
@@ -1024,8 +1025,7 @@ class SparkJarProcessor(_SparkProcessorBase):
                 using the default AWS configuration chain.
             env (dict[str, str] or dict[str, PipelineVariable]): Environment variables to
                 be passed to the processing job.
-            tags (list[dict[str, str] or list[dict[str, PipelineVariable]]): List of tags to
-                be passed to the processing job.
+            tags (Optional[Tags]): Tags to be passed to the processing job.
             network_config (sagemaker.network.NetworkConfig): A NetworkConfig
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
@@ -1048,7 +1048,7 @@ class SparkJarProcessor(_SparkProcessorBase):
             base_job_name=base_job_name,
             sagemaker_session=sagemaker_session,
             env=env,
-            tags=tags,
+            tags=format_tags(tags),
             network_config=network_config,
         )
 
