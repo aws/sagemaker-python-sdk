@@ -37,6 +37,8 @@ from sagemaker.jumpstart.types import JumpStartModelHeader, JumpStartModelSpecs
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket, get_sagemaker_version
 from sagemaker.session import Session
 
+MAX_SEARCH_WORKERS = int(100 * 1e6 / 25 * 1e3)  # max 100MB total memory, 25kB per thread)
+
 
 def _compare_model_version_tuples(  # pylint: disable=too-many-return-statements
     model_version_1: Optional[Tuple[str, str]] = None,
@@ -392,6 +394,9 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
             )
         copied_filter_2 = copy.deepcopy(filter)
 
+        # spec is downloaded to thread's memory. since each thread
+        # accesses a unique s3 spec, there is no need to use the JS caching utils.
+        # spec only stays in memory for lifecycle of thread.
         model_specs = JumpStartModelSpecs(
             json.loads(
                 sagemaker_session.read_s3_file(
@@ -426,23 +431,18 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
             f"{(model_manifest.model_id, model_manifest.version)}."
         )
 
-    max_memory_bytes = int(100 * 1e6)
-    average_memory_bytes_per_thread = int(25 * 1e3)
-    max_workers = int(max_memory_bytes / average_memory_bytes_per_thread)
+    with ThreadPoolExecutor(max_workers=MAX_SEARCH_WORKERS) as executor:
+        futures = []
+        for header in models_manifest_list:
+            futures.append(executor.submit(evaluate_model, header))
 
-    executor = ThreadPoolExecutor(max_workers=max_workers)
-
-    futures = []
-    for header in models_manifest_list:
-        futures.append(executor.submit(evaluate_model, header))
-
-    for future in as_completed(futures):
-        error = future.exception()
-        if error:
-            raise error
-        result = future.result()
-        if result:
-            yield result
+        for future in as_completed(futures):
+            error = future.exception()
+            if error:
+                raise error
+            result = future.result()
+            if result:
+                yield result
 
 
 def get_model_url(
