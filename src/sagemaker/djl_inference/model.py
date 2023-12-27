@@ -30,7 +30,7 @@ from sagemaker.model import FrameworkModel
 from sagemaker.s3_utils import s3_path_join
 from sagemaker.serializers import JSONSerializer, BaseSerializer
 from sagemaker.session import Session
-from sagemaker.utils import _tmpdir, _create_or_update_code_dir
+from sagemaker.utils import _tmpdir, _create_or_update_code_dir, format_tags
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.estimator import Estimator
 from sagemaker.s3 import S3Uploader
@@ -610,7 +610,7 @@ class DJLModel(FrameworkModel):
                 default deserializer is set by the ``predictor_cls``.
             endpoint_name (str): The name of the endpoint to create (default:
                 None). If not specified, a unique endpoint name will be created.
-            tags (List[dict[str, str]]): The list of tags to attach to this
+            tags (Optional[Tags]): The list of tags to attach to this
                 specific endpoint.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 data on the storage volume attached to the instance hosting the
@@ -651,7 +651,7 @@ class DJLModel(FrameworkModel):
             serializer=serializer,
             deserializer=deserializer,
             endpoint_name=endpoint_name,
-            tags=tags,
+            tags=format_tags(tags),
             kms_key=kms_key,
             wait=wait,
             data_capture_config=data_capture_config,

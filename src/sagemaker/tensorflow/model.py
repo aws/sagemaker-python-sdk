@@ -27,6 +27,7 @@ from sagemaker.serializers import JSONSerializer
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.pipeline_context import PipelineSession
+from sagemaker.utils import format_tags
 
 logger = logging.getLogger(__name__)
 
@@ -355,7 +356,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             deserializer=deserializer,
             accelerator_type=accelerator_type,
             endpoint_name=endpoint_name,
-            tags=tags,
+            tags=format_tags(tags),
             kms_key=kms_key,
             wait=wait,
             data_capture_config=data_capture_config,

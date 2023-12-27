@@ -22,7 +22,7 @@ from sagemaker.exceptions import PollingTimeoutError, AsyncInferenceModelError
 from sagemaker.async_inference import WaiterConfig, AsyncInferenceResponse
 from sagemaker.s3 import parse_s3_url
 from sagemaker.session import Session
-from sagemaker.utils import name_from_base, sagemaker_timestamp
+from sagemaker.utils import name_from_base, sagemaker_timestamp, format_tags
 
 
 class AsyncPredictor:
@@ -375,7 +375,7 @@ class AsyncPredictor:
             instance_type=instance_type,
             accelerator_type=accelerator_type,
             model_name=model_name,
-            tags=tags,
+            tags=format_tags(tags),
             kms_key=kms_key,
             data_capture_config_dict=data_capture_config_dict,
             wait=wait,

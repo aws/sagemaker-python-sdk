@@ -41,7 +41,7 @@ from sagemaker.workflow.step_outputs import StepOutput
 from sagemaker.workflow.utilities import trim_request_dict, load_step_compilation_context
 
 from sagemaker.s3_utils import s3_path_join
-from sagemaker.utils import unique_name_from_base_uuid4
+from sagemaker.utils import unique_name_from_base_uuid4, format_tags, Tags
 
 if TYPE_CHECKING:
     from sagemaker.remote_function.spark_config import SparkConfig
@@ -374,7 +374,7 @@ def step(
     role: str = None,
     security_group_ids: Optional[List[Union[str, PipelineVariable]]] = None,
     subnets: Optional[List[Union[str, PipelineVariable]]] = None,
-    tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+    tags: Optional[Tags] = None,
     volume_kms_key: Optional[Union[str, PipelineVariable]] = None,
     volume_size: Union[int, PipelineVariable] = 30,
     encrypt_inter_container_traffic: Optional[Union[bool, PipelineVariable]] = None,
@@ -513,8 +513,8 @@ def step(
         subnets (List[str, PipelineVariable]): A list of subnet IDs. Defaults to ``None``
           and the job is created without a VPC config.
 
-        tags (list[dict[str, str] or list[dict[str, PipelineVariable]]): A list of tags attached
-          to the job. Defaults to ``None`` and the training job is created without tags.
+        tags (Optional[Tags]): Tags attached to the job. Defaults to ``None``
+          and the training job is created without tags.
 
         volume_kms_key (str, PipelineVariable): An Amazon Key Management Service (KMS) key used to
           encrypt an Amazon Elastic Block Storage (EBS) volume attached to the training instance.
@@ -598,7 +598,7 @@ def step(
                 role=role,
                 security_group_ids=security_group_ids,
                 subnets=subnets,
-                tags=tags,
+                tags=format_tags(tags),
                 volume_kms_key=volume_kms_key,
                 volume_size=volume_size,
                 encrypt_inter_container_traffic=encrypt_inter_container_traffic,

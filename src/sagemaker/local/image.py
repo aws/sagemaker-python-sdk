@@ -230,7 +230,7 @@ class _SageMakerContainer(object):
 
         # Print our Job Complete line to have a similar experience to training on SageMaker where
         # you see this line at the end.
-        print("===== Job Complete =====")
+        logger.info("===== Job Complete =====")
 
     def train(self, input_data_config, output_data_config, hyperparameters, environment, job_name):
         """Run a training job locally using docker-compose.
@@ -310,7 +310,7 @@ class _SageMakerContainer(object):
 
         # Print our Job Complete line to have a similar experience to training on SageMaker where
         # you see this line at the end.
-        print("===== Job Complete =====")
+        logger.info("===== Job Complete =====")
         return artifacts
 
     def serve(self, model_dir, environment):
@@ -430,6 +430,7 @@ class _SageMakerContainer(object):
                 output_data_config["S3OutputPath"],
                 job_name,
                 self.sagemaker_session,
+                prefix="output",
             )
 
         _delete_tree(model_artifacts)
