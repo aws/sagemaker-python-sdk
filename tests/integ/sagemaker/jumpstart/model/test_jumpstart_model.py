@@ -186,7 +186,7 @@ def test_jumpstart_gated_model(setup):
     assert response is not None
 
 
-def test_jumpstart_gated_model_ic_enabled(setup):
+def test_jumpstart_gated_model_inference_component_enabled(setup):
 
     model_id = "meta-textgeneration-llama-2-7b"
 

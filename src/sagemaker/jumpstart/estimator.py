@@ -33,12 +33,12 @@ from sagemaker.jumpstart.exceptions import INVALID_MODEL_ID_ERROR_MSG
 
 from sagemaker.jumpstart.factory.estimator import get_deploy_kwargs, get_fit_kwargs, get_init_kwargs
 from sagemaker.jumpstart.factory.model import get_default_predictor
+from sagemaker.jumpstart.session_utils import get_model_id_version_from_training_job
 from sagemaker.jumpstart.utils import (
-    get_jumpstart_model_id_version_from_resource_arn,
     is_valid_model_id,
     resolve_model_sagemaker_config_field,
 )
-from sagemaker.utils import aws_partition, stringify_object, format_tags, Tags
+from sagemaker.utils import stringify_object, format_tags, Tags
 from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
 from sagemaker.predictor import PredictorBase
 
@@ -720,25 +720,9 @@ class JumpStartEstimator(Estimator):
 
         if model_id is None:
 
-            region: str = sagemaker_session.boto_region_name
-            partition: str = aws_partition(region)
-            account_id: str = sagemaker_session.account_id()
-
-            training_job_arn = (
-                f"arn:{partition}:sagemaker:{region}:{account_id}:training-job/{training_job_name}"
+            model_id, model_version = get_model_id_version_from_training_job(
+                training_job_name=training_job_name, sagemaker_session=sagemaker_session
             )
-
-            model_id, inferred_model_version = get_jumpstart_model_id_version_from_resource_arn(
-                training_job_arn, sagemaker_session
-            )
-
-            model_version = model_version or inferred_model_version
-            if not model_id:
-                raise ValueError(
-                    f"Cannot infer JumpStart model ID from training job '{training_job_name}'. "
-                    "Please specify JumpStart `model_id` when retrieving Estimator "
-                    "for this training job."
-                )
 
         model_version = model_version or "*"
 

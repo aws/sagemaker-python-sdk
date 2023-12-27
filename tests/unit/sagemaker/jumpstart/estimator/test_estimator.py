@@ -988,7 +988,7 @@ class EstimatorTest(unittest.TestCase):
         )
 
     @mock.patch("sagemaker.jumpstart.estimator.JumpStartEstimator._attach")
-    @mock.patch("sagemaker.jumpstart.estimator.get_jumpstart_model_id_version_from_resource_arn")
+    @mock.patch("sagemaker.jumpstart.estimator.get_model_id_version_from_training_job")
     @mock.patch("sagemaker.jumpstart.estimator.is_valid_model_id")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
@@ -996,13 +996,13 @@ class EstimatorTest(unittest.TestCase):
         self,
         mock_get_model_specs: mock.Mock,
         mock_is_valid_model_id: mock.Mock,
-        mock_get_jumpstart_model_id_version_from_resource_arn: mock.Mock,
+        get_model_id_version_from_training_job: mock.Mock,
         mock_attach: mock.Mock,
     ):
 
         mock_is_valid_model_id.return_value = True
 
-        mock_get_jumpstart_model_id_version_from_resource_arn.return_value = (
+        get_model_id_version_from_training_job.return_value = (
             "js-trainable-model-prepacked",
             "1.0.0",
         )
@@ -1015,9 +1015,9 @@ class EstimatorTest(unittest.TestCase):
             training_job_name="some-training-job-name", sagemaker_session=mock_session
         )
 
-        mock_get_jumpstart_model_id_version_from_resource_arn.assert_called_once_with(
-            f"arn:aws:sagemaker:us-west-2:{mock_session.account_id.return_value}:training-job/some-training-job-name",
-            mock_session,
+        get_model_id_version_from_training_job.assert_called_once_with(
+            training_job_name="some-training-job-name",
+            sagemaker_session=mock_session,
         )
 
         mock_attach.assert_called_once_with(
@@ -1031,7 +1031,7 @@ class EstimatorTest(unittest.TestCase):
         )
 
     @mock.patch("sagemaker.jumpstart.estimator.JumpStartEstimator._attach")
-    @mock.patch("sagemaker.jumpstart.estimator.get_jumpstart_model_id_version_from_resource_arn")
+    @mock.patch("sagemaker.jumpstart.estimator.get_model_id_version_from_training_job")
     @mock.patch("sagemaker.jumpstart.estimator.is_valid_model_id")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
@@ -1039,16 +1039,13 @@ class EstimatorTest(unittest.TestCase):
         self,
         mock_get_model_specs: mock.Mock,
         mock_is_valid_model_id: mock.Mock,
-        mock_get_jumpstart_model_id_version_from_resource_arn: mock.Mock,
+        get_model_id_version_from_training_job: mock.Mock,
         mock_attach: mock.Mock,
     ):
 
         mock_is_valid_model_id.return_value = True
 
-        mock_get_jumpstart_model_id_version_from_resource_arn.return_value = (
-            None,
-            None,
-        )
+        get_model_id_version_from_training_job.side_effect = ValueError()
 
         mock_get_model_specs.side_effect = get_special_model_spec
 
@@ -1059,9 +1056,9 @@ class EstimatorTest(unittest.TestCase):
                 training_job_name="some-training-job-name", sagemaker_session=mock_session
             )
 
-        mock_get_jumpstart_model_id_version_from_resource_arn.assert_called_once_with(
-            f"arn:aws:sagemaker:us-west-2:{mock_session.account_id.return_value}:training-job/some-training-job-name",
-            mock_session,
+        get_model_id_version_from_training_job.assert_called_once_with(
+            training_job_name="some-training-job-name",
+            sagemaker_session=mock_session,
         )
 
         mock_attach.assert_not_called()

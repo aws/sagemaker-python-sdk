@@ -4352,15 +4352,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
             self.wait_for_endpoint(endpoint_name)
         return endpoint_name
 
-    def is_ic_based_endpoint(self, endpoint_name):
+    def is_inference_component_based_endpoint(self, endpoint_name):
         """Returns True if endpoint is inference component based, False otherwise.
 
         An endpoint is inference component based if and only if the associated endpoint config
-        has a role associated with it and a single production variant with no ``ModelName`` field.
+        has a role associated with it and no production variants with a ``ModelName`` field.
 
         Args:
             endpoint_name (str): Name of the Amazon SageMaker ``Endpoint`` to determine
-                if IC based.
+                if inference component based.
         """
         describe_endpoint_response = self.describe_endpoint(endpoint_name)
         endpoint_config_name = describe_endpoint_response["EndpointConfigName"]
@@ -4369,6 +4369,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         )
         production_variants = describe_endpoint_config_response.get("ProductionVariants", [])
         execution_role_arn = describe_endpoint_config_response.get("ExecutionRoleArn")
+        if len(production_variants) == 0:
+            return False
         return execution_role_arn is not None and all(
             production_variant.get("ModelName") is None
             for production_variant in production_variants
@@ -4653,6 +4655,35 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 ),
                 poll=20,
             )
+
+    def list_inference_components_associated_with_endpoint(
+        self,
+        endpoint_name: str,
+    ) -> List[str]:
+        """List inference component names for an endpoint, concatenating paginated results.
+
+        Args:
+            endpoint_name (str): A string that matches the name of the
+                endpoint to which the inference components are deployed.
+        """
+        inference_component_names: List[str] = []
+        next_token: Optional[str] = None
+        first_iteration: bool = True
+
+        while first_iteration or next_token:
+            first_iteration = False
+            list_inference_components_response = self.list_inference_components(
+                endpoint_name_equals=endpoint_name, next_token=next_token
+            )
+            inference_component_names.extend(
+                [
+                    ic["InferenceComponentName"]
+                    for ic in list_inference_components_response["InferenceComponents"]
+                ]
+            )
+            next_token = list_inference_components_response.get("NextToken")
+
+        return sorted(inference_component_names)
 
     def list_inference_components(
         self,

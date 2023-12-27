@@ -27,18 +27,23 @@ def get_model_id_version_from_endpoint(
     inference_component_name: Optional[str] = None,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> Tuple[str, str, Optional[str]]:
-    """Given an endpoint name (and optionally an IC name), get the JumpStart model ID and version.
+    """Given an endpoint name (and optionally an inference component), get the model ID and version.
 
     Infers the model ID and version based on the resource tags. Returns a tuple of the model ID
     and version. A third string element is included in the tuple for any inferred inference
-    component name, or None if it's a non-IC endpoint.
+    component name, or None if it's a model-based endpoint.
 
     Raises:
         ValueError: If model ID and version cannot be inferred from the endpoint.
     """
-    if inference_component_name or sagemaker_session.is_ic_based_endpoint(endpoint_name):
+    if inference_component_name or sagemaker_session.is_inference_component_based_endpoint(
+        endpoint_name
+    ):
         if inference_component_name:
-            model_id, model_version = _get_model_id_version_from_ic_endpoint_with_ic_name(
+            (
+                model_id,
+                model_version,
+            ) = _get_model_id_version_from_inference_component_endpoint_with_inference_component_name(  # noqa E501  # pylint: disable=c0301
                 inference_component_name, sagemaker_session
             )
 
@@ -47,18 +52,18 @@ def get_model_id_version_from_endpoint(
                 model_id,
                 model_version,
                 inference_component_name,
-            ) = _get_model_id_version_from_ic_endpoint_without_ic_name(
+            ) = _get_model_id_version_from_inference_component_endpoint_without_inference_component_name(  # noqa E501  # pylint: disable=c0301
                 endpoint_name, sagemaker_session
             )
 
     else:
-        model_id, model_version = _get_model_id_version_from_non_ic_endpoint(
+        model_id, model_version = _get_model_id_version_from_model_based_endpoint(
             endpoint_name, inference_component_name, sagemaker_session
         )
     return model_id, model_version, inference_component_name
 
 
-def _get_model_id_version_from_ic_endpoint_without_ic_name(
+def _get_model_id_version_from_inference_component_endpoint_without_inference_component_name(
     endpoint_name: str, sagemaker_session: Session
 ) -> Tuple[str, str, str]:
     """Given an endpoint name, derives the model ID, version, and inferred inference component name.
@@ -68,31 +73,33 @@ def _get_model_id_version_from_ic_endpoint_without_ic_name(
     Raises:
         ValueError: If there is not a single inference component associated with the endpoint.
     """
-    inference_components = sagemaker_session.list_inference_components(
-        endpoint_name_equals=endpoint_name
-    )["InferenceComponents"]
+    inference_component_names = (
+        sagemaker_session.list_inference_components_associated_with_endpoint(
+            endpoint_name=endpoint_name
+        )
+    )
 
-    if len(inference_components) == 0:
+    if len(inference_component_names) == 0:
         raise ValueError(
-            f"No inference components found for the following endpoint: {endpoint_name}. "
+            f"No inference component found for the following endpoint: {endpoint_name}. "
             "Use ``SageMaker.CreateInferenceComponent`` to add inference components to "
             "your endpoint."
         )
-    if len(inference_components) > 1:
+    if len(inference_component_names) > 1:
         raise ValueError(
             "Must provide inference component name for endpoint with "
             "multiple inference components."
         )
-    inference_component_name = inference_components[0]["InferenceComponentName"]
+    inference_component_name = inference_component_names[0]
     return (
-        *_get_model_id_version_from_ic_endpoint_with_ic_name(
+        *_get_model_id_version_from_inference_component_endpoint_with_inference_component_name(
             inference_component_name, sagemaker_session
         ),
         inference_component_name,
     )
 
 
-def _get_model_id_version_from_ic_endpoint_with_ic_name(
+def _get_model_id_version_from_inference_component_endpoint_with_inference_component_name(
     inference_component_name: str, sagemaker_session: Session
 ):
     """Returns the model ID and version inferred from a sagemaker inference component.
@@ -124,15 +131,15 @@ def _get_model_id_version_from_ic_endpoint_with_ic_name(
     return model_id, model_version
 
 
-def _get_model_id_version_from_non_ic_endpoint(
+def _get_model_id_version_from_model_based_endpoint(
     endpoint_name: str,
     inference_component_name: Optional[str],
     sagemaker_session: Session,
 ) -> Tuple[str, str]:
-    """Returns the model ID and version inferred from a model-based endpoint..
+    """Returns the model ID and version inferred from a model-based endpoint.
 
     Raises:
-        ValueError: If a non-None inference component name is supplied, or if the endpoint does
+        ValueError: If an inference component name is supplied, or if the endpoint does
             not have tags from which the model ID and version can be inferred.
     """
 
@@ -157,6 +164,40 @@ def _get_model_id_version_from_non_ic_endpoint(
             f"Cannot infer JumpStart model ID from endpoint '{endpoint_name}'. "
             "Please specify JumpStart `model_id` when retrieving default "
             "predictor for this endpoint."
+        )
+
+    return model_id, model_version
+
+
+def get_model_id_version_from_training_job(
+    training_job_name: str,
+    sagemaker_session: Optional[Session] = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+) -> Tuple[str, str]:
+    """Returns the model ID and version inferred from a training job.
+
+    Raises:
+        ValueError: If an inference component name is supplied, or if the endpoint does
+            not have tags from which the model ID and version can be inferred.
+    """
+    region: str = sagemaker_session.boto_region_name
+    partition: str = aws_partition(region)
+    account_id: str = sagemaker_session.account_id()
+
+    training_job_arn = (
+        f"arn:{partition}:sagemaker:{region}:{account_id}:training-job/{training_job_name}"
+    )
+
+    model_id, inferred_model_version = get_jumpstart_model_id_version_from_resource_arn(
+        training_job_arn, sagemaker_session
+    )
+
+    model_version = inferred_model_version or None
+
+    if not model_id:
+        raise ValueError(
+            f"Cannot infer JumpStart model ID from training job '{training_job_name}'. "
+            "Please specify JumpStart `model_id` when retrieving Estimator "
+            "for this training job."
         )
 
     return model_id, model_version
