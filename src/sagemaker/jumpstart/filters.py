@@ -449,6 +449,7 @@ def parse_filter_string(filter_string: str) -> ModelFilter:
 
 
 def _negate_boolean(boolean: BooleanValues) -> BooleanValues:
+    """Negates boolean expression (False -> True, True -> False)."""
     if boolean == BooleanValues.TRUE:
         return BooleanValues.FALSE
     if boolean == BooleanValues.FALSE:
@@ -460,6 +461,7 @@ def _evaluate_filter_expression_equals(
     model_filter: ModelFilter,
     cached_model_value: Optional[Union[str, bool, int, float, Dict[str, Any], List[Any]]],
 ) -> BooleanValues:
+    """Evaluates filter expressions for equals."""
     if cached_model_value is None:
         return BooleanValues.FALSE
     model_filter_value = model_filter.value
@@ -475,6 +477,7 @@ def _evaluate_filter_expression_in(
     model_filter: ModelFilter,
     cached_model_value: Optional[Union[str, bool, int, float, Dict[str, Any], List[Any]]],
 ) -> BooleanValues:
+    """Evaluates filter expressions for string/list in."""
     if cached_model_value is None:
         return BooleanValues.FALSE
     py_obj = model_filter.value
@@ -484,7 +487,7 @@ def _evaluate_filter_expression_in(
             iter(py_obj)
         except TypeError:
             return BooleanValues.FALSE
-    except Exception:
+    except Exception:  # pylint: disable=W0703
         pass
     if isinstance(cached_model_value, list):
         return BooleanValues.FALSE
@@ -497,6 +500,7 @@ def _evaluate_filter_expression_includes(
     model_filter: ModelFilter,
     cached_model_value: Optional[Union[str, bool, int, float, Dict[str, Any], List[Any]]],
 ) -> BooleanValues:
+    """Evaluates filter expressions for string includes."""
     if cached_model_value is None:
         return BooleanValues.FALSE
     filter_value = str(model_filter.value)
@@ -509,6 +513,7 @@ def _evaluate_filter_expression_begins_with(
     model_filter: ModelFilter,
     cached_model_value: Optional[Union[str, bool, int, float, Dict[str, Any], List[Any]]],
 ) -> BooleanValues:
+    """Evaluates filter expressions for string begins with."""
     if cached_model_value is None:
         return BooleanValues.FALSE
     filter_value = str(model_filter.value)
@@ -521,6 +526,7 @@ def _evaluate_filter_expression_ends_with(
     model_filter: ModelFilter,
     cached_model_value: Optional[Union[str, bool, int, float, Dict[str, Any], List[Any]]],
 ) -> BooleanValues:
+    """Evaluates filter expressions for string ends with."""
     if cached_model_value is None:
         return BooleanValues.FALSE
     filter_value = str(model_filter.value)
