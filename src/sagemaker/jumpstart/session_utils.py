@@ -176,8 +176,8 @@ def get_model_id_version_from_training_job(
     """Returns the model ID and version inferred from a training job.
 
     Raises:
-        ValueError: If an inference component name is supplied, or if the endpoint does
-            not have tags from which the model ID and version can be inferred.
+        ValueError: If the training job does not have tags from which the model ID
+            and version can be inferred.
     """
     region: str = sagemaker_session.boto_region_name
     partition: str = aws_partition(region)
