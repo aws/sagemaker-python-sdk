@@ -469,3 +469,29 @@ def get_model_url(
         s3_client=sagemaker_session.s3_client,
     )
     return model_specs.url
+
+
+def _get_model_eula_key(
+    model_id: str,
+    model_version: str,
+    region: str = JUMPSTART_DEFAULT_REGION_NAME,
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+) -> str:
+    """Retrieve S3 key for EULA text for gated models, or None for non-gated models.
+
+    Args:
+        model_id (str): The model ID for which to retrieve the EULA S3 key.
+        model_version (str): The model version for which to retrieve the EULA S3 key.
+        region (str): Optional. The region from which to retrieve metadata.
+            (Default: JUMPSTART_DEFAULT_REGION_NAME)
+        sagemaker_session (sagemaker.session.Session): Optional. The SageMaker Session to use
+            to retrieve the EULA S3 key.
+    """
+
+    model_specs = accessors.JumpStartModelsAccessor.get_model_specs(
+        region=region,
+        model_id=model_id,
+        version=model_version,
+        s3_client=sagemaker_session.s3_client,
+    )
+    return model_specs.hosting_eula_key
