@@ -34,7 +34,11 @@ from sagemaker.jumpstart.filters import (
 )
 from sagemaker.jumpstart.filters import Constant, ModelFilter, Operator, evaluate_filter_expression
 from sagemaker.jumpstart.types import JumpStartModelHeader, JumpStartModelSpecs
-from sagemaker.jumpstart.utils import get_jumpstart_content_bucket, get_sagemaker_version
+from sagemaker.jumpstart.utils import (
+    get_jumpstart_content_bucket,
+    get_sagemaker_version,
+    verify_model_region_and_return_specs,
+)
 from sagemaker.session import Session
 
 MAX_SEARCH_WORKERS = int(100 * 1e6 / 25 * 1e3)  # max 100MB total memory, 25kB per thread)
@@ -221,11 +225,12 @@ def list_jumpstart_scripts(  # pylint: disable=redefined-builtin
         filter=filter, region=region, sagemaker_session=sagemaker_session
     ):
         scripts.add(JumpStartScriptScope.INFERENCE)
-        model_specs = accessors.JumpStartModelsAccessor.get_model_specs(
+        model_specs = verify_model_region_and_return_specs(
             region=region,
             model_id=model_id,
             version=version,
-            s3_client=sagemaker_session.s3_client,
+            sagemaker_session=sagemaker_session,
+            scope=JumpStartScriptScope.INFERENCE,
         )
         if model_specs.training_supported:
             scripts.add(JumpStartScriptScope.TRAINING)
@@ -462,11 +467,12 @@ def get_model_url(
             to retrieve the model url.
     """
 
-    model_specs = accessors.JumpStartModelsAccessor.get_model_specs(
+    model_specs = verify_model_region_and_return_specs(
         region=region,
         model_id=model_id,
         version=model_version,
-        s3_client=sagemaker_session.s3_client,
+        sagemaker_session=sagemaker_session,
+        scope=JumpStartScriptScope.INFERENCE,
     )
     return model_specs.url
 
@@ -488,10 +494,11 @@ def _get_model_eula_key(
             to retrieve the EULA S3 key.
     """
 
-    model_specs = accessors.JumpStartModelsAccessor.get_model_specs(
+    model_specs = verify_model_region_and_return_specs(
         region=region,
         model_id=model_id,
         version=model_version,
-        s3_client=sagemaker_session.s3_client,
+        sagemaker_session=sagemaker_session,
+        scope=JumpStartScriptScope.INFERENCE,
     )
     return model_specs.hosting_eula_key

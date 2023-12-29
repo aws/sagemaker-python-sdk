@@ -713,7 +713,7 @@ def test__get_model_eula_key(
     assert "fmhMetadata/eula/llamaEula.txt" == _get_model_eula_key(model_id, version)
 
     model_id, version = "variant-model", "1.0.0"
-    assert None == _get_model_eula_key(model_id, version)
+    assert None is _get_model_eula_key(model_id, version)
 
     region = "fake-region"
 
