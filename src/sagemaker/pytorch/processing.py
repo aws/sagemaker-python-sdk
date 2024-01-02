@@ -26,7 +26,6 @@ from sagemaker.pytorch.estimator import PyTorch
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.utils import format_tags, Tags, validate_call_inputs
 from sagemaker.workflow.parameters import ParameterString
-from sagemaker.utils import validate_call_inputs
 
 
 class PyTorchProcessor(FrameworkProcessor):
