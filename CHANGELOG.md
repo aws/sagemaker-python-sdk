@@ -1,5 +1,19 @@
 # Changelog
 
+## v2.203.0 (2023-12-28)
+
+### Features
+
+ * support local mode in SageMaker Studio (#1300)
+ * Supporting tbac in load_run
+
+### Bug Fixes and Other Changes
+
+ * update image_uri_configs  12-25-2023 06:17:33 PST
+ * Disable failed test in IR
+ * Raise Exception for debug
+ * create role if needed in `get_execution_role`
+
 ## v2.202.1 (2023-12-22)
 
 ### Bug Fixes and Other Changes
