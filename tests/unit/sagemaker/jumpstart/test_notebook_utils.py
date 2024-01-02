@@ -15,11 +15,9 @@ from tests.unit.sagemaker.jumpstart.utils import (
     get_header_from_base_header,
     get_prototype_manifest,
     get_prototype_model_spec,
-    get_special_model_spec,
 )
 from sagemaker.jumpstart.notebook_utils import (
     _generate_jumpstart_model_versions,
-    _get_model_eula_key,
     get_model_url,
     list_jumpstart_frameworks,
     list_jumpstart_models,
@@ -693,38 +691,6 @@ def test_get_model_url(
     )
 
     get_model_url(model_id, version, region=region)
-
-    patched_get_model_specs.assert_called_once_with(
-        model_id=model_id,
-        version=version,
-        region=region,
-        s3_client=DEFAULT_JUMPSTART_SAGEMAKER_SESSION.s3_client,
-    )
-
-
-@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-def test__get_model_eula_key(
-    patched_get_model_specs: Mock,
-):
-
-    patched_get_model_specs.side_effect = get_special_model_spec
-
-    model_id, version = "gated_llama_neuron_model", "*"
-    assert "fmhMetadata/eula/llamaEula.txt" == _get_model_eula_key(model_id, version)
-
-    model_id, version = "variant-model", "1.0.0"
-    assert None is _get_model_eula_key(model_id, version)
-
-    region = "fake-region"
-
-    patched_get_model_specs.reset_mock()
-    patched_get_model_specs.side_effect = lambda *largs, **kwargs: get_special_model_spec(
-        *largs,
-        region="us-west-2",
-        **{key: value for key, value in kwargs.items() if key != "region"},
-    )
-
-    _get_model_eula_key(model_id, version, region=region)
 
     patched_get_model_specs.assert_called_once_with(
         model_id=model_id,
