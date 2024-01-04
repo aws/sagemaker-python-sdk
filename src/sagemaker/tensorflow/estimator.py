@@ -29,6 +29,7 @@ from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.tensorflow.training_compiler.config import TrainingCompilerConfig
 from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.utils import format_tags
 
 logger = logging.getLogger("sagemaker")
 
@@ -474,7 +475,7 @@ class TensorFlow(Framework):
                 each individual transform container at one time.
             max_payload (int): Maximum size of the payload in a single HTTP request to the
                 container in MB.
-            tags (list[dict]): List of tags for labeling a transform job. If none specified, then
+            tags (Optional[Tags]): Tags for labeling a transform job. If none specified, then
                 the tags used for the training job are used for the transform job.
             role (str): The IAM Role ARN for the ``TensorFlowModel``, which is also used
                 during transform jobs. If not specified, the role from the Estimator is used.
@@ -525,7 +526,7 @@ class TensorFlow(Framework):
                 max_concurrent_transforms=max_concurrent_transforms,
                 max_payload=max_payload,
                 env=env or {},
-                tags=tags,
+                tags=format_tags(tags),
                 base_transform_job_name=self.base_job_name,
                 volume_kms_key=volume_kms_key,
                 sagemaker_session=self.sagemaker_session,
@@ -553,6 +554,6 @@ class TensorFlow(Framework):
             env=env,
             max_concurrent_transforms=max_concurrent_transforms,
             max_payload=max_payload,
-            tags=tags,
+            tags=format_tags(tags),
             volume_kms_key=volume_kms_key,
         )

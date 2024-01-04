@@ -29,7 +29,7 @@ from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.predictor import Predictor
 from sagemaker.serializers import JSONSerializer
 from sagemaker.session import Session
-from sagemaker.utils import to_string
+from sagemaker.utils import to_string, format_tags
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
 
@@ -255,7 +255,7 @@ class HuggingFaceModel(FrameworkModel):
                 https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
             endpoint_name (str): The name of the endpoint to create (default:
                 None). If not specified, a unique endpoint name will be created.
-            tags (List[dict[str, str]]): The list of tags to attach to this
+            tags (Optional[Tags]): The list of tags to attach to this
                 specific endpoint.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 data on the storage volume attached to the instance hosting the
@@ -319,7 +319,7 @@ class HuggingFaceModel(FrameworkModel):
             deserializer,
             accelerator_type,
             endpoint_name,
-            tags,
+            format_tags(tags),
             kms_key,
             wait,
             data_capture_config,

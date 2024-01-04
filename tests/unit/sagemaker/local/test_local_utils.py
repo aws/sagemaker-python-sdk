@@ -15,7 +15,8 @@ from __future__ import absolute_import
 import os
 import errno
 import pytest
-from mock import patch, Mock
+import json
+from mock import patch, Mock, mock_open
 
 import sagemaker.local.utils
 from sagemaker.session_settings import SessionSettings
@@ -198,3 +199,27 @@ def test_move_to_destination_local_root_failure(recursive_copy, mock_rmtree):
     recursive_copy.assert_called_with(
         "/tmp/data", os.path.abspath(os.path.join(os.sep, "target", "dir"))
     )
+
+
+def test_check_for_studio_with_valid_request():
+    metadata = {"AppType": "KernelGateway"}
+    with patch("builtins.open", mock_open(read_data=json.dumps(metadata))):
+        with patch("os.path.exists", return_value=True):
+            is_studio = sagemaker.local.utils.check_for_studio()
+            assert is_studio is True
+
+
+def test_check_for_studio_with_invalid_request():
+    metadata = {"AppType": "DUMMY"}
+    with patch("builtins.open", mock_open(read_data=json.dumps(metadata))):
+        with patch("os.path.exists", return_value=True):
+            with pytest.raises(NotImplementedError):
+                sagemaker.local.utils.check_for_studio()
+
+
+def test_check_for_studio_without_app_type():
+    metadata = {}
+    with patch("builtins.open", mock_open(read_data=json.dumps(metadata))):
+        with patch("os.path.exists", return_value=True):
+            is_studio = sagemaker.local.utils.check_for_studio()
+            assert is_studio is False

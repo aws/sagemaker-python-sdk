@@ -64,6 +64,8 @@ from sagemaker.utils import (
     to_string,
     resolve_value_from_config,
     resolve_nested_dict_value_from_config,
+    format_tags,
+    Tags,
 )
 from sagemaker.async_inference import AsyncInferenceConfig
 from sagemaker.predictor_async import AsyncPredictor
@@ -554,7 +556,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
         instance_type: Optional[str] = None,
         accelerator_type: Optional[str] = None,
         serverless_inference_config: Optional[ServerlessInferenceConfig] = None,
-        tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+        tags: Optional[Tags] = None,
         accept_eula: Optional[bool] = None,
     ):
         """Create a SageMaker Model Entity
@@ -571,10 +573,11 @@ class Model(ModelBase, InferenceRecommenderMixin):
                 Specifies configuration related to serverless endpoint. Instance type is
                 not provided in serverless inference. So this is used to find image URIs
                 (default: None).
-            tags (list[dict[str, str] or list[dict[str, PipelineVariable]]): The list of
-                tags to add to the model (default: None). Example::
+            tags (Optional[Tags]): Tags to add to the model (default: None). Example::
 
                     tags = [{'Key': 'tagname', 'Value':'tagvalue'}]
+                    # Or
+                    tags = {'tagname', 'tagvalue'}
 
                 For more information about tags, see
                 `boto3 documentation <https://boto3.amazonaws.com/v1/documentation/\
@@ -593,7 +596,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         self._create_sagemaker_model(
             instance_type=instance_type,
             accelerator_type=accelerator_type,
-            tags=tags,
+            tags=format_tags(tags),
             serverless_inference_config=serverless_inference_config,
             accept_eula=accept_eula,
         )
@@ -798,7 +801,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         self,
         instance_type=None,
         accelerator_type=None,
-        tags=None,
+        tags: Optional[Tags] = None,
         serverless_inference_config=None,
         accept_eula=None,
     ):
@@ -812,7 +815,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 attach to an endpoint for model loading and inference, for
                 example, 'ml.eia1.medium'. If not specified, no Elastic
                 Inference accelerator will be attached to the endpoint.
-            tags (List[dict[str, str]]): Optional. The list of tags to add to
+            tags (Optional[Tags]): Optional. The tags to add to
                 the model. Example: >>> tags = [{'Key': 'tagname', 'Value':
                 'tagvalue'}] For more information about tags, see
                 https://boto3.amazonaws.com/v1/documentation
@@ -843,7 +846,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             model_package._create_sagemaker_model(
                 instance_type=instance_type,
                 accelerator_type=accelerator_type,
-                tags=tags,
+                tags=format_tags(tags),
                 serverless_inference_config=serverless_inference_config,
             )
             if self._base_name is None and model_package._base_name is not None:
@@ -898,7 +901,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 container_defs=container_def,
                 vpc_config=self.vpc_config,
                 enable_network_isolation=self._enable_network_isolation,
-                tags=tags,
+                tags=format_tags(tags),
             )
             self.sagemaker_session.create_model(**create_model_args)
 
@@ -956,7 +959,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             compilation_job_name (str): what compilation job to source the model from
             resource_key (str): the kms key to encrypt the disk with
             s3_kms_key (str): the kms key to encrypt the output with
-            tags (list[dict]): List of tags for labeling an edge packaging job. For
+            tags (Optional[Tags]): Tags for labeling an edge packaging job. For
                 more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
         Returns:
@@ -971,7 +974,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         return {
             "output_model_config": output_model_config,
             "role": role,
-            "tags": tags,
+            "tags": format_tags(tags),
             "model_name": model_name,
             "model_version": model_version,
             "job_name": packaging_job_name,
@@ -1063,7 +1066,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             "output_model_config": output_model_config,
             "role": role,
             "stop_condition": {"MaxRuntimeInSeconds": compile_max_run},
-            "tags": tags,
+            "tags": format_tags(tags),
             "job_name": job_name,
         }
 
@@ -1091,7 +1094,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             job_name (str): The name of the edge packaging job
             resource_key (str): the kms key to encrypt the disk with
             s3_kms_key (str): the kms key to encrypt the output with
-            tags (list[dict]): List of tags for labeling an edge packaging job. For
+            tags (Optional[Tags]): Tags for labeling an edge packaging job. For
                 more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
 
@@ -1126,7 +1129,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             self._compilation_job_name,
             resource_key,
             s3_kms_key,
-            tags,
+            format_tags(tags),
         )
         self.sagemaker_session.package_model_for_edge(**config)
         job_status = self.sagemaker_session.wait_for_edge_packaging_job(job_name)
@@ -1169,7 +1172,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 https://docs.aws.amazon.com/sagemaker/latest/dg/neo-compilation-preparing-model.html
             output_path (str): Specifies where to store the compiled model
             role (str): Execution role
-            tags (list[dict]): List of tags for labeling a compilation job. For
+            tags (Optional[Tags]): Tags for labeling a compilation job. For
                 more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
             job_name (str): The name of the compilation job
@@ -1242,7 +1245,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             compile_max_run,
             job_name,
             framework,
-            tags,
+            format_tags(tags),
             target_platform_os,
             target_platform_arch,
             target_platform_accelerator,
@@ -1342,7 +1345,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
             endpoint_name (str): The name of the endpoint to create (default:
                 None). If not specified, a unique endpoint name will be created.
-            tags (List[dict[str, str]]): The list of tags to attach to this
+            tags (Optional[Tags]): Tags to attach to this
                 specific endpoint.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 data on the storage volume attached to the instance hosting the
@@ -1429,6 +1432,8 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             MODEL_ENABLE_NETWORK_ISOLATION_PATH,
             sagemaker_session=self.sagemaker_session,
         )
+
+        tags = format_tags(tags)
 
         if (
             getattr(self.sagemaker_session, "settings", None) is not None
@@ -1733,13 +1738,15 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 to be made to each individual transform container at one time.
             max_payload (int): Maximum size of the payload in a single HTTP
                 request to the container in MB.
-            tags (list[dict]): List of tags for labeling a transform job. If
+            tags (Optional[Tags]): Tags for labeling a transform job. If
                 none specified, then the tags used for the training job are used
                 for the transform job.
             volume_kms_key (str): Optional. KMS key ID for encrypting the volume
                 attached to the ML compute instance (default: None).
         """
         self._init_sagemaker_session_if_does_not_exist(instance_type)
+
+        tags = format_tags(tags)
 
         self._create_sagemaker_model(instance_type, tags=tags)
         if self.enable_network_isolation():
@@ -2165,7 +2172,7 @@ class ModelPackage(Model):
             container_def,
             vpc_config=self.vpc_config,
             enable_network_isolation=self.enable_network_isolation(),
-            tags=kwargs.get("tags"),
+            tags=format_tags(kwargs.get("tags")),
         )
 
     def _ensure_base_name_if_needed(self, base_name):

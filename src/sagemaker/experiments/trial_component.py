@@ -20,6 +20,7 @@ from botocore.exceptions import ClientError
 from sagemaker.apiutils import _base_types
 from sagemaker.experiments import _api_types
 from sagemaker.experiments._api_types import TrialComponentSearchResult
+from sagemaker.utils import format_tags
 
 
 class _TrialComponent(_base_types.Record):
@@ -191,7 +192,7 @@ class _TrialComponent(_base_types.Record):
         Args:
             trial_component_name (str): The name of the trial component.
             display_name (str): Display name of the trial component used by Studio (default: None).
-            tags (List[Dict[str, str]]): Tags to add to the trial component (default: None).
+            tags (Optional[Tags]): Tags to add to the trial component (default: None).
             sagemaker_session (sagemaker.session.Session): Session object which
                 manages interactions with Amazon SageMaker APIs and any other
                 AWS services needed. If not specified, one is created using the
@@ -204,7 +205,7 @@ class _TrialComponent(_base_types.Record):
             cls._boto_create_method,
             trial_component_name=trial_component_name,
             display_name=display_name,
-            tags=tags,
+            tags=format_tags(tags),
             sagemaker_session=sagemaker_session,
         )
 
@@ -316,7 +317,7 @@ class _TrialComponent(_base_types.Record):
             display_name (str): Display name of the trial component used by Studio (default: None).
                 This is used only when the given `trial_component_name` does not
                 exist and a new trial component has to be created.
-            tags (List[Dict[str, str]]): Tags to add to the trial component (default: None).
+            tags (Optional[Tags]): Tags to add to the trial component (default: None).
                 This is used only when the given `trial_component_name` does not
                 exist and a new trial component has to be created.
             sagemaker_session (sagemaker.session.Session): Session object which
@@ -333,7 +334,7 @@ class _TrialComponent(_base_types.Record):
             run_tc = _TrialComponent.create(
                 trial_component_name=trial_component_name,
                 display_name=display_name,
-                tags=tags,
+                tags=format_tags(tags),
                 sagemaker_session=sagemaker_session,
             )
         except ClientError as ce:
