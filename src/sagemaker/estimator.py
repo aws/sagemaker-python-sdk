@@ -3282,7 +3282,7 @@ class Framework(EstimatorBase):
     """
 
     _framework_name = None
-    UNSUPPORTED_DLC_IMAGE_FOR_SM_PARALLELISM = ("2.0.1-gpu-py310-cu121", "2.0-gpu-py310-cu121")
+    UNSUPPORTED_DLC_IMAGE_FOR_SM_PARALLELISM = ("2.0.1-gpu-py310-cu121", "2.0-gpu-py310-cu121", "2.1.0-gpu-py310")
 
     def __init__(
         self,
