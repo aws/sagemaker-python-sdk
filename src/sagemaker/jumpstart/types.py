@@ -130,7 +130,7 @@ class JumpStartLaunchedRegionInfo(JumpStartDataHolderType):
 class JumpStartModelHeader(JumpStartDataHolderType):
     """Data class JumpStart model header."""
 
-    __slots__ = ["model_id", "version", "min_version", "spec_key"]
+    __slots__ = ["model_id", "version", "min_version", "spec_key", "search_keywords"]
 
     def __init__(self, header: Dict[str, str]):
         """Initializes a JumpStartModelHeader object from its json representation.
@@ -142,7 +142,11 @@ class JumpStartModelHeader(JumpStartDataHolderType):
 
     def to_json(self) -> Dict[str, str]:
         """Returns json representation of JumpStartModelHeader object."""
-        json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
+        json_obj = {
+            att: getattr(self, att)
+            for att in self.__slots__
+            if getattr(self, att, None) is not None
+        }
         return json_obj
 
     def from_json(self, json_obj: Dict[str, str]) -> None:
@@ -155,6 +159,7 @@ class JumpStartModelHeader(JumpStartDataHolderType):
         self.version: str = json_obj["version"]
         self.min_version: str = json_obj["min_version"]
         self.spec_key: str = json_obj["spec_key"]
+        self.search_keywords: Optional[List[str]] = json_obj.get("search_keywords")
 
 
 class JumpStartECRSpecs(JumpStartDataHolderType):
