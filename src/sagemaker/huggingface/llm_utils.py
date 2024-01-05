@@ -15,8 +15,15 @@ from __future__ import absolute_import
 
 from typing import Optional
 
+import urllib.request
+from urllib.error import HTTPError, URLError
+import json
+from json import JSONDecodeError
+import logging
 from sagemaker import image_uris
 from sagemaker.session import Session
+
+logger = logging.getLogger(__name__)
 
 
 def get_huggingface_llm_image_uri(
@@ -54,3 +61,42 @@ def get_huggingface_llm_image_uri(
         version = version or "0.24.0"
         return image_uris.retrieve(framework="djl-deepspeed", region=region, version=version)
     raise ValueError("Unsupported backend: %s" % backend)
+
+
+def get_huggingface_model_metadata(model_id: str, hf_hub_token: Optional[str] = None) -> dict:
+    """Retrieves the json metadata of the HuggingFace Model via HuggingFace API.
+
+    Args:
+        model_id (str): The HuggingFace Model ID
+        hf_hub_token (str): The HuggingFace Hub Token needed for Private/Gated HuggingFace Models
+
+    Returns:
+        dict: The model metadata retrieved with the HuggingFace API
+    """
+
+    hf_model_metadata_url = f"https://huggingface.co/api/models/{model_id}"
+    hf_model_metadata_json = None
+    try:
+        if hf_hub_token:
+            hf_model_metadata_url = urllib.request.Request(
+                hf_model_metadata_url, None, {"Authorization": "Bearer " + hf_hub_token}
+            )
+        with urllib.request.urlopen(hf_model_metadata_url) as response:
+            hf_model_metadata_json = json.load(response)
+    except (HTTPError, URLError, TimeoutError, JSONDecodeError) as e:
+        if "HTTP Error 401: Unauthorized" in str(e):
+            raise ValueError(
+                "Trying to access a gated/private HuggingFace model without valid credentials. "
+                "Please provide a HUGGING_FACE_HUB_TOKEN in env_vars"
+            )
+        logger.warning(
+            "Exception encountered while trying to retrieve HuggingFace model metadata %s. "
+            "Details: %s",
+            hf_model_metadata_url,
+            e,
+        )
+    if not hf_model_metadata_json:
+        raise ValueError(
+            "Did not find model metadata for the following HuggingFace Model ID %s" % model_id
+        )
+    return hf_model_metadata_json
