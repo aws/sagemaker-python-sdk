@@ -24,6 +24,7 @@ from sagemaker.model_monitor import (
     ModelBiasMonitor,
     ModelExplainabilityMonitor,
 )
+from sagemaker.utils import format_tags
 
 
 class CheckJobConfig:
@@ -66,7 +67,7 @@ class CheckJobConfig:
                 AWS services needed (default: None). If not specified, one is
                 created using the default AWS configuration chain.
             env (dict): Environment variables to be passed to the job (default: None).
-            tags ([dict]): List of tags to be passed to the job (default: None).
+            tags (Optional[Tags]): List of tags to be passed to the job (default: None).
             network_config (sagemaker.network.NetworkConfig): A NetworkConfig
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets (default: None).
@@ -82,7 +83,7 @@ class CheckJobConfig:
         self.base_job_name = base_job_name
         self.sagemaker_session = sagemaker_session or Session()
         self.env = env
-        self.tags = tags
+        self.tags = format_tags(tags)
         self.network_config = network_config
 
     def _generate_model_monitor(self, mm_type: str) -> Optional[ModelMonitor]:

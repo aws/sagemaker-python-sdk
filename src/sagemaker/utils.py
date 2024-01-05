@@ -25,7 +25,7 @@ import shutil
 import tarfile
 import tempfile
 import time
-from typing import Any, List, Optional, Dict
+from typing import Union, Any, List, Optional, Dict
 import json
 import abc
 import uuid
@@ -44,6 +44,7 @@ from sagemaker.config.config_utils import (
 )
 from sagemaker.session_settings import SessionSettings
 from sagemaker.workflow import is_pipeline_variable, is_pipeline_parameter_string
+from sagemaker.workflow.entities import PipelineVariable
 
 ECR_URI_PATTERN = r"^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(.*)(/)(.*:.*)$"
 MAX_BUCKET_PATHS_COUNT = 5
@@ -56,6 +57,9 @@ MAX_ITEMS = 100
 PAGE_SIZE = 10
 
 logger = logging.getLogger(__name__)
+
+TagsDict = Dict[str, Union[str, PipelineVariable]]
+Tags = Union[List[TagsDict], TagsDict]
 
 
 # Use the base name of the image as the job name if the user doesn't give us one
@@ -1477,3 +1481,11 @@ def create_paginator_config(max_items: int = None, page_size: int = None) -> Dic
         "MaxItems": max_items if max_items else MAX_ITEMS,
         "PageSize": page_size if page_size else PAGE_SIZE,
     }
+
+
+def format_tags(tags: Tags) -> List[TagsDict]:
+    """Process tags to turn them into the expected format for Sagemaker."""
+    if isinstance(tags, dict):
+        return [{"Key": str(k), "Value": str(v)} for k, v in tags.items()]
+
+    return tags

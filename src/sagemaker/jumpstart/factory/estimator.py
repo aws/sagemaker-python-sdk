@@ -70,7 +70,7 @@ from sagemaker.jumpstart.utils import (
 
 from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
 from sagemaker.serverless.serverless_inference_config import ServerlessInferenceConfig
-from sagemaker.utils import name_from_base
+from sagemaker.utils import name_from_base, format_tags, Tags
 from sagemaker.workflow.entities import PipelineVariable
 
 
@@ -94,7 +94,7 @@ def get_init_kwargs(
     base_job_name: Optional[str] = None,
     sagemaker_session: Optional[Session] = None,
     hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
-    tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+    tags: Optional[Tags] = None,
     subnets: Optional[List[Union[str, PipelineVariable]]] = None,
     security_group_ids: Optional[List[Union[str, PipelineVariable]]] = None,
     model_uri: Optional[str] = None,
@@ -149,7 +149,7 @@ def get_init_kwargs(
         output_kms_key=output_kms_key,
         base_job_name=base_job_name,
         sagemaker_session=sagemaker_session,
-        tags=tags,
+        tags=format_tags(tags),
         subnets=subnets,
         security_group_ids=security_group_ids,
         model_uri=model_uri,
@@ -253,7 +253,7 @@ def get_deploy_kwargs(
     deserializer: Optional[BaseDeserializer] = None,
     accelerator_type: Optional[str] = None,
     endpoint_name: Optional[str] = None,
-    tags: List[Dict[str, str]] = None,
+    tags: Optional[Tags] = None,
     kms_key: Optional[str] = None,
     wait: Optional[bool] = None,
     data_capture_config: Optional[DataCaptureConfig] = None,
@@ -297,7 +297,7 @@ def get_deploy_kwargs(
         deserializer=deserializer,
         accelerator_type=accelerator_type,
         endpoint_name=endpoint_name,
-        tags=tags,
+        tags=format_tags(tags),
         kms_key=kms_key,
         wait=wait,
         data_capture_config=data_capture_config,

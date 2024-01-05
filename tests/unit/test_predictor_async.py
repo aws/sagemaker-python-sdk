@@ -404,7 +404,7 @@ def test_update_endpoint_all_args():
     new_instance_type = "ml.c4.xlarge"
     new_accelerator_type = "ml.eia1.medium"
     new_model_name = "new-model"
-    new_tags = {"Key": "foo", "Value": "bar"}
+    new_tags = [{"Key": "foo", "Value": "bar"}]
     new_kms_key = "new-key"
     new_data_capture_config_dict = {}
 

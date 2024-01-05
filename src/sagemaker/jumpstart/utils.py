@@ -41,7 +41,7 @@ from sagemaker.jumpstart.types import (
 )
 from sagemaker.session import Session
 from sagemaker.config import load_sagemaker_config
-from sagemaker.utils import resolve_value_from_config
+from sagemaker.utils import resolve_value_from_config, TagsDict
 from sagemaker.workflow import is_pipeline_variable
 
 
@@ -345,10 +345,10 @@ def get_jumpstart_base_name_if_jumpstart_model(
 
 
 def add_jumpstart_model_id_version_tags(
-    tags: Optional[List[Dict[str, str]]],
+    tags: Optional[List[TagsDict]],
     model_id: str,
     model_version: str,
-) -> List[Dict[str, str]]:
+) -> List[TagsDict]:
     """Add custom model ID and version tags to JumpStart related resources."""
     if model_id is None or model_version is None:
         return tags
@@ -368,12 +368,12 @@ def add_jumpstart_model_id_version_tags(
 
 
 def add_jumpstart_uri_tags(
-    tags: Optional[List[Dict[str, str]]] = None,
+    tags: Optional[List[TagsDict]] = None,
     inference_model_uri: Optional[Union[str, dict]] = None,
     inference_script_uri: Optional[str] = None,
     training_model_uri: Optional[str] = None,
     training_script_uri: Optional[str] = None,
-) -> Optional[List[Dict[str, str]]]:
+) -> Optional[List[TagsDict]]:
     """Add custom uri tags to JumpStart models, return the updated tags.
 
     No-op if this is not a JumpStart model related resource.

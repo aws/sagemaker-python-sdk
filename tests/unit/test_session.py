@@ -15,6 +15,7 @@ from __future__ import absolute_import
 import copy
 import datetime
 import io
+import json
 import logging
 import os
 
@@ -530,6 +531,67 @@ def test_get_execution_role_throws_exception_if_arn_is_not_role_with_role_in_nam
     with pytest.raises(ValueError) as error:
         get_execution_role(session)
     assert "The current AWS identity is not a role" in str(error.value)
+
+
+def test_get_execution_role_get_default_role(caplog):
+    session = Mock()
+    session.get_caller_identity_arn.return_value = "arn:aws:iam::369233609183:user/marcos"
+
+    iam_client = Mock()
+    iam_client.get_role.return_value = {"Role": {"Arn": "foo-role"}}
+    boto_session = Mock()
+    boto_session.client.return_value = iam_client
+
+    session.boto_session = boto_session
+    actual = get_execution_role(session, use_default=True)
+
+    iam_client.get_role.assert_called_with(RoleName="AmazonSageMaker-DefaultRole")
+    iam_client.attach_role_policy.assert_called_with(
+        PolicyArn="arn:aws:iam::aws:policy/AmazonSageMakerFullAccess",
+        RoleName="AmazonSageMaker-DefaultRole",
+    )
+    assert "Using default role: AmazonSageMaker-DefaultRole" in caplog.text
+    assert actual == "foo-role"
+
+
+def test_get_execution_role_create_default_role(caplog):
+    session = Mock()
+    session.get_caller_identity_arn.return_value = "arn:aws:iam::369233609183:user/marcos"
+    permissions_policy = json.dumps(
+        {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {"Service": ["sagemaker.amazonaws.com"]},
+                    "Action": "sts:AssumeRole",
+                }
+            ],
+        }
+    )
+    iam_client = Mock()
+    iam_client.exceptions.NoSuchEntityException = Exception
+    iam_client.get_role = Mock(side_effect=[Exception(), {"Role": {"Arn": "foo-role"}}])
+
+    boto_session = Mock()
+    boto_session.client.return_value = iam_client
+
+    session.boto_session = boto_session
+
+    actual = get_execution_role(session, use_default=True)
+
+    iam_client.create_role.assert_called_with(
+        RoleName="AmazonSageMaker-DefaultRole", AssumeRolePolicyDocument=str(permissions_policy)
+    )
+
+    iam_client.attach_role_policy.assert_called_with(
+        PolicyArn="arn:aws:iam::aws:policy/AmazonSageMakerFullAccess",
+        RoleName="AmazonSageMaker-DefaultRole",
+    )
+
+    assert "Created new sagemaker execution role: AmazonSageMaker-DefaultRole" in caplog.text
+
+    assert actual == "foo-role"
 
 
 @patch(
@@ -3591,7 +3653,7 @@ def test_endpoint_from_production_variants_with_sagemaker_config_injection_no_km
     )
 
 
-def test_create_endpoint_config_with_tags(sagemaker_session):
+def test_create_endpoint_config_with_tags_list(sagemaker_session):
     tags = [{"Key": "TagtestKey", "Value": "TagtestValue"}]
 
     sagemaker_session.create_endpoint_config(
@@ -3604,6 +3666,23 @@ def test_create_endpoint_config_with_tags(sagemaker_session):
 
     sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
         EndpointConfigName="endpoint-test", ProductionVariants=ANY, Tags=tags
+    )
+
+
+def test_create_endpoint_config_with_tags_dict(sagemaker_session):
+    tags = {"TagtestKey": "TagtestValue"}
+    call_tags = [{"Key": "TagtestKey", "Value": "TagtestValue"}]
+
+    sagemaker_session.create_endpoint_config(
+        name="endpoint-test",
+        initial_instance_count=1,
+        instance_type="local",
+        model_name="simple-model",
+        tags=tags,
+    )
+
+    sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
+        EndpointConfigName="endpoint-test", ProductionVariants=ANY, Tags=call_tags
     )
 
 
