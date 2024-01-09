@@ -1,5 +1,14 @@
 # Changelog
 
+## v2.203.1 (2024-01-09)
+
+### Bug Fixes and Other Changes
+
+ * TGI 1.3.3
+ * skip failing integs
+ * query hf api for model md
+ * update image_uri_configs  12-29-2023 06:17:34 PST
+
 ## v2.203.0 (2023-12-28)
 
 ### Features
