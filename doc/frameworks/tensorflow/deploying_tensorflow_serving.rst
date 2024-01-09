@@ -515,7 +515,7 @@ either, so you can simplify the layout at the same time:
 
 You should now have a directory structure like this:
 
-::
+.. code-block:: text
 
   └── multi
     ├── model1
