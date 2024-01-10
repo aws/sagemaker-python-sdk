@@ -45,8 +45,8 @@ def feature_processor(
 
     If the decorated function is executed without arguments then the decorated function's arguments
     are automatically loaded from the input data sources. Outputs are ingested to the output Feature
-    Group. If arguments are provided to this function, then arguments are not automatically
-    loaded (for testing).
+    Group. If arguments are provided to this function, then arguments are not automatically loaded
+    (for testing).
 
     Decorated functions must conform to the expected signature. Parameters: one parameter of type
     pyspark.sql.DataFrame for each DataSource in 'inputs'; followed by the optional parameters with
@@ -82,9 +82,9 @@ def feature_processor(
         inputs (Sequence[Union[FeatureGroupDataSource, CSVDataSource, ParquetDataSource,
             BaseDataSource]]): A list of data sources.
         output (str): A Feature Group ARN to write results of this function to.
-        target_stores (Optional[list[str]], optional): A list containing at least one
-            of 'OnlineStore' or 'OfflineStore'. If unspecified, data will be ingested to the
-            enabled stores of the output feature group. Defaults to None.
+        target_stores (Optional[list[str]], optional): A list containing at least one of
+            'OnlineStore' or 'OfflineStore'. If unspecified, data will be ingested to the enabled
+            stores of the output feature group. Defaults to None.
         parameters (Optional[Dict[str, Union[str, Dict]]], optional): Parameters to be provided to
             the decorated function, available as the 'params' argument. Useful for parameterized
             functions. The params argument also contains the set of system provided parameters
