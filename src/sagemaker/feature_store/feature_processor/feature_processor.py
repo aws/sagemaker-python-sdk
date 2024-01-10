@@ -45,8 +45,8 @@ def feature_processor(
 
     If the decorated function is executed without arguments then the decorated function's arguments
     are automatically loaded from the input data sources. Outputs are ingested to the output Feature
-    Group. If arguments are provided to this function, then arguments are not automatically loaded
-    (for testing).
+    Group. If arguments are provided to this function, then arguments are not automatically
+    loaded (for testing).
 
     Decorated functions must conform to the expected signature. Parameters: one parameter of type
     pyspark.sql.DataFrame for each DataSource in 'inputs'; followed by the optional parameters with
@@ -96,7 +96,6 @@ def feature_processor(
             development phase to ensure that data is not used until the function is ready. It also
             useful for users that want to manage their own data ingestion. Defaults to True.
         spark_config (Dict[str, str]): A dict contains the key-value paris for Spark configurations.
-
     Raises:
         IngestionError: If any rows are not ingested successfully then a sample of the records,
             with failure reasons, is logged.
