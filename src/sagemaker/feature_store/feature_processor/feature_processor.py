@@ -82,7 +82,7 @@ def feature_processor(
         inputs (Sequence[Union[FeatureGroupDataSource, CSVDataSource, ParquetDataSource,
             BaseDataSource]]): A list of data sources.
         output (str): A Feature Group ARN to write results of this function to.
-        target_stores (Optional[list[str]], optional): A list containing at least one 
+        target_stores (Optional[list[str]], optional): A list containing at least one
             of 'OnlineStore' or 'OfflineStore'. If unspecified, data will be ingested to the
             enabled stores of the output feature group. Defaults to None.
         parameters (Optional[Dict[str, Union[str, Dict]]], optional): Parameters to be provided to
