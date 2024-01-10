@@ -1,4 +1,4 @@
-sphinx==7.2.6
+sphinx==7.1.2
 sphinx-rtd-theme==2.0.0
 docutils==0.20.1
 packaging==23.2
