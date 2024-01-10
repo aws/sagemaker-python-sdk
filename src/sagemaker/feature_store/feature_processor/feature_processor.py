@@ -82,9 +82,9 @@ def feature_processor(
         inputs (Sequence[Union[FeatureGroupDataSource, CSVDataSource, ParquetDataSource,
             BaseDataSource]]): A list of data sources.
         output (str): A Feature Group ARN to write results of this function to.
-        target_stores (Optional[list[str]], optional): A list containing at least one of
-            'OnlineStore' or 'OfflineStore'. If unspecified, data will be ingested to the enabled
-            stores of the output feature group. Defaults to None.
+        target_stores (Optional[list[str]], optional): A list containing at least one 
+            of 'OnlineStore' or 'OfflineStore'. If unspecified, data will be ingested to the
+            enabled stores of the output feature group. Defaults to None.
         parameters (Optional[Dict[str, Union[str, Dict]]], optional): Parameters to be provided to
             the decorated function, available as the 'params' argument. Useful for parameterized
             functions. The params argument also contains the set of system provided parameters
@@ -96,6 +96,7 @@ def feature_processor(
             development phase to ensure that data is not used until the function is ready. It also
             useful for users that want to manage their own data ingestion. Defaults to True.
         spark_config (Dict[str, str]): A dict contains the key-value paris for Spark configurations.
+
     Raises:
         IngestionError: If any rows are not ingested successfully then a sample of the records,
             with failure reasons, is logged.

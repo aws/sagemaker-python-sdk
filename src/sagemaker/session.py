@@ -4566,14 +4566,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
             inference_component_name (str): Name of the Amazon SageMaker ``InferenceComponent``.
             specification ([dict[str,int]]): Resource configuration. Optional.
                 Example: {
-                    "MinMemoryRequiredInMb": 1024,
-                    "NumberOfCpuCoresRequired": 1,
-                    "NumberOfAcceleratorDevicesRequired": 1,
-                    "MaxMemoryRequiredInMb": 4096,
+                "MinMemoryRequiredInMb": 1024,
+                "NumberOfCpuCoresRequired": 1,
+                "NumberOfAcceleratorDevicesRequired": 1,
+                "MaxMemoryRequiredInMb": 4096,
                 },
             runtime_config ([dict[str,int]]): Number of copies. Optional.
                 Default: {
-                    "copyCount": 1
+                "copyCount": 1
                 }
             wait: Wait for inference component to be created before return. Optional. Default is
                 True.
