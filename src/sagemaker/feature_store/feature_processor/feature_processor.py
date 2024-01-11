@@ -79,7 +79,7 @@ def feature_processor(
             return ...
 
     Args:
-        inputs (Sequence[Union[FeatureGroupDataSource, CSVDataSource, ParquetDataSource, BaseDataSource]]): 
+        inputs (Sequence[Union[FeatureGroupDataSource, CSVDataSource, ParquetDataSource, BaseDataSource]]):
             A list of data sources.
         output (str): A Feature Group ARN to write results of this function to.
         target_stores (Optional[list[str]], optional): A list containing at least one of
