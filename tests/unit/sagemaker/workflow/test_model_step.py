@@ -1171,3 +1171,29 @@ def test_create_model_step_using_custom_model_name(pipeline_session):
     steps = json.loads(pipeline.definition())["Steps"]
     assert len(steps) == 1
     assert "ModelName" not in steps[0]["Arguments"]
+
+
+def test_create_model_step_using_custom_model_name_set_to_none(pipeline_session):
+
+    # Name of the model not specified, will resolve to None.
+    model = Model(
+        image_uri="my-image",
+        sagemaker_session=pipeline_session,
+        model_data="s3://",
+        role=ROLE,
+    )
+    step_create_model = ModelStep(name="MyModelStep", step_args=model.create())
+
+    # 1. Toggle on custom-prefixing model package name popped
+    config = PipelineDefinitionConfig(use_custom_job_prefix=True)
+
+    with pytest.raises(ValueError) as error:
+        pipeline = Pipeline(
+            name="MyPipeline",
+            steps=[step_create_model],
+            sagemaker_session=pipeline_session,
+            pipeline_definition_config=config,
+        )
+        pipeline.definition()
+
+    assert "The provided job field [ModelName] has not been specified" in str(error.value)

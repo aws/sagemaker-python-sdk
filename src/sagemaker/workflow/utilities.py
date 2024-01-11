@@ -41,6 +41,12 @@ DEF_CONFIG_WARN_MSG_TEMPLATE = (
     "if desired."
 )
 
+JOB_KEY_NONE_WARN_MSG_TEMPLATE = (
+    "The provided job field [{}] has not been specified. Please refer to the AWS Docs to "
+    "identify which field should be set to enable the custom-prefixing feature for jobs "
+    "created via a pipeline execution."
+)
+
 if TYPE_CHECKING:
     from sagemaker.workflow.step_collections import StepCollection
 
@@ -458,6 +464,8 @@ def trim_request_dict(request_dict, job_key, config):
         request_dict.pop(job_key, None)  # safely return null in case of KeyError
     else:
         if job_key in request_dict:
+            if request_dict[job_key] is None:
+                raise ValueError(JOB_KEY_NONE_WARN_MSG_TEMPLATE.format(job_key))
             request_dict[job_key] = base_from_name(request_dict[job_key])  # trim timestamp
 
     return request_dict
