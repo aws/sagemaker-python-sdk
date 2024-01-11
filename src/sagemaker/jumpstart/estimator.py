@@ -292,8 +292,8 @@ class JumpStartEstimator(Estimator):
                 SageMaker Debugger rules for real-time analysis
                 (Default: None). For more information,
                 see `Continuous analyses through rules
-                <https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html
-                #continuous-analyses-through-rules)>`_.
+                <https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html#
+                continuous-analyses-through-rules)>`_.
                 (Default: None).
             debugger_hook_config (Optional[Union[DebuggerHookConfig, bool]]):
                 Configuration for how debugging information is emitted with
