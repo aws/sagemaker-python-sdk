@@ -315,12 +315,11 @@ def test_load_and_invoke_json_serialization(
 def test_save_and_load_with_pipeline_variable(monkeypatch):
     session = Mock()
     s3_base_uri = random_s3_uri()
+    func1_result_path = f"{s3_base_uri}/execution-id/func_1/results"
 
     function_step = _FunctionStep(name="func_1", display_name=None, description=None)
     x = DelayedReturn(function_step=function_step)
-    serialize_obj_to_s3(
-        3.0, session, f"{s3_base_uri}/execution-id/func_1/results", HMAC_KEY, KMS_KEY
-    )
+    serialize_obj_to_s3(3.0, session, func1_result_path, HMAC_KEY, KMS_KEY)
 
     stored_function = StoredFunction(
         sagemaker_session=session,
@@ -332,8 +331,10 @@ def test_save_and_load_with_pipeline_variable(monkeypatch):
                 "Parameters.a": "1.0",
                 "Parameters.b": "2.0",
                 "Parameters.c": "3.0",
-                "Execution.PipelineExecutionId": "execution-id",
+                "Steps.func_1.OutputDataConfig.S3OutputPath": func1_result_path,
             },
+            execution_id="execution-id",
+            step_name="func_2",
         ),
     )
 
@@ -354,8 +355,9 @@ def test_save_and_load_with_pipeline_variable(monkeypatch):
     stored_function.save_pipeline_step_function(test_serialized_data)
     stored_function.load_and_invoke()
 
+    func2_result_path = f"{s3_base_uri}/execution-id/func_2/results"
     assert deserialize_obj_from_s3(
-        session, s3_uri=f"{s3_base_uri}/results", hmac_key=HMAC_KEY
+        session, s3_uri=func2_result_path, hmac_key=HMAC_KEY
     ) == quadratic(3.0, a=1.0, b=2.0, c=3.0)
 
 
