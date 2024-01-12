@@ -4353,7 +4353,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         return endpoint_name
 
     def is_inference_component_based_endpoint(self, endpoint_name):
-        """Returns True if endpoint is inference component based, False otherwise.
+        """Returns 'True' if endpoint is inference-component-based, 'False' otherwise.
 
         An endpoint is inference component based if and only if the associated endpoint config
         has a role associated with it and no production variants with a ``ModelName`` field.

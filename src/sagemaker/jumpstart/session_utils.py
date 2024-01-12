@@ -33,6 +33,9 @@ def get_model_id_version_from_endpoint(
     and version. A third string element is included in the tuple for any inferred inference
     component name, or None if it's a model-based endpoint.
 
+    JumpStart adds tags automatically to endpoints, models, endpoint configs, and inference
+    components launched in SageMaker Studio and programmatically with the SageMaker Python SDK.
+
     Raises:
         ValueError: If model ID and version cannot be inferred from the endpoint.
     """
@@ -68,7 +71,9 @@ def _get_model_id_version_from_inference_component_endpoint_without_inference_co
 ) -> Tuple[str, str, str]:
     """Given an endpoint name, derives the model ID, version, and inferred inference component name.
 
-    This function assumes the endpoint corresponds to an inference component-based endpoint.
+    This function assumes the endpoint corresponds to an inference-component-based endpoint.
+    An endpoint is inference-component-based if and only if the associated endpoint config
+    has a role associated with it and no production variants with a ``ModelName`` field.
 
     Raises:
         ValueError: If there is not a single inference component associated with the endpoint.
@@ -87,8 +92,9 @@ def _get_model_id_version_from_inference_component_endpoint_without_inference_co
         )
     if len(inference_component_names) > 1:
         raise ValueError(
-            "Must provide inference component name for endpoint with "
-            "multiple inference components."
+            f"Multiple inference components found for the following endpoint: {endpoint_name}. "
+            "Provide an 'inference_component_name' to retrieve the model ID and version "
+            "associated with a particular inference component."
         )
     inference_component_name = inference_component_names[0]
     return (
@@ -102,7 +108,7 @@ def _get_model_id_version_from_inference_component_endpoint_without_inference_co
 def _get_model_id_version_from_inference_component_endpoint_with_inference_component_name(
     inference_component_name: str, sagemaker_session: Session
 ):
-    """Returns the model ID and version inferred from a sagemaker inference component.
+    """Returns the model ID and version inferred from a SageMaker inference component.
 
     Raises:
         ValueError: If the inference component does not have tags from which the model ID
@@ -177,7 +183,8 @@ def get_model_id_version_from_training_job(
 
     Raises:
         ValueError: If the training job does not have tags from which the model ID
-            and version can be inferred.
+            and version can be inferred. JumpStart adds tags automatically to training jobs
+            launched in SageMaker Studio and programmatically with the SageMaker Python SDK.
     """
     region: str = sagemaker_session.boto_region_name
     partition: str = aws_partition(region)

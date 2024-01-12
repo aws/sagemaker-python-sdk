@@ -770,7 +770,7 @@ def get_jumpstart_model_id_version_from_resource_arn(
 ) -> Tuple[Optional[str], Optional[str]]:
     """Returns the JumpStart model ID and version if in resource tags.
 
-    Returns None if model ID or version cannot be inferred from tags.
+    Returns 'None' if model ID or version cannot be inferred from tags.
     """
 
     list_tags_result = sagemaker_session.list_tags(resource_arn)

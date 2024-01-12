@@ -48,7 +48,7 @@ def retrieve_default(
         endpoint_name (str): Endpoint name for which to create a predictor.
         inference_component_name (str): Name of the Amazon SageMaker inference component
             from which to optionally create a predictor. (Default: None).
-        sagemaker_session (Session): The SageMaker Session to attach to the Predictor.
+        sagemaker_session (Session): The SageMaker Session to attach to the predictor.
             (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
         region (str): The AWS Region for which to retrieve the default predictor.
             (Default: None).
