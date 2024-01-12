@@ -6269,7 +6269,7 @@ def test_describe_inference_component(sagemaker_session):
     )
 
 
-def test_list_inference_components_associated_with_endpoint(sagemaker_session):
+def test_list_and_paginate_inference_component_names_associated_with_endpoint(sagemaker_session):
     endpoint_name = "test-endpoint"
 
     sagemaker_session.list_inference_components = Mock()
@@ -6307,7 +6307,9 @@ def test_list_inference_components_associated_with_endpoint(sagemaker_session):
     assert [
         "icname1",
         "icname2",
-    ] == sagemaker_session.list_inference_components_associated_with_endpoint(endpoint_name)
+    ] == sagemaker_session.list_and_paginate_inference_component_names_associated_with_endpoint(
+        endpoint_name
+    )
 
     sagemaker_session.list_inference_components.assert_has_calls(
         [

@@ -81,7 +81,7 @@ def _teardown():
     for endpoint_name in endpoint_names:
         for (
             inference_component_name
-        ) in sagemaker_client.list_inference_components_associated_with_endpoint(
+        ) in sagemaker_client.list_and_paginate_inference_component_names_associated_with_endpoint(
             endpoint_name=endpoint_name
         ):
             inference_component_names.append(inference_component_name)

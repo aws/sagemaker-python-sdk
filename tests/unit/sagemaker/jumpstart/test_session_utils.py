@@ -168,7 +168,7 @@ def test_get_model_id_version_from_inference_component_endpoint_without_inferenc
         "model_id",
         "model_version",
     )
-    mock_sm_session.list_inference_components_associated_with_endpoint = Mock(
+    mock_sm_session.list_and_paginate_inference_component_names_associated_with_endpoint = Mock(
         return_value=["icname"]
     )
 
@@ -179,7 +179,7 @@ def test_get_model_id_version_from_inference_component_endpoint_without_inferenc
     )
 
     assert retval == ("model_id", "model_version", "icname")
-    mock_sm_session.list_inference_components_associated_with_endpoint.assert_called_once_with(
+    mock_sm_session.list_and_paginate_inference_component_names_associated_with_endpoint.assert_called_once_with(
         endpoint_name="blahblah"
     )
 
@@ -196,13 +196,15 @@ def test_get_model_id_version_from_inference_component_endpoint_without_ic_name_
         "model_id",
         "model_version",
     )
-    mock_sm_session.list_inference_components_associated_with_endpoint = Mock(return_value=[])
+    mock_sm_session.list_and_paginate_inference_component_names_associated_with_endpoint = Mock(
+        return_value=[]
+    )
     with pytest.raises(ValueError):
         _get_model_id_version_from_inference_component_endpoint_without_inference_component_name(
             "blahblah", mock_sm_session
         )
 
-    mock_sm_session.list_inference_components_associated_with_endpoint.assert_called_once_with(
+    mock_sm_session.list_and_paginate_inference_component_names_associated_with_endpoint.assert_called_once_with(
         endpoint_name="blahblah"
     )
 
@@ -220,7 +222,7 @@ def test_get_model_id_version_from_ic_endpoint_without_inference_component_name_
         "model_version",
     )
 
-    mock_sm_session.list_inference_components_associated_with_endpoint = Mock(
+    mock_sm_session.list_and_paginate_inference_component_names_associated_with_endpoint = Mock(
         return_value=["icname1", "icname2"]
     )
 
@@ -229,7 +231,7 @@ def test_get_model_id_version_from_ic_endpoint_without_inference_component_name_
             "blahblah", mock_sm_session
         )
 
-    mock_sm_session.list_inference_components_associated_with_endpoint.assert_called_once_with(
+    mock_sm_session.list_and_paginate_inference_component_names_associated_with_endpoint.assert_called_once_with(
         endpoint_name="blahblah"
     )
 

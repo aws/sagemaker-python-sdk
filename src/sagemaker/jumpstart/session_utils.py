@@ -27,11 +27,11 @@ def get_model_id_version_from_endpoint(
     inference_component_name: Optional[str] = None,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> Tuple[str, str, Optional[str]]:
-    """Given an endpoint name (and optionally an inference component), get the model ID and version.
+    """Given an endpoint and optionally inference component names, return the model ID and version.
 
     Infers the model ID and version based on the resource tags. Returns a tuple of the model ID
     and version. A third string element is included in the tuple for any inferred inference
-    component name, or None if it's a model-based endpoint.
+    component name, or 'None' if it's a model-based endpoint.
 
     JumpStart adds tags automatically to endpoints, models, endpoint configs, and inference
     components launched in SageMaker Studio and programmatically with the SageMaker Python SDK.
@@ -79,7 +79,7 @@ def _get_model_id_version_from_inference_component_endpoint_without_inference_co
         ValueError: If there is not a single inference component associated with the endpoint.
     """
     inference_component_names = (
-        sagemaker_session.list_inference_components_associated_with_endpoint(
+        sagemaker_session.list_and_paginate_inference_component_names_associated_with_endpoint(
             endpoint_name=endpoint_name
         )
     )

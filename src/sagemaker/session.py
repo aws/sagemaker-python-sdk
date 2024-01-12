@@ -4360,7 +4360,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         Args:
             endpoint_name (str): Name of the Amazon SageMaker ``Endpoint`` to determine
-                if inference component based.
+                if inference-component-based.
         """
         describe_endpoint_response = self.describe_endpoint(endpoint_name)
         endpoint_config_name = describe_endpoint_response["EndpointConfigName"]
@@ -4654,7 +4654,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 poll=20,
             )
 
-    def list_inference_components_associated_with_endpoint(
+    def list_and_paginate_inference_component_names_associated_with_endpoint(
         self,
         endpoint_name: str,
     ) -> List[str]:
