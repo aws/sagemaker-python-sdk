@@ -444,7 +444,7 @@ class _ConditionStepExecutor(_StepExecutor):
             True if given ConditionNot evaluated as true,
             False otherwise.
         """
-        return not self._resolve_condition(not_condition["Expression"])
+        return not self._resolve_condition(not_condition["Condition"])
 
     def _resolve_or_condition(self, or_condition: dict):
         """Resolve given ConditionOr.
