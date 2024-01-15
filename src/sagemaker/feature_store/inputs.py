@@ -472,6 +472,13 @@ class ThroughputConfig(Config):
     Throughput configuration can be ON_DEMAND, or PROVISIONED with valid values for
     read and write capacity units. ON_DEMAND works best for less predictable traffic,
     while PROVISIONED works best for consistent and predictable traffic.
+
+    Attributes:
+        mode (ThroughputModeEnum): Throughput mode
+        provisioned_read_capacity_units (int): For provisioned feature groups, this indicates
+            the read throughput you are billed for and can consume without throttling.
+        provisioned_write_capacity_units (int):  For provisioned feature groups, this indicates
+            the write throughput you are billed for and can consume without throttling.
     """
 
     mode: ThroughputModeEnum = attr.ib(default=None)
@@ -493,11 +500,18 @@ class ThroughputConfig(Config):
 
 @attr.s
 class ThroughputConfigUpdate(Config):
-    """Target throughput configuration of the feature group being updated.
+    """Target throughput configuration for the feature group.
 
     Target throughput configuration can be ON_DEMAND, or PROVISIONED with valid values for
     read and write capacity units. ON_DEMAND works best for less predictable traffic,
     while PROVISIONED works best for consistent and predictable traffic.
+
+    Attributes:
+        mode (ThroughputModeEnum): Target throughput mode
+        provisioned_read_capacity_units (int): For provisioned feature groups, this indicates
+            the read throughput you are billed for and can consume without throttling.
+        provisioned_write_capacity_units (int):  For provisioned feature groups, this indicates
+            the write throughput you are billed for and can consume without throttling.
     """
 
     mode: ThroughputModeEnum = attr.ib(default=None)
