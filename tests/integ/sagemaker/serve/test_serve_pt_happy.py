@@ -133,6 +133,7 @@ def squeezenet_schema(custom_request_translator, custom_response_translator):
         output_translator=custom_response_translator,
     )
 
+
 @pytest.fixture
 def model_builder_inference_spec_schema_builder(squeezenet_inference_spec, squeezenet_schema):
     return ModelBuilder(
