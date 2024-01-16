@@ -172,8 +172,8 @@ class _RepackModelStep(TrainingStep):
 
         # the real estimator and inputs
         repacker = SKLearn(
-            framework_version=FRAMEWORK_VERSION,
-            instance_type=INSTANCE_TYPE,
+            framework_version=kwargs.pop("framework_version", None) or FRAMEWORK_VERSION,
+            instance_type=kwargs.pop("instance_type", None) or INSTANCE_TYPE,
             entry_point=REPACK_SCRIPT_LAUNCHER,
             source_dir=self._source_dir,
             dependencies=self._dependencies,
