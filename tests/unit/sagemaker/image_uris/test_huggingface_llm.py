@@ -41,7 +41,7 @@ HF_VERSIONS_MAPPING = {
 def test_huggingface_uris(load_config):
     VERSIONS = load_config["inference"]["versions"]
     device = load_config["inference"]["processors"][0]
-    backend = "huggingface-neuronx" if device == "inf" else "huggingface"
+    backend = "huggingface-neuronx" if device == "inf2" else "huggingface"
     for version in VERSIONS:
         ACCOUNTS = load_config["inference"]["versions"][version]["registries"]
         for region in ACCOUNTS.keys():
