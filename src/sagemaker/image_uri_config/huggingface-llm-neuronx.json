@@ -1,7 +1,7 @@
 {
     "inference": {
         "processors": [
-            "inf"
+            "inf2"
         ],
         "version_aliases": {
             "0.0": "0.0.16"
@@ -30,10 +30,10 @@
                     "us-west-2": "763104351884",
                     "ca-west-1": "204538143572"
                 },
-                "tag_prefix": "2.1.1-optimum0.0.16",
+                "tag_prefix": "1.13.1-optimum0.0.16",
                 "repository": "huggingface-pytorch-tgi-inference",
                 "container_version": {
-                    "inf": "ubuntu22.04"
+                    "inf2": "ubuntu22.04"
                 }
             }
         }

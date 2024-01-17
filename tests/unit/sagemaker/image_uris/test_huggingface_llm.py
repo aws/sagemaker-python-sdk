@@ -29,8 +29,8 @@ HF_VERSIONS_MAPPING = {
         "1.3.1": "2.1.1-tgi1.3.1-gpu-py310-cu121-ubuntu20.04",
         "1.3.3": "2.1.1-tgi1.3.3-gpu-py310-cu121-ubuntu20.04",
     },
-    "inf": {
-        "0.0.16": "2.1.1-optimum0.0.16-neuronx-py310-ubuntu22.04",
+    "inf2": {
+        "0.0.16": "1.13.1-optimum0.0.16-neuronx-py310-ubuntu22.04",
     },
 }
 
