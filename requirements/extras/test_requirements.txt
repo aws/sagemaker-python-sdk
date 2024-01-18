@@ -39,6 +39,4 @@ tritonclient[http]<2.37.0
 onnx==1.14.1
 # tf2onnx==1.15.1
 nbformat>=5.9,<6
-torch==2.0.1
-torchvision==0.15.2
 torchaudio==2.0.2
