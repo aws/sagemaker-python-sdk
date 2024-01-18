@@ -28,7 +28,7 @@ from torchvision.models.squeezenet import squeezenet1_1
 from tests.integ.sagemaker.serve.constants import (
     PYTORCH_SQUEEZENET_RESOURCE_DIR,
     SERVE_SAGEMAKER_ENDPOINT_TIMEOUT,
-    NOT_RUNNING_ON_PY310,
+    PYTHON_VERSION_IS_310,
 )
 from tests.integ.timeout import timeout
 from tests.integ.utils import cleanup_model_resources
@@ -148,44 +148,45 @@ def model_builder(request):
     return request.getfixturevalue(request.param)
 
 
-# @pytest.mark.skipif(
-#     NOT_RUNNING_ON_INF_EXP_DEV_PIPELINE or NOT_RUNNING_ON_PY310,
-#     reason="The goal of these test are to test the serving components of our feature",
-# )
-# @pytest.mark.parametrize(
-#     "model_builder", ["model_builder_inference_spec_schema_builder"], indirect=True
-# )
-# def test_happy_pytorch_local_container(sagemaker_session, model_builder, test_image):
-#     logger.info("Running in LOCAL_CONTAINER mode...")
-#     caught_ex = None
-
-#     model = model_builder.build(mode=Mode.LOCAL_CONTAINER, sagemaker_session=sagemaker_session)
-
-#     with timeout(minutes=SERVE_LOCAL_CONTAINER_TIMEOUT):
-#         try:
-#             logger.info("Deploying and predicting in LOCAL_CONTAINER mode...")
-#             predictor = model.deploy()
-#             logger.info("Local container successfully deployed.")
-#             predictor.predict(test_image)
-#         except Exception as e:
-#             logger.exception("test failed")
-#             caught_ex = e
-#         finally:
-#             if model.modes[str(Mode.LOCAL_CONTAINER)].container:
-#                 model.modes[str(Mode.LOCAL_CONTAINER)].container.kill()
-#             if caught_ex:
-#                 assert (
-#                     False
-#                 ), f"{caught_ex} was thrown when running pytorch squeezenet local container test"
-
-
 @pytest.mark.skipif(
-    NOT_RUNNING_ON_PY310,  # or NOT_RUNNING_ON_INF_EXP_DEV_PIPELINE,
+    PYTHON_VERSION_IS_310,
     reason="The goal of these test are to test the serving components of our feature",
 )
 @pytest.mark.parametrize(
     "model_builder", ["model_builder_inference_spec_schema_builder"], indirect=True
 )
+def test_happy_pytorch_local_container(sagemaker_session, model_builder, test_image):
+    logger.info("Running in LOCAL_CONTAINER mode...")
+    caught_ex = None
+
+    model = model_builder.build(mode=Mode.LOCAL_CONTAINER, sagemaker_session=sagemaker_session)
+
+    with timeout(minutes=SERVE_LOCAL_CONTAINER_TIMEOUT):
+        try:
+            logger.info("Deploying and predicting in LOCAL_CONTAINER mode...")
+            predictor = model.deploy()
+            logger.info("Local container successfully deployed.")
+            predictor.predict(test_image)
+        except Exception as e:
+            logger.exception("test failed")
+            caught_ex = e
+        finally:
+            if model.modes[str(Mode.LOCAL_CONTAINER)].container:
+                model.modes[str(Mode.LOCAL_CONTAINER)].container.kill()
+            if caught_ex:
+                assert (
+                    False
+                ), f"{caught_ex} was thrown when running pytorch squeezenet local container test"
+
+
+@pytest.mark.skipif(
+    PYTHON_VERSION_IS_310,  # or NOT_RUNNING_ON_INF_EXP_DEV_PIPELINE,
+    reason="The goal of these test are to test the serving components of our feature",
+)
+@pytest.mark.parametrize(
+    "model_builder", ["model_builder_inference_spec_schema_builder"], indirect=True
+)
+@pytest.mark.slow_test
 def test_happy_pytorch_sagemaker_endpoint(
     sagemaker_session, model_builder, cpu_instance_type, test_image
 ):
@@ -221,7 +222,7 @@ def test_happy_pytorch_sagemaker_endpoint(
 
 
 # @pytest.mark.skipif(
-#     NOT_RUNNING_ON_INF_EXP_DEV_PIPELINE or NOT_RUNNING_ON_PY310,
+#     NOT_RUNNING_ON_INF_EXP_DEV_PIPELINE or PYTHON_VERSION_IS_310,
 #     reason="The goal of these test are to test the serving components of our feature",
 # )
 # @pytest.mark.parametrize(
@@ -267,7 +268,7 @@ def test_happy_pytorch_sagemaker_endpoint(
 
 
 # @pytest.mark.skipif(
-#     NOT_RUNNING_ON_INF_EXP_DEV_PIPELINE or NOT_RUNNING_ON_PY310,
+#     NOT_RUNNING_ON_INF_EXP_DEV_PIPELINE or PYTHON_VERSION_IS_310,
 #     reason="The goal of these test are to test the serving components of our feature",
 # )
 # @pytest.mark.parametrize(

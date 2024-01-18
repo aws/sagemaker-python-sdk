@@ -23,9 +23,8 @@ SERVE_LOCAL_CONTAINER_TIMEOUT = 10
 SERVE_SAGEMAKER_ENDPOINT_TIMEOUT = 15
 SERVE_SAVE_TIMEOUT = 2
 
-NOT_RUNNING_ON_PY38 = platform.python_version_tuple()[1] != "8"
-NOT_RUNNING_ON_PY310 = platform.python_version_tuple()[1] != "10"
-NOT_RUNNING_ON_INF_EXP_DEV_PIPELINE = os.getenv("TEST_OWNER") != "INF_EXP_DEV"
+PYTHON_VERSION_IS_38 = platform.python_version_tuple()[1] != "8"
+PYTHON_VERSION_IS_310 = platform.python_version_tuple()[1] != "10"
 
 XGB_RESOURCE_DIR = os.path.join(DATA_DIR, "serve_resources", "xgboost")
 PYTORCH_SQUEEZENET_RESOURCE_DIR = os.path.join(DATA_DIR, "serve_resources", "pytorch")
