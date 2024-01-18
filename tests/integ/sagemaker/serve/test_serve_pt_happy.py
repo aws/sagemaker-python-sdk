@@ -28,7 +28,7 @@ from torchvision.models.squeezenet import squeezenet1_1
 from tests.integ.sagemaker.serve.constants import (
     PYTORCH_SQUEEZENET_RESOURCE_DIR,
     SERVE_SAGEMAKER_ENDPOINT_TIMEOUT,
-    SERVE_LOCAL_CONTAINER_TIMEOUT,
+    # SERVE_LOCAL_CONTAINER_TIMEOUT,
     PYTHON_VERSION_IS_NOT_310,
 )
 from tests.integ.timeout import timeout
