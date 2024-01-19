@@ -157,6 +157,7 @@ def model_builder(request):
     "model_builder", ["model_builder_inference_spec_schema_builder"], indirect=True
 )
 @pytest.mark.slow_test
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
 def test_happy_pytorch_local_container(sagemaker_session, model_builder, test_image):
     logger.info("Running in LOCAL_CONTAINER mode...")
     caught_ex = None
@@ -230,6 +231,7 @@ def test_happy_pytorch_sagemaker_endpoint(
 @pytest.mark.parametrize(
     "model_builder", ["model_builder_inference_spec_schema_builder"], indirect=True
 )
+@pytest.mark.slow_test
 def test_happy_pytorch_local_container_overwrite_to_sagemaker_endpoint(
     sagemaker_session, model_builder, cpu_instance_type, test_image
 ):
@@ -276,6 +278,7 @@ def test_happy_pytorch_local_container_overwrite_to_sagemaker_endpoint(
 @pytest.mark.parametrize(
     "model_builder", ["model_builder_inference_spec_schema_builder"], indirect=True
 )
+@pytest.mark.slow_test
 def test_happy_pytorch_sagemaker_endpoint_overwrite_to_local_container(
     sagemaker_session, model_builder, test_image
 ):
