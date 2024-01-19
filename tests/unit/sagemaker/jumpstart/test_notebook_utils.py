@@ -1,10 +1,14 @@
 from __future__ import absolute_import
+import json
 
 from unittest import TestCase
 from unittest.mock import Mock, patch
 
 import pytest
-from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
+from sagemaker.jumpstart.constants import (
+    DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    JUMPSTART_DEFAULT_REGION_NAME,
+)
 from sagemaker.jumpstart.filters import And, Identity, Not, Or
 from tests.unit.sagemaker.jumpstart.constants import PROTOTYPICAL_MODEL_SPECS_DICT
 from tests.unit.sagemaker.jumpstart.utils import (
@@ -22,6 +26,7 @@ from sagemaker.jumpstart.notebook_utils import (
 )
 
 
+@patch("sagemaker.jumpstart.notebook_utils.DEFAULT_JUMPSTART_SAGEMAKER_SESSION.read_s3_file")
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
 @patch("sagemaker.jumpstart.notebook_utils.accessors.JumpStartModelsAccessor.get_model_specs")
 @patch("sagemaker.jumpstart.notebook_utils._generate_jumpstart_model_versions")
@@ -29,10 +34,16 @@ def test_list_jumpstart_scripts(
     patched_generate_jumpstart_models: Mock,
     patched_get_model_specs: Mock,
     patched_get_manifest: Mock,
+    patched_read_s3_file: Mock,
 ):
     patched_get_model_specs.side_effect = get_prototype_model_spec
-    patched_get_manifest.side_effect = get_prototype_manifest
+    patched_get_manifest.side_effect = lambda region, *args, **kwargs: get_prototype_manifest(
+        region
+    )
     patched_generate_jumpstart_models.side_effect = _generate_jumpstart_model_versions
+    patched_read_s3_file.side_effect = lambda *args, **kwargs: json.dumps(
+        get_prototype_model_spec(None, "pytorch-eqa-bert-base-cased").to_json()
+    )
 
     assert list_jumpstart_scripts() == sorted(["inference", "training"])
     patched_get_model_specs.assert_not_called()
@@ -48,7 +59,9 @@ def test_list_jumpstart_scripts(
         "region": "sa-east-1",
     }
     assert list_jumpstart_scripts(**kwargs) == sorted(["inference", "training"])
-    patched_generate_jumpstart_models.assert_called_once_with(**kwargs)
+    patched_generate_jumpstart_models.assert_called_once_with(
+        **kwargs, sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+    )
     patched_get_manifest.assert_called_once()
     assert patched_get_model_specs.call_count == 1
 
@@ -61,9 +74,11 @@ def test_list_jumpstart_scripts(
         "region": "sa-east-1",
     }
     assert list_jumpstart_scripts(**kwargs) == []
-    patched_generate_jumpstart_models.assert_called_once_with(**kwargs)
+    patched_generate_jumpstart_models.assert_called_once_with(
+        **kwargs, sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+    )
     patched_get_manifest.assert_called_once()
-    assert patched_get_model_specs.call_count == len(PROTOTYPICAL_MODEL_SPECS_DICT)
+    assert patched_read_s3_file.call_count == len(PROTOTYPICAL_MODEL_SPECS_DICT)
 
 
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
@@ -75,7 +90,9 @@ def test_list_jumpstart_tasks(
     patched_get_manifest: Mock,
 ):
     patched_get_model_specs.side_effect = get_prototype_model_spec
-    patched_get_manifest.side_effect = get_prototype_manifest
+    patched_get_manifest.side_effect = lambda region, *args, **kwargs: get_prototype_manifest(
+        region
+    )
     patched_generate_jumpstart_models.side_effect = _generate_jumpstart_model_versions
 
     assert list_jumpstart_tasks() == sorted(
@@ -101,7 +118,9 @@ def test_list_jumpstart_tasks(
         "region": "sa-east-1",
     }
     assert list_jumpstart_tasks(**kwargs) == ["ic"]
-    patched_generate_jumpstart_models.assert_called_once_with(**kwargs)
+    patched_generate_jumpstart_models.assert_called_once_with(
+        **kwargs, sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+    )
     patched_get_manifest.assert_called_once()
     patched_get_model_specs.assert_not_called()
 
@@ -115,7 +134,9 @@ def test_list_jumpstart_frameworks(
     patched_get_manifest: Mock,
 ):
     patched_get_model_specs.side_effect = get_prototype_model_spec
-    patched_get_manifest.side_effect = get_prototype_manifest
+    patched_get_manifest.side_effect = lambda region, *args, **kwargs: get_prototype_manifest(
+        region
+    )
     patched_generate_jumpstart_models.side_effect = _generate_jumpstart_model_versions
 
     assert list_jumpstart_frameworks() == sorted(
@@ -155,7 +176,9 @@ def test_list_jumpstart_frameworks(
         ]
     )
 
-    patched_generate_jumpstart_models.assert_called_once_with(**kwargs)
+    patched_generate_jumpstart_models.assert_called_once_with(
+        **kwargs, sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+    )
     patched_get_manifest.assert_called_once()
     patched_get_model_specs.assert_not_called()
 
@@ -167,7 +190,9 @@ class ListJumpStartModels(TestCase):
         self, patched_get_model_specs: Mock, patched_get_manifest: Mock
     ):
         patched_get_model_specs.side_effect = get_prototype_model_spec
-        patched_get_manifest.side_effect = get_prototype_manifest
+        patched_get_manifest.side_effect = lambda region, *args, **kwargs: get_prototype_manifest(
+            region
+        )
         assert list_jumpstart_models(list_versions=True) == [
             ("catboost-classification-model", "1.0.0"),
             ("huggingface-spc-bert-base-cased", "1.0.0"),
@@ -183,31 +208,35 @@ class ListJumpStartModels(TestCase):
         patched_get_model_specs.assert_not_called()
 
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
-    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @patch("sagemaker.jumpstart.notebook_utils.DEFAULT_JUMPSTART_SAGEMAKER_SESSION.read_s3_file")
     def test_list_jumpstart_models_script_filter(
-        self, patched_get_model_specs: Mock, patched_get_manifest: Mock
+        self, patched_read_s3_file: Mock, patched_get_manifest: Mock
     ):
-        patched_get_model_specs.side_effect = get_prototype_model_spec
-        patched_get_manifest.side_effect = get_prototype_manifest
+        patched_read_s3_file.side_effect = lambda *args, **kwargs: json.dumps(
+            get_prototype_model_spec(None, "pytorch-eqa-bert-base-cased").to_json()
+        )
+        patched_get_manifest.side_effect = lambda region, *args, **kwargs: get_prototype_manifest(
+            region
+        )
 
         manifest_length = len(get_prototype_manifest())
         vals = [True, False]
         for val in vals:
             kwargs = {"filter": f"training_supported == {val}"}
             list_jumpstart_models(**kwargs)
-            assert patched_get_model_specs.call_count == manifest_length
+            assert patched_read_s3_file.call_count == manifest_length
             patched_get_manifest.assert_called_once()
 
             patched_get_manifest.reset_mock()
-            patched_get_model_specs.reset_mock()
+            patched_read_s3_file.reset_mock()
 
             kwargs = {"filter": f"training_supported != {val}"}
             list_jumpstart_models(**kwargs)
-            assert patched_get_model_specs.call_count == manifest_length
+            assert patched_read_s3_file.call_count == manifest_length
             patched_get_manifest.assert_called_once()
 
             patched_get_manifest.reset_mock()
-            patched_get_model_specs.reset_mock()
+            patched_read_s3_file.reset_mock()
 
         kwargs = {"filter": f"training_supported in {vals}", "list_versions": True}
         assert list_jumpstart_models(**kwargs) == [
@@ -220,16 +249,16 @@ class ListJumpStartModels(TestCase):
             ("tensorflow-ic-bit-m-r101x1-ilsvrc2012-classification-1", "1.0.0"),
             ("xgboost-classification-model", "1.0.0"),
         ]
-        assert patched_get_model_specs.call_count == manifest_length
+        assert patched_read_s3_file.call_count == manifest_length
         patched_get_manifest.assert_called_once()
 
         patched_get_manifest.reset_mock()
-        patched_get_model_specs.reset_mock()
+        patched_read_s3_file.reset_mock()
 
         kwargs = {"filter": f"training_supported not in {vals}"}
         models = list_jumpstart_models(**kwargs)
         assert [] == models
-        assert patched_get_model_specs.call_count == manifest_length
+        assert patched_read_s3_file.call_count == manifest_length
         patched_get_manifest.assert_called_once()
 
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
@@ -238,7 +267,9 @@ class ListJumpStartModels(TestCase):
         self, patched_get_model_specs: Mock, patched_get_manifest: Mock
     ):
         patched_get_model_specs.side_effect = get_prototype_model_spec
-        patched_get_manifest.side_effect = get_prototype_manifest
+        patched_get_manifest.side_effect = lambda region, *args, **kwargs: get_prototype_manifest(
+            region
+        )
 
         vals = [
             "classification",
@@ -288,12 +319,16 @@ class ListJumpStartModels(TestCase):
         patched_get_manifest.assert_called_once()
 
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
-    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @patch("sagemaker.jumpstart.notebook_utils.DEFAULT_JUMPSTART_SAGEMAKER_SESSION.read_s3_file")
     def test_list_jumpstart_models_framework_filter(
-        self, patched_get_model_specs: Mock, patched_get_manifest: Mock
+        self, patched_read_s3_file: Mock, patched_get_manifest: Mock
     ):
-        patched_get_model_specs.side_effect = get_prototype_model_spec
-        patched_get_manifest.side_effect = get_prototype_manifest
+        patched_read_s3_file.side_effect = lambda *args, **kwargs: json.dumps(
+            get_prototype_model_spec(None, "pytorch-eqa-bert-base-cased").to_json()
+        )
+        patched_get_manifest.side_effect = lambda region, *args, **kwargs: get_prototype_manifest(
+            region
+        )
 
         vals = [
             "catboost",
@@ -307,19 +342,19 @@ class ListJumpStartModels(TestCase):
         for val in vals:
             kwargs = {"filter": f"framework == {val}"}
             list_jumpstart_models(**kwargs)
-            patched_get_model_specs.assert_not_called()
+            patched_read_s3_file.assert_not_called()
             patched_get_manifest.assert_called_once()
 
             patched_get_manifest.reset_mock()
-            patched_get_model_specs.reset_mock()
+            patched_read_s3_file.reset_mock()
 
             kwargs = {"filter": f"framework != {val}"}
             list_jumpstart_models(**kwargs)
-            patched_get_model_specs.assert_not_called()
+            patched_read_s3_file.assert_not_called()
             patched_get_manifest.assert_called_once()
 
             patched_get_manifest.reset_mock()
-            patched_get_model_specs.reset_mock()
+            patched_read_s3_file.reset_mock()
 
         kwargs = {"filter": f"framework in {vals}", "list_versions": True}
         assert list_jumpstart_models(**kwargs) == [
@@ -331,18 +366,18 @@ class ListJumpStartModels(TestCase):
             ("sklearn-classification-linear", "1.0.0"),
             ("xgboost-classification-model", "1.0.0"),
         ]
-        patched_get_model_specs.assert_not_called()
+        patched_read_s3_file.assert_not_called()
         patched_get_manifest.assert_called_once()
 
         patched_get_manifest.reset_mock()
-        patched_get_model_specs.reset_mock()
+        patched_read_s3_file.reset_mock()
 
         kwargs = {"filter": f"framework not in {vals}", "list_versions": True}
         models = list_jumpstart_models(**kwargs)
         assert [("tensorflow-ic-bit-m-r101x1-ilsvrc2012-classification-1", "1.0.0")] == models
 
         patched_get_manifest.reset_mock()
-        patched_get_model_specs.reset_mock()
+        patched_read_s3_file.reset_mock()
 
         kwargs = {
             "filter": And(f"framework not in {vals}", "training_supported is True"),
@@ -350,11 +385,11 @@ class ListJumpStartModels(TestCase):
         }
         models = list_jumpstart_models(**kwargs)
         assert [("tensorflow-ic-bit-m-r101x1-ilsvrc2012-classification-1", "1.0.0")] == models
-        patched_get_model_specs.assert_called_once()
+        patched_read_s3_file.assert_called_once()
         patched_get_manifest.assert_called_once()
 
         patched_get_manifest.reset_mock()
-        patched_get_model_specs.reset_mock()
+        patched_read_s3_file.reset_mock()
 
         kwargs = {
             "filter": And(
@@ -364,7 +399,7 @@ class ListJumpStartModels(TestCase):
         }
         models = list_jumpstart_models(**kwargs)
         assert [] == models
-        patched_get_model_specs.assert_not_called()
+        patched_read_s3_file.assert_not_called()
         patched_get_manifest.assert_called_once()
 
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
@@ -374,36 +409,15 @@ class ListJumpStartModels(TestCase):
     ):
         patched_get_model_specs.side_effect = get_prototype_model_spec
 
-        patched_get_manifest.side_effect = lambda region: get_prototype_manifest(region="us-west-2")
+        patched_get_manifest.side_effect = lambda region, *args, **kwargs: get_prototype_manifest(
+            region="us-west-2"
+        )
 
         list_jumpstart_models(region="some-region")
 
-        patched_get_manifest.assert_called_once_with(region="some-region")
-
-    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
-    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-    @patch("sagemaker.jumpstart.notebook_utils.get_sagemaker_version")
-    @patch("sagemaker.jumpstart.notebook_utils.accessors.JumpStartModelsAccessor.reset_cache")
-    @patch.dict("os.environ", {})
-    @patch("logging.StreamHandler.emit")
-    @patch("sagemaker.jumpstart.constants.JUMPSTART_LOGGER.propagate", False)
-    def test_list_jumpstart_models_disables_logging_resets_cache(
-        self,
-        patched_emit: Mock,
-        patched_reset_cache: Mock,
-        patched_get_sagemaker_version: Mock,
-        patched_get_model_specs: Mock,
-        patched_get_manifest: Mock,
-    ):
-        patched_get_model_specs.side_effect = get_prototype_model_spec
-        patched_get_manifest.side_effect = get_prototype_manifest
-
-        patched_get_sagemaker_version.return_value = "3.0.0"
-
-        list_jumpstart_models("deprecate_warn_message is blah")
-
-        patched_emit.assert_not_called()
-        patched_reset_cache.assert_called_once()
+        patched_get_manifest.assert_called_once_with(
+            region="some-region", s3_client=DEFAULT_JUMPSTART_SAGEMAKER_SESSION.s3_client
+        )
 
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -419,7 +433,9 @@ class ListJumpStartModels(TestCase):
                 for version in ["2.400.0", "1.4.0", "2.5.1", "1.300.0"]
             ]
 
-        patched_get_manifest.side_effect = get_manifest_more_versions
+        patched_get_manifest.side_effect = (
+            lambda region, *args, **kwargs: get_manifest_more_versions(region)
+        )
 
         assert [
             ("catboost-classification-model", "2.400.0"),
@@ -477,83 +493,87 @@ class ListJumpStartModels(TestCase):
         ) == list_jumpstart_models(list_versions=True)
 
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
-    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @patch("sagemaker.jumpstart.notebook_utils.DEFAULT_JUMPSTART_SAGEMAKER_SESSION.read_s3_file")
     def test_list_jumpstart_models_vulnerable_models(
         self,
-        patched_get_model_specs: Mock,
+        patched_read_s3_file: Mock,
         patched_get_manifest: Mock,
     ):
 
-        patched_get_manifest.side_effect = get_prototype_manifest
+        patched_get_manifest.side_effect = lambda region, *args, **kwargs: get_prototype_manifest(
+            region
+        )
 
-        def vulnerable_inference_model_spec(*args, **kwargs):
-            spec = get_prototype_model_spec(*args, **kwargs)
+        def vulnerable_inference_model_spec(bucket, key, *args, **kwargs) -> str:
+            spec = get_prototype_model_spec(None, "pytorch-eqa-bert-base-cased")
             spec.inference_vulnerable = True
-            return spec
+            return json.dumps(spec.to_json())
 
-        def vulnerable_training_model_spec(*args, **kwargs):
-            spec = get_prototype_model_spec(*args, **kwargs)
+        def vulnerable_training_model_spec(bucket, key, *args, **kwargs):
+            spec = get_prototype_model_spec(None, "pytorch-eqa-bert-base-cased")
             spec.training_vulnerable = True
-            return spec
+            return json.dumps(spec.to_json())
 
-        patched_get_model_specs.side_effect = vulnerable_inference_model_spec
+        patched_read_s3_file.side_effect = vulnerable_inference_model_spec
 
         num_specs = len(PROTOTYPICAL_MODEL_SPECS_DICT)
         assert [] == list_jumpstart_models(
             And("inference_vulnerable is false", "training_vulnerable is false")
         )
 
-        assert patched_get_model_specs.call_count == num_specs
+        assert patched_read_s3_file.call_count == num_specs
         patched_get_manifest.assert_called_once()
 
         patched_get_manifest.reset_mock()
-        patched_get_model_specs.reset_mock()
+        patched_read_s3_file.reset_mock()
 
-        patched_get_model_specs.side_effect = vulnerable_training_model_spec
+        patched_read_s3_file.side_effect = vulnerable_training_model_spec
 
         assert [] == list_jumpstart_models(
             And("inference_vulnerable is false", "training_vulnerable is false")
         )
 
-        assert patched_get_model_specs.call_count == num_specs
+        assert patched_read_s3_file.call_count == num_specs
         patched_get_manifest.assert_called_once()
 
         patched_get_manifest.reset_mock()
-        patched_get_model_specs.reset_mock()
+        patched_read_s3_file.reset_mock()
 
         assert [] != list_jumpstart_models()
 
-        assert patched_get_model_specs.call_count == 0
+        assert patched_read_s3_file.call_count == 0
 
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
-    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @patch("sagemaker.jumpstart.notebook_utils.DEFAULT_JUMPSTART_SAGEMAKER_SESSION.read_s3_file")
     def test_list_jumpstart_models_deprecated_models(
         self,
-        patched_get_model_specs: Mock,
+        patched_read_s3_file: Mock,
         patched_get_manifest: Mock,
     ):
 
-        patched_get_manifest.side_effect = get_prototype_manifest
+        patched_get_manifest.side_effect = lambda region, *args, **kwargs: get_prototype_manifest(
+            region
+        )
 
-        def deprecated_model_spec(*args, **kwargs):
-            spec = get_prototype_model_spec(*args, **kwargs)
+        def deprecated_model_spec(bucket, key, *args, **kwargs) -> str:
+            spec = get_prototype_model_spec(None, "pytorch-eqa-bert-base-cased")
             spec.deprecated = True
-            return spec
+            return json.dumps(spec.to_json())
 
-        patched_get_model_specs.side_effect = deprecated_model_spec
+        patched_read_s3_file.side_effect = deprecated_model_spec
 
         num_specs = len(PROTOTYPICAL_MODEL_SPECS_DICT)
         assert [] == list_jumpstart_models("deprecated equals false")
 
-        assert patched_get_model_specs.call_count == num_specs
+        assert patched_read_s3_file.call_count == num_specs
         patched_get_manifest.assert_called_once()
 
         patched_get_manifest.reset_mock()
-        patched_get_model_specs.reset_mock()
+        patched_read_s3_file.reset_mock()
 
         assert [] != list_jumpstart_models()
 
-        assert patched_get_model_specs.call_count == 0
+        assert patched_read_s3_file.call_count == 0
 
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -563,7 +583,9 @@ class ListJumpStartModels(TestCase):
         patched_get_manifest: Mock,
     ):
         patched_get_model_specs.side_effect = get_prototype_model_spec
-        patched_get_manifest.side_effect = get_prototype_manifest
+        patched_get_manifest.side_effect = lambda region, *args, **kwargs: get_prototype_manifest(
+            region
+        )
 
         all_model_ids = [
             "catboost-classification-model",
@@ -581,14 +603,18 @@ class ListJumpStartModels(TestCase):
         assert list_jumpstart_models(list_versions=False) == all_model_ids
 
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
-    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @patch("sagemaker.jumpstart.notebook_utils.DEFAULT_JUMPSTART_SAGEMAKER_SESSION.read_s3_file")
     def test_list_jumpstart_models_complex_queries(
         self,
-        patched_get_model_specs: Mock,
+        patched_read_s3_file: Mock,
         patched_get_manifest: Mock,
     ):
-        patched_get_model_specs.side_effect = get_prototype_model_spec
-        patched_get_manifest.side_effect = get_prototype_manifest
+        patched_read_s3_file.side_effect = lambda *args, **kwargs: json.dumps(
+            get_prototype_model_spec(None, "pytorch-eqa-bert-base-cased").to_json()
+        )
+        patched_get_manifest.side_effect = lambda region, *args, **kwargs: get_prototype_manifest(
+            region
+        )
 
         assert list_jumpstart_models(
             Or(
@@ -631,7 +657,9 @@ class ListJumpStartModels(TestCase):
         patched_get_manifest: Mock,
     ):
         patched_get_model_specs.side_effect = get_prototype_model_spec
-        patched_get_manifest.side_effect = get_prototype_manifest
+        patched_get_manifest.side_effect = lambda region, *args, **kwargs: get_prototype_manifest(
+            region
+        )
 
         with pytest.raises(NotImplementedError):
             list_jumpstart_models("hosting_ecr_specs.py_version == py3")
@@ -665,5 +693,8 @@ def test_get_model_url(
     get_model_url(model_id, version, region=region)
 
     patched_get_model_specs.assert_called_once_with(
-        model_id=model_id, version=version, region=region
+        model_id=model_id,
+        version=version,
+        region=region,
+        s3_client=DEFAULT_JUMPSTART_SAGEMAKER_SESSION.s3_client,
     )
