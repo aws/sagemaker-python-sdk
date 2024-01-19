@@ -28,7 +28,6 @@ from torchvision.models.squeezenet import squeezenet1_1
 from tests.integ.sagemaker.serve.constants import (
     PYTORCH_SQUEEZENET_RESOURCE_DIR,
     SERVE_SAGEMAKER_ENDPOINT_TIMEOUT,
-    SERVE_LOCAL_CONTAINER_TIMEOUT,
     PYTHON_VERSION_IS_NOT_310,
 )
 from tests.integ.timeout import timeout
@@ -182,46 +181,46 @@ def model_builder(request):
 #                 ), f"{caught_ex} was thrown when running pytorch squeezenet local container test"
 
 
-# @pytest.mark.skipif(
-#     PYTHON_VERSION_IS_NOT_310,  # or NOT_RUNNING_ON_INF_EXP_DEV_PIPELINE,
-#     reason="The goal of these test are to test the serving components of our feature",
-# )
-# @pytest.mark.parametrize(
-#     "model_builder", ["model_builder_inference_spec_schema_builder"], indirect=True
-# )
-# @pytest.mark.slow_test
-# def test_happy_pytorch_sagemaker_endpoint(
-#     sagemaker_session, model_builder, cpu_instance_type, test_image
-# ):
-#     logger.info("Running in SAGEMAKER_ENDPOINT mode...")
-#     caught_ex = None
-#
-#     iam_client = sagemaker_session.boto_session.client("iam")
-#     role_arn = iam_client.get_role(RoleName=ROLE_NAME)["Role"]["Arn"]
-#
-#     model = model_builder.build(
-#         mode=Mode.SAGEMAKER_ENDPOINT, role_arn=role_arn, sagemaker_session=sagemaker_session
-#     )
-#
-#     with timeout(minutes=SERVE_SAGEMAKER_ENDPOINT_TIMEOUT):
-#         try:
-#             logger.info("Deploying and predicting in SAGEMAKER_ENDPOINT mode...")
-#             predictor = model.deploy(instance_type=cpu_instance_type, initial_instance_count=1)
-#             logger.info("Endpoint successfully deployed.")
-#             predictor.predict(test_image)
-#         except Exception as e:
-#             caught_ex = e
-#         finally:
-#             cleanup_model_resources(
-#                 sagemaker_session=model_builder.sagemaker_session,
-#                 model_name=model.name,
-#                 endpoint_name=model.endpoint_name,
-#             )
-#             if caught_ex:
-#                 logger.exception(caught_ex)
-#                 assert (
-#                     False
-#                 ), f"{caught_ex} was thrown when running pytorch squeezenet sagemaker endpoint test"
+@pytest.mark.skipif(
+    PYTHON_VERSION_IS_NOT_310,  # or NOT_RUNNING_ON_INF_EXP_DEV_PIPELINE,
+    reason="The goal of these test are to test the serving components of our feature",
+)
+@pytest.mark.parametrize(
+    "model_builder", ["model_builder_inference_spec_schema_builder"], indirect=True
+)
+@pytest.mark.slow_test
+def test_happy_pytorch_sagemaker_endpoint(
+    sagemaker_session, model_builder, cpu_instance_type, test_image
+):
+    logger.info("Running in SAGEMAKER_ENDPOINT mode...")
+    caught_ex = None
+
+    iam_client = sagemaker_session.boto_session.client("iam")
+    role_arn = iam_client.get_role(RoleName=ROLE_NAME)["Role"]["Arn"]
+
+    model = model_builder.build(
+        mode=Mode.SAGEMAKER_ENDPOINT, role_arn=role_arn, sagemaker_session=sagemaker_session
+    )
+
+    with timeout(minutes=SERVE_SAGEMAKER_ENDPOINT_TIMEOUT):
+        try:
+            logger.info("Deploying and predicting in SAGEMAKER_ENDPOINT mode...")
+            predictor = model.deploy(instance_type=cpu_instance_type, initial_instance_count=1)
+            logger.info("Endpoint successfully deployed.")
+            predictor.predict(test_image)
+        except Exception as e:
+            caught_ex = e
+        finally:
+            cleanup_model_resources(
+                sagemaker_session=model_builder.sagemaker_session,
+                model_name=model.name,
+                endpoint_name=model.endpoint_name,
+            )
+            if caught_ex:
+                logger.exception(caught_ex)
+                assert (
+                    False
+                ), f"{caught_ex} was thrown when running pytorch squeezenet sagemaker endpoint test"
 
 
 # @pytest.mark.skipif(
