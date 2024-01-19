@@ -853,18 +853,26 @@ def test_list_feature_groups(feature_store_session, role, feature_group_name, pa
     feature_store = FeatureStore(sagemaker_session=feature_store_session)
     feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
     feature_group.load_feature_definitions(data_frame=pandas_data_frame)
-
     next_token = None
+    num_fgs = 0
     while True:
-        output = feature_store.list_feature_groups(next_token=next_token)
+        output = feature_store.list_feature_groups(
+            creation_time_before=datetime.datetime.now() - datetime.timedelta(hours=12),
+            next_token=next_token,
+        )
         print(output)
         names = [fg["FeatureGroupName"] for fg in output["FeatureGroupSummaries"]]
+        num_fgs += len(names)
         for name in names:
             print(f"[BIONIC_LOG] Deleting feature group {name}", file=sys.stderr)
-            feature_store_session.delete_feature_group(feature_group_name=name)
+            try:
+                feature_store_session.delete_feature_group(feature_group_name=name)
+            except Exception as e:
+                print(f"Failed to delete {name}: {str(e)}")
         next_token = output.get("NextToken", None)
         if not names or next_token is None:
             break
+    raise Exception(f"Deleted {num_fgs} feature groups")
 
 
 def test_feature_metadata(
