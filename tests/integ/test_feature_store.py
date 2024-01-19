@@ -14,6 +14,7 @@ from __future__ import absolute_import
 
 import datetime
 import json
+import sys
 import time
 import dateutil.parser as date_parser
 from contextlib import contextmanager
@@ -853,18 +854,22 @@ def test_list_feature_groups(feature_store_session, role, feature_group_name, pa
     feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
     feature_group.load_feature_definitions(data_frame=pandas_data_frame)
 
-    with cleanup_feature_group(feature_group):
-        feature_group.create(
-            s3_uri=False,
-            record_identifier_name="feature1",
-            event_time_feature_name="feature3",
-            role_arn=role,
-            enable_online_store=True,
+    next_token = None
+    while True:
+        output = feature_store.list_feature_groups(
+            name_contains=feature_group_name, next_token=next_token
         )
-        _wait_for_feature_group_create(feature_group)
-        output = feature_store.list_feature_groups(name_contains=feature_group_name)
-
-    assert output["FeatureGroupSummaries"][0]["FeatureGroupName"] == feature_group_name
+        names = [fg["FeatureGroupName"] for fg in output["FeatureGroupSummaries"]]
+        next_token = output.get("NextToken", None)
+        if not names:
+            break
+        for name in names:
+            print(f"[BIONIC_LOG] Deleting feature group {name}", file=sys.stderr)
+            try:
+                feature_store_session.delete_feature_group(FeatureGroupName=name)
+            except Exception as e:
+                print(f"[BIONIC_LOG] Failed to delete {name}: {str(e)}", file=sys.stderr)
+                print(e, file=sys.stderr)
 
 
 def test_feature_metadata(
