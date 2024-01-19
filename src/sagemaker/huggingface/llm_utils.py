@@ -57,6 +57,14 @@ def get_huggingface_llm_image_uri(
             version=version,
             image_scope="inference",
         )
+    if backend == "huggingface-neuronx":
+        return image_uris.retrieve(
+            "huggingface-llm-neuronx",
+            region=region,
+            version=version,
+            image_scope="inference",
+            inference_tool="neuronx",
+        )
     if backend == "lmi":
         version = version or "0.24.0"
         return image_uris.retrieve(framework="djl-deepspeed", region=region, version=version)
