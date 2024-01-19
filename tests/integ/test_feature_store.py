@@ -856,20 +856,15 @@ def test_list_feature_groups(feature_store_session, role, feature_group_name, pa
 
     next_token = None
     while True:
-        output = feature_store.list_feature_groups(
-            name_contains=feature_group_name, next_token=next_token
-        )
+        output = feature_store.list_feature_groups(next_token=next_token)
+        print(output)
         names = [fg["FeatureGroupName"] for fg in output["FeatureGroupSummaries"]]
-        next_token = output.get("NextToken", None)
-        if not names:
-            break
         for name in names:
             print(f"[BIONIC_LOG] Deleting feature group {name}", file=sys.stderr)
-            try:
-                feature_store_session.delete_feature_group(FeatureGroupName=name)
-            except Exception as e:
-                print(f"[BIONIC_LOG] Failed to delete {name}: {str(e)}", file=sys.stderr)
-                print(e, file=sys.stderr)
+            feature_store_session.delete_feature_group(feature_group_name=name)
+        next_token = output.get("NextToken", None)
+        if not names or next_token is None:
+            break
 
 
 def test_feature_metadata(
