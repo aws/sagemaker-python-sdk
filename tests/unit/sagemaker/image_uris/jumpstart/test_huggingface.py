@@ -14,7 +14,7 @@ from __future__ import absolute_import
 
 from mock.mock import patch
 
-from sagemaker import image_uris
+from sagemaker import image_uris, Session
 from sagemaker.huggingface.estimator import HuggingFace
 from sagemaker.jumpstart import accessors
 from sagemaker.huggingface.model import HuggingFaceModel
@@ -22,8 +22,11 @@ from sagemaker.huggingface.model import HuggingFaceModel
 from tests.unit.sagemaker.jumpstart.utils import get_prototype_model_spec
 
 
+@patch("sagemaker.Session", spec=Session)
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
 def test_jumpstart_huggingface_image_uri(patched_get_model_specs, session):
+    session.sagemaker_config = {}
+    session.local_mode = False
 
     patched_get_model_specs.side_effect = get_prototype_model_spec
 

@@ -31,6 +31,9 @@ from tests.unit.test_utils import FakeS3, list_tar_files
 from tests.unit import DATA_DIR
 from tests.unit.sagemaker.workflow.conftest import ROLE, IMAGE_URI, BUCKET
 
+REGION = "us-west-2"
+BUCKET_NAME = "output"
+
 
 @pytest.fixture
 def estimator(sagemaker_session):

@@ -20,6 +20,7 @@ import mock
 import pytest
 from mock import Mock, patch, ANY
 
+from sagemaker import Session
 from sagemaker.serializers import CSVSerializer, IdentitySerializer
 from sagemaker.tensorflow import TensorFlow, TensorFlowModel, TensorFlowPredictor
 
@@ -54,8 +55,12 @@ def sagemaker_session():
     boto_mock = Mock(name="boto_session", region_name=REGION)
     session = Mock(
         name="sagemaker_session",
+        spec=Session,
         boto_session=boto_mock,
         boto_region_name=REGION,
+        sagemaker_client=Mock(),
+        sagemaker_runtime_client=Mock(),
+        settings=Mock(),
         config=None,
         local_mode=False,
         s3_resource=None,

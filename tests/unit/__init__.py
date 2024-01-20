@@ -88,6 +88,7 @@ from sagemaker.config import (
     ESTIMATOR,
     DEBUG_HOOK_CONFIG,
 )
+from sagemaker import Session
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 PY_VERSION = "py3"
@@ -430,7 +431,12 @@ def _test_default_bucket_and_prefix_combinations(
     expected__with_user_input__with_default_bucket_only=None,
     session_with_bucket_and_prefix=Mock(
         name="sagemaker_session",
+        spec=Session,
+        sagemaker_client=Mock(),
+        local_mode=False,
+        s3_resource=None,
         sagemaker_config={},
+        boto_session=Mock(name="boto_session"),
         default_bucket=Mock(name="default_bucket", return_value=DEFAULT_S3_BUCKET_NAME),
         default_bucket_prefix=DEFAULT_S3_OBJECT_KEY_PREFIX_NAME,
         config=None,
@@ -438,7 +444,12 @@ def _test_default_bucket_and_prefix_combinations(
     ),
     session_with_bucket_and_no_prefix=Mock(
         name="sagemaker_session",
+        spec=Session,
+        sagemaker_client=Mock(),
+        local_mode=False,
+        s3_resource=None,
         sagemaker_config={},
+        boto_session=Mock(name="boto_session"),
         default_bucket_prefix=None,
         default_bucket=Mock(name="default_bucket", return_value=DEFAULT_S3_BUCKET_NAME),
         config=None,

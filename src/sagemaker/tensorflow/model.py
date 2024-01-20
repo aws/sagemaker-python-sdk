@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 import logging
-from typing import Union, Optional, List, Dict
+from typing import Callable, Union, Optional, List, Dict
 
 import sagemaker
 from sagemaker import image_uris, s3, ModelMetrics
@@ -141,7 +141,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         framework_version: Optional[str] = None,
         container_log_level: Optional[int] = None,
-        predictor_cls: callable = TensorFlowPredictor,
+        predictor_cls: Callable = TensorFlowPredictor,
         **kwargs,
     ):
         """Initialize a Model.

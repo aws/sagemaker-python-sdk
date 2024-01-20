@@ -24,7 +24,8 @@ from sagemaker.network import NetworkConfig
 from sagemaker.processing import FrameworkProcessor
 from sagemaker.pytorch.estimator import PyTorch
 from sagemaker.workflow.entities import PipelineVariable
-from sagemaker.utils import format_tags, Tags
+from sagemaker.utils import format_tags, Tags, validate_call_inputs
+from sagemaker.workflow.parameters import ParameterString
 
 
 class PyTorchProcessor(FrameworkProcessor):
@@ -32,10 +33,11 @@ class PyTorchProcessor(FrameworkProcessor):
 
     estimator_cls = PyTorch
 
+    @validate_call_inputs
     def __init__(
         self,
         framework_version: str,  # New arg
-        role: Optional[Union[str, PipelineVariable]] = None,
+        role: Optional[Union[str, PipelineVariable, ParameterString]] = None,
         instance_count: Union[int, PipelineVariable] = None,
         instance_type: Union[str, PipelineVariable] = None,
         py_version: str = "py3",  # New kwarg

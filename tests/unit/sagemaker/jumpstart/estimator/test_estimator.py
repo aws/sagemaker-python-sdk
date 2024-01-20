@@ -36,6 +36,7 @@ from sagemaker.jumpstart.enums import JumpStartScriptScope, JumpStartTag
 from sagemaker.jumpstart.estimator import JumpStartEstimator
 
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
+from sagemaker.session import Session
 from sagemaker.session_settings import SessionSettings
 from tests.integ.sagemaker.jumpstart.utils import get_training_dataset_for_model_and_version
 from sagemaker.model import Model
@@ -925,11 +926,24 @@ class EstimatorTest(unittest.TestCase):
 
         settings = SessionSettings(include_jumpstart_tags=False)
 
+        boto_mock = mock.MagicMock(name="boto_session", region_name=region)
         mock_session = mock.MagicMock(
-            sagemaker_config={}, boto_region_name="us-west-2", settings=settings
+            name="sagemaker_session",
+            spec=Session,
+            sagemaker_client=mock.MagicMock(),
+            sagemaker_config={},
+            boto_session=boto_mock,
+            boto_region_name=region,
+            config=None,
+            local_mode=False,
+            s3_resource=None,
+            s3_client=None,
+            settings=settings,
+            default_bucket_prefix=None,
         )
 
         estimator = JumpStartEstimator(
+            role="mock_role",
             model_id=model_id,
             sagemaker_session=mock_session,
             tags=[{"Key": "blah", "Value": "blahagain"}],
@@ -962,9 +976,26 @@ class EstimatorTest(unittest.TestCase):
 
         mock_get_model_specs.side_effect = get_special_model_spec
 
-        mock_session = mock.MagicMock(sagemaker_config={}, boto_region_name="us-west-2")
+        settings = SessionSettings()
+
+        boto_mock = mock.MagicMock(name="boto_session", region_name=region)
+        mock_session = mock.MagicMock(
+            name="sagemaker_session",
+            spec=Session,
+            sagemaker_client=mock.MagicMock(),
+            sagemaker_config={},
+            boto_session=boto_mock,
+            boto_region_name=region,
+            config=None,
+            local_mode=False,
+            s3_resource=None,
+            s3_client=None,
+            settings=settings,
+            default_bucket_prefix=None,
+        )
 
         estimator = JumpStartEstimator(
+            role="mock_role",
             model_id=model_id,
             sagemaker_session=mock_session,
             tags=[{"Key": "blah", "Value": "blahagain"}],

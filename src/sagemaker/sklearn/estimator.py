@@ -14,7 +14,8 @@
 from __future__ import absolute_import
 
 import logging
-from typing import Union, Optional, Dict
+from numbers import Number
+from typing import Union, Optional, Dict, List
 
 from sagemaker import image_uris
 from sagemaker.deprecations import renamed_kwargs
@@ -29,6 +30,8 @@ from sagemaker.sklearn.model import SKLearnModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow import is_pipeline_variable
+from sagemaker.workflow.parameters import ParameterString
+from sagemaker.utils import validate_call_inputs
 
 logger = logging.getLogger("sagemaker")
 
@@ -38,13 +41,14 @@ class SKLearn(Framework):
 
     _framework_name = defaults.SKLEARN_NAME
 
+    @validate_call_inputs
     def __init__(
         self,
         entry_point: Union[str, PipelineVariable],
         framework_version: Optional[str] = None,
-        py_version: str = "py3",
+        py_version: Optional[str] = "py3",
         source_dir: Optional[Union[str, PipelineVariable]] = None,
-        hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        hyperparameters: Optional[Dict[str, Optional[Union[str, PipelineVariable, Number]]]] = None,
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         image_uri_region: Optional[str] = None,
         **kwargs
@@ -166,14 +170,15 @@ class SKLearn(Framework):
                 instance_type=instance_type,
             )
 
+    @validate_call_inputs
     def create_model(
         self,
-        model_server_workers=None,
-        role=None,
-        vpc_config_override=VPC_CONFIG_DEFAULT,
-        entry_point=None,
-        source_dir=None,
-        dependencies=None,
+        model_server_workers: Optional[int] = None,
+        role: Optional[Union[str, ParameterString]] = None,
+        vpc_config_override: Optional[Union[str, Dict[str, List[str]]]] = VPC_CONFIG_DEFAULT,
+        entry_point: Optional[str] = None,
+        source_dir: Optional[str] = None,
+        dependencies: Optional[List[str]] = None,
         **kwargs
     ):
         """Create a SageMaker ``SKLearnModel`` object that can be deployed to an ``Endpoint``.
@@ -233,7 +238,10 @@ class SKLearn(Framework):
         )
 
     @classmethod
-    def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
+    @validate_call_inputs
+    def _prepare_init_params_from_job_description(
+        cls, job_details, model_channel_name: Optional[str] = None
+    ):
         """Convert the job description to init params that can be handled by the class constructor.
 
         Args:

@@ -18,8 +18,7 @@ import json
 from json import JSONDecodeError
 
 import pytest
-from mock import Mock, MagicMock
-from mock import patch, mock_open
+from mock import Mock, MagicMock, patch, mock_open
 
 from sagemaker.djl_inference import (
     defaults,
@@ -31,6 +30,7 @@ from sagemaker.djl_inference import (
 from sagemaker.djl_inference.model import DJLServingEngineEntryPointDefaults
 from sagemaker.s3_utils import s3_path_join
 from sagemaker.session_settings import SessionSettings
+from sagemaker import Session
 from tests.unit import (
     _test_default_bucket_and_prefix_combinations,
     DEFAULT_S3_BUCKET_NAME,
@@ -54,7 +54,9 @@ GPU_INSTANCE = "ml.g5.12xlarge"
 def sagemaker_session():
     boto_mock = Mock(name="boto_session", region_name=REGION)
     session = Mock(
-        "sagemaker_session",
+        name="sagemaker_session",
+        spec=Session,
+        sagemaker_client=Mock(),
         boto_session=boto_mock,
         boto_region_name=REGION,
         config=None,

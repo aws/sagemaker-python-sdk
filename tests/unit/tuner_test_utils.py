@@ -15,6 +15,7 @@ from __future__ import absolute_import
 import os
 
 from mock import Mock
+from sagemaker.session import Session
 from sagemaker.amazon.pca import PCA
 from sagemaker.estimator import Estimator
 from sagemaker.parameter import CategoricalParameter, ContinuousParameter, IntegerParameter
@@ -71,11 +72,12 @@ ESTIMATOR_NAME_TWO = "estimator_name_two"
 
 ENV_INPUT = {"env_key1": "env_val1", "env_key2": "env_val2", "env_key3": "env_val3"}
 
-SAGEMAKER_SESSION = Mock()
+SAGEMAKER_SESSION = Mock(spec=Session)
 # For tests which doesn't verify config file injection, operate with empty config
 SAGEMAKER_SESSION.sagemaker_config = {}
 SAGEMAKER_SESSION.default_bucket = Mock(return_value=BUCKET_NAME)
 SAGEMAKER_SESSION.default_bucket_prefix = None
+SAGEMAKER_SESSION.local_mode = False
 
 
 ESTIMATOR = Estimator(

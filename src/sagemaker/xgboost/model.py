@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 import logging
-from typing import Optional, Union, List, Dict
+from typing import Callable, Optional, Union, List, Dict
 
 import sagemaker
 from sagemaker import image_uris, ModelMetrics
@@ -86,7 +86,7 @@ class XGBoostModel(FrameworkModel):
         framework_version: str = None,
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         py_version: str = "py3",
-        predictor_cls: callable = XGBoostPredictor,
+        predictor_cls: Callable = XGBoostPredictor,
         model_server_workers: Optional[Union[int, PipelineVariable]] = None,
         **kwargs
     ):

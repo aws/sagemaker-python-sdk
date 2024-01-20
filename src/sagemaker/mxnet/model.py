@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 import logging
-from typing import Union, Optional, List, Dict
+from typing import Callable, Union, Optional, List, Dict
 
 import packaging.version
 
@@ -93,7 +93,7 @@ class MXNetModel(FrameworkModel):
         framework_version: str = _LOWEST_MMS_VERSION,
         py_version: Optional[str] = None,
         image_uri: Optional[Union[str, PipelineVariable]] = None,
-        predictor_cls: callable = MXNetPredictor,
+        predictor_cls: Callable = MXNetPredictor,
         model_server_workers: Optional[Union[int, PipelineVariable]] = None,
         **kwargs
     ):

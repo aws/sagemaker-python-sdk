@@ -23,6 +23,7 @@ from sagemaker.mxnet import MXNetModel, MXNetPredictor
 from sagemaker.rl import RLEstimator, RLFramework, RLToolkit, TOOLKIT_FRAMEWORK_VERSION_MAP
 from sagemaker.session_settings import SessionSettings
 from sagemaker.tensorflow import TensorFlowModel, TensorFlowPredictor
+from sagemaker import Session
 
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
@@ -62,6 +63,8 @@ def fixture_sagemaker_session():
         boto_session=boto_mock,
         boto_region_name=REGION,
         config=None,
+        spec=Session,
+        sagemaker_client=Mock(),
         local_mode=False,
         s3_resource=None,
         s3_client=None,

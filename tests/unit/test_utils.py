@@ -1017,7 +1017,12 @@ def test_repack_model_with_same_inference_file_name(tmp, fake_s3):
 class FakeS3(object):
     def __init__(self, tmp):
         self.tmp = tmp
-        self.sagemaker_session = MagicMock(settings=SessionSettings())
+        self.sagemaker_session = MagicMock(
+            spec=sagemaker.Session,
+            boto_session=MagicMock(),
+            local_mode=False,
+            settings=SessionSettings(),
+        )
         self.location_map = {}
         self.current_bucket = None
         self.object_mock = MagicMock()

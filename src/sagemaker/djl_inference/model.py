@@ -20,7 +20,7 @@ import urllib.request
 from json import JSONDecodeError
 from urllib.error import HTTPError, URLError
 from enum import Enum
-from typing import Optional, Union, Dict, Any, List
+from typing import Callable, Optional, Union, Dict, Any, List
 
 import sagemaker
 from sagemaker import s3, Predictor, image_uris, fw_utils
@@ -313,7 +313,7 @@ class DJLModel(FrameworkModel):
         prediction_timeout: Optional[int] = None,
         entry_point: Optional[str] = None,
         image_uri: Optional[Union[str, PipelineVariable]] = None,
-        predictor_cls: callable = DJLPredictor,
+        predictor_cls: Callable = DJLPredictor,
         **kwargs,
     ):
         """Initialize a DJLModel.

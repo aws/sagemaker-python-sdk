@@ -16,6 +16,7 @@ from mock import Mock, patch
 from packaging import version
 import pytest
 
+from sagemaker import Session
 from sagemaker.tensorflow import TensorFlow
 
 REGION = "us-west-2"
@@ -26,7 +27,10 @@ ENV_INPUT = {"env_key1": "env_val1", "env_key2": "env_val2", "env_key3": "env_va
 @pytest.fixture()
 def sagemaker_session():
     session_mock = Mock(
+        spec=Session,
         name="sagemaker_session",
+        sagemaker_client=Mock(),
+        local_mode=False,
         boto_region_name=REGION,
         default_bucket_prefix=None,
     )

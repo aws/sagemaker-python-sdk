@@ -14,20 +14,23 @@
 from __future__ import absolute_import
 
 import logging
-from typing import Union, Optional, List, Dict
+from typing import Callable, Union, Optional, List, Dict
 
 import sagemaker
 from sagemaker import image_uris, ModelMetrics
-from sagemaker.deserializers import NumpyDeserializer
+from sagemaker.deserializers import BaseDeserializer, NumpyDeserializer
 from sagemaker.drift_check_baselines import DriftCheckBaselines
 from sagemaker.fw_utils import model_code_key_prefix, validate_version_or_image_args
 from sagemaker.metadata_properties import MetadataProperties
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.predictor import Predictor
-from sagemaker.serializers import NumpySerializer
+from sagemaker.serializers import BaseSerializer, NumpySerializer
+from sagemaker.serverless import ServerlessInferenceConfig
+from sagemaker.session import Session
 from sagemaker.sklearn import defaults
-from sagemaker.utils import to_string
+from sagemaker.utils import to_string, validate_call_inputs
 from sagemaker.workflow import is_pipeline_variable
+from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.entities import PipelineVariable
 
 logger = logging.getLogger("sagemaker")
@@ -40,13 +43,14 @@ class SKLearnPredictor(Predictor):
     multidimensional tensors for Scikit-learn inference.
     """
 
+    @validate_call_inputs
     def __init__(
         self,
-        endpoint_name,
-        sagemaker_session=None,
-        serializer=NumpySerializer(),
-        deserializer=NumpyDeserializer(),
-        component_name=None,
+        endpoint_name: str,
+        sagemaker_session: Optional[Session] = None,
+        serializer: BaseSerializer = NumpySerializer(),
+        deserializer: BaseDeserializer = NumpyDeserializer(),
+        component_name: Optional[str] = None,
     ):
         """Initialize an ``SKLearnPredictor``.
 
@@ -79,15 +83,16 @@ class SKLearnModel(FrameworkModel):
 
     _framework_name = defaults.SKLEARN_NAME
 
+    @validate_call_inputs
     def __init__(
         self,
         model_data: Union[str, PipelineVariable],
-        role: Optional[str] = None,
+        role: Optional[Union[str, ParameterString]] = None,
         entry_point: Optional[str] = None,
         framework_version: Optional[str] = None,
-        py_version: str = "py3",
+        py_version: Optional[str] = "py3",
         image_uri: Optional[Union[str, PipelineVariable]] = None,
-        predictor_cls: callable = SKLearnPredictor,
+        predictor_cls: Callable = SKLearnPredictor,
         model_server_workers: Optional[Union[int, PipelineVariable]] = None,
         **kwargs
     ):
@@ -147,6 +152,7 @@ class SKLearnModel(FrameworkModel):
 
         self.model_server_workers = model_server_workers
 
+    @validate_call_inputs
     def register(
         self,
         content_types: List[Union[str, PipelineVariable]] = None,
@@ -261,12 +267,13 @@ class SKLearnModel(FrameworkModel):
             skip_model_validation=skip_model_validation,
         )
 
+    @validate_call_inputs
     def prepare_container_def(
         self,
-        instance_type=None,
-        accelerator_type=None,
-        serverless_inference_config=None,
-        accept_eula=None,
+        instance_type: Optional[str] = None,
+        accelerator_type: Optional[str] = None,
+        serverless_inference_config: Optional[ServerlessInferenceConfig] = None,
+        accept_eula: Optional[bool] = None,
     ):
         """Container definition with framework configuration set in model environment variables.
 
@@ -318,7 +325,13 @@ class SKLearnModel(FrameworkModel):
             accept_eula=accept_eula,
         )
 
-    def serving_image_uri(self, region_name, instance_type, serverless_inference_config=None):
+    @validate_call_inputs
+    def serving_image_uri(
+        self,
+        region_name: str,
+        instance_type: Optional[str] = None,
+        serverless_inference_config: Optional[ServerlessInferenceConfig] = None,
+    ):
         """Create a URI for the serving image.
 
         Args:

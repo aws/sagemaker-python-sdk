@@ -14,7 +14,8 @@
 from __future__ import absolute_import
 
 import logging
-from typing import Union, Optional, Dict
+from numbers import Number
+from typing import Union, Optional, Dict, List
 
 from packaging.version import Version
 
@@ -32,6 +33,8 @@ from sagemaker.pytorch.model import PyTorchModel
 from sagemaker.pytorch.training_compiler.config import TrainingCompilerConfig
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.workflow.parameters import ParameterString
+from sagemaker.utils import validate_call_inputs
 
 logger = logging.getLogger("sagemaker")
 
@@ -44,13 +47,14 @@ class PyTorch(Framework):
     LAUNCH_TORCH_DISTRIBUTED_ENV_NAME = "sagemaker_torch_distributed_enabled"
     INSTANCE_TYPE_ENV_NAME = "sagemaker_instance_type"
 
+    @validate_call_inputs
     def __init__(
         self,
         entry_point: Union[str, PipelineVariable],
         framework_version: Optional[str] = None,
         py_version: Optional[str] = None,
         source_dir: Optional[Union[str, PipelineVariable]] = None,
-        hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        hyperparameters: Optional[Dict[str, Union[str, PipelineVariable, Number]]] = None,
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         distribution: Optional[Dict] = None,
         compiler_config: Optional[TrainingCompilerConfig] = None,
@@ -362,14 +366,15 @@ class PyTorch(Framework):
 
         return hyperparameters
 
+    @validate_call_inputs
     def create_model(
         self,
-        model_server_workers=None,
-        role=None,
-        vpc_config_override=VPC_CONFIG_DEFAULT,
-        entry_point=None,
-        source_dir=None,
-        dependencies=None,
+        model_server_workers: Optional[int] = None,
+        role: Optional[Union[str, ParameterString]] = None,
+        vpc_config_override: Optional[Dict[str, List[str]]] = VPC_CONFIG_DEFAULT,
+        entry_point: Optional[str] = None,
+        source_dir: Optional[str] = None,
+        dependencies: Optional[List[str]] = None,
         **kwargs,
     ):
         """Create a SageMaker ``PyTorchModel`` object that can be deployed to an ``Endpoint``.

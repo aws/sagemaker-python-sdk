@@ -32,6 +32,7 @@ from sagemaker.processing import (
     ScriptProcessor,
     ProcessingJob,
 )
+from sagemaker.session import Session
 from sagemaker.session_settings import SessionSettings
 from sagemaker.spark.processing import PySparkProcessor
 from sagemaker.sklearn.processing import SKLearnProcessor
@@ -75,9 +76,12 @@ def mock_create_tar_file():
 def sagemaker_session():
     boto_mock = Mock(name="boto_session", region_name=REGION)
     session_mock = MagicMock(
+        spec=Session,
         name="sagemaker_session",
+        sagemaker_client=Mock(),
         boto_session=boto_mock,
         boto_region_name=REGION,
+        s3_resource=None,
         config=None,
         local_mode=False,
         settings=SessionSettings(),

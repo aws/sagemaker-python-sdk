@@ -20,7 +20,7 @@ import pytest
 from mock import MagicMock, Mock, patch, ANY
 from packaging.version import Version
 
-from sagemaker import image_uris
+from sagemaker import image_uris, Session
 from sagemaker.huggingface import HuggingFace, TrainingCompilerConfig
 from sagemaker.huggingface.model import HuggingFaceModel
 from sagemaker.instance_group import InstanceGroup
@@ -67,6 +67,8 @@ def fixture_sagemaker_session():
     boto_mock = Mock(name="boto_session", region_name=REGION)
     session = Mock(
         name="sagemaker_session",
+        spec=Session,
+        sagemaker_client=Mock(),
         boto_session=boto_mock,
         boto_region_name=REGION,
         config=None,

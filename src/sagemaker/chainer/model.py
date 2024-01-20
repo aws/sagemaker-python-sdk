@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 import logging
-from typing import Optional, Union, List, Dict
+from typing import Callable, Optional, Union, List, Dict
 
 import sagemaker
 from sagemaker import image_uris, ModelMetrics
@@ -91,7 +91,7 @@ class ChainerModel(FrameworkModel):
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         framework_version: Optional[str] = None,
         py_version: Optional[str] = None,
-        predictor_cls: callable = ChainerPredictor,
+        predictor_cls: Callable = ChainerPredictor,
         model_server_workers: Optional[Union[int, PipelineVariable]] = None,
         **kwargs
     ):

@@ -23,6 +23,7 @@ from mock import patch, Mock
 from botocore.exceptions import ClientError
 import botocore.response
 
+from sagemaker import Session
 from sagemaker.model_card import schema_constraints
 from sagemaker.model_card import (
     Environment,
@@ -1001,7 +1002,7 @@ def fixture_additional_information_example():
     return test_example
 
 
-@patch("sagemaker.Session")
+@patch("sagemaker.Session", spec=Session)
 def test_create_model_card(
     session,
     model_overview_example,
@@ -1011,6 +1012,7 @@ def test_create_model_card(
     evaluation_details_example,
     additional_information_example,
 ):
+    session.sagemaker_client = Mock()
     session.sagemaker_client.create_model_card = Mock(return_value=CREATE_MODEL_CARD_RETURN_EXAMPLE)
     session.sagemaker_client.describe_model_card = Mock(return_value=LOAD_MODEL_CARD_EXMPLE)
 
@@ -1031,10 +1033,11 @@ def test_create_model_card(
     assert card.arn == MODEL_CARD_ARN
 
 
-@patch("sagemaker.Session")
+@patch("sagemaker.Session", spec=Session)
 def test_create_model_card_with_model_package(
     session, model_package_example, training_details_example, caplog
 ):
+    session.sagemaker_client = Mock()
     session.sagemaker_client.create_model_card = Mock(return_value=CREATE_MODEL_CARD_RETURN_EXAMPLE)
     session.sagemaker_client.describe_model_card = Mock(
         return_value=MODEL_CARD_WITH_MODEL_PACKAGE_MOCK_RESPONSE
@@ -1076,7 +1079,7 @@ def test_create_model_card_with_model_package(
         ) in caplog.text
 
 
-@patch("sagemaker.Session")
+@patch("sagemaker.Session", spec=Session)
 def test_create_model_card_with_multiple_models(
     session, model_package_example, model_overview_example
 ):
@@ -1097,8 +1100,9 @@ def test_create_model_card_with_multiple_models(
         card.model_package_details = model_package_example
 
 
-@patch("sagemaker.Session")
+@patch("sagemaker.Session", spec=Session)
 def test_create_model_card_duplicate(session):
+    session.sagemaker_client = Mock()
     session.sagemaker_client.create_model_card.side_effect = [
         CREATE_MODEL_CARD_RETURN_EXAMPLE,
         GENERAL_CLIENT_ERROR,
@@ -1117,8 +1121,9 @@ def test_create_model_card_duplicate(session):
         card2.create()
 
 
-@patch("sagemaker.Session")
+@patch("sagemaker.Session", spec=Session)
 def test_create_multiple_model_cards_with_same_model(session, model_overview_example):
+    session.sagemaker_client = Mock()
     session.sagemaker_client.create_model_card.side_effect = [
         CREATE_SIMPLE_MODEL_CARD_RETURN_EXAMPLE,
         GENERAL_CLIENT_ERROR,
@@ -1142,8 +1147,9 @@ def test_create_multiple_model_cards_with_same_model(session, model_overview_exa
         card2.create()
 
 
-@patch("sagemaker.Session")
+@patch("sagemaker.Session", spec=Session)
 def test_create_model_card_with_too_long_string(session, model_overview_example):
+    session.sagemaker_client = Mock()
     too_long_string_client_error = ClientError(
         error_response={
             "Error": {
@@ -1170,8 +1176,9 @@ def test_create_model_card_with_too_long_string(session, model_overview_example)
         card.create()
 
 
-@patch("sagemaker.Session")
+@patch("sagemaker.Session", spec=Session)
 def test_carry_over_additional_content_from_model_package_group(session, model_package_example):
+    session.sagemaker_client = Mock()
     session.sagemaker_client.describe_model_card = Mock(
         return_value=DESCRIBE_MODEL_CARD_WITH_ADDITONAL_CONTENT
     )
@@ -1369,8 +1376,9 @@ def test_is_model_card_object_descriptor():
     )
 
 
-@patch("sagemaker.Session")
+@patch("sagemaker.Session", spec=Session)
 def test_load_model_card(session):
+    session.sagemaker_client = Mock()
     session.sagemaker_client.describe_model_card = Mock(return_value=LOAD_SIMPLE_MODEL_CARD_EXMPLE)
     card = ModelCard.load(name=SIMPLE_MODEL_CARD_NAME, sagemaker_session=session)
 
@@ -1379,11 +1387,12 @@ def test_load_model_card(session):
     assert card.additional_information
 
 
-@patch("sagemaker.Session")
+@patch("sagemaker.Session", spec=Session)
 def test_update_model_card(
     session,
     additional_information_example,
 ):
+    session.sagemaker_client = Mock()
     session.sagemaker_client.create_model_card = Mock(
         return_value=CREATE_SIMPLE_MODEL_CARD_RETURN_EXAMPLE
     )
@@ -1404,8 +1413,9 @@ def test_update_model_card(
     assert card.update()
 
 
-@patch("sagemaker.Session")
+@patch("sagemaker.Session", spec=Session)
 def test_delete_model_card(session):
+    session.sagemaker_client = Mock()
     session.sagemaker_client.describe_model_card = Mock(return_value=LOAD_SIMPLE_MODEL_CARD_EXMPLE)
     session.sagemaker_client.delete_model_card = Mock(
         return_value=DELETE_SIMPLE_MODEL_CARD_RETURN_EXAMPLE
@@ -1467,8 +1477,9 @@ def test_hash_content_str():
     assert _hash_content_str(content1) != _hash_content_str(content2)
 
 
-@patch("sagemaker.Session")
+@patch("sagemaker.Session", spec=Session)
 def test_model_details_autodiscovery(session):
+    session.sagemaker_client = Mock()
     session.sagemaker_client.describe_model.side_effect = [
         DESCRIBE_MODEL_EXAMPLE,
         DESCRIBE_MODEL_EXAMPLE,
@@ -1501,8 +1512,9 @@ def test_model_details_autodiscovery(session):
         ModelOverview.from_model_name(MODEL_NAME, sagemaker_session=session)
 
 
-@patch("sagemaker.Session")
+@patch("sagemaker.Session", spec=Session)
 def test_model_package_autodiscovery(session, model_overview_example, training_details_example):
+    session.sagemaker_client = Mock()
     session.sagemaker_client.describe_model_package.side_effect = [
         DESCRIBE_MODEL_PACKAGE_EXAMPLE,
         DESCRIBE_MODEL_PACKAGE_EXAMPLE,
@@ -1557,10 +1569,11 @@ def test_model_package_autodiscovery(session, model_overview_example, training_d
         ModelPackage.from_model_package_arn(MODEL_PACKAGE_ARN, sagemaker_session=session)
 
 
-@patch("sagemaker.Session")
+@patch("sagemaker.Session", spec=Session)
 def test_training_details_autodiscovery_from_model_overview(
     session, model_overview_example, caplog
 ):
+    session.sagemaker_client = Mock()
     session.sagemaker_client.search.side_effect = [
         SEARCH_TRAINING_JOB_EXAMPLE,
         SEARCH_IAM_PERMISSION_CLIENT_ERROR,
@@ -1618,10 +1631,11 @@ def test_training_details_autodiscovery_from_model_overview(
     ) in caplog.text
 
 
-@patch("sagemaker.Session")
+@patch("sagemaker.Session", spec=Session)
 def test_training_details_autodiscovery_from_model_package_details(
     session, model_package_example, caplog
 ):
+    session.sagemaker_client = Mock()
     session.sagemaker_client.search.side_effect = [
         SEARCH_TRAINING_JOB_EXAMPLE,
     ]
@@ -1658,10 +1672,12 @@ def test_training_details_autodiscovery_from_model_package_details(
         ) in caplog.text
 
 
-@patch("sagemaker.Session")
+@patch("sagemaker.Session", spec=Session)
 def test_evaluation_details_autodiscovery_from_model_package_details(
     session, model_package_example, caplog
 ):
+    session.sagemaker_client = Mock()
+    session.boto_session = Mock()
     with open(CLARIFY_BIAS_JSON_PATH, "r", encoding="utf-8") as istr:
         data = json.dumps(json.load(istr))
         response = {
@@ -1692,10 +1708,11 @@ def test_evaluation_details_autodiscovery_from_model_package_details(
     assert len(evaluation_details[0].metric_groups) == 3
 
 
-@patch("sagemaker.Session")
+@patch("sagemaker.Session", spec=Session)
 def test_training_details_autodiscovery_from_model_overview_autopilot(
     session, model_overview_example, caplog
 ):
+    session.sagemaker_client = Mock()
     session.sagemaker_client.search.side_effect = [
         SEARCH_TRAINING_JOB_AUTOPILOT_EXAMPLE,
     ]
@@ -1711,8 +1728,9 @@ def test_training_details_autodiscovery_from_model_overview_autopilot(
     assert len(training_details.training_job_details.hyper_parameters) == 3
 
 
-@patch("sagemaker.Session")
+@patch("sagemaker.Session", spec=Session)
 def test_training_details_autodiscovery_from_job_name(session):
+    session.sagemaker_client = Mock()
     session.sagemaker_client.describe_training_job.side_effect = [
         DESCRIBE_TRAINING_JOB_EXAMPLE,
         MISSING_TRAINING_JOB_CLIENT_ERROR,
@@ -1809,6 +1827,7 @@ def test_add_evaluation_metrics_from_json():
 
 @patch("boto3.session.Session")
 def test_add_evauation_metrics_from_s3(session, caplog):
+    session.sagemaker_client = Mock()
     json_path = os.path.join(DATA_DIR, "evaluation_metrics/clarify_bias.json")
     with open(json_path, "r", encoding="utf-8") as istr:
         data = json.dumps(json.load(istr))
@@ -1935,8 +1954,9 @@ def test_metrics_model_monitor_model_quality_regression():
     assert json.dumps(result, sort_keys=True) == json.dumps(expected_translation, sort_keys=True)
 
 
-@patch("sagemaker.Session")
+@patch("sagemaker.Session", spec=Session)
 def test_create_export_model_card(session, caplog):
+    session.sagemaker_client = Mock()
     session.sagemaker_client.create_model_card_export_job.side_effect = [
         CREATE_EXPORT_MODEL_CARD_EXAMPLE,
         CREATE_EXPORT_MODEL_CARD_EXAMPLE,
@@ -1971,8 +1991,9 @@ def test_create_export_model_card(session, caplog):
     assert "Failed to export model card" in caplog.text
 
 
-@patch("sagemaker.Session")
+@patch("sagemaker.Session", spec=Session)
 def test_list_export_model_cards(session):
+    session.sagemaker_client = Mock()
     session.sagemaker_client.list_model_card_export_jobs.side_effect = [
         LIST_MODEL_CARD_EXPORT_JOB_EXAMPLE
     ]
@@ -1986,8 +2007,9 @@ def test_list_export_model_cards(session):
     )
 
 
-@patch("sagemaker.Session")
+@patch("sagemaker.Session", spec=Session)
 def test_model_card_export_pdf(session, caplog):
+    session.sagemaker_client = Mock()
     session.sagemaker_client.create_model_card_export_job.side_effect = [
         CREATE_EXPORT_MODEL_CARD_EXAMPLE,
         CREATE_EXPORT_MODEL_CARD_EXAMPLE,
@@ -2009,8 +2031,9 @@ def test_model_card_export_pdf(session, caplog):
     assert "Failed to export model card" in caplog.text
 
 
-@patch("sagemaker.Session")
+@patch("sagemaker.Session", spec=Session)
 def test_list_model_card_version_history(session):
+    session.sagemaker_client = Mock()
     session.sagemaker_client.list_model_card_versions.side_effect = [
         LIST_MODEL_CARD_VERSION_HISTORY_EXAMPLE
     ]

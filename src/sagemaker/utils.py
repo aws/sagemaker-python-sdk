@@ -25,7 +25,7 @@ import shutil
 import tarfile
 import tempfile
 import time
-from typing import Union, Any, List, Optional, Dict
+from typing import Union, Any, Callable, List, Optional, Dict
 import json
 import abc
 import uuid
@@ -34,6 +34,7 @@ from datetime import datetime
 from importlib import import_module
 import botocore
 from botocore.utils import merge_dicts
+from pydantic import validate_call, ConfigDict
 from six.moves.urllib import parse
 
 from sagemaker import deprecations
@@ -1489,3 +1490,22 @@ def format_tags(tags: Tags) -> List[TagsDict]:
         return [{"Key": str(k), "Value": str(v)} for k, v in tags.items()]
 
     return tags
+
+
+def validate_call_inputs(
+    __func: Callable,
+    *args,
+    config: Optional[ConfigDict] = None,
+    validate_return: bool = False,
+):
+    """Decorator for function input types using pydantic.
+
+    This calls pydantic.validate_call under the hood, with "arbitrary_types_allowed" enabled.
+    See its documentation for more information.
+    """
+    if config is None:
+        config = ConfigDict()
+
+    config.setdefault("arbitrary_types_allowed", True)
+
+    return validate_call(__func, *args, config=config, validate_return=validate_return)

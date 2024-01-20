@@ -41,11 +41,12 @@ from sagemaker.s3 import S3Uploader
 from sagemaker.session import Session
 from sagemaker.network import NetworkConfig
 from sagemaker.spark import defaults
-from sagemaker.utils import format_tags, Tags
+from sagemaker.utils import format_tags, Tags, validate_call_inputs
 
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.pipeline_context import runnable_by_pipeline
 from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.functions import Join
 
 logger = logging.getLogger(__name__)
@@ -686,9 +687,10 @@ class _SparkProcessorBase(ScriptProcessor):
 class PySparkProcessor(_SparkProcessorBase):
     """Handles Amazon SageMaker processing tasks for jobs using PySpark."""
 
+    @validate_call_inputs
     def __init__(
         self,
-        role: str = None,
+        role: Union[str, ParameterString] = None,
         instance_type: Union[str, PipelineVariable] = None,
         instance_count: Union[int, PipelineVariable] = None,
         framework_version: Optional[str] = None,
@@ -776,18 +778,19 @@ class PySparkProcessor(_SparkProcessorBase):
             network_config=network_config,
         )
 
+    @validate_call_inputs
     def get_run_args(
         self,
-        submit_app,
-        submit_py_files=None,
-        submit_jars=None,
-        submit_files=None,
-        inputs=None,
-        outputs=None,
-        arguments=None,
-        job_name=None,
-        configuration=None,
-        spark_event_logs_s3_uri=None,
+        submit_app: str,
+        submit_py_files: Optional[List[str]] = None,
+        submit_jars: Optional[List[str]] = None,
+        submit_files: Optional[List[str]] = None,
+        inputs: Optional[List[ProcessingInput]] = None,
+        outputs: Optional[List[ProcessingInput]] = None,
+        arguments: Optional[List[str]] = None,
+        job_name: Optional[str] = None,
+        configuration: Optional[Union[List[dict], dict]] = None,
+        spark_event_logs_s3_uri: Optional[str] = None,
     ):
         """Returns a RunArgs object.
 
@@ -823,9 +826,6 @@ class PySparkProcessor(_SparkProcessorBase):
         """
         self._current_job_name = self._generate_current_job_name(job_name=job_name)
 
-        if not submit_app:
-            raise ValueError("submit_app is required")
-
         extended_inputs, extended_outputs = self._extend_processing_args(
             inputs=inputs,
             outputs=outputs,
@@ -843,6 +843,7 @@ class PySparkProcessor(_SparkProcessorBase):
             arguments=arguments,
         )
 
+    @validate_call_inputs
     @runnable_by_pipeline
     def run(
         self,
@@ -963,6 +964,7 @@ class PySparkProcessor(_SparkProcessorBase):
 class SparkJarProcessor(_SparkProcessorBase):
     """Handles Amazon SageMaker processing tasks for jobs using Spark with Java or Scala Jars."""
 
+    @validate_call_inputs
     def __init__(
         self,
         role: str = None,
@@ -1052,18 +1054,19 @@ class SparkJarProcessor(_SparkProcessorBase):
             network_config=network_config,
         )
 
+    @validate_call_inputs
     def get_run_args(
         self,
-        submit_app,
-        submit_class=None,
-        submit_jars=None,
-        submit_files=None,
-        inputs=None,
-        outputs=None,
-        arguments=None,
-        job_name=None,
-        configuration=None,
-        spark_event_logs_s3_uri=None,
+        submit_app: str,
+        submit_class: Optional[str] = None,
+        submit_jars: Optional[List[str]] = None,
+        submit_files: Optional[List[str]] = None,
+        inputs: Optional[List[ProcessingInput]] = None,
+        outputs: Optional[List[ProcessingInput]] = None,
+        arguments: Optional[List[str]] = None,
+        job_name: Optional[str] = None,
+        configuration: Optional[Union[List[dict], dict]] = None,
+        spark_event_logs_s3_uri: Optional[str] = None,
     ):
         """Returns a RunArgs object.
 
@@ -1099,9 +1102,6 @@ class SparkJarProcessor(_SparkProcessorBase):
         """
         self._current_job_name = self._generate_current_job_name(job_name=job_name)
 
-        if not submit_app:
-            raise ValueError("submit_app is required")
-
         extended_inputs, extended_outputs = self._extend_processing_args(
             inputs=inputs,
             outputs=outputs,
@@ -1119,6 +1119,7 @@ class SparkJarProcessor(_SparkProcessorBase):
             arguments=arguments,
         )
 
+    @validate_call_inputs
     @runnable_by_pipeline
     def run(
         self,
@@ -1316,15 +1317,15 @@ class SparkConfigUtils:
     ]
 
     @staticmethod
-    def validate_configuration(configuration: Dict):
+    def validate_configuration(configuration: Union[Dict, List]):
         """Validates the user-provided Hadoop/Spark/Hive configuration.
 
         This ensures that the list or dictionary the user provides will serialize to
         JSON matching the schema of EMR's application configuration
 
         Args:
-            configuration (Dict): A dict that contains the configuration overrides to
-                the default values. For more information, please visit:
+            configuration (Dict or List): A dict or a list of dicts that contains the configuration
+                overrides to the default values. For more information, please visit:
                 https://docs.aws.amazon.com/emr/latest/ReleaseGuide/emr-configure-apps.html
         """
         emr_configure_apps_url = (

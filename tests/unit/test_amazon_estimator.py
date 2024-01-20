@@ -23,6 +23,7 @@ from sagemaker.amazon.amazon_estimator import (
     _build_shards,
     FileSystemRecordSet,
 )
+from sagemaker import Session
 from sagemaker.session_settings import SessionSettings
 from tests.unit import (
     DEFAULT_S3_OBJECT_KEY_PREFIX_NAME,
@@ -43,6 +44,8 @@ def sagemaker_session():
     boto_mock = Mock(name="boto_session", region_name=REGION)
     sms = Mock(
         name="sagemaker_session",
+        spec=Session,
+        sagemaker_client=Mock(),
         boto_session=boto_mock,
         region_name=REGION,
         config=None,

@@ -20,7 +20,10 @@ import pytest
 from mock import Mock
 from mock import patch
 
+from pydantic import ValidationError
+
 from sagemaker.fw_utils import UploadedCode
+from sagemaker.session import Session
 from sagemaker.session_settings import SessionSettings
 from sagemaker.sklearn import SKLearn, SKLearnModel, SKLearnPredictor
 
@@ -60,7 +63,9 @@ EXPERIMENT_CONFIG = {
 def sagemaker_session():
     boto_mock = Mock(name="boto_session", region_name=REGION)
     session = Mock(
+        spec=Session,
         name="sagemaker_session",
+        sagemaker_client=Mock(),
         boto_session=boto_mock,
         boto_region_name=REGION,
         config=None,
@@ -171,6 +176,17 @@ def test_training_image_uri(sagemaker_session, sklearn_version):
     assert _get_full_cpu_image_uri(sklearn_version) == sklearn.training_image_uri()
 
 
+def test_ctor_wrong_parameters(sagemaker_session, sklearn_version):
+    with pytest.raises(ValidationError):
+        SKLearn()
+
+    with pytest.raises(ValidationError):
+        SKLearn(entry_point=3)
+
+    with pytest.raises(ValidationError):
+        SKLearn(entry_point="", image_uri_region=3)
+
+
 def test_create_model(sagemaker_session, sklearn_version):
     source_dir = "s3://mybucket/source"
 
@@ -184,6 +200,17 @@ def test_create_model(sagemaker_session, sklearn_version):
     image_uri = _get_full_cpu_image_uri(sklearn_version)
     model_values = sklearn_model.prepare_container_def(CPU)
     assert model_values["Image"] == image_uri
+
+
+def test_create_model_wrong_parameters(sagemaker_session, sklearn_version):
+    with pytest.raises(ValidationError):
+        SKLearnModel(model_data=1)
+
+    with pytest.raises(ValidationError):
+        SKLearnModel(model_data="", role=2)
+
+    with pytest.raises(ValidationError):
+        SKLearnModel(model_data="", entry_point=3)
 
 
 @patch("sagemaker.model.FrameworkModel._upload_code")

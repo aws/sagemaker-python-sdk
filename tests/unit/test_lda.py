@@ -15,7 +15,7 @@ from __future__ import absolute_import
 import pytest
 from mock import Mock, patch
 
-from sagemaker import image_uris
+from sagemaker import image_uris, Session
 from sagemaker.amazon.lda import LDA, LDAPredictor
 from sagemaker.amazon.amazon_estimator import RecordSet
 from sagemaker.session_settings import SessionSettings
@@ -45,6 +45,8 @@ def sagemaker_session():
         name="sagemaker_session",
         boto_session=boto_mock,
         config=None,
+        spec=Session,
+        sagemaker_client=Mock(),
         local_mode=False,
         s3_client=None,
         s3_resource=None,
