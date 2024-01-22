@@ -1328,3 +1328,31 @@ def _validate_repack_job_non_configurable_args(
         assert model_archive.expr == expected_model_archive
     else:
         assert model_archive == expected_model_archive
+
+
+def test_create_model_step_using_custom_model_name_set_to_none(pipeline_session):
+    # Name of the model not specified, will resolve to None.
+    model = Model(
+        image_uri="my-image",
+        sagemaker_session=pipeline_session,
+        model_data="s3://",
+        role=ROLE,
+    )
+    step_create_model = ModelStep(name="MyModelStep", step_args=model.create())
+
+    # 1. Toggle on custom-prefixing model name set to None.
+    config = PipelineDefinitionConfig(use_custom_job_prefix=True)
+
+    with pytest.raises(ValueError) as error:
+        pipeline = Pipeline(
+            name="MyPipeline",
+            steps=[step_create_model],
+            sagemaker_session=pipeline_session,
+            pipeline_definition_config=config,
+        )
+        pipeline.definition()
+
+    assert (
+        "Invalid input: use_custom_job_prefix flag is set but the name field "
+        "[ModelName] has not been specified." in str(error.value)
+    )
