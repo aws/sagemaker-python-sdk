@@ -669,6 +669,7 @@ class ModelBiasMonitor(ClarifyModelMonitor):
             self.monitoring_schedule_name = monitor_schedule_name
         except Exception:
             logger.exception("Failed to create monitoring schedule.")
+            self.monitoring_schedule_name = None
             # noinspection PyBroadException
             try:
                 self.sagemaker_session.sagemaker_client.delete_model_bias_job_definition(
@@ -1109,6 +1110,7 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
             self.monitoring_schedule_name = monitor_schedule_name
         except Exception:
             logger.exception("Failed to create monitoring schedule.")
+            self.monitoring_schedule_name = None
             # noinspection PyBroadException
             try:
                 self.sagemaker_session.sagemaker_client.delete_model_explainability_job_definition(

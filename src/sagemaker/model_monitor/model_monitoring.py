@@ -415,30 +415,34 @@ class ModelMonitor(object):
         if arguments is not None:
             self.arguments = arguments
 
-        self.sagemaker_session.create_monitoring_schedule(
-            monitoring_schedule_name=self.monitoring_schedule_name,
-            schedule_expression=schedule_cron_expression,
-            statistics_s3_uri=statistics_s3_uri,
-            constraints_s3_uri=constraints_s3_uri,
-            monitoring_inputs=[normalized_monitoring_input],
-            monitoring_output_config=monitoring_output_config,
-            instance_count=self.instance_count,
-            instance_type=self.instance_type,
-            volume_size_in_gb=self.volume_size_in_gb,
-            volume_kms_key=self.volume_kms_key,
-            image_uri=self.image_uri,
-            entrypoint=self.entrypoint,
-            arguments=self.arguments,
-            record_preprocessor_source_uri=None,
-            post_analytics_processor_source_uri=None,
-            max_runtime_in_seconds=self.max_runtime_in_seconds,
-            environment=self.env,
-            network_config=network_config_dict,
-            role_arn=self.sagemaker_session.expand_role(self.role),
-            tags=self.tags,
-            data_analysis_start_time=data_analysis_start_time,
-            data_analysis_end_time=data_analysis_end_time,
-        )
+        try:
+            self.sagemaker_session.create_monitoring_schedule(
+                monitoring_schedule_name=self.monitoring_schedule_name,
+                schedule_expression=schedule_cron_expression,
+                statistics_s3_uri=statistics_s3_uri,
+                constraints_s3_uri=constraints_s3_uri,
+                monitoring_inputs=[normalized_monitoring_input],
+                monitoring_output_config=monitoring_output_config,
+                instance_count=self.instance_count,
+                instance_type=self.instance_type,
+                volume_size_in_gb=self.volume_size_in_gb,
+                volume_kms_key=self.volume_kms_key,
+                image_uri=self.image_uri,
+                entrypoint=self.entrypoint,
+                arguments=self.arguments,
+                record_preprocessor_source_uri=None,
+                post_analytics_processor_source_uri=None,
+                max_runtime_in_seconds=self.max_runtime_in_seconds,
+                environment=self.env,
+                network_config=network_config_dict,
+                role_arn=self.sagemaker_session.expand_role(self.role),
+                tags=self.tags,
+                data_analysis_start_time=data_analysis_start_time,
+                data_analysis_end_time=data_analysis_end_time,
+            )
+        except Exception:
+            self.monitoring_schedule_name = None
+            raise
 
     def update_monitoring_schedule(
         self,
@@ -2054,6 +2058,7 @@ class DefaultModelMonitor(ModelMonitor):
             self.monitoring_schedule_name = monitor_schedule_name
         except Exception:
             logger.exception("Failed to create monitoring schedule.")
+            self.monitoring_schedule_name = None
             # noinspection PyBroadException
             try:
                 self.sagemaker_session.sagemaker_client.delete_data_quality_job_definition(
@@ -3173,6 +3178,7 @@ class ModelQualityMonitor(ModelMonitor):
             self.monitoring_schedule_name = monitor_schedule_name
         except Exception:
             logger.exception("Failed to create monitoring schedule.")
+            self.monitoring_schedule_name = None
             # noinspection PyBroadException
             try:
                 self.sagemaker_session.sagemaker_client.delete_model_quality_job_definition(
