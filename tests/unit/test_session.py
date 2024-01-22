@@ -5134,7 +5134,7 @@ def test_feature_group_describe(sagemaker_session):
     )
 
 
-def test_feature_group_update(sagemaker_session, feature_group_dummy_definitions):
+def test_feature_group_feature_additions_update(sagemaker_session, feature_group_dummy_definitions):
     sagemaker_session.update_feature_group(
         feature_group_name="MyFeatureGroup",
         feature_additions=feature_group_dummy_definitions,
@@ -5142,6 +5142,32 @@ def test_feature_group_update(sagemaker_session, feature_group_dummy_definitions
     assert sagemaker_session.sagemaker_client.update_feature_group.called_with(
         FeatureGroupName="MyFeatureGroup",
         FeatureAdditions=feature_group_dummy_definitions,
+    )
+
+
+def test_feature_group_online_store_config_update(sagemaker_session):
+    os_conf_update = {"TtlDuration": {"Unit": "Seconds", "Value": 123}}
+    sagemaker_session.update_feature_group(
+        feature_group_name="MyFeatureGroup",
+        online_store_config=os_conf_update,
+    )
+    assert sagemaker_session.sagemaker_client.update_feature_group.called_with(
+        FeatureGroupName="MyFeatureGroup", OnlineStoreConfig=os_conf_update
+    )
+
+
+def test_feature_group_throughput_config_update(sagemaker_session):
+    tp_update = {
+        "ThroughputMode": "Provisioned",
+        "ProvisionedReadCapacityUnits": 123,
+        "ProvisionedWriteCapacityUnits": 456,
+    }
+    sagemaker_session.update_feature_group(
+        feature_group_name="MyFeatureGroup",
+        throughput_config=tp_update,
+    )
+    assert sagemaker_session.sagemaker_client.update_feature_group.called_with(
+        FeatureGroupName="MyFeatureGroup", ThroughputConfig=tp_update
     )
 
 

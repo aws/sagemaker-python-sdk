@@ -40,6 +40,9 @@ from sagemaker.feature_store.inputs import (
     TtlDuration,
     OnlineStoreConfigUpdate,
     OnlineStoreStorageTypeEnum,
+    ThroughputModeEnum,
+    ThroughputConfig,
+    ThroughputConfigUpdate,
 )
 
 from tests.unit import SAGEMAKER_CONFIG_FEATURE_GROUP
@@ -305,6 +308,63 @@ def test_feature_store_create_with_in_memory_collection_types(
     )
 
 
+def test_feature_store_create_in_provisioned_throughput_mode(
+    sagemaker_session_mock, role_arn, feature_group_dummy_definitions
+):
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
+    feature_group.feature_definitions = feature_group_dummy_definitions
+    feature_group.create(
+        s3_uri=False,
+        record_identifier_name="feature1",
+        event_time_feature_name="feature2",
+        role_arn=role_arn,
+        enable_online_store=True,
+        throughput_config=ThroughputConfig(ThroughputModeEnum.PROVISIONED, 1000, 2000),
+    )
+    sagemaker_session_mock.create_feature_group.assert_called_with(
+        feature_group_name="MyFeatureGroup",
+        record_identifier_name="feature1",
+        event_time_feature_name="feature2",
+        feature_definitions=[fd.to_dict() for fd in feature_group_dummy_definitions],
+        role_arn=role_arn,
+        description=None,
+        tags=None,
+        online_store_config={"EnableOnlineStore": True},
+        throughput_config={
+            "ThroughputMode": "Provisioned",
+            "ProvisionedReadCapacityUnits": 1000,
+            "ProvisionedWriteCapacityUnits": 2000,
+        },
+    )
+
+
+def test_feature_store_create_in_ondemand_throughput_mode(
+    sagemaker_session_mock, role_arn, feature_group_dummy_definitions
+):
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
+    feature_group.feature_definitions = feature_group_dummy_definitions
+    feature_group.create(
+        s3_uri=False,
+        record_identifier_name="feature1",
+        event_time_feature_name="feature2",
+        role_arn=role_arn,
+        enable_online_store=True,
+        throughput_config=ThroughputConfig(ThroughputModeEnum.ON_DEMAND),
+    )
+
+    sagemaker_session_mock.create_feature_group.assert_called_with(
+        feature_group_name="MyFeatureGroup",
+        record_identifier_name="feature1",
+        event_time_feature_name="feature2",
+        feature_definitions=[fd.to_dict() for fd in feature_group_dummy_definitions],
+        role_arn=role_arn,
+        description=None,
+        tags=None,
+        online_store_config={"EnableOnlineStore": True},
+        throughput_config={"ThroughputMode": "OnDemand"},
+    )
+
+
 def test_feature_store_delete(sagemaker_session_mock):
     feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
     feature_group.delete()
@@ -327,6 +387,35 @@ def test_feature_store_update(sagemaker_session_mock, feature_group_dummy_defini
     sagemaker_session_mock.update_feature_group.assert_called_with(
         feature_group_name="MyFeatureGroup",
         feature_additions=[fd.to_dict() for fd in feature_group_dummy_definitions],
+        throughput_config=None,
+        online_store_config=None,
+    )
+
+
+def test_feature_store_throughput_update_to_provisioned(sagemaker_session_mock):
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
+    feature_group.update(
+        throughput_config=ThroughputConfigUpdate(ThroughputModeEnum.PROVISIONED, 999, 777)
+    )
+    sagemaker_session_mock.update_feature_group.assert_called_with(
+        feature_group_name="MyFeatureGroup",
+        feature_additions=None,
+        throughput_config={
+            "ThroughputMode": "Provisioned",
+            "ProvisionedReadCapacityUnits": 999,
+            "ProvisionedWriteCapacityUnits": 777,
+        },
+        online_store_config=None,
+    )
+
+
+def test_feature_store_throughput_update_to_ondemand(sagemaker_session_mock):
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
+    feature_group.update(throughput_config=ThroughputConfigUpdate(ThroughputModeEnum.ON_DEMAND))
+    sagemaker_session_mock.update_feature_group.assert_called_with(
+        feature_group_name="MyFeatureGroup",
+        feature_additions=None,
+        throughput_config={"ThroughputMode": "OnDemand"},
         online_store_config=None,
     )
 
@@ -341,6 +430,7 @@ def test_feature_store_update_with_ttl_duration(sagemaker_session_mock):
         feature_group_name="MyFeatureGroup",
         feature_additions=None,
         online_store_config=online_store_config.to_dict(),
+        throughput_config=None,
     )
 
 
