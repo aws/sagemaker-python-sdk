@@ -5679,6 +5679,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         role_arn: str = None,
         online_store_config: Dict[str, str] = None,
         offline_store_config: Dict[str, str] = None,
+        throughput_config: Dict[str, Any] = None,
         description: str = None,
         tags: Optional[Tags] = None,
     ) -> Dict[str, Any]:
@@ -5694,6 +5695,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 feature online store.
             offline_store_config (Dict[str, str]): dict contains configuration of the
                 feature offline store.
+            throughput_config (Dict[str, str]): dict contains throughput configuration
+                for the feature group.
             description (str): description of the FeatureGroup.
             tags (Optional[Tags]): tags for labeling a FeatureGroup.
 
@@ -5729,6 +5732,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             kwargs,
             OnlineStoreConfig=inferred_online_store_from_config,
             OfflineStoreConfig=inferred_offline_store_from_config,
+            ThroughputConfig=throughput_config,
             Description=description,
             Tags=tags,
         )
@@ -5757,28 +5761,32 @@ class Session(object):  # pylint: disable=too-many-public-methods
         feature_group_name: str,
         feature_additions: Sequence[Dict[str, str]] = None,
         online_store_config: Dict[str, any] = None,
+        throughput_config: Dict[str, Any] = None,
     ) -> Dict[str, Any]:
         """Update a FeatureGroup
 
-            either adding new features from the given feature definitions
-            or updating online store config
+            Supports modifications like adding new features from the given feature definitions,
+            updating online store and throughput configurations.
 
         Args:
             feature_group_name (str): name of the FeatureGroup to update.
             feature_additions (Sequence[Dict[str, str]): list of feature definitions to be updated.
+            online_store_config (Dict[str, Any]): updates to online store config
+            throughput_config (Dict[str, Any]): target throughput configuration of the feature group
         Returns:
             Response dict from service.
         """
+        update_req = {"FeatureGroupName": feature_group_name}
+        if online_store_config is not None:
+            update_req["OnlineStoreConfig"] = online_store_config
 
-        if feature_additions is None:
-            return self.sagemaker_client.update_feature_group(
-                FeatureGroupName=feature_group_name,
-                OnlineStoreConfig=online_store_config,
-            )
+        if throughput_config is not None:
+            update_req["ThroughputConfig"] = throughput_config
 
-        return self.sagemaker_client.update_feature_group(
-            FeatureGroupName=feature_group_name, FeatureAdditions=feature_additions
-        )
+        if feature_additions is not None:
+            update_req["FeatureAdditions"] = feature_additions
+
+        return self.sagemaker_client.update_feature_group(**update_req)
 
     def list_feature_groups(
         self,

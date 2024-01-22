@@ -64,6 +64,8 @@ from sagemaker.feature_store.inputs import (
     TtlDuration,
     OnlineStoreConfigUpdate,
     OnlineStoreStorageTypeEnum,
+    ThroughputConfig,
+    ThroughputConfigUpdate,
 )
 from sagemaker.utils import resolve_value_from_config, format_tags, Tags
 
@@ -541,6 +543,7 @@ class FeatureGroup:
         tags: Optional[Tags] = None,
         table_format: TableFormatEnum = None,
         online_store_storage_type: OnlineStoreStorageTypeEnum = None,
+        throughput_config: ThroughputConfig = None,
     ) -> Dict[str, Any]:
         """Create a SageMaker FeatureStore FeatureGroup.
 
@@ -570,6 +573,8 @@ class FeatureGroup:
             table_format (TableFormatEnum): format of the offline store table (default: None).
             online_store_storage_type (OnlineStoreStorageTypeEnum): storage type for the
                 online store (default: None).
+            throughput_config (ThroughputConfig): throughput configuration of the
+                feature group (default: None).
 
         Returns:
             Response dict from service.
@@ -618,6 +623,9 @@ class FeatureGroup:
                 )
             create_feature_store_args.update({"online_store_config": online_store_config.to_dict()})
 
+        if throughput_config:
+            create_feature_store_args.update({"throughput_config": throughput_config.to_dict()})
+
         # offline store configuration
         if s3_uri:
             s3_storage_config = S3StorageConfig(s3_uri=s3_uri)
@@ -656,17 +664,17 @@ class FeatureGroup:
         self,
         feature_additions: Sequence[FeatureDefinition] = None,
         online_store_config: OnlineStoreConfigUpdate = None,
+        throughput_config: ThroughputConfigUpdate = None,
     ) -> Dict[str, Any]:
         """Update a FeatureGroup and add new features from the given feature definitions.
 
         Args:
             feature_additions (Sequence[Dict[str, str]): list of feature definitions to be updated.
             online_store_config (OnlineStoreConfigUpdate): online store config to be updated.
-
+            throughput_config (ThroughputConfigUpdate): target throughput configuration
         Returns:
             Response dict from service.
         """
-
         if feature_additions is None:
             feature_additions_parameter = None
         else:
@@ -679,10 +687,15 @@ class FeatureGroup:
         else:
             online_store_config_parameter = online_store_config.to_dict()
 
+        throughput_config_parameter = (
+            None if throughput_config is None else throughput_config.to_dict()
+        )
+
         return self.sagemaker_session.update_feature_group(
             feature_group_name=self.name,
             feature_additions=feature_additions_parameter,
             online_store_config=online_store_config_parameter,
+            throughput_config=throughput_config_parameter,
         )
 
     def update_feature_metadata(
