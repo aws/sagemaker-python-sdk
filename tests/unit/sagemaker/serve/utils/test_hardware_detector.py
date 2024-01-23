@@ -10,6 +10,8 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+from __future__ import absolute_import
+
 from mock.mock import patch
 import pytest
 
@@ -24,45 +26,24 @@ DESCRIBE_INSTANCE_TYPE_RESULT = {
             "InstanceType": "g5.48xlarge",
             "CurrentGeneration": True,
             "FreeTierEligible": False,
-            "SupportedUsageClasses": [
-                "on-demand",
-                "spot"
-            ],
-            "SupportedRootDeviceTypes": [
-                "ebs"
-            ],
-            "SupportedVirtualizationTypes": [
-                "hvm"
-            ],
+            "SupportedUsageClasses": ["on-demand", "spot"],
+            "SupportedRootDeviceTypes": ["ebs"],
+            "SupportedVirtualizationTypes": ["hvm"],
             "BareMetal": False,
             "Hypervisor": "nitro",
             "ProcessorInfo": {
-                "SupportedArchitectures": [
-                    "x86_64"
-                ],
+                "SupportedArchitectures": ["x86_64"],
                 "SustainedClockSpeedInGhz": 3.3,
-                "Manufacturer": "AMD"
+                "Manufacturer": "AMD",
             },
-            "VCpuInfo": {
-                "DefaultVCpus": 192,
-                "DefaultCores": 96,
-                "DefaultThreadsPerCore": 2
-            },
-            "MemoryInfo": {
-                "SizeInMiB": 786432
-            },
+            "VCpuInfo": {"DefaultVCpus": 192, "DefaultCores": 96, "DefaultThreadsPerCore": 2},
+            "MemoryInfo": {"SizeInMiB": 786432},
             "InstanceStorageSupported": True,
             "InstanceStorageInfo": {
                 "TotalSizeInGB": 7600,
-                "Disks": [
-                    {
-                        "SizeInGB": 3800,
-                        "Count": 2,
-                        "Type": "ssd"
-                    }
-                ],
+                "Disks": [{"SizeInGB": 3800, "Count": 2, "Type": "ssd"}],
                 "NvmeSupport": "required",
-                "EncryptionSupport": "required"
+                "EncryptionSupport": "required",
             },
             "EbsInfo": {
                 "EbsOptimizedSupport": "default",
@@ -73,9 +54,9 @@ DESCRIBE_INSTANCE_TYPE_RESULT = {
                     "BaselineIops": 80000,
                     "MaximumBandwidthInMbps": 19000,
                     "MaximumThroughputInMBps": 2375.0,
-                    "MaximumIops": 80000
+                    "MaximumIops": 80000,
                 },
-                "NvmeSupport": "required"
+                "NvmeSupport": "required",
             },
             "NetworkInfo": {
                 "NetworkPerformance": "100 Gigabit",
@@ -88,7 +69,7 @@ DESCRIBE_INSTANCE_TYPE_RESULT = {
                         "NetworkPerformance": "100 Gigabit",
                         "MaximumNetworkInterfaces": 7,
                         "BaselineBandwidthInGbps": 100.0,
-                        "PeakBandwidthInGbps": 100.0
+                        "PeakBandwidthInGbps": 100.0,
                     }
                 ],
                 "Ipv4AddressesPerInterface": 50,
@@ -96,11 +77,9 @@ DESCRIBE_INSTANCE_TYPE_RESULT = {
                 "Ipv6Supported": True,
                 "EnaSupport": "required",
                 "EfaSupported": True,
-                "EfaInfo": {
-                    "MaximumEfaInterfaces": 1
-                },
+                "EfaInfo": {"MaximumEfaInterfaces": 1},
                 "EncryptionInTransitSupported": True,
-                "EnaSrdSupported": True
+                "EnaSrdSupported": True,
             },
             "GpuInfo": {
                 "Gpus": [
@@ -108,35 +87,20 @@ DESCRIBE_INSTANCE_TYPE_RESULT = {
                         "Name": "A10G",
                         "Manufacturer": "NVIDIA",
                         "Count": 8,
-                        "MemoryInfo": {
-                            "SizeInMiB": 24576
-                        }
+                        "MemoryInfo": {"SizeInMiB": 24576},
                     }
                 ],
-                "TotalGpuMemoryInMiB": 196608
+                "TotalGpuMemoryInMiB": 196608,
             },
-            "PlacementGroupInfo": {
-                "SupportedStrategies": [
-                    "cluster",
-                    "partition",
-                    "spread"
-                ]
-            },
+            "PlacementGroupInfo": {"SupportedStrategies": ["cluster", "partition", "spread"]},
             "HibernationSupported": False,
             "BurstablePerformanceSupported": False,
             "DedicatedHostsSupported": True,
             "AutoRecoverySupported": False,
-            "SupportedBootModes": [
-                "legacy-bios",
-                "uefi"
-            ],
+            "SupportedBootModes": ["legacy-bios", "uefi"],
             "NitroEnclavesSupport": "supported",
             "NitroTpmSupport": "supported",
-            "NitroTpmInfo": {
-                "SupportedVersions": [
-                    "2.0"
-                ]
-            }
+            "NitroTpmInfo": {"SupportedVersions": ["2.0"]},
         }
     ]
 }
@@ -144,7 +108,9 @@ DESCRIBE_INSTANCE_TYPE_RESULT = {
 
 @patch("sagemaker.session.Session")
 def test_get_gpu_info_success(session):
-    session.boto_session.client("ec2").describe_instance_types.return_value = DESCRIBE_INSTANCE_TYPE_RESULT
+    session.boto_session.client(
+        "ec2"
+    ).describe_instance_types.return_value = DESCRIBE_INSTANCE_TYPE_RESULT
 
     gpu_info = hardware_detector._get_gpu_info(VALID_INSTANCE_TYPE, session)
 
@@ -154,9 +120,7 @@ def test_get_gpu_info_success(session):
 @patch("sagemaker.session.Session")
 def test_get_gpu_info_throws(session):
     session.boto_session.client("ec2").describe_instance_types.return_value = {
-        "InstanceTypes": [
-            {}
-        ]
+        "InstanceTypes": [{}]
     }
 
     with pytest.raises(ValueError):
@@ -165,11 +129,12 @@ def test_get_gpu_info_throws(session):
 
 @patch("sagemaker.session.Session")
 def test_aggregate_gpu_memory_size_success(session):
-    session.boto_session.client("ec2").describe_instance_types.return_value = DESCRIBE_INSTANCE_TYPE_RESULT
+    session.boto_session.client(
+        "ec2"
+    ).describe_instance_types.return_value = DESCRIBE_INSTANCE_TYPE_RESULT
 
     aggregate_memory_size_in_mib = hardware_detector._aggregate_gpu_memory_size(
-        VALID_INSTANCE_TYPE,
-        session
+        VALID_INSTANCE_TYPE, session
     )
 
     assert aggregate_memory_size_in_mib == 196608
@@ -178,9 +143,7 @@ def test_aggregate_gpu_memory_size_success(session):
 @patch("sagemaker.session.Session")
 def test_aggregate_gpu_memory_size_throws(session):
     session.boto_session.client("ec2").describe_instance_types.return_value = {
-        "InstanceTypes": [
-            {}
-        ]
+        "InstanceTypes": [{}]
     }
 
     with pytest.raises(ValueError):
@@ -199,7 +162,9 @@ def test_get_gpu_info_fallback_throws():
 
 
 def test_get_gpu_aggregate_memory_size_in_mib_fallback_success():
-    aggregate_memory_size_in_mib = hardware_detector._get_aggregate_gpu_memory_size_fallback(VALID_INSTANCE_TYPE)
+    aggregate_memory_size_in_mib = hardware_detector._get_aggregate_gpu_memory_size_fallback(
+        VALID_INSTANCE_TYPE
+    )
 
     assert aggregate_memory_size_in_mib == 655360
 
