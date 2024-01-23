@@ -845,6 +845,12 @@ class _LocalPipelineExecution(object):
                         "{}.".format(param_name, parameter_type.python_type, type(param_value))
                     )
                     raise ClientError(error_msg, "start_pipeline_execution")
+                if param_value == "":
+                    error_msg = self._construct_validation_exception_message(
+                        'Parameter {} value "" is too short (length: 0, '
+                        "required minimum: 1).".format(param_name)
+                    )
+                    raise ClientError(error_msg, "start_pipeline_execution")
                 merged_parameters[param_name] = param_value
         for param_name, default_parameter in default_parameters.items():
             if param_name not in merged_parameters:
