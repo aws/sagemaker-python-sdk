@@ -19,6 +19,7 @@ import json
 import pytest
 
 from mock import Mock, call, patch
+from mock.mock import MagicMock
 
 from sagemaker import s3
 from sagemaker.remote_function.job import _JobSettings
@@ -198,12 +199,7 @@ def test_large_pipeline_create(sagemaker_session_mock, role_arn):
     )
 
 
-@patch("botocore.waiter.create_waiter_with_client")
-@patch("sagemaker.workflow.pipeline.deserialize_obj_from_s3")
-@patch("sagemaker.s3.S3Downloader")
-def test_pipeline_update(
-    waiter_mock, deserializer_mock, s3_downloader_mock, sagemaker_session_mock, role_arn
-):
+def test_pipeline_update(sagemaker_session_mock, role_arn):
     sagemaker_session_mock.sagemaker_config = {}
     pipeline = Pipeline(
         name="MyPipeline",
@@ -262,6 +258,46 @@ def test_pipeline_update(
         PipelineName="MyPipeline", PipelineDefinition=pipeline.definition(), RoleArn=role_arn
     )
 
+
+@pytest.mark.parametrize(
+    "s3_output_path, is_complete_path",
+    [
+        ("s3:/my-bucket/my-key", False),
+        ("s3:/my-bucket/my-key/myexecution/stepA/results", True),
+        ("s3:/my-bucket/my-key/myexecution/stepA/results/", True),
+    ],
+)
+@patch("botocore.waiter.create_waiter_with_client", MagicMock())
+@patch("sagemaker.workflow.pipeline.deserialize_obj_from_s3")
+def test_pipeline_execution_result(
+    mock_deserialize, s3_output_path, is_complete_path, sagemaker_session_mock, role_arn
+):
+    sagemaker_session_mock.sagemaker_config = {}
+
+    step1 = CustomStep(name="MyStep1")
+    dr_step_2 = DelayedReturn(
+        function_step=CustomFunctionStep(
+            func_args=(1, 2),
+            func=lambda x, y: x + y + 3,
+            job_settings=_JobSettings(
+                image_uri="image",
+                instance_type="ml.m4.xlarge",
+                sagemaker_session=sagemaker_session_mock,
+            ),
+            name="stepA",
+            description="",
+            display_name="",
+            depends_on=[step1],
+        )
+    )
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[],
+        steps=[dr_step_2],
+        sagemaker_session=sagemaker_session_mock,
+    )
+    pipeline.create(role_arn=role_arn)
+
     sagemaker_session_mock.sagemaker_client.start_pipeline_execution.return_value = {
         "PipelineExecutionArn": "arn:aws:sagemaker:us-west-2:111111111111:pipeline/mypipeline/execution/myexecution",
     }
@@ -270,7 +306,7 @@ def test_pipeline_update(
     sagemaker_session_mock.sagemaker_client.list_pipeline_execution_steps.return_value = {
         "PipelineExecutionSteps": [
             {
-                "StepName": "stepC",
+                "StepName": "stepA",
                 "Metadata": {
                     "TrainingJob": {
                         "Arn": "arn:aws:sagemaker:us-west-2:111111111111:training-job/foo"
@@ -288,16 +324,15 @@ def test_pipeline_update(
             ]
         },
         "TrainingJobStatus": "Completed",
-        "OutputDataConfig": {"S3OutputPath": "s3:/my-bucket/my-key"},
+        "OutputDataConfig": {"S3OutputPath": s3_output_path},
         "Environment": {"REMOTE_FUNCTION_SECRET_KEY": "abcdefg"},
     }
-    execution.result("stepC")
-    assert s3_downloader_mock.read_bytes(
-        "s3:/my-bucket/my-key/myexecution/stepC/results/metadata.json"
+    execution.result("stepA")
+
+    expected_s3_uri = (
+        s3_output_path if is_complete_path else f"{s3_output_path}/myexecution/stepA/results"
     )
-    assert s3_downloader_mock.read_bytes(
-        "s3:/my-bucket/my-key/myexecution/stepC/results/payload.pkl"
-    )
+    assert mock_deserialize.call_args.kwargs["s3_uri"] == expected_s3_uri
 
 
 def test_pipeline_update_with_parallelism_config(sagemaker_session_mock, role_arn):
