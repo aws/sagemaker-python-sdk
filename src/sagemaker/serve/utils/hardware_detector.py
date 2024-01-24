@@ -21,10 +21,10 @@ from sagemaker import Session
 
 logger = logging.getLogger(__name__)
 
-
-fallback_gpu_resource_mapping = {
+FALLBACK_GPU_RESOURCE_MAPPING = {
     "ml.p5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 655360},
     "ml.p4d.24xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 327680},
+    "ml.p4de.24xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 610352},
     "ml.p3.2xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 16384},
     "ml.p3.8xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 65536},
     "ml.p3.16xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 131072},
@@ -38,6 +38,7 @@ fallback_gpu_resource_mapping = {
     "ml.g4dn.8xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 16384},
     "ml.g4dn.16xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 16384},
     "ml.g4dn.12xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 65536},
+    "ml.g5n.xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 22888},
     "ml.g5.2xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 24576},
     "ml.g5.4xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 24576},
     "ml.g5.8xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 24576},
@@ -48,8 +49,11 @@ fallback_gpu_resource_mapping = {
 }
 
 
-def _get_gpu_info(instance_type: str, session: Session) -> tuple:
-    """Get GPU info for the provided instance"""
+def _get_gpu_info(instance_type: str, session: Session) -> tuple[int, int]:
+    """Get GPU info for the provided instance
+
+    @return: Tuple containing: [0]number of GPUs available and [1]aggregate memory size in MiB
+    """
     ec2_client = session.boto_session.client("ec2")
     ec2_instance = _format_instance_type(instance_type)
 
@@ -76,9 +80,12 @@ def _get_gpu_info(instance_type: str, session: Session) -> tuple:
     raise ValueError("Provided instance_type is not GPU enabled.")
 
 
-def _get_gpu_info_fallback(instance_type: str) -> tuple:
-    """Get GPU info for the provided instance fallback"""
-    fallback_instance_gpu_info = fallback_gpu_resource_mapping.get(instance_type)
+def _get_gpu_info_fallback(instance_type: str) -> tuple[int, int]:
+    """Get GPU info for the provided instance fallback
+
+    @return: Tuple containing: [0]number of GPUs available and [1]aggregate memory size in MiB
+    """
+    fallback_instance_gpu_info = FALLBACK_GPU_RESOURCE_MAPPING.get(instance_type)
     ec2_instance = _format_instance_type(instance_type)
     if fallback_instance_gpu_info is None:
         logger.error("Provided instance_type is not GPU enabled: [%s]", ec2_instance)
