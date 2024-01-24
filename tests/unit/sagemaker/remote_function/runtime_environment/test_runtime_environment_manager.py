@@ -208,7 +208,7 @@ def test_bootstrap_req_txt():
         call_args = popen.call_args[0][0]
         assert call_args is not None
 
-        expected_cmd = "{} -m pip install -r {}".format(python_exe, TEST_REQUIREMENTS_TXT)
+        expected_cmd = "{} -m pip install -r {} -U".format(python_exe, TEST_REQUIREMENTS_TXT)
         assert call_args == expected_cmd
 
 
@@ -229,7 +229,7 @@ def test_bootstrap_req_txt_error():
         call_args = popen.call_args[0][0]
         assert call_args is not None
 
-        expected_cmd = "{} -m pip install -r {}".format(python_exe, TEST_REQUIREMENTS_TXT)
+        expected_cmd = "{} -m pip install -r {} -U".format(python_exe, TEST_REQUIREMENTS_TXT)
         assert call_args == expected_cmd
 
 
@@ -260,7 +260,7 @@ def test_bootstrap_req_txt_with_conda_env(mock_conda_exe):
         call_args = popen.call_args[0][0]
         assert call_args is not None
 
-        expected_cmd = f"{mock_conda_exe.return_value} run -n conda_env pip install -r usr/local/requirements.txt"
+        expected_cmd = f"{mock_conda_exe.return_value} run -n conda_env pip install -r usr/local/requirements.txt -U"
         assert call_args == expected_cmd
 
 

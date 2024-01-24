@@ -1039,11 +1039,19 @@ def get_function_step_result(
         raise ValueError(_ERROR_MSG_OF_WRONG_STEP_TYPE)
     s3_output_path = describe_training_job_response["OutputDataConfig"]["S3OutputPath"]
 
+    s3_uri_suffix = s3_path_join(execution_id, step_name, RESULTS_FOLDER)
+    if s3_output_path.endswith(s3_uri_suffix) or s3_output_path[0:-1].endswith(s3_uri_suffix):
+        s3_uri = s3_output_path
+    else:
+        # This is the obsoleted version of s3_output_path
+        # Keeping it for backward compatible
+        s3_uri = s3_path_join(s3_output_path, s3_uri_suffix)
+
     job_status = describe_training_job_response["TrainingJobStatus"]
     if job_status == "Completed":
         return deserialize_obj_from_s3(
             sagemaker_session=sagemaker_session,
-            s3_uri=s3_path_join(s3_output_path, execution_id, step_name, RESULTS_FOLDER),
+            s3_uri=s3_uri,
             hmac_key=describe_training_job_response["Environment"]["REMOTE_FUNCTION_SECRET_KEY"],
         )
 
