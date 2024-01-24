@@ -34,6 +34,7 @@ from sagemaker.workflow.entities import (
 )
 
 from sagemaker.workflow.execution_variables import ExecutionVariables
+from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.retry import RetryPolicy
 from sagemaker.workflow.steps import Step, ConfigurableRetryStep, StepTypeEnum
 from sagemaker.workflow.step_collections import StepCollection
@@ -100,6 +101,12 @@ class _FunctionStep(ConfigurableRetryStep):
         self._step_kwargs = kwargs
 
         self.__job_settings = None
+
+        # It's for internal usage to retrieve execution id from the properties.
+        # However, we won't expose the properties of function step to customers.
+        self._properties = Properties(
+            step_name=name, step=self, shape_name="DescribeTrainingJobResponse"
+        )
 
         (
             self._converted_func_args,
