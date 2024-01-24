@@ -46,7 +46,7 @@ from sagemaker.serve.utils.local_hardware import (
 )
 from sagemaker.serve.model_server.djl_serving.prepare import (
     prepare_for_djl_serving,
-    _create_dir_structure,
+    _create_dir_structure
 )
 from sagemaker.serve.utils.predictors import DjlLocalModePredictor
 from sagemaker.serve.utils.types import ModelServer, _DjlEngine

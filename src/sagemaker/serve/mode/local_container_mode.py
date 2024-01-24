@@ -19,6 +19,7 @@ from sagemaker.serve.model_server.torchserve.server import LocalTorchServe
 from sagemaker.serve.model_server.djl_serving.server import LocalDJLServing
 from sagemaker.serve.model_server.triton.server import LocalTritonServer
 from sagemaker.serve.model_server.tgi.server import LocalTgiServing
+from sagemaker.serve.model_server.hf_dlc.server import LocalHFDLCServing
 from sagemaker.session import Session
 
 logger = logging.getLogger(__name__)
@@ -31,7 +32,7 @@ _PING_HEALTH_CHECK_FAIL_MSG = (
 )
 
 
-class LocalContainerMode(LocalTorchServe, LocalDJLServing, LocalTritonServer, LocalTgiServing):
+class LocalContainerMode(LocalTorchServe, LocalDJLServing, LocalTritonServer, LocalTgiServing, LocalHFDLCServing):
     """A class that holds methods to deploy model to a container in local environment"""
 
     def __init__(
@@ -128,6 +129,15 @@ class LocalContainerMode(LocalTorchServe, LocalDJLServing, LocalTritonServer, Lo
                 jumpstart=jumpstart,
             )
             self._ping_container = self._tgi_deep_ping
+        elif self.model_server == ModelServer.HuggingFaceDLC:
+            self._start_hf_dlc_serving(
+                client=self.client,
+                image=image,
+                model_path=model_path if model_path else self.model_path,
+                secret_key=secret_key,
+                env_vars=env_vars if env_vars else self.env_vars,
+            )
+            self._ping_container = self._hf_dlc_deep_ping            
 
         # allow some time for container to be ready
         time.sleep(10)

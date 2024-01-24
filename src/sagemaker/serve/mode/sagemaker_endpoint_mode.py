@@ -12,12 +12,13 @@ from sagemaker.serve.model_server.triton.server import SageMakerTritonServer
 from sagemaker.serve.model_server.torchserve.server import SageMakerTorchServe
 from sagemaker.serve.model_server.djl_serving.server import SageMakerDjlServing
 from sagemaker.serve.model_server.tgi.server import SageMakerTgiServing
+from sagemaker.serve.model_server.hf_dlc.server import SageMakerHFDLCServing
 
 logger = logging.getLogger(__name__)
 
 
 class SageMakerEndpointMode(
-    SageMakerTorchServe, SageMakerTritonServer, SageMakerDjlServing, SageMakerTgiServing
+    SageMakerTorchServe, SageMakerTritonServer, SageMakerDjlServing, SageMakerTgiServing, SageMakerHFDLCServing
 ):
     """Holds the required method to deploy a model to a SageMaker Endpoint"""
 
@@ -92,5 +93,13 @@ class SageMakerEndpointMode(
                 image=image,
                 jumpstart=jumpstart,
             )
+
+        if self.model_server == ModelServer.HuggingFaceDLC:
+            return self._upload_hf_dlc_artifacts(
+                model_path=model_path,
+                sagemaker_session=sagemaker_session,
+                s3_model_data_url=s3_model_data_url,
+                image=image,
+            )        
 
         raise ValueError("%s model server is not supported" % self.model_server)

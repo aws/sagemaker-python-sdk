@@ -60,7 +60,7 @@ def _copy_jumpstart_artifacts(model_data: str, js_id: str, code_dir: Path) -> bo
 
 
 def _create_dir_structure(model_path: str) -> tuple:
-    """Create the expected model directory structure for the TGI server"""
+    """Placeholder Docstring"""
     model_path = Path(model_path)
     if not model_path.exists():
         model_path.mkdir(parents=True)
