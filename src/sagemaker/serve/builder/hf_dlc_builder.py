@@ -174,10 +174,6 @@ class HuggingFaceDLC(ABC):
                 self.pysdk_model.env,
                 jumpstart=False,
             )
-
-            ram_usage_after = _get_ram_usage_mb()
-            self.ram_usage_model_load = max(ram_usage_after - ram_usage_before, 0)
-
             return predictor
 
         if "mode" in kwargs:
@@ -269,6 +265,6 @@ class HuggingFaceDLC(ABC):
         Returns:PySDK model
         """
         self.secret_key = None
-        self.model_server = ModelServer.HuggingFaceDLC
+        self.model_server = ModelServer.HUGGINGFACE_DLC
         self.pysdk_model = self._build_for_hugging_face_dlc()
         return self.pysdk_model

@@ -94,7 +94,7 @@ class SageMakerEndpointMode(
                 jumpstart=jumpstart,
             )
 
-        if self.model_server == ModelServer.HuggingFaceDLC:
+        if self.model_server == ModelServer.HUGGINGFACE_DLC:
             return self._upload_hf_dlc_artifacts(
                 model_path=model_path,
                 sagemaker_session=sagemaker_session,

@@ -129,7 +129,7 @@ class LocalContainerMode(LocalTorchServe, LocalDJLServing, LocalTritonServer, Lo
                 jumpstart=jumpstart,
             )
             self._ping_container = self._tgi_deep_ping
-        elif self.model_server == ModelServer.HuggingFaceDLC:
+        elif self.model_server == ModelServer.HUGGINGFACE_DLC:
             self._start_hf_dlc_serving(
                 client=self.client,
                 image=image,
