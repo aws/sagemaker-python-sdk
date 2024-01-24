@@ -65,8 +65,6 @@ required_packages = [
     "platformdirs",
     "tblib>=1.7.0,<3",
     "urllib3<1.27",
-    "uvicorn==0.22.0",
-    "fastapi==0.95.2",
     "requests",
     "docker",
     "tqdm",

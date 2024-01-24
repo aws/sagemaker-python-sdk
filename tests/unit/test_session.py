@@ -703,6 +703,25 @@ def test_fallback_to_domain_if_role_unavailable_in_user_settings(boto_session):
     mock_open(
         read_data='{"ResourceName": "SageMakerInstance", '
         '"DomainId": "d-kbnw5yk6tg8j", '
+        '"ExecutionRoleArn": "arn:aws:iam::369233609183:role/service-role/SageMakerRole-20171129T072388", '
+        '"SpaceName": "space_name"}'
+    ),
+)
+@patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, True))
+def test_get_caller_identity_arn_from_metadata_file_for_space(boto_session):
+    sess = Session(boto_session)
+    expected_role = "arn:aws:iam::369233609183:role/service-role/SageMakerRole-20171129T072388"
+
+    actual = sess.get_caller_identity_arn()
+
+    assert actual == expected_role
+
+
+@patch(
+    "six.moves.builtins.open",
+    mock_open(
+        read_data='{"ResourceName": "SageMakerInstance", '
+        '"DomainId": "d-kbnw5yk6tg8j", '
         '"SpaceName": "space_name"}'
     ),
 )
