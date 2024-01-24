@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 FALLBACK_GPU_RESOURCE_MAPPING = {
     "ml.p5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 655360},
     "ml.p4d.24xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 327680},
-    "ml.p4de.24xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 610352},
+    "ml.p4de.24xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 640000},
     "ml.p3.2xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 16384},
     "ml.p3.8xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 65536},
     "ml.p3.16xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 131072},
@@ -38,7 +38,7 @@ FALLBACK_GPU_RESOURCE_MAPPING = {
     "ml.g4dn.8xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 16384},
     "ml.g4dn.16xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 16384},
     "ml.g4dn.12xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 65536},
-    "ml.g5n.xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 22888},
+    "ml.g5n.xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 24000},
     "ml.g5.2xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 24576},
     "ml.g5.4xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 24576},
     "ml.g5.8xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 24576},
