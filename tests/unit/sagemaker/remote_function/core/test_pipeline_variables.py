@@ -28,6 +28,7 @@ from sagemaker.remote_function.core.pipeline_variables import (
     _DelayedReturnResolver,
     resolve_pipeline_variables,
     convert_pipeline_variables_to_pickleable,
+    _PropertiesResolver,
     _S3BaseUriIdentifier,
 )
 
@@ -47,31 +48,46 @@ PIPELINE_NAME = "some-pipeline"
 def test_resolve_delayed_returns(mock_deserializer):
     delayed_returns = [
         _DelayedReturn(
-            uri=["s3://my-bucket/", "sub-folder-1/"], reference_path=(("__getitem__", 0),)
+            uri=_Properties("Steps.func1.OutputDataConfig.S3OutputPath"),
+            reference_path=(("__getitem__", 0),),
         ),
         _DelayedReturn(
-            uri=["s3://my-bucket/", "sub-folder-1/"], reference_path=(("__getitem__", 1),)
+            uri=_Properties("Steps.func1.OutputDataConfig.S3OutputPath"),
+            reference_path=(("__getitem__", 1),),
         ),
         _DelayedReturn(
-            uri=["s3://my-bucket/", "sub-folder-1/"], reference_path=(("__getitem__", 2),)
+            uri=_Properties("Steps.func1.OutputDataConfig.S3OutputPath"),
+            reference_path=(("__getitem__", 2),),
         ),
         _DelayedReturn(
-            uri=["s3://my-bucket/", "sub-folder-1/"],
+            uri=_Properties("Steps.func1.OutputDataConfig.S3OutputPath"),
             reference_path=(("__getitem__", 2), ("__getitem__", "key")),
         ),
         # index out of bounds
         _DelayedReturn(
-            uri=["s3://my-bucket/", "sub-folder-1/"], reference_path=(("__getitem__", 3),)
+            uri=_Properties("Steps.func1.OutputDataConfig.S3OutputPath"),
+            reference_path=(("__getitem__", 3),),
         ),
-        _DelayedReturn(uri=["s3://my-bucket/", "sub-folder-2/"]),
+        _DelayedReturn(uri=_Properties("Steps.func2.OutputDataConfig.S3OutputPath")),
+        # the obsoleted uri schema in old SDK version
+        _DelayedReturn(
+            uri=["s3://my-bucket/", "sub-folder-1/"], reference_path=(("__getitem__", 0),)
+        ),
     ]
 
     mock_deserializer.return_value = (1, 2, {"key": 3})
+    context = Context(
+        property_references={
+            "Steps.func1.OutputDataConfig.S3OutputPath": "s3://my_bucket/exe_id/sub_folder1",
+            "Steps.func2.OutputDataConfig.S3OutputPath": "s3://my_bucket/exe_id/sub_folder2",
+        }
+    )
     resolver = _DelayedReturnResolver(
         delayed_returns,
         "1234",
-        _ParameterResolver(Context()),
-        _ExecutionVariableResolver(Context()),
+        properties_resolver=_PropertiesResolver(context),
+        parameter_resolver=_ParameterResolver(context),
+        execution_variable_resolver=_ExecutionVariableResolver(context),
         sagemaker_session=None,
         s3_base_uri=f"s3://my-bucket/{PIPELINE_NAME}",
     )
@@ -83,25 +99,34 @@ def test_resolve_delayed_returns(mock_deserializer):
     with pytest.raises(IndexError):
         resolver.resolve(delayed_returns[4])
     assert resolver.resolve(delayed_returns[5]) == (1, 2, {"key": 3})
-    assert mock_deserializer.call_count == 2
+    assert resolver.resolve(delayed_returns[6]) == 1
+    assert mock_deserializer.call_count == 3
 
 
 @patch("sagemaker.remote_function.core.pipeline_variables.deserialize_obj_from_s3")
 def test_deserializer_fails(mock_deserializer):
     delayed_returns = [
         _DelayedReturn(
-            uri=["s3://my-bucket/", "sub-folder-1/"], reference_path=(("__getitem__", 0),)
+            uri=_Properties("Steps.func1.OutputDataConfig.S3OutputPath"),
+            reference_path=(("__getitem__", 0),),
         ),
-        _DelayedReturn(uri=["s3://my-bucket/", "sub-folder-2/"]),
+        _DelayedReturn(uri=_Properties("Steps.func2.OutputDataConfig.S3OutputPath")),
     ]
 
     mock_deserializer.side_effect = Exception("Something went wrong")
+    context = Context(
+        property_references={
+            "Steps.func1.OutputDataConfig.S3OutputPath": "s3://my_bucket/exe_id/sub_folder1",
+            "Steps.func2.OutputDataConfig.S3OutputPath": "s3://my_bucket/exe_id/sub_folder2",
+        }
+    )
     with pytest.raises(Exception, match="Something went wrong"):
         _DelayedReturnResolver(
             delayed_returns,
             "1234",
-            _ParameterResolver(Context()),
-            _ExecutionVariableResolver(Context()),
+            properties_resolver=_PropertiesResolver(context),
+            parameter_resolver=_ParameterResolver(context),
+            execution_variable_resolver=_ExecutionVariableResolver(context),
             sagemaker_session=None,
             s3_base_uri=f"s3://my-bucket/{PIPELINE_NAME}",
         )
@@ -143,6 +168,15 @@ def test_no_pipeline_variables_to_resolve(mock_deserializer, func_args, func_kwa
                 _ParameterFloat("parameter_2"),
                 _ParameterBoolean("parameter_4"),
                 _DelayedReturn(
+                    uri=_Properties("Steps.func1.OutputDataConfig.S3OutputPath"),
+                    reference_path=(("__getitem__", 0),),
+                ),
+                _DelayedReturn(
+                    uri=_Properties("Steps.func1.OutputDataConfig.S3OutputPath"),
+                    reference_path=(("__getitem__", 1),),
+                ),
+                # obsolete uri schema in old SDK version
+                _DelayedReturn(
                     uri=[
                         _S3BaseUriIdentifier(),
                         _ExecutionVariable("ExecutionId"),
@@ -161,7 +195,7 @@ def test_no_pipeline_variables_to_resolve(mock_deserializer, func_args, func_kwa
                 _Properties("Steps.step_name.TrainingJobName"),
             ),
             {},
-            (1, "string", 2.0, True, 1.0, 2.0, "a-cool-name"),
+            (1, "string", 2.0, True, 1.0, 2.0, 1.0, 2.0, "a-cool-name"),
             {},
         ),
         (
@@ -172,6 +206,16 @@ def test_no_pipeline_variables_to_resolve(mock_deserializer, func_args, func_kwa
                 "c": _ParameterFloat("parameter_2"),
                 "d": _ParameterBoolean("parameter_4"),
                 "e": _DelayedReturn(
+                    uri=_Properties("Steps.func1.OutputDataConfig.S3OutputPath"),
+                    reference_path=(("__getitem__", 0),),
+                ),
+                "f": _DelayedReturn(
+                    uri=_Properties("Steps.func1.OutputDataConfig.S3OutputPath"),
+                    reference_path=(("__getitem__", 1),),
+                ),
+                "g": _Properties("Steps.step_name.TrainingJobName"),
+                # obsolete uri schema in old SDK version
+                "h": _DelayedReturn(
                     uri=[
                         _S3BaseUriIdentifier(),
                         _ExecutionVariable("ExecutionId"),
@@ -179,7 +223,7 @@ def test_no_pipeline_variables_to_resolve(mock_deserializer, func_args, func_kwa
                     ],
                     reference_path=(("__getitem__", 0),),
                 ),
-                "f": _DelayedReturn(
+                "i": _DelayedReturn(
                     uri=[
                         _S3BaseUriIdentifier(),
                         _ExecutionVariable("ExecutionId"),
@@ -187,7 +231,6 @@ def test_no_pipeline_variables_to_resolve(mock_deserializer, func_args, func_kwa
                     ],
                     reference_path=(("__getitem__", 1),),
                 ),
-                "g": _Properties("Steps.step_name.TrainingJobName"),
             },
             (),
             {
@@ -198,6 +241,8 @@ def test_no_pipeline_variables_to_resolve(mock_deserializer, func_args, func_kwa
                 "e": 1.0,
                 "f": 2.0,
                 "g": "a-cool-name",
+                "h": 1.0,
+                "i": 2.0,
             },
         ),
     ],
@@ -211,6 +256,7 @@ def test_resolve_pipeline_variables(
     expected_resolved_kwargs,
 ):
     s3_base_uri = f"s3://my-bucket/{PIPELINE_NAME}"
+    s3_results_uri = f"{s3_base_uri}/execution-id/sub-folder-1"
     context = Context(
         property_references={
             "Parameters.parameter_1": "1",
@@ -218,6 +264,7 @@ def test_resolve_pipeline_variables(
             "Parameters.parameter_3": "string",
             "Parameters.parameter_4": "true",
             "Execution.ExecutionId": "execution-id",
+            "Steps.func1.OutputDataConfig.S3OutputPath": s3_results_uri,
             "Steps.step_name.TrainingJobName": "a-cool-name",
         },
     )
@@ -237,7 +284,7 @@ def test_resolve_pipeline_variables(
     assert resolved_kwargs == expected_resolved_kwargs
     mock_deserializer.assert_called_once_with(
         sagemaker_session=None,
-        s3_uri=f"{s3_base_uri}/execution-id/sub-folder-1",
+        s3_uri=s3_results_uri,
         hmac_key="1234",
     )
 
@@ -245,6 +292,9 @@ def test_resolve_pipeline_variables(
 def test_convert_pipeline_variables_to_pickleable():
     function_step = Mock()
     function_step.name = "parent_step"
+    function_step._properties.OutputDataConfig.S3OutputPath = Properties(
+        step_name=function_step.name, path="OutputDataConfig.S3OutputPath"
+    )
     func_args = (
         DelayedReturn(function_step, reference_path=("__getitem__", 0)),
         ParameterBoolean("parameter_1"),
@@ -274,12 +324,7 @@ def test_convert_pipeline_variables_to_pickleable():
 
     assert converted_args == (
         _DelayedReturn(
-            uri=[
-                _S3BaseUriIdentifier(),
-                _ExecutionVariable(name="PipelineExecutionId"),
-                "parent_step",
-                "results",
-            ],
+            uri=_Properties(f"Steps.{function_step.name}.OutputDataConfig.S3OutputPath"),
             reference_path=("__getitem__", 0),
         ),
         _ParameterBoolean(name="parameter_1"),
@@ -293,12 +338,7 @@ def test_convert_pipeline_variables_to_pickleable():
 
     assert converted_kwargs == {
         "a": _DelayedReturn(
-            uri=[
-                _S3BaseUriIdentifier(),
-                _ExecutionVariable(name="PipelineExecutionId"),
-                "parent_step",
-                "results",
-            ],
+            uri=_Properties(f"Steps.{function_step.name}.OutputDataConfig.S3OutputPath"),
             reference_path=("__getitem__", 1),
         ),
         "b": _ParameterBoolean(name="parameter_1"),

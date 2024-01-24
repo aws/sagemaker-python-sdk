@@ -60,6 +60,7 @@ from sagemaker.s3 import s3_path_join, S3Uploader
 from sagemaker import vpc_utils
 from sagemaker.remote_function.core.stored_function import StoredFunction, _SerializedData
 from sagemaker.remote_function.core.pipeline_variables import Context
+
 from sagemaker.remote_function.runtime_environment.runtime_environment_manager import (
     RuntimeEnvironmentManager,
     _DependencySettings,
@@ -72,6 +73,8 @@ from sagemaker.remote_function.custom_file_filter import (
     copy_workdir,
     resolve_custom_file_filter_from_config_file,
 )
+from sagemaker.workflow.function_step import DelayedReturn
+from sagemaker.workflow.step_outputs import get_step
 
 if TYPE_CHECKING:
     from sagemaker.workflow.entities import PipelineVariable
@@ -701,6 +704,7 @@ class _Job:
         """Build the artifacts and generate the training job request."""
         from sagemaker.workflow.properties import Properties
         from sagemaker.workflow.parameters import Parameter
+        from sagemaker.workflow.functions import Join
         from sagemaker.workflow.execution_variables import ExecutionVariables, ExecutionVariable
         from sagemaker.workflow.utilities import load_step_compilation_context
 
@@ -760,7 +764,19 @@ class _Job:
             job_settings=job_settings, s3_base_uri=s3_base_uri
         )
 
-        output_config = {"S3OutputPath": s3_base_uri}
+        if step_compilation_context:
+            s3_output_path = Join(
+                on="/",
+                values=[
+                    s3_base_uri,
+                    ExecutionVariables.PIPELINE_EXECUTION_ID,
+                    step_compilation_context.step_name,
+                    "results",
+                ],
+            )
+            output_config = {"S3OutputPath": s3_output_path}
+        else:
+            output_config = {"S3OutputPath": s3_base_uri}
         if job_settings.s3_kms_key is not None:
             output_config["KmsKeyId"] = job_settings.s3_kms_key
         request_dict["OutputDataConfig"] = output_config
@@ -803,6 +819,11 @@ class _Job:
             for arg in func_args + tuple(func_kwargs.values()):
                 if isinstance(arg, (Parameter, ExecutionVariable, Properties)):
                     container_args.extend([arg.expr["Get"], arg.to_string()])
+
+                if isinstance(arg, DelayedReturn):
+                    # The uri is a Properties object
+                    uri = get_step(arg)._properties.OutputDataConfig.S3OutputPath
+                    container_args.extend([uri.expr["Get"], uri.to_string()])
 
         if run_info is not None:
             container_args.extend(["--run_in_context", json.dumps(dataclasses.asdict(run_info))])
