@@ -1,5 +1,25 @@
 # Changelog
 
+## v2.204.0 (2024-01-23)
+
+### Features
+
+ * add throughput management support for feature group
+ * Support custom repack model settings
+ * parallelize notebook search utils, add new operators
+
+### Bug Fixes and Other Changes
+
+ * Enable galactus integ tests
+ * JumpStart - TLV region launch
+ * add warning message for job-prefixed pipeline steps when no job name is provided
+ * TGI NeuronX
+ * Updates for DJL 0.26.0 release
+ * update sphinx version
+ * Add PyTorch 2.1.0 SM Training DLC to UNSUPPORTED_DLC_IMAGE_FOR_SM_PARALLELISM list
+ * Huggingface glue failing tests
+ * change ConditionNot incorrect property Expression to Condition
+
 ## v2.203.1 (2024-01-09)
 
 ### Bug Fixes and Other Changes
