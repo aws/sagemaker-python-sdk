@@ -68,7 +68,7 @@ def test_get_gpu_info_describe_instance_types_throws(session):
             "Error": {
                 "Code": "InvalidInstanceType",
                 "Message": f"An error occurred (InvalidInstanceType) when calling the DescribeInstanceTypes "
-                f"operation: The following supplied instance types do not exist: [#{INVALID_INSTANCE_TYPE}]",
+                f"operation: The following supplied instance types do not exist: [{INVALID_INSTANCE_TYPE}]",
             }
         },
         "DescribeInstanceTypes",

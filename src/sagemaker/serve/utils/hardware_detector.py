@@ -67,15 +67,19 @@ def _get_gpu_info(instance_type: str, session: Session) -> tuple[int, int]:
     if instance_info is not None:
         gpus_info = instance_info.get("GpuInfo")
         if gpus_info is not None:
-            instance_gpu_info = (
-                gpus_info.get("Gpus")[0].get("Count"),
-                gpus_info.get("TotalGpuMemoryInMiB"),
-            )
+            gpus = gpus_info.get("Gpus")
+            if gpus is not None and len(gpus) > 0:
+                count = gpus[0].get("Count")
+                total_gpu_memory_in_mib = gpus_info.get("TotalGpuMemoryInMiB")
+                if count and total_gpu_memory_in_mib:
+                    instance_gpu_info = (
+                        count,
+                        total_gpu_memory_in_mib,
+                    )
+                    logger.info("GPU Info [%s]: %s", ec2_instance, instance_gpu_info)
+                    return instance_gpu_info
 
-            logger.info("GPU Info [%s]: %s", ec2_instance, instance_gpu_info)
-            return instance_gpu_info
-
-    raise ValueError(f"Provided instance_type is not GPU enabled: [#{ec2_instance}]")
+    raise ValueError(f"Provided instance_type is not GPU enabled: [{ec2_instance}]")
 
 
 def _get_gpu_info_fallback(instance_type: str) -> tuple[int, int]:
@@ -86,7 +90,7 @@ def _get_gpu_info_fallback(instance_type: str) -> tuple[int, int]:
     fallback_instance_gpu_info = FALLBACK_GPU_RESOURCE_MAPPING.get(instance_type)
     ec2_instance = _format_instance_type(instance_type)
     if fallback_instance_gpu_info is None:
-        raise ValueError(f"Provided instance_type is not GPU enabled: [#{ec2_instance}]")
+        raise ValueError(f"Provided instance_type is not GPU enabled: [{ec2_instance}]")
 
     fallback_instance_gpu_info = (
         fallback_instance_gpu_info.get("Count"),
