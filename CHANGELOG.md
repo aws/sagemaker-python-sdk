@@ -1,5 +1,19 @@
 # Changelog
 
+## v2.205.0 (2024-01-25)
+
+### Features
+
+ * Support selective pipeline execution for function step
+
+### Bug Fixes and Other Changes
+
+ * remove fastapi and uvicorn dependencies
+ * Support using PipelineDefinitionConfig in local mode
+ * update get_execution_role_arn from metadata file if present
+ * update image_uri_configs  01-24-2024 06:17:33 PST
+ * Add validation for empty ParameterString value in start local pipeline
+
 ## v2.204.0 (2024-01-23)
 
 ### Features
