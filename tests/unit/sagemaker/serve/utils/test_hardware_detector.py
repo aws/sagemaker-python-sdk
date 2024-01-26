@@ -13,7 +13,6 @@
 from __future__ import absolute_import
 
 from botocore.exceptions import ClientError
-from mock.mock import patch
 import pytest
 
 from sagemaker.serve.utils import hardware_detector
@@ -24,9 +23,7 @@ INVALID_INSTANCE_TYPE = "fl.c5.57xxlarge"
 EXPECTED_INSTANCE_GPU_INFO = (8, 196608)
 
 
-@patch("sagemaker.session.Session")
-def test_get_gpu_info_success(session):
-    client = session.boto_session.client("ec2")
+def test_get_gpu_info_success(sagemaker_session, client):
     client.describe_instance_types.return_value = {
         "InstanceTypes": [
             {
@@ -45,24 +42,20 @@ def test_get_gpu_info_success(session):
         ]
     }
 
-    instance_gpu_info = hardware_detector._get_gpu_info(VALID_INSTANCE_TYPE, session)
+    instance_gpu_info = hardware_detector._get_gpu_info(VALID_INSTANCE_TYPE, sagemaker_session)
 
     client.describe_instance_types.assert_called_once_with(InstanceTypes=["g5.48xlarge"])
     assert instance_gpu_info == EXPECTED_INSTANCE_GPU_INFO
 
 
-@patch("sagemaker.session.Session")
-def test_get_gpu_info_throws(session):
-    client = session.boto_session.client("ec2")
+def test_get_gpu_info_throws(sagemaker_session, client):
     client.describe_instance_types.return_value = {"InstanceTypes": [{}]}
 
     with pytest.raises(ValueError):
-        hardware_detector._get_gpu_info(INVALID_INSTANCE_TYPE, session)
+        hardware_detector._get_gpu_info(INVALID_INSTANCE_TYPE, sagemaker_session)
 
 
-@patch("sagemaker.session.Session")
-def test_get_gpu_info_describe_instance_types_throws(session):
-    client = session.boto_session.client("ec2")
+def test_get_gpu_info_describe_instance_types_throws(sagemaker_session, client):
     client.describe_instance_types.side_effect = ClientError(
         {
             "Error": {
@@ -75,18 +68,20 @@ def test_get_gpu_info_describe_instance_types_throws(session):
     )
 
     with pytest.raises(ValueError):
-        hardware_detector._get_gpu_info(INVALID_INSTANCE_TYPE, session)
+        hardware_detector._get_gpu_info(INVALID_INSTANCE_TYPE, sagemaker_session)
 
 
 def test_get_gpu_info_fallback_success():
-    fallback_instance_gpu_info = hardware_detector._get_gpu_info_fallback(VALID_INSTANCE_TYPE)
+    fallback_instance_gpu_info = hardware_detector._get_gpu_info_fallback(
+        VALID_INSTANCE_TYPE, REGION
+    )
 
     assert fallback_instance_gpu_info == EXPECTED_INSTANCE_GPU_INFO
 
 
 def test_get_gpu_info_fallback_throws():
     with pytest.raises(ValueError):
-        hardware_detector._get_gpu_info_fallback(INVALID_INSTANCE_TYPE)
+        hardware_detector._get_gpu_info_fallback(INVALID_INSTANCE_TYPE, REGION)
 
 
 def test_format_instance_type_success():
