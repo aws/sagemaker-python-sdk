@@ -17,24 +17,26 @@ import json
 import os
 
 
-def retrieve(region: str) -> dict[str, any]:
+def retrieve(region: str) -> dict[str, dict[str, int]]:
     """Retrieves instance types GPU info of the given region.
 
     Args:
         region (str): The AWS region.
 
     Returns:
-        dict[str, any]: A dictionary that contains instance types as keys, and GPU info as values.
+        dict[str, dict[str, int]]: A dictionary that contains instance types as keys
+                                   and GPU info as values or empty dictionary if the
+                                   config for the given region is not found.
 
     Raises:
-        ValueError: If no config found for the given region.
+        ValueError: If no config found.
     """
     config_path = os.path.join(
-        os.path.dirname(__file__), "instance_types_gpu_info_config", "{}.json".format(region)
+        os.path.dirname(__file__), "image_uri_config", "instance_gpu_info.json"
     )
     try:
         with open(config_path) as f:
             instance_types_gpu_info_config = json.load(f)
-        return instance_types_gpu_info_config.get("registries")
+        return instance_types_gpu_info_config.get(region, {})
     except FileNotFoundError:
-        raise ValueError("Could not find instance types gpu info config for {}".format(region))
+        raise ValueError("Could not find instance types gpu info.")

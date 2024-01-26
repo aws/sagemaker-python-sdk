@@ -18,7 +18,7 @@ import logging
 from botocore.exceptions import ClientError
 
 from sagemaker import Session
-from sagemaker.instance_types_gpu_info import retrieve
+from sagemaker import instance_types_gpu_info
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +77,7 @@ def _get_gpu_info_fallback(instance_type: str, region: str) -> tuple[int, int]:
     Raises:
         ValueError: If The given instance type does not exist.
     """
-    instance_types_gpu_info_config = retrieve(region)
+    instance_types_gpu_info_config = instance_types_gpu_info.retrieve(region)
     fallback_instance_gpu_info = instance_types_gpu_info_config.get(instance_type)
 
     ec2_instance = _format_instance_type(instance_type)

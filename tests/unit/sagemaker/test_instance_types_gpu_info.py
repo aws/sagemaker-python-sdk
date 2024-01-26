@@ -12,19 +12,19 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import pytest
-
-from sagemaker.instance_types_gpu_info import retrieve
+from sagemaker import instance_types_gpu_info
 
 REGION = "us-west-2"
 INVALID_REGION = "invalid-region"
 
 
 def test_retrieve_success():
-    data = retrieve(REGION)
+    data = instance_types_gpu_info.retrieve(REGION)
+
     assert len(data) > 0
 
 
 def test_retrieve_throws():
-    with pytest.raises(ValueError):
-        retrieve(INVALID_REGION)
+    data = instance_types_gpu_info.retrieve(INVALID_REGION)
+
+    assert len(data) == 0
