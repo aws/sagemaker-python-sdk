@@ -16,6 +16,7 @@ import pytest
 
 from sagemaker.serve.utils import hardware_detector
 
+REGION = "us-west-2"
 VALID_INSTANCE_TYPE = "ml.g5.48xlarge"
 INVALID_INSTANCE_TYPE = "fl.c5.57xxlarge"
 EXPECTED_INSTANCE_GPU_INFO = (8, 196608)
@@ -33,11 +34,11 @@ def test_get_gpu_info_throws(sagemaker_session):
 
 
 def test_get_gpu_info_fallback_success():
-    gpu_info = hardware_detector._get_gpu_info_fallback(VALID_INSTANCE_TYPE)
+    gpu_info = hardware_detector._get_gpu_info_fallback(VALID_INSTANCE_TYPE, REGION)
 
     assert gpu_info == EXPECTED_INSTANCE_GPU_INFO
 
 
 def test_get_gpu_info_fallback_throws():
     with pytest.raises(ValueError):
-        hardware_detector._get_gpu_info_fallback(INVALID_INSTANCE_TYPE)
+        hardware_detector._get_gpu_info_fallback(INVALID_INSTANCE_TYPE, REGION)
