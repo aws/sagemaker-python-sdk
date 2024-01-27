@@ -15,9 +15,10 @@ from __future__ import absolute_import
 
 import json
 import os
+from typing import Dict
 
 
-def retrieve(region: str) -> dict[str, dict[str, int]]:
+def retrieve(region: str) -> Dict[str, Dict[str, int]]:
     """Retrieves instance types GPU info of the given region.
 
     Args:

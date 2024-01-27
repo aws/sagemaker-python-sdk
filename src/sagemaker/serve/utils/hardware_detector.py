@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 import logging
+from typing import Tuple
 
 from botocore.exceptions import ClientError
 
@@ -23,7 +24,7 @@ from sagemaker import instance_types_gpu_info
 logger = logging.getLogger(__name__)
 
 
-def _get_gpu_info(instance_type: str, session: Session) -> tuple[int, int]:
+def _get_gpu_info(instance_type: str, session: Session) -> Tuple[int, int]:
     """Get GPU info for the provided instance
 
     Args:
@@ -64,7 +65,7 @@ def _get_gpu_info(instance_type: str, session: Session) -> tuple[int, int]:
     raise ValueError(f"Provided instance_type is not GPU enabled: [{ec2_instance}]")
 
 
-def _get_gpu_info_fallback(instance_type: str, region: str) -> tuple[int, int]:
+def _get_gpu_info_fallback(instance_type: str, region: str) -> Tuple[int, int]:
     """Get GPU info for the provided from the config
 
     Args:
