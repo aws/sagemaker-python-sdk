@@ -47,7 +47,6 @@ supported_model_server = {
     ModelServer.TORCHSERVE,
     ModelServer.TRITON,
     ModelServer.DJL_SERVING,
-    ModelServer.HuggingFaceDLC,
 }
 
 mock_session = MagicMock()

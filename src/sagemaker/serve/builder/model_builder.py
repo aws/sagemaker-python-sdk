@@ -128,8 +128,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, HuggingFaceDLC):
             in order for model builder to build the artifacts correctly (according
             to the model server). Possible values for this argument are
             ``TORCHSERVE``, ``MMS``, ``TENSORFLOW_SERVING``, ``DJL_SERVING``,
-            ``TRITON``, ``TGI``, and ``HuggingFaceDLC``.
-
+            ``TRITON``, and``TGI``.
     """
 
     model_path: Optional[str] = field(
