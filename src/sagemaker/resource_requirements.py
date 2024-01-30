@@ -16,6 +16,7 @@ from __future__ import absolute_import
 
 import logging
 from typing import Optional
+from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
 
 from sagemaker.jumpstart import utils as jumpstart_utils
 from sagemaker.jumpstart import artifacts
@@ -34,7 +35,7 @@ def retrieve_default(
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     instance_type: Optional[str] = None,
-) -> str:
+) -> ResourceRequirements:
     """Retrieves the default resource requirements for the model matching the given arguments.
 
     Args:
