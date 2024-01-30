@@ -134,7 +134,6 @@ def _retrieve_default_resources(
             requirement_type,
             spec_field_to_resource_requirement_map,
         ) in REQUIREMENT_TYPE_TO_SPEC_FIELD_NAME_TO_RESOURCE_REQUIREMENT_NAME_MAP.items():
-            requirement_type
             requirement_kwargs = {}
             for spec_field, resource_requirement in spec_field_to_resource_requirement_map.items():
                 if spec_field in default_resource_requirements:
