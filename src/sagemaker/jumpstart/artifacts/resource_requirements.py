@@ -13,7 +13,7 @@
 """This module contains functions for obtaining JumpStart resoure requirements."""
 from __future__ import absolute_import
 
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
@@ -28,7 +28,9 @@ from sagemaker.jumpstart.utils import (
 from sagemaker.session import Session
 from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
 
-REQUIREMENT_TYPE_TO_SPEC_FIELD_NAME_TO_RESOURCE_REQUIREMENT_NAME_MAP: Dict[str, Dict[str, str]] = {
+REQUIREMENT_TYPE_TO_SPEC_FIELD_NAME_TO_RESOURCE_REQUIREMENT_NAME_MAP: Dict[
+    str, Dict[str, Tuple[str, str]]
+] = {
     "requests": {
         "num_accelerators": ("num_accelerators", "num_accelerators"),
         "num_cpus": ("num_cpus", "num_cpus"),
