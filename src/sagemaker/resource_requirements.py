@@ -33,6 +33,7 @@ def retrieve_default(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    instance_type: Optional[str] = None,
 ) -> str:
     """Retrieves the default resource requirements for the model matching the given arguments.
 
@@ -56,6 +57,8 @@ def retrieve_default(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        instance_type (str): An instance type to optionally supply in order to get
+            host requirements specific for the instance type.
     Returns:
         str: The default resource requirements to use for the model.
 
@@ -79,4 +82,5 @@ def retrieve_default(
         tolerate_vulnerable_model,
         tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
+        instance_type=instance_type,
     )

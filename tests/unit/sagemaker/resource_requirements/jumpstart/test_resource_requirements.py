@@ -51,6 +51,55 @@ def test_jumpstart_resource_requirements(patched_get_model_specs):
 
 
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+def test_jumpstart_resource_requirements_instance_type_variants(patched_get_model_specs):
+
+    patched_get_model_specs.side_effect = get_special_model_spec
+    region = "us-west-2"
+    mock_client = boto3.client("s3")
+    mock_session = Mock(s3_client=mock_client)
+
+    model_id, model_version = "variant-model", "*"
+    default_inference_resource_requirements = resource_requirements.retrieve_default(
+        region=region,
+        model_id=model_id,
+        model_version=model_version,
+        scope="inference",
+        sagemaker_session=mock_session,
+        instance_type="ml.g5.xlarge",
+    )
+    assert default_inference_resource_requirements.requests == {
+        "memory": 81999,
+        "num_accelerators": 10,
+    }
+
+    default_inference_resource_requirements = resource_requirements.retrieve_default(
+        region=region,
+        model_id=model_id,
+        model_version=model_version,
+        scope="inference",
+        sagemaker_session=mock_session,
+        instance_type="ml.g5.555xlarge",
+    )
+    assert default_inference_resource_requirements.requests == {
+        "memory": 81999,
+        "num_accelerators": 888810,
+    }
+
+    default_inference_resource_requirements = resource_requirements.retrieve_default(
+        region=region,
+        model_id=model_id,
+        model_version=model_version,
+        scope="inference",
+        sagemaker_session=mock_session,
+        instance_type="ml.f9.555xlarge",
+    )
+    assert default_inference_resource_requirements.requests == {
+        "memory": 81999,
+        "num_accelerators": 1,
+    }
+
+
+@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
 def test_jumpstart_no_supported_resource_requirements(patched_get_model_specs):
     patched_get_model_specs.side_effect = get_special_model_spec
 

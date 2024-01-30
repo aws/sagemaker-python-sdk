@@ -13,7 +13,7 @@
 """This module contains functions for obtaining JumpStart resoure requirements."""
 from __future__ import absolute_import
 
-from typing import Optional
+from typing import Dict, Optional
 
 from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
@@ -37,6 +37,7 @@ def _retrieve_default_resources(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    instance_type: Optional[str] = None,
 ) -> ResourceRequirements:
     """Retrieves the default resource requirements for the model.
 
@@ -60,6 +61,8 @@ def _retrieve_default_resources(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        instance_type (str): An instance type to optionally supply in order to get
+            host requirements specific for the instance type.
     Returns:
         str: The default resource requirements to use for the model or None.
 
@@ -87,11 +90,27 @@ def _retrieve_default_resources(
         is_dynamic_container_deployment_supported = (
             model_specs.dynamic_container_deployment_supported
         )
-        default_resource_requirements = model_specs.hosting_resource_requirements
+        default_resource_requirements: Dict[str, int] = (
+            model_specs.hosting_resource_requirements or {}
+        )
     else:
         raise NotImplementedError(
             f"Unsupported script scope for retrieving default resource requirements: '{scope}'"
         )
+
+    instance_specific_resource_requirements: Dict[str, int] = (
+        model_specs.hosting_instance_type_variants.get_instance_specific_resource_requirements(
+            instance_type
+        )
+        if instance_type
+        and getattr(model_specs, "hosting_instance_type_variants", None) is not None
+        else {}
+    )
+
+    default_resource_requirements = {
+        **default_resource_requirements,
+        **instance_specific_resource_requirements,
+    }
 
     if is_dynamic_container_deployment_supported:
         requests = {}
