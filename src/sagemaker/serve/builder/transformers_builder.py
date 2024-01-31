@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""HuggingFace DLC specific model builder"""
+"""Transformers build logic with model builder"""
 from __future__ import absolute_import
 import logging
 from packaging.version import Version
@@ -27,10 +27,10 @@ from sagemaker.serve.utils.local_hardware import (
 )
 from sagemaker.djl_inference.model import _get_model_config_properties_from_hf
 from sagemaker.huggingface import HuggingFaceModel, get_huggingface_llm_image_uri
-from sagemaker.serve.model_server.hf_dlc.prepare import (
+from sagemaker.serve.model_server.multi_model_server.prepare import (
     _create_dir_structure,
 )
-from sagemaker.serve.utils.predictors import HfDLCLocalModePredictor
+from sagemaker.serve.utils.predictors import TransformersLocalModePredictor
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.utils.telemetry_logger import _capture_telemetry
@@ -41,8 +41,8 @@ logger = logging.getLogger(__name__)
 DEFAULT_TIMEOUT = 1800
 
 
-class HuggingFaceDLC(ABC):
-    """HuggingFace DLC build logic for ModelBuilder()"""
+class Transformers(ABC):
+    """Transformers build logic with ModelBuilder()"""
 
     def __init__(self):
         self.model = None
@@ -71,7 +71,7 @@ class HuggingFaceDLC(ABC):
     def _prepare_for_mode(self):
         """Abstract method"""
 
-    def _create_hf_dlc_model(self) -> Type[Model]:
+    def _create_transformers_model(self) -> Type[Model]:
         """Initializes the model after fetching image
 
         1. Get the metadata for deciding framework
@@ -123,15 +123,15 @@ class HuggingFaceDLC(ABC):
         logger.info("Detected %s. Proceeding with the the deployment.", self.image_uri)
 
         self._original_deploy = pysdk_model.deploy
-        pysdk_model.deploy = self._hf_dlc_model_builder_deploy_wrapper
+        pysdk_model.deploy = self._transformers_model_builder_deploy_wrapper
         return pysdk_model
 
-    @_capture_telemetry("hf_dlc.deploy")
-    def _hf_dlc_model_builder_deploy_wrapper(self, *args, **kwargs) -> Type[PredictorBase]:
+    @_capture_telemetry("transformers.deploy")
+    def _transformers_model_builder_deploy_wrapper(self, *args, **kwargs) -> Type[PredictorBase]:
         """Returns predictor depending on local or sagemaker endpoint mode
 
         Returns:
-            HfDLCLocalModePredictor: During local mode deployment
+            TransformersLocalModePredictor: During local mode deployment
         """
         timeout = kwargs.get("model_data_download_timeout")
         if timeout:
@@ -161,7 +161,7 @@ class HuggingFaceDLC(ABC):
         if self.mode == Mode.LOCAL_CONTAINER:
             timeout = kwargs.get("model_data_download_timeout")
 
-            predictor = HfDLCLocalModePredictor(
+            predictor = TransformersLocalModePredictor(
                 self.modes[str(Mode.LOCAL_CONTAINER)], serializer, deserializer
             )
 
@@ -199,11 +199,9 @@ class HuggingFaceDLC(ABC):
         predictor.deserializer = deserializer
         return predictor
 
-    def _build_for_hugging_face_dlc(self):
-        """Build model for hugging face deployment using
-
-        Returns:
-            HfDLCLocalModePredictor: During local mode deployment
+    def _build_transformers_env(self):
+        """
+        Build model for hugging face deployment using
         """
         self.nb_instance_type = _get_nb_instance()
 
@@ -222,7 +220,7 @@ class HuggingFaceDLC(ABC):
                 self.hf_model_config = _get_model_config_properties_from_hf(
                     self.model, self.env_vars.get("HUGGING_FACE_HUB_TOKEN"))
 
-        self.pysdk_model = self._create_hf_dlc_model()
+        self.pysdk_model = self._create_transformers_model()
 
         if self.mode == Mode.LOCAL_CONTAINER:
             self._prepare_for_mode()
@@ -230,8 +228,8 @@ class HuggingFaceDLC(ABC):
         return self.pysdk_model
 
     def _set_instance(self, **kwargs):
-        """Set the instance
-           Given the detected notebook type or provided instance type
+        """
+        Set the instance : Given the detected notebook type or provided instance type
         """
         if self.mode == Mode.SAGEMAKER_ENDPOINT:
             if self.nb_instance_type and "instance_type" not in kwargs:
@@ -259,12 +257,14 @@ class HuggingFaceDLC(ABC):
                 versions_to_return.append(base_fw_version)
         return sorted(versions_to_return)[0]
 
-    def _build_for_hf_dlc(self):
+    def _build_for_transformers(self):
         """Method that triggers model build
 
         Returns:PySDK model
         """
         self.secret_key = None
-        self.model_server = ModelServer.HUGGINGFACE_DLC
-        self.pysdk_model = self._build_for_hugging_face_dlc()
+        self.model_server = ModelServer.MMS
+
+        self._build_transformers_env()
+
         return self.pysdk_model

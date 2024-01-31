@@ -17,7 +17,6 @@ class ModelServer(Enum):
     DJL_SERVING = 4
     TRITON = 5
     TGI = 6
-    HUGGINGFACE_DLC = 7
 
 
 class _DjlEngine(Enum):

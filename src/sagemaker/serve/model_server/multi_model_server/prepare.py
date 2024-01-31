@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 def _create_dir_structure(model_path: str) -> tuple:
-    """Create the expected model directory structure for the HF DLC server"""
+    """Create the expected model directory structure for the Multi Model server"""
     model_path = Path(model_path)
     if not model_path.exists():
         model_path.mkdir(parents=True)

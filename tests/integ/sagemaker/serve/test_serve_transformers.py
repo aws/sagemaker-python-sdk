@@ -16,7 +16,6 @@ import pytest
 
 from sagemaker.serve.builder.schema_builder import SchemaBuilder
 from sagemaker.serve.builder.model_builder import ModelBuilder, Mode
-from sagemaker.serve.utils.types import ModelServer
 
 from tests.integ.sagemaker.serve.constants import (
     HF_DIR,
@@ -52,9 +51,6 @@ def model_builder_model_schema_builder():
         model_path=HF_DIR,
         model="bert-base-uncased",
         schema_builder=SchemaBuilder(sample_input, loaded_response),
-        image_uri=
-        "763104351884.dkr.ecr.us-east-1.amazonaws.com/huggingface-pytorch-inference:1.7.1-transformers4.6.1-cpu-py36-ubuntu18.04",
-        model_server=ModelServer.HUGGINGFACE_DLC,
     )
 
 
@@ -68,7 +64,7 @@ def model_builder(request):
     reason="Testing feature",
 )
 @pytest.mark.parametrize("model_builder", ["model_builder_model_schema_builder"], indirect=True)
-def test_pytorch_hf_dlc_sagemaker_endpoint(
+def test_pytorch_transformers_sagemaker_endpoint(
         sagemaker_session, model_builder, gpu_instance_type, input
 ):
     logger.info("Running in SAGEMAKER_ENDPOINT mode...")
@@ -99,4 +95,4 @@ def test_pytorch_hf_dlc_sagemaker_endpoint(
                 logger.exception(caught_ex)
                 assert (
                     False
-                ), f"{caught_ex} was thrown when running pytorch hf_dlc sagemaker endpoint test"
+                ), f"{caught_ex} was thrown when running pytorch transformers sagemaker endpoint test"

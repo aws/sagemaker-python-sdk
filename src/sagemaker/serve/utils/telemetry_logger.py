@@ -45,7 +45,6 @@ MODEL_SERVER_TO_CODE = {
     str(ModelServer.DJL_SERVING): 4,
     str(ModelServer.TRITON): 5,
     str(ModelServer.TGI): 6,
-    str(ModelServer.HUGGINGFACE_DLC): 7,
 }
 
 

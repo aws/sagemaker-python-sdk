@@ -18,7 +18,7 @@ from sagemaker.serve.builder.model_builder import ModelBuilder
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve import ModelServer
 
-from sagemaker.serve.utils.predictors import HfDLCLocalModePredictor
+from sagemaker.serve.utils.predictors import TransformersLocalModePredictor
 
 mock_model_id = "bert-base-uncased"
 mock_prompt = "The man worked as a [MASK]."
@@ -33,50 +33,12 @@ mock_schema_builder.sample_input = mock_sample_input
 mock_schema_builder.sample_output = mock_sample_output
 
 
-class TestHFDlcBuilder(unittest.TestCase):
+class TestTransformersBuilder(unittest.TestCase):
 
-    @patch("sagemaker.serve.builder.hf_dlc_builder._capture_telemetry", side_effect=None)
-    @patch("sagemaker.serve.builder.hf_dlc_builder._get_ram_usage_mb", return_value=1024)
-    @patch("sagemaker.serve.builder.hf_dlc_builder._get_nb_instance", return_value="ml.g5.24xlarge")
-    def test_build_deploy_for_hf_dlc_local_container_and_remote_container(
-            self,
-            mock_get_nb_instance,
-            mock_get_ram_usage_mb,
-            mock_telemetry,
-    ):
-        builder = ModelBuilder(
-            model=mock_model_id,
-            schema_builder=mock_schema_builder,
-            mode=Mode.LOCAL_CONTAINER,
-            model_server=ModelServer.HUGGINGFACE_DLC,
-        )
-
-        builder._prepare_for_mode = MagicMock()
-        builder._prepare_for_mode.side_effect = None
-
-        model = builder.build()
-        builder.serve_settings.telemetry_opt_out = True
-
-        builder.modes[str(Mode.LOCAL_CONTAINER)] = MagicMock()
-        predictor = model.deploy(model_data_download_timeout=1800)
-
-        assert builder.env_vars["MODEL_LOADING_TIMEOUT"] == "1800"
-        assert isinstance(predictor, HfDLCLocalModePredictor)
-
-        assert builder.nb_instance_type == "ml.g5.24xlarge"
-
-        builder._original_deploy = MagicMock()
-        builder._prepare_for_mode.return_value = (None, {})
-        predictor = model.deploy(mode=Mode.SAGEMAKER_ENDPOINT, role="mock_role_arn")
-        assert "HF_MODEL_ID" in model.env
-
-        with self.assertRaises(ValueError) as _:
-            model.deploy(mode=Mode.IN_PROCESS)
-
-    @patch("sagemaker.serve.builder.hf_dlc_builder._capture_telemetry", side_effect=None)
-    @patch("sagemaker.serve.builder.hf_dlc_builder._get_ram_usage_mb", return_value=1024)
-    @patch("sagemaker.serve.builder.hf_dlc_builder._get_nb_instance", return_value="ml.g5.24xlarge")
-    def test_build_deploy_for_hf_dlc_local_container_and_remote_container_without_model_server(
+    @patch("sagemaker.serve.builder.transformers_builder._capture_telemetry", side_effect=None)
+    @patch("sagemaker.serve.builder.transformers_builder._get_ram_usage_mb", return_value=1024)
+    @patch("sagemaker.serve.builder.transformers_builder._get_nb_instance", return_value="ml.g5.24xlarge")
+    def test_build_deploy_for_transformers_local_container_and_remote_container(
             self,
             mock_get_nb_instance,
             mock_get_ram_usage_mb,
@@ -98,7 +60,7 @@ class TestHFDlcBuilder(unittest.TestCase):
         predictor = model.deploy(model_data_download_timeout=1800)
 
         assert builder.env_vars["MODEL_LOADING_TIMEOUT"] == "1800"
-        assert isinstance(predictor, HfDLCLocalModePredictor)
+        assert isinstance(predictor, TransformersLocalModePredictor)
 
         assert builder.nb_instance_type == "ml.g5.24xlarge"
 

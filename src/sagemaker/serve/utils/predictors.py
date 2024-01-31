@@ -165,8 +165,8 @@ class TgiLocalModePredictor(PredictorBase):
         self._mode_obj.destroy_server()
 
 
-class HfDLCLocalModePredictor(PredictorBase):
-    """Lightweight HF DLC predictor for local deployment in IN_PROCESS and LOCAL_CONTAINER modes"""
+class TransformersLocalModePredictor(PredictorBase):
+    """Lightweight Transformers predictor for local deployment in IN_PROCESS and LOCAL_CONTAINER modes"""
 
     def __init__(
             self,
@@ -183,7 +183,7 @@ class HfDLCLocalModePredictor(PredictorBase):
         return [
             self.deserializer.deserialize(
                 io.BytesIO(
-                    self._mode_obj._invoke_hf_dlc_serving(
+                    self._mode_obj._invoke_multi_model_server_serving(
                         self.serializer.serialize(data),
                         self.content_type,
                         self.deserializer.ACCEPT[0],

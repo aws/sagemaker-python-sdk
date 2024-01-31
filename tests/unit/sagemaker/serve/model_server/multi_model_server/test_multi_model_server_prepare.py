@@ -15,15 +15,15 @@ from __future__ import absolute_import
 from unittest import TestCase
 from unittest.mock import Mock, PropertyMock, patch, mock_open, call
 
-from sagemaker.serve.model_server.hf_dlc.prepare import (
+from sagemaker.serve.model_server.multi_model_server.prepare import (
     _create_dir_structure
 )
 
 
-class HFDLCPrepareTests(TestCase):
-    @patch("sagemaker.serve.model_server.hf_dlc.prepare._check_disk_space")
-    @patch("sagemaker.serve.model_server.hf_dlc.prepare._check_docker_disk_usage")
-    @patch("sagemaker.serve.model_server.hf_dlc.prepare.Path")
+class MultiModelServerPrepareTests(TestCase):
+    @patch("sagemaker.serve.model_server.multi_model_server.prepare._check_disk_space")
+    @patch("sagemaker.serve.model_server.multi_model_server.prepare._check_docker_disk_usage")
+    @patch("sagemaker.serve.model_server.multi_model_server.prepare.Path")
     def test_create_dir_structure_from_new(self, mock_path, mock_disk_usage, mock_disk_space):
         mock_model_path = Mock()
         mock_model_path.exists.return_value = False
@@ -42,7 +42,7 @@ class HFDLCPrepareTests(TestCase):
         self.assertEquals(ret_model_path, mock_model_path)
         self.assertEquals(ret_code_dir, mock_code_dir)
 
-    @patch("sagemaker.serve.model_server.hf_dlc.prepare.Path")
+    @patch("sagemaker.serve.model_server.multi_model_server.prepare.Path")
     def test_create_dir_structure_invalid_path(self, mock_path):
         mock_model_path = Mock()
         mock_model_path.exists.return_value = True

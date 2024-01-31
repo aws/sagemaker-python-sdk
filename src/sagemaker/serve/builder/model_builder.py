@@ -34,7 +34,7 @@ from sagemaker.serve.builder.serve_settings import _ServeSettings
 from sagemaker.serve.builder.djl_builder import DJL
 from sagemaker.serve.builder.tgi_builder import TGI
 from sagemaker.serve.builder.jumpstart_builder import JumpStart
-from sagemaker.serve.builder.hf_dlc_builder import HuggingFaceDLC
+from sagemaker.serve.builder.transformers_builder import Transformers
 from sagemaker.predictor import Predictor
 from sagemaker.serve.save_retrive.version_1_0_0.metadata.metadata import Metadata
 from sagemaker.serve.spec.inference_spec import InferenceSpec
@@ -62,13 +62,13 @@ supported_model_server = {
     ModelServer.TORCHSERVE,
     ModelServer.TRITON,
     ModelServer.DJL_SERVING,
-    ModelServer.HUGGINGFACE_DLC,
+    ModelServer.MMS,
 }
 
 
 # pylint: disable=attribute-defined-outside-init
 @dataclass
-class ModelBuilder(Triton, DJL, JumpStart, TGI, HuggingFaceDLC):
+class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
     """Class that builds a deployable model.
 
     Args:
@@ -591,7 +591,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, HuggingFaceDLC):
             if hf_model_md.get("pipeline_tag") == "text-generation":
                 return self._build_for_tgi()
             else:
-                return self._build_for_hf_dlc()
+                return self._build_for_transformers()
 
         self._build_validations()
 

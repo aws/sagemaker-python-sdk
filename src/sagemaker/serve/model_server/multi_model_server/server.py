@@ -1,4 +1,11 @@
-"""Module for Local HF DLC Serving"""
+"""Module for the MultiModel Local and Remote servers
+
+    This module has:
+    1. LocalMultiModelServer
+    2. SageMakerMultiModelServer
+
+    Link: https://github.com/awslabs/multi-model-server
+"""
 from __future__ import absolute_import
 
 import requests
@@ -17,10 +24,10 @@ _DEFAULT_ENV_VARS = {}
 logger = logging.getLogger(__name__)
 
 
-class LocalHFDLCServing:
-    """Local HF DLC server instance"""
+class LocalMultiModelServer:
+    """Local Multi Model server instance"""
 
-    def _start_hf_dlc_serving(
+    def _start_serving(
         self,
         client: object,
         image: str,
@@ -44,7 +51,7 @@ class LocalHFDLCServing:
             environment=_update_env_vars(env_vars),
         )
 
-    def _invoke_hf_dlc_serving(self, request: object, content_type: str, accept: str):
+    def _invoke_multi_model_server_serving(self, request: object, content_type: str, accept: str):
         """Placeholder docstring"""
         try:
             response = requests.post(
@@ -58,7 +65,7 @@ class LocalHFDLCServing:
         except Exception as e:
             raise Exception("Unable to send request to the local container server") from e
 
-    def _hf_dlc_deep_ping(self, predictor: PredictorBase):
+    def _multi_model_server_deep_ping(self, predictor: PredictorBase):
         """Placeholder docstring"""
         response = None
         try:
@@ -73,10 +80,10 @@ class LocalHFDLCServing:
         return (True, response)
 
 
-class SageMakerHFDLCServing:
-    """Sagemaker endpoint HF DLC server"""
+class SageMakerMultiModelServer:
+    """Sagemaker endpoint Multi Model Server"""
 
-    def _upload_hf_dlc_artifacts(
+    def _upload_server_artifacts(
         self,
         model_path: str,
         sagemaker_session: Session,
