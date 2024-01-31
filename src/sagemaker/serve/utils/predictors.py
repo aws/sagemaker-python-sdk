@@ -166,13 +166,15 @@ class TgiLocalModePredictor(PredictorBase):
 
 
 class TransformersLocalModePredictor(PredictorBase):
-    """Lightweight Transformers predictor for local deployment in IN_PROCESS and LOCAL_CONTAINER modes"""
+    """Lightweight Transformers predictor for local deployment in IN_PROCESS
+    and LOCAL_CONTAINER modes
+    """
 
     def __init__(
-            self,
-            mode_obj: Type[LocalContainerMode],
-            serializer=JSONSerializer(),
-            deserializer=JSONDeserializer(),
+        self,
+        mode_obj: Type[LocalContainerMode],
+        serializer=JSONSerializer(),
+        deserializer=JSONDeserializer(),
     ):
         self._mode_obj = mode_obj
         self.serializer = serializer

@@ -13,20 +13,17 @@
 """Transformers build logic with model builder"""
 from __future__ import absolute_import
 import logging
-from packaging.version import Version
-from typing import Type
 from abc import ABC, abstractmethod
+from typing import Type
+from packaging.version import Version
 
 from sagemaker.model import Model
-from sagemaker import Session, image_uris
+from sagemaker import image_uris
 from sagemaker.serve.utils.local_hardware import (
     _get_nb_instance,
-    _get_ram_usage_mb,
-    _get_gpu_info,
-    _get_gpu_info_fallback,
 )
 from sagemaker.djl_inference.model import _get_model_config_properties_from_hf
-from sagemaker.huggingface import HuggingFaceModel, get_huggingface_llm_image_uri
+from sagemaker.huggingface import HuggingFaceModel
 from sagemaker.serve.model_server.multi_model_server.prepare import (
     _create_dir_structure,
 )
@@ -66,6 +63,8 @@ class Transformers(ABC):
         self.py_version = None
         self.tensorflow_version = None
         self.pytorch_version = None
+        self.instance_type = None
+        self.schema_builder = None
 
     @abstractmethod
     def _prepare_for_mode(self):
@@ -83,42 +82,55 @@ class Transformers(ABC):
             pysdk_model: Corresponding model instance
         """
 
-        hf_model_md = get_huggingface_model_metadata(self.model,
-                                                     self.env_vars.get("HUGGING_FACE_HUB_TOKEN"))
+        hf_model_md = get_huggingface_model_metadata(
+            self.model, self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
+        )
         hf_config = image_uris.config_for_framework("huggingface").get("inference")
         config = hf_config["versions"]
-        base_hf_version = sorted(config.keys(), key=lambda v: Version(v))[0]
+        base_hf_version = sorted(config.keys(), key=lambda v: Version(v))[0]  # pylint: disable=W0108
 
         if hf_model_md is None:
             raise ValueError("Could not fetch HF metadata")
 
-        if 'pytorch' in hf_model_md.get("tags"):
-            self.pytorch_version = self._get_supported_version(hf_config, base_hf_version, "pytorch")
-            self.py_version = config[base_hf_version]["pytorch"+self.pytorch_version].get("py_versions")[-1]
-            pysdk_model = HuggingFaceModel(
-                env=self.env_vars,
-                role=self.role_arn,
-                sagemaker_session=self.sagemaker_session,
-                py_version=self.py_version,
-                transformers_version=base_hf_version,
-                pytorch_version=self.pytorch_version
+        if "pytorch" in hf_model_md.get("tags"):
+            self.pytorch_version = self._get_supported_version(
+                hf_config, base_hf_version, "pytorch"
             )
-        elif 'keras' in hf_model_md.get("tags") or 'tensorflow' in hf_model_md.get("tags"):
-            self.tensorflow_version = self._get_supported_version(hf_config, base_hf_version, "tensorflow")
-            self.py_version = config[base_hf_version]["tensorflow"+self.tensorflow_version].get("py_versions")[-1]
+            self.py_version = config[base_hf_version]["pytorch" + self.pytorch_version].get(
+                "py_versions"
+            )[-1]
             pysdk_model = HuggingFaceModel(
                 env=self.env_vars,
                 role=self.role_arn,
                 sagemaker_session=self.sagemaker_session,
                 py_version=self.py_version,
                 transformers_version=base_hf_version,
-                tensorflow_version=self.tensorflow_version
+                pytorch_version=self.pytorch_version,
+            )
+        elif "keras" in hf_model_md.get("tags") or "tensorflow" in hf_model_md.get("tags"):
+            self.tensorflow_version = self._get_supported_version(
+                hf_config, base_hf_version, "tensorflow"
+            )
+            self.py_version = config[base_hf_version]["tensorflow" + self.tensorflow_version].get(
+                "py_versions"
+            )[-1]
+            pysdk_model = HuggingFaceModel(
+                env=self.env_vars,
+                role=self.role_arn,
+                sagemaker_session=self.sagemaker_session,
+                py_version=self.py_version,
+                transformers_version=base_hf_version,
+                tensorflow_version=self.tensorflow_version,
             )
 
         if self.mode == Mode.LOCAL_CONTAINER:
-            self.image_uri = pysdk_model.serving_image_uri(self.sagemaker_session.boto_region_name, "local")
+            self.image_uri = pysdk_model.serving_image_uri(
+                self.sagemaker_session.boto_region_name, "local"
+            )
         else:
-            self.image_uri = pysdk_model.serving_image_uri(self.sagemaker_session.boto_region_name, self.instance_type)
+            self.image_uri = pysdk_model.serving_image_uri(
+                self.sagemaker_session.boto_region_name, self.instance_type
+            )
 
         logger.info("Detected %s. Proceeding with the the deployment.", self.image_uri)
 
@@ -165,7 +177,6 @@ class Transformers(ABC):
                 self.modes[str(Mode.LOCAL_CONTAINER)], serializer, deserializer
             )
 
-            ram_usage_before = _get_ram_usage_mb()
             self.modes[str(Mode.LOCAL_CONTAINER)].create_server(
                 self.image_uri,
                 timeout if timeout else DEFAULT_TIMEOUT,
@@ -200,9 +211,7 @@ class Transformers(ABC):
         return predictor
 
     def _build_transformers_env(self):
-        """
-        Build model for hugging face deployment using
-        """
+        """Build model for hugging face deployment using"""
         self.nb_instance_type = _get_nb_instance()
 
         _create_dir_structure(self.model_path)
@@ -218,7 +227,8 @@ class Transformers(ABC):
                 )
             else:
                 self.hf_model_config = _get_model_config_properties_from_hf(
-                    self.model, self.env_vars.get("HUGGING_FACE_HUB_TOKEN"))
+                    self.model, self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
+                )
 
         self.pysdk_model = self._create_transformers_model()
 
@@ -228,9 +238,7 @@ class Transformers(ABC):
         return self.pysdk_model
 
     def _set_instance(self, **kwargs):
-        """
-        Set the instance : Given the detected notebook type or provided instance type
-        """
+        """Set the instance : Given the detected notebook type or provided instance type"""
         if self.mode == Mode.SAGEMAKER_ENDPOINT:
             if self.nb_instance_type and "instance_type" not in kwargs:
                 kwargs.update({"instance_type": self.nb_instance_type})
@@ -241,12 +249,9 @@ class Transformers(ABC):
                     "Instance type must be provided when deploying to SageMaker Endpoint mode."
                 )
             logger.info("Setting instance type to %s", self.instance_type)
-        return
 
     def _get_supported_version(self, hf_config, hugging_face_version, base_fw):
-        """
-        Uses the hugging face json config to pick supported versions
-        """
+        """Uses the hugging face json config to pick supported versions"""
         version_config = hf_config.get("versions").get(hugging_face_version)
         versions_to_return = list()
         for key in list(version_config.keys()):

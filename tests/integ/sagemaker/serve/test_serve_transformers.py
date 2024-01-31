@@ -33,11 +33,38 @@ sample_input = {
     "inputs": "The man worked as a [MASK].",
 }
 
-loaded_response = [{'score': 0.0974755585193634, 'token': 10533, 'token_str': 'carpenter', 'sequence': 'the man worked as a carpenter.'},
-                   {'score': 0.052383411675691605, 'token': 15610, 'token_str': 'waiter', 'sequence': 'the man worked as a waiter.'},
-                   {'score': 0.04962712526321411, 'token': 13362, 'token_str': 'barber', 'sequence': 'the man worked as a barber.'},
-                   {'score': 0.0378861166536808, 'token': 15893, 'token_str': 'mechanic', 'sequence': 'the man worked as a mechanic.'},
-                   {'score': 0.037680838257074356, 'token': 18968, 'token_str': 'salesman', 'sequence': 'the man worked as a salesman.'}]
+loaded_response = [
+    {
+        "score": 0.0974755585193634,
+        "token": 10533,
+        "token_str": "carpenter",
+        "sequence": "the man worked as a carpenter.",
+    },
+    {
+        "score": 0.052383411675691605,
+        "token": 15610,
+        "token_str": "waiter",
+        "sequence": "the man worked as a waiter.",
+    },
+    {
+        "score": 0.04962712526321411,
+        "token": 13362,
+        "token_str": "barber",
+        "sequence": "the man worked as a barber.",
+    },
+    {
+        "score": 0.0378861166536808,
+        "token": 15893,
+        "token_str": "mechanic",
+        "sequence": "the man worked as a mechanic.",
+    },
+    {
+        "score": 0.037680838257074356,
+        "token": 18968,
+        "token_str": "salesman",
+        "sequence": "the man worked as a salesman.",
+    },
+]
 
 
 @pytest.fixture
@@ -65,7 +92,7 @@ def model_builder(request):
 )
 @pytest.mark.parametrize("model_builder", ["model_builder_model_schema_builder"], indirect=True)
 def test_pytorch_transformers_sagemaker_endpoint(
-        sagemaker_session, model_builder, gpu_instance_type, input
+    sagemaker_session, model_builder, gpu_instance_type, input
 ):
     logger.info("Running in SAGEMAKER_ENDPOINT mode...")
     caught_ex = None

@@ -16,33 +16,61 @@ from unittest.mock import MagicMock, patch
 import unittest
 from sagemaker.serve.builder.model_builder import ModelBuilder
 from sagemaker.serve.mode.function_pointers import Mode
-from sagemaker.serve import ModelServer
 
 from sagemaker.serve.utils.predictors import TransformersLocalModePredictor
 
 mock_model_id = "bert-base-uncased"
 mock_prompt = "The man worked as a [MASK]."
 mock_sample_input = {"inputs": mock_prompt}
-mock_sample_output = [{'score': 0.0974755585193634, 'token': 10533, 'token_str': 'carpenter', 'sequence': 'the man worked as a carpenter.'},
-                      {'score': 0.052383411675691605, 'token': 15610, 'token_str': 'waiter', 'sequence': 'the man worked as a waiter.'},
-                      {'score': 0.04962712526321411, 'token': 13362, 'token_str': 'barber', 'sequence': 'the man worked as a barber.'},
-                      {'score': 0.0378861166536808, 'token': 15893, 'token_str': 'mechanic', 'sequence': 'the man worked as a mechanic.'},
-                      {'score': 0.037680838257074356, 'token': 18968, 'token_str': 'salesman', 'sequence': 'the man worked as a salesman.'}]
+mock_sample_output = [
+    {
+        "score": 0.0974755585193634,
+        "token": 10533,
+        "token_str": "carpenter",
+        "sequence": "the man worked as a carpenter.",
+    },
+    {
+        "score": 0.052383411675691605,
+        "token": 15610,
+        "token_str": "waiter",
+        "sequence": "the man worked as a waiter.",
+    },
+    {
+        "score": 0.04962712526321411,
+        "token": 13362,
+        "token_str": "barber",
+        "sequence": "the man worked as a barber.",
+    },
+    {
+        "score": 0.0378861166536808,
+        "token": 15893,
+        "token_str": "mechanic",
+        "sequence": "the man worked as a mechanic.",
+    },
+    {
+        "score": 0.037680838257074356,
+        "token": 18968,
+        "token_str": "salesman",
+        "sequence": "the man worked as a salesman.",
+    },
+]
 mock_schema_builder = MagicMock()
 mock_schema_builder.sample_input = mock_sample_input
 mock_schema_builder.sample_output = mock_sample_output
 
 
 class TestTransformersBuilder(unittest.TestCase):
-
     @patch("sagemaker.serve.builder.transformers_builder._capture_telemetry", side_effect=None)
     @patch("sagemaker.serve.builder.transformers_builder._get_ram_usage_mb", return_value=1024)
-    @patch("sagemaker.serve.builder.transformers_builder._get_nb_instance", return_value="ml.g5.24xlarge")
+    @patch(
+        "sagemaker.serve.builder.transformers_builder._get_nb_instance",
+        return_value="ml.g5.24xlarge",
+    )
     def test_build_deploy_for_transformers_local_container_and_remote_container(
-            self,
-            mock_get_nb_instance,
-            mock_get_ram_usage_mb,
-            mock_telemetry,
+        self,
+        mock_get_nb_instance,
+        mock_get_ram_usage_mb,
+        mock_telemetry,
     ):
         builder = ModelBuilder(
             model=mock_model_id,

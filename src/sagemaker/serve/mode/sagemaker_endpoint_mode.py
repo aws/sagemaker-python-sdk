@@ -18,7 +18,11 @@ logger = logging.getLogger(__name__)
 
 
 class SageMakerEndpointMode(
-    SageMakerTorchServe, SageMakerTritonServer, SageMakerDjlServing, SageMakerTgiServing, SageMakerMultiModelServer
+    SageMakerTorchServe,
+    SageMakerTritonServer,
+    SageMakerDjlServing,
+    SageMakerTgiServing,
+    SageMakerMultiModelServer,
 ):
     """Holds the required method to deploy a model to a SageMaker Endpoint"""
 
@@ -100,6 +104,6 @@ class SageMakerEndpointMode(
                 sagemaker_session=sagemaker_session,
                 s3_model_data_url=s3_model_data_url,
                 image=image,
-            )        
+            )
 
         raise ValueError("%s model server is not supported" % self.model_server)

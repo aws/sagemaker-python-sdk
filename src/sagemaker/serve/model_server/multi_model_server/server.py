@@ -1,10 +1,6 @@
 """Module for the MultiModel Local and Remote servers
-
-    This module has:
-    1. LocalMultiModelServer
-    2. SageMakerMultiModelServer
-
-    Link: https://github.com/awslabs/multi-model-server
+   This module has: 1. LocalMultiModelServer 2. SageMakerMultiModelServer
+   Link: https://github.com/awslabs/multi-model-server
 """
 from __future__ import absolute_import
 

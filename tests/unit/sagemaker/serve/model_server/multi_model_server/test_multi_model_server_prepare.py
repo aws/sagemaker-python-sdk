@@ -13,11 +13,9 @@
 from __future__ import absolute_import
 
 from unittest import TestCase
-from unittest.mock import Mock, PropertyMock, patch, mock_open, call
+from unittest.mock import Mock, patch
 
-from sagemaker.serve.model_server.multi_model_server.prepare import (
-    _create_dir_structure
-)
+from sagemaker.serve.model_server.multi_model_server.prepare import _create_dir_structure
 
 
 class MultiModelServerPrepareTests(TestCase):

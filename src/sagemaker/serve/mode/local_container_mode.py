@@ -32,7 +32,9 @@ _PING_HEALTH_CHECK_FAIL_MSG = (
 )
 
 
-class LocalContainerMode(LocalTorchServe, LocalDJLServing, LocalTritonServer, LocalTgiServing, LocalMultiModelServer):
+class LocalContainerMode(
+    LocalTorchServe, LocalDJLServing, LocalTritonServer, LocalTgiServing, LocalMultiModelServer
+):
     """A class that holds methods to deploy model to a container in local environment"""
 
     def __init__(
