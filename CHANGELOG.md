@@ -1,5 +1,17 @@
 # Changelog
 
+## v2.206.0 (2024-01-31)
+
+### Features
+
+ * Logic to detect hardware GPU count and aggregate GPU memory size in MiB
+
+### Bug Fixes and Other Changes
+
+ * fixed create monitoring schedule failing after validation error
+ * Support PipelineVariable for ModelQualityCheckConfig attributes
+ * TGI NeuronX 0.0.17
+
 ## v2.205.0 (2024-01-25)
 
 ### Features
