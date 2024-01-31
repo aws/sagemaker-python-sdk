@@ -188,7 +188,8 @@ class TestModelBuilder(unittest.TestCase):
 
         mock_model_obj = Mock()
         mock_sdk_model.side_effect = (
-            lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls: mock_model_obj
+            lambda image_uri, image_config, vpc_config, model_data, role,
+                   env, sagemaker_session, predictor_cls: mock_model_obj
             if image_uri == mock_image_uri
             and image_config == MOCK_IMAGE_CONFIG
             and vpc_config == vpc_config
