@@ -166,9 +166,7 @@ class TgiLocalModePredictor(PredictorBase):
 
 
 class TransformersLocalModePredictor(PredictorBase):
-    """Lightweight Transformers predictor for local deployment in IN_PROCESS
-    and LOCAL_CONTAINER modes
-    """
+    """Lightweight Transformers predictor for local deployment"""
 
     def __init__(
         self,

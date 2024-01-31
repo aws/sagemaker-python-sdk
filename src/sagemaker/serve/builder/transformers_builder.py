@@ -38,6 +38,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_TIMEOUT = 1800
 
 
+# pylint: disable=W0108
 class Transformers(ABC):
     """Transformers build logic with ModelBuilder()"""
 
@@ -87,7 +88,7 @@ class Transformers(ABC):
         )
         hf_config = image_uris.config_for_framework("huggingface").get("inference")
         config = hf_config["versions"]
-        base_hf_version = sorted(config.keys(), key=lambda v: Version(v))[0]  # pylint: disable=W0108
+        base_hf_version = sorted(config.keys(), key=lambda v: Version(v))[0]
 
         if hf_model_md is None:
             raise ValueError("Could not fetch HF metadata")
@@ -256,7 +257,7 @@ class Transformers(ABC):
         versions_to_return = list()
         for key in list(version_config.keys()):
             if key.startswith(base_fw):
-                base_fw_version = key[len(base_fw):]
+                base_fw_version = key[len(base_fw) :]
                 if len(hugging_face_version.split(".")) == 2:
                     base_fw_version = ".".join(base_fw_version.split(".")[:-1])
                 versions_to_return.append(base_fw_version)
