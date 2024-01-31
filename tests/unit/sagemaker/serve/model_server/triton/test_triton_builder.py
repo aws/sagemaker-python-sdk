@@ -20,7 +20,7 @@ from sagemaker.serve.builder.schema_builder import SchemaBuilder
 from sagemaker.serve.mode.function_pointers import Mode
 import torch
 
-from unit.sagemaker.serve.constants import MOCK_IMAGE_CONFIG, MOCK_VPC_CONFIG
+from tests.unit.sagemaker.serve.constants import MOCK_IMAGE_CONFIG, MOCK_VPC_CONFIG
 
 TRITON_IMAGE = "301217895009.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tritonserver:23.02-py3"
 MODEL_PATH = "/path/to/working/dir"

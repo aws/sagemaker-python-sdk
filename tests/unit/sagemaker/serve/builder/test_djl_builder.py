@@ -30,7 +30,7 @@ from sagemaker.serve.utils.exceptions import (
     LocalModelInvocationException,
 )
 from sagemaker.serve.utils.predictors import DjlLocalModePredictor
-from unit.sagemaker.serve.constants import MOCK_IMAGE_CONFIG, MOCK_VPC_CONFIG
+from tests.unit.sagemaker.serve.constants import MOCK_IMAGE_CONFIG, MOCK_VPC_CONFIG
 
 mock_model_id = "TheBloke/Llama-2-7b-chat-fp16"
 mock_t5_model_id = "google/flan-t5-xxl"
