@@ -16,6 +16,7 @@ import os
 import boto3
 import pytest
 from botocore.config import Config
+from sagemaker.session import Session
 from tests.integ.sagemaker.jumpstart.constants import (
     ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID,
     JUMPSTART_TAG,
@@ -47,6 +48,8 @@ def _teardown():
         config=Config(retries={"max_attempts": 10, "mode": "standard"}),
         region_name=JUMPSTART_DEFAULT_REGION_NAME,
     )
+
+    sagemaker_session = Session(sagemaker_client=sagemaker_client)
 
     search_endpoints_result = sagemaker_client.search(
         Resource="Endpoint",
@@ -81,7 +84,7 @@ def _teardown():
     for endpoint_name in endpoint_names:
         for (
             inference_component_name
-        ) in sagemaker_client.list_and_paginate_inference_component_names_associated_with_endpoint(
+        ) in sagemaker_session.list_and_paginate_inference_component_names_associated_with_endpoint(
             endpoint_name=endpoint_name
         ):
             inference_component_names.append(inference_component_name)
