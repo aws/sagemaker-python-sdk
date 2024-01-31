@@ -99,7 +99,7 @@ class SageMakerMultiModelServer:
 
         s3_location = s3_path_join("s3://", bucket, code_key_prefix, "code")
 
-        logger.debug("Uploading HuggingFace DLC Model Resources uncompressed to: %s", s3_location)
+        logger.debug("Uploading Multi Model Server Resources uncompressed to: %s", s3_location)
 
         model_data_url = S3Uploader.upload(
             str(code_dir),
