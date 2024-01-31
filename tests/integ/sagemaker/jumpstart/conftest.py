@@ -43,13 +43,14 @@ def _teardown():
 
     test_suite_id = os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]
 
-    sagemaker_client = boto3.client(
+    boto3_session = boto3.Session(region_name=JUMPSTART_DEFAULT_REGION_NAME)
+
+    sagemaker_client = boto3_session.client(
         "sagemaker",
         config=Config(retries={"max_attempts": 10, "mode": "standard"}),
-        region_name=JUMPSTART_DEFAULT_REGION_NAME,
     )
 
-    sagemaker_session = Session(sagemaker_client=sagemaker_client)
+    sagemaker_session = Session(boto3_session=boto3_session, sagemaker_client=sagemaker_client)
 
     search_endpoints_result = sagemaker_client.search(
         Resource="Endpoint",
