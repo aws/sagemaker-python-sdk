@@ -20,7 +20,7 @@ from sagemaker.serve.builder.schema_builder import SchemaBuilder
 from sagemaker.serve.mode.function_pointers import Mode
 import torch
 
-from unit.sagemaker.serve.constants import MOCK_IMAGE_CONFIG
+from unit.sagemaker.serve.constants import MOCK_IMAGE_CONFIG, MOCK_VPC_CONFIG
 
 TRITON_IMAGE = "301217895009.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tritonserver:23.02-py3"
 MODEL_PATH = "/path/to/working/dir"
@@ -50,7 +50,8 @@ class TritonBuilderTests(TestCase):
     def prepare_triton_builder_for_model(self, triton_builder: Triton) -> Triton:
         triton_builder.model = MOCK_PT_MODEL
         triton_builder.image_uri = TRITON_IMAGE
-        triton_builder.image_uri = MOCK_IMAGE_CONFIG
+        triton_builder.image_config = MOCK_IMAGE_CONFIG
+        triton_builder.vpc_config = MOCK_VPC_CONFIG
         triton_builder.mode = Mode.LOCAL_CONTAINER
         triton_builder.schema_builder = pt_schema_builder
         triton_builder.model_path = MODEL_PATH
@@ -94,6 +95,7 @@ class TritonBuilderTests(TestCase):
         mock_model.assert_called_with(
             image_uri=TRITON_IMAGE,
             image_config=MOCK_IMAGE_CONFIG,
+            vpc_config=MOCK_VPC_CONFIG,
             model_data=S3_UPLOAD_PATH,
             role=ROLE_ARN,
             env=ENV_VAR,
@@ -127,6 +129,7 @@ class TritonBuilderTests(TestCase):
         mock_model.assert_called_with(
             image_uri=TRITON_IMAGE,
             image_config=MOCK_IMAGE_CONFIG,
+            vpc_config=MOCK_VPC_CONFIG,
             model_data=S3_UPLOAD_PATH,
             role=ROLE_ARN,
             env=ENV_VAR,

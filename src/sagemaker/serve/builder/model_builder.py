@@ -157,13 +157,6 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI):
             "3/ Local launch in process"
         },
     )
-    image_config: Optional[Dict[str, Union[str, PipelineVariable]]] = field(
-        default=None,
-        metadata={"help": "Specifies whether the image of model container is pulled from ECR,"
-                          " or private registry in your VPC. By default it is set to pull model "
-                          "container image from ECR. (default: None)."
-                  }
-    )
     shared_libs: List[str] = field(
         default_factory=lambda: [],
         metadata={"help": "Define any shared lib you want to bring into the model " "packaging"},
@@ -213,6 +206,21 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI):
     )
     image_uri: Optional[str] = field(
         default=None, metadata={"help": "Define the container image uri"}
+    )
+    image_config: Optional[Dict[str, Union[str, PipelineVariable]]] = field(
+        default=None,
+        metadata={"help": "Specifies whether the image of model container is pulled from ECR,"
+                          " or private registry in your VPC. By default it is set to pull model "
+                          "container image from ECR. (default: None)."
+                  }
+    )
+    vpc_config: Optional[Dict[str, List[Union[str, PipelineVariable]]]] = field(
+        default=None,
+        metadata={"help": "The VpcConfig set on the model (default: None)."
+                          "* 'Subnets' (List[Union[str, PipelineVariable]]): List of subnet ids."
+                          "* ''SecurityGroupIds'' (List[Union[str, PipelineVariable]]): List of"
+                          " security group ids."
+                  }
     )
     model_server: Optional[ModelServer] = field(
         default=None, metadata={"help": "Define the model server to deploy to."}
@@ -397,6 +405,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI):
         self.pysdk_model = Model(
             image_uri=self.image_uri,
             image_config=self.image_config,
+            vpc_config=self.vpc_config,
             model_data=self.s3_upload_path,
             role=self.serve_settings.role_arn,
             env=self.env_vars,

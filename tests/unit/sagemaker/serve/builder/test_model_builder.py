@@ -19,7 +19,7 @@ from pathlib import Path
 from sagemaker.serve.builder.model_builder import ModelBuilder
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.utils.types import ModelServer
-from unit.sagemaker.serve.constants import MOCK_IMAGE_CONFIG
+from unit.sagemaker.serve.constants import MOCK_IMAGE_CONFIG, MOCK_VPC_CONFIG
 
 schema_builder = MagicMock()
 mock_inference_spec = Mock()
@@ -188,9 +188,10 @@ class TestModelBuilder(unittest.TestCase):
 
         mock_model_obj = Mock()
         mock_sdk_model.side_effect = (
-            lambda image_uri, image_config, model_data, role, env, sagemaker_session, predictor_cls: mock_model_obj
+            lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls: mock_model_obj
             if image_uri == mock_image_uri
             and image_config == MOCK_IMAGE_CONFIG
+            and vpc_config == vpc_config
             and model_data == model_data
             and role == mock_role_arn
             and env == ENV_VARS
@@ -208,6 +209,7 @@ class TestModelBuilder(unittest.TestCase):
             model_server=ModelServer.TORCHSERVE,
             image_uri=mock_image_uri,
             image_config=MOCK_IMAGE_CONFIG,
+            vpc_config=MOCK_VPC_CONFIG,
         )
         build_result = builder.build(sagemaker_session=mock_session)
 
@@ -220,6 +222,7 @@ class TestModelBuilder(unittest.TestCase):
         self.assertEqual(build_result.modes, {str(Mode.SAGEMAKER_ENDPOINT): mock_mode})
         self.assertEqual(build_result.serve_settings, mock_setting_object)
         self.assertEqual(build_result.image_config, MOCK_IMAGE_CONFIG)
+        self.assertEqual(build_result.vpc_config, MOCK_VPC_CONFIG)
 
     @patch("os.makedirs", Mock())
     @patch("sagemaker.serve.builder.model_builder._detect_framework_and_version")
