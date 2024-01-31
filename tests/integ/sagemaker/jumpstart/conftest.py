@@ -50,7 +50,7 @@ def _teardown():
         config=Config(retries={"max_attempts": 10, "mode": "standard"}),
     )
 
-    sagemaker_session = Session(boto3_session=boto3_session, sagemaker_client=sagemaker_client)
+    sagemaker_session = Session(boto_session=boto3_session, sagemaker_client=sagemaker_client)
 
     search_endpoints_result = sagemaker_client.search(
         Resource="Endpoint",
