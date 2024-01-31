@@ -413,6 +413,7 @@ class Triton:
     def _create_triton_model(self) -> Type[Model]:
         self.pysdk_model = Model(
             image_uri=self.image_uri,
+            image_config=self.image_config,
             model_data=self.s3_upload_path,
             role=self.serve_settings.role_arn,
             env=self.env_vars,

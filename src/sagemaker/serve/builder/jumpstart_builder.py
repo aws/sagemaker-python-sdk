@@ -57,6 +57,7 @@ class JumpStart(ABC):
         self.mode = None
         self.model_server = None
         self.image_uri = None
+        self.image_config = None
         self._original_deploy = None
         self.secret_key = None
         self.js_model_config = None
@@ -94,7 +95,7 @@ class JumpStart(ABC):
 
     def _create_pre_trained_js_model(self) -> Type[Model]:
         """Placeholder docstring"""
-        pysdk_model = JumpStartModel(self.model)
+        pysdk_model = JumpStartModel(self.model, image_config=self.image_config)
         pysdk_model.sagemaker_session = self.sagemaker_session
 
         self._original_deploy = pysdk_model.deploy

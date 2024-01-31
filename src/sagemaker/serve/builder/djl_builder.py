@@ -83,6 +83,7 @@ class DJL(ABC):
         self.mode = None
         self.model_server = None
         self.image_uri = None
+        self.image_config = None
         self._original_deploy = None
         self.secret_key = None
         self.engine = None
@@ -138,6 +139,7 @@ class DJL(ABC):
             "source_dir": code_dir,
             "env": self.env_vars,
             "hf_hub_token": self.env_vars.get("HUGGING_FACE_HUB_TOKEN"),
+            "image_config": self.image_config,
         }
 
         if self.engine == _DjlEngine.DEEPSPEED:
