@@ -97,9 +97,7 @@ class JumpStart(ABC):
     def _create_pre_trained_js_model(self) -> Type[Model]:
         """Placeholder docstring"""
         pysdk_model = JumpStartModel(
-            self.model,
-            image_config=self.image_config,
-            vpc_config=self.vpc_config
+            self.model, image_config=self.image_config, vpc_config=self.vpc_config
         )
         pysdk_model.sagemaker_session = self.sagemaker_session
 
