@@ -19,7 +19,7 @@ from pathlib import Path
 from sagemaker.serve.builder.model_builder import ModelBuilder
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.utils.types import ModelServer
-from unit.sagemaker.serve.constants import MOCK_IMAGE_CONFIG, MOCK_VPC_CONFIG
+from sagemaker.serve.constants import MOCK_IMAGE_CONFIG, MOCK_VPC_CONFIG
 
 schema_builder = MagicMock()
 mock_inference_spec = Mock()
