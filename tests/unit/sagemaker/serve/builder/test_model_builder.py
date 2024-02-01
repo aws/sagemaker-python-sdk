@@ -769,11 +769,12 @@ class TestModelBuilder(unittest.TestCase):
         )
 
         mock_prepare_for_torchserve.side_effect = (
-            lambda model_path, shared_libs, dependencies, session, inference_spec: mock_secret_key
+            lambda model_path, shared_libs, dependencies, session, image_uri, inference_spec: mock_secret_key
             if model_path == MODEL_PATH
             and shared_libs == []
             and dependencies == {"auto": False}
             and session == mock_session
+            and image_uri == mock_image_uri
             and inference_spec == mock_inference_spec
             else None
         )
