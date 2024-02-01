@@ -92,8 +92,8 @@ def _teardown():
 
     # delete inference components for test-suite-tagged endpoints
     for inference_component_name in inference_component_names:
-        sagemaker_client.delete_inference_component(
-            InferenceComponentName=inference_component_name, wait=True
+        sagemaker_session.delete_inference_component(
+            inference_component_name=inference_component_name, wait=True
         )
 
     # delete test-suite-tagged endpoints
