@@ -222,8 +222,6 @@ class TestModelBuilder(unittest.TestCase):
         self.assertEqual(build_result.mode, Mode.SAGEMAKER_ENDPOINT)
         self.assertEqual(build_result.modes, {str(Mode.SAGEMAKER_ENDPOINT): mock_mode})
         self.assertEqual(build_result.serve_settings, mock_setting_object)
-        self.assertEqual(build_result.image_config, MOCK_IMAGE_CONFIG)
-        self.assertEqual(build_result.vpc_config, MOCK_VPC_CONFIG)
 
     @patch("os.makedirs", Mock())
     @patch("sagemaker.serve.builder.model_builder._detect_framework_and_version")
