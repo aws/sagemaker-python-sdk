@@ -6134,6 +6134,128 @@ def test_upload_data_default_bucket_and_prefix_combinations(
     assert actual == expected
 
 
+def test_is_inference_component_based_endpoint_affirmative(sagemaker_session):
+
+    describe_endpoint_response = {"EndpointConfigName": "some-endpoint-config"}
+    describe_endpoint_config_response = {
+        "ExecutionRoleArn": "some-role-arn",
+        "ProductionVariants": [{"VariantName": "AllTraffic"}],
+    }
+
+    sagemaker_session.sagemaker_client.describe_endpoint = Mock(
+        return_value=describe_endpoint_response
+    )
+    sagemaker_session.sagemaker_client.describe_endpoint_config = Mock(
+        return_value=describe_endpoint_config_response
+    )
+
+    assert sagemaker_session.is_inference_component_based_endpoint("endpoint-name")
+    sagemaker_session.sagemaker_client.describe_endpoint.assert_called_once_with(
+        EndpointName="endpoint-name"
+    )
+    sagemaker_session.sagemaker_client.describe_endpoint_config.assert_called_once_with(
+        EndpointConfigName="some-endpoint-config"
+    )
+
+
+def test_is_inference_component_based_endpoint_negative_no_role(sagemaker_session):
+
+    describe_endpoint_response = {"EndpointConfigName": "some-endpoint-config"}
+    describe_endpoint_config_response = {
+        "ProductionVariants": [{"VariantName": "AllTraffic"}],
+    }
+
+    sagemaker_session.sagemaker_client.describe_endpoint = Mock(
+        return_value=describe_endpoint_response
+    )
+    sagemaker_session.sagemaker_client.describe_endpoint_config = Mock(
+        return_value=describe_endpoint_config_response
+    )
+
+    assert not sagemaker_session.is_inference_component_based_endpoint("endpoint-name")
+    sagemaker_session.sagemaker_client.describe_endpoint.assert_called_once_with(
+        EndpointName="endpoint-name"
+    )
+    sagemaker_session.sagemaker_client.describe_endpoint_config.assert_called_once_with(
+        EndpointConfigName="some-endpoint-config"
+    )
+
+
+def test_is_inference_component_based_endpoint_positive_multiple_variants(sagemaker_session):
+
+    describe_endpoint_response = {"EndpointConfigName": "some-endpoint-config"}
+    describe_endpoint_config_response = {
+        "ExecutionRoleArn": "some-role-arn",
+        "ProductionVariants": [{"VariantName": "AllTraffic1"}, {"VariantName": "AllTraffic2"}],
+    }
+
+    sagemaker_session.sagemaker_client.describe_endpoint = Mock(
+        return_value=describe_endpoint_response
+    )
+    sagemaker_session.sagemaker_client.describe_endpoint_config = Mock(
+        return_value=describe_endpoint_config_response
+    )
+
+    assert sagemaker_session.is_inference_component_based_endpoint("endpoint-name")
+    sagemaker_session.sagemaker_client.describe_endpoint.assert_called_once_with(
+        EndpointName="endpoint-name"
+    )
+    sagemaker_session.sagemaker_client.describe_endpoint_config.assert_called_once_with(
+        EndpointConfigName="some-endpoint-config"
+    )
+
+
+def test_is_inference_component_based_endpoint_negative_no_variants(sagemaker_session):
+
+    describe_endpoint_response = {"EndpointConfigName": "some-endpoint-config"}
+    describe_endpoint_config_response = {
+        "ExecutionRoleArn": "some-role-arn",
+        "ProductionVariants": [],
+    }
+
+    sagemaker_session.sagemaker_client.describe_endpoint = Mock(
+        return_value=describe_endpoint_response
+    )
+    sagemaker_session.sagemaker_client.describe_endpoint_config = Mock(
+        return_value=describe_endpoint_config_response
+    )
+
+    assert not sagemaker_session.is_inference_component_based_endpoint("endpoint-name")
+    sagemaker_session.sagemaker_client.describe_endpoint.assert_called_once_with(
+        EndpointName="endpoint-name"
+    )
+    sagemaker_session.sagemaker_client.describe_endpoint_config.assert_called_once_with(
+        EndpointConfigName="some-endpoint-config"
+    )
+
+
+def test_is_inference_component_based_endpoint_negative_model_name_present(sagemaker_session):
+
+    describe_endpoint_response = {"EndpointConfigName": "some-endpoint-config"}
+    describe_endpoint_config_response = {
+        "ExecutionRoleArn": "some-role-arn",
+        "ProductionVariants": [
+            {"VariantName": "AllTraffic", "ModelName": "blah"},
+            {"VariantName": "AllTraffic1"},
+        ],
+    }
+
+    sagemaker_session.sagemaker_client.describe_endpoint = Mock(
+        return_value=describe_endpoint_response
+    )
+    sagemaker_session.sagemaker_client.describe_endpoint_config = Mock(
+        return_value=describe_endpoint_config_response
+    )
+
+    assert not sagemaker_session.is_inference_component_based_endpoint("endpoint-name")
+    sagemaker_session.sagemaker_client.describe_endpoint.assert_called_once_with(
+        EndpointName="endpoint-name"
+    )
+    sagemaker_session.sagemaker_client.describe_endpoint_config.assert_called_once_with(
+        EndpointConfigName="some-endpoint-config"
+    )
+
+
 def test_create_inference_component(sagemaker_session):
     tags = [{"Key": "TagtestKey", "Value": "TagtestValue"}]
     sagemaker_session.sagemaker_client.describe_inference_component = Mock(
@@ -6189,6 +6311,56 @@ def test_describe_inference_component(sagemaker_session):
 
     sagemaker_session.sagemaker_client.describe_inference_component.assert_called_with(
         InferenceComponentName=inference_component_name
+    )
+
+
+def test_list_and_paginate_inference_component_names_associated_with_endpoint(sagemaker_session):
+    endpoint_name = "test-endpoint"
+
+    sagemaker_session.list_inference_components = Mock()
+    sagemaker_session.list_inference_components.side_effect = [
+        {
+            "InferenceComponents": [
+                {
+                    "CreationTime": 1234,
+                    "EndpointArn": "endpointarn1",
+                    "EndpointName": "endpointname1",
+                    "InferenceComponentArn": "icarn1",
+                    "InferenceComponentName": "icname1",
+                    "InferenceComponentStatus": "icstatus1",
+                    "LastModifiedTime": 5678,
+                    "VariantName": "blah1",
+                }
+            ],
+            "NextToken": "1234",
+        },
+        {
+            "InferenceComponents": [
+                {
+                    "CreationTime": 12345,
+                    "EndpointArn": "endpointarn2",
+                    "EndpointName": "endpointname2",
+                    "InferenceComponentArn": "icarn2",
+                    "InferenceComponentName": "icname2",
+                    "InferenceComponentStatus": "icstatus2",
+                    "LastModifiedTime": 56789,
+                    "VariantName": "blah2",
+                }
+            ]
+        },
+    ]
+    assert [
+        "icname1",
+        "icname2",
+    ] == sagemaker_session.list_and_paginate_inference_component_names_associated_with_endpoint(
+        endpoint_name
+    )
+
+    sagemaker_session.list_inference_components.assert_has_calls(
+        [
+            call(endpoint_name_equals="test-endpoint", next_token=None),
+            call(endpoint_name_equals="test-endpoint", next_token="1234"),
+        ]
     )
 
 
