@@ -240,3 +240,9 @@ except Exception as e:  # pylint: disable=W0703
         "Unable to create default JumpStart SageMaker Session due to the following error: %s.",
         str(e),
     )
+
+EXTRA_MODEL_ID_TAGS = ["sm-jumpstart-id", "sagemaker-studio:jumpstart-model-id"]
+EXTRA_MODEL_VERSION_TAGS = [
+    "sm-jumpstart-model-version",
+    "sagemaker-studio:jumpstart-model-version",
+]
