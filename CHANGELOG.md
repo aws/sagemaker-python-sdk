@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.198.1 (2024-02-01)
+
+### Bug Fixes and Other Changes
+
+ * update get_execution_role_arn from metadata file if present
+
 ## v2.198.0 (2023-11-27)
 
 ### Features
