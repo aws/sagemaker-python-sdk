@@ -64,7 +64,7 @@ required_packages = [
     "jsonschema",
     "platformdirs",
     "tblib>=1.7.0,<3",
-    "urllib3<1.27",
+    "urllib3>=1.26.8,<3.0.0",
     "requests",
     "docker",
     "tqdm",
