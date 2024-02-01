@@ -80,10 +80,6 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI):
 
             * ``Mode.SAGEMAKER_ENDPOINT``: Launch on a SageMaker endpoint
             * ``Mode.LOCAL_CONTAINER``: Launch locally with a container
-        image_config (dict[str, str] or dict[str, PipelineVariable]): Specifies
-            whether the image of model container is pulled from ECR, or private
-            registry in your VPC. By default it is set to pull model container
-            image from ECR. (default: None).
         shared_libs (List[str]): Any shared libraries you want to bring into
             the model packaging.
         dependencies (Optional[Dict[str, Any]): The dependencies of the model
@@ -124,6 +120,15 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI):
             ``invoke`` and ``load`` functions.
         image_uri (Optional[str]): The container image uri (which is derived from a
             SageMaker-based container).
+        image_config (dict[str, str] or dict[str, PipelineVariable]): Specifies
+            whether the image of model container is pulled from ECR, or private
+            registry in your VPC. By default it is set to pull model container
+            image from ECR. (default: None).
+        vpc_config ( Optional[Dict[str, List[Union[str, PipelineVariable]]]]):
+                The VpcConfig set on the model (default: None)
+                * 'Subnets' (List[Union[str, PipelineVariable]]): List of subnet ids.
+                * 'SecurityGroupIds' (List[Union[str, PipelineVariable]]]): List of security group
+                ids.
         model_server (Optional[ModelServer]): The model server to which to deploy.
             You need to provide this argument when you specify an ``image_uri``
             in order for model builder to build the artifacts correctly (according
