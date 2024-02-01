@@ -38,6 +38,10 @@ logger = logging.getLogger(__name__)
 DEFAULT_TIMEOUT = 1800
 
 
+"""Retrieves images for different libraries - Pytorch, TensorFlow from HuggingFace hub
+"""
+
+
 # pylint: disable=W0108
 class Transformers(ABC):
     """Transformers build logic with ModelBuilder()"""
