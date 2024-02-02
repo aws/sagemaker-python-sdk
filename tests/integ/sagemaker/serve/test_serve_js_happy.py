@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 import pytest
+from unittest.mock import patch, Mock
 from sagemaker.serve.builder.model_builder import ModelBuilder
 from sagemaker.serve.builder.schema_builder import SchemaBuilder
 from tests.integ.sagemaker.serve.constants import (
@@ -26,13 +27,13 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-
 SAMPLE_PROMPT = {"inputs": "Hello, I'm a language model,", "parameters": {}}
 SAMPLE_RESPONSE = [
     {"generated_text": "Hello, I'm a language model, and I'm here to help you with your English."}
 ]
 JS_MODEL_ID = "huggingface-textgeneration1-gpt-neo-125m-fp16"
 ROLE_NAME = "SageMakerRole"
+MOCK_HF_MODEL_METADATA_JSON = {"mock_key": "mock_value"}
 
 
 @pytest.fixture
@@ -46,14 +47,22 @@ def happy_model_builder(sagemaker_session):
     )
 
 
+@patch("sagemaker.huggingface.llm_utils.urllib")
+@patch("sagemaker.huggingface.llm_utils.json")
 @pytest.mark.skipif(
     PYTHON_VERSION_IS_NOT_310,
     reason="The goal of these test are to test the serving components of our feature",
 )
 @pytest.mark.slow_test
-def test_happy_tgi_sagemaker_endpoint(happy_model_builder, gpu_instance_type):
+def test_happy_tgi_sagemaker_endpoint(
+    mock_urllib, mock_json, happy_model_builder, gpu_instance_type
+):
     logger.info("Running in SAGEMAKER_ENDPOINT mode...")
     caught_ex = None
+
+    mock_json.load.return_value = MOCK_HF_MODEL_METADATA_JSON
+    mock_hf_model_metadata_url = Mock()
+    mock_urllib.request.Request.side_effect = mock_hf_model_metadata_url
 
     model = happy_model_builder.build()
 
