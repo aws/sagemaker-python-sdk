@@ -295,7 +295,7 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
             encrypt (bool): Specifies whether the objects uploaded to S3 are
                 encrypted on the server side using AES-256 (default: ``False``).
             distribution (str): The SageMaker TrainingJob channel s3 data
-                distribution type.
+                distribution type (default: ``False``).
 
         Returns:
             RecordSet: A RecordSet referencing the encoded, uploading training
