@@ -269,7 +269,7 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         if wait:
             self.latest_training_job.wait(logs=logs)
 
-    def record_set(self, train, labels=None, channel="train", encrypt=False, distribution=None):
+    def record_set(self, train, labels=None, channel="train", encrypt=False, distribution="ShardedByS3Key"):
         """Build a :class:`~RecordSet` from a numpy :class:`~ndarray` matrix and label vector.
 
         For the 2D ``ndarray`` ``train``, each row is converted to a
@@ -295,7 +295,7 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
             encrypt (bool): Specifies whether the objects uploaded to S3 are
                 encrypted on the server side using AES-256 (default: ``False``).
             distribution (str): The SageMaker TrainingJob channel s3 data
-                distribution type (default: ``False``).
+                distribution type (default: ``None``).
 
         Returns:
             RecordSet: A RecordSet referencing the encoded, uploading training
