@@ -987,6 +987,82 @@ class EstimatorTest(unittest.TestCase):
             [{"Key": "blah", "Value": "blahagain"}] + js_tags,
         )
 
+    @mock.patch("sagemaker.jumpstart.estimator.JumpStartEstimator._attach")
+    @mock.patch("sagemaker.jumpstart.estimator.get_model_id_version_from_training_job")
+    @mock.patch("sagemaker.jumpstart.estimator.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_jumpstart_estimator_attach_no_model_id_happy_case(
+        self,
+        mock_get_model_specs: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
+        get_model_id_version_from_training_job: mock.Mock,
+        mock_attach: mock.Mock,
+    ):
+
+        mock_is_valid_model_id.return_value = True
+
+        get_model_id_version_from_training_job.return_value = (
+            "js-trainable-model-prepacked",
+            "1.0.0",
+        )
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        mock_session = mock.MagicMock(sagemaker_config={}, boto_region_name="us-west-2")
+
+        JumpStartEstimator.attach(
+            training_job_name="some-training-job-name", sagemaker_session=mock_session
+        )
+
+        get_model_id_version_from_training_job.assert_called_once_with(
+            training_job_name="some-training-job-name",
+            sagemaker_session=mock_session,
+        )
+
+        mock_attach.assert_called_once_with(
+            training_job_name="some-training-job-name",
+            sagemaker_session=mock_session,
+            model_channel_name="model",
+            additional_kwargs={
+                "model_id": "js-trainable-model-prepacked",
+                "model_version": "1.0.0",
+            },
+        )
+
+    @mock.patch("sagemaker.jumpstart.estimator.JumpStartEstimator._attach")
+    @mock.patch("sagemaker.jumpstart.estimator.get_model_id_version_from_training_job")
+    @mock.patch("sagemaker.jumpstart.estimator.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_jumpstart_estimator_attach_no_model_id_sad_case(
+        self,
+        mock_get_model_specs: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
+        get_model_id_version_from_training_job: mock.Mock,
+        mock_attach: mock.Mock,
+    ):
+
+        mock_is_valid_model_id.return_value = True
+
+        get_model_id_version_from_training_job.side_effect = ValueError()
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        mock_session = mock.MagicMock(sagemaker_config={}, boto_region_name="us-west-2")
+
+        with pytest.raises(ValueError):
+            JumpStartEstimator.attach(
+                training_job_name="some-training-job-name", sagemaker_session=mock_session
+            )
+
+        get_model_id_version_from_training_job.assert_called_once_with(
+            training_job_name="some-training-job-name",
+            sagemaker_session=mock_session,
+        )
+
+        mock_attach.assert_not_called()
+
     def test_jumpstart_estimator_kwargs_match_parent_class(self):
 
         """If you add arguments to <Estimator constructor>, this test will fail.

@@ -750,7 +750,7 @@ def _botocore_resolver():
     return botocore.regions.EndpointResolver(loader.load_data("endpoints"))
 
 
-def _aws_partition(region):
+def aws_partition(region):
     """Given a region name (ex: "cn-north-1"), return the corresponding aws partition ("aws-cn").
 
     Args:
