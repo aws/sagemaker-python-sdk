@@ -34,6 +34,7 @@ from sagemaker.serve.builder.serve_settings import _ServeSettings
 from sagemaker.serve.builder.djl_builder import DJL
 from sagemaker.serve.builder.tgi_builder import TGI
 from sagemaker.serve.builder.jumpstart_builder import JumpStart
+from sagemaker.serve.builder.transformers_builder import Transformers
 from sagemaker.predictor import Predictor
 from sagemaker.serve.save_retrive.version_1_0_0.metadata.metadata import Metadata
 from sagemaker.serve.spec.inference_spec import InferenceSpec
@@ -54,6 +55,7 @@ from sagemaker.serve.validations.check_image_and_hardware_type import (
     validate_image_uri_and_hardware,
 )
 from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.huggingface.llm_utils import get_huggingface_model_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +68,7 @@ supported_model_server = {
 
 # pylint: disable=attribute-defined-outside-init
 @dataclass
-class ModelBuilder(Triton, DJL, JumpStart, TGI):
+class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
     """Class that builds a deployable model.
 
     Args:
@@ -134,8 +136,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI):
             in order for model builder to build the artifacts correctly (according
             to the model server). Possible values for this argument are
             ``TORCHSERVE``, ``MMS``, ``TENSORFLOW_SERVING``, ``DJL_SERVING``,
-            ``TRITON``, and ``TGI``.
-
+            ``TRITON``, and``TGI``.
     """
 
     model_path: Optional[str] = field(
@@ -563,7 +564,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI):
         return wrapper
 
     # Model Builder is a class to build the model for deployment.
-    # It supports three modes of deployment
+    # It supports two modes of deployment
     # 1/ SageMaker Endpoint
     # 2/ Local launch with container
     def build(
@@ -603,12 +604,20 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI):
         )
 
         self.serve_settings = self._get_serve_setting()
+
+        hf_model_md = get_huggingface_model_metadata(
+            self.model, self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
+        )
+
         if isinstance(self.model, str):
             if self._is_jumpstart_model_id():
                 return self._build_for_jumpstart()
             if self._is_djl():
                 return self._build_for_djl()
-            return self._build_for_tgi()
+            if hf_model_md.get("pipeline_tag") == "text-generation":  # pylint: disable=R1705
+                return self._build_for_tgi()
+            else:
+                return self._build_for_transformers()
 
         self._build_validations()
 
