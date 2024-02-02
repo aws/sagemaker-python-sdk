@@ -13,7 +13,6 @@
 from __future__ import absolute_import
 
 import pytest
-
 from sagemaker.serve.builder.schema_builder import SchemaBuilder
 from sagemaker.serve.builder.model_builder import ModelBuilder, Mode
 

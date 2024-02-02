@@ -60,16 +60,14 @@ mock_schema_builder.sample_output = mock_sample_output
 
 
 class TestTransformersBuilder(unittest.TestCase):
-    @patch("sagemaker.serve.builder.transformers_builder._capture_telemetry", side_effect=None)
-    @patch("sagemaker.serve.builder.transformers_builder._get_ram_usage_mb", return_value=1024)
     @patch(
         "sagemaker.serve.builder.transformers_builder._get_nb_instance",
         return_value="ml.g5.24xlarge",
     )
+    @patch("sagemaker.serve.builder.transformers_builder._capture_telemetry", side_effect=None)
     def test_build_deploy_for_transformers_local_container_and_remote_container(
         self,
         mock_get_nb_instance,
-        mock_get_ram_usage_mb,
         mock_telemetry,
     ):
         builder = ModelBuilder(
