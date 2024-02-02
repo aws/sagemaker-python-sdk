@@ -343,6 +343,7 @@ class RecordSet(object):
         feature_dim: int,
         s3_data_type: Union[str, PipelineVariable] = "ManifestFile",
         channel: Union[str, PipelineVariable] = "train",
+        distribution: str = "ShardedByS3Key",
     ):
         """A collection of Amazon :class:~`Record` objects serialized and stored in S3.
 
@@ -358,12 +359,15 @@ class RecordSet(object):
                 single s3 manifest file, listing each s3 object to train on.
             channel (str or PipelineVariable): The SageMaker Training Job channel this RecordSet
                 should be bound to
+            distribution (str): S3 data distribution type.
+                Valid values: 'ShardedByS3Key', 'FullyReplicated'.
         """
         self.s3_data = s3_data
         self.feature_dim = feature_dim
         self.num_records = num_records
         self.s3_data_type = s3_data_type
         self.channel = channel
+        self.distribution = distribution
 
     def __repr__(self):
         """Return an unambiguous representation of this RecordSet"""
@@ -377,7 +381,7 @@ class RecordSet(object):
     def records_s3_input(self):
         """Return a TrainingInput to represent the training data"""
         return TrainingInput(
-            self.s3_data, distribution="ShardedByS3Key", s3_data_type=self.s3_data_type
+            self.s3_data, distribution=self.distribution, s3_data_type=self.s3_data_type
         )
 
 
