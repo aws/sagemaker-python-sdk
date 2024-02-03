@@ -295,7 +295,7 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
             encrypt (bool): Specifies whether the objects uploaded to S3 are
                 encrypted on the server side using AES-256 (default: ``False``).
             distribution (str): The SageMaker TrainingJob channel s3 data
-                distribution type (default: ``None``).
+                distribution type (default: ``ShardedByS3Key``).
 
         Returns:
             RecordSet: A RecordSet referencing the encoded, uploading training
@@ -362,7 +362,7 @@ class RecordSet(object):
                 single s3 manifest file, listing each s3 object to train on.
             channel (str or PipelineVariable): The SageMaker Training Job channel this RecordSet
                 should be bound to
-            distribution (str): S3 data distribution type.
+            distribution (str): The SageMaker TrainingJob S3 data distribution type.
                 Valid values: 'ShardedByS3Key', 'FullyReplicated'.
         """
         self.s3_data = s3_data
