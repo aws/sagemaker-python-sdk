@@ -579,19 +579,19 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
 
         self.serve_settings = self._get_serve_setting()
 
-        hf_model_md = get_huggingface_model_metadata(
-            self.model, self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
-        )
-
         if isinstance(self.model, str):
             if self._is_jumpstart_model_id():
                 return self._build_for_jumpstart()
-            if self._is_djl():
+            if self._is_djl():  # pylint: disable=R1705
                 return self._build_for_djl()
-            if hf_model_md.get("pipeline_tag") == "text-generation":  # pylint: disable=R1705
-                return self._build_for_tgi()
             else:
-                return self._build_for_transformers()
+                hf_model_md = get_huggingface_model_metadata(
+                    self.model, self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
+                )
+                if hf_model_md.get("pipeline_tag") == "text-generation":  # pylint: disable=R1705
+                    return self._build_for_tgi()
+                else:
+                    return self._build_for_transformers()
 
         self._build_validations()
 
