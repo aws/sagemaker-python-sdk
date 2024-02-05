@@ -19,7 +19,6 @@ import os
 import io
 import numpy as np
 
-from unittest.mock import patch, Mock
 from sagemaker.serve.builder.model_builder import ModelBuilder, Mode
 from sagemaker.serve.builder.schema_builder import SchemaBuilder, CustomPayloadTranslator
 from sagemaker.serve.spec.inference_spec import InferenceSpec
@@ -38,7 +37,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 ROLE_NAME = "SageMakerRole"
-MOCK_HF_MODEL_METADATA_JSON = {"mock_key": "mock_value"}
 
 
 @pytest.fixture
@@ -183,8 +181,6 @@ def model_builder(request):
 #                 ), f"{caught_ex} was thrown when running pytorch squeezenet local container test"
 
 
-@patch("sagemaker.huggingface.llm_utils.urllib")
-@patch("sagemaker.huggingface.llm_utils.json")
 @pytest.mark.skipif(
     PYTHON_VERSION_IS_NOT_310,  # or NOT_RUNNING_ON_INF_EXP_DEV_PIPELINE,
     reason="The goal of these test are to test the serving components of our feature",
@@ -194,17 +190,12 @@ def model_builder(request):
 )
 @pytest.mark.slow_test
 def test_happy_pytorch_sagemaker_endpoint(
-    mock_urllib,
-    mock_json,
     sagemaker_session,
     model_builder,
     cpu_instance_type,
     test_image,
 ):
     logger.info("Running in SAGEMAKER_ENDPOINT mode...")
-    mock_json.load.return_value = MOCK_HF_MODEL_METADATA_JSON
-    mock_hf_model_metadata_url = Mock()
-    mock_urllib.request.Request.side_effect = mock_hf_model_metadata_url
     caught_ex = None
 
     iam_client = sagemaker_session.boto_session.client("iam")
