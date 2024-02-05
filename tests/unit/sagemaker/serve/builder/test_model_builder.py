@@ -42,7 +42,6 @@ mock_role_arn = "sample role arn"
 mock_s3_model_data_url = "sample s3 data url"
 mock_secret_key = "mock_secret_key"
 mock_instance_type = "mock instance type"
-MOCK_HF_MODEL_METADATA_JSON = {"mock_key": "mock_value"}
 
 supported_model_server = {
     ModelServer.TORCHSERVE,
@@ -55,15 +54,7 @@ mock_session = MagicMock()
 
 class TestModelBuilder(unittest.TestCase):
     @patch("sagemaker.serve.builder.model_builder._ServeSettings")
-    @patch("sagemaker.huggingface.llm_utils.urllib")
-    @patch("sagemaker.huggingface.llm_utils.json")
-    def test_validation_in_progress_mode_not_supported(
-        self, mock_serveSettings, mock_urllib, mock_json
-    ):
-        mock_json.load.return_value = MOCK_HF_MODEL_METADATA_JSON
-        mock_hf_model_metadata_url = Mock()
-        mock_urllib.request.Request.side_effect = mock_hf_model_metadata_url
-
+    def test_validation_in_progress_mode_not_supported(self, mock_serveSettings):
         builder = ModelBuilder()
         self.assertRaisesRegex(
             Exception,
@@ -75,15 +66,7 @@ class TestModelBuilder(unittest.TestCase):
         )
 
     @patch("sagemaker.serve.builder.model_builder._ServeSettings")
-    @patch("sagemaker.huggingface.llm_utils.urllib")
-    @patch("sagemaker.huggingface.llm_utils.json")
-    def test_validation_cannot_set_both_model_and_inference_spec(
-        self, mock_serveSettings, mock_urllib, mock_json
-    ):
-        mock_json.load.return_value = MOCK_HF_MODEL_METADATA_JSON
-        mock_hf_model_metadata_url = Mock()
-        mock_urllib.request.Request.side_effect = mock_hf_model_metadata_url
-
+    def test_validation_cannot_set_both_model_and_inference_spec(self, mock_serveSettings):
         builder = ModelBuilder(inference_spec="some value", model=Mock(spec=object))
         self.assertRaisesRegex(
             Exception,
@@ -95,15 +78,7 @@ class TestModelBuilder(unittest.TestCase):
         )
 
     @patch("sagemaker.serve.builder.model_builder._ServeSettings")
-    @patch("sagemaker.huggingface.llm_utils.urllib")
-    @patch("sagemaker.huggingface.llm_utils.json")
-    def test_validation_unsupported_model_server_type(
-        self, mock_serveSettings, mock_urllib, mock_json
-    ):
-        mock_json.load.return_value = MOCK_HF_MODEL_METADATA_JSON
-        mock_hf_model_metadata_url = Mock()
-        mock_urllib.request.Request.side_effect = mock_hf_model_metadata_url
-
+    def test_validation_unsupported_model_server_type(self, mock_serveSettings):
         builder = ModelBuilder(model_server="invalid_model_server")
         self.assertRaisesRegex(
             Exception,
@@ -116,15 +91,7 @@ class TestModelBuilder(unittest.TestCase):
         )
 
     @patch("sagemaker.serve.builder.model_builder._ServeSettings")
-    @patch("sagemaker.huggingface.llm_utils.urllib")
-    @patch("sagemaker.huggingface.llm_utils.json")
-    def test_validation_model_server_not_set_with_image_uri(
-        self, mock_serveSettings, mock_urllib, mock_json
-    ):
-        mock_json.load.return_value = MOCK_HF_MODEL_METADATA_JSON
-        mock_hf_model_metadata_url = Mock()
-        mock_urllib.request.Request.side_effect = mock_hf_model_metadata_url
-
+    def test_validation_model_server_not_set_with_image_uri(self, mock_serveSettings):
         builder = ModelBuilder(image_uri="image_uri")
         self.assertRaisesRegex(
             Exception,
@@ -137,15 +104,9 @@ class TestModelBuilder(unittest.TestCase):
         )
 
     @patch("sagemaker.serve.builder.model_builder._ServeSettings")
-    @patch("sagemaker.huggingface.llm_utils.urllib")
-    @patch("sagemaker.huggingface.llm_utils.json")
     def test_save_model_throw_exception_when_none_of_model_and_inference_spec_is_set(
-        self, mock_serveSettings, mock_urllib, mock_json
+        self, mock_serveSettings
     ):
-        mock_json.load.return_value = MOCK_HF_MODEL_METADATA_JSON
-        mock_hf_model_metadata_url = Mock()
-        mock_urllib.request.Request.side_effect = mock_hf_model_metadata_url
-
         builder = ModelBuilder(inference_spec=None, model=None)
         self.assertRaisesRegex(
             Exception,
@@ -165,12 +126,8 @@ class TestModelBuilder(unittest.TestCase):
     @patch("sagemaker.serve.builder.model_builder.SageMakerEndpointMode")
     @patch("sagemaker.serve.builder.model_builder.Model")
     @patch("os.path.exists")
-    @patch("sagemaker.huggingface.llm_utils.urllib")
-    @patch("sagemaker.huggingface.llm_utils.json")
     def test_build_happy_path_with_sagemaker_endpoint_mode_and_byoc(
         self,
-        mock_urllib,
-        mock_json,
         mock_path_exists,
         mock_sdk_model,
         mock_sageMakerEndpointMode,
@@ -188,10 +145,6 @@ class TestModelBuilder(unittest.TestCase):
             and instance_type == "ml.c5.xlarge"
             else None
         )
-
-        mock_json.load.return_value = MOCK_HF_MODEL_METADATA_JSON
-        mock_hf_model_metadata_url = Mock()
-        mock_urllib.request.Request.side_effect = mock_hf_model_metadata_url
 
         mock_detect_fw_version.return_value = framework, version
 
@@ -273,12 +226,8 @@ class TestModelBuilder(unittest.TestCase):
     @patch("sagemaker.serve.builder.model_builder.SageMakerEndpointMode")
     @patch("sagemaker.serve.builder.model_builder.Model")
     @patch("os.path.exists")
-    @patch("sagemaker.huggingface.llm_utils.urllib")
-    @patch("sagemaker.huggingface.llm_utils.json")
     def test_build_happy_path_with_sagemaker_endpoint_mode_and_1p_dlc_as_byoc(
         self,
-        mock_urllib,
-        mock_json,
         mock_path_exists,
         mock_sdk_model,
         mock_sageMakerEndpointMode,
@@ -296,11 +245,6 @@ class TestModelBuilder(unittest.TestCase):
             and instance_type == "ml.c5.xlarge"
             else None
         )
-
-        mock_json.load.return_value = MOCK_HF_MODEL_METADATA_JSON
-        mock_hf_model_metadata_url = Mock()
-        mock_urllib.request.Request.side_effect = mock_hf_model_metadata_url
-
         mock_detect_fw_version.return_value = framework, version
 
         mock_prepare_for_torchserve.side_effect = (
@@ -381,12 +325,8 @@ class TestModelBuilder(unittest.TestCase):
     @patch("sagemaker.serve.builder.model_builder.SageMakerEndpointMode")
     @patch("sagemaker.serve.builder.model_builder.Model")
     @patch("os.path.exists")
-    @patch("sagemaker.huggingface.llm_utils.urllib")
-    @patch("sagemaker.huggingface.llm_utils.json")
     def test_build_happy_path_with_sagemaker_endpoint_mode_and_inference_spec(
         self,
-        mock_urllib,
-        mock_json,
         mock_path_exists,
         mock_sdk_model,
         mock_sageMakerEndpointMode,
@@ -401,10 +341,6 @@ class TestModelBuilder(unittest.TestCase):
         mock_inference_spec.load = (
             lambda model_path: mock_native_model if model_path == MODEL_PATH else None
         )
-
-        mock_json.load.return_value = MOCK_HF_MODEL_METADATA_JSON
-        mock_hf_model_metadata_url = Mock()
-        mock_urllib.request.Request.side_effect = mock_hf_model_metadata_url
 
         mock_detect_fw_version.return_value = framework, version
 
@@ -490,12 +426,8 @@ class TestModelBuilder(unittest.TestCase):
     @patch("sagemaker.serve.builder.model_builder.SageMakerEndpointMode")
     @patch("sagemaker.serve.builder.model_builder.Model")
     @patch("os.path.exists")
-    @patch("sagemaker.huggingface.llm_utils.urllib")
-    @patch("sagemaker.huggingface.llm_utils.json")
     def test_build_happy_path_with_sagemakerEndpoint_mode_and_model(
         self,
-        mock_urllib,
-        mock_json,
         mock_path_exists,
         mock_sdk_model,
         mock_sageMakerEndpointMode,
@@ -513,10 +445,6 @@ class TestModelBuilder(unittest.TestCase):
             and instance_type == "ml.c5.xlarge"
             else None
         )
-
-        mock_json.load.return_value = MOCK_HF_MODEL_METADATA_JSON
-        mock_hf_model_metadata_url = Mock()
-        mock_urllib.request.Request.side_effect = mock_hf_model_metadata_url
 
         mock_detect_fw_version.return_value = framework, version
 
@@ -601,12 +529,8 @@ class TestModelBuilder(unittest.TestCase):
     @patch("sagemaker.serve.builder.model_builder.SageMakerEndpointMode")
     @patch("sagemaker.serve.builder.model_builder.Model")
     @patch("os.path.exists")
-    @patch("sagemaker.huggingface.llm_utils.urllib")
-    @patch("sagemaker.huggingface.llm_utils.json")
     def test_build_happy_path_with_sagemakerEndpoint_mode_and_xgboost_model(
         self,
-        mock_urllib,
-        mock_json,
         mock_path_exists,
         mock_sdk_model,
         mock_sageMakerEndpointMode,
@@ -625,10 +549,6 @@ class TestModelBuilder(unittest.TestCase):
             and instance_type == "ml.c5.xlarge"
             else None
         )
-
-        mock_json.load.return_value = MOCK_HF_MODEL_METADATA_JSON
-        mock_hf_model_metadata_url = Mock()
-        mock_urllib.request.Request.side_effect = mock_hf_model_metadata_url
 
         mock_detect_fw_version.return_value = "xgboost", version
 
@@ -714,12 +634,8 @@ class TestModelBuilder(unittest.TestCase):
     @patch("sagemaker.serve.builder.model_builder.LocalContainerMode")
     @patch("sagemaker.serve.builder.model_builder.Model")
     @patch("os.path.exists")
-    @patch("sagemaker.huggingface.llm_utils.urllib")
-    @patch("sagemaker.huggingface.llm_utils.json")
     def test_build_happy_path_with_local_container_mode(
         self,
-        mock_urllib,
-        mock_json,
         mock_path_exists,
         mock_sdk_model,
         mock_localContainerMode,
@@ -733,10 +649,6 @@ class TestModelBuilder(unittest.TestCase):
         mock_inference_spec.load = (
             lambda model_path: mock_native_model if model_path == MODEL_PATH else None
         )
-
-        mock_json.load.return_value = MOCK_HF_MODEL_METADATA_JSON
-        mock_hf_model_metadata_url = Mock()
-        mock_urllib.request.Request.side_effect = mock_hf_model_metadata_url
 
         mock_detect_container.side_effect = (
             lambda model, region, instance_type: mock_image_uri
@@ -816,12 +728,8 @@ class TestModelBuilder(unittest.TestCase):
     @patch("sagemaker.serve.builder.model_builder.LocalContainerMode")
     @patch("sagemaker.serve.builder.model_builder.Model")
     @patch("os.path.exists")
-    @patch("sagemaker.huggingface.llm_utils.urllib")
-    @patch("sagemaker.huggingface.llm_utils.json")
     def test_build_happy_path_with_localContainer_mode_overwritten_with_sagemaker_mode(
         self,
-        mock_urllib,
-        mock_json,
         mock_path_exists,
         mock_sdk_model,
         mock_localContainerMode,
@@ -837,10 +745,6 @@ class TestModelBuilder(unittest.TestCase):
         mock_inference_spec.load = (
             lambda model_path: mock_native_model if model_path == MODEL_PATH else None
         )
-
-        mock_json.load.return_value = MOCK_HF_MODEL_METADATA_JSON
-        mock_hf_model_metadata_url = Mock()
-        mock_urllib.request.Request.side_effect = mock_hf_model_metadata_url
 
         mock_detect_fw_version.return_value = framework, version
 
@@ -965,12 +869,8 @@ class TestModelBuilder(unittest.TestCase):
     @patch("sagemaker.serve.builder.model_builder.LocalContainerMode")
     @patch("sagemaker.serve.builder.model_builder.Model")
     @patch("os.path.exists")
-    @patch("sagemaker.huggingface.llm_utils.urllib")
-    @patch("sagemaker.huggingface.llm_utils.json")
     def test_build_happy_path_with_sagemaker_endpoint_mode_overwritten_with_local_container(
         self,
-        mock_urllib,
-        mock_json,
         mock_path_exists,
         mock_sdk_model,
         mock_localContainerMode,
@@ -983,10 +883,6 @@ class TestModelBuilder(unittest.TestCase):
     ):
         # setup mocks
         mock_detect_fw_version.return_value = framework, version
-
-        mock_json.load.return_value = MOCK_HF_MODEL_METADATA_JSON
-        mock_hf_model_metadata_url = Mock()
-        mock_urllib.request.Request.side_effect = mock_hf_model_metadata_url
 
         mock_detect_container.side_effect = (
             lambda model, region, instance_type: mock_image_uri

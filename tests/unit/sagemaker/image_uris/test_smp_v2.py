@@ -16,7 +16,7 @@ import pytest
 from sagemaker import image_uris
 from tests.unit.sagemaker.image_uris import expected_uris
 
-CONTAINER_VERSIONS = {"ml.p4d.24xlarge": "cu118", "ml.p5d.24xlarge": "cu121"}
+CONTAINER_VERSIONS = {"ml.p4d.24xlarge": "cu118", "ml.p5.24xlarge": "cu121"}
 
 
 @pytest.mark.parametrize("load_config", ["pytorch-smp.json"], indirect=True)
@@ -34,6 +34,10 @@ def test_smp_v2(load_config):
             for py_version in PY_VERSIONS:
                 for region in ACCOUNTS.keys():
                     for instance_type in CONTAINER_VERSIONS.keys():
+                        cuda_vers = CONTAINER_VERSIONS[instance_type]
+                        if "2.1" in version:
+                            cuda_vers = "cu121"
+
                         uri = image_uris.get_training_image_uri(
                             region,
                             framework="pytorch",
@@ -45,7 +49,7 @@ def test_smp_v2(load_config):
                         expected = expected_uris.framework_uri(
                             repo="smdistributed-modelparallel",
                             fw_version=version,
-                            py_version=f"{py_version}-{CONTAINER_VERSIONS[instance_type]}",
+                            py_version=f"{py_version}-{cuda_vers}",
                             processor=processor,
                             region=region,
                             account=ACCOUNTS[region],
