@@ -186,7 +186,7 @@ class IngestionManagerPandas:
 
     Attributes:
         feature_group_name (str): name of the Feature Group.
-        feature_definitions (Dict[str, FeatureDefinition]):  dictionary of feature definitions.
+        feature_definitions (Dict[str, Dict[Any, Any]]):  dictionary of feature definitions.
             where the key is the feature name and the value is the FeatureDefinition.
             The FeatureDefinition contains the data type of the feature.
         sagemaker_fs_runtime_client_config (Config): instance of the Config class
@@ -215,7 +215,7 @@ class IngestionManagerPandas:
     def _ingest_single_batch(
             data_frame: DataFrame,
             feature_group_name: str,
-            feature_definitions: Dict[str, FeatureDefinition],
+            feature_definitions: Dict[str, Dict[Any, Any]],
             client_config: Config,
             start_index: int,
             end_index: int,
@@ -227,7 +227,7 @@ class IngestionManagerPandas:
         Args:
             data_frame (DataFrame): source DataFrame to be ingested.
             feature_group_name (str): name of the Feature Group.
-            feature_definitions (Dict[str, FeatureDefinition]):  dictionary of feature definitions.
+            feature_definitions (Dict[str, Dict[Any, Any]]):  dictionary of feature definitions.
                 where the key is the feature name and the value is the FeatureDefinition.
                 The FeatureDefinition contains the data type of the feature.
             client_config (Config): Configuration for the sagemaker feature store runtime
@@ -318,7 +318,7 @@ class IngestionManagerPandas:
             data_frame (DataFrame): source DataFrame to be ingested.
             row (Iterable[tuple[Any, ...]]): current row that is being ingested
             feature_group_name (str): name of the Feature Group.
-            feature_definitions (Dict[str, FeatureDefinition]):  dictionary of feature definitions.
+            feature_definitions (Dict[str, Dict[Any, Any]]):  dictionary of feature definitions.
                 where the key is the feature name and the value is the FeatureDefinition.
                 The FeatureDefinition contains the data type of the feature.
             sagemaker_fs_runtime_client (Session): session instance to perform boto calls.
@@ -361,7 +361,7 @@ class IngestionManagerPandas:
 
         Args:
             feature_name (str): name of the feature.
-            feature_definitions (Dict[str, FeatureDefinition]):  dictionary of feature definitions.
+            feature_definitions (Dict[str, Dict[Any, Any]]):  dictionary of feature definitions.
                 where the key is the feature name and the value is the FeatureDefinition.
                 The FeatureDefinition contains the data type of the feature and the type of collection.
                 If the feature is not a collection type, the value of the CollectionType attribute
@@ -503,7 +503,7 @@ class IngestionManagerPandas:
     def _run_multi_threaded(
             max_workers: int,
             feature_group_name: str,
-            feature_definitions: Dict[str, FeatureDefinition],
+            feature_definitions: Dict[str, Dict[Any, Any]],
             sagemaker_fs_runtime_client_config: Config,
             data_frame: DataFrame,
             target_stores: Sequence[TargetStoreEnum] = None,
