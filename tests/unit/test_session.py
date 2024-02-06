@@ -5262,7 +5262,7 @@ def test_list_feature_groups(sagemaker_session):
 
 
 @pytest.fixture()
-def sagemaker_session_with_featurestore_runtime_client():
+def sagemaker_session_with_fs_runtime_client():
     boto_mock = MagicMock(name="boto_session")
     sagemaker_session = sagemaker.Session(
         boto_session=boto_mock, sagemaker_featurestore_runtime_client=MagicMock()
@@ -5270,13 +5270,13 @@ def sagemaker_session_with_featurestore_runtime_client():
     return sagemaker_session
 
 
-def test_feature_group_put_record(sagemaker_session_with_featurestore_runtime_client):
-    sagemaker_session_with_featurestore_runtime_client.put_record(
+def test_feature_group_put_record(sagemaker_session_with_fs_runtime_client):
+    sagemaker_session_with_fs_runtime_client.put_record(
         feature_group_name="MyFeatureGroup",
         record=[{"FeatureName": "feature1", "ValueAsString": "value1"}],
     )
     assert (
-        sagemaker_session_with_featurestore_runtime_client.sagemaker_featurestore_runtime_client
+        sagemaker_session_with_fs_runtime_client.sagemaker_featurestore_runtime_client
         .put_record.called_with(
             FeatureGroupName="MyFeatureGroup",
             record=[{"FeatureName": "feature1", "ValueAsString": "value1"}],
@@ -5286,16 +5286,16 @@ def test_feature_group_put_record(sagemaker_session_with_featurestore_runtime_cl
 
 
 def test_feature_group_put_record_with_ttl_and_target_stores(
-    sagemaker_session_with_featurestore_runtime_client,
+        sagemaker_session_with_fs_runtime_client,
 ):
-    sagemaker_session_with_featurestore_runtime_client.put_record(
+    sagemaker_session_with_fs_runtime_client.put_record(
         feature_group_name="MyFeatureGroup",
         record=[{"FeatureName": "feature1", "ValueAsString": "value1"}],
         ttl_duration={"Unit": "Seconds", "Value": 123},
         target_stores=["OnlineStore", "OfflineStore"],
     )
     assert (
-        sagemaker_session_with_featurestore_runtime_client.sagemaker_featurestore_runtime_client
+        sagemaker_session_with_fs_runtime_client.sagemaker_featurestore_runtime_client
         .put_record.called_with(
             FeatureGroupName="MyFeatureGroup",
             record=[{"FeatureName": "feature1", "ValueAsString": "value1"}],

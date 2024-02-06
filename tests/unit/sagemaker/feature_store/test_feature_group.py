@@ -1099,7 +1099,9 @@ def test_ingestion_manager__run_multi_process_success():
     )
     manager.run(df)
 
-    manager._run_multi_process.assert_called_once_with(data_frame=df, wait=True, timeout=None)
+    manager._run_multi_process.assert_called_once_with(
+        data_frame=df, target_stores=None, wait=True, timeout=None
+    )
 
 
 @patch(

@@ -333,7 +333,8 @@ class IngestionManagerPandas:
                 (
                     FeatureValue(
                         feature_name=data_frame.columns[index - 1],
-                        value_as_string_list=IngestionManagerPandas._covert_feature_value_to_string_list(
+                        value_as_string_list
+                        =IngestionManagerPandas._covert_feature_value_to_string_list(
                             row[index]
                         ),
                     )
@@ -373,7 +374,8 @@ class IngestionManagerPandas:
             feature_name (str): name of the feature.
             feature_definitions (Dict[str, Dict[Any, Any]]):  dictionary of feature definitions.
                 where the key is the feature name and the value is the FeatureDefinition.
-                The FeatureDefinition contains the data type of the feature and the type of collection.
+                The FeatureDefinition contains the data type of the feature and
+                the type of collection.
                 If the feature is not a collection type, the value of the CollectionType attribute
                 is None.
 
@@ -383,6 +385,7 @@ class IngestionManagerPandas:
         feature_definition = feature_definitions.get(feature_name)
         if feature_definition is not None:
             return feature_definition.get("CollectionType") is not None
+        return None
 
     @staticmethod
     def _feature_value_is_not_none(
@@ -390,15 +393,20 @@ class IngestionManagerPandas:
     ):
         """Check if the feature value is  not None.
 
-        For Collection Type feature, we want to keep this check simple, where if the value is not None,
+        For Collection Type feature, we want to keep this check simple,
+        where if the value is not None,
         we convert and pass it to PutRecord, instead of relying on Pandas.notna(obj).all().
 
-        Also, we don't want to skip the collection attribute with partial None values, when calling PutRecord. Since,
-        vector value can have some dimensions as None. Instead, we want to let PutRecord either accept or fail the
-        entire record based on the service side implementation. As of this change the service fails any partial None
+        Also, we don't want to skip the collection attribute with partial None values,
+        when calling PutRecord. Since,
+        vector value can have some dimensions as None. Instead,
+        we want to let PutRecord either accept or fail the
+        entire record based on the service side implementation.
+        As of this change the service fails any partial None
         collection types.
 
-        For the Scalar values (non Collection) we want to still use pd.notna() to keep the behavior same.
+        For the Scalar values (non Collection) we want to still use pd.notna()
+        to keep the behavior same.
 
         Args:
             feature_value (Any): feature value.
@@ -422,7 +430,8 @@ class IngestionManagerPandas:
         """
         if not is_list_like(feature_value):
             raise ValueError(
-                f"Invalid feature value, feature value: {feature_value} for a collection type feature"
+                f"Invalid feature value, feature value: {feature_value}"
+                f" for a collection type feature"
                 f" must be an Array, but instead was {type(feature_value)}"
             )
         return [str(value) if value is not None else None for value in feature_value]
@@ -996,18 +1005,25 @@ class FeatureGroup:
         No feature definitions will be loaded if the given data_frame contains
         unsupported dtypes.
 
-        For IN_MEMORY online_storage_type all collection type columns within DataFrame will be inferred as a List,
-        instead of a String. Due to performance limitations, only first 1,000 values of the column will be sampled,
-        when inferring collection Type. Customers can manually update the inferred collection type as needed.
+        For IN_MEMORY online_storage_type all collection type columns within DataFrame
+        will be inferred as a List,
+        instead of a String. Due to performance limitations,
+        only first 1,000 values of the column will be sampled,
+        when inferring collection Type.
+        Customers can manually update the inferred collection type as needed.
 
         Args:
             data_frame (DataFrame): A Pandas DataFrame containing features.
             online_storage_type (OnlineStoreStorageTypeEnum):
-                Optional. Online storage type for the feature group. The value can be either STANDARD or IN_MEMORY
+                Optional. Online storage type for the feature group.
+                The value can be either STANDARD or IN_MEMORY
                 If not specified,STANDARD will be used by default.
-                If specified as IN_MEMORY, we will infer any collection type column within DataFrame as a List
-                instead of a String. All, collection types (List, Set and Vector) will be inferred as List.
-                We will only sample the first 1,000 values of the column when inferring collection Type.
+                If specified as IN_MEMORY,
+                we will infer any collection type column within DataFrame as a List instead of a
+                String.
+                All, collection types (List, Set and Vector) will be inferred as List.
+                We will only sample the first 1,000 values of the column when inferring
+                collection Type.
 
 
 
@@ -1157,7 +1173,8 @@ class FeatureGroup:
             feature_group_name=self.name,
             feature_definitions=feature_definition_dict,
             sagemaker_session=self.sagemaker_session,
-            sagemaker_fs_runtime_client_config=self.sagemaker_session.sagemaker_featurestore_runtime_client.meta.config,
+            sagemaker_fs_runtime_client_config
+            =self.sagemaker_session.sagemaker_featurestore_runtime_client.meta.config,
             max_workers=max_workers,
             max_processes=max_processes,
             profile_name=profile_name,
@@ -1169,6 +1186,7 @@ class FeatureGroup:
 
     def _get_feature_definition_dict(self) -> Dict[str, Dict[Any, Any]]:
         """Get a dictionary of feature definitions with Feature Name as Key.
+
         We are converting the FeatureDefinition into a List for faster lookups.
 
         Returns:
