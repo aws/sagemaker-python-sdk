@@ -5275,18 +5275,16 @@ def test_feature_group_put_record(sagemaker_session_with_fs_runtime_client):
         feature_group_name="MyFeatureGroup",
         record=[{"FeatureName": "feature1", "ValueAsString": "value1"}],
     )
-    assert (
-        sagemaker_session_with_fs_runtime_client.sagemaker_featurestore_runtime_client
-        .put_record.called_with(
-            FeatureGroupName="MyFeatureGroup",
-            record=[{"FeatureName": "feature1", "ValueAsString": "value1"}],
-        )
+    fs_client_mock = sagemaker_session_with_fs_runtime_client.sagemaker_featurestore_runtime_client
+
+    assert fs_client_mock.put_record.called_with(
+        FeatureGroupName="MyFeatureGroup",
+        record=[{"FeatureName": "feature1", "ValueAsString": "value1"}],
     )
 
 
-
 def test_feature_group_put_record_with_ttl_and_target_stores(
-        sagemaker_session_with_fs_runtime_client,
+    sagemaker_session_with_fs_runtime_client,
 ):
     sagemaker_session_with_fs_runtime_client.put_record(
         feature_group_name="MyFeatureGroup",
@@ -5294,14 +5292,12 @@ def test_feature_group_put_record_with_ttl_and_target_stores(
         ttl_duration={"Unit": "Seconds", "Value": 123},
         target_stores=["OnlineStore", "OfflineStore"],
     )
-    assert (
-        sagemaker_session_with_fs_runtime_client.sagemaker_featurestore_runtime_client
-        .put_record.called_with(
-            FeatureGroupName="MyFeatureGroup",
-            record=[{"FeatureName": "feature1", "ValueAsString": "value1"}],
-            target_stores=["OnlineStore", "OfflineStore"],
-            ttl_duration={"Unit": "Seconds", "Value": 123},
-        )
+    fs_client_mock = sagemaker_session_with_fs_runtime_client.sagemaker_featurestore_runtime_client
+    assert fs_client_mock.put_record.called_with(
+        FeatureGroupName="MyFeatureGroup",
+        record=[{"FeatureName": "feature1", "ValueAsString": "value1"}],
+        target_stores=["OnlineStore", "OfflineStore"],
+        ttl_duration={"Unit": "Seconds", "Value": 123},
     )
 
 

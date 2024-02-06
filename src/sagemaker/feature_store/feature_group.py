@@ -333,8 +333,7 @@ class IngestionManagerPandas:
                 (
                     FeatureValue(
                         feature_name=data_frame.columns[index - 1],
-                        value_as_string_list
-                        =IngestionManagerPandas._covert_feature_value_to_string_list(
+                        value_as_string_list=IngestionManagerPandas._covert_feature_to_string_list(
                             row[index]
                         ),
                     )
@@ -419,7 +418,7 @@ class IngestionManagerPandas:
         return feature_value
 
     @staticmethod
-    def _covert_feature_value_to_string_list(feature_value: List[Any]):
+    def _covert_feature_to_string_list(feature_value: List[Any]):
         """Convert a list of feature values to a list of strings.
 
         Args:
@@ -1173,8 +1172,9 @@ class FeatureGroup:
             feature_group_name=self.name,
             feature_definitions=feature_definition_dict,
             sagemaker_session=self.sagemaker_session,
-            sagemaker_fs_runtime_client_config
-            =self.sagemaker_session.sagemaker_featurestore_runtime_client.meta.config,
+            sagemaker_fs_runtime_client_config=(
+                self.sagemaker_session.sagemaker_featurestore_runtime_client.meta.config
+            ),
             max_workers=max_workers,
             max_processes=max_processes,
             profile_name=profile_name,
