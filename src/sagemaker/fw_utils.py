@@ -138,6 +138,9 @@ SM_DATAPARALLEL_SUPPORTED_FRAMEWORK_VERSIONS = {
         "1.12.1",
         "1.13.1",
         "2.0.0",
+        "2.0.1",
+        "2.1.0",
+        "2.1.2",
     ],
 }
 
@@ -153,10 +156,11 @@ PYTORCHDDP_SUPPORTED_FRAMEWORK_VERSIONS = [
     "1.13.1",
     "2.0.0",
     "2.0.1",
+    "2.1.0",
 ]
 
 
-TORCH_DISTRIBUTED_GPU_SUPPORTED_FRAMEWORK_VERSIONS = ["1.13.1", "2.0.0", "2.0.1"]
+TORCH_DISTRIBUTED_GPU_SUPPORTED_FRAMEWORK_VERSIONS = ["1.13.1", "2.0.0", "2.0.1", "2.1.0", "2.1.2"]
 
 TRAINIUM_SUPPORTED_DISTRIBUTION_STRATEGIES = ["torch_distributed"]
 TRAINIUM_SUPPORTED_TORCH_DISTRIBUTED_FRAMEWORK_VERSIONS = [
@@ -325,9 +329,6 @@ def validate_mp_config(config):
         ValueError: If any of the keys have incorrect values.
     """
 
-    if "partitions" not in config:
-        raise ValueError("'partitions' is a required parameter.")
-
     def validate_positive(key):
         try:
             if not isinstance(config[key], int) or config[key] < 1:
@@ -475,7 +476,7 @@ def tar_and_upload_dir(
         if s3_resource is None:
             s3_resource = session.resource("s3", region_name=session.region_name)
         else:
-            print("Using provided s3_resource")
+            logger.debug("Using provided s3_resource")
 
         s3_resource.Object(bucket, key).upload_file(tar_file, ExtraArgs=extra_args)
     finally:

@@ -29,6 +29,9 @@ _REPACK_MODEL_RETRY_POLICIES = "repack_model_retry_policies"
 _REGISTER_MODEL_NAME_BASE = "RegisterModel"
 _CREATE_MODEL_NAME_BASE = "CreateModel"
 _REPACK_MODEL_NAME_BASE = "RepackModel"
+_IGNORED_REPACK_PARAM_LIST = ["entry_point", "source_dir", "hyperparameters", "dependencies"]
+
+logger = logging.getLogger(__name__)
 
 
 class ModelStep(StepCollection):
@@ -42,6 +45,7 @@ class ModelStep(StepCollection):
         retry_policies: Optional[Union[List[RetryPolicy], Dict[str, List[RetryPolicy]]]] = None,
         display_name: Optional[str] = None,
         description: Optional[str] = None,
+        repack_model_step_settings: Optional[Dict[str, any]] = None,
     ):
         """Constructs a `ModelStep`.
 
@@ -115,6 +119,15 @@ class ModelStep(StepCollection):
             display_name (str): The display name of the `ModelStep`.
                 The display name provides better UI readability. (default: None).
             description (str): The description of the `ModelStep` (default: None).
+            repack_model_step_settings (Dict[str, any]): The kwargs passed to the _RepackModelStep
+                to customize the configuration of the underlying repack model job (default: None).
+                Notes:
+                    1. If the _RepackModelStep is unnecessary, the settings will be ignored.
+                    2. If the _RepackModelStep is added, the repack_model_step_settings
+                        is honored if set.
+                    3. In repack_model_step_settings, the arguments with misspelled keys will be
+                        ignored. Please refer to the expected parameters of repack model job in
+                        :class:`~sagemaker.sklearn.estimator.SKLearn` and its base classes.
         """
         from sagemaker.workflow.utilities import validate_step_args_input
 
@@ -142,13 +155,15 @@ class ModelStep(StepCollection):
                 "the sagemaker_session of the model must be a PipelineSession object."
             )
 
-        self.name = name
+        super().__init__(name=name, depends_on=depends_on)
         self.step_args = step_args
-        self.depends_on = depends_on
         self.retry_policies = retry_policies
         self.display_name = display_name
         self.description = description
         self.steps: List[Step] = []
+        self._repack_model_step_settings = (
+            dict(repack_model_step_settings) if repack_model_step_settings else {}
+        )
         self._model = step_args.model
         self._create_model_args = self.step_args.create_model_request
         self._register_model_args = self.step_args.create_model_package_request
@@ -158,6 +173,12 @@ class ModelStep(StepCollection):
 
         if self._need_runtime_repack:
             self._append_repack_model_step()
+        elif self._repack_model_step_settings:
+            logger.warning(
+                "Non-empty repack_model_step_settings is supplied but no repack model "
+                "step is needed. Ignoring the repack_model_step_settings."
+            )
+
         if self._register_model_args:
             self._append_register_model_step()
         else:
@@ -236,14 +257,12 @@ class ModelStep(StepCollection):
         elif isinstance(self._model, Model):
             model_list = [self._model]
         else:
-            logging.warning("No models to repack")
+            logger.warning("No models to repack")
             return
 
-        security_group_ids = None
-        subnets = None
-        if self._model.vpc_config:
-            security_group_ids = self._model.vpc_config.get("SecurityGroupIds", None)
-            subnets = self._model.vpc_config.get("Subnets", None)
+        self._pop_out_non_configurable_repack_model_step_args()
+
+        security_group_ids, subnets = self._resolve_repack_model_step_vpc_configs()
 
         for i, model in enumerate(model_list):
             runtime_repack_flg = (
@@ -253,8 +272,16 @@ class ModelStep(StepCollection):
                 name_base = model.name or i
                 repack_model_step = _RepackModelStep(
                     name="{}-{}-{}".format(self.name, _REPACK_MODEL_NAME_BASE, name_base),
-                    sagemaker_session=self._model.sagemaker_session or model.sagemaker_session,
-                    role=self._model.role or model.role,
+                    sagemaker_session=(
+                        self._repack_model_step_settings.pop("sagemaker_session", None)
+                        or self._model.sagemaker_session
+                        or model.sagemaker_session
+                    ),
+                    role=(
+                        self._repack_model_step_settings.pop("role", None)
+                        or self._model.role
+                        or model.role
+                    ),
                     model_data=model.model_data,
                     entry_point=model.entry_point,
                     source_dir=model.source_dir,
@@ -267,8 +294,15 @@ class ModelStep(StepCollection):
                     ),
                     depends_on=self.depends_on,
                     retry_policies=self._repack_model_retry_policies,
-                    output_path=self._runtime_repack_output_prefix,
-                    output_kms_key=model.model_kms_key,
+                    output_path=(
+                        self._repack_model_step_settings.pop("output_path", None)
+                        or self._runtime_repack_output_prefix
+                    ),
+                    output_kms_key=(
+                        self._repack_model_step_settings.pop("output_kms_key", None)
+                        or model.model_kms_key
+                    ),
+                    **self._repack_model_step_settings
                 )
                 self.steps.append(repack_model_step)
 
@@ -283,3 +317,32 @@ class ModelStep(StepCollection):
                         "InferenceSpecification"
                     ]["Containers"][i]
                 container["ModelDataUrl"] = repacked_model_data
+
+    def _pop_out_non_configurable_repack_model_step_args(self):
+        """Pop out non-configurable args from _repack_model_step_settings"""
+        if not self._repack_model_step_settings:
+            return
+        for ignored_param in _IGNORED_REPACK_PARAM_LIST:
+            if self._repack_model_step_settings.pop(ignored_param, None):
+                logger.warning(
+                    "The repack model step parameter - %s is not configurable. Ignoring it.",
+                    ignored_param,
+                )
+
+    def _resolve_repack_model_step_vpc_configs(self):
+        """Resolve vpc configs for repack model step"""
+        # Note: the EstimatorBase constructor ensures that:
+        # "When setting up custom VPC, both subnets and security_group_ids must be set"
+        if self._repack_model_step_settings.get(
+            "security_group_ids", None
+        ) or self._repack_model_step_settings.get("subnets", None):
+            security_group_ids = self._repack_model_step_settings.pop("security_group_ids", None)
+            subnets = self._repack_model_step_settings.pop("subnets", None)
+            return security_group_ids, subnets
+
+        if self._model.vpc_config:
+            security_group_ids = self._model.vpc_config.get("SecurityGroupIds", None)
+            subnets = self._model.vpc_config.get("Subnets", None)
+            return security_group_ids, subnets
+
+        return None, None

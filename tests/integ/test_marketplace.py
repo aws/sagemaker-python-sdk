@@ -27,7 +27,7 @@ from tests.integ.utils import create_repository
 from sagemaker import AlgorithmEstimator, ModelPackage, Model
 from sagemaker.serializers import CSVSerializer
 from sagemaker.tuner import IntegerParameter, HyperparameterTuner
-from sagemaker.utils import sagemaker_timestamp, _aws_partition, unique_name_from_base
+from sagemaker.utils import sagemaker_timestamp, aws_partition, unique_name_from_base
 from tests.integ import DATA_DIR
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 from tests.integ.marketplace_utils import REGION_ACCOUNT_MAP
@@ -76,7 +76,7 @@ def test_marketplace_estimator(sagemaker_session, cpu_instance_type):
         region = sagemaker_session.boto_region_name
         account = REGION_ACCOUNT_MAP[region]
         algorithm_arn = ALGORITHM_ARN.format(
-            partition=_aws_partition(region), region=region, account=account
+            partition=aws_partition(region), region=region, account=account
         )
 
         algo = AlgorithmEstimator(
@@ -118,7 +118,7 @@ def test_marketplace_attach(sagemaker_session, cpu_instance_type):
         region = sagemaker_session.boto_region_name
         account = REGION_ACCOUNT_MAP[region]
         algorithm_arn = ALGORITHM_ARN.format(
-            partition=_aws_partition(region), region=region, account=account
+            partition=aws_partition(region), region=region, account=account
         )
 
         mktplace = AlgorithmEstimator(
@@ -170,7 +170,7 @@ def test_marketplace_model(sagemaker_session, cpu_instance_type):
     region = sagemaker_session.boto_region_name
     account = REGION_ACCOUNT_MAP[region]
     model_package_arn = MODEL_PACKAGE_ARN.format(
-        partition=_aws_partition(region), region=region, account=account
+        partition=aws_partition(region), region=region, account=account
     )
 
     def predict_wrapper(endpoint, session):
@@ -337,7 +337,7 @@ def test_marketplace_tuning_job(sagemaker_session, cpu_instance_type):
     region = sagemaker_session.boto_region_name
     account = REGION_ACCOUNT_MAP[region]
     algorithm_arn = ALGORITHM_ARN.format(
-        partition=_aws_partition(region), region=region, account=account
+        partition=aws_partition(region), region=region, account=account
     )
 
     mktplace = AlgorithmEstimator(
@@ -380,7 +380,7 @@ def test_marketplace_transform_job(sagemaker_session, cpu_instance_type):
     region = sagemaker_session.boto_region_name
     account = REGION_ACCOUNT_MAP[region]
     algorithm_arn = ALGORITHM_ARN.format(
-        partition=_aws_partition(region), region=region, account=account
+        partition=aws_partition(region), region=region, account=account
     )
 
     algo = AlgorithmEstimator(
@@ -428,7 +428,7 @@ def test_marketplace_transform_job_from_model_package(sagemaker_session, cpu_ins
     region = sagemaker_session.boto_region_name
     account = REGION_ACCOUNT_MAP[region]
     model_package_arn = MODEL_PACKAGE_ARN.format(
-        partition=_aws_partition(region), region=region, account=account
+        partition=aws_partition(region), region=region, account=account
     )
 
     model = ModelPackage(

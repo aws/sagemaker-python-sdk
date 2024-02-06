@@ -17,7 +17,7 @@ import pytest
 from tests.integ.sagemaker.workflow.helpers import wait_pipeline_execution
 from sagemaker import get_execution_role, utils
 from sagemaker.workflow.condition_step import ConditionStep
-from sagemaker.workflow.conditions import ConditionEquals
+from sagemaker.workflow.conditions import ConditionEquals, ConditionNot
 from sagemaker.workflow.fail_step import FailStep
 
 from sagemaker.workflow.functions import Join
@@ -37,14 +37,15 @@ def pipeline_name():
 
 def test_two_step_fail_pipeline_with_str_err_msg(sagemaker_session, role, pipeline_name):
     param = ParameterInteger(name="MyInt", default_value=2)
-    cond = ConditionEquals(left=param, right=1)
+    cond_equal = ConditionEquals(left=param, right=2)
+    cond_not_equal = ConditionNot(cond_equal)
     step_fail = FailStep(
         name="FailStep",
         error_message="Failed due to hitting in else branch",
     )
     step_cond = ConditionStep(
         name="CondStep",
-        conditions=[cond],
+        conditions=[cond_not_equal],
         if_steps=[],
         else_steps=[step_fail],
     )

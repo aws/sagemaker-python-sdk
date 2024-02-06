@@ -50,6 +50,8 @@ from sagemaker.utils import (
     check_and_get_run_experiment_config,
     resolve_value_from_config,
     resolve_class_attribute_from_config,
+    Tags,
+    format_tags,
 )
 from sagemaker.session import Session
 from sagemaker.workflow import is_pipeline_variable
@@ -83,7 +85,7 @@ class Processor(object):
         base_job_name: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
         env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
-        tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+        tags: Optional[Tags] = None,
         network_config: Optional[NetworkConfig] = None,
     ):
         """Initializes a ``Processor`` instance.
@@ -122,9 +124,8 @@ class Processor(object):
                 one using the default AWS configuration chain.
             env (dict[str, str] or dict[str, PipelineVariable]): Environment variables
                 to be passed to the processing jobs (default: None).
-            tags (list[dict[str, str] or list[dict[str, PipelineVariable]]): List of tags
-                to be passed to the processing job (default: None). For more, see
-                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            tags (Optional[Tags]): Tags to be passed to the processing job (default: None).
+                For more, see https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
             network_config (:class:`~sagemaker.network.NetworkConfig`):
                 A :class:`~sagemaker.network.NetworkConfig`
                 object that configures network isolation, encryption of
@@ -137,7 +138,7 @@ class Processor(object):
         self.volume_size_in_gb = volume_size_in_gb
         self.max_runtime_in_seconds = max_runtime_in_seconds
         self.base_job_name = base_job_name
-        self.tags = tags
+        self.tags = format_tags(tags)
 
         self.jobs = []
         self.latest_job = None
@@ -515,7 +516,7 @@ class ScriptProcessor(Processor):
         base_job_name: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
         env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
-        tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+        tags: Optional[Tags] = None,
         network_config: Optional[NetworkConfig] = None,
     ):
         """Initializes a ``ScriptProcessor`` instance.
@@ -555,9 +556,8 @@ class ScriptProcessor(Processor):
                 one using the default AWS configuration chain.
             env (dict[str, str] or dict[str, PipelineVariable])): Environment variables to
                 be passed to the processing jobs (default: None).
-            tags (list[dict[str, str] or list[dict[str, PipelineVariable]]): List of tags to
-                be passed to the processing job (default: None). For more, see
-                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            tags (Optional[Tags]): Tags to be passed to the processing job (default: None).
+                For more, see https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
             network_config (:class:`~sagemaker.network.NetworkConfig`):
                 A :class:`~sagemaker.network.NetworkConfig`
                 object that configures network isolation, encryption of
@@ -579,7 +579,7 @@ class ScriptProcessor(Processor):
             base_job_name=base_job_name,
             sagemaker_session=sagemaker_session,
             env=env,
-            tags=tags,
+            tags=format_tags(tags),
             network_config=network_config,
         )
 
@@ -1242,7 +1242,7 @@ class ProcessingInput(object):
             input_name (str or PipelineVariable): The name for the input. If a name
                 is not provided, one will be generated (eg. "input-1").
             s3_data_type (str or PipelineVariable): Valid options are "ManifestFile" or "S3Prefix".
-            s3_input_mode (str or PipelineVariable): Valid options are "Pipe" or "File".
+            s3_input_mode (str or PipelineVariable): Valid options are "Pipe", "File" or "FastFile".
             s3_data_distribution_type (str or PipelineVariable): Valid options are "FullyReplicated"
                 or "ShardedByS3Key".
             s3_compression_type (str or PipelineVariable): Valid options are "None" or "Gzip".
@@ -1442,7 +1442,7 @@ class FrameworkProcessor(ScriptProcessor):
         base_job_name: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
         env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
-        tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+        tags: Optional[Tags] = None,
         network_config: Optional[NetworkConfig] = None,
     ):
         """Initializes a ``FrameworkProcessor`` instance.
@@ -1494,9 +1494,8 @@ class FrameworkProcessor(ScriptProcessor):
                 one using the default AWS configuration chain (default: None).
             env (dict[str, str] or dict[str, PipelineVariable]): Environment variables to
                 be passed to the processing jobs (default: None).
-            tags (list[dict[str, str] or list[dict[str, PipelineVariable]]): List of tags to
-                be passed to the processing job (default: None). For more, see
-                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            tags (Optional[Tags]): Tags to be passed to the processing job (default: None).
+                For more, see https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
             network_config (:class:`~sagemaker.network.NetworkConfig`):
                 A :class:`~sagemaker.network.NetworkConfig`
                 object that configures network isolation, encryption of
@@ -1531,7 +1530,7 @@ class FrameworkProcessor(ScriptProcessor):
             base_job_name=base_job_name,
             sagemaker_session=sagemaker_session,
             env=env,
-            tags=tags,
+            tags=format_tags(tags),
             network_config=network_config,
         )
 

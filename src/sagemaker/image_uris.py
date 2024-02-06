@@ -27,13 +27,17 @@ from sagemaker.spark import defaults
 from sagemaker.jumpstart import artifacts
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.utilities import override_pipeline_parameter_var
-from sagemaker.fw_utils import GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY, GRAVITON_ALLOWED_FRAMEWORKS
+from sagemaker.fw_utils import (
+    GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY,
+    GRAVITON_ALLOWED_FRAMEWORKS,
+)
 
 logger = logging.getLogger(__name__)
 
 ECR_URI_TEMPLATE = "{registry}.dkr.{hostname}/{repository}"
 HUGGING_FACE_FRAMEWORK = "huggingface"
 HUGGING_FACE_LLM_FRAMEWORK = "huggingface-llm"
+HUGGING_FACE_LLM_NEURONX_FRAMEWORK = "huggingface-llm-neuronx"
 XGBOOST_FRAMEWORK = "xgboost"
 SKLEARN_FRAMEWORK = "sklearn"
 TRAINIUM_ALLOWED_FRAMEWORKS = "pytorch"
@@ -343,7 +347,8 @@ def _config_for_framework_and_scope(framework, image_scope, accelerator_type=Non
 
         if image_scope not in ("eia", "inference"):
             logger.warning(
-                "Elastic inference is for inference only. Ignoring image scope: %s.", image_scope
+                "Elastic inference is for inference only. Ignoring image scope: %s.",
+                image_scope,
             )
         image_scope = "eia"
 
@@ -466,6 +471,7 @@ def _validate_version_and_set_if_needed(version, config, framework):
     if version is None and framework in [
         DATA_WRANGLER_FRAMEWORK,
         HUGGING_FACE_LLM_FRAMEWORK,
+        HUGGING_FACE_LLM_NEURONX_FRAMEWORK,
         STABILITYAI_FRAMEWORK,
     ]:
         version = _get_latest_versions(available_versions)
@@ -659,6 +665,17 @@ def get_training_image_uri(
     else:
         container_version = None
         base_framework_version = None
+
+    # Check for smp library
+    if distribution is not None:
+        if "torch_distributed" in distribution and "smdistributed" in distribution:
+            if "modelparallel" in distribution["smdistributed"]:
+                if distribution["smdistributed"]["modelparallel"].get("enabled", True):
+                    framework = "pytorch-smp"
+                    if "p5" in instance_type or "2.1" in framework_version:
+                        container_version = "cu121"
+                    else:
+                        container_version = "cu118"
 
     return retrieve(
         framework,

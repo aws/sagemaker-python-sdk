@@ -42,7 +42,12 @@ from sagemaker.local.entities import (
     _LocalPipeline,
 )
 from sagemaker.session import Session
-from sagemaker.utils import get_config_value, _module_import_error, resolve_value_from_config
+from sagemaker.utils import (
+    get_config_value,
+    _module_import_error,
+    resolve_value_from_config,
+    format_tags,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -197,6 +202,10 @@ class LocalSagemakerClient(object):  # pylint: disable=too-many-public-methods
             AlgorithmSpecification["TrainingImage"],
             sagemaker_session=self.sagemaker_session,
         )
+        if AlgorithmSpecification.get("ContainerEntrypoint", None):
+            container.container_entrypoint = AlgorithmSpecification["ContainerEntrypoint"]
+        if AlgorithmSpecification.get("ContainerArguments", None):
+            container.container_arguments = AlgorithmSpecification["ContainerArguments"]
         training_job = _LocalTrainingJob(container)
         hyperparameters = kwargs["HyperParameters"] if "HyperParameters" in kwargs else {}
         logger.info("Starting training job")
@@ -332,7 +341,7 @@ class LocalSagemakerClient(object):  # pylint: disable=too-many-public-methods
 
         """
         LocalSagemakerClient._endpoint_configs[EndpointConfigName] = _LocalEndpointConfig(
-            EndpointConfigName, ProductionVariants, Tags
+            EndpointConfigName, ProductionVariants, format_tags(Tags)
         )
 
     def describe_endpoint(self, EndpointName):
@@ -362,7 +371,12 @@ class LocalSagemakerClient(object):  # pylint: disable=too-many-public-methods
         Returns:
 
         """
-        endpoint = _LocalEndpoint(EndpointName, EndpointConfigName, Tags, self.sagemaker_session)
+        endpoint = _LocalEndpoint(
+            EndpointName,
+            EndpointConfigName,
+            format_tags(Tags),
+            self.sagemaker_session,
+        )
         LocalSagemakerClient._endpoints[EndpointName] = endpoint
         endpoint.serve()
 
@@ -718,6 +732,8 @@ class LocalSession(Session):
                 else load_sagemaker_config(s3_resource=self.s3_resource)
             )
         else:
+            self.s3_resource = self.boto_session.resource("s3", region_name=self._region_name)
+            self.s3_client = self.boto_session.client("s3", region_name=self._region_name)
             self.sagemaker_config = (
                 sagemaker_config if sagemaker_config else load_sagemaker_config()
             )

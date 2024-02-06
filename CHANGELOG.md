@@ -1,5 +1,241 @@
 # Changelog
 
+## v2.207.1 (2024-02-06)
+
+### Bug Fixes and Other Changes
+
+ * Add PT 2.1 as a supported framework for the smdistributed distribution
+ * Enable private docker registry support for ModelBuilder
+ * HF PT 2.1 Image Configs
+
+### Documentation Changes
+
+ * add setup commands for documentation generation
+
+## v2.207.0 (2024-02-05)
+
+### Features
+
+ * Introduce HF Transformers to ModelBuilder
+ * retrieve jumpstart estimator and predictor without specifying model id (infer from tags)
+
+### Bug Fixes and Other Changes
+
+ * SMP PT upgrade to 2.1
+ * Fetch HF metadata only when explicit type is not selected
+ * relax upper bound for urllib dependency
+
+## v2.206.0 (2024-01-31)
+
+### Features
+
+ * Logic to detect hardware GPU count and aggregate GPU memory size in MiB
+
+### Bug Fixes and Other Changes
+
+ * fixed create monitoring schedule failing after validation error
+ * Support PipelineVariable for ModelQualityCheckConfig attributes
+ * TGI NeuronX 0.0.17
+
+## v2.205.0 (2024-01-25)
+
+### Features
+
+ * Support selective pipeline execution for function step
+
+### Bug Fixes and Other Changes
+
+ * remove fastapi and uvicorn dependencies
+ * Support using PipelineDefinitionConfig in local mode
+ * update get_execution_role_arn from metadata file if present
+ * update image_uri_configs  01-24-2024 06:17:33 PST
+ * Add validation for empty ParameterString value in start local pipeline
+
+## v2.204.0 (2024-01-23)
+
+### Features
+
+ * add throughput management support for feature group
+ * Support custom repack model settings
+ * parallelize notebook search utils, add new operators
+
+### Bug Fixes and Other Changes
+
+ * Enable galactus integ tests
+ * JumpStart - TLV region launch
+ * add warning message for job-prefixed pipeline steps when no job name is provided
+ * TGI NeuronX
+ * Updates for DJL 0.26.0 release
+ * update sphinx version
+ * Add PyTorch 2.1.0 SM Training DLC to UNSUPPORTED_DLC_IMAGE_FOR_SM_PARALLELISM list
+ * Huggingface glue failing tests
+ * change ConditionNot incorrect property Expression to Condition
+
+## v2.203.1 (2024-01-09)
+
+### Bug Fixes and Other Changes
+
+ * TGI 1.3.3
+ * skip failing integs
+ * query hf api for model md
+ * update image_uri_configs  12-29-2023 06:17:34 PST
+
+## v2.203.0 (2023-12-28)
+
+### Features
+
+ * support local mode in SageMaker Studio (#1300)
+ * Supporting tbac in load_run
+
+### Bug Fixes and Other Changes
+
+ * update image_uri_configs  12-25-2023 06:17:33 PST
+ * Disable failed test in IR
+ * Raise Exception for debug
+ * create role if needed in `get_execution_role`
+
+## v2.202.1 (2023-12-22)
+
+### Bug Fixes and Other Changes
+
+ * update image_uri_configs  12-22-2023 06:17:35 PST
+ * update model path in local mode
+ * Using logging instead of prints
+
+### Documentation Changes
+
+ * update issue template.
+
+## v2.202.0 (2023-12-21)
+
+### Features
+
+ * support remote debug for sagemaker training job
+
+### Bug Fixes and Other Changes
+
+ * update image_uri_configs  12-21-2023 08:32:41 PST
+ * Update tblib constraint
+
+## v2.201.0 (2023-12-20)
+
+### Features
+
+ * Use specific images for SMP v2 jobs
+ * Added update for model package
+
+### Bug Fixes and Other Changes
+
+ * Add write permission to job output dirs for remote and step decorator running on non-root job user
+ * Move func and args serialization of function step to step level
+
+### Documentation Changes
+
+ * SMP v2 doc updates (#1423)
+ * fix ModelBuilder sample notebook links
+
+## v2.200.1 (2023-12-14)
+
+### Bug Fixes and Other Changes
+
+ * Merge branch 'master-rba' into local_merge
+ * Fix user agent tag issue
+ * update image_uri_configs  12-13-2023 14:04:54 PST
+ * update image_uri_configs  12-13-2023 12:23:06 PST
+
+## v2.200.0 (2023-12-13)
+
+### Deprecations and Removals
+
+ * remove explicit `partitions` key requirement on pysdk side.
+
+### Features
+
+ * add non-repeating config logger
+ * Add SageMaker Geospatial verison 1.x images
+ * TGI 1.2.0 Image Uri
+ * support model.register() with triton model
+ * Enable retrieving function step results for local mode
+
+### Bug Fixes and Other Changes
+
+ * TGI 1.3.1
+ * excessive jumpstart instance type logging
+ * Support local mode for remote function
+ * `Session.download_data` can not download nested objects
+ * Fix writing into non-closed file with git clone command
+ * mitigation of xgboost container incompatibility with new version
+ * update image and hardware validation with inf and graviton
+ * remove two setuptools deprecations
+ * minor jumpstart dev ex improvements
+ * save utils fix
+ * Correct DJL neuronx regions
+ * delete unused file inference-experience-dev-tester.sh
+ * Fix Experiment Run integ test w.r.t unexpected boto3 version
+ * Bump test dependencies versions
+ * fast follow on js uncompressed support - ModelBuilder
+ * Modify Region List for Neuron Images (HF neuron/neuronx, PT Neuron)
+
+### Documentation Changes
+
+ * Mention for custom Docker Image
+
+## v2.199.0 (2023-11-30)
+
+### Features
+
+ * Update boto3 version to 1.33.3
+ * Goldfinch InferenceComponent integration
+ * Add Pipeline step decorator, NotebookJobStep, and scheduler
+ * ModelBuilder for simplified model testing and deployment
+
+### Bug Fixes and Other Changes
+
+ * Skip failing integ tests
+ * chore: add jumpstart gated model integration tests
+ * disable integration tests for Inference Component based endpoint for non supported regions
+ * remove unnecessary whl file - Galactus
+ * refactor endpoint type enums, comments, docstrings, method names…
+ * Address SA feedback regarding deployment straight to Endpoint Mode - Galactus
+ * fix HuggingFace GEN2 model deployment arguments
+ * when customer role does not have permission to read logs from CW, default to standard logging - Galactus
+ * Add pagination for ListInferenceComponent API responses, address non-blocking comments
+ * Create CSVSerializerWrapper - Galactus
+ * Model builder Final Fixes
+ * remote function include_local_workdir default value
+ * use copy instead of move in bootstrap script
+ * WaiterError on failed pipeline execution. results()
+ * Add a unit test for consistency between step and remote decorator
+ * merge WorkdirConfig and custom_filter_filter parameters
+ * Add back mixed step type integ test
+ * do not delete temp folder generated by sdist
+ * make collect_parameters decorator as private
+ * HMAC signing for ModelBuilder Triton python backend
+
+### Documentation Changes
+
+ * update docstring for Generation two endpoint and validation message
+ * galactus doc updates
+ * CustomFileFilter doc updates
+ * NotebookJobSteps class parameter severity update
+
+## v2.198.0 (2023-11-27)
+
+### Features
+
+ * re:Invent 2023 keynote1
+
+## v2.197.0 (2023-11-07)
+
+### Features
+
+ * PT2.1 SM Training/Inference DLC Release
+
+### Bug Fixes and Other Changes
+
+ * Release HuggingFace PT Neuronx training image 1.13.1
+ * HuggingFace PT Neuronx release in SDK
+
 ## v2.196.0 (2023-10-27)
 
 ### Features

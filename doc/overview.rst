@@ -820,6 +820,360 @@ the
 
    predictor.predict("this is the best day of my life", {"ContentType": "application/x-text"})
 
+Deploy a pre-trained model using the SageMaker ModelBuilder class
+-----------------------------------------------------------------
+Preparing your model for deployment on a SageMaker endpoint can take multiple steps, including choosing a model image, setting up the endpoint configuration, coding your serialization and deserialization functions to transfer data to and from server and client, identifying model dependencies, and uploading them to S3. SageMaker Modelbuilder can reduce the complexity of initial setup and deployment to help you create a SageMaker-deployable model in a single step. For an in-depth explanation of ``ModelBuilder`` and its supporting classes and examples, you can also refer to `Create a Model in Amazon SageMaker Studio with ModelBuilder <https://docs.aws.amazon.com/sagemaker/latest/dg/how-it-works-modelbuilder-creation.html>`_.
+
+Build your model with ModelBuilder
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``ModelBuilder`` takes a framework model (such as XGBoost or PyTorch) or an inference specification (as discussed in the following sections) and converts it into a SageMaker-deployable model. ``ModelBuilder`` provides a ``build`` function that generates the artifacts for deployment. The model artifact generated is specific to the model server, which you can specify as one of the inputs. For more details about the ``ModelBuilder`` class, see `ModelBuilder <https://sagemaker.readthedocs.io/en/stable/api/inference/model_builder.html#sagemaker.serve.builder.model_builder.ModelBuilder>`_.
+
+At minimum, the model builder expects a model, input, output and the role. In the following code example, ``ModelBuilder`` is called with a framework model and an instance of ``SchemaBuilder`` with minimum arguments (to infer the corresponding functions for serializing and deserializing the endpoint input and output).
+
+.. code:: python
+
+    from sagemaker.serve.builder.model_builder import ModelBuilder
+    from sagemaker.serve.builder.schema_builder import SchemaBuilder
+
+    model_builder = ModelBuilder(
+        model=model,  # xgboost or pytorch model in memory
+        schema_builder=SchemaBuilder(input, output), # "SchemaBuilder" (more details below) which will use the sample test input and output objects to infer the serialization needed.
+        role_arn="arn:aws:iam::<account-id>:role/service-role/<role-name>", # Pass in the role arn or update intelligent defaults.
+    )
+
+The following code sample invokes ``ModelBuilder`` with an ``InferenceSpec`` instance instead of a model, and includes additional customization. See the following sections for details about ``InferenceSpec``.
+
+.. code:: python
+
+    model_builder = ModelBuilder(
+        mode=Mode.LOCAL_CONTAINER,
+        model_path=resnet_model_dir,
+        inference_spec=my_inference_spec,
+        schema_builder=SchemaBuilder(input, output),
+        role_arn=execution_role,
+        dependencies={"auto": False, "custom": ["-e git+https://github.com/luca-medeiros/lang-segment-anything.git#egg=lang-sam"],}
+    )
+
+
+For example notebooks that demonstrate the use of ``ModelBuilder``, see `ModelBuilder examples <https://sagemaker.readthedocs.io/en/stable/overview.html#id1>`_.
+
+**Bring your own container (BYOC)**
+
+If you want to bring your own container that is extended from a SageMaker container, you can also specify the image URI as shown in the following example. It is also advised that you identify the model server which corresponds to the image using the ``model_server`` argument.
+
+.. code:: python
+
+    model_builder = ModelBuilder(
+        model=model,
+        model_server=ModelServer.TORCHSERVE,
+        schema_builder=SchemaBuilder(X_test, y_pred),
+        image_uri="123123123123.dkr.ecr.ap-southeast-2.amazonaws.com/byoc-image:xgb-1.7-1")
+    )
+
+
+Define serialization and deserialization methods with SchemaBuilder
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When invoking a SageMaker endpoint, the data is sent through HTTP payloads with different MIME types. For example, an image sent to the endpoint for inference needs to be converted to bytes by the client and sent through HTTP payload to the endpoint. The endpoint deserializes the bytes before model prediction, and serializes the prediction to bytes that are sent back through the HTTP payload to the client. The client performs deserialization to convert the bytes data back to the expected data format, such as JSON.
+
+When you supply sample input and output to ``SchemaBuilder``, the schema builder generates the corresponding marshalling functions for serializing and deserializing the input and output.  You can further customize your serialization functions with ``CustomPayloadTranslator``, but for most cases, a simple serializer such as the following works:
+
+.. code:: python
+
+    input = "How is the demo going?"
+    output = "Comment la démo va-t-elle?"
+    schema = SchemaBuilder(input, output)
+
+For further details about ``SchemaBuilder``, refer to `SchemaBuilder <https://sagemaker.readthedocs.io/en/stable/api/inference/model_builder.html#sagemaker.serve.builder.schema_builder.SchemaBuilder>`_. For sample notebooks that demonstrate the use of ``SchemaBuilder``, see the example notebooks in `ModelBuilder examples <https://sagemaker.readthedocs.io/en/stable/overview.html#id1>`_.
+
+
+The following code snippet outlines an example where you want to customize both serialization and deserialization functions on the client and server sides. You can define your own request and response translators with ``CustomPayloadTranslator`` and pass them to ``SchemaBuilder``.
+
+.. code:: python
+
+    from sagemaker.serve import CustomPayloadTranslator
+
+    # request translator
+    class MyRequestTranslator(CustomPayloadTranslator):
+        # This function converts the payload to bytes - happens on client side
+        def serialize_payload_to_bytes(self, payload: object) -> bytes:
+            # converts the input payload to bytes
+            ... ...
+            return  //return object as bytes
+
+        # This function converts the bytes to payload - happens on server side
+        def deserialize_payload_from_stream(self, stream) -> object:
+            # convert bytes to in-memory object
+            ... ...
+            return //return in-memory object
+
+    # response translator
+    class MyResponseTranslator(CustomPayloadTranslator):
+        # This function converts the payload to bytes - happens on server side
+        def serialize_payload_to_bytes(self, payload: object) -> bytes:
+            # converts the response payload to bytes
+            ... ...
+            return //return object as bytes
+
+        # This function converts the bytes to payload - happens on client side
+        def deserialize_payload_from_stream(self, stream) -> object:
+            # convert bytes to in-memory object
+            ... ...
+            return //return in-memory object
+
+You pass the sample input and output, along with the custom translators, to the ``SchemaBuilder`` object.
+
+.. code:: python
+
+    my_schema = SchemaBuilder(
+        sample_input=image,
+        sample_output=output,
+        input_translator=MyRequestTranslator(),
+        output_translator=MyResponseTranslator()
+    )
+
+For further details about ``CustomPayloadTranslator``, refer to `CustomPayloadTranslator <https://sagemaker.readthedocs.io/en/stable/api/inference/model_builder.html#sagemaker.serve.marshalling.custom_payload_translator.CustomPayloadTranslator>`_. For sample notebooks that demonstrate the use of ``CustomPayloadTranslator``, see the example notebooks in `ModelBuilder examples <https://sagemaker.readthedocs.io/en/stable/overview.html#id1>`_.
+
+Load the model with a custom function using InferenceSpec
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``InferenceSpec`` enables you to customize how the model is loaded and how it handles incoming inference requests, thus bypassing the default loading mechanisms. The ``invoke`` method can be customized according to how the model should pre and postprocesses incoming requests. This customization ensures that inference works correctly for the model. The following example uses ``InferenceSpec`` to generate a model with the HuggingFace pipeline. For further details about ``InferenceSpec``, refer to `InferenceSpec <https://sagemaker.readthedocs.io/en/stable/api/inference/model_builder.html#sagemaker.serve.spec.inference_spec.InferenceSpec>`_.
+
+
+.. code:: python
+
+    from sagemaker.serve.spec.inference_spec import InferenceSpec
+    from transformers import pipeline
+
+    class MyInferenceSpec(InferenceSpec):
+        def load(self, model_dir: str):
+            return pipeline("translation_en_to_fr", model="t5-small")
+
+        def invoke(self, input, model):
+            return model(input)
+
+    inf_spec = MyInferenceSpec()
+
+    model_builder = ModelBuilder(
+        inference_spec=my_inference_spec,
+        schema_builder=SchemaBuilder(X_test, y_pred)
+    )
+
+For sample notebooks that demonstrate the use of ``InferenceSpec``, see the example notebooks in `ModelBuilder examples <https://sagemaker.readthedocs.io/en/stable/overview.html#id1>`_.
+
+Build your model and deploy
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Call the ``build`` function to create your deployable model.  This step creates a model artifact in your working directory with the code necessary to create your schema, run serialization and deserialization of inputs and outputs, and execute other user-specified custom logic.
+
+As an integrity check, SageMaker packages and pickles the necessary files for deployment as part of the ``ModelBuilder`` `build` function. At the same time, SageMaker also creates HMAC signing for the pickle file and adds the secret key in the ``CreateModel`` API as an environment variable used during `deploy` or `create`. This environment variable is used during endpoint launch to validate the integrity of the pickle file.
+
+.. code:: python
+
+    # Build the model according to the model server specification and save it as files in the working directory
+    model = model_builder.build()
+
+Deploy your model with the model’s existing ``deploy`` method.  In this step, SageMaker sets up an endpoint to host your model as it starts making predictions on incoming requests. A model constructed from ``ModelBuilder`` enables live logging during deployment as an added feature.
+
+.. code:: python
+
+    predictor = model.deploy(
+        initial_instance_count=1,
+        instance_type="ml.c6i.xlarge"
+    )
+
+Use ModelBuilder in local mode
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+You can deploy your model locally by using the ``mode`` argument to switch between local testing and deploying to a SageMaker endpoint. This example demonstrates this procedure with an XGBoost model trained locally or in SageMaker. You need the store the model artifacts in the working directory, as shown in the following snippet:
+
+.. code:: python
+
+    model = XGBClassifier()
+    model.fit(X_train, y_train)
+    model.save_model(model_dir + "/my_model.xgb")
+
+Pass the model object, a ``SchemaBuilder`` instance, and set mode to ``Mode.LOCAL_CONTAINER``, as shown in the following snippet. When you invoke the ``build`` function, ``ModelBuilder`` automatically indentifies the supported framework container and scans for dependencies.
+
+.. code:: python
+
+    model_builder_local = ModelBuilder(
+        model=model,
+        schema_builder=SchemaBuilder(X_test, y_pred),
+        role_arn=execution_role,
+        mode=Mode.LOCAL_CONTAINER
+    )
+    xgb_local_builder = model_builder_local.build()
+
+Call the ``deploy`` function to deploy locally, as shown in the following snippet. If you specified parameters for instance type or count, these arguments are ignored.
+
+.. code:: python
+
+    predictor_local = xgb_local_builder.deploy()
+
+Deploy traditional models to SageMaker Endpoints
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The following examples show how to use ``ModelBuilder`` to deploy traditional machine learning models. Note: Since large models are often in the tens of gigabytes, it is recommended to create a directory within a volume with sufficient space. Then pass this directory to the model builder.
+
+**XGBoost models**.
+You can deploy the XGBoost model from the previous example to a SageMaker endpoint by changing the mode parameter when creating the ``ModelBuilder`` object.
+
+.. code:: python
+
+    model_builder = ModelBuilder(
+        model=model,
+        schema_builder=SchemaBuilder(sample_input=sample_input, sample_output=sample_output),
+        role_arn=execution_role,
+        mode=Mode.SAGEMAKER_ENDPOINT
+    )
+    xgb_builder = model_builder.build()
+    predictor = xgb_builder.deploy(
+        instance_type='ml.c5.xlarge',
+        initial_instance_count=1
+    )
+
+For a sample notebook that demonstrates using ``ModelBuilder`` to build a XGBoost model, see `XGBoost example <https://github.com/aws-samples/sagemaker-hosting/blob/main/SageMaker-Model-Builder/traditional-models/model-builder-xgboost.ipynb>`_.
+
+**Triton models**.
+You can use ``ModelBuilder`` to serve PyTorch models on a Triton inference server. Specify the ``model_server`` parameter as ``ModelServer.TRITON``, pass a model, and include a ``SchemaBuilder`` object which requires sample inputs and outputs from the model. The following snippet shows an example.
+
+.. code:: python
+
+    model_builder = ModelBuilder(
+        model=model,
+        schema_builder=SchemaBuilder(sample_input=sample_input, sample_output=sample_output),
+        role_arn=execution_role,
+        model_server=ModelServer.TRITON,
+        mode=Mode.SAGEMAKER_ENDPOINT
+    )
+
+    triton_builder = model_builder.build()
+
+    predictor = triton_builder.deploy(
+        instance_type='ml.g4dn.xlarge',
+        initial_instance_count=1
+    )
+
+For a sample notebook that demonstrates using ``ModelBuilder`` to build a Triton model, see `Triton example <https://github.com/aws-samples/sagemaker-hosting/blob/main/SageMaker-Model-Builder/traditional-models/model-builder-triton.ipynb>`_.
+
+
+**Hugging Face models**.
+This example demonstrates how to deploy a pre-trained transformer model provided by Hugging Face to SageMaker. Since this implementation uses the Hugging Face pipeline to load the model, you need to create a custom inference spec for ``ModelBuilder``.
+
+.. code:: python
+
+    class MyInferenceSpec(InferenceSpec):
+        def load(self, model_dir: str):
+            return pipeline("translation_en_to_fr", model="t5-small")
+
+        def invoke(self, input, model):
+            return model(input)
+
+    inf_spec = MyInferenceSpec()
+
+Define the input and output of the inference workload in the ``SchemaBuilder`` object.
+
+.. code:: python
+
+    value: str = "Girafatron is obsessed with giraffes, the most glorious animal on the face of this Earth. Giraftron believes all other animals are irrelevant when compared to the glorious majesty of the giraffe.\nDaniel: Hello, Girafatron!\nGirafatron:"
+    schema = SchemaBuilder(
+        value,
+        {"generated_text": "Girafatron is obsessed with giraffes, the most glorious animal on the face of this Earth. Giraftron believes all other animals are irrelevant when compared to the glorious majesty of the giraffe.\\nDaniel: Hello, Girafatron!\\nGirafatron: Hi, Daniel. I was just thinking about how magnificent giraffes are and how they should be worshiped by all.\\nDaniel: You and I think alike, Girafatron. I think all animals should be worshipped! But I guess that could be a bit impractical...\\nGirafatron: That\'s true. But the giraffe is just such an amazing creature and should always be respected!\\nDaniel: Yes! And the way you go on about giraffes, I could tell you really love them.\\nGirafatron: I\'m obsessed with them, and I\'m glad to hear you noticed!\\nDaniel: I\'"})
+
+Create the ``ModelBuilder`` object and deploy the model onto a SageMaker endpoint.
+
+.. code:: python
+
+    builder = ModelBuilder(
+        inference_spec=inf_spec,
+        mode=Mode.SAGEMAKER_ENDPOINT,  # you can change it to Mode.LOCAL_CONTAINER for local testing
+        schema_builder=schema,
+        image_uri="123123123123.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-inference:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04-v1.0"
+    )
+    model = builder.build(
+        role_arn=execution_role,
+        sagemaker_session=sagemaker_session,
+    )
+    predictor = model.deploy(
+        initial_instance_count=1,
+        instance_type='ml.g5.2xlarge'
+    )
+
+For a sample notebook that demonstrates using ``ModelBuilder`` to build a Hugging Face model, see `Hugging Face example <https://github.com/aws-samples/sagemaker-hosting/blob/main/SageMaker-Model-Builder/traditional-models/model-builder-huggingface.ipynb>`_.
+
+
+Deploy foundation models to SageMaker Endpoints
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The following examples show how to use ``ModelBuilder`` to deploy foundation models.
+
+**Hugging Face Hub**. To deploy a foundation model from Hugging Face Hub, pass the pre-trained model ID. The following code snippet deploys the `themeta-llama/Llama-2-7b-hf <https://huggingface.co/meta-llama/Llama-2-7b-hf>`_ model locally. You can change the mode to ``Mode.SAGEMAKER_ENDPOINT`` to deploy to a SageMaker endpoint.
+
+.. code::
+
+    model_dir = "/home/ec2-user/SageMaker/LoadTestResources/meta-llama2-7b", #local path where artifacts are saved
+    !mkdir -p {model_dir}
+
+    llm_hf_working_dir = str(Path(model_dir).resolve())
+
+    model_builder = ModelBuilder(
+        model="meta-llama/Llama-2-7b-hf",
+        schema_builder=SchemaBuilder(sample_input, sample_output),
+        model_path=llm_hf_working_dir,
+        mode=Mode.LOCAL_CONTAINER,
+        env_vars={
+            # Llama 2 is a gated model and requires a Hugging Face Hub token.
+            "HUGGING_FACE_HUB_TOKEN": "<YourHuggingFaceToken>"
+
+        }
+    )
+    model = model_builder.build()
+    local_predictor = model.deploy()
+
+For gated models on Hugging Face Hub, request access and pass the associated key as the environment variable `HUGGING_FACE_HUB_TOKEN`. Some Hugging Face models may require trusting of remote code, so set `HF_TRUST_REMOTE_CODE` as an environment variable.
+
+A feature of ``ModelBuilder`` is the ability to run local tuning on the container when you use `LOCAL_CONTAINER` mode. In this case ``ModelBuilder`` tunes the parameter(s) for the underlying model server. This feature can be used by executing `tuned_model=model.tune()`. Before running `tune`, clean up other containers running locally or else you might see an "address already in use" error.
+
+For a sample notebook that demonstrates using ``ModelBuilder`` to build a Hugging Face Hub model, see `Hugging Face Hub example <https://github.com/aws-samples/sagemaker-hosting/blob/main/SageMaker-Model-Builder/model-builder-huggingface-llama2.ipynb>`_.
+
+
+**JumpStart**. JumpStart also offers a number of pre-trained foundation models. Again, the model ID is required. Deploying a JumpStart model to a SageMaker endpoint is straightforward, as shown in the following example:
+
+.. code:: python
+
+    model_builder = ModelBuilder(
+        model="huggingface-llm-falcon-7b-bf16",
+        schema_builder=SchemaBuilder(sample_input, sample_output),
+        role_arn=execution_role
+    )
+
+    sm_ep_model = model_builder.build()
+
+    predictor = sm_ep_model.deploy()
+
+For a list of available JumpStart model IDs, see `Built-in Algorithms with pre-trained Model Table <https://sagemaker.readthedocs.io/en/stable/doc_utils/pretrainedmodels.html>`_.
+
+For a sample notebook that demonstrates using ``ModelBuilder`` to build a JumpStart model, see `JumpStart example <https://github.com/aws-samples/sagemaker-hosting/blob/main/SageMaker-Model-Builder/foundation-models/model-builder-jumpstart-falcon.ipynb>`_.
+
+ModelBuilder examples
+^^^^^^^^^^^^^^^^^^^^^
+
+For example notebooks that demonstrate the use of ``ModelBuilder`` and its supporting classes, as well as model creation of traditional and foundation models, see the following links:
+
+  * `Pytorch example <https://github.com/aws-samples/sagemaker-hosting/blob/main/SageMaker-Model-Builder/traditional-models/model-builder-pytorch.ipynb>`__
+
+  * `XGBoost example <https://github.com/aws-samples/sagemaker-hosting/blob/main/SageMaker-Model-Builder/traditional-models/model-builder-xgboost.ipynb>`__
+
+  * `Triton example <https://github.com/aws-samples/sagemaker-hosting/blob/main/SageMaker-Model-Builder/traditional-models/model-builder-triton.ipynb>`__
+
+  * `Hugging Face example <https://github.com/aws-samples/sagemaker-hosting/blob/main/SageMaker-Model-Builder/traditional-models/model-builder-huggingface.ipynb>`__
+
+  * `Hugging Face Hub example <https://github.com/aws-samples/sagemaker-hosting/blob/main/SageMaker-Model-Builder/foundation-models/model-builder-huggingface-llama2.ipynb>`__
+
+  * `JumpStart example <https://github.com/aws-samples/sagemaker-hosting/blob/main/SageMaker-Model-Builder/foundation-models/model-builder-jumpstart-falcon.ipynb>`__
+
+
 Fine-tune a Model and Deploy to a SageMaker Endpoint
 ====================================================
 

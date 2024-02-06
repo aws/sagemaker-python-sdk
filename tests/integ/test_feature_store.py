@@ -43,6 +43,9 @@ from sagemaker.feature_store.inputs import (
     TtlDuration,
     OnlineStoreConfigUpdate,
     OnlineStoreStorageTypeEnum,
+    ThroughputConfig,
+    ThroughputModeEnum,
+    ThroughputConfigUpdate,
 )
 from sagemaker.feature_store.dataset_builder import (
     JoinTypeEnum,
@@ -408,6 +411,78 @@ def test_create_feature_group_standard_storage_type(
 
         storage_type = feature_group.describe().get("OnlineStoreConfig").get("StorageType")
         assert storage_type == "Standard"
+
+
+def test_throughput_create_as_provisioned_and_update_to_ondemand(
+    feature_store_session,
+    role,
+    feature_group_name,
+    pandas_data_frame,
+):
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
+    feature_group.load_feature_definitions(data_frame=pandas_data_frame)
+    with cleanup_feature_group(feature_group):
+        feature_group.create(
+            s3_uri=False,
+            record_identifier_name="feature1",
+            event_time_feature_name="feature3",
+            role_arn=role,
+            enable_online_store=True,
+            throughput_config=ThroughputConfig(ThroughputModeEnum.PROVISIONED, 4000, 4000),
+        )
+        _wait_for_feature_group_create(feature_group)
+
+        tp_config = feature_group.describe().get("ThroughputConfig")
+        mode = tp_config.get("ThroughputMode")
+        rcu = tp_config.get("ProvisionedReadCapacityUnits")
+        wcu = tp_config.get("ProvisionedWriteCapacityUnits")
+        assert mode == ThroughputModeEnum.PROVISIONED.value
+        assert rcu == 4000
+        assert wcu == 4000
+
+        feature_group.update(throughput_config=ThroughputConfigUpdate(ThroughputModeEnum.ON_DEMAND))
+        _wait_for_feature_group_update(feature_group)
+
+        tp_config = feature_group.describe().get("ThroughputConfig")
+        mode = tp_config.get("ThroughputMode")
+        assert mode == ThroughputModeEnum.ON_DEMAND.value
+
+
+def test_throughput_create_as_ondemand_and_update_to_provisioned(
+    feature_store_session,
+    role,
+    feature_group_name,
+    pandas_data_frame,
+):
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
+    feature_group.load_feature_definitions(data_frame=pandas_data_frame)
+    with cleanup_feature_group(feature_group):
+        feature_group.create(
+            s3_uri=False,
+            record_identifier_name="feature1",
+            event_time_feature_name="feature3",
+            role_arn=role,
+            enable_online_store=True,
+            throughput_config=ThroughputConfig(ThroughputModeEnum.ON_DEMAND),
+        )
+        _wait_for_feature_group_create(feature_group)
+
+        tp_config = feature_group.describe().get("ThroughputConfig")
+        mode = tp_config.get("ThroughputMode")
+        assert mode == ThroughputModeEnum.ON_DEMAND.value
+
+        feature_group.update(
+            throughput_config=ThroughputConfigUpdate(ThroughputModeEnum.PROVISIONED, 100, 200)
+        )
+        _wait_for_feature_group_update(feature_group)
+
+        tp_config = feature_group.describe().get("ThroughputConfig")
+        mode = tp_config.get("ThroughputMode")
+        rcu = tp_config.get("ProvisionedReadCapacityUnits")
+        wcu = tp_config.get("ProvisionedWriteCapacityUnits")
+        assert mode == ThroughputModeEnum.PROVISIONED.value
+        assert rcu == 100
+        assert wcu == 200
 
 
 def test_ttl_duration(

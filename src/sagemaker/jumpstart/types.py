@@ -15,13 +15,15 @@ from __future__ import absolute_import
 from copy import deepcopy
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Union
-from sagemaker.utils import get_instance_type_family
+from sagemaker.utils import get_instance_type_family, format_tags, Tags
 from sagemaker.model_metrics import ModelMetrics
 from sagemaker.metadata_properties import MetadataProperties
 from sagemaker.drift_check_baselines import DriftCheckBaselines
 
 from sagemaker.session import Session
 from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
+from sagemaker.enums import EndpointType
 
 
 class JumpStartDataHolderType:
@@ -128,7 +130,7 @@ class JumpStartLaunchedRegionInfo(JumpStartDataHolderType):
 class JumpStartModelHeader(JumpStartDataHolderType):
     """Data class JumpStart model header."""
 
-    __slots__ = ["model_id", "version", "min_version", "spec_key"]
+    __slots__ = ["model_id", "version", "min_version", "spec_key", "search_keywords"]
 
     def __init__(self, header: Dict[str, str]):
         """Initializes a JumpStartModelHeader object from its json representation.
@@ -140,7 +142,11 @@ class JumpStartModelHeader(JumpStartDataHolderType):
 
     def to_json(self) -> Dict[str, str]:
         """Returns json representation of JumpStartModelHeader object."""
-        json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
+        json_obj = {
+            att: getattr(self, att)
+            for att in self.__slots__
+            if getattr(self, att, None) is not None
+        }
         return json_obj
 
     def from_json(self, json_obj: Dict[str, str]) -> None:
@@ -153,6 +159,7 @@ class JumpStartModelHeader(JumpStartDataHolderType):
         self.version: str = json_obj["version"]
         self.min_version: str = json_obj["min_version"]
         self.spec_key: str = json_obj["spec_key"]
+        self.search_keywords: Optional[List[str]] = json_obj.get("search_keywords")
 
 
 class JumpStartECRSpecs(JumpStartDataHolderType):
@@ -339,7 +346,6 @@ class JumpStartSerializablePayload(JumpStartDataHolderType):
         "content_type",
         "accept",
         "body",
-        "generated_text_response_key",
         "prompt_key",
     ]
 
@@ -371,7 +377,6 @@ class JumpStartSerializablePayload(JumpStartDataHolderType):
         self.content_type = json_obj["content_type"]
         self.body = json_obj["body"]
         accept = json_obj.get("accept")
-        self.generated_text_response_key = json_obj.get("generated_text_response_key")
         self.prompt_key = json_obj.get("prompt_key")
         if accept:
             self.accept = accept
@@ -581,6 +586,16 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
 
         return instance_family_environment_variables
 
+    def get_instance_specific_gated_model_key_env_var_value(
+        self, instance_type: str
+    ) -> Optional[str]:
+        """Returns instance specific gated model env var s3 key.
+
+        Returns None if a model, instance type tuple does not have instance
+        specific property.
+        """
+        return self._get_instance_specific_property(instance_type, "gated_model_key_env_var_value")
+
     def get_instance_specific_default_inference_instance_type(
         self, instance_type: str
     ) -> Optional[str]:
@@ -720,10 +735,13 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         "training_dependencies",
         "training_vulnerabilities",
         "deprecated",
+        "usage_info_message",
         "deprecated_message",
         "deprecate_warn_message",
         "default_inference_instance_type",
         "supported_inference_instance_types",
+        "dynamic_container_deployment_supported",
+        "hosting_resource_requirements",
         "default_training_instance_type",
         "supported_training_instance_types",
         "metrics",
@@ -789,6 +807,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         self.deprecated: bool = bool(json_obj["deprecated"])
         self.deprecated_message: Optional[str] = json_obj.get("deprecated_message")
         self.deprecate_warn_message: Optional[str] = json_obj.get("deprecate_warn_message")
+        self.usage_info_message: Optional[str] = json_obj.get("usage_info_message")
         self.default_inference_instance_type: Optional[str] = json_obj.get(
             "default_inference_instance_type"
         )
@@ -800,6 +819,12 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         )
         self.supported_training_instance_types: Optional[List[str]] = json_obj.get(
             "supported_training_instance_types"
+        )
+        self.dynamic_container_deployment_supported: Optional[bool] = bool(
+            json_obj.get("dynamic_container_deployment_supported")
+        )
+        self.hosting_resource_requirements: Optional[Dict[str, int]] = json_obj.get(
+            "hosting_resource_requirements", None
         )
         self.metrics: Optional[List[Dict[str, str]]] = json_obj.get("metrics", None)
         self.training_prepacked_script_key: Optional[str] = json_obj.get(
@@ -901,10 +926,12 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
 
     def use_training_model_artifact(self) -> bool:
         """Returns True if the model should use a model uri when kicking off training job."""
-        return (
-            self.training_model_package_artifact_uris is None
-            or len(self.training_model_package_artifact_uris) == 0
-        )
+        # gated model never use training model artifact
+        if self.gated_bucket:
+            return False
+
+        # otherwise, return true is a training model package is not set
+        return len(self.training_model_package_artifact_uris or {}) == 0
 
     def supports_incremental_training(self) -> bool:
         """Returns True if the model supports incremental training."""
@@ -1022,6 +1049,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         "git_config",
         "model_package_arn",
         "training_instance_type",
+        "resources",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -1062,6 +1090,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         tolerate_deprecated_model: Optional[bool] = None,
         model_package_arn: Optional[str] = None,
         training_instance_type: Optional[str] = None,
+        resources: Optional[ResourceRequirements] = None,
     ) -> None:
         """Instantiates JumpStartModelInitKwargs object."""
 
@@ -1090,6 +1119,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         self.tolerate_vulnerable_model = tolerate_vulnerable_model
         self.model_package_arn = model_package_arn
         self.training_instance_type = training_instance_type
+        self.resources = resources
 
 
 class JumpStartModelDeployKwargs(JumpStartKwargs):
@@ -1120,6 +1150,10 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "tolerate_deprecated_model",
         "sagemaker_session",
         "training_instance_type",
+        "accept_eula",
+        "endpoint_logging",
+        "resources",
+        "endpoint_type",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -1143,7 +1177,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         deserializer: Optional[Any] = None,
         accelerator_type: Optional[str] = None,
         endpoint_name: Optional[str] = None,
-        tags: List[Dict[str, str]] = None,
+        tags: Optional[Tags] = None,
         kms_key: Optional[str] = None,
         wait: Optional[bool] = None,
         data_capture_config: Optional[Any] = None,
@@ -1158,6 +1192,10 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         tolerate_vulnerable_model: Optional[bool] = None,
         sagemaker_session: Optional[Session] = None,
         training_instance_type: Optional[str] = None,
+        accept_eula: Optional[bool] = None,
+        endpoint_logging: Optional[bool] = None,
+        resources: Optional[ResourceRequirements] = None,
+        endpoint_type: Optional[EndpointType] = None,
     ) -> None:
         """Instantiates JumpStartModelDeployKwargs object."""
 
@@ -1170,7 +1208,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         self.deserializer = deserializer
         self.accelerator_type = accelerator_type
         self.endpoint_name = endpoint_name
-        self.tags = deepcopy(tags)
+        self.tags = format_tags(tags)
         self.kms_key = kms_key
         self.wait = wait
         self.data_capture_config = data_capture_config
@@ -1185,6 +1223,10 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         self.tolerate_deprecated_model = tolerate_deprecated_model
         self.sagemaker_session = sagemaker_session
         self.training_instance_type = training_instance_type
+        self.accept_eula = accept_eula
+        self.endpoint_logging = endpoint_logging
+        self.resources = resources
+        self.endpoint_type = endpoint_type
 
 
 class JumpStartEstimatorInitKwargs(JumpStartKwargs):
@@ -1243,6 +1285,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         "container_arguments",
         "disable_output_compression",
         "enable_infra_check",
+        "enable_remote_debug",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -1272,7 +1315,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         base_job_name: Optional[str] = None,
         sagemaker_session: Optional[Any] = None,
         hyperparameters: Optional[Dict[str, Union[str, Any]]] = None,
-        tags: Optional[List[Dict[str, Union[str, Any]]]] = None,
+        tags: Optional[Tags] = None,
         subnets: Optional[List[Union[str, Any]]] = None,
         security_group_ids: Optional[List[Union[str, Any]]] = None,
         model_uri: Optional[str] = None,
@@ -1307,6 +1350,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         container_arguments: Optional[List[str]] = None,
         disable_output_compression: Optional[bool] = None,
         enable_infra_check: Optional[Union[bool, PipelineVariable]] = None,
+        enable_remote_debug: Optional[Union[bool, PipelineVariable]] = None,
     ) -> None:
         """Instantiates JumpStartEstimatorInitKwargs object."""
 
@@ -1331,7 +1375,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         self.output_kms_key = output_kms_key
         self.base_job_name = base_job_name
         self.sagemaker_session = sagemaker_session
-        self.tags = deepcopy(tags)
+        self.tags = format_tags(tags)
         self.subnets = subnets
         self.security_group_ids = security_group_ids
         self.model_channel_name = model_channel_name
@@ -1364,6 +1408,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         self.container_arguments = container_arguments
         self.disable_output_compression = disable_output_compression
         self.enable_infra_check = enable_infra_check
+        self.enable_remote_debug = enable_remote_debug
 
 
 class JumpStartEstimatorFitKwargs(JumpStartKwargs):
@@ -1486,7 +1531,7 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         deserializer: Optional[Any] = None,
         accelerator_type: Optional[str] = None,
         endpoint_name: Optional[str] = None,
-        tags: List[Dict[str, str]] = None,
+        tags: Optional[Tags] = None,
         kms_key: Optional[str] = None,
         wait: Optional[bool] = None,
         data_capture_config: Optional[Any] = None,
@@ -1533,7 +1578,7 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         self.deserializer = deserializer
         self.accelerator_type = accelerator_type
         self.endpoint_name = endpoint_name
-        self.tags = deepcopy(tags)
+        self.tags = format_tags(tags)
         self.kms_key = kms_key
         self.wait = wait
         self.data_capture_config = data_capture_config

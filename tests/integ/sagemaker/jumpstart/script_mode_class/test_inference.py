@@ -35,7 +35,10 @@ def test_jumpstart_inference_model_class(setup):
     model_id, model_version = "catboost-classification-model", "1.2.7"
 
     instance_type = instance_types.retrieve_default(
-        model_id=model_id, model_version=model_version, scope="inference"
+        model_id=model_id,
+        model_version=model_version,
+        scope="inference",
+        tolerate_vulnerable_model=True,
     )
     instance_count = 1
 
@@ -48,24 +51,33 @@ def test_jumpstart_inference_model_class(setup):
         model_id=model_id,
         model_version=model_version,
         instance_type=instance_type,
+        tolerate_vulnerable_model=True,
     )
 
     script_uri = script_uris.retrieve(
-        model_id=model_id, model_version=model_version, script_scope="inference"
+        model_id=model_id,
+        model_version=model_version,
+        script_scope="inference",
+        tolerate_vulnerable_model=True,
     )
 
     model_uri = model_uris.retrieve(
-        model_id=model_id, model_version=model_version, model_scope="inference"
+        model_id=model_id,
+        model_version=model_version,
+        model_scope="inference",
+        tolerate_vulnerable_model=True,
     )
 
     env = environment_variables.retrieve_default(
         model_id=model_id,
         model_version=model_version,
         include_aws_sdk_env_vars=False,
+        tolerate_vulnerable_model=True,
     )
     model_kwargs = _retrieve_model_init_kwargs(
         model_id=model_id,
         model_version=model_version,
+        tolerate_vulnerable_model=True,
     )
 
     model = Model(
@@ -83,6 +95,7 @@ def test_jumpstart_inference_model_class(setup):
         model_id=model_id,
         model_version=model_version,
         instance_type=instance_type,
+        tolerate_vulnerable_model=True,
     )
 
     model.deploy(
@@ -97,6 +110,7 @@ def test_jumpstart_inference_model_class(setup):
         model_id=model_id,
         model_version=model_version,
         sagemaker_session=get_sm_session(),
+        tolerate_vulnerable_model=True,
     )
 
     download_inference_assets()

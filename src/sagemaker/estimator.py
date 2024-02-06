@@ -98,6 +98,8 @@ from sagemaker.utils import (
     to_string,
     check_and_get_run_experiment_config,
     resolve_value_from_config,
+    format_tags,
+    Tags,
 )
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
@@ -144,7 +146,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         output_kms_key: Optional[Union[str, PipelineVariable]] = None,
         base_job_name: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
-        tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+        tags: Optional[Tags] = None,
         subnets: Optional[List[Union[str, PipelineVariable]]] = None,
         security_group_ids: Optional[List[Union[str, PipelineVariable]]] = None,
         model_uri: Optional[str] = None,
@@ -178,6 +180,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         container_entry_point: Optional[List[str]] = None,
         container_arguments: Optional[List[str]] = None,
         disable_output_compression: bool = False,
+        enable_remote_debug: Optional[Union[bool, PipelineVariable]] = None,
         **kwargs,
     ):
         """Initialize an ``EstimatorBase`` instance.
@@ -269,8 +272,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 manages interactions with Amazon SageMaker APIs and any other
                 AWS services needed. If not specified, the estimator creates one
                 using the default AWS configuration chain.
-            tags (list[dict[str, str] or list[dict[str, PipelineVariable]]):
-                List of tags for labeling a training job. For more, see
+            tags (Optional[Tags]):
+                Tags for labeling a training job. For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
             subnets (list[str] or list[PipelineVariable]): List of subnet ids. If not
                 specified training job will be created without VPC config.
@@ -540,6 +543,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 to Amazon S3 without compression after training finishes.
             enable_infra_check (bool or PipelineVariable): Optional.
                 Specifies whether it is running Sagemaker built-in infra check jobs.
+            enable_remote_debug (bool or PipelineVariable): Optional.
+                Specifies whether RemoteDebug is enabled for the training job
         """
         instance_count = renamed_kwargs(
             "train_instance_count", "instance_count", instance_count, kwargs
@@ -578,6 +583,17 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.dependencies = dependencies or []
         self.uploaded_code: Optional[UploadedCode] = None
 
+        # Check that the user properly sets both subnet and secutiry_groupe_ids
+        if (
+            subnets is not None
+            and security_group_ids is None
+            or security_group_ids is not None
+            and subnets is None
+        ):
+            raise RuntimeError(
+                "When setting up custom VPC, both subnets and security_group_ids must be set"
+            )
+
         if self.instance_type in ("local", "local_gpu"):
             if self.instance_type == "local_gpu" and self.instance_count > 1:
                 raise RuntimeError("Distributed Training in Local GPU is not supported")
@@ -590,6 +606,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         else:
             self.sagemaker_session = sagemaker_session or Session()
 
+        tags = format_tags(tags)
         self.tags = (
             add_jumpstart_uri_tags(
                 tags=tags, training_model_uri=self.model_uri, training_script_uri=self.source_dir
@@ -765,6 +782,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self._is_output_path_set_from_default_bucket_and_prefix = False
 
         self.tensorboard_app = TensorBoardApp(region=self.sagemaker_session.boto_region_name)
+
+        self._enable_remote_debug = enable_remote_debug
 
     @abstractmethod
     def training_image_uri(self):
@@ -1336,7 +1355,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         framework=None,
         framework_version=None,
         compile_max_run=15 * 60,
-        tags=None,
+        tags: Optional[Tags] = None,
         target_platform_os=None,
         target_platform_arch=None,
         target_platform_accelerator=None,
@@ -1362,7 +1381,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             compile_max_run (int): Timeout in seconds for compilation (default:
                 15 * 60). After this amount of time Amazon SageMaker Neo
                 terminates the compilation job regardless of its current status.
-            tags (list[dict]): List of tags for labeling a compilation job. For
+            tags (list[dict]): Tags for labeling a compilation job. For
                 more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
             target_platform_os (str): Target Platform OS, for example: 'LINUX'.
@@ -1404,7 +1423,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             input_shape,
             output_path,
             self.role,
-            tags,
+            format_tags(tags),
             self._compilation_job_name(),
             compile_max_run,
             framework=framework,
@@ -1516,7 +1535,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         model_name=None,
         kms_key=None,
         data_capture_config=None,
-        tags=None,
+        tags: Optional[Tags] = None,
         serverless_inference_config=None,
         async_inference_config=None,
         volume_size=None,
@@ -1585,8 +1604,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 empty object passed through, will use pre-defined values in
                 ``ServerlessInferenceConfig`` class to deploy serverless endpoint. Deploy an
                 instance based endpoint if it's None. (default: None)
-            tags(List[dict[str, str]]): Optional. The list of tags to attach to this specific
+            tags(Optional[Tags]): Optional. Tags to attach to this specific
                 endpoint. Example:
+                >>> tags = {'tagname', 'tagvalue'}
+                Or
                 >>> tags = [{'Key': 'tagname', 'Value': 'tagvalue'}]
                 For more information about tags, see
                 https://boto3.amazonaws.com/v1/documentation\
@@ -1648,7 +1669,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         model.name = model_name
 
         tags = update_inference_tags_with_jumpstart_training_tags(
-            inference_tags=tags, training_tags=self.tags
+            inference_tags=format_tags(tags), training_tags=self.tags
         )
 
         return model.deploy(
@@ -1947,6 +1968,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             max_wait = job_details.get("StoppingCondition", {}).get("MaxWaitTimeInSeconds")
             if max_wait:
                 init_params["max_wait"] = max_wait
+
+        if "RemoteDebugConfig" in job_details:
+            init_params["enable_remote_debug"] = job_details["RemoteDebugConfig"].get(
+                "EnableRemoteDebug"
+            )
         return init_params
 
     def _get_instance_type(self):
@@ -1996,7 +2022,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         env=None,
         max_concurrent_transforms=None,
         max_payload=None,
-        tags=None,
+        tags: Optional[Tags] = None,
         role=None,
         volume_kms_key=None,
         vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
@@ -2030,7 +2056,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 to be made to each individual transform container at one time.
             max_payload (int): Maximum size of the payload in a single HTTP
                 request to the container in MB.
-            tags (list[dict]): List of tags for labeling a transform job. If
+            tags (Optional[Tags]): Tags for labeling a transform job. If
                 none specified, then the tags used for the training job are used
                 for the transform job.
             role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``,
@@ -2057,7 +2083,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 model. If not specified, the estimator generates a default job name
                 based on the training image name and current timestamp.
         """
-        tags = tags or self.tags
+        tags = format_tags(tags) or self.tags
         model_name = self._get_or_create_name(model_name)
 
         if self.latest_training_job is None:
@@ -2280,6 +2306,32 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         profiler_config_request_dict = self.profiler_config._to_request_dict()
 
         _TrainingJob.update(self, profiler_rule_configs, profiler_config_request_dict)
+
+    def get_remote_debug_config(self):
+        """dict: Return the configuration of RemoteDebug"""
+        return (
+            None
+            if self._enable_remote_debug is None
+            else {"EnableRemoteDebug": self._enable_remote_debug}
+        )
+
+    def enable_remote_debug(self):
+        """Enable remote debug for a training job."""
+        self._update_remote_debug(True)
+
+    def disable_remote_debug(self):
+        """Disable remote debug for a training job."""
+        self._update_remote_debug(False)
+
+    def _update_remote_debug(self, enable_remote_debug: bool):
+        """Update to enable or disable remote debug for a training job.
+
+        This method updates the ``_enable_remote_debug`` parameter
+        and enables or disables remote debug for a training job
+        """
+        self._ensure_latest_training_job()
+        _TrainingJob.update(self, remote_debug_config={"EnableRemoteDebug": enable_remote_debug})
+        self._enable_remote_debug = enable_remote_debug
 
     def get_app_url(
         self,
@@ -2509,6 +2561,9 @@ class _TrainingJob(_Job):
         if estimator.profiler_config:
             train_args["profiler_config"] = estimator.profiler_config._to_request_dict()
 
+        if estimator.get_remote_debug_config() is not None:
+            train_args["remote_debug_config"] = estimator.get_remote_debug_config()
+
         return train_args
 
     @classmethod
@@ -2538,7 +2593,12 @@ class _TrainingJob(_Job):
 
     @classmethod
     def update(
-        cls, estimator, profiler_rule_configs=None, profiler_config=None, resource_config=None
+        cls,
+        estimator,
+        profiler_rule_configs=None,
+        profiler_config=None,
+        resource_config=None,
+        remote_debug_config=None,
     ):
         """Update a running Amazon SageMaker training job.
 
@@ -2551,20 +2611,31 @@ class _TrainingJob(_Job):
             resource_config (dict): Configuration of the resources for the training job. You can
                 update the keep-alive period if the warm pool status is `Available`. No other fields
                 can be updated. (default: None).
+            remote_debug_config (dict): Configuration for RemoteDebug. (default: ``None``)
+                The dict can contain 'EnableRemoteDebug'(bool).
+                For example,
+
+                .. code:: python
+
+                    remote_debug_config = {
+                        "EnableRemoteDebug": True,
+                    } (default: None).
 
         Returns:
             sagemaker.estimator._TrainingJob: Constructed object that captures
             all information about the updated training job.
         """
         update_args = cls._get_update_args(
-            estimator, profiler_rule_configs, profiler_config, resource_config
+            estimator, profiler_rule_configs, profiler_config, resource_config, remote_debug_config
         )
         estimator.sagemaker_session.update_training_job(**update_args)
 
         return estimator.latest_training_job
 
     @classmethod
-    def _get_update_args(cls, estimator, profiler_rule_configs, profiler_config, resource_config):
+    def _get_update_args(
+        cls, estimator, profiler_rule_configs, profiler_config, resource_config, remote_debug_config
+    ):
         """Constructs a dict of arguments for updating an Amazon SageMaker training job.
 
         Args:
@@ -2585,6 +2656,7 @@ class _TrainingJob(_Job):
         update_args.update(build_dict("profiler_rule_configs", profiler_rule_configs))
         update_args.update(build_dict("profiler_config", profiler_config))
         update_args.update(build_dict("resource_config", resource_config))
+        update_args.update(build_dict("remote_debug_config", remote_debug_config))
 
         return update_args
 
@@ -2650,7 +2722,7 @@ class Estimator(EstimatorBase):
         base_job_name: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
         hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
-        tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+        tags: Optional[Tags] = None,
         subnets: Optional[List[Union[str, PipelineVariable]]] = None,
         security_group_ids: Optional[List[Union[str, PipelineVariable]]] = None,
         model_uri: Optional[str] = None,
@@ -2683,6 +2755,7 @@ class Estimator(EstimatorBase):
         container_arguments: Optional[List[str]] = None,
         disable_output_compression: bool = False,
         enable_infra_check: Optional[Union[bool, PipelineVariable]] = None,
+        enable_remote_debug: Optional[Union[bool, PipelineVariable]] = None,
         **kwargs,
     ):
         """Initialize an ``Estimator`` instance.
@@ -2779,7 +2852,7 @@ class Estimator(EstimatorBase):
                     hyperparameters. SageMaker rejects the training job request and returns an
                     validation error for detected credentials, if such user input is found.
 
-            tags (list[dict[str, str] or list[dict[str, PipelineVariable]]): List of tags for
+            tags (Optional[Tags]): Tags for
                 labeling a training job. For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
             subnets (list[str] or list[PipelineVariable]): List of subnet ids.
@@ -3044,6 +3117,8 @@ class Estimator(EstimatorBase):
                 to Amazon S3 without compression after training finishes.
             enable_infra_check (bool or PipelineVariable): Optional.
                 Specifies whether it is running Sagemaker built-in infra check jobs.
+            enable_remote_debug (bool or PipelineVariable): Optional.
+                Specifies whether RemoteDebug is enabled for the training job
         """
         self.image_uri = image_uri
         self._hyperparameters = hyperparameters.copy() if hyperparameters else {}
@@ -3060,7 +3135,7 @@ class Estimator(EstimatorBase):
             output_kms_key,
             base_job_name,
             sagemaker_session,
-            tags,
+            format_tags(tags),
             subnets,
             security_group_ids,
             model_uri=model_uri,
@@ -3095,6 +3170,7 @@ class Estimator(EstimatorBase):
             container_entry_point=container_entry_point,
             container_arguments=container_arguments,
             disable_output_compression=disable_output_compression,
+            enable_remote_debug=enable_remote_debug,
             **kwargs,
         )
 
@@ -3206,7 +3282,10 @@ class Framework(EstimatorBase):
     """
 
     _framework_name = None
-    UNSUPPORTED_DLC_IMAGE_FOR_SM_PARALLELISM = ("2.0.1-gpu-py310-cu121", "2.0-gpu-py310-cu121")
+    UNSUPPORTED_DLC_IMAGE_FOR_SM_PARALLELISM = (
+        "2.0.1-gpu-py310-cu121",
+        "2.0-gpu-py310-cu121",
+    )
 
     def __init__(
         self,
@@ -3691,7 +3770,7 @@ class Framework(EstimatorBase):
         env=None,
         max_concurrent_transforms=None,
         max_payload=None,
-        tags=None,
+        tags: Optional[Tags] = None,
         role=None,
         model_server_workers=None,
         volume_kms_key=None,
@@ -3727,7 +3806,7 @@ class Framework(EstimatorBase):
                 to be made to each individual transform container at one time.
             max_payload (int): Maximum size of the payload in a single HTTP
                 request to the container in MB.
-            tags (list[dict]): List of tags for labeling a transform job. If
+            tags (Optional[Tags]): Tags for labeling a transform job. If
                 none specified, then the tags used for the training job are used
                 for the transform job.
             role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``,
@@ -3766,7 +3845,7 @@ class Framework(EstimatorBase):
                 SageMaker Batch Transform job.
         """
         role = role or self.role
-        tags = tags or self.tags
+        tags = format_tags(tags) or self.tags
         model_name = self._get_or_create_name(model_name)
 
         if self.latest_training_job is not None:
@@ -3879,7 +3958,7 @@ class Framework(EstimatorBase):
             for unsupported_image in Framework.UNSUPPORTED_DLC_IMAGE_FOR_SM_PARALLELISM:
                 if (
                     unsupported_image in img_uri and not torch_distributed_enabled
-                ):  # disabling DLC images with CUDA12
+                ):  # disabling DLC images without SMDataParallel or SMModelParallel
                     raise ValueError(
                         f"SMDistributed is currently incompatible with DLC image: {img_uri}. "
                         "(Could be due to CUDA version being greater than 11.)"

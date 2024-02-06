@@ -31,7 +31,7 @@ from sagemaker.jumpstart.factory.model import (
 )
 from sagemaker.jumpstart.types import JumpStartSerializablePayload
 from sagemaker.jumpstart.utils import is_valid_model_id
-from sagemaker.utils import stringify_object
+from sagemaker.utils import stringify_object, format_tags, Tags
 from sagemaker.model import (
     Model,
     ModelPackage,
@@ -44,6 +44,8 @@ from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.model_metrics import ModelMetrics
 from sagemaker.metadata_properties import MetadataProperties
 from sagemaker.drift_check_baselines import DriftCheckBaselines
+from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
+from sagemaker.enums import EndpointType
 
 
 class JumpStartModel(Model):
@@ -78,6 +80,7 @@ class JumpStartModel(Model):
         dependencies: Optional[List[str]] = None,
         git_config: Optional[Dict[str, str]] = None,
         model_package_arn: Optional[str] = None,
+        resources: Optional[ResourceRequirements] = None,
     ):
         """Initializes a ``JumpStartModel``.
 
@@ -259,6 +262,10 @@ class JumpStartModel(Model):
             model_package_arn (Optional[str]): An existing SageMaker Model Package arn,
                 can be just the name if your account owns the Model Package.
                 ``model_data`` is not required. (Default: None).
+            resources (Optional[ResourceRequirements]): The compute resource requirements
+                for a model to be deployed to an endpoint.
+                Only EndpointType.INFERENCE_COMPONENT_BASED supports this feature.
+                (Default: None).
         Raises:
             ValueError: If the model ID is not recognized by JumpStart.
         """
@@ -305,6 +312,7 @@ class JumpStartModel(Model):
             dependencies=dependencies,
             git_config=git_config,
             model_package_arn=model_package_arn,
+            resources=resources,
         )
 
         self.orig_predictor_cls = predictor_cls
@@ -312,6 +320,7 @@ class JumpStartModel(Model):
         self.model_id = model_init_kwargs.model_id
         self.model_version = model_init_kwargs.model_version
         self.instance_type = model_init_kwargs.instance_type
+        self.resources = model_init_kwargs.resources
         self.tolerate_vulnerable_model = model_init_kwargs.tolerate_vulnerable_model
         self.tolerate_deprecated_model = model_init_kwargs.tolerate_deprecated_model
         self.region = model_init_kwargs.region
@@ -379,7 +388,7 @@ class JumpStartModel(Model):
                 attach to an endpoint for model loading and inference, for
                 example, 'ml.eia1.medium'. If not specified, no Elastic
                 Inference accelerator will be attached to the endpoint. (Default: None).
-            tags (List[dict[str, str]]): Optional. The list of tags to add to
+            tags (Optional[Tags]): Optional. The list of tags to add to
                 the model. Example: >>> tags = [{'Key': 'tagname', 'Value':
                 'tagvalue'}] For more information about tags, see
                 https://boto3.amazonaws.com/v1/documentation
@@ -392,6 +401,8 @@ class JumpStartModel(Model):
             kwargs: Keyword arguments coming from the caller. This class does not require
                 any so they are ignored.
         """
+
+        tags = format_tags(tags)
 
         # if the user inputs a model artifact uri, do not use model package arn to create
         # inference endpoint.
@@ -437,7 +448,7 @@ class JumpStartModel(Model):
         deserializer: Optional[BaseDeserializer] = None,
         accelerator_type: Optional[str] = None,
         endpoint_name: Optional[str] = None,
-        tags: List[Dict[str, str]] = None,
+        tags: Optional[Tags] = None,
         kms_key: Optional[str] = None,
         wait: Optional[bool] = True,
         data_capture_config: Optional[DataCaptureConfig] = None,
@@ -448,6 +459,11 @@ class JumpStartModel(Model):
         container_startup_health_check_timeout: Optional[int] = None,
         inference_recommendation_id: Optional[str] = None,
         explainer_config: Optional[ExplainerConfig] = None,
+        accept_eula: Optional[bool] = None,
+        endpoint_logging: Optional[bool] = False,
+        resources: Optional[ResourceRequirements] = None,
+        managed_instance_scaling: Optional[str] = None,
+        endpoint_type: EndpointType = EndpointType.MODEL_BASED,
     ) -> PredictorBase:
         """Creates endpoint by calling base ``Model`` class `deploy` method.
 
@@ -488,7 +504,7 @@ class JumpStartModel(Model):
             endpoint_name (Optional[str]): The name of the endpoint to create (default:
                 None). If not specified, a unique endpoint name will be created.
                 (Default: None).
-            tags (Optional[List[dict[str, str]]]): The list of tags to attach to this
+            tags (Optional[Tags]): Tags to attach to this
                 specific endpoint. (Default: None).
             kms_key (Optional[str]): The ARN of the KMS key that is used to encrypt the
                 data on the storage volume attached to the instance hosting the
@@ -526,7 +542,22 @@ class JumpStartModel(Model):
                 (Default: None).
             explainer_config (Optional[sagemaker.explainer.ExplainerConfig]): Specifies online
                 explainability configuration for use with Amazon SageMaker Clarify. (Default: None).
-
+            accept_eula (bool): For models that require a Model Access Config, specify True or
+                False to indicate whether model terms of use have been accepted.
+                The `accept_eula` value must be explicitly defined as `True` in order to
+                accept the end-user license agreement (EULA) that some
+                models require. (Default: None).
+            endpoint_logging (Optiona[bool]): If set to true, live logging will be emitted as
+                the SageMaker Endpoint starts up. (Default: False).
+            resources (Optional[ResourceRequirements]): The compute resource requirements
+                for a model to be deployed to an endpoint. Only
+                EndpointType.INFERENCE_COMPONENT_BASED supports this feature.
+                (Default: None).
+            managed_instance_scaling (Optional[Dict]): Managed intance scaling options,
+                if configured Amazon SageMaker will manage the instance number behind the
+                endpoint.
+            endpoint_type (EndpointType): The type of endpoint used to deploy models.
+                (Default: EndpointType.MODEL_BASED).
         """
 
         deploy_kwargs = get_deploy_kwargs(
@@ -541,7 +572,7 @@ class JumpStartModel(Model):
             deserializer=deserializer,
             accelerator_type=accelerator_type,
             endpoint_name=endpoint_name,
-            tags=tags,
+            tags=format_tags(tags),
             kms_key=kms_key,
             wait=wait,
             data_capture_config=data_capture_config,
@@ -553,6 +584,11 @@ class JumpStartModel(Model):
             inference_recommendation_id=inference_recommendation_id,
             explainer_config=explainer_config,
             sagemaker_session=self.sagemaker_session,
+            accept_eula=accept_eula,
+            endpoint_logging=endpoint_logging,
+            resources=resources,
+            managed_instance_scaling=managed_instance_scaling,
+            endpoint_type=endpoint_type,
         )
 
         predictor = super(JumpStartModel, self).deploy(**deploy_kwargs.to_kwargs_dict())

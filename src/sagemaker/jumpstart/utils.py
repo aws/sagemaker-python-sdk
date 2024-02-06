@@ -14,8 +14,9 @@
 from __future__ import absolute_import
 import logging
 import os
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 from urllib.parse import urlparse
+import boto3
 from packaging.version import Version
 import sagemaker
 from sagemaker.config.config_schema import (
@@ -31,6 +32,7 @@ from sagemaker.s3 import parse_s3_url
 from sagemaker.jumpstart.exceptions import (
     DeprecatedJumpStartModelError,
     VulnerableJumpStartModelError,
+    get_old_model_version_msg,
 )
 from sagemaker.jumpstart.types import (
     JumpStartModelHeader,
@@ -39,7 +41,7 @@ from sagemaker.jumpstart.types import (
 )
 from sagemaker.session import Session
 from sagemaker.config import load_sagemaker_config
-from sagemaker.utils import resolve_value_from_config
+from sagemaker.utils import resolve_value_from_config, TagsDict
 from sagemaker.workflow import is_pipeline_variable
 
 
@@ -81,13 +83,13 @@ def get_jumpstart_gated_content_bucket(
 
     gated_bucket_to_return: Optional[str] = None
     if (
-        constants.ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE in os.environ
-        and len(os.environ[constants.ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE]) > 0
+        constants.ENV_VARIABLE_JUMPSTART_GATED_CONTENT_BUCKET_OVERRIDE in os.environ
+        and len(os.environ[constants.ENV_VARIABLE_JUMPSTART_GATED_CONTENT_BUCKET_OVERRIDE]) > 0
     ):
         gated_bucket_to_return = os.environ[
-            constants.ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE
+            constants.ENV_VARIABLE_JUMPSTART_GATED_CONTENT_BUCKET_OVERRIDE
         ]
-        info_logs.append(f"Using JumpStart private bucket override: '{gated_bucket_to_return}'")
+        info_logs.append(f"Using JumpStart gated bucket override: '{gated_bucket_to_return}'")
     else:
         try:
             gated_bucket_to_return = constants.JUMPSTART_REGION_NAME_TO_LAUNCHED_REGION_DICT[
@@ -107,7 +109,8 @@ def get_jumpstart_gated_content_bucket(
     accessors.JumpStartModelsAccessor.set_jumpstart_gated_content_bucket(gated_bucket_to_return)
 
     if gated_bucket_to_return != old_gated_content_bucket:
-        accessors.JumpStartModelsAccessor.reset_cache()
+        if old_gated_content_bucket is not None:
+            accessors.JumpStartModelsAccessor.reset_cache()
         for info_log in info_logs:
             constants.JUMPSTART_LOGGER.info(info_log)
 
@@ -151,7 +154,8 @@ def get_jumpstart_content_bucket(
     accessors.JumpStartModelsAccessor.set_jumpstart_content_bucket(bucket_to_return)
 
     if bucket_to_return != old_content_bucket:
-        accessors.JumpStartModelsAccessor.reset_cache()
+        if old_content_bucket is not None:
+            accessors.JumpStartModelsAccessor.reset_cache()
         for info_log in info_logs:
             constants.JUMPSTART_LOGGER.info(info_log)
     return bucket_to_return
@@ -341,10 +345,10 @@ def get_jumpstart_base_name_if_jumpstart_model(
 
 
 def add_jumpstart_model_id_version_tags(
-    tags: Optional[List[Dict[str, str]]],
+    tags: Optional[List[TagsDict]],
     model_id: str,
     model_version: str,
-) -> List[Dict[str, str]]:
+) -> List[TagsDict]:
     """Add custom model ID and version tags to JumpStart related resources."""
     if model_id is None or model_version is None:
         return tags
@@ -364,12 +368,12 @@ def add_jumpstart_model_id_version_tags(
 
 
 def add_jumpstart_uri_tags(
-    tags: Optional[List[Dict[str, str]]] = None,
+    tags: Optional[List[TagsDict]] = None,
     inference_model_uri: Optional[Union[str, dict]] = None,
     inference_script_uri: Optional[str] = None,
     training_model_uri: Optional[str] = None,
     training_script_uri: Optional[str] = None,
-) -> Optional[List[Dict[str, str]]]:
+) -> Optional[List[TagsDict]]:
     """Add custom uri tags to JumpStart models, return the updated tags.
 
     No-op if this is not a JumpStart model related resource.
@@ -462,7 +466,9 @@ def update_inference_tags_with_jumpstart_training_tags(
     return inference_tags
 
 
-def emit_logs_based_on_model_specs(model_specs: JumpStartModelSpecs, region: str) -> None:
+def emit_logs_based_on_model_specs(
+    model_specs: JumpStartModelSpecs, region: str, s3_client: boto3.client
+) -> None:
     """Emits logs based on model specs and region."""
 
     if model_specs.hosting_eula_key:
@@ -476,6 +482,24 @@ def emit_logs_based_on_model_specs(model_specs: JumpStartModelSpecs, region: str
             model_specs.hosting_eula_key,
         )
 
+    full_version: str = model_specs.version
+
+    models_manifest_list = accessors.JumpStartModelsAccessor._get_manifest(
+        region=region, s3_client=s3_client
+    )
+    max_version_for_model_id: Optional[str] = None
+    for header in models_manifest_list:
+        if header.model_id == model_specs.model_id:
+            if max_version_for_model_id is None or Version(header.version) > Version(
+                max_version_for_model_id
+            ):
+                max_version_for_model_id = header.version
+
+    if full_version != max_version_for_model_id:
+        constants.JUMPSTART_LOGGER.info(
+            get_old_model_version_msg(model_specs.model_id, full_version, max_version_for_model_id)
+        )
+
     if model_specs.deprecated:
         deprecated_message = model_specs.deprecated_message or (
             "Using deprecated JumpStart model "
@@ -486,6 +510,9 @@ def emit_logs_based_on_model_specs(model_specs: JumpStartModelSpecs, region: str
 
     if model_specs.deprecate_warn_message:
         constants.JUMPSTART_LOGGER.warning(model_specs.deprecate_warn_message)
+
+    if model_specs.usage_info_message:
+        constants.JUMPSTART_LOGGER.info(model_specs.usage_info_message)
 
     if model_specs.inference_vulnerable or model_specs.training_vulnerable:
         constants.JUMPSTART_LOGGER.warning(
@@ -589,11 +616,18 @@ def verify_model_region_and_return_specs(
 
 
 def update_dict_if_key_not_present(
-    dict_to_update: dict, key_to_add: Any, value_to_add: Any
-) -> dict:
-    """If a key is not present in the dict, add the new (key, value) pair, and return dict."""
+    dict_to_update: Optional[dict], key_to_add: Any, value_to_add: Any
+) -> Optional[dict]:
+    """If a key is not present in the dict, add the new (key, value) pair, and return dict.
+
+    If dict is empty, return None.
+    """
+    if dict_to_update is None:
+        dict_to_update = {}
     if key_to_add not in dict_to_update:
         dict_to_update[key_to_add] = value_to_add
+    if dict_to_update == {}:
+        dict_to_update = None
 
     return dict_to_update
 
@@ -726,13 +760,53 @@ def is_valid_model_id(
     if script == enums.JumpStartScriptScope.INFERENCE:
         return model_id in model_id_set
     if script == enums.JumpStartScriptScope.TRAINING:
-        return (
-            model_id in model_id_set
-            and accessors.JumpStartModelsAccessor.get_model_specs(
-                region=region,
-                model_id=model_id,
-                version=model_version,
-                s3_client=s3_client,
-            ).training_supported
-        )
+        return model_id in model_id_set
     raise ValueError(f"Unsupported script: {script}")
+
+
+def get_jumpstart_model_id_version_from_resource_arn(
+    resource_arn: str,
+    sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+) -> Tuple[Optional[str], Optional[str]]:
+    """Returns the JumpStart model ID and version if in resource tags.
+
+    Returns 'None' if model ID or version cannot be inferred from tags.
+    """
+
+    list_tags_result = sagemaker_session.list_tags(resource_arn)
+
+    model_id: Optional[str] = None
+    model_version: Optional[str] = None
+
+    model_id_keys = [enums.JumpStartTag.MODEL_ID, *constants.EXTRA_MODEL_ID_TAGS]
+    model_version_keys = [enums.JumpStartTag.MODEL_VERSION, *constants.EXTRA_MODEL_VERSION_TAGS]
+
+    for model_id_key in model_id_keys:
+        try:
+            model_id_from_tag = get_tag_value(model_id_key, list_tags_result)
+        except KeyError:
+            continue
+        if model_id_from_tag is not None:
+            if model_id is not None and model_id_from_tag != model_id:
+                constants.JUMPSTART_LOGGER.warning(
+                    "Found multiple model ID tags on the following resource: %s", resource_arn
+                )
+                model_id = None
+                break
+            model_id = model_id_from_tag
+
+    for model_version_key in model_version_keys:
+        try:
+            model_version_from_tag = get_tag_value(model_version_key, list_tags_result)
+        except KeyError:
+            continue
+        if model_version_from_tag is not None:
+            if model_version is not None and model_version_from_tag != model_version:
+                constants.JUMPSTART_LOGGER.warning(
+                    "Found multiple model version tags on the following resource: %s", resource_arn
+                )
+                model_version = None
+                break
+            model_version = model_version_from_tag
+
+    return model_id, model_version

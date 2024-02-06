@@ -46,7 +46,6 @@ from sagemaker.utils import (
 from tests.unit.sagemaker.workflow.helpers import CustomStep
 from sagemaker.workflow.parameters import ParameterString, ParameterInteger
 
-
 BUCKET_WITHOUT_WRITING_PERMISSION = "s3://bucket-without-writing-permission"
 
 NAME = "base_name"
@@ -54,7 +53,6 @@ BUCKET_NAME = "some_bucket"
 
 
 def test_get_config_value():
-
     config = {"local": {"region_name": "us-west-2", "port": "123"}, "other": {"key": 1}}
 
     assert sagemaker.utils.get_config_value("local.region_name", config) == "us-west-2"
@@ -384,6 +382,9 @@ def test_set_nested_value():
 
 
 def test_get_short_version():
+    assert sagemaker.utils.get_short_version("2.1.0") == "2.1"
+    assert sagemaker.utils.get_short_version("2.1") == "2.1"
+    assert sagemaker.utils.get_short_version("2.0.1") == "2.0"
     assert sagemaker.utils.get_short_version("2.0.0") == "2.0"
     assert sagemaker.utils.get_short_version("2.0") == "2.0"
 
@@ -469,6 +470,20 @@ def test_name_from_base_short(sagemaker_short_timestamp):
 
 def test_unique_name_from_base():
     assert re.match(r"base-\d{10}-[a-f0-9]{4}", sagemaker.utils.unique_name_from_base("base"))
+
+
+def test_unique_name_from_base_uuid4():
+    assert re.match(
+        r"base-([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})",
+        sagemaker.utils.unique_name_from_base_uuid4("base"),
+    )
+
+
+def test_unique_name_from_base_uuid4_truncated():
+    assert re.match(
+        r"a-really-long-([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})",
+        sagemaker.utils.unique_name_from_base_uuid4("a-really-long-base-name", max_length=50),
+    )
 
 
 def test_unique_name_from_base_truncated():
@@ -584,7 +599,6 @@ SAMPLE_DATA_CONFIG = {"us-west-2": "sagemaker-hosted-datasets", "default": "sage
 
 
 def test_notebooks_data_config_if_region_not_present():
-
     sample_data_config = json.dumps(SAMPLE_DATA_CONFIG)
 
     boto_mock = MagicMock(name="boto_session", region_name="ap-northeast-1")
@@ -599,7 +613,6 @@ def test_notebooks_data_config_if_region_not_present():
 
 
 def test_notebooks_data_config_if_region_present():
-
     sample_data_config = json.dumps(SAMPLE_DATA_CONFIG)
 
     boto_mock = MagicMock(name="boto_session", region_name="us-west-2")
@@ -759,7 +772,6 @@ def tmp(tmpdir):
 
 
 def test_repack_model_without_source_dir(tmp, fake_s3):
-
     create_file_tree(
         tmp,
         [
@@ -807,7 +819,6 @@ def test_repack_model_without_source_dir(tmp, fake_s3):
 
 
 def test_repack_model_with_entry_point_without_path_without_source_dir(tmp, fake_s3):
-
     create_file_tree(
         tmp,
         [
@@ -846,7 +857,6 @@ def test_repack_model_with_entry_point_without_path_without_source_dir(tmp, fake
 
 
 def test_repack_model_from_s3_to_s3(tmp, fake_s3):
-
     create_file_tree(
         tmp,
         [
@@ -1091,11 +1101,11 @@ def test_sts_regional_endpoint():
 
 
 def test_partition_by_region():
-    assert sagemaker.utils._aws_partition("us-west-2") == "aws"
-    assert sagemaker.utils._aws_partition("cn-north-1") == "aws-cn"
-    assert sagemaker.utils._aws_partition("us-gov-east-1") == "aws-us-gov"
-    assert sagemaker.utils._aws_partition("us-iso-east-1") == "aws-iso"
-    assert sagemaker.utils._aws_partition("us-isob-east-1") == "aws-iso-b"
+    assert sagemaker.utils.aws_partition("us-west-2") == "aws"
+    assert sagemaker.utils.aws_partition("cn-north-1") == "aws-cn"
+    assert sagemaker.utils.aws_partition("us-gov-east-1") == "aws-us-gov"
+    assert sagemaker.utils.aws_partition("us-iso-east-1") == "aws-iso"
+    assert sagemaker.utils.aws_partition("us-isob-east-1") == "aws-iso-b"
 
 
 def test_pop_out_unused_kwarg():
@@ -1180,7 +1190,6 @@ def test_retry_with_backoff(patched_sleep):
 
 
 def test_resolve_value_from_config():
-
     mock_config_logger = Mock()
 
     mock_info_logger = Mock()

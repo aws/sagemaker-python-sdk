@@ -123,6 +123,11 @@ def skip_if_not_mms_version(mxnet_inference_version):
         pytest.skip("Skipping because this version does not use MMS")
 
 
+@pytest.fixture()
+def component_name():
+    return "test_component_name"
+
+
 def _get_train_args(job_name):
     return {
         "image_uri": IMAGE,
@@ -1155,3 +1160,9 @@ def test_register_mxnet_model_auto_infer_framework(
     sagemaker_session.create_model_package_from_containers.assert_called_with(
         **expected_create_model_package_request
     )
+
+
+def test_predictor_with_component_name(sagemaker_session, component_name):
+    predictor = MXNetPredictor("endpoint", sagemaker_session, component_name=component_name)
+
+    assert predictor._get_component_name() == component_name

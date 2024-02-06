@@ -57,6 +57,7 @@ _DEFINITION_CONFIG = PipelineDefinitionConfig(use_custom_job_prefix=False)
 MOCKED_PIPELINE_CONFIG = _PipelineConfig(
     "test-pipeline",
     "test-training-step",
+    None,
     "code-hash-0123456789",
     "config-hash-0123456789",
     _DEFINITION_CONFIG,
@@ -248,7 +249,7 @@ def test_transformer_init_optional_params(sagemaker_session):
     accept = "text/csv"
     max_concurrent_transforms = 100
     max_payload = 100
-    tags = {"Key": "foo", "Value": "bar"}
+    tags = [{"Key": "foo", "Value": "bar"}]
     env = {"FOO": "BAR"}
 
     transformer = Transformer(
@@ -572,7 +573,7 @@ def test_start_new(prepare_data_processing, load_config, sagemaker_session):
     strategy = "MultiRecord"
     max_concurrent_transforms = 100
     max_payload = 100
-    tags = {"Key": "foo", "Value": "bar"}
+    tags = [{"Key": "foo", "Value": "bar"}]
     env = {"FOO": "BAR"}
 
     transformer = Transformer(

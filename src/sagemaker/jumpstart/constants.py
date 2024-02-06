@@ -13,6 +13,7 @@
 """This module stores constants related to SageMaker JumpStart."""
 from __future__ import absolute_import
 import logging
+import os
 from typing import Dict, Set, Type
 import boto3
 from sagemaker.base_deserializers import BaseDeserializer, JSONDeserializer
@@ -32,6 +33,8 @@ from sagemaker.base_serializers import (
 )
 from sagemaker.session import Session
 
+
+ENV_VARIABLE_DISABLE_JUMPSTART_LOGGING = "DISABLE_JUMPSTART_LOGGING"
 
 JUMPSTART_LAUNCHED_REGIONS: Set[JumpStartLaunchedRegionInfo] = set(
     [
@@ -139,6 +142,11 @@ JUMPSTART_LAUNCHED_REGIONS: Set[JumpStartLaunchedRegionInfo] = set(
             region_name="cn-north-1",
             content_bucket="jumpstart-cache-prod-cn-north-1",
         ),
+        JumpStartLaunchedRegionInfo(
+            region_name="il-central-1",
+            content_bucket="jumpstart-cache-prod-il-central-1",
+            gated_content_bucket="jumpstart-private-cache-prod-il-central-1",
+        ),
     ]
 )
 
@@ -168,6 +176,7 @@ TRAINING_ENTRY_POINT_SCRIPT_NAME = "transfer_learning.py"
 SUPPORTED_JUMPSTART_SCOPES = set(scope.value for scope in JumpStartScriptScope)
 
 ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE = "AWS_JUMPSTART_CONTENT_BUCKET_OVERRIDE"
+ENV_VARIABLE_JUMPSTART_GATED_CONTENT_BUCKET_OVERRIDE = "AWS_JUMPSTART_GATED_CONTENT_BUCKET_OVERRIDE"
 ENV_VARIABLE_JUMPSTART_MODEL_ARTIFACT_BUCKET_OVERRIDE = "AWS_JUMPSTART_MODEL_BUCKET_OVERRIDE"
 ENV_VARIABLE_JUMPSTART_SCRIPT_ARTIFACT_BUCKET_OVERRIDE = "AWS_JUMPSTART_SCRIPT_BUCKET_OVERRIDE"
 ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE = (
@@ -208,6 +217,19 @@ MODEL_ID_LIST_WEB_URL = "https://sagemaker.readthedocs.io/en/stable/doc_utils/pr
 
 JUMPSTART_LOGGER = logging.getLogger("sagemaker.jumpstart")
 
+# disable logging if env var is set
+JUMPSTART_LOGGER.addHandler(
+    type(
+        "",
+        (logging.StreamHandler,),
+        {
+            "emit": lambda self, *args, **kwargs: logging.StreamHandler.emit(self, *args, **kwargs)
+            if not os.environ.get(ENV_VARIABLE_DISABLE_JUMPSTART_LOGGING)
+            else None
+        },
+    )()
+)
+
 try:
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION = Session(
         boto3.Session(region_name=JUMPSTART_DEFAULT_REGION_NAME)
@@ -218,3 +240,9 @@ except Exception as e:  # pylint: disable=W0703
         "Unable to create default JumpStart SageMaker Session due to the following error: %s.",
         str(e),
     )
+
+EXTRA_MODEL_ID_TAGS = ["sm-jumpstart-id", "sagemaker-studio:jumpstart-model-id"]
+EXTRA_MODEL_VERSION_TAGS = [
+    "sm-jumpstart-model-version",
+    "sagemaker-studio:jumpstart-model-version",
+]
