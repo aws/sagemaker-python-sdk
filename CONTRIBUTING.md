@@ -228,6 +228,12 @@ For example, see the [Processing API reference](https://github.com/aws/sagemaker
 To build the Sphinx docs, run the following command in the `doc/` directory:
 
 ```shell
+# Initial setup, only required for the first run
+pip install -r requirements.txt
+pip install -e ../
+```
+
+```shell
 make html
 ```
 
