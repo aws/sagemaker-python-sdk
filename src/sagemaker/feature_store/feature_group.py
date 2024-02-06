@@ -28,7 +28,6 @@ import os
 import tempfile
 from concurrent.futures import as_completed
 from concurrent.futures import ThreadPoolExecutor
-from typing import Optional, Sequence, List, Dict, Any, Union
 from typing import Optional, Sequence, List, Dict, Any, Union, Iterable
 from urllib.parse import urlparse
 
@@ -331,18 +330,20 @@ class IngestionManagerPandas:
         """
         try:
             record = [
-                FeatureValue(
-                    feature_name=data_frame.columns[index - 1],
-                    value_as_string_list=IngestionManagerPandas._covert_feature_value_to_string_list(
-                        row[index]
-                    ),
-                )
-                if IngestionManagerPandas._is_feature_collection_type(
-                    feature_name=data_frame.columns[index - 1],
-                    feature_definitions=feature_definitions,
-                )
-                else FeatureValue(
-                    feature_name=data_frame.columns[index - 1], value_as_string=str(row[index])
+                (
+                    FeatureValue(
+                        feature_name=data_frame.columns[index - 1],
+                        value_as_string_list=IngestionManagerPandas._covert_feature_value_to_string_list(
+                            row[index]
+                        ),
+                    )
+                    if IngestionManagerPandas._is_feature_collection_type(
+                        feature_name=data_frame.columns[index - 1],
+                        feature_definitions=feature_definitions,
+                    )
+                    else FeatureValue(
+                        feature_name=data_frame.columns[index - 1], value_as_string=str(row[index])
+                    )
                 )
                 for index in range(1, len(row))
                 if IngestionManagerPandas._feature_value_is_not_none(feature_value=row[index])
@@ -925,21 +926,23 @@ class FeatureGroup:
         """
 
         if series.apply(
-            lambda lst: all(isinstance(x, int) or pd.isna(x) for x in lst)
-            if is_list_like(lst)
-            else True
+            lambda lst: (
+                all(isinstance(x, int) or pd.isna(x) for x in lst) if is_list_like(lst) else True
+            )
         ).all():
             return FeatureTypeEnum.INTEGRAL
         if series.apply(
-            lambda lst: all(isinstance(x, (float, int)) or pd.isna(x) for x in lst)
-            if is_list_like(lst)
-            else True
+            lambda lst: (
+                all(isinstance(x, (float, int)) or pd.isna(x) for x in lst)
+                if is_list_like(lst)
+                else True
+            )
         ).all():
             return FeatureTypeEnum.FRACTIONAL
         if series.apply(
-            lambda lst: all(isinstance(x, str) or pd.isna(x) for x in lst)
-            if is_list_like(lst)
-            else True
+            lambda lst: (
+                all(isinstance(x, str) or pd.isna(x) for x in lst) if is_list_like(lst) else True
+            )
         ).all():
             return FeatureTypeEnum.STRING
         return None
@@ -1056,9 +1059,9 @@ class FeatureGroup:
         return self.sagemaker_session.put_record(
             feature_group_name=self.name,
             record=[value.to_dict() for value in record],
-            target_stores=[target_store.value for target_store in target_stores]
-            if target_stores
-            else None,
+            target_stores=(
+                [target_store.value for target_store in target_stores] if target_stores else None
+            ),
             ttl_duration=ttl_duration.to_dict() if ttl_duration is not None else None,
         )
 

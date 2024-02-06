@@ -751,12 +751,6 @@ def test_create_feature_store_ingest_with_online_target_stores(
         )
         _wait_for_feature_group_create(feature_group)
 
-        resolved_output_s3_uri = (
-            feature_group.describe()
-            .get("OfflineStoreConfig")
-            .get("S3StorageConfig")
-            .get("ResolvedOutputS3Uri")
-        )
         # Ingest data
         ingestion_manager = feature_group.ingest(
             data_frame=pandas_data_frame,
@@ -783,7 +777,7 @@ def test_create_feature_store_ingest_with_online_target_stores(
             ],
             target_stores=[TargetStoreEnum.OFFLINE_STORE],
         )
-        assert feature_group.get_record(record_identifier_value_as_string="100.0") == None
+        assert feature_group.get_record(record_identifier_value_as_string="100.0") is None
 
         # Query the integrated Glue table.
         athena_query = feature_group.athena_query()
@@ -823,7 +817,7 @@ def test_put_record_with_target_stores(
     feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
     feature_group.load_feature_definitions(data_frame=pandas_data_frame)
     with cleanup_feature_group(feature_group):
-        output = feature_group.create(
+        feature_group.create(
             s3_uri=offline_store_s3_uri,
             record_identifier_name="feature1",
             event_time_feature_name="feature3",
@@ -840,7 +834,7 @@ def test_put_record_with_target_stores(
             ],
             target_stores=[TargetStoreEnum.OFFLINE_STORE],
         )
-        assert feature_group.get_record(record_identifier_value_as_string="100.0") == None
+        assert feature_group.get_record(record_identifier_value_as_string="100.0") is None
 
         feature_group.put_record(
             record=[
@@ -2188,7 +2182,7 @@ def test_ingest_in_memory_multi_process_with_collection_types(
         online_storage_type=OnlineStoreStorageTypeEnum.IN_MEMORY,
     )
 
-    with (cleanup_feature_group(feature_group)):
+    with cleanup_feature_group(feature_group):
         output = feature_group.create(
             record_identifier_name="feature1",
             event_time_feature_name="feature3",
@@ -2229,7 +2223,7 @@ def test_ingest_in_memory_multi_process_with_collection_types(
         pandas_data_frame_with_collection_type.loc[
             len(pandas_data_frame_with_collection_type)
         ] = new_row_data
-        with pytest.raises(IngestionError) as error:
+        with pytest.raises(IngestionError):
             feature_group.ingest(
                 data_frame=pandas_data_frame_with_collection_type,
                 max_workers=1,
@@ -2252,7 +2246,7 @@ def test_ingest_in_memory_single_process_with_collection_types(
         online_storage_type=OnlineStoreStorageTypeEnum.IN_MEMORY,
     )
 
-    with (cleanup_feature_group(feature_group)):
+    with cleanup_feature_group(feature_group):
         output = feature_group.create(
             record_identifier_name="feature1",
             event_time_feature_name="feature3",
@@ -2292,7 +2286,7 @@ def test_ingest_in_memory_single_process_with_collection_types(
         pandas_data_frame_with_collection_type.loc[
             len(pandas_data_frame_with_collection_type)
         ] = new_row_data
-        with pytest.raises(IngestionError) as error:
+        with pytest.raises(IngestionError):
             feature_group.ingest(
                 data_frame=pandas_data_frame_with_collection_type,
                 max_workers=1,
@@ -2315,7 +2309,7 @@ def test_ingest_standard_multi_process_with_collection_types(
         online_storage_type=OnlineStoreStorageTypeEnum.STANDARD,
     )
 
-    with (cleanup_feature_group(feature_group)):
+    with cleanup_feature_group(feature_group):
         output = feature_group.create(
             record_identifier_name="feature1",
             event_time_feature_name="feature3",

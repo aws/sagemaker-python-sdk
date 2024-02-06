@@ -105,15 +105,6 @@ def feature_group_dummy_definition_dict():
 
 
 @pytest.fixture
-def feature_group_dummy_definitions():
-    return [
-        FractionalFeatureDefinition(feature_name="feature1"),
-        IntegralFeatureDefinition(feature_name="feature2"),
-        StringFeatureDefinition(feature_name="feature3"),
-    ]
-
-
-@pytest.fixture
 def data_frame_with_collection_type():
     df = pd.DataFrame(
         {
@@ -1097,7 +1088,7 @@ def test_as_hive_ddl(create_table_ddl, feature_group_dummy_definitions, sagemake
     "sagemaker.feature_store.feature_group.IngestionManagerPandas._run_multi_process",
     MagicMock(),
 )
-def test_ingestion_manager_run_success():
+def test_ingestion_manager__run_multi_process_success():
     df = pd.DataFrame({"float": pd.Series([2.0], dtype="float64")})
     manager = IngestionManagerPandas(
         feature_group_name="MyGroup",
