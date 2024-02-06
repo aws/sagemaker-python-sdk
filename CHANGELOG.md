@@ -1,5 +1,17 @@
 # Changelog
 
+## v2.207.1 (2024-02-06)
+
+### Bug Fixes and Other Changes
+
+ * Add PT 2.1 as a supported framework for the smdistributed distribution
+ * Enable private docker registry support for ModelBuilder
+ * HF PT 2.1 Image Configs
+
+### Documentation Changes
+
+ * add setup commands for documentation generation
+
 ## v2.207.0 (2024-02-05)
 
 ### Features
