@@ -99,7 +99,7 @@ class AthenaQuery:
     _result_file_prefix: str = attr.ib(init=False, default=None)
 
     def run(
-            self, query_string: str, output_location: str, kms_key: str = None, workgroup: str = None
+        self, query_string: str, output_location: str, kms_key: str = None, workgroup: str = None
     ) -> str:
         """Execute a SQL query given a query string, output location and kms key.
 
@@ -213,14 +213,14 @@ class IngestionManagerPandas:
 
     @staticmethod
     def _ingest_single_batch(
-            data_frame: DataFrame,
-            feature_group_name: str,
-            feature_definitions: Dict[str, Dict[Any, Any]],
-            client_config: Config,
-            start_index: int,
-            end_index: int,
-            target_stores: Sequence[TargetStoreEnum] = None,
-            profile_name: str = None,
+        data_frame: DataFrame,
+        feature_group_name: str,
+        feature_definitions: Dict[str, Dict[Any, Any]],
+        client_config: Config,
+        start_index: int,
+        end_index: int,
+        target_stores: Sequence[TargetStoreEnum] = None,
+        profile_name: str = None,
     ) -> List[int]:
         """Ingest a single batch of DataFrame rows into FeatureStore.
 
@@ -304,13 +304,13 @@ class IngestionManagerPandas:
 
     @staticmethod
     def _ingest_row(
-            data_frame: DataFrame,
-            row: Iterable[tuple[Any, ...]],
-            feature_group_name: str,
-            feature_definitions: Dict[str, Dict[Any, Any]],
-            sagemaker_fs_runtime_client: Session,
-            failed_rows: List[int],
-            target_stores: Sequence[TargetStoreEnum] = None,
+        data_frame: DataFrame,
+        row: Iterable[tuple[Any, ...]],
+        feature_group_name: str,
+        feature_definitions: Dict[str, Dict[Any, Any]],
+        sagemaker_fs_runtime_client: Session,
+        failed_rows: List[int],
+        target_stores: Sequence[TargetStoreEnum] = None,
     ):
         """Ingest a single Dataframe row into FeatureStore.
 
@@ -333,22 +333,29 @@ class IngestionManagerPandas:
             record = [
                 FeatureValue(
                     feature_name=data_frame.columns[index - 1],
-                    value_as_string_list=IngestionManagerPandas._covert_feature_value_to_string_list(row[index]),
-                ) if IngestionManagerPandas._is_feature_collection_type(
-                    feature_name=data_frame.columns[index - 1], feature_definitions=feature_definitions)
-                else FeatureValue(
+                    value_as_string_list=IngestionManagerPandas._covert_feature_value_to_string_list(
+                        row[index]
+                    ),
+                )
+                if IngestionManagerPandas._is_feature_collection_type(
                     feature_name=data_frame.columns[index - 1],
-                    value_as_string=str(row[index]))
+                    feature_definitions=feature_definitions,
+                )
+                else FeatureValue(
+                    feature_name=data_frame.columns[index - 1], value_as_string=str(row[index])
+                )
                 for index in range(1, len(row))
                 if IngestionManagerPandas._feature_value_is_not_none(feature_value=row[index])
             ]
 
             put_record_params = {
-                'FeatureGroupName': feature_group_name,
-                'Record': [value.to_dict() for value in record],
+                "FeatureGroupName": feature_group_name,
+                "Record": [value.to_dict() for value in record],
             }
             if target_stores:
-                put_record_params['TargetStores'] = [target_store.value for target_store in target_stores]
+                put_record_params["TargetStores"] = [
+                    target_store.value for target_store in target_stores
+                ]
 
             sagemaker_fs_runtime_client.put_record(**put_record_params)
         except Exception as e:  # pylint: disable=broad-except
@@ -356,7 +363,9 @@ class IngestionManagerPandas:
             failed_rows.append(row[0])
 
     @staticmethod
-    def _is_feature_collection_type(feature_name: str, feature_definitions: Dict[str, Dict[Any, Any]]):
+    def _is_feature_collection_type(
+        feature_name: str, feature_definitions: Dict[str, Dict[Any, Any]]
+    ):
         """Check if the feature is a collection type.
 
         Args:
@@ -372,11 +381,11 @@ class IngestionManagerPandas:
         """
         feature_definition = feature_definitions.get(feature_name)
         if feature_definition is not None:
-            return feature_definition.get('CollectionType') is not None
+            return feature_definition.get("CollectionType") is not None
 
     @staticmethod
     def _feature_value_is_not_none(
-            feature_value: Any,
+        feature_value: Any,
     ):
         """Check if the feature value is  not None.
 
@@ -411,14 +420,15 @@ class IngestionManagerPandas:
             List[str]: list of strings.
         """
         if not is_list_like(feature_value):
-            raise ValueError(f"Invalid feature value, feature value: {feature_value} for a collection type feature"
-                             f" must be an Array, but instead was {type(feature_value)}")
-        return [
-            str(value) if value is not None else None
-            for value in feature_value
-        ]
+            raise ValueError(
+                f"Invalid feature value, feature value: {feature_value} for a collection type feature"
+                f" must be an Array, but instead was {type(feature_value)}"
+            )
+        return [str(value) if value is not None else None for value in feature_value]
 
-    def _run_single_process_single_thread(self, data_frame: DataFrame, target_stores: Sequence[TargetStoreEnum] = None):
+    def _run_single_process_single_thread(
+        self, data_frame: DataFrame, target_stores: Sequence[TargetStoreEnum] = None
+    ):
         """Ingest utilizing a single process and a single thread.
 
         Args:
@@ -448,11 +458,11 @@ class IngestionManagerPandas:
             )
 
     def _run_multi_process(
-            self,
-            data_frame: DataFrame,
-            target_stores: Sequence[TargetStoreEnum] = None,
-            wait=True,
-            timeout=None
+        self,
+        data_frame: DataFrame,
+        target_stores: Sequence[TargetStoreEnum] = None,
+        wait=True,
+        timeout=None,
     ):
         """Start the ingestion process with the specified number of processes.
 
@@ -501,15 +511,15 @@ class IngestionManagerPandas:
 
     @staticmethod
     def _run_multi_threaded(
-            max_workers: int,
-            feature_group_name: str,
-            feature_definitions: Dict[str, Dict[Any, Any]],
-            sagemaker_fs_runtime_client_config: Config,
-            data_frame: DataFrame,
-            target_stores: Sequence[TargetStoreEnum] = None,
-            row_offset=0,
-            timeout=None,
-            profile_name=None,
+        max_workers: int,
+        feature_group_name: str,
+        feature_definitions: Dict[str, Dict[Any, Any]],
+        sagemaker_fs_runtime_client_config: Config,
+        data_frame: DataFrame,
+        target_stores: Sequence[TargetStoreEnum] = None,
+        row_offset=0,
+        timeout=None,
+        profile_name=None,
     ) -> List[int]:
         """Start the ingestion process.
 
@@ -563,7 +573,13 @@ class IngestionManagerPandas:
 
         return failed_indices
 
-    def run(self, data_frame: DataFrame, target_stores: Sequence[TargetStoreEnum] = None, wait=True, timeout=None):
+    def run(
+        self,
+        data_frame: DataFrame,
+        target_stores: Sequence[TargetStoreEnum] = None,
+        wait=True,
+        timeout=None,
+    ):
         """Start the ingestion process.
 
         Args:
@@ -575,9 +591,13 @@ class IngestionManagerPandas:
                 if timeout is reached.
         """
         if self.max_workers == 1 and self.max_processes == 1 and self.profile_name is None:
-            self._run_single_process_single_thread(data_frame=data_frame, target_stores=target_stores)
+            self._run_single_process_single_thread(
+                data_frame=data_frame, target_stores=target_stores
+            )
         else:
-            self._run_multi_process(data_frame=data_frame, target_stores=target_stores, wait=wait, timeout=timeout)
+            self._run_multi_process(
+                data_frame=data_frame, target_stores=target_stores, wait=wait, timeout=timeout
+            )
 
 
 class IngestionError(Exception):
@@ -815,11 +835,11 @@ class FeatureGroup:
         )
 
     def update_feature_metadata(
-            self,
-            feature_name: str,
-            description: str = None,
-            parameter_additions: Sequence[FeatureParameter] = None,
-            parameter_removals: Sequence[str] = None,
+        self,
+        feature_name: str,
+        description: str = None,
+        parameter_additions: Sequence[FeatureParameter] = None,
+        parameter_removals: Sequence[str] = None,
     ) -> Dict[str, Any]:
         """Update a feature metadata and add/remove metadata.
 
@@ -904,22 +924,28 @@ class FeatureGroup:
             feature type.
         """
 
-        if (series.apply(lambda lst:
-                         all(isinstance(x, int) or pd.isna(x) for x in lst) if is_list_like(lst) else True)
-                .all()):
+        if series.apply(
+            lambda lst: all(isinstance(x, int) or pd.isna(x) for x in lst)
+            if is_list_like(lst)
+            else True
+        ).all():
             return FeatureTypeEnum.INTEGRAL
-        if (series.apply(lambda lst:
-                         all(isinstance(x, (float, int)) or pd.isna(x) for x in lst) if is_list_like(lst) else True)
-                .all()):
+        if series.apply(
+            lambda lst: all(isinstance(x, (float, int)) or pd.isna(x) for x in lst)
+            if is_list_like(lst)
+            else True
+        ).all():
             return FeatureTypeEnum.FRACTIONAL
-        if (series.apply(lambda lst:
-                         all(isinstance(x, str) or pd.isna(x) for x in lst) if is_list_like(lst) else True)
-                .all()):
+        if series.apply(
+            lambda lst: all(isinstance(x, str) or pd.isna(x) for x in lst)
+            if is_list_like(lst)
+            else True
+        ).all():
             return FeatureTypeEnum.STRING
         return None
 
     def _generate_feature_definition(
-            self, series: Series, online_storage_type: OnlineStoreStorageTypeEnum
+        self, series: Series, online_storage_type: OnlineStoreStorageTypeEnum
     ) -> FeatureDefinition:
         """Generate feature definition from the Panda Series.
 
@@ -933,11 +959,11 @@ class FeatureGroup:
 
         dtype = str(series.dtype).lower()
         if (
-                online_storage_type
-                and online_storage_type == OnlineStoreStorageTypeEnum.IN_MEMORY
-                and dtype == "object"
-                and pd.notna(series.head(1000)).any()
-                and series.head(1000).apply(FeatureGroup._check_list_type).all()
+            online_storage_type
+            and online_storage_type == OnlineStoreStorageTypeEnum.IN_MEMORY
+            and dtype == "object"
+            and pd.notna(series.head(1000)).any()
+            and series.head(1000).apply(FeatureGroup._check_list_type).all()
         ):
             params["collection_type"] = ListCollectionType()
             params["feature_type"] = FeatureGroup._determine_collection_list_type(series.head(1000))
@@ -946,8 +972,7 @@ class FeatureGroup:
 
         if params["feature_type"] is None:
             raise ValueError(
-                f"Failed to infer Feature type based on dtype {dtype} "
-                f"for column {series.name}."
+                f"Failed to infer Feature type based on dtype {dtype} " f"for column {series.name}."
             )
 
         feature_definition = FeatureDefinition(**params)
@@ -955,9 +980,7 @@ class FeatureGroup:
         return feature_definition
 
     def load_feature_definitions(
-            self,
-            data_frame: DataFrame,
-            online_storage_type: OnlineStoreStorageTypeEnum = None
+        self, data_frame: DataFrame, online_storage_type: OnlineStoreStorageTypeEnum = None
     ) -> Sequence[FeatureDefinition]:
         """Load feature definitions from a Pandas DataFrame.
 
@@ -990,15 +1013,17 @@ class FeatureGroup:
         """
         feature_definitions = []
         for column in data_frame:
-            feature_definition = self._generate_feature_definition(data_frame[column], online_storage_type)
+            feature_definition = self._generate_feature_definition(
+                data_frame[column], online_storage_type
+            )
             feature_definitions.append(feature_definition)
         self.feature_definitions = feature_definitions
         return self.feature_definitions
 
     def get_record(
-            self,
-            record_identifier_value_as_string: str,
-            feature_names: Sequence[str] = None,
+        self,
+        record_identifier_value_as_string: str,
+        feature_names: Sequence[str] = None,
     ) -> Sequence[Dict[str, str]]:
         """Get a single record in a FeatureGroup
 
@@ -1015,10 +1040,11 @@ class FeatureGroup:
         ).get("Record")
 
     def put_record(
-            self,
-            record: Sequence[FeatureValue],
-            target_stores: Sequence[TargetStoreEnum] = None,
-            ttl_duration: TtlDuration = None):
+        self,
+        record: Sequence[FeatureValue],
+        target_stores: Sequence[TargetStoreEnum] = None,
+        ttl_duration: TtlDuration = None,
+    ):
         """Put a single record in the FeatureGroup.
 
         Args:
@@ -1030,15 +1056,17 @@ class FeatureGroup:
         return self.sagemaker_session.put_record(
             feature_group_name=self.name,
             record=[value.to_dict() for value in record],
-            target_stores=[target_store.value for target_store in target_stores] if target_stores else None,
+            target_stores=[target_store.value for target_store in target_stores]
+            if target_stores
+            else None,
             ttl_duration=ttl_duration.to_dict() if ttl_duration is not None else None,
         )
 
     def delete_record(
-            self,
-            record_identifier_value_as_string: str,
-            event_time: str,
-            deletion_mode: DeletionModeEnum = DeletionModeEnum.SOFT_DELETE,
+        self,
+        record_identifier_value_as_string: str,
+        event_time: str,
+        deletion_mode: DeletionModeEnum = DeletionModeEnum.SOFT_DELETE,
     ):
         """Delete a single record from a FeatureGroup.
 
@@ -1059,14 +1087,14 @@ class FeatureGroup:
         )
 
     def ingest(
-            self,
-            data_frame: DataFrame,
-            target_stores: Sequence[TargetStoreEnum] = None,
-            max_workers: int = 1,
-            max_processes: int = 1,
-            wait: bool = True,
-            timeout: Union[int, float] = None,
-            profile_name: str = None,
+        self,
+        data_frame: DataFrame,
+        target_stores: Sequence[TargetStoreEnum] = None,
+        max_workers: int = 1,
+        max_processes: int = 1,
+        wait: bool = True,
+        timeout: Union[int, float] = None,
+        profile_name: str = None,
     ) -> IngestionManagerPandas:
         """Ingest the content of a pandas DataFrame to feature store.
 

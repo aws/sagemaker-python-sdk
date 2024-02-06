@@ -6009,15 +6009,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """
 
         params = {
-            'FeatureGroupName': feature_group_name,
-            'Record': record,
+            "FeatureGroupName": feature_group_name,
+            "Record": record,
         }
 
         if ttl_duration:
-            params['TtlDuration'] = ttl_duration
+            params["TtlDuration"] = ttl_duration
 
         if target_stores:
-            params['TargetStores'] = target_stores
+            params["TargetStores"] = target_stores
 
         return self.sagemaker_featurestore_runtime_client.put_record(**params)
 
