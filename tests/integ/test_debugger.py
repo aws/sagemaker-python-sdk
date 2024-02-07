@@ -72,7 +72,9 @@ def actions():
     )
 
 
-@pytest.mark.skip(reason="mxnet gluon data downloader issue blocking PR checks and release pipeline.")
+@pytest.mark.skip(
+    reason="mxnet gluon data downloader issue blocking PR checks and release pipeline."
+)
 def test_mxnet_with_rules(
     sagemaker_session,
     mxnet_training_latest_version,
@@ -138,7 +140,9 @@ def test_mxnet_with_rules(
         _wait_and_assert_that_no_rule_jobs_errored(training_job=mx.latest_training_job)
 
 
-@pytest.mark.skip(reason="mxnet gluon data downloader issue blocking PR checks and release pipeline.")
+@pytest.mark.skip(
+    reason="mxnet gluon data downloader issue blocking PR checks and release pipeline."
+)
 def test_mxnet_with_rules_and_actions(
     sagemaker_session,
     mxnet_training_latest_version,
@@ -207,7 +211,9 @@ def test_mxnet_with_rules_and_actions(
         _wait_and_assert_that_no_rule_jobs_errored(training_job=mx.latest_training_job)
 
 
-@pytest.mark.skip(reason="mxnet gluon data downloader issue blocking PR checks and release pipeline.")
+@pytest.mark.skip(
+    reason="mxnet gluon data downloader issue blocking PR checks and release pipeline."
+)
 def test_mxnet_with_custom_rule(
     sagemaker_session,
     mxnet_training_latest_version,
@@ -261,7 +267,9 @@ def test_mxnet_with_custom_rule(
         _wait_and_assert_that_no_rule_jobs_errored(training_job=mx.latest_training_job)
 
 
-@pytest.mark.skip(reason="mxnet gluon data downloader issue blocking PR checks and release pipeline.")
+@pytest.mark.skip(
+    reason="mxnet gluon data downloader issue blocking PR checks and release pipeline."
+)
 def test_mxnet_with_custom_rule_and_actions(
     sagemaker_session,
     mxnet_training_latest_version,
@@ -316,7 +324,9 @@ def test_mxnet_with_custom_rule_and_actions(
         _wait_and_assert_that_no_rule_jobs_errored(training_job=mx.latest_training_job)
 
 
-@pytest.mark.skip(reason="mxnet gluon data downloader issue blocking PR checks and release pipeline.")
+@pytest.mark.skip(
+    reason="mxnet gluon data downloader issue blocking PR checks and release pipeline."
+)
 def test_mxnet_with_debugger_hook_config(
     sagemaker_session,
     mxnet_training_latest_version,
@@ -468,7 +478,9 @@ def test_debug_hook_disabled_with_checkpointing(
         assert xg.debugger_hook_config is not None
 
 
-@pytest.mark.skip(reason="mxnet gluon data downloader issue blocking PR checks and release pipeline.")
+@pytest.mark.skip(
+    reason="mxnet gluon data downloader issue blocking PR checks and release pipeline."
+)
 def test_mxnet_with_rules_and_debugger_hook_config(
     sagemaker_session,
     mxnet_training_latest_version,
@@ -541,7 +553,9 @@ def test_mxnet_with_rules_and_debugger_hook_config(
         _wait_and_assert_that_no_rule_jobs_errored(training_job=mx.latest_training_job)
 
 
-@pytest.mark.skip(reason="mxnet gluon data downloader issue blocking PR checks and release pipeline.")
+@pytest.mark.skip(
+    reason="mxnet gluon data downloader issue blocking PR checks and release pipeline."
+)
 def test_mxnet_with_custom_rule_and_debugger_hook_config(
     sagemaker_session,
     mxnet_training_latest_version,
@@ -602,7 +616,9 @@ def test_mxnet_with_custom_rule_and_debugger_hook_config(
         _wait_and_assert_that_no_rule_jobs_errored(training_job=mx.latest_training_job)
 
 
-@pytest.mark.skip(reason="mxnet gluon data downloader issue blocking PR checks and release pipeline.")
+@pytest.mark.skip(
+    reason="mxnet gluon data downloader issue blocking PR checks and release pipeline."
+)
 def test_mxnet_with_tensorboard_output_config(
     sagemaker_session,
     mxnet_training_latest_version,
@@ -648,7 +664,9 @@ def test_mxnet_with_tensorboard_output_config(
         _wait_and_assert_that_no_rule_jobs_errored(training_job=mx.latest_training_job)
 
 
-@pytest.mark.skip(reason="mxnet gluon data downloader issue blocking PR checks and release pipeline.")
+@pytest.mark.skip(
+    reason="mxnet gluon data downloader issue blocking PR checks and release pipeline."
+)
 def test_mxnet_with_all_rules_and_configs(
     sagemaker_session,
     mxnet_training_latest_version,
@@ -724,7 +742,9 @@ def test_mxnet_with_all_rules_and_configs(
         _wait_and_assert_that_no_rule_jobs_errored(training_job=mx.latest_training_job)
 
 
-@pytest.mark.skip(reason="mxnet gluon data downloader issue blocking PR checks and release pipeline.")
+@pytest.mark.skip(
+    reason="mxnet gluon data downloader issue blocking PR checks and release pipeline."
+)
 def test_mxnet_with_debugger_hook_config_disabled(
     sagemaker_session,
     mxnet_training_latest_version,
