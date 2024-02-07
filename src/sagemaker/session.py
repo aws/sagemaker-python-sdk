@@ -243,6 +243,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         # sagemaker_config is validated and initialized inside :func:`_initialize`,
         # so if default_bucket is None and the sagemaker_config has a default S3 bucket configured,
         # _default_bucket_name_override will be set again inside :func:`_initialize`.
+        self.endpoint_arn = None
         self._default_bucket = None
         self._default_bucket_name_override = default_bucket
         # this may also be set again inside :func:`_initialize` if it is None
@@ -5054,6 +5055,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 poll=EP_LOGGER_POLL,
             )
         status = desc["EndpointStatus"]
+        self.endpoint_arn = desc["EndpointArn"]
 
         if status != "InService":
             reason = desc.get("FailureReason", None)

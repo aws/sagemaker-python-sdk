@@ -15,10 +15,11 @@ from __future__ import absolute_import
 import logging
 import requests
 
-from sagemaker import Session
+from sagemaker import Session, exceptions
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.utils.exceptions import ModelBuilderException
 from sagemaker.serve.utils.types import ModelServer
+from sagemaker.utils import pysdk_version
 
 logger = logging.getLogger(__name__)
 
@@ -63,10 +64,14 @@ def _capture_telemetry(func_name: str):
                 f"{func_name}"
                 f"&x-modelServer={MODEL_SERVER_TO_CODE[str(self.model_server)]}"
                 f"&x-imageTag={image_uri_tail}"
+                f"&x-pySdkVersion={pysdk_version()}"
             )
 
             if self.model_server == ModelServer.DJL_SERVING or self.model_server == ModelServer.TGI:
                 extra += f"&x-modelName={self.model}"
+
+            if self.sagemaker_session.endpoint_arn:
+                extra += f"&x-endpointArn={self.sagemaker_session.endpoint_arn}"
 
             try:
                 response = func(self, *args, **kwargs)
@@ -79,7 +84,11 @@ def _capture_telemetry(func_name: str):
                         None,
                         extra,
                     )
-            except ModelBuilderException as e:
+            except (
+                ModelBuilderException,
+                exceptions.CapacityError,
+                exceptions.UnexpectedStatusException,
+            ) as e:
                 if not self.serve_settings.telemetry_opt_out:
                     _send_telemetry(
                         "0",

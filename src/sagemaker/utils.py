@@ -1489,3 +1489,10 @@ def format_tags(tags: Tags) -> List[TagsDict]:
         return [{"Key": str(k), "Value": str(v)} for k, v in tags.items()]
 
     return tags
+
+
+def pysdk_version() -> str:
+    """Returns the current Sagemaker Python SDK Version"""
+    v_path = os.path.join(os.path.dirname(__file__), "image_uri_config", "pysdk_version.json")
+    with open(v_path) as v:
+        return json.load(v).get("version")

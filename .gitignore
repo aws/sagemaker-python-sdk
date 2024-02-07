@@ -35,3 +35,4 @@ env/
 tests/data/**/_repack_model.py
 tests/data/experiment/sagemaker-dev-1.0.tar.gz
 src/sagemaker/serve/tmp_workspace
+src/sagemaker/image_uri_config/pysdk_version.json

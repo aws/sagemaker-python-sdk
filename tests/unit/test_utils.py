@@ -42,6 +42,7 @@ from sagemaker.utils import (
     resolve_nested_dict_value_from_config,
     update_list_of_dicts_with_values_from_config,
     volume_size_supported,
+    pysdk_version,
 )
 from tests.unit.sagemaker.workflow.helpers import CustomStep
 from sagemaker.workflow.parameters import ParameterString, ParameterInteger
@@ -1748,3 +1749,6 @@ class TestVolumeSizeSupported(TestCase):
 
         for instance_type, family in instance_type_to_family_test_dict.items():
             self.assertEqual(family, get_instance_type_family(instance_type))
+
+    def test_pysdk_version(self):
+        self.assertIsNotNone(pysdk_version())
