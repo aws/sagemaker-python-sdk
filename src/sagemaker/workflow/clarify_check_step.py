@@ -166,8 +166,8 @@ class ClarifyCheckStep(Step):
     ):
         """Constructs a ClarifyCheckStep.
 
-        To understand the `skip_check`, `fail_on_violation`, `register_new_baseline` 
-        and `supplied_baseline_constraints` parameters, check the following documentation: 
+        To understand the `skip_check`, `fail_on_violation`, `register_new_baseline`
+        and `supplied_baseline_constraints` parameters, check the following documentation:
         https://docs.aws.amazon.com/sagemaker/latest/dg/pipelines-quality-clarify-baseline-lifecycle.html
 
         Args:
