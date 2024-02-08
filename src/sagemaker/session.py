@@ -6463,6 +6463,230 @@ class Session(object):  # pylint: disable=too-many-public-methods
         _check_job_status(job_name, desc, "Status")
         return desc
 
+    def create_hub(
+        self,
+        hub_name: str,
+        hub_description: str,
+        hub_display_name=None,
+        hub_search_keywords=None,
+        s3_storage_config=None,
+        tags=None
+    ) -> Dict[str, str]:
+        """Creates a SageMaker Hub
+        
+        Args:
+            hub_name (str): The name of the Hub to create.
+            hub_description (str): A description of the Hub.
+            hub_display_name (str): The display name of the Hub.
+            hub_search_keywords (list): The searchable keywords for the Hub.
+            s3_storage_config (S3StorageConfig): The Amazon S3 storage configuration for the Hub.
+            tags (list): Any tags to associate with the Hub.
+
+        Returns:
+            (dict): Return value from the ``CreateHub`` API.
+        """
+        return self.sagemaker_client.create_hub(
+            hub_name=hub_name,
+            hub_description=hub_description,
+            hub_display_name=hub_display_name,
+            hub_search_keywords=hub_search_keywords,
+            s3_storage_config=s3_storage_config,
+            tags=tags
+        )
+    
+    def describe_hub(
+        self,
+        hub_name: str
+    ) -> Dict[str, Any]:
+        """Describes a SageMaker Hub
+
+        Args:
+            hub_name (str): The name of the hub to describe.
+
+        Returns:
+            (dict): Return value for ``DescribeHub`` API
+        """
+        return self.sagemaker_client.describe_hub(
+            hub_name=hub_name
+        )
+    
+    def list_hubs(
+        self,
+        creation_time_after=None,
+        creation_time_before=None,
+        max_results=None,
+        max_schema_version=None,
+        name_contains=None,
+        sort_by=None,
+        sort_order=None
+    ) -> Dict[str, Any]:
+        """Lists all existing SageMaker Hubs
+        
+        Args:
+            creation_time_after (int): Only list HubContent that was created after the time specified.
+            creation_time_before (int): Only list HubContent that was created before the time specified.
+            max_results (int): The maximum amount of HubContent to list.
+            max_schema_version (str): The upper bound of the HubContentSchemaVersion.
+            name_contains (str): Only list HubContent if the name contains the specified string.
+            next_token (str): If the response to a previous ``ListHubContents`` request was truncated, the
+                response includes a ``NextToken``. To retrieve the next set of hub content, use the token in the next request.
+            sort_by (str): Sort HubContent versions by either name or creation time.
+            sort_order (str): Sort Hubs by ascending or descending order.
+        Returns:
+            (dict): Return value for ``ListHubs`` API
+        """
+        return self.sagemaker_client.list_hubs(
+            creation_time_after=creation_time_after,
+            creation_time_before=creation_time_before,
+            max_results=max_results,
+            max_schema_version=max_schema_version,
+            name_contains=name_contains,
+            sort_by=sort_by,
+            sort_order=sort_order
+        )
+    
+    def list_hub_contents(
+        self,
+        hub_name: str,
+        hub_content_type: str,
+        creation_time_after=None,
+        creation_time_before=None,
+        max_results=None,
+        max_schema_version=None,
+        name_contains=None,
+        sort_by=None,
+        sort_order=None
+    ) -> Dict[str, Any]:
+        """Lists the HubContents in a SageMaker Hub
+        
+        Args:
+            hub_name (str): The name of the Hub to list the contents of.
+            hub_content_type (str): The type of the HubContent to list.
+            creation_time_after (int): Only list HubContent that was created after the time specified.
+            creation_time_before (int): Only list HubContent that was created before the time specified.
+            max_results (int): The maximum amount of HubContent to list.
+            max_schema_version (str): The upper bound of the HubContentSchemaVersion.
+            name_contains (str): Only list HubContent if the name contains the specified string.
+            next_token (str): If the response to a previous ``ListHubContents`` request was truncated, the
+                response includes a ``NextToken``. To retrieve the next set of hub content, use the token in the next request.
+            sort_by (str): Sort HubContent versions by either name or creation time.
+            sort_order (str): Sort Hubs by ascending or descending order.
+        Returns:
+            (dict): Return value for ``ListHubContents`` API
+        """
+        return self.sagemaker_client.list_hub_contents(
+            hub_name=hub_name,
+            hub_content_type=hub_content_type,
+            creation_time_after=creation_time_after,
+            creation_time_before=creation_time_before,
+            max_results=max_results,
+            max_schema_version=max_schema_version,
+            name_contains=name_contains,
+            sort_by=sort_by,
+            sort_order=sort_order
+        )
+    
+    def delete_hub(
+        self,
+        hub_name: str
+    ) -> None:
+        """Deletes a SageMaker Hub
+        
+        Args:
+            hub_name (str): The name of the hub to delete.
+        """
+        return self.sagemaker_client.delete_hub(hub_name=hub_name)
+    
+    def import_hub_content(
+        self,
+        document_schema_version: str,
+        hub_content_name: str,
+        hub_content_type: str,
+        hub_name: str,
+        hub_content_display_name=None,
+        hub_content_description=None,
+        hub_content_version=None,
+        hub_content_markdown=None,
+        hub_content_search_keywords=None,
+        tags=None
+    ) -> Dict[str, str]:
+        """Imports a new HubContent into a SageMaker Hub
+        
+        Args:
+            document_schema_version (str): The version of the HubContent schema to import.
+            hub_content_name (str): The name of the HubContent to import.
+            hub_content_version (str): The version of the HubContent to import.
+            hub_content_type (str): The type of HubContent to import.
+            hub_name (str): The name of the Hub to import content to.
+            hub_content_display_name (str): The display name of the HubContent to import.
+            hub_content_description (str): The description of the HubContent to import.
+            hub_content_markdown (str): A string that provides a description of the HubContent. This string can include links, tables,
+                and standard markdown formatting.
+            hub_content_search_keywords (list): The searchable keywords of the HubContent.
+            tags (list): Any tags associated with the HubContent.
+        Returns:
+            (dict): Return value for ``ImportHubContent`` API
+        """
+        return self.sagemaker_client.import_hub_content(
+            document_schema_version=document_schema_version,
+            hub_content_name=hub_content_name,
+            hub_content_version=hub_content_version,
+            hub_content_type=hub_content_type,
+            hub_name=hub_name,
+            hub_content_display_name=hub_content_display_name,
+            hub_content_description=hub_content_description,
+            hub_content_markdown=hub_content_markdown,
+            hub_content_search_keywords=hub_content_search_keywords,
+            tags=tags
+        )
+
+    def describe_hub_content(
+        self,
+        hub_content_name: str,
+        hub_content_type: str,
+        hub_name: str,
+        hub_content_version=None
+    ) -> Dict[str, Any]:
+        """Describes a HubContent in a SageMaker Hub
+
+        Args:
+            hub_content_name (str): The name of the HubContent to describe.
+            hub_content_type (str): The type of HubContent in the Hub.
+            hub_name (str): The name of the Hub that contains the HubContent to describe.
+            hub_content_version (str): The version of the HubContent to describe
+
+        Returns:
+            (dict): Return value for ``DescribeHubContent`` API
+        """
+        return self.sagemaker_client.describe_hub_content(
+            hub_content_name=hub_content_name,
+            hub_content_type=hub_content_type,
+            hub_name=hub_name,
+            hub_content_version=hub_content_version
+        )
+    
+    def delete_hub_content(
+        self,
+        hub_content_name: str,
+        hub_content_version: str,
+        hub_content_type: str,
+        hub_name: str
+    ) -> None:
+        """Deletes a given HubContent in a SageMaker Hub
+        
+        Args:
+            hub_content_name (str): The name of the content thatyou want to delete from a Hub.
+            hub_content_version (str): The version of the content that you want to delete from a Hub.
+            hub_content_type (str): The type of the content that you want to delete from a Hub.
+            hub_name (str): The name of the Hub that you want to delete content in.
+        """
+        return self.sagemaker_client.delete_hub_content(
+            hub_content_name=hub_content_name,
+            hub_content_version=hub_content_version,
+            hub_content_type=hub_content_type,
+            hub_name=hub_name
+        )
+
 
 def get_model_package_args(
     content_types=None,
