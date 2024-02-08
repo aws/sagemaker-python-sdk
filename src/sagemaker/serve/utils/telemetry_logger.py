@@ -19,7 +19,7 @@ from sagemaker import Session, exceptions
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.utils.exceptions import ModelBuilderException
 from sagemaker.serve.utils.types import ModelServer
-from sagemaker.utils import pysdk_version
+from sagemaker.user_agent import SDK_VERSION
 
 logger = logging.getLogger(__name__)
 
@@ -64,23 +64,28 @@ def _capture_telemetry(func_name: str):
                 f"{func_name}"
                 f"&x-modelServer={MODEL_SERVER_TO_CODE[str(self.model_server)]}"
                 f"&x-imageTag={image_uri_tail}"
-                f"&x-pySdkVersion={pysdk_version()}"
+                f"&x-sdkVersion={SDK_VERSION}"
             )
 
             if self.model_server == ModelServer.DJL_SERVING or self.model_server == ModelServer.TGI:
                 extra += f"&x-modelName={self.model}"
 
-            if self.sagemaker_session.endpoint_arn:
-                extra += f"&x-endpointArn={self.sagemaker_session.endpoint_arn}"
+            status = "1"
+            failure_reason = None
+            if self.sagemaker_session.endpoint:
+                extra += f"&x-endpointArn={self.sagemaker_session.endpoint['EndpointArn']}"
+                if self.sagemaker_session.endpoint["EndpointStatus"] != "InService":
+                    status = "0"
+                    failure_reason = self.sagemaker_session.endpoint.get("FailureReason", None)
 
             try:
                 response = func(self, *args, **kwargs)
                 if not self.serve_settings.telemetry_opt_out:
                     _send_telemetry(
-                        "1",
+                        status,
                         MODE_TO_CODE[str(self.mode)],
                         self.sagemaker_session,
-                        None,
+                        failure_reason,
                         None,
                         extra,
                     )

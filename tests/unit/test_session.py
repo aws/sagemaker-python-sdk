@@ -3193,7 +3193,10 @@ def test_create_model_from_job_with_vpc_config_override(sagemaker_session):
 def test_endpoint_from_production_variants(sagemaker_session):
     ims = sagemaker_session
     ims.sagemaker_client.describe_endpoint = Mock(
-        return_value={"EndpointStatus": "InService", "EndpointArn": "arn:aws:sagemaker:"}
+        return_value={
+            "EndpointStatus": "InService",
+            "EndpointArn": "arn:aws:sagemaker:us-west-2:123456789012:endpoint/test",
+        }
     )
     pvs = [
         sagemaker.production_variant("A", "ml.p2.xlarge"),
@@ -3489,7 +3492,10 @@ def test_endpoint_from_production_variants_with_sagemaker_config_injection(
     sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_ENDPOINT_CONFIG
 
     sagemaker_session.sagemaker_client.describe_endpoint = Mock(
-        return_value={"EndpointStatus": "InService", "EndpointArn": "arn:aws:sagemaker:"}
+        return_value={
+            "EndpointStatus": "InService",
+            "EndpointArn": "arn:aws:sagemaker:us-west-2:123456789012:endpoint/test",
+        }
     )
     pvs = [
         sagemaker.production_variant("A", "ml.p2.xlarge"),
@@ -3557,7 +3563,10 @@ def test_endpoint_from_production_variants_with_sagemaker_config_injection_parti
     sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_ENDPOINT_CONFIG
 
     sagemaker_session.sagemaker_client.describe_endpoint = Mock(
-        return_value={"EndpointStatus": "InService", "EndpointArn": "arn:aws:sagemaker:"}
+        return_value={
+            "EndpointStatus": "InService",
+            "EndpointArn": "arn:aws:sagemaker:us-west-2:123456789012:endpoint/test",
+        }
     )
     pvs = [
         sagemaker.production_variant("A", "ml.g5.xlarge"),
@@ -3621,7 +3630,10 @@ def test_endpoint_from_production_variants_with_sagemaker_config_injection_no_km
     sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_ENDPOINT_CONFIG
 
     sagemaker_session.sagemaker_client.describe_endpoint = Mock(
-        return_value={"EndpointStatus": "InService", "EndpointArn": "arn:aws:sagemaker:"}
+        return_value={
+            "EndpointStatus": "InService",
+            "EndpointArn": "arn:aws:sagemaker:us-west-2:123456789012:endpoint/test",
+        }
     )
     pvs = [
         sagemaker.production_variant("A", "ml.g5.xlarge"),
@@ -3729,7 +3741,10 @@ def test_create_endpoint_config_with_explainer_config(sagemaker_session):
 def test_endpoint_from_production_variants_with_tags(sagemaker_session):
     ims = sagemaker_session
     ims.sagemaker_client.describe_endpoint = Mock(
-        return_value={"EndpointStatus": "InService", "EndpointArn": "arn:aws:sagemaker:"}
+        return_value={
+            "EndpointStatus": "InService",
+            "EndpointArn": "arn:aws:sagemaker:us-west-2:123456789012:endpoint/test",
+        }
     )
     pvs = [
         sagemaker.production_variant("A", "ml.p2.xlarge"),
@@ -3762,7 +3777,10 @@ def test_endpoint_from_production_variants_with_combined_sagemaker_config_inject
 
     ims = sagemaker_session
     ims.sagemaker_client.describe_endpoint = Mock(
-        return_value={"EndpointStatus": "InService", "EndpointArn": "arn:aws:sagemaker:"}
+        return_value={
+            "EndpointStatus": "InService",
+            "EndpointArn": "arn:aws:sagemaker:us-west-2:123456789012:endpoint/test",
+        }
     )
     pvs = [
         sagemaker.production_variant("A", "ml.p2.xlarge"),
@@ -3808,7 +3826,10 @@ def test_endpoint_from_production_variants_with_sagemaker_config_injection_tags(
 
     ims = sagemaker_session
     ims.sagemaker_client.describe_endpoint = Mock(
-        return_value={"EndpointStatus": "InService", "EndpointArn": "arn:aws:sagemaker:"}
+        return_value={
+            "EndpointStatus": "InService",
+            "EndpointArn": "arn:aws:sagemaker:us-west-2:123456789012:endpoint/test",
+        }
     )
     pvs = [
         sagemaker.production_variant("A", "ml.p2.xlarge"),
@@ -3839,7 +3860,10 @@ def test_endpoint_from_production_variants_with_sagemaker_config_injection_tags(
 def test_endpoint_from_production_variants_with_accelerator_type(sagemaker_session):
     ims = sagemaker_session
     ims.sagemaker_client.describe_endpoint = Mock(
-        return_value={"EndpointStatus": "InService", "EndpointArn": "arn:aws:sagemaker:"}
+        return_value={
+            "EndpointStatus": "InService",
+            "EndpointArn": "arn:aws:sagemaker:us-west-2:123456789012:endpoint/test",
+        }
     )
     pvs = [
         sagemaker.production_variant("A", "ml.p2.xlarge", accelerator_type=ACCELERATOR_TYPE),
@@ -3872,7 +3896,10 @@ def test_endpoint_from_production_variants_with_accelerator_type_sagemaker_confi
 
     ims = sagemaker_session
     ims.sagemaker_client.describe_endpoint = Mock(
-        return_value={"EndpointStatus": "InService", "EndpointArn": "arn:aws:sagemaker:"}
+        return_value={
+            "EndpointStatus": "InService",
+            "EndpointArn": "arn:aws:sagemaker:us-west-2:123456789012:endpoint/test",
+        }
     )
     pvs = [
         sagemaker.production_variant("A", "ml.p2.xlarge", accelerator_type=ACCELERATOR_TYPE),
@@ -3905,7 +3932,10 @@ def test_endpoint_from_production_variants_with_serverless_inference_config(
 ):
     ims = sagemaker_session
     ims.sagemaker_client.describe_endpoint = Mock(
-        return_value={"EndpointStatus": "InService", "EndpointArn": "arn:aws:sagemaker:"}
+        return_value={
+            "EndpointStatus": "InService",
+            "EndpointArn": "arn:aws:sagemaker:us-west-2:123456789012:endpoint/test",
+        }
     )
     pvs = [
         sagemaker.production_variant(
@@ -3944,7 +3974,10 @@ def test_endpoint_from_production_variants_with_serverless_inference_config_sage
 
     ims = sagemaker_session
     ims.sagemaker_client.describe_endpoint = Mock(
-        return_value={"EndpointStatus": "InService", "EndpointArn": "arn:aws:sagemaker:"}
+        return_value={
+            "EndpointStatus": "InService",
+            "EndpointArn": "arn:aws:sagemaker:us-west-2:123456789012:endpoint/test",
+        }
     )
     pvs = [
         sagemaker.production_variant(
@@ -3981,7 +4014,10 @@ def test_endpoint_from_production_variants_with_serverless_inference_config_sage
 def test_endpoint_from_production_variants_with_async_config(sagemaker_session):
     ims = sagemaker_session
     ims.sagemaker_client.describe_endpoint = Mock(
-        return_value={"EndpointStatus": "InService", "EndpointArn": "arn:aws:sagemaker:"}
+        return_value={
+            "EndpointStatus": "InService",
+            "EndpointArn": "arn:aws:sagemaker:us-west-2:123456789012:endpoint/test",
+        }
     )
     pvs = [
         sagemaker.production_variant("A", "ml.p2.xlarge"),
@@ -4019,7 +4055,10 @@ def test_endpoint_from_production_variants_with_async_config_sagemaker_config_in
 
     ims = sagemaker_session
     ims.sagemaker_client.describe_endpoint = Mock(
-        return_value={"EndpointStatus": "InService", "EndpointArn": "arn:aws:sagemaker:"}
+        return_value={
+            "EndpointStatus": "InService",
+            "EndpointArn": "arn:aws:sagemaker:us-west-2:123456789012:endpoint/test",
+        }
     )
     pvs = [
         sagemaker.production_variant("A", "ml.p2.xlarge"),
@@ -4058,7 +4097,10 @@ def test_endpoint_from_production_variants_with_clarify_explainer_config(
 ):
     ims = sagemaker_session
     ims.sagemaker_client.describe_endpoint = Mock(
-        return_value={"EndpointStatus": "InService", "EndpointArn": "arn:aws:sagemaker:"}
+        return_value={
+            "EndpointStatus": "InService",
+            "EndpointArn": "arn:aws:sagemaker:us-west-2:123456789012:endpoint/test",
+        }
     )
     pvs = [
         sagemaker.production_variant("A", "ml.p2.xlarge"),
@@ -4091,7 +4133,10 @@ def test_endpoint_from_production_variants_with_clarify_explainer_config(
 
 def test_update_endpoint_succeed(sagemaker_session):
     sagemaker_session.sagemaker_client.describe_endpoint = Mock(
-        return_value={"EndpointStatus": "InService", "EndpointArn": "arn:aws:sagemaker:"}
+        return_value={
+            "EndpointStatus": "InService",
+            "EndpointArn": "arn:aws:sagemaker:us-west-2:123456789012:endpoint/test",
+        }
     )
     endpoint_name = "some-endpoint"
     endpoint_config = "some-endpoint-config"
@@ -4101,7 +4146,10 @@ def test_update_endpoint_succeed(sagemaker_session):
 
 def test_update_endpoint_no_wait(sagemaker_session):
     sagemaker_session.sagemaker_client.describe_endpoint = Mock(
-        return_value={"EndpointStatus": "Updating", "EndpointArn": "arn:aws:sagemaker:"}
+        return_value={
+            "EndpointStatus": "Updating",
+            "EndpointArn": "arn:aws:sagemaker:us-west-2:123456789012:endpoint/test",
+        }
     )
     endpoint_name = "some-endpoint"
     endpoint_config = "some-endpoint-config"
@@ -6160,7 +6208,7 @@ def test_is_inference_component_based_endpoint_affirmative(sagemaker_session):
 
     describe_endpoint_response = {
         "EndpointConfigName": "some-endpoint-config",
-        "EndpointArn": "arn:aws:sagemaker:",
+        "EndpointArn": "arn:aws:sagemaker:us-west-2:123456789012:endpoint/test",
     }
     describe_endpoint_config_response = {
         "ExecutionRoleArn": "some-role-arn",
@@ -6187,7 +6235,7 @@ def test_is_inference_component_based_endpoint_negative_no_role(sagemaker_sessio
 
     describe_endpoint_response = {
         "EndpointConfigName": "some-endpoint-config",
-        "EndpointArn": "arn:aws:sagemaker:",
+        "EndpointArn": "arn:aws:sagemaker:us-west-2:123456789012:endpoint/test",
     }
     describe_endpoint_config_response = {
         "ProductionVariants": [{"VariantName": "AllTraffic"}],
@@ -6213,7 +6261,7 @@ def test_is_inference_component_based_endpoint_positive_multiple_variants(sagema
 
     describe_endpoint_response = {
         "EndpointConfigName": "some-endpoint-config",
-        "EndpointArn": "arn:aws:sagemaker:",
+        "EndpointArn": "arn:aws:sagemaker:us-west-2:123456789012:endpoint/test",
     }
     describe_endpoint_config_response = {
         "ExecutionRoleArn": "some-role-arn",
@@ -6240,7 +6288,7 @@ def test_is_inference_component_based_endpoint_negative_no_variants(sagemaker_se
 
     describe_endpoint_response = {
         "EndpointConfigName": "some-endpoint-config",
-        "EndpointArn": "arn:aws:sagemaker:",
+        "EndpointArn": "arn:aws:sagemaker:us-west-2:123456789012:endpoint/test",
     }
     describe_endpoint_config_response = {
         "ExecutionRoleArn": "some-role-arn",
@@ -6267,7 +6315,7 @@ def test_is_inference_component_based_endpoint_negative_model_name_present(sagem
 
     describe_endpoint_response = {
         "EndpointConfigName": "some-endpoint-config",
-        "EndpointArn": "arn:aws:sagemaker:",
+        "EndpointArn": "arn:aws:sagemaker:us-west-2:123456789012:endpoint/test",
     }
     describe_endpoint_config_response = {
         "ExecutionRoleArn": "some-role-arn",

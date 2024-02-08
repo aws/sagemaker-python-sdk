@@ -32,21 +32,6 @@ def read_version():
     return read("VERSION").strip()
 
 
-def pysdk_version():
-    """Persists Sagemaker Python SDK Version in Config"""
-    content = '{"version": "' + read_version() + '"}'
-    with open(
-        os.path.join(
-            os.path.dirname(__file__), "src", "sagemaker", "image_uri_config", "pysdk_version.json"
-        ),
-        "w",
-    ) as v:
-        v.write(content)
-
-
-pysdk_version()
-
-
 def read_requirements(filename):
     """Reads requirements file which lists package dependencies.
 
