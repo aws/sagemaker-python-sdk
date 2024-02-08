@@ -108,6 +108,17 @@ class TtlDuration(Config):
         )
 
 
+@attr.s
+class TargetStoreEnum(Enum):
+    """Enum of store types for put record.
+
+    The store types can be Standard or InMemory.
+    """
+
+    ONLINE_STORE = "OnlineStore"
+    OFFLINE_STORE = "OfflineStore"
+
+
 class OnlineStoreStorageTypeEnum(Enum):
     """Enum of storage types for online store.
 
