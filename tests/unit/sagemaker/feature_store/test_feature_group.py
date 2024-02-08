@@ -13,10 +13,10 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-
 import pandas as pd
+import numpy as np
 import pytest
-from mock import Mock, patch, MagicMock
+from mock import Mock, patch, MagicMock, call
 from botocore.exceptions import ProfileNotFound
 
 from sagemaker.feature_store.feature_definition import (
@@ -27,6 +27,7 @@ from sagemaker.feature_store.feature_definition import (
     VectorCollectionType,
     SetCollectionType,
     ListCollectionType,
+    FeatureDefinition,
 )
 from sagemaker.feature_store.feature_group import (
     FeatureGroup,
@@ -43,6 +44,7 @@ from sagemaker.feature_store.inputs import (
     ThroughputModeEnum,
     ThroughputConfig,
     ThroughputConfigUpdate,
+    TargetStoreEnum,
 )
 
 from tests.unit import SAGEMAKER_CONFIG_FEATURE_GROUP
@@ -85,6 +87,163 @@ def feature_group_dummy_definitions():
 
 
 @pytest.fixture
+def feature_group_describe_dummy_definitions():
+    return [
+        {"FeatureName": "feature1", "FeatureType": "Fractional"},
+        {"FeatureName": "feature2", "FeatureType": "Integral"},
+        {"FeatureName": "feature3", "FeatureType": "String"},
+    ]
+
+
+@pytest.fixture
+def feature_group_dummy_definition_dict():
+    return {
+        "feature1": {"FeatureName": "feature1", "FeatureType": "Fractional"},
+        "feature2": {"FeatureName": "feature2", "FeatureType": "Integral"},
+        "feature3": {"FeatureName": "feature3", "FeatureType": "String"},
+    }
+
+
+@pytest.fixture
+def data_frame_with_collection_type():
+    df = pd.DataFrame(
+        {
+            "feature1": pd.Series(np.arange(10.0), dtype="float64"),
+            "feature2": pd.Series(np.arange(10), dtype="int64"),
+            "feature3": pd.Series(["2020-10-30T03:43:21Z"] * 10, dtype="string"),
+            "feature4": pd.Series(np.arange(5.0), dtype="float64"),  # contains nan
+            "feature5": pd.Series(
+                [["a", "abc"], ["b", "c"], ["c", "f"], ["d"], []], dtype="object"
+            ),
+            "feature6": pd.Series([[1, 2], [1, 2, 3], [1, 5], [1], []], dtype="object"),
+            "feature7": pd.Series(
+                [[1.1, 2.3], [1.4, 2.5, 3.2, 25], [1.0, 5.3], [1.2], []], dtype="object"
+            ),
+            "feature8": pd.Series([[1, 2], [1, 2, None], [1, 5], [1], [], [None]], dtype="object"),
+            "feature9": pd.Series(
+                [[1.1, 2.3], [1.4, 25, 3.2], [1.0, 3, None], [1.2], [], [None]], dtype="object"
+            ),
+            "feature10": pd.Series(
+                [["a", "abc"], ["b", "c"], ["c", None], ["d"], [], [None]], dtype="object"
+            ),
+        }
+    )
+    return df
+
+
+@pytest.fixture
+def expected_standard_feature_definitions():
+    return [
+        FeatureDefinition(feature_name="feature1", feature_type=FeatureTypeEnum.FRACTIONAL),
+        FeatureDefinition(feature_name="feature2", feature_type=FeatureTypeEnum.INTEGRAL),
+        FeatureDefinition(feature_name="feature3", feature_type=FeatureTypeEnum.STRING),
+        FeatureDefinition(feature_name="feature4", feature_type=FeatureTypeEnum.FRACTIONAL),
+        FeatureDefinition(feature_name="feature5", feature_type=FeatureTypeEnum.STRING),
+        FeatureDefinition(feature_name="feature6", feature_type=FeatureTypeEnum.STRING),
+        FeatureDefinition(feature_name="feature7", feature_type=FeatureTypeEnum.STRING),
+        FeatureDefinition(feature_name="feature8", feature_type=FeatureTypeEnum.STRING),
+        FeatureDefinition(feature_name="feature9", feature_type=FeatureTypeEnum.STRING),
+        FeatureDefinition(feature_name="feature10", feature_type=FeatureTypeEnum.STRING),
+    ]
+
+
+@pytest.fixture
+def expected_standard_feature_definition_dict():
+    return {
+        "feature1": {"FeatureName": "feature1", "FeatureType": "Fractional"},
+        "feature2": {"FeatureName": "feature2", "FeatureType": "Integral"},
+        "feature3": {"FeatureName": "feature3", "FeatureType": "String"},
+        "feature4": {
+            "FeatureName": "feature4",
+            "FeatureType": "Fractional",
+            "CollectionType": None,
+        },
+        "feature5": {"FeatureName": "feature5", "FeatureType": "String"},
+        "feature6": {"FeatureName": "feature6", "FeatureType": "Integral"},
+        "feature7": {"FeatureName": "feature7", "FeatureType": "Fractional"},
+        "feature8": {"FeatureName": "feature8", "FeatureType": "Integral"},
+        "feature9": {"FeatureName": "feature9", "FeatureType": "Fractional"},
+        "feature10": {"FeatureName": "feature10", "FeatureType": "String"},
+    }
+
+
+@pytest.fixture
+def expected_in_memory_feature_definitions():
+    return [
+        FeatureDefinition(feature_name="feature1", feature_type=FeatureTypeEnum.FRACTIONAL),
+        FeatureDefinition(feature_name="feature2", feature_type=FeatureTypeEnum.INTEGRAL),
+        FeatureDefinition(feature_name="feature3", feature_type=FeatureTypeEnum.STRING),
+        FeatureDefinition(feature_name="feature4", feature_type=FeatureTypeEnum.FRACTIONAL),
+        FeatureDefinition(
+            feature_name="feature5",
+            feature_type=FeatureTypeEnum.STRING,
+            collection_type=ListCollectionType(),
+        ),
+        FeatureDefinition(
+            feature_name="feature6",
+            feature_type=FeatureTypeEnum.INTEGRAL,
+            collection_type=ListCollectionType(),
+        ),
+        FeatureDefinition(
+            feature_name="feature7",
+            feature_type=FeatureTypeEnum.FRACTIONAL,
+            collection_type=ListCollectionType(),
+        ),
+        FeatureDefinition(
+            feature_name="feature8",
+            feature_type=FeatureTypeEnum.INTEGRAL,
+            collection_type=ListCollectionType(),
+        ),
+        FeatureDefinition(
+            feature_name="feature9",
+            feature_type=FeatureTypeEnum.FRACTIONAL,
+            collection_type=ListCollectionType(),
+        ),
+        FeatureDefinition(
+            feature_name="feature10",
+            feature_type=FeatureTypeEnum.STRING,
+            collection_type=ListCollectionType(),
+        ),
+    ]
+
+
+@pytest.fixture
+def expected_in_memory_feature_definition_dict():
+    return {
+        "feature1": {"FeatureName": "feature1", "FeatureType": "Fractional"},
+        "feature2": {"FeatureName": "feature2", "FeatureType": "Integral"},
+        "feature3": {"FeatureName": "feature3", "FeatureType": "String"},
+        "feature4": {"FeatureName": "feature4", "FeatureType": "Fractional"},
+        "feature5": {"FeatureName": "feature5", "FeatureType": "String", "CollectionType": "List"},
+        "feature6": {
+            "FeatureName": "feature6",
+            "FeatureType": "Integral",
+            "CollectionType": "List",
+        },
+        "feature7": {
+            "FeatureName": "feature7",
+            "FeatureType": "Fractional",
+            "CollectionType": "List",
+        },
+        "feature8": {
+            "FeatureName": "feature8",
+            "FeatureType": "Integral",
+            "CollectionType": "List",
+        },
+        "feature9": {
+            "FeatureName": "feature9",
+            "FeatureType": "Fractional",
+            "CollectionType": "List",
+        },
+        "feature10": {
+            "FeatureName": "feature10",
+            "FeatureType": "String",
+            "CollectionType": "List",
+        },
+    }
+
+
+@pytest.fixture
 def create_table_ddl():
     return (
         "CREATE EXTERNAL TABLE IF NOT EXISTS {database}.{table_name} (\n"
@@ -120,7 +279,6 @@ def test_feature_group_create_without_role(
 def test_feature_store_create_with_config_injection(
     sagemaker_session, role_arn, feature_group_dummy_definitions, s3_uri
 ):
-
     sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_FEATURE_GROUP
     sagemaker_session.create_feature_group = Mock()
 
@@ -159,6 +317,49 @@ def test_feature_store_create_with_config_injection(
             },
         },
     )
+
+
+def test_feature_group_load_definition(
+    sagemaker_session_mock,
+    data_frame_with_collection_type,
+    expected_standard_feature_definitions,
+    expected_in_memory_feature_definitions,
+):
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
+
+    feature_group.load_feature_definitions(data_frame=data_frame_with_collection_type)
+    assert feature_group.feature_definitions == expected_standard_feature_definitions
+
+    feature_group.load_feature_definitions(
+        data_frame=data_frame_with_collection_type,
+        online_storage_type=OnlineStoreStorageTypeEnum.STANDARD,
+    )
+    assert feature_group.feature_definitions == expected_standard_feature_definitions
+
+    feature_group.load_feature_definitions(
+        data_frame=data_frame_with_collection_type,
+        online_storage_type=OnlineStoreStorageTypeEnum.IN_MEMORY,
+    )
+    assert feature_group.feature_definitions == expected_in_memory_feature_definitions
+
+    data_frame_with_collection_type["feature11"] = pd.Series(
+        [[1.1, "2.3"], [1.4, 2.5, 3.2, 25], [1.0, 5.3], [1.2], []], dtype="object"
+    )
+
+    feature_group.load_feature_definitions(
+        data_frame=data_frame_with_collection_type,
+        online_storage_type=OnlineStoreStorageTypeEnum.STANDARD,
+    )
+    expected_standard_feature_definitions.append(
+        FeatureDefinition(feature_name="feature11", feature_type=FeatureTypeEnum.STRING)
+    )
+    assert feature_group.feature_definitions == expected_standard_feature_definitions
+
+    with pytest.raises(ValueError):
+        feature_group.load_feature_definitions(
+            data_frame=data_frame_with_collection_type,
+            online_storage_type=OnlineStoreStorageTypeEnum.IN_MEMORY,
+        )
 
 
 def test_feature_store_create(
@@ -491,7 +692,7 @@ def test_put_record(sagemaker_session_mock):
     feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
     feature_group.put_record(record=[])
     sagemaker_session_mock.put_record.assert_called_with(
-        feature_group_name="MyFeatureGroup", record=[]
+        feature_group_name="MyFeatureGroup", record=[], target_stores=None, ttl_duration=None
     )
 
 
@@ -502,6 +703,23 @@ def test_put_record_ttl_duration(sagemaker_session_mock):
     sagemaker_session_mock.put_record.assert_called_with(
         feature_group_name="MyFeatureGroup",
         record=[],
+        target_stores=None,
+        ttl_duration=ttl_duration.to_dict(),
+    )
+
+
+def test_put_record_target_stores(sagemaker_session_mock):
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
+    ttl_duration = TtlDuration(unit="Minutes", value=123)
+    feature_group.put_record(
+        record=[],
+        target_stores=[TargetStoreEnum.ONLINE_STORE, TargetStoreEnum.OFFLINE_STORE],
+        ttl_duration=ttl_duration,
+    )
+    sagemaker_session_mock.put_record.assert_called_with(
+        feature_group_name="MyFeatureGroup",
+        record=[],
+        target_stores=[TargetStoreEnum.ONLINE_STORE.value, TargetStoreEnum.OFFLINE_STORE.value],
         ttl_duration=ttl_duration.to_dict(),
     )
 
@@ -628,10 +846,19 @@ def test_ingest_zero_workers():
 
 
 @patch("sagemaker.feature_store.feature_group.IngestionManagerPandas")
-def test_ingest(ingestion_manager_init, sagemaker_session_mock, fs_runtime_client_config_mock):
+def test_ingest(
+    ingestion_manager_init,
+    sagemaker_session_mock,
+    fs_runtime_client_config_mock,
+    feature_group_describe_dummy_definitions,
+    feature_group_dummy_definition_dict,
+):
     sagemaker_session_mock.sagemaker_featurestore_runtime_client.meta.config = (
         fs_runtime_client_config_mock
     )
+    sagemaker_session_mock.describe_feature_group.return_value = {
+        "FeatureDefinitions": feature_group_describe_dummy_definitions
+    }
 
     feature_group = FeatureGroup(name="MyGroup", sagemaker_session=sagemaker_session_mock)
     df = pd.DataFrame(dict((f"float{i}", pd.Series([2.0], dtype="float64")) for i in range(300)))
@@ -642,6 +869,7 @@ def test_ingest(ingestion_manager_init, sagemaker_session_mock, fs_runtime_clien
 
     ingestion_manager_init.assert_called_once_with(
         feature_group_name="MyGroup",
+        feature_definitions=feature_group_dummy_definition_dict,
         sagemaker_session=sagemaker_session_mock,
         sagemaker_fs_runtime_client_config=fs_runtime_client_config_mock,
         max_workers=10,
@@ -649,16 +877,25 @@ def test_ingest(ingestion_manager_init, sagemaker_session_mock, fs_runtime_clien
         profile_name=sagemaker_session_mock.boto_session.profile_name,
     )
     mock_ingestion_manager_instance.run.assert_called_once_with(
-        data_frame=df, wait=True, timeout=None
+        data_frame=df, target_stores=None, wait=True, timeout=None
     )
 
 
 @patch("sagemaker.feature_store.feature_group.IngestionManagerPandas")
-def test_ingest_default(ingestion_manager_init, sagemaker_session_mock):
+def test_ingest_default(
+    ingestion_manager_init,
+    sagemaker_session_mock,
+    fs_runtime_client_config_mock,
+    feature_group_describe_dummy_definitions,
+    feature_group_dummy_definition_dict,
+):
     sagemaker_session_mock.sagemaker_featurestore_runtime_client.meta.config = (
         fs_runtime_client_config_mock
     )
     sagemaker_session_mock.boto_session.profile_name = "default"
+    sagemaker_session_mock.describe_feature_group.return_value = {
+        "FeatureDefinitions": feature_group_describe_dummy_definitions
+    }
 
     feature_group = FeatureGroup(name="MyGroup", sagemaker_session=sagemaker_session_mock)
     df = pd.DataFrame(dict((f"float{i}", pd.Series([2.0], dtype="float64")) for i in range(300)))
@@ -669,6 +906,7 @@ def test_ingest_default(ingestion_manager_init, sagemaker_session_mock):
 
     ingestion_manager_init.assert_called_once_with(
         feature_group_name="MyGroup",
+        feature_definitions=feature_group_dummy_definition_dict,
         sagemaker_session=sagemaker_session_mock,
         sagemaker_fs_runtime_client_config=fs_runtime_client_config_mock,
         max_workers=1,
@@ -676,17 +914,103 @@ def test_ingest_default(ingestion_manager_init, sagemaker_session_mock):
         profile_name=None,
     )
     mock_ingestion_manager_instance.run.assert_called_once_with(
-        data_frame=df, wait=True, timeout=None
+        data_frame=df, target_stores=None, wait=True, timeout=None
     )
 
 
 @patch("sagemaker.feature_store.feature_group.IngestionManagerPandas")
-def test_ingest_with_profile_name(
-    ingestion_manager_init, sagemaker_session_mock, fs_runtime_client_config_mock
+def test_ingest_with_target_stores(
+    ingestion_manager_init,
+    sagemaker_session_mock,
+    fs_runtime_client_config_mock,
+    feature_group_describe_dummy_definitions,
+    feature_group_dummy_definition_dict,
 ):
     sagemaker_session_mock.sagemaker_featurestore_runtime_client.meta.config = (
         fs_runtime_client_config_mock
     )
+    sagemaker_session_mock.describe_feature_group.return_value = {
+        "FeatureDefinitions": feature_group_describe_dummy_definitions
+    }
+
+    feature_group = FeatureGroup(name="MyGroup", sagemaker_session=sagemaker_session_mock)
+    df = pd.DataFrame(dict((f"float{i}", pd.Series([2.0], dtype="float64")) for i in range(300)))
+
+    mock_ingestion_manager_instance = Mock()
+    ingestion_manager_init.return_value = mock_ingestion_manager_instance
+    feature_group.ingest(
+        data_frame=df, max_workers=10, target_stores=[TargetStoreEnum.ONLINE_STORE]
+    )
+    feature_group.ingest(
+        data_frame=df, max_workers=10, target_stores=[TargetStoreEnum.OFFLINE_STORE]
+    )
+    feature_group.ingest(
+        data_frame=df,
+        max_workers=10,
+        target_stores=[TargetStoreEnum.ONLINE_STORE, TargetStoreEnum.OFFLINE_STORE],
+    )
+
+    actual_ingestion_manager_init_calls = ingestion_manager_init.mock_calls
+    expected_ingestion_manager_init_calls = [
+        call(
+            feature_group_name="MyGroup",
+            feature_definitions=feature_group_dummy_definition_dict,
+            sagemaker_session=sagemaker_session_mock,
+            sagemaker_fs_runtime_client_config=fs_runtime_client_config_mock,
+            max_workers=10,
+            max_processes=1,
+            profile_name=sagemaker_session_mock.boto_session.profile_name,
+        ),
+        call().run(
+            data_frame=df, target_stores=[TargetStoreEnum.ONLINE_STORE], wait=True, timeout=None
+        ),
+        call(
+            feature_group_name="MyGroup",
+            feature_definitions=feature_group_dummy_definition_dict,
+            sagemaker_session=sagemaker_session_mock,
+            sagemaker_fs_runtime_client_config=fs_runtime_client_config_mock,
+            max_workers=10,
+            max_processes=1,
+            profile_name=sagemaker_session_mock.boto_session.profile_name,
+        ),
+        call().run(
+            data_frame=df, target_stores=[TargetStoreEnum.OFFLINE_STORE], wait=True, timeout=None
+        ),
+        call(
+            feature_group_name="MyGroup",
+            feature_definitions=feature_group_dummy_definition_dict,
+            sagemaker_session=sagemaker_session_mock,
+            sagemaker_fs_runtime_client_config=fs_runtime_client_config_mock,
+            max_workers=10,
+            max_processes=1,
+            profile_name=sagemaker_session_mock.boto_session.profile_name,
+        ),
+        call().run(
+            data_frame=df,
+            target_stores=[TargetStoreEnum.ONLINE_STORE, TargetStoreEnum.OFFLINE_STORE],
+            wait=True,
+            timeout=None,
+        ),
+    ]
+    assert (
+        actual_ingestion_manager_init_calls == expected_ingestion_manager_init_calls
+    ), f"Expected {expected_ingestion_manager_init_calls} calls, but got {actual_ingestion_manager_init_calls}"
+
+
+@patch("sagemaker.feature_store.feature_group.IngestionManagerPandas")
+def test_ingest_with_profile_name(
+    ingestion_manager_init,
+    sagemaker_session_mock,
+    fs_runtime_client_config_mock,
+    feature_group_describe_dummy_definitions,
+    feature_group_dummy_definition_dict,
+):
+    sagemaker_session_mock.sagemaker_featurestore_runtime_client.meta.config = (
+        fs_runtime_client_config_mock
+    )
+    sagemaker_session_mock.describe_feature_group.return_value = {
+        "FeatureDefinitions": feature_group_describe_dummy_definitions
+    }
 
     feature_group = FeatureGroup(name="MyGroup", sagemaker_session=sagemaker_session_mock)
     df = pd.DataFrame(dict((f"float{i}", pd.Series([2.0], dtype="float64")) for i in range(300)))
@@ -697,6 +1021,7 @@ def test_ingest_with_profile_name(
 
     ingestion_manager_init.assert_called_once_with(
         feature_group_name="MyGroup",
+        feature_definitions=feature_group_dummy_definition_dict,
         sagemaker_session=sagemaker_session_mock,
         sagemaker_fs_runtime_client_config=fs_runtime_client_config_mock,
         max_workers=10,
@@ -704,7 +1029,7 @@ def test_ingest_with_profile_name(
         profile_name="profile_name",
     )
     mock_ingestion_manager_instance.run.assert_called_once_with(
-        data_frame=df, wait=True, timeout=None
+        data_frame=df, target_stores=None, wait=True, timeout=None
     )
 
 
@@ -763,17 +1088,20 @@ def test_as_hive_ddl(create_table_ddl, feature_group_dummy_definitions, sagemake
     "sagemaker.feature_store.feature_group.IngestionManagerPandas._run_multi_process",
     MagicMock(),
 )
-def test_ingestion_manager_run_success():
+def test_ingestion_manager__run_multi_process_success():
     df = pd.DataFrame({"float": pd.Series([2.0], dtype="float64")})
     manager = IngestionManagerPandas(
         feature_group_name="MyGroup",
+        feature_definitions=feature_group_dummy_definition_dict,
         sagemaker_session=sagemaker_session_mock,
         sagemaker_fs_runtime_client_config=fs_runtime_client_config_mock,
         max_workers=10,
     )
     manager.run(df)
 
-    manager._run_multi_process.assert_called_once_with(data_frame=df, wait=True, timeout=None)
+    manager._run_multi_process.assert_called_once_with(
+        data_frame=df, target_stores=None, wait=True, timeout=None
+    )
 
 
 @patch(
@@ -786,6 +1114,7 @@ def test_ingestion_manager_run_multi_process_with_multi_thread_success(
     df = pd.DataFrame({"float": pd.Series([2.0], dtype="float64")})
     manager = IngestionManagerPandas(
         feature_group_name="MyGroup",
+        feature_definitions=feature_group_dummy_definition_dict,
         sagemaker_session=sagemaker_session_mock,
         sagemaker_fs_runtime_client_config=fs_runtime_client_config_mock,
         max_workers=2,
@@ -802,6 +1131,7 @@ def test_ingestion_manager_run_failure():
     df = pd.DataFrame({"float": pd.Series([2.0], dtype="float64")})
     manager = IngestionManagerPandas(
         feature_group_name="MyGroup",
+        feature_definitions=feature_group_dummy_definition_dict,
         sagemaker_session=sagemaker_session_mock,
         sagemaker_fs_runtime_client_config=fs_runtime_client_config_mock,
         max_workers=2,
@@ -816,6 +1146,353 @@ def test_ingestion_manager_run_failure():
 
 
 @patch(
+    "sagemaker.feature_store.feature_group.IngestionManagerPandas._ingest_row",
+    MagicMock(return_value=[1]),
+)
+def test_ingestion_manager_run_success(sagemaker_session_mock, fs_runtime_client_config_mock):
+    sagemaker_session_mock.sagemaker_featurestore_runtime_client = fs_runtime_client_config_mock
+    df = pd.DataFrame({"float": pd.Series([2.0], dtype="float64")})
+    manager = IngestionManagerPandas(
+        feature_group_name="MyGroup",
+        feature_definitions=feature_group_dummy_definition_dict,
+        sagemaker_session=sagemaker_session_mock,
+        sagemaker_fs_runtime_client_config=fs_runtime_client_config_mock,
+    )
+
+    manager.run(df)
+    for row in df.itertuples():
+        manager._ingest_row.assert_called_with(
+            data_frame=df,
+            target_stores=None,
+            row=row,
+            feature_group_name="MyGroup",
+            feature_definitions=feature_group_dummy_definition_dict,
+            sagemaker_fs_runtime_client=fs_runtime_client_config_mock,
+            failed_rows=[],
+        )
+
+    expected_invocation_count = 1  # Set your expected count
+    actual_invocation_count = len(manager._ingest_row.mock_calls)
+    assert (
+        actual_invocation_count == expected_invocation_count
+    ), f"Expected {expected_invocation_count} calls, but got {actual_invocation_count}"
+
+
+def test_ingestion_manager_run_standard(
+    sagemaker_session_mock, fs_runtime_client_config_mock, feature_group_dummy_definition_dict
+):
+    sagemaker_session_mock.sagemaker_featurestore_runtime_client = fs_runtime_client_config_mock
+    df = pd.DataFrame(data={"feature1": [2.0, 3.0], "feature2": [3, 4], "feature3": ["abc", "edf"]})
+
+    manager = IngestionManagerPandas(
+        feature_group_name="MyGroup",
+        feature_definitions=feature_group_dummy_definition_dict,
+        sagemaker_session=sagemaker_session_mock,
+        sagemaker_fs_runtime_client_config=fs_runtime_client_config_mock,
+    )
+
+    manager.run(df)
+
+    actual_put_record_calls = fs_runtime_client_config_mock.put_record.mock_calls
+    expected_put_record_calls = [
+        call(
+            FeatureGroupName="MyGroup",
+            Record=[
+                {"FeatureName": "feature1", "ValueAsString": "2.0"},
+                {"FeatureName": "feature2", "ValueAsString": "3"},
+                {"FeatureName": "feature3", "ValueAsString": "abc"},
+            ],
+        ),
+        call(
+            FeatureGroupName="MyGroup",
+            Record=[
+                {"FeatureName": "feature1", "ValueAsString": "3.0"},
+                {"FeatureName": "feature2", "ValueAsString": "4"},
+                {"FeatureName": "feature3", "ValueAsString": "edf"},
+            ],
+        ),
+    ]
+    assert (
+        actual_put_record_calls == expected_put_record_calls
+    ), f"Expected {expected_put_record_calls} calls, but got {actual_put_record_calls}"
+
+
+def test_ingestion_manager_run_non_collection_type(
+    sagemaker_session_mock,
+    fs_runtime_client_config_mock,
+    feature_group_dummy_definition_dict,
+    data_frame_with_collection_type,
+    expected_standard_feature_definition_dict,
+):
+    sagemaker_session_mock.sagemaker_featurestore_runtime_client = fs_runtime_client_config_mock
+    manager = IngestionManagerPandas(
+        feature_group_name="MyGroup",
+        feature_definitions=expected_standard_feature_definition_dict,
+        sagemaker_session=sagemaker_session_mock,
+        sagemaker_fs_runtime_client_config=fs_runtime_client_config_mock,
+    )
+
+    manager.run(data_frame_with_collection_type)
+
+    actual_put_record_calls = fs_runtime_client_config_mock.put_record.mock_calls
+    expected_put_record_calls = [
+        call(
+            FeatureGroupName="MyGroup",
+            Record=[
+                {"FeatureName": "feature1", "ValueAsString": "0.0"},
+                {"FeatureName": "feature2", "ValueAsString": "0"},
+                {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+                {"FeatureName": "feature4", "ValueAsString": "0.0"},
+                {"FeatureName": "feature5", "ValueAsString": "['a', 'abc']"},
+                {"FeatureName": "feature6", "ValueAsString": "[1, 2]"},
+                {"FeatureName": "feature7", "ValueAsString": "[1.1, 2.3]"},
+                {"FeatureName": "feature8", "ValueAsString": "[1, 2]"},
+                {"FeatureName": "feature9", "ValueAsString": "[1.1, 2.3]"},
+                {"FeatureName": "feature10", "ValueAsString": "['a', 'abc']"},
+            ],
+        ),
+        call(
+            FeatureGroupName="MyGroup",
+            Record=[
+                {"FeatureName": "feature1", "ValueAsString": "1.0"},
+                {"FeatureName": "feature2", "ValueAsString": "1"},
+                {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+                {"FeatureName": "feature4", "ValueAsString": "1.0"},
+                {"FeatureName": "feature5", "ValueAsString": "['b', 'c']"},
+                {"FeatureName": "feature6", "ValueAsString": "[1, 2, 3]"},
+                {"FeatureName": "feature7", "ValueAsString": "[1.4, 2.5, 3.2, 25]"},
+                {"FeatureName": "feature8", "ValueAsString": "[1, 2, None]"},
+                {"FeatureName": "feature9", "ValueAsString": "[1.4, 25, 3.2]"},
+                {"FeatureName": "feature10", "ValueAsString": "['b', 'c']"},
+            ],
+        ),
+        call(
+            FeatureGroupName="MyGroup",
+            Record=[
+                {"FeatureName": "feature1", "ValueAsString": "2.0"},
+                {"FeatureName": "feature2", "ValueAsString": "2"},
+                {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+                {"FeatureName": "feature4", "ValueAsString": "2.0"},
+                {"FeatureName": "feature5", "ValueAsString": "['c', 'f']"},
+                {"FeatureName": "feature6", "ValueAsString": "[1, 5]"},
+                {"FeatureName": "feature7", "ValueAsString": "[1.0, 5.3]"},
+                {"FeatureName": "feature8", "ValueAsString": "[1, 5]"},
+                {"FeatureName": "feature9", "ValueAsString": "[1.0, 3, None]"},
+                {"FeatureName": "feature10", "ValueAsString": "['c', None]"},
+            ],
+        ),
+        call(
+            FeatureGroupName="MyGroup",
+            Record=[
+                {"FeatureName": "feature1", "ValueAsString": "3.0"},
+                {"FeatureName": "feature2", "ValueAsString": "3"},
+                {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+                {"FeatureName": "feature4", "ValueAsString": "3.0"},
+                {"FeatureName": "feature5", "ValueAsString": "['d']"},
+                {"FeatureName": "feature6", "ValueAsString": "[1]"},
+                {"FeatureName": "feature7", "ValueAsString": "[1.2]"},
+                {"FeatureName": "feature8", "ValueAsString": "[1]"},
+                {"FeatureName": "feature9", "ValueAsString": "[1.2]"},
+                {"FeatureName": "feature10", "ValueAsString": "['d']"},
+            ],
+        ),
+        call(
+            FeatureGroupName="MyGroup",
+            Record=[
+                {"FeatureName": "feature1", "ValueAsString": "4.0"},
+                {"FeatureName": "feature2", "ValueAsString": "4"},
+                {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+                {"FeatureName": "feature4", "ValueAsString": "4.0"},
+            ],
+        ),
+        call(
+            FeatureGroupName="MyGroup",
+            Record=[
+                {"FeatureName": "feature1", "ValueAsString": "5.0"},
+                {"FeatureName": "feature2", "ValueAsString": "5"},
+                {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+                {"FeatureName": "feature8", "ValueAsString": "[None]"},
+                {"FeatureName": "feature9", "ValueAsString": "[None]"},
+                {"FeatureName": "feature10", "ValueAsString": "[None]"},
+            ],
+        ),
+        call(
+            FeatureGroupName="MyGroup",
+            Record=[
+                {"FeatureName": "feature1", "ValueAsString": "6.0"},
+                {"FeatureName": "feature2", "ValueAsString": "6"},
+                {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+            ],
+        ),
+        call(
+            FeatureGroupName="MyGroup",
+            Record=[
+                {"FeatureName": "feature1", "ValueAsString": "7.0"},
+                {"FeatureName": "feature2", "ValueAsString": "7"},
+                {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+            ],
+        ),
+        call(
+            FeatureGroupName="MyGroup",
+            Record=[
+                {"FeatureName": "feature1", "ValueAsString": "8.0"},
+                {"FeatureName": "feature2", "ValueAsString": "8"},
+                {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+            ],
+        ),
+        call(
+            FeatureGroupName="MyGroup",
+            Record=[
+                {"FeatureName": "feature1", "ValueAsString": "9.0"},
+                {"FeatureName": "feature2", "ValueAsString": "9"},
+                {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+            ],
+        ),
+    ]
+    assert (
+        actual_put_record_calls == expected_put_record_calls
+    ), f"Expected {expected_put_record_calls} calls, but got {actual_put_record_calls}"
+
+
+def test_ingestion_manager_run_collection_type(
+    sagemaker_session_mock,
+    fs_runtime_client_config_mock,
+    feature_group_dummy_definition_dict,
+    data_frame_with_collection_type,
+    expected_in_memory_feature_definition_dict,
+):
+    sagemaker_session_mock.sagemaker_featurestore_runtime_client = fs_runtime_client_config_mock
+
+    manager = IngestionManagerPandas(
+        feature_group_name="MyGroup",
+        feature_definitions=expected_in_memory_feature_definition_dict,
+        sagemaker_session=sagemaker_session_mock,
+        sagemaker_fs_runtime_client_config=fs_runtime_client_config_mock,
+    )
+
+    manager.run(data_frame_with_collection_type)
+
+    actual_put_record_calls = fs_runtime_client_config_mock.put_record.mock_calls
+    expected_put_record_calls = [
+        call(
+            FeatureGroupName="MyGroup",
+            Record=[
+                {"FeatureName": "feature1", "ValueAsString": "0.0"},
+                {"FeatureName": "feature2", "ValueAsString": "0"},
+                {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+                {"FeatureName": "feature4", "ValueAsString": "0.0"},
+                {"FeatureName": "feature5", "ValueAsStringList": ["a", "abc"]},
+                {"FeatureName": "feature6", "ValueAsStringList": ["1", "2"]},
+                {"FeatureName": "feature7", "ValueAsStringList": ["1.1", "2.3"]},
+                {"FeatureName": "feature8", "ValueAsStringList": ["1", "2"]},
+                {"FeatureName": "feature9", "ValueAsStringList": ["1.1", "2.3"]},
+                {"FeatureName": "feature10", "ValueAsStringList": ["a", "abc"]},
+            ],
+        ),
+        call(
+            FeatureGroupName="MyGroup",
+            Record=[
+                {"FeatureName": "feature1", "ValueAsString": "1.0"},
+                {"FeatureName": "feature2", "ValueAsString": "1"},
+                {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+                {"FeatureName": "feature4", "ValueAsString": "1.0"},
+                {"FeatureName": "feature5", "ValueAsStringList": ["b", "c"]},
+                {"FeatureName": "feature6", "ValueAsStringList": ["1", "2", "3"]},
+                {"FeatureName": "feature7", "ValueAsStringList": ["1.4", "2.5", "3.2", "25"]},
+                {"FeatureName": "feature8", "ValueAsStringList": ["1", "2", None]},
+                {"FeatureName": "feature9", "ValueAsStringList": ["1.4", "25", "3.2"]},
+                {"FeatureName": "feature10", "ValueAsStringList": ["b", "c"]},
+            ],
+        ),
+        call(
+            FeatureGroupName="MyGroup",
+            Record=[
+                {"FeatureName": "feature1", "ValueAsString": "2.0"},
+                {"FeatureName": "feature2", "ValueAsString": "2"},
+                {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+                {"FeatureName": "feature4", "ValueAsString": "2.0"},
+                {"FeatureName": "feature5", "ValueAsStringList": ["c", "f"]},
+                {"FeatureName": "feature6", "ValueAsStringList": ["1", "5"]},
+                {"FeatureName": "feature7", "ValueAsStringList": ["1.0", "5.3"]},
+                {"FeatureName": "feature8", "ValueAsStringList": ["1", "5"]},
+                {"FeatureName": "feature9", "ValueAsStringList": ["1.0", "3", None]},
+                {"FeatureName": "feature10", "ValueAsStringList": ["c", None]},
+            ],
+        ),
+        call(
+            FeatureGroupName="MyGroup",
+            Record=[
+                {"FeatureName": "feature1", "ValueAsString": "3.0"},
+                {"FeatureName": "feature2", "ValueAsString": "3"},
+                {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+                {"FeatureName": "feature4", "ValueAsString": "3.0"},
+                {"FeatureName": "feature5", "ValueAsStringList": ["d"]},
+                {"FeatureName": "feature6", "ValueAsStringList": ["1"]},
+                {"FeatureName": "feature7", "ValueAsStringList": ["1.2"]},
+                {"FeatureName": "feature8", "ValueAsStringList": ["1"]},
+                {"FeatureName": "feature9", "ValueAsStringList": ["1.2"]},
+                {"FeatureName": "feature10", "ValueAsStringList": ["d"]},
+            ],
+        ),
+        call(
+            FeatureGroupName="MyGroup",
+            Record=[
+                {"FeatureName": "feature1", "ValueAsString": "4.0"},
+                {"FeatureName": "feature2", "ValueAsString": "4"},
+                {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+                {"FeatureName": "feature4", "ValueAsString": "4.0"},
+            ],
+        ),
+        call(
+            FeatureGroupName="MyGroup",
+            Record=[
+                {"FeatureName": "feature1", "ValueAsString": "5.0"},
+                {"FeatureName": "feature2", "ValueAsString": "5"},
+                {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+                {"FeatureName": "feature8", "ValueAsStringList": [None]},
+                {"FeatureName": "feature9", "ValueAsStringList": [None]},
+                {"FeatureName": "feature10", "ValueAsStringList": [None]},
+            ],
+        ),
+        call(
+            FeatureGroupName="MyGroup",
+            Record=[
+                {"FeatureName": "feature1", "ValueAsString": "6.0"},
+                {"FeatureName": "feature2", "ValueAsString": "6"},
+                {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+            ],
+        ),
+        call(
+            FeatureGroupName="MyGroup",
+            Record=[
+                {"FeatureName": "feature1", "ValueAsString": "7.0"},
+                {"FeatureName": "feature2", "ValueAsString": "7"},
+                {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+            ],
+        ),
+        call(
+            FeatureGroupName="MyGroup",
+            Record=[
+                {"FeatureName": "feature1", "ValueAsString": "8.0"},
+                {"FeatureName": "feature2", "ValueAsString": "8"},
+                {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+            ],
+        ),
+        call(
+            FeatureGroupName="MyGroup",
+            Record=[
+                {"FeatureName": "feature1", "ValueAsString": "9.0"},
+                {"FeatureName": "feature2", "ValueAsString": "9"},
+                {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+            ],
+        ),
+    ]
+    assert (
+        actual_put_record_calls == expected_put_record_calls
+    ), f"Expected {expected_put_record_calls} calls, but got {actual_put_record_calls}"
+
+
+@patch(
     "sagemaker.feature_store.feature_group.IngestionManagerPandas._ingest_single_batch",
     MagicMock(side_effect=ProfileNotFound(profile="non_exist")),
 )
@@ -823,6 +1500,7 @@ def test_ingestion_manager_with_profile_name_run_failure():
     df = pd.DataFrame({"float": pd.Series([2.0], dtype="float64")})
     manager = IngestionManagerPandas(
         feature_group_name="MyGroup",
+        feature_definitions=feature_group_dummy_definition_dict,
         sagemaker_session=sagemaker_session_mock,
         sagemaker_fs_runtime_client_config=fs_runtime_client_config_mock,
         max_workers=1,
@@ -843,6 +1521,7 @@ def test_ingestion_manager_run_multi_process_failure():
     df = pd.DataFrame({"float": pd.Series([2.0], dtype="float64")})
     manager = IngestionManagerPandas(
         feature_group_name="MyGroup",
+        feature_definitions=feature_group_dummy_definition_dict,
         sagemaker_session=None,
         sagemaker_fs_runtime_client_config=None,
         max_workers=2,

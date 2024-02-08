@@ -91,6 +91,10 @@ Inputs
     :members:
     :show-inheritance:
 
+.. autoclass:: sagemaker.feature_store.inputs.TtlDuration
+    :members:
+    :show-inheritance:
+
 .. autoclass:: sagemaker.feature_store.inputs.S3StorageConfig
     :members:
     :show-inheritance:
