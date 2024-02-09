@@ -13,6 +13,8 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 import logging
+from time import perf_counter
+
 import requests
 
 from sagemaker import Session, exceptions
@@ -70,22 +72,20 @@ def _capture_telemetry(func_name: str):
             if self.model_server == ModelServer.DJL_SERVING or self.model_server == ModelServer.TGI:
                 extra += f"&x-modelName={self.model}"
 
-            status = "1"
-            failure_reason = None
             if self.sagemaker_session.endpoint:
                 extra += f"&x-endpointArn={self.sagemaker_session.endpoint['EndpointArn']}"
-                if self.sagemaker_session.endpoint["EndpointStatus"] != "InService":
-                    status = "0"
-                    failure_reason = self.sagemaker_session.endpoint.get("FailureReason", None)
 
+            start_timer = perf_counter()
             try:
                 response = func(self, *args, **kwargs)
+                stop_timer = perf_counter()
+                extra += f"&x-latency={stop_timer - start_timer}"
                 if not self.serve_settings.telemetry_opt_out:
                     _send_telemetry(
-                        status,
+                        "1",
                         MODE_TO_CODE[str(self.mode)],
                         self.sagemaker_session,
-                        failure_reason,
+                        None,
                         None,
                         extra,
                     )
@@ -94,6 +94,8 @@ def _capture_telemetry(func_name: str):
                 exceptions.CapacityError,
                 exceptions.UnexpectedStatusException,
             ) as e:
+                stop_timer = perf_counter()
+                extra += f"&x-latency={stop_timer - start_timer}"
                 if not self.serve_settings.telemetry_opt_out:
                     _send_telemetry(
                         "0",

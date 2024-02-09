@@ -86,10 +86,18 @@ class TestTelemetryLogger(unittest.TestCase):
             f"&x-sdkVersion={SDK_VERSION}"
             f"&x-modelName={MOCK_HUGGINGFACE_ID}"
             f"&x-endpointArn={MOCK_ENDPOINT_ARN}"
+            f"&x-latency="
         )
-        mock_send_telemetry.assert_called_once_with(
-            "1", 2, MOCK_SESSION, None, None, expected_extra_str
-        )
+
+        mock_send_telemetry.assert_called_once()
+        args = mock_send_telemetry.call_args.args
+        assert args is not None
+        assert "1" == args[0]
+        assert 2 == args[1]
+        assert MOCK_SESSION == args[2]
+        assert args[3] is None
+        assert args[4] is None
+        assert expected_extra_str in args[5]
 
     @patch("sagemaker.serve.utils.telemetry_logger._send_telemetry")
     def test_capture_telemetry_decorator_tgi_success(self, mock_send_telemetry):
@@ -110,10 +118,18 @@ class TestTelemetryLogger(unittest.TestCase):
             f"&x-sdkVersion={SDK_VERSION}"
             f"&x-modelName={MOCK_HUGGINGFACE_ID}"
             f"&x-endpointArn={MOCK_ENDPOINT_ARN}"
+            f"&x-latency="
         )
-        mock_send_telemetry.assert_called_once_with(
-            "1", 2, MOCK_SESSION, None, None, expected_extra_str
-        )
+
+        mock_send_telemetry.assert_called_once()
+        args = mock_send_telemetry.call_args.args
+        assert args is not None
+        assert "1" == args[0]
+        assert 2 == args[1]
+        assert MOCK_SESSION == args[2]
+        assert args[3] is None
+        assert args[4] is None
+        assert expected_extra_str in args[5]
 
     @patch("sagemaker.serve.utils.telemetry_logger._send_telemetry")
     def test_capture_telemetry_decorator_no_call_when_disabled(self, mock_send_telemetry):
@@ -151,15 +167,18 @@ class TestTelemetryLogger(unittest.TestCase):
             f"&x-sdkVersion={SDK_VERSION}"
             f"&x-modelName={MOCK_HUGGINGFACE_ID}"
             f"&x-endpointArn={MOCK_ENDPOINT_ARN}"
+            f"&x-latency="
         )
-        mock_send_telemetry.assert_called_once_with(
-            "0",
-            2,
-            MOCK_SESSION,
-            str(mock_exception_obj),
-            mock_exception_obj.__class__.__name__,
-            expected_extra_str,
-        )
+
+        mock_send_telemetry.assert_called_once()
+        args = mock_send_telemetry.call_args.args
+        assert args is not None
+        assert "0" == args[0]
+        assert 2 == args[1]
+        assert MOCK_SESSION == args[2]
+        assert str(mock_exception_obj) == args[3]
+        assert mock_exception_obj.__class__.__name__ == args[4]
+        assert expected_extra_str in args[5]
 
     def test_construct_url_with_failure_reason_and_extra_info(self):
         mock_accountId = "12345678910"
