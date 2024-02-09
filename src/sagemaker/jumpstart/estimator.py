@@ -33,6 +33,7 @@ from sagemaker.jumpstart.exceptions import INVALID_MODEL_ID_ERROR_MSG
 
 from sagemaker.jumpstart.factory.estimator import get_deploy_kwargs, get_fit_kwargs, get_init_kwargs
 from sagemaker.jumpstart.factory.model import get_default_predictor
+from sagemaker.jumpstart.session_utils import get_model_id_version_from_training_job
 from sagemaker.jumpstart.utils import (
     is_valid_model_id,
     resolve_model_sagemaker_config_field,
@@ -251,8 +252,8 @@ class JumpStartEstimator(Estimator):
                 (Default: None).
             model_channel_name (Optional[Union[str, PipelineVariable]]): Name of the channel where
                 'model_uri' will be downloaded. (Default: None).
-            metric_definitions (Optional[Union[list[dict[str, str], list[dict[str,
-                PipelineVariable]]]]): A list of dictionaries that defines the metric(s)
+            metric_definitions (Optional[list[dict[str, Union[str, PipelineVariable]]]]):
+                A list of dictionaries that defines the metric(s)
                 used to evaluate the training jobs. Each dictionary contains two keys: 'Name'
                 for the name of the metric, and 'Regex' for the regular expression used to extract
                 the metric from the logs. This should be defined only for jobs that
@@ -292,8 +293,8 @@ class JumpStartEstimator(Estimator):
                 SageMaker Debugger rules for real-time analysis
                 (Default: None). For more information,
                 see `Continuous analyses through rules
-                <https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html
-                #continuous-analyses-through-rules)>`_.
+                <https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html#
+                continuous-analyses-through-rules)>`_.
                 (Default: None).
             debugger_hook_config (Optional[Union[DebuggerHookConfig, bool]]):
                 Configuration for how debugging information is emitted with
@@ -668,8 +669,8 @@ class JumpStartEstimator(Estimator):
     def attach(
         cls,
         training_job_name: str,
-        model_id: str,
-        model_version: str = "*",
+        model_id: Optional[str] = None,
+        model_version: Optional[str] = None,
         sagemaker_session: session.Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
         model_channel_name: str = "model",
     ) -> "JumpStartEstimator":
@@ -711,7 +712,19 @@ class JumpStartEstimator(Estimator):
         Returns:
             Instance of the calling ``JumpStartEstimator`` Class with the attached
             training job.
+
+        Raises:
+            ValueError: if the model ID or version cannot be inferred from the training job.
+
         """
+
+        if model_id is None:
+
+            model_id, model_version = get_model_id_version_from_training_job(
+                training_job_name=training_job_name, sagemaker_session=sagemaker_session
+            )
+
+        model_version = model_version or "*"
 
         return cls._attach(
             training_job_name=training_job_name,

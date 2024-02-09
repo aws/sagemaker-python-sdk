@@ -1,5 +1,85 @@
 # Changelog
 
+## v2.207.1 (2024-02-06)
+
+### Bug Fixes and Other Changes
+
+ * Add PT 2.1 as a supported framework for the smdistributed distribution
+ * Enable private docker registry support for ModelBuilder
+ * HF PT 2.1 Image Configs
+
+### Documentation Changes
+
+ * add setup commands for documentation generation
+
+## v2.207.0 (2024-02-05)
+
+### Features
+
+ * Introduce HF Transformers to ModelBuilder
+ * retrieve jumpstart estimator and predictor without specifying model id (infer from tags)
+
+### Bug Fixes and Other Changes
+
+ * SMP PT upgrade to 2.1
+ * Fetch HF metadata only when explicit type is not selected
+ * relax upper bound for urllib dependency
+
+## v2.206.0 (2024-01-31)
+
+### Features
+
+ * Logic to detect hardware GPU count and aggregate GPU memory size in MiB
+
+### Bug Fixes and Other Changes
+
+ * fixed create monitoring schedule failing after validation error
+ * Support PipelineVariable for ModelQualityCheckConfig attributes
+ * TGI NeuronX 0.0.17
+
+## v2.205.0 (2024-01-25)
+
+### Features
+
+ * Support selective pipeline execution for function step
+
+### Bug Fixes and Other Changes
+
+ * remove fastapi and uvicorn dependencies
+ * Support using PipelineDefinitionConfig in local mode
+ * update get_execution_role_arn from metadata file if present
+ * update image_uri_configs  01-24-2024 06:17:33 PST
+ * Add validation for empty ParameterString value in start local pipeline
+
+## v2.204.0 (2024-01-23)
+
+### Features
+
+ * add throughput management support for feature group
+ * Support custom repack model settings
+ * parallelize notebook search utils, add new operators
+
+### Bug Fixes and Other Changes
+
+ * Enable galactus integ tests
+ * JumpStart - TLV region launch
+ * add warning message for job-prefixed pipeline steps when no job name is provided
+ * TGI NeuronX
+ * Updates for DJL 0.26.0 release
+ * update sphinx version
+ * Add PyTorch 2.1.0 SM Training DLC to UNSUPPORTED_DLC_IMAGE_FOR_SM_PARALLELISM list
+ * Huggingface glue failing tests
+ * change ConditionNot incorrect property Expression to Condition
+
+## v2.203.1 (2024-01-09)
+
+### Bug Fixes and Other Changes
+
+ * TGI 1.3.3
+ * skip failing integs
+ * query hf api for model md
+ * update image_uri_configs  12-29-2023 06:17:34 PST
+
 ## v2.203.0 (2023-12-28)
 
 ### Features

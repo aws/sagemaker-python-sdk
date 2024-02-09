@@ -4352,6 +4352,30 @@ class Session(object):  # pylint: disable=too-many-public-methods
             self.wait_for_endpoint(endpoint_name)
         return endpoint_name
 
+    def is_inference_component_based_endpoint(self, endpoint_name):
+        """Returns 'True' if endpoint is inference-component-based, 'False' otherwise.
+
+        An endpoint is inference component based if and only if the associated endpoint config
+        has a role associated with it and no production variants with a ``ModelName`` field.
+
+        Args:
+            endpoint_name (str): Name of the Amazon SageMaker ``Endpoint`` to determine
+                if inference-component-based.
+        """
+        describe_endpoint_response = self.describe_endpoint(endpoint_name)
+        endpoint_config_name = describe_endpoint_response["EndpointConfigName"]
+        describe_endpoint_config_response = self.sagemaker_client.describe_endpoint_config(
+            EndpointConfigName=endpoint_config_name
+        )
+        production_variants = describe_endpoint_config_response.get("ProductionVariants", [])
+        execution_role_arn = describe_endpoint_config_response.get("ExecutionRoleArn")
+        if len(production_variants) == 0:
+            return False
+        return execution_role_arn is not None and all(
+            production_variant.get("ModelName") is None
+            for production_variant in production_variants
+        )
+
     def describe_endpoint(self, endpoint_name):
         """Describe an Amazon SageMaker ``Endpoint``.
 
@@ -4565,20 +4589,18 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Args:
             inference_component_name (str): Name of the Amazon SageMaker ``InferenceComponent``.
             specification ([dict[str,int]]): Resource configuration. Optional.
-            Example: {
+                Example: {
                 "MinMemoryRequiredInMb": 1024,
                 "NumberOfCpuCoresRequired": 1,
                 "NumberOfAcceleratorDevicesRequired": 1,
                 "MaxMemoryRequiredInMb": 4096,
-            },
-
+                },
             runtime_config ([dict[str,int]]): Number of copies. Optional.
-            Default: {
+                Default: {
                 "copyCount": 1
-            }
-
+                }
             wait: Wait for inference component to be created before return. Optional. Default is
-            True.
+                True.
 
         Return:
             str: inference component name
@@ -4631,6 +4653,35 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 ),
                 poll=20,
             )
+
+    def list_and_paginate_inference_component_names_associated_with_endpoint(
+        self,
+        endpoint_name: str,
+    ) -> List[str]:
+        """List inference component names for an endpoint, concatenating paginated results.
+
+        Args:
+            endpoint_name (str): A string that matches the name of the
+                endpoint to which the inference components are deployed.
+        """
+        inference_component_names: List[str] = []
+        next_token: Optional[str] = None
+        first_iteration: bool = True
+
+        while first_iteration or next_token:
+            first_iteration = False
+            list_inference_components_response = self.list_inference_components(
+                endpoint_name_equals=endpoint_name, next_token=next_token
+            )
+            inference_component_names.extend(
+                [
+                    ic["InferenceComponentName"]
+                    for ic in list_inference_components_response["InferenceComponents"]
+                ]
+            )
+            next_token = list_inference_components_response.get("NextToken")
+
+        return sorted(inference_component_names)
 
     def list_inference_components(
         self,
@@ -5414,6 +5465,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 domain_id = metadata.get("DomainId")
                 user_profile_name = metadata.get("UserProfileName")
                 space_name = metadata.get("SpaceName")
+                execution_role_arn = metadata.get("ExecutionRoleArn")
             try:
                 if domain_id is None:
                     instance_desc = self.sagemaker_client.describe_notebook_instance(
@@ -5421,7 +5473,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
                     )
                     return instance_desc["RoleArn"]
 
-                # In Space app, find execution role from DefaultSpaceSettings on domain level
+                # find execution role from the metadata file if present
+                if execution_role_arn is not None:
+                    return execution_role_arn
+
+                # In Shared Space app, find execution role from DefaultSpaceSettings on domain level
                 if space_name is not None:
                     domain_desc = self.sagemaker_client.describe_domain(DomainId=domain_id)
                     return domain_desc["DefaultSpaceSettings"]["ExecutionRole"]
@@ -5681,6 +5737,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         role_arn: str = None,
         online_store_config: Dict[str, str] = None,
         offline_store_config: Dict[str, str] = None,
+        throughput_config: Dict[str, Any] = None,
         description: str = None,
         tags: Optional[Tags] = None,
     ) -> Dict[str, Any]:
@@ -5696,6 +5753,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 feature online store.
             offline_store_config (Dict[str, str]): dict contains configuration of the
                 feature offline store.
+            throughput_config (Dict[str, str]): dict contains throughput configuration
+                for the feature group.
             description (str): description of the FeatureGroup.
             tags (Optional[Tags]): tags for labeling a FeatureGroup.
 
@@ -5731,6 +5790,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             kwargs,
             OnlineStoreConfig=inferred_online_store_from_config,
             OfflineStoreConfig=inferred_offline_store_from_config,
+            ThroughputConfig=throughput_config,
             Description=description,
             Tags=tags,
         )
@@ -5759,28 +5819,32 @@ class Session(object):  # pylint: disable=too-many-public-methods
         feature_group_name: str,
         feature_additions: Sequence[Dict[str, str]] = None,
         online_store_config: Dict[str, any] = None,
+        throughput_config: Dict[str, Any] = None,
     ) -> Dict[str, Any]:
         """Update a FeatureGroup
 
-            either adding new features from the given feature definitions
-            or updating online store config
+            Supports modifications like adding new features from the given feature definitions,
+            updating online store and throughput configurations.
 
         Args:
             feature_group_name (str): name of the FeatureGroup to update.
             feature_additions (Sequence[Dict[str, str]): list of feature definitions to be updated.
+            online_store_config (Dict[str, Any]): updates to online store config
+            throughput_config (Dict[str, Any]): target throughput configuration of the feature group
         Returns:
             Response dict from service.
         """
+        update_req = {"FeatureGroupName": feature_group_name}
+        if online_store_config is not None:
+            update_req["OnlineStoreConfig"] = online_store_config
 
-        if feature_additions is None:
-            return self.sagemaker_client.update_feature_group(
-                FeatureGroupName=feature_group_name,
-                OnlineStoreConfig=online_store_config,
-            )
+        if throughput_config is not None:
+            update_req["ThroughputConfig"] = throughput_config
 
-        return self.sagemaker_client.update_feature_group(
-            FeatureGroupName=feature_group_name, FeatureAdditions=feature_additions
-        )
+        if feature_additions is not None:
+            update_req["FeatureAdditions"] = feature_additions
+
+        return self.sagemaker_client.update_feature_group(**update_req)
 
     def list_feature_groups(
         self,
@@ -5928,27 +5992,34 @@ class Session(object):  # pylint: disable=too-many-public-methods
         self,
         feature_group_name: str,
         record: Sequence[Dict[str, str]],
-        ttl_duration: Dict[str, str] = None,
+        target_stores: Sequence[str] = None,
+        ttl_duration: Dict[str, Any] = None,
     ):
         """Puts a single record in the FeatureGroup.
 
         Args:
-            feature_group_name (str): name of the FeatureGroup.
-            record (Sequence[Dict[str, str]]): list of FeatureValue dicts to be ingested
+            feature_group_name (str): Name of the FeatureGroup.
+            record (Sequence[Dict[str, str]]): List of FeatureValue dicts to be ingested
                 into FeatureStore.
+            target_stores (Sequence[str]): Optional. List of target stores to put the record.
+            ttl_duration (Dict[str, str]): Optional. Time-to-Live (TTL) duration for the record.
+
+        Returns:
+            Response dict from service.
         """
 
-        if ttl_duration:
-            return self.sagemaker_featurestore_runtime_client.put_record(
-                FeatureGroupName=feature_group_name,
-                Record=record,
-                TtlDuration=ttl_duration,
-            )
+        params = {
+            "FeatureGroupName": feature_group_name,
+            "Record": record,
+        }
 
-        return self.sagemaker_featurestore_runtime_client.put_record(
-            FeatureGroupName=feature_group_name,
-            Record=record,
-        )
+        if ttl_duration:
+            params["TtlDuration"] = ttl_duration
+
+        if target_stores:
+            params["TargetStores"] = target_stores
+
+        return self.sagemaker_featurestore_runtime_client.put_record(**params)
 
     def delete_record(
         self,

@@ -703,6 +703,25 @@ def test_fallback_to_domain_if_role_unavailable_in_user_settings(boto_session):
     mock_open(
         read_data='{"ResourceName": "SageMakerInstance", '
         '"DomainId": "d-kbnw5yk6tg8j", '
+        '"ExecutionRoleArn": "arn:aws:iam::369233609183:role/service-role/SageMakerRole-20171129T072388", '
+        '"SpaceName": "space_name"}'
+    ),
+)
+@patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, True))
+def test_get_caller_identity_arn_from_metadata_file_for_space(boto_session):
+    sess = Session(boto_session)
+    expected_role = "arn:aws:iam::369233609183:role/service-role/SageMakerRole-20171129T072388"
+
+    actual = sess.get_caller_identity_arn()
+
+    assert actual == expected_role
+
+
+@patch(
+    "six.moves.builtins.open",
+    mock_open(
+        read_data='{"ResourceName": "SageMakerInstance", '
+        '"DomainId": "d-kbnw5yk6tg8j", '
         '"SpaceName": "space_name"}'
     ),
 )
@@ -5134,7 +5153,7 @@ def test_feature_group_describe(sagemaker_session):
     )
 
 
-def test_feature_group_update(sagemaker_session, feature_group_dummy_definitions):
+def test_feature_group_feature_additions_update(sagemaker_session, feature_group_dummy_definitions):
     sagemaker_session.update_feature_group(
         feature_group_name="MyFeatureGroup",
         feature_additions=feature_group_dummy_definitions,
@@ -5142,6 +5161,32 @@ def test_feature_group_update(sagemaker_session, feature_group_dummy_definitions
     assert sagemaker_session.sagemaker_client.update_feature_group.called_with(
         FeatureGroupName="MyFeatureGroup",
         FeatureAdditions=feature_group_dummy_definitions,
+    )
+
+
+def test_feature_group_online_store_config_update(sagemaker_session):
+    os_conf_update = {"TtlDuration": {"Unit": "Seconds", "Value": 123}}
+    sagemaker_session.update_feature_group(
+        feature_group_name="MyFeatureGroup",
+        online_store_config=os_conf_update,
+    )
+    assert sagemaker_session.sagemaker_client.update_feature_group.called_with(
+        FeatureGroupName="MyFeatureGroup", OnlineStoreConfig=os_conf_update
+    )
+
+
+def test_feature_group_throughput_config_update(sagemaker_session):
+    tp_update = {
+        "ThroughputMode": "Provisioned",
+        "ProvisionedReadCapacityUnits": 123,
+        "ProvisionedWriteCapacityUnits": 456,
+    }
+    sagemaker_session.update_feature_group(
+        feature_group_name="MyFeatureGroup",
+        throughput_config=tp_update,
+    )
+    assert sagemaker_session.sagemaker_client.update_feature_group.called_with(
+        FeatureGroupName="MyFeatureGroup", ThroughputConfig=tp_update
     )
 
 
@@ -5213,6 +5258,46 @@ def test_list_feature_groups(sagemaker_session):
     assert sagemaker_session.sagemaker_client.list_feature_groups.called_once()
     assert sagemaker_session.sagemaker_client.list_feature_groups.called_with(
         **expected_list_feature_groups_args
+    )
+
+
+@pytest.fixture()
+def sagemaker_session_with_fs_runtime_client():
+    boto_mock = MagicMock(name="boto_session")
+    sagemaker_session = sagemaker.Session(
+        boto_session=boto_mock, sagemaker_featurestore_runtime_client=MagicMock()
+    )
+    return sagemaker_session
+
+
+def test_feature_group_put_record(sagemaker_session_with_fs_runtime_client):
+    sagemaker_session_with_fs_runtime_client.put_record(
+        feature_group_name="MyFeatureGroup",
+        record=[{"FeatureName": "feature1", "ValueAsString": "value1"}],
+    )
+    fs_client_mock = sagemaker_session_with_fs_runtime_client.sagemaker_featurestore_runtime_client
+
+    assert fs_client_mock.put_record.called_with(
+        FeatureGroupName="MyFeatureGroup",
+        record=[{"FeatureName": "feature1", "ValueAsString": "value1"}],
+    )
+
+
+def test_feature_group_put_record_with_ttl_and_target_stores(
+    sagemaker_session_with_fs_runtime_client,
+):
+    sagemaker_session_with_fs_runtime_client.put_record(
+        feature_group_name="MyFeatureGroup",
+        record=[{"FeatureName": "feature1", "ValueAsString": "value1"}],
+        ttl_duration={"Unit": "Seconds", "Value": 123},
+        target_stores=["OnlineStore", "OfflineStore"],
+    )
+    fs_client_mock = sagemaker_session_with_fs_runtime_client.sagemaker_featurestore_runtime_client
+    assert fs_client_mock.put_record.called_with(
+        FeatureGroupName="MyFeatureGroup",
+        record=[{"FeatureName": "feature1", "ValueAsString": "value1"}],
+        target_stores=["OnlineStore", "OfflineStore"],
+        ttl_duration={"Unit": "Seconds", "Value": 123},
     )
 
 
@@ -6089,6 +6174,128 @@ def test_upload_data_default_bucket_and_prefix_combinations(
     assert actual == expected
 
 
+def test_is_inference_component_based_endpoint_affirmative(sagemaker_session):
+
+    describe_endpoint_response = {"EndpointConfigName": "some-endpoint-config"}
+    describe_endpoint_config_response = {
+        "ExecutionRoleArn": "some-role-arn",
+        "ProductionVariants": [{"VariantName": "AllTraffic"}],
+    }
+
+    sagemaker_session.sagemaker_client.describe_endpoint = Mock(
+        return_value=describe_endpoint_response
+    )
+    sagemaker_session.sagemaker_client.describe_endpoint_config = Mock(
+        return_value=describe_endpoint_config_response
+    )
+
+    assert sagemaker_session.is_inference_component_based_endpoint("endpoint-name")
+    sagemaker_session.sagemaker_client.describe_endpoint.assert_called_once_with(
+        EndpointName="endpoint-name"
+    )
+    sagemaker_session.sagemaker_client.describe_endpoint_config.assert_called_once_with(
+        EndpointConfigName="some-endpoint-config"
+    )
+
+
+def test_is_inference_component_based_endpoint_negative_no_role(sagemaker_session):
+
+    describe_endpoint_response = {"EndpointConfigName": "some-endpoint-config"}
+    describe_endpoint_config_response = {
+        "ProductionVariants": [{"VariantName": "AllTraffic"}],
+    }
+
+    sagemaker_session.sagemaker_client.describe_endpoint = Mock(
+        return_value=describe_endpoint_response
+    )
+    sagemaker_session.sagemaker_client.describe_endpoint_config = Mock(
+        return_value=describe_endpoint_config_response
+    )
+
+    assert not sagemaker_session.is_inference_component_based_endpoint("endpoint-name")
+    sagemaker_session.sagemaker_client.describe_endpoint.assert_called_once_with(
+        EndpointName="endpoint-name"
+    )
+    sagemaker_session.sagemaker_client.describe_endpoint_config.assert_called_once_with(
+        EndpointConfigName="some-endpoint-config"
+    )
+
+
+def test_is_inference_component_based_endpoint_positive_multiple_variants(sagemaker_session):
+
+    describe_endpoint_response = {"EndpointConfigName": "some-endpoint-config"}
+    describe_endpoint_config_response = {
+        "ExecutionRoleArn": "some-role-arn",
+        "ProductionVariants": [{"VariantName": "AllTraffic1"}, {"VariantName": "AllTraffic2"}],
+    }
+
+    sagemaker_session.sagemaker_client.describe_endpoint = Mock(
+        return_value=describe_endpoint_response
+    )
+    sagemaker_session.sagemaker_client.describe_endpoint_config = Mock(
+        return_value=describe_endpoint_config_response
+    )
+
+    assert sagemaker_session.is_inference_component_based_endpoint("endpoint-name")
+    sagemaker_session.sagemaker_client.describe_endpoint.assert_called_once_with(
+        EndpointName="endpoint-name"
+    )
+    sagemaker_session.sagemaker_client.describe_endpoint_config.assert_called_once_with(
+        EndpointConfigName="some-endpoint-config"
+    )
+
+
+def test_is_inference_component_based_endpoint_negative_no_variants(sagemaker_session):
+
+    describe_endpoint_response = {"EndpointConfigName": "some-endpoint-config"}
+    describe_endpoint_config_response = {
+        "ExecutionRoleArn": "some-role-arn",
+        "ProductionVariants": [],
+    }
+
+    sagemaker_session.sagemaker_client.describe_endpoint = Mock(
+        return_value=describe_endpoint_response
+    )
+    sagemaker_session.sagemaker_client.describe_endpoint_config = Mock(
+        return_value=describe_endpoint_config_response
+    )
+
+    assert not sagemaker_session.is_inference_component_based_endpoint("endpoint-name")
+    sagemaker_session.sagemaker_client.describe_endpoint.assert_called_once_with(
+        EndpointName="endpoint-name"
+    )
+    sagemaker_session.sagemaker_client.describe_endpoint_config.assert_called_once_with(
+        EndpointConfigName="some-endpoint-config"
+    )
+
+
+def test_is_inference_component_based_endpoint_negative_model_name_present(sagemaker_session):
+
+    describe_endpoint_response = {"EndpointConfigName": "some-endpoint-config"}
+    describe_endpoint_config_response = {
+        "ExecutionRoleArn": "some-role-arn",
+        "ProductionVariants": [
+            {"VariantName": "AllTraffic", "ModelName": "blah"},
+            {"VariantName": "AllTraffic1"},
+        ],
+    }
+
+    sagemaker_session.sagemaker_client.describe_endpoint = Mock(
+        return_value=describe_endpoint_response
+    )
+    sagemaker_session.sagemaker_client.describe_endpoint_config = Mock(
+        return_value=describe_endpoint_config_response
+    )
+
+    assert not sagemaker_session.is_inference_component_based_endpoint("endpoint-name")
+    sagemaker_session.sagemaker_client.describe_endpoint.assert_called_once_with(
+        EndpointName="endpoint-name"
+    )
+    sagemaker_session.sagemaker_client.describe_endpoint_config.assert_called_once_with(
+        EndpointConfigName="some-endpoint-config"
+    )
+
+
 def test_create_inference_component(sagemaker_session):
     tags = [{"Key": "TagtestKey", "Value": "TagtestValue"}]
     sagemaker_session.sagemaker_client.describe_inference_component = Mock(
@@ -6144,6 +6351,56 @@ def test_describe_inference_component(sagemaker_session):
 
     sagemaker_session.sagemaker_client.describe_inference_component.assert_called_with(
         InferenceComponentName=inference_component_name
+    )
+
+
+def test_list_and_paginate_inference_component_names_associated_with_endpoint(sagemaker_session):
+    endpoint_name = "test-endpoint"
+
+    sagemaker_session.list_inference_components = Mock()
+    sagemaker_session.list_inference_components.side_effect = [
+        {
+            "InferenceComponents": [
+                {
+                    "CreationTime": 1234,
+                    "EndpointArn": "endpointarn1",
+                    "EndpointName": "endpointname1",
+                    "InferenceComponentArn": "icarn1",
+                    "InferenceComponentName": "icname1",
+                    "InferenceComponentStatus": "icstatus1",
+                    "LastModifiedTime": 5678,
+                    "VariantName": "blah1",
+                }
+            ],
+            "NextToken": "1234",
+        },
+        {
+            "InferenceComponents": [
+                {
+                    "CreationTime": 12345,
+                    "EndpointArn": "endpointarn2",
+                    "EndpointName": "endpointname2",
+                    "InferenceComponentArn": "icarn2",
+                    "InferenceComponentName": "icname2",
+                    "InferenceComponentStatus": "icstatus2",
+                    "LastModifiedTime": 56789,
+                    "VariantName": "blah2",
+                }
+            ]
+        },
+    ]
+    assert [
+        "icname1",
+        "icname2",
+    ] == sagemaker_session.list_and_paginate_inference_component_names_associated_with_endpoint(
+        endpoint_name
+    )
+
+    sagemaker_session.list_inference_components.assert_has_calls(
+        [
+            call(endpoint_name_equals="test-endpoint", next_token=None),
+            call(endpoint_name_equals="test-endpoint", next_token="1234"),
+        ]
     )
 
 

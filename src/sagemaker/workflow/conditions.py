@@ -259,7 +259,7 @@ class ConditionNot(Condition):
 
     def to_request(self) -> RequestType:
         """Get the request structure for workflow service calls."""
-        return {"Type": self.condition_type.value, "Expression": self.expression.to_request()}
+        return {"Type": self.condition_type.value, "Condition": self.expression.to_request()}
 
     @property
     def _referenced_steps(self) -> List[str]:

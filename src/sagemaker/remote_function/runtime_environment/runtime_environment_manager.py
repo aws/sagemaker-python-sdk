@@ -252,7 +252,7 @@ class RuntimeEnvironmentManager:
 
     def _install_requirements_txt(self, local_path, python_executable):
         """Install requirements.txt file"""
-        cmd = f"{python_executable} -m pip install -r {local_path}"
+        cmd = f"{python_executable} -m pip install -r {local_path} -U"
         logger.info("Running command: '%s' in the dir: '%s' ", cmd, os.getcwd())
         _run_shell_cmd(cmd)
         logger.info("Command %s ran successfully", cmd)
@@ -268,7 +268,7 @@ class RuntimeEnvironmentManager:
     def _install_req_txt_in_conda_env(self, env_name, local_path):
         """Install requirements.txt in the given conda environment"""
 
-        cmd = f"{self._get_conda_exe()} run -n {env_name} pip install -r {local_path}"
+        cmd = f"{self._get_conda_exe()} run -n {env_name} pip install -r {local_path} -U"
         logger.info("Activating conda env and installing requirements: %s", cmd)
         _run_shell_cmd(cmd)
         logger.info("Requirements installed successfully in conda env %s", env_name)

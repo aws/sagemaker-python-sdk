@@ -122,7 +122,7 @@ def test_condition_not():
     cond_not = ConditionNot(expression=cond_eq)
     assert cond_not.to_request() == {
         "Type": "Not",
-        "Expression": {
+        "Condition": {
             "Type": "Equals",
             "LeftValue": param,
             "RightValue": "foo",
@@ -136,7 +136,7 @@ def test_condition_not_in():
     cond_not = ConditionNot(expression=cond_in)
     assert cond_not.to_request() == {
         "Type": "Not",
-        "Expression": {
+        "Condition": {
             "Type": "In",
             "QueryValue": param,
             "Values": ["abc", "def"],
