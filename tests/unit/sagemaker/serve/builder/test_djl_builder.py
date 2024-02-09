@@ -30,6 +30,7 @@ from sagemaker.serve.utils.exceptions import (
     LocalModelInvocationException,
 )
 from sagemaker.serve.utils.predictors import DjlLocalModePredictor
+from tests.unit.sagemaker.serve.constants import MOCK_IMAGE_CONFIG, MOCK_VPC_CONFIG
 
 mock_model_id = "TheBloke/Llama-2-7b-chat-fp16"
 mock_t5_model_id = "google/flan-t5-xxl"
@@ -113,6 +114,8 @@ class TestDjlBuilder(unittest.TestCase):
             schema_builder=mock_schema_builder,
             mode=Mode.LOCAL_CONTAINER,
             model_server=ModelServer.DJL_SERVING,
+            image_config=MOCK_IMAGE_CONFIG,
+            vpc_config=MOCK_VPC_CONFIG,
         )
 
         builder._prepare_for_mode = MagicMock()
@@ -132,6 +135,8 @@ class TestDjlBuilder(unittest.TestCase):
         assert builder._default_max_new_tokens == 256
         assert builder.schema_builder.sample_input["parameters"]["max_new_tokens"] == 256
         assert builder.nb_instance_type == "ml.g5.24xlarge"
+        assert model.image_config == MOCK_IMAGE_CONFIG
+        assert model.vpc_config == MOCK_VPC_CONFIG
         assert "deepspeed" in builder.image_uri
 
         builder.modes[str(Mode.LOCAL_CONTAINER)] = MagicMock()
@@ -176,6 +181,8 @@ class TestDjlBuilder(unittest.TestCase):
             schema_builder=mock_schema_builder,
             mode=Mode.LOCAL_CONTAINER,
             model_server=ModelServer.DJL_SERVING,
+            image_config=MOCK_IMAGE_CONFIG,
+            vpc_config=MOCK_VPC_CONFIG,
         )
         model = builder.build()
         builder.serve_settings.telemetry_opt_out = True
@@ -185,6 +192,8 @@ class TestDjlBuilder(unittest.TestCase):
             model.generate_serving_properties()
             == mock_expected_fastertransformer_serving_properties
         )
+        assert model.image_config == MOCK_IMAGE_CONFIG
+        assert model.vpc_config == MOCK_VPC_CONFIG
         assert "fastertransformer" in builder.image_uri
 
     @patch(
@@ -212,11 +221,15 @@ class TestDjlBuilder(unittest.TestCase):
             schema_builder=mock_schema_builder,
             mode=Mode.LOCAL_CONTAINER,
             model_server=ModelServer.DJL_SERVING,
+            image_config=MOCK_IMAGE_CONFIG,
+            vpc_config=MOCK_VPC_CONFIG,
         )
         model = builder.build()
         builder.serve_settings.telemetry_opt_out = True
 
         assert isinstance(model, DeepSpeedModel)
+        assert model.image_config == MOCK_IMAGE_CONFIG
+        assert model.vpc_config == MOCK_VPC_CONFIG
         assert model.generate_serving_properties() == mock_expected_deepspeed_serving_properties
         assert "deepspeed" in builder.image_uri
 
