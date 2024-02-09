@@ -5992,27 +5992,34 @@ class Session(object):  # pylint: disable=too-many-public-methods
         self,
         feature_group_name: str,
         record: Sequence[Dict[str, str]],
-        ttl_duration: Dict[str, str] = None,
+        target_stores: Sequence[str] = None,
+        ttl_duration: Dict[str, Any] = None,
     ):
         """Puts a single record in the FeatureGroup.
 
         Args:
-            feature_group_name (str): name of the FeatureGroup.
-            record (Sequence[Dict[str, str]]): list of FeatureValue dicts to be ingested
+            feature_group_name (str): Name of the FeatureGroup.
+            record (Sequence[Dict[str, str]]): List of FeatureValue dicts to be ingested
                 into FeatureStore.
+            target_stores (Sequence[str]): Optional. List of target stores to put the record.
+            ttl_duration (Dict[str, str]): Optional. Time-to-Live (TTL) duration for the record.
+
+        Returns:
+            Response dict from service.
         """
 
-        if ttl_duration:
-            return self.sagemaker_featurestore_runtime_client.put_record(
-                FeatureGroupName=feature_group_name,
-                Record=record,
-                TtlDuration=ttl_duration,
-            )
+        params = {
+            "FeatureGroupName": feature_group_name,
+            "Record": record,
+        }
 
-        return self.sagemaker_featurestore_runtime_client.put_record(
-            FeatureGroupName=feature_group_name,
-            Record=record,
-        )
+        if ttl_duration:
+            params["TtlDuration"] = ttl_duration
+
+        if target_stores:
+            params["TargetStores"] = target_stores
+
+        return self.sagemaker_featurestore_runtime_client.put_record(**params)
 
     def delete_record(
         self,

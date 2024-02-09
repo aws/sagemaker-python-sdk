@@ -76,6 +76,8 @@ class TGI(ABC):
         self.mode = None
         self.model_server = None
         self.image_uri = None
+        self.image_config = None
+        self.vpc_config = None
         self._original_deploy = None
         self.hf_model_config = None
         self._default_tensor_parallel_degree = None
@@ -134,6 +136,8 @@ class TGI(ABC):
 
         pysdk_model = HuggingFaceModel(
             image_uri=self.image_uri,
+            image_config=self.image_config,
+            vpc_config=self.vpc_config,
             env=self.env_vars,
             role=self.role_arn,
             sagemaker_session=self.sagemaker_session,

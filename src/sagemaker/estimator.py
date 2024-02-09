@@ -3285,7 +3285,6 @@ class Framework(EstimatorBase):
     UNSUPPORTED_DLC_IMAGE_FOR_SM_PARALLELISM = (
         "2.0.1-gpu-py310-cu121",
         "2.0-gpu-py310-cu121",
-        "2.1.0-gpu-py310",
     )
 
     def __init__(
@@ -3959,7 +3958,7 @@ class Framework(EstimatorBase):
             for unsupported_image in Framework.UNSUPPORTED_DLC_IMAGE_FOR_SM_PARALLELISM:
                 if (
                     unsupported_image in img_uri and not torch_distributed_enabled
-                ):  # disabling DLC images with CUDA12
+                ):  # disabling DLC images without SMDataParallel or SMModelParallel
                     raise ValueError(
                         f"SMDistributed is currently incompatible with DLC image: {img_uri}. "
                         "(Could be due to CUDA version being greater than 11.)"
