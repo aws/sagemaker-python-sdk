@@ -93,6 +93,7 @@ def _capture_telemetry(func_name: str):
                 ModelBuilderException,
                 exceptions.CapacityError,
                 exceptions.UnexpectedStatusException,
+                exceptions.AsyncInferenceError,
             ) as e:
                 stop_timer = perf_counter()
                 extra += f"&x-latency={stop_timer - start_timer}"
