@@ -269,7 +269,8 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         if wait:
             self.latest_training_job.wait(logs=logs)
 
-    def record_set(self, train, labels=None, channel="train", encrypt=False, distribution="ShardedByS3Key"):
+    def record_set(self, train, labels=None, channel="train", encrypt=False,
+                   distribution="ShardedByS3Key"):
         """Build a :class:`~RecordSet` from a numpy :class:`~ndarray` matrix and label vector.
 
         For the 2D ``ndarray`` ``train``, each row is converted to a
