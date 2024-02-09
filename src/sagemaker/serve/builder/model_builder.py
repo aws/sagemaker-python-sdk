@@ -34,6 +34,7 @@ from sagemaker.serve.builder.serve_settings import _ServeSettings
 from sagemaker.serve.builder.djl_builder import DJL
 from sagemaker.serve.builder.tgi_builder import TGI
 from sagemaker.serve.builder.jumpstart_builder import JumpStart
+from sagemaker.serve.builder.transformers_builder import Transformers
 from sagemaker.predictor import Predictor
 from sagemaker.serve.save_retrive.version_1_0_0.metadata.metadata import Metadata
 from sagemaker.serve.spec.inference_spec import InferenceSpec
@@ -53,6 +54,8 @@ from sagemaker.serve.save_retrive.version_1_0_0.metadata.metadata import get_met
 from sagemaker.serve.validations.check_image_and_hardware_type import (
     validate_image_uri_and_hardware,
 )
+from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.huggingface.llm_utils import get_huggingface_model_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +68,7 @@ supported_model_server = {
 
 # pylint: disable=attribute-defined-outside-init
 @dataclass
-class ModelBuilder(Triton, DJL, JumpStart, TGI):
+class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
     """Class that builds a deployable model.
 
     Args:
@@ -79,7 +82,6 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI):
 
             * ``Mode.SAGEMAKER_ENDPOINT``: Launch on a SageMaker endpoint
             * ``Mode.LOCAL_CONTAINER``: Launch locally with a container
-
         shared_libs (List[str]): Any shared libraries you want to bring into
             the model packaging.
         dependencies (Optional[Dict[str, Any]): The dependencies of the model
@@ -120,13 +122,21 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI):
             ``invoke`` and ``load`` functions.
         image_uri (Optional[str]): The container image uri (which is derived from a
             SageMaker-based container).
+        image_config (dict[str, str] or dict[str, PipelineVariable]): Specifies
+            whether the image of model container is pulled from ECR, or private
+            registry in your VPC. By default it is set to pull model container
+            image from ECR. (default: None).
+        vpc_config ( Optional[Dict[str, List[Union[str, PipelineVariable]]]]):
+                The VpcConfig set on the model (default: None)
+                * 'Subnets' (List[Union[str, PipelineVariable]]): List of subnet ids.
+                * 'SecurityGroupIds' (List[Union[str, PipelineVariable]]]): List of security group
+                ids.
         model_server (Optional[ModelServer]): The model server to which to deploy.
             You need to provide this argument when you specify an ``image_uri``
             in order for model builder to build the artifacts correctly (according
             to the model server). Possible values for this argument are
             ``TORCHSERVE``, ``MMS``, ``TENSORFLOW_SERVING``, ``DJL_SERVING``,
-            ``TRITON``, and ``TGI``.
-
+            ``TRITON``, and``TGI``.
     """
 
     model_path: Optional[str] = field(
@@ -202,6 +212,23 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI):
     )
     image_uri: Optional[str] = field(
         default=None, metadata={"help": "Define the container image uri"}
+    )
+    image_config: Optional[Dict[str, Union[str, PipelineVariable]]] = field(
+        default=None,
+        metadata={
+            "help": "Specifies whether the image of model container is pulled from ECR,"
+            " or private registry in your VPC. By default it is set to pull model "
+            "container image from ECR. (default: None)."
+        },
+    )
+    vpc_config: Optional[Dict[str, List[Union[str, PipelineVariable]]]] = field(
+        default=None,
+        metadata={
+            "help": "The VpcConfig set on the model (default: None)."
+            "* 'Subnets' (List[Union[str, PipelineVariable]]): List of subnet ids."
+            "* ''SecurityGroupIds'' (List[Union[str, PipelineVariable]]): List of"
+            " security group ids."
+        },
     )
     model_server: Optional[ModelServer] = field(
         default=None, metadata={"help": "Define the model server to deploy to."}
@@ -385,6 +412,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI):
         # TODO: we should create model as per the framework
         self.pysdk_model = Model(
             image_uri=self.image_uri,
+            image_config=self.image_config,
+            vpc_config=self.vpc_config,
             model_data=self.s3_upload_path,
             role=self.serve_settings.role_arn,
             env=self.env_vars,
@@ -535,22 +564,23 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI):
         return wrapper
 
     # Model Builder is a class to build the model for deployment.
-    # It supports three modes of deployment
+    # It supports two modes of deployment
     # 1/ SageMaker Endpoint
     # 2/ Local launch with container
     def build(
         self,
         mode: Type[Mode] = None,
         role_arn: str = None,
-        sagemaker_session: str = None,
+        sagemaker_session: Optional[Session] = None,
     ) -> Type[Model]:
         """Create a deployable ``Model`` instance with ``ModelBuilder``.
 
         Args:
             mode (Type[Mode], optional): The mode. Defaults to ``None``.
             role_arn (str, optional): The IAM role arn. Defaults to ``None``.
-            sagemaker_session (str, optional): The SageMaker session to use
-              for the execution. Defaults to ``None``.
+            sagemaker_session (Optional[Session]): Session object which manages interactions
+                with Amazon SageMaker APIs and any other AWS services needed. If not specified, the
+                function creates one using the default AWS configuration chain.
 
         Returns:
             Type[Model]: A deployable ``Model`` object.
@@ -561,10 +591,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI):
             self.mode = mode
         if role_arn:
             self.role_arn = role_arn
-        if sagemaker_session:
-            self.sagemaker_session = sagemaker_session
-        elif not self.sagemaker_session:
-            self.sagemaker_session = Session()
+        self.sagemaker_session = sagemaker_session or Session()
 
         self.sagemaker_session.settings._local_download_dir = self.model_path
 
@@ -577,12 +604,20 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI):
         )
 
         self.serve_settings = self._get_serve_setting()
+
         if isinstance(self.model, str):
             if self._is_jumpstart_model_id():
                 return self._build_for_jumpstart()
-            if self._is_djl():
+            if self._is_djl():  # pylint: disable=R1705
                 return self._build_for_djl()
-            return self._build_for_tgi()
+            else:
+                hf_model_md = get_huggingface_model_metadata(
+                    self.model, self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
+                )
+                if hf_model_md.get("pipeline_tag") == "text-generation":  # pylint: disable=R1705
+                    return self._build_for_tgi()
+                else:
+                    return self._build_for_transformers()
 
         self._build_validations()
 
@@ -598,7 +633,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI):
         self,
         save_path: Optional[str] = None,
         s3_path: Optional[str] = None,
-        sagemaker_session: Optional[str] = None,
+        sagemaker_session: Optional[Session] = None,
         role_arn: Optional[str] = None,
     ) -> Type[Model]:
         """WARNING: This function is expremental and not intended for production use.
@@ -609,7 +644,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI):
             save_path (Optional[str]): The path where you want to save resources.
             s3_path (Optional[str]): The path where you want to upload resources.
         """
-        self.sagemaker_session = sagemaker_session if sagemaker_session else Session()
+        self.sagemaker_session = sagemaker_session or Session()
 
         if role_arn:
             self.role_arn = role_arn

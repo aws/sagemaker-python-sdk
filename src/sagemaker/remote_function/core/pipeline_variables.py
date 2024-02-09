@@ -19,6 +19,7 @@ from typing import Any, Union, Dict, List, Tuple
 
 from sagemaker.s3 import s3_path_join
 from sagemaker.remote_function.core.serialization import deserialize_obj_from_s3
+from sagemaker.workflow.step_outputs import get_step
 
 
 @dataclass
@@ -92,7 +93,7 @@ class _S3BaseUriIdentifier:
 class _DelayedReturn:
     """Delayed return from a function."""
 
-    uri: List[Union[str, _Parameter, _ExecutionVariable]]
+    uri: Union[_Properties, List[Union[str, _Parameter, _ExecutionVariable]]]
     reference_path: Tuple = field(default_factory=tuple)
 
 
@@ -164,6 +165,7 @@ class _DelayedReturnResolver:
         self,
         delayed_returns: List[_DelayedReturn],
         hmac_key: str,
+        properties_resolver: _PropertiesResolver,
         parameter_resolver: _ParameterResolver,
         execution_variable_resolver: _ExecutionVariableResolver,
         s3_base_uri: str,
@@ -174,6 +176,7 @@ class _DelayedReturnResolver:
         Args:
             delayed_returns: list of delayed returns to resolve.
             hmac_key: key used to encrypt serialized and deserialized function and arguments.
+            properties_resolver: resolver used to resolve step properties.
             parameter_resolver: resolver used to pipeline parameters.
             execution_variable_resolver: resolver used to resolve execution variables.
             s3_base_uri (str): the s3 base uri of the function step that
@@ -184,6 +187,7 @@ class _DelayedReturnResolver:
         self._s3_base_uri = s3_base_uri
         self._parameter_resolver = parameter_resolver
         self._execution_variable_resolver = execution_variable_resolver
+        self._properties_resolver = properties_resolver
         # different delayed returns can have the same uri, so we need to dedupe
         uris = {
             self._resolve_delayed_return_uri(delayed_return) for delayed_return in delayed_returns
@@ -214,7 +218,10 @@ class _DelayedReturnResolver:
 
     def _resolve_delayed_return_uri(self, delayed_return: _DelayedReturn):
         """Resolve the s3 uri of the delayed return."""
+        if isinstance(delayed_return.uri, _Properties):
+            return self._properties_resolver.resolve(delayed_return.uri)
 
+        # Keep the following old resolution logics to keep backward compatible
         uri = []
         for component in delayed_return.uri:
             if isinstance(component, _Parameter):
@@ -274,6 +281,7 @@ def resolve_pipeline_variables(
     delayed_return_resolver = _DelayedReturnResolver(
         delayed_returns=delayed_returns,
         hmac_key=hmac_key,
+        properties_resolver=properties_resolver,
         parameter_resolver=parameter_resolver,
         execution_variable_resolver=execution_variable_resolver,
         s3_base_uri=s3_base_uri,
@@ -325,27 +333,12 @@ def convert_pipeline_variables_to_pickleable(func_args: Tuple, func_kwargs: Dict
 
     from sagemaker.workflow.entities import PipelineVariable
 
-    from sagemaker.workflow.execution_variables import ExecutionVariables
-
     from sagemaker.workflow.function_step import DelayedReturn
 
-    # Notes:
-    # 1. The s3_base_uri = s3_root_uri + pipeline_name, but the two may be unknown
-    # when defining function steps. After step-level arg serialization,
-    # it's hard to update the s3_base_uri in pipeline compile time.
-    # Thus set a placeholder: _S3BaseUriIdentifier, and let the runtime job to resolve it.
-    # 2. For saying s3_root_uri is unknown, it's because when defining function steps,
-    # the pipeline's sagemaker_session is not passed in, but the default s3_root_uri
-    # should be retrieved from the pipeline's sagemaker_session.
     def convert(arg):
         if isinstance(arg, DelayedReturn):
             return _DelayedReturn(
-                uri=[
-                    _S3BaseUriIdentifier(),
-                    ExecutionVariables.PIPELINE_EXECUTION_ID._pickleable,
-                    arg._step.name,
-                    "results",
-                ],
+                uri=get_step(arg)._properties.OutputDataConfig.S3OutputPath._pickleable,
                 reference_path=arg._reference_path,
             )
 

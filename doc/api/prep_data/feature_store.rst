@@ -75,11 +75,23 @@ Inputs
     :members:
     :show-inheritance:
 
+.. autoclass:: sagemaker.feature_store.inputs.ThroughputConfig
+    :members:
+    :show-inheritance:
+
+.. autoclass:: sagemaker.feature_store.inputs.ThroughputConfigUpdate
+    :members:
+    :show-inheritance:
+
 .. autoclass:: sagemaker.feature_store.inputs.OnlineStoreConfig
     :members:
     :show-inheritance:
 
 .. autoclass:: sagemaker.feature_store.inputs.OnlineStoreSecurityConfig
+    :members:
+    :show-inheritance:
+
+.. autoclass:: sagemaker.feature_store.inputs.TtlDuration
     :members:
     :show-inheritance:
 
@@ -96,6 +108,10 @@ Inputs
     :show-inheritance:
 
 .. autoclass:: sagemaker.feature_store.inputs.OnlineStoreStorageTypeEnum
+    :members:
+    :show-inheritance:
+
+.. autoclass:: sagemaker.feature_store.inputs.ThroughputModeEnum
     :members:
     :show-inheritance:
 

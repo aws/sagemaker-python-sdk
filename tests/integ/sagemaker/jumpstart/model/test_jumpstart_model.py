@@ -16,6 +16,8 @@ import time
 from unittest import mock
 
 import pytest
+from sagemaker.enums import EndpointType
+from sagemaker.predictor import retrieve_default
 
 import tests.integ
 
@@ -60,8 +62,14 @@ def test_non_prepacked_jumpstart_model(setup):
     )
 
     # uses ml.m5.4xlarge instance
-    predictor = model.deploy(
+    model.deploy(
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
+    )
+
+    predictor = retrieve_default(
+        endpoint_name=model.endpoint_name,
+        sagemaker_session=get_sm_session(),
+        tolerate_vulnerable_model=True,
     )
 
     download_inference_assets()
@@ -166,6 +174,40 @@ def test_jumpstart_gated_model(setup):
     predictor = model.deploy(
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
         accept_eula=True,
+    )
+
+    payload = {
+        "inputs": "some-payload",
+        "parameters": {"max_new_tokens": 256, "top_p": 0.9, "temperature": 0.6},
+    }
+
+    response = predictor.predict(payload)
+
+    assert response is not None
+
+
+def test_jumpstart_gated_model_inference_component_enabled(setup):
+
+    model_id = "meta-textgeneration-llama-2-7b"
+
+    model = JumpStartModel(
+        model_id=model_id,
+        model_version="3.*",  # version >=3.0.0 stores artifacts in jumpstart-private-cache-* buckets
+        role=get_sm_session().get_caller_identity_arn(),
+        sagemaker_session=get_sm_session(),
+    )
+
+    # uses ml.g5.2xlarge instance
+    model.deploy(
+        tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
+        accept_eula=True,
+        endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
+    )
+
+    predictor = retrieve_default(
+        endpoint_name=model.endpoint_name,
+        sagemaker_session=get_sm_session(),
+        tolerate_vulnerable_model=True,
     )
 
     payload = {

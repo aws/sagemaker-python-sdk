@@ -27,10 +27,13 @@ from sagemaker.session_settings import SessionSettings
 from sagemaker.remote_function.spark_config import SparkConfig
 from sagemaker.remote_function.custom_file_filter import CustomFileFilter
 from sagemaker.remote_function.core.pipeline_variables import Context
+from sagemaker.workflow.function_step import DelayedReturn
+from sagemaker.workflow.functions import Join
 from sagemaker.workflow.pipeline_context import _PipelineConfig
 from sagemaker.workflow.pipeline_definition_config import PipelineDefinitionConfig
 from sagemaker.workflow.execution_variables import ExecutionVariables
 from sagemaker.utils import sagemaker_timestamp
+from sagemaker.workflow.properties import Properties
 
 from tests.unit import DATA_DIR
 from sagemaker.remote_function.job import (
@@ -763,6 +766,13 @@ def test_get_train_args_under_pipeline_context(
     mock_stored_function = Mock()
     mock_stored_function_ctr.return_value = mock_stored_function
 
+    function_step = Mock()
+    function_step.name = "parent_step"
+    func_step_s3_output_prop = Properties(
+        step_name=function_step.name, path="OutputDataConfig.S3OutputPath"
+    )
+    function_step._properties.OutputDataConfig.S3OutputPath = func_step_s3_output_prop
+
     job_settings = _JobSettings(
         dependencies="path/to/dependencies/req.txt",
         pre_execution_script="path/to/script.sh",
@@ -787,8 +797,16 @@ def test_get_train_args_under_pipeline_context(
         job_name=TEST_JOB_NAME,
         s3_base_uri=s3_base_uri,
         func=job_function,
-        func_args=(1, ParameterInteger(name="b", default_value=2)),
-        func_kwargs={"c": 3, "d": ParameterInteger(name="d", default_value=4)},
+        func_args=(
+            1,
+            ParameterInteger(name="b", default_value=2),
+            DelayedReturn(function_step, reference_path=("__getitem__", 0)),
+        ),
+        func_kwargs={
+            "c": 3,
+            "d": ParameterInteger(name="d", default_value=4),
+            "e": DelayedReturn(function_step, reference_path=("__getitem__", 1)),
+        },
         serialized_data=mocked_serialized_data,
     )
 
@@ -862,7 +880,15 @@ def test_get_train_args_under_pipeline_context(
             ),
         ],
         OutputDataConfig={
-            "S3OutputPath": f"{S3_URI}/{TEST_PIPELINE_NAME}",
+            "S3OutputPath": Join(
+                on="/",
+                values=[
+                    "s3://my-s3-bucket/keyprefix/my-pipeline",
+                    ExecutionVariables.PIPELINE_EXECUTION_ID,
+                    "test-function-step",
+                    "results",
+                ],
+            ),
             "KmsKeyId": KMS_KEY_ARN,
         },
         AlgorithmSpecification=dict(
@@ -896,8 +922,12 @@ def test_get_train_args_under_pipeline_context(
                 ExecutionVariables.PIPELINE_EXECUTION_ID,
                 "Parameters.b",
                 ParameterInteger(name="b", default_value=2).to_string(),
+                "Steps.parent_step.OutputDataConfig.S3OutputPath",
+                func_step_s3_output_prop.to_string(),
                 "Parameters.d",
                 ParameterInteger(name="d", default_value=4).to_string(),
+                "Steps.parent_step.OutputDataConfig.S3OutputPath",
+                func_step_s3_output_prop.to_string(),
             ],
         ),
         ResourceConfig=dict(

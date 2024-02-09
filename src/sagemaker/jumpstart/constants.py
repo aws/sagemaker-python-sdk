@@ -142,6 +142,11 @@ JUMPSTART_LAUNCHED_REGIONS: Set[JumpStartLaunchedRegionInfo] = set(
             region_name="cn-north-1",
             content_bucket="jumpstart-cache-prod-cn-north-1",
         ),
+        JumpStartLaunchedRegionInfo(
+            region_name="il-central-1",
+            content_bucket="jumpstart-cache-prod-il-central-1",
+            gated_content_bucket="jumpstart-private-cache-prod-il-central-1",
+        ),
     ]
 )
 
@@ -235,3 +240,9 @@ except Exception as e:  # pylint: disable=W0703
         "Unable to create default JumpStart SageMaker Session due to the following error: %s.",
         str(e),
     )
+
+EXTRA_MODEL_ID_TAGS = ["sm-jumpstart-id", "sagemaker-studio:jumpstart-model-id"]
+EXTRA_MODEL_VERSION_TAGS = [
+    "sm-jumpstart-model-version",
+    "sagemaker-studio:jumpstart-model-version",
+]

@@ -22,6 +22,8 @@ from sagemaker.jumpstart.constants import (
     ENV_VARIABLE_DISABLE_JUMPSTART_LOGGING,
     ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE,
     ENV_VARIABLE_JUMPSTART_GATED_CONTENT_BUCKET_OVERRIDE,
+    EXTRA_MODEL_ID_TAGS,
+    EXTRA_MODEL_VERSION_TAGS,
     JUMPSTART_DEFAULT_REGION_NAME,
     JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET,
     JUMPSTART_LOGGER,
@@ -1276,6 +1278,134 @@ class TestIsValidModelId(TestCase):
             mock_get_manifest.assert_called_once_with(
                 region=JUMPSTART_DEFAULT_REGION_NAME, s3_client=mock_s3_client_value
             )
+
+
+class TestGetModelIdVersionFromResourceArn(TestCase):
+    def test_no_model_id_no_version_found(self):
+        mock_list_tags = Mock()
+        mock_sagemaker_session = Mock()
+        mock_sagemaker_session.list_tags = mock_list_tags
+        mock_list_tags.return_value = [{"Key": "blah", "Value": "blah1"}]
+
+        self.assertEquals(
+            utils.get_jumpstart_model_id_version_from_resource_arn(
+                "some-arn", mock_sagemaker_session
+            ),
+            (None, None),
+        )
+        mock_list_tags.assert_called_once_with("some-arn")
+
+    def test_model_id_no_version_found(self):
+        mock_list_tags = Mock()
+        mock_sagemaker_session = Mock()
+        mock_sagemaker_session.list_tags = mock_list_tags
+        mock_list_tags.return_value = [
+            {"Key": "blah", "Value": "blah1"},
+            {"Key": JumpStartTag.MODEL_ID, "Value": "model_id"},
+        ]
+
+        self.assertEquals(
+            utils.get_jumpstart_model_id_version_from_resource_arn(
+                "some-arn", mock_sagemaker_session
+            ),
+            ("model_id", None),
+        )
+        mock_list_tags.assert_called_once_with("some-arn")
+
+    def test_no_model_id_version_found(self):
+        mock_list_tags = Mock()
+        mock_sagemaker_session = Mock()
+        mock_sagemaker_session.list_tags = mock_list_tags
+        mock_list_tags.return_value = [
+            {"Key": "blah", "Value": "blah1"},
+            {"Key": JumpStartTag.MODEL_VERSION, "Value": "model_version"},
+        ]
+
+        self.assertEquals(
+            utils.get_jumpstart_model_id_version_from_resource_arn(
+                "some-arn", mock_sagemaker_session
+            ),
+            (None, "model_version"),
+        )
+        mock_list_tags.assert_called_once_with("some-arn")
+
+    def test_model_id_version_found(self):
+        mock_list_tags = Mock()
+        mock_sagemaker_session = Mock()
+        mock_sagemaker_session.list_tags = mock_list_tags
+        mock_list_tags.return_value = [
+            {"Key": "blah", "Value": "blah1"},
+            {"Key": JumpStartTag.MODEL_ID, "Value": "model_id"},
+            {"Key": JumpStartTag.MODEL_VERSION, "Value": "model_version"},
+        ]
+
+        self.assertEquals(
+            utils.get_jumpstart_model_id_version_from_resource_arn(
+                "some-arn", mock_sagemaker_session
+            ),
+            ("model_id", "model_version"),
+        )
+        mock_list_tags.assert_called_once_with("some-arn")
+
+    def test_multiple_model_id_versions_found(self):
+        mock_list_tags = Mock()
+        mock_sagemaker_session = Mock()
+        mock_sagemaker_session.list_tags = mock_list_tags
+        mock_list_tags.return_value = [
+            {"Key": "blah", "Value": "blah1"},
+            {"Key": JumpStartTag.MODEL_ID, "Value": "model_id_1"},
+            {"Key": JumpStartTag.MODEL_VERSION, "Value": "model_version_1"},
+            {"Key": JumpStartTag.MODEL_ID, "Value": "model_id_2"},
+            {"Key": JumpStartTag.MODEL_VERSION, "Value": "model_version_2"},
+        ]
+
+        self.assertEquals(
+            utils.get_jumpstart_model_id_version_from_resource_arn(
+                "some-arn", mock_sagemaker_session
+            ),
+            (None, None),
+        )
+        mock_list_tags.assert_called_once_with("some-arn")
+
+    def test_multiple_model_id_versions_found_aliases_consistent(self):
+        mock_list_tags = Mock()
+        mock_sagemaker_session = Mock()
+        mock_sagemaker_session.list_tags = mock_list_tags
+        mock_list_tags.return_value = [
+            {"Key": "blah", "Value": "blah1"},
+            {"Key": JumpStartTag.MODEL_ID, "Value": "model_id_1"},
+            {"Key": JumpStartTag.MODEL_VERSION, "Value": "model_version_1"},
+            {"Key": random.choice(EXTRA_MODEL_ID_TAGS), "Value": "model_id_1"},
+            {"Key": random.choice(EXTRA_MODEL_VERSION_TAGS), "Value": "model_version_1"},
+        ]
+
+        self.assertEquals(
+            utils.get_jumpstart_model_id_version_from_resource_arn(
+                "some-arn", mock_sagemaker_session
+            ),
+            ("model_id_1", "model_version_1"),
+        )
+        mock_list_tags.assert_called_once_with("some-arn")
+
+    def test_multiple_model_id_versions_found_aliases_inconsistent(self):
+        mock_list_tags = Mock()
+        mock_sagemaker_session = Mock()
+        mock_sagemaker_session.list_tags = mock_list_tags
+        mock_list_tags.return_value = [
+            {"Key": "blah", "Value": "blah1"},
+            {"Key": JumpStartTag.MODEL_ID, "Value": "model_id_1"},
+            {"Key": JumpStartTag.MODEL_VERSION, "Value": "model_version_1"},
+            {"Key": random.choice(EXTRA_MODEL_ID_TAGS), "Value": "model_id_2"},
+            {"Key": random.choice(EXTRA_MODEL_VERSION_TAGS), "Value": "model_version_2"},
+        ]
+
+        self.assertEquals(
+            utils.get_jumpstart_model_id_version_from_resource_arn(
+                "some-arn", mock_sagemaker_session
+            ),
+            (None, None),
+        )
+        mock_list_tags.assert_called_once_with("some-arn")
 
 
 class TestJumpStartLogger(TestCase):

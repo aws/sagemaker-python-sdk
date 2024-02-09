@@ -256,6 +256,7 @@ def test_step_decorator_with_data_dependencies(
             execution_parameters=dict(),
             step_status="Succeeded",
             step_result_type=int,
+            step_result_value=7,
         )
     finally:
         try:
@@ -784,12 +785,10 @@ def test_decorator_step_checksum_mismatch(
         pipeline.create(role)
 
         pipeline_definition = json.loads(pipeline.describe()["PipelineDefinition"])
-        s3_base_uri = pipeline_definition["Steps"][0]["Arguments"]["OutputDataConfig"][
-            "S3OutputPath"
-        ]
         step_container_args = pipeline_definition["Steps"][0]["Arguments"][
             "AlgorithmSpecification"
         ]["ContainerArguments"]
+        s3_base_uri = step_container_args[step_container_args.index("--s3_base_uri") + 1]
         build_time = step_container_args[step_container_args.index("--func_step_s3_dir") + 1]
 
         # some other user updates the pickled function code

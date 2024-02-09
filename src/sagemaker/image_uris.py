@@ -37,6 +37,7 @@ logger = logging.getLogger(__name__)
 ECR_URI_TEMPLATE = "{registry}.dkr.{hostname}/{repository}"
 HUGGING_FACE_FRAMEWORK = "huggingface"
 HUGGING_FACE_LLM_FRAMEWORK = "huggingface-llm"
+HUGGING_FACE_LLM_NEURONX_FRAMEWORK = "huggingface-llm-neuronx"
 XGBOOST_FRAMEWORK = "xgboost"
 SKLEARN_FRAMEWORK = "sklearn"
 TRAINIUM_ALLOWED_FRAMEWORKS = "pytorch"
@@ -470,6 +471,7 @@ def _validate_version_and_set_if_needed(version, config, framework):
     if version is None and framework in [
         DATA_WRANGLER_FRAMEWORK,
         HUGGING_FACE_LLM_FRAMEWORK,
+        HUGGING_FACE_LLM_NEURONX_FRAMEWORK,
         STABILITYAI_FRAMEWORK,
     ]:
         version = _get_latest_versions(available_versions)
@@ -670,7 +672,7 @@ def get_training_image_uri(
             if "modelparallel" in distribution["smdistributed"]:
                 if distribution["smdistributed"]["modelparallel"].get("enabled", True):
                     framework = "pytorch-smp"
-                    if "p5" in instance_type:
+                    if "p5" in instance_type or "2.1" in framework_version:
                         container_version = "cu121"
                     else:
                         container_version = "cu118"
