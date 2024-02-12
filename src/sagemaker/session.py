@@ -243,7 +243,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         # sagemaker_config is validated and initialized inside :func:`_initialize`,
         # so if default_bucket is None and the sagemaker_config has a default S3 bucket configured,
         # _default_bucket_name_override will be set again inside :func:`_initialize`.
-        self.endpoint = None
+        self.endpoint_arn = None
         self._default_bucket = None
         self._default_bucket_name_override = default_bucket
         # this may also be set again inside :func:`_initialize` if it is None
@@ -4285,9 +4285,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
             tags, "{}.{}.{}".format(SAGEMAKER, ENDPOINT, TAGS)
         )
 
-        self.sagemaker_client.create_endpoint(
+        res = self.sagemaker_client.create_endpoint(
             EndpointName=endpoint_name, EndpointConfigName=config_name, Tags=tags
         )
+        self.endpoint_arn = res["EndpointArn"]
+
         if wait:
             self.wait_for_endpoint(endpoint_name, live_logging=live_logging)
         return endpoint_name
@@ -4345,9 +4347,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 "existing endpoint name".format(endpoint_name)
             )
 
-        self.sagemaker_client.update_endpoint(
+        res = self.sagemaker_client.update_endpoint(
             EndpointName=endpoint_name, EndpointConfigName=endpoint_config_name
         )
+        self.endpoint_arn = res["EndpointArn"]
 
         if wait:
             self.wait_for_endpoint(endpoint_name)
@@ -5055,7 +5058,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 poll=EP_LOGGER_POLL,
             )
         status = desc["EndpointStatus"]
-        self.endpoint = desc
 
         if status != "InService":
             reason = desc.get("FailureReason", None)

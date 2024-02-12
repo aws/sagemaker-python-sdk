@@ -34,7 +34,6 @@ MOCK_TGI_CONTAINER = (
 MOCK_HUGGINGFACE_ID = "meta-llama/Llama-2-7b-hf"
 MOCK_EXCEPTION = LocalModelOutOfMemoryException("mock raise ex")
 MOCK_ENDPOINT_ARN = "arn:aws:sagemaker:us-west-2:123456789012:endpoint/test"
-MOCK_ENDPOINT = {"EndpointStatus": "InService", "EndpointArn": MOCK_ENDPOINT_ARN}
 
 
 class ModelBuilderMock:
@@ -75,7 +74,7 @@ class TestTelemetryLogger(unittest.TestCase):
         mock_model_builder.model = MOCK_HUGGINGFACE_ID
         mock_model_builder.mode = Mode.LOCAL_CONTAINER
         mock_model_builder.model_server = ModelServer.DJL_SERVING
-        mock_model_builder.sagemaker_session.endpoint = MOCK_ENDPOINT
+        mock_model_builder.sagemaker_session.endpoint_arn = MOCK_ENDPOINT_ARN
 
         mock_model_builder.mock_deploy()
 
@@ -103,7 +102,7 @@ class TestTelemetryLogger(unittest.TestCase):
         mock_model_builder.model = MOCK_HUGGINGFACE_ID
         mock_model_builder.mode = Mode.LOCAL_CONTAINER
         mock_model_builder.model_server = ModelServer.TGI
-        mock_model_builder.sagemaker_session.endpoint = MOCK_ENDPOINT
+        mock_model_builder.sagemaker_session.endpoint_arn = MOCK_ENDPOINT_ARN
 
         mock_model_builder.mock_deploy()
 
@@ -143,7 +142,7 @@ class TestTelemetryLogger(unittest.TestCase):
         mock_model_builder.model = MOCK_HUGGINGFACE_ID
         mock_model_builder.mode = Mode.LOCAL_CONTAINER
         mock_model_builder.model_server = ModelServer.DJL_SERVING
-        mock_model_builder.sagemaker_session.endpoint = MOCK_ENDPOINT
+        mock_model_builder.sagemaker_session.endpoint_arn = MOCK_ENDPOINT_ARN
 
         mock_exception = Mock()
         mock_exception_obj = MOCK_EXCEPTION

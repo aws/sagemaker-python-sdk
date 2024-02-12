@@ -72,8 +72,8 @@ def _capture_telemetry(func_name: str):
             if self.model_server == ModelServer.DJL_SERVING or self.model_server == ModelServer.TGI:
                 extra += f"&x-modelName={self.model}"
 
-            if self.sagemaker_session.endpoint:
-                extra += f"&x-endpointArn={self.sagemaker_session.endpoint['EndpointArn']}"
+            if self.sagemaker_session.endpoint_arn:
+                extra += f"&x-endpointArn={self.sagemaker_session.endpoint_arn}"
 
             start_timer = perf_counter()
             try:

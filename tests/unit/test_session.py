@@ -5261,6 +5261,46 @@ def test_list_feature_groups(sagemaker_session):
     )
 
 
+@pytest.fixture()
+def sagemaker_session_with_fs_runtime_client():
+    boto_mock = MagicMock(name="boto_session")
+    sagemaker_session = sagemaker.Session(
+        boto_session=boto_mock, sagemaker_featurestore_runtime_client=MagicMock()
+    )
+    return sagemaker_session
+
+
+def test_feature_group_put_record(sagemaker_session_with_fs_runtime_client):
+    sagemaker_session_with_fs_runtime_client.put_record(
+        feature_group_name="MyFeatureGroup",
+        record=[{"FeatureName": "feature1", "ValueAsString": "value1"}],
+    )
+    fs_client_mock = sagemaker_session_with_fs_runtime_client.sagemaker_featurestore_runtime_client
+
+    assert fs_client_mock.put_record.called_with(
+        FeatureGroupName="MyFeatureGroup",
+        record=[{"FeatureName": "feature1", "ValueAsString": "value1"}],
+    )
+
+
+def test_feature_group_put_record_with_ttl_and_target_stores(
+    sagemaker_session_with_fs_runtime_client,
+):
+    sagemaker_session_with_fs_runtime_client.put_record(
+        feature_group_name="MyFeatureGroup",
+        record=[{"FeatureName": "feature1", "ValueAsString": "value1"}],
+        ttl_duration={"Unit": "Seconds", "Value": 123},
+        target_stores=["OnlineStore", "OfflineStore"],
+    )
+    fs_client_mock = sagemaker_session_with_fs_runtime_client.sagemaker_featurestore_runtime_client
+    assert fs_client_mock.put_record.called_with(
+        FeatureGroupName="MyFeatureGroup",
+        record=[{"FeatureName": "feature1", "ValueAsString": "value1"}],
+        target_stores=["OnlineStore", "OfflineStore"],
+        ttl_duration={"Unit": "Seconds", "Value": 123},
+    )
+
+
 def test_start_query_execution(sagemaker_session):
     athena_mock = Mock()
     sagemaker_session.boto_session.client(
@@ -6136,10 +6176,7 @@ def test_upload_data_default_bucket_and_prefix_combinations(
 
 def test_is_inference_component_based_endpoint_affirmative(sagemaker_session):
 
-    describe_endpoint_response = {
-        "EndpointConfigName": "some-endpoint-config",
-        "EndpointArn": "arn:aws:sagemaker:",
-    }
+    describe_endpoint_response = {"EndpointConfigName": "some-endpoint-config"}
     describe_endpoint_config_response = {
         "ExecutionRoleArn": "some-role-arn",
         "ProductionVariants": [{"VariantName": "AllTraffic"}],
@@ -6186,10 +6223,7 @@ def test_is_inference_component_based_endpoint_negative_no_role(sagemaker_sessio
 
 def test_is_inference_component_based_endpoint_positive_multiple_variants(sagemaker_session):
 
-    describe_endpoint_response = {
-        "EndpointConfigName": "some-endpoint-config",
-        "EndpointArn": "arn:aws:sagemaker:",
-    }
+    describe_endpoint_response = {"EndpointConfigName": "some-endpoint-config"}
     describe_endpoint_config_response = {
         "ExecutionRoleArn": "some-role-arn",
         "ProductionVariants": [{"VariantName": "AllTraffic1"}, {"VariantName": "AllTraffic2"}],
@@ -6213,10 +6247,7 @@ def test_is_inference_component_based_endpoint_positive_multiple_variants(sagema
 
 def test_is_inference_component_based_endpoint_negative_no_variants(sagemaker_session):
 
-    describe_endpoint_response = {
-        "EndpointConfigName": "some-endpoint-config",
-        "EndpointArn": "arn:aws:sagemaker:",
-    }
+    describe_endpoint_response = {"EndpointConfigName": "some-endpoint-config"}
     describe_endpoint_config_response = {
         "ExecutionRoleArn": "some-role-arn",
         "ProductionVariants": [],
@@ -6240,10 +6271,7 @@ def test_is_inference_component_based_endpoint_negative_no_variants(sagemaker_se
 
 def test_is_inference_component_based_endpoint_negative_model_name_present(sagemaker_session):
 
-    describe_endpoint_response = {
-        "EndpointConfigName": "some-endpoint-config",
-        "EndpointArn": "arn:aws:sagemaker:",
-    }
+    describe_endpoint_response = {"EndpointConfigName": "some-endpoint-config"}
     describe_endpoint_config_response = {
         "ExecutionRoleArn": "some-role-arn",
         "ProductionVariants": [
