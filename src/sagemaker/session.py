@@ -6485,14 +6485,20 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             (dict): Return value from the ``CreateHub`` API.
         """
-        return self.sagemaker_client.create_hub(
-            hub_name=hub_name,
-            hub_description=hub_description,
-            hub_display_name=hub_display_name,
-            hub_search_keywords=hub_search_keywords,
-            s3_storage_config=s3_storage_config,
-            tags=tags
-        )
+        request = {
+            "HubName": hub_name,
+            "HubDescription": hub_description
+        }
+        if hub_display_name:
+            request["HubDisplayName"] = hub_display_name
+        if hub_search_keywords:
+            request["HubSearchKeywords"] = hub_search_keywords
+        if s3_storage_config:
+            request["S3StorageConfig"] = s3_storage_config
+        if tags:
+            request["Tags"] = tags
+
+        return self.sagemaker_client.create_hub(**request)
     
     def describe_hub(
         self,
@@ -6506,9 +6512,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             (dict): Return value for ``DescribeHub`` API
         """
-        return self.sagemaker_client.describe_hub(
-            hub_name=hub_name
-        )
+        request = { "HubName": hub_name }
+
+        return self.sagemaker_client.describe_hub(**request)
     
     def list_hubs(
         self,
@@ -6535,15 +6541,23 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             (dict): Return value for ``ListHubs`` API
         """
-        return self.sagemaker_client.list_hubs(
-            creation_time_after=creation_time_after,
-            creation_time_before=creation_time_before,
-            max_results=max_results,
-            max_schema_version=max_schema_version,
-            name_contains=name_contains,
-            sort_by=sort_by,
-            sort_order=sort_order
-        )
+        request = {}
+        if creation_time_after:
+            request["CreationTimeAfter"] = creation_time_after
+        if creation_time_before:
+            request["CreationTimeBefore"] = creation_time_before
+        if max_results:
+            request["MaxResults"] = max_results
+        if max_schema_version:
+            request["MaxSchemaVersion"] = max_schema_version
+        if name_contains:
+            request["NameContains"] = name_contains
+        if sort_by:
+            request["SortBy"] = sort_by
+        if sort_order:
+            request["SortOrder"] = sort_order
+
+        return self.sagemaker_client.list_hubs(*request)
     
     def list_hub_contents(
         self,
@@ -6574,17 +6588,26 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             (dict): Return value for ``ListHubContents`` API
         """
-        return self.sagemaker_client.list_hub_contents(
-            hub_name=hub_name,
-            hub_content_type=hub_content_type,
-            creation_time_after=creation_time_after,
-            creation_time_before=creation_time_before,
-            max_results=max_results,
-            max_schema_version=max_schema_version,
-            name_contains=name_contains,
-            sort_by=sort_by,
-            sort_order=sort_order
-        )
+        request = {
+            "HubName": hub_name,
+            "HubContentType": hub_content_type
+        }
+        if creation_time_after:
+            request["CreationTimeAfter"] = creation_time_after
+        if creation_time_before:
+            request["CreationTimeBefore"] = creation_time_before
+        if max_results:
+            request["MaxResults"] = max_results
+        if max_schema_version:
+            request["MaxSchemaVersion"] = max_schema_version
+        if name_contains:
+            request["NameContains"] = name_contains
+        if sort_by:
+            request["SortBy"] = sort_by
+        if sort_order:
+            request["SortOrder"] = sort_order
+
+        return self.sagemaker_client.list_hub_contents(*request)
     
     def delete_hub(
         self,
@@ -6595,7 +6618,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Args:
             hub_name (str): The name of the hub to delete.
         """
-        return self.sagemaker_client.delete_hub(hub_name=hub_name)
+        request = { "HubName": hub_name }
+
+        return self.sagemaker_client.delete_hub(*request)
     
     def import_hub_content(
         self,
@@ -6603,6 +6628,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         hub_content_name: str,
         hub_content_type: str,
         hub_name: str,
+        hub_content_document: str,
         hub_content_display_name=None,
         hub_content_description=None,
         hub_content_version=None,
@@ -6618,6 +6644,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             hub_content_version (str): The version of the HubContent to import.
             hub_content_type (str): The type of HubContent to import.
             hub_name (str): The name of the Hub to import content to.
+            hub_content_document (str): The hub content document that describes information about the hub content
+                such as type, associated containers, scripts, and more.
             hub_content_display_name (str): The display name of the HubContent to import.
             hub_content_description (str): The description of the HubContent to import.
             hub_content_markdown (str): A string that provides a description of the HubContent. This string can include links, tables,
@@ -6627,18 +6655,27 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             (dict): Return value for ``ImportHubContent`` API
         """
-        return self.sagemaker_client.import_hub_content(
-            document_schema_version=document_schema_version,
-            hub_content_name=hub_content_name,
-            hub_content_version=hub_content_version,
-            hub_content_type=hub_content_type,
-            hub_name=hub_name,
-            hub_content_display_name=hub_content_display_name,
-            hub_content_description=hub_content_description,
-            hub_content_markdown=hub_content_markdown,
-            hub_content_search_keywords=hub_content_search_keywords,
-            tags=tags
-        )
+        request = {
+            "DocumentSchemaVersion": document_schema_version,
+            "HubContentName": hub_content_name,
+            "HubContentType": hub_content_type,
+            "HubName": hub_name,
+            "HubContentDocument": hub_content_document
+        }
+        if hub_content_display_name:
+            request["HubContentDisplayName"] = hub_content_display_name
+        if hub_content_description:
+            request["HubContentDescription"] = hub_content_description
+        if hub_content_version:
+            request["HubContentVersion"] = hub_content_version
+        if hub_content_markdown:
+            request["HubContentMarkdown"] = hub_content_markdown
+        if hub_content_search_keywords:
+            request["HubContentSearchKeywords"] = hub_content_search_keywords
+        if tags:
+            request["Tags"] = tags
+        
+        return self.sagemaker_client.import_hub_content(*request)
 
     def describe_hub_content(
         self,
@@ -6658,12 +6695,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             (dict): Return value for ``DescribeHubContent`` API
         """
-        return self.sagemaker_client.describe_hub_content(
-            hub_content_name=hub_content_name,
-            hub_content_type=hub_content_type,
-            hub_name=hub_name,
-            hub_content_version=hub_content_version
-        )
+        request = {
+            "HubContentName": hub_content_name,
+            "HubContentType": hub_content_type,
+            "HubName": hub_name
+        }
+        if hub_content_version:
+            request["HubContentVersion"] = hub_content_version
+
+        return self.sagemaker_client.describe_hub_content(*request)
     
     def delete_hub_content(
         self,
@@ -6680,12 +6720,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
             hub_content_type (str): The type of the content that you want to delete from a Hub.
             hub_name (str): The name of the Hub that you want to delete content in.
         """
-        return self.sagemaker_client.delete_hub_content(
-            hub_content_name=hub_content_name,
-            hub_content_version=hub_content_version,
-            hub_content_type=hub_content_type,
-            hub_name=hub_name
-        )
+        request = {
+            "HubContentName": hub_content_name,
+            "HubContentType": hub_content_type,
+            "HubName": hub_name,
+            "HubContentVersion": hub_content_version
+        }
+
+        return self.sagemaker_client.delete_hub_content(*request)
 
 
 def get_model_package_args(

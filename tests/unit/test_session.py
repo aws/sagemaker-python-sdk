@@ -6489,3 +6489,163 @@ def test_download_data_with_file_and_directory(makedirs, sagemaker_session):
         Filename="./foo/bar/mode.tar.gz",
         ExtraArgs=None,
     )
+
+def test_create_hub(sagemaker_session):
+    sagemaker_session.create_hub(
+        hub_name="mock-hub-name",
+        hub_description="this is my sagemaker hub",
+        hub_display_name="Mock Hub",
+        hub_search_keywords=["mock", "hub", "123"],
+        s3_storage_config={
+            "S3OutputPath": "s3://my-hub-bucket/"
+        },
+        tags=[{"Key": "tag-key-1", "Value": "tag-value-1"}]
+    )
+
+    request = {
+        "hub_name": "mock-hub-name",
+        "hub_description": "this is my sagemaker hub",
+        "hub_display_name": "Mock Hub",
+        "hub_search_keywords": ["mock", "hub", "123"],
+        "s3_storage_config": {
+            "S3OutputPath": "s3://my-hub-bucket/"
+        },
+        "tags": [{"Key": "tag-key-1", "Value": "tag-value-1"}]
+    }
+
+    sagemaker_session.create_hub.assert_called_with(**request)
+
+def test_describe_hub(sagemaker_session):
+    sagemaker_session.describe_hub(
+        hub_name="mock-hub-name",
+    )
+
+    request = {
+        "hub_name": "mock-hub-name",
+    }
+
+    sagemaker_session.describe_hub.assert_called_with(**request)
+
+def test_list_hubs(sagemaker_session):
+    sagemaker_session.list_hubs(
+        creation_time_after="08-14-1997 12:00:00",
+        creation_time_before="01-08/2024 10:25:00",
+        max_results="25",
+        max_schema_version="1.0.5",
+        name_contains="mock-hub",
+        sort_by="HubName",
+        sort_order="Ascending"
+    )
+
+    request = {
+        "creation_time_after": "08-14-1997 12:00:00",
+        "creation_time_before": "01-08/2024 10:25:00",
+        "max_results": "25",
+        "max_schema_version": "1.0.5",
+        "name_contains": "mock-hub",
+        "sort_by": "HubName",
+        "sort_order": "Ascending"
+    }
+
+    sagemaker_session.list_hubs.assert_called_with(**request)
+
+def test_list_hub_contents(sagemaker_session):
+    sagemaker_session.list_hub_contents(
+        hub_name="mock-hub-123",
+        hub_content_type="MODEL",
+        creation_time_after="08-14-1997 12:00:00",
+        creation_time_before="01-08/2024 10:25:00",
+        max_results="25",
+        max_schema_version="1.0.5",
+        name_contains="mock-hub",
+        sort_by="HubName",
+        sort_order="Ascending"
+    )
+
+    request = {
+        "hub_name": "mock-hub-123",
+        "hub_content_type": "MODEL",
+        "creation_time_after": "08-14-1997 12:00:00",
+        "creation_time_before": "01-08/2024 10:25:00",
+        "max_results": "25",
+        "max_schema_version": "1.0.5",
+        "name_contains": "mock-hub",
+        "sort_by": "HubName",
+        "sort_order": "Ascending"
+    }
+
+    sagemaker_session.list_hub_contents.assert_called_with(**request)
+
+def test_delete_hub(sagemaker_session):
+    sagemaker_session.delete_hub(
+        hub_name="mock-hub-123",
+    )
+
+    request = {
+        "hub_name": "mock-hub-123",
+    }
+
+    sagemaker_session.delete_hub.assert_called_with(**request)
+
+def test_import_hub_content(sagemaker_session):
+    sagemaker_session.import_hub_content(
+        hub_name="mock-hub-123",
+        hub_content_type="MODEL",
+        document_schema_version="1.0.0",
+        hub_content_document="{'training_script_location':'s3://path/to/script.py'}",
+        hub_content_name="mock-hub-content-1",
+        hub_content_display_name="Mock Hub Content One",
+        hub_content_description="This is my special Hub Content for my special Hub",
+        hub_content_version="5.5.5",
+        hub_content_markdown="markdown",
+        hub_content_search_keywords=["Hub","Machine Learning","Content"]
+    )
+
+    request = {
+        "hub_name": "mock-hub-123",
+        "hub_content_type": "MODEL",
+        "document_schema_version": "1.0.0",
+        "hub_content_document": "{'training_script_location':'s3://path/to/script.py'}",
+        "hub_content_name": "mock-hub-content-1",
+        "hub_content_display_name": "Mock Hub Content One",
+        "hub_content_description": "This is my special Hub Content for my special Hub",
+        "hub_content_version": "5.5.5",
+        "hub_content_markdown": "markdown",
+        "hub_content_search_keywords": ["Hub","Machine Learning","Content"]
+    }
+
+    sagemaker_session.import_hub_content.assert_called_with(**request)
+
+def test_describe_hub_content(sagemaker_session):
+    sagemaker_session.describe_hub_content(
+        hub_name="mock-hub-123",
+        hub_content_type="MODEL",
+        hub_content_name="mock-hub-content-1",
+        hub_content_version="5.5.5",
+    )
+
+    request = {
+        "hub_name": "mock-hub-123",
+        "hub_content_type": "MODEL",
+        "hub_content_name": "mock-hub-content-1",
+        "hub_content_version": "5.5.5",
+    }
+
+    sagemaker_session.describe_hub_content.assert_called_with(**request)
+
+def test_delete_hub_content(sagemaker_session):
+    sagemaker_session.delete_hub_content(
+        hub_name="mock-hub-123",
+        hub_content_type="MODEL",
+        hub_content_name="mock-hub-content-1",
+        hub_content_version="5.5.5",
+    )
+
+    request = {
+        "hub_name": "mock-hub-123",
+        "hub_content_type": "MODEL",
+        "hub_content_name": "mock-hub-content-1",
+        "hub_content_version": "5.5.5",
+    }
+
+    sagemaker_session.delete_hub_content.assert_called_with(**request)
