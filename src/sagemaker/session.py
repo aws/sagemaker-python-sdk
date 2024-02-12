@@ -6467,10 +6467,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
         self,
         hub_name: str,
         hub_description: str,
-        hub_display_name=None,
-        hub_search_keywords=None,
-        s3_storage_config=None,
-        tags=None
+        hub_display_name: str = None,
+        hub_search_keywords: List[str] = None,
+        s3_storage_config: Dict[str, Any] = None,
+        tags: List[Dict[str, Any]] = None
     ) -> Dict[str, str]:
         """Creates a SageMaker Hub
         
@@ -6518,19 +6518,20 @@ class Session(object):  # pylint: disable=too-many-public-methods
     
     def list_hubs(
         self,
-        creation_time_after=None,
-        creation_time_before=None,
-        max_results=None,
-        max_schema_version=None,
-        name_contains=None,
-        sort_by=None,
-        sort_order=None
+        creation_time_after: str = None,
+        creation_time_before: str = None,
+        max_results: int = None,
+        max_schema_version: str = None,
+        name_contains: str = None,
+        next_token: str = None,
+        sort_by: str = None,
+        sort_order: str = None
     ) -> Dict[str, Any]:
         """Lists all existing SageMaker Hubs
         
         Args:
-            creation_time_after (int): Only list HubContent that was created after the time specified.
-            creation_time_before (int): Only list HubContent that was created before the time specified.
+            creation_time_after (str): Only list HubContent that was created after the time specified.
+            creation_time_before (str): Only list HubContent that was created before the time specified.
             max_results (int): The maximum amount of HubContent to list.
             max_schema_version (str): The upper bound of the HubContentSchemaVersion.
             name_contains (str): Only list HubContent if the name contains the specified string.
@@ -6552,6 +6553,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             request["MaxSchemaVersion"] = max_schema_version
         if name_contains:
             request["NameContains"] = name_contains
+        if next_token:
+            request["NextToken"] = next_token
         if sort_by:
             request["SortBy"] = sort_by
         if sort_order:
@@ -6563,21 +6566,22 @@ class Session(object):  # pylint: disable=too-many-public-methods
         self,
         hub_name: str,
         hub_content_type: str,
-        creation_time_after=None,
-        creation_time_before=None,
-        max_results=None,
-        max_schema_version=None,
-        name_contains=None,
-        sort_by=None,
-        sort_order=None
+        creation_time_after: str = None,
+        creation_time_before: str = None,
+        max_results: int = None,
+        max_schema_version: str = None,
+        name_contains: str = None,
+        next_token: str = None,
+        sort_by: str = None,
+        sort_order: str = None
     ) -> Dict[str, Any]:
         """Lists the HubContents in a SageMaker Hub
         
         Args:
             hub_name (str): The name of the Hub to list the contents of.
             hub_content_type (str): The type of the HubContent to list.
-            creation_time_after (int): Only list HubContent that was created after the time specified.
-            creation_time_before (int): Only list HubContent that was created before the time specified.
+            creation_time_after (str): Only list HubContent that was created after the time specified.
+            creation_time_before (str): Only list HubContent that was created before the time specified.
             max_results (int): The maximum amount of HubContent to list.
             max_schema_version (str): The upper bound of the HubContentSchemaVersion.
             name_contains (str): Only list HubContent if the name contains the specified string.
@@ -6602,6 +6606,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             request["MaxSchemaVersion"] = max_schema_version
         if name_contains:
             request["NameContains"] = name_contains
+        if next_token:
+            request["NextToken"] = next_token
         if sort_by:
             request["SortBy"] = sort_by
         if sort_order:
@@ -6629,12 +6635,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
         hub_content_type: str,
         hub_name: str,
         hub_content_document: str,
-        hub_content_display_name=None,
-        hub_content_description=None,
-        hub_content_version=None,
-        hub_content_markdown=None,
-        hub_content_search_keywords=None,
-        tags=None
+        hub_content_display_name: str = None,
+        hub_content_description: str = None,
+        hub_content_version: str = None,
+        hub_content_markdown: str = None,
+        hub_content_search_keywords: List[str] = None,
+        tags: List[Dict[str, Any]] =None
     ) -> Dict[str, str]:
         """Imports a new HubContent into a SageMaker Hub
         
@@ -6682,7 +6688,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         hub_content_name: str,
         hub_content_type: str,
         hub_name: str,
-        hub_content_version=None
+        hub_content_version: str = None
     ) -> Dict[str, Any]:
         """Describes a HubContent in a SageMaker Hub
 
