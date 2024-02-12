@@ -6557,7 +6557,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if sort_order:
             request["SortOrder"] = sort_order
 
-        return self.sagemaker_client.list_hubs(*request)
+        return self.sagemaker_client.list_hubs(**request)
     
     def list_hub_contents(
         self,
@@ -6607,7 +6607,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if sort_order:
             request["SortOrder"] = sort_order
 
-        return self.sagemaker_client.list_hub_contents(*request)
+        return self.sagemaker_client.list_hub_contents(**request)
     
     def delete_hub(
         self,
@@ -6620,7 +6620,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """
         request = { "HubName": hub_name }
 
-        return self.sagemaker_client.delete_hub(*request)
+        return self.sagemaker_client.delete_hub(**request)
     
     def import_hub_content(
         self,
@@ -6675,7 +6675,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if tags:
             request["Tags"] = tags
         
-        return self.sagemaker_client.import_hub_content(*request)
+        return self.sagemaker_client.import_hub_content(**request)
 
     def describe_hub_content(
         self,
@@ -6703,7 +6703,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if hub_content_version:
             request["HubContentVersion"] = hub_content_version
 
-        return self.sagemaker_client.describe_hub_content(*request)
+        return self.sagemaker_client.describe_hub_content(**request)
     
     def delete_hub_content(
         self,
@@ -6727,7 +6727,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             "HubContentVersion": hub_content_version
         }
 
-        return self.sagemaker_client.delete_hub_content(*request)
+        return self.sagemaker_client.delete_hub_content(**request)
 
 
 def get_model_package_args(

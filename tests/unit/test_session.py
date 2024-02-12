@@ -6503,17 +6503,17 @@ def test_create_hub(sagemaker_session):
     )
 
     request = {
-        "hub_name": "mock-hub-name",
-        "hub_description": "this is my sagemaker hub",
-        "hub_display_name": "Mock Hub",
-        "hub_search_keywords": ["mock", "hub", "123"],
-        "s3_storage_config": {
+        "HubName": "mock-hub-name",
+        "HubDescription": "this is my sagemaker hub",
+        "HubDisplayName": "Mock Hub",
+        "HubSearchKeywords": ["mock", "hub", "123"],
+        "S3StorageConfig": {
             "S3OutputPath": "s3://my-hub-bucket/"
         },
-        "tags": [{"Key": "tag-key-1", "Value": "tag-value-1"}]
+        "Tags": [{"Key": "tag-key-1", "Value": "tag-value-1"}]
     }
 
-    sagemaker_session.create_hub.assert_called_with(**request)
+    sagemaker_session.sagemaker_client.create_hub.assert_called_with(**request)
 
 def test_describe_hub(sagemaker_session):
     sagemaker_session.describe_hub(
@@ -6521,15 +6521,15 @@ def test_describe_hub(sagemaker_session):
     )
 
     request = {
-        "hub_name": "mock-hub-name",
+        "HubName": "mock-hub-name",
     }
 
-    sagemaker_session.describe_hub.assert_called_with(**request)
+    sagemaker_session.sagemaker_client.describe_hub.assert_called_with(**request)
 
 def test_list_hubs(sagemaker_session):
     sagemaker_session.list_hubs(
         creation_time_after="08-14-1997 12:00:00",
-        creation_time_before="01-08/2024 10:25:00",
+        creation_time_before="01-08-2024 10:25:00",
         max_results="25",
         max_schema_version="1.0.5",
         name_contains="mock-hub",
@@ -6538,16 +6538,16 @@ def test_list_hubs(sagemaker_session):
     )
 
     request = {
-        "creation_time_after": "08-14-1997 12:00:00",
-        "creation_time_before": "01-08/2024 10:25:00",
-        "max_results": "25",
-        "max_schema_version": "1.0.5",
-        "name_contains": "mock-hub",
-        "sort_by": "HubName",
-        "sort_order": "Ascending"
+        "CreationTimeAfter": "08-14-1997 12:00:00",
+        "CreationTimeBefore": "01-08-2024 10:25:00",
+        "MaxResults": "25",
+        "MaxSchemaVersion": "1.0.5",
+        "NameContains": "mock-hub",
+        "SortBy": "HubName",
+        "SortOrder": "Ascending"
     }
 
-    sagemaker_session.list_hubs.assert_called_with(**request)
+    sagemaker_session.sagemaker_client.list_hubs.assert_called_with(**request)
 
 def test_list_hub_contents(sagemaker_session):
     sagemaker_session.list_hub_contents(
@@ -6563,18 +6563,18 @@ def test_list_hub_contents(sagemaker_session):
     )
 
     request = {
-        "hub_name": "mock-hub-123",
-        "hub_content_type": "MODEL",
-        "creation_time_after": "08-14-1997 12:00:00",
-        "creation_time_before": "01-08/2024 10:25:00",
-        "max_results": "25",
-        "max_schema_version": "1.0.5",
-        "name_contains": "mock-hub",
-        "sort_by": "HubName",
-        "sort_order": "Ascending"
+        "HubName": "mock-hub-123",
+        "HubContentType": "MODEL",
+        "CreationTimeAfter": "08-14-1997 12:00:00",
+        "CreationTimeBefore": "01-08/2024 10:25:00",
+        "MaxResults": "25",
+        "MaxSchemaVersion": "1.0.5",
+        "NameContains": "mock-hub",
+        "SortBy": "HubName",
+        "SortOrder": "Ascending"
     }
 
-    sagemaker_session.list_hub_contents.assert_called_with(**request)
+    sagemaker_session.sagemaker_client.list_hub_contents.assert_called_with(**request)
 
 def test_delete_hub(sagemaker_session):
     sagemaker_session.delete_hub(
@@ -6582,10 +6582,10 @@ def test_delete_hub(sagemaker_session):
     )
 
     request = {
-        "hub_name": "mock-hub-123",
+        "HubName": "mock-hub-123",
     }
 
-    sagemaker_session.delete_hub.assert_called_with(**request)
+    sagemaker_session.sagemaker_client.delete_hub.assert_called_with(**request)
 
 def test_import_hub_content(sagemaker_session):
     sagemaker_session.import_hub_content(
@@ -6602,19 +6602,19 @@ def test_import_hub_content(sagemaker_session):
     )
 
     request = {
-        "hub_name": "mock-hub-123",
-        "hub_content_type": "MODEL",
-        "document_schema_version": "1.0.0",
-        "hub_content_document": "{'training_script_location':'s3://path/to/script.py'}",
-        "hub_content_name": "mock-hub-content-1",
-        "hub_content_display_name": "Mock Hub Content One",
-        "hub_content_description": "This is my special Hub Content for my special Hub",
-        "hub_content_version": "5.5.5",
-        "hub_content_markdown": "markdown",
-        "hub_content_search_keywords": ["Hub","Machine Learning","Content"]
+        "HubName": "mock-hub-123",
+        "HubContentType": "MODEL",
+        "DocumentSchemaVersion": "1.0.0",
+        "HubContentDocument": "{'training_script_location':'s3://path/to/script.py'}",
+        "HubContentName": "mock-hub-content-1",
+        "HubContentDisplayName": "Mock Hub Content One",
+        "HubContentDescription": "This is my special Hub Content for my special Hub",
+        "HubContentVersion": "5.5.5",
+        "HubContentMarkdown": "markdown",
+        "HubContentSearchKeywords": ["Hub","Machine Learning","Content"]
     }
 
-    sagemaker_session.import_hub_content.assert_called_with(**request)
+    sagemaker_session.sagemaker_client.import_hub_content.assert_called_with(**request)
 
 def test_describe_hub_content(sagemaker_session):
     sagemaker_session.describe_hub_content(
@@ -6625,13 +6625,13 @@ def test_describe_hub_content(sagemaker_session):
     )
 
     request = {
-        "hub_name": "mock-hub-123",
-        "hub_content_type": "MODEL",
-        "hub_content_name": "mock-hub-content-1",
-        "hub_content_version": "5.5.5",
+        "HubName": "mock-hub-123",
+        "HubContentType": "MODEL",
+        "HubContentName": "mock-hub-content-1",
+        "HubContentVersion": "5.5.5",
     }
 
-    sagemaker_session.describe_hub_content.assert_called_with(**request)
+    sagemaker_session.sagemaker_client.describe_hub_content.assert_called_with(**request)
 
 def test_delete_hub_content(sagemaker_session):
     sagemaker_session.delete_hub_content(
@@ -6642,10 +6642,10 @@ def test_delete_hub_content(sagemaker_session):
     )
 
     request = {
-        "hub_name": "mock-hub-123",
-        "hub_content_type": "MODEL",
-        "hub_content_name": "mock-hub-content-1",
-        "hub_content_version": "5.5.5",
+        "HubName": "mock-hub-123",
+        "HubContentType": "MODEL",
+        "HubContentName": "mock-hub-content-1",
+        "HubContentVersion": "5.5.5",
     }
 
-    sagemaker_session.delete_hub_content.assert_called_with(**request)
+    sagemaker_session.sagemaker_client.delete_hub_content.assert_called_with(**request)
