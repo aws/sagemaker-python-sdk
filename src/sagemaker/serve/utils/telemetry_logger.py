@@ -79,7 +79,8 @@ def _capture_telemetry(func_name: str):
             try:
                 response = func(self, *args, **kwargs)
                 stop_timer = perf_counter()
-                extra += f"&x-latency={stop_timer - start_timer}"
+                elapsed = stop_timer - start_timer
+                extra += f"&x-latency={round(elapsed, 2)}"
                 if not self.serve_settings.telemetry_opt_out:
                     _send_telemetry(
                         "1",
@@ -96,7 +97,8 @@ def _capture_telemetry(func_name: str):
                 exceptions.AsyncInferenceError,
             ) as e:
                 stop_timer = perf_counter()
-                extra += f"&x-latency={stop_timer - start_timer}"
+                elapsed = stop_timer - start_timer
+                extra += f"&x-latency={round(elapsed, 2)}"
                 if not self.serve_settings.telemetry_opt_out:
                     _send_telemetry(
                         "0",
