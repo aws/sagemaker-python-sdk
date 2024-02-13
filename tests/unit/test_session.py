@@ -5261,6 +5261,46 @@ def test_list_feature_groups(sagemaker_session):
     )
 
 
+@pytest.fixture()
+def sagemaker_session_with_fs_runtime_client():
+    boto_mock = MagicMock(name="boto_session")
+    sagemaker_session = sagemaker.Session(
+        boto_session=boto_mock, sagemaker_featurestore_runtime_client=MagicMock()
+    )
+    return sagemaker_session
+
+
+def test_feature_group_put_record(sagemaker_session_with_fs_runtime_client):
+    sagemaker_session_with_fs_runtime_client.put_record(
+        feature_group_name="MyFeatureGroup",
+        record=[{"FeatureName": "feature1", "ValueAsString": "value1"}],
+    )
+    fs_client_mock = sagemaker_session_with_fs_runtime_client.sagemaker_featurestore_runtime_client
+
+    assert fs_client_mock.put_record.called_with(
+        FeatureGroupName="MyFeatureGroup",
+        record=[{"FeatureName": "feature1", "ValueAsString": "value1"}],
+    )
+
+
+def test_feature_group_put_record_with_ttl_and_target_stores(
+    sagemaker_session_with_fs_runtime_client,
+):
+    sagemaker_session_with_fs_runtime_client.put_record(
+        feature_group_name="MyFeatureGroup",
+        record=[{"FeatureName": "feature1", "ValueAsString": "value1"}],
+        ttl_duration={"Unit": "Seconds", "Value": 123},
+        target_stores=["OnlineStore", "OfflineStore"],
+    )
+    fs_client_mock = sagemaker_session_with_fs_runtime_client.sagemaker_featurestore_runtime_client
+    assert fs_client_mock.put_record.called_with(
+        FeatureGroupName="MyFeatureGroup",
+        record=[{"FeatureName": "feature1", "ValueAsString": "value1"}],
+        target_stores=["OnlineStore", "OfflineStore"],
+        ttl_duration={"Unit": "Seconds", "Value": 123},
+    )
+
+
 def test_start_query_execution(sagemaker_session):
     athena_mock = Mock()
     sagemaker_session.boto_session.client(

@@ -1,5 +1,30 @@
 # Changelog
 
+## v2.207.1 (2024-02-06)
+
+### Bug Fixes and Other Changes
+
+ * Add PT 2.1 as a supported framework for the smdistributed distribution
+ * Enable private docker registry support for ModelBuilder
+ * HF PT 2.1 Image Configs
+
+### Documentation Changes
+
+ * add setup commands for documentation generation
+
+## v2.207.0 (2024-02-05)
+
+### Features
+
+ * Introduce HF Transformers to ModelBuilder
+ * retrieve jumpstart estimator and predictor without specifying model id (infer from tags)
+
+### Bug Fixes and Other Changes
+
+ * SMP PT upgrade to 2.1
+ * Fetch HF metadata only when explicit type is not selected
+ * relax upper bound for urllib dependency
+
 ## v2.206.0 (2024-01-31)
 
 ### Features
