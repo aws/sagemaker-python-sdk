@@ -6531,13 +6531,16 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """Lists all existing SageMaker Hubs
 
         Args:
-            creation_time_after (str): Only list HubContent that was created after the time specified.
-            creation_time_before (str): Only list HubContent that was created before the time specified.
+            creation_time_after (str): Only list HubContent that was created after
+                the time specified.
+            creation_time_before (str): Only list HubContent that was created
+                before the time specified.
             max_results (int): The maximum amount of HubContent to list.
             max_schema_version (str): The upper bound of the HubContentSchemaVersion.
             name_contains (str): Only list HubContent if the name contains the specified string.
-            next_token (str): If the response to a previous ``ListHubContents`` request was truncated, the
-                response includes a ``NextToken``. To retrieve the next set of hub content, use the token in the next request.
+            next_token (str): If the response to a previous ``ListHubContents`` request was
+                truncated, the response includes a ``NextToken``. To retrieve the next set of
+                hub content, use the token in the next request.
             sort_by (str): Sort HubContent versions by either name or creation time.
             sort_order (str): Sort Hubs by ascending or descending order.
         Returns:
@@ -6581,13 +6584,16 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Args:
             hub_name (str): The name of the Hub to list the contents of.
             hub_content_type (str): The type of the HubContent to list.
-            creation_time_after (str): Only list HubContent that was created after the time specified.
-            creation_time_before (str): Only list HubContent that was created before the time specified.
+            creation_time_after (str): Only list HubContent that was created after the
+                time specified.
+            creation_time_before (str): Only list HubContent that was created before the
+                time specified.
             max_results (int): The maximum amount of HubContent to list.
             max_schema_version (str): The upper bound of the HubContentSchemaVersion.
             name_contains (str): Only list HubContent if the name contains the specified string.
-            next_token (str): If the response to a previous ``ListHubContents`` request was truncated, the
-                response includes a ``NextToken``. To retrieve the next set of hub content, use the token in the next request.
+            next_token (str): If the response to a previous ``ListHubContents`` request was
+                truncated, the response includes a ``NextToken``. To retrieve the next set of
+                hub content, use the token in the next request.
             sort_by (str): Sort HubContent versions by either name or creation time.
             sort_order (str): Sort Hubs by ascending or descending order.
         Returns:
@@ -6645,12 +6651,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
             hub_content_version (str): The version of the HubContent to import.
             hub_content_type (str): The type of HubContent to import.
             hub_name (str): The name of the Hub to import content to.
-            hub_content_document (str): The hub content document that describes information about the hub content
-                such as type, associated containers, scripts, and more.
+            hub_content_document (str): The hub content document that describes information
+                about the hub content such as type, associated containers, scripts, and more.
             hub_content_display_name (str): The display name of the HubContent to import.
             hub_content_description (str): The description of the HubContent to import.
-            hub_content_markdown (str): A string that provides a description of the HubContent. This string can include links, tables,
-                and standard markdown formatting.
+            hub_content_markdown (str): A string that provides a description of the HubContent.
+                This string can include links, tables, and standard markdown formatting.
             hub_content_search_keywords (list): The searchable keywords of the HubContent.
             tags (list): Any tags associated with the HubContent.
         Returns:
@@ -6713,7 +6719,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         Args:
             hub_content_name (str): The name of the content thatyou want to delete from a Hub.
-            hub_content_version (str): The version of the content that you want to delete from a Hub.
+            hub_content_version (str): The version of the content that you want to delete from
+                a Hub.
             hub_content_type (str): The type of the content that you want to delete from a Hub.
             hub_name (str): The name of the Hub that you want to delete content in.
         """
