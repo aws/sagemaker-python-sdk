@@ -135,6 +135,11 @@ class QualityCheckStep(Step):
     ):
         """Constructs a QualityCheckStep.
 
+        To understand the `skip_check`, `fail_on_violation`, `register_new_baseline`,
+        `supplied_baseline_constraints` and `supplied_baseline_constraints` parameters,
+        check the following documentation:
+        https://docs.aws.amazon.com/sagemaker/latest/dg/pipelines-quality-clarify-baseline-lifecycle.html
+
         Args:
             name (str): The name of the QualityCheckStep step.
             quality_check_config (QualityCheckConfig): A QualityCheckConfig instance.
