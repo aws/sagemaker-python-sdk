@@ -132,8 +132,10 @@ class ModelExplainabilityCheckConfig(ClarifyCheckConfig):
 
     Attributes:
         model_config (ModelConfig): Config of the model and its endpoint to be created.
-        explainability_config (SHAPConfig): Config of the specific explainability method.
-            Currently, only SHAP is supported.
+        explainability_config (SHAPConfig or PDPConfig): Config of the explainability method.
+            Supports SHAP or PDP.
+            For `PDPConfig`, `features` must be specified.
+            `top_k_features` based on SHAP is currently not supported.
         model_scores (str or int or ModelPredictedLabelConfig): Index or JMESPath expression
             to locate the predicted scores in the model output (default: None).
             This is not required if the model output is a single score. Alternatively,
@@ -165,6 +167,10 @@ class ClarifyCheckStep(Step):
         depends_on: Optional[List[Union[str, Step, StepCollection]]] = None,
     ):
         """Constructs a ClarifyCheckStep.
+
+        To understand the `skip_check`, `fail_on_violation`, `register_new_baseline`
+        and `supplied_baseline_constraints` parameters, check the following documentation:
+        https://docs.aws.amazon.com/sagemaker/latest/dg/pipelines-quality-clarify-baseline-lifecycle.html
 
         Args:
             name (str): The name of the ClarifyCheckStep step.
