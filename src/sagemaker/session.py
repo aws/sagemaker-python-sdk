@@ -3299,9 +3299,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             training_job_definition["EnableNetworkIsolation"] = enable_network_isolation
 
         if encrypt_inter_container_traffic:
-            training_job_definition["EnableInterContainerTrafficEncryption"] = (
-                encrypt_inter_container_traffic
-            )
+            training_job_definition[
+                "EnableInterContainerTrafficEncryption"
+            ] = encrypt_inter_container_traffic
 
         if use_spot_instances:
             # use_spot_instances may be a Pipeline ParameterBoolean object
