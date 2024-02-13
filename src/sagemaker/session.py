@@ -4288,7 +4288,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         res = self.sagemaker_client.create_endpoint(
             EndpointName=endpoint_name, EndpointConfigName=config_name, Tags=tags
         )
-        self.endpoint_arn = res["EndpointArn"]
+        if res:
+            self.endpoint_arn = res["EndpointArn"]
 
         if wait:
             self.wait_for_endpoint(endpoint_name, live_logging=live_logging)
@@ -4350,7 +4351,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         res = self.sagemaker_client.update_endpoint(
             EndpointName=endpoint_name, EndpointConfigName=endpoint_config_name
         )
-        self.endpoint_arn = res["EndpointArn"]
+        if res:
+            self.endpoint_arn = res["EndpointArn"]
 
         if wait:
             self.wait_for_endpoint(endpoint_name)
