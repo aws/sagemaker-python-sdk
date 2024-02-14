@@ -13,12 +13,15 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 import logging
+from time import perf_counter
+
 import requests
 
-from sagemaker import Session
+from sagemaker import Session, exceptions
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.utils.exceptions import ModelBuilderException
 from sagemaker.serve.utils.types import ModelServer
+from sagemaker.user_agent import SDK_VERSION
 
 logger = logging.getLogger(__name__)
 
@@ -63,13 +66,21 @@ def _capture_telemetry(func_name: str):
                 f"{func_name}"
                 f"&x-modelServer={MODEL_SERVER_TO_CODE[str(self.model_server)]}"
                 f"&x-imageTag={image_uri_tail}"
+                f"&x-sdkVersion={SDK_VERSION}"
             )
 
             if self.model_server == ModelServer.DJL_SERVING or self.model_server == ModelServer.TGI:
                 extra += f"&x-modelName={self.model}"
 
+            if self.sagemaker_session and self.sagemaker_session.endpoint_arn:
+                extra += f"&x-endpointArn={self.sagemaker_session.endpoint_arn}"
+
+            start_timer = perf_counter()
             try:
                 response = func(self, *args, **kwargs)
+                stop_timer = perf_counter()
+                elapsed = stop_timer - start_timer
+                extra += f"&x-latency={round(elapsed, 2)}"
                 if not self.serve_settings.telemetry_opt_out:
                     _send_telemetry(
                         "1",
@@ -79,7 +90,15 @@ def _capture_telemetry(func_name: str):
                         None,
                         extra,
                     )
-            except ModelBuilderException as e:
+            except (
+                ModelBuilderException,
+                exceptions.CapacityError,
+                exceptions.UnexpectedStatusException,
+                exceptions.AsyncInferenceError,
+            ) as e:
+                stop_timer = perf_counter()
+                elapsed = stop_timer - start_timer
+                extra += f"&x-latency={round(elapsed, 2)}"
                 if not self.serve_settings.telemetry_opt_out:
                     _send_telemetry(
                         "0",
