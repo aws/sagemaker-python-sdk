@@ -20,6 +20,7 @@ from sagemaker.serve.utils.telemetry_logger import (
     _construct_url,
 )
 from sagemaker.serve.utils.exceptions import ModelBuilderException, LocalModelOutOfMemoryException
+from sagemaker.user_agent import SDK_VERSION
 
 MOCK_SESSION = Mock()
 MOCK_FUNC_NAME = "Mock.deploy"
@@ -32,6 +33,7 @@ MOCK_TGI_CONTAINER = (
 )
 MOCK_HUGGINGFACE_ID = "meta-llama/Llama-2-7b-hf"
 MOCK_EXCEPTION = LocalModelOutOfMemoryException("mock raise ex")
+MOCK_ENDPOINT_ARN = "arn:aws:sagemaker:us-west-2:123456789012:endpoint/test"
 
 
 class ModelBuilderMock:
@@ -72,15 +74,22 @@ class TestTelemetryLogger(unittest.TestCase):
         mock_model_builder.model = MOCK_HUGGINGFACE_ID
         mock_model_builder.mode = Mode.LOCAL_CONTAINER
         mock_model_builder.model_server = ModelServer.DJL_SERVING
+        mock_model_builder.sagemaker_session.endpoint_arn = MOCK_ENDPOINT_ARN
 
         mock_model_builder.mock_deploy()
 
+        args = mock_send_telemetry.call_args.args
+        latency = str(args[5]).split("latency=")[1]
         expected_extra_str = (
             f"{MOCK_FUNC_NAME}"
             "&x-modelServer=4"
             "&x-imageTag=djl-inference:0.25.0-deepspeed0.11.0-cu118"
+            f"&x-sdkVersion={SDK_VERSION}"
             f"&x-modelName={MOCK_HUGGINGFACE_ID}"
+            f"&x-endpointArn={MOCK_ENDPOINT_ARN}"
+            f"&x-latency={latency}"
         )
+
         mock_send_telemetry.assert_called_once_with(
             "1", 2, MOCK_SESSION, None, None, expected_extra_str
         )
@@ -93,15 +102,22 @@ class TestTelemetryLogger(unittest.TestCase):
         mock_model_builder.model = MOCK_HUGGINGFACE_ID
         mock_model_builder.mode = Mode.LOCAL_CONTAINER
         mock_model_builder.model_server = ModelServer.TGI
+        mock_model_builder.sagemaker_session.endpoint_arn = MOCK_ENDPOINT_ARN
 
         mock_model_builder.mock_deploy()
 
+        args = mock_send_telemetry.call_args.args
+        latency = str(args[5]).split("latency=")[1]
         expected_extra_str = (
             f"{MOCK_FUNC_NAME}"
             "&x-modelServer=6"
             "&x-imageTag=huggingface-pytorch-inference:2.0.0-transformers4.28.1-cpu-py310-ubuntu20.04"
+            f"&x-sdkVersion={SDK_VERSION}"
             f"&x-modelName={MOCK_HUGGINGFACE_ID}"
+            f"&x-endpointArn={MOCK_ENDPOINT_ARN}"
+            f"&x-latency={latency}"
         )
+
         mock_send_telemetry.assert_called_once_with(
             "1", 2, MOCK_SESSION, None, None, expected_extra_str
         )
@@ -126,6 +142,7 @@ class TestTelemetryLogger(unittest.TestCase):
         mock_model_builder.model = MOCK_HUGGINGFACE_ID
         mock_model_builder.mode = Mode.LOCAL_CONTAINER
         mock_model_builder.model_server = ModelServer.DJL_SERVING
+        mock_model_builder.sagemaker_session.endpoint_arn = MOCK_ENDPOINT_ARN
 
         mock_exception = Mock()
         mock_exception_obj = MOCK_EXCEPTION
@@ -134,12 +151,18 @@ class TestTelemetryLogger(unittest.TestCase):
         with self.assertRaises(ModelBuilderException) as _:
             mock_model_builder.mock_deploy(mock_exception)
 
+        args = mock_send_telemetry.call_args.args
+        latency = str(args[5]).split("latency=")[1]
         expected_extra_str = (
             f"{MOCK_FUNC_NAME}"
             "&x-modelServer=4"
             "&x-imageTag=djl-inference:0.25.0-deepspeed0.11.0-cu118"
+            f"&x-sdkVersion={SDK_VERSION}"
             f"&x-modelName={MOCK_HUGGINGFACE_ID}"
+            f"&x-endpointArn={MOCK_ENDPOINT_ARN}"
+            f"&x-latency={latency}"
         )
+
         mock_send_telemetry.assert_called_once_with(
             "0",
             2,
