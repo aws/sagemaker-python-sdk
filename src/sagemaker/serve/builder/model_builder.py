@@ -294,6 +294,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
                 "Skipping auto detection as the image uri is provided %s",
                 self.image_uri,
             )
+            self._is_custom_image_uri = True
             return
 
         if self.model:
@@ -604,6 +605,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
         )
 
         self.serve_settings = self._get_serve_setting()
+
+        self._is_custom_image_uri = self.image_uri is None
 
         if isinstance(self.model, str):
             if self._is_jumpstart_model_id():

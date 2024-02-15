@@ -13,6 +13,7 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 import logging
+from typing import Optional
 from time import perf_counter
 
 import requests
@@ -20,7 +21,8 @@ import requests
 from sagemaker import Session, exceptions
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.utils.exceptions import ModelBuilderException
-from sagemaker.serve.utils.types import ModelServer
+from sagemaker.serve.utils.types import ModelServer, ImageUriOption
+from sagemaker.serve.validations.check_image_uri import is_1p_image_uri
 from sagemaker.user_agent import SDK_VERSION
 
 logger = logging.getLogger(__name__)
@@ -75,6 +77,8 @@ def _capture_telemetry(func_name: str):
             if self.sagemaker_session and self.sagemaker_session.endpoint_arn:
                 extra += f"&x-endpointArn={self.sagemaker_session.endpoint_arn}"
 
+            extra += f"&x-defaultImageUsage={_get_image_uri_option(self.image_uri, self._is_custom_image_uri)}"
+
             start_timer = perf_counter()
             try:
                 response = func(self, *args, **kwargs)
@@ -91,10 +95,10 @@ def _capture_telemetry(func_name: str):
                         extra,
                     )
             except (
-                ModelBuilderException,
-                exceptions.CapacityError,
-                exceptions.UnexpectedStatusException,
-                exceptions.AsyncInferenceError,
+                    ModelBuilderException,
+                    exceptions.CapacityError,
+                    exceptions.UnexpectedStatusException,
+                    exceptions.AsyncInferenceError,
             ) as e:
                 stop_timer = perf_counter()
                 elapsed = stop_timer - start_timer
@@ -122,12 +126,12 @@ def _capture_telemetry(func_name: str):
 
 
 def _send_telemetry(
-    status: str,
-    mode: int,
-    session: Session,
-    failure_reason: str = None,
-    failure_type: str = None,
-    extra_info: str = None,
+        status: str,
+        mode: int,
+        session: Session,
+        failure_reason: str = None,
+        failure_type: str = None,
+        extra_info: str = None,
 ) -> None:
     """Make GET request to an empty object in S3 bucket"""
     try:
@@ -149,13 +153,13 @@ def _send_telemetry(
 
 
 def _construct_url(
-    accountId: str,
-    mode: str,
-    status: str,
-    failure_reason: str,
-    failure_type: str,
-    extra_info: str,
-    region: str,
+        accountId: str,
+        mode: str,
+        status: str,
+        failure_reason: str,
+        failure_type: str,
+        extra_info: str,
+        region: str,
 ) -> str:
     """Placeholder docstring"""
 
@@ -201,3 +205,22 @@ def _get_region_or_default(session):
         return session.boto_session.region_name
     except Exception:  # pylint: disable=W0703
         return "us-west-2"
+
+
+def _get_image_uri_option(image_uri: str, is_custom_image: bool) -> int:
+    """Detect whether default values are used for ModelBuilder
+
+    Args:
+        image_uri (str): Image uri used by ModelBuilder.
+        is_custom_image: (bool): Boolean indicating whether customer provides with custom image.
+    Returns:
+        bool: Integer code of image option types.
+    """
+
+    if not is_custom_image:
+        return ImageUriOption.DEFAULT_IMAGE.value
+
+    if is_1p_image_uri(image_uri):
+        return ImageUriOption.CUSTOM_1P_IMAGE.value
+
+    return ImageUriOption.CUSTOM_IMAGE.value
