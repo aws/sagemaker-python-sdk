@@ -605,24 +605,19 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
 
         self.serve_settings = self._get_serve_setting()
 
+        sample_input, sample_output = task.retrieve_local_schemas("text-generation")
+        self.schema_builder = SchemaBuilder(sample_input, sample_output)
+
         if isinstance(self.model, str):
             if self._is_jumpstart_model_id():
                 return self._build_for_jumpstart()
             if self._is_djl():  # pylint: disable=R1705
-                if self.schema_builder is None:
-                    self._schema_builder_init("text-generation")
-
                 return self._build_for_djl()
             else:
                 hf_model_md = get_huggingface_model_metadata(
                     self.model, self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
                 )
-
-                hf_task = hf_model_md.get("pipeline_tag")
-                if self.schema_builder is None:
-                    self._schema_builder_init(hf_task)
-
-                if hf_task == "text-generation":  # pylint: disable=R1705
+                if hf_model_md.get("pipeline_tag") == "text-generation":  # pylint: disable=R1705
                     return self._build_for_tgi()
                 else:
                     return self._build_for_transformers()
