@@ -610,7 +610,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
                 return self._build_for_jumpstart()
             if self._is_djl():  # pylint: disable=R1705
                 if self.schema_builder is None:
-                    self.__schema_builder_init("text-generation")
+                    self._schema_builder_init("text-generation")
 
                 return self._build_for_djl()
             else:
@@ -620,7 +620,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
 
                 hf_task = hf_model_md.get("pipeline_tag")
                 if self.schema_builder is None:
-                    self.__schema_builder_init(hf_task)
+                    self._schema_builder_init(hf_task)
 
                 if hf_task == "text-generation":  # pylint: disable=R1705
                     return self._build_for_tgi()
