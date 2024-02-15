@@ -20,7 +20,7 @@ import os
 
 from pathlib import Path
 
-from sagemaker import Session
+from sagemaker import Session, task
 from sagemaker.model import Model
 from sagemaker.base_predictor import PredictorBase
 from sagemaker.serializers import NumpySerializer, TorchTensorSerializer
@@ -609,12 +609,20 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
             if self._is_jumpstart_model_id():
                 return self._build_for_jumpstart()
             if self._is_djl():  # pylint: disable=R1705
+                if self.schema_builder is None:
+                    self.__schema_builder_init("text-generation")
+
                 return self._build_for_djl()
             else:
                 hf_model_md = get_huggingface_model_metadata(
                     self.model, self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
                 )
-                if hf_model_md.get("pipeline_tag") == "text-generation":  # pylint: disable=R1705
+
+                hf_task = hf_model_md.get("pipeline_tag")
+                if self.schema_builder is None:
+                    self.__schema_builder_init(hf_task)
+
+                if hf_task == "text-generation":  # pylint: disable=R1705
                     return self._build_for_tgi()
                 else:
                     return self._build_for_transformers()
@@ -672,3 +680,19 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
         """
 
         return get_metadata(model_dir)
+
+    def __schema_builder_init(self, model_task: str):
+        """Initialize the"""
+        sample_input, sample_output = None, None
+
+        try:
+            sample_input, sample_output = task.retrieve_local_schemas(model_task)
+        except ValueError:
+            # TODO: try to retrieve schemas remotely
+            pass
+
+        if sample_input and sample_output:
+            self.schema_builder = SchemaBuilder(sample_input, sample_output)
+        else:
+            # TODO: Raise ClientError
+            pass
