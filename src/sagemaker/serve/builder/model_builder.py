@@ -681,7 +681,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
 
         return get_metadata(model_dir)
 
-    def __schema_builder_init(self, model_task: str):
+    def _schema_builder_init(self, model_task: str):
         """Initialize the"""
         sample_input, sample_output = None, None
 
