@@ -162,6 +162,7 @@ class TestTelemetryLogger(unittest.TestCase):
         mock_model_builder = ModelBuilderMock()
         mock_model_builder.serve_settings.telemetry_opt_out = True
         mock_model_builder.image_uri = MOCK_DJL_CONTAINER
+        mock_model_builder._is_custom_image_uri = False
         mock_model_builder.model = MOCK_HUGGINGFACE_ID
         mock_model_builder.model_server = ModelServer.DJL_SERVING
 
