@@ -1,5 +1,27 @@
 # Changelog
 
+## v2.208.0 (2024-02-15)
+
+### Features
+
+ * Telemetry metrics
+ * TGI 1.4.0
+ * Support collection type and target store for feature store ingestion.
+
+### Bug Fixes and Other Changes
+
+ * bump jinja2 to 3.1.3 in doc/requirments.txt
+ * chore(deps): bump jinja2 from 3.0.3 to 3.1.3 in /requirements/extras
+ * Fix dependabot alert in transformers package
+ * Bump Apache Airflow version to 2.8.0
+ * skip failing mxnet tests
+
+### Documentation Changes
+
+ * change order of pipelines topics
+ * Explain the ClarifyCheckStep and QualityCheckStep parameters
+ * fix the ClarifyCheckStep documentation to mention PDP
+
 ## v2.207.1 (2024-02-06)
 
 ### Bug Fixes and Other Changes
