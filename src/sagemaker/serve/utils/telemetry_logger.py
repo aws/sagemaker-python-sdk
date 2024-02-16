@@ -13,7 +13,6 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 import logging
-from typing import Optional
 from time import perf_counter
 
 import requests
@@ -69,6 +68,7 @@ def _capture_telemetry(func_name: str):
                 f"&x-modelServer={MODEL_SERVER_TO_CODE[str(self.model_server)]}"
                 f"&x-imageTag={image_uri_tail}"
                 f"&x-sdkVersion={SDK_VERSION}"
+                f"&x-defaultImageUsage={_get_image_uri_option(self.image_uri, self._is_custom_image_uri)}"
             )
 
             if self.model_server == ModelServer.DJL_SERVING or self.model_server == ModelServer.TGI:
@@ -76,8 +76,6 @@ def _capture_telemetry(func_name: str):
 
             if self.sagemaker_session and self.sagemaker_session.endpoint_arn:
                 extra += f"&x-endpointArn={self.sagemaker_session.endpoint_arn}"
-
-            extra += f"&x-defaultImageUsage={_get_image_uri_option(self.image_uri, self._is_custom_image_uri)}"
 
             start_timer = perf_counter()
             try:
@@ -95,10 +93,10 @@ def _capture_telemetry(func_name: str):
                         extra,
                     )
             except (
-                    ModelBuilderException,
-                    exceptions.CapacityError,
-                    exceptions.UnexpectedStatusException,
-                    exceptions.AsyncInferenceError,
+                ModelBuilderException,
+                exceptions.CapacityError,
+                exceptions.UnexpectedStatusException,
+                exceptions.AsyncInferenceError,
             ) as e:
                 stop_timer = perf_counter()
                 elapsed = stop_timer - start_timer
@@ -126,12 +124,12 @@ def _capture_telemetry(func_name: str):
 
 
 def _send_telemetry(
-        status: str,
-        mode: int,
-        session: Session,
-        failure_reason: str = None,
-        failure_type: str = None,
-        extra_info: str = None,
+    status: str,
+    mode: int,
+    session: Session,
+    failure_reason: str = None,
+    failure_type: str = None,
+    extra_info: str = None,
 ) -> None:
     """Make GET request to an empty object in S3 bucket"""
     try:
@@ -153,13 +151,13 @@ def _send_telemetry(
 
 
 def _construct_url(
-        accountId: str,
-        mode: str,
-        status: str,
-        failure_reason: str,
-        failure_type: str,
-        extra_info: str,
-        region: str,
+    accountId: str,
+    mode: str,
+    status: str,
+    failure_reason: str,
+    failure_type: str,
+    extra_info: str,
+    region: str,
 ) -> str:
     """Placeholder docstring"""
 
