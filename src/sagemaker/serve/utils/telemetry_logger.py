@@ -63,12 +63,13 @@ def _capture_telemetry(func_name: str):
             caught_ex = None
 
             image_uri_tail = self.image_uri.split("/")[1]
+            image_uri_option = _get_image_uri_option(self.image_uri, self._is_custom_image_uri)
             extra = (
                 f"{func_name}"
                 f"&x-modelServer={MODEL_SERVER_TO_CODE[str(self.model_server)]}"
                 f"&x-imageTag={image_uri_tail}"
                 f"&x-sdkVersion={SDK_VERSION}"
-                f"&x-defaultImageUsage={_get_image_uri_option(self.image_uri, self._is_custom_image_uri)}"
+                f"&x-defaultImageUsage={image_uri_option}"
             )
 
             if self.model_server == ModelServer.DJL_SERVING or self.model_server == ModelServer.TGI:
