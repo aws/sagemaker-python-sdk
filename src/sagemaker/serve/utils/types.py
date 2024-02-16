@@ -46,7 +46,7 @@ class HardwareType(Enum):
 
 
 class ImageUriOption(Enum):
-    "Enum type for image uri options"
+    """Enum type for image uri options"""
 
     def __str__(self) -> str:
         """Convert enum to string"""
