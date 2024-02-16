@@ -605,19 +605,24 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
 
         self.serve_settings = self._get_serve_setting()
 
-        sample_input, sample_output = task.retrieve_local_schemas("text-generation")
-        self.schema_builder = SchemaBuilder(sample_input, sample_output)
-
         if isinstance(self.model, str):
             if self._is_jumpstart_model_id():
                 return self._build_for_jumpstart()
             if self._is_djl():  # pylint: disable=R1705
                 return self._build_for_djl()
             else:
+                logger.info("******************************************************")
+                logger.info(f"schema_builder is None: {self.schema_builder is None}")
+
                 hf_model_md = get_huggingface_model_metadata(
                     self.model, self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
                 )
-                if hf_model_md.get("pipeline_tag") == "text-generation":  # pylint: disable=R1705
+
+                hf_task = hf_model_md.get("pipeline_tag")
+                logger.info(f"hf_task: {hf_task}")
+                self._schema_builder_init(hf_task)
+
+                if hf_task == "text-generation":  # pylint: disable=R1705
                     return self._build_for_tgi()
                 else:
                     return self._build_for_transformers()
@@ -678,16 +683,19 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
 
     def _schema_builder_init(self, model_task: str):
         """Initialize the"""
-        sample_input, sample_output = None, None
+        sample_inputs, sample_outputs = None, None
 
         try:
-            sample_input, sample_output = task.retrieve_local_schemas(model_task)
+            sample_inputs, sample_outputs = task.retrieve_local_schemas(model_task)
+            logger.info(f"Sample input: {sample_inputs}")
+            logger.info(f"Sample output: {sample_outputs}")
         except ValueError:
             # TODO: try to retrieve schemas remotely
             pass
 
-        if sample_input and sample_output:
-            self.schema_builder = SchemaBuilder(sample_input, sample_output)
+        if sample_inputs and sample_outputs:
+            self.schema_builder = SchemaBuilder(sample_inputs, sample_outputs)
+            logger.info(f"schema_builder is not None: {self.schema_builder is None}")
         else:
             # TODO: Raise ClientError
             pass
