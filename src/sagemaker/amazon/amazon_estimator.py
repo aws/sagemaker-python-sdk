@@ -133,18 +133,14 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
 
         if not data_location.startswith("s3://"):
             raise ValueError(
-                'Expecting an S3 URL beginning with "s3://". Got "{}"'.format(
-                    data_location
-                )
+                'Expecting an S3 URL beginning with "s3://". Got "{}"'.format(data_location)
             )
         if data_location[-1] != "/":
             data_location = data_location + "/"
         self._data_location = data_location
 
     @classmethod
-    def _prepare_init_params_from_job_description(
-        cls, job_details, model_channel_name=None
-    ):
+    def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
         """Convert the job description to init params that can be handled by the class constructor.
 
         Args:
@@ -172,9 +168,7 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         del init_params["image_uri"]
         return init_params
 
-    def prepare_workflow_for_training(
-        self, records=None, mini_batch_size=None, job_name=None
-    ):
+    def prepare_workflow_for_training(self, records=None, mini_batch_size=None, job_name=None):
         """Calls _prepare_for_training. Used when setting up a workflow.
 
         Args:
@@ -200,9 +194,7 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
                 specified, one is generated, using the base name given to the
                 constructor if applicable.
         """
-        super(AmazonAlgorithmEstimatorBase, self)._prepare_for_training(
-            job_name=job_name
-        )
+        super(AmazonAlgorithmEstimatorBase, self)._prepare_for_training(job_name=job_name)
 
         feature_dim = None
 
@@ -268,9 +260,7 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
                 will be unassociated.
                 * `TrialComponentDisplayName` is used for display in Studio.
         """
-        self._prepare_for_training(
-            records, job_name=job_name, mini_batch_size=mini_batch_size
-        )
+        self._prepare_for_training(records, job_name=job_name, mini_batch_size=mini_batch_size)
 
         experiment_config = check_and_get_run_experiment_config(experiment_config)
         self.latest_training_job = _TrainingJob.start_new(
@@ -323,9 +313,7 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         )
         parsed_s3_url = urlparse(self.data_location)
         bucket, key_prefix = parsed_s3_url.netloc, parsed_s3_url.path
-        key_prefix = key_prefix + "{}-{}/".format(
-            type(self).__name__, sagemaker_timestamp()
-        )
+        key_prefix = key_prefix + "{}-{}/".format(type(self).__name__, sagemaker_timestamp())
         key_prefix = key_prefix.lstrip("/")
         logger.debug("Uploading to bucket %s and key_prefix %s", bucket, key_prefix)
         manifest_s3_file = upload_numpy_to_s3_shards(
@@ -352,9 +340,7 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
             )
             return 1
 
-        return min(
-            self.DEFAULT_MINI_BATCH_SIZE, max(1, int(num_records / self.instance_count))
-        )
+        return min(self.DEFAULT_MINI_BATCH_SIZE, max(1, int(num_records / self.instance_count)))
 
 
 class RecordSet(object):
@@ -463,10 +449,7 @@ def _build_shards(num_shards, array):
     shard_size = int(array.shape[0] / num_shards)
     if shard_size == 0:
         raise ValueError("Array length is less than num shards")
-    shards = [
-        array[i * shard_size : i * shard_size + shard_size]
-        for i in range(num_shards - 1)
-    ]
+    shards = [array[i * shard_size : i * shard_size + shard_size] for i in range(num_shards - 1)]
     shards.append(array[(num_shards - 1) * shard_size :])
     return shards
 
@@ -513,9 +496,7 @@ def upload_numpy_to_s3_shards(
         manifest_str = json.dumps(
             [{"prefix": "s3://{}/{}".format(bucket, key_prefix)}] + uploaded_files
         )
-        s3.Object(bucket, manifest_key).put(
-            Body=manifest_str.encode("utf-8"), **extra_put_kwargs
-        )
+        s3.Object(bucket, manifest_key).put(Body=manifest_str.encode("utf-8"), **extra_put_kwargs)
         return "s3://{}/{}".format(bucket, manifest_key)
     except Exception as ex:  # pylint: disable=broad-except
         try:
