@@ -620,7 +620,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
 
                 hf_task = hf_model_md.get("pipeline_tag")
                 logger.info(f"hf_task: {hf_task}")
-                self._schema_builder_init(hf_task)
+                if self.schema_builder is None:
+                    self._schema_builder_init(hf_task)
 
                 if hf_task == "text-generation":  # pylint: disable=R1705
                     return self._build_for_tgi()
