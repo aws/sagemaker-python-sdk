@@ -87,10 +87,10 @@ class TestTelemetryLogger(unittest.TestCase):
             "&x-modelServer=4"
             "&x-imageTag=djl-inference:0.25.0-deepspeed0.11.0-cu118"
             f"&x-sdkVersion={SDK_VERSION}"
+            f"&x-defaultImageUsage={ImageUriOption.DEFAULT_IMAGE.value}"
             f"&x-modelName={MOCK_HUGGINGFACE_ID}"
             f"&x-endpointArn={MOCK_ENDPOINT_ARN}"
             f"&x-latency={latency}"
-            f"&x-defaultImageUsage={ImageUriOption.DEFAULT_IMAGE.value}"
         )
 
         mock_send_telemetry.assert_called_once_with(
@@ -117,10 +117,10 @@ class TestTelemetryLogger(unittest.TestCase):
             "&x-modelServer=4"
             "&x-imageTag=djl-inference:0.25.0-deepspeed0.11.0-cu118"
             f"&x-sdkVersion={SDK_VERSION}"
+            f"&x-defaultImageUsage={ImageUriOption.CUSTOM_1P_IMAGE.value}"
             f"&x-modelName={MOCK_HUGGINGFACE_ID}"
             f"&x-endpointArn={MOCK_ENDPOINT_ARN}"
             f"&x-latency={latency}"
-            f"&x-defaultImageUsage={ImageUriOption.CUSTOM_1P_IMAGE.value}"
         )
 
         mock_send_telemetry.assert_called_once_with(
@@ -147,10 +147,10 @@ class TestTelemetryLogger(unittest.TestCase):
             "&x-modelServer=6"
             "&x-imageTag=huggingface-pytorch-inference:2.0.0-transformers4.28.1-cpu-py310-ubuntu20.04"
             f"&x-sdkVersion={SDK_VERSION}"
+            f"&x-defaultImageUsage={ImageUriOption.DEFAULT_IMAGE.value}"
             f"&x-modelName={MOCK_HUGGINGFACE_ID}"
             f"&x-endpointArn={MOCK_ENDPOINT_ARN}"
             f"&x-latency={latency}"
-            f"&x-defaultImageUsage={ImageUriOption.DEFAULT_IMAGE.value}"
         )
 
         mock_send_telemetry.assert_called_once_with(
@@ -194,10 +194,10 @@ class TestTelemetryLogger(unittest.TestCase):
             "&x-modelServer=4"
             "&x-imageTag=djl-inference:0.25.0-deepspeed0.11.0-cu118"
             f"&x-sdkVersion={SDK_VERSION}"
+            f"&x-defaultImageUsage={ImageUriOption.DEFAULT_IMAGE.value}"
             f"&x-modelName={MOCK_HUGGINGFACE_ID}"
             f"&x-endpointArn={MOCK_ENDPOINT_ARN}"
             f"&x-latency={latency}"
-            f"&x-defaultImageUsage={ImageUriOption.DEFAULT_IMAGE.value}"
         )
 
         mock_send_telemetry.assert_called_once_with(
