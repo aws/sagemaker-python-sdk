@@ -1,0 +1,80 @@
+{
+	"description": "Sample Task Inputs and Outputs",
+	"fill-mask": {
+		"ref": "https://huggingface.co/tasks/fill-mask",
+        "inputs": {
+			"ref": "https://github.com/huggingface/huggingface.js/blob/main/packages/tasks/src/tasks/fill-mask/spec/input.json",
+			"properties": {
+				"inputs": "Paris is the <mask> of France.",
+				"parameters": {}
+			}
+        },
+        "outputs": {
+			"ref": "https://github.com/huggingface/huggingface.js/blob/main/packages/tasks/src/tasks/fill-mask/spec/output.json",
+			"properties": [
+				{
+					"sequence": "Paris is the capital of France.",
+					"score": 0.7
+				}
+			]
+		}
+    },
+	"question-answering": {
+		"ref": "https://huggingface.co/tasks/question-answering",
+        "inputs": {
+			"ref": "https://github.com/huggingface/huggingface.js/blob/main/packages/tasks/src/tasks/question-answering/spec/input.json",
+			"properties": {
+				"context": "I have a German Shepherd dog, named Coco.",
+				"question": "What is my dog's breed?"
+			}
+        },
+        "outputs": {
+			"ref": "https://github.com/huggingface/huggingface.js/blob/main/packages/tasks/src/tasks/question-answering/spec/output.json",
+			"properties": [
+				{
+					"answer": "German Shepherd",
+					"score": 0.972,
+					"start": 9,
+					"end": 24
+				}
+			]
+		}
+    },
+	"text-classification": {
+		"ref": "https://huggingface.co/tasks/text-classification",
+        "inputs": {
+			"ref": "https://github.com/huggingface/huggingface.js/blob/main/packages/tasks/src/tasks/text-classification/spec/input.json",
+			"properties": {
+				"inputs": "Where is the capital of France?, Paris is the capital of France.",
+				"parameters": {}
+			}
+        },
+        "outputs": {
+			"ref": "https://github.com/huggingface/huggingface.js/blob/main/packages/tasks/src/tasks/text-classification/spec/output.json",
+			"properties": [
+				{
+					"label": "entailment",
+					"score": 0.997
+				}
+			]
+		}
+    },
+    "text-generation": {
+		"ref": "https://huggingface.co/tasks/text-generation",
+        "inputs": {
+			"ref": "https://github.com/huggingface/huggingface.js/blob/main/packages/tasks/src/tasks/text-generation/spec/input.json",
+			"properties": {
+				"inputs": "Hello, I'm a language model",
+				"parameters": {}
+			}
+        },
+        "outputs": {
+			"ref": "https://github.com/huggingface/huggingface.js/blob/main/packages/tasks/src/tasks/text-generation/spec/output.json",
+			"properties": [
+				{
+					"generated_text": "Hello, I'm a language modeler. So while writing this, when I went out to meet my wife or come home she told me that my"
+				}
+			]
+		}
+    }
+}
