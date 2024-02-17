@@ -26,6 +26,13 @@ def test_retrieve_local_schemas_success():
     assert outputs == EXPECTED_OUTPUTS
 
 
+def test_retrieve_local_schemas_text_generation_success():
+    inputs, outputs = task.retrieve_local_schemas("text-generation")
+
+    assert inputs is not None
+    assert outputs is not None
+
+
 def test_retrieve_local_schemas_throws():
     with pytest.raises(ValueError):
-        task.retrieve_local_schemas("invalid-task")
+        task.retrieve_local_schemas("not-present-task")

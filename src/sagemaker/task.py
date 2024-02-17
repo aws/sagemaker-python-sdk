@@ -15,7 +15,6 @@ from __future__ import absolute_import
 
 import json
 import os
-from enum import Enum
 from typing import Any, Tuple
 
 
@@ -32,20 +31,19 @@ def retrieve_local_schemas(task: str) -> Tuple[Any, Any]:
     Raises:
         ValueError: If no tasks config found or the task does not exist in the local config.
     """
-    task_path = os.path.join(os.path.dirname(__file__), "image_uri_config", "tasks.json")
+    task_io_config_path = os.path.join(os.path.dirname(__file__), "image_uri_config", "tasks.json")
     try:
-        with open(task_path) as f:
-            task_config = json.load(f)
-            task_schema = task_config.get(task, None)
+        with open(task_io_config_path) as f:
+            task_io_config = json.load(f)
+            task_io_schemas = task_io_config.get(task, None)
 
-            if task_schema is None:
-                raise ValueError(f"Could not find {task} task schema.")
+            if task_io_schemas is None:
+                raise ValueError(f"Could not find {task} I/O schema.")
 
             sample_schema = (
-                task_schema["inputs"]["properties"],
-                task_schema["outputs"]["properties"],
+                task_io_schemas["inputs"]["properties"],
+                task_io_schemas["outputs"]["properties"],
             )
         return sample_schema
-
     except FileNotFoundError:
         raise ValueError("Could not find tasks config file.")
