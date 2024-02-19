@@ -860,16 +860,12 @@ def test_jumpstart_local_metadata_override_specs_not_exist_both_directories(
 def test_jumpstart_cache_get_hub_model():
     cache = JumpStartModelsCache(s3_bucket_name="some_bucket")
 
-    model_arn = (
-        "arn:aws:sagemaker:us-west-2:000000000000:hub-content/HubName/Model/huggingface-mock-model-123/1.2.3"
-    )
+    model_arn = "arn:aws:sagemaker:us-west-2:000000000000:hub-content/HubName/Model/huggingface-mock-model-123/1.2.3"
     assert get_spec_from_base_spec(
         model_id="huggingface-mock-model-123", version="1.2.3"
     ) == cache.get_hub_model(hub_model_arn=model_arn)
 
-    model_arn = (
-        "arn:aws:sagemaker:us-west-2:000000000000:hub-content/HubName/Model/pytorch-mock-model-123/*"
-    )
-    assert get_spec_from_base_spec(model_id="pytorch-mock-model-123", version="*") == cache.get_hub_model(
-        hub_model_arn=model_arn
-    )
+    model_arn = "arn:aws:sagemaker:us-west-2:000000000000:hub-content/HubName/Model/pytorch-mock-model-123/*"
+    assert get_spec_from_base_spec(
+        model_id="pytorch-mock-model-123", version="*"
+    ) == cache.get_hub_model(hub_model_arn=model_arn)

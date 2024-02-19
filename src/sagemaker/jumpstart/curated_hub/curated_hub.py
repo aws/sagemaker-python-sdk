@@ -20,7 +20,7 @@ from sagemaker.jumpstart.curated_hub.constants import DEFAULT_CLIENT_CONFIG
 class CuratedHub:
     """Class for creating and managing a curated JumpStart hub"""
 
-    def __init__(self, hub_name: str, region: str, session: Optional[Session]):
+    def __init__(self, hub_name: str, region: str, session: Optional[Session] = None):
         self.hub_name = hub_name
         self.region = region
         self.session = session
