@@ -31,7 +31,9 @@ def retrieve_local_schemas(task: str) -> Tuple[Any, Any]:
     Raises:
         ValueError: If no tasks config found or the task does not exist in the local config.
     """
-    task_io_config_path = os.path.join(os.path.dirname(__file__), "image_uri_config", "tasks.json")
+    # task_io_config_path = os.path.join(os.path.dirname(__file__), "image_uri_config", "tasks.json")
+    c = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    task_io_config_path = os.path.join(c, "image_uri_config", "tasks.json")
     try:
         with open(task_io_config_path) as f:
             task_io_config = json.load(f)
@@ -41,8 +43,8 @@ def retrieve_local_schemas(task: str) -> Tuple[Any, Any]:
                 raise ValueError(f"Could not find {task} I/O schema.")
 
             sample_schema = (
-                task_io_schemas["inputs"]["properties"],
-                task_io_schemas["outputs"]["properties"],
+                task_io_schemas["sample_inputs"]["properties"],
+                task_io_schemas["sample_outputs"]["properties"],
             )
         return sample_schema
     except FileNotFoundError:

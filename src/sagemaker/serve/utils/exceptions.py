@@ -63,7 +63,7 @@ class SkipTuningComboException(ModelBuilderException):
 
 
 class TaskNotFoundException(ModelBuilderException):
-    """Raise when task could not be found"""
+    """Raise when HuggingFace task could not be found"""
 
     fmt = "Error Message: {message}"
 
