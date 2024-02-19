@@ -420,8 +420,8 @@ def test_jumpstart_cache_accepts_input_parameters():
     assert cache.get_manifest_file_s3_key() == manifest_file_key
     assert cache.get_region() == region
     assert cache.get_bucket() == bucket
-    assert cache._s3_cache._max_cache_items == max_s3_cache_items
-    assert cache._s3_cache._expiration_horizon == s3_cache_expiration_horizon
+    assert cache._content_cache._max_cache_items == max_s3_cache_items
+    assert cache._content_cache._expiration_horizon == s3_cache_expiration_horizon
     assert (
         cache._model_id_semantic_version_manifest_key_cache._max_cache_items
         == max_semantic_version_cache_items
@@ -853,4 +853,23 @@ def test_jumpstart_local_metadata_override_specs_not_exist_both_directories(
                 "community_models_specs/tensorflow-ic-imagenet-inception-v3-classification-4/specs_v2.0.0.json"
             ),
         ]
+    )
+
+
+@patch.object(JumpStartModelsCache, "_retrieval_function", patched_retrieval_function)
+def test_jumpstart_cache_get_hub_model():
+    cache = JumpStartModelsCache(s3_bucket_name="some_bucket")
+
+    model_arn = (
+        "arn:aws:sagemaker:us-west-2:000000000000:hub-content/HubName/Model/huggingface-mock-model-123/1.2.3"
+    )
+    assert get_spec_from_base_spec(
+        model_id="huggingface-mock-model-123", version="1.2.3"
+    ) == cache.get_hub_model(hub_model_arn=model_arn)
+
+    model_arn = (
+        "arn:aws:sagemaker:us-west-2:000000000000:hub-content/HubName/Model/pytorch-mock-model-123/*"
+    )
+    assert get_spec_from_base_spec(model_id="pytorch-mock-model-123", version="*") == cache.get_hub_model(
+        hub_model_arn=model_arn
     )
