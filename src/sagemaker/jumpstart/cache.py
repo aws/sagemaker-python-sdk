@@ -465,6 +465,26 @@ class JumpStartModelsCache:
                 )
             )
         return specs.formatted_content
+    
+    def get_hub_model(self, hub_model_arn: str) -> JumpStartModelSpecs:
+        """Return JumpStart-compatible specs for a given Hub model
+        
+        Args:
+            hub_model_arn (str): Arn for the Hub model to get specs for
+        """
+
+        specs, _ = self._content_cache.get(JumpStartCachedContentKey(HubDataType.MODEL, hub_model_arn))
+        return specs.formatted_content
+    
+    def get_hub(self, hub_arn: str) -> Dict[str, Any]:
+        """Return descriptive info for a given Hub
+        
+        Args:
+            hub_arn (str): Arn for the Hub to get info for
+        """
+        
+        manifest, _ = self._content_cache.get(JumpStartCachedContentKey(HubDataType.HUB, hub_arn))
+        return manifest.formatted_content
 
     def get_hub_model(self, hub_model_arn: str) -> JumpStartModelSpecs:
         """Return JumpStart-compatible specs for a given Hub model
