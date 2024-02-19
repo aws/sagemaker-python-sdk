@@ -22,8 +22,9 @@ from sagemaker.jumpstart.constants import (
     JUMPSTART_REGION_NAME_SET,
 )
 from sagemaker.jumpstart.types import (
-    JumpStartCachedS3ContentKey,
-    JumpStartCachedS3ContentValue,
+    HubDataType,
+    JumpStartCachedContentKey,
+    JumpStartCachedContentValue,
     JumpStartModelSpecs,
     JumpStartS3FileType,
     JumpStartModelHeader,
@@ -180,25 +181,33 @@ def get_spec_from_base_spec(
 
 def patched_retrieval_function(
     _modelCacheObj: JumpStartModelsCache,
-    key: JumpStartCachedS3ContentKey,
-    value: JumpStartCachedS3ContentValue,
-) -> JumpStartCachedS3ContentValue:
+    key: JumpStartCachedContentKey,
+    value: JumpStartCachedContentValue,
+) -> JumpStartCachedContentValue:
 
-    filetype, s3_key = key.file_type, key.s3_key
-    if filetype == JumpStartS3FileType.MANIFEST:
+    datatype, id_info = key.data_type, key.id_info
+    if datatype == JumpStartS3FileType.MANIFEST:
 
-        return JumpStartCachedS3ContentValue(
-            formatted_content=get_formatted_manifest(BASE_MANIFEST)
-        )
+        return JumpStartCachedContentValue(formatted_content=get_formatted_manifest(BASE_MANIFEST))
 
-    if filetype == JumpStartS3FileType.SPECS:
-        _, model_id, specs_version = s3_key.split("/")
+    if datatype == JumpStartS3FileType.SPECS:
+        _, model_id, specs_version = id_info.split("/")
         version = specs_version.replace("specs_v", "").replace(".json", "")
-        return JumpStartCachedS3ContentValue(
+        return JumpStartCachedContentValue(
             formatted_content=get_spec_from_base_spec(model_id=model_id, version=version)
         )
 
-    raise ValueError(f"Bad value for filetype: {filetype}")
+    if datatype == HubDataType.MODEL:
+        _, _, _, model_name, model_version = id_info.split("/")
+        return JumpStartCachedContentValue(
+            formatted_content=get_spec_from_base_spec(model_id=model_name, version=model_version)
+        )
+
+    # TODO: Implement
+    if datatype == HubDataType.HUB:
+        return None
+
+    raise ValueError(f"Bad value for filetype: {datatype}")
 
 
 def overwrite_dictionary(
