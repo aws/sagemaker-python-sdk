@@ -12,11 +12,15 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+from unittest.mock import patch
+
 import pytest
-from sagemaker import task
+
+from sagemaker.serve.utils import task
 
 EXPECTED_INPUTS = {"inputs": "Paris is the <mask> of France.", "parameters": {}}
 EXPECTED_OUTPUTS = [{"sequence": "Paris is the capital of France.", "score": 0.7}]
+HF_INVALID_TASK = "not-present-task"
 
 
 def test_retrieve_local_schemas_success():
@@ -34,5 +38,12 @@ def test_retrieve_local_schemas_text_generation_success():
 
 
 def test_retrieve_local_schemas_throws():
-    with pytest.raises(ValueError):
-        task.retrieve_local_schemas("not-present-task")
+    with pytest.raises(ValueError, match=f"Could not find {HF_INVALID_TASK} I/O schema."):
+        task.retrieve_local_schemas(HF_INVALID_TASK)
+
+
+@patch("builtins.open")
+def test_retrieve_local_schemas_file_not_found(mock_open):
+    mock_open.side_effect = FileNotFoundError
+    with pytest.raises(ValueError, match="Could not find tasks config file."):
+        task.retrieve_local_schemas(HF_INVALID_TASK)

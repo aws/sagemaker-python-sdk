@@ -1,16 +1,12 @@
 {
-	"description": "Sample Task Inputs and Outputs",
 	"fill-mask": {
-		"ref": "https://huggingface.co/tasks/fill-mask",
-        "inputs": {
-			"ref": "https://github.com/huggingface/huggingface.js/blob/main/packages/tasks/src/tasks/fill-mask/spec/input.json",
+        "sample_inputs": {
 			"properties": {
 				"inputs": "Paris is the <mask> of France.",
 				"parameters": {}
 			}
         },
-        "outputs": {
-			"ref": "https://github.com/huggingface/huggingface.js/blob/main/packages/tasks/src/tasks/fill-mask/spec/output.json",
+        "sample_outputs": {
 			"properties": [
 				{
 					"sequence": "Paris is the capital of France.",
@@ -20,16 +16,13 @@
 		}
     },
 	"question-answering": {
-		"ref": "https://huggingface.co/tasks/question-answering",
-        "inputs": {
-			"ref": "https://github.com/huggingface/huggingface.js/blob/main/packages/tasks/src/tasks/question-answering/spec/input.json",
+        "sample_inputs": {
 			"properties": {
 				"context": "I have a German Shepherd dog, named Coco.",
 				"question": "What is my dog's breed?"
 			}
         },
-        "outputs": {
-			"ref": "https://github.com/huggingface/huggingface.js/blob/main/packages/tasks/src/tasks/question-answering/spec/output.json",
+        "sample_outputs": {
 			"properties": [
 				{
 					"answer": "German Shepherd",
@@ -41,16 +34,13 @@
 		}
     },
 	"text-classification": {
-		"ref": "https://huggingface.co/tasks/text-classification",
-        "inputs": {
-			"ref": "https://github.com/huggingface/huggingface.js/blob/main/packages/tasks/src/tasks/text-classification/spec/input.json",
+        "sample_inputs": {
 			"properties": {
 				"inputs": "Where is the capital of France?, Paris is the capital of France.",
 				"parameters": {}
 			}
         },
-        "outputs": {
-			"ref": "https://github.com/huggingface/huggingface.js/blob/main/packages/tasks/src/tasks/text-classification/spec/output.json",
+        "sample_outputs": {
 			"properties": [
 				{
 					"label": "entailment",
@@ -60,16 +50,13 @@
 		}
     },
     "text-generation": {
-		"ref": "https://huggingface.co/tasks/text-generation",
-        "inputs": {
-			"ref": "https://github.com/huggingface/huggingface.js/blob/main/packages/tasks/src/tasks/text-generation/spec/input.json",
+        "sample_inputs": {
 			"properties": {
 				"inputs": "Hello, I'm a language model",
 				"parameters": {}
 			}
         },
-        "outputs": {
-			"ref": "https://github.com/huggingface/huggingface.js/blob/main/packages/tasks/src/tasks/text-generation/spec/output.json",
+        "sample_outputs": {
 			"properties": [
 				{
 					"generated_text": "Hello, I'm a language modeler. So while writing this, when I went out to meet my wife or come home she told me that my"
