@@ -991,7 +991,7 @@ class JumpStartCachedContentKey(JumpStartDataHolderType):
         data_type: JumpStartContentDataType,
         id_info: str,
     ) -> None:
-        """Instantiates JumpStartCachedS3ContentKey object.
+        """Instantiates JumpStartCachedContentKey object.
 
         Args:
             data_type (JumpStartContentDataType): JumpStart content data type.
@@ -1014,7 +1014,7 @@ class JumpStartCachedContentValue(JumpStartDataHolderType):
         ],
         md5_hash: Optional[str] = None,
     ) -> None:
-        """Instantiates JumpStartCachedS3ContentValue object.
+        """Instantiates JumpStartCachedContentValue object.
 
         Args:
             formatted_content (Union[Dict[JumpStartVersionedModelId, JumpStartModelHeader],

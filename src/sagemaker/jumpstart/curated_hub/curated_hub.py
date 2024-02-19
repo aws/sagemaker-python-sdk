@@ -12,8 +12,6 @@
 # language governing permissions and limitations under the License.
 from typing import Optional, Dict, Any
 
-import boto3
-
 from sagemaker.session import Session
 
 from sagemaker.jumpstart.curated_hub.constants import DEFAULT_CLIENT_CONFIG
@@ -26,12 +24,7 @@ class CuratedHub:
         self.hub_name = hub_name
         self.region = region
         self.session = session
-        self._s3_client = self._get_s3_client()
         self._sm_session = session or Session()
-
-    def _get_s3_client(self) -> Any:
-        """Returns an S3 client."""
-        return boto3.client("s3", region_name=self._region, config=DEFAULT_CLIENT_CONFIG)
 
     def describe_model(self, model_name: str, model_version: str = "*") -> Dict[str, Any]:
         """Returns descriptive information about the Hub Model"""
