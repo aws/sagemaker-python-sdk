@@ -10,12 +10,10 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""This module provides the JumpStart Curated Hub class."""
 from typing import Optional, Dict, Any
 
 from sagemaker.session import Session
-
-from sagemaker.jumpstart.curated_hub.constants import DEFAULT_CLIENT_CONFIG
-
 
 class CuratedHub:
     """Class for creating and managing a curated JumpStart hub"""
