@@ -11,9 +11,12 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """This module provides the JumpStart Curated Hub class."""
+from __future__ import absolute_import
+
 from typing import Optional, Dict, Any
 
 from sagemaker.session import Session
+
 
 class CuratedHub:
     """Class for creating and managing a curated JumpStart hub"""
