@@ -18,8 +18,6 @@ from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 
 from sagemaker.session import Session
 
-from sagemaker.jumpstart.curated_hub.constants import DEFAULT_CLIENT_CONFIG
-
 
 class CuratedHub:
     """Class for creating and managing a curated JumpStart hub"""
