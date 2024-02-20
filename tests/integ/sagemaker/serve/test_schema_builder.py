@@ -66,7 +66,7 @@ def test_model_builder_happy_path_with_only_model_id_question_answering(
         caught_ex = None
         try:
             iam_client = sagemaker_session.boto_session.client("iam")
-            role_arn = iam_client.get_role(RoleName="JarvisTest")["Role"]["Arn"]
+            role_arn = iam_client.get_role(RoleName="SageMakerRole")["Role"]["Arn"]
 
             logger.info("Deploying and predicting in SAGEMAKER_ENDPOINT mode...")
             predictor = model.deploy(
