@@ -36,13 +36,14 @@ from sagemaker.jumpstart.exceptions import (
     get_old_model_version_msg,
 )
 from sagemaker.jumpstart.types import (
+    HubArnExtractedInfo,
     JumpStartModelHeader,
     JumpStartModelSpecs,
     JumpStartVersionedModelId,
 )
 from sagemaker.session import Session
 from sagemaker.config import load_sagemaker_config
-from sagemaker.utils import resolve_value_from_config, TagsDict
+from sagemaker.utils import aws_partition, resolve_value_from_config, TagsDict
 from sagemaker.workflow import is_pipeline_variable
 
 
@@ -368,6 +369,21 @@ def add_jumpstart_model_id_version_tags(
     return tags
 
 
+def add_hub_arn_tags(
+    tags: Optional[List[TagsDict]],
+    hub_arn: str,
+) -> Optional[List[TagsDict]]:
+    """Adds custom Hub arn tag to JumpStart related resources."""
+
+    tags = add_single_jumpstart_tag(
+        hub_arn,
+        enums.JumpStartTag.HUB_ARN,
+        tags,
+        is_uri=False,
+    )
+    return tags
+
+
 def add_jumpstart_uri_tags(
     tags: Optional[List[TagsDict]] = None,
     inference_model_uri: Optional[Union[str, dict]] = None,
@@ -528,6 +544,7 @@ def verify_model_region_and_return_specs(
     version: Optional[str],
     scope: Optional[str],
     region: str,
+    hub_arn: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
@@ -577,6 +594,7 @@ def verify_model_region_and_return_specs(
     model_specs = accessors.JumpStartModelsAccessor.get_model_specs(  # type: ignore
         region=region,
         model_id=model_id,
+        hub_arn=hub_arn,
         version=version,
         s3_client=sagemaker_session.s3_client,
     )
@@ -815,22 +833,67 @@ def get_jumpstart_model_id_version_from_resource_arn(
 
 def extract_info_from_hub_content_arn(
     arn: str,
-) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:
-    """Extracts hub_name, content_name, and content_version from a HubContentArn"""
+) -> HubArnExtractedInfo:
+    """Extracts descriptive information from a Hub or HubContent Arn"""
 
-    match = re.match(constants.HUB_MODEL_ARN_REGEX, arn)
+    match = re.match(constants.HUB_CONTENT_ARN_REGEX, arn)
     if match:
-        hub_name = match.group(4)
+        partition = match.group(1)
         hub_region = match.group(2)
-        content_name = match.group(5)
-        content_version = match.group(6)
+        account_id = match.group(3)
+        hub_name = match.group(4)
+        hub_content_type = match.group(5)
+        hub_content_name = match.group(6)
+        hub_content_version = match.group(7)
 
-        return hub_name, hub_region, content_name, content_version
+        return HubArnExtractedInfo(
+            partition=partition,
+            region=hub_region,
+            account_id=account_id,
+            hub_name=hub_name,
+            hub_content_type=hub_content_type,
+            hub_content_name=hub_content_name,
+            hub_content_version=hub_content_version,
+        )
 
     match = re.match(constants.HUB_ARN_REGEX, arn)
     if match:
-        hub_name = match.group(4)
+        partition = match.group(1)
         hub_region = match.group(2)
-        return hub_name, hub_region, None, None
+        account_id = match.group(3)
+        hub_name = match.group(4)
+        return HubArnExtractedInfo(
+            partition=partition,
+            region=hub_region,
+            account_id=account_id,
+            hub_name=hub_name,
+        )
 
-    return None, None, None, None
+    return None
+
+
+def construct_hub_arn_from_name(
+    hub_name: str,
+    region: Optional[str] = None,
+    session: Optional[Session] = None,
+) -> str:
+    """Constructs a Hub arn from the Hub name using default Session values"""
+    print('being called')
+
+    if not session:
+        session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+
+    account_id = session.account_id()
+    region = region or session.boto_region_name
+    partition = aws_partition(region)
+
+    return f"arn:{partition}:sagemaker:{region}:{account_id}:hub/{hub_name}"
+
+
+def construct_hub_model_arn_from_inputs(hub_arn: str, model_name: str, version: str) -> str:
+    """Constructs a HubContent model arn from the Hub name, model name, and model version"""
+
+    info = extract_info_from_hub_content_arn(hub_arn)
+    arn = f"arn:{info.partition}:sagemaker:{info.region}:{info.account_id}:hub-content/{info.hub_name}/Model/{model_name}/{version}"
+
+    return arn

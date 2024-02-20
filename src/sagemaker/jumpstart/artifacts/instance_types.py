@@ -33,6 +33,7 @@ def _retrieve_default_instance_type(
     model_id: str,
     model_version: str,
     scope: str,
+    hub_arn: Optional[str] = None,
     region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
@@ -80,6 +81,7 @@ def _retrieve_default_instance_type(
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
+        hub_arn=hub_arn,
         scope=scope,
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
@@ -119,6 +121,7 @@ def _retrieve_instance_types(
     model_id: str,
     model_version: str,
     scope: str,
+    hub_arn: Optional[str] = None,
     region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
@@ -166,6 +169,7 @@ def _retrieve_instance_types(
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
+        hub_arn=hub_arn,
         scope=scope,
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,

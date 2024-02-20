@@ -198,6 +198,7 @@ def _retrieve_estimator_init_kwargs(
 def _retrieve_estimator_fit_kwargs(
     model_id: str,
     model_version: str,
+    hub_arn: Optional[str] = None,
     region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
@@ -234,6 +235,7 @@ def _retrieve_estimator_fit_kwargs(
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
+        hub_arn=hub_arn,
         scope=JumpStartScriptScope.TRAINING,
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,

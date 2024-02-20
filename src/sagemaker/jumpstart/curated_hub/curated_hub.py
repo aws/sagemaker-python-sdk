@@ -25,7 +25,7 @@ class CuratedHub:
         self.hub_name = hub_name
         self.region = region
         self.session = session
-        self._sm_session = session or Session()
+        self._sm_session = session or DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 
     def describe_model(self, model_name: str, model_version: str = "*") -> Dict[str, Any]:
         """Returns descriptive information about the Hub Model"""

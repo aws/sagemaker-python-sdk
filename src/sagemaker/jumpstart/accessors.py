@@ -18,7 +18,7 @@ import boto3
 
 from sagemaker.deprecations import deprecated
 from sagemaker.jumpstart.types import JumpStartModelHeader, JumpStartModelSpecs
-from sagemaker.jumpstart import cache
+from sagemaker.jumpstart import cache, utils
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
 
 
@@ -239,7 +239,11 @@ class JumpStartModelsAccessor(object):
 
     @staticmethod
     def get_model_specs(
-        region: str, model_id: str, version: str, s3_client: Optional[boto3.client] = None
+        region: str,
+        model_id: str,
+        version: str,
+        hub_arn: Optional[str] = None,
+        s3_client: Optional[boto3.client] = None,
     ) -> JumpStartModelSpecs:
         """Returns model specs from JumpStart models cache.
 
@@ -259,6 +263,13 @@ class JumpStartModelsAccessor(object):
             {**JumpStartModelsAccessor._cache_kwargs, **additional_kwargs}
         )
         JumpStartModelsAccessor._set_cache_and_region(region, cache_kwargs)
+
+        if hub_arn:
+            hub_model_arn = utils.construct_hub_model_arn_from_inputs(
+                hub_arn=hub_arn, model_name=model_id, version=version
+            )
+            return JumpStartModelsAccessor._cache.get_hub_model(hub_model_arn)
+
         return JumpStartModelsAccessor._cache.get_specs(  # type: ignore
             model_id=model_id, semantic_version_str=version
         )

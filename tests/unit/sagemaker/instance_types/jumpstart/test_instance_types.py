@@ -46,6 +46,7 @@ def test_jumpstart_instance_types(patched_get_model_specs):
         region=region,
         model_id=model_id,
         version=model_version,
+        hub_arn=None,
         s3_client=mock_client,
     )
 
@@ -64,6 +65,7 @@ def test_jumpstart_instance_types(patched_get_model_specs):
         region=region,
         model_id=model_id,
         version=model_version,
+        hub_arn=None,
         s3_client=mock_client,
     )
 
@@ -88,6 +90,7 @@ def test_jumpstart_instance_types(patched_get_model_specs):
         region=region,
         model_id=model_id,
         version=model_version,
+        hub_arn=None,
         s3_client=mock_client,
     )
 
@@ -111,7 +114,11 @@ def test_jumpstart_instance_types(patched_get_model_specs):
     ]
 
     patched_get_model_specs.assert_called_once_with(
-        region=region, model_id=model_id, version=model_version, s3_client=mock_client
+        region=region,
+        model_id=model_id,
+        version=model_version,
+        hub_arn=None,
+        s3_client=mock_client,
     )
 
     patched_get_model_specs.reset_mock()
@@ -161,6 +168,116 @@ def test_jumpstart_instance_types(patched_get_model_specs):
 
     with pytest.raises(ValueError):
         instance_types.retrieve(model_id=model_id, scope="training")
+
+
+@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+def test_jumpstart_instance_types_from_hub(patched_get_model_specs):
+
+    patched_get_model_specs.side_effect = get_spec_from_base_spec
+
+    model_id, model_version = "huggingface-eqa-bert-base-cased", "*"
+    region = "us-west-2"
+    hub_arn = f"arn:aws:sagemaker:{region}:123456789123:hub/my-mock-hub"
+
+    mock_client = boto3.client("s3")
+    mock_session = Mock(s3_client=mock_client)
+
+    default_training_instance_types = instance_types.retrieve_default(
+        region=region,
+        model_id=model_id,
+        hub_arn=hub_arn,
+        model_version=model_version,
+        scope="training",
+        sagemaker_session=mock_session,
+    )
+
+    assert default_training_instance_types == "ml.p3.2xlarge"
+
+    patched_get_model_specs.assert_called_once_with(
+        hub_arn=hub_arn,
+        region=region,
+        model_id=model_id,
+        version=model_version,
+        s3_client=mock_client,
+    )
+
+    patched_get_model_specs.reset_mock()
+
+    default_inference_instance_types = instance_types.retrieve_default(
+        region=region,
+        model_id=model_id,
+        hub_arn=hub_arn,
+        model_version=model_version,
+        scope="inference",
+        sagemaker_session=mock_session,
+    )
+
+    assert default_inference_instance_types == "ml.p2.xlarge"
+
+    patched_get_model_specs.assert_called_once_with(
+        hub_arn=hub_arn,
+        region=region,
+        model_id=model_id,
+        version=model_version,
+        s3_client=mock_client,
+    )
+
+    patched_get_model_specs.reset_mock()
+
+    default_training_instance_types = instance_types.retrieve(
+        region=region,
+        model_id=model_id,
+        model_version=model_version,
+        hub_arn=hub_arn,
+        scope="training",
+        sagemaker_session=mock_session,
+    )
+    assert default_training_instance_types == [
+        "ml.p3.2xlarge",
+        "ml.p2.xlarge",
+        "ml.g4dn.2xlarge",
+        "ml.m5.xlarge",
+        "ml.c5.2xlarge",
+    ]
+
+    patched_get_model_specs.assert_called_once_with(
+        hub_arn=hub_arn,
+        region=region,
+        model_id=model_id,
+        version=model_version,
+        s3_client=mock_client,
+    )
+
+    patched_get_model_specs.reset_mock()
+
+    default_inference_instance_types = instance_types.retrieve(
+        region=region,
+        model_id=model_id,
+        model_version=model_version,
+        hub_arn=hub_arn,
+        scope="inference",
+        sagemaker_session=mock_session,
+    )
+
+    assert default_inference_instance_types == [
+        "ml.p2.xlarge",
+        "ml.p3.2xlarge",
+        "ml.g4dn.xlarge",
+        "ml.m5.large",
+        "ml.m5.xlarge",
+        "ml.c5.xlarge",
+        "ml.c5.2xlarge",
+    ]
+
+    patched_get_model_specs.assert_called_once_with(
+        hub_arn=hub_arn,
+        region=region,
+        model_id=model_id,
+        version=model_version,
+        s3_client=mock_client,
+    )
+
+    patched_get_model_specs.reset_mock()
 
 
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")

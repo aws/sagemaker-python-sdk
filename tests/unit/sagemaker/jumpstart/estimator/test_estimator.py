@@ -34,6 +34,7 @@ from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 from sagemaker.jumpstart.enums import JumpStartScriptScope, JumpStartTag
 
 from sagemaker.jumpstart.estimator import JumpStartEstimator
+from sagemaker.jumpstart.types import JumpStartEstimatorFitKwargs
 
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
 from sagemaker.session_settings import SessionSettings
@@ -41,6 +42,7 @@ from tests.integ.sagemaker.jumpstart.utils import get_training_dataset_for_model
 from sagemaker.model import Model
 from sagemaker.predictor import Predictor
 from tests.unit.sagemaker.jumpstart.utils import (
+    get_spec_from_base_spec,
     get_special_model_spec,
     overwrite_dictionary,
 )
@@ -279,6 +281,141 @@ class EstimatorTest(unittest.TestCase):
                 {"Key": JumpStartTag.MODEL_ID, "Value": "js-trainable-model-prepacked"},
                 {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.2.0"},
             ],
+        )
+
+    @mock.patch("sagemaker.session.Session.account_id")
+    @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_init_kwargs")
+    @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_deploy_kwargs")
+    @mock.patch("sagemaker.jumpstart.factory.estimator._retrieve_estimator_fit_kwargs")
+    @mock.patch("sagemaker.jumpstart.estimator.construct_hub_arn_from_name")
+    @mock.patch("sagemaker.jumpstart.estimator.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.fit")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.deploy")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_hub_model(
+        self,
+        mock_estimator_deploy: mock.Mock,
+        mock_estimator_fit: mock.Mock,
+        mock_estimator_init: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session_estimator: mock.Mock,
+        mock_session_model: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
+        mock_construct_hub_arn_from_name: mock.Mock,
+        mock_retrieve_estimator_fit_kwargs: mock.Mock,
+        mock_retrieve_model_deploy_kwargs: mock.Mock,
+        mock_retrieve_model_init_kwargs: mock.Mock,
+        mock_get_caller_identity: mock.Mock,
+    ):
+        mock_get_caller_identity.return_value = "123456789123"
+        mock_estimator_deploy.return_value = default_predictor
+
+        mock_is_valid_model_id.return_value = True
+
+        model_id, _ = "pytorch-hub-model-1", "*"
+        hub_arn = "arn:aws:sagemaker:us-west-2:123456789123:hub/my-mock-hub"
+
+        mock_retrieve_estimator_fit_kwargs.return_value = {}
+        mock_retrieve_model_deploy_kwargs.return_value = {}
+        mock_retrieve_model_init_kwargs.return_value = {}
+
+        mock_get_model_specs.side_effect = get_spec_from_base_spec
+
+        mock_session_estimator.return_value = sagemaker_session
+        mock_session_model.return_value = sagemaker_session
+
+        estimator = JumpStartEstimator(
+            model_id=model_id,
+            hub_name=hub_arn,
+        )
+
+        mock_construct_hub_arn_from_name.assert_not_called()
+
+        mock_estimator_init.assert_called_once_with(
+            instance_type="ml.p3.2xlarge",
+            instance_count=1,
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.5.0-gpu-py3",
+            model_uri="s3://jumpstart-cache-prod-us-west-2/pytorch-training/"
+            "train-pytorch-ic-mobilenet-v2.tar.gz",
+            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/pytorch/"
+            "transfer_learning/ic/v1.0.0/sourcedir.tar.gz",
+            entry_point="transfer_learning.py",
+            hyperparameters={
+                "epochs": "3",
+                "adam-learning-rate": "0.05",
+                "batch-size": "4",
+            },
+            metric_definitions=[
+                {"Regex": "val_accuracy: ([0-9\\.]+)", "Name": "pytorch-ic:val-accuracy"}
+            ],
+            role=execution_role,
+            volume_size=456,
+            sagemaker_session=sagemaker_session,
+            tags=[
+                {"Key": JumpStartTag.MODEL_ID, "Value": "pytorch-hub-model-1"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "*"},
+                {
+                    "Key": JumpStartTag.HUB_ARN,
+                    "Value": "arn:aws:sagemaker:us-west-2:123456789123:hub/my-mock-hub",
+                },
+            ],
+            encrypt_inter_container_traffic=True,
+            enable_network_isolation=False,
+        )
+
+        channels = {
+            "training": f"s3://{get_jumpstart_content_bucket(region)}/"
+            f"some-training-dataset-doesn't-matter",
+        }
+
+        estimator.fit(channels)
+
+        mock_estimator_fit.assert_called_once_with(inputs=channels, wait=True)
+
+        estimator.deploy()
+
+        mock_estimator_deploy.assert_called_once_with(
+            instance_type="ml.p2.xlarge",
+            initial_instance_count=1,
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference"
+            ":1.5.0-gpu-py3",
+            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/"
+            "pytorch/inference/ic/v1.0.0/sourcedir.tar.gz",
+            entry_point="inference.py",
+            env={
+                "SAGEMAKER_PROGRAM": "inference.py",
+                "ENDPOINT_SERVER_TIMEOUT": "3600",
+                "MODEL_CACHE_ROOT": "/opt/ml/model",
+                "SAGEMAKER_ENV": "1",
+                "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+            },
+            predictor_cls=Predictor,
+            tags=[
+                {"Key": JumpStartTag.MODEL_ID, "Value": "pytorch-hub-model-1"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "*"},
+                {
+                    "Key": JumpStartTag.HUB_ARN,
+                    "Value": "arn:aws:sagemaker:us-west-2:123456789123:hub/my-mock-hub",
+                },
+            ],
+            role=execution_role,
+            wait=True,
+            use_compiled_model=False,
+        )
+
+        # Test Hub arn util
+        estimator = JumpStartEstimator(
+            model_id=model_id,
+            hub_name="my-mock-hub",
+        )
+
+        mock_construct_hub_arn_from_name.assert_called_once_with(
+            hub_name="my-mock-hub", region=None, sagemaker_session=None
         )
 
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
@@ -1082,6 +1219,7 @@ class EstimatorTest(unittest.TestCase):
             "model_id",
             "model_version",
             "region",
+            "hub_name",
             "tolerate_vulnerable_model",
             "tolerate_deprecated_model",
         }
