@@ -1748,7 +1748,6 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         self.skip_model_validation = skip_model_validation
 
 
-
 class HubArnExtractedInfo(JumpStartDataHolderType):
     """Data class for info extracted from Hub arn."""
 

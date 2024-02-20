@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 from typing import Optional, Dict, Any
+from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 
 from sagemaker.session import Session
 

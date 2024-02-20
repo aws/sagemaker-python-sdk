@@ -878,7 +878,7 @@ def construct_hub_arn_from_name(
     session: Optional[Session] = None,
 ) -> str:
     """Constructs a Hub arn from the Hub name using default Session values"""
-    print('being called')
+    print("being called")
 
     if not session:
         session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION
@@ -894,6 +894,7 @@ def construct_hub_model_arn_from_inputs(hub_arn: str, model_name: str, version: 
     """Constructs a HubContent model arn from the Hub name, model name, and model version"""
 
     info = extract_info_from_hub_content_arn(hub_arn)
-    arn = f"arn:{info.partition}:sagemaker:{info.region}:{info.account_id}:hub-content/{info.hub_name}/Model/{model_name}/{version}"
+    arn = f"arn:{info.partition}:sagemaker:{info.region}:{info.account_id}:hub-content/" \
+        f"{info.hub_name}/Model/{model_name}/{version}"
 
     return arn

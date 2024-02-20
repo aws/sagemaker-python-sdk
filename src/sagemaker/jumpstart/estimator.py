@@ -529,7 +529,9 @@ class JumpStartEstimator(Estimator):
             if match:
                 hub_arn = hub_name
             else:
-                hub_arn = construct_hub_arn_from_name(hub_name=hub_name, region=region, sagemaker_session=sagemaker_session)
+                hub_arn = construct_hub_arn_from_name(
+                    hub_name=hub_name, region=region, sagemaker_session=sagemaker_session
+                )
 
         estimator_init_kwargs = get_init_kwargs(
             model_id=model_id,

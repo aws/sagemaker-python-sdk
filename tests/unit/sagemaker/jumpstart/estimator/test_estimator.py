@@ -34,7 +34,6 @@ from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 from sagemaker.jumpstart.enums import JumpStartScriptScope, JumpStartTag
 
 from sagemaker.jumpstart.estimator import JumpStartEstimator
-from sagemaker.jumpstart.types import JumpStartEstimatorFitKwargs
 
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
 from sagemaker.session_settings import SessionSettings

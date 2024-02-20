@@ -153,7 +153,7 @@ def get_spec_from_base_spec(
 
     if version and semantic_version_str:
         raise ValueError("Cannot specify both `version` and `semantic_version_str` fields.")
-    
+
     if model_id is not None:
         if all(
             [
