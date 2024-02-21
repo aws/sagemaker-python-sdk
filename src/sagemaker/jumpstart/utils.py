@@ -559,6 +559,8 @@ def verify_model_region_and_return_specs(
         scope (Optional[str]): scope of the JumpStart model to verify.
         region (Optional[str]): region of the JumpStart model to verify and
             obtains specs.
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from (default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
             specifications should be tolerated (exception not raised). If False, raises an
             exception if the script used by this version of the model has dependencies with known
@@ -831,7 +833,7 @@ def get_jumpstart_model_id_version_from_resource_arn(
     return model_id, model_version
 
 
-def extract_info_from_hub_resource_arn(
+def get_info_from_hub_resource_arn(
     arn: str,
 ) -> HubArnExtractedInfo:
     """Extracts descriptive information from a Hub or HubContent Arn."""
@@ -889,7 +891,7 @@ def construct_hub_arn_from_name(
 def construct_hub_model_arn_from_inputs(hub_arn: str, model_name: str, version: str) -> str:
     """Constructs a HubContent model arn from the Hub name, model name, and model version."""
 
-    info = extract_info_from_hub_resource_arn(hub_arn)
+    info = get_info_from_hub_resource_arn(hub_arn)
     arn = (
         f"arn:{info.partition}:sagemaker:{info.region}:{info.account_id}:hub-content/"
         f"{info.hub_name}/Model/{model_name}/{version}"

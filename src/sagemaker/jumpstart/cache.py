@@ -339,11 +339,11 @@ class JumpStartModelsCache:
                 formatted_content=model_specs
             )
         if data_type == HubDataType.MODEL:
-            hub_name, region, model_name, model_version = utils.extract_info_from_hub_resource_arn(
+            info = utils.get_info_from_hub_resource_arn(
                 id_info
             )
-            hub = CuratedHub(hub_name=hub_name, region=region)
-            hub_content = hub.describe_model(model_name=model_name, model_version=model_version)
+            hub = CuratedHub(hub_name=info.hub_name, region=info.region)
+            hub_content = hub.describe_model(model_name=info.hub_content_name, model_version=info.hub_content_version)
             utils.emit_logs_based_on_model_specs(
                 hub_content.content_document,
                 self.get_region(),
@@ -354,8 +354,10 @@ class JumpStartModelsCache:
                 formatted_content=model_specs
             )
         if data_type == HubDataType.HUB:
-            hub_name, region, _, _ = utils.extract_info_from_hub_resource_arn(id_info)
-            hub = CuratedHub(hub_name=hub_name, region=region)
+            info = utils.get_info_from_hub_resource_arn(
+                id_info
+            )
+            hub = CuratedHub(hub_name=info.hub_name, region=info.region)
             hub_info = hub.describe()
             return JumpStartCachedContentValue(formatted_content=hub_info)
         raise ValueError(

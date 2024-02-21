@@ -140,6 +140,7 @@ def _retrieve_estimator_init_kwargs(
     model_id: str,
     model_version: str,
     instance_type: str,
+    hub_arn: Optional[str] = None,
     region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
@@ -154,6 +155,8 @@ def _retrieve_estimator_init_kwargs(
             kwargs.
         instance_type (str): Instance type of the training job, to determine if volume size is
             supported.
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from (default: None).
         region (Optional[str]): Region for which to retrieve kwargs.
             (Default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
@@ -177,6 +180,7 @@ def _retrieve_estimator_init_kwargs(
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
+        hub_arn=hub_arn,
         scope=JumpStartScriptScope.TRAINING,
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,

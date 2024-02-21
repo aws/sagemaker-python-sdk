@@ -30,6 +30,7 @@ def _retrieve_resource_name_base(
     model_id: str,
     model_version: str,
     region: Optional[str],
+    hub_arn: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
@@ -43,6 +44,8 @@ def _retrieve_resource_name_base(
             default resource name.
         region (Optional[str]): Region for which to retrieve the
             default resource name.
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from (default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
             specifications should be tolerated (exception not raised). If False, raises an
             exception if the script used by this version of the model has dependencies with known
@@ -64,6 +67,7 @@ def _retrieve_resource_name_base(
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
+        hub_arn=hub_arn,
         scope=JumpStartScriptScope.INFERENCE,
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,

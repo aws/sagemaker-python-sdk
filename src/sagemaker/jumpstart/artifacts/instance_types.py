@@ -49,6 +49,8 @@ def _retrieve_default_instance_type(
             default instance type.
         scope (str): The script type, i.e. what it is used for.
             Valid values: "training" and "inference".
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from (default: None).
         region (Optional[str]): Region for which to retrieve default instance type.
             (Default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
@@ -137,6 +139,8 @@ def _retrieve_instance_types(
             supported instance types.
         scope (str): The script type, i.e. what it is used for.
             Valid values: "training" and "inference".
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from (default: None).
         region (Optional[str]): Region for which to retrieve supported instance types.
             (Default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model

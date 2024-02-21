@@ -1219,11 +1219,11 @@ def test_mime_type_enum_from_str():
             assert MIMEType.from_suffixed_type(mime_type_with_suffix) == mime_type
 
 
-def test_extract_info_from_hub_resource_arn():
+def test_get_info_from_hub_resource_arn():
     model_arn = (
         "arn:aws:sagemaker:us-west-2:000000000000:hub_content/MockHub/Model/my-mock-model/1.0.2"
     )
-    assert utils.extract_info_from_hub_resource_arn(model_arn) == HubArnExtractedInfo(
+    assert utils.get_info_from_hub_resource_arn(model_arn) == HubArnExtractedInfo(
         partition="aws",
         region="us-west-2",
         account_id="000000000000",
@@ -1234,7 +1234,7 @@ def test_extract_info_from_hub_resource_arn():
     )
 
     notebook_arn = "arn:aws:sagemaker:us-west-2:000000000000:hub_content/MockHub/Notebook/my-mock-notebook/1.0.2"
-    assert utils.extract_info_from_hub_resource_arn(notebook_arn) == HubArnExtractedInfo(
+    assert utils.get_info_from_hub_resource_arn(notebook_arn) == HubArnExtractedInfo(
         partition="aws",
         region="us-west-2",
         account_id="000000000000",
@@ -1245,7 +1245,7 @@ def test_extract_info_from_hub_resource_arn():
     )
 
     hub_arn = "arn:aws:sagemaker:us-west-2:000000000000:hub/MockHub"
-    assert utils.extract_info_from_hub_resource_arn(hub_arn) == HubArnExtractedInfo(
+    assert utils.get_info_from_hub_resource_arn(hub_arn) == HubArnExtractedInfo(
         partition="aws",
         region="us-west-2",
         account_id="000000000000",
@@ -1253,18 +1253,18 @@ def test_extract_info_from_hub_resource_arn():
     )
 
     invalid_arn = "arn:aws:sagemaker:us-west-2:000000000000:endpoint/my-endpoint-123"
-    assert None is utils.extract_info_from_hub_resource_arn(invalid_arn)
+    assert None is utils.get_info_from_hub_resource_arn(invalid_arn)
 
     invalid_arn = "nonsense-string"
-    assert None is utils.extract_info_from_hub_resource_arn(invalid_arn)
+    assert None is utils.get_info_from_hub_resource_arn(invalid_arn)
 
     invalid_arn = ""
-    assert None is utils.extract_info_from_hub_resource_arn(invalid_arn)
+    assert None is utils.get_info_from_hub_resource_arn(invalid_arn)
 
     invalid_arn = (
         "arn:aws:sagemaker:us-west-2:000000000000:hub-content/MyHub/Notebook/my-notebook/1.0.0"
     )
-    assert None is utils.extract_info_from_hub_resource_arn(invalid_arn)
+    assert None is utils.get_info_from_hub_resource_arn(invalid_arn)
 
 
 def test_construct_hub_arn_from_name():
