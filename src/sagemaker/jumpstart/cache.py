@@ -58,6 +58,7 @@ from sagemaker.jumpstart.types import (
     DescribeHubContentsResponse,
     HubType,
     HubContentType,
+    HubDataType,
 )
 from sagemaker.jumpstart.curated_hub import utils as hub_utils
 from sagemaker.jumpstart.enums import JumpStartModelType
@@ -429,6 +430,7 @@ class JumpStartModelsCache:
         """
 
         data_type, id_info = key.data_type, key.id_info
+
         if data_type in {
             JumpStartS3FileType.OPEN_WEIGHT_MANIFEST,
             JumpStartS3FileType.PROPRIETARY_MANIFEST,
