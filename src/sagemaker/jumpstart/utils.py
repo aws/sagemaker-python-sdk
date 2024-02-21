@@ -16,6 +16,7 @@ import logging
 import os
 import re
 from typing import Any, Dict, List, Set, Optional, Tuple, Union
+import re
 from urllib.parse import urlparse
 import boto3
 from packaging.version import Version
@@ -862,7 +863,6 @@ def get_jumpstart_model_id_version_from_resource_arn(
 def generate_studio_spec_file_prefix(model_id: str, model_version: str) -> str:
     """Returns the Studio Spec file prefix given a model ID and version."""
     return f"studio_models/{model_id}/studio_specs_v{model_version}.json"
-
 
 def extract_info_from_hub_content_arn(
     arn: str,
