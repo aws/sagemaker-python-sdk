@@ -1761,5 +1761,4 @@ class TestCheckTarfileDataFilterAttribute(TestCase):
 
     def test_check_tarfile_data_filter_attribute_happy_case(self):
         with patch("tarfile.data_filter", "some_value"):
-            delattr(tarfile, "data_filter")
             check_tarfile_data_filter_attribute()
