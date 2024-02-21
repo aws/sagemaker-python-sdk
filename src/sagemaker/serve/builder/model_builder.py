@@ -205,7 +205,6 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
             "help": (
                 'Model object with "predict" method to perform inference '
                 "or HuggingFace/JumpStart Model ID"
-                "or HuggingFace Task to override"
             )
         },
     )

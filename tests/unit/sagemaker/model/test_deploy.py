@@ -85,7 +85,6 @@ RESOURCES = ResourceRequirements(
     },
     limits={},
 )
-HF_TASK = "audio-classification"
 
 
 @pytest.fixture
@@ -1028,57 +1027,3 @@ def test_deploy_with_name_and_resources(sagemaker_session):
         async_inference_config_dict=None,
         live_logging=False,
     )
-
-
-@patch("sagemaker.model.Model._create_sagemaker_model", Mock())
-@patch("sagemaker.production_variant", return_value=BASE_PRODUCTION_VARIANT)
-def test_deploy_with_name_and_task(sagemaker_session):
-    sagemaker_session.sagemaker_config = {}
-
-    model = Model(
-        MODEL_IMAGE, MODEL_DATA, task=HF_TASK, name=MODEL_NAME, role=ROLE, sagemaker_session=sagemaker_session
-    )
-
-    endpoint_name = "testing-task-input"
-    predictor = model.deploy(
-        endpoint_name=endpoint_name,
-        instance_type=INSTANCE_TYPE,
-        initial_instance_count=INSTANCE_COUNT,
-    )
-
-    sagemaker_session.create_model.assert_called_with(
-        name=MODEL_IMAGE,
-        role=ROLE,
-        task=HF_TASK
-    )
-
-    assert isinstance(predictor, sagemaker.predictor.Predictor)
-    assert predictor.endpoint_name == endpoint_name
-    assert predictor.sagemaker_session == sagemaker_session
-
-
-@patch("sagemaker.model.Model._create_sagemaker_model", Mock())
-@patch("sagemaker.production_variant", return_value=BASE_PRODUCTION_VARIANT)
-def test_deploy_with_name_and_without_task(sagemaker_session):
-    sagemaker_session.sagemaker_config = {}
-
-    model = Model(
-        MODEL_IMAGE, MODEL_DATA, name=MODEL_NAME, role=ROLE, sagemaker_session=sagemaker_session
-    )
-
-    endpoint_name = "testing-without-task-input"
-    predictor = model.deploy(
-        endpoint_name=endpoint_name,
-        instance_type=INSTANCE_TYPE,
-        initial_instance_count=INSTANCE_COUNT,
-    )
-
-    sagemaker_session.create_model.assert_called_with(
-        name=MODEL_IMAGE,
-        role=ROLE,
-        task=None,
-    )
-
-    assert isinstance(predictor, sagemaker.predictor.Predictor)
-    assert predictor.endpoint_name == endpoint_name
-    assert predictor.sagemaker_session == sagemaker_session

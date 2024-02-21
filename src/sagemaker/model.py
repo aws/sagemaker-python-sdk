@@ -156,7 +156,6 @@ class Model(ModelBase, InferenceRecommenderMixin):
         dependencies: Optional[List[str]] = None,
         git_config: Optional[Dict[str, str]] = None,
         resources: Optional[ResourceRequirements] = None,
-        task: Optional[Union[str, PipelineVariable]] = None,
     ):
         """Initialize an SageMaker ``Model``.
 
@@ -320,9 +319,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
                 for a model to be deployed to an endpoint. Only
                 EndpointType.INFERENCE_COMPONENT_BASED supports this feature.
                 (Default: None).
-            task (str or PipelineVariable): Task values used to override the HuggingFace task
-                Examples are: "audio-classification", "depth-estimation",
-                "feature-extraction" etc. (default: None).
+
         """
         self.model_data = model_data
         self.image_uri = image_uri
@@ -399,7 +396,6 @@ class Model(ModelBase, InferenceRecommenderMixin):
         self.content_types = None
         self.response_types = None
         self.accept_eula = None
-        self.task = task
 
     @runnable_by_pipeline
     def register(
