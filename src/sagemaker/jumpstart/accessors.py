@@ -268,7 +268,7 @@ class JumpStartModelsAccessor(object):
             hub_model_arn = utils.construct_hub_model_arn_from_inputs(
                 hub_arn=hub_arn, model_name=model_id, version=version
             )
-            return JumpStartModelsAccessor._cache.get_hub_model(hub_model_arn)
+            return JumpStartModelsAccessor._cache.get_hub_model(hub_model_arn=hub_model_arn)
 
         return JumpStartModelsAccessor._cache.get_specs(  # type: ignore
             model_id=model_id, semantic_version_str=version

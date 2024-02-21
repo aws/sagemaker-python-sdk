@@ -148,6 +148,7 @@ def get_spec_from_base_spec(
     semantic_version_str: str = None,
     version: str = None,
     hub_arn: Optional[str] = None,
+    hub_model_arn: Optional[str] = None,
     s3_client: boto3.client = None,
 ) -> JumpStartModelSpecs:
 
