@@ -22,6 +22,7 @@ from sagemaker.jumpstart.constants import (
     JUMPSTART_REGION_NAME_SET,
 )
 from sagemaker.jumpstart.types import (
+    HubDataType,
     JumpStartCachedContentKey,
     JumpStartCachedContentValue,
     JumpStartModelSpecs,
@@ -218,12 +219,10 @@ def patched_retrieval_function(
     datatype, id_info = key.data_type, key.id_info
     if datatype == JumpStartS3FileType.OPEN_WEIGHT_MANIFEST:
 
-        return JumpStartCachedContentValue(
-            formatted_content=get_formatted_manifest(BASE_MANIFEST)
-        )
+        return JumpStartCachedContentValue(formatted_content=get_formatted_manifest(BASE_MANIFEST))
 
-    if datatype == JumpStartCachedContentValue.OPEN_WEIGHT_SPECS:
-        _, model_id, specs_version = s3_key.split("/")
+    if datatype == JumpStartS3FileType.OPEN_WEIGHT_SPECS:
+        _, model_id, specs_version = id_info.split("/")
         version = specs_version.replace("specs_v", "").replace(".json", "")
         return JumpStartCachedContentValue(
             formatted_content=get_spec_from_base_spec(model_id=model_id, version=version)
@@ -245,7 +244,7 @@ def patched_retrieval_function(
         )
 
     if datatype == JumpStartS3FileType.PROPRIETARY_SPECS:
-        _, model_id, specs_version = s3_key.split("/")
+        _, model_id, specs_version = id_info.split("/")
         version = specs_version.replace("proprietary_specs_", "").replace(".json", "")
         return JumpStartCachedContentValue(
             formatted_content=get_spec_from_base_spec(

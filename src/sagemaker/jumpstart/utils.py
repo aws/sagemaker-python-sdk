@@ -15,6 +15,7 @@ from __future__ import absolute_import
 import logging
 import os
 from typing import Any, Dict, List, Set, Optional, Tuple, Union
+import re
 from urllib.parse import urlparse
 import boto3
 from packaging.version import Version
@@ -866,3 +867,25 @@ def get_jumpstart_model_id_version_from_resource_arn(
 def generate_studio_spec_file_prefix(model_id: str, model_version: str) -> str:
     """Returns the Studio Spec file prefix given a model ID and version."""
     return f"studio_models/{model_id}/studio_specs_v{model_version}.json"
+
+def extract_info_from_hub_content_arn(
+    arn: str,
+) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:
+    """Extracts hub_name, content_name, and content_version from a HubContentArn"""
+
+    match = re.match(constants.HUB_MODEL_ARN_REGEX, arn)
+    if match:
+        hub_name = match.group(4)
+        hub_region = match.group(2)
+        content_name = match.group(5)
+        content_version = match.group(6)
+
+        return hub_name, hub_region, content_name, content_version
+
+    match = re.match(constants.HUB_ARN_REGEX, arn)
+    if match:
+        hub_name = match.group(4)
+        hub_region = match.group(2)
+        return hub_name, hub_region, None, None
+
+    return None, None, None, None

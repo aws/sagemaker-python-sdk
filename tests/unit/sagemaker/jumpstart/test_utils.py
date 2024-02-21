@@ -1214,6 +1214,35 @@ def test_mime_type_enum_from_str():
             assert MIMEType.from_suffixed_type(mime_type_with_suffix) == mime_type
 
 
+def test_extract_info_from_hub_content_arn():
+    model_arn = (
+        "arn:aws:sagemaker:us-west-2:000000000000:hub_content/MockHub/Model/my-mock-model/1.0.2"
+    )
+    assert utils.extract_info_from_hub_content_arn(model_arn) == (
+        "MockHub",
+        "us-west-2",
+        "my-mock-model",
+        "1.0.2",
+    )
+
+    hub_arn = "arn:aws:sagemaker:us-west-2:000000000000:hub/MockHub"
+    assert utils.extract_info_from_hub_content_arn(hub_arn) == ("MockHub", "us-west-2", None, None)
+
+    invalid_arn = "arn:aws:sagemaker:us-west-2:000000000000:endpoint/my-endpoint-123"
+    assert utils.extract_info_from_hub_content_arn(invalid_arn) == (None, None, None, None)
+
+    invalid_arn = "nonsense-string"
+    assert utils.extract_info_from_hub_content_arn(invalid_arn) == (None, None, None, None)
+
+    invalid_arn = ""
+    assert utils.extract_info_from_hub_content_arn(invalid_arn) == (None, None, None, None)
+
+    invalid_arn = (
+        "arn:aws:sagemaker:us-west-2:000000000000:hub-content/MyHub/Notebook/my-notebook/1.0.0"
+    )
+    assert utils.extract_info_from_hub_content_arn(invalid_arn) == (None, None, None, None)
+
+
 class TestIsValidModelId(TestCase):
     @patch("sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor._get_manifest")
     @patch("sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor.get_model_specs")
