@@ -56,6 +56,8 @@ class Transformers(ABC):
         self.mode = None
         self.model_server = None
         self.image_uri = None
+        self._is_custom_image_uri = False
+        self.vpc_config = None
         self._original_deploy = None
         self.hf_model_config = None
         self._default_data_type = None
@@ -111,6 +113,7 @@ class Transformers(ABC):
                 py_version=self.py_version,
                 transformers_version=base_hf_version,
                 pytorch_version=self.pytorch_version,
+                vpc_config=self.vpc_config,
             )
         elif "keras" in hf_model_md.get("tags") or "tensorflow" in hf_model_md.get("tags"):
             self.tensorflow_version = self._get_supported_version(
@@ -126,6 +129,7 @@ class Transformers(ABC):
                 py_version=self.py_version,
                 transformers_version=base_hf_version,
                 tensorflow_version=self.tensorflow_version,
+                vpc_config=self.vpc_config,
             )
 
         if self.mode == Mode.LOCAL_CONTAINER:
