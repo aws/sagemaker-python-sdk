@@ -1497,8 +1497,6 @@ def format_tags(tags: Tags) -> List[TagsDict]:
 class PythonVersionError(Exception):
     """Raise when a secure [/patched] version of Python is not used."""
 
-    pass
-
 
 def check_tarfile_data_filter_attribute():
     """Check if tarfile has data_filter utility which has guardrails against untrusted
