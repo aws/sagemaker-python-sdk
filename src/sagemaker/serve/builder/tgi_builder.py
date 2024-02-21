@@ -76,6 +76,7 @@ class TGI(ABC):
         self.mode = None
         self.model_server = None
         self.image_uri = None
+        self._is_custom_image_uri = False
         self.image_config = None
         self.vpc_config = None
         self._original_deploy = None
