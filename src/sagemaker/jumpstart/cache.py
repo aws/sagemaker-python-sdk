@@ -339,7 +339,7 @@ class JumpStartModelsCache:
                 formatted_content=model_specs
             )
         if data_type == HubDataType.MODEL:
-            hub_name, region, model_name, model_version = utils.extract_info_from_hub_content_arn(
+            hub_name, region, model_name, model_version = utils.extract_info_from_hub_resource_arn(
                 id_info
             )
             hub = CuratedHub(hub_name=hub_name, region=region)
@@ -354,7 +354,7 @@ class JumpStartModelsCache:
                 formatted_content=model_specs
             )
         if data_type == HubDataType.HUB:
-            hub_name, region, _, _ = utils.extract_info_from_hub_content_arn(id_info)
+            hub_name, region, _, _ = utils.extract_info_from_hub_resource_arn(id_info)
             hub = CuratedHub(hub_name=hub_name, region=region)
             hub_info = hub.describe()
             return JumpStartCachedContentValue(formatted_content=hub_info)

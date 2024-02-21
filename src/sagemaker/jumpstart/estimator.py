@@ -12,7 +12,6 @@
 # language governing permissions and limitations under the License.
 """This module stores JumpStart implementation of Estimator class."""
 from __future__ import absolute_import
-import re
 
 
 from typing import Dict, List, Optional, Union
@@ -28,7 +27,7 @@ from sagemaker.explainer.explainer_config import ExplainerConfig
 from sagemaker.inputs import FileSystemInput, TrainingInput
 from sagemaker.instance_group import InstanceGroup
 from sagemaker.jumpstart.accessors import JumpStartModelsAccessor
-from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION, HUB_ARN_REGEX
+from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.exceptions import INVALID_MODEL_ID_ERROR_MSG
 
@@ -36,7 +35,7 @@ from sagemaker.jumpstart.factory.estimator import get_deploy_kwargs, get_fit_kwa
 from sagemaker.jumpstart.factory.model import get_default_predictor
 from sagemaker.jumpstart.session_utils import get_model_id_version_from_training_job
 from sagemaker.jumpstart.utils import (
-    construct_hub_arn_from_name,
+    generate_hub_arn_for_estimator,
     is_valid_model_id,
     resolve_model_sagemaker_config_field,
 )
@@ -522,21 +521,12 @@ class JumpStartEstimator(Estimator):
             if not _is_valid_model_id_hook():
                 raise ValueError(INVALID_MODEL_ID_ERROR_MSG.format(model_id=model_id))
 
-        # TODO: Update to handle SageMakerJumpStart hub_name
-        hub_arn = None
-        if hub_name:
-            match = re.match(HUB_ARN_REGEX, hub_name)
-            if match:
-                hub_arn = hub_name
-            else:
-                hub_arn = construct_hub_arn_from_name(
-                    hub_name=hub_name, region=region, session=sagemaker_session
-                )
-
         estimator_init_kwargs = get_init_kwargs(
             model_id=model_id,
             model_version=model_version,
-            hub_arn=hub_arn,
+            hub_arn=generate_hub_arn_for_estimator(
+                hub_name=hub_name, region=region, session=sagemaker_session
+            ),
             tolerate_vulnerable_model=tolerate_vulnerable_model,
             tolerate_deprecated_model=tolerate_deprecated_model,
             role=role,

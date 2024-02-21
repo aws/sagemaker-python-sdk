@@ -831,10 +831,10 @@ def get_jumpstart_model_id_version_from_resource_arn(
     return model_id, model_version
 
 
-def extract_info_from_hub_content_arn(
+def extract_info_from_hub_resource_arn(
     arn: str,
 ) -> HubArnExtractedInfo:
-    """Extracts descriptive information from a Hub or HubContent Arn"""
+    """Extracts descriptive information from a Hub or HubContent Arn."""
 
     match = re.match(constants.HUB_CONTENT_ARN_REGEX, arn)
     if match:
@@ -875,13 +875,9 @@ def extract_info_from_hub_content_arn(
 def construct_hub_arn_from_name(
     hub_name: str,
     region: Optional[str] = None,
-    session: Optional[Session] = None,
+    session: Optional[Session] = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> str:
-    """Constructs a Hub arn from the Hub name using default Session values"""
-    print("being called")
-
-    if not session:
-        session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+    """Constructs a Hub arn from the Hub name using default Session values."""
 
     account_id = session.account_id()
     region = region or session.boto_region_name
@@ -891,12 +887,34 @@ def construct_hub_arn_from_name(
 
 
 def construct_hub_model_arn_from_inputs(hub_arn: str, model_name: str, version: str) -> str:
-    """Constructs a HubContent model arn from the Hub name, model name, and model version"""
+    """Constructs a HubContent model arn from the Hub name, model name, and model version."""
 
-    info = extract_info_from_hub_content_arn(hub_arn)
+    info = extract_info_from_hub_resource_arn(hub_arn)
     arn = (
         f"arn:{info.partition}:sagemaker:{info.region}:{info.account_id}:hub-content/"
         f"{info.hub_name}/Model/{model_name}/{version}"
     )
 
     return arn
+
+
+# TODO: Update to recognize JumpStartHub hub_name
+def generate_hub_arn_for_estimator(
+    hub_name: Optional[str] = None, region: Optional[str] = None, session: Optional[Session] = None
+):
+    """Generates the Hub Arn for JumpStartEstimator from a HubName or Arn.
+
+    Args:
+        hub_name (str): HubName or HubArn from JumpStartEstimator args
+        region (str): Region from JumpStartEstimator args
+        session (Session): Custom SageMaker Session from JumpStartEstimator args
+    """
+
+    hub_arn = None
+    if hub_name:
+        match = re.match(constants.HUB_ARN_REGEX, hub_name)
+        if match:
+            hub_arn = hub_name
+        else:
+            hub_arn = construct_hub_arn_from_name(hub_name=hub_name, region=region, session=session)
+    return hub_arn
