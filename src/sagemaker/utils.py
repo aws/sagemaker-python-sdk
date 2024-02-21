@@ -1496,6 +1496,7 @@ def format_tags(tags: Tags) -> List[TagsDict]:
 
 class PythonVersionError(Exception):
     """Raise when a secure [/patched] version of Python is not used."""
+
     pass
 
 
