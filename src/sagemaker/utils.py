@@ -1495,6 +1495,7 @@ def format_tags(tags: Tags) -> List[TagsDict]:
 
 
 class PythonVersionError(Exception):
+    """Raise when a secure [/patched] version of Python is not used."""
     pass
 
 
@@ -1505,6 +1506,7 @@ def check_tarfile_data_filter_attribute():
     Raises:
         PythonVersionError: if `tarfile.data_filter` is not available.
     """
+    # The function and it's usages can be deprecated post support of python >= 3.12
     if not hasattr(tarfile, "data_filter"):
         raise PythonVersionError(
             f"Since tarfile extraction is unsafe the operation is prohibited "
