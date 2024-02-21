@@ -20,7 +20,8 @@ import requests
 from sagemaker import Session, exceptions
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.utils.exceptions import ModelBuilderException
-from sagemaker.serve.utils.types import ModelServer
+from sagemaker.serve.utils.types import ModelServer, ImageUriOption
+from sagemaker.serve.validations.check_image_uri import is_1p_image_uri
 from sagemaker.user_agent import SDK_VERSION
 
 logger = logging.getLogger(__name__)
@@ -62,11 +63,13 @@ def _capture_telemetry(func_name: str):
             caught_ex = None
 
             image_uri_tail = self.image_uri.split("/")[1]
+            image_uri_option = _get_image_uri_option(self.image_uri, self._is_custom_image_uri)
             extra = (
                 f"{func_name}"
                 f"&x-modelServer={MODEL_SERVER_TO_CODE[str(self.model_server)]}"
                 f"&x-imageTag={image_uri_tail}"
                 f"&x-sdkVersion={SDK_VERSION}"
+                f"&x-defaultImageUsage={image_uri_option}"
             )
 
             if self.model_server == ModelServer.DJL_SERVING or self.model_server == ModelServer.TGI:
@@ -201,3 +204,22 @@ def _get_region_or_default(session):
         return session.boto_session.region_name
     except Exception:  # pylint: disable=W0703
         return "us-west-2"
+
+
+def _get_image_uri_option(image_uri: str, is_custom_image: bool) -> int:
+    """Detect whether default values are used for ModelBuilder
+
+    Args:
+        image_uri (str): Image uri used by ModelBuilder.
+        is_custom_image: (bool): Boolean indicating whether customer provides with custom image.
+    Returns:
+        bool: Integer code of image option types.
+    """
+
+    if not is_custom_image:
+        return ImageUriOption.DEFAULT_IMAGE.value
+
+    if is_1p_image_uri(image_uri):
+        return ImageUriOption.CUSTOM_1P_IMAGE.value
+
+    return ImageUriOption.CUSTOM_IMAGE.value
