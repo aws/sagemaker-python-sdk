@@ -57,6 +57,7 @@ from sagemaker.jumpstart.types import (
     JumpStartVersionedModelId,
     HubType,
     HubContentType,
+    HubDataType,
 )
 from sagemaker.jumpstart.curated_hub import utils as hub_utils
 from sagemaker.jumpstart.curated_hub.interfaces import (
