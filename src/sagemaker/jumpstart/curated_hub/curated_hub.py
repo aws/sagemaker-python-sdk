@@ -25,7 +25,6 @@ class CuratedHub:
     def __init__(self, hub_name: str, region: str, session: Optional[Session] = DEFAULT_JUMPSTART_SAGEMAKER_SESSION):
         self.hub_name = hub_name
         self.region = region
-        self.session = session
         self._sm_session = session
 
     def describe_model(self, model_name: str, model_version: str = "*") -> Dict[str, Any]:
