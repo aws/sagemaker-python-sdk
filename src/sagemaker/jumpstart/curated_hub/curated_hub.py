@@ -22,7 +22,12 @@ from sagemaker.session import Session
 class CuratedHub:
     """Class for creating and managing a curated JumpStart hub"""
 
-    def __init__(self, hub_name: str, region: str, session: Optional[Session] = DEFAULT_JUMPSTART_SAGEMAKER_SESSION):
+    def __init__(
+        self,
+        hub_name: str,
+        region: str,
+        session: Optional[Session] = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    ):
         self.hub_name = hub_name
         self.region = region
         self._sm_session = session

@@ -343,7 +343,9 @@ class JumpStartModelsCache:
                 id_info
             )
             hub = CuratedHub(hub_name=info.hub_name, region=info.region)
-            hub_content = hub.describe_model(model_name=info.hub_content_name, model_version=info.hub_content_version)
+            hub_content = hub.describe_model(
+                model_name=info.hub_content_name, model_version=info.hub_content_version
+            )
             utils.emit_logs_based_on_model_specs(
                 hub_content.content_document,
                 self.get_region(),
@@ -467,10 +469,10 @@ class JumpStartModelsCache:
                 )
             )
         return specs.formatted_content
-    
+
     def get_hub_model(self, hub_model_arn: str) -> JumpStartModelSpecs:
         """Return JumpStart-compatible specs for a given Hub model
-        
+
         Args:
             hub_model_arn (str): Arn for the Hub model to get specs for
         """
@@ -479,14 +481,14 @@ class JumpStartModelsCache:
             JumpStartCachedContentKey(HubDataType.MODEL, hub_model_arn)
         )
         return details.formatted_content
-    
+
     def get_hub(self, hub_arn: str) -> Dict[str, Any]:
         """Return descriptive info for a given Hub
-        
+
         Args:
             hub_arn (str): Arn for the Hub to get info for
         """
-        
+
         details, _ = self._content_cache.get(JumpStartCachedContentKey(HubDataType.HUB, hub_arn))
         return details.formatted_content
 

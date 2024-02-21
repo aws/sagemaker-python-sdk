@@ -89,6 +89,7 @@ def _retrieve_training_artifact_key(model_specs: JumpStartModelSpecs, instance_t
 def _retrieve_model_uri(
     model_id: str,
     model_version: str,
+    hub_arn: Optional[str] = None,
     model_scope: Optional[str] = None,
     instance_type: Optional[str] = None,
     region: Optional[str] = None,
@@ -105,6 +106,8 @@ def _retrieve_model_uri(
             the model artifact S3 URI.
         model_version (str): Version of the JumpStart model for which to retrieve the model
             artifact S3 URI.
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from (default: None).
         model_scope (str): The model type, i.e. what it is used for.
             Valid values: "training" and "inference".
         instance_type (str): The ML compute instance type for the specified scope. (Default: None).
@@ -135,6 +138,7 @@ def _retrieve_model_uri(
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
+        hub_arn=hub_arn,
         scope=model_scope,
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
