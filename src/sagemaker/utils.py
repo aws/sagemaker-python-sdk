@@ -1499,8 +1499,9 @@ class PythonVersionError(Exception):
 
 
 def check_tarfile_data_filter_attribute():
-    """Check if tarfile has data_filter utility which has guardrails against untrusted
-    de-serialisation.
+    """Check if tarfile has data_filter utility.
+
+    Tarfile-data_filter utility has guardrails against untrusted de-serialisation.
 
     Raises:
         PythonVersionError: if `tarfile.data_filter` is not available.
