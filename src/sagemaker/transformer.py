@@ -337,6 +337,7 @@ class Transformer(object):
         wait: bool = True,
         pipeline_name: str = None,
         role: str = None,
+        fail_on_violation: bool = True,
     ):
         """Runs a transform job with monitoring job.
 
@@ -352,7 +353,6 @@ class Transformer(object):
             ]): the monitoring configuration used for run model monitoring.
             monitoring_resource_config (`sagemaker.workflow.check_job_config.CheckJobConfig`):
                 the check job (processing job) cluster resource configuration.
-            transform_step_args (_JobStepArguments): the transform step transform arguments.
             data (str): Input data location in S3 for the transform job
             data_type (str): What the S3 location defines (default: 'S3Prefix').
                 Valid values:
@@ -400,8 +400,6 @@ class Transformer(object):
             monitor_before_transform (bgool): If to run data quality
                 or model explainability monitoring type,
                 a true value of this flag indicates running the check step before the transform job.
-            fail_on_violation (Union[bool, PipelineVariable]): A opt-out flag to not to fail the
-                check step when a violation is detected.
             supplied_baseline_statistics (Union[str, PipelineVariable]): The S3 path
                 to the supplied statistics object representing the statistics JSON file
                 which will be used for drift to check (default: None).
@@ -411,6 +409,8 @@ class Transformer(object):
             wait (bool): To determine if needed to wait for the pipeline execution to complete
             pipeline_name (str): The name of the Pipeline for the monitoring and transfrom step
             role (str): Execution role
+            fail_on_violation (Union[bool, PipelineVariable]): A opt-out flag to not to fail the
+                check step when a violation is detected.
         """
 
         transformer = self
@@ -454,6 +454,7 @@ class Transformer(object):
             monitor_before_transform=monitor_before_transform,
             supplied_baseline_constraints=supplied_baseline_constraints,
             supplied_baseline_statistics=supplied_baseline_statistics,
+            fail_on_violation=fail_on_violation,
         )
 
         pipeline_name = (
