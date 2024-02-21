@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 import pytest
+from sagemaker.model import Model
 from sagemaker.serve.builder.schema_builder import SchemaBuilder
 from sagemaker.serve.builder.model_builder import ModelBuilder, Mode
 
@@ -27,6 +28,11 @@ from tests.integ.utils import cleanup_model_resources
 import logging
 
 logger = logging.getLogger(__name__)
+
+MODEL_DATA = "s3://bucket/model.tar.gz"
+MODEL_IMAGE = "mi"
+ROLE = "some-role"
+HF_TASK = "fill-mask"
 
 sample_input = {
     "inputs": "The man worked as a [MASK].",
@@ -81,6 +87,17 @@ def model_builder_model_schema_builder():
 
 
 @pytest.fixture
+def model_builder_model_with_task_builder():
+    model = Model(
+        MODEL_IMAGE, MODEL_DATA, task=HF_TASK, name="bert-base-uncased", role=ROLE
+    )
+    return ModelBuilder(
+        model_path=HF_DIR,
+        model=model,
+    )
+
+
+@pytest.fixture
 def model_builder(request):
     return request.getfixturevalue(request.param)
 
@@ -92,6 +109,45 @@ def model_builder(request):
 @pytest.mark.parametrize("model_builder", ["model_builder_model_schema_builder"], indirect=True)
 def test_pytorch_transformers_sagemaker_endpoint(
     sagemaker_session, model_builder, gpu_instance_type, input
+):
+    logger.info("Running in SAGEMAKER_ENDPOINT mode...")
+    caught_ex = None
+
+    iam_client = sagemaker_session.boto_session.client("iam")
+    role_arn = iam_client.get_role(RoleName="SageMakerRole")["Role"]["Arn"]
+
+    model = model_builder.build(
+        mode=Mode.SAGEMAKER_ENDPOINT, role_arn=role_arn, sagemaker_session=sagemaker_session
+    )
+
+    with timeout(minutes=SERVE_SAGEMAKER_ENDPOINT_TIMEOUT):
+        try:
+            logger.info("Deploying and predicting in SAGEMAKER_ENDPOINT mode...")
+            predictor = model.deploy(instance_type=gpu_instance_type, initial_instance_count=1)
+            logger.info("Endpoint successfully deployed.")
+            predictor.predict(input)
+        except Exception as e:
+            caught_ex = e
+        finally:
+            cleanup_model_resources(
+                sagemaker_session=model_builder.sagemaker_session,
+                model_name=model.name,
+                endpoint_name=model.endpoint_name,
+            )
+            if caught_ex:
+                logger.exception(caught_ex)
+                assert (
+                    False
+                ), f"{caught_ex} was thrown when running pytorch transformers sagemaker endpoint test"
+
+
+@pytest.mark.skipif(
+    PYTHON_VERSION_IS_NOT_310,
+    reason="Testing Optional task",
+)
+@pytest.mark.parametrize("model_builder", ["model_builder_model_with_task_builder"], indirect=True)
+def test_happy_path_with_task_sagemaker_endpoint(
+        sagemaker_session, model_builder, gpu_instance_type, input
 ):
     logger.info("Running in SAGEMAKER_ENDPOINT mode...")
     caught_ex = None
