@@ -106,6 +106,17 @@ class JumpStartS3FileType(str, Enum):
     SPECS = "specs"
 
 
+class HubDataType(str, Enum):
+    """Enum for Hub data storage objects."""
+
+    HUB = "hub"
+    MODEL = "model"
+    NOTEBOOK = "notebook"
+
+
+JumpStartContentDataType = Union[JumpStartS3FileType, HubDataType]
+
+
 class JumpStartLaunchedRegionInfo(JumpStartDataHolderType):
     """Data class for launched region info."""
 
@@ -767,13 +778,16 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         "gated_bucket",
     ]
 
-    def __init__(self, spec: Dict[str, Any]):
+    def __init__(self, spec: Dict[str, Any], is_hub_content: bool = False):
         """Initializes a JumpStartModelSpecs object from its json representation.
 
         Args:
             spec (Dict[str, Any]): Dictionary representation of spec.
         """
-        self.from_json(spec)
+        if is_hub_content:
+            self.from_hub_content_doc(spec)
+        else:
+            self.from_json(spec)
 
     def from_json(self, json_obj: Dict[str, Any]) -> None:
         """Sets fields in object based on json of header.
@@ -895,6 +909,15 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
                 else None
             )
 
+    def from_hub_content_doc(self, hub_content_doc: Dict[str, Any]) -> None:
+        """Sets fields in object based on values in HubContentDocument
+
+        Args:
+            hub_content_doc (Dict[str, any]): parsed HubContentDocument returned
+                from SageMaker:DescribeHubContent
+        """
+        # TODO: Implement
+
     def to_json(self) -> Dict[str, Any]:
         """Returns json representation of JumpStartModelSpecs object."""
         json_obj = {}
@@ -958,27 +981,27 @@ class JumpStartVersionedModelId(JumpStartDataHolderType):
         self.version = version
 
 
-class JumpStartCachedS3ContentKey(JumpStartDataHolderType):
-    """Data class for the s3 cached content keys."""
+class JumpStartCachedContentKey(JumpStartDataHolderType):
+    """Data class for the cached content keys."""
 
-    __slots__ = ["file_type", "s3_key"]
+    __slots__ = ["data_type", "id_info"]
 
     def __init__(
         self,
-        file_type: JumpStartS3FileType,
-        s3_key: str,
+        data_type: JumpStartContentDataType,
+        id_info: str,
     ) -> None:
-        """Instantiates JumpStartCachedS3ContentKey object.
+        """Instantiates JumpStartCachedContentKey object.
 
         Args:
-            file_type (JumpStartS3FileType): JumpStart file type.
-            s3_key (str): object key in s3.
+            data_type (JumpStartContentDataType): JumpStart content data type.
+            id_info (str): if S3Content, object key in s3. if HubContent, hub content arn.
         """
-        self.file_type = file_type
-        self.s3_key = s3_key
+        self.data_type = data_type
+        self.id_info = id_info
 
 
-class JumpStartCachedS3ContentValue(JumpStartDataHolderType):
+class JumpStartCachedContentValue(JumpStartDataHolderType):
     """Data class for the s3 cached content values."""
 
     __slots__ = ["formatted_content", "md5_hash"]
@@ -991,7 +1014,7 @@ class JumpStartCachedS3ContentValue(JumpStartDataHolderType):
         ],
         md5_hash: Optional[str] = None,
     ) -> None:
-        """Instantiates JumpStartCachedS3ContentValue object.
+        """Instantiates JumpStartCachedContentValue object.
 
         Args:
             formatted_content (Union[Dict[JumpStartVersionedModelId, JumpStartModelHeader],

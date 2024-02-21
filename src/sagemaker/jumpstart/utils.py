@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 import logging
 import os
+import re
 from typing import Any, Dict, List, Optional, Tuple, Union
 from urllib.parse import urlparse
 import boto3
@@ -810,3 +811,26 @@ def get_jumpstart_model_id_version_from_resource_arn(
             model_version = model_version_from_tag
 
     return model_id, model_version
+
+
+def extract_info_from_hub_content_arn(
+    arn: str,
+) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:
+    """Extracts hub_name, content_name, and content_version from a HubContentArn"""
+
+    match = re.match(constants.HUB_MODEL_ARN_REGEX, arn)
+    if match:
+        hub_name = match.group(4)
+        hub_region = match.group(2)
+        content_name = match.group(5)
+        content_version = match.group(6)
+
+        return hub_name, hub_region, content_name, content_version
+
+    match = re.match(constants.HUB_ARN_REGEX, arn)
+    if match:
+        hub_name = match.group(4)
+        hub_region = match.group(2)
+        return hub_name, hub_region, None, None
+
+    return None, None, None, None
