@@ -13,7 +13,6 @@
 from __future__ import absolute_import
 import logging
 import shutil
-import tarfile
 from functools import wraps
 
 from botocore.exceptions import ClientError
