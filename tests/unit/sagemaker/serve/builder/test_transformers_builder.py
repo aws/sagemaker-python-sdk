@@ -16,6 +16,7 @@ from unittest.mock import MagicMock, patch
 import unittest
 from sagemaker.serve.builder.model_builder import ModelBuilder
 from sagemaker.serve.mode.function_pointers import Mode
+from tests.unit.sagemaker.serve.constants import MOCK_VPC_CONFIG
 
 from sagemaker.serve.utils.predictors import TransformersLocalModePredictor
 
@@ -74,6 +75,7 @@ class TestTransformersBuilder(unittest.TestCase):
             model=mock_model_id,
             schema_builder=mock_schema_builder,
             mode=Mode.LOCAL_CONTAINER,
+            vpc_config=MOCK_VPC_CONFIG,
         )
 
         builder._prepare_for_mode = MagicMock()
@@ -85,6 +87,7 @@ class TestTransformersBuilder(unittest.TestCase):
         builder.modes[str(Mode.LOCAL_CONTAINER)] = MagicMock()
         predictor = model.deploy(model_data_download_timeout=1800)
 
+        assert model.vpc_config == MOCK_VPC_CONFIG
         assert builder.env_vars["MODEL_LOADING_TIMEOUT"] == "1800"
         assert isinstance(predictor, TransformersLocalModePredictor)
 

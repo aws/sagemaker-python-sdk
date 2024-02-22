@@ -605,6 +605,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
 
         self.serve_settings = self._get_serve_setting()
 
+        self._is_custom_image_uri = self.image_uri is None
+
         if isinstance(self.model, str):
             if self._is_jumpstart_model_id():
                 return self._build_for_jumpstart()
