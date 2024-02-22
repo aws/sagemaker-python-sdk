@@ -31,8 +31,8 @@ def retrieve_local_schemas(task: str) -> Tuple[Any, Any]:
     Raises:
         ValueError: If no tasks config found or the task does not exist in the local config.
     """
-    config_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-    task_io_config_path = os.path.join(config_dir, "image_uri_config", "tasks.json")
+    config_dir = os.path.dirname(os.path.dirname(__file__))
+    task_io_config_path = os.path.join(config_dir, "schema", "task.json")
     try:
         with open(task_io_config_path) as f:
             task_io_config = json.load(f)
