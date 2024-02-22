@@ -11,7 +11,6 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
-from importlib import reload
 import unittest
 from unittest.mock import Mock
 
@@ -21,12 +20,16 @@ import pytest
 
 import copy
 from sagemaker.jumpstart import artifacts
-from sagemaker.jumpstart.artifacts.environment_variables import _retrieve_default_environment_variables
+from sagemaker.jumpstart.artifacts.environment_variables import (
+    _retrieve_default_environment_variables,
+)
 from sagemaker.jumpstart.artifacts.hyperparameters import _retrieve_default_hyperparameters
 from sagemaker.jumpstart.artifacts.image_uris import _retrieve_image_uri
 from sagemaker.jumpstart.artifacts.incremental_training import _model_supports_incremental_training
 from sagemaker.jumpstart.artifacts.instance_types import _retrieve_default_instance_type
-from sagemaker.jumpstart.artifacts.metric_definitions import _retrieve_default_training_metric_definitions
+from sagemaker.jumpstart.artifacts.metric_definitions import (
+    _retrieve_default_training_metric_definitions,
+)
 from sagemaker.jumpstart.artifacts.model_uris import (
     _retrieve_hosting_prepacked_artifact_key,
     _retrieve_hosting_artifact_key,
@@ -467,7 +470,6 @@ class PrivateJumpStartBucketTest(unittest.TestCase):
 
 
 class HubModelTest(unittest.TestCase):
-    
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._cache")
     def test_retrieve_default_environment_variables(self, mock_cache):
         mock_cache.get_hub_model.return_value = JumpStartModelSpecs(spec=copy.deepcopy(BASE_SPEC))
@@ -477,7 +479,10 @@ class HubModelTest(unittest.TestCase):
 
         self.assertEqual(
             _retrieve_default_environment_variables(
-                model_id=model_id, model_version=version, hub_arn=hub_arn, script=JumpStartScriptScope.INFERENCE
+                model_id=model_id,
+                model_version=version,
+                hub_arn=hub_arn,
+                script=JumpStartScriptScope.INFERENCE,
             ),
             {
                 "SAGEMAKER_PROGRAM": "inference.py",
@@ -487,15 +492,14 @@ class HubModelTest(unittest.TestCase):
                 "ENDPOINT_SERVER_TIMEOUT": "3600",
                 "MODEL_CACHE_ROOT": "/opt/ml/model",
                 "SAGEMAKER_ENV": "1",
-                "SAGEMAKER_MODEL_SERVER_WORKERS": "1"
-            }
+                "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+            },
         )
         mock_cache.get_hub_model.assert_called_once_with(
             hub_model_arn=(
                 f"arn:aws:sagemaker:us-west-2:000000000000:hub-content/my-cool-hub/Model/{model_id}/{version}"
             )
         )
-
 
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._cache")
     def test_retrieve_image_uri(self, mock_cache):
@@ -506,9 +510,13 @@ class HubModelTest(unittest.TestCase):
 
         self.assertEqual(
             _retrieve_image_uri(
-                model_id=model_id, model_version=version, hub_arn=hub_arn, instance_type="ml.p3.2xlarge", image_scope=JumpStartScriptScope.TRAINING
+                model_id=model_id,
+                model_version=version,
+                hub_arn=hub_arn,
+                instance_type="ml.p3.2xlarge",
+                image_scope=JumpStartScriptScope.TRAINING,
             ),
-            "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.5.0-gpu-py3"
+            "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.5.0-gpu-py3",
         )
         mock_cache.get_hub_model.assert_called_once_with(
             hub_model_arn=(
@@ -531,7 +539,7 @@ class HubModelTest(unittest.TestCase):
                 "epochs": "3",
                 "adam-learning-rate": "0.05",
                 "batch-size": "4",
-            }
+            },
         )
         mock_cache.get_hub_model.assert_called_once_with(
             hub_model_arn=(
@@ -550,7 +558,7 @@ class HubModelTest(unittest.TestCase):
             _model_supports_incremental_training(
                 model_id=model_id, model_version=version, hub_arn=hub_arn, region="us-west-2"
             ),
-            True
+            True,
         )
         mock_cache.get_hub_model.assert_called_once_with(
             hub_model_arn=(
@@ -567,9 +575,12 @@ class HubModelTest(unittest.TestCase):
 
         self.assertEqual(
             _retrieve_default_instance_type(
-                model_id=model_id, model_version=version, hub_arn=hub_arn, scope=JumpStartScriptScope.TRAINING
+                model_id=model_id,
+                model_version=version,
+                hub_arn=hub_arn,
+                scope=JumpStartScriptScope.TRAINING,
             ),
-            "ml.p3.2xlarge"
+            "ml.p3.2xlarge",
         )
         mock_cache.get_hub_model.assert_called_once_with(
             hub_model_arn=(
@@ -579,9 +590,12 @@ class HubModelTest(unittest.TestCase):
 
         self.assertEqual(
             _retrieve_default_instance_type(
-                model_id=model_id, model_version=version, hub_arn=hub_arn, scope=JumpStartScriptScope.INFERENCE
+                model_id=model_id,
+                model_version=version,
+                hub_arn=hub_arn,
+                scope=JumpStartScriptScope.INFERENCE,
             ),
-            "ml.p2.xlarge"
+            "ml.p2.xlarge",
         )
 
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._cache")
@@ -595,14 +609,13 @@ class HubModelTest(unittest.TestCase):
             _retrieve_default_training_metric_definitions(
                 model_id=model_id, model_version=version, hub_arn=hub_arn, region="us-west-2"
             ),
-            [{"Regex": "val_accuracy: ([0-9\\.]+)", "Name": "pytorch-ic:val-accuracy"}]
+            [{"Regex": "val_accuracy: ([0-9\\.]+)", "Name": "pytorch-ic:val-accuracy"}],
         )
         mock_cache.get_hub_model.assert_called_once_with(
             hub_model_arn=(
                 f"arn:aws:sagemaker:us-west-2:000000000000:hub-content/my-cool-hub/Model/{model_id}/{version}"
             )
         )
-
 
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._cache")
     def test_retrieve_model_uri(self, mock_cache):
@@ -615,7 +628,7 @@ class HubModelTest(unittest.TestCase):
             _retrieve_model_uri(
                 model_id=model_id, model_version=version, hub_arn=hub_arn, model_scope="training"
             ),
-            "s3://jumpstart-cache-prod-us-west-2/pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz"
+            "s3://jumpstart-cache-prod-us-west-2/pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz",
         )
         mock_cache.get_hub_model.assert_called_once_with(
             hub_model_arn=(
@@ -627,7 +640,7 @@ class HubModelTest(unittest.TestCase):
             _retrieve_model_uri(
                 model_id=model_id, model_version=version, hub_arn=hub_arn, model_scope="inference"
             ),
-            "s3://jumpstart-cache-prod-us-west-2/pytorch-infer/infer-pytorch-ic-mobilenet-v2.tar.gz"
+            "s3://jumpstart-cache-prod-us-west-2/pytorch-infer/infer-pytorch-ic-mobilenet-v2.tar.gz",
         )
 
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._cache")
@@ -639,9 +652,13 @@ class HubModelTest(unittest.TestCase):
 
         self.assertEqual(
             _retrieve_script_uri(
-                model_id=model_id, model_version=version, hub_arn=hub_arn, script_scope=JumpStartScriptScope.TRAINING
+                model_id=model_id,
+                model_version=version,
+                hub_arn=hub_arn,
+                script_scope=JumpStartScriptScope.TRAINING,
             ),
-            "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/pytorch/transfer_learning/ic/v1.0.0/sourcedir.tar.gz"
+            "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/pytorch/"
+            "transfer_learning/ic/v1.0.0/sourcedir.tar.gz",
         )
         mock_cache.get_hub_model.assert_called_once_with(
             hub_model_arn=(
@@ -651,7 +668,11 @@ class HubModelTest(unittest.TestCase):
 
         self.assertEqual(
             _retrieve_script_uri(
-                model_id=model_id, model_version=version, hub_arn=hub_arn, script_scope=JumpStartScriptScope.INFERENCE
+                model_id=model_id,
+                model_version=version,
+                hub_arn=hub_arn,
+                script_scope=JumpStartScriptScope.INFERENCE,
             ),
-            "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/pytorch/inference/ic/v1.0.0/sourcedir.tar.gz"
+            "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/pytorch/"
+            "inference/ic/v1.0.0/sourcedir.tar.gz",
         )

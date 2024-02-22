@@ -43,11 +43,7 @@ def test_jumpstart_default_hyperparameters(patched_get_model_specs):
     assert params == {"adam-learning-rate": "0.05", "batch-size": "4", "epochs": "3"}
 
     patched_get_model_specs.assert_called_once_with(
-        region=region,
-        model_id=model_id,
-        version="*",
-        s3_client=mock_client,
-        hub_arn=None
+        region=region, model_id=model_id, version="*", s3_client=mock_client, hub_arn=None
     )
 
     patched_get_model_specs.reset_mock()
@@ -61,10 +57,7 @@ def test_jumpstart_default_hyperparameters(patched_get_model_specs):
     assert params == {"adam-learning-rate": "0.05", "batch-size": "4", "epochs": "3"}
 
     patched_get_model_specs.assert_called_once_with(
-        region=region,
-        model_id=model_id,
-        version="1.*",
-        s3_client=mock_client, hub_arn=None
+        region=region, model_id=model_id, version="1.*", s3_client=mock_client, hub_arn=None
     )
 
     patched_get_model_specs.reset_mock()
@@ -86,10 +79,7 @@ def test_jumpstart_default_hyperparameters(patched_get_model_specs):
     }
 
     patched_get_model_specs.assert_called_once_with(
-        region=region,
-        model_id=model_id,
-        version="1.*",
-        s3_client=mock_client, hub_arn=None
+        region=region, model_id=model_id, version="1.*", s3_client=mock_client, hub_arn=None
     )
 
     patched_get_model_specs.reset_mock()

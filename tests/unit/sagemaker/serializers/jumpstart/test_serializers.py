@@ -46,10 +46,7 @@ def test_jumpstart_default_serializers(
     assert isinstance(default_serializer, base_serializers.IdentitySerializer)
 
     patched_get_model_specs.assert_called_once_with(
-        region=region,
-        model_id=model_id,
-        version=model_version,
-        s3_client=mock_client, hub_arn=None
+        region=region, model_id=model_id, version=model_version, s3_client=mock_client, hub_arn=None
     )
 
     patched_get_model_specs.reset_mock()
@@ -85,8 +82,5 @@ def test_jumpstart_serializer_options(
     )
 
     patched_get_model_specs.assert_called_once_with(
-        region=region,
-        model_id=model_id,
-        version=model_version,
-        s3_client=mock_client, hub_arn=None
+        region=region, model_id=model_id, version=model_version, s3_client=mock_client, hub_arn=None
     )
