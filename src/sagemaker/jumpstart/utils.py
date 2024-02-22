@@ -574,10 +574,10 @@ def verify_model_region_and_return_specs(
             "JumpStart models only support scopes: "
             f"{', '.join(constants.SUPPORTED_JUMPSTART_SCOPES)}."
         )
-    model_type = utils.validate_model_id_and_get_type(model_id=model_id, region=region, model_version=version, script=scope)
-    if not model_type:
-        raise ValueError(INVALID_MODEL_ID_ERROR_MSG.format(model_id=model_id))
-    
+    model_type = utils.validate_model_id_and_get_type(
+        model_id=model_id, region=region, model_version=version, script=scope
+    )
+
     model_specs = accessors.JumpStartModelsAccessor.get_model_specs(  # type: ignore
         region=region,
         model_id=model_id,

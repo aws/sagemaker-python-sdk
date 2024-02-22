@@ -35,6 +35,7 @@ from tests.unit.sagemaker.jumpstart.constants import (
     BASE_MANIFEST,
     BASE_SPEC,
     BASE_PROPRIETARY_MANIFEST,
+    BASE_PROPRIETARY_SPEC,
     BASE_HEADER,
     SPECIAL_MODEL_SPECS_DICT,
 )
@@ -156,6 +157,13 @@ def get_spec_from_base_spec(
     if version and version_str:
         raise ValueError("Cannot specify both `version` and `semantic_version_str` fields.")
 
+    if model_type == JumpStartModelType.PROPRIETARY:
+        spec = copy.deepcopy(BASE_PROPRIETARY_SPEC)
+        spec["version"] = version or version_str
+        spec["model_id"] = model_id
+
+        return JumpStartModelSpecs(spec)
+
     if all(
         [
             "pytorch" not in model_id,
@@ -203,10 +211,21 @@ def patched_retrieval_function(
         return JumpStartCachedS3ContentValue(
             formatted_content=get_spec_from_base_spec(model_id=model_id, version=version)
         )
-    
+
     if filetype == JumpStartS3FileType.PROPRIETARY_MANIFEST:
         return JumpStartCachedS3ContentValue(
             formatted_content=get_formatted_manifest(BASE_PROPRIETARY_MANIFEST)
+        )
+
+    if filetype == JumpStartS3FileType.PROPRIETARY_SPECS:
+        _, model_id, specs_version = s3_key.split("/")
+        version = specs_version.replace("proprietary_specs_", "").replace(".json", "")
+        return JumpStartCachedS3ContentValue(
+            formatted_content=get_spec_from_base_spec(
+                model_id=model_id,
+                version=version,
+                model_type=JumpStartModelType.PROPRIETARY,
+            )
         )
 
     raise ValueError(f"Bad value for filetype: {filetype}")
