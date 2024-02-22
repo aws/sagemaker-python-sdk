@@ -26,13 +26,15 @@ from sagemaker.config.config_schema import (
     TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
     TRAINING_JOB_ROLE_ARN_PATH,
 )
-from sagemaker.jumpstart import constants, enums
+
+from sagemaker.jumpstart import constants, enums, utils
 from sagemaker.jumpstart import accessors
 from sagemaker.s3 import parse_s3_url
 from sagemaker.jumpstart.exceptions import (
     DeprecatedJumpStartModelError,
     VulnerableJumpStartModelError,
     get_old_model_version_msg,
+    INVALID_MODEL_ID_ERROR_MSG
 )
 from sagemaker.jumpstart.types import (
     JumpStartModelHeader,
@@ -572,12 +574,16 @@ def verify_model_region_and_return_specs(
             "JumpStart models only support scopes: "
             f"{', '.join(constants.SUPPORTED_JUMPSTART_SCOPES)}."
         )
-
+    model_type = utils.validate_model_id_and_get_type(model_id=model_id, region=region, model_version=version, script=scope)
+    if not model_type:
+        raise ValueError(INVALID_MODEL_ID_ERROR_MSG.format(model_id=model_id))
+    
     model_specs = accessors.JumpStartModelsAccessor.get_model_specs(  # type: ignore
         region=region,
         model_id=model_id,
         version=version,
         s3_client=sagemaker_session.s3_client,
+        model_type=model_type
     )
 
     if (
@@ -732,18 +738,35 @@ def resolve_estimator_sagemaker_config_field(
     return field_val
 
 
-def is_valid_model_id(
+def validate_model_id_and_get_type(
     model_id: Optional[str],
     region: Optional[str] = None,
     model_version: Optional[str] = None,
     script: enums.JumpStartScriptScope = enums.JumpStartScriptScope.INFERENCE,
     sagemaker_session: Optional[Session] = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-) -> bool:
-    """Returns True if the model ID is supported for the given script.
+) -> enums.JumpStartModelType:
+    """Returns model type if the model ID is supported for the given script.
 
     Raises:
         ValueError: If the script is not supported by JumpStart.
     """
+    def _get_model_type(
+        model_id: str,
+        open_source_models: List[str],
+        proprietary_models: List[str],
+        script: enums.JumpStartScriptScope,
+    ) -> enums.JumpStartModelType:
+        if script == enums.JumpStartScriptScope.INFERENCE:
+            if model_id in open_source_models:
+                return enums.JumpStartModelType.OPENSOURCE
+            if model_id in proprietary_models:
+                return enums.JumpStartModelType.PROPRIETARY
+        elif script == enums.JumpStartScriptScope.TRAINING:
+            if model_id in open_source_models:
+                return enums.JumpStartModelType.OPENSOURCE
+        else:
+            raise ValueError(f"Unsupported script: {script}")
+
     if model_id in {None, ""}:
         return False
     if not isinstance(model_id, str):
@@ -752,16 +775,25 @@ def is_valid_model_id(
     s3_client = sagemaker_session.s3_client if sagemaker_session else None
     region = region or constants.JUMPSTART_DEFAULT_REGION_NAME
     model_version = model_version or "*"
-
     models_manifest_list = accessors.JumpStartModelsAccessor._get_manifest(
-        region=region, s3_client=s3_client
+        region=region, s3_client=s3_client, model_type=enums.JumpStartModelType.OPENSOURCE
     )
-    model_id_set = {model.model_id for model in models_manifest_list}
-    if script == enums.JumpStartScriptScope.INFERENCE:
-        return model_id in model_id_set
-    if script == enums.JumpStartScriptScope.TRAINING:
-        return model_id in model_id_set
-    raise ValueError(f"Unsupported script: {script}")
+    open_source_model_id_set = {
+        model.model_id for model in models_manifest_list
+    }
+
+    proprietary_manifest_list = (
+        accessors.JumpStartModelsAccessor._get_manifest(
+            region=region, s3_client=s3_client, model_type=enums.JumpStartModelType.PROPRIETARY
+        )
+    )
+
+    proprietary_model_id_set = {
+        model.model_id for model in proprietary_manifest_list
+    }
+    return _get_model_type(
+        model_id, open_source_model_id_set, proprietary_model_id_set, script
+    )
 
 
 def get_jumpstart_model_id_version_from_resource_arn(

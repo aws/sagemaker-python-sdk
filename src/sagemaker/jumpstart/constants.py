@@ -22,8 +22,9 @@ from sagemaker.jumpstart.enums import (
     SerializerType,
     DeserializerType,
     MIMEType,
+    JumpStartModelType,
 )
-from sagemaker.jumpstart.types import JumpStartLaunchedRegionInfo
+from sagemaker.jumpstart.types import JumpStartLaunchedRegionInfo, JumpStartS3FileType
 from sagemaker.base_serializers import (
     BaseSerializer,
     CSVSerializer,
@@ -169,6 +170,7 @@ JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET = JUMPSTART_BUCKET_NAME_SET.union(
 JUMPSTART_DEFAULT_REGION_NAME = boto3.session.Session().region_name or "us-west-2"
 
 JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY = "models_manifest.json"
+JUMPSTART_DEFAULT_PROPRIETARY_MANIFEST_KEY = "proprietary-sdk-manifest.json"
 
 INFERENCE_ENTRY_POINT_SCRIPT_NAME = "inference.py"
 TRAINING_ENTRY_POINT_SCRIPT_NAME = "transfer_learning.py"
@@ -211,6 +213,16 @@ SERIALIZER_TYPE_TO_CLASS_MAP: Dict[SerializerType, Type[BaseSerializer]] = {
 
 DESERIALIZER_TYPE_TO_CLASS_MAP: Dict[DeserializerType, Type[BaseDeserializer]] = {
     DeserializerType.JSON: JSONDeserializer,
+}
+
+MODEL_TYPE_TO_MANIFEST_MAP: Dict[Type[JumpStartModelType], Type[JumpStartS3FileType]] = {
+    JumpStartModelType.OPENSOURCE: JumpStartS3FileType.MANIFEST,
+    JumpStartModelType.PROPRIETARY: JumpStartS3FileType.PROPRIETARY_MANIFEST,
+}
+
+MODEL_TYPE_TO_SPECS_MAP: Dict[Type[JumpStartModelType], Type[JumpStartS3FileType]] = {
+    JumpStartModelType.OPENSOURCE: JumpStartS3FileType.SPECS,
+    JumpStartModelType.PROPRIETARY: JumpStartS3FileType.PROPRIETARY_SPECS,
 }
 
 MODEL_ID_LIST_WEB_URL = "https://sagemaker.readthedocs.io/en/stable/doc_utils/pretrainedmodels.html"

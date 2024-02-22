@@ -16,6 +16,7 @@ from tests.unit.sagemaker.jumpstart.utils import (
     get_prototype_manifest,
     get_prototype_model_spec,
 )
+from sagemaker.jumpstart.enums import JumpStartModelType
 from sagemaker.jumpstart.notebook_utils import (
     _generate_jumpstart_model_versions,
     get_model_url,
@@ -62,7 +63,7 @@ def test_list_jumpstart_scripts(
     patched_generate_jumpstart_models.assert_called_once_with(
         **kwargs, sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION
     )
-    patched_get_manifest.assert_called_once()
+    assert patched_get_manifest.call_count == 3
     assert patched_get_model_specs.call_count == 1
 
     patched_get_model_specs.reset_mock()
@@ -664,13 +665,15 @@ class ListJumpStartModels(TestCase):
         with pytest.raises(NotImplementedError):
             list_jumpstart_models("hosting_ecr_specs.py_version == py3")
 
-
+@patch("sagemaker.jumpstart.utils.validate_model_id_and_get_type")
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
 def test_get_model_url(
     patched_get_model_specs: Mock,
+    patched_validate_model_id_and_get_type: Mock
 ):
 
     patched_get_model_specs.side_effect = get_prototype_model_spec
+    patched_validate_model_id_and_get_type.return_value = JumpStartModelType.OPENSOURCE
 
     model_id, version = "xgboost-classification-model", "1.0.0"
     assert "https://xgboost.readthedocs.io/en/latest/" == get_model_url(model_id, version)
@@ -697,4 +700,5 @@ def test_get_model_url(
         version=version,
         region=region,
         s3_client=DEFAULT_JUMPSTART_SAGEMAKER_SESSION.s3_client,
+        model_type=JumpStartModelType.OPENSOURCE,
     )

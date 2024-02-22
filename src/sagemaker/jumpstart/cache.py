@@ -25,9 +25,12 @@ from sagemaker.jumpstart.constants import (
     ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE,
     ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE,
     JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY,
+    JUMPSTART_DEFAULT_PROPRIETARY_MANIFEST_KEY,
     JUMPSTART_DEFAULT_REGION_NAME,
     JUMPSTART_LOGGER,
     MODEL_ID_LIST_WEB_URL,
+    MODEL_TYPE_TO_MANIFEST_MAP,
+    MODEL_TYPE_TO_SPECS_MAP,
 )
 from sagemaker.jumpstart.exceptions import get_wildcard_model_version_msg
 from sagemaker.jumpstart.parameters import (
@@ -44,6 +47,7 @@ from sagemaker.jumpstart.types import (
     JumpStartS3FileType,
     JumpStartVersionedModelId,
 )
+from sagemaker.jumpstart.enums import JumpStartModelType
 from sagemaker.jumpstart import utils
 from sagemaker.utilities.cache import LRUCache
 
@@ -68,6 +72,7 @@ class JumpStartModelsCache:
         JUMPSTART_DEFAULT_SEMANTIC_VERSION_CACHE_EXPIRATION_HORIZON,
         manifest_file_s3_key: str =
         JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY,
+        proprietary_manifest_s3_key: str = JUMPSTART_DEFAULT_PROPRIETARY_MANIFEST_KEY,
         s3_bucket_name: Optional[str] = None,
         s3_client_config: Optional[botocore.config.Config] = None,
         s3_client: Optional[boto3.client] = None,
@@ -100,14 +105,26 @@ class JumpStartModelsCache:
             expiration_horizon=s3_cache_expiration_horizon,
             retrieval_function=self._retrieval_function,
         )
-        self._model_id_semantic_version_manifest_key_cache = LRUCache[
+        self._open_source_model_id_manifest_key_cache = LRUCache[
             JumpStartVersionedModelId, JumpStartVersionedModelId
         ](
             max_cache_items=max_semantic_version_cache_items,
             expiration_horizon=semantic_version_cache_expiration_horizon,
-            retrieval_function=self._get_manifest_key_from_model_id_semantic_version,
+            retrieval_function=self._get_open_source_manifest_key_from_model_id,
+        )
+        self._proprietary_model_id_manifest_key_cache = LRUCache[
+            JumpStartVersionedModelId, JumpStartVersionedModelId
+        ](
+            max_cache_items=max_semantic_version_cache_items,
+            expiration_horizon=semantic_version_cache_expiration_horizon,
+            retrieval_function=self._get_proprietary_manifest_key_from_model_id,
         )
         self._manifest_file_s3_key = manifest_file_s3_key
+        self._proprietary_manifest_s3_key = proprietary_manifest_s3_key
+        self._manifest_file_s3_map = {
+            JumpStartModelType.OPENSOURCE: self._manifest_file_s3_key,
+            JumpStartModelType.PROPRIETARY: self._proprietary_manifest_s3_key,
+        }
         self.s3_bucket_name = (
             utils.get_jumpstart_content_bucket(self._region)
             if s3_bucket_name is None
@@ -129,15 +146,44 @@ class JumpStartModelsCache:
         """Return region for cache."""
         return self._region
 
-    def set_manifest_file_s3_key(self, key: str) -> None:
-        """Set manifest file s3 key. Clears cache after new key is set."""
-        if key != self._manifest_file_s3_key:
-            self._manifest_file_s3_key = key
-            self.clear()
+    def set_manifest_file_s3_key(
+        self,
+        key: str,
+        file_type: JumpStartS3FileType = JumpStartS3FileType.MANIFEST,
+    ) -> None:
+        """Set manifest file s3 key. Clears cache after new key is set.
 
-    def get_manifest_file_s3_key(self) -> str:
+        Raises:
+            ValueError: if hte file type is not recognized
+        """
+        if file_type == JumpStartS3FileType.MANIFEST:
+            if key != self._manifest_file_s3_key:
+                self._manifest_file_s3_key = key
+                self.clear()
+                return
+        elif file_type == JumpStartS3FileType.PROPRIETARY_MANIFEST:
+            if key != self._proprietary_manifest_s3_key:
+                self._proprietary_manifest_s3_key = key
+                self.clear()
+                return
+        else:
+            raise ValueError(
+                f"Bad value when setting manifest '{file_type}':" \
+                f"must be in {[JumpStartS3FileType.MANIFEST, JumpStartS3FileType.PROPRIETARY_MANIFEST]}"
+            )
+
+    def get_manifest_file_s3_key(
+        self, file_type: JumpStartS3FileType = JumpStartS3FileType.MANIFEST
+    ) -> str:
         """Return manifest file s3 key for cache."""
-        return self._manifest_file_s3_key
+        if file_type == JumpStartS3FileType.MANIFEST:
+            return self._manifest_file_s3_key
+        if file_type == JumpStartS3FileType.PROPRIETARY_MANIFEST:
+            return self._proprietary_manifest_s3_key
+        raise ValueError(
+            f"Bad value when getting manifest '{file_type}':" \
+            f"must be in {[JumpStartS3FileType.MANIFEST, JumpStartS3FileType.PROPRIETARY_MANIFEST]}"
+        )
 
     def set_s3_bucket_name(self, s3_bucket_name: str) -> None:
         """Set s3 bucket used for cache."""
@@ -149,10 +195,10 @@ class JumpStartModelsCache:
         """Return bucket used for cache."""
         return self.s3_bucket_name
 
-    def _get_manifest_key_from_model_id_semantic_version(
-        self,
+    def _model_id_retrival_function(self,
         key: JumpStartVersionedModelId,
         value: Optional[JumpStartVersionedModelId],  # pylint: disable=W0613
+        model_type: JumpStartModelType
     ) -> JumpStartVersionedModelId:
         """Return model ID and version in manifest that matches semantic version/id.
 
@@ -164,6 +210,8 @@ class JumpStartModelsCache:
             key (JumpStartVersionedModelId): Key for which to fetch versioned model ID.
             value (Optional[JumpStartVersionedModelId]): Unused variable for current value of
                 old cached model ID/version.
+            UseSematicVersion (bool): boolean value to indicate whether the model versions follow
+                sematic versioning.
 
         Raises:
             KeyError: If the semantic version is not found in the manifest, or is found but
@@ -171,15 +219,15 @@ class JumpStartModelsCache:
         """
 
         model_id, version = key.model_id, key.version
-
+        
+        sm_version = utils.get_sagemaker_version()
         manifest = self._s3_cache.get(
-            JumpStartCachedS3ContentKey(JumpStartS3FileType.MANIFEST, self._manifest_file_s3_key)
+            JumpStartCachedS3ContentKey(
+                MODEL_TYPE_TO_MANIFEST_MAP[model_type], self._manifest_file_s3_map[model_type])
         )[0].formatted_content
 
-        sm_version = utils.get_sagemaker_version()
-
         versions_compatible_with_sagemaker = [
-            Version(header.version)
+            header.version
             for header in manifest.values()  # type: ignore
             if header.model_id == model_id and Version(header.min_version) <= Version(sm_version)
         ]
@@ -241,6 +289,20 @@ class JumpStartModelsCache:
             error_msg += f"Did you mean to use model ID '{closest_model_id}'?"
 
         raise KeyError(error_msg)
+
+    def _get_open_source_manifest_key_from_model_id(
+        self,
+        key: JumpStartVersionedModelId,
+        value: Optional[JumpStartVersionedModelId],  # pylint: disable=W0613
+    ) -> JumpStartVersionedModelId:
+        return self._model_id_retrival_function(key, value, model_type=JumpStartModelType.OPENSOURCE)
+
+    def _get_proprietary_manifest_key_from_model_id(
+        self,
+        key: JumpStartVersionedModelId,
+        value: Optional[JumpStartVersionedModelId],  # pylint: disable=W0613
+    ) -> JumpStartVersionedModelId:
+        return self._model_id_retrival_function(key, value, model_type=JumpStartModelType.PROPRIETARY)
 
     def _get_json_file_and_etag_from_s3(self, key: str) -> Tuple[Union[dict, list], str]:
         """Returns json file from s3, along with its etag."""
@@ -318,8 +380,7 @@ class JumpStartModelsCache:
         """
 
         file_type, s3_key = key.file_type, key.s3_key
-
-        if file_type == JumpStartS3FileType.MANIFEST:
+        if file_type in {JumpStartS3FileType.MANIFEST, JumpStartS3FileType.PROPRIETARY_MANIFEST}:
             if value is not None and not self._is_local_metadata_mode():
                 etag = self._get_json_md5_hash(s3_key)
                 if etag == value.md5_hash:
@@ -329,27 +390,34 @@ class JumpStartModelsCache:
                 formatted_content=utils.get_formatted_manifest(formatted_body),
                 md5_hash=etag,
             )
-        if file_type == JumpStartS3FileType.SPECS:
+        if file_type in {JumpStartS3FileType.SPECS, JumpStartS3FileType.PROPRIETARY_SPECS}:
             formatted_body, _ = self._get_json_file(s3_key, file_type)
             model_specs = JumpStartModelSpecs(formatted_body)
             utils.emit_logs_based_on_model_specs(model_specs, self.get_region(), self._s3_client)
-            return JumpStartCachedS3ContentValue(
-                formatted_content=model_specs
-            )
+            return JumpStartCachedS3ContentValue(formatted_content=model_specs)
         raise ValueError(
-            f"Bad value for key '{key}': must be in {[JumpStartS3FileType.MANIFEST, JumpStartS3FileType.SPECS]}"
+            f"Bad value for key '{key}': must be in"
+            f"{[JumpStartS3FileType.MANIFEST, JumpStartS3FileType.SPECS, JumpStartS3FileType.PROPRIETARY_SPECS, JumpStartS3FileType.PROPRIETARY_MANIFEST]}"
         )
 
-    def get_manifest(self) -> List[JumpStartModelHeader]:
+    def get_manifest(
+        self,
+        model_type: JumpStartModelType = JumpStartModelType.OPENSOURCE,
+    ) -> List[JumpStartModelHeader]:
         """Return entire JumpStart models manifest."""
-
         manifest_dict = self._s3_cache.get(
-            JumpStartCachedS3ContentKey(JumpStartS3FileType.MANIFEST, self._manifest_file_s3_key)
+            JumpStartCachedS3ContentKey(
+                MODEL_TYPE_TO_MANIFEST_MAP[model_type], self._manifest_file_s3_map[model_type])
         )[0].formatted_content
         manifest = list(manifest_dict.values())  # type: ignore
         return manifest
 
-    def get_header(self, model_id: str, semantic_version_str: str) -> JumpStartModelHeader:
+    def get_header(
+        self,
+        model_id: str,
+        semantic_version_str: str,
+        model_type: JumpStartModelType = JumpStartModelType.OPENSOURCE,
+    ) -> JumpStartModelHeader:
         """Return header for a given JumpStart model ID and semantic version.
 
         Args:
@@ -357,8 +425,7 @@ class JumpStartModelsCache:
             semantic_version_str (str): The semantic version for which to get a
                 header.
         """
-
-        return self._get_header_impl(model_id, semantic_version_str=semantic_version_str)
+        return self._get_header_impl(model_id, semantic_version_str=semantic_version_str, model_type=model_type)
 
     def _select_version(
         self,
@@ -391,6 +458,7 @@ class JumpStartModelsCache:
         model_id: str,
         semantic_version_str: str,
         attempt: int = 0,
+        model_type: JumpStartModelType = JumpStartModelType.OPENSOURCE
     ) -> JumpStartModelHeader:
         """Lower-level function to return header.
 
@@ -402,14 +470,21 @@ class JumpStartModelsCache:
                 header.
             attempt (int): attempt number at retrieving a header.
         """
+        if model_type == JumpStartModelType.OPENSOURCE:
+            versioned_model_id = self._open_source_model_id_manifest_key_cache.get(
+                JumpStartVersionedModelId(model_id, semantic_version_str)
+            )[0]
 
-        versioned_model_id = self._model_id_semantic_version_manifest_key_cache.get(
-            JumpStartVersionedModelId(model_id, semantic_version_str)
-        )[0]
+        elif model_type == JumpStartModelType.PROPRIETARY:
+            versioned_model_id = self._proprietary_model_id_manifest_key_cache.get(
+                JumpStartVersionedModelId(model_id, semantic_version_str)
+            )[0]
 
         manifest = self._s3_cache.get(
-            JumpStartCachedS3ContentKey(JumpStartS3FileType.MANIFEST, self._manifest_file_s3_key)
+            JumpStartCachedS3ContentKey(
+                MODEL_TYPE_TO_MANIFEST_MAP[model_type], self._manifest_file_s3_map[model_type])
         )[0].formatted_content
+
         try:
             header = manifest[versioned_model_id]  # type: ignore
             return header
@@ -419,7 +494,12 @@ class JumpStartModelsCache:
             self.clear()
             return self._get_header_impl(model_id, semantic_version_str, attempt + 1)
 
-    def get_specs(self, model_id: str, semantic_version_str: str) -> JumpStartModelSpecs:
+    def get_specs(
+        self,
+        model_id: str,
+        version_str: str,
+        model_type: JumpStartModelType = JumpStartModelType.OPENSOURCE
+    ) -> JumpStartModelSpecs:
         """Return specs for a given JumpStart model ID and semantic version.
 
         Args:
@@ -427,18 +507,18 @@ class JumpStartModelsCache:
             semantic_version_str (str): The semantic version for which to get
                 specs.
         """
-
-        header = self.get_header(model_id, semantic_version_str)
+        header = self.get_header(model_id, version_str, model_type)
         spec_key = header.spec_key
         specs, cache_hit = self._s3_cache.get(
-            JumpStartCachedS3ContentKey(JumpStartS3FileType.SPECS, spec_key)
+            JumpStartCachedS3ContentKey(
+                MODEL_TYPE_TO_SPECS_MAP[model_type], spec_key
+            )
         )
-        if not cache_hit and "*" in semantic_version_str:
+
+        if not cache_hit and "*" in version_str:
             JUMPSTART_LOGGER.warning(
                 get_wildcard_model_version_msg(
-                    header.model_id,
-                    semantic_version_str,
-                    header.version
+                    header.model_id, version_str, header.version
                 )
             )
         return specs.formatted_content
@@ -446,4 +526,5 @@ class JumpStartModelsCache:
     def clear(self) -> None:
         """Clears the model ID/version and s3 cache."""
         self._s3_cache.clear()
-        self._model_id_semantic_version_manifest_key_cache.clear()
+        self._open_source_model_id_manifest_key_cache.clear()
+        self._proprietary_model_id_manifest_key_cache.clear()

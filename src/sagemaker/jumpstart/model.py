@@ -30,7 +30,7 @@ from sagemaker.jumpstart.factory.model import (
     get_register_kwargs,
 )
 from sagemaker.jumpstart.types import JumpStartSerializablePayload
-from sagemaker.jumpstart.utils import is_valid_model_id
+from sagemaker.jumpstart.utils import validate_model_id_and_get_type
 from sagemaker.utils import stringify_object, format_tags, Tags
 from sagemaker.model import (
     Model,
@@ -270,8 +270,8 @@ class JumpStartModel(Model):
             ValueError: If the model ID is not recognized by JumpStart.
         """
 
-        def _is_valid_model_id_hook():
-            return is_valid_model_id(
+        def _validate_model_id_and_type():
+            return validate_model_id_and_get_type(
                 model_id=model_id,
                 model_version=model_version,
                 region=region,
@@ -279,13 +279,14 @@ class JumpStartModel(Model):
                 sagemaker_session=sagemaker_session,
             )
 
-        if not _is_valid_model_id_hook():
+        self._model_type = _validate_model_id_and_type()
+        if not self._model_type:
             JumpStartModelsAccessor.reset_cache()
-            if not _is_valid_model_id_hook():
+            self._model_type = _validate_model_id_and_type()
+            if not self._model_type:
                 raise ValueError(INVALID_MODEL_ID_ERROR_MSG.format(model_id=model_id))
 
         self._model_data_is_set = model_data is not None
-
         model_init_kwargs = get_init_kwargs(
             model_id=model_id,
             model_from_estimator=False,

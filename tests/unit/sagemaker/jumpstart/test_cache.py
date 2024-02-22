@@ -33,6 +33,7 @@ from sagemaker.jumpstart.types import (
     JumpStartModelSpecs,
     JumpStartVersionedModelId,
 )
+from sagemaker.jumpstart.enums import JumpStartModelType
 from tests.unit.sagemaker.jumpstart.utils import (
     get_spec_from_base_spec,
     patched_retrieval_function,
@@ -150,6 +151,34 @@ def test_jumpstart_cache_get_header():
     ) == cache.get_header(
         model_id="tensorflow-ic-imagenet-inception-v3-classification-4",
         semantic_version_str="1.0.*",
+    )
+
+    assert JumpStartModelHeader(
+        {
+            "model_id": "ai21-summarization",
+            "version": "1.1.003",
+            "min_version": "2.0.0",
+            "spec_key": "proprietary-models/ai21-summarization/proprietary_specs_1.1.003.json",
+            "search_keywords": ["Text2Text", "Generation"],
+        }
+    ) == cache.get_header(
+        model_id="ai21-summarization",
+        semantic_version_str="1.1.003",
+        model_type=JumpStartModelType.PROPRIETARY
+    )
+    
+    assert JumpStartModelHeader(
+        {
+            "model_id": "ai21-summarization",
+            "version": "1.1.003",
+            "min_version": "2.0.0",
+            "spec_key": "proprietary-models/ai21-summarization/proprietary_specs_1.1.003.json",
+            "search_keywords": ["Text2Text", "Generation"],
+        }
+    ) == cache.get_header(
+        model_id="ai21-summarization",
+        semantic_version_str="*",
+        model_type=JumpStartModelType.PROPRIETARY
     )
 
     with pytest.raises(KeyError) as e:
@@ -423,11 +452,11 @@ def test_jumpstart_cache_accepts_input_parameters():
     assert cache._s3_cache._max_cache_items == max_s3_cache_items
     assert cache._s3_cache._expiration_horizon == s3_cache_expiration_horizon
     assert (
-        cache._model_id_semantic_version_manifest_key_cache._max_cache_items
+        cache._open_source_model_id_manifest_key_cache._max_cache_items
         == max_semantic_version_cache_items
     )
     assert (
-        cache._model_id_semantic_version_manifest_key_cache._expiration_horizon
+        cache._open_source_model_id_manifest_key_cache._expiration_horizon
         == semantic_version_cache_expiration_horizon
     )
 
@@ -583,7 +612,7 @@ def test_jumpstart_cache_makes_correct_s3_calls(
 
     with patch("logging.Logger.warning") as mocked_warning_log:
         cache.get_specs(
-            model_id="pytorch-ic-imagenet-inception-v3-classification-4", semantic_version_str="*"
+            model_id="pytorch-ic-imagenet-inception-v3-classification-4", version_str="*"
         )
         mocked_warning_log.assert_called_once_with(
             "Using model 'pytorch-ic-imagenet-inception-v3-classification-4' with wildcard "
@@ -593,7 +622,7 @@ def test_jumpstart_cache_makes_correct_s3_calls(
         )
         mocked_warning_log.reset_mock()
         cache.get_specs(
-            model_id="pytorch-ic-imagenet-inception-v3-classification-4", semantic_version_str="*"
+            model_id="pytorch-ic-imagenet-inception-v3-classification-4", version_str="*"
         )
         mocked_warning_log.assert_not_called()
 
@@ -610,8 +639,8 @@ def test_jumpstart_cache_handles_bad_semantic_version_manifest_key_cache():
     cache = JumpStartModelsCache(s3_bucket_name="some_bucket")
 
     cache.clear = MagicMock()
-    cache._model_id_semantic_version_manifest_key_cache = MagicMock()
-    cache._model_id_semantic_version_manifest_key_cache.get.side_effect = [
+    cache._open_source_model_id_manifest_key_cache = MagicMock()
+    cache._open_source_model_id_manifest_key_cache.get.side_effect = [
         (
             JumpStartVersionedModelId(
                 "tensorflow-ic-imagenet-inception-v3-classification-4", "999.0.0"
@@ -640,7 +669,7 @@ def test_jumpstart_cache_handles_bad_semantic_version_manifest_key_cache():
     cache.clear.assert_called_once()
     cache.clear.reset_mock()
 
-    cache._model_id_semantic_version_manifest_key_cache.get.side_effect = [
+    cache._open_source_model_id_manifest_key_cache.get.side_effect = [
         (
             JumpStartVersionedModelId(
                 "tensorflow-ic-imagenet-inception-v3-classification-4", "999.0.0"
@@ -678,54 +707,54 @@ def test_jumpstart_cache_get_specs():
 
     model_id, version = "tensorflow-ic-imagenet-inception-v3-classification-4", "2.0.0"
     assert get_spec_from_base_spec(model_id=model_id, version=version) == cache.get_specs(
-        model_id=model_id, semantic_version_str=version
+        model_id=model_id, version_str=version
     )
 
     model_id = "tensorflow-ic-imagenet-inception-v3-classification-4"
     assert get_spec_from_base_spec(model_id=model_id, version="2.0.0") == cache.get_specs(
-        model_id=model_id, semantic_version_str="2.0.*"
+        model_id=model_id, version_str="2.0.*"
     )
 
     model_id, version = "tensorflow-ic-imagenet-inception-v3-classification-4", "1.0.0"
     assert get_spec_from_base_spec(model_id=model_id, version=version) == cache.get_specs(
-        model_id=model_id, semantic_version_str=version
+        model_id=model_id, version_str=version
     )
 
     model_id = "pytorch-ic-imagenet-inception-v3-classification-4"
     assert get_spec_from_base_spec(model_id=model_id, version="1.0.0") == cache.get_specs(
-        model_id=model_id, semantic_version_str="1.*"
+        model_id=model_id, version_str="1.*"
     )
 
     model_id = "pytorch-ic-imagenet-inception-v3-classification-4"
     assert get_spec_from_base_spec(model_id=model_id, version="1.0.0") == cache.get_specs(
-        model_id=model_id, semantic_version_str="1.0.*"
+        model_id=model_id, version_str="1.0.*"
     )
 
     with pytest.raises(KeyError):
-        cache.get_specs(model_id=model_id + "bak", semantic_version_str="*")
+        cache.get_specs(model_id=model_id + "bak", version_str="*")
 
     with pytest.raises(KeyError):
-        cache.get_specs(model_id=model_id, semantic_version_str="9.*")
+        cache.get_specs(model_id=model_id, version_str="9.*")
 
     with pytest.raises(KeyError):
-        cache.get_specs(model_id=model_id, semantic_version_str="BAD")
+        cache.get_specs(model_id=model_id, version_str="BAD")
 
     with pytest.raises(KeyError):
         cache.get_specs(
             model_id=model_id,
-            semantic_version_str="2.1.*",
+            version_str="2.1.*",
         )
 
     with pytest.raises(KeyError):
         cache.get_specs(
             model_id=model_id,
-            semantic_version_str="3.9.*",
+            version_str="3.9.*",
         )
 
     with pytest.raises(KeyError):
         cache.get_specs(
             model_id=model_id,
-            semantic_version_str="5.*",
+            version_str="5.*",
         )
 
 
@@ -795,7 +824,7 @@ def test_jumpstart_local_metadata_override_specs(
 
     model_id, version = "tensorflow-ic-imagenet-inception-v3-classification-4", "2.0.0"
     assert JumpStartModelSpecs(BASE_SPEC) == cache.get_specs(
-        model_id=model_id, semantic_version_str=version
+        model_id=model_id, version_str=version
     )
 
     mocked_is_dir.assert_any_call("/some/directory/metadata/specs/root")
@@ -840,7 +869,7 @@ def test_jumpstart_local_metadata_override_specs_not_exist_both_directories(
     cache = JumpStartModelsCache(s3_bucket_name="some_bucket")
 
     assert get_spec_from_base_spec(model_id=model_id, version=version) == cache.get_specs(
-        model_id=model_id, semantic_version_str=version
+        model_id=model_id, version_str=version
     )
 
     mocked_is_dir.assert_any_call("/some/directory/metadata/manifest/root")

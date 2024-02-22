@@ -33,6 +33,16 @@ class ModelFramework(str, Enum):
     XGBOOST = "xgboost"
     SKLEARN = "sklearn"
 
+class JumpStartModelType(str, Enum):
+    """Enum class for JumpStart model type.
+    
+    Open source model refers to JumpStart owned community models.
+    Proprietary model refers to external provider owned Marketplace models.
+    """
+
+    OPENSOURCE = "opensource"
+    PROPRIETARY = "proprietary"
+
 
 class VariableScope(str, Enum):
     """Possible value of the ``scope`` attribute for a hyperparameter or environment variable.

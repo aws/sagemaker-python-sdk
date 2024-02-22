@@ -125,19 +125,19 @@ def test_jumpstart_predictor_support_no_model_id_supplied_sad_case(
 
 @patch("sagemaker.predictor.get_model_id_version_from_endpoint")
 @patch("sagemaker.jumpstart.payload_utils.JumpStartS3PayloadAccessor.get_object_cached")
-@patch("sagemaker.jumpstart.model.is_valid_model_id")
+@patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
 @patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
 def test_jumpstart_serializable_payload_with_predictor(
     patched_get_model_specs,
     patched_verify_model_region_and_return_specs,
-    patched_is_valid_model_id,
+    patched_validate_model_id_and_get_type,
     patched_get_object_cached,
     patched_get_model_id_version_from_endpoint,
 ):
 
     patched_get_object_cached.return_value = base64.b64decode("encodedimage")
-    patched_is_valid_model_id.return_value = True
+    patched_validate_model_id_and_get_type.return_value = True
 
     patched_verify_model_region_and_return_specs.side_effect = verify_model_region_and_return_specs
     patched_get_model_specs.side_effect = get_special_model_spec

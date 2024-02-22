@@ -104,6 +104,8 @@ class JumpStartS3FileType(str, Enum):
 
     MANIFEST = "manifest"
     SPECS = "specs"
+    PROPRIETARY_MANIFEST = "proptietary_manifest"
+    PROPRIETARY_SPECS = "proprietary_specs"
 
 
 class JumpStartLaunchedRegionInfo(JumpStartDataHolderType):
@@ -782,29 +784,29 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
             json_obj (Dict[str, Any]): Dictionary representation of spec.
         """
         self.model_id: str = json_obj["model_id"]
-        self.url: str = json_obj["url"]
+        self.url: str = json_obj.get("url", "")
         self.version: str = json_obj["version"]
         self.min_sdk_version: str = json_obj["min_sdk_version"]
-        self.incremental_training_supported: bool = bool(json_obj["incremental_training_supported"])
+        self.incremental_training_supported: bool = bool(json_obj.get("incremental_training_supported", False))
         self.hosting_ecr_specs: Optional[JumpStartECRSpecs] = (
             JumpStartECRSpecs(json_obj["hosting_ecr_specs"])
             if "hosting_ecr_specs" in json_obj
             else None
         )
-        self.hosting_artifact_key: str = json_obj["hosting_artifact_key"]
-        self.hosting_script_key: str = json_obj["hosting_script_key"]
-        self.training_supported: bool = bool(json_obj["training_supported"])
+        self.hosting_artifact_key: Optional[str] = json_obj.get("hosting_artifact_key")
+        self.hosting_script_key: Optional[str] = json_obj.get("hosting_script_key")
+        self.training_supported: Optional[bool] = bool(json_obj.get("training_supported", False))
         self.inference_environment_variables = [
             JumpStartEnvironmentVariable(env_variable)
-            for env_variable in json_obj["inference_environment_variables"]
+            for env_variable in json_obj.get("inference_environment_variables", [])
         ]
-        self.inference_vulnerable: bool = bool(json_obj["inference_vulnerable"])
-        self.inference_dependencies: List[str] = json_obj["inference_dependencies"]
-        self.inference_vulnerabilities: List[str] = json_obj["inference_vulnerabilities"]
-        self.training_vulnerable: bool = bool(json_obj["training_vulnerable"])
-        self.training_dependencies: List[str] = json_obj["training_dependencies"]
-        self.training_vulnerabilities: List[str] = json_obj["training_vulnerabilities"]
-        self.deprecated: bool = bool(json_obj["deprecated"])
+        self.inference_vulnerable: bool = bool(json_obj.get("inference_vulnerable", False))
+        self.inference_dependencies: List[str] = json_obj.get("inference_dependencies", [])
+        self.inference_vulnerabilities: List[str] = json_obj.get("inference_vulnerabilities", [])
+        self.training_vulnerable: bool = bool(json_obj.get("training_vulnerable", False))
+        self.training_dependencies: List[str] = json_obj.get("training_dependencies", [])
+        self.training_vulnerabilities: List[str] = json_obj.get("training_vulnerabilities", [])
+        self.deprecated: bool = bool(json_obj.get("deprecated", False))
         self.deprecated_message: Optional[str] = json_obj.get("deprecated_message")
         self.deprecate_warn_message: Optional[str] = json_obj.get("deprecate_warn_message")
         self.usage_info_message: Optional[str] = json_obj.get("usage_info_message")
