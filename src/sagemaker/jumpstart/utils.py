@@ -756,16 +756,14 @@ def validate_model_id_and_get_type(
         proprietary_models: List[str],
         script: enums.JumpStartScriptScope,
     ) -> enums.JumpStartModelType:
-        if script == enums.JumpStartScriptScope.INFERENCE:
-            if model_id in open_source_models:
-                return enums.JumpStartModelType.OPENSOURCE
-            if model_id in proprietary_models:
+        if model_id in open_source_models:
+            return enums.JumpStartModelType.OPENSOURCE
+        elif model_id in proprietary_models:
+            if script == enums.JumpStartScriptScope.INFERENCE:
                 return enums.JumpStartModelType.PROPRIETARY
-        elif script == enums.JumpStartScriptScope.TRAINING:
-            if model_id in open_source_models:
-                return enums.JumpStartModelType.OPENSOURCE
-        else:
-            raise ValueError(f"Unsupported script: {script}")
+            else:
+                raise ValueError(f"Unsupported script for Marketplace models: {script}")
+        return False
 
     if model_id in {None, ""}:
         return False
