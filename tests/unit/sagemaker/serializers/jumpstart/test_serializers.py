@@ -49,7 +49,7 @@ def test_jumpstart_default_serializers(
         region=region,
         model_id=model_id,
         version=model_version,
-        s3_client=mock_client,
+        s3_client=mock_client, hub_arn=None
     )
 
     patched_get_model_specs.reset_mock()
@@ -88,5 +88,5 @@ def test_jumpstart_serializer_options(
         region=region,
         model_id=model_id,
         version=model_version,
-        s3_client=mock_client,
+        s3_client=mock_client, hub_arn=None
     )

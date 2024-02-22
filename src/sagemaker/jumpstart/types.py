@@ -867,7 +867,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         self.inference_enable_network_isolation: bool = json_obj.get(
             "inference_enable_network_isolation", False
         )
-        self.resource_name_base: bool = json_obj.get("resource_name_base")
+        self.resource_name_base: Optional[str] = json_obj.get("resource_name_base")
 
         self.hosting_eula_key: Optional[str] = json_obj.get("hosting_eula_key")
 

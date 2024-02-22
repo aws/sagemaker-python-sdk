@@ -47,7 +47,7 @@ def test_jumpstart_default_deserializers(
     assert isinstance(default_deserializer, base_deserializers.JSONDeserializer)
 
     patched_get_model_specs.assert_called_once_with(
-        region=region, model_id=model_id, version=model_version, s3_client=mock_client
+        region=region, model_id=model_id, version=model_version, s3_client=mock_client, hub_arn=None
     )
 
 
@@ -79,5 +79,5 @@ def test_jumpstart_deserializer_options(
     )
 
     patched_get_model_specs.assert_called_once_with(
-        region=region, model_id=model_id, version=model_version, s3_client=mock_client
+        region=region, model_id=model_id, version=model_version, s3_client=mock_client, hub_arn=None
     )

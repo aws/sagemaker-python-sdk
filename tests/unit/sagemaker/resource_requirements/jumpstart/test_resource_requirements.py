@@ -45,7 +45,7 @@ def test_jumpstart_resource_requirements(patched_get_model_specs):
         region=region,
         model_id=model_id,
         version=model_version,
-        s3_client=mock_client,
+        s3_client=mock_client, hub_arn=None
     )
     patched_get_model_specs.reset_mock()
 
@@ -72,7 +72,7 @@ def test_jumpstart_no_supported_resource_requirements(patched_get_model_specs):
         region=region,
         model_id=model_id,
         version=model_version,
-        s3_client=mock_client,
+        s3_client=mock_client, hub_arn=None
     )
     patched_get_model_specs.reset_mock()
 

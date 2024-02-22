@@ -92,6 +92,7 @@ def get_prototype_model_spec(
     region: str = None,
     model_id: str = None,
     version: str = None,
+    hub_arn: Optional[str] = None,
     s3_client: boto3.client = None,
 ) -> JumpStartModelSpecs:
     """This function mocks cache accessor functions. For this mock,

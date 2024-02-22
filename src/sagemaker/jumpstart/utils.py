@@ -870,7 +870,7 @@ def get_info_from_hub_resource_arn(
             account_id=account_id,
             hub_name=hub_name,
         )
-
+    
     return None
 
 

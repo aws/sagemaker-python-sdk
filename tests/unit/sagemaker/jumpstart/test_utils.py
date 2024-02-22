@@ -1221,7 +1221,7 @@ def test_mime_type_enum_from_str():
 
 def test_get_info_from_hub_resource_arn():
     model_arn = (
-        "arn:aws:sagemaker:us-west-2:000000000000:hub_content/MockHub/Model/my-mock-model/1.0.2"
+        "arn:aws:sagemaker:us-west-2:000000000000:hub-content/MockHub/Model/my-mock-model/1.0.2"
     )
     assert utils.get_info_from_hub_resource_arn(model_arn) == HubArnExtractedInfo(
         partition="aws",
@@ -1233,7 +1233,7 @@ def test_get_info_from_hub_resource_arn():
         hub_content_version="1.0.2",
     )
 
-    notebook_arn = "arn:aws:sagemaker:us-west-2:000000000000:hub_content/MockHub/Notebook/my-mock-notebook/1.0.2"
+    notebook_arn = "arn:aws:sagemaker:us-west-2:000000000000:hub-content/MockHub/Notebook/my-mock-notebook/1.0.2"
     assert utils.get_info_from_hub_resource_arn(notebook_arn) == HubArnExtractedInfo(
         partition="aws",
         region="us-west-2",
@@ -1259,11 +1259,6 @@ def test_get_info_from_hub_resource_arn():
     assert None is utils.get_info_from_hub_resource_arn(invalid_arn)
 
     invalid_arn = ""
-    assert None is utils.get_info_from_hub_resource_arn(invalid_arn)
-
-    invalid_arn = (
-        "arn:aws:sagemaker:us-west-2:000000000000:hub-content/MyHub/Notebook/my-notebook/1.0.0"
-    )
     assert None is utils.get_info_from_hub_resource_arn(invalid_arn)
 
 

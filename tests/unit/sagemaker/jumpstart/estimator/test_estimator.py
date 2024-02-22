@@ -282,11 +282,12 @@ class EstimatorTest(unittest.TestCase):
             ],
         )
 
+    @mock.patch("sagemaker.jumpstart.artifacts.resource_names._retrieve_resource_name_base")
     @mock.patch("sagemaker.session.Session.account_id")
     @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_init_kwargs")
     @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_deploy_kwargs")
     @mock.patch("sagemaker.jumpstart.factory.estimator._retrieve_estimator_fit_kwargs")
-    @mock.patch("sagemaker.jumpstart.estimator.construct_hub_arn_from_name")
+    @mock.patch("sagemaker.jumpstart.utils.construct_hub_arn_from_name")
     @mock.patch("sagemaker.jumpstart.estimator.is_valid_model_id")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
@@ -310,7 +311,9 @@ class EstimatorTest(unittest.TestCase):
         mock_retrieve_model_deploy_kwargs: mock.Mock,
         mock_retrieve_model_init_kwargs: mock.Mock,
         mock_get_caller_identity: mock.Mock,
+        mock_retrieve_resource_name_base: mock.Mock,
     ):
+        mock_retrieve_resource_name_base.return_value = "go-blue"
         mock_get_caller_identity.return_value = "123456789123"
         mock_estimator_deploy.return_value = default_predictor
 
@@ -372,11 +375,11 @@ class EstimatorTest(unittest.TestCase):
             f"some-training-dataset-doesn't-matter",
         }
 
-        estimator.fit(channels)
+        estimator.fit(channels, job_name="go-blue")
 
-        mock_estimator_fit.assert_called_once_with(inputs=channels, wait=True)
+        mock_estimator_fit.assert_called_once_with(inputs=channels, wait=True, job_name="go-blue")
 
-        estimator.deploy()
+        estimator.deploy(endpoint_name="go-blue", model_name="go-blue")
 
         mock_estimator_deploy.assert_called_once_with(
             instance_type="ml.p2.xlarge",
@@ -386,6 +389,8 @@ class EstimatorTest(unittest.TestCase):
             source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/"
             "pytorch/inference/ic/v1.0.0/sourcedir.tar.gz",
             entry_point="inference.py",
+            endpoint_name="go-blue",
+            model_name="go-blue",
             env={
                 "SAGEMAKER_PROGRAM": "inference.py",
                 "ENDPOINT_SERVER_TIMEOUT": "3600",
@@ -414,7 +419,7 @@ class EstimatorTest(unittest.TestCase):
         )
 
         mock_construct_hub_arn_from_name.assert_called_once_with(
-            hub_name="my-mock-hub", region=None, sagemaker_session=None
+            hub_name="my-mock-hub", region=None, session=None
         )
 
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
@@ -1475,6 +1480,7 @@ class EstimatorTest(unittest.TestCase):
             model_id=model_id,
             model_version="*",
             region=region,
+            hub_arn=None,
             tolerate_deprecated_model=False,
             tolerate_vulnerable_model=False,
             sagemaker_session=sagemaker_session,
@@ -1526,6 +1532,7 @@ class EstimatorTest(unittest.TestCase):
             model_id=model_id,
             model_version="*",
             region=region,
+            hub_arn=None,
             tolerate_deprecated_model=False,
             tolerate_vulnerable_model=False,
             sagemaker_session=sagemaker_session,
