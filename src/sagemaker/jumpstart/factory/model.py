@@ -37,7 +37,7 @@ from sagemaker.jumpstart.constants import (
 from sagemaker.model_metrics import ModelMetrics
 from sagemaker.metadata_properties import MetadataProperties
 from sagemaker.drift_check_baselines import DriftCheckBaselines
-from sagemaker.jumpstart.enums import JumpStartScriptScope
+from sagemaker.jumpstart.enums import JumpStartScriptScope, JumpStartModelType
 from sagemaker.jumpstart.types import (
     JumpStartModelDeployKwargs,
     JumpStartModelInitKwargs,
@@ -71,6 +71,7 @@ def get_default_predictor(
     tolerate_vulnerable_model: bool,
     tolerate_deprecated_model: bool,
     sagemaker_session: Session,
+    model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_SOURCE,
 ) -> Predictor:
     """Converts predictor returned from ``Model.deploy()`` into a JumpStart-specific one.
 
@@ -92,6 +93,7 @@ def get_default_predictor(
         tolerate_deprecated_model=tolerate_deprecated_model,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         sagemaker_session=sagemaker_session,
+        model_type=model_type,
     )
     predictor.deserializer = deserializers.retrieve_default(
         model_id=model_id,
@@ -100,6 +102,7 @@ def get_default_predictor(
         tolerate_deprecated_model=tolerate_deprecated_model,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         sagemaker_session=sagemaker_session,
+        model_type=model_type,
     )
     predictor.accept = accept_types.retrieve_default(
         model_id=model_id,
@@ -108,6 +111,7 @@ def get_default_predictor(
         tolerate_deprecated_model=tolerate_deprecated_model,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         sagemaker_session=sagemaker_session,
+        model_type=model_type,
     )
     predictor.content_type = content_types.retrieve_default(
         model_id=model_id,
@@ -116,6 +120,7 @@ def get_default_predictor(
         tolerate_deprecated_model=tolerate_deprecated_model,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         sagemaker_session=sagemaker_session,
+        model_type=model_type,
     )
 
     return predictor
@@ -199,7 +204,14 @@ def _add_instance_type_to_kwargs(
 
 
 def _add_image_uri_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelInitKwargs:
-    """Sets image uri based on default or override, returns full kwargs."""
+    """
+    Sets image uri based on default or override, returns full kwargs.
+    Uses placeholder image uri for JumpStart proprietary models that uses ModelPackages
+    """
+
+    if kwargs.model_type == JumpStartModelType.PROPRIETARY:
+        kwargs.image_uri = ""
+        return kwargs
 
     kwargs.image_uri = kwargs.image_uri or image_uris.retrieve(
         region=kwargs.region,
@@ -654,6 +666,7 @@ def get_init_kwargs(
     model_id: str,
     model_from_estimator: bool = False,
     model_version: Optional[str] = None,
+    model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_SOURCE,
     tolerate_vulnerable_model: Optional[bool] = None,
     tolerate_deprecated_model: Optional[bool] = None,
     instance_type: Optional[str] = None,
@@ -685,6 +698,7 @@ def get_init_kwargs(
     model_init_kwargs: JumpStartModelInitKwargs = JumpStartModelInitKwargs(
         model_id=model_id,
         model_version=model_version,
+        model_type=model_type,
         instance_type=instance_type,
         region=region,
         image_uri=image_uri,
