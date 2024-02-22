@@ -470,9 +470,9 @@ class PrivateJumpStartBucketTest(unittest.TestCase):
 
 
 class HubModelTest(unittest.TestCase):
-    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._cache")
-    def test_retrieve_default_environment_variables(self, mock_cache):
-        mock_cache.get_hub_model.return_value = JumpStartModelSpecs(spec=copy.deepcopy(BASE_SPEC))
+    @patch("sagemaker.jumpstart.cache.JumpStartModelsCache.get_hub_model")
+    def test_retrieve_default_environment_variables(self, mock_get_hub_model):
+        mock_get_hub_model.return_value = JumpStartModelSpecs(spec=copy.deepcopy(BASE_SPEC))
 
         model_id, version = "pytorch-ic-mobilenet-v2", "1.0.2"
         hub_arn = "arn:aws:sagemaker:us-west-2:000000000000:hub/my-cool-hub"
@@ -495,15 +495,15 @@ class HubModelTest(unittest.TestCase):
                 "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
             },
         )
-        mock_cache.get_hub_model.assert_called_once_with(
+        mock_get_hub_model.assert_called_once_with(
             hub_model_arn=(
                 f"arn:aws:sagemaker:us-west-2:000000000000:hub-content/my-cool-hub/Model/{model_id}/{version}"
             )
         )
 
-    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._cache")
-    def test_retrieve_image_uri(self, mock_cache):
-        mock_cache.get_hub_model.return_value = JumpStartModelSpecs(spec=copy.deepcopy(BASE_SPEC))
+    @patch("sagemaker.jumpstart.cache.JumpStartModelsCache.get_hub_model")
+    def test_retrieve_image_uri(self, mock_get_hub_model):
+        mock_get_hub_model.return_value = JumpStartModelSpecs(spec=copy.deepcopy(BASE_SPEC))
 
         model_id, version = "pytorch-ic-mobilenet-v2", "1.0.2"
         hub_arn = "arn:aws:sagemaker:us-west-2:000000000000:hub/my-cool-hub"
@@ -518,15 +518,15 @@ class HubModelTest(unittest.TestCase):
             ),
             "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.5.0-gpu-py3",
         )
-        mock_cache.get_hub_model.assert_called_once_with(
+        mock_get_hub_model.assert_called_once_with(
             hub_model_arn=(
                 f"arn:aws:sagemaker:us-west-2:000000000000:hub-content/my-cool-hub/Model/{model_id}/{version}"
             )
         )
 
-    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._cache")
-    def test_retrieve_default_hyperparameters(self, mock_cache):
-        mock_cache.get_hub_model.return_value = JumpStartModelSpecs(spec=copy.deepcopy(BASE_SPEC))
+    @patch("sagemaker.jumpstart.cache.JumpStartModelsCache.get_hub_model")
+    def test_retrieve_default_hyperparameters(self, mock_get_hub_model):
+        mock_get_hub_model.return_value = JumpStartModelSpecs(spec=copy.deepcopy(BASE_SPEC))
 
         model_id, version = "pytorch-ic-mobilenet-v2", "1.0.2"
         hub_arn = "arn:aws:sagemaker:us-west-2:000000000000:hub/my-cool-hub"
@@ -541,15 +541,15 @@ class HubModelTest(unittest.TestCase):
                 "batch-size": "4",
             },
         )
-        mock_cache.get_hub_model.assert_called_once_with(
+        mock_get_hub_model.assert_called_once_with(
             hub_model_arn=(
                 f"arn:aws:sagemaker:us-west-2:000000000000:hub-content/my-cool-hub/Model/{model_id}/{version}"
             )
         )
 
-    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._cache")
-    def test_model_supports_incremental_training(self, mock_cache):
-        mock_cache.get_hub_model.return_value = JumpStartModelSpecs(spec=copy.deepcopy(BASE_SPEC))
+    @patch("sagemaker.jumpstart.cache.JumpStartModelsCache.get_hub_model")
+    def test_model_supports_incremental_training(self, mock_get_hub_model):
+        mock_get_hub_model.return_value = JumpStartModelSpecs(spec=copy.deepcopy(BASE_SPEC))
 
         model_id, version = "pytorch-ic-mobilenet-v2", "1.0.2"
         hub_arn = "arn:aws:sagemaker:us-west-2:000000000000:hub/my-cool-hub"
@@ -560,15 +560,15 @@ class HubModelTest(unittest.TestCase):
             ),
             True,
         )
-        mock_cache.get_hub_model.assert_called_once_with(
+        mock_get_hub_model.assert_called_once_with(
             hub_model_arn=(
                 f"arn:aws:sagemaker:us-west-2:000000000000:hub-content/my-cool-hub/Model/{model_id}/{version}"
             )
         )
 
-    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._cache")
-    def test_retrieve_default_instance_type(self, mock_cache):
-        mock_cache.get_hub_model.return_value = JumpStartModelSpecs(spec=copy.deepcopy(BASE_SPEC))
+    @patch("sagemaker.jumpstart.cache.JumpStartModelsCache.get_hub_model")
+    def test_retrieve_default_instance_type(self, mock_get_hub_model):
+        mock_get_hub_model.return_value = JumpStartModelSpecs(spec=copy.deepcopy(BASE_SPEC))
 
         model_id, version = "pytorch-ic-mobilenet-v2", "1.0.2"
         hub_arn = "arn:aws:sagemaker:us-west-2:000000000000:hub/my-cool-hub"
@@ -582,7 +582,7 @@ class HubModelTest(unittest.TestCase):
             ),
             "ml.p3.2xlarge",
         )
-        mock_cache.get_hub_model.assert_called_once_with(
+        mock_get_hub_model.assert_called_once_with(
             hub_model_arn=(
                 f"arn:aws:sagemaker:us-west-2:000000000000:hub-content/my-cool-hub/Model/{model_id}/{version}"
             )
@@ -598,9 +598,9 @@ class HubModelTest(unittest.TestCase):
             "ml.p2.xlarge",
         )
 
-    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._cache")
-    def test_retrieve_default_training_metric_definitions(self, mock_cache):
-        mock_cache.get_hub_model.return_value = JumpStartModelSpecs(spec=copy.deepcopy(BASE_SPEC))
+    @patch("sagemaker.jumpstart.cache.JumpStartModelsCache.get_hub_model")
+    def test_retrieve_default_training_metric_definitions(self, mock_get_hub_model):
+        mock_get_hub_model.return_value = JumpStartModelSpecs(spec=copy.deepcopy(BASE_SPEC))
 
         model_id, version = "pytorch-ic-mobilenet-v2", "1.0.2"
         hub_arn = "arn:aws:sagemaker:us-west-2:000000000000:hub/my-cool-hub"
@@ -611,15 +611,15 @@ class HubModelTest(unittest.TestCase):
             ),
             [{"Regex": "val_accuracy: ([0-9\\.]+)", "Name": "pytorch-ic:val-accuracy"}],
         )
-        mock_cache.get_hub_model.assert_called_once_with(
+        mock_get_hub_model.assert_called_once_with(
             hub_model_arn=(
                 f"arn:aws:sagemaker:us-west-2:000000000000:hub-content/my-cool-hub/Model/{model_id}/{version}"
             )
         )
 
-    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._cache")
-    def test_retrieve_model_uri(self, mock_cache):
-        mock_cache.get_hub_model.return_value = JumpStartModelSpecs(spec=copy.deepcopy(BASE_SPEC))
+    @patch("sagemaker.jumpstart.cache.JumpStartModelsCache.get_hub_model")
+    def test_retrieve_model_uri(self, mock_get_hub_model):
+        mock_get_hub_model.return_value = JumpStartModelSpecs(spec=copy.deepcopy(BASE_SPEC))
 
         model_id, version = "pytorch-ic-mobilenet-v2", "1.0.2"
         hub_arn = "arn:aws:sagemaker:us-west-2:000000000000:hub/my-cool-hub"
@@ -630,7 +630,7 @@ class HubModelTest(unittest.TestCase):
             ),
             "s3://jumpstart-cache-prod-us-west-2/pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz",
         )
-        mock_cache.get_hub_model.assert_called_once_with(
+        mock_get_hub_model.assert_called_once_with(
             hub_model_arn=(
                 f"arn:aws:sagemaker:us-west-2:000000000000:hub-content/my-cool-hub/Model/{model_id}/{version}"
             )
@@ -643,9 +643,9 @@ class HubModelTest(unittest.TestCase):
             "s3://jumpstart-cache-prod-us-west-2/pytorch-infer/infer-pytorch-ic-mobilenet-v2.tar.gz",
         )
 
-    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._cache")
-    def test_retrieve_script_uri(self, mock_cache):
-        mock_cache.get_hub_model.return_value = JumpStartModelSpecs(spec=copy.deepcopy(BASE_SPEC))
+    @patch("sagemaker.jumpstart.cache.JumpStartModelsCache.get_hub_model")
+    def test_retrieve_script_uri(self, mock_get_hub_model):
+        mock_get_hub_model.return_value = JumpStartModelSpecs(spec=copy.deepcopy(BASE_SPEC))
 
         model_id, version = "pytorch-ic-mobilenet-v2", "1.0.2"
         hub_arn = "arn:aws:sagemaker:us-west-2:000000000000:hub/my-cool-hub"
@@ -660,7 +660,7 @@ class HubModelTest(unittest.TestCase):
             "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/pytorch/"
             "transfer_learning/ic/v1.0.0/sourcedir.tar.gz",
         )
-        mock_cache.get_hub_model.assert_called_once_with(
+        mock_get_hub_model.assert_called_once_with(
             hub_model_arn=(
                 f"arn:aws:sagemaker:us-west-2:000000000000:hub-content/my-cool-hub/Model/{model_id}/{version}"
             )
