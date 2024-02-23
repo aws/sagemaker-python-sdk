@@ -38,6 +38,8 @@ from sagemaker.serve.builder.transformers_builder import Transformers
 from sagemaker.predictor import Predictor
 from sagemaker.serve.save_retrive.version_1_0_0.metadata.metadata import Metadata
 from sagemaker.serve.spec.inference_spec import InferenceSpec
+from sagemaker.serve.utils import task
+from sagemaker.serve.utils.exceptions import TaskNotFoundException
 from sagemaker.serve.utils.predictors import _get_local_mode_predictor
 from sagemaker.serve.detector.image_detector import (
     auto_detect_container,
@@ -616,7 +618,12 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
                 hf_model_md = get_huggingface_model_metadata(
                     self.model, self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
                 )
-                if hf_model_md.get("pipeline_tag") == "text-generation":  # pylint: disable=R1705
+
+                model_task = hf_model_md.get("pipeline_tag")
+                if self.schema_builder is None and model_task:
+                    self._schema_builder_init(model_task)
+
+                if model_task == "text-generation":  # pylint: disable=R1705
                     return self._build_for_tgi()
                 else:
                     return self._build_for_transformers()
@@ -674,3 +681,18 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
         """
 
         return get_metadata(model_dir)
+
+    def _schema_builder_init(self, model_task: str):
+        """Initialize the schema builder
+
+        Args:
+            model_task (str): Required, the task name
+
+        Raises:
+            TaskNotFoundException: If the I/O schema for the given task is not found.
+        """
+        try:
+            sample_inputs, sample_outputs = task.retrieve_local_schemas(model_task)
+            self.schema_builder = SchemaBuilder(sample_inputs, sample_outputs)
+        except ValueError:
+            raise TaskNotFoundException(f"Schema builder for {model_task} could not be found.")
