@@ -33,8 +33,6 @@ import tempfile
 # repacking is some short-lived hackery, right??
 from distutils.dir_util import copy_tree
 
-from sagemaker.utils import check_tarfile_data_filter_attribute
-
 
 def repack(inference_script, model_archive, dependencies=None, source_dir=None):  # pragma: no cover
     """Repack custom dependencies and code into an existing model TAR archive
@@ -62,8 +60,7 @@ def repack(inference_script, model_archive, dependencies=None, source_dir=None):
         # extract the contents of the previous training job's model archive to the "src"
         # directory of this training job
         with tarfile.open(name=local_path, mode="r:gz") as tf:
-            check_tarfile_data_filter_attribute()
-            tf.extractall(path=src_dir, filter="data")
+            tf.extractall(path=src_dir)
 
         if source_dir:
             # copy /opt/ml/code to code/
