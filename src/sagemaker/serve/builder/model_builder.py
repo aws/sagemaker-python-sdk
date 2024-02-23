@@ -613,11 +613,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
 
         self.serve_settings = self._get_serve_setting()
 
-<<<<<<< Updated upstream
         self._is_custom_image_uri = self.image_uri is not None
-=======
-        self._is_custom_image_uri = self.image_uri is None
->>>>>>> Stashed changes
 
         if isinstance(self.model, str):
             if self._is_jumpstart_model_id():
@@ -625,10 +621,6 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
             if self._is_djl():  # pylint: disable=R1705
                 return self._build_for_djl()
             else:
-                hf_model_md = get_huggingface_model_metadata(
-                    self.model, self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
-                )
-<<<<<<< Updated upstream
 
                 model_task = hf_model_md.get("pipeline_tag")
                 if self.schema_builder is None and model_task:
@@ -636,7 +628,6 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
 
                 if model_task == "text-generation":  # pylint: disable=R1705
                     return self._build_for_tgi()
-=======
                 if hf_model_md.get("pipeline_tag") == "text-generation":  # pylint: disable=R1705
                     return self._build_for_tgi()
                 elif self._can_fit_on_single_gpu():
@@ -646,7 +637,6 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
                     or self.model in defaults.FASTER_TRANSFORMER_RECOMMENDED_ARCHITECTURES
                 ):
                     return self._build_for_djl()
->>>>>>> Stashed changes
                 else:
                     return self._build_for_transformers()
 
@@ -704,7 +694,6 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
 
         return get_metadata(model_dir)
 
-<<<<<<< Updated upstream
     def _schema_builder_init(self, model_task: str):
         """Initialize the schema builder
 
@@ -719,7 +708,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
             self.schema_builder = SchemaBuilder(sample_inputs, sample_outputs)
         except ValueError:
             raise TaskNotFoundException(f"Schema builder for {model_task} could not be found.")
-=======
+
     def _total_inference_model_size_mib(self):
         """Calculates the model size from HF accelerate
 
@@ -784,4 +773,3 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
             raise ValueError(
                 f"Unable to determine single GPU size for instance: [{self.instance_type}]"
             )
->>>>>>> Stashed changes

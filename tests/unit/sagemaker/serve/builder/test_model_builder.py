@@ -1077,3 +1077,163 @@ class TestModelBuilder(unittest.TestCase):
             "Error Message: Schema builder for text-to-image could not be found.",
             lambda: model_builder.build(sagemaker_session=mock_session),
         )
+
+    @patch("sagemaker.serve.builder.model_builder._can_fit_on_single_gpu")
+    @patch("sagemaker.image_uris.retrieve")
+    @patch("sagemaker.djl_inference.model.urllib")
+    @patch("sagemaker.djl_inference.model.json")
+    @patch("sagemaker.huggingface.llm_utils.urllib")
+    @patch("sagemaker.huggingface.llm_utils.json")
+    @patch("sagemaker.model_uris.retrieve")
+    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
+    def test_build_can_fit_on_single_gpu(
+            self,
+            mock_serveSettings,
+            mock_model_uris_retrieve,
+            mock_llm_utils_json,
+            mock_llm_utils_urllib,
+            mock_model_json,
+            mock_model_urllib,
+            mock_image_uris_retrieve,
+            mock_can_fit_on_single_gpu,
+    ):
+        # Setup mocks
+        mock_setting_object = mock_serveSettings.return_value
+        mock_setting_object.role_arn = mock_role_arn
+        mock_setting_object.s3_model_data_url = mock_s3_model_data_url
+
+        # HF Pipeline Tag
+        mock_model_uris_retrieve.side_effect = KeyError
+        mock_llm_utils_json.load.return_value = {"pipeline_tag": "auto-classification"}
+        mock_llm_utils_urllib.request.Request.side_effect = Mock()
+
+        # HF Model config
+        mock_model_json.load.return_value = {"some": "config"}
+        mock_model_urllib.request.Request.side_effect = Mock()
+
+        mock_image_uris_retrieve.return_value = "https://some-image-uri"
+
+        model_builder = ModelBuilder(model="meta-llama/Llama-2-7b-hf")
+        model_builder.build(sagemaker_session=mock_session)
+
+        mock_can_fit_on_single_gpu.assert_called_once()
+
+    @patch("sagemaker.serve.builder.model_builder._build_for_djl")
+    @patch("sagemaker.serve.builder.model_builder._can_fit_on_single_gpu")
+    @patch("sagemaker.image_uris.retrieve")
+    @patch("sagemaker.djl_inference.model.urllib")
+    @patch("sagemaker.djl_inference.model.json")
+    @patch("sagemaker.huggingface.llm_utils.urllib")
+    @patch("sagemaker.huggingface.llm_utils.json")
+    @patch("sagemaker.model_uris.retrieve")
+    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
+    def test_build_is_deepspeed_model(
+            self,
+            mock_serveSettings,
+            mock_model_uris_retrieve,
+            mock_llm_utils_json,
+            mock_llm_utils_urllib,
+            mock_model_json,
+            mock_model_urllib,
+            mock_image_uris_retrieve,
+            mock_can_fit_on_single_gpu,
+            mock_build_for_djl
+    ):
+        mock_setting_object = mock_serveSettings.return_value
+        mock_setting_object.role_arn = mock_role_arn
+        mock_setting_object.s3_model_data_url = mock_s3_model_data_url
+
+        mock_model_uris_retrieve.side_effect = KeyError
+        mock_llm_utils_json.load.return_value = {"pipeline_tag": "auto-classification"}
+        mock_llm_utils_urllib.request.Request.side_effect = Mock()
+
+        mock_model_json.load.return_value = {"some": "config"}
+        mock_model_urllib.request.Request.side_effect = Mock()
+
+        mock_image_uris_retrieve.return_value = "https://some-image-uri"
+        mock_can_fit_on_single_gpu.return_value = False
+
+        model_builder = ModelBuilder(model="stable-diffusion")
+        model_builder.build(sagemaker_session=mock_session)
+
+        mock_build_for_djl.assert_called_once()
+
+    @patch("sagemaker.serve.builder.model_builder._build_for_djl")
+    @patch("sagemaker.serve.builder.model_builder._can_fit_on_single_gpu")
+    @patch("sagemaker.image_uris.retrieve")
+    @patch("sagemaker.djl_inference.model.urllib")
+    @patch("sagemaker.djl_inference.model.json")
+    @patch("sagemaker.huggingface.llm_utils.urllib")
+    @patch("sagemaker.huggingface.llm_utils.json")
+    @patch("sagemaker.model_uris.retrieve")
+    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
+    def test_build_is_fast_transformers_model(
+            self,
+            mock_serveSettings,
+            mock_model_uris_retrieve,
+            mock_llm_utils_json,
+            mock_llm_utils_urllib,
+            mock_model_json,
+            mock_model_urllib,
+            mock_image_uris_retrieve,
+            mock_can_fit_on_single_gpu,
+            mock_build_for_djl
+    ):
+        mock_setting_object = mock_serveSettings.return_value
+        mock_setting_object.role_arn = mock_role_arn
+        mock_setting_object.s3_model_data_url = mock_s3_model_data_url
+
+        mock_model_uris_retrieve.side_effect = KeyError
+        mock_llm_utils_json.load.return_value = {"pipeline_tag": "auto-classification"}
+        mock_llm_utils_urllib.request.Request.side_effect = Mock()
+
+        mock_model_json.load.return_value = {"some": "config"}
+        mock_model_urllib.request.Request.side_effect = Mock()
+
+        mock_image_uris_retrieve.return_value = "https://some-image-uri"
+        mock_can_fit_on_single_gpu.return_value = False
+
+        model_builder = ModelBuilder(model="gpt_neo")
+        model_builder.build(sagemaker_session=mock_session)
+
+        mock_build_for_djl.assert_called_once()
+
+    @patch("sagemaker.serve.builder.model_builder._build_for_transformers")
+    @patch("sagemaker.serve.builder.model_builder._can_fit_on_single_gpu")
+    @patch("sagemaker.image_uris.retrieve")
+    @patch("sagemaker.djl_inference.model.urllib")
+    @patch("sagemaker.djl_inference.model.json")
+    @patch("sagemaker.huggingface.llm_utils.urllib")
+    @patch("sagemaker.huggingface.llm_utils.json")
+    @patch("sagemaker.model_uris.retrieve")
+    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
+    def test_build_fallback_to_transformers(
+            self,
+            mock_serveSettings,
+            mock_model_uris_retrieve,
+            mock_llm_utils_json,
+            mock_llm_utils_urllib,
+            mock_model_json,
+            mock_model_urllib,
+            mock_image_uris_retrieve,
+            mock_can_fit_on_single_gpu,
+            mock_build_for_transformers
+    ):
+        mock_setting_object = mock_serveSettings.return_value
+        mock_setting_object.role_arn = mock_role_arn
+        mock_setting_object.s3_model_data_url = mock_s3_model_data_url
+
+        mock_model_uris_retrieve.side_effect = KeyError
+        mock_llm_utils_json.load.return_value = {"pipeline_tag": "auto-classification"}
+        mock_llm_utils_urllib.request.Request.side_effect = Mock()
+
+        mock_model_json.load.return_value = {"some": "config"}
+        mock_model_urllib.request.Request.side_effect = Mock()
+
+        mock_image_uris_retrieve.return_value = "https://some-image-uri"
+        mock_can_fit_on_single_gpu.return_value = False
+
+        model_builder = ModelBuilder(model="gpt_llm_burt")
+        model_builder.build(sagemaker_session=mock_session)
+
+        mock_build_for_transformers.assert_called_once()
