@@ -621,6 +621,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
             if self._is_djl():  # pylint: disable=R1705
                 return self._build_for_djl()
             else:
+                hf_model_md = get_huggingface_model_metadata(
+                    self.model, self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
+                )
 
                 model_task = hf_model_md.get("pipeline_tag")
                 if self.schema_builder is None and model_task:
@@ -716,11 +719,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
         padding and converts to size MiB. When performing inference, expect
         to add up to an additional 20% to the given model size as found by EleutherAI.
         """
-        dtypes = "float32"
         try:
-            if self.env_vars.get("dtypes"):
-                dtypes = self.env_vars.get("dtypes")
-
+            dtypes = self.env_vars.get("dtypes", "float32")
             parser = estimate_command_parser()
             args = parser.parse_args([self.model, "--dtypes", dtypes])
         except ValueError:

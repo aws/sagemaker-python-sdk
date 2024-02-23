@@ -40,4 +40,3 @@ onnx==1.14.1
 # tf2onnx==1.15.1
 nbformat>=5.9,<6
 accelerate>=0.24.1,<=0.27.0
-huggingface_hub>=0.14.0,<=0.18.0
