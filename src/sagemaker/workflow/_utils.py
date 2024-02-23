@@ -262,8 +262,7 @@ class _RepackModelStep(TrainingStep):
                 download_file_from_url(self._source_dir, old_targz_path, self.sagemaker_session)
 
                 with tarfile.open(name=old_targz_path, mode="r:gz") as t:
-                    check_tarfile_data_filter_attribute()
-                    t.extractall(path=targz_contents_dir, filter="data")
+                    t.extractall(path=targz_contents_dir)
 
                 shutil.copy2(fname, os.path.join(targz_contents_dir, REPACK_SCRIPT))
                 with open(
