@@ -90,7 +90,7 @@ def model_builder(request):
     tests.integ.test_region() in tests.integ.TRAINING_NO_P2_REGIONS
     and tests.integ.test_region() in tests.integ.TRAINING_NO_P3_REGIONS,
     reason="no ml.p2 or ml.p3 instances in this region",
-    )
+)
 @retry_with_instance_list(gpu_list(tests.integ.test_region()))
 @pytest.mark.parametrize("model_builder", ["model_builder_model_schema_builder"], indirect=True)
 def test_pytorch_transformers_sagemaker_endpoint(
@@ -109,7 +109,9 @@ def test_pytorch_transformers_sagemaker_endpoint(
     with timeout(minutes=SERVE_SAGEMAKER_ENDPOINT_TIMEOUT):
         try:
             logger.info("Deploying and predicting in SAGEMAKER_ENDPOINT mode...")
-            predictor = model.deploy(instance_type=kwargs["instance_type"], initial_instance_count=1)
+            predictor = model.deploy(
+                instance_type=kwargs["instance_type"], initial_instance_count=1
+            )
             logger.info("Endpoint successfully deployed.")
             predictor.predict(input)
         except Exception as e:
