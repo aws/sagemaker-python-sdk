@@ -22,6 +22,7 @@ import os
 import random
 import re
 import shutil
+import sys
 import tarfile
 import tempfile
 import time
@@ -591,7 +592,8 @@ def _create_or_update_code_dir(
         download_file_from_url(source_directory, local_code_path, sagemaker_session)
 
         with tarfile.open(name=local_code_path, mode="r:gz") as t:
-            t.extractall(path=code_dir)
+            check_tarfile_data_filter_attribute()
+            t.extractall(path=code_dir, filter="data")
 
     elif source_directory:
         if os.path.exists(code_dir):
@@ -628,7 +630,8 @@ def _extract_model(model_uri, sagemaker_session, tmp):
     else:
         local_model_path = model_uri.replace("file://", "")
     with tarfile.open(name=local_model_path, mode="r:gz") as t:
-        t.extractall(path=tmp_model_dir)
+        check_tarfile_data_filter_attribute()
+        t.extractall(path=tmp_model_dir, filter="data")
     return tmp_model_dir
 
 
@@ -1489,3 +1492,25 @@ def format_tags(tags: Tags) -> List[TagsDict]:
         return [{"Key": str(k), "Value": str(v)} for k, v in tags.items()]
 
     return tags
+
+
+class PythonVersionError(Exception):
+    """Raise when a secure [/patched] version of Python is not used."""
+
+
+def check_tarfile_data_filter_attribute():
+    """Check if tarfile has data_filter utility.
+
+    Tarfile-data_filter utility has guardrails against untrusted de-serialisation.
+
+    Raises:
+        PythonVersionError: if `tarfile.data_filter` is not available.
+    """
+    # The function and it's usages can be deprecated post support of python >= 3.12
+    if not hasattr(tarfile, "data_filter"):
+        raise PythonVersionError(
+            f"Since tarfile extraction is unsafe the operation is prohibited "
+            f"per PEP-721. Please update your Python [{sys.version}] "
+            f"to latest patch [refer to https://www.python.org/downloads/] "
+            f"to consume the security patch"
+        )
