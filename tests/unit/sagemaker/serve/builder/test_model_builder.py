@@ -18,6 +18,8 @@ from pathlib import Path
 
 from sagemaker.serve.builder.model_builder import ModelBuilder
 from sagemaker.serve.mode.function_pointers import Mode
+from sagemaker.serve.utils import task
+from sagemaker.serve.utils.exceptions import TaskNotFoundException
 from sagemaker.serve.utils.types import ModelServer
 from tests.unit.sagemaker.serve.constants import MOCK_IMAGE_CONFIG, MOCK_VPC_CONFIG
 
@@ -985,3 +987,93 @@ class TestModelBuilder(unittest.TestCase):
         build_result.deploy(mode=Mode.LOCAL_CONTAINER)
 
         self.assertEqual(builder.mode, Mode.LOCAL_CONTAINER)
+
+    @patch("sagemaker.serve.builder.tgi_builder.HuggingFaceModel")
+    @patch("sagemaker.image_uris.retrieve")
+    @patch("sagemaker.djl_inference.model.urllib")
+    @patch("sagemaker.djl_inference.model.json")
+    @patch("sagemaker.huggingface.llm_utils.urllib")
+    @patch("sagemaker.huggingface.llm_utils.json")
+    @patch("sagemaker.model_uris.retrieve")
+    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
+    def test_build_happy_path_when_schema_builder_not_present(
+        self,
+        mock_serveSettings,
+        mock_model_uris_retrieve,
+        mock_llm_utils_json,
+        mock_llm_utils_urllib,
+        mock_model_json,
+        mock_model_urllib,
+        mock_image_uris_retrieve,
+        mock_hf_model,
+    ):
+        # Setup mocks
+
+        mock_setting_object = mock_serveSettings.return_value
+        mock_setting_object.role_arn = mock_role_arn
+        mock_setting_object.s3_model_data_url = mock_s3_model_data_url
+
+        # HF Pipeline Tag
+        mock_model_uris_retrieve.side_effect = KeyError
+        mock_llm_utils_json.load.return_value = {"pipeline_tag": "text-generation"}
+        mock_llm_utils_urllib.request.Request.side_effect = Mock()
+
+        # HF Model config
+        mock_model_json.load.return_value = {"some": "config"}
+        mock_model_urllib.request.Request.side_effect = Mock()
+
+        mock_image_uris_retrieve.return_value = "https://some-image-uri"
+
+        model_builder = ModelBuilder(model="meta-llama/Llama-2-7b-hf")
+        model_builder.build(sagemaker_session=mock_session)
+
+        self.assertIsNotNone(model_builder.schema_builder)
+        sample_inputs, sample_outputs = task.retrieve_local_schemas("text-generation")
+        self.assertEqual(
+            sample_inputs["inputs"], model_builder.schema_builder.sample_input["inputs"]
+        )
+        self.assertEqual(sample_outputs, model_builder.schema_builder.sample_output)
+
+    @patch("sagemaker.serve.builder.tgi_builder.HuggingFaceModel")
+    @patch("sagemaker.image_uris.retrieve")
+    @patch("sagemaker.djl_inference.model.urllib")
+    @patch("sagemaker.djl_inference.model.json")
+    @patch("sagemaker.huggingface.llm_utils.urllib")
+    @patch("sagemaker.huggingface.llm_utils.json")
+    @patch("sagemaker.model_uris.retrieve")
+    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
+    def test_build_negative_path_when_schema_builder_not_present(
+        self,
+        mock_serveSettings,
+        mock_model_uris_retrieve,
+        mock_llm_utils_json,
+        mock_llm_utils_urllib,
+        mock_model_json,
+        mock_model_urllib,
+        mock_image_uris_retrieve,
+        mock_hf_model,
+    ):
+        # Setup mocks
+
+        mock_setting_object = mock_serveSettings.return_value
+        mock_setting_object.role_arn = mock_role_arn
+        mock_setting_object.s3_model_data_url = mock_s3_model_data_url
+
+        # HF Pipeline Tag
+        mock_model_uris_retrieve.side_effect = KeyError
+        mock_llm_utils_json.load.return_value = {"pipeline_tag": "text-to-image"}
+        mock_llm_utils_urllib.request.Request.side_effect = Mock()
+
+        # HF Model config
+        mock_model_json.load.return_value = {"some": "config"}
+        mock_model_urllib.request.Request.side_effect = Mock()
+
+        mock_image_uris_retrieve.return_value = "https://some-image-uri"
+
+        model_builder = ModelBuilder(model="CompVis/stable-diffusion-v1-4")
+
+        self.assertRaisesRegexp(
+            TaskNotFoundException,
+            "Error Message: Schema builder for text-to-image could not be found.",
+            lambda: model_builder.build(sagemaker_session=mock_session),
+        )
