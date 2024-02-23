@@ -36,7 +36,6 @@ from sagemaker.utils import (
     _save_model,
     download_file_from_url,
     format_tags,
-    check_tarfile_data_filter_attribute,
 )
 from sagemaker.workflow.retry import RetryPolicy
 from sagemaker.workflow.utilities import trim_request_dict
