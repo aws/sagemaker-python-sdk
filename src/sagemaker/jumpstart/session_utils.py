@@ -208,3 +208,45 @@ def get_model_id_version_from_training_job(
         )
 
     return model_id, model_version
+
+
+def generate_default_hub_bucket_name(
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+) -> str:
+    """Return the name of the default bucket to use in relevant Amazon SageMaker Hub interactions.
+
+    Returns:
+        str: The name of the default bucket. If the name was not explicitly specified through
+            the Session or sagemaker_config, the bucket will take the form:
+            ``sagemaker-hubs-{region}-{AWS account ID}``.
+    """
+
+    region: str = sagemaker_session.boto_region_name
+    account_id: str = sagemaker_session.account_id()
+
+    # TODO: Validate and fast fail
+
+    return f"sagemaker-hubs-{region}-{account_id}"
+
+
+def create_hub_bucket_if_it_does_not_exist(
+    bucket_name: Optional[str] = None,
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+) -> str:
+    """Creates the default SageMaker Hub bucket if it does not exist.
+
+    Returns:
+        str: The name of the default bucket. Takes the form:
+            ``sagemaker-hubs-{region}-{AWS account ID}``.
+    """
+
+    region: str = sagemaker_session.boto_region_name
+    if bucket_name is None:
+        bucket_name: str = generate_default_hub_bucket_name(sagemaker_session)
+
+    sagemaker_session._create_s3_bucket_if_it_does_not_exist(
+        bucket_name=bucket_name,
+        region=region,
+    )
+
+    return bucket_name

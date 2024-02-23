@@ -13,15 +13,15 @@
 """This module provides the JumpStart Curated Hub class."""
 from __future__ import absolute_import
 
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 import boto3
 from sagemaker.session import Session
 from sagemaker.jumpstart.constants import (
     JUMPSTART_DEFAULT_REGION_NAME,
 )
 
-from sagemaker.jumpstart.types import HubDataType
-import sagemaker.jumpstart.curated_hub.utils as hubutils
+from sagemaker.jumpstart.types import HubDescription, HubContentType, HubContentDescription
+import sagemaker.jumpstart.session_utils as session_utils
 
 
 class CuratedHub:
@@ -29,16 +29,16 @@ class CuratedHub:
 
     def __init__(
         self,
-        name: str,
+        hub_name: str,
         region: str = JUMPSTART_DEFAULT_REGION_NAME,
-        session: Optional[Session] = None,
+        sagemaker_session: Optional[Session] = None,
     ):
-        self.name = name
-        if session.boto_region_name != region:
+        self.hub_name = hub_name
+        if sagemaker_session.boto_region_name != region:
             # TODO: Handle error
             pass
         self.region = region
-        self._session = session or Session(boto3.Session(region_name=region))
+        self._sagemaker_session = sagemaker_session or Session(boto3.Session(region_name=region))
 
     def create(
         self,
@@ -50,32 +50,60 @@ class CuratedHub:
     ) -> Dict[str, str]:
         """Creates a hub with the given description"""
 
-        return hubutils.create_hub(
-            hub_name=self.name,
+        bucket_name = session_utils.create_hub_bucket_if_it_does_not_exist(
+            bucket_name, self._sagemaker_session
+        )
+
+        return self._sagemaker_session.create_hub(
+            hub_name=self.hub_name,
             hub_description=description,
             hub_display_name=display_name,
             hub_search_keywords=search_keywords,
             hub_bucket_name=bucket_name,
             tags=tags,
-            sagemaker_session=self._session,
         )
 
-    def describe_model(self, model_name: str, model_version: str = "*") -> Dict[str, Any]:
-        """Returns descriptive information about the Hub Model"""
-
-        hub_content = hubutils.describe_hub_content(
-            hub_name=self.name,
-            content_name=model_name,
-            content_type=HubDataType.MODEL,
-            content_version=model_version,
-            sagemaker_session=self._session,
-        )
-
-        return hub_content
-
-    def describe(self) -> Dict[str, Any]:
+    def describe(self) -> HubDescription:
         """Returns descriptive information about the Hub"""
 
-        hub_info = hubutils.describe_hub(hub_name=self.name, sagemaker_session=self._session)
+        hub_description = self._sagemaker_session.describe_hub(hub_name=self.hub_name)
 
-        return hub_info
+        return HubDescription(hub_description)
+
+    def list_models(self, **kwargs) -> Dict[str, Any]:
+        """Lists the models in this Curated Hub
+
+        **kwargs: Passed to invocation of ``Session:list_hub_contents``.
+        """
+        # TODO: Validate kwargs and fast-fail?
+
+        hub_content_summaries = self._sagemaker_session.list_hub_contents(
+            hub_name=self.hub_name, hub_content_type=HubContentType.MODEL, **kwargs
+        )
+        # TODO: Handle pagination
+        return hub_content_summaries
+
+    def describe_model(self, model_name: str, model_version: str = "*") -> HubContentDescription:
+        """Returns descriptive information about the Hub Model"""
+
+        hub_content_description: Dict[str, Any] = self._sagemaker_session.describe_hub_content(
+            hub_name=self.hub_name,
+            hub_content_name=model_name,
+            hub_content_version=model_version,
+            hub_content_type=HubContentType.MODEL,
+        )
+
+        return HubContentDescription(hub_content_description)
+
+    def delete_model(self, model_name: str, model_version: str = "*") -> None:
+        """Deletes a model from this CuratedHub."""
+        return self._sagemaker_session.delete_hub_content(
+            hub_content_name=model_name,
+            hub_content_version=model_version,
+            hub_content_type=HubContentType.MODEL,
+            hub_name=self.hub_name,
+        )
+
+    def delete(self) -> None:
+        """Deletes this Curated Hub"""
+        return self._sagemaker_session.delete_hub(self.hub_name)
