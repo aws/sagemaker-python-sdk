@@ -44,7 +44,7 @@ def retrieve(
         model_version (str): The version of the JumpStart model for which to retrieve the
             model script S3 URI.
         hub_arn (str): The arn of the SageMaker Hub for which to retrieve
-            model details from (default: None).
+            model details from. (default: None).
         script_scope (str): The script type.
             Valid values: "training" and "inference".
         tolerate_vulnerable_model (bool): ``True`` if vulnerable versions of model

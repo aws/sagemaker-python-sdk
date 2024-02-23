@@ -45,7 +45,7 @@ def retrieve(
         model_version (str): The version of the JumpStart model for which to retrieve
             the model artifact S3 URI.
         hub_arn (str): The arn of the SageMaker Hub for which to retrieve
-            model details from (default: None).
+            model details from. (default: None).
         model_scope (str): The model type.
             Valid values: "training" and "inference".
         instance_type (str): The ML compute instance type for the specified scope. (Default: None).

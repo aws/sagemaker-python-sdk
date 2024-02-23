@@ -126,7 +126,7 @@ def _retrieve_model_package_model_artifact_s3_uri(
         region (Optional[str]): Region for which to retrieve the model package artifact.
             (Default: None).
         hub_arn (str): The arn of the SageMaker Hub for which to retrieve
-            model details from (default: None).
+            model details from. (default: None).
         scope (Optional[str]): Scope for which to retrieve the model package artifact.
             (Default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model

@@ -45,7 +45,7 @@ def _model_supports_incremental_training(
         region (Optional[str]): Region for which to retrieve the
             support status for incremental training.
         hub_arn (str): The arn of the SageMaker Hub for which to retrieve
-            model details from (default: None).
+            model details from. (default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
             specifications should be tolerated (exception not raised). If False, raises an
             exception if the script used by this version of the model has dependencies with known

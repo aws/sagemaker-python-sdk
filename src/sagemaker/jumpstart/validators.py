@@ -181,7 +181,7 @@ def validate_hyperparameters(
         model_version (str): Version of the model for which to validate hyperparameters.
         hyperparameters (dict): Hyperparameters to validate.
         hub_arn (str): The arn of the SageMaker Hub for which to retrieve
-            model details from (default: None).
+            model details from. (default: None).
         validation_mode (HyperparameterValidationMode): Method of validation to use with
           hyperparameters. If set to ``VALIDATE_PROVIDED``, only hyperparameters provided
           to this function will be validated, the missing hyperparameters will be ignored.

@@ -46,7 +46,7 @@ def _retrieve_default_hyperparameters(
         model_version (str): Version of the JumpStart model for which to retrieve the
             default hyperparameters.
         hub_arn (str): The arn of the SageMaker Hub for which to retrieve
-            model details from (default: None).
+            model details from. (default: None).
         region (str): Region for which to retrieve default hyperparameters.
             (Default: None).
         include_container_hyperparameters (bool): True if container hyperparameters

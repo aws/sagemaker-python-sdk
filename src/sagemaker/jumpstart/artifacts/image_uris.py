@@ -59,7 +59,7 @@ def _retrieve_image_uri(
         model_version (str): Version of the JumpStart model for which to retrieve
             the image URI.
         hub_arn (str): The arn of the SageMaker Hub for which to retrieve
-            model details from (default: None).
+            model details from. (default: None).
         image_scope (str): The image type, i.e. what it is used for.
             Valid values: "training", "inference", "eia". If ``accelerator_type`` is set,
             ``image_scope`` is ignored.

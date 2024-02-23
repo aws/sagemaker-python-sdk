@@ -22,7 +22,7 @@ from sagemaker.jumpstart.constants import (
     JUMPSTART_REGION_NAME_SET,
 )
 from sagemaker.jumpstart.types import (
-    HubDataType,
+    HubContentType,
     JumpStartCachedContentKey,
     JumpStartCachedContentValue,
     JumpStartModelSpecs,
@@ -203,14 +203,14 @@ def patched_retrieval_function(
             formatted_content=get_spec_from_base_spec(model_id=model_id, version=version)
         )
 
-    if datatype == HubDataType.MODEL:
+    if datatype == HubContentType.MODEL:
         _, _, _, model_name, model_version = id_info.split("/")
         return JumpStartCachedContentValue(
             formatted_content=get_spec_from_base_spec(model_id=model_name, version=model_version)
         )
 
     # TODO: Implement
-    if datatype == HubDataType.HUB:
+    if datatype == HubContentType.HUB:
         return None
 
     raise ValueError(f"Bad value for filetype: {datatype}")

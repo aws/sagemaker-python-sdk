@@ -287,7 +287,7 @@ class EstimatorTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_init_kwargs")
     @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_deploy_kwargs")
     @mock.patch("sagemaker.jumpstart.factory.estimator._retrieve_estimator_fit_kwargs")
-    @mock.patch("sagemaker.jumpstart.utils.construct_hub_arn_from_name")
+    @mock.patch("sagemaker.jumpstart.curated_hub.utils.construct_hub_arn_from_name")
     @mock.patch("sagemaker.jumpstart.estimator.is_valid_model_id")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")

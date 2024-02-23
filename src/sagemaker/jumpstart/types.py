@@ -106,15 +106,15 @@ class JumpStartS3FileType(str, Enum):
     SPECS = "specs"
 
 
-class HubDataType(str, Enum):
+class HubContentType(str, Enum):
     """Enum for Hub data storage objects."""
 
-    HUB = "hub"
-    MODEL = "model"
-    NOTEBOOK = "notebook"
+    HUB = "Hub"
+    MODEL = "Model"
+    NOTEBOOK = "Notebook"
 
 
-JumpStartContentDataType = Union[JumpStartS3FileType, HubDataType]
+JumpStartContentDataType = Union[JumpStartS3FileType, HubContentType]
 
 
 class JumpStartLaunchedRegionInfo(JumpStartDataHolderType):
@@ -1747,36 +1747,3 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         self.data_input_configuration = data_input_configuration
         self.skip_model_validation = skip_model_validation
 
-
-class HubArnExtractedInfo(JumpStartDataHolderType):
-    """Data class for info extracted from Hub arn."""
-
-    __slots__ = [
-        "partition",
-        "region",
-        "account_id",
-        "hub_name",
-        "hub_content_type",
-        "hub_content_name",
-        "hub_content_version",
-    ]
-
-    def __init__(
-        self,
-        partition: str,
-        region: str,
-        account_id: str,
-        hub_name: str,
-        hub_content_type: Optional[str] = None,
-        hub_content_name: Optional[str] = None,
-        hub_content_version: Optional[str] = None,
-    ) -> None:
-        """Instantiates HubArnExtractedInfo object."""
-
-        self.partition = partition
-        self.region = region
-        self.account_id = account_id
-        self.hub_name = hub_name
-        self.hub_content_type = hub_content_type
-        self.hub_content_name = hub_content_name
-        self.hub_content_version = hub_content_version

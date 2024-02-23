@@ -45,7 +45,7 @@ def retrieve_default(
         model_version (str): The version of the model for which to retrieve the
             default training metric definitions. (Default: None).
         hub_arn (str): The arn of the SageMaker Hub for which to retrieve
-            model details from (default: None).
+            model details from. (default: None).
         instance_type (str): An instance type to optionally supply in order to get
             metric definitions specific for the instance type.
         tolerate_vulnerable_model (bool): True if vulnerable versions of model

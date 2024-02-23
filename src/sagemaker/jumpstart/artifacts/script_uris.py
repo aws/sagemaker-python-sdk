@@ -49,7 +49,7 @@ def _retrieve_script_uri(
         model_version (str): Version of the JumpStart model for which to
             retrieve the model script S3 URI.
         hub_arn (str): The arn of the SageMaker Hub for which to retrieve
-            model details from (default: None).
+            model details from. (default: None).
         script_scope (str): The script type, i.e. what it is used for.
             Valid values: "training" and "inference".
         region (str): Region for which to retrieve model script S3 URI.

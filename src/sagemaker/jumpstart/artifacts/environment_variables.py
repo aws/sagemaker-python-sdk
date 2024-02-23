@@ -48,7 +48,7 @@ def _retrieve_default_environment_variables(
         model_version (str): Version of the JumpStart model for which to retrieve the
             default environment variables.
         hub_arn (str): The arn of the SageMaker Hub for which to retrieve
-            model details from (default: None).
+            model details from. (default: None).
         region (Optional[str]): Region for which to retrieve default environment variables.
             (Default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
@@ -151,7 +151,7 @@ def _retrieve_gated_model_uri_env_var_value(
         model_version (str): Version of the JumpStart model for which to retrieve the
             gated model env var URI.
         hub_arn (str): The arn of the SageMaker Hub for which to retrieve
-            model details from (default: None).
+            model details from. (default: None).
         region (Optional[str]): Region for which to retrieve the gated model env var URI.
             (Default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model

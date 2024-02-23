@@ -36,7 +36,6 @@ from sagemaker.jumpstart.exceptions import (
     get_old_model_version_msg,
 )
 from sagemaker.jumpstart.types import (
-    HubArnExtractedInfo,
     JumpStartModelHeader,
     JumpStartModelSpecs,
     JumpStartVersionedModelId,
@@ -560,7 +559,7 @@ def verify_model_region_and_return_specs(
         region (Optional[str]): region of the JumpStart model to verify and
             obtains specs.
         hub_arn (str): The arn of the SageMaker Hub for which to retrieve
-            model details from (default: None).
+            model details from. (default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
             specifications should be tolerated (exception not raised). If False, raises an
             exception if the script used by this version of the model has dependencies with known
@@ -832,91 +831,3 @@ def get_jumpstart_model_id_version_from_resource_arn(
 
     return model_id, model_version
 
-
-def get_info_from_hub_resource_arn(
-    arn: str,
-) -> HubArnExtractedInfo:
-    """Extracts descriptive information from a Hub or HubContent Arn."""
-
-    match = re.match(constants.HUB_CONTENT_ARN_REGEX, arn)
-    if match:
-        partition = match.group(1)
-        hub_region = match.group(2)
-        account_id = match.group(3)
-        hub_name = match.group(4)
-        hub_content_type = match.group(5)
-        hub_content_name = match.group(6)
-        hub_content_version = match.group(7)
-
-        return HubArnExtractedInfo(
-            partition=partition,
-            region=hub_region,
-            account_id=account_id,
-            hub_name=hub_name,
-            hub_content_type=hub_content_type,
-            hub_content_name=hub_content_name,
-            hub_content_version=hub_content_version,
-        )
-
-    match = re.match(constants.HUB_ARN_REGEX, arn)
-    if match:
-        partition = match.group(1)
-        hub_region = match.group(2)
-        account_id = match.group(3)
-        hub_name = match.group(4)
-        return HubArnExtractedInfo(
-            partition=partition,
-            region=hub_region,
-            account_id=account_id,
-            hub_name=hub_name,
-        )
-
-    return None
-
-
-def construct_hub_arn_from_name(
-    hub_name: str,
-    region: Optional[str] = None,
-    session: Optional[Session] = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-) -> str:
-    """Constructs a Hub arn from the Hub name using default Session values."""
-
-    account_id = session.account_id()
-    region = region or session.boto_region_name
-    partition = aws_partition(region)
-
-    return f"arn:{partition}:sagemaker:{region}:{account_id}:hub/{hub_name}"
-
-
-def construct_hub_model_arn_from_inputs(hub_arn: str, model_name: str, version: str) -> str:
-    """Constructs a HubContent model arn from the Hub name, model name, and model version."""
-
-    info = get_info_from_hub_resource_arn(hub_arn)
-    arn = (
-        f"arn:{info.partition}:sagemaker:{info.region}:{info.account_id}:hub-content/"
-        f"{info.hub_name}/Model/{model_name}/{version}"
-    )
-
-    return arn
-
-
-# TODO: Update to recognize JumpStartHub hub_name
-def generate_hub_arn_for_estimator(
-    hub_name: Optional[str] = None, region: Optional[str] = None, session: Optional[Session] = None
-):
-    """Generates the Hub Arn for JumpStartEstimator from a HubName or Arn.
-
-    Args:
-        hub_name (str): HubName or HubArn from JumpStartEstimator args
-        region (str): Region from JumpStartEstimator args
-        session (Session): Custom SageMaker Session from JumpStartEstimator args
-    """
-
-    hub_arn = None
-    if hub_name:
-        match = re.match(constants.HUB_ARN_REGEX, hub_name)
-        if match:
-            hub_arn = hub_name
-        else:
-            hub_arn = construct_hub_arn_from_name(hub_name=hub_name, region=region, session=session)
-    return hub_arn
