@@ -1746,4 +1746,3 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         self.nearest_model_name = nearest_model_name
         self.data_input_configuration = data_input_configuration
         self.skip_model_validation = skip_model_validation
-

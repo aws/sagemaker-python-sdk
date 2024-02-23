@@ -21,6 +21,7 @@ from sagemaker.jumpstart.types import HubContentType
 from sagemaker.session import Session
 from sagemaker.utils import aws_partition
 
+
 def get_info_from_hub_resource_arn(
     arn: str,
 ) -> HubArnExtractedInfo:

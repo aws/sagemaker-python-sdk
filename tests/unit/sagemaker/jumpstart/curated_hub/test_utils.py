@@ -17,6 +17,7 @@ from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
 from sagemaker.jumpstart.curated_hub import utils
 from sagemaker.jumpstart.curated_hub.types import HubArnExtractedInfo
 
+
 def test_get_info_from_hub_resource_arn():
     model_arn = (
         "arn:aws:sagemaker:us-west-2:000000000000:hub-content/MockHub/Model/my-mock-model/1.0.2"
@@ -113,7 +114,9 @@ def test_generate_hub_arn_for_estimator_init_kwargs():
     )
 
     assert (
-        utils.generate_hub_arn_for_estimator_init_kwargs(hub_name, "us-east-1", session=mock_default_session)
+        utils.generate_hub_arn_for_estimator_init_kwargs(
+            hub_name, "us-east-1", session=mock_default_session
+        )
         == "arn:aws:sagemaker:us-east-1:123456789123:hub/my-hub-name"
     )
 
@@ -127,16 +130,24 @@ def test_generate_hub_arn_for_estimator_init_kwargs():
         == "arn:aws:sagemaker:us-east-2:000000000000:hub/my-hub-name"
     )
 
-    assert utils.generate_hub_arn_for_estimator_init_kwargs(hub_arn, session=mock_default_session) == hub_arn
-
     assert (
-        utils.generate_hub_arn_for_estimator_init_kwargs(hub_arn, "us-east-1", session=mock_default_session)
+        utils.generate_hub_arn_for_estimator_init_kwargs(hub_arn, session=mock_default_session)
         == hub_arn
     )
 
     assert (
-        utils.generate_hub_arn_for_estimator_init_kwargs(hub_arn, "us-east-1", mock_custom_session) == hub_arn
+        utils.generate_hub_arn_for_estimator_init_kwargs(
+            hub_arn, "us-east-1", session=mock_default_session
+        )
+        == hub_arn
     )
 
-    assert utils.generate_hub_arn_for_estimator_init_kwargs(hub_arn, None, mock_custom_session) == hub_arn
+    assert (
+        utils.generate_hub_arn_for_estimator_init_kwargs(hub_arn, "us-east-1", mock_custom_session)
+        == hub_arn
+    )
 
+    assert (
+        utils.generate_hub_arn_for_estimator_init_kwargs(hub_arn, None, mock_custom_session)
+        == hub_arn
+    )

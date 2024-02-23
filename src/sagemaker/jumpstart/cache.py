@@ -30,6 +30,7 @@ from sagemaker.jumpstart.constants import (
     MODEL_ID_LIST_WEB_URL,
 )
 from sagemaker.jumpstart.curated_hub.curated_hub import CuratedHub
+from sagemaker.jumpstart.curated_hub.utils import get_info_from_hub_resource_arn
 from sagemaker.jumpstart.exceptions import get_wildcard_model_version_msg
 from sagemaker.jumpstart.parameters import (
     JUMPSTART_DEFAULT_MAX_S3_CACHE_ITEMS,
@@ -339,7 +340,7 @@ class JumpStartModelsCache:
                 formatted_content=model_specs
             )
         if data_type == HubContentType.MODEL:
-            info = utils.get_info_from_hub_resource_arn(
+            info = get_info_from_hub_resource_arn(
                 id_info
             )
             hub = CuratedHub(hub_name=info.hub_name, region=info.region)
@@ -356,7 +357,7 @@ class JumpStartModelsCache:
                 formatted_content=model_specs
             )
         if data_type == HubContentType.HUB:
-            info = utils.get_info_from_hub_resource_arn(
+            info = get_info_from_hub_resource_arn(
                 id_info
             )
             hub = CuratedHub(hub_name=info.hub_name, region=info.region)

@@ -14,7 +14,6 @@
 from __future__ import absolute_import
 import logging
 import os
-import re
 from typing import Any, Dict, List, Optional, Tuple, Union
 from urllib.parse import urlparse
 import boto3
@@ -42,7 +41,7 @@ from sagemaker.jumpstart.types import (
 )
 from sagemaker.session import Session
 from sagemaker.config import load_sagemaker_config
-from sagemaker.utils import aws_partition, resolve_value_from_config, TagsDict
+from sagemaker.utils import resolve_value_from_config, TagsDict
 from sagemaker.workflow import is_pipeline_variable
 
 
@@ -830,4 +829,3 @@ def get_jumpstart_model_id_version_from_resource_arn(
             model_version = model_version_from_tag
 
     return model_id, model_version
-

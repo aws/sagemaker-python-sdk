@@ -16,6 +16,7 @@ from typing import Optional
 
 from sagemaker.jumpstart.types import JumpStartDataHolderType
 
+
 class HubArnExtractedInfo(JumpStartDataHolderType):
     """Data class for info extracted from Hub arn."""
 
