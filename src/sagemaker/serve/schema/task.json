@@ -1,0 +1,67 @@
+{
+	"fill-mask": {
+        "sample_inputs": {
+			"properties": {
+				"inputs": "Paris is the <mask> of France.",
+				"parameters": {}
+			}
+        },
+        "sample_outputs": {
+			"properties": [
+				{
+					"sequence": "Paris is the capital of France.",
+					"score": 0.7
+				}
+			]
+		}
+    },
+	"question-answering": {
+        "sample_inputs": {
+			"properties": {
+				"context": "I have a German Shepherd dog, named Coco.",
+				"question": "What is my dog's breed?"
+			}
+        },
+        "sample_outputs": {
+			"properties": [
+				{
+					"answer": "German Shepherd",
+					"score": 0.972,
+					"start": 9,
+					"end": 24
+				}
+			]
+		}
+    },
+	"text-classification": {
+        "sample_inputs": {
+			"properties": {
+				"inputs": "Where is the capital of France?, Paris is the capital of France.",
+				"parameters": {}
+			}
+        },
+        "sample_outputs": {
+			"properties": [
+				{
+					"label": "entailment",
+					"score": 0.997
+				}
+			]
+		}
+    },
+    "text-generation": {
+        "sample_inputs": {
+			"properties": {
+				"inputs": "Hello, I'm a language model",
+				"parameters": {}
+			}
+        },
+        "sample_outputs": {
+			"properties": [
+				{
+					"generated_text": "Hello, I'm a language modeler. So while writing this, when I went out to meet my wife or come home she told me that my"
+				}
+			]
+		}
+    }
+}
