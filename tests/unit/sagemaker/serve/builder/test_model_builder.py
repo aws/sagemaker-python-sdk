@@ -1250,15 +1250,15 @@ class TestModelBuilder(unittest.TestCase):
     @patch("sagemaker.model_uris.retrieve")
     @patch("sagemaker.serve.builder.model_builder._ServeSettings")
     def test_try_fetch_gpu_info_throws(
-            self,
-            mock_serveSettings,
-            mock_model_uris_retrieve,
-            mock_llm_utils_json,
-            mock_llm_utils_urllib,
-            mock_model_json,
-            mock_model_urllib,
-            mock_image_uris_retrieve,
-            mock_can_fit_on_single_gpu,
+        self,
+        mock_serveSettings,
+        mock_model_uris_retrieve,
+        mock_llm_utils_json,
+        mock_llm_utils_urllib,
+        mock_model_json,
+        mock_model_urllib,
+        mock_image_uris_retrieve,
+        mock_can_fit_on_single_gpu,
     ):
         mock_setting_object = mock_serveSettings.return_value
         mock_setting_object.role_arn = mock_role_arn
