@@ -42,6 +42,8 @@ from sagemaker.utils import (
     resolve_nested_dict_value_from_config,
     update_list_of_dicts_with_values_from_config,
     volume_size_supported,
+    PythonVersionError,
+    check_tarfile_data_filter_attribute,
 )
 from tests.unit.sagemaker.workflow.helpers import CustomStep
 from sagemaker.workflow.parameters import ParameterString, ParameterInteger
@@ -1101,11 +1103,11 @@ def test_sts_regional_endpoint():
 
 
 def test_partition_by_region():
-    assert sagemaker.utils._aws_partition("us-west-2") == "aws"
-    assert sagemaker.utils._aws_partition("cn-north-1") == "aws-cn"
-    assert sagemaker.utils._aws_partition("us-gov-east-1") == "aws-us-gov"
-    assert sagemaker.utils._aws_partition("us-iso-east-1") == "aws-iso"
-    assert sagemaker.utils._aws_partition("us-isob-east-1") == "aws-iso-b"
+    assert sagemaker.utils.aws_partition("us-west-2") == "aws"
+    assert sagemaker.utils.aws_partition("cn-north-1") == "aws-cn"
+    assert sagemaker.utils.aws_partition("us-gov-east-1") == "aws-us-gov"
+    assert sagemaker.utils.aws_partition("us-iso-east-1") == "aws-iso"
+    assert sagemaker.utils.aws_partition("us-isob-east-1") == "aws-iso-b"
 
 
 def test_pop_out_unused_kwarg():
@@ -1748,3 +1750,15 @@ class TestVolumeSizeSupported(TestCase):
 
         for instance_type, family in instance_type_to_family_test_dict.items():
             self.assertEqual(family, get_instance_type_family(instance_type))
+
+
+class TestCheckTarfileDataFilterAttribute(TestCase):
+    def test_check_tarfile_data_filter_attribute_unhappy_case(self):
+        with pytest.raises(PythonVersionError):
+            with patch("tarfile.data_filter", None):
+                delattr(tarfile, "data_filter")
+                check_tarfile_data_filter_attribute()
+
+    def test_check_tarfile_data_filter_attribute_happy_case(self):
+        with patch("tarfile.data_filter", "some_value"):
+            check_tarfile_data_filter_attribute()

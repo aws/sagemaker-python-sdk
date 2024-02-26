@@ -1,5 +1,80 @@
 # Changelog
 
+## v2.209.0 (2024-02-24)
+
+### Features
+
+ * ModelBuilder to fetch local schema when no SchemaBuilder present.
+ * AutoGluon 1.0.0 image_uris update
+
+### Bug Fixes and Other Changes
+
+ * skip pytorch training compiler integ test
+ * add fixes for tarfile extractall functionality PEP-721
+ * Fix telemetry image uri option logic for ModelBuilder
+ * Add telemetry metrics on usage of default images for ModelBuilder
+ * Fix error message typo
+ * Add "distribution" parameter into record_set
+
+## v2.208.0 (2024-02-15)
+
+### Features
+
+ * Telemetry metrics
+ * TGI 1.4.0
+ * Support collection type and target store for feature store ingestion.
+
+### Bug Fixes and Other Changes
+
+ * bump jinja2 to 3.1.3 in doc/requirments.txt
+ * chore(deps): bump jinja2 from 3.0.3 to 3.1.3 in /requirements/extras
+ * Fix dependabot alert in transformers package
+ * Bump Apache Airflow version to 2.8.0
+ * skip failing mxnet tests
+
+### Documentation Changes
+
+ * change order of pipelines topics
+ * Explain the ClarifyCheckStep and QualityCheckStep parameters
+ * fix the ClarifyCheckStep documentation to mention PDP
+
+## v2.207.1 (2024-02-06)
+
+### Bug Fixes and Other Changes
+
+ * Add PT 2.1 as a supported framework for the smdistributed distribution
+ * Enable private docker registry support for ModelBuilder
+ * HF PT 2.1 Image Configs
+
+### Documentation Changes
+
+ * add setup commands for documentation generation
+
+## v2.207.0 (2024-02-05)
+
+### Features
+
+ * Introduce HF Transformers to ModelBuilder
+ * retrieve jumpstart estimator and predictor without specifying model id (infer from tags)
+
+### Bug Fixes and Other Changes
+
+ * SMP PT upgrade to 2.1
+ * Fetch HF metadata only when explicit type is not selected
+ * relax upper bound for urllib dependency
+
+## v2.206.0 (2024-01-31)
+
+### Features
+
+ * Logic to detect hardware GPU count and aggregate GPU memory size in MiB
+
+### Bug Fixes and Other Changes
+
+ * fixed create monitoring schedule failing after validation error
+ * Support PipelineVariable for ModelQualityCheckConfig attributes
+ * TGI NeuronX 0.0.17
+
 ## v2.205.0 (2024-01-25)
 
 ### Features

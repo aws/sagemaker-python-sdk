@@ -190,7 +190,10 @@ def model_builder(request):
 )
 @pytest.mark.slow_test
 def test_happy_pytorch_sagemaker_endpoint(
-    sagemaker_session, model_builder, cpu_instance_type, test_image
+    sagemaker_session,
+    model_builder,
+    cpu_instance_type,
+    test_image,
 ):
     logger.info("Running in SAGEMAKER_ENDPOINT mode...")
     caught_ex = None

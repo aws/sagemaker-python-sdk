@@ -243,6 +243,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         # sagemaker_config is validated and initialized inside :func:`_initialize`,
         # so if default_bucket is None and the sagemaker_config has a default S3 bucket configured,
         # _default_bucket_name_override will be set again inside :func:`_initialize`.
+        self.endpoint_arn = None
         self._default_bucket = None
         self._default_bucket_name_override = default_bucket
         # this may also be set again inside :func:`_initialize` if it is None
@@ -4284,9 +4285,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
             tags, "{}.{}.{}".format(SAGEMAKER, ENDPOINT, TAGS)
         )
 
-        self.sagemaker_client.create_endpoint(
+        res = self.sagemaker_client.create_endpoint(
             EndpointName=endpoint_name, EndpointConfigName=config_name, Tags=tags
         )
+        if res:
+            self.endpoint_arn = res["EndpointArn"]
+
         if wait:
             self.wait_for_endpoint(endpoint_name, live_logging=live_logging)
         return endpoint_name
@@ -4344,13 +4348,39 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 "existing endpoint name".format(endpoint_name)
             )
 
-        self.sagemaker_client.update_endpoint(
+        res = self.sagemaker_client.update_endpoint(
             EndpointName=endpoint_name, EndpointConfigName=endpoint_config_name
         )
+        if res:
+            self.endpoint_arn = res["EndpointArn"]
 
         if wait:
             self.wait_for_endpoint(endpoint_name)
         return endpoint_name
+
+    def is_inference_component_based_endpoint(self, endpoint_name):
+        """Returns 'True' if endpoint is inference-component-based, 'False' otherwise.
+
+        An endpoint is inference component based if and only if the associated endpoint config
+        has a role associated with it and no production variants with a ``ModelName`` field.
+
+        Args:
+            endpoint_name (str): Name of the Amazon SageMaker ``Endpoint`` to determine
+                if inference-component-based.
+        """
+        describe_endpoint_response = self.describe_endpoint(endpoint_name)
+        endpoint_config_name = describe_endpoint_response["EndpointConfigName"]
+        describe_endpoint_config_response = self.sagemaker_client.describe_endpoint_config(
+            EndpointConfigName=endpoint_config_name
+        )
+        production_variants = describe_endpoint_config_response.get("ProductionVariants", [])
+        execution_role_arn = describe_endpoint_config_response.get("ExecutionRoleArn")
+        if len(production_variants) == 0:
+            return False
+        return execution_role_arn is not None and all(
+            production_variant.get("ModelName") is None
+            for production_variant in production_variants
+        )
 
     def describe_endpoint(self, endpoint_name):
         """Describe an Amazon SageMaker ``Endpoint``.
@@ -4629,6 +4659,35 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 ),
                 poll=20,
             )
+
+    def list_and_paginate_inference_component_names_associated_with_endpoint(
+        self,
+        endpoint_name: str,
+    ) -> List[str]:
+        """List inference component names for an endpoint, concatenating paginated results.
+
+        Args:
+            endpoint_name (str): A string that matches the name of the
+                endpoint to which the inference components are deployed.
+        """
+        inference_component_names: List[str] = []
+        next_token: Optional[str] = None
+        first_iteration: bool = True
+
+        while first_iteration or next_token:
+            first_iteration = False
+            list_inference_components_response = self.list_inference_components(
+                endpoint_name_equals=endpoint_name, next_token=next_token
+            )
+            inference_component_names.extend(
+                [
+                    ic["InferenceComponentName"]
+                    for ic in list_inference_components_response["InferenceComponents"]
+                ]
+            )
+            next_token = list_inference_components_response.get("NextToken")
+
+        return sorted(inference_component_names)
 
     def list_inference_components(
         self,
@@ -5939,27 +5998,34 @@ class Session(object):  # pylint: disable=too-many-public-methods
         self,
         feature_group_name: str,
         record: Sequence[Dict[str, str]],
-        ttl_duration: Dict[str, str] = None,
+        target_stores: Sequence[str] = None,
+        ttl_duration: Dict[str, Any] = None,
     ):
         """Puts a single record in the FeatureGroup.
 
         Args:
-            feature_group_name (str): name of the FeatureGroup.
-            record (Sequence[Dict[str, str]]): list of FeatureValue dicts to be ingested
+            feature_group_name (str): Name of the FeatureGroup.
+            record (Sequence[Dict[str, str]]): List of FeatureValue dicts to be ingested
                 into FeatureStore.
+            target_stores (Sequence[str]): Optional. List of target stores to put the record.
+            ttl_duration (Dict[str, str]): Optional. Time-to-Live (TTL) duration for the record.
+
+        Returns:
+            Response dict from service.
         """
 
-        if ttl_duration:
-            return self.sagemaker_featurestore_runtime_client.put_record(
-                FeatureGroupName=feature_group_name,
-                Record=record,
-                TtlDuration=ttl_duration,
-            )
+        params = {
+            "FeatureGroupName": feature_group_name,
+            "Record": record,
+        }
 
-        return self.sagemaker_featurestore_runtime_client.put_record(
-            FeatureGroupName=feature_group_name,
-            Record=record,
-        )
+        if ttl_duration:
+            params["TtlDuration"] = ttl_duration
+
+        if target_stores:
+            params["TargetStores"] = target_stores
+
+        return self.sagemaker_featurestore_runtime_client.put_record(**params)
 
     def delete_record(
         self,

@@ -26,7 +26,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-
 SAMPLE_PROMPT = {"inputs": "Hello, I'm a language model,", "parameters": {}}
 SAMPLE_RESPONSE = [
     {"generated_text": "Hello, I'm a language model, and I'm here to help you with your English."}
@@ -54,7 +53,6 @@ def happy_model_builder(sagemaker_session):
 def test_happy_tgi_sagemaker_endpoint(happy_model_builder, gpu_instance_type):
     logger.info("Running in SAGEMAKER_ENDPOINT mode...")
     caught_ex = None
-
     model = happy_model_builder.build()
 
     with timeout(minutes=SERVE_SAGEMAKER_ENDPOINT_TIMEOUT):

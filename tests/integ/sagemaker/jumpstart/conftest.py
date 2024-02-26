@@ -16,6 +16,7 @@ import os
 import boto3
 import pytest
 from botocore.config import Config
+from sagemaker.session import Session
 from tests.integ.sagemaker.jumpstart.constants import (
     ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID,
     JUMPSTART_TAG,
@@ -42,11 +43,14 @@ def _teardown():
 
     test_suite_id = os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]
 
-    sagemaker_client = boto3.client(
+    boto3_session = boto3.Session(region_name=JUMPSTART_DEFAULT_REGION_NAME)
+
+    sagemaker_client = boto3_session.client(
         "sagemaker",
         config=Config(retries={"max_attempts": 10, "mode": "standard"}),
-        region_name=JUMPSTART_DEFAULT_REGION_NAME,
     )
+
+    sagemaker_session = Session(boto_session=boto3_session, sagemaker_client=sagemaker_client)
 
     search_endpoints_result = sagemaker_client.search(
         Resource="Endpoint",
@@ -65,12 +69,32 @@ def _teardown():
         endpoint_info["Endpoint"]["EndpointConfigName"]
         for endpoint_info in search_endpoints_result["Results"]
     ]
-    model_names = [
-        sagemaker_client.describe_endpoint_config(EndpointConfigName=endpoint_config_name)[
-            "ProductionVariants"
-        ][0]["ModelName"]
-        for endpoint_config_name in endpoint_config_names
-    ]
+    model_names = list(
+        filter(
+            lambda elt: elt is not None,
+            [
+                sagemaker_client.describe_endpoint_config(EndpointConfigName=endpoint_config_name)[
+                    "ProductionVariants"
+                ][0].get("ModelName")
+                for endpoint_config_name in endpoint_config_names
+            ],
+        )
+    )
+
+    inference_component_names = []
+    for endpoint_name in endpoint_names:
+        for (
+            inference_component_name
+        ) in sagemaker_session.list_and_paginate_inference_component_names_associated_with_endpoint(
+            endpoint_name=endpoint_name
+        ):
+            inference_component_names.append(inference_component_name)
+
+    # delete inference components for test-suite-tagged endpoints
+    for inference_component_name in inference_component_names:
+        sagemaker_session.delete_inference_component(
+            inference_component_name=inference_component_name, wait=True
+        )
 
     # delete test-suite-tagged endpoints
     for endpoint_name in endpoint_names:

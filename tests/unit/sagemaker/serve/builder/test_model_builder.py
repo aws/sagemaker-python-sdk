@@ -18,7 +18,10 @@ from pathlib import Path
 
 from sagemaker.serve.builder.model_builder import ModelBuilder
 from sagemaker.serve.mode.function_pointers import Mode
+from sagemaker.serve.utils import task
+from sagemaker.serve.utils.exceptions import TaskNotFoundException
 from sagemaker.serve.utils.types import ModelServer
+from tests.unit.sagemaker.serve.constants import MOCK_IMAGE_CONFIG, MOCK_VPC_CONFIG
 
 schema_builder = MagicMock()
 mock_inference_spec = Mock()
@@ -187,8 +190,10 @@ class TestModelBuilder(unittest.TestCase):
 
         mock_model_obj = Mock()
         mock_sdk_model.side_effect = (
-            lambda image_uri, model_data, role, env, sagemaker_session, predictor_cls: mock_model_obj
+            lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls: mock_model_obj  # noqa E501
             if image_uri == mock_image_uri
+            and image_config == MOCK_IMAGE_CONFIG
+            and vpc_config == MOCK_VPC_CONFIG
             and model_data == model_data
             and role == mock_role_arn
             and env == ENV_VARS
@@ -205,6 +210,8 @@ class TestModelBuilder(unittest.TestCase):
             model=mock_fw_model,
             model_server=ModelServer.TORCHSERVE,
             image_uri=mock_image_uri,
+            image_config=MOCK_IMAGE_CONFIG,
+            vpc_config=MOCK_VPC_CONFIG,
         )
         build_result = builder.build(sagemaker_session=mock_session)
 
@@ -245,7 +252,6 @@ class TestModelBuilder(unittest.TestCase):
             and instance_type == "ml.c5.xlarge"
             else None
         )
-
         mock_detect_fw_version.return_value = framework, version
 
         mock_prepare_for_torchserve.side_effect = (
@@ -287,7 +293,7 @@ class TestModelBuilder(unittest.TestCase):
 
         mock_model_obj = Mock()
         mock_sdk_model.side_effect = (
-            lambda image_uri, model_data, role, env, sagemaker_session, predictor_cls: mock_model_obj
+            lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls: mock_model_obj  # noqa E501
             if image_uri == mock_1p_dlc_image_uri
             and model_data == model_data
             and role == mock_role_arn
@@ -392,7 +398,7 @@ class TestModelBuilder(unittest.TestCase):
 
         mock_model_obj = Mock()
         mock_sdk_model.side_effect = (
-            lambda image_uri, model_data, role, env, sagemaker_session, predictor_cls: mock_model_obj
+            lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls: mock_model_obj  # noqa E501
             if image_uri == mock_image_uri
             and model_data == model_data
             and role == mock_role_arn
@@ -488,7 +494,7 @@ class TestModelBuilder(unittest.TestCase):
 
         mock_model_obj = Mock()
         mock_sdk_model.side_effect = (
-            lambda image_uri, model_data, role, env, sagemaker_session, predictor_cls: mock_model_obj
+            lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls: mock_model_obj  # noqa E501
             if image_uri == mock_image_uri
             and model_data == model_data
             and role == mock_role_arn
@@ -592,7 +598,7 @@ class TestModelBuilder(unittest.TestCase):
 
         mock_model_obj = Mock()
         mock_sdk_model.side_effect = (
-            lambda image_uri, model_data, role, env, sagemaker_session, predictor_cls: mock_model_obj
+            lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls: mock_model_obj  # noqa E501
             if image_uri == mock_image_uri
             and model_data == model_data
             and role == mock_role_arn
@@ -693,7 +699,7 @@ class TestModelBuilder(unittest.TestCase):
 
         mock_model_obj = Mock()
         mock_sdk_model.side_effect = (
-            lambda image_uri, model_data, role, env, sagemaker_session, predictor_cls: mock_model_obj
+            lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls: mock_model_obj  # noqa E501
             if image_uri == mock_image_uri
             and model_data is None
             and role == mock_role_arn
@@ -810,7 +816,7 @@ class TestModelBuilder(unittest.TestCase):
 
         mock_model_obj = Mock()
         mock_sdk_model.side_effect = (
-            lambda image_uri, model_data, role, env, sagemaker_session, predictor_cls: mock_model_obj
+            lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls: mock_model_obj  # noqa E501
             if image_uri == mock_image_uri
             and model_data is None
             and role == mock_role_arn
@@ -952,7 +958,7 @@ class TestModelBuilder(unittest.TestCase):
 
         mock_model_obj = Mock()
         mock_sdk_model.side_effect = (
-            lambda image_uri, model_data, role, env, sagemaker_session, predictor_cls: mock_model_obj
+            lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls: mock_model_obj  # noqa E501
             if image_uri == mock_image_uri
             and model_data == model_data
             and role == mock_role_arn
@@ -981,3 +987,93 @@ class TestModelBuilder(unittest.TestCase):
         build_result.deploy(mode=Mode.LOCAL_CONTAINER)
 
         self.assertEqual(builder.mode, Mode.LOCAL_CONTAINER)
+
+    @patch("sagemaker.serve.builder.tgi_builder.HuggingFaceModel")
+    @patch("sagemaker.image_uris.retrieve")
+    @patch("sagemaker.djl_inference.model.urllib")
+    @patch("sagemaker.djl_inference.model.json")
+    @patch("sagemaker.huggingface.llm_utils.urllib")
+    @patch("sagemaker.huggingface.llm_utils.json")
+    @patch("sagemaker.model_uris.retrieve")
+    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
+    def test_build_happy_path_when_schema_builder_not_present(
+        self,
+        mock_serveSettings,
+        mock_model_uris_retrieve,
+        mock_llm_utils_json,
+        mock_llm_utils_urllib,
+        mock_model_json,
+        mock_model_urllib,
+        mock_image_uris_retrieve,
+        mock_hf_model,
+    ):
+        # Setup mocks
+
+        mock_setting_object = mock_serveSettings.return_value
+        mock_setting_object.role_arn = mock_role_arn
+        mock_setting_object.s3_model_data_url = mock_s3_model_data_url
+
+        # HF Pipeline Tag
+        mock_model_uris_retrieve.side_effect = KeyError
+        mock_llm_utils_json.load.return_value = {"pipeline_tag": "text-generation"}
+        mock_llm_utils_urllib.request.Request.side_effect = Mock()
+
+        # HF Model config
+        mock_model_json.load.return_value = {"some": "config"}
+        mock_model_urllib.request.Request.side_effect = Mock()
+
+        mock_image_uris_retrieve.return_value = "https://some-image-uri"
+
+        model_builder = ModelBuilder(model="meta-llama/Llama-2-7b-hf")
+        model_builder.build(sagemaker_session=mock_session)
+
+        self.assertIsNotNone(model_builder.schema_builder)
+        sample_inputs, sample_outputs = task.retrieve_local_schemas("text-generation")
+        self.assertEqual(
+            sample_inputs["inputs"], model_builder.schema_builder.sample_input["inputs"]
+        )
+        self.assertEqual(sample_outputs, model_builder.schema_builder.sample_output)
+
+    @patch("sagemaker.serve.builder.tgi_builder.HuggingFaceModel")
+    @patch("sagemaker.image_uris.retrieve")
+    @patch("sagemaker.djl_inference.model.urllib")
+    @patch("sagemaker.djl_inference.model.json")
+    @patch("sagemaker.huggingface.llm_utils.urllib")
+    @patch("sagemaker.huggingface.llm_utils.json")
+    @patch("sagemaker.model_uris.retrieve")
+    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
+    def test_build_negative_path_when_schema_builder_not_present(
+        self,
+        mock_serveSettings,
+        mock_model_uris_retrieve,
+        mock_llm_utils_json,
+        mock_llm_utils_urllib,
+        mock_model_json,
+        mock_model_urllib,
+        mock_image_uris_retrieve,
+        mock_hf_model,
+    ):
+        # Setup mocks
+
+        mock_setting_object = mock_serveSettings.return_value
+        mock_setting_object.role_arn = mock_role_arn
+        mock_setting_object.s3_model_data_url = mock_s3_model_data_url
+
+        # HF Pipeline Tag
+        mock_model_uris_retrieve.side_effect = KeyError
+        mock_llm_utils_json.load.return_value = {"pipeline_tag": "text-to-image"}
+        mock_llm_utils_urllib.request.Request.side_effect = Mock()
+
+        # HF Model config
+        mock_model_json.load.return_value = {"some": "config"}
+        mock_model_urllib.request.Request.side_effect = Mock()
+
+        mock_image_uris_retrieve.return_value = "https://some-image-uri"
+
+        model_builder = ModelBuilder(model="CompVis/stable-diffusion-v1-4")
+
+        self.assertRaisesRegexp(
+            TaskNotFoundException,
+            "Error Message: Schema builder for text-to-image could not be found.",
+            lambda: model_builder.build(sagemaker_session=mock_session),
+        )
