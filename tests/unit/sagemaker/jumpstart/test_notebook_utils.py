@@ -751,4 +751,5 @@ def test_get_model_url(
         s3_client=DEFAULT_JUMPSTART_SAGEMAKER_SESSION.s3_client,
         hub_arn=None,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        hub_arn=None,
     )
