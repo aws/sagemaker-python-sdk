@@ -1,5 +1,21 @@
 # Changelog
 
+## v2.209.0 (2024-02-24)
+
+### Features
+
+ * ModelBuilder to fetch local schema when no SchemaBuilder present.
+ * AutoGluon 1.0.0 image_uris update
+
+### Bug Fixes and Other Changes
+
+ * skip pytorch training compiler integ test
+ * add fixes for tarfile extractall functionality PEP-721
+ * Fix telemetry image uri option logic for ModelBuilder
+ * Add telemetry metrics on usage of default images for ModelBuilder
+ * Fix error message typo
+ * Add "distribution" parameter into record_set
+
 ## v2.208.0 (2024-02-15)
 
 ### Features
