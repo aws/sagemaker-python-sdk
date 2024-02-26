@@ -40,6 +40,7 @@ from sagemaker.jumpstart.exceptions import (
     get_wildcard_model_version_msg,
     get_wildcard_proprietary_model_version_msg,
 )
+from sagemaker.jumpstart.exceptions import get_wildcard_model_version_msg
 from sagemaker.jumpstart.parameters import (
     JUMPSTART_DEFAULT_MAX_S3_CACHE_ITEMS,
     JUMPSTART_DEFAULT_MAX_SEMANTIC_VERSION_CACHE_ITEMS,

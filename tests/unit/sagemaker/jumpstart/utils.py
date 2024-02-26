@@ -22,7 +22,7 @@ from sagemaker.jumpstart.constants import (
     JUMPSTART_REGION_NAME_SET,
 )
 from sagemaker.jumpstart.types import (
-    HubDataType,
+    HubContentType,
     JumpStartCachedContentKey,
     JumpStartCachedContentValue,
     JumpStartModelSpecs,
@@ -253,6 +253,9 @@ def patched_retrieval_function(
                 model_type=JumpStartModelType.PROPRIETARY,
             )
         )
+    # TODO: Implement
+    if datatype == HubContentType.HUB:
+        return None
 
     if datatype == HubContentType.MODEL:
         _, _, _, model_name, model_version = id_info.split("/")
