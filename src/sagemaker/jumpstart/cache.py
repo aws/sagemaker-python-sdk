@@ -154,23 +154,21 @@ class JumpStartModelsCache:
         """Set manifest file s3 key. Clears cache after new key is set.
 
         Raises:
-            ValueError: if hte file type is not recognized
+            ValueError: if the file type is not recognized
         """
-        if file_type == JumpStartS3FileType.MANIFEST:
-            if key != self._manifest_file_s3_key:
-                self._manifest_file_s3_key = key
-                self.clear()
-                return
-        elif file_type == JumpStartS3FileType.PROPRIETARY_MANIFEST:
-            if key != self._proprietary_manifest_s3_key:
-                self._proprietary_manifest_s3_key = key
-                self.clear()
-                return
-        else:
+        file_mapping = {
+            JumpStartS3FileType.MANIFEST: self._manifest_file_s3_key,
+            JumpStartS3FileType.PROPRIETARY_MANIFEST: self._proprietary_manifest_s3_key,
+        }
+
+        if not (property_name := file_mapping.get(file_type)):
             raise ValueError(
                 f"Bad value when setting manifest '{file_type}':" \
                 f"must be in {[JumpStartS3FileType.MANIFEST, JumpStartS3FileType.PROPRIETARY_MANIFEST]}"
             )
+        if key != property_name:
+            setattr(self, property_name, key)
+            self.clear()
 
     def get_manifest_file_s3_key(
         self, file_type: JumpStartS3FileType = JumpStartS3FileType.MANIFEST
@@ -195,7 +193,7 @@ class JumpStartModelsCache:
         """Return bucket used for cache."""
         return self.s3_bucket_name
 
-    def _model_id_retrival_function(self,
+    def _model_id_retrieval_function(self,
         key: JumpStartVersionedModelId,
         value: Optional[JumpStartVersionedModelId],  # pylint: disable=W0613
         model_type: JumpStartModelType
@@ -219,7 +217,7 @@ class JumpStartModelsCache:
         """
 
         model_id, version = key.model_id, key.version
-        
+
         sm_version = utils.get_sagemaker_version()
         manifest = self._s3_cache.get(
             JumpStartCachedS3ContentKey(
@@ -295,14 +293,18 @@ class JumpStartModelsCache:
         key: JumpStartVersionedModelId,
         value: Optional[JumpStartVersionedModelId],  # pylint: disable=W0613
     ) -> JumpStartVersionedModelId:
-        return self._model_id_retrival_function(key, value, model_type=JumpStartModelType.OPENSOURCE)
+        return self._model_id_retrieval_function(
+            key, value, model_type=JumpStartModelType.OPENSOURCE
+        )
 
     def _get_proprietary_manifest_key_from_model_id(
         self,
         key: JumpStartVersionedModelId,
         value: Optional[JumpStartVersionedModelId],  # pylint: disable=W0613
     ) -> JumpStartVersionedModelId:
-        return self._model_id_retrival_function(key, value, model_type=JumpStartModelType.PROPRIETARY)
+        return self._model_id_retrieval_function(
+            key, value, model_type=JumpStartModelType.PROPRIETARY
+        )
 
     def _get_json_file_and_etag_from_s3(self, key: str) -> Tuple[Union[dict, list], str]:
         """Returns json file from s3, along with its etag."""

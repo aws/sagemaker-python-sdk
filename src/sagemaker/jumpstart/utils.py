@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 import logging
 import os
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Set, Optional, Tuple, Union
 from urllib.parse import urlparse
 import boto3
 from packaging.version import Version
@@ -752,8 +752,8 @@ def validate_model_id_and_get_type(
     """
     def _get_model_type(
         model_id: str,
-        open_source_models: List[str],
-        proprietary_models: List[str],
+        open_source_models: Set[str],
+        proprietary_models: Set[str],
         script: enums.JumpStartScriptScope,
     ) -> enums.JumpStartModelType:
         if model_id in open_source_models:

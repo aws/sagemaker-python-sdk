@@ -227,7 +227,12 @@ class JumpStartModelsAccessor(object):
         return JumpStartModelsAccessor._cache.get_manifest(model_type)  # type: ignore
 
     @staticmethod
-    def get_model_header(region: str, model_id: str, version: str) -> JumpStartModelHeader:
+    def get_model_header(
+        region: str,
+        model_id: str,
+        version: str,
+        model_type: JumpStartModelType = JumpStartModelType.OPENSOURCE,
+    ) -> JumpStartModelHeader:
         """Returns model header from JumpStart models cache.
 
         Args:
@@ -240,7 +245,9 @@ class JumpStartModelsAccessor(object):
         )
         JumpStartModelsAccessor._set_cache_and_region(region, cache_kwargs)
         return JumpStartModelsAccessor._cache.get_header(  # type: ignore
-            model_id=model_id, semantic_version_str=version
+            model_id=model_id,
+            semantic_version_str=version,
+            model_type=model_type,
         )
 
     @staticmethod

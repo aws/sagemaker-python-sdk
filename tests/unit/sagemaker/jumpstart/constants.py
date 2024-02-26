@@ -6290,8 +6290,19 @@ BASE_MANIFEST = [
     },
 ]
 
+BASE_PROPRIETARY_HEADER = {
+        "model_id": "ai21-summarization",
+        "version": "1.1.003",
+        "min_version": "2.0.0",
+        "spec_key": "proprietary-models/ai21-summarization/proprietary_specs_1.1.003.json",
+        "search_keywords": [
+            "Text2Text",
+            "Generation"
+        ]
+}
+
 BASE_PROPRIETARY_MANIFEST = [
-   {
+    {
         "model_id": "ai21-summarization",
         "version": "1.1.003",
         "min_version": "2.0.0",

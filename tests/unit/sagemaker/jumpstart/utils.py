@@ -37,6 +37,7 @@ from tests.unit.sagemaker.jumpstart.constants import (
     BASE_PROPRIETARY_MANIFEST,
     BASE_PROPRIETARY_SPEC,
     BASE_HEADER,
+    BASE_PROPRIETARY_HEADER,
     SPECIAL_MODEL_SPECS_DICT,
 )
 
@@ -47,10 +48,19 @@ def get_header_from_base_header(
     model_id: str = None,
     semantic_version_str: str = None,
     version: str = None,
+    model_type: JumpStartModelType = JumpStartModelType.OPENSOURCE,
 ) -> JumpStartModelHeader:
 
     if version and semantic_version_str:
         raise ValueError("Cannot specify both `version` and `semantic_version_str` fields.")
+
+    if model_type == JumpStartModelType.PROPRIETARY:
+        spec = copy.deepcopy(BASE_PROPRIETARY_HEADER)
+        spec["version"] = version or semantic_version_str
+        spec["model_id"] = model_id
+
+        return JumpStartModelHeader(spec)
+
 
     if all(
         [
