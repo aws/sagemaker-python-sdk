@@ -45,7 +45,7 @@ def test_jumpstart_default_content_types(
     assert default_content_type == "application/x-text"
 
     patched_get_model_specs.assert_called_once_with(
-        region=region, model_id=model_id, version=model_version, s3_client=mock_client
+        region=region, model_id=model_id, version=model_version, s3_client=mock_client, hub_arn=None
     )
 
 
@@ -72,5 +72,5 @@ def test_jumpstart_supported_content_types(
     ]
 
     patched_get_model_specs.assert_called_once_with(
-        region=region, model_id=model_id, version=model_version, s3_client=mock_client
+        region=region, model_id=model_id, version=model_version, s3_client=mock_client, hub_arn=None
     )

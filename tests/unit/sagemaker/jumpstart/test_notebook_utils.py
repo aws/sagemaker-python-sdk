@@ -697,4 +697,5 @@ def test_get_model_url(
         version=version,
         region=region,
         s3_client=DEFAULT_JUMPSTART_SAGEMAKER_SESSION.s3_client,
+        hub_arn=None,
     )

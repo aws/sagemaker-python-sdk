@@ -29,6 +29,8 @@ from sagemaker.jumpstart.constants import (
     JUMPSTART_LOGGER,
     MODEL_ID_LIST_WEB_URL,
 )
+from sagemaker.jumpstart.curated_hub.curated_hub import CuratedHub
+from sagemaker.jumpstart.curated_hub.utils import get_info_from_hub_resource_arn
 from sagemaker.jumpstart.exceptions import get_wildcard_model_version_msg
 from sagemaker.jumpstart.parameters import (
     JUMPSTART_DEFAULT_MAX_S3_CACHE_ITEMS,
@@ -351,6 +353,7 @@ class JumpStartModelsCache:
                 model_version=model_version
             )
             model_specs = JumpStartModelSpecs(hub_model_description, is_hub_content=True)
+
             utils.emit_logs_based_on_model_specs(
                 model_specs,
                 self.get_region(),

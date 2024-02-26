@@ -32,6 +32,7 @@ from sagemaker.session import Session
 def _retrieve_script_uri(
     model_id: str,
     model_version: str,
+    hub_arn: Optional[str] = None,
     script_scope: Optional[str] = None,
     region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
@@ -47,6 +48,8 @@ def _retrieve_script_uri(
             retrieve the script S3 URI.
         model_version (str): Version of the JumpStart model for which to
             retrieve the model script S3 URI.
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (default: None).
         script_scope (str): The script type, i.e. what it is used for.
             Valid values: "training" and "inference".
         region (str): Region for which to retrieve model script S3 URI.
@@ -77,6 +80,7 @@ def _retrieve_script_uri(
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
+        hub_arn=hub_arn,
         scope=script_scope,
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,

@@ -13,8 +13,11 @@
 """This module provides the JumpStart Curated Hub class."""
 from __future__ import absolute_import
 
+
 from typing import Any, Dict, Optional
 import boto3
+from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+
 from sagemaker.session import Session
 from sagemaker.jumpstart.constants import (
     JUMPSTART_DEFAULT_REGION_NAME,
@@ -30,15 +33,15 @@ class CuratedHub:
     def __init__(
         self,
         hub_name: str,
-        region: str = JUMPSTART_DEFAULT_REGION_NAME,
-        sagemaker_session: Optional[Session] = None,
+        region: str,
+        sagemaker_session: Optional[Session] = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     ):
         self.hub_name = hub_name
         if sagemaker_session.boto_region_name != region:
             # TODO: Handle error
             pass
         self.region = region
-        self._sagemaker_session = sagemaker_session or Session(boto3.Session(region_name=region))
+        self._sagemaker_session = sagemaker_session
 
     def create(
         self,

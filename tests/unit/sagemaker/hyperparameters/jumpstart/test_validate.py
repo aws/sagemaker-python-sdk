@@ -136,10 +136,7 @@ def test_jumpstart_validate_provided_hyperparameters(patched_get_model_specs):
     )
 
     patched_get_model_specs.assert_called_once_with(
-        region=region,
-        model_id=model_id,
-        version=model_version,
-        s3_client=mock_client,
+        region=region, model_id=model_id, version=model_version, s3_client=mock_client, hub_arn=None
     )
 
     patched_get_model_specs.reset_mock()
@@ -437,7 +434,7 @@ def test_jumpstart_validate_algorithm_hyperparameters(patched_get_model_specs):
     )
 
     patched_get_model_specs.assert_called_once_with(
-        region=region, model_id=model_id, version=model_version, s3_client=mock_client
+        region=region, model_id=model_id, version=model_version, s3_client=mock_client, hub_arn=None
     )
 
     patched_get_model_specs.reset_mock()
@@ -491,7 +488,7 @@ def test_jumpstart_validate_all_hyperparameters(patched_get_model_specs):
     )
 
     patched_get_model_specs.assert_called_once_with(
-        region=region, model_id=model_id, version=model_version, s3_client=mock_client
+        region=region, model_id=model_id, version=model_version, s3_client=mock_client, hub_arn=None
     )
 
     patched_get_model_specs.reset_mock()

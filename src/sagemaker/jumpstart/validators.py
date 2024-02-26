@@ -167,6 +167,7 @@ def validate_hyperparameters(
     model_id: str,
     model_version: str,
     hyperparameters: Dict[str, Any],
+    hub_arn: Optional[str] = None,
     validation_mode: HyperparameterValidationMode = HyperparameterValidationMode.VALIDATE_PROVIDED,
     region: Optional[str] = JUMPSTART_DEFAULT_REGION_NAME,
     sagemaker_session: Optional[session.Session] = None,
@@ -179,6 +180,8 @@ def validate_hyperparameters(
         model_id (str): Model ID of the model for which to validate hyperparameters.
         model_version (str): Version of the model for which to validate hyperparameters.
         hyperparameters (dict): Hyperparameters to validate.
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (default: None).
         validation_mode (HyperparameterValidationMode): Method of validation to use with
           hyperparameters. If set to ``VALIDATE_PROVIDED``, only hyperparameters provided
           to this function will be validated, the missing hyperparameters will be ignored.
@@ -211,6 +214,7 @@ def validate_hyperparameters(
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
+        hub_arn=hub_arn,
         region=region,
         scope=JumpStartScriptScope.TRAINING,
         sagemaker_session=sagemaker_session,

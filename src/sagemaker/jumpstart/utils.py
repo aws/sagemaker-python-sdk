@@ -14,7 +14,6 @@
 from __future__ import absolute_import
 import logging
 import os
-import re
 from typing import Any, Dict, List, Optional, Tuple, Union
 from urllib.parse import urlparse
 import boto3
@@ -368,6 +367,21 @@ def add_jumpstart_model_id_version_tags(
     return tags
 
 
+def add_hub_arn_tags(
+    tags: Optional[List[TagsDict]],
+    hub_arn: str,
+) -> Optional[List[TagsDict]]:
+    """Adds custom Hub arn tag to JumpStart related resources."""
+
+    tags = add_single_jumpstart_tag(
+        hub_arn,
+        enums.JumpStartTag.HUB_ARN,
+        tags,
+        is_uri=False,
+    )
+    return tags
+
+
 def add_jumpstart_uri_tags(
     tags: Optional[List[TagsDict]] = None,
     inference_model_uri: Optional[Union[str, dict]] = None,
@@ -528,6 +542,7 @@ def verify_model_region_and_return_specs(
     version: Optional[str],
     scope: Optional[str],
     region: str,
+    hub_arn: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
@@ -542,6 +557,8 @@ def verify_model_region_and_return_specs(
         scope (Optional[str]): scope of the JumpStart model to verify.
         region (Optional[str]): region of the JumpStart model to verify and
             obtains specs.
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
             specifications should be tolerated (exception not raised). If False, raises an
             exception if the script used by this version of the model has dependencies with known
@@ -577,6 +594,7 @@ def verify_model_region_and_return_specs(
     model_specs = accessors.JumpStartModelsAccessor.get_model_specs(  # type: ignore
         region=region,
         model_id=model_id,
+        hub_arn=hub_arn,
         version=version,
         s3_client=sagemaker_session.s3_client,
     )
@@ -811,26 +829,3 @@ def get_jumpstart_model_id_version_from_resource_arn(
             model_version = model_version_from_tag
 
     return model_id, model_version
-
-
-def extract_info_from_hub_content_arn(
-    arn: str,
-) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:
-    """Extracts hub_name, content_name, and content_version from a HubContentArn"""
-
-    match = re.match(constants.HUB_MODEL_ARN_REGEX, arn)
-    if match:
-        hub_name = match.group(4)
-        hub_region = match.group(2)
-        content_name = match.group(5)
-        content_version = match.group(6)
-
-        return hub_name, hub_region, content_name, content_version
-
-    match = re.match(constants.HUB_ARN_REGEX, arn)
-    if match:
-        hub_name = match.group(4)
-        hub_region = match.group(2)
-        return hub_name, hub_region, None, None
-
-    return None, None, None, None
