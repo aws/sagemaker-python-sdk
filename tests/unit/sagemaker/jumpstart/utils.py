@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 import copy
-from typing import List
+from typing import List, Optional
 import boto3
 
 from sagemaker.jumpstart.cache import JumpStartModelsCache
@@ -22,7 +22,7 @@ from sagemaker.jumpstart.constants import (
     JUMPSTART_REGION_NAME_SET,
 )
 from sagemaker.jumpstart.types import (
-    HubDataType,
+    HubContentType,
     JumpStartCachedContentKey,
     JumpStartCachedContentValue,
     JumpStartModelSpecs,
@@ -92,6 +92,7 @@ def get_prototype_model_spec(
     region: str = None,
     model_id: str = None,
     version: str = None,
+    hub_arn: Optional[str] = None,
     s3_client: boto3.client = None,
 ) -> JumpStartModelSpecs:
     """This function mocks cache accessor functions. For this mock,
@@ -107,6 +108,7 @@ def get_special_model_spec(
     region: str = None,
     model_id: str = None,
     version: str = None,
+    hub_arn: Optional[str] = None,
     s3_client: boto3.client = None,
 ) -> JumpStartModelSpecs:
     """This function mocks cache accessor functions. For this mock,
@@ -122,6 +124,7 @@ def get_special_model_spec_for_inference_component_based_endpoint(
     region: str = None,
     model_id: str = None,
     version: str = None,
+    hub_arn: Optional[str] = None,
     s3_client: boto3.client = None,
 ) -> JumpStartModelSpecs:
     """This function mocks cache accessor functions. For this mock,
@@ -145,25 +148,28 @@ def get_spec_from_base_spec(
     model_id: str = None,
     semantic_version_str: str = None,
     version: str = None,
+    hub_arn: Optional[str] = None,
+    hub_model_arn: Optional[str] = None,
     s3_client: boto3.client = None,
 ) -> JumpStartModelSpecs:
 
     if version and semantic_version_str:
         raise ValueError("Cannot specify both `version` and `semantic_version_str` fields.")
 
-    if all(
-        [
-            "pytorch" not in model_id,
-            "tensorflow" not in model_id,
-            "huggingface" not in model_id,
-            "mxnet" not in model_id,
-            "xgboost" not in model_id,
-            "catboost" not in model_id,
-            "lightgbm" not in model_id,
-            "sklearn" not in model_id,
-        ]
-    ):
-        raise KeyError("Bad model ID")
+    if model_id is not None:
+        if all(
+            [
+                "pytorch" not in model_id,
+                "tensorflow" not in model_id,
+                "huggingface" not in model_id,
+                "mxnet" not in model_id,
+                "xgboost" not in model_id,
+                "catboost" not in model_id,
+                "lightgbm" not in model_id,
+                "sklearn" not in model_id,
+            ]
+        ):
+            raise KeyError("Bad model ID")
 
     if region is not None and region not in JUMPSTART_REGION_NAME_SET:
         raise ValueError(
@@ -197,14 +203,14 @@ def patched_retrieval_function(
             formatted_content=get_spec_from_base_spec(model_id=model_id, version=version)
         )
 
-    if datatype == HubDataType.MODEL:
+    if datatype == HubContentType.MODEL:
         _, _, _, model_name, model_version = id_info.split("/")
         return JumpStartCachedContentValue(
             formatted_content=get_spec_from_base_spec(model_id=model_name, version=model_version)
         )
 
     # TODO: Implement
-    if datatype == HubDataType.HUB:
+    if datatype == HubContentType.HUB:
         return None
 
     raise ValueError(f"Bad value for filetype: {datatype}")

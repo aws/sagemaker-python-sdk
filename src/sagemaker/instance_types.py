@@ -29,6 +29,7 @@ def retrieve_default(
     region: Optional[str] = None,
     model_id: Optional[str] = None,
     model_version: Optional[str] = None,
+    hub_arn: Optional[str] = None,
     scope: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
@@ -44,6 +45,8 @@ def retrieve_default(
             retrieve the default instance type. (Default: None).
         model_version (str): The version of the model for which to retrieve the
             default instance type. (Default: None).
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (default: None).
         scope (str): The model type, i.e. what it is used for.
             Valid values: "training" and "inference".
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
@@ -80,6 +83,7 @@ def retrieve_default(
         model_id,
         model_version,
         scope,
+        hub_arn,
         region,
         tolerate_vulnerable_model,
         tolerate_deprecated_model,
@@ -92,6 +96,7 @@ def retrieve(
     region: Optional[str] = None,
     model_id: Optional[str] = None,
     model_version: Optional[str] = None,
+    hub_arn: Optional[str] = None,
     scope: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
@@ -107,6 +112,8 @@ def retrieve(
             retrieve the supported instance types. (Default: None).
         model_version (str): The version of the model for which to retrieve the
             supported instance types. (Default: None).
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
             specifications should be tolerated (exception not raised). If False, raises an
             exception if the script used by this version of the model has dependencies with known
@@ -142,6 +149,7 @@ def retrieve(
         model_id,
         model_version,
         scope,
+        hub_arn,
         region,
         tolerate_vulnerable_model,
         tolerate_deprecated_model,

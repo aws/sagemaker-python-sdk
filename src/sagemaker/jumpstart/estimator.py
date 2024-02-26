@@ -28,6 +28,7 @@ from sagemaker.inputs import FileSystemInput, TrainingInput
 from sagemaker.instance_group import InstanceGroup
 from sagemaker.jumpstart.accessors import JumpStartModelsAccessor
 from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+from sagemaker.jumpstart.curated_hub.utils import generate_hub_arn_for_estimator_init_kwargs
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.exceptions import INVALID_MODEL_ID_ERROR_MSG
 
@@ -57,6 +58,7 @@ class JumpStartEstimator(Estimator):
         self,
         model_id: Optional[str] = None,
         model_version: Optional[str] = None,
+        hub_name: Optional[str] = None,
         tolerate_vulnerable_model: Optional[bool] = None,
         tolerate_deprecated_model: Optional[bool] = None,
         region: Optional[str] = None,
@@ -122,6 +124,7 @@ class JumpStartEstimator(Estimator):
                 https://sagemaker.readthedocs.io/en/stable/doc_utils/pretrainedmodels.html
                 for list of model IDs.
             model_version (Optional[str]): Version for JumpStart model to use (Default: None).
+            hub_name (Optional[str]): Hub name or arn where the model is stored (Default: None).
             tolerate_vulnerable_model (Optional[bool]): True if vulnerable versions of model
                 specifications should be tolerated (exception not raised). If False, raises an
                 exception if the script used by this version of the model has dependencies
@@ -518,9 +521,16 @@ class JumpStartEstimator(Estimator):
             if not _is_valid_model_id_hook():
                 raise ValueError(INVALID_MODEL_ID_ERROR_MSG.format(model_id=model_id))
 
+        hub_arn = None
+        if hub_name:
+            hub_arn = generate_hub_arn_for_estimator_init_kwargs(
+                hub_name=hub_name, region=region, session=sagemaker_session
+            )
+
         estimator_init_kwargs = get_init_kwargs(
             model_id=model_id,
             model_version=model_version,
+            hub_arn=hub_arn,
             tolerate_vulnerable_model=tolerate_vulnerable_model,
             tolerate_deprecated_model=tolerate_deprecated_model,
             role=role,
@@ -576,6 +586,7 @@ class JumpStartEstimator(Estimator):
             enable_remote_debug=enable_remote_debug,
         )
 
+        self.hub_arn = estimator_init_kwargs.hub_arn
         self.model_id = estimator_init_kwargs.model_id
         self.model_version = estimator_init_kwargs.model_version
         self.instance_type = estimator_init_kwargs.instance_type
@@ -652,6 +663,7 @@ class JumpStartEstimator(Estimator):
         estimator_fit_kwargs = get_fit_kwargs(
             model_id=self.model_id,
             model_version=self.model_version,
+            hub_arn=self.hub_arn,
             region=self.region,
             inputs=inputs,
             wait=wait,
@@ -1018,6 +1030,7 @@ class JumpStartEstimator(Estimator):
         estimator_deploy_kwargs = get_deploy_kwargs(
             model_id=self.model_id,
             model_version=self.model_version,
+            hub_arn=self.hub_arn,
             region=self.region,
             tolerate_vulnerable_model=self.tolerate_vulnerable_model,
             tolerate_deprecated_model=self.tolerate_deprecated_model,

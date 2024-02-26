@@ -45,6 +45,7 @@ def test_jumpstart_models_cache_get_fxs(mock_cache):
     mock_cache.get_manifest = Mock(return_value=BASE_MANIFEST)
     mock_cache.get_header = Mock(side_effect=get_header_from_base_header)
     mock_cache.get_specs = Mock(side_effect=get_spec_from_base_spec)
+    mock_cache.get_hub_model = Mock(side_effect=get_spec_from_base_spec)
 
     assert get_header_from_base_header(
         region="us-west-2", model_id="pytorch-ic-mobilenet-v2", version="*"
@@ -56,8 +57,45 @@ def test_jumpstart_models_cache_get_fxs(mock_cache):
     ) == accessors.JumpStartModelsAccessor.get_model_specs(
         region="us-west-2", model_id="pytorch-ic-mobilenet-v2", version="*"
     )
+    assert get_spec_from_base_spec(
+        hub_arn="arn:aws:sagemaker:us-west-2:123456789123:hub/my-mock-hub",
+    ) == accessors.JumpStartModelsAccessor.get_model_specs(
+        region="us-west-2",
+        model_id="pytorch-ic-mobilenet-v2",
+        version="*",
+        hub_arn="arn:aws:sagemaker:us-west-2:123456789123:hub/my-mock-hub",
+    )
 
     assert len(accessors.JumpStartModelsAccessor._get_manifest()) > 0
+
+    # necessary because accessors is a static module
+    reload(accessors)
+
+
+@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._cache")
+def test_jumpstart_models_cache_get_model_specs(mock_cache):
+    mock_cache.get_specs = Mock()
+    mock_cache.get_hub_model = Mock()
+    model_id, version = "pytorch-ic-mobilenet-v2", "*"
+    region = "us-west-2"
+
+    accessors.JumpStartModelsAccessor.get_model_specs(
+        region=region, model_id=model_id, version=version
+    )
+    mock_cache.get_specs.assert_called_once_with(model_id=model_id, semantic_version_str=version)
+    mock_cache.get_hub_model.assert_not_called()
+
+    accessors.JumpStartModelsAccessor.get_model_specs(
+        region=region,
+        model_id=model_id,
+        version=version,
+        hub_arn=f"arn:aws:sagemaker:{region}:123456789123:hub/my-mock-hub",
+    )
+    mock_cache.get_hub_model.assert_called_once_with(
+        hub_model_arn=(
+            f"arn:aws:sagemaker:{region}:123456789123:hub-content/my-mock-hub/Model/{model_id}/{version}"
+        )
+    )
 
     # necessary because accessors is a static module
     reload(accessors)
@@ -85,9 +123,14 @@ def test_jumpstart_models_cache_set_reset_fxs(mock_model_cache: Mock):
     mock_model_cache.assert_called_once()
     mock_model_cache.reset_mock()
 
+    # shouldn't matter if hub_arn is passed through
     accessors.JumpStartModelsAccessor.get_model_specs(
-        region="us-west-1", model_id="pytorch-ic-mobilenet-v2", version="*"
+        region="us-west-1",
+        model_id="pytorch-ic-mobilenet-v2",
+        version="*",
+        hub_arn="arn:aws:sagemaker:us-west-2:123456789123:hub/my-mock-hub",
     )
+
     mock_model_cache.assert_called_once()
     mock_model_cache.reset_mock()
 

@@ -37,7 +37,10 @@ from sagemaker.jumpstart.exceptions import (
     DeprecatedJumpStartModelError,
     VulnerableJumpStartModelError,
 )
-from sagemaker.jumpstart.types import JumpStartModelHeader, JumpStartVersionedModelId
+from sagemaker.jumpstart.types import (
+    JumpStartModelHeader,
+    JumpStartVersionedModelId,
+)
 from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec
 from mock import MagicMock
 
@@ -257,6 +260,44 @@ def test_add_jumpstart_model_id_version_tags():
     ] == utils.add_jumpstart_model_id_version_tags(
         tags=tags, model_id=model_id, model_version=version
     )
+
+
+def test_add_hub_arn_tags():
+    tags = None
+    hub_arn = "arn:aws:sagemaker:us-west-2:123456789123:hub/my-mock-hub"
+
+    assert [
+        {
+            "Key": "sagemaker-hub:hub-arn",
+            "Value": "arn:aws:sagemaker:us-west-2:123456789123:hub/my-mock-hub",
+        }
+    ] == utils.add_hub_arn_tags(tags=tags, hub_arn=hub_arn)
+
+    tags = [
+        {
+            "Key": "sagemaker-hub:hub-arn",
+            "Value": "arn:aws:sagemaker:us-west-2:123456789123:hub/my-mock-hub",
+        }
+    ]
+    # If tags are already present, don't modify existing tags
+    assert [
+        {
+            "Key": "sagemaker-hub:hub-arn",
+            "Value": "arn:aws:sagemaker:us-west-2:123456789123:hub/my-mock-hub",
+        }
+    ] == utils.add_hub_arn_tags(tags=tags, hub_arn=hub_arn)
+
+    tags = [
+        {"Key": "random key", "Value": "random_value"},
+    ]
+    hub_arn = "arn:aws:sagemaker:us-west-2:123456789123:hub/my-mock-hub"
+    assert [
+        {"Key": "random key", "Value": "random_value"},
+        {
+            "Key": "sagemaker-hub:hub-arn",
+            "Value": "arn:aws:sagemaker:us-west-2:123456789123:hub/my-mock-hub",
+        },
+    ] == utils.add_hub_arn_tags(tags=tags, hub_arn=hub_arn)
 
 
 def test_add_jumpstart_uri_tags_inference():
@@ -1175,35 +1216,6 @@ def test_mime_type_enum_from_str():
         for suffix in suffixes:
             mime_type_with_suffix = mime_type + suffix
             assert MIMEType.from_suffixed_type(mime_type_with_suffix) == mime_type
-
-
-def test_extract_info_from_hub_content_arn():
-    model_arn = (
-        "arn:aws:sagemaker:us-west-2:000000000000:hub_content/MockHub/Model/my-mock-model/1.0.2"
-    )
-    assert utils.extract_info_from_hub_content_arn(model_arn) == (
-        "MockHub",
-        "us-west-2",
-        "my-mock-model",
-        "1.0.2",
-    )
-
-    hub_arn = "arn:aws:sagemaker:us-west-2:000000000000:hub/MockHub"
-    assert utils.extract_info_from_hub_content_arn(hub_arn) == ("MockHub", "us-west-2", None, None)
-
-    invalid_arn = "arn:aws:sagemaker:us-west-2:000000000000:endpoint/my-endpoint-123"
-    assert utils.extract_info_from_hub_content_arn(invalid_arn) == (None, None, None, None)
-
-    invalid_arn = "nonsense-string"
-    assert utils.extract_info_from_hub_content_arn(invalid_arn) == (None, None, None, None)
-
-    invalid_arn = ""
-    assert utils.extract_info_from_hub_content_arn(invalid_arn) == (None, None, None, None)
-
-    invalid_arn = (
-        "arn:aws:sagemaker:us-west-2:000000000000:hub-content/MyHub/Notebook/my-notebook/1.0.0"
-    )
-    assert utils.extract_info_from_hub_content_arn(invalid_arn) == (None, None, None, None)
 
 
 class TestIsValidModelId(TestCase):

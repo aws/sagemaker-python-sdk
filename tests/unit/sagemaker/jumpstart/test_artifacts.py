@@ -20,11 +20,22 @@ import pytest
 
 import copy
 from sagemaker.jumpstart import artifacts
+from sagemaker.jumpstart.artifacts.environment_variables import (
+    _retrieve_default_environment_variables,
+)
+from sagemaker.jumpstart.artifacts.hyperparameters import _retrieve_default_hyperparameters
+from sagemaker.jumpstart.artifacts.image_uris import _retrieve_image_uri
+from sagemaker.jumpstart.artifacts.incremental_training import _model_supports_incremental_training
+from sagemaker.jumpstart.artifacts.instance_types import _retrieve_default_instance_type
+from sagemaker.jumpstart.artifacts.metric_definitions import (
+    _retrieve_default_training_metric_definitions,
+)
 from sagemaker.jumpstart.artifacts.model_uris import (
     _retrieve_hosting_prepacked_artifact_key,
     _retrieve_hosting_artifact_key,
     _retrieve_training_artifact_key,
 )
+from sagemaker.jumpstart.artifacts.script_uris import _retrieve_script_uri
 from sagemaker.jumpstart.types import JumpStartModelSpecs
 from tests.unit.sagemaker.jumpstart.constants import (
     BASE_SPEC,
@@ -455,4 +466,213 @@ class PrivateJumpStartBucketTest(unittest.TestCase):
                 model_id=model_id, model_version="*", model_scope="training", region=region
             ),
             "s3://jumpstart-private-cache-prod-us-west-2/pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz",
+        )
+
+
+class HubModelTest(unittest.TestCase):
+    @patch("sagemaker.jumpstart.cache.JumpStartModelsCache.get_hub_model")
+    def test_retrieve_default_environment_variables(self, mock_get_hub_model):
+        mock_get_hub_model.return_value = JumpStartModelSpecs(spec=copy.deepcopy(BASE_SPEC))
+
+        model_id, version = "pytorch-ic-mobilenet-v2", "1.0.2"
+        hub_arn = "arn:aws:sagemaker:us-west-2:000000000000:hub/my-cool-hub"
+
+        self.assertEqual(
+            _retrieve_default_environment_variables(
+                model_id=model_id,
+                model_version=version,
+                hub_arn=hub_arn,
+                script=JumpStartScriptScope.INFERENCE,
+            ),
+            {
+                "SAGEMAKER_PROGRAM": "inference.py",
+                "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
+                "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
+                "SAGEMAKER_MODEL_SERVER_TIMEOUT": "3600",
+                "ENDPOINT_SERVER_TIMEOUT": "3600",
+                "MODEL_CACHE_ROOT": "/opt/ml/model",
+                "SAGEMAKER_ENV": "1",
+                "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+            },
+        )
+        mock_get_hub_model.assert_called_once_with(
+            hub_model_arn=(
+                f"arn:aws:sagemaker:us-west-2:000000000000:hub-content/my-cool-hub/Model/{model_id}/{version}"
+            )
+        )
+
+    @patch("sagemaker.jumpstart.cache.JumpStartModelsCache.get_hub_model")
+    def test_retrieve_image_uri(self, mock_get_hub_model):
+        mock_get_hub_model.return_value = JumpStartModelSpecs(spec=copy.deepcopy(BASE_SPEC))
+
+        model_id, version = "pytorch-ic-mobilenet-v2", "1.0.2"
+        hub_arn = "arn:aws:sagemaker:us-west-2:000000000000:hub/my-cool-hub"
+
+        self.assertEqual(
+            _retrieve_image_uri(
+                model_id=model_id,
+                model_version=version,
+                hub_arn=hub_arn,
+                instance_type="ml.p3.2xlarge",
+                image_scope=JumpStartScriptScope.TRAINING,
+            ),
+            "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.5.0-gpu-py3",
+        )
+        mock_get_hub_model.assert_called_once_with(
+            hub_model_arn=(
+                f"arn:aws:sagemaker:us-west-2:000000000000:hub-content/my-cool-hub/Model/{model_id}/{version}"
+            )
+        )
+
+    @patch("sagemaker.jumpstart.cache.JumpStartModelsCache.get_hub_model")
+    def test_retrieve_default_hyperparameters(self, mock_get_hub_model):
+        mock_get_hub_model.return_value = JumpStartModelSpecs(spec=copy.deepcopy(BASE_SPEC))
+
+        model_id, version = "pytorch-ic-mobilenet-v2", "1.0.2"
+        hub_arn = "arn:aws:sagemaker:us-west-2:000000000000:hub/my-cool-hub"
+
+        self.assertEqual(
+            _retrieve_default_hyperparameters(
+                model_id=model_id, model_version=version, hub_arn=hub_arn
+            ),
+            {
+                "epochs": "3",
+                "adam-learning-rate": "0.05",
+                "batch-size": "4",
+            },
+        )
+        mock_get_hub_model.assert_called_once_with(
+            hub_model_arn=(
+                f"arn:aws:sagemaker:us-west-2:000000000000:hub-content/my-cool-hub/Model/{model_id}/{version}"
+            )
+        )
+
+    @patch("sagemaker.jumpstart.cache.JumpStartModelsCache.get_hub_model")
+    def test_model_supports_incremental_training(self, mock_get_hub_model):
+        mock_get_hub_model.return_value = JumpStartModelSpecs(spec=copy.deepcopy(BASE_SPEC))
+
+        model_id, version = "pytorch-ic-mobilenet-v2", "1.0.2"
+        hub_arn = "arn:aws:sagemaker:us-west-2:000000000000:hub/my-cool-hub"
+
+        self.assertEqual(
+            _model_supports_incremental_training(
+                model_id=model_id, model_version=version, hub_arn=hub_arn, region="us-west-2"
+            ),
+            True,
+        )
+        mock_get_hub_model.assert_called_once_with(
+            hub_model_arn=(
+                f"arn:aws:sagemaker:us-west-2:000000000000:hub-content/my-cool-hub/Model/{model_id}/{version}"
+            )
+        )
+
+    @patch("sagemaker.jumpstart.cache.JumpStartModelsCache.get_hub_model")
+    def test_retrieve_default_instance_type(self, mock_get_hub_model):
+        mock_get_hub_model.return_value = JumpStartModelSpecs(spec=copy.deepcopy(BASE_SPEC))
+
+        model_id, version = "pytorch-ic-mobilenet-v2", "1.0.2"
+        hub_arn = "arn:aws:sagemaker:us-west-2:000000000000:hub/my-cool-hub"
+
+        self.assertEqual(
+            _retrieve_default_instance_type(
+                model_id=model_id,
+                model_version=version,
+                hub_arn=hub_arn,
+                scope=JumpStartScriptScope.TRAINING,
+            ),
+            "ml.p3.2xlarge",
+        )
+        mock_get_hub_model.assert_called_once_with(
+            hub_model_arn=(
+                f"arn:aws:sagemaker:us-west-2:000000000000:hub-content/my-cool-hub/Model/{model_id}/{version}"
+            )
+        )
+
+        self.assertEqual(
+            _retrieve_default_instance_type(
+                model_id=model_id,
+                model_version=version,
+                hub_arn=hub_arn,
+                scope=JumpStartScriptScope.INFERENCE,
+            ),
+            "ml.p2.xlarge",
+        )
+
+    @patch("sagemaker.jumpstart.cache.JumpStartModelsCache.get_hub_model")
+    def test_retrieve_default_training_metric_definitions(self, mock_get_hub_model):
+        mock_get_hub_model.return_value = JumpStartModelSpecs(spec=copy.deepcopy(BASE_SPEC))
+
+        model_id, version = "pytorch-ic-mobilenet-v2", "1.0.2"
+        hub_arn = "arn:aws:sagemaker:us-west-2:000000000000:hub/my-cool-hub"
+
+        self.assertEqual(
+            _retrieve_default_training_metric_definitions(
+                model_id=model_id, model_version=version, hub_arn=hub_arn, region="us-west-2"
+            ),
+            [{"Regex": "val_accuracy: ([0-9\\.]+)", "Name": "pytorch-ic:val-accuracy"}],
+        )
+        mock_get_hub_model.assert_called_once_with(
+            hub_model_arn=(
+                f"arn:aws:sagemaker:us-west-2:000000000000:hub-content/my-cool-hub/Model/{model_id}/{version}"
+            )
+        )
+
+    @patch("sagemaker.jumpstart.cache.JumpStartModelsCache.get_hub_model")
+    def test_retrieve_model_uri(self, mock_get_hub_model):
+        mock_get_hub_model.return_value = JumpStartModelSpecs(spec=copy.deepcopy(BASE_SPEC))
+
+        model_id, version = "pytorch-ic-mobilenet-v2", "1.0.2"
+        hub_arn = "arn:aws:sagemaker:us-west-2:000000000000:hub/my-cool-hub"
+
+        self.assertEqual(
+            _retrieve_model_uri(
+                model_id=model_id, model_version=version, hub_arn=hub_arn, model_scope="training"
+            ),
+            "s3://jumpstart-cache-prod-us-west-2/pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz",
+        )
+        mock_get_hub_model.assert_called_once_with(
+            hub_model_arn=(
+                f"arn:aws:sagemaker:us-west-2:000000000000:hub-content/my-cool-hub/Model/{model_id}/{version}"
+            )
+        )
+
+        self.assertEqual(
+            _retrieve_model_uri(
+                model_id=model_id, model_version=version, hub_arn=hub_arn, model_scope="inference"
+            ),
+            "s3://jumpstart-cache-prod-us-west-2/pytorch-infer/infer-pytorch-ic-mobilenet-v2.tar.gz",
+        )
+
+    @patch("sagemaker.jumpstart.cache.JumpStartModelsCache.get_hub_model")
+    def test_retrieve_script_uri(self, mock_get_hub_model):
+        mock_get_hub_model.return_value = JumpStartModelSpecs(spec=copy.deepcopy(BASE_SPEC))
+
+        model_id, version = "pytorch-ic-mobilenet-v2", "1.0.2"
+        hub_arn = "arn:aws:sagemaker:us-west-2:000000000000:hub/my-cool-hub"
+
+        self.assertEqual(
+            _retrieve_script_uri(
+                model_id=model_id,
+                model_version=version,
+                hub_arn=hub_arn,
+                script_scope=JumpStartScriptScope.TRAINING,
+            ),
+            "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/pytorch/"
+            "transfer_learning/ic/v1.0.0/sourcedir.tar.gz",
+        )
+        mock_get_hub_model.assert_called_once_with(
+            hub_model_arn=(
+                f"arn:aws:sagemaker:us-west-2:000000000000:hub-content/my-cool-hub/Model/{model_id}/{version}"
+            )
+        )
+
+        self.assertEqual(
+            _retrieve_script_uri(
+                model_id=model_id,
+                model_version=version,
+                hub_arn=hub_arn,
+                script_scope=JumpStartScriptScope.INFERENCE,
+            ),
+            "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/pytorch/"
+            "inference/ic/v1.0.0/sourcedir.tar.gz",
         )

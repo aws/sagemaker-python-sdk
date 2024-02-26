@@ -44,6 +44,7 @@ from sagemaker.jumpstart.types import (
     JumpStartModelRegisterKwargs,
 )
 from sagemaker.jumpstart.utils import (
+    add_hub_arn_tags,
     add_jumpstart_model_id_version_tags,
     update_dict_if_key_not_present,
     resolve_model_sagemaker_config_field,
@@ -447,6 +448,9 @@ def _add_tags_to_kwargs(kwargs: JumpStartModelDeployKwargs) -> Dict[str, Any]:
             kwargs.tags, kwargs.model_id, full_model_version
         )
 
+    if kwargs.hub_arn:
+        kwargs.tags = add_hub_arn_tags(kwargs.tags, kwargs.hub_arn)
+
     return kwargs
 
 
@@ -489,6 +493,7 @@ def _add_resources_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModel
 def get_deploy_kwargs(
     model_id: str,
     model_version: Optional[str] = None,
+    hub_arn: Optional[str] = None,
     region: Optional[str] = None,
     initial_instance_count: Optional[int] = None,
     instance_type: Optional[str] = None,
@@ -521,6 +526,7 @@ def get_deploy_kwargs(
     deploy_kwargs: JumpStartModelDeployKwargs = JumpStartModelDeployKwargs(
         model_id=model_id,
         model_version=model_version,
+        hub_arn=hub_arn,
         region=region,
         initial_instance_count=initial_instance_count,
         instance_type=instance_type,
