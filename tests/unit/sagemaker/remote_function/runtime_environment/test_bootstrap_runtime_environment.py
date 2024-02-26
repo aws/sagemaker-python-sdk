@@ -27,6 +27,7 @@ TEST_JOB_CONDA_ENV = "conda_env"
 CURR_WORKING_DIR = "/user/set/workdir"
 TEST_DEPENDENCIES_PATH = "/user/set/workdir/sagemaker_remote_function_workspace"
 TEST_PYTHON_VERSION = "3.10"
+TEST_SAGEMAKER_PYSDK_VERSION = "2.205.0"
 TEST_WORKSPACE_ARCHIVE_DIR_PATH = "/opt/ml/input/data/sm_rf_user_ws"
 TEST_WORKSPACE_ARCHIVE_PATH = "/opt/ml/input/data/sm_rf_user_ws/workspace.zip"
 TEST_EXECUTION_ID = "test_execution_id"
@@ -44,6 +45,8 @@ def args_for_remote():
         TEST_JOB_CONDA_ENV,
         "--client_python_version",
         TEST_PYTHON_VERSION,
+        "--client_sagemaker_pysdk_version",
+        TEST_SAGEMAKER_PYSDK_VERSION,
         "--dependency_settings",
         _DependencySettings(TEST_DEPENDENCY_FILE_NAME).to_string(),
     ]
@@ -55,6 +58,8 @@ def args_for_step():
         TEST_JOB_CONDA_ENV,
         "--client_python_version",
         TEST_PYTHON_VERSION,
+        "--client_sagemaker_pysdk_version",
+        TEST_SAGEMAKER_PYSDK_VERSION,
         "--pipeline_execution_id",
         TEST_EXECUTION_ID,
         "--func_step_s3_dir",
@@ -63,6 +68,10 @@ def args_for_step():
 
 
 @patch("sys.exit")
+@patch(
+    "sagemaker.remote_function.runtime_environment.runtime_environment_manager."
+    "RuntimeEnvironmentManager._validate_sagemaker_pysdk_version"
+)
 @patch(
     "sagemaker.remote_function.runtime_environment.runtime_environment_manager."
     "RuntimeEnvironmentManager._validate_python_version"
@@ -90,12 +99,14 @@ def test_main_success_remote_job_with_root_user(
     run_pre_exec_script,
     bootstrap_runtime,
     validate_python,
+    validate_sagemaker,
     _exit_process,
 ):
     bootstrap.main(args_for_remote())
 
     change_dir_permission.assert_not_called()
     validate_python.assert_called_once_with(TEST_PYTHON_VERSION, TEST_JOB_CONDA_ENV)
+    validate_sagemaker.assert_called_once_with(TEST_SAGEMAKER_PYSDK_VERSION)
     bootstrap_remote.assert_called_once_with(
         TEST_PYTHON_VERSION,
         TEST_JOB_CONDA_ENV,
@@ -107,6 +118,71 @@ def test_main_success_remote_job_with_root_user(
 
 
 @patch("sys.exit")
+@patch(
+    "sagemaker.remote_function.runtime_environment.runtime_environment_manager."
+    "RuntimeEnvironmentManager._validate_sagemaker_pysdk_version"
+)
+@patch(
+    "sagemaker.remote_function.runtime_environment.runtime_environment_manager."
+    "RuntimeEnvironmentManager._validate_python_version"
+)
+@patch(
+    "sagemaker.remote_function.runtime_environment.runtime_environment_manager."
+    "RuntimeEnvironmentManager.bootstrap"
+)
+@patch(
+    "sagemaker.remote_function.runtime_environment.runtime_environment_manager."
+    "RuntimeEnvironmentManager.run_pre_exec_script"
+)
+@patch(
+    "sagemaker.remote_function.runtime_environment.bootstrap_runtime_environment."
+    "_bootstrap_runtime_env_for_remote_function"
+)
+@patch("getpass.getuser", MagicMock(return_value="root"))
+@patch(
+    "sagemaker.remote_function.runtime_environment.runtime_environment_manager."
+    "RuntimeEnvironmentManager.change_dir_permission"
+)
+def test_main_success_with_obsoleted_args_that_missing_sagemaker_version(
+    change_dir_permission,
+    bootstrap_remote,
+    run_pre_exec_script,
+    bootstrap_runtime,
+    validate_python,
+    validate_sagemaker,
+    _exit_process,
+):
+    # This test is to test the backward compatibility
+    # In old version of SDK, the client side sagemaker_pysdk_version is not passed to job
+    # thus it would be None and would not lead to the warning
+    obsoleted_args = [
+        "--job_conda_env",
+        TEST_JOB_CONDA_ENV,
+        "--client_python_version",
+        TEST_PYTHON_VERSION,
+        "--dependency_settings",
+        _DependencySettings(TEST_DEPENDENCY_FILE_NAME).to_string(),
+    ]
+    bootstrap.main(obsoleted_args)
+
+    change_dir_permission.assert_not_called()
+    validate_python.assert_called_once_with(TEST_PYTHON_VERSION, TEST_JOB_CONDA_ENV)
+    validate_sagemaker.assert_called_once_with(None)
+    bootstrap_remote.assert_called_once_with(
+        TEST_PYTHON_VERSION,
+        TEST_JOB_CONDA_ENV,
+        _DependencySettings(TEST_DEPENDENCY_FILE_NAME),
+    )
+    run_pre_exec_script.assert_not_called()
+    bootstrap_runtime.assert_not_called()
+    _exit_process.assert_called_with(0)
+
+
+@patch("sys.exit")
+@patch(
+    "sagemaker.remote_function.runtime_environment.runtime_environment_manager."
+    "RuntimeEnvironmentManager._validate_sagemaker_pysdk_version"
+)
 @patch(
     "sagemaker.remote_function.runtime_environment.runtime_environment_manager."
     "RuntimeEnvironmentManager._validate_python_version"
@@ -134,11 +210,13 @@ def test_main_success_pipeline_step_with_root_user(
     run_pre_exec_script,
     bootstrap_runtime,
     validate_python,
+    validate_sagemaker,
     _exit_process,
 ):
     bootstrap.main(args_for_step())
     change_dir_permission.assert_not_called()
     validate_python.assert_called_once_with(TEST_PYTHON_VERSION, TEST_JOB_CONDA_ENV)
+    validate_sagemaker.assert_called_once_with(TEST_SAGEMAKER_PYSDK_VERSION)
     bootstrap_step.assert_called_once_with(
         TEST_PYTHON_VERSION,
         FUNC_STEP_WORKSPACE,
@@ -150,6 +228,10 @@ def test_main_success_pipeline_step_with_root_user(
     _exit_process.assert_called_with(0)
 
 
+@patch(
+    "sagemaker.remote_function.runtime_environment.runtime_environment_manager."
+    "RuntimeEnvironmentManager._validate_sagemaker_pysdk_version"
+)
 @patch(
     "sagemaker.remote_function.runtime_environment.runtime_environment_manager."
     "RuntimeEnvironmentManager._validate_python_version"
@@ -178,6 +260,7 @@ def test_main_failure_remote_job_with_root_user(
     write_failure,
     _exit_process,
     validate_python,
+    validate_sagemaker,
 ):
     runtime_err = RuntimeEnvironmentError("some failure reason")
     bootstrap_runtime.side_effect = runtime_err
@@ -186,12 +269,17 @@ def test_main_failure_remote_job_with_root_user(
 
     change_dir_permission.assert_not_called()
     validate_python.assert_called_once_with(TEST_PYTHON_VERSION, TEST_JOB_CONDA_ENV)
+    validate_sagemaker.assert_called_once_with(TEST_SAGEMAKER_PYSDK_VERSION)
     run_pre_exec_script.assert_not_called()
     bootstrap_runtime.assert_called()
     write_failure.assert_called_with(str(runtime_err))
     _exit_process.assert_called_with(1)
 
 
+@patch(
+    "sagemaker.remote_function.runtime_environment.runtime_environment_manager."
+    "RuntimeEnvironmentManager._validate_sagemaker_pysdk_version"
+)
 @patch(
     "sagemaker.remote_function.runtime_environment.runtime_environment_manager."
     "RuntimeEnvironmentManager._validate_python_version"
@@ -220,6 +308,7 @@ def test_main_failure_pipeline_step_with_root_user(
     write_failure,
     _exit_process,
     validate_python,
+    validate_sagemaker,
 ):
     runtime_err = RuntimeEnvironmentError("some failure reason")
     bootstrap_runtime.side_effect = runtime_err
@@ -228,6 +317,7 @@ def test_main_failure_pipeline_step_with_root_user(
 
     change_dir_permission.assert_not_called()
     validate_python.assert_called_once_with(TEST_PYTHON_VERSION, TEST_JOB_CONDA_ENV)
+    validate_sagemaker.assert_called_once_with(TEST_SAGEMAKER_PYSDK_VERSION)
     run_pre_exec_script.assert_not_called()
     bootstrap_runtime.assert_called()
     write_failure.assert_called_with(str(runtime_err))
@@ -235,6 +325,10 @@ def test_main_failure_pipeline_step_with_root_user(
 
 
 @patch("sys.exit")
+@patch(
+    "sagemaker.remote_function.runtime_environment.runtime_environment_manager."
+    "RuntimeEnvironmentManager._validate_sagemaker_pysdk_version"
+)
 @patch(
     "sagemaker.remote_function.runtime_environment.runtime_environment_manager."
     "RuntimeEnvironmentManager._validate_python_version"
@@ -262,6 +356,7 @@ def test_main_remote_job_with_non_root_user(
     run_pre_exec_script,
     bootstrap_runtime,
     validate_python,
+    validate_sagemaker,
     _exit_process,
 ):
     bootstrap.main(args_for_remote())
@@ -270,6 +365,7 @@ def test_main_remote_job_with_non_root_user(
         dirs=bootstrap.JOB_OUTPUT_DIRS, new_permission="777"
     )
     validate_python.assert_called_once_with(TEST_PYTHON_VERSION, TEST_JOB_CONDA_ENV)
+    validate_sagemaker.assert_called_once_with(TEST_SAGEMAKER_PYSDK_VERSION)
     bootstrap_remote.assert_called_once_with(
         TEST_PYTHON_VERSION,
         TEST_JOB_CONDA_ENV,
@@ -281,6 +377,10 @@ def test_main_remote_job_with_non_root_user(
 
 
 @patch("sys.exit")
+@patch(
+    "sagemaker.remote_function.runtime_environment.runtime_environment_manager."
+    "RuntimeEnvironmentManager._validate_sagemaker_pysdk_version"
+)
 @patch(
     "sagemaker.remote_function.runtime_environment.runtime_environment_manager."
     "RuntimeEnvironmentManager._validate_python_version"
@@ -308,6 +408,7 @@ def test_main_pipeline_step_with_non_root_user(
     run_pre_exec_script,
     bootstrap_runtime,
     validate_python,
+    validate_sagemaker,
     _exit_process,
 ):
     bootstrap.main(args_for_step())
@@ -316,6 +417,7 @@ def test_main_pipeline_step_with_non_root_user(
         dirs=bootstrap.JOB_OUTPUT_DIRS, new_permission="777"
     )
     validate_python.assert_called_once_with(TEST_PYTHON_VERSION, TEST_JOB_CONDA_ENV)
+    validate_sagemaker.assert_called_once_with(TEST_SAGEMAKER_PYSDK_VERSION)
     bootstrap_step.assert_called_once_with(
         TEST_PYTHON_VERSION,
         FUNC_STEP_WORKSPACE,

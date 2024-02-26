@@ -382,6 +382,7 @@ def test_start(
 
     local_dependencies_path = mock_runtime_manager().snapshot()
     mock_python_version = mock_runtime_manager()._current_python_version()
+    mock_sagemaker_pysdk_version = mock_runtime_manager()._current_sagemaker_pysdk_version()
 
     mock_script_upload.assert_called_once_with(
         spark_config=None,
@@ -441,6 +442,8 @@ def test_start(
                 TEST_REGION,
                 "--client_python_version",
                 mock_python_version,
+                "--client_sagemaker_pysdk_version",
+                mock_sagemaker_pysdk_version,
                 "--dependency_settings",
                 '{"dependency_file": null}',
                 "--run_in_context",
@@ -510,6 +513,7 @@ def test_start_with_checkpoint_location(
     )
 
     mock_python_version = mock_runtime_manager()._current_python_version()
+    mock_sagemaker_pysdk_version = mock_runtime_manager()._current_sagemaker_pysdk_version()
 
     session().sagemaker_client.create_training_job.assert_called_once_with(
         TrainingJobName=job.job_name,
@@ -555,6 +559,8 @@ def test_start_with_checkpoint_location(
                 TEST_REGION,
                 "--client_python_version",
                 mock_python_version,
+                "--client_sagemaker_pysdk_version",
+                mock_sagemaker_pysdk_version,
                 "--dependency_settings",
                 '{"dependency_file": null}',
                 "--run_in_context",
@@ -657,6 +663,7 @@ def test_start_with_complete_job_settings(
 
     local_dependencies_path = mock_runtime_manager().snapshot()
     mock_python_version = mock_runtime_manager()._current_python_version()
+    mock_sagemaker_pysdk_version = mock_runtime_manager()._current_sagemaker_pysdk_version()
 
     mock_bootstrap_script_upload.assert_called_once_with(
         spark_config=None,
@@ -716,6 +723,8 @@ def test_start_with_complete_job_settings(
                 TEST_REGION,
                 "--client_python_version",
                 mock_python_version,
+                "--client_sagemaker_pysdk_version",
+                mock_sagemaker_pysdk_version,
                 "--dependency_settings",
                 '{"dependency_file": "req.txt"}',
                 "--s3_kms_key",
@@ -824,6 +833,7 @@ def test_get_train_args_under_pipeline_context(
 
     local_dependencies_path = mock_runtime_manager().snapshot()
     mock_python_version = mock_runtime_manager()._current_python_version()
+    mock_sagemaker_pysdk_version = mock_runtime_manager()._current_sagemaker_pysdk_version()
 
     mock_bootstrap_scripts_upload.assert_called_once_with(
         spark_config=None,
@@ -905,6 +915,8 @@ def test_get_train_args_under_pipeline_context(
                 TEST_REGION,
                 "--client_python_version",
                 mock_python_version,
+                "--client_sagemaker_pysdk_version",
+                mock_sagemaker_pysdk_version,
                 "--dependency_settings",
                 '{"dependency_file": "req.txt"}',
                 "--s3_kms_key",
@@ -989,6 +1001,7 @@ def test_start_with_spark(
     job = _Job.start(job_settings, job_function, func_args=(1, 2), func_kwargs={"c": 3, "d": 4})
 
     mock_python_version = mock_runtime_manager()._current_python_version()
+    mock_sagemaker_pysdk_version = mock_runtime_manager()._current_sagemaker_pysdk_version()
 
     assert job.job_name.startswith("job-function")
 
@@ -1062,6 +1075,8 @@ def test_start_with_spark(
                 TEST_REGION,
                 "--client_python_version",
                 mock_python_version,
+                "--client_sagemaker_pysdk_version",
+                mock_sagemaker_pysdk_version,
                 "--dependency_settings",
                 '{"dependency_file": null}',
                 "--run_in_context",

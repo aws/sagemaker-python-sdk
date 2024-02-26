@@ -788,6 +788,12 @@ class _Job:
         )
         container_args.extend(
             [
+                "--client_sagemaker_pysdk_version",
+                RuntimeEnvironmentManager()._current_sagemaker_pysdk_version(),
+            ]
+        )
+        container_args.extend(
+            [
                 "--dependency_settings",
                 _DependencySettings.from_dependency_file_path(
                     job_settings.dependencies
