@@ -18,20 +18,25 @@ import boto3
 from sagemaker.session import Session
 from sagemaker.jumpstart import constants
 from sagemaker.utils import aws_partition
-from sagemaker.jumpstart.types import HubDescription, HubContentType, HubContentDescription
-from sagemaker.jumpstart.curated_hub.types import HubArnExtractedInfo
+from sagemaker.jumpstart.curated_hub.types import (
+    DescribeHubResponse,
+    HubContentType,
+    DescribeHubContentsResponse,
+    HubArnExtractedInfo,
+)
 
-def describe(hub_name: str, region: str) -> HubDescription:
+
+def describe(hub_name: str, region: str) -> DescribeHubResponse:
     """Returns descriptive information about the Hub."""
 
     sagemaker_session = Session(boto3.Session(region_name=region))
     hub_description = sagemaker_session.describe_hub(hub_name=hub_name)
-    return HubDescription(hub_description)
+    return DescribeHubResponse(hub_description)
 
 
 def describe_model(
     hub_name: str, region: str, model_name: str, model_version: str = "*"
-) -> HubContentDescription:
+) -> DescribeHubContentsResponse:
     """Returns descriptive information about the Hub model."""
 
     sagemaker_session = Session(boto3.Session(region_name=region))
@@ -42,7 +47,8 @@ def describe_model(
         hub_content_type=HubContentType.MODEL,
     )
 
-    return HubContentDescription(hub_content_description)
+    return DescribeHubContentsResponse(hub_content_description)
+
 
 def get_info_from_hub_resource_arn(
     arn: str,

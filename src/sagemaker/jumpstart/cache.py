@@ -29,8 +29,6 @@ from sagemaker.jumpstart.constants import (
     JUMPSTART_LOGGER,
     MODEL_ID_LIST_WEB_URL,
 )
-from sagemaker.jumpstart.curated_hub.curated_hub import CuratedHub
-from sagemaker.jumpstart.curated_hub.utils import get_info_from_hub_resource_arn
 from sagemaker.jumpstart.exceptions import get_wildcard_model_version_msg
 from sagemaker.jumpstart.parameters import (
     JUMPSTART_DEFAULT_MAX_S3_CACHE_ITEMS,
@@ -45,9 +43,11 @@ from sagemaker.jumpstart.types import (
     JumpStartModelSpecs,
     JumpStartS3FileType,
     JumpStartVersionedModelId,
+)
+from sagemaker.jumpstart.curated_hub.types import (
     HubContentType,
-    HubDescription,
-    HubContentDescription,
+    DescribeHubResponse,
+    DescribeHubContentsResponse,
 )
 from sagemaker.jumpstart import utils
 from sagemaker.jumpstart.curated_hub import utils as hub_utils
@@ -343,10 +343,10 @@ class JumpStartModelsCache:
                 formatted_content=model_specs
             )
         if data_type == HubContentType.MODEL:
-            hub_name, region, model_name, model_version = utils.extract_info_from_hub_content_arn(
+            hub_name, region, model_name, model_version = hub_utils.get_info_from_hub_resource_arn(
                 id_info
             )
-            hub_model_description: HubContentDescription = hub_utils.describe_model(
+            hub_model_description: DescribeHubContentsResponse = hub_utils.describe_model(
                 hub_name=hub_name,
                 region=region,
                 model_name=model_name,
@@ -359,13 +359,15 @@ class JumpStartModelsCache:
                 self.get_region(),
                 self._s3_client
             )
-            # TODO: Parse HubContentDescription
             return JumpStartCachedContentValue(
                 formatted_content=model_specs
             )
         if data_type == HubContentType.HUB:
-            hub_name, region, _, _ = utils.extract_info_from_hub_content_arn(id_info)
-            hub_description: HubDescription = hub_utils.describe(hub_name=hub_name, region=region)
+            hub_name, region, _, _ = hub_utils.get_info_from_hub_resource_arn(id_info)
+            hub_description: DescribeHubResponse = hub_utils.describe(
+                hub_name=hub_name,
+                region=region
+            )
             return JumpStartCachedContentValue(formatted_content=hub_description)
         raise ValueError(
             f"Bad value for key '{key}': must be in",

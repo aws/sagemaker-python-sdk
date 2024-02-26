@@ -15,15 +15,15 @@ from __future__ import absolute_import
 
 
 from typing import Any, Dict, Optional
-import boto3
 from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 
 from sagemaker.session import Session
-from sagemaker.jumpstart.constants import (
-    JUMPSTART_DEFAULT_REGION_NAME,
-)
 
-from sagemaker.jumpstart.types import HubDescription, HubContentType, HubContentDescription
+from sagemaker.jumpstart.curated_hub.types import (
+    DescribeHubResponse,
+    HubContentType,
+    DescribeHubContentsResponse,
+)
 import sagemaker.jumpstart.session_utils as session_utils
 
 
@@ -66,12 +66,12 @@ class CuratedHub:
             tags=tags,
         )
 
-    def describe(self) -> HubDescription:
+    def describe(self) -> DescribeHubResponse:
         """Returns descriptive information about the Hub"""
 
         hub_description = self._sagemaker_session.describe_hub(hub_name=self.hub_name)
 
-        return HubDescription(hub_description)
+        return DescribeHubResponse(hub_description)
 
     def list_models(self, **kwargs) -> Dict[str, Any]:
         """Lists the models in this Curated Hub
@@ -86,7 +86,9 @@ class CuratedHub:
         # TODO: Handle pagination
         return hub_content_summaries
 
-    def describe_model(self, model_name: str, model_version: str = "*") -> HubContentDescription:
+    def describe_model(
+        self, model_name: str, model_version: str = "*"
+    ) -> DescribeHubContentsResponse:
         """Returns descriptive information about the Hub Model"""
 
         hub_content_description: Dict[str, Any] = self._sagemaker_session.describe_hub_content(
@@ -96,7 +98,7 @@ class CuratedHub:
             hub_content_type=HubContentType.MODEL,
         )
 
-        return HubContentDescription(hub_content_description)
+        return DescribeHubContentsResponse(hub_content_description)
 
     def delete_model(self, model_name: str, model_version: str = "*") -> None:
         """Deletes a model from this CuratedHub."""
