@@ -141,7 +141,12 @@ class CloudpickleSerializer:
             return cloudpickle.loads(bytes_to_deserialize)
         except Exception as e:
             raise DeserializationError(
-                "Error when deserializing bytes downloaded from {}: {}".format(s3_uri, repr(e))
+                "Error when deserializing bytes downloaded from {}: {}. "
+                "NOTE: this may be caused by inconsistent sagemaker python sdk versions "
+                "where remote function runs versus the one used on client side. "
+                "If the sagemaker versions do not match, a warning message would "
+                "be logged starting with 'Inconsistent sagemaker versions found'. "
+                "Please check it to validate.".format(s3_uri, repr(e))
             ) from e
 
 
