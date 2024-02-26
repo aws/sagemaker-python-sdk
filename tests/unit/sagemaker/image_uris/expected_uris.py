@@ -83,6 +83,7 @@ def djl_framework_uri(repo, account, tag, region=REGION):
     domain = ALTERNATE_DOMAINS.get(region, DOMAIN)
     return IMAGE_URI_FORMAT.format(account, region, domain, repo, tag)
 
+
 def sagemaker_triton_framework_uri(repo, account, tag, processor="gpu", region=REGION):
     domain = ALTERNATE_DOMAINS.get(region, DOMAIN)
     if processor == "cpu":

@@ -17,11 +17,10 @@ from tests.unit.sagemaker.image_uris import expected_uris
 
 INSTANCE_TYPES = {"cpu": "ml.c4.xlarge", "gpu": "ml.p2.xlarge"}
 
+
 @pytest.mark.parametrize(
     "load_config_and_file_name",
-    [
-        "sagemaker-tritonserver.json"
-    ],
+    ["sagemaker-tritonserver.json"],
     indirect=True,
 )
 def test_sagemaker_tritonserver_uris(load_config_and_file_name):
@@ -35,11 +34,17 @@ def test_sagemaker_tritonserver_uris(load_config_and_file_name):
         for processor in processors:
             instance_type = INSTANCE_TYPES[processor]
             for region in ACCOUNTS.keys():
-                _test_sagemaker_tritonserver_uris(ACCOUNTS[region], region, version, tag, framework, instance_type, processor)
+                _test_sagemaker_tritonserver_uris(
+                    ACCOUNTS[region], region, version, tag, framework, instance_type, processor
+                )
 
 
-def _test_sagemaker_tritonserver_uris(account, region, version, tag, triton_framework, instance_type, processor):
-    uri = image_uris.retrieve(framework=triton_framework, region=region, version=version, instance_type=instance_type)
+def _test_sagemaker_tritonserver_uris(
+    account, region, version, tag, triton_framework, instance_type, processor
+):
+    uri = image_uris.retrieve(
+        framework=triton_framework, region=region, version=version, instance_type=instance_type
+    )
     expected = expected_uris.sagemaker_triton_framework_uri(
         "sagemaker-tritonserver",
         account,

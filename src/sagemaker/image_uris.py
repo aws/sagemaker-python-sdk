@@ -339,7 +339,7 @@ def _get_image_tag(
     # Triton images don't have a trailing -gpu tag. Only -cpu images do.
     if framework == SAGEMAKER_TRITONSERVER_FRAMEWORK:
         if processor == "gpu":
-            tag = tag.rstrip(f"-gpu")
+            tag = tag.rstrip("-gpu")
 
     return tag
 
