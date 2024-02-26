@@ -15,16 +15,14 @@ from __future__ import absolute_import
 
 
 from typing import Any, Dict, Optional
-from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
-
 from sagemaker.session import Session
-
+from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+from sagemaker.jumpstart.curated_hub import utils as hub_utils
 from sagemaker.jumpstart.curated_hub.types import (
     DescribeHubResponse,
     HubContentType,
     DescribeHubContentsResponse,
 )
-import sagemaker.jumpstart.session_utils as session_utils
 
 
 class CuratedHub:
@@ -53,7 +51,7 @@ class CuratedHub:
     ) -> Dict[str, str]:
         """Creates a hub with the given description"""
 
-        bucket_name = session_utils.create_hub_bucket_if_it_does_not_exist(
+        bucket_name = hub_utils.create_hub_bucket_if_it_does_not_exist(
             bucket_name, self._sagemaker_session
         )
 
