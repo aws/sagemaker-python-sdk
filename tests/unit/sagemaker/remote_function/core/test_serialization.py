@@ -198,7 +198,8 @@ def test_deserialize_func_deserialization_error(mock_cloudpickle_loads):
     with pytest.raises(
         DeserializationError,
         match=rf"Error when deserializing bytes downloaded from {s3_uri}/payload.pkl: "
-        + r"RuntimeError\('some failure when loads'\)",
+        + r"RuntimeError\('some failure when loads'\). "
+        + r"NOTE: this may be caused by inconsistent sagemaker python sdk versions",
     ):
         deserialize_func_from_s3(sagemaker_session=Mock(), s3_uri=s3_uri, hmac_key=HMAC_KEY)
 
@@ -397,7 +398,8 @@ def test_deserialize_obj_deserialization_error(mock_cloudpickle_loads):
     with pytest.raises(
         DeserializationError,
         match=rf"Error when deserializing bytes downloaded from {s3_uri}/payload.pkl: "
-        + r"RuntimeError\('some failure when loads'\)",
+        + r"RuntimeError\('some failure when loads'\). "
+        + r"NOTE: this may be caused by inconsistent sagemaker python sdk versions",
     ):
         deserialize_obj_from_s3(sagemaker_session=Mock(), s3_uri=s3_uri, hmac_key=HMAC_KEY)
 
