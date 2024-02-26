@@ -1,12 +1,12 @@
 {
 	"fill-mask": {
-    "sample_inputs": {
+		"sample_inputs": {
 			"properties": {
 				"inputs": "Paris is the [MASK] of France.",
 				"parameters": {}
 			}
-        },
-    "sample_outputs": {
+		},
+		"sample_outputs": {
 			"properties": [
 				{
 					"sequence": "Paris is the capital of France.",
@@ -14,15 +14,15 @@
 				}
 			]
 		}
-  },
+	},
 	"question-answering": {
-    "sample_inputs": {
+		"sample_inputs": {
 			"properties": {
 				"context": "I have a German Shepherd dog, named Coco.",
 				"question": "What is my dog's breed?"
 			}
-    },
-    "sample_outputs": {
+		},
+		"sample_outputs": {
 			"properties": [
 				{
 					"answer": "German Shepherd",
