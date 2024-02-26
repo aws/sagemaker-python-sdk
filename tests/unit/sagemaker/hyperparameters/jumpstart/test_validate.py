@@ -453,6 +453,7 @@ def test_jumpstart_validate_algorithm_hyperparameters(
         s3_client=mock_client,
         hub_arn=None,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        hub_arn=None,
     )
 
     patched_get_model_specs.reset_mock()
@@ -516,6 +517,7 @@ def test_jumpstart_validate_all_hyperparameters(
         s3_client=mock_client,
         hub_arn=None,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        hub_arn=None,
     )
 
     patched_get_model_specs.reset_mock()

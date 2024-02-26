@@ -1420,6 +1420,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "model_version",
         "hub_arn",
         "model_type",
+        "hub_arn",
         "initial_instance_count",
         "instance_type",
         "region",
@@ -1453,6 +1454,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "model_version",
         "hub_arn",
         "model_type",
+        "hub_arn",
         "region",
         "tolerate_deprecated_model",
         "tolerate_vulnerable_model",
@@ -1499,6 +1501,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         self.model_version = model_version
         self.hub_arn = hub_arn
         self.model_type = model_type
+        self.hub_arn = hub_arn
         self.initial_instance_count = initial_instance_count
         self.instance_type = instance_type
         self.region = region
@@ -1535,6 +1538,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         "model_version",
         "hub_arn",
         "model_type",
+        "hub_arn",
         "instance_type",
         "instance_count",
         "region",
@@ -1596,6 +1600,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         "model_version",
         "hub_arn",
         "model_type",
+        "hub_arn",
     }
 
     def __init__(
@@ -1725,6 +1730,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         "model_version",
         "hub_arn",
         "model_type",
+        "hub_arn",
         "region",
         "inputs",
         "wait",
@@ -1741,6 +1747,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         "model_version",
         "hub_arn",
         "model_type",
+        "hub_arn",
         "region",
         "tolerate_deprecated_model",
         "tolerate_vulnerable_model",
@@ -1769,6 +1776,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         self.model_version = model_version
         self.hub_arn = hub_arn
         self.model_type = model_type
+        self.hub_arn = hub_arn
         self.region = region
         self.inputs = inputs
         self.wait = wait

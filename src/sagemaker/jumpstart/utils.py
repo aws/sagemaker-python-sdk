@@ -14,8 +14,8 @@
 from __future__ import absolute_import
 import logging
 import os
-from typing import Any, Dict, List, Set, Optional, Tuple, Union
 import re
+from typing import Any, Dict, List, Set, Optional, Tuple, Union
 from urllib.parse import urlparse
 import boto3
 from packaging.version import Version

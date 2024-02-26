@@ -14,8 +14,9 @@ from __future__ import absolute_import
 
 from unittest.mock import Mock
 from sagemaker.jumpstart.types import HubArnExtractedInfo
-from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
 from sagemaker.jumpstart.curated_hub import utils
+from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
+from sagemaker.jumpstart.curated_hub.types import HubArnExtractedInfo
 
 
 def test_get_info_from_hub_resource_arn():
