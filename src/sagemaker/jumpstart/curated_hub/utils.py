@@ -13,41 +13,14 @@
 """This module contains utilities related to SageMaker JumpStart CuratedHub."""
 from __future__ import absolute_import
 import re
-from typing import Any, Dict, Optional
-import boto3
+from typing import Optional
 from sagemaker.session import Session
 from sagemaker.jumpstart import constants
 from sagemaker.utils import aws_partition
 from sagemaker.jumpstart.curated_hub.types import (
-    DescribeHubResponse,
     HubContentType,
-    DescribeHubContentsResponse,
     HubArnExtractedInfo,
 )
-
-
-def describe(hub_name: str, region: str) -> DescribeHubResponse:
-    """Returns descriptive information about the Hub."""
-
-    sagemaker_session = Session(boto3.Session(region_name=region))
-    hub_description = sagemaker_session.describe_hub(hub_name=hub_name)
-    return DescribeHubResponse(hub_description)
-
-
-def describe_model(
-    hub_name: str, region: str, model_name: str, model_version: str = "*"
-) -> DescribeHubContentsResponse:
-    """Returns descriptive information about the Hub model."""
-
-    sagemaker_session = Session(boto3.Session(region_name=region))
-    hub_content_description: Dict[str, Any] = sagemaker_session.describe_hub_content(
-        hub_name=hub_name,
-        hub_content_name=model_name,
-        hub_content_version=model_version,
-        hub_content_type=HubContentType.MODEL,
-    )
-
-    return DescribeHubContentsResponse(hub_content_description)
 
 
 def get_info_from_hub_resource_arn(

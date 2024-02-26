@@ -51,6 +51,7 @@ from sagemaker.jumpstart.curated_hub.types import (
 )
 from sagemaker.jumpstart import utils
 from sagemaker.jumpstart.curated_hub import utils as hub_utils
+from sagemaker.jumpstart.curated_hub.curated_hub import CuratedHub
 from sagemaker.utilities.cache import LRUCache
 
 
@@ -346,9 +347,8 @@ class JumpStartModelsCache:
             hub_name, region, model_name, model_version = hub_utils.get_info_from_hub_resource_arn(
                 id_info
             )
-            hub_model_description: DescribeHubContentsResponse = hub_utils.describe_model(
-                hub_name=hub_name,
-                region=region,
+            hub: CuratedHub = CuratedHub(hub_name=hub_name, region=region)
+            hub_model_description: DescribeHubContentsResponse = hub.describe_model(
                 model_name=model_name,
                 model_version=model_version
             )
@@ -364,10 +364,8 @@ class JumpStartModelsCache:
             )
         if data_type == HubContentType.HUB:
             hub_name, region, _, _ = hub_utils.get_info_from_hub_resource_arn(id_info)
-            hub_description: DescribeHubResponse = hub_utils.describe(
-                hub_name=hub_name,
-                region=region
-            )
+            hub: CuratedHub = CuratedHub(hub_name=hub_name, region=region)
+            hub_description: DescribeHubResponse = hub.describe()
             return JumpStartCachedContentValue(formatted_content=hub_description)
         raise ValueError(
             f"Bad value for key '{key}': must be in",
