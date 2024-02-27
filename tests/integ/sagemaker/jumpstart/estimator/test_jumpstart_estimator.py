@@ -108,6 +108,7 @@ def test_gated_model_training_v1(setup):
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
         environment={"accept_eula": "true"},
         max_run=259200,  # avoid exceeding resource limits
+        tolerate_vulnerable_model=True,
     )
 
     # uses ml.g5.12xlarge instance
