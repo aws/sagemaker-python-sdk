@@ -110,10 +110,11 @@ def test_pytorch_transformers_sagemaker_endpoint(
         try:
             logger.info("Deploying and predicting in SAGEMAKER_ENDPOINT mode...")
             predictor = model.deploy(
-                instance_type=kwargs["instance_type"], initial_instance_count=1
+                instance_type=kwargs["instance_type"], initial_instance_count=2
             )
             logger.info("Endpoint successfully deployed.")
-            predictor.predict(input)
+            predictor.predict(model_input)
+            assert predictor is not None
         except Exception as e:
             caught_ex = e
         finally:
