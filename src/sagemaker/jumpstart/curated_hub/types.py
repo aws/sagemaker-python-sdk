@@ -153,30 +153,12 @@ class DescribeHubContentsResponse(JumpStartDataHolderType):
         self.hub_content_version: str = json_obj["hub_content_version"]
         self.hub_name: str = json_obj["hub_name"]
 
-    def to_json(self) -> Dict[str, Any]:
-        """Returns json representation of DescribeHubContentsResponse object."""
-        json_obj = {}
-        for att in self.__slots__:
-            if hasattr(self, att):
-                cur_val = getattr(self, att)
-                if issubclass(type(cur_val), JumpStartDataHolderType):
-                    json_obj[att] = cur_val.to_json()
-                elif isinstance(cur_val, list):
-                    json_obj[att] = []
-                    for obj in cur_val:
-                        if issubclass(type(obj), JumpStartDataHolderType):
-                            json_obj[att].append(obj.to_json())
-                        else:
-                            json_obj[att].append(obj)
-                else:
-                    json_obj[att] = cur_val
-        return json_obj
-
 
 class HubS3StorageConfig(JumpStartDataHolderType):
     """Data class for any dependencies related to hub content.
 
-    Includes scripts, model artifacts, datasets, or notebooks."""
+    Includes scripts, model artifacts, datasets, or notebooks.
+    """
 
     __slots__ = ["s3_output_path"]
 
@@ -245,22 +227,3 @@ class DescribeHubResponse(JumpStartDataHolderType):
         self.s3_storage_config: HubS3StorageConfig = HubS3StorageConfig(
             json_obj["s3_storage_config"]
         )
-
-    def to_json(self) -> Dict[str, Any]:
-        """Returns json representation of DescribeHubContentsResponse object."""
-        json_obj = {}
-        for att in self.__slots__:
-            if hasattr(self, att):
-                cur_val = getattr(self, att)
-                if issubclass(type(cur_val), JumpStartDataHolderType):
-                    json_obj[att] = cur_val.to_json()
-                elif isinstance(cur_val, list):
-                    json_obj[att] = []
-                    for obj in cur_val:
-                        if issubclass(type(obj), JumpStartDataHolderType):
-                            json_obj[att].append(obj.to_json())
-                        else:
-                            json_obj[att].append(obj)
-                else:
-                    json_obj[att] = cur_val
-        return json_obj

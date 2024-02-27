@@ -99,6 +99,25 @@ class JumpStartDataHolderType:
         }
         return f"{type(self).__name__} at {hex(id(self))}: {str(att_dict)}"
 
+    def to_json(self) -> Dict[str, Any]:
+        """Returns json representation of object."""
+        json_obj = {}
+        for att in self.__slots__:
+            if hasattr(self, att):
+                cur_val = getattr(self, att)
+                if issubclass(type(cur_val), JumpStartDataHolderType):
+                    json_obj[att] = cur_val.to_json()
+                elif isinstance(cur_val, list):
+                    json_obj[att] = []
+                    for obj in cur_val:
+                        if issubclass(type(obj), JumpStartDataHolderType):
+                            json_obj[att].append(obj.to_json())
+                        else:
+                            json_obj[att].append(obj)
+                else:
+                    json_obj[att] = cur_val
+        return json_obj
+
 
 class JumpStartS3FileType(str, Enum):
     """Type of files published in JumpStart S3 distribution buckets."""
@@ -910,25 +929,6 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
                 from SageMaker:DescribeHubContent
         """
         # TODO: Implement
-
-    def to_json(self) -> Dict[str, Any]:
-        """Returns json representation of JumpStartModelSpecs object."""
-        json_obj = {}
-        for att in self.__slots__:
-            if hasattr(self, att):
-                cur_val = getattr(self, att)
-                if issubclass(type(cur_val), JumpStartDataHolderType):
-                    json_obj[att] = cur_val.to_json()
-                elif isinstance(cur_val, list):
-                    json_obj[att] = []
-                    for obj in cur_val:
-                        if issubclass(type(obj), JumpStartDataHolderType):
-                            json_obj[att].append(obj.to_json())
-                        else:
-                            json_obj[att].append(obj)
-                else:
-                    json_obj[att] = cur_val
-        return json_obj
 
     def supports_prepacked_inference(self) -> bool:
         """Returns True if the model has a prepacked inference artifact."""
