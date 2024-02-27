@@ -66,7 +66,8 @@ def expected_merged_config():
     expected_merged_config_file_path = os.path.join(
         CONFIG_DATA_DIR, "expected_output_config_after_merge.yaml"
     )
-    return yaml.safe_load(open(expected_merged_config_file_path, "r").read())
+    with open(expected_merged_config_file_path, "r") as f:
+        return yaml.safe_load(f.read())
 
 
 @pytest.fixture(scope="module")
@@ -171,7 +172,8 @@ def test_config_download_from_s3_and_merge(
         CONFIG_DATA_DIR, "sample_additional_config_for_merge.yaml"
     )
 
-    config_file_1_as_yaml = open(config_file_1_local_path, "r").read()
+    with open(config_file_1_local_path, "r") as f:
+        config_file_1_as_yaml = f.read()
     s3_uri_config_1 = os.path.join(s3_uri_prefix, "config_1.yaml")
 
     # Upload S3 files in case they dont already exist
