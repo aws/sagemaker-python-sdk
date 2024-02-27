@@ -15,8 +15,8 @@ from __future__ import absolute_import
 import re
 from typing import Optional
 from sagemaker.session import Session
-from sagemaker.jumpstart import constants
 from sagemaker.utils import aws_partition
+from sagemaker.jumpstart import constants
 from sagemaker.jumpstart.curated_hub.types import (
     HubContentType,
     HubArnExtractedInfo,

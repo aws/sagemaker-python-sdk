@@ -15,16 +15,14 @@ from __future__ import absolute_import
 from copy import deepcopy
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Union
+from sagemaker.session import Session
 from sagemaker.utils import get_instance_type_family, format_tags, Tags
+from sagemaker.enums import EndpointType
 from sagemaker.model_metrics import ModelMetrics
 from sagemaker.metadata_properties import MetadataProperties
 from sagemaker.drift_check_baselines import DriftCheckBaselines
-
-from sagemaker.session import Session
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
-from sagemaker.enums import EndpointType
-from sagemaker.jumpstart.curated_hub import types as hub_types
 
 
 class JumpStartDataHolderType:
@@ -119,6 +117,9 @@ class JumpStartDataHolderType:
         return json_obj
 
 
+from sagemaker.jumpstart.curated_hub.types import HubContentType  # noqa: E402
+
+
 class JumpStartS3FileType(str, Enum):
     """Type of files published in JumpStart S3 distribution buckets."""
 
@@ -126,7 +127,7 @@ class JumpStartS3FileType(str, Enum):
     SPECS = "specs"
 
 
-JumpStartContentDataType = Union[JumpStartS3FileType, hub_types.HubContentType]
+JumpStartContentDataType = Union[JumpStartS3FileType, HubContentType]
 
 
 class JumpStartLaunchedRegionInfo(JumpStartDataHolderType):

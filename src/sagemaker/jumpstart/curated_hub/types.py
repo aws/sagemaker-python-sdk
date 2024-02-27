@@ -15,6 +15,7 @@ from __future__ import absolute_import
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
+
 from sagemaker.jumpstart.types import JumpStartDataHolderType
 
 
