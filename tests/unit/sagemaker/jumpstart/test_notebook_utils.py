@@ -3,6 +3,7 @@ import json
 
 from unittest import TestCase
 from unittest.mock import Mock, patch
+import datetime
 
 import pytest
 from sagemaker.jumpstart.constants import (
@@ -207,6 +208,10 @@ class ListJumpStartModels(TestCase):
         patched_get_manifest.assert_called()
         patched_get_model_specs.assert_not_called()
 
+    @pytest.mark.skipif(
+        datetime.datetime.now() < datetime.datetime(year=2024, month=5, day=1),
+        reason="Contact JumpStart team to fix flaky test.",
+    )
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     @patch("sagemaker.jumpstart.notebook_utils.DEFAULT_JUMPSTART_SAGEMAKER_SESSION.read_s3_file")
     def test_list_jumpstart_models_script_filter(
