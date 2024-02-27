@@ -1072,7 +1072,7 @@ class TestModelBuilder(unittest.TestCase):
 
         model_builder = ModelBuilder(model="CompVis/stable-diffusion-v1-4")
 
-        self.assertRaisesRegexp(
+        self.assertRaisesRegex(
             TaskNotFoundException,
             "Error Message: Schema builder for text-to-image could not be found.",
             lambda: model_builder.build(sagemaker_session=mock_session),
@@ -1131,7 +1131,7 @@ class TestModelBuilder(unittest.TestCase):
     @patch("sagemaker.huggingface.llm_utils.json")
     @patch("sagemaker.model_uris.retrieve")
     @patch("sagemaker.serve.builder.model_builder._ServeSettings")
-    def test_build_negative_path_override_with_task_provided(
+    def test_build_task_override_with_invalid_task_provided(
         self,
         mock_serveSettings,
         mock_model_uris_retrieve,
@@ -1157,11 +1157,39 @@ class TestModelBuilder(unittest.TestCase):
         mock_model_urllib.request.Request.side_effect = Mock()
 
         mock_image_uris_retrieve.return_value = "https://some-image-uri"
+        model_ids_with_invalid_task = ["bert-base-uncased:invalid-task", "bert-base-uncased:"]
+        for model_id in model_ids_with_invalid_task:
+            model_builder = ModelBuilder(model=model_id)
 
-        model_builder = ModelBuilder(model="bert-base-uncased:invalid-task")
+            provided_task = model_id.split(":")[1]
+            self.assertRaisesRegex(
+                TaskNotFoundException,
+                f"Error Message: Schema builder for {provided_task} could not be found.",
+                lambda: model_builder.build(sagemaker_session=mock_session),
+            )
 
-        self.assertRaisesRegexp(
-            TaskNotFoundException,
-            "Error Message: Schema builder for invalid-task could not be found.",
-            lambda: model_builder.build(sagemaker_session=mock_session),
-        )
+    @patch("sagemaker.image_uris.retrieve")
+    @patch("sagemaker.model_uris.retrieve")
+    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
+    def test_build_task_override_with_invalid_model_provided(
+        self,
+        mock_serveSettings,
+        mock_model_uris_retrieve,
+        mock_image_uris_retrieve,
+    ):
+        # Setup mocks
+
+        mock_setting_object = mock_serveSettings.return_value
+        mock_setting_object.role_arn = mock_role_arn
+        mock_setting_object.s3_model_data_url = mock_s3_model_data_url
+
+        # HF Pipeline Tag
+        mock_model_uris_retrieve.side_effect = KeyError
+
+        mock_image_uris_retrieve.return_value = "https://some-image-uri"
+        invalid_model_ids_with_task = [":fill-mask", "bert-base-uncased;fill-mask"]
+
+        for model_id in invalid_model_ids_with_task:
+            model_builder = ModelBuilder(model=model_id)
+            with self.assertRaises(Exception):
+                model_builder.build(sagemaker_session=mock_session)
