@@ -44,6 +44,7 @@ TRAINIUM_ALLOWED_FRAMEWORKS = "pytorch"
 INFERENCE_GRAVITON = "inference_graviton"
 DATA_WRANGLER_FRAMEWORK = "data-wrangler"
 STABILITYAI_FRAMEWORK = "stabilityai"
+SAGEMAKER_TRITONSERVER_FRAMEWORK = "sagemaker-tritonserver"
 
 
 @override_pipeline_parameter_var
@@ -334,6 +335,11 @@ def _get_image_tag(
             key = "-".join([framework, tag])
             if key in container_versions:
                 tag = "-".join([tag, container_versions[key]])
+
+    # Triton images don't have a trailing -gpu tag. Only -cpu images do.
+    if framework == SAGEMAKER_TRITONSERVER_FRAMEWORK:
+        if processor == "gpu":
+            tag = tag.rstrip("-gpu")
 
     return tag
 
