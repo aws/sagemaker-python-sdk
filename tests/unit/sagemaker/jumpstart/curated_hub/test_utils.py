@@ -13,7 +13,6 @@
 from __future__ import absolute_import
 
 from unittest.mock import Mock
-from botocore.exceptions import ClientError
 from sagemaker.jumpstart.curated_hub import utils
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
 from sagemaker.jumpstart.curated_hub.types import HubArnExtractedInfo
@@ -173,10 +172,6 @@ def test_create_hub_bucket_if_it_does_not_exist():
     }
     mock_sagemaker_session.boto_session.resource("s3").Bucket().creation_date = None
     mock_sagemaker_session.boto_region_name = "us-east-1"
-    error = ClientError(
-        error_response={"Error": {"Code": "404", "Message": "Not Found"}},
-        operation_name="foo",
-    )
     bucket_name = "sagemaker-hubs-us-east-1-123456789123"
     created_hub_bucket_name = utils.create_hub_bucket_if_it_does_not_exist(
         sagemaker_session=mock_sagemaker_session

@@ -34,10 +34,20 @@ class CuratedHub:
         region: str,
         sagemaker_session: Optional[Session] = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     ):
+        """Instantiates a SageMaker ``CuratedHub``.
+
+        Args:
+            hub_name (str): The name of the Hub to create.
+            region (str): The region in which the CuratedHub is in.
+            sagemaker_session (sagemaker.session.Session): A SageMaker Session
+                object, used for SageMaker interactions.
+        """
         self.hub_name = hub_name
         if sagemaker_session.boto_region_name != region:
-            # TODO: Handle error
-            pass
+            raise ValueError(
+                f"Cannot have conflicting regions for region=[{region}] and ",
+                f"sagemaker_session region=[{str(sagemaker_session.boto_region_name)}].",
+            )
         self.region = region
         self._sagemaker_session = sagemaker_session
 

@@ -368,7 +368,7 @@ class JumpStartModelsCache:
             hub_description: DescribeHubResponse = hub.describe()
             return JumpStartCachedContentValue(formatted_content=hub_description)
         raise ValueError(
-            f"Bad value for key '{key}': must be in",
+            f"Bad value for key '{key}': must be in ",
             f"{[JumpStartS3FileType.MANIFEST, JumpStartS3FileType.SPECS, HubContentType.HUB, HubContentType.MODEL]}"
         )
 
