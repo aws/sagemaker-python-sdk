@@ -1,5 +1,20 @@
 # Changelog
 
+## v2.210.0 (2024-02-28)
+
+### Features
+
+ * Prepend SageMaker Studio App Type to boto3 User Agent string
+ * TGI optimum 0.0.18 (general+llm)
+ * TGI 1.4.2
+
+### Bug Fixes and Other Changes
+
+ * tolerate vulnerable old model for integ test and temporarily skip test_list_jumpstart_models_script_filter
+ * add missing regions to pytorch config
+ * Add validation for sagemaker version on remote job
+ * fixed implementation of fail_on_violation for transform with monitoring
+
 ## v2.209.0 (2024-02-24)
 
 ### Features
