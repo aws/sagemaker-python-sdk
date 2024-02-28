@@ -269,7 +269,14 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         if wait:
             self.latest_training_job.wait(logs=logs)
 
-    def record_set(self, train, labels=None, channel="train", encrypt=False):
+    def record_set(
+        self,
+        train,
+        labels=None,
+        channel="train",
+        encrypt=False,
+        distribution="ShardedByS3Key",
+    ):
         """Build a :class:`~RecordSet` from a numpy :class:`~ndarray` matrix and label vector.
 
         For the 2D ``ndarray`` ``train``, each row is converted to a
@@ -294,6 +301,8 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
                 should be assigned to.
             encrypt (bool): Specifies whether the objects uploaded to S3 are
                 encrypted on the server side using AES-256 (default: ``False``).
+            distribution (str): The SageMaker TrainingJob channel s3 data
+                distribution type (default: ``ShardedByS3Key``).
 
         Returns:
             RecordSet: A RecordSet referencing the encoded, uploading training
@@ -316,6 +325,7 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
             num_records=train.shape[0],
             feature_dim=train.shape[1],
             channel=channel,
+            distribution=distribution,
         )
 
     def _get_default_mini_batch_size(self, num_records: int):
@@ -343,6 +353,7 @@ class RecordSet(object):
         feature_dim: int,
         s3_data_type: Union[str, PipelineVariable] = "ManifestFile",
         channel: Union[str, PipelineVariable] = "train",
+        distribution: str = "ShardedByS3Key",
     ):
         """A collection of Amazon :class:~`Record` objects serialized and stored in S3.
 
@@ -358,12 +369,15 @@ class RecordSet(object):
                 single s3 manifest file, listing each s3 object to train on.
             channel (str or PipelineVariable): The SageMaker Training Job channel this RecordSet
                 should be bound to
+            distribution (str): The SageMaker TrainingJob S3 data distribution type.
+                Valid values: 'ShardedByS3Key', 'FullyReplicated'.
         """
         self.s3_data = s3_data
         self.feature_dim = feature_dim
         self.num_records = num_records
         self.s3_data_type = s3_data_type
         self.channel = channel
+        self.distribution = distribution
 
     def __repr__(self):
         """Return an unambiguous representation of this RecordSet"""
@@ -377,7 +391,7 @@ class RecordSet(object):
     def records_s3_input(self):
         """Return a TrainingInput to represent the training data"""
         return TrainingInput(
-            self.s3_data, distribution="ShardedByS3Key", s3_data_type=self.s3_data_type
+            self.s3_data, distribution=self.distribution, s3_data_type=self.s3_data_type
         )
 
 
