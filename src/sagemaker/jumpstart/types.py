@@ -117,7 +117,7 @@ class JumpStartDataHolderType:
         return json_obj
 
 
-from sagemaker.jumpstart.curated_hub.types import HubContentType  # noqa: E402
+from sagemaker.jumpstart.curated_hub.types import HubContentType  # noqa: E402, C0413
 
 
 class JumpStartS3FileType(str, Enum):
