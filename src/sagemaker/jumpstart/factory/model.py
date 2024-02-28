@@ -355,6 +355,7 @@ def _add_model_package_arn_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpSt
     model_package_arn = kwargs.model_package_arn or _retrieve_model_package_arn(
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
+        hub_arn=kwargs.hub_arn,
         instance_type=kwargs.instance_type,
         scope=JumpStartScriptScope.INFERENCE,
         region=kwargs.region,
@@ -595,6 +596,7 @@ def get_deploy_kwargs(
 def get_register_kwargs(
     model_id: str,
     model_version: Optional[str] = None,
+    hub_arn: Optional[str] = None,
     region: Optional[str] = None,
     tolerate_deprecated_model: Optional[bool] = None,
     tolerate_vulnerable_model: Optional[bool] = None,
@@ -626,6 +628,7 @@ def get_register_kwargs(
     register_kwargs = JumpStartModelRegisterKwargs(
         model_id=model_id,
         model_version=model_version,
+        hub_arn=hub_arn,
         region=region,
         tolerate_deprecated_model=tolerate_deprecated_model,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
@@ -656,6 +659,7 @@ def get_register_kwargs(
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
+        hub_arn=hub_arn,
         region=region,
         scope=JumpStartScriptScope.INFERENCE,
         sagemaker_session=sagemaker_session,

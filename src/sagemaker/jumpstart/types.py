@@ -1657,6 +1657,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         "region",
         "model_id",
         "model_version",
+        "hub_arn",
         "sagemaker_session",
         "content_types",
         "response_types",
@@ -1687,6 +1688,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         "region",
         "model_id",
         "model_version",
+        "hub_arn",
         "sagemaker_session",
     }
 
@@ -1694,6 +1696,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         self,
         model_id: str,
         model_version: Optional[str] = None,
+        hub_arn: Optional[str] = None,
         region: Optional[str] = None,
         tolerate_deprecated_model: Optional[bool] = None,
         tolerate_vulnerable_model: Optional[bool] = None,
@@ -1724,6 +1727,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
 
         self.model_id = model_id
         self.model_version = model_version
+        self.hub_arn = hub_arn
         self.region = region
         self.image_uri = image_uri
         self.sagemaker_session = sagemaker_session
