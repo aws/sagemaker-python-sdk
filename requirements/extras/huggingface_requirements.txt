@@ -1,1 +1,2 @@
+transformers>=4.36.0
 accelerate>=0.24.1,<=0.27.0

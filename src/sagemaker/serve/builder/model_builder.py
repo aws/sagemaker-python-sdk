@@ -631,8 +631,6 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
 
                 if model_task == "text-generation":  # pylint: disable=R1705
                     return self._build_for_tgi()
-                if hf_model_md.get("pipeline_tag") == "text-generation":  # pylint: disable=R1705
-                    return self._build_for_tgi()
                 elif self._can_fit_on_single_gpu():
                     return self._build_for_transformers()
                 elif (
@@ -719,16 +717,16 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
         padding and converts to size MiB. When performing inference, expect
         to add up to an additional 20% to the given model size as found by EleutherAI.
         """
-        try:
-            dtypes = self.env_vars.get("dtypes", "float32")
-            parser = estimate_command_parser()
-            args = parser.parse_args([self.model, "--dtypes", dtypes])
-        except ValueError:
-            logging.error("Args specified incorrect for model %s", self.model)
+        dtypes = self.env_vars.get("dtypes", "float32")
+        parser = estimate_command_parser()
+        args = parser.parse_args([self.model, "--dtypes", dtypes])
 
         output = gather_data(
             args
         )  # "dtype", "Largest Layer", "Total Size Bytes", "Training using Adam"
+
+        if output is None:
+            raise ValueError(f"Could not get Model size for {self.model}")
 
         total_memory_size_mib = MEMORY_BUFFER_MULTIPLIER * output[0][2] * MIB_CONVERSION_FACTOR
         logger.info("Total memory size MIB: %s", total_memory_size_mib)
@@ -747,7 +745,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
                     self._total_inference_model_size_mib(),
                     single_gpu_size_mib,
                 )
-            return True
+                return True
+            return False
         except ValueError:
             logger.info("Unable to determine single GPU size for instance %s", self.instance_type)
             return False
