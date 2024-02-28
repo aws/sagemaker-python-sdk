@@ -1049,6 +1049,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
     __slots__ = [
         "model_id",
         "model_version",
+        "hub_arn",
         "instance_type",
         "tolerate_vulnerable_model",
         "tolerate_deprecated_model",
@@ -1079,6 +1080,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         "instance_type",
         "model_id",
         "model_version",
+        "hub_arn",
         "tolerate_vulnerable_model",
         "tolerate_deprecated_model",
         "region",
@@ -1090,6 +1092,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         self,
         model_id: str,
         model_version: Optional[str] = None,
+        hub_arn: Optional[str] = None,
         region: Optional[str] = None,
         instance_type: Optional[str] = None,
         image_uri: Optional[Union[str, Any]] = None,
@@ -1119,6 +1122,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
 
         self.model_id = model_id
         self.model_version = model_version
+        self.hub_arn = hub_arn
         self.instance_type = instance_type
         self.region = region
         self.image_uri = image_uri
@@ -1653,6 +1657,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         "region",
         "model_id",
         "model_version",
+        "hub_arn",
         "sagemaker_session",
         "content_types",
         "response_types",
@@ -1683,6 +1688,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         "region",
         "model_id",
         "model_version",
+        "hub_arn",
         "sagemaker_session",
     }
 
@@ -1690,6 +1696,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         self,
         model_id: str,
         model_version: Optional[str] = None,
+        hub_arn: Optional[str] = None,
         region: Optional[str] = None,
         tolerate_deprecated_model: Optional[bool] = None,
         tolerate_vulnerable_model: Optional[bool] = None,
@@ -1720,6 +1727,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
 
         self.model_id = model_id
         self.model_version = model_version
+        self.hub_arn = hub_arn
         self.region = region
         self.image_uri = image_uri
         self.sagemaker_session = sagemaker_session
