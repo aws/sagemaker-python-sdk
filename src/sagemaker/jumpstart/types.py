@@ -1256,6 +1256,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         "model_version",
         "hub_arn",
         "model_type",
+        "hub_arn",
         "instance_type",
         "tolerate_vulnerable_model",
         "tolerate_deprecated_model",
@@ -1288,6 +1289,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         "model_version",
         "hub_arn",
         "model_type",
+        "hub_arn",
         "tolerate_vulnerable_model",
         "tolerate_deprecated_model",
         "region",
@@ -1301,6 +1303,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         model_version: Optional[str] = None,
         hub_arn: Optional[str] = None,
         model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_WEIGHTS,
+        hub_arn: Optional[str] = None,
         region: Optional[str] = None,
         instance_type: Optional[str] = None,
         image_uri: Optional[Union[str, Any]] = None,
@@ -1332,6 +1335,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         self.model_version = model_version
         self.hub_arn = hub_arn
         self.model_type = model_type
+        self.hub_arn = hub_arn
         self.instance_type = instance_type
         self.region = region
         self.image_uri = image_uri
