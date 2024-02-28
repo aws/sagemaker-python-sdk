@@ -53,9 +53,13 @@ ACCOUNT_ID = "123456789123"
 @pytest.fixture()
 def sagemaker_session():
     mocked_boto_session = Mock(name="boto_session")
-    mocked_s3_client= Mock(name="s3_client")
+    mocked_s3_client = Mock(name="s3_client")
     mocked_sagemaker_session = Mock(
-        name="sagemaker_session", boto_session=mocked_boto_session, s3_client= mocked_s3_client, boto_region_name=REGION, config=None,
+        name="sagemaker_session",
+        boto_session=mocked_boto_session,
+        s3_client=mocked_s3_client,
+        boto_region_name=REGION,
+        config=None,
     )
     mocked_sagemaker_session.sagemaker_config = {}
     mocked_sagemaker_session._client_config.user_agent = (
@@ -63,7 +67,6 @@ def sagemaker_session():
     )
     mocked_sagemaker_session.account_id.return_value = ACCOUNT_ID
     return mocked_sagemaker_session
-
 
 
 @patch.object(JumpStartModelsCache, "_retrieval_function", patched_retrieval_function)
@@ -761,7 +764,10 @@ def test_jumpstart_cache_get_specs():
 @patch("sagemaker.jumpstart.cache.os.path.isdir")
 @patch("builtins.open")
 def test_jumpstart_local_metadata_override_header(
-    mocked_open: Mock, mocked_is_dir: Mock, mocked_get_json_file_and_etag_from_s3: Mock, sagemaker_session: Mock
+    mocked_open: Mock,
+    mocked_is_dir: Mock,
+    mocked_get_json_file_and_etag_from_s3: Mock,
+    sagemaker_session: Mock,
 ):
     mocked_open.side_effect = mock_open(read_data=json.dumps(BASE_MANIFEST))
     mocked_is_dir.return_value = True
@@ -812,7 +818,9 @@ def test_jumpstart_local_metadata_override_specs(
     ]
 
     mocked_is_dir.return_value = True
-    cache = JumpStartModelsCache(s3_bucket_name="some_bucket", s3_client=Mock(), sagemaker_session=sagemaker_session)
+    cache = JumpStartModelsCache(
+        s3_bucket_name="some_bucket", s3_client=Mock(), sagemaker_session=sagemaker_session
+    )
 
     model_id, version = "tensorflow-ic-imagenet-inception-v3-classification-4", "2.0.0"
     assert JumpStartModelSpecs(BASE_SPEC) == cache.get_specs(
