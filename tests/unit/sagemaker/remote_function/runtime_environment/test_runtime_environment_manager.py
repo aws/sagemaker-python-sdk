@@ -30,6 +30,7 @@ from sagemaker.remote_function.runtime_environment.runtime_environment_manager i
 TEST_REQUIREMENTS_TXT = "usr/local/requirements.txt"
 TEST_CONDA_YML = "usr/local/conda_env.yml"
 CLIENT_PYTHON_VERSION = "3.10"
+JOB_SAGEMAKER_PYSDK_VERSION = "2.205.0"
 
 
 def test_snapshot_no_dependencies():
@@ -369,6 +370,32 @@ def test_validate_python_version(python_version_in_conda_env):
 def test_validate_python_version_error(python_version_in_conda_env):
     with pytest.raises(RuntimeEnvironmentError):
         RuntimeEnvironmentManager()._validate_python_version(CLIENT_PYTHON_VERSION, "conda_env")
+
+
+@patch(
+    "sagemaker.remote_function.runtime_environment.runtime_environment_manager."
+    "RuntimeEnvironmentManager._current_sagemaker_pysdk_version",
+    return_value=JOB_SAGEMAKER_PYSDK_VERSION,
+)
+def test_validate_sagemaker_pysdk_version(mock_sagemaker_version_in_job):
+    # If the client sagemaker version differs from the job's, a warning is printed
+    RuntimeEnvironmentManager()._validate_sagemaker_pysdk_version(
+        "version-not-the-same-and-get-a-warning"
+    )
+    mock_sagemaker_version_in_job.assert_called_once()
+
+
+@patch(
+    "sagemaker.remote_function.runtime_environment.runtime_environment_manager."
+    "RuntimeEnvironmentManager._current_sagemaker_pysdk_version",
+    return_value=JOB_SAGEMAKER_PYSDK_VERSION,
+)
+def test_validate_sagemaker_pysdk_version_with_none_input(mock_sagemaker_version_in_job):
+    # This test is to test the backward compatibility
+    # In old version of SDK, the client side sagemaker_pysdk_version is not passed to job
+    # thus it would be None and would not lead to the warning
+    RuntimeEnvironmentManager()._validate_sagemaker_pysdk_version(None)
+    mock_sagemaker_version_in_job.assert_called_once()
 
 
 @patch("os.path.isfile", return_value=True)

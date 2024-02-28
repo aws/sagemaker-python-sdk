@@ -91,15 +91,15 @@ def construct_hub_model_arn_from_inputs(hub_arn: str, model_name: str, version: 
 
 
 # TODO: Update to recognize JumpStartHub hub_name
-def generate_hub_arn_for_estimator_init_kwargs(
+def generate_hub_arn_for_init_kwargs(
     hub_name: str, region: Optional[str] = None, session: Optional[Session] = None
 ):
-    """Generates the Hub Arn for JumpStartEstimator from a HubName or Arn.
+    """Generates the Hub Arn for JumpStart class args from a HubName or Arn.
 
     Args:
-        hub_name (str): HubName or HubArn from JumpStartEstimator args
-        region (str): Region from JumpStartEstimator args
-        session (Session): Custom SageMaker Session from JumpStartEstimator args
+        hub_name (str): HubName or HubArn from JumpStart class args
+        region (str): Region from JumpStart class args
+        session (Session): Custom SageMaker Session from JumpStart class args
     """
 
     hub_arn = None

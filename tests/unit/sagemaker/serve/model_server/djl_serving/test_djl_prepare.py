@@ -272,4 +272,4 @@ class DjlPrepareTests(TestCase):
 
         mock_path.assert_called_once_with(js_model_dir)
         mock_path_obj.joinpath.assert_called_once_with(f"infer-prepack-{MOCK_JUMPSTART_ID}.tar.gz")
-        mock_resource_obj.extractall.assert_called_once_with(path=js_model_dir)
+        mock_resource_obj.extractall.assert_called_once_with(path=js_model_dir, filter="data")

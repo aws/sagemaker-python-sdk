@@ -28,7 +28,7 @@ from sagemaker.inputs import FileSystemInput, TrainingInput
 from sagemaker.instance_group import InstanceGroup
 from sagemaker.jumpstart.accessors import JumpStartModelsAccessor
 from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
-from sagemaker.jumpstart.curated_hub.utils import generate_hub_arn_for_estimator_init_kwargs
+from sagemaker.jumpstart.curated_hub.utils import generate_hub_arn_for_init_kwargs
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.exceptions import INVALID_MODEL_ID_ERROR_MSG
 
@@ -523,7 +523,7 @@ class JumpStartEstimator(Estimator):
 
         hub_arn = None
         if hub_name:
-            hub_arn = generate_hub_arn_for_estimator_init_kwargs(
+            hub_arn = generate_hub_arn_for_init_kwargs(
                 hub_name=hub_name, region=region, session=sagemaker_session
             )
 
@@ -1081,6 +1081,7 @@ class JumpStartEstimator(Estimator):
                 predictor=predictor,
                 model_id=self.model_id,
                 model_version=self.model_version,
+                hub_arn=self.hub_arn,
                 region=self.region,
                 tolerate_deprecated_model=self.tolerate_deprecated_model,
                 tolerate_vulnerable_model=self.tolerate_vulnerable_model,

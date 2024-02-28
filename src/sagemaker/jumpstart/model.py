@@ -21,6 +21,7 @@ from sagemaker.base_deserializers import BaseDeserializer
 from sagemaker.base_serializers import BaseSerializer
 from sagemaker.explainer.explainer_config import ExplainerConfig
 from sagemaker.jumpstart.accessors import JumpStartModelsAccessor
+from sagemaker.jumpstart.curated_hub.utils import generate_hub_arn_for_init_kwargs
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.exceptions import INVALID_MODEL_ID_ERROR_MSG
 from sagemaker.jumpstart.factory.model import (
@@ -58,6 +59,7 @@ class JumpStartModel(Model):
         self,
         model_id: Optional[str] = None,
         model_version: Optional[str] = None,
+        hub_name: Optional[str] = None,
         tolerate_vulnerable_model: Optional[bool] = None,
         tolerate_deprecated_model: Optional[bool] = None,
         region: Optional[str] = None,
@@ -95,6 +97,7 @@ class JumpStartModel(Model):
                 https://sagemaker.readthedocs.io/en/stable/doc_utils/pretrainedmodels.html
                 for list of model IDs.
             model_version (Optional[str]): Version for JumpStart model to use (Default: None).
+            hub_name (Optional[str]): Hub name or arn where the model is stored (Default: None).
             tolerate_vulnerable_model (Optional[bool]): True if vulnerable versions of model
                 specifications should be tolerated (exception not raised). If False, raises an
                 exception if the script used by this version of the model has dependencies with
@@ -284,12 +287,19 @@ class JumpStartModel(Model):
             if not _is_valid_model_id_hook():
                 raise ValueError(INVALID_MODEL_ID_ERROR_MSG.format(model_id=model_id))
 
+        hub_arn = None
+        if hub_name:
+            hub_arn = generate_hub_arn_for_init_kwargs(
+                hub_name=hub_name, region=region, session=sagemaker_session
+            )
+
         self._model_data_is_set = model_data is not None
 
         model_init_kwargs = get_init_kwargs(
             model_id=model_id,
             model_from_estimator=False,
             model_version=model_version,
+            hub_arn=hub_arn,
             instance_type=instance_type,
             tolerate_vulnerable_model=tolerate_vulnerable_model,
             tolerate_deprecated_model=tolerate_deprecated_model,
@@ -319,6 +329,7 @@ class JumpStartModel(Model):
 
         self.model_id = model_init_kwargs.model_id
         self.model_version = model_init_kwargs.model_version
+        self.hub_arn = model_init_kwargs.hub_arn
         self.instance_type = model_init_kwargs.instance_type
         self.resources = model_init_kwargs.resources
         self.tolerate_vulnerable_model = model_init_kwargs.tolerate_vulnerable_model
@@ -599,6 +610,7 @@ class JumpStartModel(Model):
                 predictor=predictor,
                 model_id=self.model_id,
                 model_version=self.model_version,
+                hub_arn=self.hub_arn,
                 region=self.region,
                 tolerate_deprecated_model=self.tolerate_deprecated_model,
                 tolerate_vulnerable_model=self.tolerate_vulnerable_model,
@@ -684,6 +696,7 @@ class JumpStartModel(Model):
         register_kwargs = get_register_kwargs(
             model_id=self.model_id,
             model_version=self.model_version,
+            hub_arn=self.hub_arn,
             region=self.region,
             tolerate_deprecated_model=self.tolerate_deprecated_model,
             tolerate_vulnerable_model=self.tolerate_vulnerable_model,

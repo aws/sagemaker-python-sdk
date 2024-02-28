@@ -31,6 +31,7 @@ def _retrieve_model_package_arn(
     model_version: str,
     instance_type: Optional[str],
     region: Optional[str],
+    hub_arn: Optional[str] = None,
     scope: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
@@ -46,6 +47,8 @@ def _retrieve_model_package_arn(
         instance_type (Optional[str]): An instance type to optionally supply in order to get an arn
             specific for the instance type.
         region (Optional[str]): Region for which to retrieve the model package arn.
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (default: None).
         scope (Optional[str]): Scope for which to retrieve the model package arn.
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
             specifications should be tolerated (exception not raised). If False, raises an
@@ -69,6 +72,7 @@ def _retrieve_model_package_arn(
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
+        hub_arn=hub_arn,
         scope=scope,
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,

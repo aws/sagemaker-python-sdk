@@ -29,6 +29,7 @@ def retrieve_default(
     region: Optional[str] = None,
     model_id: Optional[str] = None,
     model_version: Optional[str] = None,
+    hub_arn: Optional[str] = None,
     scope: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
@@ -43,6 +44,8 @@ def retrieve_default(
             retrieve the default resource requirements. (Default: None).
         model_version (str): The version of the model for which to retrieve the
             default resource requirements. (Default: None).
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (default: None).
         scope (str): The model type, i.e. what it is used for.
             Valid values: "training" and "inference".
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
@@ -72,11 +75,12 @@ def retrieve_default(
         raise ValueError("Must specify scope for resource requirements.")
 
     return artifacts._retrieve_default_resources(
-        model_id,
-        model_version,
-        scope,
-        region,
-        tolerate_vulnerable_model,
-        tolerate_deprecated_model,
+        model_id=model_id,
+        model_version=model_version,
+        hub_arn=hub_arn,
+        scope=scope,
+        region=region,
+        tolerate_vulnerable_model=tolerate_vulnerable_model,
+        tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
     )

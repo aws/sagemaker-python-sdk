@@ -107,6 +107,7 @@ def _retrieve_script_uri(
 def _model_supports_inference_script_uri(
     model_id: str,
     model_version: str,
+    hub_arn: Optional[str],
     region: Optional[str],
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
@@ -119,6 +120,8 @@ def _model_supports_inference_script_uri(
             retrieve the support status for script uri with inference.
         model_version (str): Version of the JumpStart model for which to retrieve the
             support status for script uri with inference.
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (Default: None).
         region (Optional[str]): Region for which to retrieve the
             support status for script uri with inference.
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
@@ -142,6 +145,7 @@ def _model_supports_inference_script_uri(
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
+        hub_arn=hub_arn,
         scope=JumpStartScriptScope.INFERENCE,
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,

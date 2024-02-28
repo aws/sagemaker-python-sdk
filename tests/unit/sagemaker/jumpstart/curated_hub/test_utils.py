@@ -96,7 +96,7 @@ def test_construct_hub_model_arn_from_inputs():
     )
 
 
-def test_generate_hub_arn_for_estimator_init_kwargs():
+def test_generate_hub_arn_for_init_kwargs():
     hub_name = "my-hub-name"
     hub_arn = "arn:aws:sagemaker:us-west-2:12346789123:hub/my-awesome-hub"
     # Mock default session with default values
@@ -109,42 +109,34 @@ def test_generate_hub_arn_for_estimator_init_kwargs():
     mock_custom_session.boto_region_name = "us-east-2"
 
     assert (
-        utils.generate_hub_arn_for_estimator_init_kwargs(hub_name, session=mock_default_session)
+        utils.generate_hub_arn_for_init_kwargs(hub_name, session=mock_default_session)
         == "arn:aws:sagemaker:us-west-2:123456789123:hub/my-hub-name"
     )
 
     assert (
-        utils.generate_hub_arn_for_estimator_init_kwargs(
-            hub_name, "us-east-1", session=mock_default_session
-        )
+        utils.generate_hub_arn_for_init_kwargs(hub_name, "us-east-1", session=mock_default_session)
         == "arn:aws:sagemaker:us-east-1:123456789123:hub/my-hub-name"
     )
 
     assert (
-        utils.generate_hub_arn_for_estimator_init_kwargs(hub_name, "eu-west-1", mock_custom_session)
+        utils.generate_hub_arn_for_init_kwargs(hub_name, "eu-west-1", mock_custom_session)
         == "arn:aws:sagemaker:eu-west-1:000000000000:hub/my-hub-name"
     )
 
     assert (
-        utils.generate_hub_arn_for_estimator_init_kwargs(hub_name, None, mock_custom_session)
+        utils.generate_hub_arn_for_init_kwargs(hub_name, None, mock_custom_session)
         == "arn:aws:sagemaker:us-east-2:000000000000:hub/my-hub-name"
     )
 
+    assert utils.generate_hub_arn_for_init_kwargs(hub_arn, session=mock_default_session) == hub_arn
+
     assert (
-        utils.generate_hub_arn_for_estimator_init_kwargs(hub_arn, session=mock_default_session)
+        utils.generate_hub_arn_for_init_kwargs(hub_arn, "us-east-1", session=mock_default_session)
         == hub_arn
     )
 
     assert (
-        utils.generate_hub_arn_for_estimator_init_kwargs(
-            hub_arn, "us-east-1", session=mock_default_session
-        )
-        == hub_arn
-    )
-
-    assert (
-        utils.generate_hub_arn_for_estimator_init_kwargs(hub_arn, "us-east-1", mock_custom_session)
-        == hub_arn
+        utils.generate_hub_arn_for_init_kwargs(hub_arn, "us-east-1", mock_custom_session) == hub_arn
     )
 
     assert (
@@ -179,3 +171,4 @@ def test_create_hub_bucket_if_it_does_not_exist():
 
     mock_sagemaker_session.boto_session.resource("s3").create_bucketassert_called_once()
     assert created_hub_bucket_name == bucket_name
+    assert utils.generate_hub_arn_for_init_kwargs(hub_arn, None, mock_custom_session) == hub_arn

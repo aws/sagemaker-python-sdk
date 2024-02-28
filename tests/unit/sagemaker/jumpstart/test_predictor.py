@@ -88,6 +88,7 @@ def test_jumpstart_predictor_support_no_model_id_supplied_happy_case(
         predictor=patched_predictor.return_value,
         model_id="predictor-specs-model",
         model_version="1.2.3",
+        hub_arn=None,
         region=None,
         tolerate_deprecated_model=False,
         tolerate_vulnerable_model=False,
