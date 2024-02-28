@@ -17,12 +17,12 @@ from __future__ import absolute_import
 from typing import Any, Dict, Optional
 from sagemaker.session import Session
 from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
-from sagemaker.jumpstart.curated_hub.utils import create_hub_bucket_if_it_does_not_exist
-from sagemaker.jumpstart.curated_hub.types import (
+from sagemaker.jumpstart.types import (
     DescribeHubResponse,
     DescribeHubContentsResponse,
     HubContentType,
 )
+from sagemaker.jumpstart.curated_hub.utils import create_hub_bucket_if_it_does_not_exist
 
 
 class CuratedHub:

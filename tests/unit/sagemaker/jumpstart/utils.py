@@ -27,6 +27,7 @@ from sagemaker.jumpstart.types import (
     JumpStartModelSpecs,
     JumpStartS3FileType,
     JumpStartModelHeader,
+    HubContentType,
 )
 
 from sagemaker.jumpstart.utils import get_formatted_manifest
@@ -37,7 +38,6 @@ from tests.unit.sagemaker.jumpstart.constants import (
     BASE_HEADER,
     SPECIAL_MODEL_SPECS_DICT,
 )
-from sagemaker.jumpstart.curated_hub.types import HubContentType
 
 
 def get_header_from_base_header(

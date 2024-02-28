@@ -45,10 +45,9 @@ from sagemaker.jumpstart.types import (
     JumpStartModelSpecs,
     JumpStartS3FileType,
     JumpStartVersionedModelId,
-)
-from sagemaker.jumpstart.curated_hub.types import (
     DescribeHubResponse,
     DescribeHubContentsResponse,
+    HubType,
     HubContentType,
 )
 from sagemaker.jumpstart.curated_hub import utils as hub_utils
@@ -362,7 +361,7 @@ class JumpStartModelsCache:
             return JumpStartCachedContentValue(
                 formatted_content=model_specs
             )
-        if data_type == HubContentType.HUB:
+        if data_type == HubType.HUB:
             hub_name, region, _, _ = hub_utils.get_info_from_hub_resource_arn(id_info)
             hub: CuratedHub = CuratedHub(hub_name=hub_name, region=region)
             hub_description: DescribeHubResponse = hub.describe()

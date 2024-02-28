@@ -16,11 +16,11 @@ import re
 from typing import Optional
 from sagemaker.session import Session
 from sagemaker.utils import aws_partition
-from sagemaker.jumpstart import constants
-from sagemaker.jumpstart.curated_hub.types import (
+from sagemaker.jumpstart.types import (
     HubContentType,
     HubArnExtractedInfo,
 )
+from sagemaker.jumpstart import constants
 
 
 def get_info_from_hub_resource_arn(
