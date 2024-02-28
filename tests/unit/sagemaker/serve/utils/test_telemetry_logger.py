@@ -95,6 +95,7 @@ class TestTelemetryLogger(unittest.TestCase):
 
         mock_send_telemetry.assert_called_once_with(
             "1", 2, MOCK_SESSION, None, None, expected_extra_str
+        )
 
     @patch("sagemaker.serve.utils.telemetry_logger._send_telemetry")
     def test_capture_telemetry_decorator_djl_success_with_custom_image(self, mock_send_telemetry):
@@ -123,6 +124,8 @@ class TestTelemetryLogger(unittest.TestCase):
         )
 
         mock_send_telemetry.assert_called_once_with(
+            "1", 2, MOCK_SESSION, None, None, expected_extra_str
+        )
 
     @patch("sagemaker.serve.utils.telemetry_logger._send_telemetry")
     def test_capture_telemetry_decorator_tgi_success(self, mock_send_telemetry):
