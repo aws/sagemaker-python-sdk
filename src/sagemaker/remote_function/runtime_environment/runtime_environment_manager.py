@@ -24,6 +24,8 @@ import time
 import dataclasses
 import json
 
+import sagemaker
+
 
 class _UTCFormatter(logging.Formatter):
     """Class that overrides the default local time provider in log formatter."""
