@@ -33,25 +33,6 @@ def sagemaker_session():
     return sagemaker_session_mock
 
 
-# @pytest.fixture()
-# def sagemaker_session():
-#     boto_mock = Mock(name="boto_session", region_name=REGION)
-#     session_mock = Mock(
-#         name="sagemaker_session",
-#         boto_session=boto_mock,
-#         boto_region_name=REGION,
-#         config=None,
-#         local_mode=False,
-#         default_bucket_prefix=None,
-#     )
-#     session_mock.return_value.sagemkaer_client = Mock(name="sagemaker_client")
-#     session_mock.sts_client.get_caller_identity = Mock(return_value={"Account": ACCOUNT_ID})
-#     create_hub = {"HubArn": "arn:aws:sagemaker:us-east-1:123456789123:hub/mock-hub-name"}
-#     session_mock.sagemaker_client.create_hub = Mock(return_value=create_hub)
-#     print(session_mock.sagemaker_client)
-#     return session_mock
-
-
 def test_instantiates(sagemaker_session):
     hub = CuratedHub(hub_name=HUB_NAME, region=REGION, sagemaker_session=sagemaker_session)
     assert hub.hub_name == HUB_NAME
