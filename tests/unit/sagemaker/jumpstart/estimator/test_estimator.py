@@ -1322,6 +1322,7 @@ class EstimatorTest(unittest.TestCase):
             predictor=default_predictor,
             model_id=model_id,
             model_version="*",
+            hub_arn=None,
             region=region,
             tolerate_deprecated_model=False,
             tolerate_vulnerable_model=False,

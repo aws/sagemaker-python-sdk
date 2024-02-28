@@ -642,6 +642,7 @@ class ModelTest(unittest.TestCase):
         assert js_class_init_args - parent_class_init_args == {
             "model_id",
             "model_version",
+            "hub_name",
             "region",
             "tolerate_vulnerable_model",
             "tolerate_deprecated_model",
@@ -713,6 +714,7 @@ class ModelTest(unittest.TestCase):
             predictor=default_predictor,
             model_id=model_id,
             model_version="*",
+            hub_arn=None,
             region=region,
             tolerate_deprecated_model=False,
             tolerate_vulnerable_model=False,

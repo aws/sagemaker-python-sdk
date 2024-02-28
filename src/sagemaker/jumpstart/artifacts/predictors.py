@@ -72,6 +72,7 @@ def _retrieve_deserializer_from_accept_type(
 def _retrieve_default_deserializer(
     model_id: str,
     model_version: str,
+    hub_arn: Optional[str],
     region: Optional[str],
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
@@ -84,6 +85,8 @@ def _retrieve_default_deserializer(
             retrieve the default deserializer.
         model_version (str): Version of the JumpStart model for which to retrieve the
             default deserializer.
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (Default: None).
         region (Optional[str]): Region for which to retrieve default deserializer.
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
             specifications should be tolerated (exception not raised). If False, raises an
@@ -104,6 +107,7 @@ def _retrieve_default_deserializer(
     default_accept_type = _retrieve_default_accept_type(
         model_id=model_id,
         model_version=model_version,
+        hub_arn=hub_arn,
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
@@ -116,6 +120,7 @@ def _retrieve_default_deserializer(
 def _retrieve_default_serializer(
     model_id: str,
     model_version: str,
+    hub_arn: Optional[str],
     region: Optional[str],
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
@@ -128,6 +133,8 @@ def _retrieve_default_serializer(
             retrieve the default serializer.
         model_version (str): Version of the JumpStart model for which to retrieve the
             default serializer.
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (Default: None).
         region (Optional[str]): Region for which to retrieve default serializer.
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
             specifications should be tolerated (exception not raised). If False, raises an
@@ -147,6 +154,7 @@ def _retrieve_default_serializer(
     default_content_type = _retrieve_default_content_type(
         model_id=model_id,
         model_version=model_version,
+        hub_arn=hub_arn,
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
@@ -273,6 +281,7 @@ def _retrieve_serializer_options(
 def _retrieve_default_content_type(
     model_id: str,
     model_version: str,
+    hub_arn: Optional[str],
     region: Optional[str],
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
@@ -285,6 +294,8 @@ def _retrieve_default_content_type(
             retrieve the default content type.
         model_version (str): Version of the JumpStart model for which to retrieve the
             default content type.
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (default: None).
         region (Optional[str]): Region for which to retrieve default content type.
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
             specifications should be tolerated (exception not raised). If False, raises an
@@ -307,6 +318,7 @@ def _retrieve_default_content_type(
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
+        hub_arn=hub_arn,
         scope=JumpStartScriptScope.INFERENCE,
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
@@ -321,6 +333,7 @@ def _retrieve_default_content_type(
 def _retrieve_default_accept_type(
     model_id: str,
     model_version: str,
+    hub_arn: Optional[str],
     region: Optional[str],
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
@@ -333,6 +346,8 @@ def _retrieve_default_accept_type(
             retrieve the default accept type.
         model_version (str): Version of the JumpStart model for which to retrieve the
             default accept type.
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (Default: None).
         region (Optional[str]): Region for which to retrieve default accept type.
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
             specifications should be tolerated (exception not raised). If False, raises an
@@ -355,6 +370,7 @@ def _retrieve_default_accept_type(
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
+        hub_arn=hub_arn,
         scope=JumpStartScriptScope.INFERENCE,
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
