@@ -34,19 +34,10 @@ def sagemaker_session():
 
 
 def test_instantiates(sagemaker_session):
-    hub = CuratedHub(hub_name=HUB_NAME, region=REGION, sagemaker_session=sagemaker_session)
+    hub = CuratedHub(hub_name=HUB_NAME, sagemaker_session=sagemaker_session)
     assert hub.hub_name == HUB_NAME
     assert hub.region == "us-east-1"
     assert hub._sagemaker_session == sagemaker_session
-
-
-def test_instantiates_handles_conflicting_regions(sagemaker_session):
-    conflicting_region = "us-east-2"
-
-    with pytest.raises(ValueError):
-        CuratedHub(
-            hub_name=HUB_NAME, region=conflicting_region, sagemaker_session=sagemaker_session
-        )
 
 
 @pytest.mark.parametrize(
@@ -74,7 +65,7 @@ def test_create_with_no_bucket_name(
 ):
     create_hub = {"HubArn": f"arn:aws:sagemaker:us-east-1:123456789123:hub/{hub_name}"}
     sagemaker_session.create_hub = Mock(return_value=create_hub)
-    hub = CuratedHub(hub_name=hub_name, region=REGION, sagemaker_session=sagemaker_session)
+    hub = CuratedHub(hub_name=hub_name, sagemaker_session=sagemaker_session)
     request = {
         "hub_name": hub_name,
         "hub_description": hub_description,
@@ -119,7 +110,7 @@ def test_create_with_bucket_name(
 ):
     create_hub = {"HubArn": f"arn:aws:sagemaker:us-east-1:123456789123:hub/{hub_name}"}
     sagemaker_session.create_hub = Mock(return_value=create_hub)
-    hub = CuratedHub(hub_name=hub_name, region=REGION, sagemaker_session=sagemaker_session)
+    hub = CuratedHub(hub_name=hub_name, sagemaker_session=sagemaker_session)
     request = {
         "hub_name": hub_name,
         "hub_description": hub_description,

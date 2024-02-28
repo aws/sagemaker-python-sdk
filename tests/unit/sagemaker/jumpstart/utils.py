@@ -27,6 +27,7 @@ from sagemaker.jumpstart.types import (
     JumpStartModelSpecs,
     JumpStartS3FileType,
     JumpStartModelHeader,
+    HubType,
     HubContentType,
 )
 
@@ -211,7 +212,7 @@ def patched_retrieval_function(
         )
 
     # TODO: Implement
-    if datatype == HubContentType.HUB:
+    if datatype == HubType.HUB:
         return None
 
     raise ValueError(f"Bad value for filetype: {datatype}")

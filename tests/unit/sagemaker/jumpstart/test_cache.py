@@ -252,14 +252,14 @@ def test_jumpstart_cache_handles_boto3_issues(mock_boto3_client):
 @patch("boto3.client")
 def test_jumpstart_cache_gets_cleared_when_params_are_set(mock_boto3_client):
     cache = JumpStartModelsCache(
-        s3_bucket_name="some_bucket", region="some_region", manifest_file_s3_key="some_key"
+        s3_bucket_name="some_bucket", region="us-west-2", manifest_file_s3_key="some_key"
     )
 
     cache.clear = MagicMock()
     cache.set_s3_bucket_name("some_bucket")
     cache.clear.assert_not_called()
     cache.clear.reset_mock()
-    cache.set_region("some_region")
+    cache.set_region("us-west-2")
     cache.clear.assert_not_called()
     cache.clear.reset_mock()
     cache.set_manifest_file_s3_key("some_key")
@@ -270,7 +270,7 @@ def test_jumpstart_cache_gets_cleared_when_params_are_set(mock_boto3_client):
     cache.set_s3_bucket_name("some_bucket1")
     cache.clear.assert_called_once()
     cache.clear.reset_mock()
-    cache.set_region("some_region1")
+    cache.set_region("us-east-1")
     cache.clear.assert_called_once()
     cache.clear.reset_mock()
     cache.set_manifest_file_s3_key("some_key1")

@@ -31,24 +31,17 @@ class CuratedHub:
     def __init__(
         self,
         hub_name: str,
-        region: str,
         sagemaker_session: Optional[Session] = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     ):
         """Instantiates a SageMaker ``CuratedHub``.
 
         Args:
             hub_name (str): The name of the Hub to create.
-            region (str): The region in which the CuratedHub is in.
             sagemaker_session (sagemaker.session.Session): A SageMaker Session
                 object, used for SageMaker interactions.
         """
         self.hub_name = hub_name
-        if sagemaker_session.boto_region_name != region:
-            raise ValueError(
-                f"Cannot have conflicting regions for region=[{region}] and ",
-                f"sagemaker_session region=[{str(sagemaker_session.boto_region_name)}].",
-            )
-        self.region = region
+        self.region = sagemaker_session.boto_region_name
         self._sagemaker_session = sagemaker_session
 
     def create(
@@ -75,9 +68,11 @@ class CuratedHub:
     def describe(self) -> DescribeHubResponse:
         """Returns descriptive information about the Hub"""
 
-        hub_description = self._sagemaker_session.describe_hub(hub_name=self.hub_name)
+        hub_description: DescribeHubResponse = self._sagemaker_session.describe_hub(
+            hub_name=self.hub_name
+        )
 
-        return DescribeHubResponse(hub_description)
+        return hub_description
 
     def list_models(self, **kwargs) -> Dict[str, Any]:
         """Lists the models in this Curated Hub
