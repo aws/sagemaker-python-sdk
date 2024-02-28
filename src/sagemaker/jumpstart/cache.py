@@ -21,6 +21,7 @@ import boto3
 import botocore
 from packaging.version import Version
 from packaging.specifiers import SpecifierSet, InvalidSpecifier
+from sagemaker.session import Session
 from sagemaker.utilities.cache import LRUCache
 from sagemaker.jumpstart.constants import (
     ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE,
@@ -29,6 +30,7 @@ from sagemaker.jumpstart.constants import (
     JUMPSTART_DEFAULT_REGION_NAME,
     JUMPSTART_LOGGER,
     MODEL_ID_LIST_WEB_URL,
+    DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 )
 from sagemaker.jumpstart.exceptions import get_wildcard_model_version_msg
 from sagemaker.jumpstart.parameters import (
@@ -51,7 +53,6 @@ from sagemaker.jumpstart.types import (
     HubContentType,
 )
 from sagemaker.jumpstart.curated_hub import utils as hub_utils
-from sagemaker.jumpstart.curated_hub.curated_hub import CuratedHub
 
 
 class JumpStartModelsCache:
@@ -77,6 +78,7 @@ class JumpStartModelsCache:
         s3_bucket_name: Optional[str] = None,
         s3_client_config: Optional[botocore.config.Config] = None,
         s3_client: Optional[boto3.client] = None,
+        sagemaker_session: Optional[Session] = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     ) -> None:  # fmt: on
         """Initialize a ``JumpStartModelsCache`` instance.
 
@@ -98,6 +100,8 @@ class JumpStartModelsCache:
             s3_client_config (Optional[botocore.config.Config]): s3 client config to use for cache.
                 Default: None (no config).
             s3_client (Optional[boto3.client]): s3 client to use. Default: None.
+            sagemaker_session (Optional[sagemaker.session.Session]): A SageMaker Session object,
+                used for SageMaker interactions. Default: Session in region associated with boto3 session.
         """
 
         self._region = region
@@ -124,6 +128,7 @@ class JumpStartModelsCache:
             if s3_client_config
             else boto3.client("s3", region_name=self._region)
         )
+        self._sagemaker_session = sagemaker_session
 
     def set_region(self, region: str) -> None:
         """Set region for cache. Clears cache after new region is set."""
@@ -343,15 +348,17 @@ class JumpStartModelsCache:
                 formatted_content=model_specs
             )
         if data_type == HubContentType.MODEL:
-            hub_name, region, model_name, model_version = hub_utils.get_info_from_hub_resource_arn(
+            hub_name, _, model_name, model_version = hub_utils.get_info_from_hub_resource_arn(
                 id_info
             )
-            hub: CuratedHub = CuratedHub(hub_name=hub_name, region=region)
-            hub_model_description: DescribeHubContentsResponse = hub.describe_model(
-                model_name=model_name,
-                model_version=model_version
+            hub_model_description: Dict[str, Any] = self._sagemaker_session.describe_hub_content(
+                hub_name=hub_name,
+                hub_content_name=model_name,
+                hub_content_version=model_version,
+                hub_content_type=data_type
             )
-            model_specs = JumpStartModelSpecs(hub_model_description, is_hub_content=True)
+
+            model_specs = JumpStartModelSpecs(DescribeHubContentsResponse(hub_model_description), is_hub_content=True)
 
             utils.emit_logs_based_on_model_specs(
                 model_specs,
@@ -362,13 +369,13 @@ class JumpStartModelsCache:
                 formatted_content=model_specs
             )
         if data_type == HubType.HUB:
-            hub_name, region, _, _ = hub_utils.get_info_from_hub_resource_arn(id_info)
-            hub: CuratedHub = CuratedHub(hub_name=hub_name, region=region)
-            hub_description: DescribeHubResponse = hub.describe()
-            return JumpStartCachedContentValue(formatted_content=hub_description)
+            hub_name, _, _, _ = hub_utils.get_info_from_hub_resource_arn(id_info)
+            response: Dict[str, Any] = self._sagemaker_session.describe_hub(hub_name=hub_name)
+            hub_description = DescribeHubResponse(response)
+            return JumpStartCachedContentValue(formatted_content=DescribeHubResponse(hub_description))
         raise ValueError(
             f"Bad value for key '{key}': must be in ",
-            f"{[JumpStartS3FileType.MANIFEST, JumpStartS3FileType.SPECS, HubContentType.HUB, HubContentType.MODEL]}"
+            f"{[JumpStartS3FileType.MANIFEST, JumpStartS3FileType.SPECS, HubType.HUB, HubContentType.MODEL]}"
         )
 
     def get_manifest(self) -> List[JumpStartModelHeader]:
@@ -493,7 +500,7 @@ class JumpStartModelsCache:
             hub_arn (str): Arn for the Hub to get info for
         """
 
-        details, _ = self._content_cache.get(JumpStartCachedContentKey(HubContentType.HUB, hub_arn))
+        details, _ = self._content_cache.get(JumpStartCachedContentKey(HubType.HUB, hub_arn))
         return details.formatted_content
 
     def clear(self) -> None:

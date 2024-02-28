@@ -195,7 +195,6 @@ def patched_retrieval_function(
 
     datatype, id_info = key.data_type, key.id_info
     if datatype == JumpStartS3FileType.MANIFEST:
-
         return JumpStartCachedContentValue(formatted_content=get_formatted_manifest(BASE_MANIFEST))
 
     if datatype == JumpStartS3FileType.SPECS:
