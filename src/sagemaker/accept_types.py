@@ -16,7 +16,6 @@ from typing import List, Optional
 
 from sagemaker.jumpstart import artifacts, utils as jumpstart_utils
 from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
-from sagemaker.jumpstart.enums import JumpStartModelType
 from sagemaker.session import Session
 
 
@@ -73,7 +72,6 @@ def retrieve_default(
     region: Optional[str] = None,
     model_id: Optional[str] = None,
     model_version: Optional[str] = None,
-    model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_SOURCE,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,

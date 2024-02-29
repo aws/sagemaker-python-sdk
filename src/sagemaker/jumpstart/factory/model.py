@@ -204,8 +204,8 @@ def _add_instance_type_to_kwargs(
 
 
 def _add_image_uri_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelInitKwargs:
-    """
-    Sets image uri based on default or override, returns full kwargs.
+    """Sets image uri based on default or override, returns full kwargs.
+
     Uses placeholder image uri for JumpStart proprietary models that uses ModelPackages
     """
 
