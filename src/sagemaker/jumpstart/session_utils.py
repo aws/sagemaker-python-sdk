@@ -15,11 +15,11 @@
 from __future__ import absolute_import
 
 from typing import Optional, Tuple
-from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 
-from sagemaker.jumpstart.utils import get_jumpstart_model_id_version_from_resource_arn
 from sagemaker.session import Session
 from sagemaker.utils import aws_partition
+from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+from sagemaker.jumpstart.utils import get_jumpstart_model_id_version_from_resource_arn
 
 
 def get_model_id_version_from_endpoint(

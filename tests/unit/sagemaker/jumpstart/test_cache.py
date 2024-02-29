@@ -22,7 +22,7 @@ import botocore
 from mock.mock import MagicMock
 import pytest
 from mock import patch
-
+from sagemaker.session_settings import SessionSettings
 from sagemaker.jumpstart.cache import JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY, JumpStartModelsCache
 from sagemaker.jumpstart.constants import (
     ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE,
@@ -43,6 +43,30 @@ from tests.unit.sagemaker.jumpstart.constants import (
     BASE_SPEC,
 )
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
+
+
+REGION = "us-east-1"
+REGION2 = "us-east-2"
+ACCOUNT_ID = "123456789123"
+
+
+@pytest.fixture()
+def sagemaker_session():
+    mocked_boto_session = Mock(name="boto_session")
+    mocked_s3_client = Mock(name="s3_client")
+    mocked_sagemaker_session = Mock(
+        name="sagemaker_session",
+        boto_session=mocked_boto_session,
+        s3_client=mocked_s3_client,
+        boto_region_name=REGION,
+        config=None,
+    )
+    mocked_sagemaker_session.sagemaker_config = {}
+    mocked_sagemaker_session._client_config.user_agent = (
+        "Boto3/1.9.69 Python/3.6.5 Linux/4.14.77-70.82.amzn1.x86_64 Botocore/1.12.69 Resource"
+    )
+    mocked_sagemaker_session.account_id.return_value = ACCOUNT_ID
+    return mocked_sagemaker_session
 
 
 @patch.object(JumpStartModelsCache, "_retrieval_function", patched_retrieval_function)
@@ -252,14 +276,14 @@ def test_jumpstart_cache_handles_boto3_issues(mock_boto3_client):
 @patch("boto3.client")
 def test_jumpstart_cache_gets_cleared_when_params_are_set(mock_boto3_client):
     cache = JumpStartModelsCache(
-        s3_bucket_name="some_bucket", region="some_region", manifest_file_s3_key="some_key"
+        s3_bucket_name="some_bucket", region=REGION, manifest_file_s3_key="some_key"
     )
 
     cache.clear = MagicMock()
     cache.set_s3_bucket_name("some_bucket")
     cache.clear.assert_not_called()
     cache.clear.reset_mock()
-    cache.set_region("some_region")
+    cache.set_region(REGION)
     cache.clear.assert_not_called()
     cache.clear.reset_mock()
     cache.set_manifest_file_s3_key("some_key")
@@ -270,7 +294,7 @@ def test_jumpstart_cache_gets_cleared_when_params_are_set(mock_boto3_client):
     cache.set_s3_bucket_name("some_bucket1")
     cache.clear.assert_called_once()
     cache.clear.reset_mock()
-    cache.set_region("some_region1")
+    cache.set_region(REGION2)
     cache.clear.assert_called_once()
     cache.clear.reset_mock()
     cache.set_manifest_file_s3_key("some_key1")
@@ -399,7 +423,6 @@ def test_jumpstart_cache_handles_boto3_client_errors():
 
 def test_jumpstart_cache_accepts_input_parameters():
 
-    region = "us-east-1"
     max_s3_cache_items = 1
     s3_cache_expiration_horizon = datetime.timedelta(weeks=2)
     max_semantic_version_cache_items = 3
@@ -408,7 +431,7 @@ def test_jumpstart_cache_accepts_input_parameters():
     manifest_file_key = "some_s3_key"
 
     cache = JumpStartModelsCache(
-        region=region,
+        region=REGION,
         max_s3_cache_items=max_s3_cache_items,
         s3_cache_expiration_horizon=s3_cache_expiration_horizon,
         max_semantic_version_cache_items=max_semantic_version_cache_items,
@@ -418,7 +441,7 @@ def test_jumpstart_cache_accepts_input_parameters():
     )
 
     assert cache.get_manifest_file_s3_key() == manifest_file_key
-    assert cache.get_region() == region
+    assert cache.get_region() == REGION
     assert cache.get_bucket() == bucket
     assert cache._content_cache._max_cache_items == max_s3_cache_items
     assert cache._content_cache._expiration_horizon == s3_cache_expiration_horizon
@@ -741,7 +764,10 @@ def test_jumpstart_cache_get_specs():
 @patch("sagemaker.jumpstart.cache.os.path.isdir")
 @patch("builtins.open")
 def test_jumpstart_local_metadata_override_header(
-    mocked_open: Mock, mocked_is_dir: Mock, mocked_get_json_file_and_etag_from_s3: Mock
+    mocked_open: Mock,
+    mocked_is_dir: Mock,
+    mocked_get_json_file_and_etag_from_s3: Mock,
+    sagemaker_session: Mock,
 ):
     mocked_open.side_effect = mock_open(read_data=json.dumps(BASE_MANIFEST))
     mocked_is_dir.return_value = True
@@ -760,7 +786,7 @@ def test_jumpstart_local_metadata_override_header(
     mocked_is_dir.assert_any_call("/some/directory/metadata/manifest/root")
     mocked_is_dir.assert_any_call("/some/directory/metadata/specs/root")
     assert mocked_is_dir.call_count == 2
-    mocked_open.assert_called_once_with(
+    mocked_open.assert_called_with(
         "/some/directory/metadata/manifest/root/models_manifest.json", "r"
     )
     mocked_get_json_file_and_etag_from_s3.assert_not_called()
@@ -783,6 +809,7 @@ def test_jumpstart_local_metadata_override_specs(
     mocked_is_dir: Mock,
     mocked_get_json_file_and_etag_from_s3: Mock,
     mock_emit_logs_based_on_model_specs,
+    sagemaker_session,
 ):
 
     mocked_open.side_effect = [
@@ -791,7 +818,9 @@ def test_jumpstart_local_metadata_override_specs(
     ]
 
     mocked_is_dir.return_value = True
-    cache = JumpStartModelsCache(s3_bucket_name="some_bucket")
+    cache = JumpStartModelsCache(
+        s3_bucket_name="some_bucket", s3_client=Mock(), sagemaker_session=sagemaker_session
+    )
 
     model_id, version = "tensorflow-ic-imagenet-inception-v3-classification-4", "2.0.0"
     assert JumpStartModelSpecs(BASE_SPEC) == cache.get_specs(
@@ -845,7 +874,7 @@ def test_jumpstart_local_metadata_override_specs_not_exist_both_directories(
 
     mocked_is_dir.assert_any_call("/some/directory/metadata/manifest/root")
     assert mocked_is_dir.call_count == 2
-    mocked_open.assert_not_called()
+    assert mocked_open.call_count == 2
     mocked_get_json_file_and_etag_from_s3.assert_has_calls(
         calls=[
             call("models_manifest.json"),

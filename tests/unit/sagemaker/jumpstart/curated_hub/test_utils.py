@@ -11,11 +11,11 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
-from unittest.mock import Mock
-from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
 
+from unittest.mock import Mock
+from sagemaker.jumpstart.types import HubArnExtractedInfo
+from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
 from sagemaker.jumpstart.curated_hub import utils
-from sagemaker.jumpstart.curated_hub.types import HubArnExtractedInfo
 
 
 def test_get_info_from_hub_resource_arn():
@@ -139,4 +139,36 @@ def test_generate_hub_arn_for_init_kwargs():
         utils.generate_hub_arn_for_init_kwargs(hub_arn, "us-east-1", mock_custom_session) == hub_arn
     )
 
+    assert (
+        utils.generate_hub_arn_for_estimator_init_kwargs(hub_arn, None, mock_custom_session)
+        == hub_arn
+    )
+
+
+def test_generate_default_hub_bucket_name():
+    mock_sagemaker_session = Mock()
+    mock_sagemaker_session.account_id.return_value = "123456789123"
+    mock_sagemaker_session.boto_region_name = "us-east-1"
+
+    assert (
+        utils.generate_default_hub_bucket_name(sagemaker_session=mock_sagemaker_session)
+        == "sagemaker-hubs-us-east-1-123456789123"
+    )
+
+
+def test_create_hub_bucket_if_it_does_not_exist():
+    mock_sagemaker_session = Mock()
+    mock_sagemaker_session.account_id.return_value = "123456789123"
+    mock_sagemaker_session.client("sts").get_caller_identity.return_value = {
+        "Account": "123456789123"
+    }
+    mock_sagemaker_session.boto_session.resource("s3").Bucket().creation_date = None
+    mock_sagemaker_session.boto_region_name = "us-east-1"
+    bucket_name = "sagemaker-hubs-us-east-1-123456789123"
+    created_hub_bucket_name = utils.create_hub_bucket_if_it_does_not_exist(
+        sagemaker_session=mock_sagemaker_session
+    )
+
+    mock_sagemaker_session.boto_session.resource("s3").create_bucketassert_called_once()
+    assert created_hub_bucket_name == bucket_name
     assert utils.generate_hub_arn_for_init_kwargs(hub_arn, None, mock_custom_session) == hub_arn
