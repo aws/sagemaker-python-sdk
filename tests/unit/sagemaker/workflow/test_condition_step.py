@@ -626,11 +626,7 @@ def _get_expected_jsonget_expr(step_name: str, path: str):
                 "Std:Join": {
                     "On": "/",
                     "Values": [
-                        "s3://s3_bucket/test-prefix",
-                        "MyPipeline",
-                        {"Get": "Execution.PipelineExecutionId"},
-                        step_name,
-                        "results",
+                        {"Get": f"Steps.{step_name}.OutputDataConfig.S3OutputPath"},
                         "results.json",
                     ],
                 }
