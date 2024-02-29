@@ -303,15 +303,7 @@ def test_step_function_with_sequence_return_value(type_hint):
 
 
 @patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
-@patch("sagemaker.remote_function.job._JobSettings")
-def test_step_function_with_no_hint_on_return_values(mock_job_settings_ctr):
-    s3_root_uri = "s3://bucket"
-    mock_job_settings = Mock()
-    mock_job_settings.s3_root_uri = s3_root_uri
-    mock_job_settings.sagemaker_session = MOCKED_PIPELINE_CONFIG.sagemaker_session
-
-    mock_job_settings_ctr.return_value = mock_job_settings
-
+def test_step_function_with_no_hint_on_return_values():
     @step(name="step_name")
     def func():
         return 1, 2, 3
@@ -330,11 +322,7 @@ def test_step_function_with_no_hint_on_return_values(mock_job_settings_ctr):
                 "Std:Join": {
                     "On": "/",
                     "Values": [
-                        "s3://bucket",
-                        {"Get": "Execution.PipelineName"},
-                        {"Get": "Execution.PipelineExecutionId"},
-                        "step_name",
-                        "results",
+                        {"Get": "Steps.step_name.OutputDataConfig.S3OutputPath"},
                         "results.json",
                     ],
                 }
@@ -354,19 +342,13 @@ def test_step_function_with_no_hint_on_return_values(mock_job_settings_ctr):
                 "Std:Join": {
                     "On": "/",
                     "Values": [
-                        "s3://bucket",
-                        {"Get": "Execution.PipelineName"},
-                        {"Get": "Execution.PipelineExecutionId"},
-                        "step_name",
-                        "results",
+                        {"Get": "Steps.step_name.OutputDataConfig.S3OutputPath"},
                         "results.json",
                     ],
                 }
             },
         }
     }
-
-    mock_job_settings_ctr.assert_called_once()
 
     with pytest.raises(NotImplementedError):
         for _ in step_output:
