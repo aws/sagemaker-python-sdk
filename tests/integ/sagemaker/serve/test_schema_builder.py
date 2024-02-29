@@ -105,15 +105,24 @@ def test_model_builder_negative_path(sagemaker_session):
     PYTHON_VERSION_IS_NOT_310,
     reason="Testing Schema Builder Simplification feature",
 )
-def test_model_builder_happy_path_with_task_provided(sagemaker_session, gpu_instance_type):
-    model_builder = ModelBuilder(model="bert-base-uncased:fill-mask")
+@pytest.mark.parametrize(
+    "model_id, task_provided",
+    [
+        ("bert-base-uncased", "fill-mask"),
+        ("bert-large-uncased-whole-word-masking-finetuned-squad", "question-answering"),
+    ],
+)
+def test_model_builder_happy_path_with_task_provided(
+    model_id, task_provided, sagemaker_session, gpu_instance_type
+):
+    model_builder = ModelBuilder(model=f"{model_id}:{task_provided}")
 
     model = model_builder.build(sagemaker_session=sagemaker_session)
 
     assert model is not None
     assert model_builder.schema_builder is not None
 
-    inputs, outputs = task.retrieve_local_schemas("fill-mask")
+    inputs, outputs = task.retrieve_local_schemas(task_provided)
     assert model_builder.schema_builder.sample_input == inputs
     assert model_builder.schema_builder.sample_output == outputs
 
