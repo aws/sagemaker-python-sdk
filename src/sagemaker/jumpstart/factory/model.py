@@ -71,7 +71,6 @@ def get_default_predictor(
     tolerate_vulnerable_model: bool,
     tolerate_deprecated_model: bool,
     sagemaker_session: Session,
-    model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_SOURCE,
 ) -> Predictor:
     """Converts predictor returned from ``Model.deploy()`` into a JumpStart-specific one.
 
