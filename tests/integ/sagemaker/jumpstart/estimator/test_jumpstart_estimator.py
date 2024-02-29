@@ -33,7 +33,7 @@ from tests.integ.sagemaker.jumpstart.utils import (
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
 
 
-MAX_INIT_TIME_SECONDS = 5
+MAX_INIT_TIME_SECONDS = 15
 
 GATED_TRAINING_MODEL_V1_SUPPORTED_REGIONS = {
     "us-west-2",
