@@ -33,7 +33,7 @@ def create_and_execute_pipeline(
     region_name,
     role,
     no_of_steps,
-    last_step_name,
+    last_step_name_prefix,
     execution_parameters,
     step_status,
     step_result_type=None,
@@ -66,7 +66,7 @@ def create_and_execute_pipeline(
         len(execution_steps) == no_of_steps
     ), f"Expected {no_of_steps}, instead found {len(execution_steps)}"
 
-    assert last_step_name in execution_steps[0]["StepName"]
+    assert last_step_name_prefix in execution_steps[0]["StepName"]
     assert execution_steps[0]["StepStatus"] == step_status
     if step_result_type:
         result = execution.result(execution_steps[0]["StepName"])
