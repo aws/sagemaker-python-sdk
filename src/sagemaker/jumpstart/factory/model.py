@@ -93,7 +93,6 @@ def get_default_predictor(
         tolerate_deprecated_model=tolerate_deprecated_model,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         sagemaker_session=sagemaker_session,
-        model_type=model_type,
     )
     predictor.deserializer = deserializers.retrieve_default(
         model_id=model_id,
@@ -102,7 +101,6 @@ def get_default_predictor(
         tolerate_deprecated_model=tolerate_deprecated_model,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         sagemaker_session=sagemaker_session,
-        model_type=model_type,
     )
     predictor.accept = accept_types.retrieve_default(
         model_id=model_id,
@@ -111,7 +109,6 @@ def get_default_predictor(
         tolerate_deprecated_model=tolerate_deprecated_model,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         sagemaker_session=sagemaker_session,
-        model_type=model_type,
     )
     predictor.content_type = content_types.retrieve_default(
         model_id=model_id,
@@ -120,7 +117,6 @@ def get_default_predictor(
         tolerate_deprecated_model=tolerate_deprecated_model,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         sagemaker_session=sagemaker_session,
-        model_type=model_type,
     )
 
     return predictor
