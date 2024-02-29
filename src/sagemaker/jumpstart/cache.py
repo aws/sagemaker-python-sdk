@@ -34,6 +34,7 @@ from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     MODEL_TYPE_TO_MANIFEST_MAP,
     MODEL_TYPE_TO_SPECS_MAP,
+    DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 )
 from sagemaker.jumpstart.exceptions import (
     get_wildcard_model_version_msg,
@@ -477,7 +478,6 @@ class JumpStartModelsCache:
             return JumpStartCachedContentValue(
                 formatted_content=model_specs
             )
-
         if data_type == HubType.HUB:
             hub_name, _, _, _ = hub_utils.get_info_from_hub_resource_arn(id_info)
             response: Dict[str, Any] = self._sagemaker_session.describe_hub(hub_name=hub_name)
