@@ -480,7 +480,6 @@ class JumpStartModelsCache:
             return JumpStartCachedContentValue(
                 formatted_content=model_specs
             )
-
         if data_type == HubType.HUB:
             hub_name, _, _, _ = hub_utils.get_info_from_hub_resource_arn(id_info)
             response: Dict[str, Any] = self._sagemaker_session.describe_hub(hub_name=hub_name)

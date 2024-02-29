@@ -22,7 +22,6 @@ from sagemaker.jumpstart.constants import (
     JUMPSTART_REGION_NAME_SET,
 )
 from sagemaker.jumpstart.types import (
-    HubContentType,
     JumpStartCachedContentKey,
     JumpStartCachedContentValue,
     JumpStartModelSpecs,
@@ -32,6 +31,7 @@ from sagemaker.jumpstart.types import (
     HubContentType,
 )
 from sagemaker.jumpstart.enums import JumpStartModelType
+
 from sagemaker.jumpstart.utils import get_formatted_manifest
 from tests.unit.sagemaker.jumpstart.constants import (
     PROTOTYPICAL_MODEL_SPECS_DICT,
@@ -254,7 +254,7 @@ def patched_retrieval_function(
             )
         )
     # TODO: Implement
-    if datatype == HubContentType.HUB:
+    if datatype == HubType.HUB:
         return None
 
     if datatype == HubContentType.MODEL:
