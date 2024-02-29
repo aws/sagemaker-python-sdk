@@ -56,7 +56,7 @@ PROBLEM_CONFIGS = {
         max_candidates=1,
     ),
     TEXT_CLASSIFICATION_PROBLEM_TYPE: AutoMLTextClassificationConfig(
-        content_column="sms",
+        content_column="text",
         target_label_column="label",
         max_candidates=1,
     ),
@@ -69,6 +69,7 @@ PROBLEM_CONFIGS = {
         item_identifier_attribute_name="item_id",
         target_attribute_name="target",
         timestamp_attribute_name="timestamp",
+        forecast_quantiles=["p10", "p50", "p90"],
     ),
 }
 
@@ -84,7 +85,7 @@ DATA_CONFIGS = {
         "content_type": "image/png",
     },
     TEXT_CLASSIFICATION_PROBLEM_TYPE: {
-        "path": os.path.join(DATA_DIR, "sms_spam.csv"),
+        "path": os.path.join(DATA_DIR, "CoLA.csv"),
         "prefix": PREFIX + "/input",
         "content_type": "text/csv;header=present",
     },

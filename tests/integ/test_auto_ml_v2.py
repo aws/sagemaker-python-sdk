@@ -174,7 +174,10 @@ def test_auto_ml_v2_attach(problem_type, job_name_fixture_key, sagemaker_session
     assert desc["AutoMLJobName"] == job_name
     assert desc["AutoMLJobStatus"] in ["InProgress", "Completed"]
     assert desc["AutoMLJobSecondaryStatus"] != "Failed"
-    assert desc["ProblemConfig"] == auto_ml_v2_utils.PROBLEM_CONFIGS[problem_type]
+    assert (
+        desc["AutoMLProblemTypeConfig"]
+        == auto_ml_v2_utils.PROBLEM_CONFIGS[problem_type].to_request_dict()
+    )
     assert desc["OutputDataConfig"] == expected_default_output_config
 
 
@@ -251,6 +254,8 @@ def test_list_candidates(
 
         candidates = auto_ml.list_candidates(job_name=job_name)
         assert len(candidates) == num_candidates
+    else:
+        pytest.skip("The job hasn't finished yet")
 
 
 @pytest.mark.skipif(
@@ -320,6 +325,8 @@ def test_best_candidate(
         best_candidate = auto_ml.best_candidate(job_name=job_name)
         assert len(best_candidate["InferenceContainers"]) == num_containers
         assert best_candidate["CandidateStatus"] == "Completed"
+    else:
+        pytest.skip("The job hasn't finished yet")
 
 
 @pytest.mark.skipif(
@@ -411,6 +418,8 @@ def test_deploy_best_candidate(
         )["EndpointStatus"]
         assert endpoint_status == "InService"
         sagemaker_session.sagemaker_client.delete_endpoint(EndpointName=endpoint_name)
+    else:
+        pytest.skip("The job hasn't finished yet")
 
 
 @pytest.mark.skipif(
@@ -482,3 +491,5 @@ def test_candidate_estimator_get_steps(
         candidate_estimator = CandidateEstimator(candidate, sagemaker_session)
         steps = candidate_estimator.get_steps()
         assert len(steps) == num_steps
+    else:
+        pytest.skip("The job hasn't finished yet")

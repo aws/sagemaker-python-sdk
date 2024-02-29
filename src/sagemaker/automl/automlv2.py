@@ -877,8 +877,8 @@ class AutoMLV2(object):
         """Returns the best candidate of an AutoML job for a given name.
 
         Args:
-            job_name (str): The name of the AutoML job. If None, will use object's
-                _current_auto_ml_job_name.
+            job_name (str): The name of the AutoML job. If None, object's
+                _current_auto_ml_job_name will be used.
 
         Returns:
             dict: A dictionary with information of the best candidate.
