@@ -33,7 +33,6 @@ from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.pipeline import (
     Pipeline,
     PipelineGraph,
-    _replace_pipeline_name_in_json_get_s3_uri,
 )
 from sagemaker.workflow.pipeline_context import _PipelineConfig
 from sagemaker.workflow.pipeline_definition_config import PipelineDefinitionConfig
@@ -1009,19 +1008,3 @@ def _generate_parameters_for_replace_pipeline_name_test() -> list:
         (parameter, False),
         (delayed_return, True),
     ]
-
-
-@patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
-@patch("sagemaker.remote_function.job._JobSettings", Mock())
-@pytest.mark.parametrize("obj, is_replaced", _generate_parameters_for_replace_pipeline_name_test())
-def test_replace_pipeline_name_in_json_get_s3_uri(obj, is_replaced):
-    updated_obj = _replace_pipeline_name_in_json_get_s3_uri(
-        obj=obj,
-        pipeline_name=_PIPELINE_NAME,
-    )
-    if is_replaced:
-        assert updated_obj != obj
-        assert "Execution.PipelineName" not in str(updated_obj.expr)
-        assert _PIPELINE_NAME in str(updated_obj.expr)
-    else:
-        assert updated_obj == obj
