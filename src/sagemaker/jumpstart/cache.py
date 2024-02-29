@@ -164,8 +164,8 @@ class JumpStartModelsCache:
         if not property_name:
             raise ValueError(
                 f"Bad value when setting manifest '{file_type}': must be in"
-                f"{JumpStartS3FileType.OPEN_SOURCE_MANIFEST}"
-                f"{JumpStartS3FileType.PROPRIETARY_MANIFEST}"
+                f" {JumpStartS3FileType.OPEN_SOURCE_MANIFEST}"
+                f" {JumpStartS3FileType.PROPRIETARY_MANIFEST}"
             )
         if key != property_name:
             setattr(self, property_name, key)

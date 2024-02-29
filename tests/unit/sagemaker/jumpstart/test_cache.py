@@ -36,6 +36,7 @@ from sagemaker.jumpstart.types import (
     JumpStartModelHeader,
     JumpStartModelSpecs,
     JumpStartVersionedModelId,
+    JumpStartS3FileType,
 )
 from sagemaker.jumpstart.enums import JumpStartModelType
 from tests.unit.sagemaker.jumpstart.utils import (
@@ -358,6 +359,12 @@ def test_jumpstart_cache_gets_cleared_when_params_are_set(mock_boto3_client):
     cache.set_manifest_file_s3_key("some_key1")
     cache.clear.assert_called_once()
 
+    cache.clear.reset_mock()
+    cache.set_manifest_file_s3_key("some_key1", file_type=JumpStartS3FileType.OPEN_SOURCE_MANIFEST)
+    cache.clear.assert_called_once()
+    with pytest.raises(ValueError):
+        cache.set_manifest_file_s3_key("some_key1", file_type="unknown_type")
+
 
 def test_jumpstart_cache_handles_boto3_client_errors():
     # Testing get_object
@@ -512,6 +519,71 @@ def test_jumpstart_cache_accepts_input_parameters():
         cache._open_source_model_id_manifest_key_cache._expiration_horizon
         == semantic_version_cache_expiration_horizon
     )
+
+
+def test_jumpstart_proprietary_cache_accepts_input_parameters():
+
+    region = "us-east-1"
+    max_s3_cache_items = 1
+    s3_cache_expiration_horizon = datetime.timedelta(weeks=2)
+    max_semantic_version_cache_items = 3
+    semantic_version_cache_expiration_horizon = datetime.timedelta(microseconds=4)
+    bucket = "my-amazing-bucket"
+    manifest_file_key = "some_s3_key"
+    proprietary_manifest_file_key = "some_proprietary_s3_key"
+
+    cache = JumpStartModelsCache(
+        region=region,
+        max_s3_cache_items=max_s3_cache_items,
+        s3_cache_expiration_horizon=s3_cache_expiration_horizon,
+        max_semantic_version_cache_items=max_semantic_version_cache_items,
+        semantic_version_cache_expiration_horizon=semantic_version_cache_expiration_horizon,
+        s3_bucket_name=bucket,
+        manifest_file_s3_key=manifest_file_key,
+        proprietary_manifest_s3_key=proprietary_manifest_file_key,
+    )
+
+    assert (
+        cache.get_manifest_file_s3_key(file_type=JumpStartS3FileType.PROPRIETARY_MANIFEST)
+        == proprietary_manifest_file_key
+    )
+    assert cache.get_region() == region
+    assert cache.get_bucket() == bucket
+    assert cache._s3_cache._max_cache_items == max_s3_cache_items
+    assert cache._s3_cache._expiration_horizon == s3_cache_expiration_horizon
+    assert (
+        cache._proprietary_model_id_manifest_key_cache._max_cache_items
+        == max_semantic_version_cache_items
+    )
+    assert (
+        cache._proprietary_model_id_manifest_key_cache._expiration_horizon
+        == semantic_version_cache_expiration_horizon
+    )
+
+
+def test_jumpstart_cache_raise_unknown_file_type_exception():
+
+    region = "us-east-1"
+    max_s3_cache_items = 1
+    s3_cache_expiration_horizon = datetime.timedelta(weeks=2)
+    max_semantic_version_cache_items = 3
+    semantic_version_cache_expiration_horizon = datetime.timedelta(microseconds=4)
+    bucket = "my-amazing-bucket"
+    manifest_file_key = "some_s3_key"
+    proprietary_manifest_file_key = "some_proprietary_s3_key"
+
+    cache = JumpStartModelsCache(
+        region=region,
+        max_s3_cache_items=max_s3_cache_items,
+        s3_cache_expiration_horizon=s3_cache_expiration_horizon,
+        max_semantic_version_cache_items=max_semantic_version_cache_items,
+        semantic_version_cache_expiration_horizon=semantic_version_cache_expiration_horizon,
+        s3_bucket_name=bucket,
+        manifest_file_s3_key=manifest_file_key,
+        proprietary_manifest_s3_key=proprietary_manifest_file_key,
+    )
+    with pytest.raises(ValueError):
+        cache.get_manifest_file_s3_key(file_type="unknown_type")
 
 
 @patch("boto3.client")
