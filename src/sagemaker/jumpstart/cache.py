@@ -34,6 +34,7 @@ from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     MODEL_TYPE_TO_MANIFEST_MAP,
     MODEL_TYPE_TO_SPECS_MAP,
+    DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 )
 from sagemaker.jumpstart.exceptions import (
     get_wildcard_model_version_msg,
