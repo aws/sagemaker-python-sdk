@@ -1247,7 +1247,7 @@ class TestModelBuilder(unittest.TestCase):
         mock_build_for_transformers.assert_called_once()
 
     @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_djl", Mock())
-    @patch("sagemaker.serve.utils.hardware_detector._get_gpu_info")
+    @patch("sagemaker.serve.builder.model_builder._get_gpu_info")
     @patch("sagemaker.serve.builder.model_builder.ModelBuilder._total_inference_model_size_mib")
     @patch("sagemaker.image_uris.retrieve")
     @patch("sagemaker.djl_inference.model.urllib")
@@ -1257,16 +1257,16 @@ class TestModelBuilder(unittest.TestCase):
     @patch("sagemaker.model_uris.retrieve")
     @patch("sagemaker.serve.builder.model_builder._ServeSettings")
     def test_build_for_transformers_happy_case_with_valid_gpu_info(
-            self,
-            mock_serveSettings,
-            mock_model_uris_retrieve,
-            mock_llm_utils_json,
-            mock_llm_utils_urllib,
-            mock_model_json,
-            mock_model_urllib,
-            mock_image_uris_retrieve,
-            mock_total_inference_model_size_mib,
-            mock_try_fetch_gpu_info,
+        self,
+        mock_serveSettings,
+        mock_model_uris_retrieve,
+        mock_llm_utils_json,
+        mock_llm_utils_urllib,
+        mock_model_json,
+        mock_model_urllib,
+        mock_image_uris_retrieve,
+        mock_total_inference_model_size_mib,
+        mock_try_fetch_gpu_info,
     ):
         mock_setting_object = mock_serveSettings.return_value
         mock_setting_object.role_arn = mock_role_arn
@@ -1285,7 +1285,9 @@ class TestModelBuilder(unittest.TestCase):
 
         model_builder = ModelBuilder(model="stable-diffusion")
         model_builder.build(sagemaker_session=mock_session)
-
+        self.assertEqual(
+            model_builder._try_fetch_gpu_info(), INSTANCE_GPU_INFO[1] / INSTANCE_GPU_INFO[0]
+        )
         self.assertEqual(model_builder._can_fit_on_single_gpu(), False)
 
     @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_transformers", Mock())
@@ -1300,17 +1302,17 @@ class TestModelBuilder(unittest.TestCase):
     @patch("sagemaker.model_uris.retrieve")
     @patch("sagemaker.serve.builder.model_builder._ServeSettings")
     def test_build_for_transformers_happy_case_with_valid_gpu_fallback(
-            self,
-            mock_serveSettings,
-            mock_model_uris_retrieve,
-            mock_llm_utils_json,
-            mock_llm_utils_urllib,
-            mock_model_json,
-            mock_model_urllib,
-            mock_image_uris_retrieve,
-            mock_total_inference_model_size_mib,
-            mock_gpu_fallback,
-            mock_try_fetch_gpu_info,
+        self,
+        mock_serveSettings,
+        mock_model_uris_retrieve,
+        mock_llm_utils_json,
+        mock_llm_utils_urllib,
+        mock_model_json,
+        mock_model_urllib,
+        mock_image_uris_retrieve,
+        mock_total_inference_model_size_mib,
+        mock_gpu_fallback,
+        mock_try_fetch_gpu_info,
     ):
         mock_setting_object = mock_serveSettings.return_value
         mock_setting_object.role_arn = mock_role_arn
@@ -1324,12 +1326,20 @@ class TestModelBuilder(unittest.TestCase):
         mock_model_urllib.request.Request.side_effect = Mock()
         mock_try_fetch_gpu_info.side_effect = ValueError
         mock_gpu_fallback.return_value = INSTANCE_GPU_INFO
-        mock_total_inference_model_size_mib.return_value = INSTANCE_GPU_INFO[1]/INSTANCE_GPU_INFO[0] - 1
+        mock_total_inference_model_size_mib.return_value = (
+            INSTANCE_GPU_INFO[1] / INSTANCE_GPU_INFO[0] - 1
+        )
 
         mock_image_uris_retrieve.return_value = "https://some-image-uri"
 
-        model_builder = ModelBuilder(model="stable-diffusion", sagemaker_session=mock_session, instance_type=mock_instance_type)
-        self.assertEqual(model_builder._try_fetch_gpu_info(), INSTANCE_GPU_INFO[1]/INSTANCE_GPU_INFO[0])
+        model_builder = ModelBuilder(
+            model="stable-diffusion",
+            sagemaker_session=mock_session,
+            instance_type=mock_instance_type,
+        )
+        self.assertEqual(
+            model_builder._try_fetch_gpu_info(), INSTANCE_GPU_INFO[1] / INSTANCE_GPU_INFO[0]
+        )
         self.assertEqual(model_builder._can_fit_on_single_gpu(), True)
 
     @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_transformers", Mock())
@@ -1343,16 +1353,16 @@ class TestModelBuilder(unittest.TestCase):
     @patch("sagemaker.model_uris.retrieve")
     @patch("sagemaker.serve.builder.model_builder._ServeSettings")
     def test_build_for_transformers_happy_case_hugging_face_responses(
-            self,
-            mock_serveSettings,
-            mock_model_uris_retrieve,
-            mock_llm_utils_json,
-            mock_llm_utils_urllib,
-            mock_model_json,
-            mock_model_urllib,
-            mock_image_uris_retrieve,
-            mock_gather_data,
-            mock_parser,
+        self,
+        mock_serveSettings,
+        mock_model_uris_retrieve,
+        mock_llm_utils_json,
+        mock_llm_utils_urllib,
+        mock_model_json,
+        mock_model_urllib,
+        mock_image_uris_retrieve,
+        mock_gather_data,
+        mock_parser,
     ):
         mock_setting_object = mock_serveSettings.return_value
         mock_setting_object.role_arn = mock_role_arn
@@ -1370,12 +1380,20 @@ class TestModelBuilder(unittest.TestCase):
         mock_gather_data.return_value = [[1, 1, 1, 1]]
         product = MIB_CONVERSION_FACTOR * 1 * MEMORY_BUFFER_MULTIPLIER
 
-        model_builder = ModelBuilder(model="stable-diffusion", sagemaker_session=mock_session, instance_type=mock_instance_type)
+        model_builder = ModelBuilder(
+            model="stable-diffusion",
+            sagemaker_session=mock_session,
+            instance_type=mock_instance_type,
+        )
         self.assertEqual(model_builder._total_inference_model_size_mib(), product)
 
         mock_parser.return_value = Mock()
         mock_gather_data.return_value = None
-        model_builder = ModelBuilder(model="stable-diffusion", sagemaker_session=mock_session, instance_type=mock_instance_type)
+        model_builder = ModelBuilder(
+            model="stable-diffusion",
+            sagemaker_session=mock_session,
+            instance_type=mock_instance_type,
+        )
         with self.assertRaises(ValueError) as _:
             model_builder._total_inference_model_size_mib()
 
