@@ -65,9 +65,12 @@ from sagemaker.config import (
     MONITORING_SCHEDULE,
     MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION_PATH,
     AUTO_ML_ROLE_ARN_PATH,
+    AUTO_ML_V2_ROLE_ARN_PATH,
     AUTO_ML_OUTPUT_CONFIG_PATH,
+    AUTO_ML_V2_OUTPUT_CONFIG_PATH,
     AUTO_ML_JOB_CONFIG_PATH,
     AUTO_ML_JOB,
+    AUTO_ML_JOB_V2,
     COMPILATION_JOB_ROLE_ARN_PATH,
     COMPILATION_JOB_OUTPUT_CONFIG_PATH,
     COMPILATION_JOB_VPC_CONFIG_PATH,
@@ -2570,7 +2573,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             exceptions.UnexpectedStatusException: If waiting and auto ml job fails.
         """
 
-        description = _wait_until(lambda: self.describe_auto_ml_job(job_name), poll)
+        description = _wait_until(lambda: self.describe_auto_ml_job_v2(job_name), poll)
 
         instance_count, stream_names, positions, client, log_group, dot, color_wrap = _logs_init(
             self.boto_session, description, job="AutoML"
@@ -2618,7 +2621,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             if state == LogState.JOB_COMPLETE:
                 state = LogState.COMPLETE
             elif time.time() - last_describe_job_call >= 30:
-                description = self.sagemaker_client.describe_auto_ml_job(AutoMLJobName=job_name)
+                description = self.sagemaker_client.describe_auto_ml_job_v2(AutoMLJobName=job_name)
                 last_describe_job_call = time.time()
 
                 status = description["AutoMLJobStatus"]
@@ -2631,6 +2634,172 @@ class Session(object):  # pylint: disable=too-many-public-methods
             _check_job_status(job_name, description, "AutoMLJobStatus")
             if dot:
                 print()
+
+    def create_auto_ml_v2(
+        self,
+        input_config,
+        job_name,
+        problem_config,
+        output_config,
+        job_objective=None,
+        model_deploy_config=None,
+        data_split_config=None,
+        role=None,
+        security_config=None,
+        tags=None,
+    ):
+        """Create an Amazon SageMaker AutoMLV2 job.
+
+        Args:
+            input_config (list[dict]): A list of AutoMLDataChannel objects.
+                Each channel contains "DataSource" and other optional fields.
+            job_name (str): A string that can be used to identify an AutoMLJob. Each AutoMLJob
+                should have a unique job name.
+            problem_config (object): A collection of settings specific
+                to the problem type used to configure an AutoML job V2.
+                There must be one and only one config of the following type.
+                Supported problem types are:
+
+                - Image Classification (sagemaker.automl.automlv2.ImageClassificationJobConfig),
+                - Tabular (sagemaker.automl.automlv2.TabularJobConfig),
+                - Text Classification (sagemaker.automl.automlv2.TextClassificationJobConfig),
+                - Text Generation (TextGenerationJobConfig),
+                - Time Series Forecasting (
+                    sagemaker.automl.automlv2.TimeSeriesForecastingJobConfig).
+
+            output_config (dict): The S3 URI where you want to store the training results and
+                optional KMS key ID.
+            job_objective (dict): AutoMLJob objective, contains "AutoMLJobObjectiveType" (optional),
+                "MetricName" and "Value".
+            model_deploy_config (dict): Specifies how to generate the endpoint name
+                for an automatic one-click Autopilot model deployment.
+                Contains "AutoGenerateEndpointName" and "EndpointName"
+            data_split_config (dict): This structure specifies how to split the data
+                into train and validation datasets.
+            role (str): The Amazon Resource Name (ARN) of an IAM role that
+                Amazon SageMaker can assume to perform tasks on your behalf.
+            security_config (dict): The security configuration for traffic encryption
+                or Amazon VPC settings.
+            tags (Optional[Tags]): A list of dictionaries containing key-value
+                pairs.
+        """
+
+        role = resolve_value_from_config(role, AUTO_ML_V2_ROLE_ARN_PATH, sagemaker_session=self)
+        inferred_output_config = update_nested_dictionary_with_values_from_config(
+            output_config, AUTO_ML_V2_OUTPUT_CONFIG_PATH, sagemaker_session=self
+        )
+
+        auto_ml_job_v2_request = self._get_auto_ml_request_v2(
+            input_config=input_config,
+            job_name=job_name,
+            problem_config=problem_config,
+            output_config=inferred_output_config,
+            role=role,
+            job_objective=job_objective,
+            model_deploy_config=model_deploy_config,
+            data_split_config=data_split_config,
+            security_config=security_config,
+            tags=format_tags(tags),
+        )
+
+        def submit(request):
+            logger.info("Creating auto-ml-v2-job with name: %s", job_name)
+            logger.debug("auto ml v2 request: %s", json.dumps(request), indent=4)
+            print(json.dumps(request))
+            self.sagemaker_client.create_auto_ml_job_v2(**request)
+
+        self._intercept_create_request(
+            auto_ml_job_v2_request, submit, self.create_auto_ml_v2.__name__
+        )
+
+    def _get_auto_ml_request_v2(
+        self,
+        input_config,
+        output_config,
+        job_name,
+        problem_config,
+        role,
+        job_objective=None,
+        model_deploy_config=None,
+        data_split_config=None,
+        security_config=None,
+        tags=None,
+    ):
+        """Constructs a request compatible for creating an Amazon SageMaker AutoML job.
+
+        Args:
+            input_config (list[dict]): A list of Channel objects. Each channel contains "DataSource"
+                and "TargetAttributeName", "CompressionType" and "SampleWeightAttributeName" are
+                optional fields.
+            output_config (dict): The S3 URI where you want to store the training results and
+                optional KMS key ID.
+            job_name (str): A string that can be used to identify an AutoMLJob. Each AutoMLJob
+                should have a unique job name.
+            problem_config (object): A collection of settings specific
+                to the problem type used to configure an AutoML job V2.
+                There must be one and only one config of the following type.
+                Supported problem types are:
+
+                - Image Classification (sagemaker.automl.automlv2.ImageClassificationJobConfig),
+                - Tabular (sagemaker.automl.automlv2.TabularJobConfig),
+                - Text Classification (sagemaker.automl.automlv2.TextClassificationJobConfig),
+                - Text Generation (TextGenerationJobConfig),
+                - Time Series Forecasting (
+                    sagemaker.automl.automlv2.TimeSeriesForecastingJobConfig).
+
+            role (str): The Amazon Resource Name (ARN) of an IAM role that
+                Amazon SageMaker can assume to perform tasks on your behalf.
+            job_objective (dict): AutoMLJob objective, contains "AutoMLJobObjectiveType" (optional),
+                "MetricName" and "Value".
+            model_deploy_config (dict): Specifies how to generate the endpoint name
+                for an automatic one-click Autopilot model deployment.
+                Contains "AutoGenerateEndpointName" and "EndpointName"
+            data_split_config (dict): This structure specifies how to split the data
+                into train and validation datasets.
+            security_config (dict): The security configuration for traffic encryption
+                or Amazon VPC settings.
+            tags (Optional[Tags]): A list of dictionaries containing key-value
+                pairs.
+
+        Returns:
+            Dict: a automl v2 request dict
+        """
+        auto_ml_job_v2_request = {
+            "AutoMLJobName": job_name,
+            "AutoMLJobInputDataConfig": input_config,
+            "OutputDataConfig": output_config,
+            "AutoMLProblemTypeConfig": problem_config,
+            "RoleArn": role,
+        }
+        if job_objective is not None:
+            auto_ml_job_v2_request["AutoMLJobObjective"] = job_objective
+        if model_deploy_config is not None:
+            auto_ml_job_v2_request["ModelDeployConfig"] = model_deploy_config
+        if data_split_config is not None:
+            auto_ml_job_v2_request["DataSplitConfig"] = data_split_config
+        if security_config is not None:
+            auto_ml_job_v2_request["SecurityConfig"] = security_config
+
+        tags = _append_project_tags(format_tags(tags))
+        tags = self._append_sagemaker_config_tags(
+            tags, "{}.{}.{}".format(SAGEMAKER, AUTO_ML_JOB_V2, TAGS)
+        )
+        if tags is not None:
+            auto_ml_job_v2_request["Tags"] = tags
+
+        return auto_ml_job_v2_request
+
+    # Done
+    def describe_auto_ml_job_v2(self, job_name):
+        """Calls the DescribeAutoMLJobV2 API for the given job name and returns the response.
+
+        Args:
+            job_name (str): The name of the AutoML job to describe.
+
+        Returns:
+            dict: A dictionary response with the AutoMLV2 Job description.
+        """
+        return self.sagemaker_client.describe_auto_ml_job_v2(AutoMLJobName=job_name)
 
     def compile_model(
         self,
