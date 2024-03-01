@@ -21,13 +21,6 @@ import logging
 from collections import defaultdict
 from contextlib import contextmanager
 from typing import Dict, List, Optional, Tuple, Union
-from huggingface_hub import model_info
-
-import transformers
-from transformers import AutoConfig, AutoModel
-
-import torch
-import torch.nn as nn
 
 logger = logging.getLogger(__name__)
 
@@ -40,8 +33,54 @@ class CustomDtype(enum.Enum):
     INT2 = "int2"
 
 
+def import_torch_nn():
+    """Import torch.nn"""
+    try:
+        import torch.nn
+        return torch.nn
+    except ImportError:
+        raise Exception("Unable to import torch.nn, install dependency")
+
+
+def import_torch():
+    """Import torch"""
+    try:
+        import torch
+        return torch
+    except ImportError:
+        raise Exception("Unable to import torch, install dependency")
+
+
+def import_Auto_Config():
+    """Import transformers"""
+    try:
+        from transformers import AutoConfig
+        return AutoConfig
+    except ImportError:
+        raise Exception("Unable to import transformers.AutoConfig, install Transformers dependency")
+
+
+def import_Auto_Model():
+    """Import transformers"""
+    try:
+        from transformers import AutoModel
+        return AutoModel
+    except ImportError:
+        raise Exception("Unable to import transformers.AutoModel, install Transformers dependency")
+
+
+def import_model_info():
+    """Import model info from huggingface_hub"""
+    try:
+        from huggingface_hub import model_info
+
+        return model_info
+    except ImportError:
+        raise Exception("Unable to import model_info, check if huggingface_hub is installed")
+
+
 def get_max_layer_size(
-    modules: List[Tuple[str, torch.nn.Module]],
+    modules: List[Tuple[str, import_torch_nn().Module]],
     module_sizes: Dict[str, int],
     no_split_module_classes: List[str],
 ):
@@ -73,12 +112,9 @@ def get_max_layer_size(
     while len(modules_to_treat) > 0:
         module_name, module = modules_to_treat.pop(0)
         modules_children = (
-            list(module.named_children()) if isinstance(module, torch.nn.Module) else []
+            list(module.named_children()) if isinstance(module, import_torch_nn().Module) else []
         )
-        if (
-            len(modules_children) == 0
-            or module.__class__.__name__ in no_split_module_classes
-        ):
+        if len(modules_children) == 0 or module.__class__.__name__ in no_split_module_classes:
             # No splitting this one so we compare to the max_size
             size = module_sizes[module_name]
             if size > max_size:
@@ -93,16 +129,16 @@ def get_max_layer_size(
     return max_size, layer_names
 
 
-def _get_proper_dtype(dtype: Union[str, torch.device]) -> torch.dtype:
+def _get_proper_dtype(dtype: Union[str, import_torch().device]) -> import_torch().dtype:
     """Just does torch.dtype(dtype) if necessary."""
     if isinstance(dtype, str):
         # We accept "torch.float16" or just "float16"
         dtype = dtype.replace("torch.", "")
-        dtype = getattr(torch, dtype)
+        dtype = getattr(import_torch(), dtype)
     return dtype
 
 
-def dtype_byte_size(dtype: torch.dtype):
+def dtype_byte_size(dtype: import_torch().dtype):
     """Returns the size (in bytes) occupied by one parameter of type `dtype`.
 
     Example:
@@ -111,7 +147,7 @@ def dtype_byte_size(dtype: torch.dtype):
     4
     ```
     """
-    if dtype == torch.bool:  # pylint: disable=R1705
+    if dtype == import_torch().bool:  # pylint: disable=R1705
         return 1 / 8
     elif dtype == CustomDtype.INT2:
         return 1 / 4
@@ -127,7 +163,7 @@ def dtype_byte_size(dtype: torch.dtype):
 
 
 def named_module_tensors(
-    module: nn.Module,
+    module: import_torch_nn().Module,
     include_buffers: bool = True,
     recurse: bool = False,
     remove_non_persistent: bool = False,
@@ -162,7 +198,7 @@ def named_module_tensors(
                 yield named_buffer
 
 
-def get_non_persistent_buffers(module: nn.Module, recurse: bool = False):
+def get_non_persistent_buffers(module: import_torch_nn().Module, recurse: bool = False):
     """Gather all non persistent buffers of a given modules into a set
 
     Args:
@@ -182,21 +218,17 @@ def get_non_persistent_buffers(module: nn.Module, recurse: bool = False):
 
 
 def compute_module_sizes(
-    model: nn.Module,
-    dtype: Optional[Union[str, torch.device]] = None,
-    special_dtypes: Optional[Dict[str, Union[str, torch.device]]] = None,
+    model: import_torch_nn().Module,
+    dtype: Optional[Union[str, import_torch().device]] = None,
+    special_dtypes: Optional[Dict[str, Union[str, import_torch().device]]] = None,
 ):
     """Compute the size of each submodule of a given model."""
     if dtype is not None:
         dtype = _get_proper_dtype(dtype)
         dtype_size = dtype_byte_size(dtype)
     if special_dtypes is not None:
-        special_dtypes = {
-            key: _get_proper_dtype(dtyp) for key, dtyp in special_dtypes.items()
-        }
-        special_dtypes_size = {
-            key: dtype_byte_size(dtyp) for key, dtyp in special_dtypes.items()
-        }
+        special_dtypes = {key: _get_proper_dtype(dtyp) for key, dtyp in special_dtypes.items()}
+        special_dtypes_size = {key: dtype_byte_size(dtyp) for key, dtyp in special_dtypes.items()}
     module_sizes = defaultdict(int)
     for name, tensor in named_module_tensors(model, recurse=True):
         if special_dtypes is not None and name in special_dtypes:
@@ -216,7 +248,7 @@ def compute_module_sizes(
     return module_sizes
 
 
-def calculate_maximum_sizes(model: torch.nn.Module):
+def calculate_maximum_sizes(model: import_torch_nn().Module):
     """Computes the total size of the model and its largest layer"""
     sizes = compute_module_sizes(model)
     # `transformers` models store this information for us
@@ -246,6 +278,7 @@ def convert_bytes(size):
 
 def verify_on_hub(repo: str, token: str = None):
     """Verifies that the model is on the hub and returns the model info."""
+    model_info = import_model_info()
     try:
         return model_info(repo, token=token)
     except ValueError:
@@ -279,7 +312,7 @@ def create_empty_model(
         `torch.nn.Module`: The torch model that has been initialized on the `meta` device.
 
     """
-    model_info = verify_on_hub(model_name, access_token)   # pylint: disable=W0621
+    model_info = verify_on_hub(model_name, access_token)  # pylint: disable=W0621
     # Simplified errors
     if model_info == "gated":  # pylint: disable=R1720
         raise ValueError(
@@ -309,13 +342,13 @@ def create_empty_model(
             )
 
         auto_map = model_info.config.get("auto_map", False)
-        config = AutoConfig.from_pretrained(
+        config = import_Auto_Config().from_pretrained(
             model_name, trust_remote_code=trust_remote_code, token=access_token
         )
 
         with init_empty_weights():
             # remote code could specify a specific `AutoModel` class in the `auto_map`
-            constructor = AutoModel
+            constructor = import_Auto_Model()
             if isinstance(auto_map, dict):
                 value = None
                 for key in auto_map.keys():
@@ -323,7 +356,11 @@ def create_empty_model(
                         value = key
                         break
                 if value is not None:
-                    constructor = getattr(transformers, value)
+                    try:
+                        import transformers
+                        constructor = getattr(transformers, value)
+                    except ImportError:
+                        raise Exception("Unable to import transformers, install dependency")
             model = constructor.from_config(config, trust_remote_code=trust_remote_code)
     else:
         raise ValueError(
@@ -343,17 +380,16 @@ def init_empty_weights(include_buffers: bool = None):
     """
     if include_buffers is None:
         include_buffers = parse_flag_from_env("ACCELERATE_INIT_INCLUDE_BUFFERS", False)
-    with init_on_device(torch.device("meta"),  # pylint: disable=E1129
-                        include_buffers=include_buffers) as f:
+    with init_on_device(  # pylint: disable=E1129
+        import_torch().device("meta"), include_buffers=include_buffers
+    ) as f:
         yield f
 
 
 def parse_flag_from_env(key, default=False):
     """Returns truthy value for `key` from the env if available else the default."""
     value = os.environ.get(key, str(default))
-    return (
-        str_to_bool(value) == 1
-    )  # As its name indicates `str_to_bool` actually returns an int...
+    return str_to_bool(value) == 1  # As its name indicates `str_to_bool` actually returns an int...
 
 
 def str_to_bool(value) -> int:
@@ -371,14 +407,15 @@ def str_to_bool(value) -> int:
         raise ValueError(f"invalid truth value {value}")
 
 
-def init_on_device(device: torch.device, include_buffers: bool = None):
+@contextmanager
+def init_on_device(device: import_torch().device, include_buffers: bool = None):
     """A context manager under which models are initialized"""
     if include_buffers is None:
         include_buffers = parse_flag_from_env("ACCELERATE_INIT_INCLUDE_BUFFERS", False)
 
-    old_register_parameter = nn.Module.register_parameter
+    old_register_parameter = import_torch_nn().Module.register_parameter
     if include_buffers:
-        old_register_buffer = nn.Module.register_buffer
+        old_register_buffer = import_torch_nn().Module.register_buffer
 
     def register_empty_parameter(module, name, param):
         """Doctype: register_empty_parameter"""
@@ -387,9 +424,7 @@ def init_on_device(device: torch.device, include_buffers: bool = None):
             param_cls = type(module._parameters[name])
             kwargs = module._parameters[name].__dict__
             kwargs["requires_grad"] = param.requires_grad
-            module._parameters[name] = param_cls(
-                module._parameters[name].to(device), **kwargs
-            )
+            module._parameters[name] = param_cls(module._parameters[name].to(device), **kwargs)
 
     def register_empty_buffer(module, name, buffer, persistent=True):
         """Doctype: register_empty_buffer"""
@@ -400,7 +435,7 @@ def init_on_device(device: torch.device, include_buffers: bool = None):
     # Patch tensor creation
     if include_buffers:
         tensor_constructors_to_patch = {
-            torch_function_name: getattr(torch, torch_function_name)
+            torch_function_name: getattr(import_torch(), torch_function_name)
             for torch_function_name in ["empty", "zeros", "ones", "full"]
         }
     else:
@@ -408,6 +443,7 @@ def init_on_device(device: torch.device, include_buffers: bool = None):
 
     def patch_tensor_constructor(fn):
         """Doctype: patch_tensor_constructor"""
+
         def wrapper(*args, **kwargs):
             kwargs["device"] = device
             return fn(*args, **kwargs)
@@ -415,25 +451,25 @@ def init_on_device(device: torch.device, include_buffers: bool = None):
         return wrapper
 
     try:
-        nn.Module.register_parameter = register_empty_parameter
+        import_torch_nn().Module.register_parameter = register_empty_parameter
         if include_buffers:
-            nn.Module.register_buffer = register_empty_buffer
+            import_torch_nn().Module.register_buffer = register_empty_buffer
         for torch_function_name in tensor_constructors_to_patch.keys():
             setattr(
-                torch,
+                import_torch(),
                 torch_function_name,
-                patch_tensor_constructor(getattr(torch, torch_function_name)),
+                patch_tensor_constructor(getattr(import_torch(), torch_function_name)),
             )
         yield
     finally:
-        nn.Module.register_parameter = old_register_parameter
+        import_torch_nn().Module.register_parameter = old_register_parameter
         if include_buffers:
-            nn.Module.register_buffer = old_register_buffer
+            import_torch_nn().Module.register_buffer = old_register_buffer
         for (
             torch_function_name,
             old_torch_function,
         ) in tensor_constructors_to_patch.items():
-            setattr(torch, torch_function_name, old_torch_function)
+            setattr(import_torch(), torch_function_name, old_torch_function)
 
 
 def create_ascii_table(headers: list, rows: list, title: str):
@@ -451,8 +487,10 @@ def create_ascii_table(headers: list, rows: list, title: str):
     diff = 0
 
     def make_row(left_char, middle_char, right_char):
-        return f"{left_char}{middle_char.join([in_between * n for n in column_widths])}" \
-               f"{in_between * diff}{right_char}"
+        return (
+            f"{left_char}{middle_char.join([in_between * n for n in column_widths])}"
+            f"{in_between * diff}{right_char}"
+        )
 
     separator = make_row("├", "┼", "┤")
     if len(title) > sum(column_widths):
@@ -487,9 +525,7 @@ def estimate_command_parser(subparsers=None):
             description="Model size estimator for fitting a model onto CUDA memory."
         )
 
-    parser.add_argument(
-        "model_name", type=str, help="The model name on the Hugging Face Hub."
-    )
+    parser.add_argument("model_name", type=str, help="The model name on the Hugging Face Hub.")
     parser.add_argument(
         "--library_name",
         type=str,
@@ -501,9 +537,9 @@ def estimate_command_parser(subparsers=None):
         "--dtypes",
         type=str,
         nargs="+",
-        default=['float32', 'float16', 'int8', 'int4'],
+        default=["float32", "float16", "int8", "int4"],
         help="The dtypes to use for the model, must be one (or many) of "
-             "`float32`, `float16`, `int8`, and `int4`",
+        "`float32`, `float16`, `int8`, and `int4`",
         choices=["float32", "float16", "int8", "int4"],
     )
     parser.add_argument(
