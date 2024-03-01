@@ -513,14 +513,17 @@ class JumpStartEstimator(Estimator):
                 sagemaker_session=sagemaker_session,
             )
 
-        if not _validate_model_id_and_get_type_hook():
+        self.model_type = _validate_model_id_and_get_type_hook()
+        if not self.model_type:
             JumpStartModelsAccessor.reset_cache()
-            if not _validate_model_id_and_get_type_hook():
+            self.model_type = _validate_model_id_and_get_type_hook()
+            if not self.model_type:
                 raise ValueError(INVALID_MODEL_ID_ERROR_MSG.format(model_id=model_id))
 
         estimator_init_kwargs = get_init_kwargs(
             model_id=model_id,
             model_version=model_version,
+            model_type=self.model_type,
             tolerate_vulnerable_model=tolerate_vulnerable_model,
             tolerate_deprecated_model=tolerate_deprecated_model,
             role=role,

@@ -475,9 +475,6 @@ class ModelTest(unittest.TestCase):
 
         mock_model_init.assert_called_once_with(
             image_uri="",
-            model_data="s3://jumpstart-cache-prod-us-west-2/None",
-            source_dir="s3://jumpstart-cache-prod-us-west-2/None",
-            entry_point="inference.py",
             predictor_cls=Predictor,
             role=execution_role,
             sagemaker_session=sagemaker_session,
@@ -775,6 +772,7 @@ class ModelTest(unittest.TestCase):
             tolerate_deprecated_model=False,
             tolerate_vulnerable_model=False,
             sagemaker_session=model.sagemaker_session,
+            model_type=JumpStartModelType.OPEN_SOURCE,
         )
         self.assertEqual(type(predictor), Predictor)
         self.assertEqual(predictor, default_predictor_with_presets)

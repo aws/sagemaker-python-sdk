@@ -21,6 +21,7 @@ from sagemaker.jumpstart.constants import (
 )
 from sagemaker.jumpstart.enums import (
     JumpStartScriptScope,
+    JumpStartModelType,
 )
 from sagemaker.jumpstart.utils import (
     verify_model_region_and_return_specs,
@@ -36,6 +37,7 @@ def _retrieve_default_resources(
     region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_SOURCE,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> ResourceRequirements:
     """Retrieves the default resource requirements for the model.
@@ -80,6 +82,7 @@ def _retrieve_default_resources(
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
+        model_type=model_type,
         sagemaker_session=sagemaker_session,
     )
 

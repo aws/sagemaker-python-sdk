@@ -174,18 +174,16 @@ def test_jumpstart_cache_get_header():
         model_type=JumpStartModelType.PROPRIETARY,
     )
 
-    assert JumpStartModelHeader(
-        {
-            "model_id": "ai21-summarization",
-            "version": "1.1.003",
-            "min_version": "2.0.0",
-            "spec_key": "proprietary-models/ai21-summarization/proprietary_specs_1.1.003.json",
-            "search_keywords": ["Text2Text", "Generation"],
-        }
-    ) == cache.get_header(
-        model_id="ai21-summarization",
-        semantic_version_str="*",
-        model_type=JumpStartModelType.PROPRIETARY,
+    with pytest.raises(KeyError) as e:
+        cache.get_header(
+            model_id="ai21-summarization",
+            semantic_version_str="*",
+            model_type=JumpStartModelType.PROPRIETARY,
+        )
+    assert (
+        "Marketplace model 'ai21-summarization' does not support wildcard version identifier '*'. "
+        "https://sagemaker.readthedocs.io/en/stable/doc_utils/pretrainedmodels.html "
+        "for list of supported model IDs. " in str(e.value)
     )
 
     with pytest.raises(KeyError) as e:
@@ -238,19 +236,6 @@ def test_jumpstart_cache_get_header():
         )
     assert (
         "Unable to find model manifest for 'ai21-summarize' with version '1.1.003'. "
-        "Visit https://sagemaker.readthedocs.io/en/stable/doc_utils/pretrainedmodels.html "
-        "for updated list of models. "
-        "Did you mean to use model ID 'ai21-summarization'?"
-    ) in str(e.value)
-
-    with pytest.raises(KeyError) as e:
-        cache.get_header(
-            model_id="ai21-summarize",
-            semantic_version_str="*",
-            model_type=JumpStartModelType.PROPRIETARY,
-        )
-    assert (
-        "Unable to find model manifest for 'ai21-summarize' with version '*'. "
         "Visit https://sagemaker.readthedocs.io/en/stable/doc_utils/pretrainedmodels.html "
         "for updated list of models. "
         "Did you mean to use model ID 'ai21-summarization'?"
@@ -793,7 +778,7 @@ def test_jumpstart_cache_proprietary_manifest_makes_correct_s3_calls(
     )
     cache.get_header(
         model_id="ai21-summarization",
-        semantic_version_str="*",
+        semantic_version_str="1.1.003",
         model_type=JumpStartModelType.PROPRIETARY,
     )
 
@@ -819,19 +804,7 @@ def test_jumpstart_cache_proprietary_manifest_makes_correct_s3_calls(
     with patch("logging.Logger.warning") as mocked_warning_log:
         cache.get_specs(
             model_id="ai21-summarization",
-            version_str="*",
-            model_type=JumpStartModelType.PROPRIETARY,
-        )
-        mocked_warning_log.assert_called_once_with(
-            "Using model 'ai21-summarization' with wildcard "
-            "version identifier '*'. You can pin to version '1.1.003' for more "
-            "stable results. Note that models may have different input/output "
-            "signatures after a major version upgrade."
-        )
-        mocked_warning_log.reset_mock()
-        cache.get_specs(
-            model_id="ai21-summarization",
-            version_str="*",
+            version_str="1.1.003",
             model_type=JumpStartModelType.PROPRIETARY,
         )
         mocked_warning_log.assert_not_called()
@@ -960,14 +933,16 @@ def test_jumpstart_cache_get_specs():
         model_type=JumpStartModelType.PROPRIETARY,
     )
 
-    assert get_spec_from_base_spec(
-        model_id="ai21-summarization",
-        version="1.1.003",
-        model_type=JumpStartModelType.PROPRIETARY,
-    ) == cache.get_specs(
-        model_id="ai21-summarization",
-        version_str="*",
-        model_type=JumpStartModelType.PROPRIETARY,
+    with pytest.raises(KeyError) as e:
+        cache.get_specs(
+            model_id="ai21-summarization",
+            version_str="*",
+            model_type=JumpStartModelType.PROPRIETARY,
+        )
+    assert (
+        "Marketplace model 'ai21-summarization' does not support wildcard version identifier '*'. "
+        "https://sagemaker.readthedocs.io/en/stable/doc_utils/pretrainedmodels.html "
+        "for list of supported model IDs. " in str(e.value)
     )
 
     with pytest.raises(KeyError):

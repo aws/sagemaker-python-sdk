@@ -64,7 +64,7 @@ def test_list_jumpstart_scripts(
     patched_generate_jumpstart_models.assert_called_once_with(
         **kwargs, sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION
     )
-    assert patched_get_manifest.call_count == 3
+    assert patched_get_manifest.call_count == 1
     assert patched_get_model_specs.call_count == 1
 
     patched_get_model_specs.reset_mock()

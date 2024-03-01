@@ -531,6 +531,7 @@ def verify_model_region_and_return_specs(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    model_type: enums.JumpStartModelType = enums.JumpStartModelType.OPEN_SOURCE,
 ) -> JumpStartModelSpecs:
     """Verifies that an acceptable model_id, version, scope, and region combination is provided.
 
@@ -573,9 +574,6 @@ def verify_model_region_and_return_specs(
             "JumpStart models only support scopes: "
             f"{', '.join(constants.SUPPORTED_JUMPSTART_SCOPES)}."
         )
-    model_type = validate_model_id_and_get_type(
-        model_id=model_id, region=region, model_version=version, script=scope
-    )
 
     model_specs = accessors.JumpStartModelsAccessor.get_model_specs(  # type: ignore
         region=region,

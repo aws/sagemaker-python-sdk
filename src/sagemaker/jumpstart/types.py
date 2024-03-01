@@ -1137,6 +1137,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
     __slots__ = [
         "model_id",
         "model_version",
+        "model_type",
         "initial_instance_count",
         "instance_type",
         "region",
@@ -1168,6 +1169,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
     SERIALIZATION_EXCLUSION_SET = {
         "model_id",
         "model_version",
+        "model_type",
         "region",
         "tolerate_deprecated_model",
         "tolerate_vulnerable_model",
@@ -1179,6 +1181,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         self,
         model_id: str,
         model_version: Optional[str] = None,
+        model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_SOURCE,
         region: Optional[str] = None,
         initial_instance_count: Optional[int] = None,
         instance_type: Optional[str] = None,
@@ -1210,6 +1213,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
 
         self.model_id = model_id
         self.model_version = model_version
+        self.model_type = model_type
         self.initial_instance_count = initial_instance_count
         self.instance_type = instance_type
         self.region = region
@@ -1244,6 +1248,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
     __slots__ = [
         "model_id",
         "model_version",
+        "model_type",
         "instance_type",
         "instance_count",
         "region",
@@ -1303,12 +1308,14 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         "tolerate_vulnerable_model",
         "model_id",
         "model_version",
+        "model_type",
     }
 
     def __init__(
         self,
         model_id: str,
         model_version: Optional[str] = None,
+        model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_SOURCE,
         region: Optional[str] = None,
         image_uri: Optional[Union[str, Any]] = None,
         role: Optional[str] = None,
@@ -1365,6 +1372,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
 
         self.model_id = model_id
         self.model_version = model_version
+        self.model_type = (model_type,)
         self.instance_type = instance_type
         self.instance_count = instance_count
         self.region = region
@@ -1426,6 +1434,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
     __slots__ = [
         "model_id",
         "model_version",
+        "model_type",
         "region",
         "inputs",
         "wait",
@@ -1440,6 +1449,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
     SERIALIZATION_EXCLUSION_SET = {
         "model_id",
         "model_version",
+        "model_type",
         "region",
         "tolerate_deprecated_model",
         "tolerate_vulnerable_model",
@@ -1450,6 +1460,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         self,
         model_id: str,
         model_version: Optional[str] = None,
+        model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_SOURCE,
         region: Optional[str] = None,
         inputs: Optional[Union[str, Dict, Any, Any]] = None,
         wait: Optional[bool] = None,
@@ -1464,6 +1475,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
 
         self.model_id = model_id
         self.model_version = model_version
+        self.model_type = model_type
         self.region = region
         self.inputs = inputs
         self.wait = wait

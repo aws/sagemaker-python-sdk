@@ -33,7 +33,7 @@ from tests.integ.sagemaker.jumpstart.utils import (
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
 
 
-MAX_INIT_TIME_SECONDS = 15
+MAX_INIT_TIME_SECONDS = 5
 
 GATED_TRAINING_MODEL_V1_SUPPORTED_REGIONS = {
     "us-west-2",
@@ -235,3 +235,5 @@ def test_instatiating_estimator(mock_warning_logger, setup):
     elapsed_time = time.perf_counter() - start_time
 
     assert elapsed_time <= MAX_INIT_TIME_SECONDS
+
+    mock_warning_logger.assert_called_once()

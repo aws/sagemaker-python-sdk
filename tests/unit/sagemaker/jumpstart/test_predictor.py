@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 import pytest
 from sagemaker.deserializers import JSONDeserializer
 from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
-from sagemaker.jumpstart.enums import MIMEType
+from sagemaker.jumpstart.enums import MIMEType, JumpStartModelType
 
 from sagemaker import predictor
 from sagemaker.jumpstart.model import JumpStartModel
@@ -74,7 +74,10 @@ def test_proprietary_predictor_support(
     )
 
     js_predictor = predictor.retrieve_default(
-        endpoint_name="blah", model_id=model_id, model_version=model_version
+        endpoint_name="blah",
+        model_id=model_id,
+        model_version=model_version,
+        model_type=JumpStartModelType.PROPRIETARY,
     )
 
     patched_get_jumpstart_model_id_version_from_endpoint.assert_not_called()
@@ -124,6 +127,7 @@ def test_jumpstart_predictor_support_no_model_id_supplied_happy_case(
         tolerate_deprecated_model=False,
         tolerate_vulnerable_model=False,
         sagemaker_session=mock_session,
+        model_type=JumpStartModelType.OPEN_SOURCE,
     )
 
 

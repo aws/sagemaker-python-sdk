@@ -279,18 +279,18 @@ class JumpStartModel(Model):
                 sagemaker_session=sagemaker_session,
             )
 
-        self._model_type = _validate_model_id_and_type()
-        if not self._model_type:
+        self.model_type = _validate_model_id_and_type()
+        if not self.model_type:
             JumpStartModelsAccessor.reset_cache()
-            self._model_type = _validate_model_id_and_type()
-            if not self._model_type:
+            self.model_type = _validate_model_id_and_type()
+            if not self.model_type:
                 raise ValueError(INVALID_MODEL_ID_ERROR_MSG.format(model_id=model_id))
 
         self._model_data_is_set = model_data is not None
         model_init_kwargs = get_init_kwargs(
             model_id=model_id,
             model_from_estimator=False,
-            model_type=self._model_type,
+            model_type=self.model_type,
             model_version=model_version,
             instance_type=instance_type,
             tolerate_vulnerable_model=tolerate_vulnerable_model,
@@ -591,6 +591,7 @@ class JumpStartModel(Model):
             resources=resources,
             managed_instance_scaling=managed_instance_scaling,
             endpoint_type=endpoint_type,
+            model_type=self.model_type,
         )
 
         predictor = super(JumpStartModel, self).deploy(**deploy_kwargs.to_kwargs_dict())
@@ -605,6 +606,7 @@ class JumpStartModel(Model):
                 tolerate_deprecated_model=self.tolerate_deprecated_model,
                 tolerate_vulnerable_model=self.tolerate_vulnerable_model,
                 sagemaker_session=self.sagemaker_session,
+                model_type=self.model_type,
             )
 
         # If a predictor class was passed, do not mutate predictor

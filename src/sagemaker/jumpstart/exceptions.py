@@ -58,6 +58,16 @@ def get_wildcard_model_version_msg(
     )
 
 
+def get_wildcard_proprietary_model_version_msg(model_id: str, wildcard_model_version: str) -> str:
+    """Returns customer-facing message for passing wildcard version to proprietary models."""
+
+    return (
+        f"Marketplace model '{model_id}' does not support "
+        f"wildcard version identifier '{wildcard_model_version}'. "
+        f"{MODEL_ID_LIST_WEB_URL} for list of supported model IDs. "
+    )
+
+
 def get_old_model_version_msg(
     model_id: str, current_model_version: str, latest_model_version: str
 ) -> str:

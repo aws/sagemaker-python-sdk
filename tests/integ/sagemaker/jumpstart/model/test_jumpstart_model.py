@@ -39,7 +39,7 @@ INF2_SUPPORTED_REGIONS = {
     "us-east-2",
 }
 
-MAX_INIT_TIME_SECONDS = 15
+MAX_INIT_TIME_SECONDS = 5
 
 GATED_INFERENCE_MODEL_PACKAGE_SUPPORTED_REGIONS = {
     "us-west-2",
@@ -237,6 +237,8 @@ def test_instatiating_model(mock_warning_logger, setup):
 
     assert elapsed_time <= MAX_INIT_TIME_SECONDS
 
+    mock_warning_logger.assert_called_once()
+
 
 def test_jumpstart_model_register(setup):
     model_id = "huggingface-txt2img-conflictx-complex-lineart"
@@ -254,7 +256,6 @@ def test_jumpstart_model_register(setup):
     predictor = model_package.deploy(
         instance_type="ml.p3.2xlarge",
         initial_instance_count=1,
-        tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
     )
 
     response = predictor.predict("hello world!")
@@ -276,7 +277,9 @@ def test_proprietary_jumpstart_model(setup):
         sagemaker_session=get_sm_session(),
     )
 
-    predictor = model.deploy()
+    predictor = model.deploy(
+        tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}]
+    )
     payload = {"prompt": "To be, or", "maxTokens": 4, "temperature": 0, "numResults": 1}
 
     response = predictor.predict(payload)

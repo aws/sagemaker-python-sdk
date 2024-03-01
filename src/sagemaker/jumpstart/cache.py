@@ -32,7 +32,10 @@ from sagemaker.jumpstart.constants import (
     MODEL_TYPE_TO_MANIFEST_MAP,
     MODEL_TYPE_TO_SPECS_MAP,
 )
-from sagemaker.jumpstart.exceptions import get_wildcard_model_version_msg
+from sagemaker.jumpstart.exceptions import (
+    get_wildcard_model_version_msg,
+    get_wildcard_proprietary_model_version_msg,
+)
 from sagemaker.jumpstart.parameters import (
     JUMPSTART_DEFAULT_MAX_S3_CACHE_ITEMS,
     JUMPSTART_DEFAULT_MAX_SEMANTIC_VERSION_CACHE_ITEMS,
@@ -220,7 +223,6 @@ class JumpStartModelsCache:
         """
 
         model_id, version = key.model_id, key.version
-
         sm_version = utils.get_sagemaker_version()
         manifest = self._s3_cache.get(
             JumpStartCachedS3ContentKey(
@@ -234,7 +236,7 @@ class JumpStartModelsCache:
         ]
 
         sm_compatible_model_version = self._select_version(
-            version, versions_compatible_with_sagemaker
+            model_id, version, versions_compatible_with_sagemaker, model_type
         )
 
         if sm_compatible_model_version is not None:
@@ -245,7 +247,7 @@ class JumpStartModelsCache:
             if header.model_id == model_id
         ]
         sm_incompatible_model_version = self._select_version(
-            version, versions_incompatible_with_sagemaker
+            model_id, version, versions_incompatible_with_sagemaker, model_type
         )
 
         if sm_incompatible_model_version is not None:
@@ -275,15 +277,17 @@ class JumpStartModelsCache:
             f"Visit {MODEL_ID_LIST_WEB_URL} for updated list of models. "
         )
 
-        other_model_id_version = self._select_version(
-            "*", versions_incompatible_with_sagemaker
-        )  # all versions here are incompatible with sagemaker
+        other_model_id_version = None
+        if model_type != JumpStartModelType.PROPRIETARY:
+            other_model_id_version = self._select_version(
+                model_id, "*", versions_incompatible_with_sagemaker, model_type
+            )  # all versions here are incompatible with sagemaker
+
         if other_model_id_version is not None:
             error_msg += (
                 f"Consider using model ID '{model_id}' with version "
                 f"'{other_model_id_version}'."
             )
-
         else:
             possible_model_ids = [header.model_id for header in manifest.values()]  # type: ignore
             closest_model_id = get_close_matches(model_id, possible_model_ids, n=1, cutoff=0)[0]
@@ -439,14 +443,17 @@ class JumpStartModelsCache:
             semantic_version_str (str): The semantic version for which to get a
                 header.
         """
+
         return self._get_header_impl(
             model_id, semantic_version_str=semantic_version_str, model_type=model_type
         )
 
     def _select_version(
         self,
+        model_id: str,
         semantic_version_str: str,
         available_versions: List[Version],
+        model_type: JumpStartModelType = JumpStartModelType.OPEN_SOURCE,
     ) -> Optional[str]:
         """Perform semantic version search on available versions.
 
@@ -455,6 +462,16 @@ class JumpStartModelsCache:
                 available versions.
             available_versions (List[Version]): list of available versions.
         """
+
+        if model_type == JumpStartModelType.PROPRIETARY:
+            if "*" in semantic_version_str:
+                raise KeyError(
+                    get_wildcard_proprietary_model_version_msg(
+                        model_id, semantic_version_str
+                    )
+                )
+            return semantic_version_str if semantic_version_str in available_versions else None
+
         if semantic_version_str == "*":
             if len(available_versions) == 0:
                 return None
@@ -490,7 +507,6 @@ class JumpStartModelsCache:
             versioned_model_id = self._open_source_model_id_manifest_key_cache.get(
                 JumpStartVersionedModelId(model_id, semantic_version_str)
             )[0]
-
         elif model_type == JumpStartModelType.PROPRIETARY:
             versioned_model_id = self._proprietary_model_id_manifest_key_cache.get(
                 JumpStartVersionedModelId(model_id, semantic_version_str)
@@ -508,7 +524,7 @@ class JumpStartModelsCache:
             if attempt > 0:
                 raise
             self.clear()
-            return self._get_header_impl(model_id, semantic_version_str, attempt + 1)
+            return self._get_header_impl(model_id, semantic_version_str, attempt + 1, model_type)
 
     def get_specs(
         self,
