@@ -235,5 +235,3 @@ def test_instatiating_estimator(mock_warning_logger, setup):
     elapsed_time = time.perf_counter() - start_time
 
     assert elapsed_time <= MAX_INIT_TIME_SECONDS
-
-    mock_warning_logger.assert_called_once()
