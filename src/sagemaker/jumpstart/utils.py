@@ -526,7 +526,7 @@ def verify_model_region_and_return_specs(
     model_id: Optional[str],
     version: Optional[str],
     scope: Optional[str],
-    region: str,
+    region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
@@ -560,6 +560,9 @@ def verify_model_region_and_return_specs(
             known security vulnerabilities.
         DeprecatedJumpStartModelError: If the version of the model is deprecated.
     """
+
+    if region is None:
+        region = sagemaker_session.boto_region_name
 
     if scope is None:
         raise ValueError(

@@ -1567,7 +1567,8 @@ class EstimatorTest(unittest.TestCase):
         mock_get_model_specs.side_effect = get_special_model_spec
 
         mock_role = f"dsfsdfsd{time.time()}"
-        mock_sagemaker_session = mock.MagicMock(sagemaker_config={})
+        region = "us-west-2"
+        mock_sagemaker_session = mock.MagicMock(sagemaker_config={}, boto_region_name=region)
         mock_sagemaker_session.get_caller_identity_arn = lambda: mock_role
 
         estimator = JumpStartEstimator(

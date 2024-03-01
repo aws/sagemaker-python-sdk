@@ -888,7 +888,7 @@ class ModelTest(unittest.TestCase):
 
         mock_get_model_specs.side_effect = get_special_model_spec
 
-        mock_session = MagicMock(sagemaker_config={})
+        mock_session = MagicMock(sagemaker_config={}, boto_region_name="us-west-2")
 
         model = JumpStartModel(model_id=model_id, sagemaker_session=mock_session)
 
@@ -925,7 +925,9 @@ class ModelTest(unittest.TestCase):
         mock_get_model_specs.side_effect = get_special_model_spec
 
         settings = SessionSettings(include_jumpstart_tags=False)
-        mock_session = MagicMock(sagemaker_config={}, settings=settings)
+        mock_session = MagicMock(
+            sagemaker_config={}, settings=settings, boto_region_name="us-west-2"
+        )
 
         model = JumpStartModel(model_id=model_id, sagemaker_session=mock_session)
 
@@ -956,7 +958,7 @@ class ModelTest(unittest.TestCase):
 
         mock_get_model_specs.side_effect = get_special_model_spec
 
-        mock_session = MagicMock(sagemaker_config={})
+        mock_session = MagicMock(sagemaker_config={}, boto_region_name="us-west-2")
 
         model = JumpStartModel(model_id=model_id, sagemaker_session=mock_session)
 
@@ -991,7 +993,7 @@ class ModelTest(unittest.TestCase):
 
         mock_get_model_specs.side_effect = get_special_model_spec
 
-        mock_session = MagicMock(sagemaker_config={})
+        mock_session = MagicMock(sagemaker_config={}, boto_region_name="us-west-2")
 
         model_package_arn = (
             "arn:aws:sagemaker:us-west-2:867530986753:model-package/"

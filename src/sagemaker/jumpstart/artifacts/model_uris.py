@@ -18,7 +18,6 @@ from typing import Optional
 from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     ENV_VARIABLE_JUMPSTART_MODEL_ARTIFACT_BUCKET_OVERRIDE,
-    JUMPSTART_DEFAULT_REGION_NAME,
 )
 from sagemaker.jumpstart.enums import (
     JumpStartScriptScope,
@@ -130,7 +129,7 @@ def _retrieve_model_uri(
         DeprecatedJumpStartModelError: If the version of the model is deprecated.
     """
     if region is None:
-        region = JUMPSTART_DEFAULT_REGION_NAME
+        region = sagemaker_session.boto_region_name
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
@@ -207,7 +206,7 @@ def _model_supports_training_model_uri(
     """
 
     if region is None:
-        region = JUMPSTART_DEFAULT_REGION_NAME
+        region = sagemaker_session.boto_region_name
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,

@@ -329,7 +329,8 @@ class RetrieveKwargsTest(unittest.TestCase):
 
 class RetrieveModelPackageArnTest(unittest.TestCase):
 
-    mock_session = Mock(s3_client=mock_client)
+    region = "us-west-2"
+    mock_session = Mock(s3_client=mock_client, boto_region_name=region)
 
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     def test_retrieve_model_package_arn(self, patched_get_model_specs):
@@ -435,7 +436,8 @@ class RetrieveModelPackageArnTest(unittest.TestCase):
 
 class PrivateJumpStartBucketTest(unittest.TestCase):
 
-    mock_session = Mock(s3_client=mock_client)
+    region = "us-west-2"
+    mock_session = Mock(s3_client=mock_client, boto_region_name=region)
 
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     def test_retrieve_uri_from_gated_bucket(self, patched_get_model_specs):

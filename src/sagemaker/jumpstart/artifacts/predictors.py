@@ -20,7 +20,6 @@ from sagemaker.jumpstart.constants import (
     CONTENT_TYPE_TO_SERIALIZER_TYPE_MAP,
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     DESERIALIZER_TYPE_TO_CLASS_MAP,
-    JUMPSTART_DEFAULT_REGION_NAME,
     SERIALIZER_TYPE_TO_CLASS_MAP,
 )
 from sagemaker.jumpstart.enums import (
@@ -302,7 +301,7 @@ def _retrieve_default_content_type(
     """
 
     if region is None:
-        region = JUMPSTART_DEFAULT_REGION_NAME
+        region = sagemaker_session.boto_region_name
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
@@ -350,7 +349,7 @@ def _retrieve_default_accept_type(
     """
 
     if region is None:
-        region = JUMPSTART_DEFAULT_REGION_NAME
+        region = sagemaker_session.boto_region_name
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
@@ -399,7 +398,7 @@ def _retrieve_supported_accept_types(
     """
 
     if region is None:
-        region = JUMPSTART_DEFAULT_REGION_NAME
+        region = sagemaker_session.boto_region_name
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
@@ -448,7 +447,7 @@ def _retrieve_supported_content_types(
     """
 
     if region is None:
-        region = JUMPSTART_DEFAULT_REGION_NAME
+        region = sagemaker_session.boto_region_name
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,

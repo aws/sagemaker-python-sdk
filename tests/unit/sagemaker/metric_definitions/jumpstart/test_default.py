@@ -22,7 +22,8 @@ from sagemaker import metric_definitions
 from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec, get_special_model_spec
 
 mock_client = boto3.client("s3")
-mock_session = Mock(s3_client=mock_client)
+region = "us-west-2"
+mock_session = Mock(s3_client=mock_client, boto_region_name=region)
 
 
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -31,7 +32,8 @@ def test_jumpstart_default_metric_definitions(patched_get_model_specs):
     patched_get_model_specs.side_effect = get_spec_from_base_spec
 
     mock_client = boto3.client("s3")
-    mock_session = Mock(s3_client=mock_client)
+    region = "us-west-2"
+    mock_session = Mock(s3_client=mock_client, boto_region_name=region)
 
     model_id = "pytorch-ic-mobilenet-v2"
     region = "us-west-2"

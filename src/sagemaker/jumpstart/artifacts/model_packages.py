@@ -15,7 +15,6 @@ from __future__ import absolute_import
 from typing import Optional
 from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-    JUMPSTART_DEFAULT_REGION_NAME,
 )
 from sagemaker.jumpstart.utils import (
     verify_model_region_and_return_specs,
@@ -64,7 +63,7 @@ def _retrieve_model_package_arn(
     """
 
     if region is None:
-        region = JUMPSTART_DEFAULT_REGION_NAME
+        region = sagemaker_session.boto_region_name
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
@@ -147,7 +146,7 @@ def _retrieve_model_package_model_artifact_s3_uri(
     if scope == JumpStartScriptScope.TRAINING:
 
         if region is None:
-            region = JUMPSTART_DEFAULT_REGION_NAME
+            region = sagemaker_session.boto_region_name
 
         model_specs = verify_model_region_and_return_specs(
             model_id=model_id,

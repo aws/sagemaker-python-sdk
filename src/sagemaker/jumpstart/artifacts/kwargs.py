@@ -18,7 +18,6 @@ from sagemaker.session import Session
 from sagemaker.utils import volume_size_supported
 from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-    JUMPSTART_DEFAULT_REGION_NAME,
 )
 from sagemaker.jumpstart.enums import (
     JumpStartScriptScope,
@@ -61,7 +60,7 @@ def _retrieve_model_init_kwargs(
     """
 
     if region is None:
-        region = JUMPSTART_DEFAULT_REGION_NAME
+        region = sagemaker_session.boto_region_name
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
@@ -118,7 +117,7 @@ def _retrieve_model_deploy_kwargs(
     """
 
     if region is None:
-        region = JUMPSTART_DEFAULT_REGION_NAME
+        region = sagemaker_session.boto_region_name
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
@@ -172,7 +171,7 @@ def _retrieve_estimator_init_kwargs(
     """
 
     if region is None:
-        region = JUMPSTART_DEFAULT_REGION_NAME
+        region = sagemaker_session.boto_region_name
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
@@ -229,7 +228,7 @@ def _retrieve_estimator_fit_kwargs(
     """
 
     if region is None:
-        region = JUMPSTART_DEFAULT_REGION_NAME
+        region = sagemaker_session.boto_region_name
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,

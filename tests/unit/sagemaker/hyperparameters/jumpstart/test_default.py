@@ -23,7 +23,8 @@ from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec, get_sp
 
 
 mock_client = boto3.client("s3")
-mock_session = Mock(s3_client=mock_client)
+region = "us-west-2"
+mock_session = Mock(s3_client=mock_client, boto_region_name=region)
 
 
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")

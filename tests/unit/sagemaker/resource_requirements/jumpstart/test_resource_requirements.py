@@ -28,7 +28,7 @@ def test_jumpstart_resource_requirements(patched_get_model_specs):
     patched_get_model_specs.side_effect = get_spec_from_base_spec
     region = "us-west-2"
     mock_client = boto3.client("s3")
-    mock_session = Mock(s3_client=mock_client)
+    mock_session = Mock(s3_client=mock_client, boto_region_name=region)
 
     model_id, model_version = "huggingface-llm-mistral-7b-instruct", "*"
     default_inference_resource_requirements = resource_requirements.retrieve_default(
@@ -57,7 +57,7 @@ def test_jumpstart_no_supported_resource_requirements(patched_get_model_specs):
     model_id, model_version = "no-supported-instance-types-model", "*"
     region = "us-west-2"
     mock_client = boto3.client("s3")
-    mock_session = Mock(s3_client=mock_client)
+    mock_session = Mock(s3_client=mock_client, boto_region_name=region)
 
     default_inference_resource_requirements = resource_requirements.retrieve_default(
         region=region,

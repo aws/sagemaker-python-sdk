@@ -206,7 +206,7 @@ def validate_hyperparameters(
         validation_mode = HyperparameterValidationMode.VALIDATE_PROVIDED
 
     if region is None:
-        region = JUMPSTART_DEFAULT_REGION_NAME
+        region = sagemaker_session.boto_region_name
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,

@@ -15,7 +15,7 @@ from __future__ import absolute_import
 import datetime
 from difflib import get_close_matches
 import os
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Set, Tuple, Union
 import json
 import boto3
 import botocore
@@ -27,6 +27,7 @@ from sagemaker.jumpstart.constants import (
     JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY,
     JUMPSTART_DEFAULT_REGION_NAME,
     JUMPSTART_LOGGER,
+    JUMPSTART_REGION_NAME_SET,
     MODEL_ID_LIST_WEB_URL,
 )
 from sagemaker.jumpstart.exceptions import get_wildcard_model_version_msg
@@ -55,23 +56,22 @@ class JumpStartModelsCache:
     for launching JumpStart models from the SageMaker SDK.
     """
 
-    # fmt: off
     def __init__(
         self,
-        region: str = JUMPSTART_DEFAULT_REGION_NAME,
+        region: Optional[str] = None,
         max_s3_cache_items: int = JUMPSTART_DEFAULT_MAX_S3_CACHE_ITEMS,
-        s3_cache_expiration_horizon: datetime.timedelta =
-        JUMPSTART_DEFAULT_S3_CACHE_EXPIRATION_HORIZON,
-        max_semantic_version_cache_items: int =
-        JUMPSTART_DEFAULT_MAX_SEMANTIC_VERSION_CACHE_ITEMS,
-        semantic_version_cache_expiration_horizon: datetime.timedelta =
-        JUMPSTART_DEFAULT_SEMANTIC_VERSION_CACHE_EXPIRATION_HORIZON,
-        manifest_file_s3_key: str =
-        JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY,
+        s3_cache_expiration_horizon: datetime.timedelta = (
+            JUMPSTART_DEFAULT_S3_CACHE_EXPIRATION_HORIZON
+        ),
+        max_semantic_version_cache_items: int = JUMPSTART_DEFAULT_MAX_SEMANTIC_VERSION_CACHE_ITEMS,
+        semantic_version_cache_expiration_horizon: datetime.timedelta = (
+            JUMPSTART_DEFAULT_SEMANTIC_VERSION_CACHE_EXPIRATION_HORIZON
+        ),
+        manifest_file_s3_key: str = JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY,
         s3_bucket_name: Optional[str] = None,
         s3_client_config: Optional[botocore.config.Config] = None,
         s3_client: Optional[boto3.client] = None,
-    ) -> None:  # fmt: on
+    ) -> None:
         """Initialize a ``JumpStartModelsCache`` instance.
 
         Args:
@@ -94,7 +94,10 @@ class JumpStartModelsCache:
             s3_client (Optional[boto3.client]): s3 client to use. Default: None.
         """
 
-        self._region = region
+        self._region = region or self._get_region_fallback(
+            s3_bucket_name=s3_bucket_name, s3_client=s3_client
+        )
+
         self._s3_cache = LRUCache[JumpStartCachedS3ContentKey, JumpStartCachedS3ContentValue](
             max_cache_items=max_s3_cache_items,
             expiration_horizon=s3_cache_expiration_horizon,
@@ -118,6 +121,35 @@ class JumpStartModelsCache:
             if s3_client_config
             else boto3.client("s3", region_name=self._region)
         )
+
+    def _get_region_fallback(
+        self, s3_bucket_name: Optional[str], s3_client: Optional[boto3.client]
+    ) -> str:
+        """Returns region to use throughout cache in the absence of one specified in constructor."""
+        regions_in_s3_bucket_name: Set[str] = {
+            region
+            for region in JUMPSTART_REGION_NAME_SET
+            if s3_bucket_name is not None
+            if region in s3_bucket_name
+        }
+        regions_in_s3_client_endpoint_url: Set[str] = {
+            region
+            for region in JUMPSTART_REGION_NAME_SET
+            if s3_client is not None
+            if region in s3_client._endpoint.host
+        }
+
+        combined_regions = regions_in_s3_client_endpoint_url.union(regions_in_s3_bucket_name)
+
+        if len(combined_regions) > 1:
+            raise ValueError(
+                "Unable to resolve a region name from  the s3 bucket and client provided."
+            )
+
+        if len(combined_regions) == 0:
+            return JUMPSTART_DEFAULT_REGION_NAME
+
+        return list(combined_regions)[0]
 
     def set_region(self, region: str) -> None:
         """Set region for cache. Clears cache after new region is set."""
@@ -192,7 +224,8 @@ class JumpStartModelsCache:
             return JumpStartVersionedModelId(model_id, sm_compatible_model_version)
 
         versions_incompatible_with_sagemaker = [
-            Version(header.version) for header in manifest.values()  # type: ignore
+            Version(header.version)
+            for header in manifest.values()  # type: ignore
             if header.model_id == model_id
         ]
         sm_incompatible_model_version = self._select_version(
@@ -222,17 +255,14 @@ class JumpStartModelsCache:
             raise KeyError(error_msg)
 
         error_msg = f"Unable to find model manifest for '{model_id}' with version '{version}'. "
-        error_msg += (
-            f"Visit {MODEL_ID_LIST_WEB_URL} for updated list of models. "
-        )
+        error_msg += f"Visit {MODEL_ID_LIST_WEB_URL} for updated list of models. "
 
         other_model_id_version = self._select_version(
             "*", versions_incompatible_with_sagemaker
         )  # all versions here are incompatible with sagemaker
         if other_model_id_version is not None:
             error_msg += (
-                f"Consider using model ID '{model_id}' with version "
-                f"'{other_model_id_version}'."
+                f"Consider using model ID '{model_id}' with version " f"'{other_model_id_version}'."
             )
 
         else:
@@ -249,15 +279,15 @@ class JumpStartModelsCache:
 
     def _is_local_metadata_mode(self) -> bool:
         """Returns True if the cache should use local metadata mode, based off env variables."""
-        return (ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE in os.environ
-                and os.path.isdir(os.environ[ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE])
-                and ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE in os.environ
-                and os.path.isdir(os.environ[ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE]))
+        return (
+            ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE in os.environ
+            and os.path.isdir(os.environ[ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE])
+            and ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE in os.environ
+            and os.path.isdir(os.environ[ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE])
+        )
 
     def _get_json_file(
-        self,
-        key: str,
-        filetype: JumpStartS3FileType
+        self, key: str, filetype: JumpStartS3FileType
     ) -> Tuple[Union[dict, list], Optional[str]]:
         """Returns json file either from s3 or local file system.
 
@@ -281,21 +311,19 @@ class JumpStartModelsCache:
         return self._s3_client.head_object(Bucket=self.s3_bucket_name, Key=key)["ETag"]
 
     def _get_json_file_from_local_override(
-        self,
-        key: str,
-        filetype: JumpStartS3FileType
+        self, key: str, filetype: JumpStartS3FileType
     ) -> Union[dict, list]:
         """Reads json file from local filesystem and returns data."""
         if filetype == JumpStartS3FileType.MANIFEST:
-            metadata_local_root = (
-                os.environ[ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE]
-            )
+            metadata_local_root = os.environ[
+                ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE
+            ]
         elif filetype == JumpStartS3FileType.SPECS:
             metadata_local_root = os.environ[ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE]
         else:
             raise ValueError(f"Unsupported file type for local override: {filetype}")
         file_path = os.path.join(metadata_local_root, key)
-        with open(file_path, 'r') as f:
+        with open(file_path, "r") as f:
             data = json.load(f)
         return data
 
@@ -333,9 +361,7 @@ class JumpStartModelsCache:
             formatted_body, _ = self._get_json_file(s3_key, file_type)
             model_specs = JumpStartModelSpecs(formatted_body)
             utils.emit_logs_based_on_model_specs(model_specs, self.get_region(), self._s3_client)
-            return JumpStartCachedS3ContentValue(
-                formatted_content=model_specs
-            )
+            return JumpStartCachedS3ContentValue(formatted_content=model_specs)
         raise ValueError(
             f"Bad value for key '{key}': must be in {[JumpStartS3FileType.MANIFEST, JumpStartS3FileType.SPECS]}"
         )
@@ -382,9 +408,7 @@ class JumpStartModelsCache:
         except InvalidSpecifier:
             raise KeyError(f"Bad semantic version: {semantic_version_str}")
         available_versions_filtered = list(spec.filter(available_versions))
-        return (
-            str(max(available_versions_filtered)) if available_versions_filtered != [] else None
-        )
+        return str(max(available_versions_filtered)) if available_versions_filtered != [] else None
 
     def _get_header_impl(
         self,
@@ -436,9 +460,7 @@ class JumpStartModelsCache:
         if not cache_hit and "*" in semantic_version_str:
             JUMPSTART_LOGGER.warning(
                 get_wildcard_model_version_msg(
-                    header.model_id,
-                    semantic_version_str,
-                    header.version
+                    header.model_id, semantic_version_str, header.version
                 )
             )
         return specs.formatted_content

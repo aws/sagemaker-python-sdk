@@ -15,7 +15,6 @@ from __future__ import absolute_import
 from typing import Dict, Optional
 from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-    JUMPSTART_DEFAULT_REGION_NAME,
     SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY,
 )
 from sagemaker.jumpstart.enums import (
@@ -72,7 +71,7 @@ def _retrieve_default_environment_variables(
     """
 
     if region is None:
-        region = JUMPSTART_DEFAULT_REGION_NAME
+        region = sagemaker_session.boto_region_name
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
@@ -169,7 +168,7 @@ def _retrieve_gated_model_uri_env_var_value(
     """
 
     if region is None:
-        region = JUMPSTART_DEFAULT_REGION_NAME
+        region = sagemaker_session.boto_region_name
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,

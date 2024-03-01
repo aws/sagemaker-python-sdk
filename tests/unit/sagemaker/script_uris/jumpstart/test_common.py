@@ -34,7 +34,8 @@ def test_jumpstart_common_script_uri(
     patched_get_model_specs.side_effect = get_spec_from_base_spec
 
     mock_client = boto3.client("s3")
-    mock_session = Mock(s3_client=mock_client)
+    region = "us-west-2"
+    mock_session = Mock(s3_client=mock_client, boto_region_name=region)
 
     script_uris.retrieve(
         script_scope="training",

@@ -21,7 +21,8 @@ from sagemaker.jumpstart.utils import verify_model_region_and_return_specs
 from tests.unit.sagemaker.jumpstart.utils import get_special_model_spec
 
 mock_client = boto3.client("s3")
-mock_session = Mock(s3_client=mock_client)
+region = "us-west-2"
+mock_session = Mock(s3_client=mock_client, boto_region_name=region)
 
 
 @patch("sagemaker.jumpstart.artifacts.predictors.verify_model_region_and_return_specs")
