@@ -19,7 +19,7 @@ import pytest
 
 from sagemaker import hyperparameters
 
-from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec
+from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec, get_special_model_spec
 
 
 mock_client = boto3.client("s3")
@@ -116,3 +116,74 @@ def test_jumpstart_default_hyperparameters(patched_get_model_specs):
         hyperparameters.retrieve_default(
             model_id=model_id,
         )
+
+
+@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+def test_jumpstart_sdk_hyperparameters_instance_type_overrides(patched_get_model_specs):
+
+    patched_get_model_specs.side_effect = get_special_model_spec
+
+    model_id = "variant-model"
+    region = "us-west-2"
+
+    # assert that we can add hyperparameters to default
+    vars = hyperparameters.retrieve_default(
+        region=region,
+        model_id=model_id,
+        model_version="*",
+        sagemaker_session=mock_session,
+        instance_type="ml.p2.48xlarge",
+    )
+    assert vars == {
+        "adam-learning-rate": "0.05",
+        "batch-size": "4",
+        "epochs": "3",
+        "num_bag_sets": "5",
+        "num_stack_levels": "6",
+        "refit_full": "False",
+        "sagemaker_container_log_level": "20",
+        "sagemaker_program": "transfer_learning.py",
+        "sagemaker_submit_directory": "/opt/ml/input/data/code/sourcedir.tar.gz",
+        "save_space": "False",
+        "set_best_to_refit_full": "False",
+        "verbosity": "2",
+    }
+
+    # assert that we can override default environment variables (instance family + instance type
+    # specific)
+    vars = hyperparameters.retrieve_default(
+        region=region,
+        model_id=model_id,
+        model_version="*",
+        sagemaker_session=mock_session,
+        instance_type="ml.p2.12xlarge",
+    )
+    assert vars == {
+        "adam-learning-rate": "0.05",
+        "batch-size": "1",
+        "epochs": "3",
+        "num_bag_sets": "1",
+        "num_stack_levels": "0",
+        "refit_full": "False",
+        "eval_metric": "auto",
+        "num_bag_folds": "0",
+        "presets": "medium_quality",
+        "auto_stack": "False",
+        "sagemaker_container_log_level": "20",
+        "sagemaker_program": "transfer_learning.py",
+        "sagemaker_submit_directory": "/opt/ml/input/data/code/sourcedir.tar.gz",
+        "save_space": "False",
+        "set_best_to_refit_full": "False",
+        "verbosity": "2",
+    }
+
+    # assert that we can return default hyperparameters for unrecognized instance
+    vars = hyperparameters.retrieve_default(
+        region=region,
+        model_id=model_id,
+        model_version="*",
+        sagemaker_session=mock_session,
+        instance_type="ml.p9999.48xlarge",
+    )
+
+    assert vars == {"epochs": "3", "adam-learning-rate": "0.05", "batch-size": "4"}

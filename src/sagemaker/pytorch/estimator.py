@@ -107,57 +107,65 @@ class PyTorch(Framework):
                 If ``framework_version`` or ``py_version`` are ``None``, then
                 ``image_uri`` is required. If also ``None``, then a ``ValueError``
                 will be raised.
-            distribution (dict): A dictionary with information on how to run distributed training
-                (default: None).  Currently, the following are supported:
-                distributed training with parameter servers, SageMaker Distributed (SMD) Data
-                and Model Parallelism, and MPI. SMD Model Parallelism can only be used with MPI.
+            distribution (dict): A dictionary with information on how to configure and
+                run distributed training
+                (default: None). The following options are available.
 
-                **To enable the SageMaker distributed data parallelism:**
+                **To enable the SageMaker distributed data parallelism (SMDDP) library:**
 
                     .. code:: python
 
                         { "smdistributed": { "dataparallel": { "enabled": True } } }
 
-                    .. seealso::
+                    Beside activating the SMDDP library through this parameter,
+                    you also need to add few lines of code in your training script
+                    for initializing PyTorch Distributed with the SMDDP setups.
+                    To learn how to configure your training job with the SMDDP library v2, see
+                    `Run distributed training with the SageMaker distributed data parallelism
+                    library
+                    <https://docs.aws.amazon.com/sagemaker/latest/dg/data-parallel.html>`_
+                    in the *Amazon SageMaker User Guide*.
 
-                        To learn more, see :ref:`sdp_api_docs_toc`.
-
-                **To enable the SageMaker distributed model parallelism:**
+                **To enable the SageMaker distributed model parallelism (SMP) library v2:**
 
                     .. code:: python
 
                         {
+                            "torch_distributed": { "enabled": True },
                             "smdistributed": {
                                 "modelparallel": {
-                                    "enabled":True,
+                                    "enabled": True,
                                     "parameters": {
-                                        "partitions": 2,
-                                        "microbatches": 4,
-                                        "placement_strategy": "spread",
-                                        "pipeline": "interleaved",
-                                        "optimize": "speed",
-                                        "ddp": True,
-                                    }
+                                        "tensor_parallel_degree": 8,
+                                        "hybrid_shard_degree": 1,
+                                        ...
+                                    },
+                                }
                             },
-                            "mpi": {
-                                "enabled" : True,
-                                "processes_per_host" : 8,
-                            }
                         }
+
+                    Beside activating the SMP library v2 through this parameter,
+                    you also need to add few lines of code in your training script
+                    for initializing PyTorch Distributed with the SMP setups.
+                    To learn how to configure your training job with the SMP library v2, see
+                    `Run distributed training with the SageMaker model parallelism library v2
+                    <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-v2.html>`_
+                    in the *Amazon SageMaker User Guide*.
 
                     .. note::
 
-                        The SageMaker distributed model parallel library internally uses MPI.
-                        In order to use model parallelism, MPI also must be enabled.
+                        The SageMaker distributed model parallel library v2 requires with
+                        ``torch_distributed``.
 
-                    .. seealso::
+                    .. note::
 
-                        To learn more, see :ref:`smp_api_docs_toc`.
-
-                    .. seealso::
-
-                        To find a complete list of parameters for SageMaker model parallelism,
-                        see :ref:`sm-sdk-modelparallel-general`.
+                        The documentation for the SMP library v1.x is archived and available at
+                        `Run distributed training with the SageMaker model parallelism library
+                        <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel.html>`_
+                        in the *Amazon SageMaker User Guide*,
+                        and the SMP v1 API reference is available in the
+                        `SageMaker Python SDK v2.199.0 documentation
+                        <https://sagemaker.readthedocs.io/en/v2.199.0/api/training/distributed.html#the-sagemaker-distributed-model-parallel-library>`_.
 
                 **To enable PyTorch DDP:**
 
@@ -326,6 +334,9 @@ class PyTorch(Framework):
             if self.instance_type is not None:
                 distribution_config[self.INSTANCE_TYPE_ENV_NAME] = self.instance_type
         elif torch_distributed_enabled:
+            if "smdistributed" in distribution:
+                # Enable torch_distributed for smdistributed.
+                distribution_config = self._distribution_configuration(distribution=distribution)
             distribution_config[self.LAUNCH_TORCH_DISTRIBUTED_ENV_NAME] = torch_distributed_enabled
             if self.instance_type is not None:
                 distribution_config[self.INSTANCE_TYPE_ENV_NAME] = self.instance_type

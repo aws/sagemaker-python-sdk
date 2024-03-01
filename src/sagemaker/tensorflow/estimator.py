@@ -29,6 +29,7 @@ from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.tensorflow.training_compiler.config import TrainingCompilerConfig
 from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.utils import format_tags
 
 logger = logging.getLogger("sagemaker")
 
@@ -59,7 +60,7 @@ class TensorFlow(Framework):
             framework_version (str): TensorFlow version you want to use for executing your model
                 training code. Defaults to ``None``. Required unless ``image_uri`` is provided.
                 List of supported versions:
-                https://github.com/aws/sagemaker-python-sdk#tensorflow-sagemaker-estimators.
+                https://aws.amazon.com/releasenotes/available-deep-learning-containers-images/.
             model_dir (str or PipelineVariable): S3 location where the checkpoint data and models
                 can be exported to during training (default: None). It will be passed in the
                 training script as one of the command line arguments. If not specified,
@@ -86,56 +87,7 @@ class TensorFlow(Framework):
                 ``image_uri`` is required. If also ``None``, then a ``ValueError``
                 will be raised.
             distribution (dict): A dictionary with information on how to run distributed training
-                (default: None). Currently, the following are supported:
-                distributed training with parameter servers, SageMaker Distributed (SMD) Data
-                and Model Parallelism, and MPI. SMD Model Parallelism can only be used with MPI.
-
-                **To enable the SageMaker distributed data parallelism:**
-
-                    .. code:: python
-
-                        { "smdistributed": { "dataparallel": { "enabled": True } } }
-
-                    .. seealso::
-
-                        To learn more, see :ref:`sdp_api_docs_toc`.
-
-                **To enable the SageMaker distributed model parallelism:**
-
-                    .. code:: python
-
-                        {
-                            "smdistributed": {
-                                "modelparallel": {
-                                    "enabled":True,
-                                    "parameters": {
-                                        "partitions": 2,
-                                        "microbatches": 4,
-                                        "placement_strategy": "spread",
-                                        "pipeline": "interleaved",
-                                        "optimize": "speed",
-                                        "ddp": True,
-                                    }
-                            },
-                            "mpi": {
-                                "enabled" : True,
-                                "processes_per_host" : 8,
-                            }
-                        }
-
-                    .. note::
-
-                        The SageMaker distributed model parallel library internally uses MPI.
-                        In order to use model parallelism, MPI also must be enabled.
-
-                    .. seealso::
-
-                        To learn more, see :ref:`smp_api_docs_toc`.
-
-                    .. seealso::
-
-                        To find a complete list of parameters for SageMaker model parallelism,
-                        see :ref:`sm-sdk-modelparallel-general`.
+                (default: None).
 
                 **To enable Multi Worker Mirrored Strategy:**
 
@@ -179,6 +131,31 @@ class TensorFlow(Framework):
 
                     To learn more, see `Training with parameter servers
                     <https://sagemaker.readthedocs.io/en/stable/frameworks/tensorflow/using_tf.html#training-with-parameter-servers>`_.
+
+                .. note::
+
+                    The SageMaker distributed data parallelism (SMDDP) library
+                    discontinued support for TensorFlow.
+                    The documentation for the SMDDP library v1.x is still available at
+                    `Use the SMDDP library in your TensorFlow training script (deprecated)
+                    <https://docs.aws.amazon.com/sagemaker/latest/dg/data-parallel-modify-sdp-tf2.html>`_
+                    in the *Amazon SageMaker User Guide*,
+                    and the `SMDDP v1 API reference in the
+                    SageMaker Python SDK v2.199.0 documentation
+                    <https://sagemaker.readthedocs.io/en/v2.199.0/api/training/distributed.html#the-sagemaker-distributed-data-parallel-library>`_.
+
+                .. note::
+
+                    The SageMaker model parallelism (SMP) library v2 discontinued support
+                    for TensorFlow.
+                    The documentation for the SMP library v1.x is archived and available at
+                    `Run distributed training with the SageMaker model parallelism library
+                    <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel.html>`_
+                    in the *Amazon SageMaker User Guide*,
+                    and the `SMP v1 API reference in the
+                    SageMaker Python SDK v2.199.0 documentation
+                    <https://sagemaker.readthedocs.io/en/v2.199.0/api/training/distributed.html#the-sagemaker-distributed-model-parallel-library>`_.
+
             compiler_config (:class:`~sagemaker.tensorflow.TrainingCompilerConfig`):
                 Configures SageMaker Training Compiler to accelerate training.
 
@@ -498,7 +475,7 @@ class TensorFlow(Framework):
                 each individual transform container at one time.
             max_payload (int): Maximum size of the payload in a single HTTP request to the
                 container in MB.
-            tags (list[dict]): List of tags for labeling a transform job. If none specified, then
+            tags (Optional[Tags]): Tags for labeling a transform job. If none specified, then
                 the tags used for the training job are used for the transform job.
             role (str): The IAM Role ARN for the ``TensorFlowModel``, which is also used
                 during transform jobs. If not specified, the role from the Estimator is used.
@@ -549,7 +526,7 @@ class TensorFlow(Framework):
                 max_concurrent_transforms=max_concurrent_transforms,
                 max_payload=max_payload,
                 env=env or {},
-                tags=tags,
+                tags=format_tags(tags),
                 base_transform_job_name=self.base_job_name,
                 volume_kms_key=volume_kms_key,
                 sagemaker_session=self.sagemaker_session,
@@ -577,6 +554,6 @@ class TensorFlow(Framework):
             env=env,
             max_concurrent_transforms=max_concurrent_transforms,
             max_payload=max_payload,
-            tags=tags,
+            tags=format_tags(tags),
             volume_kms_key=volume_kms_key,
         )

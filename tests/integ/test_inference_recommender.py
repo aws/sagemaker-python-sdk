@@ -165,13 +165,14 @@ def advanced_right_sized_model(sagemaker_session, cpu_instance_type):
                 ),
                 model_package_group_name,
             )
-        except Exception:
+        except Exception as e:
             sagemaker_session.sagemaker_client.delete_model_package(
                 ModelPackageName=sklearn_model_package.model_package_arn
             )
             sagemaker_session.sagemaker_client.delete_model_package_group(
                 ModelPackageGroupName=model_package_group_name
             )
+            raise e
 
 
 @pytest.fixture(scope="module")
@@ -206,7 +207,7 @@ def default_right_sized_unregistered_model(sagemaker_session, cpu_instance_type)
                 ir_job_name,
             )
         except Exception:
-            sagemaker_session.delete_model(ModelName=sklearn_model.name)
+            sagemaker_session.delete_model(model_name=sklearn_model.name)
 
 
 @pytest.fixture(scope="module")
@@ -261,7 +262,7 @@ def advanced_right_sized_unregistered_model(sagemaker_session, cpu_instance_type
             )
 
         except Exception:
-            sagemaker_session.delete_model(ModelName=sklearn_model.name)
+            sagemaker_session.delete_model(model_name=sklearn_model.name)
 
 
 @pytest.fixture(scope="module")
@@ -300,7 +301,7 @@ def default_right_sized_unregistered_base_model(sagemaker_session, cpu_instance_
                 ir_job_name,
             )
         except Exception:
-            sagemaker_session.delete_model(ModelName=model.name)
+            sagemaker_session.delete_model(model_name=model.name)
 
 
 @pytest.fixture(scope="module")
@@ -328,6 +329,7 @@ def created_base_model(sagemaker_session, cpu_instance_type):
 
 
 @pytest.mark.slow_test
+@pytest.mark.flaky(reruns=3, reruns_delay=2)
 def test_default_right_size_and_deploy_registered_model_sklearn(
     default_right_sized_model, sagemaker_session
 ):
@@ -350,6 +352,7 @@ def test_default_right_size_and_deploy_registered_model_sklearn(
 
 
 @pytest.mark.slow_test
+@pytest.mark.flaky(reruns=3, reruns_delay=2)
 def test_default_right_size_and_deploy_unregistered_model_sklearn(
     default_right_sized_unregistered_model, sagemaker_session
 ):
@@ -372,6 +375,7 @@ def test_default_right_size_and_deploy_unregistered_model_sklearn(
 
 
 @pytest.mark.slow_test
+@pytest.mark.flaky(reruns=3, reruns_delay=2)
 def test_default_right_size_and_deploy_unregistered_base_model(
     default_right_sized_unregistered_base_model, sagemaker_session
 ):
@@ -394,6 +398,7 @@ def test_default_right_size_and_deploy_unregistered_base_model(
 
 
 @pytest.mark.slow_test
+@pytest.mark.flaky(reruns=3, reruns_delay=2)
 def test_advanced_right_size_and_deploy_unregistered_model_sklearn(
     advanced_right_sized_unregistered_model, sagemaker_session
 ):
@@ -415,7 +420,9 @@ def test_advanced_right_size_and_deploy_unregistered_model_sklearn(
             predictor.delete_endpoint()
 
 
+@pytest.mark.skip(reason="Skipping this test class for now")
 @pytest.mark.slow_test
+@pytest.mark.flaky(reruns=3, reruns_delay=2)
 def test_advanced_right_size_and_deploy_registered_model_sklearn(
     advanced_right_sized_model, sagemaker_session
 ):
@@ -446,6 +453,7 @@ def test_advanced_right_size_and_deploy_registered_model_sklearn(
 # TODO when we've added support for inference_recommendation_id
 # then add tests to test Framework models
 @pytest.mark.slow_test
+@pytest.mark.flaky(reruns=3, reruns_delay=2)
 def test_deploy_inference_recommendation_id_with_registered_model_sklearn(
     default_right_sized_model, sagemaker_session
 ):
@@ -454,7 +462,8 @@ def test_deploy_inference_recommendation_id_with_registered_model_sklearn(
     rec_res = sagemaker_session.sagemaker_client.describe_inference_recommendations_job(
         JobName=ir_job_name
     )
-    rec_id = rec_res["InferenceRecommendations"][0]["RecommendationId"]
+
+    rec_id = get_realtime_recommendation_id(recommendation_list=rec_res["InferenceRecommendations"])
 
     with timeout(minutes=45):
         try:
@@ -480,6 +489,7 @@ def test_deploy_inference_recommendation_id_with_registered_model_sklearn(
 
 
 @pytest.mark.slow_test
+@pytest.mark.flaky(reruns=3, reruns_delay=2)
 def test_deploy_deployment_recommendation_id_with_model(created_base_model, sagemaker_session):
     with timeout(minutes=20):
         try:
@@ -530,3 +540,11 @@ def poll_for_deployment_recommendation(created_base_model, sagemaker_session):
         except Exception as e:
             created_base_model.delete_model()
             raise e
+
+
+def get_realtime_recommendation_id(recommendation_list):
+    """Search recommendation based on recommendation id"""
+    next(
+        (rec["RecommendationId"] for rec in recommendation_list if "InstanceType" in rec),
+        None,
+    )

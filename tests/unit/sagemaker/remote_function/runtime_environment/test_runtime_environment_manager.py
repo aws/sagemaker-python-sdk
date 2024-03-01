@@ -12,11 +12,15 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import subprocess
+
 import pytest
 from mock import patch, Mock
 import sys
 import shlex
 import os
+
+from mock.mock import MagicMock
 
 from sagemaker.remote_function.runtime_environment.runtime_environment_manager import (
     RuntimeEnvironmentManager,
@@ -26,6 +30,7 @@ from sagemaker.remote_function.runtime_environment.runtime_environment_manager i
 TEST_REQUIREMENTS_TXT = "usr/local/requirements.txt"
 TEST_CONDA_YML = "usr/local/conda_env.yml"
 CLIENT_PYTHON_VERSION = "3.10"
+JOB_SAGEMAKER_PYSDK_VERSION = "2.205.0"
 
 
 def test_snapshot_no_dependencies():
@@ -204,7 +209,7 @@ def test_bootstrap_req_txt():
         call_args = popen.call_args[0][0]
         assert call_args is not None
 
-        expected_cmd = "{} -m pip install -r {}".format(python_exe, TEST_REQUIREMENTS_TXT)
+        expected_cmd = "{} -m pip install -r {} -U".format(python_exe, TEST_REQUIREMENTS_TXT)
         assert call_args == expected_cmd
 
 
@@ -225,7 +230,7 @@ def test_bootstrap_req_txt_error():
         call_args = popen.call_args[0][0]
         assert call_args is not None
 
-        expected_cmd = "{} -m pip install -r {}".format(python_exe, TEST_REQUIREMENTS_TXT)
+        expected_cmd = "{} -m pip install -r {} -U".format(python_exe, TEST_REQUIREMENTS_TXT)
         assert call_args == expected_cmd
 
 
@@ -256,7 +261,7 @@ def test_bootstrap_req_txt_with_conda_env(mock_conda_exe):
         call_args = popen.call_args[0][0]
         assert call_args is not None
 
-        expected_cmd = f"{mock_conda_exe.return_value} run -n conda_env pip install -r usr/local/requirements.txt"
+        expected_cmd = f"{mock_conda_exe.return_value} run -n conda_env pip install -r usr/local/requirements.txt -U"
         assert call_args == expected_cmd
 
 
@@ -367,6 +372,32 @@ def test_validate_python_version_error(python_version_in_conda_env):
         RuntimeEnvironmentManager()._validate_python_version(CLIENT_PYTHON_VERSION, "conda_env")
 
 
+@patch(
+    "sagemaker.remote_function.runtime_environment.runtime_environment_manager."
+    "RuntimeEnvironmentManager._current_sagemaker_pysdk_version",
+    return_value=JOB_SAGEMAKER_PYSDK_VERSION,
+)
+def test_validate_sagemaker_pysdk_version(mock_sagemaker_version_in_job):
+    # If the client sagemaker version differs from the job's, a warning is printed
+    RuntimeEnvironmentManager()._validate_sagemaker_pysdk_version(
+        "version-not-the-same-and-get-a-warning"
+    )
+    mock_sagemaker_version_in_job.assert_called_once()
+
+
+@patch(
+    "sagemaker.remote_function.runtime_environment.runtime_environment_manager."
+    "RuntimeEnvironmentManager._current_sagemaker_pysdk_version",
+    return_value=JOB_SAGEMAKER_PYSDK_VERSION,
+)
+def test_validate_sagemaker_pysdk_version_with_none_input(mock_sagemaker_version_in_job):
+    # This test is to test the backward compatibility
+    # In old version of SDK, the client side sagemaker_pysdk_version is not passed to job
+    # thus it would be None and would not lead to the warning
+    RuntimeEnvironmentManager()._validate_sagemaker_pysdk_version(None)
+    mock_sagemaker_version_in_job.assert_called_once()
+
+
 @patch("os.path.isfile", return_value=True)
 @patch(
     "sagemaker.remote_function.runtime_environment.runtime_environment_manager._log_error", Mock()
@@ -413,3 +444,50 @@ def test_run_pre_exec_script_cmd_error(isfile):
         call_args = popen.call_args[0][0]
         expected_cmd = ["/bin/bash", "-eu", "path/to/pre_exec.sh"]
         assert call_args == expected_cmd
+
+
+@patch("subprocess.run")
+def test_change_dir_permission(mock_subprocess_run):
+    RuntimeEnvironmentManager().change_dir_permission(dirs=["a", "b", "c"], new_permission="777")
+    expected_command = ["sudo", "chmod", "-R", "777", "a", "b", "c"]
+    assert mock_subprocess_run.called_once_with(
+        expected_command, check=True, stderr=subprocess.PIPE
+    )
+
+
+@patch(
+    "subprocess.run",
+    MagicMock(side_effect=FileNotFoundError("[Errno 2] No such file or directory: 'sudo'")),
+)
+def test_change_dir_permission_and_no_sudo_installed():
+    with pytest.raises(RuntimeEnvironmentError) as error:
+        RuntimeEnvironmentManager().change_dir_permission(
+            dirs=["a", "b", "c"], new_permission="777"
+        )
+    assert (
+        "Please contact the image owner to install 'sudo' in the job container "
+        "and provide sudo privilege to the container user."
+    ) in str(error)
+
+
+@patch("subprocess.run", MagicMock(side_effect=FileNotFoundError("Other file not found error")))
+def test_change_dir_permission_and_sudo_installed_but_other_file_not_found_error():
+    with pytest.raises(RuntimeEnvironmentError) as error:
+        RuntimeEnvironmentManager().change_dir_permission(
+            dirs=["a", "b", "c"], new_permission="777"
+        )
+    assert "Other file not found error" in str(error)
+
+
+@patch("subprocess.run")
+def test_change_dir_permission_and_dir_not_exist(mock_subprocess_run):
+    mock_subprocess_run.side_effect = subprocess.CalledProcessError(
+        returncode=1,
+        cmd="sudo chmod ...",
+        stderr=b"chmod: cannot access ...: No such file or directory",
+    )
+    with pytest.raises(RuntimeEnvironmentError) as error:
+        RuntimeEnvironmentManager().change_dir_permission(
+            dirs=["a", "b", "c"], new_permission="777"
+        )
+    assert "chmod: cannot access ...: No such file or directory" in str(error)

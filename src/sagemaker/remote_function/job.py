@@ -20,7 +20,8 @@ import shutil
 import sys
 import json
 import secrets
-from typing import Dict, List, Tuple
+
+from typing import Callable, Dict, List, Optional, Tuple, Union, TYPE_CHECKING
 from urllib.parse import urlparse
 from io import BytesIO
 
@@ -46,17 +47,37 @@ from sagemaker.experiments._run_context import _RunContext
 from sagemaker.experiments.run import Run
 from sagemaker.image_uris import get_base_python_image_uri
 from sagemaker import image_uris
+from sagemaker.remote_function.checkpoint_location import CheckpointLocation
 from sagemaker.session import get_execution_role, _logs_for_job, Session
-from sagemaker.utils import name_from_base, _tmpdir, resolve_value_from_config
+from sagemaker.utils import (
+    name_from_base,
+    _tmpdir,
+    resolve_value_from_config,
+    format_tags,
+    Tags,
+)
 from sagemaker.s3 import s3_path_join, S3Uploader
 from sagemaker import vpc_utils
-from sagemaker.remote_function.core.stored_function import StoredFunction
+from sagemaker.remote_function.core.stored_function import StoredFunction, _SerializedData
+from sagemaker.remote_function.core.pipeline_variables import Context
+
 from sagemaker.remote_function.runtime_environment.runtime_environment_manager import (
     RuntimeEnvironmentManager,
+    _DependencySettings,
 )
 from sagemaker.remote_function import logging_config
 from sagemaker.remote_function.spark_config import SparkConfig
 from sagemaker.spark import defaults
+from sagemaker.remote_function.custom_file_filter import (
+    CustomFileFilter,
+    copy_workdir,
+    resolve_custom_file_filter_from_config_file,
+)
+from sagemaker.workflow.function_step import DelayedReturn
+from sagemaker.workflow.step_outputs import get_step
+
+if TYPE_CHECKING:
+    from sagemaker.workflow.entities import PipelineVariable
 
 # runtime script names
 BOOTSTRAP_SCRIPT_NAME = "bootstrap_runtime_environment.py"
@@ -69,6 +90,7 @@ SPARK_APP_SCRIPT_NAME = "spark_app.py"
 RUNTIME_SCRIPTS_CHANNEL_NAME = "sagemaker_remote_function_bootstrap"
 REMOTE_FUNCTION_WORKSPACE = "sm_rf_user_ws"
 JOB_REMOTE_FUNCTION_WORKSPACE = "sagemaker_remote_function_workspace"
+SCRIPT_AND_DEPENDENCIES_CHANNEL_NAME = "pre_exec_script_and_dependencies"
 
 # Spark config channel and file name
 SPARK_CONF_CHANNEL_NAME = "conf"
@@ -170,26 +192,27 @@ class _JobSettings:
         dependencies: str = None,
         pre_execution_commands: List[str] = None,
         pre_execution_script: str = None,
-        environment_variables: Dict[str, str] = None,
-        image_uri: str = None,
+        environment_variables: Dict[str, Union[str, "PipelineVariable"]] = None,
+        image_uri: Union[str, "PipelineVariable"] = None,
         include_local_workdir: bool = None,
-        instance_count: int = 1,
-        instance_type: str = None,
-        job_conda_env: str = None,
+        custom_file_filter: Optional[Union[Callable[[str, List], List], CustomFileFilter]] = None,
+        instance_count: Union[int, "PipelineVariable"] = 1,
+        instance_type: Union[str, "PipelineVariable"] = None,
+        job_conda_env: Union[str, "PipelineVariable"] = None,
         job_name_prefix: str = None,
-        keep_alive_period_in_seconds: int = 0,
-        max_retry_attempts: int = 1,
-        max_runtime_in_seconds: int = 24 * 60 * 60,
+        keep_alive_period_in_seconds: Union[int, "PipelineVariable"] = 0,
+        max_retry_attempts: Union[int, "PipelineVariable"] = 1,
+        max_runtime_in_seconds: Union[int, "PipelineVariable"] = 24 * 60 * 60,
         role: str = None,
-        s3_kms_key: str = None,
+        s3_kms_key: Union[str, "PipelineVariable"] = None,
         s3_root_uri: str = None,
         sagemaker_session: Session = None,
-        security_group_ids: List[str] = None,
-        subnets: List[str] = None,
-        tags: List[Tuple[str, str]] = None,
-        volume_kms_key: str = None,
-        volume_size: int = 30,
-        encrypt_inter_container_traffic: bool = None,
+        security_group_ids: List[Union[str, "PipelineVariable"]] = None,
+        subnets: List[Union[str, "PipelineVariable"]] = None,
+        tags: Optional[Tags] = None,
+        volume_kms_key: Union[str, "PipelineVariable"] = None,
+        volume_size: Union[int, "PipelineVariable"] = 30,
+        encrypt_inter_container_traffic: Union[bool, "PipelineVariable"] = None,
         spark_config: SparkConfig = None,
         use_spot_instances=False,
         max_wait_time_in_seconds=None,
@@ -268,12 +291,12 @@ class _JobSettings:
               remote function. Only one of ``pre_execution_commands`` or ``pre_execution_script``
               can be specified at the same time. Defaults to None.
 
-            environment_variables (Dict): The environment variables used inside the decorator
-              function. Defaults to ``None``.
+            environment_variables (dict[str, str] or dict[str, PipelineVariable]): The environment
+              variables used inside the decorator function. Defaults to ``None``.
 
-            image_uri (str): The universal resource identifier (URI) location of a Docker image on
-              Amazon Elastic Container Registry (ECR). Defaults to the following based on where
-              the SDK is running:
+            image_uri (str, PipelineVariable): The universal resource identifier (URI) location of
+              a Docker image on Amazon Elastic Container Registry (ECR). Defaults to the following
+              based on where the SDK is running:
 
                 * For users who specify ``spark_config`` and want to run the function in a Spark
                   application, the ``image_uri`` should be ``None``. A SageMaker Spark image will
@@ -289,38 +312,48 @@ class _JobSettings:
               local directories. Set to ``True`` if the remote function code imports local modules
               and methods that are not available via PyPI or conda. Default value is ``False``.
 
-            instance_count (int): The number of instances to use. Defaults to 1.
+            custom_file_filter (Callable[[str, List], List], CustomFileFilter): Either a function
+              that filters job dependencies to be uploaded to S3 or a ``CustomFileFilter`` object
+              that specifies the local directories and files to be included in the remote function.
+              If a callable is passed in, that function is passed to the ``ignore``  argument of
+              ``shutil.copytree``. Defaults to ``None``, which means only python
+              files are accepted and uploaded to S3.
 
-            instance_type (str): The Amazon Elastic Compute Cloud (EC2) instance type to use to run
-              the SageMaker job. e.g. ml.c4.xlarge. If not provided, a ValueError is thrown.
+            instance_count (int, PipelineVariable): The number of instances to use. Defaults to 1.
 
-            job_conda_env (str): The name of the conda environment to activate during job's runtime.
-              Defaults to ``None``.
+            instance_type (str, PipelineVariable): The Amazon Elastic Compute Cloud (EC2) instance
+              type to use to run the SageMaker job. e.g. ml.c4.xlarge. If not provided,
+              a ValueError is thrown.
 
-            job_name_prefix (str): The prefix used used to create the underlying SageMaker job.
+            job_conda_env (str, PipelineVariable): The name of the conda environment to activate
+              during job's runtime. Defaults to ``None``.
 
-            keep_alive_period_in_seconds (int): The duration in seconds to retain and reuse
-              provisioned infrastructure after the completion of a training job, also known as
-              SageMaker managed warm pools. The use of warmpools reduces the latency time spent to
-              provision new resources. The default value for ``keep_alive_period_in_seconds`` is 0.
+            job_name_prefix (str, PipelineVariable): The prefix used to create the underlying
+              SageMaker job.
+
+            keep_alive_period_in_seconds (int, PipelineVariable): The duration in seconds to retain
+              and reuse provisioned infrastructure after the completion of a training job, also
+              known as SageMaker managed warm pools. The use of warm pools reduces the latency time
+              spent to provision new resources. The default value for
+              ``keep_alive_period_in_seconds`` is 0.
               NOTE: Additional charges associated with warm pools may apply. Using this parameter
               also activates a new persistent cache feature, which will further reduce job start up
               latency than over using SageMaker managed warm pools alone by caching the package
               source downloaded in the previous runs.
 
-            max_retry_attempts (int): The max number of times the job is retried on
-              ``InternalServerFailure`` Error from SageMaker service. Defaults to 1.
+            max_retry_attempts (int, PipelineVariable): The max number of times the job is retried
+              on ``InternalServerFailure`` Error from SageMaker service. Defaults to 1.
 
-            max_runtime_in_seconds (int): The upper limit in seconds to be used for training. After
-              this specified amount of time, SageMaker terminates the job regardless of its current
-              status. Defaults to 1 day or (86400 seconds).
+            max_runtime_in_seconds (int, PipelineVariable): The upper limit in seconds to be used
+              for training. After this specified amount of time, SageMaker terminates the job
+              regardless of its current status. Defaults to 1 day or (86400 seconds).
 
             role (str): The IAM role (either name or full ARN) used to run your SageMaker training
               job. Defaults to:
 
               * the SageMaker default IAM role if the SDK is running in SageMaker Notebooks or
                 SageMaker Studio Notebooks.
-              * if not above, a ValueError is be thrown.
+              * if not above, a ValueError is thrown.
 
             s3_kms_key (str): The key used to encrypt the input and output data.
               Default to ``None``.
@@ -332,33 +365,34 @@ class _JobSettings:
               which SageMaker service calls are delegated to (default: None). If not provided,
               one is created using a default configuration chain.
 
-            security_group_ids (List[str): A list of security group IDs. Defaults to ``None`` and
-              the training job is created without VPC config.
+            security_group_ids (List[str, PipelineVariable]): A list of security group IDs.
+              Defaults to ``None`` and the training job is created without VPC config.
 
-            subnets (List[str): A list of subnet IDs. Defaults to ``None`` and the job is created
-              without VPC config.
+            subnets (List[str, PipelineVariable]): A list of subnet IDs. Defaults to ``None``
+              and the job is created without VPC config.
 
-            tags (List[Tuple[str, str]): A list of tags attached to the job. Defaults to ``None``
-              and the training job is created without tags.
+            tags (Optional[Tags]): Tags attached to the job. Defaults to ``None``
+                and the training job is created without tags.
 
-            volume_kms_key (str): An Amazon Key Management Service (KMS) key used to encrypt an
-              Amazon Elastic Block Storage (EBS) volume attached to the training instance.
-              Defaults to ``None``.
+            volume_kms_key (str, PipelineVariable): An Amazon Key Management Service (KMS) key
+              used to encrypt an Amazon Elastic Block Storage (EBS) volume attached to the
+              training instance. Defaults to ``None``.
 
-            volume_size (int): The size in GB of the storage volume for storing input and output
-              data during training. Defaults to ``30``.
+            volume_size (int, PipelineVariable): The size in GB of the storage volume for storing
+              input and output data during training. Defaults to ``30``.
 
-            encrypt_inter_container_traffic (bool): A flag that specifies whether traffic between
-              training containers is encrypted for the training job. Defaults to ``False``.
+            encrypt_inter_container_traffic (bool, PipelineVariable): A flag that specifies
+              whether traffic between training containers is encrypted for the training job.
+              Defaults to ``False``.
 
             spark_config (SparkConfig): Configurations to the Spark application that runs on
               Spark image. If ``spark_config`` is specified, a SageMaker Spark image uri
               will be used for training. Note that ``image_uri`` can not be specified at the
               same time otherwise a ``ValueError`` is thrown. Defaults to ``None``.
 
-            use_spot_instances (bool): Specifies whether to use SageMaker Managed Spot instances for
-              training. If enabled then the ``max_wait`` arg should also be set.
-              Defaults to ``False``.
+            use_spot_instances (bool, PipelineVariable): Specifies whether to use SageMaker
+              Managed Spot instances for training. If enabled then the ``max_wait`` arg should
+              also be set. Defaults to ``False``.
 
             max_wait_time_in_seconds (int): Timeout in seconds waiting for spot training job.
               After this amount of time Amazon SageMaker will stop waiting for managed spot
@@ -375,6 +409,11 @@ class _JobSettings:
             {"AWS_DEFAULT_REGION": self.sagemaker_session.boto_region_name}
         )
 
+        # The following will be overridden by the _Job.compile method.
+        # However, it needs to be kept here for feature store SDK.
+        # TODO: update the feature store SDK to set the HMAC key there.
+        self.environment_variables.update({"REMOTE_FUNCTION_SECRET_KEY": secrets.token_hex(32)})
+
         if spark_config and image_uri:
             raise ValueError("spark_config and image_uri cannot be specified at the same time!")
 
@@ -385,8 +424,6 @@ class _JobSettings:
             raise ValueError(
                 "Remote Spark jobs do not support automatically capturing dependencies."
             )
-
-        self.environment_variables.update({"REMOTE_FUNCTION_SECRET_KEY": secrets.token_hex(32)})
 
         _image_uri = resolve_value_from_config(
             direct_input=image_uri,
@@ -435,6 +472,11 @@ class _JobSettings:
             default_value=False,
             sagemaker_session=self.sagemaker_session,
         )
+
+        self.custom_file_filter = resolve_custom_file_filter_from_config_file(
+            custom_file_filter, self.sagemaker_session
+        )
+
         self.instance_type = resolve_value_from_config(
             direct_input=instance_type,
             config_path=REMOTE_FUNCTION_INSTANCE_TYPE,
@@ -510,9 +552,8 @@ class _JobSettings:
         vpc_config = vpc_utils.to_dict(subnets=_subnets, security_group_ids=_security_group_ids)
         self.vpc_config = vpc_utils.sanitize(vpc_config)
 
-        self.tags = self.sagemaker_session._append_sagemaker_config_tags(
-            [{"Key": k, "Value": v} for k, v in tags] if tags else None, REMOTE_FUNCTION_TAGS
-        )
+        tags = format_tags(tags)
+        self.tags = self.sagemaker_session._append_sagemaker_config_tags(tags, REMOTE_FUNCTION_TAGS)
 
     @staticmethod
     def _get_default_image(session):
@@ -586,7 +627,6 @@ class _Job:
             job_name (str): The training job name.
             s3_uri (str): The training job output S3 uri.
             sagemaker_session (Session): SageMaker boto session.
-            _last_describe_response (Dict): The last describe training job response.
             hmac_key (str): Remote function secret key.
         """
         self.job_name = job_name
@@ -629,36 +669,77 @@ class _Job:
         """
         job_name = _Job._get_job_name(job_settings, func)
         s3_base_uri = s3_path_join(job_settings.s3_root_uri, job_name)
-        spark_config = job_settings.spark_config
+
+        training_job_request = _Job.compile(
+            job_settings=job_settings,
+            job_name=job_name,
+            s3_base_uri=s3_base_uri,
+            func=func,
+            func_args=func_args,
+            func_kwargs=func_kwargs,
+            run_info=run_info,
+        )
+
+        logger.info("Creating job: %s", job_name)
+        job_settings.sagemaker_session.sagemaker_client.create_training_job(**training_job_request)
+
+        return _Job(
+            job_name,
+            s3_base_uri,
+            job_settings.sagemaker_session,
+            training_job_request["Environment"]["REMOTE_FUNCTION_SECRET_KEY"],
+        )
+
+    @staticmethod
+    def compile(
+        job_settings: _JobSettings,
+        job_name: str,
+        s3_base_uri: str,
+        func: callable,
+        func_args: tuple,
+        func_kwargs: dict,
+        run_info=None,
+        serialized_data: _SerializedData = None,
+    ) -> dict:
+        """Build the artifacts and generate the training job request."""
+        from sagemaker.workflow.properties import Properties
+        from sagemaker.workflow.parameters import Parameter
+        from sagemaker.workflow.functions import Join
+        from sagemaker.workflow.execution_variables import ExecutionVariables, ExecutionVariable
+        from sagemaker.workflow.utilities import load_step_compilation_context
+
+        step_compilation_context = load_step_compilation_context()
+
         jobs_container_entrypoint = JOBS_CONTAINER_ENTRYPOINT[:]
-        hmac_key = job_settings.environment_variables["REMOTE_FUNCTION_SECRET_KEY"]
 
-        bootstrap_scripts_s3uri = _prepare_and_upload_runtime_scripts(
-            spark_config=spark_config,
-            s3_base_uri=s3_base_uri,
-            s3_kms_key=job_settings.s3_kms_key,
-            sagemaker_session=job_settings.sagemaker_session,
-        )
+        # generate hmac key for integrity check
+        if step_compilation_context is None:
+            hmac_key = secrets.token_hex(32)
+        else:
+            hmac_key = step_compilation_context.function_step_secret_token
 
-        dependencies_list_path = RuntimeEnvironmentManager().snapshot(job_settings.dependencies)
-        user_dependencies_s3uri = _prepare_and_upload_dependencies(
-            local_dependencies_path=dependencies_list_path,
-            include_local_workdir=job_settings.include_local_workdir,
-            pre_execution_commands=job_settings.pre_execution_commands,
-            pre_execution_script_local_path=job_settings.pre_execution_script,
-            s3_base_uri=s3_base_uri,
-            s3_kms_key=job_settings.s3_kms_key,
-            sagemaker_session=job_settings.sagemaker_session,
-        )
+        # serialize function and arguments
+        if step_compilation_context is None:
+            stored_function = StoredFunction(
+                sagemaker_session=job_settings.sagemaker_session,
+                s3_base_uri=s3_base_uri,
+                hmac_key=hmac_key,
+                s3_kms_key=job_settings.s3_kms_key,
+            )
+            stored_function.save(func, *func_args, **func_kwargs)
+        else:
+            stored_function = StoredFunction(
+                sagemaker_session=job_settings.sagemaker_session,
+                s3_base_uri=s3_base_uri,
+                hmac_key=hmac_key,
+                s3_kms_key=job_settings.s3_kms_key,
+                context=Context(
+                    step_name=step_compilation_context.step_name,
+                    func_step_s3_dir=step_compilation_context.pipeline_build_time,
+                ),
+            )
 
-        stored_function = StoredFunction(
-            sagemaker_session=job_settings.sagemaker_session,
-            s3_base_uri=s3_base_uri,
-            hmac_key=hmac_key,
-            s3_kms_key=job_settings.s3_kms_key,
-        )
-
-        stored_function.save(func, *func_args, **func_kwargs)
+            stored_function.save_pipeline_step_function(serialized_data)
 
         stopping_condition = {
             "MaxRuntimeInSeconds": job_settings.max_runtime_in_seconds,
@@ -673,37 +754,29 @@ class _Job:
             RetryStrategy={"MaximumRetryAttempts": job_settings.max_retry_attempts},
         )
 
+        _update_job_request_with_checkpoint_config(func_args, func_kwargs, request_dict)
+
         if job_settings.tags:
             request_dict["Tags"] = job_settings.tags
 
-        input_data_config = [
-            dict(
-                ChannelName=RUNTIME_SCRIPTS_CHANNEL_NAME,
-                DataSource={
-                    "S3DataSource": {
-                        "S3Uri": bootstrap_scripts_s3uri,
-                        "S3DataType": "S3Prefix",
-                    }
-                },
+        # generate other build artifacts including workspace, requirements.txt
+        request_dict["InputDataConfig"] = _generate_input_data_config(
+            job_settings=job_settings, s3_base_uri=s3_base_uri
+        )
+
+        if step_compilation_context:
+            s3_output_path = Join(
+                on="/",
+                values=[
+                    s3_base_uri,
+                    ExecutionVariables.PIPELINE_EXECUTION_ID,
+                    step_compilation_context.step_name,
+                    "results",
+                ],
             )
-        ]
-
-        if user_dependencies_s3uri:
-            input_data_config.append(
-                dict(
-                    ChannelName=REMOTE_FUNCTION_WORKSPACE,
-                    DataSource={
-                        "S3DataSource": {
-                            "S3Uri": s3_path_join(s3_base_uri, REMOTE_FUNCTION_WORKSPACE),
-                            "S3DataType": "S3Prefix",
-                        }
-                    },
-                )
-            )
-
-        request_dict["InputDataConfig"] = input_data_config
-
-        output_config = {"S3OutputPath": s3_base_uri}
+            output_config = {"S3OutputPath": s3_output_path}
+        else:
+            output_config = {"S3OutputPath": s3_base_uri}
         if job_settings.s3_kms_key is not None:
             output_config["KmsKeyId"] = job_settings.s3_kms_key
         request_dict["OutputDataConfig"] = output_config
@@ -713,11 +786,50 @@ class _Job:
         container_args.extend(
             ["--client_python_version", RuntimeEnvironmentManager()._current_python_version()]
         )
+        container_args.extend(
+            [
+                "--client_sagemaker_pysdk_version",
+                RuntimeEnvironmentManager()._current_sagemaker_pysdk_version(),
+            ]
+        )
+        container_args.extend(
+            [
+                "--dependency_settings",
+                _DependencySettings.from_dependency_file_path(
+                    job_settings.dependencies
+                ).to_string(),
+            ]
+        )
         if job_settings.s3_kms_key:
             container_args.extend(["--s3_kms_key", job_settings.s3_kms_key])
 
         if job_settings.job_conda_env:
             container_args.extend(["--job_conda_env", job_settings.job_conda_env])
+
+        if step_compilation_context:
+            # TODO: remove the duplicates in the list
+            container_args.extend(["--pipeline_step_name", step_compilation_context.step_name])
+            container_args.extend(
+                ["--pipeline_execution_id", ExecutionVariables.PIPELINE_EXECUTION_ID]
+            )
+            container_args.extend(
+                ["--func_step_s3_dir", step_compilation_context.pipeline_build_time]
+            )
+            container_args.extend(["--property_references"])
+            container_args.extend(
+                [
+                    ExecutionVariables.PIPELINE_EXECUTION_ID.expr["Get"],
+                    ExecutionVariables.PIPELINE_EXECUTION_ID.to_string(),
+                ]
+            )
+            for arg in func_args + tuple(func_kwargs.values()):
+                if isinstance(arg, (Parameter, ExecutionVariable, Properties)):
+                    container_args.extend([arg.expr["Get"], arg.to_string()])
+
+                if isinstance(arg, DelayedReturn):
+                    # The uri is a Properties object
+                    uri = get_step(arg)._properties.OutputDataConfig.S3OutputPath
+                    container_args.extend([uri.expr["Get"], uri.to_string()])
 
         if run_info is not None:
             container_args.extend(["--run_in_context", json.dumps(dataclasses.asdict(run_info))])
@@ -761,13 +873,11 @@ class _Job:
         request_dict["EnableManagedSpotTraining"] = job_settings.use_spot_instances
 
         request_dict["Environment"] = job_settings.environment_variables
+        request_dict["Environment"].update({"REMOTE_FUNCTION_SECRET_KEY": hmac_key})
 
         extended_request = _extend_spark_config_to_request(request_dict, job_settings, s3_base_uri)
 
-        logger.info("Creating job: %s", job_name)
-        job_settings.sagemaker_session.sagemaker_client.create_training_job(**extended_request)
-
-        return _Job(job_name, s3_base_uri, job_settings.sagemaker_session, hmac_key)
+        return extended_request
 
     def describe(self):
         """Describe the underlying sagemaker training job.
@@ -806,7 +916,7 @@ class _Job:
         """
 
         self._last_describe_response = _logs_for_job(
-            boto_session=self.sagemaker_session.boto_session,
+            sagemaker_session=self.sagemaker_session,
             job_name=self.job_name,
             wait=True,
             timeout=timeout,
@@ -823,6 +933,10 @@ class _Job:
         Returns:
             str : the training job name.
         """
+        from sagemaker.workflow.utilities import load_step_compilation_context
+
+        step_complication_context = load_step_compilation_context()
+
         job_name_prefix = job_settings.job_name_prefix
         if not job_name_prefix:
             job_name_prefix = func.__name__
@@ -830,6 +944,9 @@ class _Job:
             job_name_prefix = re.sub(r"^[^a-zA-Z0-9]+", "", job_name_prefix)
             # convert all remaining special characters to '-'
             job_name_prefix = re.sub(r"[^a-zA-Z0-9-]", "-", job_name_prefix)
+
+        if step_complication_context:
+            return job_name_prefix
         return name_from_base(job_name_prefix)
 
 
@@ -837,6 +954,10 @@ def _prepare_and_upload_runtime_scripts(
     spark_config: SparkConfig, s3_base_uri: str, s3_kms_key: str, sagemaker_session: Session
 ):
     """Copy runtime scripts to a folder and upload to S3.
+
+    In case of remote function, s3_base_uri is s3_root_uri + function_name.
+    In case of pipeline, s3_base_uri is s3_root_uri + pipeline_name. The runtime scripts are
+    uploaded only once per pipeline.
 
     Args:
         spark_config (SparkConfig): remote Spark job configurations.
@@ -847,6 +968,13 @@ def _prepare_and_upload_runtime_scripts(
 
         sagemaker_session (str): SageMaker boto client session.
     """
+
+    from sagemaker.workflow.utilities import load_step_compilation_context
+
+    step_compilation_context = load_step_compilation_context()
+
+    if step_compilation_context and not step_compilation_context.upload_runtime_scripts:
+        return s3_path_join(s3_base_uri, RUNTIME_SCRIPTS_CHANNEL_NAME)
 
     with _tmpdir() as bootstrap_scripts:
 
@@ -860,7 +988,7 @@ def _prepare_and_upload_runtime_scripts(
             )
             shutil.copy2(spark_script_path, bootstrap_scripts)
 
-        with open(entrypoint_script_path, "w") as file:
+        with open(entrypoint_script_path, "w", newline="\n") as file:
             file.writelines(entry_point_script)
 
         bootstrap_script_path = os.path.join(
@@ -874,15 +1002,166 @@ def _prepare_and_upload_runtime_scripts(
         shutil.copy2(bootstrap_script_path, bootstrap_scripts)
         shutil.copy2(runtime_manager_script_path, bootstrap_scripts)
 
-        return S3Uploader.upload(
+        upload_path = S3Uploader.upload(
             bootstrap_scripts,
             s3_path_join(s3_base_uri, RUNTIME_SCRIPTS_CHANNEL_NAME),
             s3_kms_key,
             sagemaker_session,
         )
 
+        if step_compilation_context:
+            step_compilation_context.upload_runtime_scripts = False
+        return upload_path
 
-def _prepare_and_upload_dependencies(
+
+def _generate_input_data_config(job_settings: _JobSettings, s3_base_uri: str):
+    """Generates input data config"""
+    from sagemaker.workflow.utilities import load_step_compilation_context
+
+    step_compilation_context = load_step_compilation_context()
+
+    bootstrap_scripts_s3uri = _prepare_and_upload_runtime_scripts(
+        spark_config=job_settings.spark_config,
+        s3_base_uri=s3_base_uri,
+        s3_kms_key=job_settings.s3_kms_key,
+        sagemaker_session=job_settings.sagemaker_session,
+    )
+
+    input_data_config = [
+        dict(
+            ChannelName=RUNTIME_SCRIPTS_CHANNEL_NAME,
+            DataSource={
+                "S3DataSource": {
+                    "S3Uri": bootstrap_scripts_s3uri,
+                    "S3DataType": "S3Prefix",
+                }
+            },
+        )
+    ]
+
+    local_dependencies_path = RuntimeEnvironmentManager().snapshot(job_settings.dependencies)
+
+    if step_compilation_context:
+        with _tmpdir() as tmp_dir:
+            script_and_dependencies_s3uri = _prepare_dependencies_and_pre_execution_scripts(
+                local_dependencies_path=local_dependencies_path,
+                pre_execution_commands=job_settings.pre_execution_commands,
+                pre_execution_script_local_path=job_settings.pre_execution_script,
+                s3_base_uri=s3_base_uri,
+                s3_kms_key=job_settings.s3_kms_key,
+                sagemaker_session=job_settings.sagemaker_session,
+                tmp_dir=tmp_dir,
+            )
+
+            if script_and_dependencies_s3uri:
+                input_data_config.append(
+                    dict(
+                        ChannelName=SCRIPT_AND_DEPENDENCIES_CHANNEL_NAME,
+                        DataSource={
+                            "S3DataSource": {
+                                "S3Uri": script_and_dependencies_s3uri,
+                                "S3DataType": "S3Prefix",
+                            }
+                        },
+                    )
+                )
+
+    user_workspace_s3uri = _prepare_and_upload_workspace(
+        local_dependencies_path=local_dependencies_path,
+        include_local_workdir=job_settings.include_local_workdir,
+        pre_execution_commands=job_settings.pre_execution_commands,
+        pre_execution_script_local_path=job_settings.pre_execution_script,
+        s3_base_uri=s3_base_uri,
+        s3_kms_key=job_settings.s3_kms_key,
+        sagemaker_session=job_settings.sagemaker_session,
+        custom_file_filter=job_settings.custom_file_filter,
+    )
+
+    if user_workspace_s3uri:
+        input_data_config.append(
+            dict(
+                ChannelName=REMOTE_FUNCTION_WORKSPACE
+                if not step_compilation_context
+                else step_compilation_context.pipeline_build_time,
+                DataSource={
+                    "S3DataSource": {
+                        "S3Uri": user_workspace_s3uri,
+                        "S3DataType": "S3Prefix",
+                    }
+                },
+            )
+        )
+
+    return input_data_config
+
+
+def _prepare_dependencies_and_pre_execution_scripts(
+    local_dependencies_path: str,
+    pre_execution_commands: List[str],
+    pre_execution_script_local_path: str,
+    s3_base_uri: str,
+    s3_kms_key: str,
+    sagemaker_session: Session,
+    tmp_dir: str,
+):
+    """Prepare pre-execution scripts and dependencies and upload them to s3.
+
+    If pre execution commands are provided, a new bash file will be created
+      with those commands in tmp directory.
+    If pre execution script is provided, it copies that file from local file path
+      to tmp directory.
+    If local dependencies file is provided, it copies that file from local file path
+      to tmp directory.
+    If under pipeline context, tmp directory with copied dependencies and scripts is
+      uploaded to S3.
+    """
+    from sagemaker.workflow.utilities import load_step_compilation_context
+
+    if not (local_dependencies_path or pre_execution_commands or pre_execution_script_local_path):
+        return None
+
+    if local_dependencies_path:
+        dst_path = shutil.copy2(local_dependencies_path, tmp_dir)
+        logger.info("Copied dependencies file at '%s' to '%s'", local_dependencies_path, dst_path)
+
+    if pre_execution_commands or pre_execution_script_local_path:
+        pre_execution_script = os.path.join(tmp_dir, PRE_EXECUTION_SCRIPT_NAME)
+        if pre_execution_commands:
+            with open(pre_execution_script, "w") as target_script:
+                commands = [cmd + "\n" for cmd in pre_execution_commands]
+                target_script.writelines(commands)
+                logger.info(
+                    "Generated pre-execution script from commands to '%s'", pre_execution_script
+                )
+        else:
+            shutil.copy2(pre_execution_script_local_path, pre_execution_script)
+            logger.info(
+                "Copied pre-execution commands from script at '%s' to '%s'",
+                pre_execution_script_local_path,
+                pre_execution_script,
+            )
+
+    step_compilation_context = load_step_compilation_context()
+    if step_compilation_context:
+        upload_path = S3Uploader.upload(
+            tmp_dir,
+            s3_path_join(
+                s3_base_uri,
+                step_compilation_context.step_name,
+                step_compilation_context.pipeline_build_time,
+                SCRIPT_AND_DEPENDENCIES_CHANNEL_NAME,
+            ),
+            s3_kms_key,
+            sagemaker_session,
+        )
+        logger.info(
+            "Successfully uploaded dependencies and pre execution scripts to '%s'", upload_path
+        )
+        return upload_path
+    return None
+
+
+def _prepare_and_upload_workspace(
     local_dependencies_path: str,
     include_local_workdir: bool,
     pre_execution_commands: List[str],
@@ -890,8 +1169,17 @@ def _prepare_and_upload_dependencies(
     s3_base_uri: str,
     s3_kms_key: str,
     sagemaker_session: Session,
+    custom_file_filter: Optional[Union[Callable[[str, List], List], CustomFileFilter]] = None,
 ) -> str:
-    """Upload the job dependencies to S3 if present"""
+    """Prepare and upload the workspace to S3.
+
+    Under pipeline context, only workdir is packaged in the workspace folder and uploaded to s3.
+    Under remote function context, workdir along with pre execution scripts and dependencies
+      are packaged together into the workspace folder and uploaded to S3.
+    """
+    from sagemaker.workflow.utilities import load_step_compilation_context
+
+    step_compilation_context = load_step_compilation_context()
 
     if not (
         local_dependencies_path
@@ -901,6 +1189,14 @@ def _prepare_and_upload_dependencies(
     ):
         return None
 
+    func_step_s3_dir = None
+    if step_compilation_context:
+        func_step_s3_dir = step_compilation_context.pipeline_build_time
+        if not include_local_workdir:
+            return None
+        if not step_compilation_context.upload_workspace:
+            return s3_path_join(s3_base_uri, REMOTE_FUNCTION_WORKSPACE, func_step_s3_dir)
+
     with _tmpdir() as tmp_dir:
         tmp_workspace_dir = os.path.join(tmp_dir, "temp_workspace/")
         os.mkdir(tmp_workspace_dir)
@@ -908,40 +1204,23 @@ def _prepare_and_upload_dependencies(
         tmp_workspace = os.path.join(tmp_workspace_dir, JOB_REMOTE_FUNCTION_WORKSPACE)
 
         if include_local_workdir:
-            shutil.copytree(
-                os.getcwd(),
-                tmp_workspace,
-                ignore=_filter_non_python_files,
-            )
-            logger.info("Copied user workspace python scripts to '%s'", tmp_workspace)
+            copy_workdir(tmp_workspace, custom_file_filter)
+            logger.info("Copied user workspace to '%s'", tmp_workspace)
 
-        if local_dependencies_path:
-            if not os.path.isdir(tmp_workspace):
-                # create the directory if no workdir_path was provided in the input.
-                os.mkdir(tmp_workspace)
-            dst_path = shutil.copy2(local_dependencies_path, tmp_workspace)
-            logger.info(
-                "Copied dependencies file at '%s' to '%s'", local_dependencies_path, dst_path
-            )
+        if not os.path.isdir(tmp_workspace):
+            # create the directory if no workdir_path was provided in the input.
+            os.mkdir(tmp_workspace)
 
-        if pre_execution_commands or pre_execution_script_local_path:
-            if not os.path.isdir(tmp_workspace):
-                os.mkdir(tmp_workspace)
-            pre_execution_script = os.path.join(tmp_workspace, PRE_EXECUTION_SCRIPT_NAME)
-            if pre_execution_commands:
-                with open(pre_execution_script, "w") as target_script:
-                    commands = [cmd + "\n" for cmd in pre_execution_commands]
-                    target_script.writelines(commands)
-                    logger.info(
-                        "Generated pre-execution script from commands to '%s'", pre_execution_script
-                    )
-            else:
-                shutil.copy(pre_execution_script_local_path, pre_execution_script)
-                logger.info(
-                    "Copied pre-execution commands from script at '%s' to '%s'",
-                    pre_execution_script_local_path,
-                    pre_execution_script,
-                )
+        if not step_compilation_context:
+            _prepare_dependencies_and_pre_execution_scripts(
+                local_dependencies_path=local_dependencies_path,
+                pre_execution_commands=pre_execution_commands,
+                pre_execution_script_local_path=pre_execution_script_local_path,
+                s3_base_uri=s3_base_uri,
+                s3_kms_key=s3_kms_key,
+                sagemaker_session=sagemaker_session,
+                tmp_dir=tmp_workspace,
+            )
 
         workspace_archive_path = os.path.join(tmp_dir, "workspace")
         workspace_archive_path = shutil.make_archive(
@@ -951,11 +1230,13 @@ def _prepare_and_upload_dependencies(
 
         upload_path = S3Uploader.upload(
             workspace_archive_path,
-            s3_path_join(s3_base_uri, REMOTE_FUNCTION_WORKSPACE),
+            s3_path_join(s3_base_uri, REMOTE_FUNCTION_WORKSPACE, func_step_s3_dir),
             s3_kms_key,
             sagemaker_session,
         )
         logger.info("Successfully uploaded workdir to '%s'", upload_path)
+        if step_compilation_context:
+            step_compilation_context.upload_workspace = False
         return upload_path
 
 
@@ -963,23 +1244,6 @@ def _convert_run_to_json(run: Run) -> str:
     """Convert current run into json string"""
     run_info = _RunInfo(run.experiment_name, run.run_name)
     return json.dumps(dataclasses.asdict(run_info))
-
-
-def _filter_non_python_files(path: str, names: List) -> List:
-    """Ignore function for filtering out non python files."""
-    to_ignore = []
-    for name in names:
-        full_path = os.path.join(path, name)
-        if os.path.isfile(full_path):
-            if not name.endswith(".py"):
-                to_ignore.append(name)
-        elif os.path.isdir(full_path):
-            if name == "__pycache__":
-                to_ignore.append(name)
-        else:
-            to_ignore.append(name)
-
-    return to_ignore
 
 
 def _prepare_and_upload_spark_dependent_files(
@@ -1169,6 +1433,50 @@ def _extend_spark_config_to_request(
         container_entrypoint.extend([SPARK_APP_SCRIPT_PATH])
 
     return extended_request
+
+
+def _update_job_request_with_checkpoint_config(args, kwargs, request_dict):
+    """Extend job request with checkpoint config based on CheckpointLocation in function args.
+
+    Args:
+        args (tuple): The positional arguments of the remote function.
+        kwargs (Dict): The keyword arguments of the remote function.
+        request_dict (Dict): create training job request dict.
+    """
+    checkpoint_location_index_in_args = None
+    checkpoint_location_key_in_kwargs = None
+    checkpoint_location_count = 0
+
+    for index, arg in enumerate(args):
+        if isinstance(arg, CheckpointLocation):
+            checkpoint_location_index_in_args = index
+            checkpoint_location_count += 1
+
+    for key, value in kwargs.items():
+        if isinstance(value, CheckpointLocation):
+            checkpoint_location_key_in_kwargs = key
+            checkpoint_location_count += 1
+
+    if checkpoint_location_count < 1:
+        return
+
+    if checkpoint_location_count > 1:
+        raise ValueError(
+            "Remote function cannot have more than one argument of type CheckpointLocation."
+        )
+
+    if checkpoint_location_index_in_args is not None:
+        checkpoint_location_arg = args[checkpoint_location_index_in_args]
+    else:
+        checkpoint_location_arg = kwargs[checkpoint_location_key_in_kwargs]
+
+    checkpoint_s3_uri = checkpoint_location_arg._s3_uri
+    checkpoint_local_path = checkpoint_location_arg._local_path
+
+    request_dict["CheckpointConfig"] = {
+        "LocalPath": checkpoint_local_path,
+        "S3Uri": checkpoint_s3_uri,
+    }
 
 
 @dataclasses.dataclass

@@ -27,9 +27,10 @@ import tarfile
 
 import pytest
 import yaml
-from mock import patch, Mock, MagicMock
+from mock import patch, Mock, MagicMock, mock_open, call
 import sagemaker
 from sagemaker.local.image import _SageMakerContainer, _Volume, _aws_credentials
+from sagemaker.local.utils import STUDIO_APP_TYPES
 
 REGION = "us-west-2"
 BUCKET_NAME = "mybucket"
@@ -75,6 +76,22 @@ LOCAL_CODE_HYPERPARAMETERS = {
 
 ENVIRONMENT = {"MYVAR": "HELLO_WORLD"}
 
+LOCAL_STUDIO_METADATA_BASE = '{{"AppType":"{app_type}","DomainId":"d-1234567890","UserProfileName": \
+    "dummy-profile","ResourceArn":"arn:aws:sagemaker:us-west-2:123456789012:app/arn", \
+    "ResourceName":"datascience-1-0-ml-t3-medium-1234567890"}}'
+
+LOCAL_STUDIO_METADATA_WITH_SPACE = '{"AppType":"KernelGateway","DomainId":"d-1234567890","SpaceName": \
+    "dummy-space","ResourceArn":"arn:aws:sagemaker:us-west-2:123456789012:app/arn", \
+    "ResourceName":"datascience-1-0-ml-t3-medium-1234567890"}'
+
+DUMMY_APPTYPE_METADATA = '{"AppType":"DUMMY"}'
+
+LOCAL_STUDIO_INCOMPLETE_METADATA = '{"AppType":"KernelGateway"}'
+
+CLASSIC_METADATA = '{"ResourceArn": \
+    "arn:aws:sagemaker:us-west-2:616250812882:notebook-instance/test", \
+    "ResourceName": "test"}'
+
 
 @pytest.fixture()
 def sagemaker_session():
@@ -88,6 +105,49 @@ def sagemaker_session():
     sms.expand_role = Mock(return_value=EXPANDED_ROLE)
 
     return sms
+
+
+@patch("os.path.exists", return_value=True)
+def test_check_for_studio(patch_os_exists, sagemaker_session):
+    for app_type in STUDIO_APP_TYPES:
+        metadata = LOCAL_STUDIO_METADATA_BASE.format(app_type=app_type)
+        print(metadata)
+        with patch("sagemaker.local.utils.open", mock_open(read_data=metadata)):
+            with pytest.raises(
+                NotImplementedError,
+                match="Multi instance Local Mode execution is currently not supported in SageMaker Studio.",
+            ):
+                _SageMakerContainer("local", 2, "my-image", sagemaker_session=sagemaker_session)
+
+            sagemaker_container = _SageMakerContainer(
+                "local", 1, "my-image", sagemaker_session=sagemaker_session
+            )
+            assert sagemaker_container.is_studio
+
+    with patch("sagemaker.local.utils.open", mock_open(read_data=LOCAL_STUDIO_METADATA_WITH_SPACE)):
+        with pytest.raises(
+            NotImplementedError,
+            match="Multi instance Local Mode execution is currently not supported in SageMaker Studio.",
+        ):
+            _SageMakerContainer("local", 2, "my-image", sagemaker_session=sagemaker_session)
+
+        sagemaker_container = _SageMakerContainer(
+            "local", 1, "my-image", sagemaker_session=sagemaker_session
+        )
+        assert sagemaker_container.is_studio
+
+    with patch("sagemaker.local.utils.open", mock_open(read_data=CLASSIC_METADATA)):
+        sagemaker_container = _SageMakerContainer(
+            "local", 1, "my-image", sagemaker_session=sagemaker_session
+        )
+        assert not sagemaker_container.is_studio
+
+    with patch("sagemaker.local.utils.open", mock_open(read_data=DUMMY_APPTYPE_METADATA)):
+        with pytest.raises(
+            NotImplementedError,
+            match="AppType DUMMY in Studio does not support Local Mode.",
+        ):
+            _SageMakerContainer("local", 2, "my-image", sagemaker_session=sagemaker_session)
 
 
 @patch("subprocess.check_output", Mock(return_value="Docker Compose version v2.0.0-rc.3"))
@@ -434,6 +494,170 @@ def test_train(
 
 @patch("sagemaker.local.local_session.LocalSession", Mock())
 @patch("sagemaker.local.image._stream_output", Mock())
+@patch("sagemaker.local.image._SageMakerContainer._cleanup")
+@patch("sagemaker.local.image._SageMakerContainer.retrieve_artifacts")
+@patch(
+    "sagemaker.local.image._SageMakerContainer._get_compose_cmd_prefix",
+    Mock(return_value=["docker-compose"]),
+)
+@patch("sagemaker.local.data.get_data_source_instance")
+@patch("subprocess.Popen")
+def test_train_for_studio(
+    popen, get_data_source_instance, retrieve_artifacts, cleanup, tmpdir, sagemaker_session, caplog
+):
+    data_source = Mock()
+    data_source.get_root_dir.return_value = "foo"
+    get_data_source_instance.return_value = data_source
+
+    caplog.set_level(logging.INFO)
+
+    directories = [str(tmpdir.mkdir("container-root")), str(tmpdir.mkdir("data"))]
+    with patch(
+        "sagemaker.local.image._SageMakerContainer._create_tmp_folder", side_effect=directories
+    ):
+        instance_count = 1
+        image = "my-image"
+        metadata = LOCAL_STUDIO_METADATA_BASE.format(app_type="KernelGateway")
+        with patch("sagemaker.local.utils.open", mock_open(read_data=metadata)):
+            with patch("os.path.exists", return_value=True):
+                sagemaker_container = _SageMakerContainer(
+                    "local", instance_count, image, sagemaker_session=sagemaker_session
+                )
+
+        sagemaker_container.train(
+            INPUT_DATA_CONFIG,
+            OUTPUT_DATA_CONFIG,
+            HYPERPARAMETERS,
+            ENVIRONMENT,
+            TRAINING_JOB_NAME,
+        )
+
+        docker_compose_file = os.path.join(
+            sagemaker_container.container_root, "docker-compose.yaml"
+        )
+
+        expected_up_cmd = [
+            "docker-compose",
+            "-f",
+            docker_compose_file,
+            "up",
+            "--build",
+            "--abort-on-container-exit",
+        ]
+
+        popen.assert_has_calls(
+            [
+                call(expected_up_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT),
+            ]
+        )
+
+        with open(docker_compose_file, "r") as f:
+            config = yaml.load(f, Loader=yaml.SafeLoader)
+            assert len(config["services"]) == instance_count
+            for h in sagemaker_container.hosts:
+                assert config["services"][h]["image"] == image
+                assert config["services"][h]["command"] == "train"
+                assert (
+                    "TRAINING_JOB_NAME={}".format(TRAINING_JOB_NAME)
+                    in config["services"][h]["environment"]
+                )
+                assert "SM_STUDIO_LOCAL_MODE=True" in config["services"][h]["environment"]
+                assert config["services"][h]["network_mode"] == "sagemaker"
+
+        # assert that expected by sagemaker container output directories exist
+        assert os.path.exists(os.path.join(sagemaker_container.container_root, "output"))
+        assert os.path.exists(os.path.join(sagemaker_container.container_root, "output/data"))
+
+    retrieve_artifacts.assert_called_once()
+    cleanup.assert_called_once()
+    assert "[Masked]" in caplog.text
+
+
+@patch("sagemaker.local.local_session.LocalSession", Mock())
+@patch("sagemaker.local.image._stream_output", Mock())
+@patch("sagemaker.local.image._SageMakerContainer._cleanup")
+@patch("sagemaker.local.image._SageMakerContainer.retrieve_artifacts")
+@patch(
+    "sagemaker.local.image._SageMakerContainer._get_compose_cmd_prefix",
+    Mock(return_value=["docker-compose"]),
+)
+@patch("sagemaker.local.data.get_data_source_instance")
+@patch("subprocess.Popen")
+def test_train_with_entry_point(
+    popen, get_data_source_instance, retrieve_artifacts, cleanup, tmpdir, sagemaker_session, caplog
+):
+    # This is to test the case of Pipeline function step,
+    # which is translated into a training job, with container_entrypoint configured
+    data_source = Mock()
+    data_source.get_root_dir.return_value = "foo"
+    get_data_source_instance.return_value = data_source
+
+    caplog.set_level(logging.INFO)
+
+    directories = [str(tmpdir.mkdir("container-root")), str(tmpdir.mkdir("data"))]
+    with patch(
+        "sagemaker.local.image._SageMakerContainer._create_tmp_folder", side_effect=directories
+    ):
+
+        instance_count = 2
+        image = "my-image"
+        container_entrypoint = [
+            "/bin/bash",
+            "/opt/ml/input/data/sagemaker_remote_function_bootstrap/job_driver.sh",
+        ]
+        container_args = ["--region", "us-west-2", "--client_python_version", "3.10"]
+        sagemaker_container = _SageMakerContainer(
+            instance_type="local",
+            instance_count=instance_count,
+            image=image,
+            sagemaker_session=sagemaker_session,
+            container_entrypoint=container_entrypoint,
+            container_arguments=container_args,
+        )
+        sagemaker_container.train(
+            INPUT_DATA_CONFIG, OUTPUT_DATA_CONFIG, HYPERPARAMETERS, ENVIRONMENT, TRAINING_JOB_NAME
+        )
+
+        docker_compose_file = os.path.join(
+            sagemaker_container.container_root, "docker-compose.yaml"
+        )
+        call_args = popen.call_args[0][0]
+        assert call_args is not None
+
+        expected = [
+            "docker-compose",
+            "-f",
+            docker_compose_file,
+            "up",
+            "--build",
+            "--abort-on-container-exit",
+        ]
+        for i, v in enumerate(expected):
+            assert call_args[i] == v
+
+        with open(docker_compose_file, "r") as f:
+            config = yaml.load(f, Loader=yaml.SafeLoader)
+            assert len(config["services"]) == instance_count
+            for h in sagemaker_container.hosts:
+                host_config = config["services"][h]
+                assert host_config["image"] == image
+                assert not host_config.get("command", None)
+                assert (
+                    "TRAINING_JOB_NAME={}".format(TRAINING_JOB_NAME) in host_config["environment"]
+                )
+                assert host_config["entrypoint"] == container_entrypoint + container_args
+
+        # assert that expected by sagemaker container output directories exist
+        assert os.path.exists(os.path.join(sagemaker_container.container_root, "output"))
+        assert os.path.exists(os.path.join(sagemaker_container.container_root, "output/data"))
+
+    retrieve_artifacts.assert_called_once()
+    cleanup.assert_called_once()
+    assert "[Masked]" in caplog.text
+
+
+@patch("sagemaker.local.local_session.LocalSession", Mock())
+@patch("sagemaker.local.image._stream_output", Mock())
 @patch("sagemaker.local.image._SageMakerContainer._cleanup", Mock())
 @patch("sagemaker.local.data.get_data_source_instance")
 def test_train_with_hyperparameters_without_job_name(
@@ -480,7 +704,12 @@ def test_train_with_hyperparameters_without_job_name(
 @patch("sagemaker.local.data.get_data_source_instance")
 @patch("subprocess.Popen", Mock())
 def test_train_error(
-    get_data_source_instance, retrieve_artifacts, cleanup, _stream_output, tmpdir, sagemaker_session
+    get_data_source_instance,
+    retrieve_artifacts,
+    cleanup,
+    _stream_output,
+    tmpdir,
+    sagemaker_session,
 ):
     data_source = Mock()
     data_source.get_root_dir.return_value = "foo"
@@ -657,6 +886,23 @@ def test_container_does_not_enable_nvidia_docker_for_cpu_containers(sagemaker_se
     assert "runtime" not in docker_host
 
 
+def test_container_with_custom_config(sagemaker_session):
+    custom_config = {
+        "local": {
+            "container_config": {"shm_size": "128M"},
+        }
+    }
+    sagemaker_session.config = custom_config
+    instance_count = 1
+    image = "my-image"
+    sagemaker_container = _SageMakerContainer(
+        "local", instance_count, image, sagemaker_session=sagemaker_session
+    )
+
+    docker_host = sagemaker_container._create_docker_host("host-1", {}, set(), "train", [])
+    assert "shm_size" in docker_host
+
+
 @patch("sagemaker.local.image._HostingContainer.run", Mock())
 @patch("sagemaker.local.image._SageMakerContainer._prepare_serving_volumes", Mock(return_value=[]))
 @patch("shutil.copy", Mock())
@@ -684,6 +930,63 @@ def test_serve(tmpdir, sagemaker_session, caplog):
             for h in sagemaker_container.hosts:
                 assert config["services"][h]["image"] == image
                 assert config["services"][h]["command"] == "serve"
+    assert "[Masked]" in caplog.text
+
+
+@patch("sagemaker.local.image._stream_output", Mock())
+@patch("sagemaker.local.image._SageMakerContainer._prepare_serving_volumes", Mock(return_value=[]))
+@patch("shutil.copy", Mock())
+@patch("shutil.copytree", Mock())
+@patch(
+    "sagemaker.local.image._SageMakerContainer._get_compose_cmd_prefix",
+    Mock(return_value=["docker-compose"]),
+)
+@patch("subprocess.Popen")
+def test_serve_for_studio(popen, tmpdir, sagemaker_session, caplog):
+    caplog.set_level(logging.INFO)
+    with patch(
+        "sagemaker.local.image._SageMakerContainer._create_tmp_folder",
+        return_value=str(tmpdir.mkdir("container-root")),
+    ):
+        instance_count = 1
+        image = "my-image"
+        metadata = LOCAL_STUDIO_METADATA_BASE.format(app_type="KernelGateway")
+        with patch("sagemaker.local.utils.open", mock_open(read_data=metadata)):
+            with patch("os.path.exists", return_value=True):
+                sagemaker_container = _SageMakerContainer(
+                    "local", instance_count, image, sagemaker_session=sagemaker_session
+                )
+
+        environment = {"env1": 1, "env2": "b", "SAGEMAKER_SUBMIT_DIRECTORY": "s3://some/path"}
+
+        sagemaker_container.serve("/some/model/path", environment)
+        docker_compose_file = os.path.join(
+            sagemaker_container.container_root, "docker-compose.yaml"
+        )
+
+        expected_up_cmd = [
+            "docker-compose",
+            "-f",
+            docker_compose_file,
+            "up",
+            "--build",
+            "--abort-on-container-exit",
+        ]
+
+        popen.assert_has_calls(
+            [
+                call(expected_up_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE),
+            ]
+        )
+
+        with open(docker_compose_file, "r") as f:
+            config = yaml.load(f, Loader=yaml.SafeLoader)
+
+            for h in sagemaker_container.hosts:
+                assert config["services"][h]["image"] == image
+                assert config["services"][h]["command"] == "serve"
+                assert "SM_STUDIO_LOCAL_MODE=True" in config["services"][h]["environment"]
+                assert config["services"][h]["network_mode"] == "sagemaker"
     assert "[Masked]" in caplog.text
 
 

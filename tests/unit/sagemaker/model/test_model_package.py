@@ -19,6 +19,11 @@ from mock import Mock, patch
 
 import sagemaker
 from sagemaker.model import ModelPackage
+from sagemaker.model_card.schema_constraints import ModelApprovalStatusEnum
+
+MODEL_PACKAGE_VERSIONED_ARN = (
+    "arn:aws:sagemaker:us-west-2:001234567890:model-package/testmodelgroup/1"
+)
 
 DESCRIBE_MODEL_PACKAGE_RESPONSE = {
     "InferenceSpecification": {
@@ -34,6 +39,7 @@ DESCRIBE_MODEL_PACKAGE_RESPONSE = {
         ],
         "SupportedRealtimeInferenceInstanceTypes": ["ml.m4.xlarge", "ml.m4.2xlarge"],
     },
+    "ModelApprovalStatus": "PendingManualApproval",
     "ModelPackageDescription": "Model Package created from training with "
     "arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees",
     "CreationTime": 1542752036.687,
@@ -50,6 +56,14 @@ DESCRIBE_MODEL_PACKAGE_RESPONSE = {
     "ModelPackageStatus": "Completed",
     "ModelPackageName": "mp-scikit-decision-trees-1542410022-2018-11-20-22-13-56-502",
     "CertifyForMarketplace": False,
+}
+
+MODEL_DATA = {
+    "S3DataSource": {
+        "S3Uri": "s3://bucket/model/prefix/",
+        "S3DataType": "S3Prefix",
+        "CompressionType": "None",
+    }
 }
 
 
@@ -187,7 +201,7 @@ def test_create_sagemaker_model_include_tags(sagemaker_session):
     env_key = "env_key"
     env_value = "env_value"
     environment = {env_key: env_value}
-    tags = {"Key": "foo", "Value": "bar"}
+    tags = [{"Key": "foo", "Value": "bar"}]
 
     model_package = ModelPackage(
         role="role",
@@ -296,3 +310,92 @@ def test_model_package_create_transformer_with_product_id(sagemaker_session):
     assert transformer.model_name == "auto-generated-model"
     assert transformer.instance_type == "ml.m4.xlarge"
     assert transformer.env is None
+
+
+@patch("sagemaker.model.ModelPackage.update_approval_status")
+def test_model_package_auto_approve_on_deploy(update_approval_status, sagemaker_session):
+    tags = [{"Key": "foo", "Value": "bar"}]
+    model_package = ModelPackage(
+        role="role",
+        model_package_arn=MODEL_PACKAGE_VERSIONED_ARN,
+        sagemaker_session=sagemaker_session,
+    )
+    model_package.deploy(tags=tags, instance_type="ml.p2.xlarge", initial_instance_count=1)
+
+    assert (
+        update_approval_status.call_args_list[0][1]["approval_status"]
+        == ModelApprovalStatusEnum.APPROVED
+    )
+
+
+def test_update_customer_metadata(sagemaker_session):
+    model_package = ModelPackage(
+        role="role",
+        model_package_arn=MODEL_PACKAGE_VERSIONED_ARN,
+        sagemaker_session=sagemaker_session,
+    )
+
+    customer_metadata_to_update = {
+        "Key": "Value",
+    }
+    model_package.update_customer_metadata(customer_metadata_properties=customer_metadata_to_update)
+
+    sagemaker_session.sagemaker_client.update_model_package.assert_called_with(
+        ModelPackageArn=MODEL_PACKAGE_VERSIONED_ARN,
+        CustomerMetadataProperties=customer_metadata_to_update,
+    )
+
+
+def test_remove_customer_metadata(sagemaker_session):
+    model_package = ModelPackage(
+        role="role",
+        model_package_arn=MODEL_PACKAGE_VERSIONED_ARN,
+        sagemaker_session=sagemaker_session,
+    )
+
+    customer_metadata_to_remove = ["Key"]
+
+    model_package.remove_customer_metadata_properties(
+        customer_metadata_properties_to_remove=customer_metadata_to_remove
+    )
+
+    sagemaker_session.sagemaker_client.update_model_package.assert_called_with(
+        ModelPackageArn=MODEL_PACKAGE_VERSIONED_ARN,
+        CustomerMetadataPropertiesToRemove=customer_metadata_to_remove,
+    )
+
+
+def test_add_inference_specification(sagemaker_session):
+    model_package = ModelPackage(
+        role="role",
+        model_package_arn=MODEL_PACKAGE_VERSIONED_ARN,
+        sagemaker_session=sagemaker_session,
+    )
+
+    image_uris = ["image_uri"]
+
+    containers = [{"Image": "image_uri"}]
+
+    try:
+        model_package.add_inference_specification(
+            image_uris=image_uris, name="Inference", containers=containers
+        )
+    except ValueError as ve:
+        assert "Cannot have both containers and image_uris." in str(ve)
+
+    try:
+        model_package.add_inference_specification(name="Inference")
+    except ValueError as ve:
+        assert "Should have either containers or image_uris for inference." in str(ve)
+
+    model_package.add_inference_specification(image_uris=image_uris, name="Inference")
+
+    sagemaker_session.sagemaker_client.update_model_package.assert_called_with(
+        ModelPackageArn=MODEL_PACKAGE_VERSIONED_ARN,
+        AdditionalInferenceSpecificationsToAdd=[
+            {
+                "Containers": [{"Image": "image_uri"}],
+                "Name": "Inference",
+            }
+        ],
+    )

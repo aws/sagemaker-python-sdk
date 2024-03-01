@@ -28,19 +28,24 @@ from sagemaker.spark import defaults
 from sagemaker.jumpstart import artifacts
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.utilities import override_pipeline_parameter_var
-from sagemaker.fw_utils import GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY, GRAVITON_ALLOWED_FRAMEWORKS
+from sagemaker.fw_utils import (
+    GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY,
+    GRAVITON_ALLOWED_FRAMEWORKS,
+)
 
 logger = logging.getLogger(__name__)
 
 ECR_URI_TEMPLATE = "{registry}.dkr.{hostname}/{repository}"
 HUGGING_FACE_FRAMEWORK = "huggingface"
 HUGGING_FACE_LLM_FRAMEWORK = "huggingface-llm"
+HUGGING_FACE_LLM_NEURONX_FRAMEWORK = "huggingface-llm-neuronx"
 XGBOOST_FRAMEWORK = "xgboost"
 SKLEARN_FRAMEWORK = "sklearn"
 TRAINIUM_ALLOWED_FRAMEWORKS = "pytorch"
 INFERENCE_GRAVITON = "inference_graviton"
 DATA_WRANGLER_FRAMEWORK = "data-wrangler"
 STABILITYAI_FRAMEWORK = "stabilityai"
+SAGEMAKER_TRITONSERVER_FRAMEWORK = "sagemaker-tritonserver"
 
 
 @override_pipeline_parameter_var
@@ -271,20 +276,6 @@ def retrieve(
     return ECR_URI_TEMPLATE.format(registry=registry, hostname=hostname, repository=repo)
 
 
-def _get_instance_type_family(instance_type):
-    """Return the family of the instance type.
-
-    Regex matches either "ml.<family>.<size>" or "ml_<family>. If input is None
-    or there is no match, return an empty string.
-    """
-    instance_type_family = ""
-    if isinstance(instance_type, str):
-        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
-        if match is not None:
-            instance_type_family = match[1]
-    return instance_type_family
-
-
 def _get_image_tag(
     container_version,
     distribution,
@@ -298,7 +289,7 @@ def _get_image_tag(
     version,
 ):
     """Return image tag based on framework, container, and compute configuration(s)."""
-    instance_type_family = _get_instance_type_family(instance_type)
+    instance_type_family = utils.get_instance_type_family(instance_type)
     if framework in (XGBOOST_FRAMEWORK, SKLEARN_FRAMEWORK):
         if instance_type_family and final_image_scope == INFERENCE_GRAVITON:
             _validate_arg(
@@ -346,6 +337,11 @@ def _get_image_tag(
             if key in container_versions:
                 tag = "-".join([tag, container_versions[key]])
 
+    # Triton images don't have a trailing -gpu tag. Only -cpu images do.
+    if framework == SAGEMAKER_TRITONSERVER_FRAMEWORK:
+        if processor == "gpu":
+            tag = tag.rstrip("-gpu")
+
     return tag
 
 
@@ -358,7 +354,8 @@ def _config_for_framework_and_scope(framework, image_scope, accelerator_type=Non
 
         if image_scope not in ("eia", "inference"):
             logger.warning(
-                "Elastic inference is for inference only. Ignoring image scope: %s.", image_scope
+                "Elastic inference is for inference only. Ignoring image scope: %s.",
+                image_scope,
             )
         image_scope = "eia"
 
@@ -386,7 +383,7 @@ def _config_for_framework_and_scope(framework, image_scope, accelerator_type=Non
 
 def _validate_instance_deprecation(framework, instance_type, version):
     """Check if instance type is deprecated for a certain framework with a certain version"""
-    if _get_instance_type_family(instance_type) == "p2":
+    if utils.get_instance_type_family(instance_type) == "p2":
         if (framework == "pytorch" and Version(version) >= Version("1.13")) or (
             framework == "tensorflow" and Version(version) >= Version("2.12")
         ):
@@ -410,7 +407,7 @@ def _validate_for_suppported_frameworks_and_instance_type(framework, instance_ty
     # Validate for Graviton allowed frameowrks
     if (
         instance_type is not None
-        and _get_instance_type_family(instance_type) in GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY
+        and utils.get_instance_type_family(instance_type) in GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY
         and framework not in GRAVITON_ALLOWED_FRAMEWORKS
     ):
         _validate_framework(framework, GRAVITON_ALLOWED_FRAMEWORKS, "framework", "Graviton")
@@ -428,7 +425,7 @@ def _get_final_image_scope(framework, instance_type, image_scope):
     """Return final image scope based on provided framework and instance type."""
     if (
         framework in GRAVITON_ALLOWED_FRAMEWORKS
-        and _get_instance_type_family(instance_type) in GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY
+        and utils.get_instance_type_family(instance_type) in GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY
     ):
         return INFERENCE_GRAVITON
     if image_scope is None and framework in (XGBOOST_FRAMEWORK, SKLEARN_FRAMEWORK):
@@ -443,7 +440,7 @@ def _get_final_image_scope(framework, instance_type, image_scope):
 def _get_inference_tool(inference_tool, instance_type):
     """Extract the inference tool name from instance type."""
     if not inference_tool:
-        instance_type_family = _get_instance_type_family(instance_type)
+        instance_type_family = utils.get_instance_type_family(instance_type)
         if instance_type_family.startswith("inf") or instance_type_family.startswith("trn"):
             return "neuron"
     return inference_tool
@@ -482,6 +479,7 @@ def _validate_version_and_set_if_needed(version, config, framework):
     if version is None and framework in [
         DATA_WRANGLER_FRAMEWORK,
         HUGGING_FACE_LLM_FRAMEWORK,
+        HUGGING_FACE_LLM_NEURONX_FRAMEWORK,
         STABILITYAI_FRAMEWORK,
     ]:
         version = _get_latest_versions(available_versions)
@@ -531,7 +529,7 @@ def _processor(instance_type, available_processors, serverless_inference_config=
         processor = "neuron"
     else:
         # looks for either "ml.<family>.<size>" or "ml_<family>"
-        family = _get_instance_type_family(instance_type)
+        family = utils.get_instance_type_family(instance_type)
         if family:
             # For some frameworks, we have optimized images for specific families, e.g c5 or p3.
             # In those cases, we use the family name in the image tag. In other cases, we use
@@ -561,7 +559,7 @@ def _should_auto_select_container_version(instance_type, distribution):
     p4d = False
     if instance_type:
         # looks for either "ml.<family>.<size>" or "ml_<family>"
-        family = _get_instance_type_family(instance_type)
+        family = utils.get_instance_type_family(instance_type)
         if family:
             p4d = family == "p4d"
 
@@ -675,6 +673,17 @@ def get_training_image_uri(
     else:
         container_version = None
         base_framework_version = None
+
+    # Check for smp library
+    if distribution is not None:
+        if "torch_distributed" in distribution and "smdistributed" in distribution:
+            if "modelparallel" in distribution["smdistributed"]:
+                if distribution["smdistributed"]["modelparallel"].get("enabled", True):
+                    framework = "pytorch-smp"
+                    if "p5" in instance_type or "2.1" in framework_version:
+                        container_version = "cu121"
+                    else:
+                        container_version = "cu118"
 
     return retrieve(
         framework,

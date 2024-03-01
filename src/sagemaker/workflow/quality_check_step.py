@@ -13,6 +13,7 @@
 """The step definitions for workflow."""
 from __future__ import absolute_import
 
+import logging
 from abc import ABC
 from typing import List, Union, Optional
 import os
@@ -24,7 +25,8 @@ from sagemaker.model_monitor import ModelMonitor
 from sagemaker.processing import ProcessingOutput, ProcessingJob, Processor, ProcessingInput
 from sagemaker.workflow import is_pipeline_variable
 
-from sagemaker.workflow.entities import RequestType, PipelineVariable
+from sagemaker.workflow.entities import RequestType, PipelineVariable, PrimitiveType
+from sagemaker.workflow.parameters import Parameter, ParameterString
 from sagemaker.workflow.properties import (
     Properties,
 )
@@ -45,6 +47,9 @@ _RESULTS_S3_PATH = "results"
 _DEFAULT_OUTPUT_NAME = "quality_check_output"
 _MODEL_QUALITY_TYPE = "MODEL_QUALITY"
 _DATA_QUALITY_TYPE = "DATA_QUALITY"
+
+
+logger = logging.getLogger(__name__)
 
 
 @attr.s
@@ -130,6 +135,11 @@ class QualityCheckStep(Step):
     ):
         """Constructs a QualityCheckStep.
 
+        To understand the `skip_check`, `fail_on_violation`, `register_new_baseline`,
+        `supplied_baseline_constraints` and `supplied_baseline_constraints` parameters,
+        check the following documentation:
+        https://docs.aws.amazon.com/sagemaker/latest/dg/pipelines-quality-clarify-baseline-lifecycle.html
+
         Args:
             name (str): The name of the QualityCheckStep step.
             quality_check_config (QualityCheckConfig): A QualityCheckConfig instance.
@@ -208,18 +218,18 @@ class QualityCheckStep(Step):
             ],
         )
 
-        root_prop = Properties(step_name=name)
+        root_prop = Properties(step_name=name, step=self)
         root_prop.__dict__["CalculatedBaselineConstraints"] = Properties(
-            step_name=name, path="CalculatedBaselineConstraints"
+            step_name=name, step=self, path="CalculatedBaselineConstraints"
         )
         root_prop.__dict__["CalculatedBaselineStatistics"] = Properties(
-            step_name=name, path="CalculatedBaselineStatistics"
+            step_name=name, step=self, path="CalculatedBaselineStatistics"
         )
         root_prop.__dict__["BaselineUsedForDriftCheckStatistics"] = Properties(
-            step_name=name, path="BaselineUsedForDriftCheckStatistics"
+            step_name=name, step=self, path="BaselineUsedForDriftCheckStatistics"
         )
         root_prop.__dict__["BaselineUsedForDriftCheckConstraints"] = Properties(
-            step_name=name, path="BaselineUsedForDriftCheckConstraints"
+            step_name=name, step=self, path="BaselineUsedForDriftCheckConstraints"
         )
         self._properties = root_prop
 
@@ -407,25 +417,19 @@ class QualityCheckStep(Step):
                 post_processor_script_container_path=post_processor_script_container_path,
             )
         else:
-            inference_attribute = (
-                str(quality_check_cfg.inference_attribute)
-                if quality_check_cfg.inference_attribute is not None
-                else None
+            inference_attribute = _format_env_variable_value(
+                var_value=quality_check_cfg.inference_attribute, var_name="inference_attribute"
             )
-            probability_attribute = (
-                str(quality_check_cfg.probability_attribute)
-                if quality_check_cfg.probability_attribute is not None
-                else None
+            probability_attribute = _format_env_variable_value(
+                var_value=quality_check_cfg.probability_attribute, var_name="probability_attribute"
             )
-            ground_truth_attribute = (
-                str(quality_check_cfg.ground_truth_attribute)
-                if quality_check_cfg.ground_truth_attribute is not None
-                else None
+            ground_truth_attribute = _format_env_variable_value(
+                var_value=quality_check_cfg.ground_truth_attribute,
+                var_name="ground_truth_attribute",
             )
-            probability_threshold_attr = (
-                str(quality_check_cfg.probability_threshold_attribute)
-                if quality_check_cfg.probability_threshold_attribute is not None
-                else None
+            probability_threshold_attr = _format_env_variable_value(
+                var_value=quality_check_cfg.probability_threshold_attribute,
+                var_name="probability_threshold_attr",
             )
             normalized_env = ModelMonitor._generate_env_map(
                 env=self._model_monitor.env,
@@ -458,3 +462,22 @@ class QualityCheckStep(Step):
             tags=self._model_monitor.tags,
             network_config=self._model_monitor.network_config,
         )
+
+
+def _format_env_variable_value(var_value: Union[PrimitiveType, PipelineVariable], var_name: str):
+    """Helper function to format the variable values passed to env var
+
+    Args:
+        var_value (PrimitiveType or PipelineVariable): The value of the variable.
+        var_name (str): The name of the variable.
+    """
+    if var_value is None:
+        return None
+
+    if is_pipeline_variable(var_value):
+        if isinstance(var_value, Parameter) and not isinstance(var_value, ParameterString):
+            raise ValueError(f"{var_name} cannot be Parameter types other than ParameterString.")
+        logger.warning("%s's runtime value must be the string type.", var_name)
+        return var_value
+
+    return str(var_value)

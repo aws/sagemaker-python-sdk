@@ -292,3 +292,15 @@ def s3_resource_mock():
 @pytest.fixture()
 def get_data_dir():
     return os.path.join(os.path.dirname(__file__), "..", "..", "..", "data", "config")
+
+
+@pytest.fixture()
+def base_local_mode_config():
+    return {
+        "local": {
+            "local_code": True,
+            "region_name": "",
+            "serving_port": 8080,
+            "container_config": {"shm_size": "128M"},
+        }
+    }

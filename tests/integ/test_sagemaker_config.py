@@ -398,6 +398,7 @@ def test_sagemaker_config_cross_context_injection(
                 },
             },
             "KmsKeyId": kms_key_arn,  # from sagemaker_config
+            "EnableNetworkIsolation": False,
         }
 
         expected_endpoint_config_2 = {
@@ -413,6 +414,7 @@ def test_sagemaker_config_cross_context_injection(
                     "VolumeSizeInGB": 16,
                 }
             ],
+            "EnableNetworkIsolation": False,
         }
 
         # TODO: Update expected tags for endpoints if injection behavior is changed

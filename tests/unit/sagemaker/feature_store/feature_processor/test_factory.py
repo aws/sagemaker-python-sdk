@@ -31,6 +31,7 @@ from sagemaker.feature_store.feature_processor._validation import (
     InputValidator,
     SparkUDFSignatureValidator,
     InputOffsetValidator,
+    BaseDataSourceValidator,
 )
 from sagemaker.session import Session
 
@@ -44,6 +45,7 @@ def test_get_validation_chain():
         InputValidator,
         FeatureProcessorArgValidator,
         InputOffsetValidator,
+        BaseDataSourceValidator,
         SparkUDFSignatureValidator,
     } == {type(instance) for instance in result.validators}
 
@@ -53,7 +55,7 @@ def test_get_udf_wrapper():
     udf_wrapper = Mock(UDFWrapper)
 
     with patch.object(
-        UDFWrapperFactory, "get_udf_wrapper", return_value=udf_wrapper
+        UDFWrapperFactory, "_get_spark_udf_wrapper", return_value=udf_wrapper
     ) as get_udf_wrapper_method:
         result = UDFWrapperFactory.get_udf_wrapper(fp_config)
 

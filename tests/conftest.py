@@ -14,6 +14,7 @@ from __future__ import absolute_import
 
 import json
 import os
+import pathlib
 
 import boto3
 import pytest
@@ -84,6 +85,16 @@ FRAMEWORKS_FOR_GENERATED_VERSION_FIXTURES = (
 )
 
 PYTORCH_RENEWED_GPU = "ml.g4dn.xlarge"
+
+
+image_uris_unit_tests_dir = pathlib.Path("tests/unit/sagemaker/image_uris")
+
+
+def pytest_collection_modifyitems(config, items):
+    for item in items:
+        testmod = pathlib.Path(item.fspath)
+        if config.rootdir / image_uris_unit_tests_dir in testmod.parents:
+            item.add_marker(pytest.mark.image_uris_unit_test)
 
 
 def pytest_addoption(parser):
@@ -430,12 +441,12 @@ def huggingface_neuron_latest_inference_transformer_version():
 
 @pytest.fixture(scope="module")
 def huggingface_neuronx_latest_inference_transformer_version():
-    return "4.28"
+    return "4.36.2"
 
 
 @pytest.fixture(scope="module")
 def huggingface_neuronx_latest_training_transformer_version():
-    return "4.28"
+    return "4.34.1"
 
 
 @pytest.fixture(scope="module")
@@ -445,12 +456,12 @@ def huggingface_neuron_latest_inference_py_version():
 
 @pytest.fixture(scope="module")
 def huggingface_neuronx_latest_inference_py_version():
-    return "py38"
+    return "py310"
 
 
 @pytest.fixture(scope="module")
 def huggingface_neuronx_latest_training_py_version():
-    return "py38"
+    return "py310"
 
 
 @pytest.fixture(scope="module")

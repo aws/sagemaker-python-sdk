@@ -94,7 +94,7 @@ html_context = {
 }
 
 # Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {"http://docs.python.org/": None}
+intersphinx_mapping = {"python": ("http://docs.python.org/", None)}
 
 # -- Options for autodoc ----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#configuration
@@ -108,6 +108,8 @@ autosummary_generate = True
 
 # autosectionlabel
 autosectionlabel_prefix_document = True
+
+autodoc_mock_imports = ["pyspark", "feature_store_pyspark", "py4j"]
 
 
 def setup(app):

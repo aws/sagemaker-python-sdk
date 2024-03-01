@@ -24,15 +24,15 @@ def test_huggingface_torch_distributed_g5_glue(
     huggingface_pytorch_latest_training_py_version,
 ):
     with timeout.timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        data_path = os.path.join(DATA_DIR, "huggingface")
         estimator = HuggingFace(
             py_version=huggingface_pytorch_latest_training_py_version,
-            entry_point=os.path.join(data_path, "run_glue.py"),
+            source_dir=os.path.join(DATA_DIR, "huggingface"),
+            entry_point="run_glue.py",
             role="SageMakerRole",
             transformers_version=huggingface_training_latest_version,
             pytorch_version=huggingface_training_pytorch_latest_version,
             instance_count=1,
-            instance_type="ml.g5.8xlarge",
+            instance_type="ml.g5.4xlarge",
             hyperparameters={
                 "model_name_or_path": "distilbert-base-cased",
                 "task_name": "wnli",

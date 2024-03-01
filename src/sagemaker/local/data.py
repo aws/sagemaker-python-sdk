@@ -69,7 +69,7 @@ def get_splitter_instance(split_type):
     Returns
         :class:`sagemaker.local.data.Splitter`: an Instance of a Splitter
     """
-    if split_type is None:
+    if split_type == "None" or split_type is None:
         return NoneSplitter()
     if split_type == "Line":
         return LineSplitter()

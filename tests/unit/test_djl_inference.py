@@ -46,7 +46,7 @@ ENV = {"ENV_VAR": "env_value"}
 ROLE = "dummy_role"
 REGION = "us-west-2"
 BUCKET = "mybucket"
-IMAGE_URI = "763104351884.dkr.ecr.us-west-2.amazon.com/djl-inference:0.23.0-deepspeed0.9.5-cu118"
+IMAGE_URI = "763104351884.dkr.ecr.us-west-2.amazon.com/djl-inference:0.24.0-deepspeed0.10.0-cu118"
 GPU_INSTANCE = "ml.g5.12xlarge"
 
 
@@ -545,7 +545,11 @@ def test_deploy_model_no_local_code(
 @patch("sagemaker.s3.S3Uploader.upload")
 @patch("sagemaker.estimator.Estimator.fit")
 @patch("sagemaker.fw_utils.model_code_key_prefix")
+@patch("os.path.isfile")
+@patch("boto3.client")
 def test_partition(
+    mock_client,
+    mock_is_file,
     mock_model_key_prefix,
     mock_estimator_fit,
     mock_upload,
@@ -579,6 +583,7 @@ def test_partition(
     )
 
     assert model.image_uri is None
+    mock_is_file.return_value = False
     mock_path_exists.side_effect = [True, False, True]
     mock_mktmp.return_value = "/tmp/dir"
     expected_env = {"ENV_VAR": "env_value", "SERVING_OPTS": '"-Dai.djl.logging.level=debug"'}

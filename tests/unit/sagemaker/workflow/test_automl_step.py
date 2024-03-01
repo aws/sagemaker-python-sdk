@@ -41,7 +41,7 @@ def test_single_automl_step(pipeline_session):
         max_candidates=1,
         max_runtime_per_training_job_in_seconds=3600,
         total_job_runtime_in_seconds=36000,
-        job_objective="fake job objective",
+        job_objective={"MetricName": "F1"},
         generate_candidate_definitions_only=False,
         tags=[{"Name": "some-tag", "Value": "value-for-tag"}],
         content_type="x-application/vnd.amazon+parquet",
@@ -111,7 +111,7 @@ def test_single_automl_step(pipeline_session):
                     "VpcConfig": {"SecurityGroupIds": ["group"], "Subnets": ["subnet"]},
                 },
             },
-            "AutoMLJobObjective": "fake job objective",
+            "AutoMLJobObjective": {"MetricName": "F1"},
             "InputDataConfig": [
                 {
                     "ChannelType": "training",
@@ -165,7 +165,7 @@ def test_single_automl_step_with_parameter(pipeline_session):
         max_candidates=1,
         max_runtime_per_training_job_in_seconds=3600,
         total_job_runtime_in_seconds=36000,
-        job_objective="fake job objective",
+        job_objective={"MetricName": "F1"},
         generate_candidate_definitions_only=False,
         tags=[{"Name": "some-tag", "Value": "value-for-tag"}],
         content_type="x-application/vnd.amazon+parquet",
@@ -202,6 +202,10 @@ def test_single_automl_step_with_parameter(pipeline_session):
     assert automl_step.properties.BestCandidateProperties.ModelInsightsJsonReportPath.expr == {
         "Get": "Steps.MyAutoMLStep.BestCandidateProperties.ModelInsightsJsonReportPath"
     }
+    assert (
+        automl_step.properties.BestCandidateProperties.ModelInsightsJsonReportPath._referenced_steps
+        == [automl_step]
+    )
     assert automl_step.properties.BestCandidateProperties.ExplainabilityJsonReportPath.expr == {
         "Get": "Steps.MyAutoMLStep.BestCandidateProperties.ExplainabilityJsonReportPath"
     }
@@ -235,7 +239,7 @@ def test_single_automl_step_with_parameter(pipeline_session):
                     "VpcConfig": {"SecurityGroupIds": ["group"], "Subnets": ["subnet"]},
                 },
             },
-            "AutoMLJobObjective": "fake job objective",
+            "AutoMLJobObjective": {"MetricName": "F1"},
             "InputDataConfig": [
                 {
                     "ChannelType": "training",
@@ -286,7 +290,7 @@ def test_get_best_auto_ml_model(pipeline_session):
         max_candidates=1,
         max_runtime_per_training_job_in_seconds=3600,
         total_job_runtime_in_seconds=36000,
-        job_objective="fake job objective",
+        job_objective={"MetricName": "F1"},
         generate_candidate_definitions_only=False,
         tags=[{"Name": "some-tag", "Value": "value-for-tag"}],
         content_type="x-application/vnd.amazon+parquet",
@@ -395,7 +399,7 @@ def test_automl_step_with_invalid_mode(pipeline_session):
         max_candidates=1,
         max_runtime_per_training_job_in_seconds=3600,
         total_job_runtime_in_seconds=36000,
-        job_objective="fake job objective",
+        job_objective={"MetricName": "F1"},
         generate_candidate_definitions_only=False,
         tags=[{"Name": "some-tag", "Value": "value-for-tag"}],
         content_type="x-application/vnd.amazon+parquet",
@@ -451,7 +455,7 @@ def test_automl_step_with_no_mode(pipeline_session):
         max_candidates=1,
         max_runtime_per_training_job_in_seconds=3600,
         total_job_runtime_in_seconds=36000,
-        job_objective="fake job objective",
+        job_objective={"MetricName": "F1"},
         generate_candidate_definitions_only=False,
         tags=[{"Name": "some-tag", "Value": "value-for-tag"}],
         content_type="x-application/vnd.amazon+parquet",

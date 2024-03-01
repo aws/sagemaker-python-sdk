@@ -28,7 +28,7 @@ import sagemaker.local.data
 
 from sagemaker.local.image import _SageMakerContainer
 from sagemaker.local.utils import copy_directory_structure, move_to_destination, get_docker_host
-from sagemaker.utils import DeferredError, get_config_value
+from sagemaker.utils import DeferredError, get_config_value, format_tags
 from sagemaker.local.exceptions import StepExecutionException
 
 logger = logging.getLogger(__name__)
@@ -201,6 +201,7 @@ class _LocalTrainingJob(object):
         self.end_time = None
         self.environment = None
         self.training_job_name = ""
+        self.output_data_config = None
 
     def start(self, input_data_config, output_data_config, hyperparameters, environment, job_name):
         """Starts a local training job.
@@ -215,7 +216,9 @@ class _LocalTrainingJob(object):
         """
         for channel in input_data_config:
             if channel["DataSource"] and "S3DataSource" in channel["DataSource"]:
-                data_distribution = channel["DataSource"]["S3DataSource"]["S3DataDistributionType"]
+                data_distribution = channel["DataSource"]["S3DataSource"].get(
+                    "S3DataDistributionType", None
+                )
                 data_uri = channel["DataSource"]["S3DataSource"]["S3Uri"]
             elif channel["DataSource"] and "FileDataSource" in channel["DataSource"]:
                 data_distribution = channel["DataSource"]["FileDataSource"][
@@ -230,7 +233,7 @@ class _LocalTrainingJob(object):
             # use a single Data URI - this makes handling S3 and File Data easier down the stack
             channel["DataUri"] = data_uri
 
-            if data_distribution != "FullyReplicated":
+            if data_distribution and data_distribution != "FullyReplicated":
                 raise RuntimeError(
                     "DataDistribution: %s is not currently supported in Local Mode"
                     % data_distribution
@@ -246,6 +249,7 @@ class _LocalTrainingJob(object):
         self.end_time = datetime.datetime.now()
         self.state = self._COMPLETED
         self.training_job_name = job_name
+        self.output_data_config = output_data_config
 
     def describe(self):
         """Placeholder docstring"""
@@ -257,6 +261,11 @@ class _LocalTrainingJob(object):
             "TrainingStartTime": self.start_time,
             "TrainingEndTime": self.end_time,
             "ModelArtifacts": {"S3ModelArtifacts": self.model_artifacts},
+            "OutputDataConfig": self.output_data_config,
+            "Environment": self.environment,
+            "AlgorithmSpecification": {
+                "ContainerEntrypoint": self.container.container_entrypoint,
+            },
         }
         return response
 
@@ -543,7 +552,7 @@ class _LocalEndpointConfig(object):
     def __init__(self, config_name, production_variants, tags=None):
         self.name = config_name
         self.production_variants = production_variants
-        self.tags = tags
+        self.tags = format_tags(tags)
         self.creation_time = datetime.datetime.now()
 
     def describe(self):
@@ -575,7 +584,7 @@ class _LocalEndpoint(object):
         self.name = endpoint_name
         self.endpoint_config = local_client.describe_endpoint_config(endpoint_config_name)
         self.production_variant = self.endpoint_config["ProductionVariants"][0]
-        self.tags = tags
+        self.tags = format_tags(tags)
 
         model_name = self.production_variant["ModelName"]
         self.primary_container = local_client.describe_model(model_name)["PrimaryContainer"]
@@ -666,11 +675,18 @@ class _LocalPipeline(object):
         from sagemaker.local.pipeline import LocalPipelineExecutor
 
         execution_id = str(uuid4())
-        execution = _LocalPipelineExecution(execution_id, self.pipeline, **kwargs)
+        execution = _LocalPipelineExecution(
+            execution_id=execution_id,
+            pipeline=self.pipeline,
+            local_session=self.local_session,
+            **kwargs,
+        )
 
         self._executions[execution_id] = execution
-        print(
-            f"Starting execution for pipeline {self.pipeline.name}. Execution ID is {execution_id}"
+        logger.info(
+            "Starting execution for pipeline %s. Execution ID is %s",
+            self.pipeline.name,
+            execution_id,
         )
         self.last_modified_time = datetime.datetime.now().timestamp()
 
@@ -687,13 +703,16 @@ class _LocalPipelineExecution(object):
         PipelineParameters=None,
         PipelineExecutionDescription=None,
         PipelineExecutionDisplayName=None,
+        local_session=None,
     ):
         from sagemaker.workflow.pipeline import PipelineGraph
+        from sagemaker import LocalSession
 
         self.pipeline = pipeline
         self.pipeline_execution_name = execution_id
         self.pipeline_execution_description = PipelineExecutionDescription
         self.pipeline_execution_display_name = PipelineExecutionDisplayName
+        self.local_session = local_session or LocalSession()
         self.status = _LocalExecutionStatus.EXECUTING.value
         self.failure_reason = None
         self.creation_time = datetime.datetime.now().timestamp()
@@ -729,35 +748,57 @@ class _LocalPipelineExecution(object):
             ]
         }
 
+    def result(self, step_name: str):
+        """Retrieves the output of the provided step if it is a ``@step`` decorated function.
+
+        Args:
+            step_name (str): The name of the pipeline step.
+        Returns:
+            The step output.
+
+        Raises:
+              ValueError if the provided step is not a ``@step`` decorated function.
+              RuntimeError if the provided step is not in "Completed" status.
+        """
+        from sagemaker.workflow.pipeline import get_function_step_result
+
+        return get_function_step_result(
+            step_name=step_name,
+            step_list=self.list_steps()["PipelineExecutionSteps"],
+            execution_id=self.pipeline_execution_name,
+            sagemaker_session=self.local_session,
+        )
+
     def update_execution_success(self):
         """Mark execution as succeeded."""
         self.status = _LocalExecutionStatus.SUCCEEDED.value
         self.last_modified_time = datetime.datetime.now().timestamp()
-        print(f"Pipeline execution {self.pipeline_execution_name} SUCCEEDED")
+        logger.info("Pipeline execution %s SUCCEEDED", self.pipeline_execution_name)
 
     def update_execution_failure(self, step_name, failure_message):
         """Mark execution as failed."""
         self.status = _LocalExecutionStatus.FAILED.value
         self.failure_reason = f"Step '{step_name}' failed with message: {failure_message}"
         self.last_modified_time = datetime.datetime.now().timestamp()
-        print(
-            f"Pipeline execution {self.pipeline_execution_name} FAILED because step "
-            f"'{step_name}' failed."
+        logger.info(
+            "Pipeline execution %s FAILED because step '%s' failed.",
+            self.pipeline_execution_name,
+            step_name,
         )
 
     def update_step_properties(self, step_name, step_properties):
         """Update pipeline step execution output properties."""
         self.step_execution.get(step_name).update_step_properties(step_properties)
-        print(f"Pipeline step '{step_name}' SUCCEEDED.")
+        logger.info("Pipeline step '%s' SUCCEEDED.", step_name)
 
     def update_step_failure(self, step_name, failure_message):
         """Mark step_name as failed."""
-        print(f"Pipeline step '{step_name}' FAILED. Failure message is: {failure_message}")
+        logger.info("Pipeline step '%s' FAILED. Failure message is: %s", step_name, failure_message)
         self.step_execution.get(step_name).update_step_failure(failure_message)
 
     def mark_step_executing(self, step_name):
         """Update pipelines step's status to EXECUTING and start_time to now."""
-        print(f"Starting pipeline step: '{step_name}'")
+        logger.info("Starting pipeline step: '%s'", step_name)
         self.step_execution.get(step_name).mark_step_executing()
 
     def _initialize_step_execution(self, steps):
@@ -802,6 +843,12 @@ class _LocalPipelineExecution(object):
                     error_msg = self._construct_validation_exception_message(
                         "Unexpected type for parameter '{}'. Expected {} but found "
                         "{}.".format(param_name, parameter_type.python_type, type(param_value))
+                    )
+                    raise ClientError(error_msg, "start_pipeline_execution")
+                if param_value == "":
+                    error_msg = self._construct_validation_exception_message(
+                        'Parameter {} value "" is too short (length: 0, '
+                        "required minimum: 1).".format(param_name)
                     )
                     raise ClientError(error_msg, "start_pipeline_execution")
                 merged_parameters[param_name] = param_value

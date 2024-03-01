@@ -25,11 +25,12 @@ import uuid
 from sagemaker.model_monitor import model_monitoring as mm
 from sagemaker import image_uris, s3
 from sagemaker.session import Session
-from sagemaker.utils import name_from_base
+from sagemaker.utils import name_from_base, format_tags
 from sagemaker.clarify import SageMakerClarifyProcessor, ModelPredictedLabelConfig
 from sagemaker.lineage._utils import get_resource_name_from_arn
 
-_LOGGER = logging.getLogger(__name__)
+# Setting _LOGGER for backward compatibility, in case users import it...
+logger = _LOGGER = logging.getLogger(__name__)
 
 
 class ClarifyModelMonitor(mm.ModelMonitor):
@@ -80,7 +81,7 @@ class ClarifyModelMonitor(mm.ModelMonitor):
                 AWS services needed. If not specified, one is created using
                 the default AWS configuration chain.
             env (dict): Environment variables to be passed to the job.
-            tags ([dict]): List of tags to be passed to the job.
+            tags (Optional[Tags]): List of tags to be passed to the job.
             network_config (sagemaker.network.NetworkConfig): A NetworkConfig
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
@@ -107,7 +108,7 @@ class ClarifyModelMonitor(mm.ModelMonitor):
             base_job_name=base_job_name,
             sagemaker_session=session,
             env=env,
-            tags=tags,
+            tags=format_tags(tags),
             network_config=network_config,
         )
         self.latest_baselining_job_config = None
@@ -223,7 +224,7 @@ class ClarifyModelMonitor(mm.ModelMonitor):
             str(uuid.uuid4()),
             "analysis_config.json",
         )
-        _LOGGER.info("Uploading analysis config to {s3_uri}.")
+        logger.info("Uploading analysis config to {s3_uri}.")
         return s3.S3Uploader.upload_string_as_file_body(
             json.dumps(analysis_config),
             desired_s3_uri=s3_uri,
@@ -295,7 +296,7 @@ class ClarifyModelMonitor(mm.ModelMonitor):
                 time, Amazon SageMaker terminates the job regardless of its current status.
                 Default: 3600
             env (dict): Environment variables to be passed to the job.
-            tags ([dict]): List of tags to be passed to the job.
+            tags (Optional[Tags]): List of tags to be passed to the job.
             network_config (sagemaker.network.NetworkConfig): A NetworkConfig
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
@@ -457,7 +458,7 @@ class ClarifyModelMonitor(mm.ModelMonitor):
             request_dict["StoppingCondition"] = stop_condition
 
         if tags is not None:
-            request_dict["Tags"] = tags
+            request_dict["Tags"] = format_tags(tags)
 
         return request_dict
 
@@ -561,6 +562,8 @@ class ModelBiasMonitor(ClarifyModelMonitor):
         schedule_cron_expression=None,
         enable_cloudwatch_metrics=True,
         batch_transform_input=None,
+        data_analysis_start_time=None,
+        data_analysis_end_time=None,
     ):
         """Creates a monitoring schedule.
 
@@ -586,6 +589,10 @@ class ModelBiasMonitor(ClarifyModelMonitor):
                 the baselining or monitoring jobs. (default: True)
             batch_transform_input (sagemaker.model_monitor.BatchTransformInput): Inputs to run
                 the monitoring schedule on the batch transform (default: None)
+            data_analysis_start_time (str): Start time for the data analysis window
+                for the one time monitoring schedule (NOW), e.g. "-PT1H" (default: None)
+            data_analysis_end_time (str): End time for the data analysis window
+                for the one time monitoring schedule (NOW), e.g. "-PT1H" (default: None)
         """
         # we default ground_truth_input to None in the function signature
         # but verify they are giving here for positional argument
@@ -598,7 +605,7 @@ class ModelBiasMonitor(ClarifyModelMonitor):
                 "Monitoring Schedule. To create another, first delete the existing one "
                 "using my_monitor.delete_monitoring_schedule()."
             )
-            _LOGGER.error(message)
+            logger.error(message)
             raise ValueError(message)
 
         if (batch_transform_input is not None) ^ (endpoint_input is None):
@@ -607,8 +614,14 @@ class ModelBiasMonitor(ClarifyModelMonitor):
                 "Amazon Model Monitoring Schedule. "
                 "Please provide only one of the above required inputs"
             )
-            _LOGGER.error(message)
+            logger.error(message)
             raise ValueError(message)
+
+        self._check_monitoring_schedule_cron_validity(
+            schedule_cron_expression=schedule_cron_expression,
+            data_analysis_start_time=data_analysis_start_time,
+            data_analysis_end_time=data_analysis_end_time,
+        )
 
         # create job definition
         monitor_schedule_name = self._generate_monitoring_schedule_name(
@@ -649,11 +662,14 @@ class ModelBiasMonitor(ClarifyModelMonitor):
                 monitor_schedule_name=monitor_schedule_name,
                 job_definition_name=new_job_definition_name,
                 schedule_cron_expression=schedule_cron_expression,
+                data_analysis_start_time=data_analysis_start_time,
+                data_analysis_end_time=data_analysis_end_time,
             )
             self.job_definition_name = new_job_definition_name
             self.monitoring_schedule_name = monitor_schedule_name
         except Exception:
-            _LOGGER.exception("Failed to create monitoring schedule.")
+            logger.exception("Failed to create monitoring schedule.")
+            self.monitoring_schedule_name = None
             # noinspection PyBroadException
             try:
                 self.sagemaker_session.sagemaker_client.delete_model_bias_job_definition(
@@ -661,7 +677,7 @@ class ModelBiasMonitor(ClarifyModelMonitor):
                 )
             except Exception:  # pylint: disable=W0703
                 message = "Failed to delete job definition {}.".format(new_job_definition_name)
-                _LOGGER.exception(message)
+                logger.exception(message)
             raise
 
     # noinspection PyMethodOverriding
@@ -684,6 +700,8 @@ class ModelBiasMonitor(ClarifyModelMonitor):
         env=None,
         network_config=None,
         batch_transform_input=None,
+        data_analysis_start_time=None,
+        data_analysis_end_time=None,
     ):
         """Updates the existing monitoring schedule.
 
@@ -740,7 +758,7 @@ class ModelBiasMonitor(ClarifyModelMonitor):
                 "Amazon Model Monitoring Schedule. "
                 "Please provide only one of the above required inputs"
             )
-            _LOGGER.error(message)
+            logger.error(message)
             raise ValueError(message)
 
         # Only need to update schedule expression
@@ -778,7 +796,12 @@ class ModelBiasMonitor(ClarifyModelMonitor):
         )
         self.sagemaker_session.sagemaker_client.create_model_bias_job_definition(**request_dict)
         try:
-            self._update_monitoring_schedule(new_job_definition_name, schedule_cron_expression)
+            self._update_monitoring_schedule(
+                new_job_definition_name,
+                schedule_cron_expression,
+                data_analysis_start_time=data_analysis_start_time,
+                data_analysis_end_time=data_analysis_end_time,
+            )
             self.job_definition_name = new_job_definition_name
             if role is not None:
                 self.role = role
@@ -799,7 +822,7 @@ class ModelBiasMonitor(ClarifyModelMonitor):
             if network_config is not None:
                 self.network_config = network_config
         except Exception:
-            _LOGGER.exception("Failed to update monitoring schedule.")
+            logger.exception("Failed to update monitoring schedule.")
             # noinspection PyBroadException
             try:
                 self.sagemaker_session.sagemaker_client.delete_model_bias_job_definition(
@@ -807,7 +830,7 @@ class ModelBiasMonitor(ClarifyModelMonitor):
                 )
             except Exception:  # pylint: disable=W0703
                 message = "Failed to delete job definition {}.".format(new_job_definition_name)
-                _LOGGER.exception(message)
+                logger.exception(message)
             raise
 
     def delete_monitoring_schedule(self):
@@ -817,7 +840,7 @@ class ModelBiasMonitor(ClarifyModelMonitor):
         message = "Deleting Model Bias Job Definition with name: {}".format(
             self.job_definition_name
         )
-        _LOGGER.info(message)
+        logger.info(message)
         self.sagemaker_session.sagemaker_client.delete_model_bias_job_definition(
             JobDefinitionName=self.job_definition_name
         )
@@ -988,6 +1011,8 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
         schedule_cron_expression=None,
         enable_cloudwatch_metrics=True,
         batch_transform_input=None,
+        data_analysis_start_time=None,
+        data_analysis_end_time=None,
     ):
         """Creates a monitoring schedule.
 
@@ -1011,6 +1036,10 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
                 the baselining or monitoring jobs.
             batch_transform_input (sagemaker.model_monitor.BatchTransformInput): Inputs to
             run the monitoring schedule on the batch transform
+            data_analysis_start_time (str): Start time for the data analysis window
+                for the one time monitoring schedule (NOW), e.g. "-PT1H" (default: None)
+            data_analysis_end_time (str): End time for the data analysis window
+                for the one time monitoring schedule (NOW), e.g. "-PT1H" (default: None)
         """
         if self.job_definition_name is not None or self.monitoring_schedule_name is not None:
             message = (
@@ -1018,7 +1047,7 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
                 "Monitoring Schedule. To create another, first delete the existing one "
                 "using my_monitor.delete_monitoring_schedule()."
             )
-            _LOGGER.error(message)
+            logger.error(message)
             raise ValueError(message)
 
         if (batch_transform_input is not None) ^ (endpoint_input is None):
@@ -1027,8 +1056,14 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
                 "Amazon Model Monitoring Schedule."
                 "Please provide only one of the above required inputs"
             )
-            _LOGGER.error(message)
+            logger.error(message)
             raise ValueError(message)
+
+        self._check_monitoring_schedule_cron_validity(
+            schedule_cron_expression=schedule_cron_expression,
+            data_analysis_start_time=data_analysis_start_time,
+            data_analysis_end_time=data_analysis_end_time,
+        )
 
         # create job definition
         monitor_schedule_name = self._generate_monitoring_schedule_name(
@@ -1074,7 +1109,8 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
             self.job_definition_name = new_job_definition_name
             self.monitoring_schedule_name = monitor_schedule_name
         except Exception:
-            _LOGGER.exception("Failed to create monitoring schedule.")
+            logger.exception("Failed to create monitoring schedule.")
+            self.monitoring_schedule_name = None
             # noinspection PyBroadException
             try:
                 self.sagemaker_session.sagemaker_client.delete_model_explainability_job_definition(
@@ -1082,7 +1118,7 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
                 )
             except Exception:  # pylint: disable=W0703
                 message = "Failed to delete job definition {}.".format(new_job_definition_name)
-                _LOGGER.exception(message)
+                logger.exception(message)
             raise
 
     # noinspection PyMethodOverriding
@@ -1104,6 +1140,8 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
         env=None,
         network_config=None,
         batch_transform_input=None,
+        data_analysis_start_time=None,
+        data_analysis_end_time=None,
     ):
         """Updates the existing monitoring schedule.
 
@@ -1144,6 +1182,10 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
                 inter-container traffic, security group IDs, and subnets.
             batch_transform_input (sagemaker.model_monitor.BatchTransformInput): Inputs to
                 run the monitoring schedule on the batch transform
+            data_analysis_start_time (str): Start time for the data analysis window
+                for the one time monitoring schedule (NOW), e.g. "-PT1H" (default: None)
+            data_analysis_end_time (str): End time for the data analysis window
+                for the one time monitoring schedule (NOW), e.g. "-PT1H" (default: None)
         """
         valid_args = {
             arg: value for arg, value in locals().items() if arg != "self" and value is not None
@@ -1159,7 +1201,7 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
                 "Amazon Model Monitoring Schedule. "
                 "Please provide only one of the above required inputs"
             )
-            _LOGGER.error(message)
+            logger.error(message)
             raise ValueError(message)
 
         # Only need to update schedule expression
@@ -1200,7 +1242,12 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
             **request_dict
         )
         try:
-            self._update_monitoring_schedule(new_job_definition_name, schedule_cron_expression)
+            self._update_monitoring_schedule(
+                new_job_definition_name,
+                schedule_cron_expression,
+                data_analysis_start_time=data_analysis_start_time,
+                data_analysis_end_time=data_analysis_end_time,
+            )
             self.job_definition_name = new_job_definition_name
             if role is not None:
                 self.role = role
@@ -1221,7 +1268,7 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
             if network_config is not None:
                 self.network_config = network_config
         except Exception:
-            _LOGGER.exception("Failed to update monitoring schedule.")
+            logger.exception("Failed to update monitoring schedule.")
             # noinspection PyBroadException
             try:
                 self.sagemaker_session.sagemaker_client.delete_model_explainability_job_definition(
@@ -1229,7 +1276,7 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
                 )
             except Exception:  # pylint: disable=W0703
                 message = "Failed to delete job definition {}.".format(new_job_definition_name)
-                _LOGGER.exception(message)
+                logger.exception(message)
             raise
 
     def delete_monitoring_schedule(self):
@@ -1239,7 +1286,7 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
         message = "Deleting Model Explainability Job Definition with name: {}".format(
             self.job_definition_name
         )
-        _LOGGER.info(message)
+        logger.info(message)
         self.sagemaker_session.sagemaker_client.delete_model_explainability_job_definition(
             JobDefinitionName=self.job_definition_name
         )

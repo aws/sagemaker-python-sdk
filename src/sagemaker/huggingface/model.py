@@ -29,7 +29,7 @@ from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.predictor import Predictor
 from sagemaker.serializers import JSONSerializer
 from sagemaker.session import Session
-from sagemaker.utils import to_string
+from sagemaker.utils import to_string, format_tags
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
 
@@ -49,6 +49,7 @@ class HuggingFacePredictor(Predictor):
         sagemaker_session=None,
         serializer=JSONSerializer(),
         deserializer=JSONDeserializer(),
+        component_name=None,
     ):
         """Initialize an ``HuggingFacePredictor``.
 
@@ -64,12 +65,15 @@ class HuggingFacePredictor(Predictor):
                 arrays.
             deserializer (sagemaker.deserializers.BaseDeserializer): Optional.
                 Default parses the response from .npy format to numpy array.
+            component_name (str): Optional. Name of the Amazon SageMaker inference
+                component corresponding to the predictor.
         """
         super(HuggingFacePredictor, self).__init__(
             endpoint_name,
             sagemaker_session,
             serializer=serializer,
             deserializer=deserializer,
+            component_name=component_name,
         )
 
 
@@ -138,12 +142,10 @@ class HuggingFaceModel(FrameworkModel):
                 unless ``image_uri`` is provided.
             tensorflow_version (str): TensorFlow version you want to use for
                 executing your inference code. Defaults to ``None``. Required unless
-                ``pytorch_version`` is provided. List of supported versions:
-                https://github.com/aws/sagemaker-python-sdk#huggingface-sagemaker-estimators.
+                ``pytorch_version`` is provided. The current supported version is ``2.4.1``.
             pytorch_version (str): PyTorch version you want to use for
                 executing your inference code. Defaults to ``None``. Required unless
-                ``tensorflow_version`` is provided. List of supported versions:
-                https://github.com/aws/sagemaker-python-sdk#huggingface-sagemaker-estimators.
+                ``tensorflow_version`` is provided. The current supported versions are ``1.7.1`` and ``1.6.0``.
             py_version (str): Python version you want to use for executing your
                 model training code. Defaults to ``None``. Required unless
                 ``image_uri`` is provided.
@@ -253,7 +255,7 @@ class HuggingFaceModel(FrameworkModel):
                 https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
             endpoint_name (str): The name of the endpoint to create (default:
                 None). If not specified, a unique endpoint name will be created.
-            tags (List[dict[str, str]]): The list of tags to attach to this
+            tags (Optional[Tags]): The list of tags to attach to this
                 specific endpoint.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 data on the storage volume attached to the instance hosting the
@@ -317,7 +319,7 @@ class HuggingFaceModel(FrameworkModel):
             deserializer,
             accelerator_type,
             endpoint_name,
-            tags,
+            format_tags(tags),
             kms_key,
             wait,
             data_capture_config,
@@ -328,12 +330,16 @@ class HuggingFaceModel(FrameworkModel):
             container_startup_health_check_timeout=container_startup_health_check_timeout,
             inference_recommendation_id=inference_recommendation_id,
             explainer_config=explainer_config,
+            endpoint_logging=kwargs.get("endpoint_logging", False),
+            endpoint_type=kwargs.get("endpoint_type", None),
+            resources=kwargs.get("resources", None),
+            managed_instance_scaling=kwargs.get("managed_instance_scaling", None),
         )
 
     def register(
         self,
-        content_types: List[Union[str, PipelineVariable]],
-        response_types: List[Union[str, PipelineVariable]],
+        content_types: List[Union[str, PipelineVariable]] = None,
+        response_types: List[Union[str, PipelineVariable]] = None,
         inference_instances: Optional[List[Union[str, PipelineVariable]]] = None,
         transform_instances: Optional[List[Union[str, PipelineVariable]]] = None,
         model_package_name: Optional[Union[str, PipelineVariable]] = None,
@@ -459,6 +465,7 @@ class HuggingFaceModel(FrameworkModel):
         accelerator_type=None,
         serverless_inference_config=None,
         inference_tool=None,
+        accept_eula=None,
     ):
         """A container definition with framework configuration set in model environment variables.
 
@@ -473,6 +480,11 @@ class HuggingFaceModel(FrameworkModel):
                 not provided in serverless inference. So this is used to find image URIs.
             inference_tool (str): the tool that will be used to aid in the inference.
                 Valid values: "neuron, neuronx, None" (default: None).
+            accept_eula (bool): For models that require a Model Access Config, specify True or
+                False to indicate whether model terms of use have been accepted.
+                The `accept_eula` value must be explicitly defined as `True` in order to
+                accept the end-user license agreement (EULA) that some
+                models require. (Default: None).
 
         Returns:
             dict[str, str]: A container definition object usable with the
@@ -504,7 +516,10 @@ class HuggingFaceModel(FrameworkModel):
                 self.model_server_workers
             )
         return sagemaker.container_def(
-            deploy_image, self.repacked_model_data or self.model_data, deploy_env
+            deploy_image,
+            self.repacked_model_data or self.model_data,
+            deploy_env,
+            accept_eula=accept_eula,
         )
 
     def serving_image_uri(

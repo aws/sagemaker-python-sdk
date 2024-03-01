@@ -14,13 +14,17 @@
 from __future__ import absolute_import
 
 from abc import ABCMeta
-from typing import Dict, Union, List
+from typing import Dict, Union, List, TYPE_CHECKING
 
 import attr
 
 import botocore.loaders
 
-from sagemaker.workflow.entities import Expression, PipelineVariable
+from sagemaker.workflow.entities import Expression
+from sagemaker.workflow.step_outputs import StepOutput
+
+if TYPE_CHECKING:
+    from sagemaker.workflow.steps import Step
 
 
 class PropertiesMeta(ABCMeta):
@@ -45,7 +49,7 @@ class PropertiesMeta(ABCMeta):
         return super().__new__(mcs, *args, **kwargs)
 
 
-class Properties(PipelineVariable, metaclass=PropertiesMeta):
+class Properties(StepOutput, metaclass=PropertiesMeta):
     """Properties for use in workflow expressions."""
 
     def __init__(
@@ -55,6 +59,7 @@ class Properties(PipelineVariable, metaclass=PropertiesMeta):
         shape_name: str = None,
         shape_names: List[str] = None,
         service_name: str = "sagemaker",
+        step: "Step" = None,
     ):
         """Create a Properties instance representing the given shape.
 
@@ -63,7 +68,9 @@ class Properties(PipelineVariable, metaclass=PropertiesMeta):
             path (str): The relative path of this Property value.
             shape_name (str): The botocore service model shape name.
             shape_names (str): A List of the botocore service model shape name.
+            step (Step): The Step object this Property belongs to.
         """
+        super().__init__(step)
         self.step_name = step_name
         self.path = path
 
@@ -86,6 +93,7 @@ class Properties(PipelineVariable, metaclass=PropertiesMeta):
                             path=".".join(filter(None, (path, key))),
                             shape_name=info["shape"],
                             service_name=service_name,
+                            step=self._step,
                         )
                     elif shapes.get(info["shape"], {}).get("type") == "map":
                         self.__dict__[key] = PropertiesMap(
@@ -93,6 +101,7 @@ class Properties(PipelineVariable, metaclass=PropertiesMeta):
                             path=".".join(filter(None, (path, key))),
                             shape_name=info["shape"],
                             service_name=service_name,
+                            step=self._step,
                         )
                     else:
                         self.__dict__[key] = Properties(
@@ -100,6 +109,7 @@ class Properties(PipelineVariable, metaclass=PropertiesMeta):
                             path=".".join(filter(None, (path, key))),
                             shape_name=info["shape"],
                             service_name=service_name,
+                            step=self._step,
                         )
 
     @property
@@ -110,16 +120,40 @@ class Properties(PipelineVariable, metaclass=PropertiesMeta):
         return {"Get": full_path}
 
     @property
-    def _referenced_steps(self) -> List[str]:
+    def _referenced_steps(self) -> List[Union[str, "Step"]]:
         """List of step names that this function depends on."""
+        if self._step:
+            return [self._step]
         return [self.step_name]
+
+    def __reduce__(self):
+        """Reduce the Properties object to a tuple of args for pickling.
+
+        self._step is not picklable, so we need to remove it from the object.
+        """
+        return Properties, (self.step_name, self.path, None, self._shape_names)
+
+    @property
+    def _pickleable(self):
+        """The pickleable object that can be passed to a remote function invocation."""
+
+        from sagemaker.remote_function.core.pipeline_variables import _Properties
+
+        prefix = f"Steps.{self.step_name}"
+        full_path = prefix if self.path is None else f"{prefix}.{self.path}"
+        return _Properties(path=full_path)
 
 
 class PropertiesList(Properties):
     """PropertiesList for use in workflow expressions."""
 
     def __init__(
-        self, step_name: str, path: str, shape_name: str = None, service_name: str = "sagemaker"
+        self,
+        step_name: str,
+        path: str,
+        shape_name: str = None,
+        service_name: str = "sagemaker",
+        step: "Step" = None,
     ):
         """Create a PropertiesList instance representing the given shape.
 
@@ -129,7 +163,7 @@ class PropertiesList(Properties):
             shape_name (str): The botocore service model shape name.
             service_name (str): The botocore service name.
         """
-        super(PropertiesList, self).__init__(step_name, path, shape_name)
+        super(PropertiesList, self).__init__(step_name, path, shape_name, step=step)
         self.shape_name = shape_name
         self.service_name = service_name
         self._items: Dict[Union[int, str], Properties] = dict()
@@ -144,19 +178,41 @@ class PropertiesList(Properties):
             shape = Properties._shapes_map.get(self.service_name, {}).get(self.shape_name)
             member = shape["member"]["shape"]
             if isinstance(item, str):
-                property_item = Properties(self.step_name, f"{self.path}['{item}']", member)
+                property_item = Properties(
+                    self.step_name,
+                    f"{self.path}['{item}']",
+                    member,
+                    step=self._step,
+                )
             else:
-                property_item = Properties(self.step_name, f"{self.path}[{item}]", member)
+                property_item = Properties(
+                    self.step_name,
+                    f"{self.path}[{item}]",
+                    member,
+                    step=self._step,
+                )
             self._items[item] = property_item
 
         return self._items.get(item)
+
+    def __reduce__(self):
+        """Reduce the Properties object to a tuple of args for pickling.
+
+        self._step is not pickleable, so we need to remove it from the object.
+        """
+        return Properties, (self.step_name, self.path, self.shape_name)
 
 
 class PropertiesMap(Properties):
     """PropertiesMap for use in workflow expressions."""
 
     def __init__(
-        self, step_name: str, path: str, shape_name: str = None, service_name: str = "sagemaker"
+        self,
+        step_name: str,
+        path: str,
+        shape_name: str = None,
+        service_name: str = "sagemaker",
+        step: "Step" = None,
     ):
         """Create a PropertiesMap instance representing the given shape.
 
@@ -166,7 +222,7 @@ class PropertiesMap(Properties):
             shape_name (str): The botocore service model shape name.
             service_name (str): The botocore service name.
         """
-        super(PropertiesMap, self).__init__(step_name, path, shape_name)
+        super(PropertiesMap, self).__init__(step_name, path, shape_name, step=step)
         self.shape_name = shape_name
         self.service_name = service_name
         self._items: Dict[Union[int, str], Properties] = dict()
@@ -181,12 +237,23 @@ class PropertiesMap(Properties):
             shape = Properties._shapes_map.get(self.service_name, {}).get(self.shape_name)
             member = shape["value"]["shape"]
             if isinstance(item, str):
-                property_item = Properties(self.step_name, f"{self.path}['{item}']", member)
+                property_item = Properties(
+                    self.step_name, f"{self.path}['{item}']", member, step=self._step
+                )
             else:
-                property_item = Properties(self.step_name, f"{self.path}[{item}]", member)
+                property_item = Properties(
+                    self.step_name, f"{self.path}[{item}]", member, step=self._step
+                )
             self._items[item] = property_item
 
         return self._items.get(item)
+
+    def __reduce__(self):
+        """Reduce the Properties object to a tuple of args for pickling.
+
+        self._step is not pickleable, so we need to remove it from the object.
+        """
+        return Properties, (self.step_name, self.path, self.shape_name)
 
 
 @attr.s

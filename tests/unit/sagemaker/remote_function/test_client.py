@@ -12,11 +12,14 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import os
 import threading
 import time
 
 import pytest
 from mock import MagicMock, patch, Mock, ANY, call
+
+from sagemaker.config import load_sagemaker_config
 from sagemaker.exceptions import UnexpectedStatusException
 
 from botocore.exceptions import ClientError
@@ -36,6 +39,7 @@ from sagemaker.remote_function.runtime_environment.runtime_environment_manager i
     RuntimeEnvironmentError,
 )
 from sagemaker.remote_function.job import _RunInfo
+from tests.unit import DATA_DIR
 
 from tests.unit.sagemaker.experiments.helpers import (
     mock_tc_load_or_create_func,
@@ -50,6 +54,7 @@ S3_URI = f"s3://{BUCKET}/keyprefix"
 EXPECTED_JOB_RESULT = [1, 2, 3]
 PATH_TO_SRC_DIR = "path/to/src/dir"
 HMAC_KEY = "some-hmac-key"
+ROLE_ARN = "arn:aws:iam::555555555555:role/my_execution_role_arn"
 
 
 def describe_training_job_response(job_status):
@@ -173,6 +178,63 @@ def test_decorator(mock_start, mock_job_settings, mock_deserialize_obj_from_s3):
     result = square(5)
     assert result == EXPECTED_JOB_RESULT
     assert mock_job_settings.call_args.kwargs["image_uri"] == IMAGE
+
+
+@patch(
+    "sagemaker.remote_function.client.serialization.deserialize_obj_from_s3",
+    return_value=EXPECTED_JOB_RESULT,
+)
+@patch("sagemaker.remote_function.client._Job.start")
+@patch("sagemaker.remote_function.job.Session")
+def test_decorator_with_config_file(session, mock_start, mock_deserialize_obj_from_s3):
+    session().get_caller_identity_arn = lambda: ROLE_ARN
+    session().sagemaker_config = load_sagemaker_config(
+        additional_config_paths=[os.path.join(DATA_DIR, "remote_function")]
+    )
+
+    mock_job = Mock(job_name=TRAINING_JOB_NAME)
+    mock_job.describe.return_value = COMPLETED_TRAINING_JOB
+
+    mock_start.return_value = mock_job
+
+    @remote(image_uri=IMAGE, s3_root_uri=S3_URI)
+    def square(x):
+        return x * x
+
+    result = square(5)
+    assert result == EXPECTED_JOB_RESULT
+    assert square.job_settings.image_uri == IMAGE
+    assert square.job_settings.s3_root_uri == S3_URI
+    # assert values are read from sagemaker defaults config file
+    assert square.job_settings.include_local_workdir is True
+    assert square.job_settings.custom_file_filter.ignore_name_patterns == ["data", "test"]
+    assert square.job_settings.s3_kms_key == "someS3KmsKey"
+
+
+@patch(
+    "sagemaker.remote_function.client.serialization.deserialize_obj_from_s3",
+    return_value=EXPECTED_JOB_RESULT,
+)
+@patch("sagemaker.remote_function.client._JobSettings")
+@patch("sagemaker.remote_function.client._Job.start")
+def test_decorator_with_custom_file_filter(
+    mock_start, mock_job_settings, mock_deserialize_obj_from_s3
+):
+    mock_job = Mock(job_name=TRAINING_JOB_NAME)
+    mock_job.describe.return_value = COMPLETED_TRAINING_JOB
+
+    mock_start.return_value = mock_job
+
+    def custom_file_filter():
+        pass
+
+    @remote(image_uri=IMAGE, s3_root_uri=S3_URI, custom_file_filter=custom_file_filter)
+    def square(x):
+        return x * x
+
+    result = square(5)
+    assert result == EXPECTED_JOB_RESULT
+    assert mock_job_settings.call_args.kwargs["custom_file_filter"] == custom_file_filter
 
 
 @patch(
@@ -581,6 +643,37 @@ def test_executor_submit_happy_case(mock_start, mock_job_settings, parallelism):
     assert future_2.done()
     assert future_3.done()
     assert future_4.done()
+
+
+@patch("sagemaker.remote_function.client._API_CALL_LIMIT", new=API_CALL_LIMIT)
+@patch("sagemaker.remote_function.client._Job.start")
+@patch("sagemaker.session.Session")
+def test_executor_submit_with_config_file(session, mock_start):
+    session().get_caller_identity_arn = lambda: ROLE_ARN
+    session().sagemaker_config = load_sagemaker_config(
+        additional_config_paths=[os.path.join(DATA_DIR, "remote_function")]
+    )
+
+    mock_job = create_mock_job("job_1", COMPLETED_TRAINING_JOB)
+    mock_start.side_effect = [mock_job]
+
+    with RemoteExecutor(
+        max_parallel_jobs=1,
+        s3_root_uri="s3://bucket/",
+        image_uri=IMAGE,
+        sagemaker_session=session(),
+    ) as e:
+        future = e.submit(job_function, 1, 2, c=3, d=4)
+
+        # assert values are read from sagemaker defaults config file
+        assert e.job_settings.include_local_workdir is True
+        assert e.job_settings.custom_file_filter.ignore_name_patterns == ["data", "test"]
+        assert e.job_settings.s3_kms_key == "someS3KmsKey"
+
+    mock_start.assert_called_with(ANY, job_function, (1, 2), {"c": 3, "d": 4}, None)
+    mock_job.describe.assert_called()
+
+    assert future.done()
 
 
 @patch("sagemaker.remote_function.client._API_CALL_LIMIT", new=API_CALL_LIMIT)
@@ -1399,3 +1492,38 @@ def test_list_future(mock_session):
             call(TrainingJobName="job-3"),
         ]
     )
+
+
+def test_consistency_between_remote_and_step_decorator():
+    from sagemaker.workflow.function_step import step
+
+    remote_args_to_ignore = [
+        "_remote",
+        "include_local_workdir",
+        "custom_file_filter",
+        "s3_kms_key",
+        "s3_root_uri",
+        "sagemaker_session",
+    ]
+
+    step_args_to_ignore = ["_step", "name", "display_name", "description", "retry_policies"]
+
+    remote_decorator_args = remote.__code__.co_varnames
+    common_remote_decorator_args = set(remote_args_to_ignore) ^ set(remote_decorator_args)
+
+    step_decorator_args = step.__code__.co_varnames
+    common_step_decorator_args = set(step_args_to_ignore) ^ set(step_decorator_args)
+
+    assert common_remote_decorator_args == common_step_decorator_args
+
+
+def test_consistency_between_remote_and_executor():
+    executor_arg_list = list(RemoteExecutor.__init__.__code__.co_varnames)
+    executor_arg_list.remove("self")
+    executor_arg_list.remove("max_parallel_jobs")
+
+    remote_args_list = list(remote.__code__.co_varnames)
+    remote_args_list.remove("_remote")
+    remote_args_list.remove("_func")
+
+    assert executor_arg_list == remote_args_list

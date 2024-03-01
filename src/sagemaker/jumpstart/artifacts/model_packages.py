@@ -29,6 +29,7 @@ from sagemaker.session import Session
 def _retrieve_model_package_arn(
     model_id: str,
     model_version: str,
+    instance_type: Optional[str],
     region: Optional[str],
     scope: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
@@ -42,6 +43,8 @@ def _retrieve_model_package_arn(
             retrieve the model package arn.
         model_version (str): Version of the JumpStart model for which to retrieve the
             model package arn.
+        instance_type (Optional[str]): An instance type to optionally supply in order to get an arn
+            specific for the instance type.
         region (Optional[str]): Region for which to retrieve the model package arn.
         scope (Optional[str]): Scope for which to retrieve the model package arn.
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
@@ -74,6 +77,17 @@ def _retrieve_model_package_arn(
     )
 
     if scope == JumpStartScriptScope.INFERENCE:
+
+        instance_specific_arn: Optional[str] = (
+            model_specs.hosting_instance_type_variants.get_model_package_arn(
+                region=region, instance_type=instance_type
+            )
+            if getattr(model_specs, "hosting_instance_type_variants", None) is not None
+            else None
+        )
+
+        if instance_specific_arn is not None:
+            return instance_specific_arn
 
         if model_specs.hosting_model_package_arns is None:
             return None

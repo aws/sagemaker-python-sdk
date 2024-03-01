@@ -20,6 +20,7 @@ import logging
 from sagemaker.apiutils import _base_types
 from sagemaker.lineage import _api_types
 from sagemaker.lineage._api_types import AssociationSummary
+from sagemaker.utils import format_tags
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +96,7 @@ class Association(_base_types.Record):
             "set_tags on Association is deprecated. Use set_tags on the source or destination\
             entity instead."
         )
-        return self._set_tags(resource_arn=self.source_arn, tags=tags)
+        return self._set_tags(resource_arn=self.source_arn, tags=format_tags(tags))
 
     @classmethod
     def create(
