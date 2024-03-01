@@ -90,7 +90,7 @@ SM_DATAPARALLEL_SUPPORTED_INSTANCE_TYPES = (
     "local_gpu",
 )
 SM_DATAPARALLEL_SUPPORTED_FRAMEWORK_VERSIONS = {
-    # tf 2.12 should not be supported: smdataparallel excludes support for tf 2.12.
+    # tf 2.12 should not be supported: smdataparallel excludes support for tf>=2.12.
     "tensorflow": [
         "2.3",
         "2.3.1",
