@@ -694,11 +694,6 @@ class RemoteExecutor(object):
             encrypt_inter_container_traffic (bool): A flag that specifies whether traffic between
               training containers is encrypted for the training job. Defaults to ``False``.
 
-            enable_network_isolation (bool): A flag that specifies whether container will run in
-              network isolation mode. Defaults to ``False``. Network isolation mode restricts the
-              container access to outside networks (such as the Internet). The container does not
-              make any inbound or outbound network calls. Also known as Internet-free mode.
-
             spark_config (SparkConfig): Configurations to the Spark application that runs on
               Spark image. If ``spark_config`` is specified, a SageMaker Spark image uri
               will be used for training. Note that ``image_uri`` can not be specified at the
