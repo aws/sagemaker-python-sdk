@@ -24,15 +24,22 @@ class S3ObjectLocation:
     key: str
 
     def format_for_s3_copy(self) -> Dict[str, str]:
-        """Returns a dict formatted for S3 copy calls"""
+        """Returns a dict formatted for S3 copy calls."""
         return {
             "Bucket": self.bucket,
             "Key": self.key,
         }
 
     def get_uri(self) -> str:
-        """Returns the s3 URI"""
+        """Returns the s3 URI."""
         return f"s3://{self.bucket}/{self.key}"
+    
+    def get_filename(self) -> str:
+        """Returns the s3 object file name."""
+        key_split = self.key.split('/')
+        if len(key_split) == 0:
+            return self.key
+        return key_split[-1]
 
 
 def create_s3_object_reference_from_uri(s3_uri: str) -> S3ObjectLocation:

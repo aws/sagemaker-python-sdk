@@ -24,6 +24,8 @@ from sagemaker.jumpstart.curated_hub.accessors.constants import (
     PRIVATE_MODEL_HOSTING_ARTIFACT_S3_TARBALL_SUFFIX,
     PRIVATE_MODEL_HOSTING_SCRIPT_S3_SUFFIX,
     PRIVATE_MODEL_INFERENCE_NOTEBOOK_S3_SUFFIX,
+    PRIVATE_MODEL_UNCOMPRESSED_TRAINING_ARTIFACT_S3_SUFFIX,
+    PRIVATE_MODEL_UNCOMPRESSED_HOSTING_ARTIFACT_S3_SUFFIX
 )
 from sagemaker.jumpstart.curated_hub.accessors.model_dependency_s3_accessor import (
     ModelDependencyS3Accessor,
@@ -49,6 +51,17 @@ class CuratedHubS3Accessor(ModelDependencyS3Accessor):
     def get_bucket_name(self) -> str:
         """Retrieves s3 bucket name."""
         return self._hub_s3_config.bucket
+    
+    def get_uncompresssed_inference_artifact_s3_reference(self, model_specs: JumpStartModelSpecs
+    ) -> bool:
+        """Retrieves s3 reference for model inference artifact."""
+        return S3ObjectLocation(
+            self.get_bucket_name(),
+            (
+                f"{self._get_unique_s3_key_prefix(model_specs)}/"
+                f"{PRIVATE_MODEL_UNCOMPRESSED_HOSTING_ARTIFACT_S3_SUFFIX}"
+            ),
+        )
 
     def get_inference_artifact_s3_reference(
         self, model_specs: JumpStartModelSpecs
@@ -70,6 +83,17 @@ class CuratedHubS3Accessor(ModelDependencyS3Accessor):
             self.get_bucket_name(),
             f"{self._get_unique_s3_key_prefix(model_specs)}"
             f"/{PRIVATE_MODEL_HOSTING_SCRIPT_S3_SUFFIX}",
+        )
+    
+    def get_uncompresssed_training_artifact_s3_reference(self, model_specs: JumpStartModelSpecs
+    ) -> bool:
+        """Retrieves s3 reference for model inference artifact."""
+        return S3ObjectLocation(
+            self.get_bucket_name(),
+            (
+                f"{self._get_unique_s3_key_prefix(model_specs)}/"
+                f"{PRIVATE_MODEL_UNCOMPRESSED_TRAINING_ARTIFACT_S3_SUFFIX}"
+            ),
         )
 
     def get_training_artifact_s3_reference(

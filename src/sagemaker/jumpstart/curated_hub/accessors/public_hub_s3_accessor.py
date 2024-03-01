@@ -28,7 +28,6 @@ from sagemaker.jumpstart.curated_hub.accessors.model_dependency_s3_accessor impo
     ModelDependencyS3Accessor,
 )
 
-
 class PublicHubS3Accessor(ModelDependencyS3Accessor):
     """Helper class to access Public Hub s3 bucket"""
 
@@ -40,6 +39,11 @@ class PublicHubS3Accessor(ModelDependencyS3Accessor):
     def get_bucket_name(self) -> str:
         """Retrieves s3 bucket"""
         return self._bucket
+    
+    def get_uncompresssed_inference_artifact_s3_reference(self, model_specs: JumpStartModelSpecs
+    ) -> bool:
+        """Retrieves s3 reference for uncompressed model inference artifact."""
+        return self.get_inference_artifact_s3_reference(model_specs)
 
     def get_inference_artifact_s3_reference(
         self, model_specs: JumpStartModelSpecs
@@ -48,6 +52,11 @@ class PublicHubS3Accessor(ModelDependencyS3Accessor):
         return create_s3_object_reference_from_uri(
             self._jumpstart_artifact_s3_uri(JumpStartScriptScope.INFERENCE, model_specs)
         )
+    
+    def get_uncompresssed_training_artifact_s3_reference(self, model_specs: JumpStartModelSpecs
+    ) -> bool:
+        """Retrieves s3 reference for uncompressed model training artifact."""
+        return self.get_training_artifact_s3_reference(model_specs)
 
     def get_training_artifact_s3_reference(
         self, model_specs: JumpStartModelSpecs

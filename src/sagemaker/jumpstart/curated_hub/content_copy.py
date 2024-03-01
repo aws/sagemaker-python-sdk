@@ -30,6 +30,9 @@ from sagemaker.jumpstart.curated_hub.accessors.model_dependency_s3_accessor impo
 from sagemaker.jumpstart.curated_hub.accessors.s3_object_reference import (
     S3ObjectLocation,
 )
+from sagemaker.jumpstart.curated_hub.accessors.constants import (
+    UNCOMPRESSED_ARTIFACTS_VALUE
+)
 
 
 EXTRA_S3_COPY_ARGS = {"ACL": "bucket-owner-full-control", "Tagging": "SageMaker=true"}
@@ -85,19 +88,28 @@ class ContentCopier:
         """Creates copy configs for inference dependencies"""
         copy_configs: List[CopyContentConfig] = []
 
-        src_inference_artifact_location = self._src_s3_accessor.get_inference_artifact_s3_reference(
-            model_specs
-        )
-        dst_artifact_reference = self._dst_s3_accessor.get_inference_artifact_s3_reference(
-            model_specs
-        )
-        copy_configs.append(
-            CopyContentConfig(
-                src=src_inference_artifact_location,
-                dst=dst_artifact_reference,
-                logging_name="inference artifact",
-            )
-        )
+        if model_specs.hosting_artifact_s3_data_type == UNCOMPRESSED_ARTIFACTS_VALUE:
+          src_uncompressed_inference_prefix = self._src_s3_accessor.get_uncompresssed_inference_artifact_s3_reference(
+              model_specs
+          )
+          dst_uncompressed_inference_prefix = self._dst_s3_accessor.get_uncompresssed_inference_artifact_s3_reference(
+              model_specs
+          )
+          copy_configs.append(self._get_s3_dir_copy_configs(src_uncompressed_inference_prefix, dst_uncompressed_inference_prefix))
+        else:
+          src_inference_artifact_location = self._src_s3_accessor.get_inference_artifact_s3_reference(
+              model_specs
+          )
+          dst_artifact_reference = self._dst_s3_accessor.get_inference_artifact_s3_reference(
+              model_specs
+          )
+          copy_configs.append(
+              CopyContentConfig(
+                  src=src_inference_artifact_location,
+                  dst=dst_artifact_reference,
+                  logging_name="inference artifact",
+              )
+          )
 
         if not model_specs.supports_prepacked_inference():
             # Need to also copy script if prepack not enabled
@@ -124,19 +136,28 @@ class ContentCopier:
         """Creates copy configurations for training dependencies"""
         copy_configs: List[CopyContentConfig] = []
 
-        src_training_artifact_location = self._src_s3_accessor.get_training_artifact_s3_reference(
-            model_specs
-        )
-        dst_artifact_reference = self._dst_s3_accessor.get_training_artifact_s3_reference(
-            model_specs
-        )
-        copy_configs.append(
-            CopyContentConfig(
-                src=src_training_artifact_location,
-                dst=dst_artifact_reference,
-                logging_name="training artifact",
-            )
-        )
+        if model_specs.training_artifact_s3_data_type == UNCOMPRESSED_ARTIFACTS_VALUE:
+          src_uncompressed_training_prefix = self._src_s3_accessor.get_uncompresssed_training_artifact_s3_reference(
+              model_specs
+          )
+          dst_uncompressed_training_prefix = self._dst_s3_accessor.get_uncompresssed_training_artifact_s3_reference(
+              model_specs
+          )
+          copy_configs.append(self._get_s3_dir_copy_configs(src_uncompressed_training_prefix, dst_uncompressed_training_prefix))
+        else:
+          src_training_artifact_location = self._src_s3_accessor.get_training_artifact_s3_reference(
+              model_specs
+          )
+          dst_artifact_reference = self._dst_s3_accessor.get_training_artifact_s3_reference(
+              model_specs
+          )            
+          copy_configs.append(
+              CopyContentConfig(
+                  src=src_training_artifact_location,
+                  dst=dst_artifact_reference,
+                  logging_name="training artifact",
+              )
+          )
 
         src_training_script_location = self._src_s3_accessor.get_training_script_s3_reference(
             model_specs
@@ -153,6 +174,21 @@ class ContentCopier:
         )
 
         copy_configs.extend(self._get_copy_configs_for_training_dataset(model_specs))
+
+        return copy_configs
+    
+    def _get_s3_dir_copy_configs(self, src_prefix: S3ObjectLocation, dst_prefix: S3ObjectLocation) -> List[CopyContentConfig]:
+        keys_in_src_dir = self._get_s3_object_keys_under_prefix(src_prefix)
+        copy_configs: List[CopyContentConfig] = []
+        
+        for full_src_key in keys_in_src_dir:
+            src_reference = S3ObjectLocation(src_prefix.bucket, full_src_key)
+            dst_reference = S3ObjectLocation(dst_prefix.bucket, f'{dst_prefix.key}/{src_reference.get_filename()}')
+            copy_configs.append(
+                CopyContentConfig(
+                    src=src_reference, dst=dst_reference, logging_name="training dataset"
+                )
+            )
 
         return copy_configs
 

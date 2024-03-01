@@ -765,6 +765,8 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         "training_instance_type_variants",
         "default_payloads",
         "gated_bucket",
+        "hosting_artifact_s3_data_type",
+        "training_artifact_s3_data_type",
     ]
 
     def __init__(self, spec: Dict[str, Any]):
@@ -866,6 +868,8 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
             else None
         )
 
+        self.hosting_artifact_s3_data_type: str = json_obj.get("hosting_artifact_s3_data_type")
+
         if self.training_supported:
             self.training_ecr_specs: Optional[JumpStartECRSpecs] = (
                 JumpStartECRSpecs(json_obj["training_ecr_specs"])
@@ -894,6 +898,8 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
                 if json_obj.get("training_instance_type_variants")
                 else None
             )
+
+            self.training_artifact_s3_data_type: str = json_obj.get("training_artifact_s3_data_type")
 
     def to_json(self) -> Dict[str, Any]:
         """Returns json representation of JumpStartModelSpecs object."""
