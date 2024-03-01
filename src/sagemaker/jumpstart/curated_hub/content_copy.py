@@ -186,7 +186,7 @@ class ContentCopier:
             dst_reference = S3ObjectLocation(dst_prefix.bucket, f'{dst_prefix.key}/{src_reference.get_filename()}')
             copy_configs.append(
                 CopyContentConfig(
-                    src=src_reference, dst=dst_reference, logging_name="training dataset"
+                    src=src_reference, dst=dst_reference, logging_name=f"uncompressed artifact {src_reference.get_filename()}"
                 )
             )
 
