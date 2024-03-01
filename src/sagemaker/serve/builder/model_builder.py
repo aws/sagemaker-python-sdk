@@ -20,7 +20,6 @@ import os
 
 from pathlib import Path
 
-from accelerate.commands.estimate import estimate_command_parser, gather_data
 from sagemaker import Session
 from sagemaker.model import Model
 from sagemaker.base_predictor import PredictorBase
@@ -41,6 +40,7 @@ from sagemaker.predictor import Predictor
 from sagemaker.serve.save_retrive.version_1_0_0.metadata.metadata import Metadata
 from sagemaker.serve.spec.inference_spec import InferenceSpec
 from sagemaker.serve.utils import task
+from sagemaker.serve.utils.estimate_parser import estimate_command_parser, gather_data
 from sagemaker.serve.utils.exceptions import TaskNotFoundException
 from sagemaker.serve.utils.predictors import _get_local_mode_predictor
 from sagemaker.serve.utils.hardware_detector import _get_gpu_info, _get_gpu_info_fallback
