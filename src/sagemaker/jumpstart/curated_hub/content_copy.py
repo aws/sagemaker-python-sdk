@@ -95,7 +95,7 @@ class ContentCopier:
           dst_uncompressed_inference_prefix = self._dst_s3_accessor.get_uncompresssed_inference_artifact_s3_reference(
               model_specs
           )
-          copy_configs.append(self._get_s3_dir_copy_configs(src_uncompressed_inference_prefix, dst_uncompressed_inference_prefix))
+          copy_configs.extend(self._get_s3_dir_copy_configs(src_uncompressed_inference_prefix, dst_uncompressed_inference_prefix))
         else:
           src_inference_artifact_location = self._src_s3_accessor.get_inference_artifact_s3_reference(
               model_specs
@@ -143,7 +143,7 @@ class ContentCopier:
           dst_uncompressed_training_prefix = self._dst_s3_accessor.get_uncompresssed_training_artifact_s3_reference(
               model_specs
           )
-          copy_configs.append(self._get_s3_dir_copy_configs(src_uncompressed_training_prefix, dst_uncompressed_training_prefix))
+          copy_configs.extend(self._get_s3_dir_copy_configs(src_uncompressed_training_prefix, dst_uncompressed_training_prefix))
         else:
           src_training_artifact_location = self._src_s3_accessor.get_training_artifact_s3_reference(
               model_specs
