@@ -55,6 +55,7 @@ from tests.unit import (
     SAGEMAKER_CONFIG_ENDPOINT_ENDPOINT_CONFIG_COMBINED,
     SAGEMAKER_CONFIG_ENDPOINT,
     SAGEMAKER_CONFIG_AUTO_ML,
+    SAGEMAKER_CONFIG_AUTO_ML_V2,
     SAGEMAKER_CONFIG_MODEL_PACKAGE,
     SAGEMAKER_CONFIG_FEATURE_GROUP,
     SAGEMAKER_CONFIG_PROCESSING_JOB,
@@ -4443,6 +4444,83 @@ COMPLETE_EXPECTED_AUTO_ML_JOB_ARGS = {
     "Tags": ["tag"],
 }
 
+DEFAULT_EXPECTED_AUTO_ML_V2_JOB_ARGS = {
+    "AutoMLJobName": JOB_NAME,
+    "AutoMLJobInputDataConfig": [
+        {
+            "DataSource": {"S3DataSource": {"S3DataType": "S3Prefix", "S3Uri": S3_INPUT_URI}},
+        }
+    ],
+    "AutoMLProblemTypeConfig": {
+        "TabularJobConfig": {
+            "TargetAttributeName": "y",
+            "SampleWeightAttributeName": "sampleWeight",
+            "CompletionCriteria": {
+                "MaxCandidates": 10,
+                "MaxAutoMLJobRuntimeInSeconds": 36000,
+                "MaxRuntimePerTrainingJobInSeconds": 3600 * 2,
+            },
+            "GenerateCandidateDefinitionsOnly": False,
+        }
+    },
+    "OutputDataConfig": {"S3OutputPath": S3_OUTPUT},
+    "RoleArn": EXPANDED_ROLE,
+}
+
+COMPLETE_EXPECTED_AUTO_ML_V2_JOB_ARGS = {
+    "AutoMLJobName": JOB_NAME,
+    "AutoMLJobInputDataConfig": [
+        {
+            "ChannelType": "training",
+            "CompressionType": "Gzip",
+            "DataSource": {
+                "S3DataSource": {
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": S3_INPUT_URI,
+                }
+            },
+        },
+        {
+            "ChannelType": "validation",
+            "CompressionType": "Gzip",
+            "DataSource": {
+                "S3DataSource": {
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": DEFAULT_S3_VALIDATION_DATA,
+                }
+            },
+        },
+    ],
+    "OutputDataConfig": {"S3OutputPath": S3_OUTPUT},
+    "AutoMLProblemTypeConfig": {
+        "TabularJobConfig": {
+            "TargetAttributeName": "y",
+            "SampleWeightAttributeName": "sampleWeight",
+            "CompletionCriteria": {
+                "MaxCandidates": 10,
+                "MaxAutoMLJobRuntimeInSeconds": 36000,
+                "MaxRuntimePerTrainingJobInSeconds": 3600 * 2,
+            },
+            "GenerateCandidateDefinitionsOnly": False,
+            "ProblemType": "Regression",
+            "FeatureSpecificationS3Uri": "s3://mybucket/features.json",
+            "Mode": "ENSEMBLING",
+        },
+    },
+    "AutoMLJobObjective": {"Type": "type", "MetricName": "metric-name"},
+    "SecurityConfig": {
+        "VolumeKmsKeyId": "volume-kms-key-id-string",
+        "EnableInterContainerTrafficEncryption": False,
+        "VpcConfig": {
+            "SecurityGroupIds": ["security-group-id"],
+            "Subnets": ["subnet"],
+        },
+    },
+    "RoleArn": EXPANDED_ROLE,
+    "Tags": ["tag"],
+}
+
+
 COMPLETE_EXPECTED_LIST_CANDIDATES_ARGS = {
     "AutoMLJobName": JOB_NAME,
     "StatusEquals": "Completed",
@@ -4482,6 +4560,48 @@ def test_auto_ml_pack_to_request(sagemaker_session):
         AutoMLJobConfig=DEFAULT_EXPECTED_AUTO_ML_JOB_ARGS["AutoMLJobConfig"],
         RoleArn=DEFAULT_EXPECTED_AUTO_ML_JOB_ARGS["RoleArn"],
         GenerateCandidateDefinitionsOnly=False,
+    )
+
+
+def test_auto_ml_v2_pack_to_request(sagemaker_session):
+    input_config = [
+        {
+            "DataSource": {"S3DataSource": {"S3DataType": "S3Prefix", "S3Uri": S3_INPUT_URI}},
+        }
+    ]
+
+    output_config = {"S3OutputPath": S3_OUTPUT}
+
+    problem_config = {
+        "TabularJobConfig": {
+            "TargetAttributeName": "y",
+            "SampleWeightAttributeName": "sampleWeight",
+            "CompletionCriteria": {
+                "MaxCandidates": 10,
+                "MaxAutoMLJobRuntimeInSeconds": 36000,
+                "MaxRuntimePerTrainingJobInSeconds": 3600 * 2,
+            },
+            "GenerateCandidateDefinitionsOnly": False,
+        }
+    }
+
+    job_name = JOB_NAME
+    role = EXPANDED_ROLE
+
+    sagemaker_session.create_auto_ml_v2(
+        input_config=input_config,
+        job_name=job_name,
+        problem_config=problem_config,
+        output_config=output_config,
+        role=role,
+    )
+
+    sagemaker_session.sagemaker_client.create_auto_ml_job_v2.assert_called_with(
+        AutoMLJobName=DEFAULT_EXPECTED_AUTO_ML_V2_JOB_ARGS["AutoMLJobName"],
+        AutoMLJobInputDataConfig=DEFAULT_EXPECTED_AUTO_ML_V2_JOB_ARGS["AutoMLJobInputDataConfig"],
+        OutputDataConfig=DEFAULT_EXPECTED_AUTO_ML_V2_JOB_ARGS["OutputDataConfig"],
+        AutoMLProblemTypeConfig=DEFAULT_EXPECTED_AUTO_ML_V2_JOB_ARGS["AutoMLProblemTypeConfig"],
+        RoleArn=DEFAULT_EXPECTED_AUTO_ML_V2_JOB_ARGS["RoleArn"],
     )
 
 
@@ -4539,6 +4659,70 @@ def test_create_auto_ml_with_sagemaker_config_injection(sagemaker_session):
         AutoMLJobConfig=expected_call_args["AutoMLJobConfig"],
         RoleArn=expected_call_args["RoleArn"],
         GenerateCandidateDefinitionsOnly=False,
+        Tags=expected_tags,
+    )
+
+
+def test_create_auto_ml_v2_with_sagemaker_config_injection(sagemaker_session):
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_AUTO_ML_V2
+
+    input_config = [
+        {
+            "DataSource": {"S3DataSource": {"S3DataType": "S3Prefix", "S3Uri": S3_INPUT_URI}},
+        }
+    ]
+
+    output_config = {"S3OutputPath": S3_OUTPUT}
+
+    problem_config = {
+        "TabularJobConfig": {
+            "TargetAttributeName": "y",
+            "SampleWeightAttributeName": "sampleWeight",
+            "CompletionCriteria": {
+                "MaxCandidates": 10,
+                "MaxAutoMLJobRuntimeInSeconds": 36000,
+                "MaxRuntimePerTrainingJobInSeconds": 3600 * 2,
+            },
+            "GenerateCandidateDefinitionsOnly": False,
+        }
+    }
+
+    job_name = JOB_NAME
+    sagemaker_session.create_auto_ml_v2(
+        input_config=input_config,
+        job_name=job_name,
+        problem_config=problem_config,
+        output_config=output_config,
+    )
+
+    expected_call_args = copy.deepcopy(DEFAULT_EXPECTED_AUTO_ML_V2_JOB_ARGS)
+    expected_volume_kms_key_id = SAGEMAKER_CONFIG_AUTO_ML_V2["SageMaker"]["AutoMLJobV2"][
+        "SecurityConfig"
+    ]["VolumeKmsKeyId"]
+    expected_role_arn = SAGEMAKER_CONFIG_AUTO_ML_V2["SageMaker"]["AutoMLJobV2"]["RoleArn"]
+    expected_kms_key_id = SAGEMAKER_CONFIG_AUTO_ML_V2["SageMaker"]["AutoMLJobV2"][
+        "OutputDataConfig"
+    ]["KmsKeyId"]
+    expected_vpc_config = SAGEMAKER_CONFIG_AUTO_ML_V2["SageMaker"]["AutoMLJobV2"]["SecurityConfig"][
+        "VpcConfig"
+    ]
+    expected_tags = SAGEMAKER_CONFIG_AUTO_ML_V2["SageMaker"]["AutoMLJobV2"]["Tags"]
+    expected_enable_inter_container_traffic_encryption = SAGEMAKER_CONFIG_AUTO_ML_V2["SageMaker"][
+        "AutoMLJobV2"
+    ]["SecurityConfig"]["EnableInterContainerTrafficEncryption"]
+    expected_call_args["OutputDataConfig"]["KmsKeyId"] = expected_kms_key_id
+    expected_call_args["RoleArn"] = expected_role_arn
+    expected_call_args["SecurityConfig"] = {
+        "EnableInterContainerTrafficEncryption": expected_enable_inter_container_traffic_encryption
+    }
+    expected_call_args["SecurityConfig"]["VpcConfig"] = expected_vpc_config
+    expected_call_args["SecurityConfig"]["VolumeKmsKeyId"] = expected_volume_kms_key_id
+    sagemaker_session.sagemaker_client.create_auto_ml_job_v2.assert_called_with(
+        AutoMLJobName=expected_call_args["AutoMLJobName"],
+        AutoMLJobInputDataConfig=expected_call_args["AutoMLJobInputDataConfig"],
+        OutputDataConfig=expected_call_args["OutputDataConfig"],
+        AutoMLProblemTypeConfig=expected_call_args["AutoMLProblemTypeConfig"],
+        RoleArn=expected_call_args["RoleArn"],
         Tags=expected_tags,
     )
 
@@ -4610,6 +4794,78 @@ def test_auto_ml_pack_to_request_with_optional_args(sagemaker_session):
         "create_auto_ml_job",
         (),
         COMPLETE_EXPECTED_AUTO_ML_JOB_ARGS,
+    )
+
+
+def test_auto_ml_v2_pack_to_request_with_optional_args(sagemaker_session):
+    input_config = [
+        {
+            "ChannelType": "training",
+            "CompressionType": "Gzip",
+            "DataSource": {
+                "S3DataSource": {
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": S3_INPUT_URI,
+                }
+            },
+        },
+        {
+            "ChannelType": "validation",
+            "CompressionType": "Gzip",
+            "DataSource": {
+                "S3DataSource": {
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": DEFAULT_S3_VALIDATION_DATA,
+                }
+            },
+        },
+    ]
+
+    output_config = {"S3OutputPath": S3_OUTPUT}
+
+    problem_config = {
+        "TabularJobConfig": {
+            "TargetAttributeName": "y",
+            "SampleWeightAttributeName": "sampleWeight",
+            "CompletionCriteria": {
+                "MaxCandidates": 10,
+                "MaxAutoMLJobRuntimeInSeconds": 36000,
+                "MaxRuntimePerTrainingJobInSeconds": 3600 * 2,
+            },
+            "GenerateCandidateDefinitionsOnly": False,
+            "FeatureSpecificationS3Uri": "s3://mybucket/features.json",
+            "Mode": "ENSEMBLING",
+            "ProblemType": "Regression",
+        }
+    }
+
+    security_config = {
+        "VolumeKmsKeyId": "volume-kms-key-id-string",
+        "EnableInterContainerTrafficEncryption": False,
+        "VpcConfig": {
+            "SecurityGroupIds": ["security-group-id"],
+            "Subnets": ["subnet"],
+        },
+    }
+
+    job_name = JOB_NAME
+    role = EXPANDED_ROLE
+
+    sagemaker_session.create_auto_ml_v2(
+        input_config=input_config,
+        job_name=job_name,
+        problem_config=problem_config,
+        output_config=output_config,
+        role=role,
+        security_config=security_config,
+        job_objective={"Type": "type", "MetricName": "metric-name"},
+        tags=["tag"],
+    )
+
+    assert sagemaker_session.sagemaker_client.method_calls[0] == (
+        "create_auto_ml_job_v2",
+        (),
+        COMPLETE_EXPECTED_AUTO_ML_V2_JOB_ARGS,
     )
 
 
