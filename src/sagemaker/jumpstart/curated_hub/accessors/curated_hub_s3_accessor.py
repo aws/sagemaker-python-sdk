@@ -78,7 +78,7 @@ class CuratedHubS3Accessor(ModelDependencyS3Accessor):
     def get_inference_script_s3_reference(
         self, model_specs: JumpStartModelSpecs
     ) -> S3ObjectLocation:
-        """Retrieves s3 reference for model traiing script."""
+        """Retrieves s3 reference for model training script."""
         return S3ObjectLocation(
             self.get_bucket_name(),
             f"{self._get_unique_s3_key_prefix(model_specs)}"
@@ -146,7 +146,7 @@ class CuratedHubS3Accessor(ModelDependencyS3Accessor):
             f"{self._hub_s3_config.key}/Model/"
             f"{model_specs.model_id}-{DISAMBIGUATE_SUFFIX}/{model_specs.version}"
         )
-        return key.lstrip("/")
+        return key.lstrip("/").rstrip("/")
 
     def _get_training_dataset_prefix(self, model_specs: JumpStartModelSpecs) -> str:
         """Retrieves s3 prefix for the training dataset."""
