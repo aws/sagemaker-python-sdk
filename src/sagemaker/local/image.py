@@ -860,7 +860,9 @@ class _SageMakerContainer(object):
         # to setting --runtime=nvidia in the docker commandline.
         if self.instance_type == "local_gpu":
             host_config["deploy"] = {
-                "resources": {"reservations": {"devices": [{"capabilities": ["gpu"]}]}}
+                "resources": {
+                    "reservations": {"devices": [{"count": "all", "capabilities": ["gpu"]}]}
+                }
             }
 
         if not self.is_studio and command == "serve":
