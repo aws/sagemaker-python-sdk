@@ -485,7 +485,7 @@ class JumpStartCuratedHub:
             model_specs=model_specs
         )
 
-        print(f"Calling import_hub_content for {model_specs.model_id} with HubContentDocument: {hub_content_document}")
+        raise Exception(f"Calling import_hub_content for {model_specs.model_id} with HubContentDocument: {hub_content_document}")
         self._curated_hub_client.import_hub_content(
             hub_name=self.curated_hub_name,
             model_specs=model_specs,
