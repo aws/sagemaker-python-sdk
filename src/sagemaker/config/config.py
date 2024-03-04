@@ -181,7 +181,9 @@ def _load_config_from_file(file_path: str) -> dict:
             f"Provide a valid file path"
         )
     logger.debug("Fetching defaults config from location: %s", file_path)
-    return yaml.safe_load(open(inferred_file_path, "r"))
+    with open(inferred_file_path, "r") as f:
+        content = yaml.safe_load(f)
+    return content
 
 
 def _load_config_from_s3(s3_uri, s3_resource_for_config) -> dict:

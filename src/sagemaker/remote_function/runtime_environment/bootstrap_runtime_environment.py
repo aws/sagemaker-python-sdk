@@ -56,6 +56,7 @@ def main(sys_args=None):
     try:
         args = _parse_args(sys_args)
         client_python_version = args.client_python_version
+        client_sagemaker_pysdk_version = args.client_sagemaker_pysdk_version
         job_conda_env = args.job_conda_env
         pipeline_execution_id = args.pipeline_execution_id
         dependency_settings = _DependencySettings.from_string(args.dependency_settings)
@@ -64,6 +65,9 @@ def main(sys_args=None):
         conda_env = job_conda_env or os.getenv("SAGEMAKER_JOB_CONDA_ENV")
 
         RuntimeEnvironmentManager()._validate_python_version(client_python_version, conda_env)
+        RuntimeEnvironmentManager()._validate_sagemaker_pysdk_version(
+            client_sagemaker_pysdk_version
+        )
 
         user = getpass.getuser()
         if user != "root":
@@ -274,6 +278,7 @@ def _parse_args(sys_args):
     parser = argparse.ArgumentParser()
     parser.add_argument("--job_conda_env", type=str)
     parser.add_argument("--client_python_version", type=str)
+    parser.add_argument("--client_sagemaker_pysdk_version", type=str, default=None)
     parser.add_argument("--pipeline_execution_id", type=str)
     parser.add_argument("--dependency_settings", type=str)
     parser.add_argument("--func_step_s3_dir", type=str)
