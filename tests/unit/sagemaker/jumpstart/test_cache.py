@@ -18,6 +18,7 @@ import json
 from unittest.mock import Mock, call, mock_open
 from botocore.stub import Stubber
 import botocore
+import boto3
 
 from mock.mock import MagicMock
 import pytest
@@ -27,6 +28,7 @@ from sagemaker.jumpstart.cache import JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY, Ju
 from sagemaker.jumpstart.constants import (
     ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE,
     ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE,
+    JUMPSTART_DEFAULT_REGION_NAME,
 )
 from sagemaker.jumpstart.types import (
     JumpStartModelHeader,
@@ -854,3 +856,37 @@ def test_jumpstart_local_metadata_override_specs_not_exist_both_directories(
             ),
         ]
     )
+
+
+@pytest.mark.parametrize(
+    "s3_bucket_name, s3_client, region",
+    [
+        (
+            "jumpstart-cache-prod",
+            boto3.client("s3", region_name="blah-blah"),
+            JUMPSTART_DEFAULT_REGION_NAME,
+        ),
+        (
+            "jumpstart-cache-prod-us-west-2",
+            boto3.client("s3", region_name="us-west-2"),
+            "us-west-2",
+        ),
+        ("jumpstart-cache-prod", boto3.client("s3", region_name="us-east-2"), "us-east-2"),
+    ],
+)
+def test_get_region_fallback_success(s3_bucket_name, s3_client, region):
+    cache = JumpStartModelsCache()
+    assert region == cache._get_region_fallback(s3_bucket_name, s3_client)
+
+
+@pytest.mark.parametrize(
+    "s3_bucket_name, s3_client",
+    [
+        ("jumpstart-cache-prod-us-west-2", boto3.client("s3", region_name="us-east-2")),
+        ("jumpstart-cache-prod-us-west-2-us-east-2", boto3.client("s3", region_name="us-east-2")),
+    ],
+)
+def test_get_region_fallback_failure(s3_bucket_name, s3_client):
+    cache = JumpStartModelsCache()
+    with pytest.raises(ValueError):
+        cache._get_region_fallback(s3_bucket_name, s3_client)
