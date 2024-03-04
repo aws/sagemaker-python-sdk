@@ -44,6 +44,9 @@ from sagemaker.jumpstart.curated_hub.utils import (
     convert_public_model_hyperparameter_to_hub_hyperparameter,
 )
 from sagemaker.jumpstart.types import JumpStartModelSpecs
+from sagemaker.jumpstart.curated_hub.accessors.constants import (
+    UNCOMPRESSED_ARTIFACTS_VALUE
+)
 
 
 class ModelDocumentCreator:
@@ -102,9 +105,36 @@ class ModelDocumentCreator:
             hub_model_spec_dict["DefaultDeploymentConfig"].pop("ScriptConfig")
 
         return hub_model_spec_dict
+    
+    def _get_uncompressed_inference_dependencies(self, model_specs: JumpStartModelSpecs) -> List[Dependency]:
+        dependencies: List[Dependency] = []
 
-    def _make_hub_dependency_list(self, model_specs: JumpStartModelSpecs):
-        """Creates hub content dependencies"""
+        dependencies.append(
+            Dependency(
+                DependencyOriginPath=self._src_s3_accessor.get_uncompresssed_inference_artifact_s3_reference(
+                    model_specs
+                ).get_uri(),
+                DependencyCopyPath=self._dst_s3_accessor.get_uncompresssed_inference_artifact_s3_reference(
+                    model_specs
+                ).get_uri(),
+                DependencyType=DependencyType.ARTIFACT,
+            )
+        )
+        dependencies.append(
+            Dependency(
+                DependencyOriginPath=self._src_s3_accessor.get_uncompresssed_inference_artifact_s3_reference(
+                    model_specs
+                ).get_uri(),
+                DependencyCopyPath=self._dst_s3_accessor.get_uncompresssed_inference_artifact_s3_reference(
+                    model_specs
+                ).get_uri(),
+                DependencyType=DependencyType.SCRIPT,
+            )
+        )
+
+        return dependencies 
+    
+    def _get_inference_dependencies(self, model_specs: JumpStartModelSpecs) -> List[Dependency]:
         dependencies: List[Dependency] = []
 
         dependencies.append(
@@ -129,6 +159,21 @@ class ModelDocumentCreator:
                 DependencyType=DependencyType.SCRIPT,
             )
         )
+
+        return dependencies
+    
+    def _get_inference_artifact_and_script_reference(self, model_specs: JumpStartModelSpecs) -> List[Dependency]:
+        if model_specs.hosting_artifact_s3_data_type == UNCOMPRESSED_ARTIFACTS_VALUE:
+            return self._get_uncompressed_inference_dependencies(model_specs)
+        else:
+            return self._get_inference_dependencies(model_specs)
+            
+
+    def _make_hub_dependency_list(self, model_specs: JumpStartModelSpecs):
+        """Creates hub content dependencies"""
+        dependencies: List[Dependency] = []
+
+        dependencies.append(self._get_inference_artifact_and_script_reference(model_specs=model_specs))
         dependencies.append(
             Dependency(
                 DependencyOriginPath=self._src_s3_accessor.get_demo_notebook_s3_reference(
@@ -163,6 +208,13 @@ class ModelDocumentCreator:
         self, model_specs: JumpStartModelSpecs
     ) -> Dependency:
         """Returns HubContent dependency for training artifacts."""
+
+        if model_specs.training_artifact_s3_data_type == UNCOMPRESSED_ARTIFACTS_VALUE:
+            return self._get_uncompressed_training_artifact_s3_reference_dependency(model_specs)
+        else:
+            return self._get_training_artifact_dependency(model_specs)
+    
+    def _get_training_artifact_dependency(self, model_specs: JumpStartModelSpecs) -> Dependency:
         return Dependency(
             DependencyOriginPath=self._src_s3_accessor.get_training_artifact_s3_reference(
                 model_specs
@@ -172,6 +224,18 @@ class ModelDocumentCreator:
             ).get_uri(),
             DependencyType=DependencyType.ARTIFACT,
         )
+    
+    def _get_uncompressed_training_artifact_s3_reference_dependency(self, model_specs: JumpStartModelSpecs) -> Dependency:
+        return Dependency(
+            DependencyOriginPath=self._src_s3_accessor.get_uncompresssed_training_artifact_s3_reference(
+                model_specs
+            ).get_uri(),
+            DependencyCopyPath=self._dst_s3_accessor.get_uncompresssed_training_artifact_s3_reference(
+                model_specs
+            ).get_uri(),
+            DependencyType=DependencyType.ARTIFACT,
+        )
+        
 
     def _get_training_script_s3_reference_dependency(
         self, model_specs: JumpStartModelSpecs
