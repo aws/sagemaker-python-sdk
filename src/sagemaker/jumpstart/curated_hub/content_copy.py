@@ -183,7 +183,8 @@ class ContentCopier:
         
         for full_src_key in keys_in_src_dir:
             src_reference = S3ObjectLocation(src_prefix.bucket, full_src_key)
-            dst_reference = S3ObjectLocation(dst_prefix.bucket, f'{dst_prefix.key}/{src_reference.get_filename()}')
+            dst_key = f'{dst_prefix.key}{src_reference.get_filename()}' if dst_prefix.is_directory() else f'{dst_prefix.key}/{src_reference.get_filename()}'
+            dst_reference = S3ObjectLocation(dst_prefix.bucket, dst_key)
             copy_configs.append(
                 CopyContentConfig(
                     src=src_reference, dst=dst_reference, logging_name=f"uncompressed artifact {src_reference.get_filename()}"

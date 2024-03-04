@@ -40,6 +40,10 @@ class S3ObjectLocation:
         if len(key_split) == 0:
             return self.key
         return key_split[-1]
+    
+    def is_directory(self) -> str:
+        """Returns true if key is a directory."""
+        return self.key[-1] == "/"
 
 
 def create_s3_object_reference_from_uri(s3_uri: str) -> S3ObjectLocation:
