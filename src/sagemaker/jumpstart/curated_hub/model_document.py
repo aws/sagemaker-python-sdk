@@ -173,7 +173,7 @@ class ModelDocumentCreator:
         """Creates hub content dependencies"""
         dependencies: List[Dependency] = []
 
-        dependencies.append(self._get_inference_artifact_and_script_reference(model_specs=model_specs))
+        dependencies.extend(self._get_inference_artifact_and_script_reference(model_specs=model_specs))
         dependencies.append(
             Dependency(
                 DependencyOriginPath=self._src_s3_accessor.get_demo_notebook_s3_reference(
