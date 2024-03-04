@@ -1,0 +1,72 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
+"""This module provides comparators for syncing s3 files."""
+from __future__ import absolute_import
+
+from sagemaker.jumpstart.curated_hub.accessors.fileinfo import FileInfo
+
+
+class SizeAndLastUpdatedComparator:
+    """Something."""
+
+    def determine_should_sync(self, src_file: FileInfo, dest_file: FileInfo) -> bool:
+        """Determines if src file should be moved to dest folder."""
+        same_size = self.compare_size(src_file, dest_file)
+        same_last_modified_time = self.compare_time(src_file, dest_file)
+        should_sync = (not same_size) or (not same_last_modified_time)
+        if should_sync:
+            print(
+                "syncing: %s -> %s, size: %s -> %s, modified time: %s -> %s",
+                src_file.name,
+                src_file.name,
+                src_file.size,
+                dest_file.size,
+                src_file.last_updated,
+                dest_file.last_updated,
+            )
+        return should_sync
+
+    def total_seconds(self, td):
+        """
+        timedelta's time_seconds() function for python 2.6 users
+
+        :param td: The difference between two datetime objects.
+        """
+        return (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10**6) / 10**6
+
+    def compare_size(self, src_file: FileInfo, dest_file: FileInfo):
+        """
+        :returns: True if the sizes are the same.
+            False otherwise.
+        """
+        return src_file.size == dest_file.size
+
+    def compare_time(self, src_file: FileInfo, dest_file: FileInfo):
+        """
+        :returns: True if the file does not need updating based on time of
+            last modification and type of operation.
+            False if the file does need updating based on the time of
+            last modification and type of operation.
+        """
+        src_time = src_file.last_updated
+        dest_time = dest_file.last_updated
+        delta = dest_time - src_time
+        # pylint: disable=R1703,R1705
+        if self.total_seconds(delta) >= 0:
+            # Destination is newer than source.
+            return True
+        else:
+            # Destination is older than source, so
+            # we have a more recently updated file
+            # at the source location.
+            return False

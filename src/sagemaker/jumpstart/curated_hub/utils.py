@@ -19,6 +19,7 @@ from sagemaker.utils import aws_partition
 from sagemaker.jumpstart.types import (
     HubContentType,
     HubArnExtractedInfo,
+    JumpStartModelSpecs,
 )
 from sagemaker.jumpstart import constants
 
@@ -152,3 +153,8 @@ def create_hub_bucket_if_it_does_not_exist(
     )
 
     return bucket_name
+
+
+def get_model_framework(model_specs: JumpStartModelSpecs) -> str:
+    """Retrieves the model framework from a model spec"""
+    return model_specs.model_id.split("-")[0]

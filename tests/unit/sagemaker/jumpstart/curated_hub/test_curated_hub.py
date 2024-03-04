@@ -29,6 +29,9 @@ def sagemaker_session():
     sagemaker_session_mock._client_config.user_agent = (
         "Boto3/1.9.69 Python/3.6.5 Linux/4.14.77-70.82.amzn1.x86_64 Botocore/1.12.69 Resource"
     )
+    sagemaker_session_mock.describe_hub.return_value = {
+        "S3StorageConfig": {"S3OutputPath": "mock-bucket-123"}
+    }
     sagemaker_session_mock.account_id.return_value = ACCOUNT_ID
     return sagemaker_session_mock
 
@@ -65,6 +68,7 @@ def test_create_with_no_bucket_name(
 ):
     create_hub = {"HubArn": f"arn:aws:sagemaker:us-east-1:123456789123:hub/{hub_name}"}
     sagemaker_session.create_hub = Mock(return_value=create_hub)
+    sagemaker_session.describe_hub.return_value = {"S3StorageConfig": {"S3OutputPath": None}}
     hub = CuratedHub(hub_name=hub_name, sagemaker_session=sagemaker_session)
     request = {
         "hub_name": hub_name,
@@ -77,7 +81,6 @@ def test_create_with_no_bucket_name(
     response = hub.create(
         description=hub_description,
         display_name=hub_display_name,
-        bucket_name=hub_bucket_name,
         search_keywords=hub_search_keywords,
         tags=tags,
     )
@@ -122,7 +125,6 @@ def test_create_with_bucket_name(
     response = hub.create(
         description=hub_description,
         display_name=hub_display_name,
-        bucket_name=hub_bucket_name,
         search_keywords=hub_search_keywords,
         tags=tags,
     )

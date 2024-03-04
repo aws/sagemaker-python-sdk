@@ -101,7 +101,8 @@ class JumpStartModelsCache:
                 Default: None (no config).
             s3_client (Optional[boto3.client]): s3 client to use. Default: None.
             sagemaker_session (Optional[sagemaker.session.Session]): A SageMaker Session object,
-                used for SageMaker interactions. Default: Session in region associated with boto3 session.
+                used for SageMaker interactions. Default: Session in region associated with boto3
+                session.
         """
 
         self._region = region
@@ -358,7 +359,9 @@ class JumpStartModelsCache:
                 hub_content_type=data_type
             )
 
-            model_specs = JumpStartModelSpecs(DescribeHubContentsResponse(hub_model_description), is_hub_content=True)
+            model_specs = JumpStartModelSpecs(
+                DescribeHubContentsResponse(hub_model_description), is_hub_content=True
+            )
 
             utils.emit_logs_based_on_model_specs(
                 model_specs,
@@ -372,7 +375,9 @@ class JumpStartModelsCache:
             hub_name, _, _, _ = hub_utils.get_info_from_hub_resource_arn(id_info)
             response: Dict[str, Any] = self._sagemaker_session.describe_hub(hub_name=hub_name)
             hub_description = DescribeHubResponse(response)
-            return JumpStartCachedContentValue(formatted_content=DescribeHubResponse(hub_description))
+            return JumpStartCachedContentValue(
+                formatted_content=DescribeHubResponse(hub_description)
+            )
         raise ValueError(
             f"Bad value for key '{key}': must be in ",
             f"{[JumpStartS3FileType.MANIFEST, JumpStartS3FileType.SPECS, HubType.HUB, HubContentType.MODEL]}"
