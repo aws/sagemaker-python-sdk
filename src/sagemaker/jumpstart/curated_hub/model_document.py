@@ -202,6 +202,7 @@ class ModelDocumentCreator:
             dependencies.append(self._get_training_script_s3_reference_dependency(model_specs))
             dependencies.append(self._get_default_training_dataset_dependency(model_specs))
 
+        print(f"Generated dependencies: {dependencies}")
         return dependencies
 
     def _get_training_artifact_s3_reference_dependency(
