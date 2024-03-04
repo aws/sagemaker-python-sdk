@@ -840,8 +840,22 @@ SPECIAL_MODEL_SPECS_DICT = {
                         "model_package_arn": "$gpu_model_package_arn",
                     }
                 },
+                "g5": {
+                    "properties": {
+                        "resource_requirements": {
+                            "num_accelerators": 888810,
+                            "randon-field-2": 2222,
+                        }
+                    }
+                },
                 "m2": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
                 "c2": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
+                "ml.g5.xlarge": {
+                    "properties": {
+                        "environment_variables": {"TENSOR_PARALLEL_DEGREE": "8"},
+                        "resource_requirements": {"num_accelerators": 10},
+                    }
+                },
                 "ml.g5.48xlarge": {
                     "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "8"}}
                 },
@@ -856,6 +870,12 @@ SPECIAL_MODEL_SPECS_DICT = {
             "framework": "pytorch",
             "framework_version": "1.5.0",
             "py_version": "py3",
+        },
+        "dynamic_container_deployment_supported": True,
+        "hosting_resource_requirements": {
+            "min_memory_mb": 81999,
+            "num_accelerators": 1,
+            "random_field_1": 1,
         },
         "hosting_artifact_key": "pytorch-infer/infer-pytorch-ic-mobilenet-v2.tar.gz",
         "training_artifact_key": "pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz",
