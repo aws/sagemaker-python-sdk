@@ -88,7 +88,7 @@ class ContentCopier:
         """Creates copy configs for inference dependencies"""
         copy_configs: List[CopyContentConfig] = []
 
-        print(f"Pulling hosting model specs: {model_specs.hosting_artifact_s3_data_type}")
+        print(f"Pulling hosting_artifact_s3_data_type: {model_specs.hosting_artifact_s3_data_type}")
 
         if model_specs.hosting_artifact_s3_data_type == UNCOMPRESSED_ARTIFACTS_VALUE:
           src_uncompressed_inference_prefix = self._src_s3_accessor.get_uncompresssed_inference_artifact_s3_reference(
@@ -137,6 +137,8 @@ class ContentCopier:
     ) -> List[CopyContentConfig]:
         """Creates copy configurations for training dependencies"""
         copy_configs: List[CopyContentConfig] = []
+
+        print(f"Pulling training_artifact_s3_data_type: {model_specs.training_artifact_s3_data_type}")
 
         if model_specs.training_artifact_s3_data_type == UNCOMPRESSED_ARTIFACTS_VALUE:
           src_uncompressed_training_prefix = self._src_s3_accessor.get_uncompresssed_training_artifact_s3_reference(
