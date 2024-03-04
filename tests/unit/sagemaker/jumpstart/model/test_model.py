@@ -469,9 +469,7 @@ class ModelTest(unittest.TestCase):
 
         mock_session.return_value = sagemaker_session
 
-        model = JumpStartModel(
-            model_id=model_id,
-        )
+        model = JumpStartModel(model_id=model_id, model_version="2.0.004")
 
         mock_model_init.assert_called_once_with(
             image_uri="",
@@ -489,7 +487,7 @@ class ModelTest(unittest.TestCase):
             wait=True,
             tags=[
                 {"Key": JumpStartTag.MODEL_ID, "Value": "ai21-summarization"},
-                {"Key": JumpStartTag.MODEL_VERSION, "Value": "*"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "2.0.004"},
             ],
             endpoint_logging=False,
             model_data_download_timeout=3600,

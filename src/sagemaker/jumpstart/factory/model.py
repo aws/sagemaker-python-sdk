@@ -165,6 +165,16 @@ def _add_model_version_to_kwargs(
     return kwargs
 
 
+def _log_model_type(kwargs: JumpStartModelInitKwargs) -> None:
+    """Log the model type being used"""
+    if kwargs.model_type == JumpStartModelType.PROPRIETARY:
+        JUMPSTART_LOGGER.info(
+            "Marketplace model %s of version %s is being used.",
+            kwargs.model_id,
+            kwargs.model_version,
+        )
+
+
 def _add_vulnerable_and_deprecated_status_to_kwargs(
     kwargs: JumpStartModelInitKwargs,
 ) -> JumpStartModelInitKwargs:
@@ -780,5 +790,7 @@ def get_init_kwargs(
     model_init_kwargs = _add_model_package_arn_to_kwargs(kwargs=model_init_kwargs)
 
     model_init_kwargs = _add_resources_to_kwargs(kwargs=model_init_kwargs)
+
+    _log_model_type(kwargs=model_init_kwargs)
 
     return model_init_kwargs

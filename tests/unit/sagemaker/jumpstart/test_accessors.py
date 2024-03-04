@@ -65,7 +65,7 @@ def test_jumpstart_models_cache_get_fxs(mock_cache):
 
 
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._cache")
-def test_jumpstart_proprietary_models_cache_get_fxs(mock_cache):
+def test_jumpstart_proprietary_models_cache_get(mock_cache):
 
     mock_cache.get_manifest = Mock(return_value=BASE_MANIFEST)
     mock_cache.get_header = Mock(side_effect=get_header_from_base_header)
@@ -108,7 +108,7 @@ def test_jumpstart_proprietary_models_cache_get_fxs(mock_cache):
 
 
 @patch("sagemaker.jumpstart.cache.JumpStartModelsCache")
-def test_jumpstart_models_cache_set_reset_fxs(mock_model_cache: Mock):
+def test_jumpstart_models_cache_set_reset(mock_model_cache: Mock):
 
     # test change of region resets cache
     accessors.JumpStartModelsAccessor.get_model_header(
@@ -183,7 +183,7 @@ def test_jumpstart_models_cache_set_reset_fxs(mock_model_cache: Mock):
 
 
 @patch("sagemaker.jumpstart.cache.JumpStartModelsCache")
-def test_jumpstart_proprietary_models_cache_set_reset_fxs(mock_model_cache: Mock):
+def test_jumpstart_proprietary_models_cache_set_reset(mock_model_cache: Mock):
 
     # test change of region resets cache
     accessors.JumpStartModelsAccessor.get_model_header(
