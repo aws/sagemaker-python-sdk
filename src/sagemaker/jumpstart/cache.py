@@ -198,6 +198,9 @@ class JumpStartModelsCache:
         sm_incompatible_model_version = self._select_version(
             version, versions_incompatible_with_sagemaker
         )
+        sm_compatible_model_version_with_sagemaker_version = self._select_version(
+            "*", versions_compatible_with_sagemaker
+        )
 
         if sm_incompatible_model_version is not None:
             model_version_to_use_incompatible_with_sagemaker = sm_incompatible_model_version
@@ -217,7 +220,10 @@ class JumpStartModelsCache:
                 f"compatible with your SageMaker version ('{sm_version}'). "
                 f"Consider upgrading your SageMaker library to at least version "
                 f"'{sm_version_to_use}' so you can use version "
-                f"'{model_version_to_use_incompatible_with_sagemaker}' of '{model_id}'."
+                f"'{model_version_to_use_incompatible_with_sagemaker}' of '{model_id}'. "
+                f"If upgrading your SageMaker library is not feasible, consider using the "
+                f"model version '{sm_compatible_model_version_with_sagemaker_version}' or "
+                f"below which is compatible with your current SageMaker library version."
             )
             raise KeyError(error_msg)
 
