@@ -485,6 +485,7 @@ class JumpStartCuratedHub:
             model_specs=model_specs
         )
 
+        print(f"Importing {model_specs.model_id} with HubContentDocument: {hub_content_document}")
         self._curated_hub_client.import_hub_content(
             hub_name=self.curated_hub_name,
             model_specs=model_specs,
