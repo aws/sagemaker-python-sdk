@@ -478,6 +478,29 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
             instance_type=instance_type, property_name="artifact_key"
         )
 
+    def get_instance_specific_resource_requirements(self, instance_type: str) -> Optional[str]:
+        """Returns instance specific resource requirements.
+
+        If a value exists for both the instance family and instance type, the instance type value
+        is chosen.
+        """
+
+        instance_specific_resource_requirements: dict = (
+            self.variants.get(instance_type, {})
+            .get("properties", {})
+            .get("resource_requirements", {})
+        )
+
+        instance_type_family = get_instance_type_family(instance_type)
+
+        instance_family_resource_requirements: dict = (
+            self.variants.get(instance_type_family, {})
+            .get("properties", {})
+            .get("resource_requirements", {})
+        )
+
+        return {**instance_family_resource_requirements, **instance_specific_resource_requirements}
+
     def _get_instance_specific_property(
         self, instance_type: str, property_name: str
     ) -> Optional[str]:
