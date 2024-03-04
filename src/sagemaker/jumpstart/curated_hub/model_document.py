@@ -281,20 +281,6 @@ class ModelDocumentCreator:
                 ).get_uri()
             )
         
-    def _get_model_script_config(self, model_specs: JumpStartModelSpecs) -> ModelArtifactConfig:
-        if model_specs.hosting_artifact_s3_data_type == UNCOMPRESSED_ARTIFACTS_VALUE: 
-            return ScriptConfig(
-                  ScriptLocation=self._dst_s3_accessor.get_uncompresssed_inference_artifact_s3_reference(
-                    model_specs
-                ).get_uri()
-            )
-        else:
-            return ScriptConfig(
-                ScriptLocation=self._dst_s3_accessor.get_inference_script_s3_reference(
-                    model_specs
-                ).get_uri()
-            )
-
     def _make_hub_content_default_deployment_config(
         self, model_specs: JumpStartModelSpecs
     ) -> DefaultDeploymentConfig:
@@ -324,7 +310,9 @@ class ModelDocumentCreator:
                 BaseFramework=hosting_base_framework(model_specs=model_specs),
             ),
             ModelArtifactConfig=self._get_model_artifact_config(model_specs),
-            ScriptConfig=self._get_model_script_config(model_specs),
+            ScriptConfig=self._dst_s3_accessor.get_inference_script_s3_reference(
+                    model_specs
+            ).get_uri(),
             InstanceConfig=InstanceConfig(
                 DefaultInstanceType=model_specs.default_inference_instance_type,
                 InstanceTypeOptions=model_specs.supported_inference_instance_types or [],
