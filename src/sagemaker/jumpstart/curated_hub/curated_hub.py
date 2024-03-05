@@ -18,6 +18,7 @@ from typing import Optional, Dict, List, Any
 
 import boto3
 from botocore.client import BaseClient
+from packaging.version import Version
 
 from sagemaker.jumpstart.curated_hub.accessors.filegenerator import FileGenerator
 from sagemaker.jumpstart.curated_hub.accessors.objectlocation import S3ObjectLocation
@@ -176,53 +177,69 @@ class CuratedHub:
         # Retrieve latest version of unspecified JumpStart model versions
         model_version_list = []
         for model in model_list:
-            # TODO: Uncomment and implement
-            # if not model["version"] or model["version"] == "*":
-            #     model["version"] = self._find_latest_version(model_name=model.model_id)
+            version = model.get("version", "*")
+            if not version or version == "*":
+                model_specs = verify_model_region_and_return_specs(
+                    model["model_id"], version, JumpStartScriptScope.INFERENCE, self.region
+                )
+                model["version"] = model_specs.version
             model_version_list.append(model)
 
         # Find synced JumpStart model versions in the Hub
         js_models_in_hub = []
-        for model in hub_models:
+        for hub_model in hub_models:
             # TODO: extract both in one pass
             jumpstart_model_id = next(
-                (tag for tag in model.search_keywords if tag.startswith("@jumpstart-model-id")),
+                (
+                    tag
+                    for tag in hub_model["search_keywords"]
+                    if tag.startswith("@jumpstart-model-id")
+                ),
                 None,
             )
             jumpstart_model_version = next(
                 (
                     tag
-                    for tag in model.search_keywords
+                    for tag in hub_model["search_keywords"]
                     if tag.startswith("@jumpstart-model-version")
                 ),
                 None,
             )
 
             if jumpstart_model_id and jumpstart_model_version:
-                js_models_in_hub.append(model)
+                js_models_in_hub.append(hub_model)
 
         # Match inputted list of model versions with synced JumpStart model versions in the Hub
         models_to_sync = []
         for model in model_version_list:
-            model_id, version = model
-            matched_model = next((model for model in js_models_in_hub if model.name == model_id))
+            matched_model = next(
+                (
+                    hub_model
+                    for hub_model in js_models_in_hub
+                    if hub_model and hub_model["name"] == model["model_id"]
+                ),
+                None,
+            )
 
             # Model does not exist in Hub, sync
             if not matched_model:
                 models_to_sync.append(model)
 
             if matched_model:
+                model_version = Version(model["version"])
+                hub_model_version = Version(matched_model["version"])
+
                 # 1. Model version exists in Hub, pass
-                if matched_model.version == version:
+                if hub_model_version == model_version:
                     pass
 
                 # 2. Invalid model version exists in Hub, pass
                 # This will only happen if something goes wrong in our metadata
-                if matched_model.version > version:
+                if hub_model_version > model_version:
                     pass
 
                 # 3. Old model version exists in Hub, update
-                if matched_model.version < version:
+                if hub_model_version < model_version:
                     # Check minSDKVersion against current SDK version, emit log
                     models_to_sync.append(model)
 
@@ -269,6 +286,7 @@ class CuratedHub:
             scope=JumpStartScriptScope.INFERENCE,
             sagemaker_session=self._sagemaker_session,
         )
+
         # TODO: Uncomment and implement
         # studio_specs = self.fetch_studio_specs(model_id=model_name, version=model_version)
         studio_specs = {}
@@ -282,11 +300,16 @@ class CuratedHub:
         src_files = file_generator.format(model_specs)
         dest_files = file_generator.format(dest_location)
 
-        files_to_copy = list(FileSync(src_files, dest_files, dest_location).call())
+        files_to_copy = FileSync(src_files, dest_files, dest_location).call()
 
         if len(files_to_copy) > 0:
-            # Copy files with MPU
+            # TODO: Copy files with MPU
             print("hi")
+
+        # Tag model if specs say it is deprecated or training/inference vulnerable
+        # Update tag of HubContent ARN without version. Versioned ARNs are not
+        # onboarded to Tagris.
+        tags = []
 
         hub_content_document = HubContentDocument_v2(spec=model_specs)
 
@@ -301,4 +324,5 @@ class CuratedHub:
             hub_content_description="",
             hub_content_markdown="",
             hub_content_search_keywords=[],
+            tags=tags,
         )

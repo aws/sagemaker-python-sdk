@@ -21,13 +21,13 @@ from typing import Optional
 class HubContentDependencyType(str, Enum):
     """Enum class for HubContent dependency names"""
 
-    INFERENCE_ARTIFACT = "INFERENCE_ARTIFACT"
-    TRAINING_ARTIFACT = "TRAINING_ARTIFACT"
-    INFERNECE_SCRIPT = "INFERENCE_SCRIPT"
-    TRAINING_SCRIPT = "TRAINING_SCRIPT"
-    DEFAULT_TRAINING_DATASET = "DEFAULT_TRAINING_DATASET"
-    DEMO_NOTEBOOK = "DEMO_NOTEBOOK"
-    MARKDOWN = "MARKDOWN"
+    INFERENCE_ARTIFACT = "inference_artifact_s3_reference"
+    TRAINING_ARTIFACT = "training_artifact_s3_reference"
+    INFERENCE_SCRIPT = "inference_script_s3_reference"
+    TRAINING_SCRIPT = "training_script_s3_reference"
+    DEFAULT_TRAINING_DATASET = "default_training_dataset_s3_reference"
+    DEMO_NOTEBOOK = "demo_notebook_s3_reference"
+    MARKDOWN = "markdown_s3_reference"
 
 
 @dataclass

@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""This module provides a class to help copy HubContent dependencies."""
+"""This module provides a class that perfrms functionalities similar to ``S3:Copy``."""
 from __future__ import absolute_import
 from typing import Generator, List
 

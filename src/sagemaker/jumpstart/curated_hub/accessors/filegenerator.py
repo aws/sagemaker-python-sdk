@@ -35,19 +35,28 @@ class FileGenerator:
 
     @singledispatchmethod
     def format(self, file_input) -> List[FileInfo]:
-        """Implement."""
+        """Dispatch method that takes in an input of either ``S3ObjectLocation`` or
+        ``JumpStartModelSpecs`` and is implemented in below registered functions.
+        """
         # pylint: disable=W0107
         pass
 
     @format.register
     def _(self, file_input: S3ObjectLocation) -> List[FileInfo]:
-        """Something."""
+        """Implements ``.format`` when the input is of type ``S3ObjectLocation``.
+
+        Returns a list of ``FileInfo`` objects from the specified bucket location.
+        """
         files = self.s3_format(file_input)
         return files
 
     @format.register
     def _(self, file_input: JumpStartModelSpecs) -> List[FileInfo]:
-        """Something."""
+        """Implements ``.format`` when the input is of type ``JumpStartModelSpecs``.
+
+        Returns a list of ``FileInfo`` objects from dependencies found in the public
+            model specs.
+        """
         files = self.specs_format(file_input, self.studio_specs)
         return files
 
@@ -72,36 +81,16 @@ class FileGenerator:
     def specs_format(
         self, file_input: JumpStartModelSpecs, studio_specs: Dict[str, Any]
     ) -> List[FileInfo]:
-        """Collects data locations from JumpStart public model specs and
-        converts into FileInfo.
+        """
+        Collects data locations from JumpStart public model specs and
+            converts into FileInfo.
         """
         public_model_data_accessor = PublicModelDataAccessor(
             region=self.region, model_specs=file_input, studio_specs=studio_specs
         )
-        function_table = {
-            HubContentDependencyType.INFERENCE_ARTIFACT: (
-                public_model_data_accessor.get_inference_artifact_s3_reference
-            ),
-            HubContentDependencyType.TRAINING_ARTIFACT: (
-                public_model_data_accessor.get_training_artifact_s3_reference
-            ),
-            HubContentDependencyType.INFERNECE_SCRIPT: (
-                public_model_data_accessor.get_inference_script_s3_reference
-            ),
-            HubContentDependencyType.TRAINING_SCRIPT: (
-                public_model_data_accessor.get_training_script_s3_reference
-            ),
-            HubContentDependencyType.DEFAULT_TRAINING_DATASET: (
-                public_model_data_accessor.get_default_training_dataset_s3_reference
-            ),
-            HubContentDependencyType.DEMO_NOTEBOOK: (
-                public_model_data_accessor.get_demo_notebook_s3_reference
-            ),
-            HubContentDependencyType.MARKDOWN: public_model_data_accessor.get_markdown_s3_reference,
-        }
         files = []
         for dependency in HubContentDependencyType:
-            location = function_table[dependency]()
+            location = public_model_data_accessor.get_s3_reference(dependency)
             parameters = {"Bucket": location.bucket, "Prefix": location.key}
             response = self.s3_client.head_object(**parameters)
             key: str = location.key

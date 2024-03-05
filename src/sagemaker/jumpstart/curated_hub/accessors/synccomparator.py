@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 """This module provides comparators for syncing s3 files."""
 from __future__ import absolute_import
+from datetime import timedelta
 
 from sagemaker.jumpstart.curated_hub.accessors.fileinfo import FileInfo
 
@@ -36,14 +37,6 @@ class SizeAndLastUpdatedComparator:
             )
         return should_sync
 
-    def total_seconds(self, td):
-        """
-        timedelta's time_seconds() function for python 2.6 users
-
-        :param td: The difference between two datetime objects.
-        """
-        return (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10**6) / 10**6
-
     def compare_size(self, src_file: FileInfo, dest_file: FileInfo):
         """
         :returns: True if the sizes are the same.
@@ -62,7 +55,7 @@ class SizeAndLastUpdatedComparator:
         dest_time = dest_file.last_updated
         delta = dest_time - src_time
         # pylint: disable=R1703,R1705
-        if self.total_seconds(delta) >= 0:
+        if timedelta.total_seconds(delta) >= 0:
             # Destination is newer than source.
             return True
         else:
