@@ -61,6 +61,7 @@ class S3PathFileGenerator(FileGenerator):
             files.append(FileInfo(key, size, last_modified))
         return files
 
+
 class ModelSpecsFileGenerator(FileGenerator):
     """Utility class to help format all data paths from JumpStart public model specs."""
 

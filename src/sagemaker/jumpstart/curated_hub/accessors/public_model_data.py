@@ -84,13 +84,14 @@ class PublicModelDataAccessor:
         framework = get_model_framework(self.model_specs)
         key = f"{framework}-notebooks/{self.model_specs.model_id}-inference.ipynb"
         return S3ObjectLocation(self._get_bucket_name(), key)
-    
+
     @property
     def markdown_s3_reference(self):
         """Retrieves s3 reference for model markdown"""
         framework = get_model_framework(self.model_specs)
         key = f"{framework}-metadata/{self.model_specs.model_id}.md"
         return S3ObjectLocation(self._get_bucket_name(), key)
+
     def _get_bucket_name(self) -> str:
         """Retrieves s3 bucket"""
         return self._bucket
