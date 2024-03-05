@@ -15,6 +15,8 @@
 from __future__ import absolute_import
 
 from typing import Dict, List, Optional, Union
+from botocore.exceptions import ClientError
+
 from sagemaker import payloads
 from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
 from sagemaker.base_deserializers import BaseDeserializer
@@ -22,7 +24,10 @@ from sagemaker.base_serializers import BaseSerializer
 from sagemaker.explainer.explainer_config import ExplainerConfig
 from sagemaker.jumpstart.accessors import JumpStartModelsAccessor
 from sagemaker.jumpstart.enums import JumpStartScriptScope
-from sagemaker.jumpstart.exceptions import INVALID_MODEL_ID_ERROR_MSG
+from sagemaker.jumpstart.exceptions import (
+    INVALID_MODEL_ID_ERROR_MSG,
+    MarketplaceModelSubscriptionError,
+)
 from sagemaker.jumpstart.factory.model import (
     get_default_predictor,
     get_deploy_kwargs,
@@ -30,7 +35,10 @@ from sagemaker.jumpstart.factory.model import (
     get_register_kwargs,
 )
 from sagemaker.jumpstart.types import JumpStartSerializablePayload
-from sagemaker.jumpstart.utils import validate_model_id_and_get_type
+from sagemaker.jumpstart.utils import (
+    validate_model_id_and_get_type,
+    verify_model_region_and_return_specs,
+)
 from sagemaker.utils import stringify_object, format_tags, Tags
 from sagemaker.model import (
     Model,
@@ -560,6 +568,9 @@ class JumpStartModel(Model):
                 endpoint.
             endpoint_type (EndpointType): The type of endpoint used to deploy models.
                 (Default: EndpointType.MODEL_BASED).
+
+        Raises:
+            MarketplaceModelSubscriptionError: If the caller is not subscribed to the Marketplace model.
         """
 
         deploy_kwargs = get_deploy_kwargs(
@@ -593,8 +604,22 @@ class JumpStartModel(Model):
             endpoint_type=endpoint_type,
             model_type=self.model_type,
         )
-
-        predictor = super(JumpStartModel, self).deploy(**deploy_kwargs.to_kwargs_dict())
+        try:
+            predictor = super(JumpStartModel, self).deploy(**deploy_kwargs.to_kwargs_dict())
+        except ClientError as e:
+            error_code = e.response["Error"]["Code"]
+            error_message = e.response["Error"]["Message"]
+            if error_code == "ValidationException" and "not subscribed" in error_message:
+                subscription_link = verify_model_region_and_return_specs(
+                    region=self.region,
+                    model_id=self.model_id,
+                    version=self.model_version,
+                    model_type=self.model_type,
+                    scope=JumpStartScriptScope.INFERENCE,
+                ).model_subscription_link
+                raise MarketplaceModelSubscriptionError(subscription_link)
+            else:
+                raise
 
         # If no predictor class was passed, add defaults to predictor
         if self.orig_predictor_cls is None and async_inference_config is None:

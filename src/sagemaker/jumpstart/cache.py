@@ -465,7 +465,7 @@ class JumpStartModelsCache:
             if "*" in semantic_version_str:
                 raise KeyError(
                     get_wildcard_proprietary_model_version_msg(
-                        model_id, semantic_version_str
+                        model_id, semantic_version_str, available_versions
                     )
                 )
             return semantic_version_str if semantic_version_str in available_versions else None

@@ -36,6 +36,7 @@ from tests.unit.sagemaker.jumpstart.utils import (
     get_special_model_spec,
     overwrite_dictionary,
     get_special_model_spec_for_inference_component_based_endpoint,
+    get_prototype_manifest,
 )
 
 execution_role = "fake role! do not use!"
@@ -395,7 +396,6 @@ class ModelTest(unittest.TestCase):
         mock_endpoint_from_production_variants: mock.Mock,
         mock_timestamp: mock.Mock,
     ):
-
         mock_timestamp.return_value = "1234"
 
         mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
@@ -442,6 +442,7 @@ class ModelTest(unittest.TestCase):
             ],
         )
 
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
     @mock.patch("sagemaker.jumpstart.utils.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
@@ -457,7 +458,11 @@ class ModelTest(unittest.TestCase):
         mock_session: mock.Mock,
         mock_validate_model_id_and_get_type: mock.Mock,
         mock_sagemaker_timestamp: mock.Mock,
+        mock_get_manifest: mock.Mock,
     ):
+        mock_get_manifest.side_effect = (
+            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
+        )
         mock_model_deploy.return_value = default_predictor
 
         mock_sagemaker_timestamp.return_value = "7777"

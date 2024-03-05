@@ -25,7 +25,7 @@ from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     JUMPSTART_DEFAULT_REGION_NAME,
 )
-from sagemaker.jumpstart.enums import JumpStartScriptScope
+from sagemaker.jumpstart.enums import JumpStartScriptScope, JumpStartModelType
 from sagemaker.jumpstart.filters import (
     SPECIAL_SUPPORTED_FILTER_KEYS,
     BooleanValues,
@@ -38,6 +38,7 @@ from sagemaker.jumpstart.utils import (
     get_jumpstart_content_bucket,
     get_sagemaker_version,
     verify_model_region_and_return_specs,
+    validate_model_id_and_get_type,
 )
 from sagemaker.session import Session
 
@@ -246,6 +247,7 @@ def list_jumpstart_models(  # pylint: disable=redefined-builtin
     list_incomplete_models: bool = False,
     list_old_models: bool = False,
     list_versions: bool = False,
+    marketplace_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> List[Union[Tuple[str], Tuple[str, str]]]:
     """List models for JumpStart, and optionally apply filters to result.
@@ -266,6 +268,8 @@ def list_jumpstart_models(  # pylint: disable=redefined-builtin
             versions should be included in the returned result. (Default: False).
         list_versions (bool): Optional. True if versions for models should be returned in addition
             to the id of the model. (Default: False).
+        marketplace_models (bool): Optional. True if only listing JumpStart Marketplace models.
+            (Default: False).
         sagemaker_session (sagemaker.session.Session): Optional. The SageMaker Session to use
             to perform the model search. (Default: DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     """
@@ -275,6 +279,7 @@ def list_jumpstart_models(  # pylint: disable=redefined-builtin
         filter=filter,
         region=region,
         list_incomplete_models=list_incomplete_models,
+        marketplace_model=marketplace_model,
         sagemaker_session=sagemaker_session,
     ):
         if model_id not in model_id_version_dict:
@@ -301,6 +306,7 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
     filter: Union[Operator, str] = Constant(BooleanValues.TRUE),
     region: str = JUMPSTART_DEFAULT_REGION_NAME,
     list_incomplete_models: bool = False,
+    marketplace_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> Generator:
     """Generate models for JumpStart, and optionally apply filters to result.
@@ -321,8 +327,20 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
             to use to perform the model search. (Default: DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     """
 
-    models_manifest_list = accessors.JumpStartModelsAccessor._get_manifest(
-        region=region, s3_client=sagemaker_session.s3_client
+    prop_models_manifest_list = accessors.JumpStartModelsAccessor._get_manifest(
+        region=region,
+        s3_client=sagemaker_session.s3_client,
+        model_type=JumpStartModelType.PROPRIETARY,
+    )
+    open_source_manifest_list = accessors.JumpStartModelsAccessor._get_manifest(
+        region=region,
+        s3_client=sagemaker_session.s3_client,
+        model_type=JumpStartModelType.OPEN_SOURCE,
+    )
+    models_manifest_list = (
+        prop_models_manifest_list
+        if marketplace_model
+        else (open_source_manifest_list + prop_models_manifest_list)
     )
 
     if isinstance(filter, str):
@@ -466,6 +484,12 @@ def get_model_url(
         sagemaker_session (sagemaker.session.Session): Optional. The SageMaker Session to use
             to retrieve the model url.
     """
+    model_type = validate_model_id_and_get_type(
+        model_id=model_id,
+        model_version=model_version,
+        region=region,
+        sagemaker_session=sagemaker_session,
+    )
 
     model_specs = verify_model_region_and_return_specs(
         region=region,
@@ -473,5 +497,6 @@ def get_model_url(
         version=model_version,
         sagemaker_session=sagemaker_session,
         scope=JumpStartScriptScope.INFERENCE,
+        model_type=model_type,
     )
     return model_specs.url

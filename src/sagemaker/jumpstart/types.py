@@ -791,6 +791,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         "training_instance_type_variants",
         "default_payloads",
         "gated_bucket",
+        "model_subscription_link",
     ]
 
     def __init__(self, spec: Dict[str, Any]):
@@ -922,6 +923,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
                 if json_obj.get("training_instance_type_variants")
                 else None
             )
+        self.model_subscription_link = json_obj.get("model_subscription_link")
 
     def to_json(self) -> Dict[str, Any]:
         """Returns json representation of JumpStartModelSpecs object."""

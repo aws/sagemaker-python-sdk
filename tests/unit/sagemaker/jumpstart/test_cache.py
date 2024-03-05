@@ -182,6 +182,7 @@ def test_jumpstart_cache_get_header():
         )
     assert (
         "Marketplace model 'ai21-summarization' does not support wildcard version identifier '*'. "
+        "You can pin to version '1.1.003'. "
         "https://sagemaker.readthedocs.io/en/stable/doc_utils/pretrainedmodels.html "
         "for list of supported model IDs. " in str(e.value)
     )
@@ -941,6 +942,7 @@ def test_jumpstart_cache_get_specs():
         )
     assert (
         "Marketplace model 'ai21-summarization' does not support wildcard version identifier '*'. "
+        "You can pin to version '1.1.003'. "
         "https://sagemaker.readthedocs.io/en/stable/doc_utils/pretrainedmodels.html "
         "for list of supported model IDs. " in str(e.value)
     )

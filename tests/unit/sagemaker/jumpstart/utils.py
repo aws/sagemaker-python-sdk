@@ -56,9 +56,6 @@ def get_header_from_base_header(
 
     if model_type == JumpStartModelType.PROPRIETARY:
         spec = copy.deepcopy(BASE_PROPRIETARY_HEADER)
-        spec["version"] = version or semantic_version_str
-        spec["model_id"] = model_id
-
         return JumpStartModelHeader(spec)
 
     if all(
@@ -91,7 +88,10 @@ def get_header_from_base_header(
 
 def get_prototype_manifest(
     region: str = JUMPSTART_DEFAULT_REGION_NAME,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_SOURCE,
 ) -> List[JumpStartModelHeader]:
+    if model_type == JumpStartModelType.PROPRIETARY:
+        return [JumpStartModelHeader(spec) for spec in BASE_PROPRIETARY_MANIFEST]
     return [
         get_header_from_base_header(region=region, model_id=model_id, version=version)
         for model_id in PROTOTYPICAL_MODEL_SPECS_DICT.keys()

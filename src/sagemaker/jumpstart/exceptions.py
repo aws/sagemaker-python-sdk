@@ -58,14 +58,18 @@ def get_wildcard_model_version_msg(
     )
 
 
-def get_wildcard_proprietary_model_version_msg(model_id: str, wildcard_model_version: str) -> str:
+def get_wildcard_proprietary_model_version_msg(
+    model_id: str, wildcard_model_version: str, available_versions: List[str]
+) -> str:
     """Returns customer-facing message for passing wildcard version to proprietary models."""
-
-    return (
+    msg = (
         f"Marketplace model '{model_id}' does not support "
         f"wildcard version identifier '{wildcard_model_version}'. "
-        f"{MODEL_ID_LIST_WEB_URL} for list of supported model IDs. "
     )
+    if len(available_versions) > 0:
+        msg += f"You can pin to version '{available_versions[0]}'. "
+    msg += f"{MODEL_ID_LIST_WEB_URL} for list of supported model IDs. "
+    return msg
 
 
 def get_old_model_version_msg(
@@ -176,6 +180,28 @@ class DeprecatedJumpStartModelError(ValueError):
             self.message = (
                 f"Version '{version}' of JumpStart model '{model_id}' is deprecated. "
                 f"{_VULNERABLE_DEPRECATED_ERROR_RECOMMENDATION}"
+            )
+
+        super().__init__(self.message)
+
+
+class MarketplaceModelSubscriptionError(ValueError):
+    """Exception raised when trying to deploy a JumpStart Marketplace model but the
+    caller is not subscribed to the product."""
+
+    def __init__(
+        self,
+        model_subscription_link: Optional[str] = None,
+        message: Optional[str] = None,
+    ):
+        if message:
+            self.message = message
+        else:
+            if not model_subscription_link:
+                raise RuntimeError("Must specify `model_subscription_link` in arguments.")
+            self.message = (
+                f"You have not subscribed to this Marketplace model. "
+                f"Please subscribe following this link {model_subscription_link}"
             )
 
         super().__init__(self.message)
