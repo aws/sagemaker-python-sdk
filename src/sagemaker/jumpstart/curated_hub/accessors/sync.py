@@ -26,9 +26,7 @@ class FileSync:
     """Something."""
 
     def __init__(self, src_files: List[FileInfo], dest_files: List[FileInfo], dest_bucket: str):
-        """Instantiates a ``FileSync`` class.
-        Sorts src and dest files by name for easier
-        comparisons.
+        """Instantiates a ``FileSync`` class. Sorts src and dest files by name for comparisons.
 
         Args:
             src_files (List[FileInfo]): List of files to sync with destination
@@ -41,8 +39,7 @@ class FileSync:
         self.dest_bucket = dest_bucket
 
     def call(self) -> Generator[FileInfo, FileInfo, FileInfo]:
-        """This function performs the actual comparisons. Returns a list of FileInfo
-        to copy.
+        """This function performs the actual comparisons. Returns a list of FileInfo to copy.
 
         Algorithm:
             Loop over sorted files in the src directory. If at the end of dest directory,

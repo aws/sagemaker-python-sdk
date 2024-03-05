@@ -38,14 +38,16 @@ class SizeAndLastUpdatedComparator:
         return should_sync
 
     def compare_size(self, src_file: FileInfo, dest_file: FileInfo):
-        """
+        """Compares sizes of src and dest files.
+
         :returns: True if the sizes are the same.
             False otherwise.
         """
         return src_file.size == dest_file.size
 
     def compare_time(self, src_file: FileInfo, dest_file: FileInfo):
-        """
+        """Compares time delta between src and dest files.
+
         :returns: True if the file does not need updating based on time of
             last modification and type of operation.
             False if the file does need updating based on the time of

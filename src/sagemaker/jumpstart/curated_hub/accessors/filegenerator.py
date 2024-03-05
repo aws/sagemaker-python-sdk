@@ -35,9 +35,9 @@ class FileGenerator:
 
     @singledispatchmethod
     def format(self, file_input) -> List[FileInfo]:
-        """Dispatch method that takes in an input of either ``S3ObjectLocation`` or
-        ``JumpStartModelSpecs`` and is implemented in below registered functions.
-        """
+        """Dispatch method that is implemented in below registered functions.
+
+        Takes in an input of either ``S3ObjectLocation`` or ``JumpStartModelSpecs``."""
         # pylint: disable=W0107
         pass
 
@@ -81,10 +81,7 @@ class FileGenerator:
     def specs_format(
         self, file_input: JumpStartModelSpecs, studio_specs: Dict[str, Any]
     ) -> List[FileInfo]:
-        """
-        Collects data locations from JumpStart public model specs and
-            converts into FileInfo.
-        """
+        """Collects data locations from JumpStart public model specs and converts into FileInfo."""
         public_model_data_accessor = PublicModelDataAccessor(
             region=self.region, model_specs=file_input, studio_specs=studio_specs
         )
