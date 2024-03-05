@@ -104,7 +104,6 @@ class ModelDocumentCreator:
         if model_specs.supports_prepacked_inference():
             hub_model_spec_dict["DefaultDeploymentConfig"].pop("ScriptConfig")
 
-        print(f"Generated HubContentDocument: {hub_model_spec_dict}")
         return hub_model_spec_dict
     
     def _get_uncompressed_inference_dependencies(self, model_specs: JumpStartModelSpecs) -> List[Dependency]:
