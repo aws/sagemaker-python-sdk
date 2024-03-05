@@ -187,7 +187,10 @@ class DeprecatedJumpStartModelError(ValueError):
 
 class MarketplaceModelSubscriptionError(ValueError):
     """Exception raised when trying to deploy a JumpStart Marketplace model but the
-    caller is not subscribed to the product."""
+    caller is not subscribed to the product.
+
+    A caller is required to subscribe to the Marketplace product in order to deploy.
+    """
 
     def __init__(
         self,

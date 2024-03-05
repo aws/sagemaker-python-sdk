@@ -74,6 +74,7 @@ class Frameworks(str, Enum):
 
 JUMPSTART_REGION = "eu-west-2"
 SDK_MANIFEST_FILE = "models_manifest.json"
+PROPRIETARY_SDK_MANIFEST_FILE = "proprietary-sdk-manifest.json"
 JUMPSTART_BUCKET_BASE_URL = "https://jumpstart-cache-prod-{}.s3.{}.amazonaws.com".format(
     JUMPSTART_REGION, JUMPSTART_REGION
 )
@@ -159,6 +160,13 @@ def get_jumpstart_sdk_manifest():
     return json.loads(models_manifest)
 
 
+def get_proprietary_sdk_manifest():
+    url = "{}/{}".format(JUMPSTART_BUCKET_BASE_URL, PROPRIETARY_SDK_MANIFEST_FILE)
+    with request.urlopen(url) as f:
+        models_manifest = f.read().decode("utf-8")
+    return json.loads(models_manifest)
+
+
 def get_jumpstart_sdk_spec(key):
     url = "{}/{}".format(JUMPSTART_BUCKET_BASE_URL, key)
     with request.urlopen(url) as f:
@@ -194,6 +202,36 @@ def get_model_source(url):
         return "ScikitLearn"
     else:
         return "Source"
+
+
+def create_marketplace_model_table():
+    sdk_manifest = get_proprietary_sdk_manifest()
+
+    marketpkace_content_intro = []
+    marketpkace_content_intro.append("\n")
+    marketpkace_content_intro.append(".. list-table:: Available Models\n")
+    marketpkace_content_intro.append("   :widths: 50 20 20 20 20\n")
+    marketpkace_content_intro.append("   :header-rows: 1\n")
+    marketpkace_content_intro.append("   :class: datatable\n")
+    marketpkace_content_intro.append("\n")
+    marketpkace_content_intro.append("   * - Model ID\n")
+    marketpkace_content_intro.append("     - Fine Tunable?\n")
+    marketpkace_content_intro.append("     - Supported Version\n")
+    marketpkace_content_intro.append("     - Min SDK Version\n")
+    marketpkace_content_intro.append("     - Source\n")
+
+    marketplace_content_entries = []
+    for model in sdk_manifest:
+        model_spec = get_jumpstart_sdk_spec(model["spec_key"])
+        model_source = get_model_source(model_spec["url"])
+        marketplace_content_entries.append("   * - {}\n".format(model_spec["model_id"]))
+        marketplace_content_entries.append("     - {}\n".format(False))  # TODO: support training
+        marketplace_content_entries.append("     - {}\n".format(model["version"]))
+        marketplace_content_entries.append("     - {}\n".format(model["min_version"]))
+        marketplace_content_entries.append(
+            "     - `{} <{}>`__ |external-link|\n".format(model_source, model_spec.get("url"))
+        )
+    return marketpkace_content_intro + marketplace_content_entries + ["\n"]
 
 
 def create_jumpstart_model_table():
@@ -249,19 +287,19 @@ def create_jumpstart_model_table():
     file_content_intro.append("     - Source\n")
 
     dynamic_table_files = []
-    file_content_entries = []
+    open_source_content_entries = []
 
     for model in sdk_manifest_top_versions_for_models.values():
         model_spec = get_jumpstart_sdk_spec(model["spec_key"])
         model_task = get_model_task(model_spec["model_id"])
         string_model_task = get_string_model_task(model_spec["model_id"])
         model_source = get_model_source(model_spec["url"])
-        file_content_entries.append("   * - {}\n".format(model_spec["model_id"]))
-        file_content_entries.append("     - {}\n".format(model_spec["training_supported"]))
-        file_content_entries.append("     - {}\n".format(model["version"]))
-        file_content_entries.append("     - {}\n".format(model["min_version"]))
-        file_content_entries.append("     - {}\n".format(model_task))
-        file_content_entries.append(
+        open_source_content_entries.append("   * - {}\n".format(model_spec["model_id"]))
+        open_source_content_entries.append("     - {}\n".format(model_spec["training_supported"]))
+        open_source_content_entries.append("     - {}\n".format(model["version"]))
+        open_source_content_entries.append("     - {}\n".format(model["min_version"]))
+        open_source_content_entries.append("     - {}\n".format(model_task))
+        open_source_content_entries.append(
             "     - `{} <{}>`__ |external-link|\n".format(model_source, model_spec["url"])
         )
 
@@ -299,7 +337,10 @@ def create_jumpstart_model_table():
             f.writelines(file_content_single_entry)
             f.close()
 
+    marketplace_content_entries = create_marketplace_model_table()
+
     f = open("doc_utils/pretrainedmodels.rst", "a")
     f.writelines(file_content_intro)
-    f.writelines(file_content_entries)
+    f.writelines(open_source_content_entries)
+    f.writelines(marketplace_content_entries)
     f.close()
