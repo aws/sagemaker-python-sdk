@@ -570,7 +570,7 @@ class JumpStartModel(Model):
                 (Default: EndpointType.MODEL_BASED).
 
         Raises:
-            MarketplaceModelSubscriptionError: If the caller is not subscribed to the Marketplace model.
+            MarketplaceModelSubscriptionError: If the caller is not subscribed to the model.
         """
 
         deploy_kwargs = get_deploy_kwargs(
@@ -618,8 +618,7 @@ class JumpStartModel(Model):
                     scope=JumpStartScriptScope.INFERENCE,
                 ).model_subscription_link
                 raise MarketplaceModelSubscriptionError(subscription_link)
-            else:
-                raise
+            raise
 
         # If no predictor class was passed, add defaults to predictor
         if self.orig_predictor_cls is None and async_inference_config is None:
