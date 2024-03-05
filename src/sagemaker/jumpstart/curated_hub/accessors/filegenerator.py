@@ -12,7 +12,6 @@
 # language governing permissions and limitations under the License.
 """This module contains important utilities related to HubContent data files."""
 from __future__ import absolute_import
-from functools import singledispatchmethod
 from typing import Any, Dict, List, Optional
 
 from botocore.client import BaseClient
@@ -33,35 +32,19 @@ class FileGenerator:
         self.s3_client = s3_client
         self.studio_specs = studio_specs
 
-    @singledispatchmethod
     def format(self, file_input) -> List[FileInfo]:
-        """Dispatch method that is implemented in below registered functions.
+        """Dispatch method that is implemented in below registered functions."""
+        raise NotImplementedError
 
-        Takes in an input of either ``S3ObjectLocation`` or ``JumpStartModelSpecs``."""
-        # pylint: disable=W0107
-        pass
 
-    @format.register
-    def _(self, file_input: S3ObjectLocation) -> List[FileInfo]:
-        """Implements ``.format`` when the input is of type ``S3ObjectLocation``.
+class S3PathFileGenerator(FileGenerator):
+    """Utility class to help format all objects in an S3 bucket."""
+
+    def format(self, file_input: S3ObjectLocation) -> List[FileInfo]:
+        """Retrieves data from an S3 bucket and formats into FileInfo.
 
         Returns a list of ``FileInfo`` objects from the specified bucket location.
         """
-        files = self.s3_format(file_input)
-        return files
-
-    @format.register
-    def _(self, file_input: JumpStartModelSpecs) -> List[FileInfo]:
-        """Implements ``.format`` when the input is of type ``JumpStartModelSpecs``.
-
-        Returns a list of ``FileInfo`` objects from dependencies found in the public
-            model specs.
-        """
-        files = self.specs_format(file_input, self.studio_specs)
-        return files
-
-    def s3_format(self, file_input: S3ObjectLocation) -> List[FileInfo]:
-        """Retrieves data from a bucket and formats into FileInfo"""
         parameters = {"Bucket": file_input.bucket, "Prefix": file_input.key}
         response = self.s3_client.list_objects_v2(**parameters)
         contents = response.get("Contents", None)
@@ -78,12 +61,17 @@ class FileGenerator:
             files.append(FileInfo(key, size, last_modified))
         return files
 
-    def specs_format(
-        self, file_input: JumpStartModelSpecs, studio_specs: Dict[str, Any]
-    ) -> List[FileInfo]:
-        """Collects data locations from JumpStart public model specs and converts into FileInfo."""
+class ModelSpecsFileGenerator(FileGenerator):
+    """Utility class to help format all data paths from JumpStart public model specs."""
+
+    def format(self, file_input: JumpStartModelSpecs) -> List[FileInfo]:
+        """Collects data locations from JumpStart public model specs and converts into FileInfo`.
+
+        Returns a list of ``FileInfo`` objects from dependencies found in the public
+            model specs.
+        """
         public_model_data_accessor = PublicModelDataAccessor(
-            region=self.region, model_specs=file_input, studio_specs=studio_specs
+            region=self.region, model_specs=file_input, studio_specs=self.studio_specs
         )
         files = []
         for dependency in HubContentDependencyType:

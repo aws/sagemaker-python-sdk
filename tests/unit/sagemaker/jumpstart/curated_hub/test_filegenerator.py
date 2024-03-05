@@ -13,7 +13,7 @@
 from __future__ import absolute_import
 import pytest
 from unittest.mock import Mock, patch
-from sagemaker.jumpstart.curated_hub.accessors.filegenerator import FileGenerator
+from sagemaker.jumpstart.curated_hub.accessors.filegenerator import FileGenerator, ModelSpecsFileGenerator, S3PathFileGenerator
 from sagemaker.jumpstart.curated_hub.accessors.fileinfo import FileInfo
 
 from sagemaker.jumpstart.curated_hub.accessors.objectlocation import S3ObjectLocation
@@ -37,30 +37,7 @@ def s3_client():
     return mock_s3_client
 
 
-@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-def test_format_has_two_different_input_pathways(patched_get_model_specs, s3_client):
-    patched_get_model_specs.side_effect = get_spec_from_base_spec
-    studio_specs = {"defaultDataKey": "model_id123"}
-    mock_hub_bucket = S3ObjectLocation(bucket="mock-bucket", key="mock-key")
-    generator = FileGenerator("us-west-2", s3_client, studio_specs)
-    generator.format(mock_hub_bucket)
-
-    s3_client.list_objects_v2.assert_called_once()
-    s3_client.head_object.assert_not_called()
-    patched_get_model_specs.assert_not_called()
-
-    # Other mocks shouldn't have been called
-    s3_client.list_objects_v2.reset_mock()
-
-    specs = JumpStartModelSpecs(BASE_SPEC)
-    generator.format(specs)
-
-    s3_client.list_objects_v2.assert_not_called()
-    s3_client.head_object.assert_called()
-    patched_get_model_specs.assert_called()
-
-
-def test_object_location_input_works(s3_client):
+def test_s3_path_file_generator_happy_path(s3_client):
     s3_client.list_objects_v2.return_value = {
         "Contents": [
             {"Key": "my-key-one", "Size": 123456789, "LastModified": "08-14-1997 00:00:00"},
@@ -69,7 +46,7 @@ def test_object_location_input_works(s3_client):
     }
 
     mock_hub_bucket = S3ObjectLocation(bucket="mock-bucket", key="mock-key")
-    generator = FileGenerator("us-west-2", s3_client)
+    generator = S3PathFileGenerator("us-west-2", s3_client)
     response = generator.format(mock_hub_bucket)
 
     s3_client.list_objects_v2.assert_called_once()
@@ -80,12 +57,12 @@ def test_object_location_input_works(s3_client):
 
 
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-def test_specs_input_works(patched_get_model_specs, s3_client):
+def test_model_specs_file_generator_happy_path(patched_get_model_specs, s3_client):
     patched_get_model_specs.side_effect = get_spec_from_base_spec
 
     specs = JumpStartModelSpecs(BASE_SPEC)
     studio_specs = {"defaultDataKey": "model_id123"}
-    generator = FileGenerator("us-west-2", s3_client, studio_specs)
+    generator = ModelSpecsFileGenerator("us-west-2", s3_client, studio_specs)
     response = generator.format(specs)
 
     s3_client.head_object.assert_called()
@@ -102,11 +79,11 @@ def test_specs_input_works(patched_get_model_specs, s3_client):
     ]
 
 
-def test_object_location_no_objects(s3_client):
+def test_s3_path_file_generator_with_no_objects(s3_client):
     s3_client.list_objects_v2.return_value = {"Contents": []}
 
     mock_hub_bucket = S3ObjectLocation(bucket="mock-bucket", key="mock-key")
-    generator = FileGenerator("us-west-2", s3_client)
+    generator = S3PathFileGenerator("us-west-2", s3_client)
     response = generator.format(mock_hub_bucket)
 
     s3_client.list_objects_v2.assert_called_once()
@@ -117,7 +94,7 @@ def test_object_location_no_objects(s3_client):
     s3_client.list_objects_v2.return_value = {}
 
     mock_hub_bucket = S3ObjectLocation(bucket="mock-bucket", key="mock-key")
-    generator = FileGenerator("us-west-2", s3_client)
+    generator = S3PathFileGenerator("us-west-2", s3_client)
     response = generator.format(mock_hub_bucket)
 
     s3_client.list_objects_v2.assert_called_once()

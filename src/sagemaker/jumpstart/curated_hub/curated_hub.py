@@ -20,7 +20,7 @@ import boto3
 from botocore.client import BaseClient
 from packaging.version import Version
 
-from sagemaker.jumpstart.curated_hub.accessors.filegenerator import FileGenerator
+from sagemaker.jumpstart.curated_hub.accessors.filegenerator import FileGenerator, ModelSpecsFileGenerator, S3PathFileGenerator
 from sagemaker.jumpstart.curated_hub.accessors.objectlocation import S3ObjectLocation
 from sagemaker.jumpstart.curated_hub.accessors.sync import FileSync
 from sagemaker.jumpstart.enums import JumpStartScriptScope
@@ -296,9 +296,8 @@ class CuratedHub:
         )
         # TODO: Validations? HeadBucket?
 
-        file_generator = FileGenerator(self.region, self._s3_client, studio_specs)
-        src_files = file_generator.format(model_specs)
-        dest_files = file_generator.format(dest_location)
+        src_files = ModelSpecsFileGenerator(self.region, self._s3_client, studio_specs).format(model_specs)
+        dest_files = S3PathFileGenerator(self.region, self._s3_client).format(dest_location)
 
         files_to_copy = FileSync(src_files, dest_files, dest_location).call()
 
