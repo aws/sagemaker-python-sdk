@@ -139,6 +139,13 @@ NO_AUTO_ML_REGIONS = [
     "af-south-1",
     "eu-south-1",
 ]
+NO_CANVAS_REGIONS = [
+    "ca-central-1",
+    "eu-north-1",
+    "eu-west-2",
+    "sa-east-1",
+    "us-west-1",
+]
 NO_MODEL_MONITORING_REGIONS = ["me-south-1", "af-south-1", "eu-south-1"]
 DRIFT_CHECK_BASELINES_SUPPORTED_REGIONS = [
     "us-east-2",
