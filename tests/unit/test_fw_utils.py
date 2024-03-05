@@ -24,7 +24,7 @@ import pytest
 from mock import Mock, patch
 
 from sagemaker import fw_utils
-from sagemaker.utils import name_from_image, check_tarfile_data_filter_attribute
+from sagemaker.utils import name_from_image, custom_extractall_tarfile
 from sagemaker.session_settings import SessionSettings
 from sagemaker.instance_group import InstanceGroup
 
@@ -424,8 +424,7 @@ def list_tar_files(folder, tar_ball, tmpdir):
     startpath = str(tmpdir.ensure(folder, dir=True))
 
     with tarfile.open(name=tar_ball, mode="r:gz") as t:
-        check_tarfile_data_filter_attribute()
-        t.extractall(path=startpath, filter="data")
+        custom_extractall_tarfile(t, startpath)
 
     def walk():
         for root, dirs, files in os.walk(startpath):
