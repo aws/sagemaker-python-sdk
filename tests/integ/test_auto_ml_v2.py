@@ -330,7 +330,8 @@ def test_best_candidate(
 
 
 @pytest.mark.skipif(
-    tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
+    tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS
+    or tests.integ.test_region() in tests.integ.NO_CANVAS_REGIONS,
     reason="AutoML is not supported in the region yet.",
 )
 @pytest.mark.release
