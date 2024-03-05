@@ -14,10 +14,14 @@ from __future__ import absolute_import
 
 import json
 import os
+import tempfile
+import shutil
+from typing import Union
 
 from mock import patch
 
 import pytest
+from mock.mock import MagicMock
 
 from sagemaker import Model, PipelineModel, Session, Processor
 from sagemaker.chainer import ChainerModel
@@ -32,9 +36,11 @@ from sagemaker.sparkml import SparkMLModel
 from sagemaker.tensorflow import TensorFlowModel
 from sagemaker.transformer import Transformer
 from sagemaker.tuner import HyperparameterTuner
+from sagemaker.workflow import _utils, is_pipeline_variable
 from sagemaker.workflow._utils import REPACK_SCRIPT_LAUNCHER
 from sagemaker.workflow.condition_step import ConditionStep
 from sagemaker.workflow.conditions import ConditionGreaterThanOrEqualTo
+from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.model_step import (
     ModelStep,
     _REGISTER_MODEL_NAME_BASE,
@@ -59,13 +65,18 @@ from tests.unit.sagemaker.workflow.conftest import BUCKET, ROLE, IMAGE_URI, INST
 
 _SAGEMAKER_PROGRAM = SCRIPT_PARAM_NAME.upper()
 _SAGEMAKER_SUBMIT_DIRECTORY = DIR_PARAM_NAME.upper()
-_SCRIPT_NAME = "dummy_script.py"
+_SCRIPT_NAME = "inference.py"
 _DIR_NAME = "/opt/ml/model/code"
 _XGBOOST_PATH = os.path.join(DATA_DIR, "xgboost_abalone")
 _TENSORFLOW_PATH = os.path.join(DATA_DIR, "tfs/tfs-test-entrypoint-and-dependencies")
 _REPACK_OUTPUT_KEY_PREFIX = "code-output"
 _MODEL_CODE_LOCATION = f"s3://{BUCKET}/{_REPACK_OUTPUT_KEY_PREFIX}"
 _MODEL_CODE_LOCATION_TRAILING_SLASH = _MODEL_CODE_LOCATION + "/"
+_MODEL_KMS_KEY = "model-kms-key"
+_MODEL_VPC_CONFIG = {
+    "SecurityGroupIds": ["model-security-group-1", "model-security-group-2"],
+    "Subnets": ["model-subnet-1", "model-subnet-2"],
+}
 
 
 @pytest.fixture
@@ -74,14 +85,29 @@ def model_data_param():
 
 
 @pytest.fixture
-def model(pipeline_session, model_data_param):
+def source_dir(request):
+    wf = os.path.join(DATA_DIR, "workflow")
+    tmp = tempfile.mkdtemp()
+    shutil.copy2(os.path.join(wf, "inference.py"), os.path.join(tmp, "inference.py"))
+    shutil.copy2(os.path.join(wf, "foo"), os.path.join(tmp, "foo"))
+
+    def fin():
+        shutil.rmtree(tmp)
+
+    request.addfinalizer(fin)
+
+    return tmp
+
+
+@pytest.fixture
+def model(pipeline_session, model_data_param, source_dir):
     return Model(
         name="MyModel",
         image_uri=IMAGE_URI,
         model_data=model_data_param,
         sagemaker_session=pipeline_session,
-        entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
-        source_dir=f"{DATA_DIR}",
+        entry_point=f"{source_dir}/{_SCRIPT_NAME}",
+        source_dir=f"{source_dir}",
         role=ROLE,
     )
 
@@ -133,13 +159,15 @@ def test_register_model_with_runtime_repack(pipeline_session, model_data_param, 
             assert arguments["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"] == {
                 "Get": "Parameters.ModelData"
             }
-            assert arguments["HyperParameters"]["inference_script"] == '"dummy_script.py"'
-            assert arguments["HyperParameters"]["model_archive"] == {"Get": "Parameters.ModelData"}
-            assert (
-                arguments["HyperParameters"]["sagemaker_program"] == f'"{REPACK_SCRIPT_LAUNCHER}"'
+
+            _validate_repack_job_non_configurable_args(
+                arguments=arguments,
+                expected_script_name=f'"{_SCRIPT_NAME}"',
+                expected_model_archive={"Get": "Parameters.ModelData"},
+                expected_entry_point=f'"{REPACK_SCRIPT_LAUNCHER}"',
+                expected_dependencies="null",
             )
             assert "s3://" in arguments["HyperParameters"]["sagemaker_submit_directory"]
-            assert arguments["HyperParameters"]["dependencies"] == "null"
             assert step["RetryPolicies"] == [
                 {
                     "BackoffRate": 2.0,
@@ -149,6 +177,10 @@ def test_register_model_with_runtime_repack(pipeline_session, model_data_param, 
                 }
             ]
             assert "repack a model with customer scripts" in step["Description"]
+            _validate_repack_job_default_cfgs_for_configurable_args(
+                arguments=arguments, model=model
+            )
+
         elif step["Type"] == "RegisterModel":
             assert step["Name"] == f"MyModelStep-{_REGISTER_MODEL_NAME_BASE}"
             assert not step.get("DependsOn", None)
@@ -172,6 +204,7 @@ def test_register_model_with_runtime_repack(pipeline_session, model_data_param, 
                 }
             ]
             assert "my model step description" in step["Description"]
+
         else:
             raise Exception("A step exists in the collection of an invalid type.")
 
@@ -179,7 +212,7 @@ def test_register_model_with_runtime_repack(pipeline_session, model_data_param, 
     assert ordered(adjacency_list) == ordered(
         {
             "TestStep": ["MyModelStep-RepackModel-MyModel"],
-            "MyModelStep-RepackModel-MyModel": ["MyModelStep-RegisterModel"],
+            "MyModelStep-RepackModel-MyModel": ["MyModelStep-RegisterModel", "TestStep2"],
             "MyModelStep-RegisterModel": ["TestStep2"],
             "TestStep2": [],
         }
@@ -216,13 +249,15 @@ def test_create_model_with_runtime_repack(pipeline_session, model_data_param, mo
             assert arguments["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"] == {
                 "Get": "Parameters.ModelData"
             }
-            assert arguments["HyperParameters"]["inference_script"] == '"dummy_script.py"'
-            assert arguments["HyperParameters"]["model_archive"] == {"Get": "Parameters.ModelData"}
-            assert (
-                arguments["HyperParameters"]["sagemaker_program"] == f'"{REPACK_SCRIPT_LAUNCHER}"'
+
+            _validate_repack_job_non_configurable_args(
+                arguments=arguments,
+                expected_script_name=f'"{_SCRIPT_NAME}"',
+                expected_model_archive={"Get": "Parameters.ModelData"},
+                expected_entry_point=f'"{REPACK_SCRIPT_LAUNCHER}"',
+                expected_dependencies="null",
             )
             assert "s3://" in arguments["HyperParameters"]["sagemaker_submit_directory"]
-            assert arguments["HyperParameters"]["dependencies"] == "null"
             assert "repack a model with customer scripts" in step["Description"]
             assert step["RetryPolicies"] == [
                 {
@@ -232,6 +267,10 @@ def test_create_model_with_runtime_repack(pipeline_session, model_data_param, mo
                     "ExceptionType": ["Step.THROTTLING"],
                 }
             ]
+            _validate_repack_job_default_cfgs_for_configurable_args(
+                arguments=arguments, model=model
+            )
+
         elif step["Type"] == "Model":
             assert step["Name"] == f"MyModelStep-{_CREATE_MODEL_NAME_BASE}"
             arguments = step["Arguments"]
@@ -267,7 +306,7 @@ def test_create_pipeline_model_with_runtime_repack(pipeline_session, model_data_
     sparkml_model = SparkMLModel(
         name="MySparkMLModel",
         model_data=model_data_param,
-        role=ROLE,
+        role="AnotherRoleWontBeHonored",
         sagemaker_session=pipeline_session,
         env={"SAGEMAKER_DEFAULT_INVOCATIONS_ACCEPT": "text/csv"},
     )
@@ -309,13 +348,15 @@ def test_create_pipeline_model_with_runtime_repack(pipeline_session, model_data_
             assert arguments["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"] == {
                 "Get": "Parameters.ModelData"
             }
-            assert arguments["HyperParameters"]["inference_script"] == '"dummy_script.py"'
-            assert arguments["HyperParameters"]["model_archive"] == {"Get": "Parameters.ModelData"}
-            assert (
-                arguments["HyperParameters"]["sagemaker_program"] == f'"{REPACK_SCRIPT_LAUNCHER}"'
+
+            _validate_repack_job_non_configurable_args(
+                arguments=arguments,
+                expected_script_name=f'"{_SCRIPT_NAME}"',
+                expected_model_archive={"Get": "Parameters.ModelData"},
+                expected_entry_point=f'"{REPACK_SCRIPT_LAUNCHER}"',
+                expected_dependencies="null",
             )
             assert "s3://" in arguments["HyperParameters"]["sagemaker_submit_directory"]
-            assert arguments["HyperParameters"]["dependencies"] == "null"
             assert step["RetryPolicies"] == [
                 {
                     "BackoffRate": 2.0,
@@ -324,6 +365,10 @@ def test_create_pipeline_model_with_runtime_repack(pipeline_session, model_data_
                     "ExceptionType": ["SageMaker.CAPACITY_ERROR"],
                 }
             ]
+            _validate_repack_job_default_cfgs_for_configurable_args(
+                arguments=arguments, model=model
+            )
+
         elif step["Type"] == "Model":
             assert step["Name"] == f"MyModelStep-{_CREATE_MODEL_NAME_BASE}"
             arguments = step["Arguments"]
@@ -347,6 +392,7 @@ def test_create_pipeline_model_with_runtime_repack(pipeline_session, model_data_
                     "ExceptionType": ["Step.THROTTLING"],
                 }
             ]
+
         else:
             raise Exception("A step exists in the collection of an invalid type.")
     adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
@@ -358,22 +404,26 @@ def test_create_pipeline_model_with_runtime_repack(pipeline_session, model_data_
     )
 
 
-def test_register_pipeline_model_with_runtime_repack(pipeline_session, model_data_param):
+def test_register_pipeline_model_with_runtime_repack(
+    pipeline_session,
+    model_data_param,
+    source_dir,
+):
     # The model no need to runtime repack, since source_dir is missing
     sparkml_model = SparkMLModel(
         model_data=model_data_param,
         role=ROLE,
         sagemaker_session=pipeline_session,
         env={"SAGEMAKER_DEFAULT_INVOCATIONS_ACCEPT": "text/csv"},
-        entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
+        entry_point=f"{source_dir}/{_SCRIPT_NAME}",
     )
     # The model need to runtime repack
     model = Model(
         image_uri=IMAGE_URI,
         model_data=model_data_param,
         sagemaker_session=pipeline_session,
-        entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
-        source_dir=f"{DATA_DIR}",
+        entry_point=f"{source_dir}/{_SCRIPT_NAME}",
+        source_dir=f"{source_dir}",
         role=ROLE,
         env={"k": "v"},
     )
@@ -411,13 +461,19 @@ def test_register_pipeline_model_with_runtime_repack(pipeline_session, model_dat
             assert arguments["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"] == {
                 "Get": "Parameters.ModelData"
             }
-            assert arguments["HyperParameters"]["inference_script"] == '"dummy_script.py"'
-            assert arguments["HyperParameters"]["model_archive"] == {"Get": "Parameters.ModelData"}
-            assert (
-                arguments["HyperParameters"]["sagemaker_program"] == f'"{REPACK_SCRIPT_LAUNCHER}"'
+
+            _validate_repack_job_non_configurable_args(
+                arguments=arguments,
+                expected_script_name=f'"{_SCRIPT_NAME}"',
+                expected_model_archive={"Get": "Parameters.ModelData"},
+                expected_entry_point=f'"{REPACK_SCRIPT_LAUNCHER}"',
+                expected_dependencies="null",
             )
             assert "s3://" in arguments["HyperParameters"]["sagemaker_submit_directory"]
-            assert arguments["HyperParameters"]["dependencies"] == "null"
+            _validate_repack_job_default_cfgs_for_configurable_args(
+                arguments=arguments, model=model
+            )
+
         elif step["Type"] == "RegisterModel":
             assert step["Name"] == f"MyModelStep-{_REGISTER_MODEL_NAME_BASE}"
             arguments = step["Arguments"]
@@ -448,7 +504,7 @@ def test_register_pipeline_model_with_runtime_repack(pipeline_session, model_dat
     )
 
 
-def test_register_model_without_repack(pipeline_session):
+def test_register_model_without_repack(pipeline_session, source_dir):
     # The model does not need repack as source_dir is missing
     # However, as entry_point is given, it uploads a separate sourcedir.tar.gaz
     # and specify it plus entry point with these env vars:
@@ -459,7 +515,7 @@ def test_register_model_without_repack(pipeline_session):
         name=model_name,
         image_uri=IMAGE_URI,
         model_data=model_data,
-        entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
+        entry_point=f"{source_dir}/{_SCRIPT_NAME}",
         sagemaker_session=pipeline_session,
         role=ROLE,
     )
@@ -498,8 +554,8 @@ def test_register_model_without_repack(pipeline_session):
     assert ordered(adjacency_list) == ordered({"MyModelStep-RegisterModel": []})
 
 
-@patch("sagemaker.utils.repack_model")
-def test_create_model_with_compile_time_repack(mock_repack, pipeline_session):
+@patch("sagemaker.utils.repack_model", MagicMock())
+def test_create_model_with_compile_time_repack(pipeline_session, source_dir):
     custom_step = CustomStep("TestStep")
     model_name = "MyModel"
     model = Model(
@@ -507,8 +563,8 @@ def test_create_model_with_compile_time_repack(mock_repack, pipeline_session):
         image_uri=IMAGE_URI,
         model_data=f"s3://{BUCKET}/model.tar.gz",
         sagemaker_session=pipeline_session,
-        entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
-        source_dir=f"{DATA_DIR}",
+        entry_point=f"{source_dir}/{_SCRIPT_NAME}",
+        source_dir=f"{source_dir}",
         role=ROLE,
     )
     step_args = model.create(
@@ -594,7 +650,7 @@ def test_conditional_model_create_and_regis(
             assert arguments["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"] == {
                 "Get": "Parameters.ModelData"
             }
-            assert arguments["HyperParameters"]["inference_script"] == '"dummy_script.py"'
+            assert arguments["HyperParameters"]["inference_script"] == f'"{_SCRIPT_NAME}"'
             assert arguments["HyperParameters"]["model_archive"] == {"Get": "Parameters.ModelData"}
             assert (
                 arguments["HyperParameters"]["sagemaker_program"] == f'"{REPACK_SCRIPT_LAUNCHER}"'
@@ -631,123 +687,199 @@ def test_conditional_model_create_and_regis(
             "cond-good-enough": [
                 "MyModelStepCreate-CreateModel",
                 "MyModelStepRegis-RepackModel-MyModel",
+                "MyModelStepRegis-RegisterModel",
             ],
         }
     )
 
 
-@pytest.mark.parametrize(
-    "test_input",
-    [
-        (
-            SKLearnModel(
-                name="MySKModel",
-                model_data="dummy_model_data",
-                image_uri=IMAGE_URI,
-                entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
-                role=ROLE,
-                enable_network_isolation=True,
-                code_location=_MODEL_CODE_LOCATION_TRAILING_SLASH,
-            ),
-            2,
+_REPACK_STEP_SETTING_INPUT_PARAM = [
+    (None, False),
+    (
+        {
+            # args below are unconfigurable so will be ignored
+            "entry_point": "invalid-entry-point",
+            "source_dir": "invalid-source-dir",
+            "hyperparameters": None,
+            "dependencies": None,
+            # args below are misspelled so will be ignored
+            "myInstanceType": "invalid-instance-type",
+            "roleArn": "invalid-role",
+        },
+        False,
+    ),
+    (
+        {
+            "output_path": f"s3://{BUCKET}/repack-model-output",
+            "code_location": f"s3://{BUCKET}/repack-model-code-location",
+            "instance_type": "ml.m4.xlarge",
+            "role": "arn:aws:iam::123412341234:role/new-role",
+            "volume_size": 50,
+            "output_kms_key": "repack-model-output-kms-key",
+            "security_group_ids": ["repack-model-security-group-a"],
+            "subnets": ["repack-model-subnet-a", "repack-model-subnet-b"],
+        },
+        True,
+    ),
+]
+_MODEL_INPUT_PARAM = [
+    (
+        SKLearnModel(
+            name="MySKModel",
+            model_data="dummy_model_data",
+            image_uri=IMAGE_URI,
+            entry_point=f"{DATA_DIR}/workflow/{_SCRIPT_NAME}",
+            role=ROLE,
+            enable_network_isolation=True,
+            code_location=_MODEL_CODE_LOCATION_TRAILING_SLASH,
+            vpc_config=_MODEL_VPC_CONFIG,
         ),
-        (
-            XGBoostModel(
-                name="MYXGBoostModel",
-                model_data="dummy_model_data",
-                framework_version="1.11.0",
-                image_uri=IMAGE_URI,
-                entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
-                role=ROLE,
-                enable_network_isolation=False,
-            ),
-            1,
+        2,
+    ),
+    (
+        XGBoostModel(
+            name="MYXGBoostModel",
+            model_data="dummy_model_data",
+            framework_version="1.11.0",
+            image_uri=IMAGE_URI,
+            entry_point=f"{DATA_DIR}/workflow/{_SCRIPT_NAME}",
+            role=ROLE,
+            enable_network_isolation=False,
         ),
-        (
-            PyTorchModel(
-                name="MyPyTorchModel",
-                model_data="dummy_model_data",
-                image_uri=IMAGE_URI,
-                entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
-                role=ROLE,
-                framework_version="1.5.0",
-                code_location=_MODEL_CODE_LOCATION_TRAILING_SLASH,
-            ),
-            2,
+        1,
+    ),
+    (
+        PyTorchModel(
+            name="MyPyTorchModel",
+            model_data="dummy_model_data",
+            image_uri=IMAGE_URI,
+            entry_point=f"{DATA_DIR}/workflow/{_SCRIPT_NAME}",
+            role=ROLE,
+            framework_version="1.5.0",
+            code_location=_MODEL_CODE_LOCATION_TRAILING_SLASH,
         ),
-        (
-            MXNetModel(
-                name="MyMXNetModel",
-                model_data="dummy_model_data",
-                image_uri=IMAGE_URI,
-                entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
-                role=ROLE,
-                framework_version="1.2.0",
-            ),
-            1,
+        2,
+    ),
+    (
+        MXNetModel(
+            name="MyMXNetModel",
+            model_data="dummy_model_data",
+            image_uri=IMAGE_URI,
+            entry_point=f"{DATA_DIR}/workflow/{_SCRIPT_NAME}",
+            role=ROLE,
+            framework_version="1.2.0",
         ),
-        (
-            HuggingFaceModel(
-                name="MyHuggingFaceModel",
-                model_data="dummy_model_data",
-                image_uri=IMAGE_URI,
-                entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
-                role=ROLE,
-            ),
-            2,
+        1,
+    ),
+    (
+        HuggingFaceModel(
+            name="MyHuggingFaceModel",
+            model_data="dummy_model_data",
+            image_uri=IMAGE_URI,
+            entry_point=f"{DATA_DIR}/workflow/{_SCRIPT_NAME}",
+            role=ROLE,
+            model_kms_key=_MODEL_KMS_KEY,
+            vpc_config=_MODEL_VPC_CONFIG,
         ),
-        (
-            TensorFlowModel(
-                name="MyTensorFlowModel",
-                model_data="dummy_model_data",
-                image_uri=IMAGE_URI,
-                entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
-                role=ROLE,
-                code_location=_MODEL_CODE_LOCATION_TRAILING_SLASH,
-            ),
-            2,
+        2,
+    ),
+    (
+        TensorFlowModel(
+            name="MyTensorFlowModel",
+            model_data="dummy_model_data",
+            image_uri=IMAGE_URI,
+            entry_point=f"{DATA_DIR}/workflow/{_SCRIPT_NAME}",
+            role=ROLE,
+            code_location=_MODEL_CODE_LOCATION_TRAILING_SLASH,
+            model_kms_key=_MODEL_KMS_KEY,
         ),
-        (
-            ChainerModel(
-                name="MyChainerModel",
-                model_data="dummy_model_data",
-                image_uri=IMAGE_URI,
-                entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
-                role=ROLE,
-            ),
-            1,
+        2,
+    ),
+    (
+        ChainerModel(
+            name="MyChainerModel",
+            model_data="dummy_model_data",
+            image_uri=IMAGE_URI,
+            entry_point=f"{DATA_DIR}/workflow/{_SCRIPT_NAME}",
+            role=ROLE,
         ),
-    ],
-)
-def test_create_model_among_different_model_types(test_input, pipeline_session, model_data_param):
-    def assert_test_result(steps: list):
+        1,
+    ),
+]
+
+
+@pytest.mark.parametrize("repack_step_setting_input", _REPACK_STEP_SETTING_INPUT_PARAM)
+@pytest.mark.parametrize("model_input", _MODEL_INPUT_PARAM)
+def test_model_step_among_different_model_types(
+    model_input, repack_step_setting_input, pipeline_session, model_data_param
+):
+    def assert_test_result(model_step: ModelStep):
+        steps = model_step.request_dicts()
         # If expected_step_num is 2, it means a runtime repack step is appended
         # If expected_step_num is 1, it means no runtime repack is needed
         assert len(steps) == expected_step_num
-        if expected_step_num == 2:
-            assert steps[0]["Type"] == "Training"
-            if model.key_prefix is not None and model.key_prefix.startswith(
-                _REPACK_OUTPUT_KEY_PREFIX
-            ):
-                assert steps[0]["Arguments"]["OutputDataConfig"]["S3OutputPath"] == (
-                    f"{_MODEL_CODE_LOCATION}/{model.name}"
-                )
-            else:
-                assert steps[0]["Arguments"]["OutputDataConfig"]["S3OutputPath"] == (
-                    f"s3://{BUCKET}/{model.name}"
-                )
+        if expected_step_num != 2:
+            return
 
-    model, expected_step_num = test_input
+        assert steps[0]["Type"] == "Training"
+        arguments = steps[0]["Arguments"]
+
+        _validate_repack_job_non_configurable_args(
+            arguments=arguments,
+            expected_script_name=f'"{_SCRIPT_NAME}"',
+            expected_model_archive={"Get": "Parameters.ModelData"},
+            expected_entry_point=f'"{REPACK_SCRIPT_LAUNCHER}"',
+            expected_dependencies="null",
+        )
+
+        if valid_repack_args:
+            # validate repack job configurable args
+            assert (
+                arguments["ResourceConfig"]["InstanceType"]
+                == repack_model_step_settings["instance_type"]
+            )
+            assert (
+                arguments["ResourceConfig"]["VolumeSizeInGB"]
+                == repack_model_step_settings["volume_size"]
+            )
+            assert (
+                arguments["OutputDataConfig"]["KmsKeyId"]
+                == repack_model_step_settings["output_kms_key"]
+            )
+            assert arguments["RoleArn"] == repack_model_step_settings["role"]
+            assert (
+                arguments["OutputDataConfig"]["S3OutputPath"]
+                == repack_model_step_settings["output_path"]
+            )
+            assert (
+                repack_model_step_settings["code_location"]
+                in arguments["HyperParameters"]["sagemaker_submit_directory"]
+            )
+            assert (
+                arguments["VpcConfig"]["SecurityGroupIds"]
+                == repack_model_step_settings["security_group_ids"]
+            )
+            assert arguments["VpcConfig"]["Subnets"] == repack_model_step_settings["subnets"]
+            return
+
+        _validate_repack_job_default_cfgs_for_configurable_args(
+            arguments=arguments,
+            model=model,
+        )
+
+    repack_model_step_settings, valid_repack_args = repack_step_setting_input
+    model, expected_step_num = model_input
     model.sagemaker_session = pipeline_session
     model.model_data = model_data_param
     create_model_step_args = model.create(
         instance_type="c4.4xlarge",
     )
-    create_model_steps = ModelStep(
+    create_model_step = ModelStep(
         name="MyModelStep",
         step_args=create_model_step_args,
+        repack_model_step_settings=repack_model_step_settings,
     )
-    assert_test_result(create_model_steps.request_dicts())
+    assert_test_result(create_model_step)
 
     register_model_step_args = model.register(
         content_types=["text/csv"],
@@ -756,11 +888,12 @@ def test_create_model_among_different_model_types(test_input, pipeline_session, 
         transform_instances=["ml.m5.xlarge"],
         model_package_group_name="MyModelPackageGroup",
     )
-    register_model_steps = ModelStep(
+    register_model_step = ModelStep(
         name="MyModelStep",
         step_args=register_model_step_args,
+        repack_model_step_settings=repack_model_step_settings,
     )
-    assert_test_result(register_model_steps.request_dicts())
+    assert_test_result(register_model_step)
 
 
 @pytest.mark.parametrize(
@@ -848,9 +981,9 @@ def test_create_model_among_different_model_types(test_input, pipeline_session, 
         ),
     ],
 )
-@patch("sagemaker.utils.repack_model")
+@patch("sagemaker.utils.repack_model", MagicMock())
 def test_request_compare_of_register_model_under_different_sessions(
-    mock_repack, test_input, pipeline_session, sagemaker_session, model_data_param
+    test_input, pipeline_session, sagemaker_session, model_data_param
 ):
     model_package_group_name = "TestModelPackageGroup"
     model, expect = test_input
@@ -919,7 +1052,7 @@ def _verify_register_model_container_definition(
         assert submit_dir == expected_submit_dir
 
 
-def test_model_step_with_lambda_property_reference(pipeline_session):
+def test_model_step_with_lambda_property_reference(pipeline_session, source_dir):
     lambda_step = LambdaStep(
         name="MyLambda",
         lambda_func=Lambda(
@@ -938,7 +1071,7 @@ def test_model_step_with_lambda_property_reference(pipeline_session):
         image_uri=lambda_step.properties.Outputs["model_image"],
         model_data=lambda_step.properties.Outputs["model_artifact"],
         sagemaker_session=pipeline_session,
-        entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
+        entry_point=f"{source_dir}/{_SCRIPT_NAME}",
         role=ROLE,
     )
 
@@ -1149,3 +1282,77 @@ def test_create_model_step_using_custom_model_name(pipeline_session):
     steps = json.loads(pipeline.definition())["Steps"]
     assert len(steps) == 1
     assert "ModelName" not in steps[0]["Arguments"]
+
+
+def _validate_repack_job_default_cfgs_for_configurable_args(
+    arguments: dict, model: Union[Model, PipelineModel]
+):
+    assert arguments["ResourceConfig"]["InstanceType"] == _utils.INSTANCE_TYPE
+    assert arguments["ResourceConfig"]["VolumeSizeInGB"] == 30
+    assert arguments["RoleArn"] == ROLE
+
+    if isinstance(model, Model) and model.model_kms_key:
+        assert arguments["OutputDataConfig"]["KmsKeyId"] == model.model_kms_key
+    else:
+        assert not arguments["OutputDataConfig"].get("KmsKeyId", None)
+
+    if isinstance(model, Model) and model.vpc_config:
+        assert arguments["VpcConfig"]["SecurityGroupIds"] == model.vpc_config["SecurityGroupIds"]
+        assert arguments["VpcConfig"]["Subnets"] == model.vpc_config["Subnets"]
+    else:
+        assert not arguments.get("VpcConfig", None)
+
+    if not model.name:
+        return
+    if model.key_prefix is not None and model.key_prefix.startswith(_REPACK_OUTPUT_KEY_PREFIX):
+        assert arguments["OutputDataConfig"]["S3OutputPath"] == (
+            f"{_MODEL_CODE_LOCATION}/{model.name}"
+        )
+    else:
+        assert arguments["OutputDataConfig"]["S3OutputPath"] == f"s3://{BUCKET}/{model.name}"
+
+
+def _validate_repack_job_non_configurable_args(
+    arguments: dict,
+    expected_script_name: str,
+    expected_model_archive: Union[str, dict, PipelineVariable],
+    expected_entry_point: str,
+    expected_dependencies: str,
+):
+    assert arguments["HyperParameters"]["inference_script"] == expected_script_name
+    assert arguments["HyperParameters"]["sagemaker_program"] == expected_entry_point
+    assert arguments["HyperParameters"]["dependencies"] == expected_dependencies
+
+    model_archive = arguments["HyperParameters"]["model_archive"]
+    if is_pipeline_variable(model_archive):
+        assert model_archive.expr == expected_model_archive
+    else:
+        assert model_archive == expected_model_archive
+
+
+def test_create_model_step_using_custom_model_name_set_to_none(pipeline_session):
+    # Name of the model not specified, will resolve to None.
+    model = Model(
+        image_uri="my-image",
+        sagemaker_session=pipeline_session,
+        model_data="s3://",
+        role=ROLE,
+    )
+    step_create_model = ModelStep(name="MyModelStep", step_args=model.create())
+
+    # 1. Toggle on custom-prefixing model name set to None.
+    config = PipelineDefinitionConfig(use_custom_job_prefix=True)
+
+    with pytest.raises(ValueError) as error:
+        pipeline = Pipeline(
+            name="MyPipeline",
+            steps=[step_create_model],
+            sagemaker_session=pipeline_session,
+            pipeline_definition_config=config,
+        )
+        pipeline.definition()
+
+    assert (
+        "Invalid input: use_custom_job_prefix flag is set but the name field "
+        "[ModelName] has not been specified." in str(error.value)
+    )

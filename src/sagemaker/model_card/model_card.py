@@ -957,7 +957,9 @@ class TrainingDetails(_DefaultToRequestDict, _DefaultFromDict):
                 "hyper_parameters": [
                     HyperParameter(key, value)
                     for key, value in training_job_data["HyperParameters"].items()
-                ],
+                ]
+                if "HyperParameters" in training_job_data
+                else [],
             }
             kwargs.update({"training_job_details": TrainingJobDetails(**job)})
             instance = cls(**kwargs)

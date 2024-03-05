@@ -12,13 +12,16 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-
-from mock.mock import patch
+import boto3
+from mock.mock import patch, Mock
 
 from sagemaker import content_types
 from sagemaker.jumpstart.utils import verify_model_region_and_return_specs
 
 from tests.unit.sagemaker.jumpstart.utils import get_special_model_spec
+
+mock_client = boto3.client("s3")
+mock_session = Mock(s3_client=mock_client)
 
 
 @patch("sagemaker.jumpstart.artifacts.predictors.verify_model_region_and_return_specs")
@@ -37,11 +40,12 @@ def test_jumpstart_default_content_types(
         region=region,
         model_id=model_id,
         model_version=model_version,
+        sagemaker_session=mock_session,
     )
     assert default_content_type == "application/x-text"
 
     patched_get_model_specs.assert_called_once_with(
-        region=region, model_id=model_id, version=model_version
+        region=region, model_id=model_id, version=model_version, s3_client=mock_client
     )
 
 
@@ -61,11 +65,12 @@ def test_jumpstart_supported_content_types(
         region=region,
         model_id=model_id,
         model_version=model_version,
+        sagemaker_session=mock_session,
     )
     assert supported_content_types == [
         "application/x-text",
     ]
 
     patched_get_model_specs.assert_called_once_with(
-        region=region, model_id=model_id, version=model_version
+        region=region, model_id=model_id, version=model_version, s3_client=mock_client
     )

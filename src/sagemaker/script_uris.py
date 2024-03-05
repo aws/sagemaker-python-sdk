@@ -19,6 +19,8 @@ from typing import Optional
 
 from sagemaker.jumpstart import utils as jumpstart_utils
 from sagemaker.jumpstart import artifacts
+from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+from sagemaker.session import Session
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +32,7 @@ def retrieve(
     script_scope: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> str:
     """Retrieves the script S3 URI associated with the model matching the given arguments.
 
@@ -48,6 +51,10 @@ def retrieve(
         tolerate_deprecated_model (bool): ``True`` if deprecated models should be tolerated
             without raising an exception. ``False`` if these models should raise an exception.
             (Default: False).
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions. If not
+            specified, one is created using the default AWS configuration
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     Returns:
         str: The model script URI for the corresponding model.
 
@@ -70,4 +77,5 @@ def retrieve(
         region,
         tolerate_vulnerable_model,
         tolerate_deprecated_model,
+        sagemaker_session=sagemaker_session,
     )

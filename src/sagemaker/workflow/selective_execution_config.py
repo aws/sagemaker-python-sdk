@@ -22,7 +22,12 @@ class SelectiveExecutionConfig:
     another SageMaker pipeline run.
     """
 
-    def __init__(self, selected_steps: List[str], source_pipeline_execution_arn: str = None):
+    def __init__(
+        self,
+        selected_steps: List[str],
+        source_pipeline_execution_arn: str = None,
+        reference_latest_execution: bool = True,
+    ):
         """Create a `SelectiveExecutionConfig`.
 
         Args:
@@ -32,9 +37,12 @@ class SelectiveExecutionConfig:
                 `Succeeded`.
             selected_steps (List[str]): A list of pipeline steps to run. All step(s) in all
                 path(s) between two selected steps should be included.
+            reference_latest_execution (bool): Whether to reference the latest execution if
+                `source_pipeline_execution_arn` is not provided.
         """
         self.source_pipeline_execution_arn = source_pipeline_execution_arn
         self.selected_steps = selected_steps
+        self.reference_latest_execution = reference_latest_execution
 
     def _build_selected_steps_from_list(self) -> RequestType:
         """Get the request structure for the list of selected steps."""

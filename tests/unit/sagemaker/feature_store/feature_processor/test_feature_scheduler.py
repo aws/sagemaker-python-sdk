@@ -23,6 +23,10 @@ from mock import Mock, patch, call
 from sagemaker.feature_store.feature_processor.feature_scheduler import (
     FeatureProcessorLineageHandler,
 )
+from sagemaker.feature_store.feature_processor import (
+    FeatureProcessorPipelineEvents,
+    FeatureProcessorPipelineExecutionStatus,
+)
 from sagemaker.lineage.context import Context
 from sagemaker.remote_function.spark_config import SparkConfig
 
@@ -41,6 +45,10 @@ from sagemaker.feature_store.feature_processor.feature_scheduler import (
     delete_schedule,
     describe,
     list_pipelines,
+    put_trigger,
+    enable_trigger,
+    disable_trigger,
+    delete_trigger,
     _validate_fg_lineage_resources,
     _validate_pipeline_lineage_resources,
 )
@@ -49,8 +57,8 @@ from sagemaker.remote_function.job import (
     SPARK_APP_SCRIPT_PATH,
     RUNTIME_SCRIPTS_CHANNEL_NAME,
     REMOTE_FUNCTION_WORKSPACE,
-    SPARK_CONF_WORKSPACE,
     ENTRYPOINT_SCRIPT_NAME,
+    SPARK_CONF_CHANNEL_NAME,
 )
 from sagemaker.workflow.parameters import Parameter, ParameterTypeEnum
 from sagemaker.workflow.retry import (
@@ -73,6 +81,7 @@ PIPELINE_ARN = "pipeline_arn"
 SCHEDULE_ARN = "schedule_arn"
 SCHEDULE_ROLE_ARN = "my_schedule_role_arn"
 EXECUTION_ROLE_ARN = "my_execution_role_arn"
+EVENT_BRIDGE_RULE_ARN = "arn:aws:events:us-west-2:123456789012:rule/test-rule"
 VALID_SCHEDULE_STATE = "ENABLED"
 INVALID_SCHEDULE_STATE = "invalid"
 TEST_REGION = "us-west-2"
@@ -121,6 +130,16 @@ def mock_event_bridge_scheduler_helper():
     return helper
 
 
+def mock_event_bridge_rule_helper():
+    helper = Mock()
+    helper.describe_rule.return_value = {
+        "Arn": "some_rule_arn",
+        "EventPattern": "some_event_pattern",
+        "State": "ENABLED",
+    }
+    return helper
+
+
 def mock_feature_processor_lineage():
     return Mock(FeatureProcessorLineageHandler)
 
@@ -159,7 +178,7 @@ def config_uploader():
     return_value=("path_a", "path_b", "path_c", "path_d"),
 )
 @patch(
-    "sagemaker.feature_store.feature_processor._config_uploader.ConfigUploader._prepare_and_upload_dependencies",
+    "sagemaker.feature_store.feature_processor._config_uploader.ConfigUploader._prepare_and_upload_workspace",
     return_value="some_s3_uri",
 )
 @patch(
@@ -270,6 +289,7 @@ def test_to_pipeline(
         f"{S3_URI}/pipeline_name",
         None,
         session,
+        None,
     )
 
     mock_spark_dependency_upload.assert_called_once_with(
@@ -316,7 +336,7 @@ def test_to_pipeline(
             REMOTE_FUNCTION_WORKSPACE: mock_training_input(
                 s3_data=f"{S3_URI}/pipeline_name/sm_rf_user_ws", s3_data_type="S3Prefix"
             ),
-            SPARK_CONF_WORKSPACE: mock_training_input(s3_data="path_d", s3_data_type="S3Prefix"),
+            SPARK_CONF_CHANNEL_NAME: mock_training_input(s3_data="path_d", s3_data_type="S3Prefix"),
         },
         retry_policies=[
             StepRetryPolicy(
@@ -629,10 +649,14 @@ def test_schedule(lineage, helper, validation, get_tags):
 
 
 @patch(
+    "sagemaker.feature_store.feature_processor.feature_scheduler.EventBridgeRuleHelper",
+    return_value=mock_event_bridge_rule_helper(),
+)
+@patch(
     "sagemaker.feature_store.feature_processor.feature_scheduler.EventBridgeSchedulerHelper",
     return_value=mock_event_bridge_scheduler_helper(),
 )
-def test_describe_both_exist(helper):
+def test_describe_both_exist(mock_scheduler_helper, mock_rule_helper):
     session = Mock(Session, sagemaker_client=Mock(), boto_session=Mock())
     session.sagemaker_client.describe_pipeline.return_value = PIPELINE
     describe_schedule_response = describe(
@@ -647,14 +671,21 @@ def test_describe_both_exist(helper):
         schedule_state=VALID_SCHEDULE_STATE,
         schedule_start_date=NOW.strftime(EXECUTION_TIME_PIPELINE_PARAMETER_FORMAT),
         schedule_role="some_schedule_role_arn",
+        trigger="some_rule_arn",
+        event_pattern="some_event_pattern",
+        trigger_state="ENABLED",
     )
 
 
 @patch(
+    "sagemaker.feature_store.feature_processor.feature_scheduler.EventBridgeRuleHelper.describe_rule",
+    return_value=None,
+)
+@patch(
     "sagemaker.feature_store.feature_processor.feature_scheduler.EventBridgeSchedulerHelper.describe_schedule",
     return_value=None,
 )
-def test_describe_only_pipeline_exist(helper):
+def test_describe_only_pipeline_exist(helper, mock_describe_rule):
     session = Mock(Session, sagemaker_client=Mock(), boto_session=Mock())
     session.sagemaker_client.describe_pipeline.return_value = {
         "PipelineArn": "some_pipeline_arn",
@@ -873,6 +904,9 @@ def test_remote_decorator_fields_consistency(get_execution_role, session):
         "volume_kms_key",
         "vpc_config",
         "tags",
+        "use_spot_instances",
+        "max_wait_time_in_seconds",
+        "custom_file_filter",
     }
 
     job_settings = _JobSettings(
@@ -886,3 +920,114 @@ def test_remote_decorator_fields_consistency(get_execution_role, session):
     actual_attributes = {attribute for attribute, _ in job_settings.__dict__.items()}
 
     assert expected_remote_decorator_attributes == actual_attributes
+
+
+@patch(
+    "sagemaker.feature_store.feature_processor.lineage."
+    "_feature_processor_lineage.FeatureProcessorLineageHandler.create_trigger_lineage"
+)
+@patch(
+    "sagemaker.feature_store.feature_processor._event_bridge_rule_helper.EventBridgeRuleHelper.describe_rule",
+    return_value={"EventPattern": "test-pattern"},
+)
+@patch(
+    "sagemaker.feature_store.feature_processor._event_bridge_rule_helper.EventBridgeRuleHelper.add_tags"
+)
+@patch(
+    "sagemaker.feature_store.feature_processor.feature_scheduler."
+    "_get_tags_from_pipeline_to_propagate_to_lineage_resources",
+    return_value=TAGS,
+)
+@patch(
+    "sagemaker.feature_store.feature_processor._event_bridge_rule_helper.EventBridgeRuleHelper.put_target"
+)
+@patch(
+    "sagemaker.feature_store.feature_processor._event_bridge_rule_helper.EventBridgeRuleHelper.put_rule",
+    return_value="arn:aws:events:us-west-2:123456789012:rule/test-rule",
+)
+def test_put_trigger(
+    mock_put_rule,
+    mock_put_target,
+    mock_get_tags,
+    mock_add_tags,
+    mock_describe_rule,
+    mock_create_trigger_lineage,
+):
+    session = Mock(
+        Session,
+        sagemaker_client=Mock(
+            describe_pipeline=Mock(return_value={"PipelineArn": "test-pipeline-arn"})
+        ),
+        boto_session=Mock(),
+    )
+    source_pipeline_events = [
+        FeatureProcessorPipelineEvents(
+            pipeline_name="test-pipeline",
+            pipeline_execution_status=[FeatureProcessorPipelineExecutionStatus.SUCCEEDED],
+        )
+    ]
+    put_trigger(
+        source_pipeline_events=source_pipeline_events,
+        target_pipeline="test-target-pipeline",
+        state="Enabled",
+        event_pattern="test-pattern",
+        role_arn=SCHEDULE_ROLE_ARN,
+        sagemaker_session=session,
+    )
+
+    mock_put_rule.assert_called_once_with(
+        source_pipeline_events=source_pipeline_events,
+        target_pipeline="test-target-pipeline",
+        state="Enabled",
+        event_pattern="test-pattern",
+    )
+    mock_put_target.assert_called_once_with(
+        rule_name="test-rule",
+        target_pipeline="test-target-pipeline",
+        target_pipeline_parameters=None,
+        role_arn=SCHEDULE_ROLE_ARN,
+    )
+    mock_add_tags.assert_called_once_with(rule_arn=EVENT_BRIDGE_RULE_ARN, tags=TAGS)
+    mock_create_trigger_lineage.assert_called_once_with(
+        pipeline_name="test-target-pipeline",
+        trigger_arn=EVENT_BRIDGE_RULE_ARN,
+        state="Enabled",
+        tags=TAGS,
+        event_pattern="test-pattern",
+    )
+
+
+@patch(
+    "sagemaker.feature_store.feature_processor._event_bridge_rule_helper.EventBridgeRuleHelper.enable_rule"
+)
+def test_enable_trigger(mock_enable_rule):
+    session = Mock(Session, sagemaker_client=Mock(), boto_session=Mock())
+    enable_trigger(pipeline_name="test-pipeline", sagemaker_session=session)
+    mock_enable_rule.assert_called_once_with(rule_name="test-pipeline")
+
+
+@patch(
+    "sagemaker.feature_store.feature_processor._event_bridge_rule_helper.EventBridgeRuleHelper.disable_rule"
+)
+def test_disable_trigger(mock_disable_rule):
+    session = Mock(Session, sagemaker_client=Mock(), boto_session=Mock())
+    disable_trigger(pipeline_name="test-pipeline", sagemaker_session=session)
+    mock_disable_rule.assert_called_once_with(rule_name="test-pipeline")
+
+
+@patch(
+    "sagemaker.feature_store.feature_processor._event_bridge_rule_helper.EventBridgeRuleHelper.list_targets_by_rule",
+    return_value=[{"Targets": [{"Id": "target_pipeline"}]}],
+)
+@patch(
+    "sagemaker.feature_store.feature_processor._event_bridge_rule_helper.EventBridgeRuleHelper.remove_targets"
+)
+@patch(
+    "sagemaker.feature_store.feature_processor._event_bridge_rule_helper.EventBridgeRuleHelper.delete_rule"
+)
+def test_delete_trigger(mock_delete_rule, mock_remove_targets, mock_list_targets_by_rule):
+    session = Mock(Session, sagemaker_client=Mock(), boto_session=Mock())
+    delete_trigger(pipeline_name="test-pipeline", sagemaker_session=session)
+    mock_delete_rule.assert_called_once_with("test-pipeline")
+    mock_list_targets_by_rule.assert_called_once_with("test-pipeline")
+    mock_remove_targets.assert_called_once_with(rule_name="test-pipeline", ids=["target_pipeline"])

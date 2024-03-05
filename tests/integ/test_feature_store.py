@@ -12,9 +12,9 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import datetime
 import json
 import time
-import datetime
 import dateutil.parser as date_parser
 from contextlib import contextmanager
 
@@ -24,8 +24,13 @@ import pandas as pd
 import pytest
 from pandas import DataFrame
 
-from sagemaker.feature_store.feature_definition import FractionalFeatureDefinition
-from sagemaker.feature_store.feature_group import FeatureGroup
+from sagemaker.feature_store.feature_utils import get_feature_group_as_dataframe
+from sagemaker.feature_store.feature_definition import (
+    FractionalFeatureDefinition,
+    StringFeatureDefinition,
+    ListCollectionType,
+)
+from sagemaker.feature_store.feature_group import FeatureGroup, IngestionError
 from sagemaker.feature_store.feature_store import FeatureStore
 from sagemaker.feature_store.inputs import (
     FeatureValue,
@@ -37,6 +42,11 @@ from sagemaker.feature_store.inputs import (
     DeletionModeEnum,
     TtlDuration,
     OnlineStoreConfigUpdate,
+    OnlineStoreStorageTypeEnum,
+    ThroughputConfig,
+    ThroughputModeEnum,
+    ThroughputConfigUpdate,
+    TargetStoreEnum,
 )
 from sagemaker.feature_store.dataset_builder import (
     JoinTypeEnum,
@@ -130,6 +140,264 @@ def pandas_data_frame():
 
 
 @pytest.fixture
+def get_record_results_for_data_frame():
+    return {
+        "0.0": [
+            {"FeatureName": "feature1", "ValueAsString": "0.0"},
+            {"FeatureName": "feature2", "ValueAsString": "0"},
+            {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+            {"FeatureName": "feature4", "ValueAsString": "0.0"},
+        ],
+        "1.0": [
+            {"FeatureName": "feature1", "ValueAsString": "1.0"},
+            {"FeatureName": "feature2", "ValueAsString": "1"},
+            {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+            {"FeatureName": "feature4", "ValueAsString": "1.0"},
+        ],
+        "2.0": [
+            {"FeatureName": "feature1", "ValueAsString": "2.0"},
+            {"FeatureName": "feature2", "ValueAsString": "2"},
+            {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+            {"FeatureName": "feature4", "ValueAsString": "2.0"},
+        ],
+        "3.0": [
+            {"FeatureName": "feature1", "ValueAsString": "3.0"},
+            {"FeatureName": "feature2", "ValueAsString": "3"},
+            {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+            {"FeatureName": "feature4", "ValueAsString": "3.0"},
+        ],
+        "4.0": [
+            {"FeatureName": "feature1", "ValueAsString": "4.0"},
+            {"FeatureName": "feature2", "ValueAsString": "4"},
+            {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+            {"FeatureName": "feature4", "ValueAsString": "4.0"},
+        ],
+        "5.0": [
+            {"FeatureName": "feature1", "ValueAsString": "5.0"},
+            {"FeatureName": "feature2", "ValueAsString": "5"},
+            {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+        ],
+        "6.0": [
+            {"FeatureName": "feature1", "ValueAsString": "6.0"},
+            {"FeatureName": "feature2", "ValueAsString": "6"},
+            {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+        ],
+        "7.0": [
+            {"FeatureName": "feature1", "ValueAsString": "7.0"},
+            {"FeatureName": "feature2", "ValueAsString": "7"},
+            {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+        ],
+        "8.0": [
+            {"FeatureName": "feature1", "ValueAsString": "8.0"},
+            {"FeatureName": "feature2", "ValueAsString": "8"},
+            {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+        ],
+        "9.0": [
+            {"FeatureName": "feature1", "ValueAsString": "9.0"},
+            {"FeatureName": "feature2", "ValueAsString": "9"},
+            {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+        ],
+    }
+
+
+@pytest.fixture
+def pandas_data_frame_with_collection_type():
+    df = pd.DataFrame(
+        {
+            "feature1": pd.Series(np.arange(10.0), dtype="float64"),
+            "feature2": pd.Series(np.arange(10), dtype="int64"),
+            "feature3": pd.Series(["2020-10-30T03:43:21Z"] * 10, dtype="string"),
+            "feature4": pd.Series(np.arange(5.0), dtype="float64"),  # contains nan
+            "feature5": pd.Series(
+                [["a", "abc"], ["b", "c"], ["c", "f"], ["d"], []], dtype="object"
+            ),
+            "feature6": pd.Series([[1, 2], [1, 2, 3], [1, 5], [1], []], dtype="object"),
+            "feature7": pd.Series(
+                [[1.1, 2.3], [1.4, 2.5, 3.2, 25], [1.0, 5.3], [1.2], []], dtype="object"
+            ),
+            "feature8": pd.Series([[1, 2], [1, 2, 3], [1, 5], [1], [], []], dtype="object"),
+            "feature9": pd.Series(
+                [[1.1, 2.3], [1.4, 25, 3.2], [1.0, 3, 4], [1.2], []], dtype="object"
+            ),
+            "feature10": pd.Series(
+                [["a", "abc"], ["b", "c"], ["c", "None"], ["d"], []], dtype="object"
+            ),
+        }
+    )
+    return df
+
+
+@pytest.fixture
+def get_record_results_for_data_frame_with_collection_type():
+    return {
+        "0.0": [
+            {"FeatureName": "feature1", "ValueAsString": "0.0"},
+            {"FeatureName": "feature2", "ValueAsString": "0"},
+            {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+            {"FeatureName": "feature4", "ValueAsString": "0.0"},
+            {"FeatureName": "feature5", "ValueAsStringList": ["a", "abc"]},
+            {"FeatureName": "feature6", "ValueAsStringList": ["1", "2"]},
+            {"FeatureName": "feature7", "ValueAsStringList": ["1.1", "2.3"]},
+            {"FeatureName": "feature8", "ValueAsStringList": ["1", "2"]},
+            {"FeatureName": "feature9", "ValueAsStringList": ["1.1", "2.3"]},
+            {"FeatureName": "feature10", "ValueAsStringList": ["a", "abc"]},
+        ],
+        "1.0": [
+            {"FeatureName": "feature1", "ValueAsString": "1.0"},
+            {"FeatureName": "feature2", "ValueAsString": "1"},
+            {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+            {"FeatureName": "feature4", "ValueAsString": "1.0"},
+            {"FeatureName": "feature5", "ValueAsStringList": ["b", "c"]},
+            {"FeatureName": "feature6", "ValueAsStringList": ["1", "2", "3"]},
+            {"FeatureName": "feature7", "ValueAsStringList": ["1.4", "2.5", "3.2", "25"]},
+            {"FeatureName": "feature8", "ValueAsStringList": ["1", "2", "3"]},
+            {"FeatureName": "feature9", "ValueAsStringList": ["1.4", "25", "3.2"]},
+            {"FeatureName": "feature10", "ValueAsStringList": ["b", "c"]},
+        ],
+        "2.0": [
+            {"FeatureName": "feature1", "ValueAsString": "2.0"},
+            {"FeatureName": "feature2", "ValueAsString": "2"},
+            {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+            {"FeatureName": "feature4", "ValueAsString": "2.0"},
+            {"FeatureName": "feature5", "ValueAsStringList": ["c", "f"]},
+            {"FeatureName": "feature6", "ValueAsStringList": ["1", "5"]},
+            {"FeatureName": "feature7", "ValueAsStringList": ["1.0", "5.3"]},
+            {"FeatureName": "feature8", "ValueAsStringList": ["1", "5"]},
+            {"FeatureName": "feature9", "ValueAsStringList": ["1.0", "3", "4"]},
+            {"FeatureName": "feature10", "ValueAsStringList": ["c", "None"]},
+        ],
+        "3.0": [
+            {"FeatureName": "feature1", "ValueAsString": "3.0"},
+            {"FeatureName": "feature2", "ValueAsString": "3"},
+            {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+            {"FeatureName": "feature4", "ValueAsString": "3.0"},
+            {"FeatureName": "feature5", "ValueAsStringList": ["d"]},
+            {"FeatureName": "feature6", "ValueAsStringList": ["1"]},
+            {"FeatureName": "feature7", "ValueAsStringList": ["1.2"]},
+            {"FeatureName": "feature8", "ValueAsStringList": ["1"]},
+            {"FeatureName": "feature9", "ValueAsStringList": ["1.2"]},
+            {"FeatureName": "feature10", "ValueAsStringList": ["d"]},
+        ],
+        "4.0": [
+            {"FeatureName": "feature1", "ValueAsString": "4.0"},
+            {"FeatureName": "feature2", "ValueAsString": "4"},
+            {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+            {"FeatureName": "feature4", "ValueAsString": "4.0"},
+        ],
+        "5.0": [
+            {"FeatureName": "feature1", "ValueAsString": "5.0"},
+            {"FeatureName": "feature2", "ValueAsString": "5"},
+            {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+        ],
+        "6.0": [
+            {"FeatureName": "feature1", "ValueAsString": "6.0"},
+            {"FeatureName": "feature2", "ValueAsString": "6"},
+            {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+        ],
+        "7.0": [
+            {"FeatureName": "feature1", "ValueAsString": "7.0"},
+            {"FeatureName": "feature2", "ValueAsString": "7"},
+            {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+        ],
+        "8.0": [
+            {"FeatureName": "feature1", "ValueAsString": "8.0"},
+            {"FeatureName": "feature2", "ValueAsString": "8"},
+            {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+        ],
+        "9.0": [
+            {"FeatureName": "feature1", "ValueAsString": "9.0"},
+            {"FeatureName": "feature2", "ValueAsString": "9"},
+            {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+        ],
+    }
+
+
+@pytest.fixture
+def get_record_results_for_data_frame_without_collection_type():
+    return {
+        "0.0": [
+            {"FeatureName": "feature1", "ValueAsString": "0.0"},
+            {"FeatureName": "feature2", "ValueAsString": "0"},
+            {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+            {"FeatureName": "feature4", "ValueAsString": "0.0"},
+            {"FeatureName": "feature5", "ValueAsString": "['a', 'abc']"},
+            {"FeatureName": "feature6", "ValueAsString": "[1, 2]"},
+            {"FeatureName": "feature7", "ValueAsString": "[1.1, 2.3]"},
+            {"FeatureName": "feature8", "ValueAsString": "[1, 2]"},
+            {"FeatureName": "feature9", "ValueAsString": "[1.1, 2.3]"},
+            {"FeatureName": "feature10", "ValueAsString": "['a', 'abc']"},
+        ],
+        "1.0": [
+            {"FeatureName": "feature1", "ValueAsString": "1.0"},
+            {"FeatureName": "feature2", "ValueAsString": "1"},
+            {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+            {"FeatureName": "feature4", "ValueAsString": "1.0"},
+            {"FeatureName": "feature5", "ValueAsString": "['b', 'c']"},
+            {"FeatureName": "feature6", "ValueAsString": "[1, 2, 3]"},
+            {"FeatureName": "feature7", "ValueAsString": "[1.4, 2.5, 3.2, 25]"},
+            {"FeatureName": "feature8", "ValueAsString": "[1, 2, 3]"},
+            {"FeatureName": "feature9", "ValueAsString": "[1.4, 25, 3.2]"},
+            {"FeatureName": "feature10", "ValueAsString": "['b', 'c']"},
+        ],
+        "2.0": [
+            {"FeatureName": "feature1", "ValueAsString": "2.0"},
+            {"FeatureName": "feature2", "ValueAsString": "2"},
+            {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+            {"FeatureName": "feature4", "ValueAsString": "2.0"},
+            {"FeatureName": "feature5", "ValueAsString": "['c', 'f']"},
+            {"FeatureName": "feature6", "ValueAsString": "[1, 5]"},
+            {"FeatureName": "feature7", "ValueAsString": "[1.0, 5.3]"},
+            {"FeatureName": "feature8", "ValueAsString": "[1, 5]"},
+            {"FeatureName": "feature9", "ValueAsString": "[1.0, 3, 4]"},
+            {"FeatureName": "feature10", "ValueAsString": "['c', 'None']"},
+        ],
+        "3.0": [
+            {"FeatureName": "feature1", "ValueAsString": "3.0"},
+            {"FeatureName": "feature2", "ValueAsString": "3"},
+            {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+            {"FeatureName": "feature4", "ValueAsString": "3.0"},
+            {"FeatureName": "feature5", "ValueAsString": "['d']"},
+            {"FeatureName": "feature6", "ValueAsString": "[1]"},
+            {"FeatureName": "feature7", "ValueAsString": "[1.2]"},
+            {"FeatureName": "feature8", "ValueAsString": "[1]"},
+            {"FeatureName": "feature9", "ValueAsString": "[1.2]"},
+            {"FeatureName": "feature10", "ValueAsString": "['d']"},
+        ],
+        "4.0": [
+            {"FeatureName": "feature1", "ValueAsString": "4.0"},
+            {"FeatureName": "feature2", "ValueAsString": "4"},
+            {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+            {"FeatureName": "feature4", "ValueAsString": "4.0"},
+        ],
+        "5.0": [
+            {"FeatureName": "feature1", "ValueAsString": "5.0"},
+            {"FeatureName": "feature2", "ValueAsString": "5"},
+            {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+        ],
+        "6.0": [
+            {"FeatureName": "feature1", "ValueAsString": "6.0"},
+            {"FeatureName": "feature2", "ValueAsString": "6"},
+            {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+        ],
+        "7.0": [
+            {"FeatureName": "feature1", "ValueAsString": "7.0"},
+            {"FeatureName": "feature2", "ValueAsString": "7"},
+            {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+        ],
+        "8.0": [
+            {"FeatureName": "feature1", "ValueAsString": "8.0"},
+            {"FeatureName": "feature2", "ValueAsString": "8"},
+            {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+        ],
+        "9.0": [
+            {"FeatureName": "feature1", "ValueAsString": "9.0"},
+            {"FeatureName": "feature2", "ValueAsString": "9"},
+            {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+        ],
+    }
+
+
+@pytest.fixture
 def base_dataframe():
     base_data = [
         [1, 187512346.0, 123, 128],
@@ -181,6 +449,16 @@ def record():
         FeatureValue(feature_name="feature1", value_as_string="10.0"),
         FeatureValue(feature_name="feature2", value_as_string="10"),
         FeatureValue(feature_name="feature3", value_as_string="2020-10-30T03:43:21Z"),
+    ]
+
+
+@pytest.fixture
+def collection_type_record():
+    return [
+        FeatureValue(feature_name="feature1", value_as_string="10.0"),
+        FeatureValue(feature_name="feature2", value_as_string="10"),
+        FeatureValue(feature_name="feature3", value_as_string="2020-10-30T03:43:21Z"),
+        FeatureValue(feature_name="feature4", value_as_string_list=["val1", "val2"]),
     ]
 
 
@@ -296,6 +574,285 @@ def test_create_feature_store(
     assert output["FeatureGroupArn"].endswith(f"feature-group/{feature_group_name}")
 
 
+def test_create_feature_store_ingest_with_offline_target_stores(
+    feature_store_session,
+    role,
+    feature_group_name,
+    offline_store_s3_uri,
+    pandas_data_frame,
+    record,
+    create_table_ddl,
+    get_record_results_for_data_frame,
+):
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
+    feature_group.load_feature_definitions(data_frame=pandas_data_frame)
+    with cleanup_feature_group(feature_group):
+        output = feature_group.create(
+            s3_uri=offline_store_s3_uri,
+            record_identifier_name="feature1",
+            event_time_feature_name="feature3",
+            role_arn=role,
+            enable_online_store=True,
+        )
+        _wait_for_feature_group_create(feature_group)
+
+        resolved_output_s3_uri = (
+            feature_group.describe()
+            .get("OfflineStoreConfig")
+            .get("S3StorageConfig")
+            .get("ResolvedOutputS3Uri")
+        )
+        # Ingest data
+        feature_group.put_record(record=record)
+        ingestion_manager = feature_group.ingest(
+            data_frame=pandas_data_frame,
+            target_stores=[TargetStoreEnum.OFFLINE_STORE],
+            max_workers=3,
+            max_processes=2,
+            wait=False,
+        )
+        ingestion_manager.wait()
+        assert 0 == len(ingestion_manager.failed_rows)
+
+        for index, value in pandas_data_frame["feature1"].items():
+            assert feature_group.get_record(record_identifier_value_as_string=str(value)) is None
+
+        # Query the integrated Glue table.
+        athena_query = feature_group.athena_query()
+        df = DataFrame()
+        with timeout(minutes=10):
+            while df.shape[0] < 11:
+                athena_query.run(
+                    query_string=f'SELECT * FROM "{athena_query.table_name}"',
+                    output_location=f"{offline_store_s3_uri}/query_results",
+                )
+                athena_query.wait()
+                assert "SUCCEEDED" == athena_query.get_query_execution().get("QueryExecution").get(
+                    "Status"
+                ).get("State")
+                df = athena_query.as_dataframe()
+                print(f"Found {df.shape[0]} records.")
+                time.sleep(60)
+
+        assert df.shape[0] == 11
+        nans = pd.isna(df.loc[df["feature1"].isin([5, 6, 7, 8, 9])]["feature4"])
+        for is_na in nans.items():
+            assert is_na
+        assert (
+            create_table_ddl.format(
+                feature_group_name=feature_group_name,
+                region=feature_store_session.boto_session.region_name,
+                account=feature_store_session.account_id(),
+                resolved_output_s3_uri=resolved_output_s3_uri,
+            )
+            == feature_group.as_hive_ddl()
+        )
+        assert output["FeatureGroupArn"].endswith(f"feature-group/{feature_group_name}")
+
+
+def test_create_feature_store_ingest_with_online_offline_target_stores(
+    feature_store_session,
+    role,
+    feature_group_name,
+    offline_store_s3_uri,
+    pandas_data_frame,
+    record,
+    create_table_ddl,
+    get_record_results_for_data_frame,
+):
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
+    feature_group.load_feature_definitions(data_frame=pandas_data_frame)
+    with cleanup_feature_group(feature_group):
+        output = feature_group.create(
+            s3_uri=offline_store_s3_uri,
+            record_identifier_name="feature1",
+            event_time_feature_name="feature3",
+            role_arn=role,
+            enable_online_store=True,
+        )
+        _wait_for_feature_group_create(feature_group)
+
+        resolved_output_s3_uri = (
+            feature_group.describe()
+            .get("OfflineStoreConfig")
+            .get("S3StorageConfig")
+            .get("ResolvedOutputS3Uri")
+        )
+        # Ingest data
+        feature_group.put_record(record=record)
+        ingestion_manager = feature_group.ingest(
+            data_frame=pandas_data_frame,
+            target_stores=[TargetStoreEnum.ONLINE_STORE, TargetStoreEnum.OFFLINE_STORE],
+            max_workers=3,
+            max_processes=2,
+            wait=False,
+        )
+        ingestion_manager.wait()
+        assert 0 == len(ingestion_manager.failed_rows)
+
+        for index, value in pandas_data_frame["feature1"].items():
+            assert (
+                feature_group.get_record(record_identifier_value_as_string=str(value))
+                == get_record_results_for_data_frame[str(value)]
+            )
+
+        # Query the integrated Glue table.
+        athena_query = feature_group.athena_query()
+        df = DataFrame()
+        with timeout(minutes=10):
+            while df.shape[0] < 11:
+                athena_query.run(
+                    query_string=f'SELECT * FROM "{athena_query.table_name}"',
+                    output_location=f"{offline_store_s3_uri}/query_results",
+                )
+                athena_query.wait()
+                assert "SUCCEEDED" == athena_query.get_query_execution().get("QueryExecution").get(
+                    "Status"
+                ).get("State")
+                df = athena_query.as_dataframe()
+                print(f"Found {df.shape[0]} records.")
+                time.sleep(60)
+
+        assert df.shape[0] == 11
+        nans = pd.isna(df.loc[df["feature1"].isin([5, 6, 7, 8, 9])]["feature4"])
+        for is_na in nans.items():
+            assert is_na
+        assert (
+            create_table_ddl.format(
+                feature_group_name=feature_group_name,
+                region=feature_store_session.boto_session.region_name,
+                account=feature_store_session.account_id(),
+                resolved_output_s3_uri=resolved_output_s3_uri,
+            )
+            == feature_group.as_hive_ddl()
+        )
+        assert output["FeatureGroupArn"].endswith(f"feature-group/{feature_group_name}")
+
+
+def test_create_feature_store_ingest_with_online_target_stores(
+    feature_store_session,
+    role,
+    feature_group_name,
+    offline_store_s3_uri,
+    pandas_data_frame,
+    record,
+    create_table_ddl,
+    get_record_results_for_data_frame,
+):
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
+    feature_group.load_feature_definitions(data_frame=pandas_data_frame)
+    with cleanup_feature_group(feature_group):
+        output = feature_group.create(
+            s3_uri=offline_store_s3_uri,
+            record_identifier_name="feature1",
+            event_time_feature_name="feature3",
+            role_arn=role,
+            enable_online_store=True,
+        )
+        _wait_for_feature_group_create(feature_group)
+
+        # Ingest data
+        ingestion_manager = feature_group.ingest(
+            data_frame=pandas_data_frame,
+            target_stores=[TargetStoreEnum.ONLINE_STORE],
+            max_workers=3,
+            max_processes=2,
+            wait=False,
+        )
+        ingestion_manager.wait()
+        assert 0 == len(ingestion_manager.failed_rows)
+
+        for index, value in pandas_data_frame["feature1"].items():
+            assert (
+                feature_group.get_record(record_identifier_value_as_string=str(value))
+                == get_record_results_for_data_frame[str(value)]
+            )
+
+        feature_group.put_record(
+            record=[
+                FeatureValue(feature_name="feature1", value_as_string="100.0"),
+                FeatureValue(feature_name="feature2", value_as_string="100"),
+                FeatureValue(feature_name="feature3", value_as_string="2020-10-30T03:43:21Z"),
+                FeatureValue(feature_name="feature4", value_as_string="100.0"),
+            ],
+            target_stores=[TargetStoreEnum.OFFLINE_STORE],
+        )
+        assert feature_group.get_record(record_identifier_value_as_string="100.0") is None
+
+        # Query the integrated Glue table.
+        athena_query = feature_group.athena_query()
+        df = DataFrame()
+        with timeout(minutes=10):
+            while df.shape[0] < 1:
+                athena_query.run(
+                    query_string=f'SELECT * FROM "{athena_query.table_name}"',
+                    output_location=f"{offline_store_s3_uri}/query_results",
+                )
+                athena_query.wait()
+                assert "SUCCEEDED" == athena_query.get_query_execution().get("QueryExecution").get(
+                    "Status"
+                ).get("State")
+                df = athena_query.as_dataframe()
+                print(f"Found {df.shape[0]} records.")
+                time.sleep(60)
+
+        assert df.shape[0] == 1
+        assert df.loc[0, "feature1"] == 100.0
+        assert df.loc[0, "feature2"] == 100
+        assert df.loc[0, "feature3"] == "2020-10-30T03:43:21Z"
+        assert df.loc[0, "feature4"] == 100.0
+        assert output["FeatureGroupArn"].endswith(f"feature-group/{feature_group_name}")
+
+
+def test_put_record_with_target_stores(
+    feature_store_session,
+    role,
+    feature_group_name,
+    offline_store_s3_uri,
+    pandas_data_frame,
+    record,
+    create_table_ddl,
+    get_record_results_for_data_frame,
+):
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
+    feature_group.load_feature_definitions(data_frame=pandas_data_frame)
+    with cleanup_feature_group(feature_group):
+        feature_group.create(
+            s3_uri=offline_store_s3_uri,
+            record_identifier_name="feature1",
+            event_time_feature_name="feature3",
+            role_arn=role,
+            enable_online_store=True,
+        )
+        _wait_for_feature_group_create(feature_group)
+        feature_group.put_record(
+            record=[
+                FeatureValue(feature_name="feature1", value_as_string="100.0"),
+                FeatureValue(feature_name="feature2", value_as_string="100"),
+                FeatureValue(feature_name="feature3", value_as_string="2020-10-30T03:43:21Z"),
+                FeatureValue(feature_name="feature4", value_as_string="100.0"),
+            ],
+            target_stores=[TargetStoreEnum.OFFLINE_STORE],
+        )
+        assert feature_group.get_record(record_identifier_value_as_string="100.0") is None
+
+        feature_group.put_record(
+            record=[
+                FeatureValue(feature_name="feature1", value_as_string="100.0"),
+                FeatureValue(feature_name="feature2", value_as_string="100"),
+                FeatureValue(feature_name="feature3", value_as_string="2020-10-30T03:43:21Z"),
+                FeatureValue(feature_name="feature4", value_as_string="100.0"),
+            ],
+            target_stores=[TargetStoreEnum.ONLINE_STORE],
+        )
+        assert feature_group.get_record(record_identifier_value_as_string="100.0") == [
+            {"FeatureName": "feature1", "ValueAsString": "100.0"},
+            {"FeatureName": "feature2", "ValueAsString": "100"},
+            {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+            {"FeatureName": "feature4", "ValueAsString": "100.0"},
+        ]
+
+
 def test_create_feature_group_iceberg_table_format(
     feature_store_session,
     role,
@@ -344,6 +901,126 @@ def test_create_feature_group_glue_table_format(
 
         table_format = feature_group.describe().get("OfflineStoreConfig").get("TableFormat")
         assert table_format == "Glue"
+
+
+def test_create_feature_group_in_memory_storage_type(
+    feature_store_session,
+    role,
+    feature_group_name,
+    pandas_data_frame,
+):
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
+    feature_group.load_feature_definitions(data_frame=pandas_data_frame)
+
+    with cleanup_feature_group(feature_group):
+        feature_group.create(
+            s3_uri=False,
+            record_identifier_name="feature1",
+            event_time_feature_name="feature3",
+            role_arn=role,
+            enable_online_store=True,
+            online_store_storage_type=OnlineStoreStorageTypeEnum.IN_MEMORY,
+        )
+        _wait_for_feature_group_create(feature_group)
+
+        storage_type = feature_group.describe().get("OnlineStoreConfig").get("StorageType")
+        assert storage_type == "InMemory"
+
+
+def test_create_feature_group_standard_storage_type(
+    feature_store_session,
+    role,
+    feature_group_name,
+    pandas_data_frame,
+):
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
+    feature_group.load_feature_definitions(data_frame=pandas_data_frame)
+
+    with cleanup_feature_group(feature_group):
+        feature_group.create(
+            s3_uri=False,
+            record_identifier_name="feature1",
+            event_time_feature_name="feature3",
+            role_arn=role,
+            enable_online_store=True,
+            online_store_storage_type=OnlineStoreStorageTypeEnum.STANDARD,
+        )
+        _wait_for_feature_group_create(feature_group)
+
+        storage_type = feature_group.describe().get("OnlineStoreConfig").get("StorageType")
+        assert storage_type == "Standard"
+
+
+def test_throughput_create_as_provisioned_and_update_to_ondemand(
+    feature_store_session,
+    role,
+    feature_group_name,
+    pandas_data_frame,
+):
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
+    feature_group.load_feature_definitions(data_frame=pandas_data_frame)
+    with cleanup_feature_group(feature_group):
+        feature_group.create(
+            s3_uri=False,
+            record_identifier_name="feature1",
+            event_time_feature_name="feature3",
+            role_arn=role,
+            enable_online_store=True,
+            throughput_config=ThroughputConfig(ThroughputModeEnum.PROVISIONED, 4000, 4000),
+        )
+        _wait_for_feature_group_create(feature_group)
+
+        tp_config = feature_group.describe().get("ThroughputConfig")
+        mode = tp_config.get("ThroughputMode")
+        rcu = tp_config.get("ProvisionedReadCapacityUnits")
+        wcu = tp_config.get("ProvisionedWriteCapacityUnits")
+        assert mode == ThroughputModeEnum.PROVISIONED.value
+        assert rcu == 4000
+        assert wcu == 4000
+
+        feature_group.update(throughput_config=ThroughputConfigUpdate(ThroughputModeEnum.ON_DEMAND))
+        _wait_for_feature_group_update(feature_group)
+
+        tp_config = feature_group.describe().get("ThroughputConfig")
+        mode = tp_config.get("ThroughputMode")
+        assert mode == ThroughputModeEnum.ON_DEMAND.value
+
+
+def test_throughput_create_as_ondemand_and_update_to_provisioned(
+    feature_store_session,
+    role,
+    feature_group_name,
+    pandas_data_frame,
+):
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
+    feature_group.load_feature_definitions(data_frame=pandas_data_frame)
+    with cleanup_feature_group(feature_group):
+        feature_group.create(
+            s3_uri=False,
+            record_identifier_name="feature1",
+            event_time_feature_name="feature3",
+            role_arn=role,
+            enable_online_store=True,
+            throughput_config=ThroughputConfig(ThroughputModeEnum.ON_DEMAND),
+        )
+        _wait_for_feature_group_create(feature_group)
+
+        tp_config = feature_group.describe().get("ThroughputConfig")
+        mode = tp_config.get("ThroughputMode")
+        assert mode == ThroughputModeEnum.ON_DEMAND.value
+
+        feature_group.update(
+            throughput_config=ThroughputConfigUpdate(ThroughputModeEnum.PROVISIONED, 100, 200)
+        )
+        _wait_for_feature_group_update(feature_group)
+
+        tp_config = feature_group.describe().get("ThroughputConfig")
+        mode = tp_config.get("ThroughputMode")
+        rcu = tp_config.get("ProvisionedReadCapacityUnits")
+        wcu = tp_config.get("ProvisionedWriteCapacityUnits")
+        assert mode == ThroughputModeEnum.PROVISIONED.value
+        assert rcu == 100
+        assert wcu == 200
 
 
 def test_ttl_duration(
@@ -612,6 +1289,60 @@ def test_get_and_batch_get_record(
         for feature in records[0]["Record"]:
             assert feature["FeatureName"] in record_names
             assert feature["FeatureName"] is not removed_feature_name
+
+
+def test_put_and_get_collection_type_record(
+    feature_store_session,
+    role,
+    feature_group_name,
+    pandas_data_frame,
+    collection_type_record,
+):
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
+    feature_definition_with_collection = [
+        StringFeatureDefinition(feature_name="feature1"),
+        StringFeatureDefinition(feature_name="feature2"),
+        StringFeatureDefinition(feature_name="feature3"),
+        StringFeatureDefinition(feature_name="feature4", collection_type=ListCollectionType()),
+    ]
+    feature_group.feature_definitions = feature_definition_with_collection
+    record_identifier_value_as_string = collection_type_record[0].value_as_string
+    with cleanup_feature_group(feature_group):
+        feature_group.create(
+            s3_uri=False,
+            record_identifier_name="feature1",
+            event_time_feature_name="feature3",
+            role_arn=role,
+            enable_online_store=True,
+            online_store_storage_type=OnlineStoreStorageTypeEnum.IN_MEMORY,
+        )
+        _wait_for_feature_group_create(feature_group)
+        # Ingest data
+        feature_group.put_record(record=collection_type_record)
+        # Retrieve data
+        retrieved_record = feature_group.get_record(
+            record_identifier_value_as_string=record_identifier_value_as_string,
+        )
+
+        assert retrieved_record is not None
+        record_names = list(map(lambda r: r.feature_name, collection_type_record))
+        assert len(retrieved_record) == len(record_names)
+
+        retrieved_feature_map = {}
+        for feature in retrieved_record:
+            assert feature["FeatureName"] in record_names
+            retrieved_feature_map[feature["FeatureName"]] = (
+                feature.get("ValueAsStringList")
+                if feature.get("ValueAsString") is None
+                else feature.get("ValueAsString")
+            )
+
+        assert collection_type_record[0].value_as_string == retrieved_feature_map.get("feature1")
+        assert collection_type_record[1].value_as_string == retrieved_feature_map.get("feature2")
+        assert collection_type_record[2].value_as_string == retrieved_feature_map.get("feature3")
+        assert collection_type_record[3].value_as_string_list == retrieved_feature_map.get(
+            "feature4"
+        )
 
 
 def test_soft_delete_record(
@@ -899,7 +1630,12 @@ def test_create_dataset_with_feature_group_base(
             base, base_dataframe, offline_store_s3_uri, "base_id", "base_time", role
         )
         _create_feature_group_and_ingest_data(
-            feature_group, feature_group_dataframe, offline_store_s3_uri, "fg_id", "fg_time", role
+            feature_group,
+            feature_group_dataframe,
+            offline_store_s3_uri,
+            "fg_id",
+            "fg_time",
+            role,
         )
         base_table_name = _get_athena_table_name_after_data_replication(
             feature_store_session, base, offline_store_s3_uri
@@ -1081,7 +1817,12 @@ def test_create_dataset_with_feature_group_base_with_additional_params(
             base, base_dataframe, offline_store_s3_uri, "base_id", "base_time", role
         )
         _create_feature_group_and_ingest_data(
-            feature_group, feature_group_dataframe, offline_store_s3_uri, "fg_id", "fg_time", role
+            feature_group,
+            feature_group_dataframe,
+            offline_store_s3_uri,
+            "fg_id",
+            "fg_time",
+            role,
         )
         base_table_name = _get_athena_table_name_after_data_replication(
             feature_store_session, base, offline_store_s3_uri
@@ -1107,7 +1848,10 @@ def test_create_dataset_with_feature_group_base_with_additional_params(
             )
             sorted_df = df.sort_values(by=list(df.columns)).reset_index(drop=True)
             merged_df = base_dataframe.merge(
-                feature_group_dataframe, left_on="base_time", right_on="fg_time", how="outer"
+                feature_group_dataframe,
+                left_on="base_time",
+                right_on="fg_time",
+                how="outer",
             )
 
             expect_df = merged_df.sort_values(by=list(merged_df.columns)).reset_index(drop=True)
@@ -1346,6 +2090,278 @@ def _wait_for_feature_group_update(feature_group: FeatureGroup):
         print(feature_group.describe())
         raise RuntimeError(f"Failed to update feature group {feature_group.name}")
     print(f"FeatureGroup {feature_group.name} successfully updated.")
+
+
+def test_get_feature_group_with_region(
+    feature_store_session,
+    region_name,
+    role,
+    feature_group_name,
+    offline_store_s3_uri,
+    pandas_data_frame,
+):
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
+    feature_group.load_feature_definitions(data_frame=pandas_data_frame)
+
+    with cleanup_feature_group(feature_group):
+        output = feature_group.create(
+            s3_uri=offline_store_s3_uri,
+            record_identifier_name="feature1",
+            event_time_feature_name="feature3",
+            role_arn=role,
+            enable_online_store=True,
+        )
+        _wait_for_feature_group_create(feature_group)
+
+        feature_group.ingest(
+            data_frame=pandas_data_frame, max_workers=3, max_processes=2, wait=True
+        )
+
+        dataset = get_feature_group_as_dataframe(
+            feature_group_name=feature_group_name,
+            region=str(region_name),
+            event_time_feature_name="feature3",
+            latest_ingestion=True,
+            athena_bucket=f"{offline_store_s3_uri}/query",
+            verbose=False,
+        )
+
+        assert isinstance(dataset, DataFrame)
+    assert output["FeatureGroupArn"].endswith(f"feature-group/{feature_group_name}")
+
+
+def test_get_feature_group_with_session(
+    feature_store_session,
+    role,
+    feature_group_name,
+    offline_store_s3_uri,
+    pandas_data_frame,
+):
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
+    feature_group.load_feature_definitions(data_frame=pandas_data_frame)
+
+    with cleanup_feature_group(feature_group):
+        output = feature_group.create(
+            s3_uri=offline_store_s3_uri,
+            record_identifier_name="feature1",
+            event_time_feature_name="feature3",
+            role_arn=role,
+            enable_online_store=True,
+        )
+        _wait_for_feature_group_create(feature_group)
+
+        feature_group.ingest(
+            data_frame=pandas_data_frame, max_workers=3, max_processes=2, wait=True
+        )
+
+        dataset = get_feature_group_as_dataframe(
+            feature_group_name=feature_group_name,
+            session=feature_store_session,
+            event_time_feature_name="feature3",
+            latest_ingestion=True,
+            athena_bucket=f"{offline_store_s3_uri}/query",
+            verbose=False,
+            low_memory=False,
+        )  # Using kwargs to pass a parameter to pandas.read_csv
+
+        assert isinstance(dataset, DataFrame)
+    assert output["FeatureGroupArn"].endswith(f"feature-group/{feature_group_name}")
+
+
+def test_ingest_in_memory_multi_process_with_collection_types(
+    feature_store_session,
+    role,
+    feature_group_name,
+    offline_store_s3_uri,
+    pandas_data_frame_with_collection_type,
+    get_record_results_for_data_frame_with_collection_type,
+):
+    feature_group = FeatureGroup(feature_group_name, sagemaker_session=feature_store_session)
+    feature_group.load_feature_definitions(
+        data_frame=pandas_data_frame_with_collection_type,
+        online_storage_type=OnlineStoreStorageTypeEnum.IN_MEMORY,
+    )
+
+    with cleanup_feature_group(feature_group):
+        output = feature_group.create(
+            record_identifier_name="feature1",
+            event_time_feature_name="feature3",
+            role_arn=role,
+            enable_online_store=True,
+            online_store_storage_type=OnlineStoreStorageTypeEnum.IN_MEMORY,
+            s3_uri=False,
+        )
+        _wait_for_feature_group_create(feature_group)
+
+        ingestion_manager = feature_group.ingest(
+            data_frame=pandas_data_frame_with_collection_type,
+            max_workers=3,
+            max_processes=2,
+            wait=True,
+        )
+        ingestion_manager.wait()
+        assert 0 == len(ingestion_manager.failed_rows)
+        assert output["FeatureGroupArn"].endswith(f"feature-group/{feature_group_name}")
+        for index, value in pandas_data_frame_with_collection_type["feature1"].items():
+            assert (
+                feature_group.get_record(record_identifier_value_as_string=str(value))
+                == get_record_results_for_data_frame_with_collection_type[str(value)]
+            )
+
+        new_row_data = [
+            10.0,
+            10,
+            "2020-10-30T03:43:21Z",
+            5.0,
+            ["a", "b"],
+            [1, 2, None],
+            [3.0, 4.0],
+            [1, 2],
+            [3.0, 4.0],
+            ["a", "b"],
+        ]
+        pandas_data_frame_with_collection_type.loc[
+            len(pandas_data_frame_with_collection_type)
+        ] = new_row_data
+        with pytest.raises(IngestionError):
+            feature_group.ingest(
+                data_frame=pandas_data_frame_with_collection_type,
+                max_workers=1,
+                max_processes=1,
+                wait=True,
+            )
+
+
+def test_ingest_in_memory_single_process_with_collection_types(
+    feature_store_session,
+    role,
+    feature_group_name,
+    offline_store_s3_uri,
+    pandas_data_frame_with_collection_type,
+    get_record_results_for_data_frame_with_collection_type,
+):
+    feature_group = FeatureGroup(feature_group_name, sagemaker_session=feature_store_session)
+    feature_group.load_feature_definitions(
+        data_frame=pandas_data_frame_with_collection_type,
+        online_storage_type=OnlineStoreStorageTypeEnum.IN_MEMORY,
+    )
+
+    with cleanup_feature_group(feature_group):
+        output = feature_group.create(
+            record_identifier_name="feature1",
+            event_time_feature_name="feature3",
+            role_arn=role,
+            enable_online_store=True,
+            online_store_storage_type=OnlineStoreStorageTypeEnum.IN_MEMORY,
+            s3_uri=False,
+        )
+        _wait_for_feature_group_create(feature_group)
+
+        ingestion_manager = feature_group.ingest(
+            data_frame=pandas_data_frame_with_collection_type,
+            max_workers=1,
+            max_processes=1,
+            wait=True,
+        )
+        assert 0 == len(ingestion_manager.failed_rows)
+        assert output["FeatureGroupArn"].endswith(f"feature-group/{feature_group_name}")
+        for index, value in pandas_data_frame_with_collection_type["feature1"].items():
+            assert (
+                feature_group.get_record(record_identifier_value_as_string=str(value))
+                == get_record_results_for_data_frame_with_collection_type[str(value)]
+            )
+
+        new_row_data = [
+            10.0,
+            10,
+            "2020-10-30T03:43:21Z",
+            5.0,
+            ["a", "b"],
+            [1, 2, None],
+            [3.0, 4.0],
+            [1, 2],
+            [3.0, 4.0],
+            ["a", "b"],
+        ]
+        pandas_data_frame_with_collection_type.loc[
+            len(pandas_data_frame_with_collection_type)
+        ] = new_row_data
+        with pytest.raises(IngestionError):
+            feature_group.ingest(
+                data_frame=pandas_data_frame_with_collection_type,
+                max_workers=1,
+                max_processes=1,
+                wait=True,
+            )
+
+
+def test_ingest_standard_multi_process_with_collection_types(
+    feature_store_session,
+    role,
+    feature_group_name,
+    offline_store_s3_uri,
+    pandas_data_frame_with_collection_type,
+    get_record_results_for_data_frame_without_collection_type,
+):
+    feature_group = FeatureGroup(feature_group_name, sagemaker_session=feature_store_session)
+    feature_group.load_feature_definitions(
+        data_frame=pandas_data_frame_with_collection_type,
+        online_storage_type=OnlineStoreStorageTypeEnum.STANDARD,
+    )
+
+    with cleanup_feature_group(feature_group):
+        output = feature_group.create(
+            record_identifier_name="feature1",
+            event_time_feature_name="feature3",
+            role_arn=role,
+            enable_online_store=True,
+            online_store_storage_type=OnlineStoreStorageTypeEnum.STANDARD,
+            s3_uri=False,
+        )
+        _wait_for_feature_group_create(feature_group)
+
+        new_row_data = [
+            10.0,
+            10,
+            "2020-10-30T03:43:21Z",
+            5.0,
+            ["a", "b"],
+            [1, 2, None],
+            [3.0, 4.0],
+            [1, 2],
+            [3.0, 4.0],
+            ["a", "b"],
+        ]
+        pandas_data_frame_with_collection_type.loc[
+            len(pandas_data_frame_with_collection_type)
+        ] = new_row_data
+
+        ingestion_manager = feature_group.ingest(
+            data_frame=pandas_data_frame_with_collection_type,
+            max_workers=3,
+            max_processes=2,
+            wait=True,
+        )
+        ingestion_manager.wait()
+        assert 0 == len(ingestion_manager.failed_rows)
+        get_record_results_for_data_frame_without_collection_type["10.0"] = [
+            {"FeatureName": "feature1", "ValueAsString": "10.0"},
+            {"FeatureName": "feature2", "ValueAsString": "10"},
+            {"FeatureName": "feature3", "ValueAsString": "2020-10-30T03:43:21Z"},
+            {"FeatureName": "feature4", "ValueAsString": "5.0"},
+            {"FeatureName": "feature5", "ValueAsString": "['a', 'b']"},
+            {"FeatureName": "feature6", "ValueAsString": "[1, 2, None]"},
+            {"FeatureName": "feature7", "ValueAsString": "[3.0, 4.0]"},
+            {"FeatureName": "feature8", "ValueAsString": "[1, 2]"},
+            {"FeatureName": "feature9", "ValueAsString": "[3.0, 4.0]"},
+            {"FeatureName": "feature10", "ValueAsString": "['a', 'b']"},
+        ]
+        assert output["FeatureGroupArn"].endswith(f"feature-group/{feature_group_name}")
+        for index, value in pandas_data_frame_with_collection_type["feature1"].items():
+            assert (
+                feature_group.get_record(record_identifier_value_as_string=str(value))
+                == get_record_results_for_data_frame_without_collection_type[str(value)]
+            )
 
 
 @contextmanager

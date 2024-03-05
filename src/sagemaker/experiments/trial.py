@@ -18,6 +18,7 @@ from botocore.exceptions import ClientError
 from sagemaker.apiutils import _base_types
 from sagemaker.experiments import _api_types
 from sagemaker.experiments.trial_component import _TrialComponent
+from sagemaker.utils import format_tags
 
 
 class _Trial(_base_types.Record):
@@ -101,7 +102,7 @@ class _Trial(_base_types.Record):
             trial_name: (str): Name of the Trial.
             display_name (str): Name of the trial that will appear in UI,
                 such as SageMaker Studio (default: None).
-            tags (List[dict]): A list of tags to associate with the trial (default: None).
+            tags (Optional[Tags]): A list of tags to associate with the trial (default: None).
             sagemaker_session (sagemaker.session.Session): Session object which
                 manages interactions with Amazon SageMaker APIs and any other
                 AWS services needed. If not specified, one is created using the
@@ -115,7 +116,7 @@ class _Trial(_base_types.Record):
             trial_name=trial_name,
             experiment_name=experiment_name,
             display_name=display_name,
-            tags=tags,
+            tags=format_tags(tags),
             sagemaker_session=sagemaker_session,
         )
         return trial
@@ -259,7 +260,7 @@ class _Trial(_base_types.Record):
             display_name (str): Name of the trial that will appear in UI,
                 such as SageMaker Studio (default: None). This is used only when the given
                 `trial_name` does not exist and a new trial has to be created.
-            tags (List[dict]): A list of tags to associate with the trial (default: None).
+            tags (Optional[Tags]): A list of tags to associate with the trial (default: None).
                 This is used only when the given `trial_name` does not exist and
                 a new trial has to be created.
             sagemaker_session (sagemaker.session.Session): Session object which
@@ -275,7 +276,7 @@ class _Trial(_base_types.Record):
                 experiment_name=experiment_name,
                 trial_name=trial_name,
                 display_name=display_name,
-                tags=tags,
+                tags=format_tags(tags),
                 sagemaker_session=sagemaker_session,
             )
         except ClientError as ce:

@@ -137,6 +137,7 @@ def create_fp_config(
     target_stores=None,
     enable_ingestion=True,
     parameters=None,
+    spark_config=None,
 ):
     """Helper method to create a FeatureProcessorConfig with fewer arguments."""
 
@@ -147,4 +148,5 @@ def create_fp_config(
         target_stores=target_stores,
         enable_ingestion=enable_ingestion,
         parameters=parameters,
+        spark_config=spark_config,
     )

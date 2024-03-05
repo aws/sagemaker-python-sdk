@@ -26,8 +26,10 @@ from sagemaker.jumpstart.constants import (
     ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE,
     JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY,
     JUMPSTART_DEFAULT_REGION_NAME,
+    JUMPSTART_LOGGER,
     MODEL_ID_LIST_WEB_URL,
 )
+from sagemaker.jumpstart.exceptions import get_wildcard_model_version_msg
 from sagemaker.jumpstart.parameters import (
     JUMPSTART_DEFAULT_MAX_S3_CACHE_ITEMS,
     JUMPSTART_DEFAULT_MAX_SEMANTIC_VERSION_CACHE_ITEMS,
@@ -68,6 +70,7 @@ class JumpStartModelsCache:
         JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY,
         s3_bucket_name: Optional[str] = None,
         s3_client_config: Optional[botocore.config.Config] = None,
+        s3_client: Optional[boto3.client] = None,
     ) -> None:  # fmt: on
         """Initialize a ``JumpStartModelsCache`` instance.
 
@@ -88,6 +91,7 @@ class JumpStartModelsCache:
                 Default: JumpStart-hosted content bucket for region.
             s3_client_config (Optional[botocore.config.Config]): s3 client config to use for cache.
                 Default: None (no config).
+            s3_client (Optional[boto3.client]): s3 client to use. Default: None.
         """
 
         self._region = region
@@ -109,7 +113,7 @@ class JumpStartModelsCache:
             if s3_bucket_name is None
             else s3_bucket_name
         )
-        self._s3_client = (
+        self._s3_client = s3_client or (
             boto3.client("s3", region_name=self._region, config=s3_client_config)
             if s3_client_config
             else boto3.client("s3", region_name=self._region)
@@ -170,7 +174,7 @@ class JumpStartModelsCache:
 
         manifest = self._s3_cache.get(
             JumpStartCachedS3ContentKey(JumpStartS3FileType.MANIFEST, self._manifest_file_s3_key)
-        ).formatted_content
+        )[0].formatted_content
 
         sm_version = utils.get_sagemaker_version()
 
@@ -194,6 +198,9 @@ class JumpStartModelsCache:
         sm_incompatible_model_version = self._select_version(
             version, versions_incompatible_with_sagemaker
         )
+        sm_compatible_model_version_with_sagemaker_version = self._select_version(
+            "*", versions_compatible_with_sagemaker
+        )
 
         if sm_incompatible_model_version is not None:
             model_version_to_use_incompatible_with_sagemaker = sm_incompatible_model_version
@@ -213,7 +220,10 @@ class JumpStartModelsCache:
                 f"compatible with your SageMaker version ('{sm_version}'). "
                 f"Consider upgrading your SageMaker library to at least version "
                 f"'{sm_version_to_use}' so you can use version "
-                f"'{model_version_to_use_incompatible_with_sagemaker}' of '{model_id}'."
+                f"'{model_version_to_use_incompatible_with_sagemaker}' of '{model_id}'. "
+                f"If upgrading your SageMaker library is not feasible, consider using the "
+                f"model version '{sm_compatible_model_version_with_sagemaker_version}' or "
+                f"below which is compatible with your current SageMaker library version."
             )
             raise KeyError(error_msg)
 
@@ -328,7 +338,7 @@ class JumpStartModelsCache:
         if file_type == JumpStartS3FileType.SPECS:
             formatted_body, _ = self._get_json_file(s3_key, file_type)
             model_specs = JumpStartModelSpecs(formatted_body)
-            utils.emit_logs_based_on_model_specs(model_specs, self.get_region())
+            utils.emit_logs_based_on_model_specs(model_specs, self.get_region(), self._s3_client)
             return JumpStartCachedS3ContentValue(
                 formatted_content=model_specs
             )
@@ -341,7 +351,7 @@ class JumpStartModelsCache:
 
         manifest_dict = self._s3_cache.get(
             JumpStartCachedS3ContentKey(JumpStartS3FileType.MANIFEST, self._manifest_file_s3_key)
-        ).formatted_content
+        )[0].formatted_content
         manifest = list(manifest_dict.values())  # type: ignore
         return manifest
 
@@ -401,10 +411,11 @@ class JumpStartModelsCache:
 
         versioned_model_id = self._model_id_semantic_version_manifest_key_cache.get(
             JumpStartVersionedModelId(model_id, semantic_version_str)
-        )
+        )[0]
+
         manifest = self._s3_cache.get(
             JumpStartCachedS3ContentKey(JumpStartS3FileType.MANIFEST, self._manifest_file_s3_key)
-        ).formatted_content
+        )[0].formatted_content
         try:
             header = manifest[versioned_model_id]  # type: ignore
             return header
@@ -425,10 +436,18 @@ class JumpStartModelsCache:
 
         header = self.get_header(model_id, semantic_version_str)
         spec_key = header.spec_key
-        specs = self._s3_cache.get(
+        specs, cache_hit = self._s3_cache.get(
             JumpStartCachedS3ContentKey(JumpStartS3FileType.SPECS, spec_key)
-        ).formatted_content
-        return specs  # type: ignore
+        )
+        if not cache_hit and "*" in semantic_version_str:
+            JUMPSTART_LOGGER.warning(
+                get_wildcard_model_version_msg(
+                    header.model_id,
+                    semantic_version_str,
+                    header.version
+                )
+            )
+        return specs.formatted_content
 
     def clear(self) -> None:
         """Clears the model ID/version and s3 cache."""

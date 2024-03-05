@@ -14,11 +14,17 @@
 from __future__ import absolute_import
 import copy
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 from functools import cmp_to_key
+import json
 from typing import Any, Generator, List, Optional, Tuple, Union, Set, Dict
 from packaging.version import Version
 from sagemaker.jumpstart import accessors
-from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
+from sagemaker.jumpstart.constants import (
+    DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    JUMPSTART_DEFAULT_REGION_NAME,
+)
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.filters import (
     SPECIAL_SUPPORTED_FILTER_KEYS,
@@ -27,7 +33,15 @@ from sagemaker.jumpstart.filters import (
     SpecialSupportedFilterKeys,
 )
 from sagemaker.jumpstart.filters import Constant, ModelFilter, Operator, evaluate_filter_expression
-from sagemaker.jumpstart.utils import get_sagemaker_version
+from sagemaker.jumpstart.types import JumpStartModelHeader, JumpStartModelSpecs
+from sagemaker.jumpstart.utils import (
+    get_jumpstart_content_bucket,
+    get_sagemaker_version,
+    verify_model_region_and_return_specs,
+)
+from sagemaker.session import Session
+
+MAX_SEARCH_WORKERS = int(100 * 1e6 / 25 * 1e3)  # max 100MB total memory, 25kB per thread)
 
 
 def _compare_model_version_tuples(  # pylint: disable=too-many-return-statements
@@ -130,6 +144,7 @@ def extract_framework_task_model(model_id: str) -> Tuple[str, str, str]:
 def list_jumpstart_tasks(  # pylint: disable=redefined-builtin
     filter: Union[Operator, str] = Constant(BooleanValues.TRUE),
     region: str = JUMPSTART_DEFAULT_REGION_NAME,
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> List[str]:
     """List tasks for JumpStart, and optionally apply filters to result.
 
@@ -141,10 +156,14 @@ def list_jumpstart_tasks(  # pylint: disable=redefined-builtin
             (Default: Constant(BooleanValues.TRUE)).
         region (str): Optional. The AWS region from which to retrieve JumpStart metadata regarding
             models. (Default: JUMPSTART_DEFAULT_REGION_NAME).
+        sagemaker_session (sagemaker.session.Session): Optional. The SageMaker Session to
+            use to perform the model search. (Default: DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     """
 
     tasks: Set[str] = set()
-    for model_id, _ in _generate_jumpstart_model_versions(filter=filter, region=region):
+    for model_id, _ in _generate_jumpstart_model_versions(
+        filter=filter, region=region, sagemaker_session=sagemaker_session
+    ):
         _, task, _ = extract_framework_task_model(model_id)
         tasks.add(task)
     return sorted(list(tasks))
@@ -153,6 +172,7 @@ def list_jumpstart_tasks(  # pylint: disable=redefined-builtin
 def list_jumpstart_frameworks(  # pylint: disable=redefined-builtin
     filter: Union[Operator, str] = Constant(BooleanValues.TRUE),
     region: str = JUMPSTART_DEFAULT_REGION_NAME,
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> List[str]:
     """List frameworks for JumpStart, and optionally apply filters to result.
 
@@ -164,10 +184,14 @@ def list_jumpstart_frameworks(  # pylint: disable=redefined-builtin
             (Default: Constant(BooleanValues.TRUE)).
         region (str): Optional. The AWS region from which to retrieve JumpStart metadata regarding
             models. (Default: JUMPSTART_DEFAULT_REGION_NAME).
+        sagemaker_session (sagemaker.session.Session): Optional. The SageMaker Session
+            to use to perform the model search. (Default: DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     """
 
     frameworks: Set[str] = set()
-    for model_id, _ in _generate_jumpstart_model_versions(filter=filter, region=region):
+    for model_id, _ in _generate_jumpstart_model_versions(
+        filter=filter, region=region, sagemaker_session=sagemaker_session
+    ):
         framework, _, _ = extract_framework_task_model(model_id)
         frameworks.add(framework)
     return sorted(list(frameworks))
@@ -176,6 +200,7 @@ def list_jumpstart_frameworks(  # pylint: disable=redefined-builtin
 def list_jumpstart_scripts(  # pylint: disable=redefined-builtin
     filter: Union[Operator, str] = Constant(BooleanValues.TRUE),
     region: str = JUMPSTART_DEFAULT_REGION_NAME,
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> List[str]:
     """List scripts for JumpStart, and optionally apply filters to result.
 
@@ -187,6 +212,8 @@ def list_jumpstart_scripts(  # pylint: disable=redefined-builtin
             (Default: Constant(BooleanValues.TRUE)).
         region (str): Optional. The AWS region from which to retrieve JumpStart metadata regarding
             models. (Default: JUMPSTART_DEFAULT_REGION_NAME).
+        sagemaker_session (sagemaker.session.Session): Optional. The SageMaker Session to
+            use to perform the model search. (Default: DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     """
     if (isinstance(filter, Constant) and filter.resolved_value == BooleanValues.TRUE) or (
         isinstance(filter, str) and filter.lower() == BooleanValues.TRUE.lower()
@@ -194,12 +221,16 @@ def list_jumpstart_scripts(  # pylint: disable=redefined-builtin
         return sorted([e.value for e in JumpStartScriptScope])
 
     scripts: Set[str] = set()
-    for model_id, version in _generate_jumpstart_model_versions(filter=filter, region=region):
+    for model_id, version in _generate_jumpstart_model_versions(
+        filter=filter, region=region, sagemaker_session=sagemaker_session
+    ):
         scripts.add(JumpStartScriptScope.INFERENCE)
-        model_specs = accessors.JumpStartModelsAccessor.get_model_specs(
+        model_specs = verify_model_region_and_return_specs(
             region=region,
             model_id=model_id,
             version=version,
+            sagemaker_session=sagemaker_session,
+            scope=JumpStartScriptScope.INFERENCE,
         )
         if model_specs.training_supported:
             scripts.add(JumpStartScriptScope.TRAINING)
@@ -215,6 +246,7 @@ def list_jumpstart_models(  # pylint: disable=redefined-builtin
     list_incomplete_models: bool = False,
     list_old_models: bool = False,
     list_versions: bool = False,
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> List[Union[Tuple[str], Tuple[str, str]]]:
     """List models for JumpStart, and optionally apply filters to result.
 
@@ -234,11 +266,16 @@ def list_jumpstart_models(  # pylint: disable=redefined-builtin
             versions should be included in the returned result. (Default: False).
         list_versions (bool): Optional. True if versions for models should be returned in addition
             to the id of the model. (Default: False).
+        sagemaker_session (sagemaker.session.Session): Optional. The SageMaker Session to use
+            to perform the model search. (Default: DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     """
 
     model_id_version_dict: Dict[str, List[str]] = dict()
     for model_id, version in _generate_jumpstart_model_versions(
-        filter=filter, region=region, list_incomplete_models=list_incomplete_models
+        filter=filter,
+        region=region,
+        list_incomplete_models=list_incomplete_models,
+        sagemaker_session=sagemaker_session,
     ):
         if model_id not in model_id_version_dict:
             model_id_version_dict[model_id] = list()
@@ -264,6 +301,7 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
     filter: Union[Operator, str] = Constant(BooleanValues.TRUE),
     region: str = JUMPSTART_DEFAULT_REGION_NAME,
     list_incomplete_models: bool = False,
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> Generator:
     """Generate models for JumpStart, and optionally apply filters to result.
 
@@ -279,12 +317,17 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
             requested by the filter, and the filter cannot be resolved to a include/not include,
             whether the model should be included. By default, these models are omitted from
             results. (Default: False).
+        sagemaker_session (sagemaker.session.Session): Optional. The SageMaker Session
+            to use to perform the model search. (Default: DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     """
+
+    models_manifest_list = accessors.JumpStartModelsAccessor._get_manifest(
+        region=region, s3_client=sagemaker_session.s3_client
+    )
 
     if isinstance(filter, str):
         filter = Identity(filter)
 
-    models_manifest_list = accessors.JumpStartModelsAccessor._get_manifest(region=region)
     manifest_keys = set(models_manifest_list[0].__slots__)
 
     all_keys: Set[str] = set()
@@ -306,13 +349,10 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
     required_manifest_keys = manifest_keys.intersection(metadata_filter_keys)
     possible_spec_keys = metadata_filter_keys - manifest_keys
 
-    unrecognized_keys: Set[str] = set()
-
     is_task_filter = SpecialSupportedFilterKeys.TASK in all_keys
     is_framework_filter = SpecialSupportedFilterKeys.FRAMEWORK in all_keys
-    is_supported_model_filter = SpecialSupportedFilterKeys.SUPPORTED_MODEL in all_keys
 
-    for model_manifest in models_manifest_list:
+    def evaluate_model(model_manifest: JumpStartModelHeader) -> Optional[Tuple[str, str]]:
 
         copied_filter = copy.deepcopy(filter)
 
@@ -333,10 +373,8 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
                 SpecialSupportedFilterKeys.FRAMEWORK
             ] = extract_framework_task_model(model_manifest.model_id)[0]
 
-        if is_supported_model_filter:
-            manifest_specs_cached_values[SpecialSupportedFilterKeys.SUPPORTED_MODEL] = Version(
-                model_manifest.min_version
-            ) <= Version(get_sagemaker_version())
+        if Version(model_manifest.min_version) > Version(get_sagemaker_version()):
+            return None
 
         _populate_model_filters_to_resolved_values(
             manifest_specs_cached_values,
@@ -350,28 +388,27 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
 
         if copied_filter.resolved_value in [BooleanValues.TRUE, BooleanValues.FALSE]:
             if copied_filter.resolved_value == BooleanValues.TRUE:
-                yield (model_manifest.model_id, model_manifest.version)
-            continue
+                return (model_manifest.model_id, model_manifest.version)
+            return None
 
         if copied_filter.resolved_value == BooleanValues.UNEVALUATED:
             raise RuntimeError(
-                "Filter expression in unevaluated state after using values from model manifest. "
-                "Model ID and version that is failing: "
-                f"{(model_manifest.model_id, model_manifest.version)}."
+                "Filter expression in unevaluated state after using "
+                "values from model manifest. Model ID and version that "
+                f"is failing: {(model_manifest.model_id, model_manifest.version)}."
             )
         copied_filter_2 = copy.deepcopy(filter)
 
-        model_specs = accessors.JumpStartModelsAccessor.get_model_specs(
-            region=region,
-            model_id=model_manifest.model_id,
-            version=model_manifest.version,
+        # spec is downloaded to thread's memory. since each thread
+        # accesses a unique s3 spec, there is no need to use the JS caching utils.
+        # spec only stays in memory for lifecycle of thread.
+        model_specs = JumpStartModelSpecs(
+            json.loads(
+                sagemaker_session.read_s3_file(
+                    get_jumpstart_content_bucket(region), model_manifest.spec_key
+                )
+            )
         )
-
-        model_specs_keys = set(model_specs.__slots__)
-
-        unrecognized_keys -= model_specs_keys
-        unrecognized_keys_for_single_spec = possible_spec_keys - model_specs_keys
-        unrecognized_keys.update(unrecognized_keys_for_single_spec)
 
         for val in possible_spec_keys:
             if hasattr(model_specs, val):
@@ -390,8 +427,8 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
             if copied_filter_2.resolved_value == BooleanValues.TRUE or (
                 BooleanValues.UNKNOWN and list_incomplete_models
             ):
-                yield (model_manifest.model_id, model_manifest.version)
-            continue
+                return (model_manifest.model_id, model_manifest.version)
+            return None
 
         raise RuntimeError(
             "Filter expression in unevaluated state after using values from model specs. "
@@ -399,12 +436,25 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
             f"{(model_manifest.model_id, model_manifest.version)}."
         )
 
-    if len(unrecognized_keys) > 0:
-        raise RuntimeError(f"Unrecognized keys: {str(unrecognized_keys)}")
+    with ThreadPoolExecutor(max_workers=MAX_SEARCH_WORKERS) as executor:
+        futures = []
+        for header in models_manifest_list:
+            futures.append(executor.submit(evaluate_model, header))
+
+        for future in as_completed(futures):
+            error = future.exception()
+            if error:
+                raise error
+            result = future.result()
+            if result:
+                yield result
 
 
 def get_model_url(
-    model_id: str, model_version: str, region: str = JUMPSTART_DEFAULT_REGION_NAME
+    model_id: str,
+    model_version: str,
+    region: str = JUMPSTART_DEFAULT_REGION_NAME,
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> str:
     """Retrieve web url describing pretrained model.
 
@@ -413,9 +463,15 @@ def get_model_url(
         model_version (str): The model version for which to retrieve the url.
         region (str): Optional. The region from which to retrieve metadata.
             (Default: JUMPSTART_DEFAULT_REGION_NAME)
+        sagemaker_session (sagemaker.session.Session): Optional. The SageMaker Session to use
+            to retrieve the model url.
     """
 
-    model_specs = accessors.JumpStartModelsAccessor.get_model_specs(
-        region=region, model_id=model_id, version=model_version
+    model_specs = verify_model_region_and_return_specs(
+        region=region,
+        model_id=model_id,
+        version=model_version,
+        sagemaker_session=sagemaker_session,
+        scope=JumpStartScriptScope.INFERENCE,
     )
     return model_specs.url

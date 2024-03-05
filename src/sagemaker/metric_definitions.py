@@ -19,6 +19,8 @@ from typing import Dict, Optional, List
 
 from sagemaker.jumpstart import utils as jumpstart_utils
 from sagemaker.jumpstart import artifacts
+from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+from sagemaker.session import Session
 
 logger = logging.getLogger(__name__)
 
@@ -27,8 +29,10 @@ def retrieve_default(
     region: Optional[str] = None,
     model_id: Optional[str] = None,
     model_version: Optional[str] = None,
+    instance_type: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> Optional[List[Dict[str, str]]]:
     """Retrieves the default training metric definitions for the model matching the given arguments.
 
@@ -39,6 +43,8 @@ def retrieve_default(
             retrieve the default training metric definitions. (Default: None).
         model_version (str): The version of the model for which to retrieve the
             default training metric definitions. (Default: None).
+        instance_type (str): An instance type to optionally supply in order to get
+            metric definitions specific for the instance type.
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
             specifications should be tolerated (exception not raised). If False, raises an
             exception if the script used by this version of the model has dependencies with known
@@ -46,6 +52,10 @@ def retrieve_default(
         tolerate_deprecated_model (bool): True if deprecated models should be tolerated
             (exception not raised). False if these models should raise an exception.
             (Default: False).
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions. If not
+            specified, one is created using the default AWS configuration
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     Returns:
         list: The default metric definitions to use for the model or None.
 
@@ -59,5 +69,11 @@ def retrieve_default(
         )
 
     return artifacts._retrieve_default_training_metric_definitions(
-        model_id, model_version, region, tolerate_vulnerable_model, tolerate_deprecated_model
+        model_id=model_id,
+        model_version=model_version,
+        instance_type=instance_type,
+        region=region,
+        tolerate_vulnerable_model=tolerate_vulnerable_model,
+        tolerate_deprecated_model=tolerate_deprecated_model,
+        sagemaker_session=sagemaker_session,
     )

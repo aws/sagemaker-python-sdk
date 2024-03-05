@@ -13,6 +13,7 @@
 """This module stores constants related to SageMaker JumpStart."""
 from __future__ import absolute_import
 import logging
+import os
 from typing import Dict, Set, Type
 import boto3
 from sagemaker.base_deserializers import BaseDeserializer, JSONDeserializer
@@ -30,93 +31,121 @@ from sagemaker.base_serializers import (
     IdentitySerializer,
     JSONSerializer,
 )
+from sagemaker.session import Session
 
+
+ENV_VARIABLE_DISABLE_JUMPSTART_LOGGING = "DISABLE_JUMPSTART_LOGGING"
 
 JUMPSTART_LAUNCHED_REGIONS: Set[JumpStartLaunchedRegionInfo] = set(
     [
         JumpStartLaunchedRegionInfo(
             region_name="us-west-2",
             content_bucket="jumpstart-cache-prod-us-west-2",
+            gated_content_bucket="jumpstart-private-cache-prod-us-west-2",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="us-east-1",
             content_bucket="jumpstart-cache-prod-us-east-1",
+            gated_content_bucket="jumpstart-private-cache-prod-us-east-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="us-east-2",
             content_bucket="jumpstart-cache-prod-us-east-2",
+            gated_content_bucket="jumpstart-private-cache-prod-us-east-2",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="eu-west-1",
             content_bucket="jumpstart-cache-prod-eu-west-1",
+            gated_content_bucket="jumpstart-private-cache-prod-eu-west-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="eu-central-1",
             content_bucket="jumpstart-cache-prod-eu-central-1",
+            gated_content_bucket="jumpstart-private-cache-prod-eu-central-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="eu-north-1",
             content_bucket="jumpstart-cache-prod-eu-north-1",
+            gated_content_bucket="jumpstart-private-cache-prod-eu-north-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="me-south-1",
             content_bucket="jumpstart-cache-prod-me-south-1",
+            gated_content_bucket="jumpstart-private-cache-prod-me-south-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="ap-south-1",
             content_bucket="jumpstart-cache-prod-ap-south-1",
+            gated_content_bucket="jumpstart-private-cache-prod-ap-south-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="eu-west-3",
             content_bucket="jumpstart-cache-prod-eu-west-3",
+            gated_content_bucket="jumpstart-private-cache-prod-eu-west-3",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="af-south-1",
             content_bucket="jumpstart-cache-prod-af-south-1",
+            gated_content_bucket="jumpstart-private-cache-prod-af-south-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="sa-east-1",
             content_bucket="jumpstart-cache-prod-sa-east-1",
+            gated_content_bucket="jumpstart-private-cache-prod-sa-east-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="ap-east-1",
             content_bucket="jumpstart-cache-prod-ap-east-1",
+            gated_content_bucket="jumpstart-private-cache-prod-ap-east-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="ap-northeast-2",
             content_bucket="jumpstart-cache-prod-ap-northeast-2",
+            gated_content_bucket="jumpstart-private-cache-prod-ap-northeast-2",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="eu-west-2",
             content_bucket="jumpstart-cache-prod-eu-west-2",
+            gated_content_bucket="jumpstart-private-cache-prod-eu-west-2",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="eu-south-1",
             content_bucket="jumpstart-cache-prod-eu-south-1",
+            gated_content_bucket="jumpstart-private-cache-prod-eu-south-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="ap-northeast-1",
             content_bucket="jumpstart-cache-prod-ap-northeast-1",
+            gated_content_bucket="jumpstart-private-cache-prod-ap-northeast-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="us-west-1",
             content_bucket="jumpstart-cache-prod-us-west-1",
+            gated_content_bucket="jumpstart-private-cache-prod-us-west-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="ap-southeast-1",
             content_bucket="jumpstart-cache-prod-ap-southeast-1",
+            gated_content_bucket="jumpstart-private-cache-prod-ap-southeast-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="ap-southeast-2",
             content_bucket="jumpstart-cache-prod-ap-southeast-2",
+            gated_content_bucket="jumpstart-private-cache-prod-ap-southeast-2",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="ca-central-1",
             content_bucket="jumpstart-cache-prod-ca-central-1",
+            gated_content_bucket="jumpstart-private-cache-prod-ca-central-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="cn-north-1",
             content_bucket="jumpstart-cache-prod-cn-north-1",
+        ),
+        JumpStartLaunchedRegionInfo(
+            region_name="il-central-1",
+            content_bucket="jumpstart-cache-prod-il-central-1",
+            gated_content_bucket="jumpstart-private-cache-prod-il-central-1",
         ),
     ]
 )
@@ -127,6 +156,15 @@ JUMPSTART_REGION_NAME_TO_LAUNCHED_REGION_DICT = {
 JUMPSTART_REGION_NAME_SET = {region.region_name for region in JUMPSTART_LAUNCHED_REGIONS}
 
 JUMPSTART_BUCKET_NAME_SET = {region.content_bucket for region in JUMPSTART_LAUNCHED_REGIONS}
+JUMPSTART_GATED_BUCKET_NAME_SET = {
+    region.gated_content_bucket
+    for region in JUMPSTART_LAUNCHED_REGIONS
+    if region.gated_content_bucket is not None
+}
+
+JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET = JUMPSTART_BUCKET_NAME_SET.union(
+    JUMPSTART_GATED_BUCKET_NAME_SET
+)
 
 JUMPSTART_DEFAULT_REGION_NAME = boto3.session.Session().region_name or "us-west-2"
 
@@ -138,6 +176,7 @@ TRAINING_ENTRY_POINT_SCRIPT_NAME = "transfer_learning.py"
 SUPPORTED_JUMPSTART_SCOPES = set(scope.value for scope in JumpStartScriptScope)
 
 ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE = "AWS_JUMPSTART_CONTENT_BUCKET_OVERRIDE"
+ENV_VARIABLE_JUMPSTART_GATED_CONTENT_BUCKET_OVERRIDE = "AWS_JUMPSTART_GATED_CONTENT_BUCKET_OVERRIDE"
 ENV_VARIABLE_JUMPSTART_MODEL_ARTIFACT_BUCKET_OVERRIDE = "AWS_JUMPSTART_MODEL_BUCKET_OVERRIDE"
 ENV_VARIABLE_JUMPSTART_SCRIPT_ARTIFACT_BUCKET_OVERRIDE = "AWS_JUMPSTART_SCRIPT_BUCKET_OVERRIDE"
 ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE = (
@@ -177,3 +216,33 @@ DESERIALIZER_TYPE_TO_CLASS_MAP: Dict[DeserializerType, Type[BaseDeserializer]] =
 MODEL_ID_LIST_WEB_URL = "https://sagemaker.readthedocs.io/en/stable/doc_utils/pretrainedmodels.html"
 
 JUMPSTART_LOGGER = logging.getLogger("sagemaker.jumpstart")
+
+# disable logging if env var is set
+JUMPSTART_LOGGER.addHandler(
+    type(
+        "",
+        (logging.StreamHandler,),
+        {
+            "emit": lambda self, *args, **kwargs: logging.StreamHandler.emit(self, *args, **kwargs)
+            if not os.environ.get(ENV_VARIABLE_DISABLE_JUMPSTART_LOGGING)
+            else None
+        },
+    )()
+)
+
+try:
+    DEFAULT_JUMPSTART_SAGEMAKER_SESSION = Session(
+        boto3.Session(region_name=JUMPSTART_DEFAULT_REGION_NAME)
+    )
+except Exception as e:  # pylint: disable=W0703
+    DEFAULT_JUMPSTART_SAGEMAKER_SESSION = None
+    JUMPSTART_LOGGER.warning(
+        "Unable to create default JumpStart SageMaker Session due to the following error: %s.",
+        str(e),
+    )
+
+EXTRA_MODEL_ID_TAGS = ["sm-jumpstart-id", "sagemaker-studio:jumpstart-model-id"]
+EXTRA_MODEL_VERSION_TAGS = [
+    "sm-jumpstart-model-version",
+    "sagemaker-studio:jumpstart-model-version",
+]

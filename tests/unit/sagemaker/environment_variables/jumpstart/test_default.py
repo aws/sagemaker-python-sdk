@@ -13,12 +13,16 @@
 from __future__ import absolute_import
 
 
-from mock.mock import patch
+import boto3
+from mock.mock import patch, Mock
 import pytest
 
 from sagemaker import environment_variables
 
-from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec
+from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec, get_special_model_spec
+
+mock_client = boto3.client("s3")
+mock_session = Mock(s3_client=mock_client)
 
 
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -30,9 +34,7 @@ def test_jumpstart_default_environment_variables(patched_get_model_specs):
     region = "us-west-2"
 
     vars = environment_variables.retrieve_default(
-        region=region,
-        model_id=model_id,
-        model_version="*",
+        region=region, model_id=model_id, model_version="*", sagemaker_session=mock_session
     )
     assert vars == {
         "MODEL_CACHE_ROOT": "/opt/ml/model",
@@ -45,14 +47,14 @@ def test_jumpstart_default_environment_variables(patched_get_model_specs):
         "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
     }
 
-    patched_get_model_specs.assert_called_once_with(region=region, model_id=model_id, version="*")
+    patched_get_model_specs.assert_called_once_with(
+        region=region, model_id=model_id, version="*", s3_client=mock_client
+    )
 
     patched_get_model_specs.reset_mock()
 
     vars = environment_variables.retrieve_default(
-        region=region,
-        model_id=model_id,
-        model_version="1.*",
+        region=region, model_id=model_id, model_version="1.*", sagemaker_session=mock_session
     )
     assert vars == {
         "MODEL_CACHE_ROOT": "/opt/ml/model",
@@ -65,7 +67,9 @@ def test_jumpstart_default_environment_variables(patched_get_model_specs):
         "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
     }
 
-    patched_get_model_specs.assert_called_once_with(region=region, model_id=model_id, version="1.*")
+    patched_get_model_specs.assert_called_once_with(
+        region=region, model_id=model_id, version="1.*", s3_client=mock_client
+    )
 
     patched_get_model_specs.reset_mock()
 
@@ -107,6 +111,7 @@ def test_jumpstart_sdk_environment_variables(patched_get_model_specs):
         model_id=model_id,
         model_version="*",
         include_aws_sdk_env_vars=False,
+        sagemaker_session=mock_session,
     )
     assert vars == {
         "ENDPOINT_SERVER_TIMEOUT": "3600",
@@ -116,7 +121,9 @@ def test_jumpstart_sdk_environment_variables(patched_get_model_specs):
         "SAGEMAKER_PROGRAM": "inference.py",
     }
 
-    patched_get_model_specs.assert_called_once_with(region=region, model_id=model_id, version="*")
+    patched_get_model_specs.assert_called_once_with(
+        region=region, model_id=model_id, version="*", s3_client=mock_client
+    )
 
     patched_get_model_specs.reset_mock()
 
@@ -125,6 +132,7 @@ def test_jumpstart_sdk_environment_variables(patched_get_model_specs):
         model_id=model_id,
         model_version="1.*",
         include_aws_sdk_env_vars=False,
+        sagemaker_session=mock_session,
     )
     assert vars == {
         "ENDPOINT_SERVER_TIMEOUT": "3600",
@@ -134,7 +142,9 @@ def test_jumpstart_sdk_environment_variables(patched_get_model_specs):
         "SAGEMAKER_PROGRAM": "inference.py",
     }
 
-    patched_get_model_specs.assert_called_once_with(region=region, model_id=model_id, version="1.*")
+    patched_get_model_specs.assert_called_once_with(
+        region=region, model_id=model_id, version="1.*", s3_client=mock_client
+    )
 
     patched_get_model_specs.reset_mock()
 
@@ -165,3 +175,76 @@ def test_jumpstart_sdk_environment_variables(patched_get_model_specs):
             model_id=model_id,
             include_aws_sdk_env_vars=False,
         )
+
+
+@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+def test_jumpstart_sdk_environment_variables_instance_type_overrides(patched_get_model_specs):
+
+    patched_get_model_specs.side_effect = get_special_model_spec
+
+    model_id = "env-var-variant-model"
+    region = "us-west-2"
+
+    # assert that we can override default environment variables
+    vars = environment_variables.retrieve_default(
+        region=region,
+        model_id=model_id,
+        model_version="*",
+        include_aws_sdk_env_vars=False,
+        sagemaker_session=mock_session,
+        instance_type="ml.g5.48xlarge",
+    )
+    assert vars == {
+        "ENDPOINT_SERVER_TIMEOUT": "3600",
+        "HF_MODEL_ID": "/opt/ml/model",
+        "MAX_INPUT_LENGTH": "1024",
+        "MAX_TOTAL_TOKENS": "2048",
+        "MODEL_CACHE_ROOT": "/opt/ml/model",
+        "SAGEMAKER_ENV": "1",
+        "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+        "SAGEMAKER_PROGRAM": "inference.py",
+        "SM_NUM_GPUS": "80",
+    }
+
+    # assert that we can add environment variables
+    vars = environment_variables.retrieve_default(
+        region=region,
+        model_id=model_id,
+        model_version="*",
+        include_aws_sdk_env_vars=False,
+        sagemaker_session=mock_session,
+        instance_type="ml.p4d.24xlarge",
+    )
+    assert vars == {
+        "ENDPOINT_SERVER_TIMEOUT": "3600",
+        "HF_MODEL_ID": "/opt/ml/model",
+        "MAX_INPUT_LENGTH": "1024",
+        "MAX_TOTAL_TOKENS": "2048",
+        "MODEL_CACHE_ROOT": "/opt/ml/model",
+        "SAGEMAKER_ENV": "1",
+        "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+        "SAGEMAKER_PROGRAM": "inference.py",
+        "SM_NUM_GPUS": "8",
+        "YODEL": "NACEREMA",
+    }
+
+    # assert that we can return default env variables for unrecognized instance
+    vars = environment_variables.retrieve_default(
+        region=region,
+        model_id=model_id,
+        model_version="*",
+        include_aws_sdk_env_vars=False,
+        sagemaker_session=mock_session,
+        instance_type="ml.p002.xlarge",
+    )
+    assert vars == {
+        "ENDPOINT_SERVER_TIMEOUT": "3600",
+        "HF_MODEL_ID": "/opt/ml/model",
+        "MAX_INPUT_LENGTH": "1024",
+        "MAX_TOTAL_TOKENS": "2048",
+        "MODEL_CACHE_ROOT": "/opt/ml/model",
+        "SAGEMAKER_ENV": "1",
+        "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+        "SAGEMAKER_PROGRAM": "inference.py",
+        "SM_NUM_GPUS": "8",
+    }

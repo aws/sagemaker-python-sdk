@@ -119,8 +119,9 @@ def test_numpy_deserializer_from_json(numpy_deserializer):
 # Sadly, ragged arrays work fine in JSON (giving us a 1D array of Python lists)
 def test_numpy_deserializer_from_json_ragged(numpy_deserializer):
     stream = io.BytesIO(b"[[1,2,3],\n[4,5,6,7]]")
-    array = numpy_deserializer.deserialize(stream, "application/json")
-    assert np.array_equal(array, np.array([[1, 2, 3], [4, 5, 6, 7]]))
+    with pytest.raises(ValueError) as error:
+        numpy_deserializer.deserialize(stream, "application/json")
+    assert "requested array has an inhomogeneous shape" in str(error)
 
 
 def test_numpy_deserializer_from_json_alpha():

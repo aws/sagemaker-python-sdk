@@ -77,7 +77,7 @@ class MXNet(Framework):
             framework_version (str): MXNet version you want to use for executing
                 your model training code. Defaults to `None`. Required unless
                 ``image_uri`` is provided. List of supported versions.
-                https://github.com/aws/sagemaker-python-sdk#mxnet-sagemaker-estimators.
+                https://aws.amazon.com/releasenotes/available-deep-learning-containers-images/.
             py_version (str): Python version you want to use for executing your
                 model training code. One of 'py2' or 'py3'. Defaults to ``None``. Required
                 unless ``image_uri`` is provided.

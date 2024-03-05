@@ -20,8 +20,6 @@ a SageMaker estimator to initiate a training job.
 """
 from __future__ import absolute_import
 
-import time
-
 from abc import ABC
 
 from typing import Union, Optional, List, Dict
@@ -31,14 +29,31 @@ import attr
 import smdebug_rulesconfig as rule_configs
 
 from sagemaker import image_uris
-from sagemaker.utils import build_dict
+from sagemaker.utils import build_dict, name_from_base
 from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.debugger.profiler_constants import (
+    DETAIL_PROF_PROCESSING_DEFAULT_INSTANCE_TYPE,
+    DETAIL_PROF_PROCESSING_DEFAULT_VOLUME_SIZE,
+)
 
 framework_name = "debugger"
+detailed_framework_name = "detailed-profiler"
 DEBUGGER_FLAG = "USE_SMDEBUG"
 
 
-def get_rule_container_image_uri(region):
+class DetailedProfilerProcessingJobConfig:
+    """ProfilerRule like class.
+
+    Serves as a vehicle to pass info through to the processing instance.
+
+    """
+
+    def __init__(self):
+        self.rule_name = self.__class__.__name__
+        self.rule_parameters = {"rule_to_invoke": "DetailedProfilerProcessing"}
+
+
+def get_rule_container_image_uri(name, region):
     """Return the Debugger rule image URI for the given AWS Region.
 
     For a full list of rule image URIs,
@@ -52,19 +67,28 @@ def get_rule_container_image_uri(region):
         str: Formatted image URI for the given AWS Region and the rule container type.
 
     """
+    if name is not None and name.startswith("DetailedProfilerProcessingJobConfig"):
+        # should have the format like "123456789012.dkr.ecr.us-west-2.amazonaws.com/detailed-profiler-processing:latest"
+        return image_uris.retrieve(detailed_framework_name, region)
+
     return image_uris.retrieve(framework_name, region)
 
 
-def get_default_profiler_rule():
-    """Return the default built-in profiler rule with a unique name.
+def get_default_profiler_processing_job(instance_type=None, volume_size_in_gb=None):
+    """Return the default profiler processing job (a rule) with a unique name.
 
     Returns:
         sagemaker.debugger.ProfilerRule: The instance of the built-in ProfilerRule.
 
     """
-    default_rule = rule_configs.ProfilerReport()
-    custom_name = f"{default_rule.rule_name}-{int(time.time())}"
-    return ProfilerRule.sagemaker(default_rule, name=custom_name)
+    default_rule = DetailedProfilerProcessingJobConfig()
+    custom_name = name_from_base(default_rule.rule_name)
+    return ProfilerRule.sagemaker(
+        default_rule,
+        name=custom_name,
+        instance_type=instance_type,
+        volume_size_in_gb=volume_size_in_gb,
+    )
 
 
 @attr.s
@@ -482,6 +506,8 @@ class ProfilerRule(RuleBase):
         name=None,
         container_local_output_path=None,
         s3_output_path=None,
+        instance_type=None,
+        volume_size_in_gb=None,
     ):
         """Initialize a ``ProfilerRule`` object for a *built-in* profiling rule.
 
@@ -510,13 +536,19 @@ class ProfilerRule(RuleBase):
             The instance of the built-in ProfilerRule.
 
         """
+        used_name = name or base_config.rule_name
+        if used_name.startswith("DetailedProfilerProcessingJobConfig"):
+            if volume_size_in_gb is None:
+                volume_size_in_gb = DETAIL_PROF_PROCESSING_DEFAULT_VOLUME_SIZE
+            if instance_type is None:
+                instance_type = DETAIL_PROF_PROCESSING_DEFAULT_INSTANCE_TYPE
         return cls(
-            name=name or base_config.rule_name,
+            name=used_name,
             image_uri="DEFAULT_RULE_EVALUATOR_IMAGE",
-            instance_type=None,
+            instance_type=instance_type,
             container_local_output_path=container_local_output_path,
             s3_output_path=s3_output_path,
-            volume_size_in_gb=None,
+            volume_size_in_gb=volume_size_in_gb,
             rule_parameters=base_config.rule_parameters,
         )
 

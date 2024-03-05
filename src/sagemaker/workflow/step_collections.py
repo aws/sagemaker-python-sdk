@@ -24,10 +24,11 @@ from sagemaker import PipelineModel
 from sagemaker.predictor import Predictor
 from sagemaker.transformer import Transformer
 from sagemaker.workflow.entities import RequestType
+from sagemaker.workflow.step_outputs import StepOutput
 from sagemaker.workflow.steps import Step, CreateModelStep, TransformStep
 from sagemaker.workflow._utils import _RegisterModelStep, _RepackModelStep
 from sagemaker.workflow.retry import RetryPolicy
-from sagemaker.utils import update_container_with_inference_params
+from sagemaker.utils import update_container_with_inference_params, format_tags
 
 
 @attr.s
@@ -37,10 +38,14 @@ class StepCollection:
     Attributes:
         name (str): The name of the `StepCollection`.
         steps (List[Step]): A list of steps.
+        depends_on (List[Union[str, Step, StepCollection, StepOutput]]):
+            The list of `Step`/`StepCollection` names or `Step`/`StepCollection`/`StepOutput`
+            instances that the current `Step` depends on.
     """
 
     name: str = attr.ib()
     steps: List[Step] = attr.ib(factory=list)
+    depends_on: List[Union[str, Step, "StepCollection", StepOutput]] = attr.ib(default=None)
 
     def request_dicts(self) -> List[RequestType]:
         """Get the request structure for workflow service calls."""
@@ -90,6 +95,7 @@ class RegisterModel(StepCollection):  # pragma: no cover
         framework_version=None,
         nearest_model_name=None,
         data_input_configuration=None,
+        skip_model_validation=None,
         **kwargs,
     ):
         """Construct steps `_RepackModelStep` and `_RegisterModelStep` based on the estimator.
@@ -122,7 +128,7 @@ class RegisterModel(StepCollection):  # pragma: no cover
             compile_model_family (str): The instance family for the compiled model. If
                 specified, a compiled model is used (default: None).
             description (str): Model Package description (default: None).
-            tags (List[dict[str, str]]): The list of tags to attach to the model package group. Note
+            tags (Optional[Tags]): The list of tags to attach to the model package group. Note
                 that tags will only be applied to newly created model package groups; if the
                 name of an existing group is passed to "model_package_group_name",
                 tags will not be applied.
@@ -145,16 +151,19 @@ class RegisterModel(StepCollection):  # pragma: no cover
             nearest_model_name (str): Name of a pre-trained machine learning benchmarked by
                 Amazon SageMaker Inference Recommender (default: None).
             data_input_configuration (str): Input object for the model (default: None).
+            skip_model_validation (str): Indicates if you want to skip model
+                validation. Values can be "All" or "None" (default: None).
 
             **kwargs: additional arguments to `create_model`.
         """
-        self.name = name
+        super().__init__(name=name, depends_on=depends_on)
         steps: List[Step] = []
         repack_model = False
         self.model_list = None
         self.container_def_list = None
         subnets = None
         security_group_ids = None
+        tags = format_tags(tags)
 
         if estimator is not None:
             subnets = estimator.subnets
@@ -281,6 +290,7 @@ class RegisterModel(StepCollection):  # pragma: no cover
             domain=domain,
             sample_payload_url=sample_payload_url,
             task=task,
+            skip_model_validation=skip_model_validation,
             **kwargs,
         )
         if not repack_model:
@@ -379,8 +389,9 @@ class EstimatorTransformer(StepCollection):
             transform_step_retry_policies (List[RetryPolicy]): The list of retry policies for
                 transform step
         """
-        self.name = name
+        super().__init__(name=name, depends_on=depends_on)
         steps = []
+        tags = format_tags(tags)
         if "entry_point" in kwargs:
             entry_point = kwargs.get("entry_point", None)
             source_dir = kwargs.get("source_dir", None)

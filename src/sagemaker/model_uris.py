@@ -18,6 +18,8 @@ from typing import Optional
 
 from sagemaker.jumpstart import utils as jumpstart_utils
 from sagemaker.jumpstart import artifacts
+from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+from sagemaker.session import Session
 
 
 logger = logging.getLogger(__name__)
@@ -28,8 +30,10 @@ def retrieve(
     model_id: Optional[str] = None,
     model_version: Optional[str] = None,
     model_scope: Optional[str] = None,
+    instance_type: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> str:
     """Retrieves the model artifact Amazon S3 URI for the model matching the given arguments.
 
@@ -41,6 +45,7 @@ def retrieve(
             the model artifact S3 URI.
         model_scope (str): The model type.
             Valid values: "training" and "inference".
+        instance_type (str): The ML compute instance type for the specified scope. (Default: None).
         tolerate_vulnerable_model (bool): ``True`` if vulnerable versions of model
             specifications should be tolerated without raising an exception. If ``False``, raises an
             exception if the script used by this version of the model has dependencies with known
@@ -48,6 +53,10 @@ def retrieve(
         tolerate_deprecated_model (bool): ``True`` if deprecated versions of model
             specifications should be tolerated without raising an exception. If ``False``, raises
             an exception if the version of the model is deprecated. (Default: False).
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions. If not
+            specified, one is created using the default AWS configuration
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     Returns:
         str: The model artifact S3 URI for the corresponding model.
 
@@ -64,10 +73,12 @@ def retrieve(
         )
 
     return artifacts._retrieve_model_uri(
-        model_id,
-        model_version,  # type: ignore
-        model_scope,
-        region,
-        tolerate_vulnerable_model,
-        tolerate_deprecated_model,
+        model_id=model_id,
+        model_version=model_version,  # type: ignore
+        model_scope=model_scope,
+        instance_type=instance_type,
+        region=region,
+        tolerate_vulnerable_model=tolerate_vulnerable_model,
+        tolerate_deprecated_model=tolerate_deprecated_model,
+        sagemaker_session=sagemaker_session,
     )

@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 import time
+from typing import Union
 
 
 import pytest
@@ -23,12 +24,14 @@ import pandas as pd
 import subprocess
 import shlex
 from sagemaker.experiments.run import Run, load_run
+from sagemaker.remote_function import CheckpointLocation
 from tests.integ.sagemaker.experiments.helpers import cleanup_exp_resources
 from sagemaker.experiments.trial_component import _TrialComponent
 from sagemaker.experiments._api_types import _TrialComponentStatusType
 
 from sagemaker.remote_function import remote
 from sagemaker.remote_function.spark_config import SparkConfig
+from sagemaker.remote_function.custom_file_filter import CustomFileFilter
 from sagemaker.remote_function.runtime_environment.runtime_environment_manager import (
     RuntimeEnvironmentError,
 )
@@ -40,13 +43,25 @@ from sagemaker.utils import unique_name_from_base
 
 from tests.integ.kms_utils import get_or_create_kms_key
 from tests.integ import DATA_DIR
+from tests.integ.s3_utils import assert_s3_files_exist
 
 ROLE = "SageMakerRole"
+CHECKPOINT_FILE_CONTENT = "test checkpoint file"
 
 
 @pytest.fixture(scope="module")
 def s3_kms_key(sagemaker_session):
     return get_or_create_kms_key(sagemaker_session=sagemaker_session)
+
+
+@pytest.fixture(scope="module")
+def checkpoint_s3_location(sagemaker_session):
+    def random_s3_uri():
+        return "".join(random.choices(string.ascii_uppercase + string.digits, k=10))
+
+    return "s3://{}/rm-func-checkpoints/{}".format(
+        sagemaker_session.default_bucket(), random_s3_uri()
+    )
 
 
 def test_decorator(sagemaker_session, dummy_container_without_error, cpu_instance_type):
@@ -121,7 +136,7 @@ def test_advanced_job_setting(
     assert divide(10, 2) == 5
 
 
-def test_with_local_dependencies(
+def test_with_custom_file_filter(
     sagemaker_session, dummy_container_without_error, cpu_instance_type, monkeypatch
 ):
     source_dir_path = os.path.join(os.path.dirname(__file__))
@@ -136,6 +151,8 @@ def test_with_local_dependencies(
             instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
             include_local_workdir=True,
+            custom_file_filter=CustomFileFilter(),
+            keep_alive_period_in_seconds=300,
         )
         def train(x):
             from helpers import local_module
@@ -144,6 +161,35 @@ def test_with_local_dependencies(
             return local_module.square(x) + local_module2.cube(x)
 
         assert train(2) == 12
+
+
+def test_with_misconfigured_custom_file_filter(
+    sagemaker_session, dummy_container_without_error, cpu_instance_type, monkeypatch
+):
+    source_dir_path = os.path.join(os.path.dirname(__file__))
+    with monkeypatch.context() as m:
+        m.chdir(source_dir_path)
+        dependencies_path = os.path.join(DATA_DIR, "remote_function", "requirements.txt")
+
+        @remote(
+            role=ROLE,
+            image_uri=dummy_container_without_error,
+            dependencies=dependencies_path,
+            instance_type=cpu_instance_type,
+            sagemaker_session=sagemaker_session,
+            include_local_workdir=True,
+            # exclude critical modules
+            custom_file_filter=CustomFileFilter(ignore_name_patterns=["helpers"]),
+            keep_alive_period_in_seconds=300,
+        )
+        def train(x):
+            from helpers import local_module
+            from helpers.nested_helper import local_module2
+
+            return local_module.square(x) + local_module2.cube(x)
+
+        with pytest.raises(ModuleNotFoundError):
+            train(2)
 
 
 def test_with_additional_dependencies(
@@ -161,7 +207,7 @@ def test_with_additional_dependencies(
     def cuberoot(x):
         from scipy.special import cbrt
 
-        return cbrt(27)
+        return cbrt(x)
 
     assert cuberoot(27) == 3
 
@@ -272,6 +318,13 @@ def test_with_non_existent_dependencies(
 def test_with_incompatible_dependencies(
     sagemaker_session, dummy_container_without_error, cpu_instance_type
 ):
+    """
+    This test is limited by the python version it is run with.
+    It is currently working with python 3.8+. However, running it with older versions
+    or versions in the future may require changes to 'old_deps_requirements.txt'
+    to fulfill testing scenario.
+
+    """
 
     dependencies_path = os.path.join(DATA_DIR, "remote_function", "old_deps_requirements.txt")
 
@@ -599,6 +652,118 @@ def test_decorator_pre_execution_script_error(
     with pytest.raises(RuntimeEnvironmentError) as e:
         get_file_content(["test_file_1", "test_file_2", "test_file_3"])
         assert "line 2: bws: command not found" in str(e)
+
+
+def test_decorator_with_spot_instances(
+    sagemaker_session, dummy_container_without_error, cpu_instance_type
+):
+    @remote(
+        role=ROLE,
+        image_uri=dummy_container_without_error,
+        instance_type=cpu_instance_type,
+        sagemaker_session=sagemaker_session,
+        use_spot_instances=True,
+        max_wait_time_in_seconds=48 * 60 * 60,
+    )
+    def divide(x, y):
+        return x / y
+
+    assert divide(10, 2) == 5
+    assert divide(20, 2) == 10
+
+
+def test_decorator_with_spot_instances_save_and_load_checkpoints(
+    sagemaker_session,
+    dummy_container_without_error,
+    cpu_instance_type,
+    checkpoint_s3_location,
+):
+    @remote(
+        role=ROLE,
+        image_uri=dummy_container_without_error,
+        instance_type=cpu_instance_type,
+        sagemaker_session=sagemaker_session,
+        use_spot_instances=True,
+        max_wait_time_in_seconds=48 * 60 * 60,
+    )
+    def save_checkpoints(checkpoint_path: Union[str, os.PathLike]):
+        file_path_1 = os.path.join(checkpoint_path, "checkpoint_1.json")
+        with open(file_path_1, "w") as f:
+            f.write(CHECKPOINT_FILE_CONTENT)
+
+        file_path_2 = os.path.join(checkpoint_path, "checkpoint_2.json")
+        with open(file_path_2, "w") as f:
+            f.write(CHECKPOINT_FILE_CONTENT)
+
+        return CHECKPOINT_FILE_CONTENT
+
+    @remote(
+        role=ROLE,
+        image_uri=dummy_container_without_error,
+        instance_type=cpu_instance_type,
+        sagemaker_session=sagemaker_session,
+        use_spot_instances=True,
+        max_wait_time_in_seconds=48 * 60 * 60,
+    )
+    def load_checkpoints(checkpoint_path: Union[str, os.PathLike]):
+        file_path_1 = os.path.join(checkpoint_path, "checkpoint_1.json")
+        with open(file_path_1, "r") as file:
+            file_content_1 = file.read()
+
+        file_path_2 = os.path.join(checkpoint_path, "checkpoint_2.json")
+        with open(file_path_2, "r") as file:
+            file_content_2 = file.read()
+
+        return file_content_1 + file_content_2
+
+    assert save_checkpoints(CheckpointLocation(checkpoint_s3_location)) == CHECKPOINT_FILE_CONTENT
+    assert_s3_files_exist(
+        sagemaker_session, checkpoint_s3_location, ["checkpoint_1.json", "checkpoint_2.json"]
+    )
+
+    assert (
+        load_checkpoints(CheckpointLocation(checkpoint_s3_location))
+        == CHECKPOINT_FILE_CONTENT + CHECKPOINT_FILE_CONTENT
+    )
+
+
+def test_with_user_and_workdir_set_in_the_image(
+    sagemaker_session, dummy_container_with_user_and_workdir, cpu_instance_type
+):
+    dependencies_path = os.path.join(DATA_DIR, "remote_function", "requirements.txt")
+
+    @remote(
+        role=ROLE,
+        image_uri=dummy_container_with_user_and_workdir,
+        dependencies=dependencies_path,
+        instance_type=cpu_instance_type,
+        sagemaker_session=sagemaker_session,
+    )
+    def cuberoot(x):
+        from scipy.special import cbrt
+
+        return cbrt(x)
+
+    assert cuberoot(27) == 3
+
+
+def test_with_user_and_workdir_set_in_the_image_client_error_case(
+    sagemaker_session, dummy_container_with_user_and_workdir, cpu_instance_type
+):
+    client_error_message = "Testing client error in job."
+
+    @remote(
+        role=ROLE,
+        image_uri=dummy_container_with_user_and_workdir,
+        instance_type=cpu_instance_type,
+        sagemaker_session=sagemaker_session,
+    )
+    def my_func():
+        raise RuntimeError(client_error_message)
+
+    with pytest.raises(RuntimeError) as error:
+        my_func()
+    assert client_error_message in str(error)
 
 
 @pytest.mark.skip

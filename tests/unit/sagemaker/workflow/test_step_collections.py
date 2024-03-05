@@ -73,13 +73,28 @@ def estimator(sagemaker_session):
 
 
 @pytest.fixture
-def model(sagemaker_session):
+def source_dir(request):
+    wf = os.path.join(DATA_DIR, "workflow")
+    tmp = tempfile.mkdtemp()
+    shutil.copy2(os.path.join(wf, "inference.py"), os.path.join(tmp, "inference.py"))
+    shutil.copy2(os.path.join(wf, "foo"), os.path.join(tmp, "foo"))
+
+    def fin():
+        shutil.rmtree(tmp)
+
+    request.addfinalizer(fin)
+
+    return tmp
+
+
+@pytest.fixture
+def model(sagemaker_session, source_dir):
     return FrameworkModel(
         image_uri=IMAGE_URI,
         model_data=f"s3://{BUCKET}/model.tar.gz",
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        entry_point=f"{DATA_DIR}/dummy_script.py",
+        entry_point=f"{source_dir}/inference.py",
         name="modelName",
         vpc_config={"Subnets": ["abc", "def"], "SecurityGroupIds": ["123", "456"]},
     )
@@ -128,21 +143,6 @@ def drift_check_baselines():
     )
 
 
-@pytest.fixture
-def source_dir(request):
-    wf = os.path.join(DATA_DIR, "workflow")
-    tmp = tempfile.mkdtemp()
-    shutil.copy2(os.path.join(wf, "inference.py"), os.path.join(tmp, "inference.py"))
-    shutil.copy2(os.path.join(wf, "foo"), os.path.join(tmp, "foo"))
-
-    def fin():
-        shutil.rmtree(tmp)
-
-    request.addfinalizer(fin)
-
-    return tmp
-
-
 def test_step_collection():
     step_collection = StepCollection(
         name="MyStepCollection", steps=[CustomStep("MyStep1"), CustomStep("MyStep2")]
@@ -165,15 +165,15 @@ def test_step_collection_with_list_to_request():
     ]
 
 
-def test_step_collection_properties(pipeline_session, sagemaker_session):
+def test_step_collection_properties(pipeline_session, sagemaker_session, source_dir):
     # ModelStep
     model = Model(
         name="MyModel",
         image_uri=IMAGE_URI,
         model_data=ParameterString(name="ModelData", default_value="s3://my-bucket/file"),
         sagemaker_session=pipeline_session,
-        entry_point=f"{DATA_DIR}/dummy_script.py",
-        source_dir=f"{DATA_DIR}",
+        entry_point=f"{source_dir}/inference.py",
+        source_dir=f"{source_dir}",
         role=ROLE,
     )
     step_args = model.create(
@@ -213,6 +213,10 @@ def test_step_collection_properties(pipeline_session, sagemaker_session):
         "Get": f"Steps.{register_model_step_name}-RegisterModel.ModelPackageName"
     }
 
+    assert register_model.properties.ModelPackageName._referenced_steps == [
+        register_model.steps[-1]
+    ]
+
     # Custom StepCollection
     step_collection = StepCollection(name="MyStepCollection")
     steps = step_collection.steps
@@ -220,7 +224,7 @@ def test_step_collection_properties(pipeline_session, sagemaker_session):
     assert not step_collection.properties
 
 
-def test_step_collection_is_depended_on(pipeline_session, sagemaker_session):
+def test_step_collection_is_depended_on(pipeline_session, sagemaker_session, source_dir):
     custom_step1 = CustomStep(name="MyStep1")
     model_name = "MyModel"
     model = Model(
@@ -228,8 +232,8 @@ def test_step_collection_is_depended_on(pipeline_session, sagemaker_session):
         image_uri=IMAGE_URI,
         model_data=ParameterString(name="ModelData", default_value="s3://my-bucket/file"),
         sagemaker_session=pipeline_session,
-        entry_point=f"{DATA_DIR}/dummy_script.py",
-        source_dir=f"{DATA_DIR}",
+        entry_point=f"{source_dir}/inference.py",
+        source_dir=f"{source_dir}",
         role=ROLE,
     )
     step_args = model.create(
@@ -294,15 +298,24 @@ def test_step_collection_is_depended_on(pipeline_session, sagemaker_session):
             "MyStep1": ["MyStep2", "MyStep3", "MyModel-RepackModel"],
             "MyStep2": [],
             "MyStep3": [],
-            "MyModelStep-RepackModel-MyModel": ["MyModelStep-CreateModel"],
+            "MyModelStep-RepackModel-MyModel": [
+                "MyModelStep-CreateModel",
+                "MyModel-RepackModel",
+                "MyStep2",
+                "MyStep3",
+            ],
             "MyModelStep-CreateModel": ["MyStep2", "MyStep3", "MyModel-RepackModel"],
-            "MyModel-RepackModel": [],
+            "MyModel-RepackModel": ["MyStep2", "MyStep3"],
             "RegisterModelStep-RegisterModel": ["MyStep2", "MyStep3"],
         }
     )
 
 
-def test_step_collection_in_condition_branch_is_depended_on(pipeline_session, sagemaker_session):
+def test_step_collection_in_condition_branch_is_depended_on(
+    pipeline_session,
+    sagemaker_session,
+    source_dir,
+):
     custom_step1 = CustomStep(name="MyStep1")
 
     # Define a step collection which will be inserted into the ConditionStep
@@ -312,8 +325,8 @@ def test_step_collection_in_condition_branch_is_depended_on(pipeline_session, sa
         image_uri=IMAGE_URI,
         model_data=ParameterString(name="ModelData", default_value="s3://my-bucket/file"),
         sagemaker_session=pipeline_session,
-        entry_point=f"{DATA_DIR}/dummy_script.py",
-        source_dir=f"{DATA_DIR}",
+        entry_point=f"{source_dir}/inference.py",
+        source_dir=f"{source_dir}",
         role=ROLE,
     )
     step_args = model.create(
@@ -396,13 +409,24 @@ def test_step_collection_in_condition_branch_is_depended_on(pipeline_session, sa
     adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
     assert ordered(adjacency_list) == ordered(
         {
-            "CondStep": ["MyModel-RepackModel", "MyModelStep-RepackModel-MyModel", "MyStep2"],
+            "CondStep": [
+                "MyModel-RepackModel",
+                "MyModelStep-CreateModel",
+                "MyModelStep-RepackModel-MyModel",
+                "MyStep2",
+                "RegisterModelStep-RegisterModel",
+            ],
             "MyStep1": ["MyStep2", "MyStep3", "MyModel-RepackModel"],
             "MyStep2": [],
             "MyStep3": [],
-            "MyModelStep-RepackModel-MyModel": ["MyModelStep-CreateModel"],
+            "MyModelStep-RepackModel-MyModel": [
+                "MyModel-RepackModel",
+                "MyModelStep-CreateModel",
+                "MyStep2",
+                "MyStep3",
+            ],
             "MyModelStep-CreateModel": ["MyStep2", "MyStep3", "MyModel-RepackModel"],
-            "MyModel-RepackModel": [],
+            "MyModel-RepackModel": ["MyStep2", "MyStep3"],
             "RegisterModelStep-RegisterModel": ["MyStep2", "MyStep3"],
         }
     )
@@ -446,7 +470,11 @@ def test_condition_step_depends_on_step_collection():
         }
     adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
     assert ordered(adjacency_list) == ordered(
-        [("MyConditionStep", []), ("MyStep1", ["MyStep2"]), ("MyStep2", ["MyConditionStep"])]
+        [
+            ("MyConditionStep", []),
+            ("MyStep1", ["MyConditionStep", "MyStep2"]),
+            ("MyStep2", ["MyConditionStep"]),
+        ]
     )
 
 
@@ -498,6 +526,7 @@ def test_register_model(estimator, model_metrics, drift_check_baselines):
                         "SupportedTransformInstanceTypes": ["transform_instance"],
                     },
                     "ModelApprovalStatus": "Approved",
+                    "SkipModelValidation": "None",
                     "ModelMetrics": {
                         "Bias": {},
                         "Explainability": {},
@@ -568,6 +597,7 @@ def test_register_model_tf(estimator_tf, model_metrics, drift_check_baselines):
                         "SupportedTransformInstanceTypes": ["transform_instance"],
                     },
                     "ModelApprovalStatus": "Approved",
+                    "SkipModelValidation": "None",
                     "ModelMetrics": {
                         "Bias": {},
                         "Explainability": {},
@@ -657,6 +687,7 @@ def test_register_model_sip(estimator, model_metrics, drift_check_baselines):
                         "SupportedTransformInstanceTypes": ["transform_instance"],
                     },
                     "ModelApprovalStatus": "Approved",
+                    "SkipModelValidation": "None",
                     "ModelMetrics": {
                         "Bias": {},
                         "Explainability": {},
@@ -686,7 +717,10 @@ def test_register_model_sip(estimator, model_metrics, drift_check_baselines):
 
 
 def test_register_model_with_model_repack_with_estimator(
-    estimator, model_metrics, drift_check_baselines
+    estimator,
+    model_metrics,
+    drift_check_baselines,
+    source_dir,
 ):
     model_data = f"s3://{BUCKET}/model.tar.gz"
     dummy_requirements = f"{DATA_DIR}/dummy_requirements.txt"
@@ -703,7 +737,7 @@ def test_register_model_with_model_repack_with_estimator(
         drift_check_baselines=drift_check_baselines,
         approval_status="Approved",
         description="description",
-        entry_point=f"{DATA_DIR}/dummy_script.py",
+        entry_point=f"{source_dir}/inference.py",
         dependencies=[dummy_requirements],
         depends_on=["TestStep"],
         tags=[{"Key": "myKey", "Value": "myValue"}],
@@ -737,7 +771,7 @@ def test_register_model_with_model_repack_with_estimator(
                     },
                     "ProfilerConfig": {"DisableProfiler": True},
                     "HyperParameters": {
-                        "inference_script": '"dummy_script.py"',
+                        "inference_script": '"inference.py"',
                         "dependencies": f'"{dummy_requirements}"',
                         "model_archive": '"s3://my-bucket/model.tar.gz"',
                         "sagemaker_program": f'"{REPACK_SCRIPT_LAUNCHER}"',
@@ -794,6 +828,7 @@ def test_register_model_with_model_repack_with_estimator(
                         "SupportedTransformInstanceTypes": ["transform_instance"],
                     },
                     "ModelApprovalStatus": "Approved",
+                    "SkipModelValidation": "None",
                     "ModelMetrics": {
                         "Bias": {},
                         "Explainability": {},
@@ -865,7 +900,7 @@ def test_register_model_with_model_repack_with_model(model, model_metrics, drift
                     },
                     "ProfilerConfig": {"DisableProfiler": True},
                     "HyperParameters": {
-                        "inference_script": '"dummy_script.py"',
+                        "inference_script": '"inference.py"',
                         "model_archive": '"s3://my-bucket/model.tar.gz"',
                         "sagemaker_program": f'"{REPACK_SCRIPT_LAUNCHER}"',
                         "sagemaker_container_log_level": "20",
@@ -919,6 +954,7 @@ def test_register_model_with_model_repack_with_model(model, model_metrics, drift
                         "SupportedTransformInstanceTypes": ["transform_instance"],
                     },
                     "ModelApprovalStatus": "Approved",
+                    "SkipModelValidation": "None",
                     "ModelMetrics": {
                         "Bias": {},
                         "Explainability": {},
@@ -996,7 +1032,7 @@ def test_register_model_with_model_repack_with_pipeline_model(
                     "ProfilerConfig": {"DisableProfiler": True},
                     "HyperParameters": {
                         "dependencies": "null",
-                        "inference_script": '"dummy_script.py"',
+                        "inference_script": '"inference.py"',
                         "model_archive": '"s3://my-bucket/model.tar.gz"',
                         "sagemaker_program": f'"{REPACK_SCRIPT_LAUNCHER}"',
                         "sagemaker_container_log_level": "20",
@@ -1052,6 +1088,7 @@ def test_register_model_with_model_repack_with_pipeline_model(
                         "SupportedTransformInstanceTypes": ["transform_instance"],
                     },
                     "ModelApprovalStatus": "Approved",
+                    "SkipModelValidation": "None",
                     "ModelMetrics": {
                         "Bias": {},
                         "Explainability": {},
@@ -1144,7 +1181,7 @@ def test_estimator_transformer(estimator):
             raise Exception("A step exists in the collection of an invalid type.")
 
 
-def test_estimator_transformer_with_model_repack_with_estimator(estimator):
+def test_estimator_transformer_with_model_repack_with_estimator(estimator, source_dir):
     model_data = f"s3://{BUCKET}/model.tar.gz"
     model_inputs = CreateModelInput(
         instance_type="c4.4xlarge",
@@ -1166,7 +1203,7 @@ def test_estimator_transformer_with_model_repack_with_estimator(estimator):
         model_step_retry_policies=[service_fault_retry_policy],
         transform_step_retry_policies=[service_fault_retry_policy],
         repack_model_step_retry_policies=[service_fault_retry_policy],
-        entry_point=f"{DATA_DIR}/dummy_script.py",
+        entry_point=f"{source_dir}/inference.py",
     )
     request_dicts = estimator_transformer.request_dicts()
     assert len(request_dicts) == 3
@@ -1207,7 +1244,7 @@ def test_estimator_transformer_with_model_repack_with_estimator(estimator):
                     }
                 ],
                 "HyperParameters": {
-                    "inference_script": '"dummy_script.py"',
+                    "inference_script": '"inference.py"',
                     "model_archive": '"s3://my-bucket/model.tar.gz"',
                     "dependencies": "null",
                     "source_dir": "null",

@@ -16,7 +16,7 @@ It supports loading config files from the local file system and Amazon S3.
 The schema of the config file is dictated in config_schema.py in the same module.
 
 """
-from __future__ import absolute_import
+from __future__ import absolute_import, annotations
 
 import pathlib
 import os
@@ -28,17 +28,24 @@ from platformdirs import site_config_dir, user_config_dir
 from botocore.utils import merge_dicts
 from six.moves.urllib.parse import urlparse
 from sagemaker.config.config_schema import SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA
-from sagemaker.config.config_utils import get_sagemaker_config_logger
+from sagemaker.config.config_utils import non_repeating_log_factory, get_sagemaker_config_logger
 
 logger = get_sagemaker_config_logger()
+log_info_function = non_repeating_log_factory(logger, "info")
 
 _APP_NAME = "sagemaker"
+# The default name of the config file.
+_CONFIG_FILE_NAME = "config.yaml"
 # The default config file location of the Administrator provided config file. This path can be
 # overridden with `SAGEMAKER_ADMIN_CONFIG_OVERRIDE` environment variable.
-_DEFAULT_ADMIN_CONFIG_FILE_PATH = os.path.join(site_config_dir(_APP_NAME), "config.yaml")
+_DEFAULT_ADMIN_CONFIG_FILE_PATH = os.path.join(site_config_dir(_APP_NAME), _CONFIG_FILE_NAME)
 # The default config file location of the user provided config file. This path can be
 # overridden with `SAGEMAKER_USER_CONFIG_OVERRIDE` environment variable.
-_DEFAULT_USER_CONFIG_FILE_PATH = os.path.join(user_config_dir(_APP_NAME), "config.yaml")
+_DEFAULT_USER_CONFIG_FILE_PATH = os.path.join(user_config_dir(_APP_NAME), _CONFIG_FILE_NAME)
+# The default config file location of the local mode.
+_DEFAULT_LOCAL_MODE_CONFIG_FILE_PATH = os.path.join(
+    os.path.expanduser("~"), ".sagemaker", _CONFIG_FILE_NAME
+)
 
 ENV_VARIABLE_ADMIN_CONFIG_OVERRIDE = "SAGEMAKER_ADMIN_CONFIG_OVERRIDE"
 ENV_VARIABLE_USER_CONFIG_OVERRIDE = "SAGEMAKER_USER_CONFIG_OVERRIDE"
@@ -46,7 +53,9 @@ ENV_VARIABLE_USER_CONFIG_OVERRIDE = "SAGEMAKER_USER_CONFIG_OVERRIDE"
 S3_PREFIX = "s3://"
 
 
-def load_sagemaker_config(additional_config_paths: List[str] = None, s3_resource=None) -> dict:
+def load_sagemaker_config(
+    additional_config_paths: List[str] = None, s3_resource=None, repeat_log=False
+) -> dict:
     """Loads config files and merges them.
 
     By default, this method first searches for config files in the default locations
@@ -93,6 +102,8 @@ def load_sagemaker_config(additional_config_paths: List[str] = None, s3_resource
             <https://boto3.amazonaws.com/v1/documentation/api\
             /latest/reference/core/session.html#boto3.session.Session.resource>`__.
             This argument is not needed if the config files are present in the local file system.
+        repeat_log (bool): Whether the log with the same contents should be emitted.
+            Default to ``False``
     """
     default_config_path = os.getenv(
         ENV_VARIABLE_ADMIN_CONFIG_OVERRIDE, _DEFAULT_ADMIN_CONFIG_FILE_PATH
@@ -103,6 +114,11 @@ def load_sagemaker_config(additional_config_paths: List[str] = None, s3_resource
         config_paths += additional_config_paths
     config_paths = list(filter(lambda item: item is not None, config_paths))
     merged_config = {}
+
+    log_info = log_info_function
+    if repeat_log:
+        log_info = logger.info
+
     for file_path in config_paths:
         config_from_file = {}
         if file_path.startswith(S3_PREFIX):
@@ -110,7 +126,7 @@ def load_sagemaker_config(additional_config_paths: List[str] = None, s3_resource
         else:
             try:
                 config_from_file = _load_config_from_file(file_path)
-            except ValueError:
+            except ValueError as error:
                 if file_path not in (
                     _DEFAULT_ADMIN_CONFIG_FILE_PATH,
                     _DEFAULT_USER_CONFIG_FILE_PATH,
@@ -119,12 +135,15 @@ def load_sagemaker_config(additional_config_paths: List[str] = None, s3_resource
                     # If there are no files in the Default config file locations, don't throw
                     # Exceptions.
                     raise
+
+                logger.debug(error)
         if config_from_file:
             validate_sagemaker_config(config_from_file)
             merge_dicts(merged_config, config_from_file)
-            logger.info("Fetched defaults config from location: %s", file_path)
+            log_info("Fetched defaults config from location: %s", file_path)
         else:
-            logger.debug("Fetched defaults config from location: %s, but it was empty", file_path)
+            log_info("Not applying SDK defaults from location: %s", file_path)
+
     return merged_config
 
 
@@ -141,11 +160,21 @@ def validate_sagemaker_config(sagemaker_config: dict = None):
     jsonschema.validate(sagemaker_config, SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA)
 
 
+def load_local_mode_config() -> dict | None:
+    """Loads the local mode config file."""
+    try:
+        content = _load_config_from_file(_DEFAULT_LOCAL_MODE_CONFIG_FILE_PATH)
+    except ValueError:
+        content = None
+
+    return content
+
+
 def _load_config_from_file(file_path: str) -> dict:
     """Placeholder docstring"""
     inferred_file_path = file_path
     if os.path.isdir(file_path):
-        inferred_file_path = os.path.join(file_path, "config.yaml")
+        inferred_file_path = os.path.join(file_path, _CONFIG_FILE_NAME)
     if not os.path.exists(inferred_file_path):
         raise ValueError(
             f"Unable to load the config file from the location: {file_path}"
@@ -191,10 +220,14 @@ def _get_inferred_s3_uri(s3_uri, s3_resource_for_config):
     if len(s3_files_with_same_prefix) > 1:
         # Customer has provided us with a S3 URI which points to a directory
         # search for s3://<bucket>/directory-key-prefix/config.yaml
-        inferred_s3_uri = str(pathlib.PurePosixPath(s3_uri, "config.yaml")).replace("s3:/", "s3://")
+        inferred_s3_uri = str(pathlib.PurePosixPath(s3_uri, _CONFIG_FILE_NAME)).replace(
+            "s3:/", "s3://"
+        )
         if inferred_s3_uri not in s3_files_with_same_prefix:
             # We don't know which file we should be operating with.
-            raise ValueError("Provide an S3 URI of a directory that has a config.yaml file.")
+            raise ValueError(
+                f"Provide an S3 URI of a directory that has a {_CONFIG_FILE_NAME} file."
+            )
         # Customer has a config.yaml present in the directory that was provided as the S3 URI
         return inferred_s3_uri
     return s3_uri

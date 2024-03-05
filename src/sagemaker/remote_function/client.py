@@ -17,7 +17,7 @@ from concurrent.futures import ThreadPoolExecutor
 from collections import deque
 import time
 import threading
-from typing import Dict, List, Tuple, Any
+from typing import Callable, Dict, List, Optional, Tuple, Any, Union
 import functools
 import itertools
 import inspect
@@ -39,6 +39,7 @@ from sagemaker.remote_function.job import _JobSettings, _Job, _RunInfo
 from sagemaker.remote_function import logging_config
 from sagemaker.utils import name_from_base, base_from_name
 from sagemaker.remote_function.spark_config import SparkConfig
+from sagemaker.remote_function.custom_file_filter import CustomFileFilter
 
 _API_CALL_LIMIT = {
     "SubmittingIntervalInSecs": 1,
@@ -64,7 +65,8 @@ def remote(
     pre_execution_script: str = None,
     environment_variables: Dict[str, str] = None,
     image_uri: str = None,
-    include_local_workdir: bool = False,
+    include_local_workdir: bool = None,
+    custom_file_filter: Optional[Union[Callable[[str, List], List], CustomFileFilter]] = None,
     instance_count: int = 1,
     instance_type: str = None,
     job_conda_env: str = None,
@@ -83,6 +85,8 @@ def remote(
     volume_size: int = 30,
     encrypt_inter_container_traffic: bool = None,
     spark_config: SparkConfig = None,
+    use_spot_instances=False,
+    max_wait_time_in_seconds=None,
 ):
     """Decorator for running the annotated function as a SageMaker training job.
 
@@ -187,7 +191,15 @@ def remote(
 
         include_local_workdir (bool): A flag to indicate that the remote function should include
           local directories. Set to ``True`` if the remote function code imports local modules and
-          methods that are not available via PyPI or conda. Default value is ``False``.
+          methods that are not available via PyPI or conda. Only python files are included.
+          Default value is ``False``.
+
+        custom_file_filter (Callable[[str, List], List], CustomFileFilter): Either a function
+          that filters job dependencies to be uploaded to S3 or a ``CustomFileFilter`` object
+          that specifies the local directories and files to be included in the remote function.
+          If a callable is passed in, the function should follow the protocol of ``ignore`` argument
+          of ``shutil.copytree``. Defaults to ``None``, which means only python
+          files are accepted and uploaded to S3.
 
         instance_count (int): The number of instances to use. Defaults to 1.
           NOTE: Remote function does not support instance_count > 1 for non Spark jobs.
@@ -255,6 +267,14 @@ def remote(
           Spark image. If ``spark_config`` is specified, a SageMaker Spark image uri
           will be used for training. Note that ``image_uri`` can not be specified at the
           same time otherwise a ``ValueError`` is thrown. Defaults to ``None``.
+
+        use_spot_instances (bool): Specifies whether to use SageMaker Managed Spot instances for
+          training. If enabled then the ``max_wait_time_in_seconds`` arg should also be set.
+          Defaults to ``False``.
+
+        max_wait_time_in_seconds (int): Timeout in seconds waiting for spot training job.
+          After this amount of time Amazon SageMaker will stop waiting for managed spot training
+          job to complete. Defaults to ``None``.
     """
 
     def _remote(func):
@@ -266,6 +286,7 @@ def remote(
             environment_variables=environment_variables,
             image_uri=image_uri,
             include_local_workdir=include_local_workdir,
+            custom_file_filter=custom_file_filter,
             instance_count=instance_count,
             instance_type=instance_type,
             job_conda_env=job_conda_env,
@@ -284,6 +305,8 @@ def remote(
             volume_size=volume_size,
             encrypt_inter_container_traffic=encrypt_inter_container_traffic,
             spark_config=spark_config,
+            use_spot_instances=use_spot_instances,
+            max_wait_time_in_seconds=max_wait_time_in_seconds,
         )
 
         @functools.wraps(func)
@@ -472,7 +495,8 @@ class RemoteExecutor(object):
         pre_execution_script: str = None,
         environment_variables: Dict[str, str] = None,
         image_uri: str = None,
-        include_local_workdir: bool = False,
+        include_local_workdir: bool = None,
+        custom_file_filter: Optional[Union[Callable[[str, List], List], CustomFileFilter]] = None,
         instance_count: int = 1,
         instance_type: str = None,
         job_conda_env: str = None,
@@ -492,6 +516,8 @@ class RemoteExecutor(object):
         volume_size: int = 30,
         encrypt_inter_container_traffic: bool = None,
         spark_config: SparkConfig = None,
+        use_spot_instances=False,
+        max_wait_time_in_seconds=None,
     ):
         """Constructor for RemoteExecutor
 
@@ -596,6 +622,13 @@ class RemoteExecutor(object):
               local directories. Set to ``True`` if the remote function code imports local modules
               and methods that are not available via PyPI or conda. Default value is ``False``.
 
+            custom_file_filter (Callable[[str, List], List], CustomFileFilter): Either a function
+              that filters job dependencies to be uploaded to S3 or a ``CustomFileFilter`` object
+              that specifies the local directories and files to be included in the remote function.
+              If a callable is passed in, that function is passed to the ``ignore``  argument of
+              ``shutil.copytree``. Defaults to ``None``, which means only python
+              files are accepted and uploaded to S3.
+
             instance_count (int): The number of instances to use. Defaults to 1.
               NOTE: Remote function does not support instance_count > 1 for non Spark jobs.
 
@@ -670,6 +703,14 @@ class RemoteExecutor(object):
               Spark image. If ``spark_config`` is specified, a SageMaker Spark image uri
               will be used for training. Note that ``image_uri`` can not be specified at the
               same time otherwise a ``ValueError`` is thrown. Defaults to ``None``.
+
+            use_spot_instances (bool): Specifies whether to use SageMaker Managed Spot instances for
+              training. If enabled then the ``max_wait_time_in_seconds`` arg should also be set.
+              Defaults to ``False``.
+
+            max_wait_time_in_seconds (int): Timeout in seconds waiting for spot training job.
+              After this amount of time Amazon SageMaker will stop waiting for managed spot training
+              job to complete. Defaults to ``None``.
         """
         self.max_parallel_jobs = max_parallel_jobs
 
@@ -689,6 +730,7 @@ class RemoteExecutor(object):
             environment_variables=environment_variables,
             image_uri=image_uri,
             include_local_workdir=include_local_workdir,
+            custom_file_filter=custom_file_filter,
             instance_count=instance_count,
             instance_type=instance_type,
             job_conda_env=job_conda_env,
@@ -707,6 +749,8 @@ class RemoteExecutor(object):
             volume_size=volume_size,
             encrypt_inter_container_traffic=encrypt_inter_container_traffic,
             spark_config=spark_config,
+            use_spot_instances=use_spot_instances,
+            max_wait_time_in_seconds=max_wait_time_in_seconds,
         )
 
         self._state_condition = threading.Condition()

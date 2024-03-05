@@ -14,8 +14,9 @@
 from __future__ import absolute_import
 import logging
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple, Union
 from urllib.parse import urlparse
+import boto3
 from packaging.version import Version
 import sagemaker
 from sagemaker.config.config_schema import (
@@ -31,6 +32,7 @@ from sagemaker.s3 import parse_s3_url
 from sagemaker.jumpstart.exceptions import (
     DeprecatedJumpStartModelError,
     VulnerableJumpStartModelError,
+    get_old_model_version_msg,
 )
 from sagemaker.jumpstart.types import (
     JumpStartModelHeader,
@@ -39,7 +41,7 @@ from sagemaker.jumpstart.types import (
 )
 from sagemaker.session import Session
 from sagemaker.config import load_sagemaker_config
-from sagemaker.utils import resolve_value_from_config
+from sagemaker.utils import resolve_value_from_config, TagsDict
 from sagemaker.workflow import is_pipeline_variable
 
 
@@ -63,13 +65,65 @@ def get_jumpstart_launched_regions_message() -> str:
     return f"JumpStart is available in {formatted_launched_regions_str} regions."
 
 
+def get_jumpstart_gated_content_bucket(
+    region: str = constants.JUMPSTART_DEFAULT_REGION_NAME,
+) -> str:
+    """Returns regionalized private content bucket name for JumpStart.
+
+    Raises:
+        ValueError: If JumpStart is not launched in ``region`` or private content
+            unavailable in that region.
+    """
+
+    old_gated_content_bucket: Optional[
+        str
+    ] = accessors.JumpStartModelsAccessor.get_jumpstart_gated_content_bucket()
+
+    info_logs: List[str] = []
+
+    gated_bucket_to_return: Optional[str] = None
+    if (
+        constants.ENV_VARIABLE_JUMPSTART_GATED_CONTENT_BUCKET_OVERRIDE in os.environ
+        and len(os.environ[constants.ENV_VARIABLE_JUMPSTART_GATED_CONTENT_BUCKET_OVERRIDE]) > 0
+    ):
+        gated_bucket_to_return = os.environ[
+            constants.ENV_VARIABLE_JUMPSTART_GATED_CONTENT_BUCKET_OVERRIDE
+        ]
+        info_logs.append(f"Using JumpStart gated bucket override: '{gated_bucket_to_return}'")
+    else:
+        try:
+            gated_bucket_to_return = constants.JUMPSTART_REGION_NAME_TO_LAUNCHED_REGION_DICT[
+                region
+            ].gated_content_bucket
+            if gated_bucket_to_return is None:
+                raise ValueError(
+                    f"No private content bucket for JumpStart exists in {region} region."
+                )
+        except KeyError:
+            formatted_launched_regions_str = get_jumpstart_launched_regions_message()
+            raise ValueError(
+                f"Unable to get private content bucket for JumpStart in {region} region. "
+                f"{formatted_launched_regions_str}"
+            )
+
+    accessors.JumpStartModelsAccessor.set_jumpstart_gated_content_bucket(gated_bucket_to_return)
+
+    if gated_bucket_to_return != old_gated_content_bucket:
+        if old_gated_content_bucket is not None:
+            accessors.JumpStartModelsAccessor.reset_cache()
+        for info_log in info_logs:
+            constants.JUMPSTART_LOGGER.info(info_log)
+
+    return gated_bucket_to_return
+
+
 def get_jumpstart_content_bucket(
     region: str = constants.JUMPSTART_DEFAULT_REGION_NAME,
 ) -> str:
     """Returns regionalized content bucket name for JumpStart.
 
     Raises:
-        RuntimeError: If JumpStart is not launched in ``region``.
+        ValueError: If JumpStart is not launched in ``region``.
     """
 
     old_content_bucket: Optional[
@@ -100,6 +154,8 @@ def get_jumpstart_content_bucket(
     accessors.JumpStartModelsAccessor.set_jumpstart_content_bucket(bucket_to_return)
 
     if bucket_to_return != old_content_bucket:
+        if old_content_bucket is not None:
+            accessors.JumpStartModelsAccessor.reset_cache()
         for info_log in info_logs:
             constants.JUMPSTART_LOGGER.info(info_log)
     return bucket_to_return
@@ -198,7 +254,7 @@ def is_jumpstart_model_uri(uri: Optional[str]) -> bool:
     if urlparse(uri).scheme == "s3":
         bucket, _ = parse_s3_url(uri)
 
-    return bucket in constants.JUMPSTART_BUCKET_NAME_SET
+    return bucket in constants.JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET
 
 
 def tag_key_in_array(tag_key: str, tag_array: List[Dict[str, str]]) -> bool:
@@ -235,7 +291,10 @@ def get_tag_value(tag_key: str, tag_array: List[Dict[str, str]]) -> str:
 
 
 def add_single_jumpstart_tag(
-    uri: str, tag_key: enums.JumpStartTag, curr_tags: Optional[List[Dict[str, str]]]
+    tag_value: str,
+    tag_key: enums.JumpStartTag,
+    curr_tags: Optional[List[Dict[str, str]]],
+    is_uri=False,
 ) -> Optional[List]:
     """Adds ``tag_key`` to ``curr_tags`` if ``uri`` corresponds to a JumpStart model.
 
@@ -244,17 +303,28 @@ def add_single_jumpstart_tag(
         tag_key (enums.JumpStartTag): Custom tag to apply to current tags if the URI
             corresponds to a JumpStart model.
         curr_tags (Optional[List]): Current tags associated with ``Estimator`` or ``Model``.
+        is_uri (boolean): Set to True to indicate a s3 uri is to be tagged. Set to False to indicate
+            tags for JumpStart model id / version are being added. (Default: False).
     """
-    if is_jumpstart_model_uri(uri):
+    if not is_uri or is_jumpstart_model_uri(tag_value):
         if curr_tags is None:
             curr_tags = []
         if not tag_key_in_array(tag_key, curr_tags):
-            curr_tags.append(
-                {
-                    "Key": tag_key,
-                    "Value": uri,
-                }
+            skip_adding_tag = (
+                (
+                    tag_key_in_array(enums.JumpStartTag.MODEL_ID, curr_tags)
+                    or tag_key_in_array(enums.JumpStartTag.MODEL_VERSION, curr_tags)
+                )
+                if is_uri
+                else False
             )
+            if not skip_adding_tag:
+                curr_tags.append(
+                    {
+                        "Key": tag_key,
+                        "Value": tag_value,
+                    }
+                )
     return curr_tags
 
 
@@ -274,21 +344,44 @@ def get_jumpstart_base_name_if_jumpstart_model(
     return None
 
 
-def add_jumpstart_tags(
-    tags: Optional[List[Dict[str, str]]] = None,
-    inference_model_uri: Optional[str] = None,
+def add_jumpstart_model_id_version_tags(
+    tags: Optional[List[TagsDict]],
+    model_id: str,
+    model_version: str,
+) -> List[TagsDict]:
+    """Add custom model ID and version tags to JumpStart related resources."""
+    if model_id is None or model_version is None:
+        return tags
+    tags = add_single_jumpstart_tag(
+        model_id,
+        enums.JumpStartTag.MODEL_ID,
+        tags,
+        is_uri=False,
+    )
+    tags = add_single_jumpstart_tag(
+        model_version,
+        enums.JumpStartTag.MODEL_VERSION,
+        tags,
+        is_uri=False,
+    )
+    return tags
+
+
+def add_jumpstart_uri_tags(
+    tags: Optional[List[TagsDict]] = None,
+    inference_model_uri: Optional[Union[str, dict]] = None,
     inference_script_uri: Optional[str] = None,
     training_model_uri: Optional[str] = None,
     training_script_uri: Optional[str] = None,
-) -> Optional[List[Dict[str, str]]]:
-    """Add custom tags to JumpStart models, return the updated tags.
+) -> Optional[List[TagsDict]]:
+    """Add custom uri tags to JumpStart models, return the updated tags.
 
     No-op if this is not a JumpStart model related resource.
 
     Args:
         tags (Optional[List[Dict[str,str]]): Current tags for JumpStart inference
             or training job. (Default: None).
-        inference_model_uri (Optional[str]): S3 URI for inference model artifact.
+        inference_model_uri (Optional[Union[dict, str]]): S3 URI for inference model artifact.
             (Default: None).
         inference_script_uri (Optional[str]): S3 URI for inference script tarball.
             (Default: None).
@@ -301,12 +394,19 @@ def add_jumpstart_tags(
         "The URI (%s) is a pipeline variable which is only interpreted at execution time. "
         "As a result, the JumpStart resources will not be tagged."
     )
+
+    if isinstance(inference_model_uri, dict):
+        inference_model_uri = inference_model_uri.get("S3DataSource", {}).get("S3Uri", None)
+
     if inference_model_uri:
         if is_pipeline_variable(inference_model_uri):
             logging.warning(warn_msg, "inference_model_uri")
         else:
             tags = add_single_jumpstart_tag(
-                inference_model_uri, enums.JumpStartTag.INFERENCE_MODEL_URI, tags
+                inference_model_uri,
+                enums.JumpStartTag.INFERENCE_MODEL_URI,
+                tags,
+                is_uri=True,
             )
 
     if inference_script_uri:
@@ -314,7 +414,10 @@ def add_jumpstart_tags(
             logging.warning(warn_msg, "inference_script_uri")
         else:
             tags = add_single_jumpstart_tag(
-                inference_script_uri, enums.JumpStartTag.INFERENCE_SCRIPT_URI, tags
+                inference_script_uri,
+                enums.JumpStartTag.INFERENCE_SCRIPT_URI,
+                tags,
+                is_uri=True,
             )
 
     if training_model_uri:
@@ -322,7 +425,10 @@ def add_jumpstart_tags(
             logging.warning(warn_msg, "training_model_uri")
         else:
             tags = add_single_jumpstart_tag(
-                training_model_uri, enums.JumpStartTag.TRAINING_MODEL_URI, tags
+                training_model_uri,
+                enums.JumpStartTag.TRAINING_MODEL_URI,
+                tags,
+                is_uri=True,
             )
 
     if training_script_uri:
@@ -330,7 +436,10 @@ def add_jumpstart_tags(
             logging.warning(warn_msg, "training_script_uri")
         else:
             tags = add_single_jumpstart_tag(
-                training_script_uri, enums.JumpStartTag.TRAINING_SCRIPT_URI, tags
+                training_script_uri,
+                enums.JumpStartTag.TRAINING_SCRIPT_URI,
+                tags,
+                is_uri=True,
             )
 
     return tags
@@ -357,7 +466,9 @@ def update_inference_tags_with_jumpstart_training_tags(
     return inference_tags
 
 
-def emit_logs_based_on_model_specs(model_specs: JumpStartModelSpecs, region: str) -> None:
+def emit_logs_based_on_model_specs(
+    model_specs: JumpStartModelSpecs, region: str, s3_client: boto3.client
+) -> None:
     """Emits logs based on model specs and region."""
 
     if model_specs.hosting_eula_key:
@@ -371,6 +482,24 @@ def emit_logs_based_on_model_specs(model_specs: JumpStartModelSpecs, region: str
             model_specs.hosting_eula_key,
         )
 
+    full_version: str = model_specs.version
+
+    models_manifest_list = accessors.JumpStartModelsAccessor._get_manifest(
+        region=region, s3_client=s3_client
+    )
+    max_version_for_model_id: Optional[str] = None
+    for header in models_manifest_list:
+        if header.model_id == model_specs.model_id:
+            if max_version_for_model_id is None or Version(header.version) > Version(
+                max_version_for_model_id
+            ):
+                max_version_for_model_id = header.version
+
+    if full_version != max_version_for_model_id:
+        constants.JUMPSTART_LOGGER.info(
+            get_old_model_version_msg(model_specs.model_id, full_version, max_version_for_model_id)
+        )
+
     if model_specs.deprecated:
         deprecated_message = model_specs.deprecated_message or (
             "Using deprecated JumpStart model "
@@ -381,6 +510,9 @@ def emit_logs_based_on_model_specs(model_specs: JumpStartModelSpecs, region: str
 
     if model_specs.deprecate_warn_message:
         constants.JUMPSTART_LOGGER.warning(model_specs.deprecate_warn_message)
+
+    if model_specs.usage_info_message:
+        constants.JUMPSTART_LOGGER.info(model_specs.usage_info_message)
 
     if model_specs.inference_vulnerable or model_specs.training_vulnerable:
         constants.JUMPSTART_LOGGER.warning(
@@ -397,6 +529,7 @@ def verify_model_region_and_return_specs(
     region: str,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
+    sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> JumpStartModelSpecs:
     """Verifies that an acceptable model_id, version, scope, and region combination is provided.
 
@@ -415,7 +548,10 @@ def verify_model_region_and_return_specs(
         tolerate_deprecated_model (bool): True if deprecated models should be tolerated
             (exception not raised). False if these models should raise an exception.
             (Default: False).
-
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions. If not
+            specified, one is created using the default AWS configuration
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
 
     Raises:
         NotImplementedError: If the scope is not supported.
@@ -437,8 +573,11 @@ def verify_model_region_and_return_specs(
             f"{', '.join(constants.SUPPORTED_JUMPSTART_SCOPES)}."
         )
 
-    model_specs = accessors.JumpStartModelsAccessor.get_model_specs(
-        region=region, model_id=model_id, version=version  # type: ignore
+    model_specs = accessors.JumpStartModelsAccessor.get_model_specs(  # type: ignore
+        region=region,
+        model_id=model_id,
+        version=version,
+        s3_client=sagemaker_session.s3_client,
     )
 
     if (
@@ -477,11 +616,18 @@ def verify_model_region_and_return_specs(
 
 
 def update_dict_if_key_not_present(
-    dict_to_update: dict, key_to_add: Any, value_to_add: Any
-) -> dict:
-    """If a key is not present in the dict, add the new (key, value) pair, and return dict."""
+    dict_to_update: Optional[dict], key_to_add: Any, value_to_add: Any
+) -> Optional[dict]:
+    """If a key is not present in the dict, add the new (key, value) pair, and return dict.
+
+    If dict is empty, return None.
+    """
+    if dict_to_update is None:
+        dict_to_update = {}
     if key_to_add not in dict_to_update:
         dict_to_update[key_to_add] = value_to_add
+    if dict_to_update == {}:
+        dict_to_update = None
 
     return dict_to_update
 
@@ -591,6 +737,7 @@ def is_valid_model_id(
     region: Optional[str] = None,
     model_version: Optional[str] = None,
     script: enums.JumpStartScriptScope = enums.JumpStartScriptScope.INFERENCE,
+    sagemaker_session: Optional[Session] = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> bool:
     """Returns True if the model ID is supported for the given script.
 
@@ -602,20 +749,64 @@ def is_valid_model_id(
     if not isinstance(model_id, str):
         return False
 
+    s3_client = sagemaker_session.s3_client if sagemaker_session else None
     region = region or constants.JUMPSTART_DEFAULT_REGION_NAME
     model_version = model_version or "*"
 
-    models_manifest_list = accessors.JumpStartModelsAccessor._get_manifest(region=region)
+    models_manifest_list = accessors.JumpStartModelsAccessor._get_manifest(
+        region=region, s3_client=s3_client
+    )
     model_id_set = {model.model_id for model in models_manifest_list}
     if script == enums.JumpStartScriptScope.INFERENCE:
         return model_id in model_id_set
     if script == enums.JumpStartScriptScope.TRAINING:
-        return (
-            model_id in model_id_set
-            and accessors.JumpStartModelsAccessor.get_model_specs(
-                region=region,
-                model_id=model_id,
-                version=model_version,
-            ).training_supported
-        )
+        return model_id in model_id_set
     raise ValueError(f"Unsupported script: {script}")
+
+
+def get_jumpstart_model_id_version_from_resource_arn(
+    resource_arn: str,
+    sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+) -> Tuple[Optional[str], Optional[str]]:
+    """Returns the JumpStart model ID and version if in resource tags.
+
+    Returns 'None' if model ID or version cannot be inferred from tags.
+    """
+
+    list_tags_result = sagemaker_session.list_tags(resource_arn)
+
+    model_id: Optional[str] = None
+    model_version: Optional[str] = None
+
+    model_id_keys = [enums.JumpStartTag.MODEL_ID, *constants.EXTRA_MODEL_ID_TAGS]
+    model_version_keys = [enums.JumpStartTag.MODEL_VERSION, *constants.EXTRA_MODEL_VERSION_TAGS]
+
+    for model_id_key in model_id_keys:
+        try:
+            model_id_from_tag = get_tag_value(model_id_key, list_tags_result)
+        except KeyError:
+            continue
+        if model_id_from_tag is not None:
+            if model_id is not None and model_id_from_tag != model_id:
+                constants.JUMPSTART_LOGGER.warning(
+                    "Found multiple model ID tags on the following resource: %s", resource_arn
+                )
+                model_id = None
+                break
+            model_id = model_id_from_tag
+
+    for model_version_key in model_version_keys:
+        try:
+            model_version_from_tag = get_tag_value(model_version_key, list_tags_result)
+        except KeyError:
+            continue
+        if model_version_from_tag is not None:
+            if model_version is not None and model_version_from_tag != model_version:
+                constants.JUMPSTART_LOGGER.warning(
+                    "Found multiple model version tags on the following resource: %s", resource_arn
+                )
+                model_version = None
+                break
+            model_version = model_version_from_tag
+
+    return model_id, model_version

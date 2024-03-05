@@ -75,3 +75,8 @@ class CronExpressionGenerator(object):
 
         """
         return "cron(0 {}/{} ? * * *)".format(starting_hour, hour_interval)
+
+    @staticmethod
+    def now():
+        """Returns the string used to depict the one-time schedule"""
+        return "NOW"

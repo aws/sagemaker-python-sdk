@@ -19,7 +19,7 @@ Create feature group, describe feature group, update feature groups, delete feat
 list feature groups APIs can be used to manage feature groups.
 """
 
-from __future__ import absolute_import
+from __future__ import absolute_import, annotations
 
 import copy
 import logging
@@ -28,14 +28,15 @@ import os
 import tempfile
 from concurrent.futures import as_completed
 from concurrent.futures import ThreadPoolExecutor
-from typing import Sequence, List, Dict, Any, Union
+from typing import Optional, Sequence, List, Dict, Any, Union, Iterable
 from urllib.parse import urlparse
 
 from multiprocessing.pool import AsyncResult
 import signal
 import attr
 import pandas as pd
-from pandas import DataFrame
+from pandas import DataFrame, Series
+from pandas.api.types import is_list_like
 
 import boto3
 from botocore.config import Config
@@ -50,6 +51,7 @@ from sagemaker.session import Session
 from sagemaker.feature_store.feature_definition import (
     FeatureDefinition,
     FeatureTypeEnum,
+    ListCollectionType,
 )
 from sagemaker.feature_store.inputs import (
     OnlineStoreConfig,
@@ -63,8 +65,12 @@ from sagemaker.feature_store.inputs import (
     DeletionModeEnum,
     TtlDuration,
     OnlineStoreConfigUpdate,
+    OnlineStoreStorageTypeEnum,
+    ThroughputConfig,
+    ThroughputConfigUpdate,
+    TargetStoreEnum,
 )
-from sagemaker.utils import resolve_value_from_config
+from sagemaker.utils import resolve_value_from_config, format_tags, Tags
 
 logger = logging.getLogger(__name__)
 
@@ -138,8 +144,13 @@ class AthenaQuery:
             query_execution_id=self._current_query_execution_id
         )
 
-    def as_dataframe(self) -> DataFrame:
+    def as_dataframe(self, **kwargs) -> DataFrame:
         """Download the result of the current query and load it into a DataFrame.
+
+        Args:
+            **kwargs (object): key arguments used for the method pandas.read_csv to be able to
+                    have a better tuning on data. For more info read:
+                    https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.read_csv.html
 
         Returns:
             A pandas DataFrame contains the query result.
@@ -161,7 +172,9 @@ class AthenaQuery:
             query_execution_id=self._current_query_execution_id,
             filename=output_filename,
         )
-        return pd.read_csv(output_filename, delimiter=",")
+
+        kwargs.pop("delimiter", None)
+        return pd.read_csv(filepath_or_buffer=output_filename, delimiter=",", **kwargs)
 
 
 @attr.s
@@ -172,6 +185,9 @@ class IngestionManagerPandas:
 
     Attributes:
         feature_group_name (str): name of the Feature Group.
+        feature_definitions (Dict[str, Dict[Any, Any]]):  dictionary of feature definitions.
+            where the key is the feature name and the value is the FeatureDefinition.
+            The FeatureDefinition contains the data type of the feature.
         sagemaker_fs_runtime_client_config (Config): instance of the Config class
             for boto calls.
         sagemaker_session (Session): session instance to perform boto calls.
@@ -184,6 +200,7 @@ class IngestionManagerPandas:
     """
 
     feature_group_name: str = attr.ib()
+    feature_definitions: Dict[str, Dict[Any, Any]] = attr.ib()
     sagemaker_fs_runtime_client_config: Config = attr.ib(default=None)
     sagemaker_session: Session = attr.ib(default=None)
     max_workers: int = attr.ib(default=1)
@@ -197,9 +214,11 @@ class IngestionManagerPandas:
     def _ingest_single_batch(
         data_frame: DataFrame,
         feature_group_name: str,
+        feature_definitions: Dict[str, Dict[Any, Any]],
         client_config: Config,
         start_index: int,
         end_index: int,
+        target_stores: Sequence[TargetStoreEnum] = None,
         profile_name: str = None,
     ) -> List[int]:
         """Ingest a single batch of DataFrame rows into FeatureStore.
@@ -207,10 +226,14 @@ class IngestionManagerPandas:
         Args:
             data_frame (DataFrame): source DataFrame to be ingested.
             feature_group_name (str): name of the Feature Group.
+            feature_definitions (Dict[str, Dict[Any, Any]]):  dictionary of feature definitions.
+                where the key is the feature name and the value is the FeatureDefinition.
+                The FeatureDefinition contains the data type of the feature.
             client_config (Config): Configuration for the sagemaker feature store runtime
                 client to perform boto calls.
             start_index (int): starting position to ingest in this batch.
             end_index (int): ending position to ingest in this batch.
+            target_stores (Sequence[TargetStoreEnum]): stores to be used for ingestion.
             profile_name (str): the profile credential should be used for ``PutRecord``
                 (default: None).
 
@@ -230,8 +253,10 @@ class IngestionManagerPandas:
         for row in data_frame[start_index:end_index].itertuples():
             IngestionManagerPandas._ingest_row(
                 data_frame=data_frame,
+                target_stores=target_stores,
                 row=row,
                 feature_group_name=feature_group_name,
+                feature_definitions=feature_definitions,
                 sagemaker_fs_runtime_client=sagemaker_fs_runtime_client,
                 failed_rows=failed_rows,
             )
@@ -279,46 +304,146 @@ class IngestionManagerPandas:
     @staticmethod
     def _ingest_row(
         data_frame: DataFrame,
-        row: int,
+        row: Iterable[tuple[Any, ...]],
         feature_group_name: str,
+        feature_definitions: Dict[str, Dict[Any, Any]],
         sagemaker_fs_runtime_client: Session,
         failed_rows: List[int],
+        target_stores: Sequence[TargetStoreEnum] = None,
     ):
         """Ingest a single Dataframe row into FeatureStore.
 
         Args:
             data_frame (DataFrame): source DataFrame to be ingested.
-            row (int): current row that is being ingested
+            row (Iterable[tuple[Any, ...]]): current row that is being ingested
             feature_group_name (str): name of the Feature Group.
-            sagemaker_featurestore_runtime_client (Session): session instance to perform boto calls.
+            feature_definitions (Dict[str, Dict[Any, Any]]):  dictionary of feature definitions.
+                where the key is the feature name and the value is the FeatureDefinition.
+                The FeatureDefinition contains the data type of the feature.
+            sagemaker_fs_runtime_client (Session): session instance to perform boto calls.
             failed_rows (List[int]): list of indices from the data frame for which ingestion failed.
+            target_stores (Sequence[TargetStoreEnum]): stores to be used for ingestion.
 
 
         Returns:
             int of row indices that failed to be ingested.
         """
-        record = [
-            FeatureValue(
-                feature_name=data_frame.columns[index - 1],
-                value_as_string=str(row[index]),
-            )
-            for index in range(1, len(row))
-            if pd.notna(row[index])
-        ]
         try:
-            sagemaker_fs_runtime_client.put_record(
-                FeatureGroupName=feature_group_name,
-                Record=[value.to_dict() for value in record],
-            )
+            record = [
+                (
+                    FeatureValue(
+                        feature_name=data_frame.columns[index - 1],
+                        value_as_string_list=IngestionManagerPandas._covert_feature_to_string_list(
+                            row[index]
+                        ),
+                    )
+                    if IngestionManagerPandas._is_feature_collection_type(
+                        feature_name=data_frame.columns[index - 1],
+                        feature_definitions=feature_definitions,
+                    )
+                    else FeatureValue(
+                        feature_name=data_frame.columns[index - 1], value_as_string=str(row[index])
+                    )
+                )
+                for index in range(1, len(row))
+                if IngestionManagerPandas._feature_value_is_not_none(feature_value=row[index])
+            ]
+
+            put_record_params = {
+                "FeatureGroupName": feature_group_name,
+                "Record": [value.to_dict() for value in record],
+            }
+            if target_stores:
+                put_record_params["TargetStores"] = [
+                    target_store.value for target_store in target_stores
+                ]
+
+            sagemaker_fs_runtime_client.put_record(**put_record_params)
         except Exception as e:  # pylint: disable=broad-except
             logger.error("Failed to ingest row %d: %s", row[0], e)
             failed_rows.append(row[0])
 
-    def _run_single_process_single_thread(self, data_frame: DataFrame):
-        """Ingest a utilizing single process and single thread.
+    @staticmethod
+    def _is_feature_collection_type(
+        feature_name: str, feature_definitions: Dict[str, Dict[Any, Any]]
+    ):
+        """Check if the feature is a collection type.
+
+        Args:
+            feature_name (str): name of the feature.
+            feature_definitions (Dict[str, Dict[Any, Any]]):  dictionary of feature definitions.
+                where the key is the feature name and the value is the FeatureDefinition.
+                The FeatureDefinition contains the data type of the feature and
+                the type of collection.
+                If the feature is not a collection type, the value of the CollectionType attribute
+                is None.
+
+        Returns:
+            bool: True if the feature is a collection type, False otherwise.
+        """
+        feature_definition = feature_definitions.get(feature_name)
+        if feature_definition is not None:
+            return feature_definition.get("CollectionType") is not None
+        return None
+
+    @staticmethod
+    def _feature_value_is_not_none(
+        feature_value: Any,
+    ):
+        """Check if the feature value is  not None.
+
+        For Collection Type feature, we want to keep this check simple,
+        where if the value is not None,
+        we convert and pass it to PutRecord, instead of relying on Pandas.notna(obj).all().
+
+        Also, we don't want to skip the collection attribute with partial None values,
+        when calling PutRecord. Since,
+        vector value can have some dimensions as None. Instead,
+        we want to let PutRecord either accept or fail the
+        entire record based on the service side implementation.
+        As of this change the service fails any partial None
+        collection types.
+
+        For the Scalar values (non Collection) we want to still use pd.notna()
+        to keep the behavior same.
+
+        Args:
+            feature_value (Any): feature value.
+
+        Returns:
+            bool: True if the feature value is not None, False otherwise.
+        """
+        if not is_list_like(feature_value):
+            return pd.notna(feature_value)
+        return feature_value
+
+    @staticmethod
+    def _covert_feature_to_string_list(feature_value: List[Any]):
+        """Convert a list of feature values to a list of strings.
+
+        Args:
+            feature_value (List[Any]): list of feature values.
+
+        Returns:
+            List[str]: list of strings.
+        """
+        if not is_list_like(feature_value):
+            raise ValueError(
+                f"Invalid feature value, feature value: {feature_value}"
+                f" for a collection type feature"
+                f" must be an Array, but instead was {type(feature_value)}"
+            )
+        return [str(value) if value is not None else None for value in feature_value]
+
+    def _run_single_process_single_thread(
+        self, data_frame: DataFrame, target_stores: Sequence[TargetStoreEnum] = None
+    ):
+        """Ingest utilizing a single process and a single thread.
 
         Args:
             data_frame (DataFrame): source DataFrame to be ingested.
+            target_stores (Sequence[TargetStoreEnum]): target stores to ingest to.
+                If not specified, ingest to both online and offline stores.
         """
         logger.info("Started ingesting index %d to %d")
         failed_rows = list()
@@ -326,8 +451,10 @@ class IngestionManagerPandas:
         for row in data_frame.itertuples():
             IngestionManagerPandas._ingest_row(
                 data_frame=data_frame,
+                target_stores=target_stores,
                 row=row,
                 feature_group_name=self.feature_group_name,
+                feature_definitions=self.feature_definitions,
                 sagemaker_fs_runtime_client=sagemaker_fs_runtime_client,
                 failed_rows=failed_rows,
             )
@@ -339,11 +466,19 @@ class IngestionManagerPandas:
                 f"Failed to ingest some data into FeatureGroup {self.feature_group_name}",
             )
 
-    def _run_multi_process(self, data_frame: DataFrame, wait=True, timeout=None):
+    def _run_multi_process(
+        self,
+        data_frame: DataFrame,
+        target_stores: Sequence[TargetStoreEnum] = None,
+        wait=True,
+        timeout=None,
+    ):
         """Start the ingestion process with the specified number of processes.
 
         Args:
             data_frame (DataFrame): source DataFrame to be ingested.
+            target_stores (Sequence[TargetStoreEnum]): target stores to ingest to.
+                If not specified, ingest to both online and offline stores.
             wait (bool): whether to wait for the ingestion to finish or not.
             timeout (Union[int, float]): ``concurrent.futures.TimeoutError`` will be raised
                 if timeout is reached.
@@ -360,8 +495,10 @@ class IngestionManagerPandas:
                 (
                     self.max_workers,
                     self.feature_group_name,
+                    self.feature_definitions,
                     self.sagemaker_fs_runtime_client_config,
                     data_frame[start_index:end_index],
+                    target_stores,
                     start_index,
                     timeout,
                     self.profile_name,
@@ -385,8 +522,10 @@ class IngestionManagerPandas:
     def _run_multi_threaded(
         max_workers: int,
         feature_group_name: str,
+        feature_definitions: Dict[str, Dict[Any, Any]],
         sagemaker_fs_runtime_client_config: Config,
         data_frame: DataFrame,
+        target_stores: Sequence[TargetStoreEnum] = None,
         row_offset=0,
         timeout=None,
         profile_name=None,
@@ -395,6 +534,8 @@ class IngestionManagerPandas:
 
         Args:
             data_frame (DataFrame): source DataFrame to be ingested.
+            target_stores (Sequence[TargetStoreEnum]): target stores to ingest to.
+                If not specified, ingest to both online and offline stores.
             row_offset (int): if ``data_frame`` is a partition of a parent DataFrame, then the
                 index of the parent where ``data_frame`` starts. Otherwise, 0.
             wait (bool): whether to wait for the ingestion to finish or not.
@@ -419,7 +560,9 @@ class IngestionManagerPandas:
                 executor.submit(
                     IngestionManagerPandas._ingest_single_batch,
                     feature_group_name=feature_group_name,
+                    feature_definitions=feature_definitions,
                     data_frame=data_frame,
+                    target_stores=target_stores,
                     start_index=start_index,
                     end_index=end_index,
                     client_config=sagemaker_fs_runtime_client_config,
@@ -439,19 +582,31 @@ class IngestionManagerPandas:
 
         return failed_indices
 
-    def run(self, data_frame: DataFrame, wait=True, timeout=None):
+    def run(
+        self,
+        data_frame: DataFrame,
+        target_stores: Sequence[TargetStoreEnum] = None,
+        wait=True,
+        timeout=None,
+    ):
         """Start the ingestion process.
 
         Args:
             data_frame (DataFrame): source DataFrame to be ingested.
+            target_stores (Sequence[TargetStoreEnum]): list of target stores to be used for
+                the ingestion. If None, the default target store is used.
             wait (bool): whether to wait for the ingestion to finish or not.
             timeout (Union[int, float]): ``concurrent.futures.TimeoutError`` will be raised
                 if timeout is reached.
         """
         if self.max_workers == 1 and self.max_processes == 1 and self.profile_name is None:
-            self._run_single_process_single_thread(data_frame=data_frame)
+            self._run_single_process_single_thread(
+                data_frame=data_frame, target_stores=target_stores
+            )
         else:
-            self._run_multi_process(data_frame=data_frame, wait=wait, timeout=timeout)
+            self._run_multi_process(
+                data_frame=data_frame, target_stores=target_stores, wait=wait, timeout=timeout
+            )
 
 
 class IngestionError(Exception):
@@ -530,8 +685,10 @@ class FeatureGroup:
         disable_glue_table_creation: bool = False,
         data_catalog_config: DataCatalogConfig = None,
         description: str = None,
-        tags: List[Dict[str, str]] = None,
+        tags: Optional[Tags] = None,
         table_format: TableFormatEnum = None,
+        online_store_storage_type: OnlineStoreStorageTypeEnum = None,
+        throughput_config: ThroughputConfig = None,
     ) -> Dict[str, Any]:
         """Create a SageMaker FeatureStore FeatureGroup.
 
@@ -557,8 +714,12 @@ class FeatureGroup:
             data_catalog_config (DataCatalogConfig): configuration for
                 Metadata store (default: None).
             description (str): description of the FeatureGroup (default: None).
-            tags (List[Dict[str, str]]): list of tags for labeling a FeatureGroup (default: None).
+            tags (Optional[Tags]): Tags for labeling a FeatureGroup (default: None).
             table_format (TableFormatEnum): format of the offline store table (default: None).
+            online_store_storage_type (OnlineStoreStorageTypeEnum): storage type for the
+                online store (default: None).
+            throughput_config (ThroughputConfig): throughput configuration of the
+                feature group (default: None).
 
         Returns:
             Response dict from service.
@@ -591,7 +752,7 @@ class FeatureGroup:
             ],
             role_arn=role_arn,
             description=description,
-            tags=tags,
+            tags=format_tags(tags),
         )
 
         # online store configuration
@@ -599,12 +760,16 @@ class FeatureGroup:
             online_store_config = OnlineStoreConfig(
                 enable_online_store=enable_online_store,
                 ttl_duration=ttl_duration,
+                storage_type=online_store_storage_type,
             )
             if online_store_kms_key_id is not None:
                 online_store_config.online_store_security_config = OnlineStoreSecurityConfig(
                     kms_key_id=online_store_kms_key_id
                 )
             create_feature_store_args.update({"online_store_config": online_store_config.to_dict()})
+
+        if throughput_config:
+            create_feature_store_args.update({"throughput_config": throughput_config.to_dict()})
 
         # offline store configuration
         if s3_uri:
@@ -644,17 +809,17 @@ class FeatureGroup:
         self,
         feature_additions: Sequence[FeatureDefinition] = None,
         online_store_config: OnlineStoreConfigUpdate = None,
+        throughput_config: ThroughputConfigUpdate = None,
     ) -> Dict[str, Any]:
         """Update a FeatureGroup and add new features from the given feature definitions.
 
         Args:
             feature_additions (Sequence[Dict[str, str]): list of feature definitions to be updated.
             online_store_config (OnlineStoreConfigUpdate): online store config to be updated.
-
+            throughput_config (ThroughputConfigUpdate): target throughput configuration
         Returns:
             Response dict from service.
         """
-
         if feature_additions is None:
             feature_additions_parameter = None
         else:
@@ -667,10 +832,15 @@ class FeatureGroup:
         else:
             online_store_config_parameter = online_store_config.to_dict()
 
+        throughput_config_parameter = (
+            None if throughput_config is None else throughput_config.to_dict()
+        )
+
         return self.sagemaker_session.update_feature_group(
             feature_group_name=self.name,
             feature_additions=feature_additions_parameter,
             online_store_config=online_store_config_parameter,
+            throughput_config=throughput_config_parameter,
         )
 
     def update_feature_metadata(
@@ -740,41 +910,131 @@ class FeatureGroup:
             feature_group_name=self.name, feature_name=feature_name
         ).get("Parameters")
 
+    @staticmethod
+    def _check_list_type(value):
+        """Check if the value is a list or None.
+
+        Args:
+            value: value to be checked.
+
+        Returns:
+            True if value is a list or None, False otherwise.
+        """
+        return is_list_like(value) or pd.isna(value)
+
+    @staticmethod
+    def _determine_collection_list_type(series: Series) -> FeatureTypeEnum | None:
+        """Determine the collection type of the feature.
+
+        Args:
+            series (Series): column from the data frame.
+
+        Returns:
+            feature type.
+        """
+
+        if series.apply(
+            lambda lst: (
+                all(isinstance(x, int) or pd.isna(x) for x in lst) if is_list_like(lst) else True
+            )
+        ).all():
+            return FeatureTypeEnum.INTEGRAL
+        if series.apply(
+            lambda lst: (
+                all(isinstance(x, (float, int)) or pd.isna(x) for x in lst)
+                if is_list_like(lst)
+                else True
+            )
+        ).all():
+            return FeatureTypeEnum.FRACTIONAL
+        if series.apply(
+            lambda lst: (
+                all(isinstance(x, str) or pd.isna(x) for x in lst) if is_list_like(lst) else True
+            )
+        ).all():
+            return FeatureTypeEnum.STRING
+        return None
+
+    def _generate_feature_definition(
+        self, series: Series, online_storage_type: OnlineStoreStorageTypeEnum
+    ) -> FeatureDefinition:
+        """Generate feature definition from the Panda Series.
+
+        Args:
+            series (Series): column from the data frame.
+
+        Returns:
+            feature definition.
+        """
+        params = {"feature_name": series.name}
+
+        dtype = str(series.dtype).lower()
+        if (
+            online_storage_type
+            and online_storage_type == OnlineStoreStorageTypeEnum.IN_MEMORY
+            and dtype == "object"
+            and pd.notna(series.head(1000)).any()
+            and series.head(1000).apply(FeatureGroup._check_list_type).all()
+        ):
+            params["collection_type"] = ListCollectionType()
+            params["feature_type"] = FeatureGroup._determine_collection_list_type(series.head(1000))
+        else:
+            params["feature_type"] = self.DTYPE_TO_FEATURE_DEFINITION_CLS_MAP.get(dtype, None)
+
+        if params["feature_type"] is None:
+            raise ValueError(
+                f"Failed to infer Feature type based on dtype {dtype} " f"for column {series.name}."
+            )
+
+        feature_definition = FeatureDefinition(**params)
+
+        return feature_definition
+
     def load_feature_definitions(
-        self,
-        data_frame: DataFrame,
+        self, data_frame: DataFrame, online_storage_type: OnlineStoreStorageTypeEnum = None
     ) -> Sequence[FeatureDefinition]:
         """Load feature definitions from a Pandas DataFrame.
 
         Column name is used as feature name. Feature type is inferred from the dtype
-        of the column. Dtype int_, int8, int16, int32, int64, uint8, uint16, uint32
-        and uint64 are mapped to Integral feature type. Dtype float_, float16, float32
+        of the column. Dtype :literal:`int_`, int8, int16, int32, int64, uint8, uint16, uint32
+        and uint64 are mapped to Integral feature type. Dtype :literal:`float_`, float16, float32
         and float64 are mapped to Fractional feature type. string dtype is mapped to
         String feature type.
 
         No feature definitions will be loaded if the given data_frame contains
         unsupported dtypes.
 
+        For IN_MEMORY online_storage_type all collection type columns within DataFrame
+        will be inferred as a List,
+        instead of a String. Due to performance limitations,
+        only first 1,000 values of the column will be sampled,
+        when inferring collection Type.
+        Customers can manually update the inferred collection type as needed.
+
         Args:
-            data_frame (DataFrame):
+            data_frame (DataFrame): A Pandas DataFrame containing features.
+            online_storage_type (OnlineStoreStorageTypeEnum):
+                Optional. Online storage type for the feature group.
+                The value can be either STANDARD or IN_MEMORY
+                If not specified,STANDARD will be used by default.
+                If specified as IN_MEMORY,
+                we will infer any collection type column within DataFrame as a List instead of a
+                String.
+                All, collection types (List, Set and Vector) will be inferred as List.
+                We will only sample the first 1,000 values of the column when inferring
+                collection Type.
+
+
 
         Returns:
             list of FeatureDefinition
         """
         feature_definitions = []
         for column in data_frame:
-            feature_type = self.DTYPE_TO_FEATURE_DEFINITION_CLS_MAP.get(
-                str(data_frame[column].dtype).lower(), None
+            feature_definition = self._generate_feature_definition(
+                data_frame[column], online_storage_type
             )
-            if feature_type:
-                feature_definitions.append(
-                    FeatureDefinition(feature_name=column, feature_type=feature_type)
-                )
-            else:
-                raise ValueError(
-                    f"Failed to infer Feature type based on dtype {data_frame[column].dtype} "
-                    f"for column {column}."
-                )
+            feature_definitions.append(feature_definition)
         self.feature_definitions = feature_definitions
         return self.feature_definitions
 
@@ -797,24 +1057,27 @@ class FeatureGroup:
             feature_names=feature_names,
         ).get("Record")
 
-    def put_record(self, record: Sequence[FeatureValue], ttl_duration: TtlDuration = None):
+    def put_record(
+        self,
+        record: Sequence[FeatureValue],
+        target_stores: Sequence[TargetStoreEnum] = None,
+        ttl_duration: TtlDuration = None,
+    ):
         """Put a single record in the FeatureGroup.
 
         Args:
             record (Sequence[FeatureValue]): a list contains feature values.
+            target_stores (Sequence[str]): a list of target stores.
             ttl_duration (TtlDuration): customer specified ttl duration.
         """
-
-        if ttl_duration is not None:
-            return self.sagemaker_session.put_record(
-                feature_group_name=self.name,
-                record=[value.to_dict() for value in record],
-                ttl_duration=ttl_duration.to_dict(),
-            )
 
         return self.sagemaker_session.put_record(
             feature_group_name=self.name,
             record=[value.to_dict() for value in record],
+            target_stores=(
+                [target_store.value for target_store in target_stores] if target_stores else None
+            ),
+            ttl_duration=ttl_duration.to_dict() if ttl_duration is not None else None,
         )
 
     def delete_record(
@@ -844,6 +1107,7 @@ class FeatureGroup:
     def ingest(
         self,
         data_frame: DataFrame,
+        target_stores: Sequence[TargetStoreEnum] = None,
         max_workers: int = 1,
         max_processes: int = 1,
         wait: bool = True,
@@ -870,7 +1134,7 @@ class FeatureGroup:
         the ``ingest`` function synchronously.
 
         To access the rows that failed to ingest, set ``wait`` to ``False``. The
-        ``IngestionError.failed_rows`` object saves all of the rows that failed to ingest.
+        ``IngestionError.failed_rows`` object saves all the rows that failed to ingest.
 
         `profile_name` argument is an optional one. It will use the default credential if None is
         passed. This `profile_name` is used in the sagemaker_featurestore_runtime client only. See
@@ -879,6 +1143,8 @@ class FeatureGroup:
 
         Args:
             data_frame (DataFrame): data_frame to be ingested to feature store.
+            target_stores (Sequence[TargetStoreEnum]): target stores to be used for
+                ingestion. (default: None).
             max_workers (int): number of threads to be created.
             max_processes (int): number of processes to be created. Each process spawns
                 ``max_worker`` number of threads.
@@ -900,18 +1166,37 @@ class FeatureGroup:
         if profile_name is None and self.sagemaker_session.boto_session.profile_name != "default":
             profile_name = self.sagemaker_session.boto_session.profile_name
 
+        feature_definition_dict = self._get_feature_definition_dict()
+
         manager = IngestionManagerPandas(
             feature_group_name=self.name,
+            feature_definitions=feature_definition_dict,
             sagemaker_session=self.sagemaker_session,
-            sagemaker_fs_runtime_client_config=self.sagemaker_session.sagemaker_featurestore_runtime_client.meta.config,
+            sagemaker_fs_runtime_client_config=(
+                self.sagemaker_session.sagemaker_featurestore_runtime_client.meta.config
+            ),
             max_workers=max_workers,
             max_processes=max_processes,
             profile_name=profile_name,
         )
 
-        manager.run(data_frame=data_frame, wait=wait, timeout=timeout)
+        manager.run(data_frame=data_frame, target_stores=target_stores, wait=wait, timeout=timeout)
 
         return manager
+
+    def _get_feature_definition_dict(self) -> Dict[str, Dict[Any, Any]]:
+        """Get a dictionary of feature definitions with Feature Name as Key.
+
+        We are converting the FeatureDefinition into a List for faster lookups.
+
+        Returns:
+            Dictionary of feature definitions with Key being the Feature Name.
+        """
+        feature_definitions = self.describe()["FeatureDefinitions"]
+        feature_definition_dict = {}
+        for feature_definition in feature_definitions:
+            feature_definition_dict[feature_definition["FeatureName"]] = feature_definition
+        return feature_definition_dict
 
     def athena_query(self) -> AthenaQuery:
         """Create an AthenaQuery instance.

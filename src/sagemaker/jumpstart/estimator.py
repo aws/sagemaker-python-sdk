@@ -27,16 +27,18 @@ from sagemaker.explainer.explainer_config import ExplainerConfig
 from sagemaker.inputs import FileSystemInput, TrainingInput
 from sagemaker.instance_group import InstanceGroup
 from sagemaker.jumpstart.accessors import JumpStartModelsAccessor
+from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.exceptions import INVALID_MODEL_ID_ERROR_MSG
 
 from sagemaker.jumpstart.factory.estimator import get_deploy_kwargs, get_fit_kwargs, get_init_kwargs
 from sagemaker.jumpstart.factory.model import get_default_predictor
+from sagemaker.jumpstart.session_utils import get_model_id_version_from_training_job
 from sagemaker.jumpstart.utils import (
     is_valid_model_id,
     resolve_model_sagemaker_config_field,
 )
-from sagemaker.utils import stringify_object
+from sagemaker.utils import stringify_object, format_tags, Tags
 from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
 from sagemaker.predictor import PredictorBase
 
@@ -72,7 +74,7 @@ class JumpStartEstimator(Estimator):
         base_job_name: Optional[str] = None,
         sagemaker_session: Optional[session.Session] = None,
         hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
-        tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+        tags: Optional[Tags] = None,
         subnets: Optional[List[Union[str, PipelineVariable]]] = None,
         security_group_ids: Optional[List[Union[str, PipelineVariable]]] = None,
         model_uri: Optional[str] = None,
@@ -101,9 +103,11 @@ class JumpStartEstimator(Estimator):
         instance_groups: Optional[List[InstanceGroup]] = None,
         training_repository_access_mode: Optional[Union[str, PipelineVariable]] = None,
         training_repository_credentials_provider_arn: Optional[Union[str, PipelineVariable]] = None,
+        enable_infra_check: Optional[Union[bool, PipelineVariable]] = None,
         container_entry_point: Optional[List[str]] = None,
         container_arguments: Optional[List[str]] = None,
         disable_output_compression: Optional[bool] = None,
+        enable_remote_debug: Optional[Union[bool, PipelineVariable]] = None,
     ):
         """Initializes a ``JumpStartEstimator``.
 
@@ -222,8 +226,8 @@ class JumpStartEstimator(Estimator):
                     validation error for detected credentials, if such user input is found.
 
                 (Default: None).
-            tags (Optional[Union[list[dict[str, str], list[dict[str, PipelineVariable]]]]):
-                List of tags for labeling a training job. For more, see
+            tags (Optional[Tags]):
+                Tags for labeling a training job. For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
                 (Default: None).
             subnets (Optional[Union[list[str], list[PipelineVariable]]]): List of subnet ids.
@@ -248,8 +252,8 @@ class JumpStartEstimator(Estimator):
                 (Default: None).
             model_channel_name (Optional[Union[str, PipelineVariable]]): Name of the channel where
                 'model_uri' will be downloaded. (Default: None).
-            metric_definitions (Optional[Union[list[dict[str, str], list[dict[str,
-                PipelineVariable]]]]): A list of dictionaries that defines the metric(s)
+            metric_definitions (Optional[list[dict[str, Union[str, PipelineVariable]]]]):
+                A list of dictionaries that defines the metric(s)
                 used to evaluate the training jobs. Each dictionary contains two keys: 'Name'
                 for the name of the metric, and 'Regex' for the regular expression used to extract
                 the metric from the logs. This should be defined only for jobs that
@@ -289,8 +293,8 @@ class JumpStartEstimator(Estimator):
                 SageMaker Debugger rules for real-time analysis
                 (Default: None). For more information,
                 see `Continuous analyses through rules
-                <https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html
-                #continuous-analyses-through-rules)>`_.
+                <https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html#
+                continuous-analyses-through-rules)>`_.
                 (Default: None).
             debugger_hook_config (Optional[Union[DebuggerHookConfig, bool]]):
                 Configuration for how debugging information is emitted with
@@ -484,6 +488,8 @@ class JumpStartEstimator(Estimator):
                 private Docker registry where your training image is hosted (Default: None).
                 When it's set to None, SageMaker will not do authentication before pulling the image
                 in the private Docker registry. (Default: None).
+            enable_infra_check (Optional[Union[bool, PipelineVariable]]):
+                Specifies whether it is running Sagemaker built-in infra check jobs.
             container_entry_point (Optional[List[str]]): The entrypoint script for a Docker
                 container used to run a training job. This script takes precedence over
                 the default train processing instructions.
@@ -491,6 +497,8 @@ class JumpStartEstimator(Estimator):
                 a training job.
             disable_output_compression (Optional[bool]): When set to true, Model is uploaded
                 to Amazon S3 without compression after training finishes.
+            enable_remote_debug (bool or PipelineVariable): Optional.
+                Specifies whether RemoteDebug is enabled for the training job
 
         Raises:
             ValueError: If the model ID is not recognized by JumpStart.
@@ -502,6 +510,7 @@ class JumpStartEstimator(Estimator):
                 model_version=model_version,
                 region=region,
                 script=JumpStartScriptScope.TRAINING,
+                sagemaker_session=sagemaker_session,
             )
 
         if not _is_valid_model_id_hook():
@@ -527,7 +536,7 @@ class JumpStartEstimator(Estimator):
             output_kms_key=output_kms_key,
             base_job_name=base_job_name,
             sagemaker_session=sagemaker_session,
-            tags=tags,
+            tags=format_tags(tags),
             subnets=subnets,
             security_group_ids=security_group_ids,
             model_uri=model_uri,
@@ -563,6 +572,8 @@ class JumpStartEstimator(Estimator):
             container_entry_point=container_entry_point,
             container_arguments=container_arguments,
             disable_output_compression=disable_output_compression,
+            enable_infra_check=enable_infra_check,
+            enable_remote_debug=enable_remote_debug,
         )
 
         self.model_id = estimator_init_kwargs.model_id
@@ -649,9 +660,78 @@ class JumpStartEstimator(Estimator):
             experiment_config=experiment_config,
             tolerate_vulnerable_model=self.tolerate_vulnerable_model,
             tolerate_deprecated_model=self.tolerate_deprecated_model,
+            sagemaker_session=self.sagemaker_session,
         )
 
         return super(JumpStartEstimator, self).fit(**estimator_fit_kwargs.to_kwargs_dict())
+
+    @classmethod
+    def attach(
+        cls,
+        training_job_name: str,
+        model_id: Optional[str] = None,
+        model_version: Optional[str] = None,
+        sagemaker_session: session.Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+        model_channel_name: str = "model",
+    ) -> "JumpStartEstimator":
+        """Attach to an existing training job.
+
+        Create a JumpStartEstimator bound to an existing training job.
+        After attaching, if the training job has a Complete status,
+        it can be ``deploy()`` ed to create a SageMaker Endpoint and return
+        a ``Predictor``.
+
+        If the training job is in progress, attach will block until the training job
+        completes, but logs of the training job will not display. To see the logs
+        content, please call ``logs()``
+
+        Examples:
+            >>> my_estimator.fit(wait=False)
+            >>> training_job_name = my_estimator.latest_training_job.name
+            Later on:
+            >>> attached_estimator = JumpStartEstimator.attach(training_job_name, model_id)
+            >>> attached_estimator.logs()
+            >>> attached_estimator.deploy()
+
+        Args:
+            training_job_name (str): The name of the training job to attach to.
+            model_id (str): The name of the JumpStart model id associated with the
+                training job.
+            model_version (str): Optional. The version of the JumpStart model id
+                associated with the training job. (Default: "*").
+            sagemaker_session (sagemaker.session.Session): Optional. Session object which
+                manages interactions with Amazon SageMaker APIs and any other
+                AWS services needed. If not specified, the estimator creates one
+                using the default AWS configuration chain.
+                (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+            model_channel_name (str): Optional. Name of the channel where pre-trained
+                model data will be downloaded (default: 'model'). If no channel
+                with the same name exists in the training job, this option will
+                be ignored.
+
+        Returns:
+            Instance of the calling ``JumpStartEstimator`` Class with the attached
+            training job.
+
+        Raises:
+            ValueError: if the model ID or version cannot be inferred from the training job.
+
+        """
+
+        if model_id is None:
+
+            model_id, model_version = get_model_id_version_from_training_job(
+                training_job_name=training_job_name, sagemaker_session=sagemaker_session
+            )
+
+        model_version = model_version or "*"
+
+        return cls._attach(
+            training_job_name=training_job_name,
+            sagemaker_session=sagemaker_session,
+            model_channel_name=model_channel_name,
+            additional_kwargs={"model_id": model_id, "model_version": model_version},
+        )
 
     def deploy(
         self,
@@ -661,7 +741,7 @@ class JumpStartEstimator(Estimator):
         deserializer: Optional[BaseDeserializer] = None,
         accelerator_type: Optional[str] = None,
         endpoint_name: Optional[str] = None,
-        tags: List[Dict[str, str]] = None,
+        tags: Optional[Tags] = None,
         kms_key: Optional[str] = None,
         wait: Optional[bool] = True,
         data_capture_config: Optional[DataCaptureConfig] = None,
@@ -727,7 +807,7 @@ class JumpStartEstimator(Estimator):
             endpoint_name (Optional[str]): The name of the endpoint to create (default:
                 None). If not specified, a unique endpoint name will be created.
                 (Default: None).
-            tags (Optional[List[dict[str, str]]]): The list of tags to attach to this
+            tags (Optional[Tags]): Tags to attach to this
                 specific endpoint. (Default: None).
             kms_key (Optional[str]): The ARN of the KMS key that is used to encrypt the
                 data on the storage volume attached to the instance hosting the
@@ -925,7 +1005,6 @@ class JumpStartEstimator(Estimator):
             use_compiled_model (bool): Flag to select whether to use compiled
                 (optimized) model. (Default: False).
         """
-
         self.orig_predictor_cls = predictor_cls
 
         sagemaker_session = sagemaker_session or self.sagemaker_session
@@ -948,7 +1027,7 @@ class JumpStartEstimator(Estimator):
             deserializer=deserializer,
             accelerator_type=accelerator_type,
             endpoint_name=endpoint_name,
-            tags=tags,
+            tags=format_tags(tags),
             kms_key=kms_key,
             wait=wait,
             data_capture_config=data_capture_config,
@@ -976,6 +1055,7 @@ class JumpStartEstimator(Estimator):
             dependencies=dependencies,
             git_config=git_config,
             use_compiled_model=use_compiled_model,
+            training_instance_type=self.instance_type,
         )
 
         predictor = super(JumpStartEstimator, self).deploy(
@@ -991,6 +1071,7 @@ class JumpStartEstimator(Estimator):
                 region=self.region,
                 tolerate_deprecated_model=self.tolerate_deprecated_model,
                 tolerate_vulnerable_model=self.tolerate_vulnerable_model,
+                sagemaker_session=self.sagemaker_session,
             )
 
         # If a predictor class was passed, do not mutate predictor

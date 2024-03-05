@@ -210,6 +210,7 @@ class PCAPredictor(Predictor):
         sagemaker_session=None,
         serializer=RecordSerializer(),
         deserializer=RecordDeserializer(),
+        component_name=None,
     ):
         """Initialization for PCAPredictor.
 
@@ -224,12 +225,15 @@ class PCAPredictor(Predictor):
                 serializes input data to x-recordio-protobuf format.
             deserializer (sagemaker.deserializers.BaseDeserializer): Optional.
                 Default parses responses from x-recordio-protobuf format.
+            component_name (str): Optional. Name of the Amazon SageMaker inference
+                component corresponding to the predictor.
         """
         super(PCAPredictor, self).__init__(
             endpoint_name,
             sagemaker_session,
             serializer=serializer,
             deserializer=deserializer,
+            component_name=component_name,
         )
 
 

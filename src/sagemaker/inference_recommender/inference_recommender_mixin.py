@@ -28,7 +28,8 @@ INFERENCE_RECOMMENDER_FRAMEWORK_MAPPING = {
     "mxnet": "MXNET",
 }
 
-LOGGER = logging.getLogger("sagemaker")
+# Setting LOGGER for backward compatibility, in case users import it...
+logger = LOGGER = logging.getLogger("sagemaker")
 
 
 class Phase:
@@ -145,10 +146,10 @@ class InferenceRecommenderMixin:
         )
 
         if endpoint_configurations or traffic_pattern or stopping_conditions or resource_limit:
-            LOGGER.info("Advanced Job parameters were specified. Running Advanced job...")
+            logger.info("Advanced Job parameters were specified. Running Advanced job...")
             job_type = "Advanced"
         else:
-            LOGGER.info("Advanced Job parameters were not specified. Running Default job...")
+            logger.info("Advanced Job parameters were not specified. Running Default job...")
             job_type = "Default"
 
         self._init_sagemaker_session_if_does_not_exist()
@@ -173,7 +174,7 @@ class InferenceRecommenderMixin:
                 vpc_config=self.vpc_config,
                 enable_network_isolation=self.enable_network_isolation(),
             )
-            LOGGER.warning("Attempting to create new model with name %s", self.name)
+            logger.warning("Attempting to create new model with name %s", self.name)
             self.sagemaker_session.create_model(**create_model_args)
 
         ret_name = self.sagemaker_session.create_inference_recommendations_job(
@@ -281,32 +282,28 @@ class InferenceRecommenderMixin:
         if accelerator_type:
             raise ValueError("accelerator_type is not compatible with right_size().")
         if instance_type or initial_instance_count:
-            LOGGER.warning(
+            logger.warning(
                 "instance_type or initial_instance_count specified."
                 "Overriding right_size() recommendations."
             )
             return None
         if async_inference_config:
-            LOGGER.warning(
+            logger.warning(
                 "async_inference_config is specified. Overriding right_size() recommendations."
             )
             return None
         if serverless_inference_config:
-            LOGGER.warning(
+            logger.warning(
                 "serverless_inference_config is specified. Overriding right_size() recommendations."
             )
             return None
         if explainer_config:
-            LOGGER.warning(
+            logger.warning(
                 "explainer_config is specified. Overriding right_size() recommendations."
             )
             return None
 
-        instance_type = self.inference_recommendations[0]["EndpointConfiguration"]["InstanceType"]
-        initial_instance_count = self.inference_recommendations[0]["EndpointConfiguration"][
-            "InitialInstanceCount"
-        ]
-        return (instance_type, initial_instance_count)
+        return self._filter_recommendations_for_realtime()
 
     def _update_params_for_recommendation_id(
         self,
@@ -363,7 +360,7 @@ class InferenceRecommenderMixin:
         """
 
         if instance_type is not None and initial_instance_count is not None:
-            LOGGER.warning(
+            logger.warning(
                 "Both instance_type and initial_instance_count are specified,"
                 "overriding the recommendation result."
             )
@@ -610,3 +607,16 @@ class InferenceRecommenderMixin:
             ),
             None,
         )
+
+    # TODO: until we have bandwidth to integrate right_size + deploy with serverless
+    def _filter_recommendations_for_realtime(self):
+        """Filter recommendations list to find a realtime instance"""
+        instance_type = None
+        initial_instance_count = None
+        for recommendations in self.inference_recommendations:
+            if "ServerlessConfig" not in recommendations["EndpointConfiguration"]:
+                instance_type = recommendations["EndpointConfiguration"]["InstanceType"]
+                initial_instance_count = recommendations["EndpointConfiguration"][
+                    "InitialInstanceCount"
+                ]
+        return (instance_type, initial_instance_count)

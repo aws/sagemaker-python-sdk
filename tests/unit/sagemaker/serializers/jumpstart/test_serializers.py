@@ -11,6 +11,8 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
+from unittest.mock import Mock
+import boto3
 
 
 from mock.mock import patch
@@ -32,16 +34,22 @@ def test_jumpstart_default_serializers(
 
     model_id, model_version = "predictor-specs-model", "*"
     region = "us-west-2"
+    mock_client = boto3.client("s3")
+    mock_session = Mock(s3_client=mock_client)
 
     default_serializer = serializers.retrieve_default(
         region=region,
         model_id=model_id,
         model_version=model_version,
+        sagemaker_session=mock_session,
     )
     assert isinstance(default_serializer, base_serializers.IdentitySerializer)
 
     patched_get_model_specs.assert_called_once_with(
-        region=region, model_id=model_id, version=model_version
+        region=region,
+        model_id=model_id,
+        version=model_version,
+        s3_client=mock_client,
     )
 
     patched_get_model_specs.reset_mock()
@@ -56,6 +64,9 @@ def test_jumpstart_serializer_options(
     patched_verify_model_region_and_return_specs.side_effect = verify_model_region_and_return_specs
     patched_get_model_specs.side_effect = get_special_model_spec
 
+    mock_client = boto3.client("s3")
+    mock_session = Mock(s3_client=mock_client)
+
     model_id, model_version = "predictor-specs-model", "*"
     region = "us-west-2"
 
@@ -63,6 +74,7 @@ def test_jumpstart_serializer_options(
         region=region,
         model_id=model_id,
         model_version=model_version,
+        sagemaker_session=mock_session,
     )
     assert len(serializer_options) == 1
     assert all(
@@ -73,5 +85,8 @@ def test_jumpstart_serializer_options(
     )
 
     patched_get_model_specs.assert_called_once_with(
-        region=region, model_id=model_id, version=model_version
+        region=region,
+        model_id=model_id,
+        version=model_version,
+        s3_client=mock_client,
     )

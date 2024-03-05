@@ -15,6 +15,7 @@ from __future__ import absolute_import
 from copy import deepcopy
 from typing import Dict, List, Optional
 from sagemaker.jumpstart.constants import (
+    DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     JUMPSTART_DEFAULT_REGION_NAME,
 )
 from sagemaker.jumpstart.enums import (
@@ -23,6 +24,7 @@ from sagemaker.jumpstart.enums import (
 from sagemaker.jumpstart.utils import (
     verify_model_region_and_return_specs,
 )
+from sagemaker.session import Session
 
 
 def _retrieve_default_training_metric_definitions(
@@ -31,6 +33,8 @@ def _retrieve_default_training_metric_definitions(
     region: Optional[str],
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    instance_type: Optional[str] = None,
 ) -> Optional[List[Dict[str, str]]]:
     """Retrieves the default training metric definitions for the model.
 
@@ -48,7 +52,12 @@ def _retrieve_default_training_metric_definitions(
         tolerate_deprecated_model (bool): True if deprecated versions of model
             specifications should be tolerated (exception not raised). If False, raises
             an exception if the version of the model is deprecated. (Default: False).
-
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions. If not
+            specified, one is created using the default AWS configuration
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        instance_type (str): An instance type to optionally supply in order to get
+            metric definitions specific for the instance type.
     Returns:
         list: the default training metric definitions to use for the model or None.
     """
@@ -63,6 +72,32 @@ def _retrieve_default_training_metric_definitions(
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
+        sagemaker_session=sagemaker_session,
     )
 
-    return deepcopy(model_specs.metrics) if model_specs.metrics else None
+    default_metric_definitions = (
+        deepcopy(model_specs.metrics) if getattr(model_specs, "metrics") else []
+    )
+
+    instance_specific_metric_definitions = (
+        model_specs.training_instance_type_variants.get_instance_specific_metric_definitions(
+            instance_type
+        )
+        if instance_type
+        and getattr(model_specs, "training_instance_type_variants", None) is not None
+        else []
+    )
+
+    instance_specific_metric_name: str
+    for instance_specific_metric_definition in instance_specific_metric_definitions:
+        instance_specific_metric_name = instance_specific_metric_definition["Name"]
+        default_metric_definitions = list(
+            filter(
+                lambda metric_definition: metric_definition["Name"]
+                != instance_specific_metric_name,
+                default_metric_definitions,
+            )
+        )
+        default_metric_definitions.append(instance_specific_metric_definition)
+
+    return default_metric_definitions

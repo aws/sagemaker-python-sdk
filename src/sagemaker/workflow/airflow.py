@@ -22,6 +22,7 @@ from sagemaker.amazon import amazon_estimator
 from sagemaker.tensorflow import TensorFlow
 from sagemaker.estimator import EstimatorBase
 from sagemaker.processing import Processor
+from sagemaker.utils import format_tags
 
 
 def prepare_framework(estimator, s3_operations):
@@ -898,7 +899,7 @@ def transform_config_from_estimator(
             be made to each individual transform container at one time.
         max_payload (int): Maximum size of the payload in a single HTTP request
             to the container in MB.
-        tags (list[dict]): List of tags for labeling a transform job. If none
+        tags (Optional[Tags]): List of tags for labeling a transform job. If none
             specified, then the tags used for the training job are used for the
             transform job.
         role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``,
@@ -969,7 +970,7 @@ def transform_config_from_estimator(
             env,
             max_concurrent_transforms,
             max_payload,
-            tags,
+            format_tags(tags),
             role,
             model_server_workers,
             volume_kms_key,
@@ -986,7 +987,7 @@ def transform_config_from_estimator(
             env,
             max_concurrent_transforms,
             max_payload,
-            tags,
+            format_tags(tags),
             role,
             volume_kms_key,
         )

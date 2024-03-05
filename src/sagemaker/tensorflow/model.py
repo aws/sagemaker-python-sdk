@@ -27,6 +27,7 @@ from sagemaker.serializers import JSONSerializer
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.pipeline_context import PipelineSession
+from sagemaker.utils import format_tags
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +43,7 @@ class TensorFlowPredictor(Predictor):
         deserializer=JSONDeserializer(),
         model_name=None,
         model_version=None,
+        component_name=None,
         **kwargs,
     ):
         """Initialize a ``TensorFlowPredictor``.
@@ -65,6 +67,8 @@ class TensorFlowPredictor(Predictor):
             model_version (str): Optional. The version of the SavedModel model
                 that should handle the request. If not specified, the latest
                 version of the model will be used.
+            component_name (str): Optional. Name of the Amazon SageMaker inference
+                component corresponding to the predictor.
         """
         removed_kwargs("content_type", kwargs)
         removed_kwargs("accept", kwargs)
@@ -73,6 +77,7 @@ class TensorFlowPredictor(Predictor):
             sagemaker_session,
             serializer,
             deserializer,
+            component_name=component_name,
         )
 
         attributes = []
@@ -194,7 +199,6 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         self.inference_framework_version = training_inference_version_mismatch_dict.get(
             framework_version, framework_version
         )
-
         super(TensorFlowModel, self).__init__(
             model_data=model_data,
             role=role,
@@ -207,8 +211,8 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
 
     def register(
         self,
-        content_types: List[Union[str, PipelineVariable]],
-        response_types: List[Union[str, PipelineVariable]],
+        content_types: List[Union[str, PipelineVariable]] = None,
+        response_types: List[Union[str, PipelineVariable]] = None,
         inference_instances: Optional[List[Union[str, PipelineVariable]]] = None,
         transform_instances: Optional[List[Union[str, PipelineVariable]]] = None,
         model_package_name: Optional[Union[str, PipelineVariable]] = None,
@@ -228,6 +232,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         framework_version: Optional[Union[str, PipelineVariable]] = None,
         nearest_model_name: Optional[Union[str, PipelineVariable]] = None,
         data_input_configuration: Optional[Union[str, PipelineVariable]] = None,
+        skip_model_validation: Optional[Union[str, PipelineVariable]] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -275,6 +280,8 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
                 benchmarked by Amazon SageMaker Inference Recommender (default: None).
             data_input_configuration (str or PipelineVariable): Input object for the model
                 (default: None).
+            skip_model_validation (str or PipelineVariable): Indicates if you want to skip model
+                validation. Values can be "All" or "None" (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance.
@@ -313,6 +320,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             framework_version=framework_version or self.framework_version,
             nearest_model_name=nearest_model_name,
             data_input_configuration=data_input_configuration,
+            skip_model_validation=skip_model_validation,
         )
 
     def deploy(
@@ -337,7 +345,6 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         **kwargs,
     ):
         """Deploy a Tensorflow ``Model`` to a SageMaker ``Endpoint``."""
-
         if accelerator_type and not self._eia_supported():
             msg = "The TensorFlow version %s doesn't support EIA." % self.framework_version
             raise AttributeError(msg)
@@ -349,7 +356,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             deserializer=deserializer,
             accelerator_type=accelerator_type,
             endpoint_name=endpoint_name,
-            tags=tags,
+            tags=format_tags(tags),
             kms_key=kms_key,
             wait=wait,
             data_capture_config=data_capture_config,
@@ -373,7 +380,11 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         )
 
     def prepare_container_def(
-        self, instance_type=None, accelerator_type=None, serverless_inference_config=None
+        self,
+        instance_type=None,
+        accelerator_type=None,
+        serverless_inference_config=None,
+        accept_eula=None,
     ):
         """Prepare the container definition.
 
@@ -383,6 +394,11 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
                 Specifies configuration related to serverless endpoint. Instance type is
                 not provided in serverless inference. So this is used to find image URIs.
+            accept_eula (bool): For models that require a Model Access Config, specify True or
+                False to indicate whether model terms of use have been accepted.
+                The `accept_eula` value must be explicitly defined as `True` in order to
+                accept the end-user license agreement (EULA) that some
+                models require. (Default: None).
 
         Returns:
             A container definition for deploying a ``Model`` to an ``Endpoint``.
@@ -440,7 +456,12 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         else:
             model_data = self.model_data
 
-        return sagemaker.container_def(image_uri, model_data, env)
+        return sagemaker.container_def(
+            image_uri,
+            model_data,
+            env,
+            accept_eula=accept_eula,
+        )
 
     def _get_container_env(self):
         """Placeholder docstring."""

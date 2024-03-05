@@ -16,12 +16,24 @@ import os
 import sys
 
 import pytest
-from mock import patch, Mock, ANY
+from mock import patch, Mock, ANY, mock_open
+from mock.mock import MagicMock
 
 from sagemaker.config import load_sagemaker_config
+from sagemaker.remote_function.checkpoint_location import CheckpointLocation
+from sagemaker.remote_function.core.stored_function import _SerializedData
 from sagemaker.session_settings import SessionSettings
 
 from sagemaker.remote_function.spark_config import SparkConfig
+from sagemaker.remote_function.custom_file_filter import CustomFileFilter
+from sagemaker.remote_function.core.pipeline_variables import Context
+from sagemaker.workflow.function_step import DelayedReturn
+from sagemaker.workflow.functions import Join
+from sagemaker.workflow.pipeline_context import _PipelineConfig
+from sagemaker.workflow.pipeline_definition_config import PipelineDefinitionConfig
+from sagemaker.workflow.execution_variables import ExecutionVariables
+from sagemaker.utils import sagemaker_timestamp
+from sagemaker.workflow.properties import Properties
 
 from tests.unit import DATA_DIR
 from sagemaker.remote_function.job import (
@@ -29,12 +41,12 @@ from sagemaker.remote_function.job import (
     _Job,
     _convert_run_to_json,
     _prepare_and_upload_runtime_scripts,
-    _prepare_and_upload_dependencies,
+    _prepare_and_upload_workspace,
     _prepare_and_upload_spark_dependent_files,
     _upload_spark_submit_deps,
     _upload_serialized_spark_configuration,
-    _filter_non_python_files,
     _extend_spark_config_to_request,
+    _prepare_dependencies_and_pre_execution_scripts,
 )
 
 
@@ -49,6 +61,7 @@ DEFAULT_ROLE_ARN = "default_execution_role_arn"
 TEST_REGION = "us-west-2"
 RUNTIME_SCRIPTS_CHANNEL_NAME = "sagemaker_remote_function_bootstrap"
 REMOTE_FUNCTION_WORKSPACE = "sm_rf_user_ws"
+SCRIPT_AND_DEPENDENCIES_CHANNEL_NAME = "pre_exec_script_and_dependencies"
 HMAC_KEY = "some-hmac-key"
 
 EXPECTED_FUNCTION_URI = S3_URI + "/function.pkl"
@@ -66,11 +79,27 @@ DESCRIBE_TRAINING_JOB_RESPONSE = {
     "OutputDataConfig": {"S3OutputPath": "s3://sagemaker-123/image_uri/output"},
 }
 
+TEST_JOB_NAME = "my-job-name"
+TEST_PIPELINE_NAME = "my-pipeline"
 TEST_EXP_NAME = "my-exp-name"
 TEST_RUN_NAME = "my-run-name"
 TEST_EXP_DISPLAY_NAME = "my-exp-display-name"
 TEST_RUN_DISPLAY_NAME = "my-run-display-name"
 TEST_TAGS = [{"Key": "some-key", "Value": "some-value"}]
+
+_DEFINITION_CONFIG = PipelineDefinitionConfig(use_custom_job_prefix=False)
+MOCKED_PIPELINE_CONFIG = _PipelineConfig(
+    TEST_PIPELINE_NAME,
+    "test-function-step",
+    None,
+    "code-hash-0123456789",
+    "config-hash-0123456789",
+    _DEFINITION_CONFIG,
+    sagemaker_timestamp(),
+    True,
+    True,
+    "token-from-pipeline",
+)
 
 
 def mock_get_current_run():
@@ -121,6 +150,14 @@ def job_function(a, b=1, *, c, d=3):
     return a * b * c * d
 
 
+def job_function_with_checkpoint(a, checkpoint_1=None, *, b, checkpoint_2=None):
+    return a + b
+
+
+def serialized_data():
+    return _SerializedData(func=b"serialized_func", args=b"serialized_args")
+
+
 @patch("secrets.token_hex", return_value=HMAC_KEY)
 @patch("sagemaker.remote_function.job.Session", return_value=mock_session())
 @patch("sagemaker.remote_function.job.get_execution_role", return_value=DEFAULT_ROLE_ARN)
@@ -132,7 +169,7 @@ def test_sagemaker_config_job_settings(get_execution_role, session, secret_token
     assert job_settings.role == DEFAULT_ROLE_ARN
     assert job_settings.environment_variables == {
         "AWS_DEFAULT_REGION": "us-west-2",
-        "REMOTE_FUNCTION_SECRET_KEY": HMAC_KEY,
+        "REMOTE_FUNCTION_SECRET_KEY": "some-hmac-key",
     }
     assert job_settings.include_local_workdir is False
     assert job_settings.instance_type == "ml.m5.xlarge"
@@ -157,7 +194,7 @@ def test_sagemaker_config_job_settings_with_spark_config(
     assert job_settings.role == DEFAULT_ROLE_ARN
     assert job_settings.environment_variables == {
         "AWS_DEFAULT_REGION": "us-west-2",
-        "REMOTE_FUNCTION_SECRET_KEY": HMAC_KEY,
+        "REMOTE_FUNCTION_SECRET_KEY": "some-hmac-key",
     }
     assert job_settings.include_local_workdir is False
     assert job_settings.instance_type == "ml.m5.xlarge"
@@ -220,11 +257,12 @@ def test_sagemaker_config_job_settings_with_configuration_file(
     assert job_settings.pre_execution_commands == ["command_1", "command_2"]
     assert job_settings.environment_variables == {
         "AWS_DEFAULT_REGION": "us-west-2",
+        "REMOTE_FUNCTION_SECRET_KEY": "some-hmac-key",
         "EnvVarKey": "EnvVarValue",
-        "REMOTE_FUNCTION_SECRET_KEY": HMAC_KEY,
     }
     assert job_settings.job_conda_env == "my_conda_env"
     assert job_settings.include_local_workdir is True
+    assert job_settings.custom_file_filter.ignore_name_patterns == ["data", "test"]
     assert job_settings.volume_kms_key == "someVolumeKmsKey"
     assert job_settings.s3_kms_key == "someS3KmsKey"
     assert job_settings.instance_type == "ml.m5.large"
@@ -304,7 +342,7 @@ def test_sagemaker_config_job_settings_studio_image_uri(get_execution_role, sess
 
 @patch("sagemaker.experiments._run_context._RunContext.get_current_run", new=mock_get_current_run)
 @patch("secrets.token_hex", return_value=HMAC_KEY)
-@patch("sagemaker.remote_function.job._prepare_and_upload_dependencies", return_value="some_s3_uri")
+@patch("sagemaker.remote_function.job._prepare_and_upload_workspace", return_value="some_s3_uri")
 @patch(
     "sagemaker.remote_function.job._prepare_and_upload_runtime_scripts", return_value="some_s3_uri"
 )
@@ -340,8 +378,11 @@ def test_start(
         s3_kms_key=None,
     )
 
+    mock_stored_function().save.assert_called_once_with(job_function, *(1, 2), **{"c": 3, "d": 4})
+
     local_dependencies_path = mock_runtime_manager().snapshot()
     mock_python_version = mock_runtime_manager()._current_python_version()
+    mock_sagemaker_pysdk_version = mock_runtime_manager()._current_sagemaker_pysdk_version()
 
     mock_script_upload.assert_called_once_with(
         spark_config=None,
@@ -358,6 +399,7 @@ def test_start(
         s3_base_uri=f"{S3_URI}/{job.job_name}",
         s3_kms_key=None,
         sagemaker_session=session(),
+        custom_file_filter=None,
     )
 
     session().sagemaker_client.create_training_job.assert_called_once_with(
@@ -379,7 +421,7 @@ def test_start(
                 ChannelName=REMOTE_FUNCTION_WORKSPACE,
                 DataSource={
                     "S3DataSource": {
-                        "S3Uri": f"{S3_URI}/{job.job_name}/sm_rf_user_ws",
+                        "S3Uri": mock_dependency_upload.return_value,
                         "S3DataType": "S3Prefix",
                     }
                 },
@@ -400,6 +442,10 @@ def test_start(
                 TEST_REGION,
                 "--client_python_version",
                 mock_python_version,
+                "--client_sagemaker_pysdk_version",
+                mock_sagemaker_pysdk_version,
+                "--dependency_settings",
+                '{"dependency_file": null}',
                 "--run_in_context",
                 '{"experiment_name": "my-exp-name", "run_name": "my-run-name"}',
             ],
@@ -412,12 +458,166 @@ def test_start(
         ),
         EnableNetworkIsolation=False,
         EnableInterContainerTrafficEncryption=True,
+        EnableManagedSpotTraining=False,
         Environment={"AWS_DEFAULT_REGION": "us-west-2", "REMOTE_FUNCTION_SECRET_KEY": HMAC_KEY},
     )
 
 
+@patch("sagemaker.experiments._run_context._RunContext.get_current_run", new=mock_get_current_run)
 @patch("secrets.token_hex", return_value=HMAC_KEY)
-@patch("sagemaker.remote_function.job._prepare_and_upload_dependencies", return_value="some_s3_uri")
+@patch("sagemaker.remote_function.job._prepare_and_upload_workspace", return_value="some_s3_uri")
+@patch(
+    "sagemaker.remote_function.job._prepare_and_upload_runtime_scripts", return_value="some_s3_uri"
+)
+@patch("sagemaker.remote_function.job.RuntimeEnvironmentManager")
+@patch("sagemaker.remote_function.job.StoredFunction")
+@patch("sagemaker.remote_function.job.Session", return_value=mock_session())
+def test_start_with_checkpoint_location(
+    session,
+    mock_stored_function,
+    mock_runtime_manager,
+    mock_script_upload,
+    mock_user_workspace_upload,
+    secret_token,
+):
+
+    job_settings = _JobSettings(
+        image_uri=IMAGE,
+        s3_root_uri=S3_URI,
+        role=ROLE_ARN,
+        include_local_workdir=True,
+        instance_type="ml.m5.large",
+        encrypt_inter_container_traffic=True,
+    )
+
+    input_checkpoint_location = CheckpointLocation("s3://my-bucket/my-checkpoints/")
+
+    job = _Job.start(
+        job_settings,
+        job_function_with_checkpoint,
+        func_args=(1,),
+        func_kwargs={"b": 2, "checkpoint_2": input_checkpoint_location},
+    )
+
+    assert job.job_name.startswith("job-function-with-checkpoint")
+
+    mock_stored_function.assert_called_once_with(
+        sagemaker_session=session(),
+        s3_base_uri=f"{S3_URI}/{job.job_name}",
+        hmac_key=HMAC_KEY,
+        s3_kms_key=None,
+    )
+
+    mock_stored_function().save.assert_called_once_with(
+        job_function_with_checkpoint, *(1,), **{"b": 2, "checkpoint_2": input_checkpoint_location}
+    )
+
+    mock_python_version = mock_runtime_manager()._current_python_version()
+    mock_sagemaker_pysdk_version = mock_runtime_manager()._current_sagemaker_pysdk_version()
+
+    session().sagemaker_client.create_training_job.assert_called_once_with(
+        TrainingJobName=job.job_name,
+        RoleArn=ROLE_ARN,
+        StoppingCondition={"MaxRuntimeInSeconds": 86400},
+        RetryStrategy={"MaximumRetryAttempts": 1},
+        CheckpointConfig={
+            "LocalPath": "/opt/ml/checkpoints/",
+            "S3Uri": "s3://my-bucket/my-checkpoints/",
+        },
+        InputDataConfig=[
+            dict(
+                ChannelName=RUNTIME_SCRIPTS_CHANNEL_NAME,
+                DataSource={
+                    "S3DataSource": {
+                        "S3Uri": mock_script_upload.return_value,
+                        "S3DataType": "S3Prefix",
+                    }
+                },
+            ),
+            dict(
+                ChannelName=REMOTE_FUNCTION_WORKSPACE,
+                DataSource={
+                    "S3DataSource": {
+                        "S3Uri": mock_user_workspace_upload.return_value,
+                        "S3DataType": "S3Prefix",
+                    }
+                },
+            ),
+        ],
+        OutputDataConfig={"S3OutputPath": f"{S3_URI}/{job.job_name}"},
+        AlgorithmSpecification=dict(
+            TrainingImage=IMAGE,
+            TrainingInputMode="File",
+            ContainerEntrypoint=[
+                "/bin/bash",
+                "/opt/ml/input/data/sagemaker_remote_function_bootstrap/job_driver.sh",
+            ],
+            ContainerArguments=[
+                "--s3_base_uri",
+                f"{S3_URI}/{job.job_name}",
+                "--region",
+                TEST_REGION,
+                "--client_python_version",
+                mock_python_version,
+                "--client_sagemaker_pysdk_version",
+                mock_sagemaker_pysdk_version,
+                "--dependency_settings",
+                '{"dependency_file": null}',
+                "--run_in_context",
+                '{"experiment_name": "my-exp-name", "run_name": "my-run-name"}',
+            ],
+        ),
+        ResourceConfig=dict(
+            VolumeSizeInGB=30,
+            InstanceCount=1,
+            InstanceType="ml.m5.large",
+            KeepAlivePeriodInSeconds=0,
+        ),
+        EnableNetworkIsolation=False,
+        EnableInterContainerTrafficEncryption=True,
+        EnableManagedSpotTraining=False,
+        Environment={"AWS_DEFAULT_REGION": "us-west-2", "REMOTE_FUNCTION_SECRET_KEY": HMAC_KEY},
+    )
+
+
+@patch("sagemaker.remote_function.job._prepare_and_upload_workspace", return_value="some_s3_uri")
+@patch(
+    "sagemaker.remote_function.job._prepare_and_upload_runtime_scripts", return_value="some_s3_uri"
+)
+@patch("sagemaker.remote_function.job.RuntimeEnvironmentManager")
+@patch("sagemaker.remote_function.job.Session", return_value=mock_session())
+def test_start_with_checkpoint_location_failed_with_multiple_checkpoint_locations_in_args(
+    session,
+    mock_runtime_manager,
+    mock_script_upload,
+    mock_dependency_upload,
+):
+
+    job_settings = _JobSettings(
+        image_uri=IMAGE,
+        s3_root_uri=S3_URI,
+        role=ROLE_ARN,
+        include_local_workdir=True,
+        instance_type="ml.m5.large",
+        encrypt_inter_container_traffic=True,
+    )
+
+    input_checkpoint_location = CheckpointLocation("s3://my-bucket/my-checkpoints/")
+
+    with pytest.raises(
+        ValueError,
+        match="Remote function cannot have more than one argument of type CheckpointLocation.",
+    ):
+        _Job.start(
+            job_settings,
+            job_function_with_checkpoint,
+            func_args=(1, input_checkpoint_location),
+            func_kwargs={"b": 2, "checkpoint_2": input_checkpoint_location},
+        )
+
+
+@patch("secrets.token_hex", return_value=HMAC_KEY)
+@patch("sagemaker.remote_function.job._prepare_and_upload_workspace", return_value="some_s3_uri")
 @patch(
     "sagemaker.remote_function.job._prepare_and_upload_runtime_scripts", return_value="some_s3_uri"
 )
@@ -428,8 +628,8 @@ def test_start_with_complete_job_settings(
     session,
     mock_stored_function,
     mock_runtime_manager,
-    mock_script_upload,
-    mock_dependency_upload,
+    mock_bootstrap_script_upload,
+    mock_user_workspace_upload,
     secret_token,
 ):
 
@@ -463,15 +663,16 @@ def test_start_with_complete_job_settings(
 
     local_dependencies_path = mock_runtime_manager().snapshot()
     mock_python_version = mock_runtime_manager()._current_python_version()
+    mock_sagemaker_pysdk_version = mock_runtime_manager()._current_sagemaker_pysdk_version()
 
-    mock_script_upload.assert_called_once_with(
+    mock_bootstrap_script_upload.assert_called_once_with(
         spark_config=None,
         s3_base_uri=f"{S3_URI}/{job.job_name}",
         s3_kms_key=job_settings.s3_kms_key,
         sagemaker_session=session(),
     )
 
-    mock_dependency_upload.assert_called_once_with(
+    mock_user_workspace_upload.assert_called_once_with(
         local_dependencies_path=local_dependencies_path,
         include_local_workdir=False,
         pre_execution_commands=None,
@@ -479,6 +680,7 @@ def test_start_with_complete_job_settings(
         s3_base_uri=f"{S3_URI}/{job.job_name}",
         s3_kms_key=job_settings.s3_kms_key,
         sagemaker_session=session(),
+        custom_file_filter=None,
     )
 
     session().sagemaker_client.create_training_job.assert_called_once_with(
@@ -491,7 +693,7 @@ def test_start_with_complete_job_settings(
                 ChannelName=RUNTIME_SCRIPTS_CHANNEL_NAME,
                 DataSource={
                     "S3DataSource": {
-                        "S3Uri": mock_script_upload.return_value,
+                        "S3Uri": mock_bootstrap_script_upload.return_value,
                         "S3DataType": "S3Prefix",
                     }
                 },
@@ -500,7 +702,7 @@ def test_start_with_complete_job_settings(
                 ChannelName=REMOTE_FUNCTION_WORKSPACE,
                 DataSource={
                     "S3DataSource": {
-                        "S3Uri": f"{S3_URI}/{job.job_name}/sm_rf_user_ws",
+                        "S3Uri": mock_user_workspace_upload.return_value,
                         "S3DataType": "S3Prefix",
                     }
                 },
@@ -521,6 +723,10 @@ def test_start_with_complete_job_settings(
                 TEST_REGION,
                 "--client_python_version",
                 mock_python_version,
+                "--client_sagemaker_pysdk_version",
+                mock_sagemaker_pysdk_version,
+                "--dependency_settings",
+                '{"dependency_file": "req.txt"}',
                 "--s3_kms_key",
                 KMS_KEY_ARN,
                 "--job_conda_env",
@@ -537,7 +743,220 @@ def test_start_with_complete_job_settings(
         EnableNetworkIsolation=False,
         EnableInterContainerTrafficEncryption=False,
         VpcConfig=dict(Subnets=["subnet"], SecurityGroupIds=["sg"]),
+        EnableManagedSpotTraining=False,
         Environment={"AWS_DEFAULT_REGION": "us-west-2", "REMOTE_FUNCTION_SECRET_KEY": HMAC_KEY},
+    )
+
+
+@patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
+@patch("secrets.token_hex", MagicMock(return_value=HMAC_KEY))
+@patch(
+    "sagemaker.remote_function.job._prepare_dependencies_and_pre_execution_scripts",
+    return_value="some_s3_uri",
+)
+@patch("sagemaker.remote_function.job._prepare_and_upload_workspace", return_value="some_s3_uri")
+@patch(
+    "sagemaker.remote_function.job._prepare_and_upload_runtime_scripts", return_value="some_s3_uri"
+)
+@patch("sagemaker.remote_function.job.RuntimeEnvironmentManager")
+@patch("sagemaker.remote_function.job.StoredFunction")
+@patch("sagemaker.remote_function.job.Session", return_value=mock_session())
+def test_get_train_args_under_pipeline_context(
+    session,
+    mock_stored_function_ctr,
+    mock_runtime_manager,
+    mock_bootstrap_scripts_upload,
+    mock_user_workspace_upload,
+    mock_user_dependencies_upload,
+):
+
+    from sagemaker.workflow.parameters import ParameterInteger
+
+    mock_stored_function = Mock()
+    mock_stored_function_ctr.return_value = mock_stored_function
+
+    function_step = Mock()
+    function_step.name = "parent_step"
+    func_step_s3_output_prop = Properties(
+        step_name=function_step.name, path="OutputDataConfig.S3OutputPath"
+    )
+    function_step._properties.OutputDataConfig.S3OutputPath = func_step_s3_output_prop
+
+    job_settings = _JobSettings(
+        dependencies="path/to/dependencies/req.txt",
+        pre_execution_script="path/to/script.sh",
+        environment_variables={"AWS_DEFAULT_REGION": "us-east-2"},
+        image_uri=IMAGE,
+        s3_root_uri=S3_URI,
+        s3_kms_key=KMS_KEY_ARN,
+        role=ROLE_ARN,
+        instance_type="ml.m5.xlarge",
+        job_conda_env="conda_env",
+        keep_alive_period_in_seconds=120,
+        volume_size=120,
+        volume_kms_key=KMS_KEY_ARN,
+        subnets=["subnet"],
+        security_group_ids=["sg"],
+    )
+
+    mocked_serialized_data = serialized_data()
+    s3_base_uri = f"{S3_URI}/{TEST_PIPELINE_NAME}"
+    train_args = _Job.compile(
+        job_settings=job_settings,
+        job_name=TEST_JOB_NAME,
+        s3_base_uri=s3_base_uri,
+        func=job_function,
+        func_args=(
+            1,
+            ParameterInteger(name="b", default_value=2),
+            DelayedReturn(function_step, reference_path=("__getitem__", 0)),
+        ),
+        func_kwargs={
+            "c": 3,
+            "d": ParameterInteger(name="d", default_value=4),
+            "e": DelayedReturn(function_step, reference_path=("__getitem__", 1)),
+        },
+        serialized_data=mocked_serialized_data,
+    )
+
+    mock_stored_function_ctr.assert_called_once_with(
+        sagemaker_session=session(),
+        s3_base_uri=s3_base_uri,
+        hmac_key="token-from-pipeline",
+        s3_kms_key=KMS_KEY_ARN,
+        context=Context(
+            step_name=MOCKED_PIPELINE_CONFIG.step_name,
+            func_step_s3_dir=MOCKED_PIPELINE_CONFIG.pipeline_build_time,
+        ),
+    )
+    mock_stored_function.save_pipeline_step_function.assert_called_once_with(mocked_serialized_data)
+
+    local_dependencies_path = mock_runtime_manager().snapshot()
+    mock_python_version = mock_runtime_manager()._current_python_version()
+    mock_sagemaker_pysdk_version = mock_runtime_manager()._current_sagemaker_pysdk_version()
+
+    mock_bootstrap_scripts_upload.assert_called_once_with(
+        spark_config=None,
+        s3_base_uri=s3_base_uri,
+        s3_kms_key=job_settings.s3_kms_key,
+        sagemaker_session=session(),
+    )
+
+    mock_user_workspace_upload.assert_called_once_with(
+        local_dependencies_path=local_dependencies_path,
+        include_local_workdir=False,
+        pre_execution_commands=None,
+        pre_execution_script_local_path="path/to/script.sh",
+        s3_base_uri=s3_base_uri,
+        s3_kms_key=job_settings.s3_kms_key,
+        sagemaker_session=session(),
+        custom_file_filter=None,
+    )
+
+    mock_user_dependencies_upload.assert_called_once()
+
+    assert train_args == dict(
+        TrainingJobName=TEST_JOB_NAME,
+        RoleArn=ROLE_ARN,
+        StoppingCondition={"MaxRuntimeInSeconds": 86400},
+        RetryStrategy={"MaximumRetryAttempts": 1},
+        InputDataConfig=[
+            dict(
+                ChannelName=RUNTIME_SCRIPTS_CHANNEL_NAME,
+                DataSource={
+                    "S3DataSource": {
+                        "S3Uri": mock_bootstrap_scripts_upload.return_value,
+                        "S3DataType": "S3Prefix",
+                    }
+                },
+            ),
+            dict(
+                ChannelName=SCRIPT_AND_DEPENDENCIES_CHANNEL_NAME,
+                DataSource={
+                    "S3DataSource": {
+                        "S3Uri": mock_user_dependencies_upload.return_value,
+                        "S3DataType": "S3Prefix",
+                    }
+                },
+            ),
+            dict(
+                ChannelName=MOCKED_PIPELINE_CONFIG.pipeline_build_time,
+                DataSource={
+                    "S3DataSource": {
+                        "S3Uri": mock_user_workspace_upload.return_value,
+                        "S3DataType": "S3Prefix",
+                    }
+                },
+            ),
+        ],
+        OutputDataConfig={
+            "S3OutputPath": Join(
+                on="/",
+                values=[
+                    "s3://my-s3-bucket/keyprefix/my-pipeline",
+                    ExecutionVariables.PIPELINE_EXECUTION_ID,
+                    "test-function-step",
+                    "results",
+                ],
+            ),
+            "KmsKeyId": KMS_KEY_ARN,
+        },
+        AlgorithmSpecification=dict(
+            TrainingImage=IMAGE,
+            TrainingInputMode="File",
+            ContainerEntrypoint=[
+                "/bin/bash",
+                "/opt/ml/input/data/sagemaker_remote_function_bootstrap/job_driver.sh",
+            ],
+            ContainerArguments=[
+                "--s3_base_uri",
+                f"{S3_URI}/{TEST_PIPELINE_NAME}",
+                "--region",
+                TEST_REGION,
+                "--client_python_version",
+                mock_python_version,
+                "--client_sagemaker_pysdk_version",
+                mock_sagemaker_pysdk_version,
+                "--dependency_settings",
+                '{"dependency_file": "req.txt"}',
+                "--s3_kms_key",
+                KMS_KEY_ARN,
+                "--job_conda_env",
+                job_settings.job_conda_env,
+                "--pipeline_step_name",
+                MOCKED_PIPELINE_CONFIG.step_name,
+                "--pipeline_execution_id",
+                ExecutionVariables.PIPELINE_EXECUTION_ID,
+                "--func_step_s3_dir",
+                MOCKED_PIPELINE_CONFIG.pipeline_build_time,
+                "--property_references",
+                "Execution.PipelineExecutionId",
+                ExecutionVariables.PIPELINE_EXECUTION_ID,
+                "Parameters.b",
+                ParameterInteger(name="b", default_value=2).to_string(),
+                "Steps.parent_step.OutputDataConfig.S3OutputPath",
+                func_step_s3_output_prop.to_string(),
+                "Parameters.d",
+                ParameterInteger(name="d", default_value=4).to_string(),
+                "Steps.parent_step.OutputDataConfig.S3OutputPath",
+                func_step_s3_output_prop.to_string(),
+            ],
+        ),
+        ResourceConfig=dict(
+            VolumeSizeInGB=120,
+            InstanceCount=1,
+            InstanceType="ml.m5.xlarge",
+            VolumeKmsKeyId=KMS_KEY_ARN,
+            KeepAlivePeriodInSeconds=120,
+        ),
+        EnableNetworkIsolation=False,
+        EnableInterContainerTrafficEncryption=False,
+        VpcConfig=dict(Subnets=["subnet"], SecurityGroupIds=["sg"]),
+        EnableManagedSpotTraining=False,
+        Environment={
+            "AWS_DEFAULT_REGION": "us-west-2",
+            "REMOTE_FUNCTION_SECRET_KEY": "token-from-pipeline",
+        },
     )
 
 
@@ -551,7 +970,7 @@ def test_start_with_complete_job_settings(
     return_value=tuple(["jars_s3_uri", "py_files_s3_uri", "files_s3_uri", "config_file_s3_uri"]),
 )
 @patch("sagemaker.experiments._run_context._RunContext.get_current_run", new=mock_get_current_run)
-@patch("sagemaker.remote_function.job._prepare_and_upload_dependencies", return_value="some_s3_uri")
+@patch("sagemaker.remote_function.job._prepare_and_upload_workspace", return_value="some_s3_uri")
 @patch(
     "sagemaker.remote_function.job._prepare_and_upload_runtime_scripts", return_value="some_s3_uri"
 )
@@ -582,6 +1001,7 @@ def test_start_with_spark(
     job = _Job.start(job_settings, job_function, func_args=(1, 2), func_kwargs={"c": 3, "d": 4})
 
     mock_python_version = mock_runtime_manager()._current_python_version()
+    mock_sagemaker_pysdk_version = mock_runtime_manager()._current_sagemaker_pysdk_version()
 
     assert job.job_name.startswith("job-function")
 
@@ -616,7 +1036,7 @@ def test_start_with_spark(
                 ChannelName=REMOTE_FUNCTION_WORKSPACE,
                 DataSource={
                     "S3DataSource": {
-                        "S3Uri": f"{S3_URI}/{job.job_name}/sm_rf_user_ws",
+                        "S3Uri": mock_dependency_upload.return_value,
                         "S3DataType": "S3Prefix",
                         "S3DataDistributionType": "FullyReplicated",
                     }
@@ -655,6 +1075,10 @@ def test_start_with_spark(
                 TEST_REGION,
                 "--client_python_version",
                 mock_python_version,
+                "--client_sagemaker_pysdk_version",
+                mock_sagemaker_pysdk_version,
+                "--dependency_settings",
+                '{"dependency_file": null}',
                 "--run_in_context",
                 '{"experiment_name": "my-exp-name", "run_name": "my-run-name"}',
             ],
@@ -667,12 +1091,13 @@ def test_start_with_spark(
         ),
         EnableNetworkIsolation=False,
         EnableInterContainerTrafficEncryption=True,
+        EnableManagedSpotTraining=False,
         Environment={"AWS_DEFAULT_REGION": "us-west-2", "REMOTE_FUNCTION_SECRET_KEY": HMAC_KEY},
     )
 
 
 @patch("sagemaker.remote_function.job._prepare_and_upload_runtime_scripts")
-@patch("sagemaker.remote_function.job._prepare_and_upload_dependencies")
+@patch("sagemaker.remote_function.job._prepare_and_upload_workspace")
 @patch("sagemaker.remote_function.job.StoredFunction")
 @patch("sagemaker.remote_function.job.Session", return_value=mock_session())
 def test_describe(session, *args):
@@ -692,7 +1117,7 @@ def test_describe(session, *args):
 
 
 @patch("sagemaker.remote_function.job._prepare_and_upload_runtime_scripts")
-@patch("sagemaker.remote_function.job._prepare_and_upload_dependencies")
+@patch("sagemaker.remote_function.job._prepare_and_upload_workspace")
 @patch("sagemaker.remote_function.job.StoredFunction")
 @patch("sagemaker.remote_function.job.Session", return_value=mock_session())
 def test_stop(session, *args):
@@ -713,7 +1138,7 @@ def test_stop(session, *args):
 
 
 @patch("sagemaker.remote_function.job._prepare_and_upload_runtime_scripts")
-@patch("sagemaker.remote_function.job._prepare_and_upload_dependencies")
+@patch("sagemaker.remote_function.job._prepare_and_upload_workspace")
 @patch("sagemaker.remote_function.job._logs_for_job")
 @patch("sagemaker.remote_function.job.StoredFunction")
 @patch("sagemaker.remote_function.job.Session", return_value=mock_session())
@@ -730,7 +1155,7 @@ def test_wait(session, mock_stored_function, mock_logs_for_job, *args):
     job.wait(timeout=10)
 
     mock_logs_for_job.assert_called_with(
-        boto_session=ANY, job_name=job.job_name, wait=True, timeout=10
+        sagemaker_session=ANY, job_name=job.job_name, wait=True, timeout=10
     )
 
 
@@ -751,12 +1176,46 @@ def test_prepare_and_upload_runtime_scripts(session, mock_copy, mock_s3_upload):
     mock_s3_upload.assert_called_once()
 
 
+@patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
 @patch("sagemaker.s3.S3Uploader.upload", return_value="some_uri")
 @patch("shutil.copy2")
-@patch("shutil.copytree")
 @patch("sagemaker.remote_function.job.Session", return_value=mock_session())
-def test_prepare_and_upload_dependencies(session, mock_copytree, mock_copy, mock_s3_upload):
-    s3_path = _prepare_and_upload_dependencies(
+def test_prepare_and_upload_runtime_scripts_under_pipeline_context(
+    session, mock_copy, mock_s3_upload
+):
+
+    s3_path = _prepare_and_upload_runtime_scripts(
+        spark_config=None,
+        s3_base_uri=S3_URI,
+        s3_kms_key=KMS_KEY_ARN,
+        sagemaker_session=session(),
+    )
+    # Bootstrap scripts are uploaded on the first call
+    assert s3_path == mock_s3_upload.return_value
+    assert mock_copy.call_count == 2
+    mock_s3_upload.assert_called_once()
+
+    mock_copy.reset_mock()
+    mock_s3_upload.reset_mock()
+
+    s3_path = _prepare_and_upload_runtime_scripts(
+        spark_config=None,
+        s3_base_uri=S3_URI,
+        s3_kms_key=KMS_KEY_ARN,
+        sagemaker_session=session(),
+    )
+    # Bootstrap scripts are not uploaded on the second call
+    assert s3_path == S3_URI + "/" + RUNTIME_SCRIPTS_CHANNEL_NAME
+    assert mock_copy.call_count == 0
+    mock_s3_upload.assert_not_called()
+
+
+@patch("sagemaker.s3.S3Uploader.upload", return_value="some_uri")
+@patch("sagemaker.remote_function.job.copy_workdir")
+@patch("shutil.copy2")
+@patch("sagemaker.remote_function.job.Session", return_value=mock_session())
+def test_prepare_and_upload_workspace(session, mock_shutil_copy, mock_copy_workdir, mock_s3_upload):
+    s3_path = _prepare_and_upload_workspace(
         local_dependencies_path="some/path/to/dependency",
         include_local_workdir=True,
         pre_execution_commands=["cmd_1", "cmd_2"],
@@ -768,11 +1227,180 @@ def test_prepare_and_upload_dependencies(session, mock_copytree, mock_copy, mock
 
     assert s3_path == mock_s3_upload.return_value
 
-    mock_copytree.assert_called_with(os.getcwd(), ANY, ignore=_filter_non_python_files)
+    mock_copy_workdir.assert_called_with(ANY, None)
+    mock_shutil_copy.assert_called_with("some/path/to/dependency", ANY)
+    mock_s3_upload.assert_called_once_with(
+        ANY, S3_URI + "/" + REMOTE_FUNCTION_WORKSPACE, KMS_KEY_ARN, session
+    )
+
+
+@patch("sagemaker.s3.S3Uploader.upload", return_value="some_uri")
+@patch("shutil.copy2")
+@patch("shutil.copytree")
+@patch("sagemaker.remote_function.job.Session", return_value=mock_session())
+def test_prepare_and_upload_dependencies_with_custom_filter(
+    session, mock_copytree, mock_copy, mock_s3_upload
+):
+    def custom_file_filter():
+        pass
+
+    s3_path = _prepare_and_upload_workspace(
+        local_dependencies_path="some/path/to/dependency",
+        include_local_workdir=True,
+        pre_execution_commands=["cmd_1", "cmd_2"],
+        pre_execution_script_local_path=None,
+        s3_base_uri=S3_URI,
+        s3_kms_key=KMS_KEY_ARN,
+        sagemaker_session=session,
+        custom_file_filter=custom_file_filter,
+    )
+
+    assert s3_path == mock_s3_upload.return_value
+
+    mock_copytree.assert_called_with(os.getcwd(), ANY, ignore=custom_file_filter)
+
+
+@patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
+@patch("sagemaker.s3.S3Uploader.upload", return_value="some_uri")
+@patch("sagemaker.remote_function.job.copy_workdir")
+@patch("shutil.copy2")
+@patch("sagemaker.remote_function.job.Session", return_value=mock_session())
+def test_prepare_and_upload_workspace_under_pipeline_context(
+    session, mock_copy, mock_copy_workdir, mock_s3_upload
+):
+    s3_path = _prepare_and_upload_workspace(
+        local_dependencies_path="some/path/to/dependency",
+        include_local_workdir=True,
+        pre_execution_commands=["cmd_1", "cmd_2"],
+        pre_execution_script_local_path=None,
+        s3_base_uri=S3_URI,
+        s3_kms_key=KMS_KEY_ARN,
+        sagemaker_session=session,
+    )
+
+    assert s3_path == mock_s3_upload.return_value
+
+    mock_copy_workdir.assert_called_with(ANY, None)
+    mock_copy.assert_not_called()
+    # upload successful on the first call
+    mock_s3_upload.assert_called_once_with(
+        ANY,
+        f"{S3_URI}/{REMOTE_FUNCTION_WORKSPACE}/{MOCKED_PIPELINE_CONFIG.pipeline_build_time}",
+        KMS_KEY_ARN,
+        session,
+    )
+
+    mock_copy.reset_mock()
+    mock_copy_workdir.reset_mock()
+    mock_s3_upload.reset_mock()
+
+    s3_path = _prepare_and_upload_workspace(
+        local_dependencies_path="some/path/to/dependency",
+        include_local_workdir=True,
+        pre_execution_commands=["cmd_1", "cmd_2"],
+        pre_execution_script_local_path=None,
+        s3_base_uri=S3_URI,
+        s3_kms_key=KMS_KEY_ARN,
+        sagemaker_session=session,
+    )
+
+    assert s3_path == (
+        f"{S3_URI}/{REMOTE_FUNCTION_WORKSPACE}/" f"{MOCKED_PIPELINE_CONFIG.pipeline_build_time}"
+    )
+
+    mock_copy_workdir.assert_not_called()
+    mock_copy.assert_not_called()
+    # upload is skipped on the second call
+    mock_s3_upload.assert_not_called()
+
+
+@patch("sagemaker.s3.S3Uploader.upload", return_value="some_uri")
+@patch("sagemaker.remote_function.job.copy_workdir")
+@patch("shutil.copy2")
+@patch("sagemaker.remote_function.job.Session", return_value=mock_session())
+def test_prepare_and_upload_workspace_with_custom_file_filter(
+    session, mock_copy, mock_copy_workdir, mock_s3_upload
+):
+    s3_path = _prepare_and_upload_workspace(
+        local_dependencies_path="some/path/to/dependency",
+        include_local_workdir=True,
+        pre_execution_commands=["cmd_1", "cmd_2"],
+        pre_execution_script_local_path=None,
+        s3_base_uri=S3_URI,
+        s3_kms_key=KMS_KEY_ARN,
+        sagemaker_session=session,
+        custom_file_filter=CustomFileFilter(),
+    )
+
+    assert s3_path == mock_s3_upload.return_value
+
+    mock_copy_workdir.assert_called_with(ANY, ANY)
     mock_copy.assert_called_with("some/path/to/dependency", ANY)
     mock_s3_upload.assert_called_once_with(
         ANY, S3_URI + "/" + REMOTE_FUNCTION_WORKSPACE, KMS_KEY_ARN, session
     )
+
+
+@patch("builtins.open", new_callable=mock_open)
+@patch("sagemaker.workflow.utilities.hash_object", return_value="updated_hash")
+@patch("sagemaker.s3.S3Uploader.upload", return_value="some_uri")
+@patch("shutil.copy2")
+@patch("sagemaker.remote_function.job.Session", return_value=mock_session())
+def test_prepare_dependencies_and_pre_execution_scripts(
+    session, mock_copy, mock_upload, mock_hash_object, mock_open
+):
+
+    tmp_dir = "some_temp_dir"
+
+    s3_path = _prepare_dependencies_and_pre_execution_scripts(
+        local_dependencies_path="some/path/to/dependency",
+        pre_execution_commands=["cmd_1", "cmd_2"],
+        pre_execution_script_local_path=None,
+        s3_base_uri=S3_URI,
+        s3_kms_key=KMS_KEY_ARN,
+        sagemaker_session=session,
+        tmp_dir=tmp_dir,
+    )
+
+    mock_copy.assert_called_with("some/path/to/dependency", tmp_dir)
+    mock_open.assert_called_once()
+    mock_upload.assert_not_called()
+    mock_hash_object.assert_not_called()
+    assert s3_path is None
+
+
+@patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
+@patch("builtins.open", new_callable=mock_open)
+@patch("sagemaker.s3.S3Uploader.upload")
+@patch("shutil.copy2")
+@patch("sagemaker.workflow.utilities.hash_object", return_value="some_hash")
+@patch("sagemaker.remote_function.job.Session", return_value=mock_session())
+def test_prepare_dependencies_and_pre_execution_scripts_pipeline_context(
+    session, mock_hash_object, mock_copy, mock_upload, mock_open
+):
+
+    tmp_dir = "some_temp_dir"
+
+    s3_path = _prepare_dependencies_and_pre_execution_scripts(
+        local_dependencies_path="some/path/to/dependency",
+        pre_execution_commands=["cmd_1", "cmd_2"],
+        pre_execution_script_local_path=None,
+        s3_base_uri=S3_URI,
+        s3_kms_key=KMS_KEY_ARN,
+        sagemaker_session=session,
+        tmp_dir=tmp_dir,
+    )
+
+    s3_upload_path = (
+        f"{S3_URI}/{MOCKED_PIPELINE_CONFIG.step_name}/"
+        f"{MOCKED_PIPELINE_CONFIG.pipeline_build_time}/"
+        f"pre_exec_script_and_dependencies"
+    )
+
+    mock_copy.assert_called_with("some/path/to/dependency", tmp_dir)
+    mock_open.assert_called_once()
+    mock_upload.assert_called_once_with(tmp_dir, s3_upload_path, KMS_KEY_ARN, session)
+    assert s3_path is not None
 
 
 @patch("sagemaker.remote_function.job.Session", return_value=mock_session())

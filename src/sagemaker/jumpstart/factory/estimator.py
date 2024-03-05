@@ -16,6 +16,7 @@ from __future__ import absolute_import
 
 from typing import Dict, List, Optional, Union
 from sagemaker import (
+    environment_variables,
     hyperparameters as hyperparameters_utils,
     image_uris,
     instance_types,
@@ -43,6 +44,7 @@ from sagemaker.jumpstart.artifacts import (
     _model_supports_training_model_uri,
 )
 from sagemaker.jumpstart.constants import (
+    DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     JUMPSTART_DEFAULT_REGION_NAME,
     JUMPSTART_LOGGER,
     TRAINING_ENTRY_POINT_SCRIPT_NAME,
@@ -59,14 +61,16 @@ from sagemaker.jumpstart.types import (
     JumpStartModelInitKwargs,
 )
 from sagemaker.jumpstart.utils import (
+    add_jumpstart_model_id_version_tags,
     update_dict_if_key_not_present,
     resolve_estimator_sagemaker_config_field,
+    verify_model_region_and_return_specs,
 )
 
 
 from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
 from sagemaker.serverless.serverless_inference_config import ServerlessInferenceConfig
-from sagemaker.utils import name_from_base
+from sagemaker.utils import name_from_base, format_tags, Tags
 from sagemaker.workflow.entities import PipelineVariable
 
 
@@ -90,7 +94,7 @@ def get_init_kwargs(
     base_job_name: Optional[str] = None,
     sagemaker_session: Optional[Session] = None,
     hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
-    tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+    tags: Optional[Tags] = None,
     subnets: Optional[List[Union[str, PipelineVariable]]] = None,
     security_group_ids: Optional[List[Union[str, PipelineVariable]]] = None,
     model_uri: Optional[str] = None,
@@ -122,6 +126,8 @@ def get_init_kwargs(
     container_entry_point: Optional[List[str]] = None,
     container_arguments: Optional[List[str]] = None,
     disable_output_compression: Optional[bool] = None,
+    enable_infra_check: Optional[Union[bool, PipelineVariable]] = None,
+    enable_remote_debug: Optional[Union[bool, PipelineVariable]] = None,
 ) -> JumpStartEstimatorInitKwargs:
     """Returns kwargs required to instantiate `sagemaker.estimator.Estimator` object."""
 
@@ -143,7 +149,7 @@ def get_init_kwargs(
         output_kms_key=output_kms_key,
         base_job_name=base_job_name,
         sagemaker_session=sagemaker_session,
-        tags=tags,
+        tags=format_tags(tags),
         subnets=subnets,
         security_group_ids=security_group_ids,
         model_uri=model_uri,
@@ -177,6 +183,8 @@ def get_init_kwargs(
         container_entry_point=container_entry_point,
         container_arguments=container_arguments,
         disable_output_compression=disable_output_compression,
+        enable_infra_check=enable_infra_check,
+        enable_remote_debug=enable_remote_debug,
     )
 
     estimator_init_kwargs = _add_model_version_to_kwargs(estimator_init_kwargs)
@@ -193,6 +201,7 @@ def get_init_kwargs(
     estimator_init_kwargs = _add_estimator_extra_kwargs(estimator_init_kwargs)
     estimator_init_kwargs = _add_role_to_kwargs(estimator_init_kwargs)
     estimator_init_kwargs = _add_env_to_kwargs(estimator_init_kwargs)
+    estimator_init_kwargs = _add_tags_to_kwargs(estimator_init_kwargs)
 
     return estimator_init_kwargs
 
@@ -208,6 +217,7 @@ def get_fit_kwargs(
     experiment_config: Optional[Dict[str, str]] = None,
     tolerate_vulnerable_model: Optional[bool] = None,
     tolerate_deprecated_model: Optional[bool] = None,
+    sagemaker_session: Optional[Session] = None,
 ) -> JumpStartEstimatorFitKwargs:
     """Returns kwargs required call `fit` on `sagemaker.estimator.Estimator` object."""
 
@@ -222,6 +232,7 @@ def get_fit_kwargs(
         experiment_config=experiment_config,
         tolerate_deprecated_model=tolerate_deprecated_model,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
+        sagemaker_session=sagemaker_session,
     )
 
     estimator_fit_kwargs = _add_model_version_to_kwargs(estimator_fit_kwargs)
@@ -242,7 +253,7 @@ def get_deploy_kwargs(
     deserializer: Optional[BaseDeserializer] = None,
     accelerator_type: Optional[str] = None,
     endpoint_name: Optional[str] = None,
-    tags: List[Dict[str, str]] = None,
+    tags: Optional[Tags] = None,
     kms_key: Optional[str] = None,
     wait: Optional[bool] = None,
     data_capture_config: Optional[DataCaptureConfig] = None,
@@ -272,6 +283,7 @@ def get_deploy_kwargs(
     tolerate_vulnerable_model: Optional[bool] = None,
     use_compiled_model: Optional[bool] = None,
     model_name: Optional[str] = None,
+    training_instance_type: Optional[str] = None,
 ) -> JumpStartEstimatorDeployKwargs:
     """Returns kwargs required to call `deploy` on `sagemaker.estimator.Estimator` object."""
 
@@ -285,7 +297,7 @@ def get_deploy_kwargs(
         deserializer=deserializer,
         accelerator_type=accelerator_type,
         endpoint_name=endpoint_name,
-        tags=tags,
+        tags=format_tags(tags),
         kms_key=kms_key,
         wait=wait,
         data_capture_config=data_capture_config,
@@ -298,13 +310,14 @@ def get_deploy_kwargs(
         explainer_config=explainer_config,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
+        sagemaker_session=sagemaker_session,
     )
 
     model_init_kwargs: JumpStartModelInitKwargs = model.get_init_kwargs(
         model_id=model_id,
         model_from_estimator=True,
         model_version=model_version,
-        instance_type=model_deploy_kwargs.instance_type,  # prevent excess logging
+        instance_type=model_deploy_kwargs.instance_type if training_instance_type is None else None,
         region=region,
         image_uri=image_uri,
         source_dir=source_dir,
@@ -314,7 +327,7 @@ def get_deploy_kwargs(
         role=role,
         name=model_name,
         vpc_config=vpc_config,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=model_deploy_kwargs.sagemaker_session,
         enable_network_isolation=enable_network_isolation,
         model_kms_key=model_kms_key,
         image_config=image_config,
@@ -324,6 +337,8 @@ def get_deploy_kwargs(
         git_config=git_config,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
+        training_instance_type=training_instance_type,
+        disable_instance_type_logging=True,
     )
 
     estimator_deploy_kwargs: JumpStartEstimatorDeployKwargs = JumpStartEstimatorDeployKwargs(
@@ -381,7 +396,7 @@ def _add_region_to_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwargs:
 
 def _add_sagemaker_session_to_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwargs:
     """Sets session in kwargs based on default or override, returns full kwargs."""
-    kwargs.sagemaker_session = kwargs.sagemaker_session or Session()
+    kwargs.sagemaker_session = kwargs.sagemaker_session or DEFAULT_JUMPSTART_SAGEMAKER_SESSION
     return kwargs
 
 
@@ -420,6 +435,7 @@ def _add_instance_type_and_count_to_kwargs(
         scope=JumpStartScriptScope.TRAINING,
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
+        sagemaker_session=kwargs.sagemaker_session,
     )
 
     kwargs.instance_count = kwargs.instance_count or 1
@@ -429,6 +445,26 @@ def _add_instance_type_and_count_to_kwargs(
             "No instance type selected for training job. Defaulting to %s.", kwargs.instance_type
         )
 
+    return kwargs
+
+
+def _add_tags_to_kwargs(kwargs: JumpStartEstimatorInitKwargs) -> JumpStartEstimatorInitKwargs:
+    """Sets tags in kwargs based on default or override, returns full kwargs."""
+
+    full_model_version = verify_model_region_and_return_specs(
+        model_id=kwargs.model_id,
+        version=kwargs.model_version,
+        scope=JumpStartScriptScope.TRAINING,
+        region=kwargs.region,
+        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
+        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
+        sagemaker_session=kwargs.sagemaker_session,
+    ).version
+
+    if kwargs.sagemaker_session.settings.include_jumpstart_tags:
+        kwargs.tags = add_jumpstart_model_id_version_tags(
+            kwargs.tags, kwargs.model_id, full_model_version
+        )
     return kwargs
 
 
@@ -444,6 +480,7 @@ def _add_image_uri_to_kwargs(kwargs: JumpStartEstimatorInitKwargs) -> JumpStartE
         instance_type=kwargs.instance_type,
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
+        sagemaker_session=kwargs.sagemaker_session,
     )
 
     return kwargs
@@ -458,6 +495,7 @@ def _add_model_uri_to_kwargs(kwargs: JumpStartEstimatorInitKwargs) -> JumpStartE
         region=kwargs.region,
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
+        sagemaker_session=kwargs.sagemaker_session,
     ):
         default_model_uri = model_uris.retrieve(
             model_scope=JumpStartScriptScope.TRAINING,
@@ -465,6 +503,8 @@ def _add_model_uri_to_kwargs(kwargs: JumpStartEstimatorInitKwargs) -> JumpStartE
             model_version=kwargs.model_version,
             tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
             tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
+            sagemaker_session=kwargs.sagemaker_session,
+            instance_type=kwargs.instance_type,
         )
 
         if (
@@ -476,6 +516,7 @@ def _add_model_uri_to_kwargs(kwargs: JumpStartEstimatorInitKwargs) -> JumpStartE
                 region=kwargs.region,
                 tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
                 tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
+                sagemaker_session=kwargs.sagemaker_session,
             )
         ):
             JUMPSTART_LOGGER.warning(
@@ -509,6 +550,7 @@ def _add_source_dir_to_kwargs(kwargs: JumpStartEstimatorInitKwargs) -> JumpStart
         model_version=kwargs.model_version,
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
+        sagemaker_session=kwargs.sagemaker_session,
     )
 
     return kwargs
@@ -519,6 +561,18 @@ def _add_env_to_kwargs(
 ) -> JumpStartEstimatorInitKwargs:
     """Sets environment in kwargs based on default or override, returns full kwargs."""
 
+    extra_env_vars = environment_variables.retrieve_default(
+        model_id=kwargs.model_id,
+        model_version=kwargs.model_version,
+        region=kwargs.region,
+        include_aws_sdk_env_vars=False,
+        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
+        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
+        sagemaker_session=kwargs.sagemaker_session,
+        script=JumpStartScriptScope.TRAINING,
+        instance_type=kwargs.instance_type,
+    )
+
     model_package_artifact_uri = _retrieve_model_package_model_artifact_s3_uri(
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
@@ -526,15 +580,20 @@ def _add_env_to_kwargs(
         scope=JumpStartScriptScope.TRAINING,
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
+        sagemaker_session=kwargs.sagemaker_session,
     )
 
     if model_package_artifact_uri:
-        if kwargs.environment is None:
-            kwargs.environment = {}
-        kwargs.environment = {
-            **{SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY: model_package_artifact_uri},
-            **kwargs.environment,
-        }
+        extra_env_vars.update(
+            {SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY: model_package_artifact_uri}
+        )
+
+    for key, value in extra_env_vars.items():
+        kwargs.environment = update_dict_if_key_not_present(
+            kwargs.environment,
+            key,
+            value,
+        )
 
     return kwargs
 
@@ -560,6 +619,7 @@ def _add_training_job_name_to_kwargs(
         region=kwargs.region,
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
+        sagemaker_session=kwargs.sagemaker_session,
     )
 
     kwargs.job_name = kwargs.job_name or (
@@ -584,6 +644,8 @@ def _add_hyperparameters_to_kwargs(
         model_version=kwargs.model_version,
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
+        sagemaker_session=kwargs.sagemaker_session,
+        instance_type=kwargs.instance_type,
     )
 
     for key, value in default_hyperparameters.items():
@@ -615,6 +677,8 @@ def _add_metric_definitions_to_kwargs(
             model_version=kwargs.model_version,
             tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
             tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
+            sagemaker_session=kwargs.sagemaker_session,
+            instance_type=kwargs.instance_type,
         )
         or []
     )
@@ -643,6 +707,7 @@ def _add_estimator_extra_kwargs(
         region=kwargs.region,
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
+        sagemaker_session=kwargs.sagemaker_session,
     )
 
     for key, value in estimator_kwargs_to_add.items():
@@ -666,6 +731,7 @@ def _add_fit_extra_kwargs(kwargs: JumpStartEstimatorFitKwargs) -> JumpStartEstim
         region=kwargs.region,
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
+        sagemaker_session=kwargs.sagemaker_session,
     )
 
     for key, value in fit_kwargs_to_add.items():

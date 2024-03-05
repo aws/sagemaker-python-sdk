@@ -13,9 +13,9 @@
 """This module stores JumpStart implementation of Model class."""
 
 from __future__ import absolute_import
-import re
 
 from typing import Dict, List, Optional, Union
+from sagemaker import payloads
 from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
 from sagemaker.base_deserializers import BaseDeserializer
 from sagemaker.base_serializers import BaseSerializer
@@ -27,15 +27,25 @@ from sagemaker.jumpstart.factory.model import (
     get_default_predictor,
     get_deploy_kwargs,
     get_init_kwargs,
+    get_register_kwargs,
 )
+from sagemaker.jumpstart.types import JumpStartSerializablePayload
 from sagemaker.jumpstart.utils import is_valid_model_id
-from sagemaker.utils import stringify_object
-from sagemaker.model import MODEL_PACKAGE_ARN_PATTERN, Model
+from sagemaker.utils import stringify_object, format_tags, Tags
+from sagemaker.model import (
+    Model,
+    ModelPackage,
+)
 from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
 from sagemaker.predictor import PredictorBase
 from sagemaker.serverless.serverless_inference_config import ServerlessInferenceConfig
 from sagemaker.session import Session
 from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.model_metrics import ModelMetrics
+from sagemaker.metadata_properties import MetadataProperties
+from sagemaker.drift_check_baselines import DriftCheckBaselines
+from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
+from sagemaker.enums import EndpointType
 
 
 class JumpStartModel(Model):
@@ -53,7 +63,7 @@ class JumpStartModel(Model):
         region: Optional[str] = None,
         instance_type: Optional[str] = None,
         image_uri: Optional[Union[str, PipelineVariable]] = None,
-        model_data: Optional[Union[str, PipelineVariable]] = None,
+        model_data: Optional[Union[str, PipelineVariable, dict]] = None,
         role: Optional[str] = None,
         predictor_cls: Optional[callable] = None,
         env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
@@ -70,6 +80,7 @@ class JumpStartModel(Model):
         dependencies: Optional[List[str]] = None,
         git_config: Optional[Dict[str, str]] = None,
         model_package_arn: Optional[str] = None,
+        resources: Optional[ResourceRequirements] = None,
     ):
         """Initializes a ``JumpStartModel``.
 
@@ -95,8 +106,8 @@ class JumpStartModel(Model):
             instance_type (Optional[str]): The EC2 instance type to use when provisioning a hosting
                 endpoint. (Default: None).
             image_uri (Optional[Union[str, PipelineVariable]]): A Docker image URI. (Default: None).
-            model_data (Optional[Union[str, PipelineVariable]]): The S3 location of a SageMaker
-                model data ``.tar.gz`` file. (Default: None).
+            model_data (Optional[Union[str, PipelineVariable, dict]]): Location
+                of SageMaker model data. (Default: None).
             role (Optional[str]): An AWS IAM role (either name or full ARN). The Amazon
                 SageMaker training jobs and APIs that create Amazon SageMaker
                 endpoints use this role to access training data and model
@@ -251,6 +262,10 @@ class JumpStartModel(Model):
             model_package_arn (Optional[str]): An existing SageMaker Model Package arn,
                 can be just the name if your account owns the Model Package.
                 ``model_data`` is not required. (Default: None).
+            resources (Optional[ResourceRequirements]): The compute resource requirements
+                for a model to be deployed to an endpoint.
+                Only EndpointType.INFERENCE_COMPONENT_BASED supports this feature.
+                (Default: None).
         Raises:
             ValueError: If the model ID is not recognized by JumpStart.
         """
@@ -261,6 +276,7 @@ class JumpStartModel(Model):
                 model_version=model_version,
                 region=region,
                 script=JumpStartScriptScope.INFERENCE,
+                sagemaker_session=sagemaker_session,
             )
 
         if not _is_valid_model_id_hook():
@@ -296,6 +312,7 @@ class JumpStartModel(Model):
             dependencies=dependencies,
             git_config=git_config,
             model_package_arn=model_package_arn,
+            resources=resources,
         )
 
         self.orig_predictor_cls = predictor_cls
@@ -303,54 +320,125 @@ class JumpStartModel(Model):
         self.model_id = model_init_kwargs.model_id
         self.model_version = model_init_kwargs.model_version
         self.instance_type = model_init_kwargs.instance_type
+        self.resources = model_init_kwargs.resources
         self.tolerate_vulnerable_model = model_init_kwargs.tolerate_vulnerable_model
         self.tolerate_deprecated_model = model_init_kwargs.tolerate_deprecated_model
         self.region = model_init_kwargs.region
-        self.model_package_arn = model_init_kwargs.model_package_arn
+        self.sagemaker_session = model_init_kwargs.sagemaker_session
 
         super(JumpStartModel, self).__init__(**model_init_kwargs.to_kwargs_dict())
 
-    def _create_sagemaker_model(self, *args, **kwargs):  # pylint: disable=unused-argument
+        self.model_package_arn = model_init_kwargs.model_package_arn
+
+    def retrieve_all_examples(self) -> Optional[List[JumpStartSerializablePayload]]:
+        """Returns all example payloads associated with the model.
+
+        Raises:
+            NotImplementedError: If the scope is not supported.
+            ValueError: If the combination of arguments specified is not supported.
+            VulnerableJumpStartModelError: If any of the dependencies required by the script have
+                known security vulnerabilities.
+            DeprecatedJumpStartModelError: If the version of the model is deprecated.
+        """
+        return payloads.retrieve_all_examples(
+            model_id=self.model_id,
+            model_version=self.model_version,
+            region=self.region,
+            tolerate_deprecated_model=self.tolerate_deprecated_model,
+            tolerate_vulnerable_model=self.tolerate_vulnerable_model,
+            sagemaker_session=self.sagemaker_session,
+        )
+
+    def retrieve_example_payload(self) -> JumpStartSerializablePayload:
+        """Returns the example payload associated with the model.
+
+        Payload can be directly used with the `sagemaker.predictor.Predictor.predict(...)` function.
+
+        Raises:
+            NotImplementedError: If the scope is not supported.
+            ValueError: If the combination of arguments specified is not supported.
+            VulnerableJumpStartModelError: If any of the dependencies required by the script have
+                known security vulnerabilities.
+            DeprecatedJumpStartModelError: If the version of the model is deprecated.
+        """
+        return payloads.retrieve_example(
+            model_id=self.model_id,
+            model_version=self.model_version,
+            region=self.region,
+            tolerate_deprecated_model=self.tolerate_deprecated_model,
+            tolerate_vulnerable_model=self.tolerate_vulnerable_model,
+            sagemaker_session=self.sagemaker_session,
+        )
+
+    def _create_sagemaker_model(
+        self,
+        instance_type=None,
+        accelerator_type=None,
+        tags=None,
+        serverless_inference_config=None,
+        **kwargs,
+    ):
         """Create a SageMaker Model Entity
 
         Args:
-            args: Positional arguments coming from the caller. This class does not require
-                any so they are ignored.
-
+            instance_type (str): Optional. The EC2 instance type that this Model will be
+                used for, this is only used to determine if the image needs GPU
+                support or not. (Default: None).
+            accelerator_type (str): Optional. Type of Elastic Inference accelerator to
+                attach to an endpoint for model loading and inference, for
+                example, 'ml.eia1.medium'. If not specified, no Elastic
+                Inference accelerator will be attached to the endpoint. (Default: None).
+            tags (Optional[Tags]): Optional. The list of tags to add to
+                the model. Example: >>> tags = [{'Key': 'tagname', 'Value':
+                'tagvalue'}] For more information about tags, see
+                https://boto3.amazonaws.com/v1/documentation
+                /api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags
+                (Default: None).
+            serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
+                Optional. Specifies configuration related to serverless endpoint. Instance type is
+                not provided in serverless inference. So this is used to find image URIs.
+                (Default: None).
             kwargs: Keyword arguments coming from the caller. This class does not require
                 any so they are ignored.
         """
+
+        tags = format_tags(tags)
 
         # if the user inputs a model artifact uri, do not use model package arn to create
         # inference endpoint.
         if self.model_package_arn and not self._model_data_is_set:
             # When a ModelPackageArn is provided we just create the Model
-            match = re.match(MODEL_PACKAGE_ARN_PATTERN, self.model_package_arn)
-            if match:
-                model_package_name = match.group(3)
-            else:
-                # model_package_arn can be just the name if your account owns the Model Package
-                model_package_name = self.model_package_arn
-            container_def = {"ModelPackageName": self.model_package_arn}
-
-            if self.env != {}:
-                container_def["Environment"] = self.env
-
-            if self.name is None:
-                self._base_name = model_package_name
-
-            self._set_model_name_if_needed()
-
-            self.sagemaker_session.create_model(
-                self.name,
-                self.role,
-                container_def,
+            model_package = ModelPackage(
+                role=self.role,
+                model_data=self.model_data,
+                model_package_arn=self.model_package_arn,
+                sagemaker_session=self.sagemaker_session,
+                predictor_cls=self.predictor_cls,
                 vpc_config=self.vpc_config,
-                enable_network_isolation=self.enable_network_isolation(),
-                tags=kwargs.get("tags"),
             )
+            if self.name is not None:
+                model_package.name = self.name
+            if self.env is not None:
+                model_package.env = self.env
+            model_package._create_sagemaker_model(
+                instance_type=instance_type,
+                accelerator_type=accelerator_type,
+                tags=tags,
+                serverless_inference_config=serverless_inference_config,
+                **kwargs,
+            )
+            if self._base_name is None and model_package._base_name is not None:
+                self._base_name = model_package._base_name
+            if self.name is None and model_package.name is not None:
+                self.name = model_package.name
         else:
-            super(JumpStartModel, self)._create_sagemaker_model(*args, **kwargs)
+            super(JumpStartModel, self)._create_sagemaker_model(
+                instance_type=instance_type,
+                accelerator_type=accelerator_type,
+                tags=tags,
+                serverless_inference_config=serverless_inference_config,
+                **kwargs,
+            )
 
     def deploy(
         self,
@@ -360,7 +448,7 @@ class JumpStartModel(Model):
         deserializer: Optional[BaseDeserializer] = None,
         accelerator_type: Optional[str] = None,
         endpoint_name: Optional[str] = None,
-        tags: List[Dict[str, str]] = None,
+        tags: Optional[Tags] = None,
         kms_key: Optional[str] = None,
         wait: Optional[bool] = True,
         data_capture_config: Optional[DataCaptureConfig] = None,
@@ -371,6 +459,11 @@ class JumpStartModel(Model):
         container_startup_health_check_timeout: Optional[int] = None,
         inference_recommendation_id: Optional[str] = None,
         explainer_config: Optional[ExplainerConfig] = None,
+        accept_eula: Optional[bool] = None,
+        endpoint_logging: Optional[bool] = False,
+        resources: Optional[ResourceRequirements] = None,
+        managed_instance_scaling: Optional[str] = None,
+        endpoint_type: EndpointType = EndpointType.MODEL_BASED,
     ) -> PredictorBase:
         """Creates endpoint by calling base ``Model`` class `deploy` method.
 
@@ -411,7 +504,7 @@ class JumpStartModel(Model):
             endpoint_name (Optional[str]): The name of the endpoint to create (default:
                 None). If not specified, a unique endpoint name will be created.
                 (Default: None).
-            tags (Optional[List[dict[str, str]]]): The list of tags to attach to this
+            tags (Optional[Tags]): Tags to attach to this
                 specific endpoint. (Default: None).
             kms_key (Optional[str]): The ARN of the KMS key that is used to encrypt the
                 data on the storage volume attached to the instance hosting the
@@ -449,7 +542,22 @@ class JumpStartModel(Model):
                 (Default: None).
             explainer_config (Optional[sagemaker.explainer.ExplainerConfig]): Specifies online
                 explainability configuration for use with Amazon SageMaker Clarify. (Default: None).
-
+            accept_eula (bool): For models that require a Model Access Config, specify True or
+                False to indicate whether model terms of use have been accepted.
+                The `accept_eula` value must be explicitly defined as `True` in order to
+                accept the end-user license agreement (EULA) that some
+                models require. (Default: None).
+            endpoint_logging (Optiona[bool]): If set to true, live logging will be emitted as
+                the SageMaker Endpoint starts up. (Default: False).
+            resources (Optional[ResourceRequirements]): The compute resource requirements
+                for a model to be deployed to an endpoint. Only
+                EndpointType.INFERENCE_COMPONENT_BASED supports this feature.
+                (Default: None).
+            managed_instance_scaling (Optional[Dict]): Managed intance scaling options,
+                if configured Amazon SageMaker will manage the instance number behind the
+                endpoint.
+            endpoint_type (EndpointType): The type of endpoint used to deploy models.
+                (Default: EndpointType.MODEL_BASED).
         """
 
         deploy_kwargs = get_deploy_kwargs(
@@ -464,7 +572,7 @@ class JumpStartModel(Model):
             deserializer=deserializer,
             accelerator_type=accelerator_type,
             endpoint_name=endpoint_name,
-            tags=tags,
+            tags=format_tags(tags),
             kms_key=kms_key,
             wait=wait,
             data_capture_config=data_capture_config,
@@ -475,6 +583,12 @@ class JumpStartModel(Model):
             container_startup_health_check_timeout=container_startup_health_check_timeout,
             inference_recommendation_id=inference_recommendation_id,
             explainer_config=explainer_config,
+            sagemaker_session=self.sagemaker_session,
+            accept_eula=accept_eula,
+            endpoint_logging=endpoint_logging,
+            resources=resources,
+            managed_instance_scaling=managed_instance_scaling,
+            endpoint_type=endpoint_type,
         )
 
         predictor = super(JumpStartModel, self).deploy(**deploy_kwargs.to_kwargs_dict())
@@ -488,10 +602,129 @@ class JumpStartModel(Model):
                 region=self.region,
                 tolerate_deprecated_model=self.tolerate_deprecated_model,
                 tolerate_vulnerable_model=self.tolerate_vulnerable_model,
+                sagemaker_session=self.sagemaker_session,
             )
 
         # If a predictor class was passed, do not mutate predictor
         return predictor
+
+    def register(
+        self,
+        content_types: List[Union[str, PipelineVariable]] = None,
+        response_types: List[Union[str, PipelineVariable]] = None,
+        inference_instances: Optional[List[Union[str, PipelineVariable]]] = None,
+        transform_instances: Optional[List[Union[str, PipelineVariable]]] = None,
+        model_package_group_name: Optional[Union[str, PipelineVariable]] = None,
+        image_uri: Optional[Union[str, PipelineVariable]] = None,
+        model_metrics: Optional[ModelMetrics] = None,
+        metadata_properties: Optional[MetadataProperties] = None,
+        approval_status: Optional[Union[str, PipelineVariable]] = None,
+        description: Optional[str] = None,
+        drift_check_baselines: Optional[DriftCheckBaselines] = None,
+        customer_metadata_properties: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        validation_specification: Optional[Union[str, PipelineVariable]] = None,
+        domain: Optional[Union[str, PipelineVariable]] = None,
+        task: Optional[Union[str, PipelineVariable]] = None,
+        sample_payload_url: Optional[Union[str, PipelineVariable]] = None,
+        framework: Optional[Union[str, PipelineVariable]] = None,
+        framework_version: Optional[Union[str, PipelineVariable]] = None,
+        nearest_model_name: Optional[Union[str, PipelineVariable]] = None,
+        data_input_configuration: Optional[Union[str, PipelineVariable]] = None,
+        skip_model_validation: Optional[Union[str, PipelineVariable]] = None,
+    ):
+        """Creates a model package for creating SageMaker models or listing on Marketplace.
+
+        Args:
+            content_types (list[str] or list[PipelineVariable]): The supported MIME types
+                for the input data.
+            response_types (list[str] or list[PipelineVariable]): The supported MIME types
+                for the output data.
+            inference_instances (list[str] or list[PipelineVariable]): A list of the instance
+                types that are used to generate inferences in real-time (default: None).
+            transform_instances (list[str] or list[PipelineVariable]): A list of the instance types
+                on which a transformation job can be run or on which an endpoint can be deployed
+                (default: None).
+            model_package_group_name (str or PipelineVariable): Model Package Group name,
+                exclusive to `model_package_name`, using `model_package_group_name` makes the
+                Model Package versioned. Defaults to ``None``.
+            image_uri (str or PipelineVariable): Inference image URI for the container. Model class'
+                self.image will be used if it is None. Defaults to ``None``.
+            model_metrics (ModelMetrics): ModelMetrics object. Defaults to ``None``.
+            metadata_properties (MetadataProperties): MetadataProperties object.
+                Defaults to ``None``.
+            approval_status (str or PipelineVariable): Model Approval Status, values can be
+                "Approved", "Rejected", or "PendingManualApproval". Defaults to
+                ``PendingManualApproval``.
+            description (str): Model Package description. Defaults to ``None``.
+            drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
+            customer_metadata_properties (dict[str, str] or dict[str, PipelineVariable]):
+                A dictionary of key-value paired metadata properties (default: None).
+            domain (str or PipelineVariable): Domain values can be "COMPUTER_VISION",
+                "NATURAL_LANGUAGE_PROCESSING", "MACHINE_LEARNING" (default: None).
+            sample_payload_url (str or PipelineVariable): The S3 path where the sample payload
+                is stored (default: None).
+            task (str or PipelineVariable): Task values which are supported by Inference Recommender
+                are "FILL_MASK", "IMAGE_CLASSIFICATION", "OBJECT_DETECTION", "TEXT_GENERATION",
+                "IMAGE_SEGMENTATION", "CLASSIFICATION", "REGRESSION", "OTHER" (default: None).
+            framework (str or PipelineVariable): Machine learning framework of the model package
+                container image (default: None).
+            framework_version (str or PipelineVariable): Framework version of the Model Package
+                Container Image (default: None).
+            nearest_model_name (str or PipelineVariable): Name of a pre-trained machine learning
+                benchmarked by Amazon SageMaker Inference Recommender (default: None).
+            data_input_configuration (str or PipelineVariable): Input object for the model
+                (default: None).
+            skip_model_validation (str or PipelineVariable): Indicates if you want to skip model
+                validation. Values can be "All" or "None" (default: None).
+
+        Returns:
+            A `sagemaker.model.ModelPackage` instance.
+        """
+
+        register_kwargs = get_register_kwargs(
+            model_id=self.model_id,
+            model_version=self.model_version,
+            region=self.region,
+            tolerate_deprecated_model=self.tolerate_deprecated_model,
+            tolerate_vulnerable_model=self.tolerate_vulnerable_model,
+            sagemaker_session=self.sagemaker_session,
+            supported_content_types=content_types,
+            response_types=response_types,
+            inference_instances=inference_instances,
+            transform_instances=transform_instances,
+            model_package_group_name=model_package_group_name,
+            image_uri=image_uri,
+            model_metrics=model_metrics,
+            metadata_properties=metadata_properties,
+            approval_status=approval_status,
+            description=description,
+            drift_check_baselines=drift_check_baselines,
+            customer_metadata_properties=customer_metadata_properties,
+            validation_specification=validation_specification,
+            domain=domain,
+            task=task,
+            sample_payload_url=sample_payload_url,
+            framework=framework,
+            framework_version=framework_version,
+            nearest_model_name=nearest_model_name,
+            data_input_configuration=data_input_configuration,
+            skip_model_validation=skip_model_validation,
+        )
+
+        model_package = super(JumpStartModel, self).register(**register_kwargs.to_kwargs_dict())
+
+        def register_deploy_wrapper(*args, **kwargs):
+            if self.model_package_arn is not None:
+                return self.deploy(*args, **kwargs)
+
+            self.model_package_arn = model_package.model_package_arn
+            predictor = self.deploy(*args, **kwargs)
+            self.model_package_arn = None
+            return predictor
+
+        model_package.deploy = register_deploy_wrapper
+
+        return model_package
 
     def __str__(self) -> str:
         """Overriding str(*) method to make more human-readable."""

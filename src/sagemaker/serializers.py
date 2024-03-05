@@ -28,9 +28,13 @@ from sagemaker.base_serializers import (  # noqa: F401 # pylint: disable=W0611
     NumpySerializer,
     SimpleBaseSerializer,
     SparseMatrixSerializer,
+    TorchTensorSerializer,
+    StringSerializer,
 )
 
 from sagemaker.jumpstart import artifacts, utils as jumpstart_utils
+from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+from sagemaker.session import Session
 
 
 def retrieve_options(
@@ -39,6 +43,7 @@ def retrieve_options(
     model_version: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> List[BaseSerializer]:
     """Retrieves the supported serializers for the model matching the given arguments.
 
@@ -56,6 +61,10 @@ def retrieve_options(
         tolerate_deprecated_model (bool): True if deprecated models should be tolerated
             (exception not raised). False if these models should raise an exception.
             (Default: False).
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions. If not
+            specified, one is created using the default AWS configuration
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     Returns:
         List[SimpleBaseSerializer]: The supported serializers to use for the model.
 
@@ -74,6 +83,7 @@ def retrieve_options(
         region,
         tolerate_vulnerable_model,
         tolerate_deprecated_model,
+        sagemaker_session=sagemaker_session,
     )
 
 
@@ -83,6 +93,7 @@ def retrieve_default(
     model_version: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> BaseSerializer:
     """Retrieves the default serializer for the model matching the given arguments.
 
@@ -100,6 +111,10 @@ def retrieve_default(
         tolerate_deprecated_model (bool): True if deprecated models should be tolerated
             (exception not raised). False if these models should raise an exception.
             (Default: False).
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions. If not
+            specified, one is created using the default AWS configuration
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     Returns:
         SimpleBaseSerializer: The default serializer to use for the model.
 
@@ -118,4 +133,5 @@ def retrieve_default(
         region,
         tolerate_vulnerable_model,
         tolerate_deprecated_model,
+        sagemaker_session=sagemaker_session,
     )

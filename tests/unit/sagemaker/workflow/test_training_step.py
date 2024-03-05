@@ -23,16 +23,18 @@ from copy import deepcopy
 
 from sagemaker import Processor, Model
 from sagemaker.parameter import IntegerParameter
+from sagemaker.processing import ProcessingOutput
 from sagemaker.transformer import Transformer
 from sagemaker.tuner import HyperparameterTuner
 from sagemaker.workflow.pipeline_context import _PipelineConfig
 from sagemaker.workflow.parameters import ParameterString, ParameterBoolean
+from sagemaker.workflow.properties import PropertyFile
 
-from sagemaker.workflow.steps import TrainingStep
+from sagemaker.workflow.steps import ProcessingStep, TrainingStep
 from sagemaker.workflow.pipeline import Pipeline, PipelineGraph
 from sagemaker.workflow.pipeline_definition_config import PipelineDefinitionConfig
 from sagemaker.workflow.utilities import hash_files_or_dirs
-from sagemaker.workflow.functions import Join
+from sagemaker.workflow.functions import Join, JsonGet
 
 from sagemaker.estimator import Estimator
 from sagemaker.sklearn.estimator import SKLearn
@@ -73,6 +75,7 @@ DUMMY_S3_SCRIPT_PATH = "s3://dummy-s3/dummy_script.py"
 MOCKED_PIPELINE_CONFIG = _PipelineConfig(
     "MyPipeline",
     "MyTrainingStep",
+    None,
     hash_files_or_dirs([LOCAL_SOURCE_DIR] + LOCAL_DEPS),
     "config-hash-abcdefg",
     None,
@@ -82,6 +85,7 @@ _DEFINITION_CONFIG = PipelineDefinitionConfig(use_custom_job_prefix=True)
 MOCKED_PIPELINE_CONFIG_WITH_CUSTOM_PREFIX = _PipelineConfig(
     "MyPipelineWithCustomPrefix",
     "MyProcessingStep",
+    None,
     None,
     None,
     _DEFINITION_CONFIG,
@@ -871,3 +875,55 @@ def test_training_step_with_estimator_using_custom_prefixes(
         "Type": "Training",
         "Arguments": step_args,
     }
+
+
+def test_training_step_with_jsonget_instance_type(pipeline_session):
+    property_file = PropertyFile(
+        name="my-property-file", output_name="TestOutputName", path="processing_output.json"
+    )
+    processor = Processor(
+        image_uri=IMAGE_URI,
+        role=ROLE,
+        instance_count=1,
+        instance_type="c4.4xlarge",
+        sagemaker_session=pipeline_session,
+    )
+    process_arg = processor.run(outputs=[ProcessingOutput(output_name="TestOutputName")])
+    processing_step = ProcessingStep(
+        name="inputProcessingStep",
+        step_args=process_arg,
+        property_files=[property_file],
+    )
+
+    json_get_function = JsonGet(
+        step_name=processing_step.name, property_file=property_file.name, json_path="mse"
+    )
+
+    estimator = Estimator(
+        image_uri=IMAGE_URI,
+        role=ROLE,
+        instance_count=1,
+        instance_type=json_get_function,
+        sagemaker_session=pipeline_session,
+    )
+
+    training_step = TrainingStep(
+        name="MyTrainingStep",
+        step_args=estimator.fit(inputs=TrainingInput(s3_data=f"s3://{BUCKET}/train_manifest")),
+    )
+    pipeline = Pipeline(
+        name="MyPipeline",
+        steps=[processing_step, training_step],
+        sagemaker_session=pipeline_session,
+    )
+
+    steps = json.loads(pipeline.definition())["Steps"]
+    for step in steps:
+        if step["Type"] == "Processing":
+            continue
+        assert step["Arguments"]["ResourceConfig"]["InstanceType"] == {
+            "Std:JsonGet": {
+                "Path": "mse",
+                "PropertyFile": {"Get": "Steps.inputProcessingStep.PropertyFiles.my-property-file"},
+            }
+        }

@@ -58,9 +58,22 @@ for env in base /home/ec2-user/anaconda3/envs/*; do
 
     sudo -u ec2-user -E sh -c 'source /home/ec2-user/anaconda3/bin/activate "$env"'
 
+    if [ $env = base ]; then
+        ENV_PYTHON=python
+    else
+        ENV_PYTHON="$env/bin/python"
+    fi
+
+    PYTHON_VERSION=$($ENV_PYTHON -c"import sys; print('{}{}'.format(sys.version_info[0], sys.version_info[1]))")
+    if [ $PYTHON_VERSION -lt 38 ]; then
+        echo "Skipping because $env uses py$PYTHON_VERSION which is incompatible with SageMaker Python SDK"
+        sudo -u ec2-user -E sh -c 'source /home/ec2-user/anaconda3/bin/deactivate'
+        continue
+    fi
+
     echo "Updating SageMaker Python SDK..."
-    pip install --upgrade pip
-    pip install "$TARBALL_DIRECTORY/sagemaker.tar.gz"
+    $ENV_PYTHON -m pip install --upgrade pip
+    $ENV_PYTHON -m pip install "$TARBALL_DIRECTORY/sagemaker.tar.gz"
 
     sudo -u ec2-user -E sh -c 'source /home/ec2-user/anaconda3/bin/deactivate'
 
@@ -123,13 +136,14 @@ echo "set SAGEMAKER_ROLE_ARN=$SAGEMAKER_ROLE_ARN"
 --platformIdentifier notebook-al2-v2 \
 --consider-skips-failures \
 ./amazon-sagemaker-examples/sagemaker_processing/spark_distributed_data_processing/sagemaker-spark-processing.ipynb \
-./amazon-sagemaker-examples/advanced_functionality/kmeans_bring_your_own_model/kmeans_bring_your_own_model.ipynb \
-./amazon-sagemaker-examples/advanced_functionality/tensorflow_iris_byom/tensorflow_BYOM_iris.ipynb \
 ./amazon-sagemaker-examples/sagemaker-python-sdk/1P_kmeans_highlevel/kmeans_mnist.ipynb \
 ./amazon-sagemaker-examples/sagemaker-python-sdk/scikit_learn_randomforest/Sklearn_on_SageMaker_end2end.ipynb \
 ./amazon-sagemaker-examples/sagemaker-pipelines/tabular/abalone_build_train_deploy/sagemaker-pipelines-preprocess-train-evaluate-batch-transform.ipynb \
 
 # Skipping test until fix in example notebook to install docker-compose is complete
 #./amazon-sagemaker-examples/sagemaker-python-sdk/tensorflow_moving_from_framework_mode_to_script_mode/tensorflow_moving_from_framework_mode_to_script_mode.ipynb \
+
+# Skipping this test until we fix the notebook to use the correct version of TensorFlow for training and inference
+# ./amazon-sagemaker-examples/advanced_functionality/tensorflow_iris_byom/tensorflow_BYOM_iris.ipynb \
 
 (DeleteLifeCycleConfig "$LIFECYCLE_CONFIG_NAME")

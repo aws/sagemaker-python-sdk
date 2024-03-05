@@ -52,6 +52,7 @@ PRE_EXECUTION_COMMANDS = "PreExecutionCommands"
 ENVIRONMENT_VARIABLES = "EnvironmentVariables"
 IMAGE_URI = "ImageUri"
 INCLUDE_LOCAL_WORKDIR = "IncludeLocalWorkDir"
+CUSTOM_FILE_FILTER = "CustomFileFilter"
 INSTANCE_TYPE = "InstanceType"
 S3_KMS_KEY_ID = "S3KmsKeyId"
 S3_ROOT_URI = "S3RootUri"
@@ -80,6 +81,7 @@ MODEL = "Model"
 MONITORING_SCHEDULE = "MonitoringSchedule"
 ENDPOINT_CONFIG = "EndpointConfig"
 ENDPOINT = "Endpoint"
+INFERENCE_COMPONENT = "InferenceComponent"
 AUTO_ML_JOB = "AutoMLJob"
 COMPILATION_JOB = "CompilationJob"
 CUSTOM_PARAMETERS = "CustomParameters"
@@ -98,10 +100,21 @@ ENVIRONMENT = "Environment"
 CONTAINERS = "Containers"
 PRIMARY_CONTAINER = "PrimaryContainer"
 INFERENCE_SPECIFICATION = "InferenceSpecification"
+SERVE = "Serve"
+S3_MODEL_DATA_URI = "S3ModelDataUri"
+PORT = "Port"
 PROFILER_CONFIG = "ProfilerConfig"
 DISABLE_PROFILER = "DisableProfiler"
 ESTIMATOR = "Estimator"
 DEBUG_HOOK_CONFIG = "DebugHookConfig"
+LOCAL = "local"
+LOCAL_CODE = "local_code"
+SERVING_PORT = "serving_port"
+CONTAINER_CONFIG = "container_config"
+CONTAINER_ROOT = "container_root"
+REGION_NAME = "region_name"
+TELEMETRY_OPT_OUT = "TelemetryOptOut"
+NOTEBOOK_JOB = "NotebookJob"
 
 
 def _simple_path(*args: str):
@@ -225,6 +238,13 @@ MODEL_CONTAINERS_PATH = _simple_path(SAGEMAKER, MODEL, CONTAINERS)
 MODEL_VPC_CONFIG_PATH = _simple_path(SAGEMAKER, MODEL, VPC_CONFIG)
 MODEL_ENABLE_NETWORK_ISOLATION_PATH = _simple_path(SAGEMAKER, MODEL, ENABLE_NETWORK_ISOLATION)
 MODEL_EXECUTION_ROLE_ARN_PATH = _simple_path(SAGEMAKER, MODEL, EXECUTION_ROLE_ARN)
+ENDPOINT_CONFIG_VPC_CONFIG_PATH = _simple_path(SAGEMAKER, ENDPOINT_CONFIG, VPC_CONFIG)
+ENDPOINT_CONFIG_ENABLE_NETWORK_ISOLATION_PATH = _simple_path(
+    SAGEMAKER, ENDPOINT_CONFIG, ENABLE_NETWORK_ISOLATION
+)
+ENDPOINT_CONFIG_EXECUTION_ROLE_ARN_PATH = _simple_path(
+    SAGEMAKER, ENDPOINT_CONFIG, EXECUTION_ROLE_ARN
+)
 MODEL_PRIMARY_CONTAINER_PATH = _simple_path(SAGEMAKER, MODEL, PRIMARY_CONTAINER)
 MODEL_PRIMARY_CONTAINER_ENVIRONMENT_PATH = _simple_path(MODEL_PRIMARY_CONTAINER_PATH, ENVIRONMENT)
 PROCESSING_JOB_ENABLE_NETWORK_ISOLATION_PATH = _simple_path(
@@ -266,6 +286,7 @@ MODEL_PACKAGE_VALIDATION_ROLE_PATH = _simple_path(
 MODEL_PACKAGE_VALIDATION_PROFILES_PATH = _simple_path(
     SAGEMAKER, MODEL_PACKAGE, VALIDATION_SPECIFICATION, VALIDATION_PROFILES
 )
+REMOTE_FUNCTION_PATH = _simple_path(SAGEMAKER, PYTHON_SDK, MODULES, REMOTE_FUNCTION)
 REMOTE_FUNCTION_DEPENDENCIES = _simple_path(
     SAGEMAKER, PYTHON_SDK, MODULES, REMOTE_FUNCTION, DEPENDENCIES
 )
@@ -312,6 +333,20 @@ REMOTE_FUNCTION_ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION = _simple_path(
     REMOTE_FUNCTION,
     ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION,
 )
+NOTEBOOK_JOB_ROLE_ARN = _simple_path(SAGEMAKER, PYTHON_SDK, MODULES, NOTEBOOK_JOB, ROLE_ARN)
+NOTEBOOK_JOB_S3_ROOT_URI = _simple_path(SAGEMAKER, PYTHON_SDK, MODULES, NOTEBOOK_JOB, S3_ROOT_URI)
+NOTEBOOK_JOB_S3_KMS_KEY_ID = _simple_path(
+    SAGEMAKER, PYTHON_SDK, MODULES, NOTEBOOK_JOB, S3_KMS_KEY_ID
+)
+NOTEBOOK_JOB_VOLUME_KMS_KEY_ID = _simple_path(
+    SAGEMAKER, PYTHON_SDK, MODULES, NOTEBOOK_JOB, VOLUME_KMS_KEY_ID
+)
+NOTEBOOK_JOB_VPC_CONFIG_SUBNETS = _simple_path(
+    SAGEMAKER, PYTHON_SDK, MODULES, NOTEBOOK_JOB, VPC_CONFIG, SUBNETS
+)
+NOTEBOOK_JOB_VPC_CONFIG_SECURITY_GROUP_IDS = _simple_path(
+    SAGEMAKER, PYTHON_SDK, MODULES, NOTEBOOK_JOB, VPC_CONFIG, SECURITY_GROUP_IDS
+)
 MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION_PATH = _simple_path(
     SAGEMAKER,
     MONITORING_SCHEDULE,
@@ -343,6 +378,16 @@ SESSION_DEFAULT_S3_OBJECT_KEY_PREFIX_PATH = _simple_path(
 ESTIMATOR_DEBUG_HOOK_CONFIG_PATH = _simple_path(
     SAGEMAKER, PYTHON_SDK, MODULES, ESTIMATOR, DEBUG_HOOK_CONFIG
 )
+SERVE_ROLE_ARN = _simple_path(SAGEMAKER, PYTHON_SDK, MODULES, SERVE, ROLE_ARN)
+SERVE_S3_MODEL_DATA_URI = _simple_path(SAGEMAKER, PYTHON_SDK, MODULES, SERVE, S3_MODEL_DATA_URI)
+SERVE_INSTANCE_TYPE = _simple_path(SAGEMAKER, PYTHON_SDK, MODULES, SERVE, INSTANCE_TYPE)
+SERVE_ENVIRONMENT_VARIABLES = _simple_path(
+    SAGEMAKER, PYTHON_SDK, MODULES, SERVE, ENVIRONMENT_VARIABLES
+)
+ESTIMATOR_DEBUG_HOOK_CONFIG_PATH = _simple_path(
+    SAGEMAKER, PYTHON_SDK, MODULES, ESTIMATOR, DEBUG_HOOK_CONFIG
+)
+TELEMETRY_OPT_OUT_PATH = _simple_path(SAGEMAKER, PYTHON_SDK, MODULES, TELEMETRY_OPT_OUT)
 
 
 SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
@@ -689,6 +734,16 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                         },
                                         IMAGE_URI: {TYPE: "string"},
                                         INCLUDE_LOCAL_WORKDIR: {TYPE: "boolean"},
+                                        CUSTOM_FILE_FILTER: {
+                                            TYPE: OBJECT,
+                                            ADDITIONAL_PROPERTIES: False,
+                                            PROPERTIES: {
+                                                "IgnoreNamePatterns": {
+                                                    TYPE: "array",
+                                                    "items": {"type": "string"},
+                                                }
+                                            },
+                                        },
                                         INSTANCE_TYPE: {TYPE: "string"},
                                         JOB_CONDA_ENV: {TYPE: "string"},
                                         ROLE_ARN: {"$ref": "#/definitions/roleArn"},
@@ -698,6 +753,32 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                         VOLUME_KMS_KEY_ID: {"$ref": "#/definitions/kmsKeyId"},
                                         VPC_CONFIG: {"$ref": "#/definitions/vpcConfig"},
                                     },
+                                },
+                                NOTEBOOK_JOB: {
+                                    TYPE: OBJECT,
+                                    ADDITIONAL_PROPERTIES: False,
+                                    PROPERTIES: {
+                                        ROLE_ARN: {"$ref": "#/definitions/roleArn"},
+                                        S3_ROOT_URI: {"$ref": "#/definitions/s3Uri"},
+                                        S3_KMS_KEY_ID: {"$ref": "#/definitions/kmsKeyId"},
+                                        VOLUME_KMS_KEY_ID: {"$ref": "#/definitions/kmsKeyId"},
+                                        VPC_CONFIG: {"$ref": "#/definitions/vpcConfig"},
+                                    },
+                                },
+                                SERVE: {
+                                    TYPE: OBJECT,
+                                    ADDITIONAL_PROPERTIES: False,
+                                    PROPERTIES: {
+                                        ROLE_ARN: {"$ref": "#/definitions/roleArn"},
+                                        S3_MODEL_DATA_URI: {"$ref": "#/definitions/s3Uri"},
+                                        INSTANCE_TYPE: {TYPE: "string"},
+                                        ENVIRONMENT_VARIABLES: {
+                                            "$ref": "#/definitions/environmentVariables"
+                                        },
+                                    },
+                                },
+                                TELEMETRY_OPT_OUT: {
+                                    TYPE: "boolean",
                                 },
                             },
                         },
@@ -1067,4 +1148,32 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
             },
         },
     },
+}
+
+SAGEMAKER_PYTHON_SDK_LOCAL_MODE_CONFIG_SCHEMA = {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    TYPE: OBJECT,
+    ADDITIONAL_PROPERTIES: False,
+    PROPERTIES: {
+        LOCAL: {
+            TYPE: OBJECT,
+            ADDITIONAL_PROPERTIES: False,
+            PROPERTIES: {
+                LOCAL_CODE: {
+                    TYPE: "boolean",
+                },
+                REGION_NAME: {TYPE: "string"},
+                SERVING_PORT: {
+                    TYPE: "integer",
+                },
+                CONTAINER_ROOT: {
+                    TYPE: "string",
+                },
+                CONTAINER_CONFIG: {
+                    TYPE: OBJECT,
+                },
+            },
+        },
+    },
+    "required": [LOCAL],
 }

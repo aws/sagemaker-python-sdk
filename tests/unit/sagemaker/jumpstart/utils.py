@@ -13,9 +13,14 @@
 from __future__ import absolute_import
 import copy
 from typing import List
+import boto3
 
 from sagemaker.jumpstart.cache import JumpStartModelsCache
-from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME, JUMPSTART_REGION_NAME_SET
+from sagemaker.jumpstart.constants import (
+    JUMPSTART_DEFAULT_REGION_NAME,
+    JUMPSTART_LOGGER,
+    JUMPSTART_REGION_NAME_SET,
+)
 from sagemaker.jumpstart.types import (
     JumpStartCachedS3ContentKey,
     JumpStartCachedS3ContentValue,
@@ -83,18 +88,25 @@ def get_prototype_manifest(
 
 
 def get_prototype_model_spec(
-    region: str = None, model_id: str = None, version: str = None
+    region: str = None,
+    model_id: str = None,
+    version: str = None,
+    s3_client: boto3.client = None,
 ) -> JumpStartModelSpecs:
     """This function mocks cache accessor functions. For this mock,
     we only retrieve model specs based on the model ID.
     """
 
+    JUMPSTART_LOGGER.warning("some-logging-msg")
     specs = JumpStartModelSpecs(PROTOTYPICAL_MODEL_SPECS_DICT[model_id])
     return specs
 
 
 def get_special_model_spec(
-    region: str = None, model_id: str = None, version: str = None
+    region: str = None,
+    model_id: str = None,
+    version: str = None,
+    s3_client: boto3.client = None,
 ) -> JumpStartModelSpecs:
     """This function mocks cache accessor functions. For this mock,
     we only retrieve model specs based on the model ID. This is reserved
@@ -105,12 +117,34 @@ def get_special_model_spec(
     return specs
 
 
+def get_special_model_spec_for_inference_component_based_endpoint(
+    region: str = None,
+    model_id: str = None,
+    version: str = None,
+    s3_client: boto3.client = None,
+) -> JumpStartModelSpecs:
+    """This function mocks cache accessor functions. For this mock,
+    we only retrieve model specs based on the model ID and adding
+    inference component based endpoint specific specification.
+    This is reserved for special specs.
+    """
+    model_spec_dict = SPECIAL_MODEL_SPECS_DICT[model_id]
+    model_spec_dict["hosting_resource_requirements"] = {
+        "num_accelerators": 1,
+        "min_memory_mb": 34360,
+    }
+    model_spec_dict["dynamic_container_deployment_supported"] = True
+    specs = JumpStartModelSpecs(model_spec_dict)
+    return specs
+
+
 def get_spec_from_base_spec(
     _obj: JumpStartModelsCache = None,
     region: str = None,
     model_id: str = None,
     semantic_version_str: str = None,
     version: str = None,
+    s3_client: boto3.client = None,
 ) -> JumpStartModelSpecs:
 
     if version and semantic_version_str:

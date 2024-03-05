@@ -34,7 +34,7 @@ from sagemaker.estimator import Framework, EstimatorBase
 from sagemaker.inputs import TrainingInput, FileSystemInput
 from sagemaker.job import _Job
 from sagemaker.jumpstart.utils import (
-    add_jumpstart_tags,
+    add_jumpstart_uri_tags,
     get_jumpstart_base_name_if_jumpstart_model,
 )
 from sagemaker.parameter import (
@@ -52,6 +52,8 @@ from sagemaker.utils import (
     base_name_from_image,
     name_from_base,
     to_string,
+    format_tags,
+    Tags,
 )
 
 AMAZON_ESTIMATOR_MODULE = "sagemaker"
@@ -603,7 +605,7 @@ class HyperparameterTuner(object):
         max_jobs: Union[int, PipelineVariable] = None,
         max_parallel_jobs: Union[int, PipelineVariable] = 1,
         max_runtime_in_seconds: Optional[Union[int, PipelineVariable]] = None,
-        tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+        tags: Optional[Tags] = None,
         base_tuning_job_name: Optional[str] = None,
         warm_start_config: Optional[WarmStartConfig] = None,
         strategy_config: Optional[StrategyConfig] = None,
@@ -651,9 +653,8 @@ class HyperparameterTuner(object):
                 start (default: 1).
             max_runtime_in_seconds (int or PipelineVariable): The maximum time in seconds
                  that a hyperparameter tuning job can run.
-            tags (list[dict[str, str] or list[dict[str, PipelineVariable]]): List of tags for
-                labeling the tuning job (default: None). For more, see
-                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            tags (Optional[Tags]): Tags for labeling the tuning job (default: None).
+                For more, see https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
             base_tuning_job_name (str): Prefix for the hyperparameter tuning job
                 name when the :meth:`~sagemaker.tuner.HyperparameterTuner.fit`
                 method launches. If not specified, a default job name is
@@ -746,7 +747,7 @@ class HyperparameterTuner(object):
         self.max_parallel_jobs = max_parallel_jobs
         self.max_runtime_in_seconds = max_runtime_in_seconds
 
-        self.tags = tags
+        self.tags = format_tags(tags)
         self.base_tuning_job_name = base_tuning_job_name
         self._current_job_name = None
         self.latest_tuning_job = None
@@ -816,11 +817,12 @@ class HyperparameterTuner(object):
             if tag not in self.tags:
                 self.tags.append(tag)
 
-        self.tags = add_jumpstart_tags(
-            tags=self.tags,
-            training_script_uri=getattr(estimator, "source_dir", None),
-            training_model_uri=self._get_model_uri(estimator),
-        )
+        if self.sagemaker_session.settings.include_jumpstart_tags:
+            self.tags = add_jumpstart_uri_tags(
+                tags=self.tags,
+                training_script_uri=getattr(estimator, "source_dir", None),
+                training_model_uri=self._get_model_uri(estimator),
+            )
 
     def _prepare_job_name_for_tuning(self, job_name=None):
         """Set current job name before starting tuning."""
@@ -1923,7 +1925,8 @@ class HyperparameterTuner(object):
                 (default: 1).
             max_runtime_in_seconds (int): The maximum time in seconds
                  that a hyperparameter tuning job can run.
-            tags (list[dict]): List of tags for labeling the tuning job (default: None). For more,
+            tags (Optional[Tags]): List of tags for labeling the tuning job (default: None).
+                For more,
                 see https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
             warm_start_config (sagemaker.tuner.WarmStartConfig): A ``WarmStartConfig`` object that
                 has been initialized with the configuration defining the nature of warm start
@@ -1987,7 +1990,7 @@ class HyperparameterTuner(object):
             max_jobs=max_jobs,
             max_parallel_jobs=max_parallel_jobs,
             max_runtime_in_seconds=max_runtime_in_seconds,
-            tags=tags,
+            tags=format_tags(tags),
             warm_start_config=warm_start_config,
             early_stopping_type=early_stopping_type,
             random_seed=random_seed,

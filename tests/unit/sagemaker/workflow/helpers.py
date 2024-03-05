@@ -12,12 +12,18 @@
 # language governing permissions and limitations under the License.
 """Helper methods for testing."""
 from __future__ import absolute_import
+from typing import List, Optional, Union, Callable
 
 from sagemaker.utils import base_from_name
 from sagemaker.workflow.properties import Properties
-from sagemaker.workflow.steps import ConfigurableRetryStep, StepTypeEnum
+from sagemaker.workflow.retry import RetryPolicy
+from sagemaker.workflow.step_outputs import StepOutput
+from sagemaker.workflow.steps import ConfigurableRetryStep, Step, StepTypeEnum, CacheConfig
 from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.utilities import execute_job_functions
+from sagemaker.workflow.entities import RequestType
+
+from sagemaker.remote_function.job import _JobSettings
 
 
 def ordered(obj):
@@ -93,7 +99,7 @@ class CustomStep(ConfigurableRetryStep):
             name, StepTypeEnum.TRAINING, display_name, description, depends_on, retry_policies
         )
         # for testing property reference, we just use DescribeTrainingJobResponse shape here.
-        self._properties = Properties(name, shape_name="DescribeTrainingJobResponse")
+        self._properties = Properties(name, step=self, shape_name="DescribeTrainingJobResponse")
 
     @property
     def arguments(self):
@@ -115,4 +121,40 @@ class CustomStepCollection(StepCollection):
             step = CustomStep(name=f"{name}-{i}", depends_on=step_depends_on)
             steps.append(step)
             previous_step = step
-        super(CustomStepCollection, self).__init__(name, steps)
+        super(CustomStepCollection, self).__init__(name=name, steps=steps, depends_on=depends_on)
+
+
+class CustomFunctionStep(ConfigurableRetryStep):
+    def __init__(
+        self,
+        name: str,
+        display_name: str,
+        description: str,
+        job_settings: _JobSettings,
+        cache_config: Optional[CacheConfig] = None,
+        retry_policies: Optional[List[RetryPolicy]] = None,
+        depends_on: Optional[List[Union[Step, StepCollection, StepOutput]]] = None,
+        func: Callable = None,
+        func_args: tuple = (),
+        func_kwargs: dict = None,
+    ):
+
+        super(CustomFunctionStep, self).__init__(
+            name, StepTypeEnum.TRAINING, display_name, description, depends_on, retry_policies
+        )
+
+        self.func = func
+        self.func_args = func_args
+        self.func_kwargs = func_kwargs if func_kwargs else dict()
+        self.cache_config = cache_config
+        self.job_settings = job_settings
+
+        self._properties = Properties(step_name=name, shape_name="DescribeTrainingJobResponse")
+
+    @property
+    def arguments(self) -> RequestType:
+        return {}
+
+    @property
+    def properties(self) -> RequestType:
+        return self._properties

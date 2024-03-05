@@ -59,6 +59,11 @@ def monitor_uri(account, region=REGION):
     return MONITOR_URI_FORMAT.format(account, region, domain)
 
 
+def algo_uri_with_tag(algo, account, region, tag):
+    domain = ALTERNATE_DOMAINS.get(region, DOMAIN)
+    return IMAGE_URI_FORMAT.format(account, region, domain, algo, tag)
+
+
 def graviton_framework_uri(
     repo,
     fw_version,
@@ -74,9 +79,15 @@ def graviton_framework_uri(
     return IMAGE_URI_FORMAT.format(account, region, domain, repo, tag)
 
 
-def djl_framework_uri(repo, account, djl_version, primary_framework, region=REGION):
+def djl_framework_uri(repo, account, tag, region=REGION):
     domain = ALTERNATE_DOMAINS.get(region, DOMAIN)
-    tag = f"{djl_version}-{primary_framework}"
+    return IMAGE_URI_FORMAT.format(account, region, domain, repo, tag)
+
+
+def sagemaker_triton_framework_uri(repo, account, tag, processor="gpu", region=REGION):
+    domain = ALTERNATE_DOMAINS.get(region, DOMAIN)
+    if processor == "cpu":
+        tag = f"{tag}-cpu"
     return IMAGE_URI_FORMAT.format(account, region, domain, repo, tag)
 
 
@@ -87,6 +98,11 @@ def huggingface_llm_framework_uri(
     tag,
     region=REGION,
 ):
+    domain = ALTERNATE_DOMAINS.get(region, DOMAIN)
+    return IMAGE_URI_FORMAT.format(account, region, domain, repo, tag)
+
+
+def stabilityai_framework_uri(repo, account, tag, region=REGION):
     domain = ALTERNATE_DOMAINS.get(region, DOMAIN)
     return IMAGE_URI_FORMAT.format(account, region, domain, repo, tag)
 
