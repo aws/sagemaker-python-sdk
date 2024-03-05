@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 import argparse
+import logging
 import os
 import shutil
 import tarfile
@@ -35,6 +36,8 @@ from distutils.dir_util import copy_tree
 
 from os.path import abspath, realpath, dirname, normpath, join as joinpath
 from sys import stderr
+
+logger = logging.getLogger(__name__)
 
 
 def _get_resolved_path(path):
@@ -82,10 +85,10 @@ def _is_bad_link(info, base):
     return _is_bad_path(info.linkname, base=tip)
 
 
-def safe_members(members):
+def _get_safe_members(members):
     """A generator that yields members that are safe to extract.
 
-    It checks for bad paths and bad links.
+    It filters out bad paths and bad links.
 
     Args:
         members (list): A list of members to check.
@@ -97,11 +100,11 @@ def safe_members(members):
 
     for file_info in members:
         if _is_bad_path(file_info.name, base):
-            print(stderr, file_info.name, "is blocked (illegal path)")
+            logger.error(stderr, file_info.name, "is blocked (illegal path)")
         elif file_info.issym() and _is_bad_link(file_info, base):
-            print(stderr, file_info.name, "is blocked: Symlink to", file_info.linkname)
+            logger.error(stderr, file_info.name, "is blocked: Symlink to", file_info.linkname)
         elif file_info.islnk() and _is_bad_link(file_info, base):
-            print(stderr, file_info.name, "is blocked: Hard link to", file_info.linkname)
+            logger.error(stderr, file_info.name, "is blocked: Hard link to", file_info.linkname)
         else:
             yield file_info
 
@@ -109,8 +112,11 @@ def safe_members(members):
 def custom_extractall_tarfile(tar, extract_path):
     """Extract a tarfile, optionally using data_filter if available.
 
+    # TODO: The function and it's usages can be deprecated once SageMaker Python SDK
+    is upgraded to use Python 3.12+
+
     If the tarfile has a data_filter attribute, it will be used to extract the contents of the file.
-    Otherwise, the safe_members function will be used to check for bad paths and bad links.
+    Otherwise, the _get_safe_members function will be used to filter bad paths and bad links.
 
     Args:
         tar (tarfile.TarFile): The opened tarfile object.
@@ -119,10 +125,10 @@ def custom_extractall_tarfile(tar, extract_path):
     Returns:
         None
     """
-    if hasattr(tar, "data_filter"):
+    if hasattr(tarfile, "data_filter"):
         tar.extractall(path=extract_path, filter="data")
     else:
-        tar.extractall(path=extract_path, members=safe_members(tar))
+        tar.extractall(path=extract_path, members=_get_safe_members(tar))
 
 
 def repack(inference_script, model_archive, dependencies=None, source_dir=None):  # pragma: no cover
