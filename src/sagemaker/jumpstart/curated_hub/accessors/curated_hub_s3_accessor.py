@@ -52,7 +52,7 @@ class CuratedHubS3Accessor(ModelDependencyS3Accessor):
         """Retrieves s3 bucket name."""
         return self._hub_s3_config.bucket
     
-    def get_uncompresssed_inference_artifact_s3_reference(self, model_specs: JumpStartModelSpecs
+    def get_uncompressed_inference_artifact_s3_reference(self, model_specs: JumpStartModelSpecs
     ) -> bool:
         """Retrieves s3 reference for model inference artifact."""
         return S3ObjectLocation(
@@ -85,7 +85,7 @@ class CuratedHubS3Accessor(ModelDependencyS3Accessor):
             f"/{PRIVATE_MODEL_HOSTING_SCRIPT_S3_SUFFIX}",
         )
     
-    def get_uncompresssed_training_artifact_s3_reference(self, model_specs: JumpStartModelSpecs
+    def get_uncompressed_training_artifact_s3_reference(self, model_specs: JumpStartModelSpecs
     ) -> bool:
         """Retrieves s3 reference for model inference artifact."""
         return S3ObjectLocation(

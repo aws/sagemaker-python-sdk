@@ -112,10 +112,10 @@ class ModelDocumentCreator:
 
         dependencies.append(
             Dependency(
-                DependencyOriginPath=self._src_s3_accessor.get_uncompresssed_inference_artifact_s3_reference(
+                DependencyOriginPath=self._src_s3_accessor.get_uncompressed_inference_artifact_s3_reference(
                     model_specs
                 ).get_uri(),
-                DependencyCopyPath=self._dst_s3_accessor.get_uncompresssed_inference_artifact_s3_reference(
+                DependencyCopyPath=self._dst_s3_accessor.get_uncompressed_inference_artifact_s3_reference(
                     model_specs
                 ).get_uri(),
                 DependencyType=DependencyType.ARTIFACT,
@@ -123,10 +123,10 @@ class ModelDocumentCreator:
         )
         dependencies.append(
             Dependency(
-                DependencyOriginPath=self._src_s3_accessor.get_uncompresssed_inference_artifact_s3_reference(
+                DependencyOriginPath=self._src_s3_accessor.get_uncompressed_inference_artifact_s3_reference(
                     model_specs
                 ).get_uri(),
-                DependencyCopyPath=self._dst_s3_accessor.get_uncompresssed_inference_artifact_s3_reference(
+                DependencyCopyPath=self._dst_s3_accessor.get_uncompressed_inference_artifact_s3_reference(
                     model_specs
                 ).get_uri(),
                 DependencyType=DependencyType.SCRIPT,
@@ -229,10 +229,10 @@ class ModelDocumentCreator:
     
     def _get_uncompressed_training_artifact_s3_reference_dependency(self, model_specs: JumpStartModelSpecs) -> Dependency:
         return Dependency(
-            DependencyOriginPath=self._src_s3_accessor.get_uncompresssed_training_artifact_s3_reference(
+            DependencyOriginPath=self._src_s3_accessor.get_uncompressed_training_artifact_s3_reference(
                 model_specs
             ).get_uri(),
-            DependencyCopyPath=self._dst_s3_accessor.get_uncompresssed_training_artifact_s3_reference(
+            DependencyCopyPath=self._dst_s3_accessor.get_uncompressed_training_artifact_s3_reference(
                 model_specs
             ).get_uri(),
             DependencyType=DependencyType.ARTIFACT,
@@ -270,7 +270,7 @@ class ModelDocumentCreator:
     def _get_model_artifact_config(self, model_specs: JumpStartModelSpecs) -> ModelArtifactConfig:
         if model_specs.hosting_artifact_s3_data_type == UNCOMPRESSED_ARTIFACTS_VALUE: 
             return ModelArtifactConfig(
-                  ArtifactLocation=self._dst_s3_accessor.get_uncompresssed_inference_artifact_s3_reference(
+                  ArtifactLocation=self._dst_s3_accessor.get_uncompressed_inference_artifact_s3_reference(
                       model_specs
                   ).get_uri()
             )
@@ -328,7 +328,7 @@ class ModelDocumentCreator:
     def _get_training_artifact_config(self, model_specs: JumpStartModelSpecs) -> ModelArtifactConfig:
         if model_specs.training_artifact_s3_data_type == UNCOMPRESSED_ARTIFACTS_VALUE: 
             return ModelArtifactConfig(
-                  ArtifactLocation=self._dst_s3_accessor.get_uncompresssed_training_artifact_s3_reference(
+                  ArtifactLocation=self._dst_s3_accessor.get_uncompressed_training_artifact_s3_reference(
                       model_specs
                   ).get_uri()
             )

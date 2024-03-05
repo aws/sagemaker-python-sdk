@@ -91,10 +91,10 @@ class ContentCopier:
         print(f"Pulling hosting_artifact_s3_data_type: {model_specs.hosting_artifact_s3_data_type}")
 
         if model_specs.hosting_artifact_s3_data_type == UNCOMPRESSED_ARTIFACTS_VALUE:
-          src_uncompressed_inference_prefix = self._src_s3_accessor.get_uncompresssed_inference_artifact_s3_reference(
+          src_uncompressed_inference_prefix = self._src_s3_accessor.get_uncompressed_inference_artifact_s3_reference(
               model_specs
           )
-          dst_uncompressed_inference_prefix = self._dst_s3_accessor.get_uncompresssed_inference_artifact_s3_reference(
+          dst_uncompressed_inference_prefix = self._dst_s3_accessor.get_uncompressed_inference_artifact_s3_reference(
               model_specs
           )
           copy_configs.extend(self._get_s3_dir_copy_configs(src_uncompressed_inference_prefix, dst_uncompressed_inference_prefix))
@@ -141,10 +141,10 @@ class ContentCopier:
         print(f"Pulling training_artifact_s3_data_type: {model_specs.training_artifact_s3_data_type}")
 
         if model_specs.training_artifact_s3_data_type == UNCOMPRESSED_ARTIFACTS_VALUE:
-          src_uncompressed_training_prefix = self._src_s3_accessor.get_uncompresssed_training_artifact_s3_reference(
+          src_uncompressed_training_prefix = self._src_s3_accessor.get_uncompressed_training_artifact_s3_reference(
               model_specs
           )
-          dst_uncompressed_training_prefix = self._dst_s3_accessor.get_uncompresssed_training_artifact_s3_reference(
+          dst_uncompressed_training_prefix = self._dst_s3_accessor.get_uncompressed_training_artifact_s3_reference(
               model_specs
           )
           copy_configs.extend(self._get_s3_dir_copy_configs(src_uncompressed_training_prefix, dst_uncompressed_training_prefix))

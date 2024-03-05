@@ -27,7 +27,7 @@ class ModelDependencyS3Accessor:
         """Retrieves s3 bucket name"""
 
     @abstractmethod
-    def get_uncompresssed_inference_artifact_s3_reference(
+    def get_uncompressed_inference_artifact_s3_reference(
         self, model_specs: JumpStartModelSpecs
     ) -> S3ObjectLocation:
         """Retrieves s3 reference for uncompressed model inference artifact."""
@@ -39,7 +39,7 @@ class ModelDependencyS3Accessor:
         """Retrieves s3 reference for model inference artifact"""
 
     @abstractmethod
-    def get_uncompresssed_training_artifact_s3_reference(
+    def get_uncompressed_training_artifact_s3_reference(
         self, model_specs: JumpStartModelSpecs
     ) -> S3ObjectLocation:
         """Retrieves s3 reference for uncompressed model training artifact."""

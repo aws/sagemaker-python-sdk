@@ -40,7 +40,7 @@ class PublicHubS3Accessor(ModelDependencyS3Accessor):
         """Retrieves s3 bucket"""
         return self._bucket
     
-    def get_uncompresssed_inference_artifact_s3_reference(self, model_specs: JumpStartModelSpecs
+    def get_uncompressed_inference_artifact_s3_reference(self, model_specs: JumpStartModelSpecs
     ) -> bool:
         """Retrieves s3 reference for uncompressed model inference artifact."""
         return self.get_inference_artifact_s3_reference(model_specs)
@@ -53,7 +53,7 @@ class PublicHubS3Accessor(ModelDependencyS3Accessor):
             self._jumpstart_artifact_s3_uri(JumpStartScriptScope.INFERENCE, model_specs)
         )
     
-    def get_uncompresssed_training_artifact_s3_reference(self, model_specs: JumpStartModelSpecs
+    def get_uncompressed_training_artifact_s3_reference(self, model_specs: JumpStartModelSpecs
     ) -> bool:
         """Retrieves s3 reference for uncompressed model training artifact."""
         return self.get_training_artifact_s3_reference(model_specs)
