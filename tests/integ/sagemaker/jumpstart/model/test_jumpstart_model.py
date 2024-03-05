@@ -286,3 +286,17 @@ def test_proprietary_jumpstart_model(setup):
     response = predictor.predict(payload)
 
     assert response is not None
+
+
+def test_jumpstart_payload(setup):
+    model_id = "ai21-jurassic-2-light"
+
+    model = JumpStartModel(
+        model_id=model_id,
+        model_version="2.0.004",
+        role=get_sm_session().get_caller_identity_arn(),
+        sagemaker_session=get_sm_session(),
+    )
+
+    resp = model.retrieve_example_payload()
+    print(resp)
