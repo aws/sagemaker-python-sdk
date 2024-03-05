@@ -223,13 +223,12 @@ def create_marketplace_model_table():
     marketplace_content_entries = []
     for model in sdk_manifest:
         model_spec = get_jumpstart_sdk_spec(model["spec_key"])
-        model_source = get_model_source(model_spec.get("url"))
         marketplace_content_entries.append("   * - {}\n".format(model_spec["model_id"]))
         marketplace_content_entries.append("     - {}\n".format(False))  # TODO: support training
         marketplace_content_entries.append("     - {}\n".format(model["version"]))
         marketplace_content_entries.append("     - {}\n".format(model["min_version"]))
         marketplace_content_entries.append(
-            "     - `{} <{}>`__ |external-link|\n".format(model_source, model_spec.get("url"))
+            "     - `{} <{}>`__ |external-link|\n".format("Source", model_spec.get("url"))
         )
     return marketpkace_content_intro + marketplace_content_entries + ["\n"]
 
