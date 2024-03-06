@@ -1114,7 +1114,9 @@ class TestModelBuilder(unittest.TestCase):
 
         mock_image_uris_retrieve.return_value = "https://some-image-uri"
 
-        model_builder = ModelBuilder(model="bert-base-uncased:text-generation")
+        model_builder = ModelBuilder(
+            model="bert-base-uncased", model_metadata={"HF_TASK": "text-generation"}
+        )
         model_builder.build(sagemaker_session=mock_session)
 
         self.assertIsNotNone(model_builder.schema_builder)
@@ -1157,11 +1159,14 @@ class TestModelBuilder(unittest.TestCase):
         mock_model_urllib.request.Request.side_effect = Mock()
 
         mock_image_uris_retrieve.return_value = "https://some-image-uri"
-        model_ids_with_invalid_task = ["bert-base-uncased:invalid-task", "bert-base-uncased:"]
+        model_ids_with_invalid_task = {
+            "bert-base-uncased": "invalid-task",
+            "bert-large-uncased-whole-word-masking-finetuned-squad": "",
+        }
         for model_id in model_ids_with_invalid_task:
-            model_builder = ModelBuilder(model=model_id)
+            provided_task = model_ids_with_invalid_task[model_id]
+            model_builder = ModelBuilder(model=model_id, model_metadata={"HF_TASK": provided_task})
 
-            provided_task = model_id.split(":")[1]
             self.assertRaisesRegex(
                 TaskNotFoundException,
                 f"Error Message: Schema builder for {provided_task} could not be found.",
@@ -1187,9 +1192,11 @@ class TestModelBuilder(unittest.TestCase):
         mock_model_uris_retrieve.side_effect = KeyError
 
         mock_image_uris_retrieve.return_value = "https://some-image-uri"
-        invalid_model_ids_with_task = [":fill-mask", "bert-base-uncased;fill-mask"]
+        invalid_model_id = ""
+        provided_task = "fill-mask"
 
-        for model_id in invalid_model_ids_with_task:
-            model_builder = ModelBuilder(model=model_id)
-            with self.assertRaises(Exception):
-                model_builder.build(sagemaker_session=mock_session)
+        model_builder = ModelBuilder(
+            model=invalid_model_id, model_metadata={"HF_TASK": provided_task}
+        )
+        with self.assertRaises(Exception):
+            model_builder.build(sagemaker_session=mock_session)

@@ -118,9 +118,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
             into a stream. All translations between the server and the client are handled
             automatically with the specified input and output.
         model (Optional[Union[object, str]): Model object (with ``predict`` method to perform
-            inference) or a HuggingFace/JumpStart Model ID (followed by ``:task`` if you need
-            to override the task, e.g. bert-base-uncased:fill-mask). Either ``model`` or
-            ``inference_spec`` is required for the model builder to build the artifact.
+            inference) or a HuggingFace/JumpStart Model ID. Either ``model`` or ``inference_spec``
+            is required for the model builder to build the artifact.
         inference_spec (InferenceSpec): The inference spec file with your customized
             ``invoke`` and ``load`` functions.
         image_uri (Optional[str]): The container image uri (which is derived from a
@@ -140,6 +139,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
             to the model server). Possible values for this argument are
             ``TORCHSERVE``, ``MMS``, ``TENSORFLOW_SERVING``, ``DJL_SERVING``,
             ``TRITON``, and``TGI``.
+        model_metadata (Optional[Dict[str, str]): Dictionary used to override the HuggingFace
+            model metadata.
     """
 
     model_path: Optional[str] = field(
@@ -206,7 +207,6 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
             "help": (
                 'Model object with "predict" method to perform inference '
                 "or HuggingFace/JumpStart Model ID"
-                "or if you need to override task, provide input as ModelID:Task"
             )
         },
     )
@@ -236,6 +236,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
     )
     model_server: Optional[ModelServer] = field(
         default=None, metadata={"help": "Define the model server to deploy to."}
+    )
+    model_metadata: Optional[Dict[str, str]] = field(
+        default=None, metadata={"help": "Define the model metadata to override"}
     )
 
     def _build_validations(self):
@@ -613,9 +616,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
 
         if isinstance(self.model, str):
             model_task = None
-            if ":" in self.model:
-                model_task = self.model.split(":")[1]
-                self.model = self.model.split(":")[0]
+            if self.model_metadata:
+                model_task = self.model_metadata.get("HF_TASK")
             if self._is_jumpstart_model_id():
                 return self._build_for_jumpstart()
             if self._is_djl():  # pylint: disable=R1705

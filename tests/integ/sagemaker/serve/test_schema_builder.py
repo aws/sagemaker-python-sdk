@@ -115,7 +115,7 @@ def test_model_builder_negative_path(sagemaker_session):
 def test_model_builder_happy_path_with_task_provided(
     model_id, task_provided, sagemaker_session, gpu_instance_type
 ):
-    model_builder = ModelBuilder(model=f"{model_id}:{task_provided}")
+    model_builder = ModelBuilder(model=model_id, model_metadata={"HF_TASK": task_provided})
 
     model = model_builder.build(sagemaker_session=sagemaker_session)
 
@@ -156,7 +156,9 @@ def test_model_builder_happy_path_with_task_provided(
 
 
 def test_model_builder_negative_path_with_invalid_task(sagemaker_session):
-    model_builder = ModelBuilder(model="bert-base-uncased:invalid-task")
+    model_builder = ModelBuilder(
+        model="bert-base-uncased", model_metadata={"HF_TASK": "invalid-task"}
+    )
 
     with pytest.raises(
         TaskNotFoundException,
