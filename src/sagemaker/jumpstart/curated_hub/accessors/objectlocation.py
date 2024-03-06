@@ -15,6 +15,8 @@ from __future__ import absolute_import
 from dataclasses import dataclass
 from typing import Dict
 
+from sagemaker.s3_utils import parse_s3_url
+
 
 @dataclass
 class S3ObjectLocation:
@@ -37,10 +39,9 @@ class S3ObjectLocation:
 
 def create_s3_object_reference_from_uri(s3_uri: str) -> S3ObjectLocation:
     """Utiity to help generate an S3 object reference"""
-    uri_with_s3_prefix_removed = s3_uri.replace("s3://", "", 1)
-    uri_split = uri_with_s3_prefix_removed.split("/")
+    bucket, key = parse_s3_url(s3_uri)
 
     return S3ObjectLocation(
-        bucket=uri_split[0],
-        key="/".join(uri_split[1:]) if len(uri_split) > 1 else "",
+        bucket=bucket,
+        key=key,
     )

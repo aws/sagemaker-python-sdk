@@ -73,14 +73,16 @@ def test_create_with_no_bucket_name(
 ):
     create_hub = {"HubArn": f"arn:aws:sagemaker:us-east-1:123456789123:hub/{hub_name}"}
     sagemaker_session.create_hub = Mock(return_value=create_hub)
-    sagemaker_session.describe_hub.return_value = {"S3StorageConfig": {"S3OutputPath": None}}
+    sagemaker_session.describe_hub.return_value = {
+        "S3StorageConfig": {"S3OutputPath": hub_bucket_name}
+    }
     hub = CuratedHub(hub_name=hub_name, sagemaker_session=sagemaker_session)
     request = {
         "hub_name": hub_name,
         "hub_description": hub_description,
-        "hub_bucket_name": "sagemaker-hubs-us-east-1-123456789123",
         "hub_display_name": hub_display_name,
         "hub_search_keywords": hub_search_keywords,
+        "s3_storage_config": {"S3OutputPath": "s3://sagemaker-hubs-us-east-1-123456789123"},
         "tags": tags,
     }
     response = hub.create(
@@ -118,13 +120,15 @@ def test_create_with_bucket_name(
 ):
     create_hub = {"HubArn": f"arn:aws:sagemaker:us-east-1:123456789123:hub/{hub_name}"}
     sagemaker_session.create_hub = Mock(return_value=create_hub)
-    hub = CuratedHub(hub_name=hub_name, sagemaker_session=sagemaker_session)
+    hub = CuratedHub(
+        hub_name=hub_name, sagemaker_session=sagemaker_session, bucket_name=hub_bucket_name
+    )
     request = {
         "hub_name": hub_name,
         "hub_description": hub_description,
-        "hub_bucket_name": hub_bucket_name,
         "hub_display_name": hub_display_name,
         "hub_search_keywords": hub_search_keywords,
+        "s3_storage_config": {"S3OutputPath": "s3://mock-bucket-123"},
         "tags": tags,
     }
     response = hub.create(
@@ -144,7 +148,7 @@ def test_sync_kicks_off_parallel_syncs(
     mock_list_models, mock_sync_public_models, mock_get_model_specs, sagemaker_session
 ):
     mock_get_model_specs.side_effect = get_spec_from_base_spec
-    mock_list_models.return_value = []
+    mock_list_models.return_value = {"HubContentSummaries": []}
     hub_name = "mock_hub_name"
     model_one = {"model_id": "mock-model-one-huggingface"}
     model_two = {"model_id": "mock-model-two-pytorch", "version": "1.0.2"}
@@ -163,25 +167,27 @@ def test_sync_filters_models_that_exist_in_hub(
     mock_list_models, mock_sync_public_models, mock_get_model_specs, sagemaker_session
 ):
     mock_get_model_specs.side_effect = get_spec_from_base_spec
-    mock_list_models.return_value = [
-        {
-            "name": "mock-model-two-pytorch",
-            "version": "1.0.2",
-            "search_keywords": [
-                "@jumpstart-model-id:model-two-pytorch",
-                "@jumpstart-model-version:1.0.2",
-            ],
-        },
-        {"name": "mock-model-three-nonsense", "version": "1.0.2", "search_keywords": []},
-        {
-            "name": "mock-model-four-huggingface",
-            "version": "2.0.2",
-            "search_keywords": [
-                "@jumpstart-model-id:model-four-huggingface",
-                "@jumpstart-model-version:2.0.2",
-            ],
-        },
-    ]
+    mock_list_models.return_value = {
+        "HubContentSummaries": [
+            {
+                "name": "mock-model-two-pytorch",
+                "version": "1.0.2",
+                "search_keywords": [
+                    "@jumpstart-model-id:model-two-pytorch",
+                    "@jumpstart-model-version:1.0.2",
+                ],
+            },
+            {"name": "mock-model-three-nonsense", "version": "1.0.2", "search_keywords": []},
+            {
+                "name": "mock-model-four-huggingface",
+                "version": "2.0.2",
+                "search_keywords": [
+                    "@jumpstart-model-id:model-four-huggingface",
+                    "@jumpstart-model-version:2.0.2",
+                ],
+            },
+        ]
+    }
     hub_name = "mock_hub_name"
     model_one = {"model_id": "mock-model-one-huggingface"}
     model_two = {"model_id": "mock-model-two-pytorch", "version": "1.0.2"}
@@ -200,29 +206,31 @@ def test_sync_updates_old_models_in_hub(
     mock_list_models, mock_sync_public_models, mock_get_model_specs, sagemaker_session
 ):
     mock_get_model_specs.side_effect = get_spec_from_base_spec
-    mock_list_models.return_value = [
-        {
-            "name": "mock-model-two-pytorch",
-            "version": "1.0.1",
-            "search_keywords": [
-                "@jumpstart-model-id:model-two-pytorch",
-                "@jumpstart-model-version:1.0.2",
-            ],
-        },
-        {
-            "name": "mock-model-three-nonsense",
-            "version": "1.0.2",
-            "search_keywords": ["tag-one", "tag-two"],
-        },
-        {
-            "name": "mock-model-four-huggingface",
-            "version": "2.0.2",
-            "search_keywords": [
-                "@jumpstart-model-id:model-four-huggingface",
-                "@jumpstart-model-version:2.0.2",
-            ],
-        },
-    ]
+    mock_list_models.return_value = {
+        "HubContentSummaries": [
+            {
+                "name": "mock-model-two-pytorch",
+                "version": "1.0.1",
+                "search_keywords": [
+                    "@jumpstart-model-id:model-two-pytorch",
+                    "@jumpstart-model-version:1.0.2",
+                ],
+            },
+            {
+                "name": "mock-model-three-nonsense",
+                "version": "1.0.2",
+                "search_keywords": ["tag-one", "tag-two"],
+            },
+            {
+                "name": "mock-model-four-huggingface",
+                "version": "2.0.2",
+                "search_keywords": [
+                    "@jumpstart-model-id:model-four-huggingface",
+                    "@jumpstart-model-version:2.0.2",
+                ],
+            },
+        ]
+    }
     hub_name = "mock_hub_name"
     model_one = {"model_id": "mock-model-one-huggingface"}
     model_two = {"model_id": "mock-model-two-pytorch", "version": "1.0.2"}
@@ -241,29 +249,31 @@ def test_sync_passes_newer_hub_models(
     mock_list_models, mock_sync_public_models, mock_get_model_specs, sagemaker_session
 ):
     mock_get_model_specs.side_effect = get_spec_from_base_spec
-    mock_list_models.return_value = [
-        {
-            "name": "mock-model-two-pytorch",
-            "version": "1.0.3",
-            "search_keywords": [
-                "@jumpstart-model-id:model-two-pytorch",
-                "@jumpstart-model-version:1.0.2",
-            ],
-        },
-        {
-            "name": "mock-model-three-nonsense",
-            "version": "1.0.2",
-            "search_keywords": ["tag-one", "tag-two"],
-        },
-        {
-            "name": "mock-model-four-huggingface",
-            "version": "2.0.2",
-            "search_keywords": [
-                "@jumpstart-model-id:model-four-huggingface",
-                "@jumpstart-model-version:2.0.2",
-            ],
-        },
-    ]
+    mock_list_models.return_value = {
+        "HubContentSummaries": [
+            {
+                "name": "mock-model-two-pytorch",
+                "version": "1.0.3",
+                "search_keywords": [
+                    "@jumpstart-model-id:model-two-pytorch",
+                    "@jumpstart-model-version:1.0.2",
+                ],
+            },
+            {
+                "name": "mock-model-three-nonsense",
+                "version": "1.0.2",
+                "search_keywords": ["tag-one", "tag-two"],
+            },
+            {
+                "name": "mock-model-four-huggingface",
+                "version": "2.0.2",
+                "search_keywords": [
+                    "@jumpstart-model-id:model-four-huggingface",
+                    "@jumpstart-model-version:2.0.2",
+                ],
+            },
+        ]
+    }
     hub_name = "mock_hub_name"
     model_one = {"model_id": "mock-model-one-huggingface"}
     model_two = {"model_id": "mock-model-two-pytorch", "version": "1.0.2"}

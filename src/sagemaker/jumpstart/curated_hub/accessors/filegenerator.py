@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 from typing import Any, Dict, List, Optional
 
+from datetime import datetime
 from botocore.client import BaseClient
 
 from sagemaker.jumpstart.curated_hub.accessors.fileinfo import FileInfo, HubContentDependencyType
@@ -58,7 +59,7 @@ class S3PathFileGenerator(FileGenerator):
             key: str = s3_obj.get("Key")
             size: bytes = s3_obj.get("Size", None)
             last_modified: str = s3_obj.get("LastModified", None)
-            files.append(FileInfo(key, size, last_modified))
+            files.append(FileInfo(file_input.bucket, key, size, last_modified))
         return files
 
 
@@ -76,12 +77,34 @@ class ModelSpecsFileGenerator(FileGenerator):
         )
         files = []
         for dependency in HubContentDependencyType:
-            location = public_model_data_accessor.get_s3_reference(dependency)
-            parameters = {"Bucket": location.bucket, "Prefix": location.key}
-            response = self.s3_client.head_object(**parameters)
-            key: str = location.key
-            size: bytes = response.get("ContentLength", None)
-            last_updated: str = response.get("LastModified", None)
-            dependency_type: HubContentDependencyType = dependency
-            files.append(FileInfo(key, size, last_updated, dependency_type))
+            location: S3ObjectLocation = public_model_data_accessor.get_s3_reference(dependency)
+
+            # Prefix
+            if location.key[-1] == "/":
+                parameters = {"Bucket": location.bucket, "Prefix": location.key}
+                response = self.s3_client.list_objects_v2(**parameters)
+                contents = response.get("Contents", None)
+                for s3_obj in contents:
+                    key: str = s3_obj.get("Key")
+                    size: bytes = s3_obj.get("Size", None)
+                    last_modified: datetime = s3_obj.get("LastModified", None)
+                    dependency_type: HubContentDependencyType = dependency
+                    files.append(
+                        FileInfo(
+                            location.bucket,
+                            key,
+                            size,
+                            last_modified,
+                            dependency_type,
+                        )
+                    )
+            else:
+                parameters = {"Bucket": location.bucket, "Key": location.key}
+                response = self.s3_client.head_object(**parameters)
+                size: bytes = response.get("ContentLength", None)
+                last_updated: datetime = response.get("LastModified", None)
+                dependency_type: HubContentDependencyType = dependency
+                files.append(
+                    FileInfo(location.bucket, location.key, size, last_updated, dependency_type)
+                )
         return files

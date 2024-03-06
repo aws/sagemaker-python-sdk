@@ -16,6 +16,9 @@ from __future__ import absolute_import
 from enum import Enum
 from dataclasses import dataclass
 from typing import Optional
+from datetime import datetime
+
+from sagemaker.jumpstart.curated_hub.accessors.objectlocation import S3ObjectLocation
 
 
 class HubContentDependencyType(str, Enum):
@@ -34,14 +37,17 @@ class HubContentDependencyType(str, Enum):
 class FileInfo:
     """Data class for additional S3 file info."""
 
+    location: S3ObjectLocation
+
     def __init__(
         self,
-        name: str,
+        bucket: str,
+        key: str,
         size: Optional[bytes],
-        last_updated: Optional[str],
+        last_updated: Optional[datetime],
         dependecy_type: Optional[HubContentDependencyType] = None,
     ):
-        self.name = name
+        self.location = S3ObjectLocation(bucket, key)
         self.size = size
         self.last_updated = last_updated
         self.dependecy_type = dependecy_type

@@ -13,27 +13,31 @@
 """This module provides the JumpStart Curated Hub class."""
 from __future__ import absolute_import
 from concurrent import futures
+import json
 import traceback
 from typing import Optional, Dict, List, Any
 
 import boto3
+from botocore import exceptions
 from botocore.client import BaseClient
 from packaging.version import Version
 
+from sagemaker.jumpstart import utils
 from sagemaker.jumpstart.curated_hub.accessors.filegenerator import (
     ModelSpecsFileGenerator,
     S3PathFileGenerator,
 )
+from sagemaker.jumpstart.curated_hub.accessors.multipartcopy import MultiPartCopyHandler
 from sagemaker.jumpstart.curated_hub.accessors.objectlocation import S3ObjectLocation
 from sagemaker.jumpstart.curated_hub.accessors.sync import FileSync
 from sagemaker.jumpstart.enums import JumpStartScriptScope
-from sagemaker.jumpstart.utils import verify_model_region_and_return_specs
 from sagemaker.session import Session
-from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION, JUMPSTART_LOGGER
 from sagemaker.jumpstart.types import (
     DescribeHubResponse,
     DescribeHubContentsResponse,
     HubContentType,
+    JumpStartModelSpecs,
 )
 from sagemaker.jumpstart.curated_hub.utils import (
     create_hub_bucket_if_it_does_not_exist,
@@ -73,11 +77,12 @@ class CuratedHub:
         """Retrieves hub bucket name from Hub config if exists"""
         try:
             hub_response = self._sagemaker_session.describe_hub(hub_name=self.hub_name)
-            hub_bucket_prefix = hub_response["S3StorageConfig"]["S3OutputPath"]
-            return hub_bucket_prefix  # TODO: Strip s3:// prefix
-        except ValueError:
+            hub_bucket_prefix = hub_response["S3StorageConfig"].get("S3OutputPath", None)
+            if hub_bucket_prefix:
+                return hub_bucket_prefix.replace("s3://", "")
+            return generate_default_hub_bucket_name(self._sagemaker_session)
+        except exceptions.ClientError:
             hub_bucket_name = generate_default_hub_bucket_name(self._sagemaker_session)
-            print(f"Hub bucket name is: {hub_bucket_name}")  # TODO: Better messaging
             return hub_bucket_name
 
     def create(
@@ -98,7 +103,7 @@ class CuratedHub:
             hub_description=description,
             hub_display_name=display_name,
             hub_search_keywords=search_keywords,
-            hub_bucket_name=bucket_name,
+            s3_storage_config={"S3OutputPath": f"s3://{bucket_name}"},
             tags=tags,
         )
 
@@ -182,7 +187,7 @@ class CuratedHub:
         for model in model_list:
             version = model.get("version", "*")
             if not version or version == "*":
-                model_specs = verify_model_region_and_return_specs(
+                model_specs = utils.verify_model_region_and_return_specs(
                     model["model_id"], version, JumpStartScriptScope.INFERENCE, self.region
                 )
                 model["version"] = model_specs.version
@@ -190,7 +195,7 @@ class CuratedHub:
 
         # Find synced JumpStart model versions in the Hub
         js_models_in_hub = []
-        for hub_model in hub_models:
+        for hub_model in hub_models["HubContentSummaries"]:
             # TODO: extract both in one pass
             jumpstart_model_id = next(
                 (
@@ -279,43 +284,42 @@ class CuratedHub:
 
     def _sync_public_model_to_hub(self, model: Dict[str, str]):
         """Syncs a public JumpStart model version to the Hub. Runs in parallel."""
-        model_name = model["name"]
+        model_name = model["model_id"]
         model_version = model["version"]
 
-        model_specs = verify_model_region_and_return_specs(
+        model_specs = utils.verify_model_region_and_return_specs(
             model_id=model_name,
             version=model_version,
             region=self.region,
             scope=JumpStartScriptScope.INFERENCE,
             sagemaker_session=self._sagemaker_session,
         )
-
-        # TODO: Uncomment and implement
-        # studio_specs = self.fetch_studio_specs(model_id=model_name, version=model_version)
-        studio_specs = {}
+        studio_specs = self._fetch_studio_specs(model_specs=model_specs)
 
         dest_location = S3ObjectLocation(
             bucket=self.hub_bucket_name, key=f"{model_name}/{model_version}"
         )
-        # TODO: Validations? HeadBucket?
 
         src_files = ModelSpecsFileGenerator(self.region, self._s3_client, studio_specs).format(
             model_specs
         )
         dest_files = S3PathFileGenerator(self.region, self._s3_client).format(dest_location)
 
-        files_to_copy = FileSync(src_files, dest_files, dest_location).call()
+        sync_result = FileSync(src_files, dest_files, dest_location).call()
 
-        if len(files_to_copy) > 0:
-            # TODO: Copy files with MPU
-            print("hi")
+        if len(sync_result.files) > 0:
+            MultiPartCopyHandler(
+                region=self.region, files=sync_result.files, dest_location=sync_result.destination
+            ).call()
+        else:
+            JUMPSTART_LOGGER.warning("[%s/%s] Nothing to copy", model_name, model_version)
 
         # Tag model if specs say it is deprecated or training/inference vulnerable
         # Update tag of HubContent ARN without version. Versioned ARNs are not
         # onboarded to Tagris.
         tags = []
 
-        hub_content_document = HubContentDocument_v2(spec=model_specs)
+        hub_content_document = HubContentDocument_v2(spec=model_specs).__str__()
 
         self._sagemaker_session.import_hub_content(
             document_schema_version=HubContentDocument_v2.SCHEMA_VERSION,
@@ -330,3 +334,14 @@ class CuratedHub:
             hub_content_search_keywords=[],
             tags=tags,
         )
+
+    def _fetch_studio_specs(self, model_specs: JumpStartModelSpecs) -> Dict[str, Any]:
+        """Fetches StudioSpecs given a models' SDK Specs."""
+        model_id = model_specs.model_id
+        model_version = model_specs.version
+
+        key = f"studio_models/{model_id}/studio_specs_v{model_version}.json"
+        response = self._s3_client.get_object(
+            Bucket=utils.get_jumpstart_content_bucket(self.region), Key=key
+        )
+        return json.loads(response["Body"].read().decode("utf-8"))

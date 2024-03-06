@@ -54,8 +54,8 @@ def test_s3_path_file_generator_happy_path(s3_client):
 
     s3_client.list_objects_v2.assert_called_once()
     assert response == [
-        FileInfo("my-key-one", 123456789, "08-14-1997 00:00:00"),
-        FileInfo("my-key-one", 10101010, "08-14-1997 00:00:00"),
+        FileInfo("mock-bucket", "my-key-one", 123456789, "08-14-1997 00:00:00"),
+        FileInfo("mock-bucket", "my-key-one", 10101010, "08-14-1997 00:00:00"),
     ]
 
 
@@ -70,15 +70,45 @@ def test_model_specs_file_generator_happy_path(patched_get_model_specs, s3_clien
 
     s3_client.head_object.assert_called()
     patched_get_model_specs.assert_called()
-    # TODO: Figure out why object attrs aren't being compared
+
     assert response == [
-        FileInfo("my-key-one", 123456789, "08-14-1997 00:00:00"),
-        FileInfo("my-key-two", 123456789, "08-14-1997 00:00:00"),
-        FileInfo("my-key-three", 123456789, "08-14-1997 00:00:00"),
-        FileInfo("my-key-four", 123456789, "08-14-1997 00:00:00"),
-        FileInfo("my-key-five", 123456789, "08-14-1997 00:00:00"),
-        FileInfo("my-key-six", 123456789, "08-14-1997 00:00:00"),
-        FileInfo("my-key-seven", 123456789, "08-14-1997 00:00:00"),
+        FileInfo(
+            "jumpstart-cache-prod-us-west-2",
+            "pytorch-infer/infer-pytorch-ic-mobilenet-v2.tar.gz",
+            123456789,
+            "08-14-1997 00:00:00",
+        ),
+        FileInfo(
+            "jumpstart-cache-prod-us-west-2",
+            "pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz",
+            123456789,
+            "08-14-1997 00:00:00",
+        ),
+        FileInfo(
+            "jumpstart-cache-prod-us-west-2",
+            "source-directory-tarballs/pytorch/inference/ic/v1.0.0/sourcedir.tar.gz",
+            123456789,
+            "08-14-1997 00:00:00",
+        ),
+        FileInfo(
+            "jumpstart-cache-prod-us-west-2",
+            "source-directory-tarballs/pytorch/transfer_learning/ic/v1.0.0/sourcedir.tar.gz",
+            123456789,
+            "08-14-1997 00:00:00",
+        ),
+        FileInfo("jumpstart-cache-prod-us-west-2", "model_id123", 123456789, "08-14-1997 00:00:00"),
+        FileInfo(
+            "jumpstart-cache-prod-us-west-2",
+            "pytorch-notebooks/pytorch-ic-mobilenet-v2-inference.ipynb",
+            123456789,
+            "08-14-1997 00:00:00",
+        ),
+        FileInfo(
+            "jumpstart-cache-prod-us-west-2",
+            "pytorch-metadata/pytorch-ic-mobilenet-v2.md",
+            123456789,
+            "08-14-1997 00:00:00",
+        ),
     ]
 
 

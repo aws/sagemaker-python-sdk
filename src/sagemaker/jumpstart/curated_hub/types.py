@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 from typing import Dict, Any
 
-from sagemaker.jumpstart.types import JumpStartDataHolderType
+from sagemaker.jumpstart.types import JumpStartDataHolderType, JumpStartModelSpecs
 
 
 class HubContentDocument_v2(JumpStartDataHolderType):
@@ -28,13 +28,13 @@ class HubContentDocument_v2(JumpStartDataHolderType):
         Args:
             spec (Dict[str, Any]): Dictionary representation of spec.
         """
-        self.from_json(spec)
+        self.from_specs(spec)
 
-    def from_json(self, json_obj: Dict[str, Any]) -> None:
+    def from_specs(self, model_specs: JumpStartModelSpecs) -> None:
         """Sets fields in object based on json.
 
         Args:
             json_obj (Dict[str, Any]): Dictionary representatino of spec.
         """
         # TODO: Implement
-        self.Url: str = json_obj["url"]
+        self.Url: str = model_specs.url

@@ -13,6 +13,7 @@
 """This module provides comparators for syncing s3 files."""
 from __future__ import absolute_import
 from datetime import timedelta
+from sagemaker.jumpstart.constants import JUMPSTART_LOGGER
 
 from sagemaker.jumpstart.curated_hub.accessors.fileinfo import FileInfo
 
@@ -26,10 +27,10 @@ class SizeAndLastUpdatedComparator:
         same_last_modified_time = self.compare_time(src_file, dest_file)
         should_sync = (not same_size) or (not same_last_modified_time)
         if should_sync:
-            print(
+            JUMPSTART_LOGGER.warning(
                 "syncing: %s -> %s, size: %s -> %s, modified time: %s -> %s",
-                src_file.name,
-                src_file.name,
+                src_file.location.key,
+                src_file.location.key,
                 src_file.size,
                 dest_file.size,
                 src_file.last_updated,

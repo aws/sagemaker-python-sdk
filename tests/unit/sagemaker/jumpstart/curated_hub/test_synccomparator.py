@@ -22,20 +22,20 @@ class SizeAndLastUpdateComparatorTest(unittest.TestCase):
     comparator = SizeAndLastUpdatedComparator()
 
     def test_identical_files_returns_false(self):
-        file_one = FileInfo("my-file-one", 123456789, datetime.today())
-        file_two = FileInfo("my-file-two", 123456789, datetime.today())
+        file_one = FileInfo("bucket", "my-file-one", 123456789, datetime.today())
+        file_two = FileInfo("bucket", "my-file-two", 123456789, datetime.today())
 
         assert self.comparator.determine_should_sync(file_one, file_two) is False
 
     def test_different_file_sizes_returns_true(self):
-        file_one = FileInfo("my-file-one", 123456789, datetime.today())
-        file_two = FileInfo("my-file-two", 10101010, datetime.today())
+        file_one = FileInfo("bucket", "my-file-one", 123456789, datetime.today())
+        file_two = FileInfo("bucket", "my-file-two", 10101010, datetime.today())
 
         assert self.comparator.determine_should_sync(file_one, file_two) is True
 
     def test_different_file_dates_returns_true(self):
         # change ordering of datetime.today() calls to trigger update
-        file_two = FileInfo("my-file-two", 123456789, datetime.today())
-        file_one = FileInfo("my-file-one", 123456789, datetime.today())
+        file_two = FileInfo("bucket", "my-file-two", 123456789, datetime.today())
+        file_one = FileInfo("bucket", "my-file-one", 123456789, datetime.today())
 
         assert self.comparator.determine_should_sync(file_one, file_two) is True
