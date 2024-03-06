@@ -1,5 +1,17 @@
 # Changelog
 
+## v2.212.0 (2024-03-06)
+
+### Features
+
+ * Update SM Python SDK for PT 2.2.0 SM DLC
+
+### Bug Fixes and Other Changes
+
+ * Create custom tarfile extractall util to fix backward compatibility issue
+ * Upgrade smp to version 2.2
+ * Enhance model builder selection logic to include model size
+
 ## v2.211.0 (2024-03-05)
 
 ### Features
