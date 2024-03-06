@@ -79,6 +79,7 @@ extras = {
     "feature-processor": read_requirements(
         "requirements/extras/feature-processor_requirements.txt"
     ),
+    "huggingface": read_requirements("requirements/extras/huggingface_requirements.txt"),
 }
 # Meta dependency groups
 extras["all"] = [item for group in extras.values() for item in group]

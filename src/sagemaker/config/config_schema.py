@@ -83,6 +83,7 @@ ENDPOINT_CONFIG = "EndpointConfig"
 ENDPOINT = "Endpoint"
 INFERENCE_COMPONENT = "InferenceComponent"
 AUTO_ML_JOB = "AutoMLJob"
+AUTO_ML_JOB_V2 = "AutoMLJobV2"
 COMPILATION_JOB = "CompilationJob"
 CUSTOM_PARAMETERS = "CustomParameters"
 PIPELINE = "Pipeline"
@@ -182,14 +183,21 @@ FEATURE_GROUP_ONLINE_STORE_KMS_KEY_ID_PATH = _simple_path(
     FEATURE_GROUP_ONLINE_STORE_CONFIG_PATH, SECURITY_CONFIG, KMS_KEY_ID
 )
 AUTO_ML_OUTPUT_CONFIG_PATH = _simple_path(SAGEMAKER, AUTO_ML_JOB, OUTPUT_DATA_CONFIG)
+AUTO_ML_V2_OUTPUT_CONFIG_PATH = _simple_path(SAGEMAKER, AUTO_ML_JOB_V2, OUTPUT_DATA_CONFIG)
 AUTO_ML_KMS_KEY_ID_PATH = _simple_path(SAGEMAKER, AUTO_ML_JOB, OUTPUT_DATA_CONFIG, KMS_KEY_ID)
+AUTO_ML_V2_KMS_KEY_ID_PATH = _simple_path(SAGEMAKER, AUTO_ML_JOB_V2, OUTPUT_DATA_CONFIG, KMS_KEY_ID)
 AUTO_ML_VOLUME_KMS_KEY_ID_PATH = _simple_path(
     SAGEMAKER, AUTO_ML_JOB, AUTO_ML_JOB_CONFIG, SECURITY_CONFIG, VOLUME_KMS_KEY_ID
 )
+AUTO_ML_V2_VOLUME_KMS_KEY_ID_PATH = _simple_path(
+    SAGEMAKER, AUTO_ML_JOB_V2, SECURITY_CONFIG, VOLUME_KMS_KEY_ID
+)
 AUTO_ML_ROLE_ARN_PATH = _simple_path(SAGEMAKER, AUTO_ML_JOB, ROLE_ARN)
+AUTO_ML_V2_ROLE_ARN_PATH = _simple_path(SAGEMAKER, AUTO_ML_JOB_V2, ROLE_ARN)
 AUTO_ML_VPC_CONFIG_PATH = _simple_path(
     SAGEMAKER, AUTO_ML_JOB, AUTO_ML_JOB_CONFIG, SECURITY_CONFIG, VPC_CONFIG
 )
+AUTO_ML_V2_VPC_CONFIG_PATH = _simple_path(SAGEMAKER, AUTO_ML_JOB_V2, SECURITY_CONFIG, VPC_CONFIG)
 AUTO_ML_JOB_CONFIG_PATH = _simple_path(SAGEMAKER, AUTO_ML_JOB, AUTO_ML_JOB_CONFIG)
 MONITORING_JOB_DEFINITION_PREFIX = _simple_path(
     SAGEMAKER,
@@ -359,6 +367,12 @@ AUTO_ML_INTER_CONTAINER_ENCRYPTION_PATH = _simple_path(
     SAGEMAKER,
     AUTO_ML_JOB,
     AUTO_ML_JOB_CONFIG,
+    SECURITY_CONFIG,
+    ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION,
+)
+AUTO_ML_V2_INTER_CONTAINER_ENCRYPTION_PATH = _simple_path(
+    SAGEMAKER,
+    AUTO_ML_JOB_V2,
     SECURITY_CONFIG,
     ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION,
 )
@@ -936,6 +950,30 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                         VPC_CONFIG: {"$ref": "#/definitions/vpcConfig"},
                                     },
                                 }
+                            },
+                        },
+                        OUTPUT_DATA_CONFIG: {
+                            TYPE: OBJECT,
+                            ADDITIONAL_PROPERTIES: False,
+                            PROPERTIES: {KMS_KEY_ID: {"$ref": "#/definitions/kmsKeyId"}},
+                        },
+                        ROLE_ARN: {"$ref": "#/definitions/roleArn"},
+                        TAGS: {"$ref": "#/definitions/tags"},
+                    },
+                },
+                # Auto ML V2
+                # https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateAutoMLJobV2.html
+                AUTO_ML_JOB_V2: {
+                    TYPE: OBJECT,
+                    ADDITIONAL_PROPERTIES: False,
+                    PROPERTIES: {
+                        SECURITY_CONFIG: {
+                            TYPE: OBJECT,
+                            ADDITIONAL_PROPERTIES: False,
+                            PROPERTIES: {
+                                ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION: {TYPE: "boolean"},
+                                VOLUME_KMS_KEY_ID: {"$ref": "#/definitions/kmsKeyId"},
+                                VPC_CONFIG: {"$ref": "#/definitions/vpcConfig"},
                             },
                         },
                         OUTPUT_DATA_CONFIG: {

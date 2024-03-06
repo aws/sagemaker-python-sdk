@@ -45,6 +45,7 @@ from sagemaker.config import (
     DATA_CAPTURE_CONFIG,
     PRODUCTION_VARIANTS,
     AUTO_ML_JOB,
+    AUTO_ML_JOB_V2,
     AUTO_ML_JOB_CONFIG,
     SECURITY_CONFIG,
     OUTPUT_DATA_CONFIG,
@@ -229,6 +230,25 @@ SAGEMAKER_CONFIG_AUTO_ML = {
                         SUBNETS: ["subnets-123"],
                         SECURITY_GROUP_IDS: ["sg-123"],
                     },
+                },
+            },
+            OUTPUT_DATA_CONFIG: {KMS_KEY_ID: "configKmsKeyId"},
+            ROLE_ARN: "arn:aws:iam::111111111111:role/ConfigRole",
+            TAGS: [{KEY: "some-tag", VALUE: "value-for-tag"}],
+        },
+    },
+}
+
+SAGEMAKER_CONFIG_AUTO_ML_V2 = {
+    SCHEMA_VERSION: "1.0",
+    SAGEMAKER: {
+        AUTO_ML_JOB_V2: {
+            SECURITY_CONFIG: {
+                ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION: True,
+                VOLUME_KMS_KEY_ID: "TestKmsKeyId",
+                VPC_CONFIG: {
+                    SUBNETS: ["subnets-123"],
+                    SECURITY_GROUP_IDS: ["sg-123"],
                 },
             },
             OUTPUT_DATA_CONFIG: {KMS_KEY_ID: "configKmsKeyId"},
