@@ -829,3 +829,8 @@ def get_jumpstart_model_id_version_from_resource_arn(
             model_version = model_version_from_tag
 
     return model_id, model_version
+
+
+def generate_studio_spec_file_prefix(model_id: str, model_version: str) -> str:
+    """Returns the Studio Spec file prefix given a model ID and version."""
+    return f"studio_models/{model_id}/studio_specs_v{model_version}.json"

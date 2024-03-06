@@ -14,8 +14,8 @@ from __future__ import absolute_import
 import pytest
 from unittest.mock import Mock, patch
 from sagemaker.jumpstart.curated_hub.accessors.filegenerator import (
-    ModelSpecsFileGenerator,
-    S3PathFileGenerator,
+    generate_file_infos_from_model_specs,
+    generate_file_infos_from_s3_location,
 )
 from sagemaker.jumpstart.curated_hub.accessors.fileinfo import FileInfo
 
@@ -49,8 +49,7 @@ def test_s3_path_file_generator_happy_path(s3_client):
     }
 
     mock_hub_bucket = S3ObjectLocation(bucket="mock-bucket", key="mock-key")
-    generator = S3PathFileGenerator("us-west-2", s3_client)
-    response = generator.format(mock_hub_bucket)
+    response = generate_file_infos_from_s3_location(mock_hub_bucket, s3_client)
 
     s3_client.list_objects_v2.assert_called_once()
     assert response == [
@@ -65,8 +64,7 @@ def test_model_specs_file_generator_happy_path(patched_get_model_specs, s3_clien
 
     specs = JumpStartModelSpecs(BASE_SPEC)
     studio_specs = {"defaultDataKey": "model_id123"}
-    generator = ModelSpecsFileGenerator("us-west-2", s3_client, studio_specs)
-    response = generator.format(specs)
+    response = generate_file_infos_from_model_specs(specs, studio_specs, "us-west-2", s3_client)
 
     s3_client.head_object.assert_called()
     patched_get_model_specs.assert_called()
@@ -116,8 +114,7 @@ def test_s3_path_file_generator_with_no_objects(s3_client):
     s3_client.list_objects_v2.return_value = {"Contents": []}
 
     mock_hub_bucket = S3ObjectLocation(bucket="mock-bucket", key="mock-key")
-    generator = S3PathFileGenerator("us-west-2", s3_client)
-    response = generator.format(mock_hub_bucket)
+    response = generate_file_infos_from_s3_location(mock_hub_bucket, s3_client)
 
     s3_client.list_objects_v2.assert_called_once()
     assert response == []
@@ -127,8 +124,7 @@ def test_s3_path_file_generator_with_no_objects(s3_client):
     s3_client.list_objects_v2.return_value = {}
 
     mock_hub_bucket = S3ObjectLocation(bucket="mock-bucket", key="mock-key")
-    generator = S3PathFileGenerator("us-west-2", s3_client)
-    response = generator.format(mock_hub_bucket)
+    response = generate_file_infos_from_s3_location(mock_hub_bucket, s3_client)
 
     s3_client.list_objects_v2.assert_called_once()
     assert response == []

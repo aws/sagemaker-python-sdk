@@ -15,9 +15,6 @@ from __future__ import absolute_import
 from typing import Dict, Any
 from sagemaker import model_uris, script_uris
 from sagemaker.jumpstart.curated_hub.accessors.fileinfo import HubContentDependencyType
-from sagemaker.jumpstart.curated_hub.utils import (
-    get_model_framework,
-)
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.types import JumpStartModelSpecs
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
@@ -81,14 +78,14 @@ class PublicModelDataAccessor:
     @property
     def demo_notebook_s3_reference(self):
         """Retrieves s3 reference for model demo jupyter notebook"""
-        framework = get_model_framework(self.model_specs)
+        framework = self.model_specs.get_framework()
         key = f"{framework}-notebooks/{self.model_specs.model_id}-inference.ipynb"
         return S3ObjectLocation(self._get_bucket_name(), key)
 
     @property
     def markdown_s3_reference(self):
         """Retrieves s3 reference for model markdown"""
-        framework = get_model_framework(self.model_specs)
+        framework = self.model_specs.get_framework()
         key = f"{framework}-metadata/{self.model_specs.model_id}.md"
         return S3ObjectLocation(self._get_bucket_name(), key)
 

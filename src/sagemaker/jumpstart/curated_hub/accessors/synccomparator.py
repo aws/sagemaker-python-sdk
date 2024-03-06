@@ -18,14 +18,25 @@ from sagemaker.jumpstart.constants import JUMPSTART_LOGGER
 from sagemaker.jumpstart.curated_hub.accessors.fileinfo import FileInfo
 
 
-class SizeAndLastUpdatedComparator:
-    """Something."""
+class BaseComparator:
+    """BaseComparator object to be extended."""
+
+    def determine_should_sync(self, src_file: FileInfo, dest_file: FileInfo) -> bool:
+        """Custom comparator to determine if src file and dest file are in sync."""
+        raise NotImplementedError
+
+
+class SizeAndLastUpdatedComparator(BaseComparator):
+    """Comparator that uses file size and last modified time.
+
+    Uses file size (bytes) and last_modified_time (timestamp) to determine sync.
+    """
 
     def determine_should_sync(self, src_file: FileInfo, dest_file: FileInfo) -> bool:
         """Determines if src file should be moved to dest folder."""
         same_size = self.compare_size(src_file, dest_file)
-        same_last_modified_time = self.compare_time(src_file, dest_file)
-        should_sync = (not same_size) or (not same_last_modified_time)
+        is_newer_dest_file = self.compare_file_updates(src_file, dest_file)
+        should_sync = (not same_size) or (not is_newer_dest_file)
         if should_sync:
             JUMPSTART_LOGGER.warning(
                 "syncing: %s -> %s, size: %s -> %s, modified time: %s -> %s",
@@ -46,7 +57,7 @@ class SizeAndLastUpdatedComparator:
         """
         return src_file.size == dest_file.size
 
-    def compare_time(self, src_file: FileInfo, dest_file: FileInfo):
+    def compare_file_updates(self, src_file: FileInfo, dest_file: FileInfo):
         """Compares time delta between src and dest files.
 
         :returns: True if the file does not need updating based on time of
@@ -59,7 +70,6 @@ class SizeAndLastUpdatedComparator:
         delta = dest_time - src_time
         # pylint: disable=R1703,R1705
         if timedelta.total_seconds(delta) >= 0:
-            # Destination is newer than source.
             return True
         else:
             # Destination is older than source, so

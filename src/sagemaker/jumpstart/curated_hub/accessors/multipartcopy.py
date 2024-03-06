@@ -26,7 +26,7 @@ s3transfer = boto3.s3.transfer
 
 
 # pylint: disable=R1705,R1710
-def human_readable_size(value):
+def human_readable_size(value: int) -> str:
     """Convert a size in bytes into a human readable format.
 
     For example::
@@ -101,7 +101,7 @@ class MultiPartCopyHandler(object):
         )
         result.result()
 
-    def call(self):
+    def execute(self):
         """Something."""
         total_size = sum([file.size for file in self.files])
         JUMPSTART_LOGGER.warning(

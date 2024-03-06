@@ -23,13 +23,11 @@ from botocore.client import BaseClient
 from packaging.version import Version
 
 from sagemaker.jumpstart import utils
-from sagemaker.jumpstart.curated_hub.accessors.filegenerator import (
-    ModelSpecsFileGenerator,
-    S3PathFileGenerator,
-)
+from sagemaker.jumpstart.curated_hub.accessors import filegenerator
 from sagemaker.jumpstart.curated_hub.accessors.multipartcopy import MultiPartCopyHandler
 from sagemaker.jumpstart.curated_hub.accessors.objectlocation import S3ObjectLocation
-from sagemaker.jumpstart.curated_hub.accessors.sync import FileSync
+from sagemaker.jumpstart.curated_hub.accessors.synccomparator import SizeAndLastUpdatedComparator
+from sagemaker.jumpstart.curated_hub.accessors.synctask import SyncTaskHandler
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.session import Session
 from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION, JUMPSTART_LOGGER
@@ -157,7 +155,10 @@ class CuratedHub:
         return self._sagemaker_session.delete_hub(self.hub_name)
 
     def _is_invalid_model_list_input(self, model_list: List[Dict[str, str]]) -> bool:
-        """Determines if input args to ``sync`` is correct."""
+        """Determines if input args to ``sync`` is correct.
+
+        `model_list` objects must have `model_id` (str) and optional `version` (str).
+        """
         for obj in model_list:
             if not isinstance(obj.get("model_id"), str):
                 return True
@@ -165,35 +166,21 @@ class CuratedHub:
                 return True
         return False
 
-    def sync(self, model_list: List[Dict[str, str]]):
-        """Syncs a list of JumpStart model ids and versions with a CuratedHub
+    def _populate_latest_model_version(self, model: Dict[str, str]) -> Dict[str, str]:
+        """Retrieves the lastest version of a model that has passed a wildcard ('*').
 
-        Args:
-            model_list (List[Dict[str, str]]): List of `{ model_id: str, version: Optional[str] }`
-                objects that should be synced into the Hub.
+        Returns model ({ model_id: str, version: str })
         """
-        if self._is_invalid_model_list_input(model_list):
-            raise ValueError(
-                "Model list should be a list of objects with values 'model_id',",
-                "and optional 'version'.",
-            )
+        model_specs = utils.verify_model_region_and_return_specs(
+            model["model_id"], "*", JumpStartScriptScope.INFERENCE, self.region
+        )
+        model["version"] = model_specs.version
+        return model
 
-        # Fetch required information
-        # self._get_studio_manifest_map()
+    def _get_jumpstart_models_in_hub(self) -> List[Dict[str, Any]]:
+        """Returns list of `HubContent` that have been created from a JumpStart model."""
         hub_models = self.list_models()
 
-        # Retrieve latest version of unspecified JumpStart model versions
-        model_version_list = []
-        for model in model_list:
-            version = model.get("version", "*")
-            if not version or version == "*":
-                model_specs = utils.verify_model_region_and_return_specs(
-                    model["model_id"], version, JumpStartScriptScope.INFERENCE, self.region
-                )
-                model["version"] = model_specs.version
-            model_version_list.append(model)
-
-        # Find synced JumpStart model versions in the Hub
         js_models_in_hub = []
         for hub_model in hub_models["HubContentSummaries"]:
             # TODO: extract both in one pass
@@ -217,13 +204,25 @@ class CuratedHub:
             if jumpstart_model_id and jumpstart_model_version:
                 js_models_in_hub.append(hub_model)
 
-        # Match inputted list of model versions with synced JumpStart model versions in the Hub
+        return js_models_in_hub
+
+    def _determine_models_to_sync(self, model_list, models_in_hub) -> List[Dict[str, str]]:
+        """Determines which models from `sync` params to sync into the CuratedHub.
+
+        Algorithm:
+
+            First, look for a match of model name in Hub. If no model is found, sync that model.
+
+            Next, compare versions of model to sync and what's in the Hub. If version already
+            in Hub, don't sync. If newer version in Hub, don't sync. If older version in Hub,
+            sync that model.
+        """
         models_to_sync = []
-        for model in model_version_list:
+        for model in model_list:
             matched_model = next(
                 (
                     hub_model
-                    for hub_model in js_models_in_hub
+                    for hub_model in models_in_hub
                     if hub_model and hub_model["name"] == model["model_id"]
                 ),
                 None,
@@ -251,9 +250,36 @@ class CuratedHub:
                     # Check minSDKVersion against current SDK version, emit log
                     models_to_sync.append(model)
 
+        return models_to_sync
+
+    def sync(self, model_list: List[Dict[str, str]]):
+        """Syncs a list of JumpStart model ids and versions with a CuratedHub
+
+        Args:
+            model_list (List[Dict[str, str]]): List of `{ model_id: str, version: Optional[str] }`
+                objects that should be synced into the Hub.
+        """
+        if self._is_invalid_model_list_input(model_list):
+            raise ValueError(
+                "Model list should be a list of objects with values 'model_id',",
+                "and optional 'version'.",
+            )
+
+        # Retrieve latest version of unspecified JumpStart model versions
+        model_version_list = []
+        for model in model_list:
+            version = model.get("version", "*")
+            if version == "*":
+                model = self._populate_latest_model_version(model)
+            model_version_list.append(model)
+
+        js_models_in_hub = self._get_jumpstart_models_in_hub()
+
+        models_to_sync = self._determine_models_to_sync(model_version_list, js_models_in_hub)
+
         # Delete old models?
 
-        # Copy content workflow + `SageMaker:ImportHubContent` for each model-to-sync in parallel
+        # CopyContentWorkflow + `SageMaker:ImportHubContent` for each model-to-sync in parallel
         tasks: List[futures.Future] = []
         with futures.ThreadPoolExecutor(
             max_workers=self._default_thread_pool_size,
@@ -300,26 +326,29 @@ class CuratedHub:
             bucket=self.hub_bucket_name, key=f"{model_name}/{model_version}"
         )
 
-        src_files = ModelSpecsFileGenerator(self.region, self._s3_client, studio_specs).format(
-            model_specs
+        src_files = filegenerator.generate_file_infos_from_model_specs(
+            model_specs, studio_specs, self.region, self._s3_client
         )
-        dest_files = S3PathFileGenerator(self.region, self._s3_client).format(dest_location)
+        dest_files = filegenerator.generate_file_infos_from_s3_location(
+            dest_location, self._s3_client
+        )
 
-        sync_result = FileSync(src_files, dest_files, dest_location).call()
+        comparator = SizeAndLastUpdatedComparator()
+        sync_task = SyncTaskHandler(src_files, dest_files, dest_location, comparator).create()
 
-        if len(sync_result.files) > 0:
+        if len(sync_task.files) > 0:
             MultiPartCopyHandler(
-                region=self.region, files=sync_result.files, dest_location=sync_result.destination
-            ).call()
+                region=self.region, files=sync_task.files, dest_location=sync_task.destination
+            ).execute()
         else:
-            JUMPSTART_LOGGER.warning("[%s/%s] Nothing to copy", model_name, model_version)
+            JUMPSTART_LOGGER.warning("Nothing to copy for %s v%s", model_name, model_version)
 
-        # Tag model if specs say it is deprecated or training/inference vulnerable
-        # Update tag of HubContent ARN without version. Versioned ARNs are not
-        # onboarded to Tagris.
+        # TODO: Tag model if specs say it is deprecated or training/inference
+        # vulnerable. Update tag of HubContent ARN without version.
+        # Versioned ARNs are not onboarded to Tagris.
         tags = []
 
-        hub_content_document = HubContentDocument_v2(spec=model_specs).__str__()
+        hub_content_document = str(HubContentDocument_v2(spec=model_specs))
 
         self._sagemaker_session.import_hub_content(
             document_schema_version=HubContentDocument_v2.SCHEMA_VERSION,
@@ -340,7 +369,7 @@ class CuratedHub:
         model_id = model_specs.model_id
         model_version = model_specs.version
 
-        key = f"studio_models/{model_id}/studio_specs_v{model_version}.json"
+        key = utils.generate_studio_spec_file_prefix(model_id, model_version)
         response = self._s3_client.get_object(
             Bucket=utils.get_jumpstart_content_bucket(self.region), Key=key
         )

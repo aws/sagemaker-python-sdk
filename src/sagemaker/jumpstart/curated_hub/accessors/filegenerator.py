@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 """This module contains important utilities related to HubContent data files."""
 from __future__ import absolute_import
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from datetime import datetime
 from botocore.client import BaseClient
@@ -23,88 +23,73 @@ from sagemaker.jumpstart.curated_hub.accessors.public_model_data import PublicMo
 from sagemaker.jumpstart.types import JumpStartModelSpecs
 
 
-class FileGenerator:
-    """Utility class to help format HubContent data files."""
+def generate_file_infos_from_s3_location(
+    location: S3ObjectLocation, s3_client: BaseClient
+) -> List[FileInfo]:
+    """Lists objects from an S3 bucket and formats into FileInfo.
 
-    def __init__(
-        self, region: str, s3_client: BaseClient, studio_specs: Optional[Dict[str, Any]] = None
-    ):
-        self.region = region
-        self.s3_client = s3_client
-        self.studio_specs = studio_specs
+    Returns a list of ``FileInfo`` objects from the specified bucket location.
+    """
+    parameters = {"Bucket": location.bucket, "Prefix": location.key}
+    response = s3_client.list_objects_v2(**parameters)
+    contents = response.get("Contents", None)
 
-    def format(self, file_input) -> List[FileInfo]:
-        """Dispatch method that is implemented in below registered functions."""
-        raise NotImplementedError
+    if not contents:
+        return []
 
-
-class S3PathFileGenerator(FileGenerator):
-    """Utility class to help format all objects in an S3 bucket."""
-
-    def format(self, file_input: S3ObjectLocation) -> List[FileInfo]:
-        """Retrieves data from an S3 bucket and formats into FileInfo.
-
-        Returns a list of ``FileInfo`` objects from the specified bucket location.
-        """
-        parameters = {"Bucket": file_input.bucket, "Prefix": file_input.key}
-        response = self.s3_client.list_objects_v2(**parameters)
-        contents = response.get("Contents", None)
-
-        if not contents:
-            print("Nothing to download")
-            return []
-
-        files = []
-        for s3_obj in contents:
-            key: str = s3_obj.get("Key")
-            size: bytes = s3_obj.get("Size", None)
-            last_modified: str = s3_obj.get("LastModified", None)
-            files.append(FileInfo(file_input.bucket, key, size, last_modified))
-        return files
+    files = []
+    for s3_obj in contents:
+        key: str = s3_obj.get("Key")
+        size: bytes = s3_obj.get("Size", None)
+        last_modified: str = s3_obj.get("LastModified", None)
+        files.append(FileInfo(location.bucket, key, size, last_modified))
+    return files
 
 
-class ModelSpecsFileGenerator(FileGenerator):
-    """Utility class to help format all data paths from JumpStart public model specs."""
+def generate_file_infos_from_model_specs(
+    model_specs: JumpStartModelSpecs,
+    studio_specs: Dict[str, Any],
+    region: str,
+    s3_client: BaseClient,
+) -> List[FileInfo]:
+    """Collects data locations from JumpStart public model specs and converts into `FileInfo`.
 
-    def format(self, file_input: JumpStartModelSpecs) -> List[FileInfo]:
-        """Collects data locations from JumpStart public model specs and converts into FileInfo`.
+    Returns a list of `FileInfo` objects from dependencies found in the public
+        model specs.
+    """
+    public_model_data_accessor = PublicModelDataAccessor(
+        region=region, model_specs=model_specs, studio_specs=studio_specs
+    )
+    files = []
+    for dependency in HubContentDependencyType:
+        location: S3ObjectLocation = public_model_data_accessor.get_s3_reference(dependency)
 
-        Returns a list of ``FileInfo`` objects from dependencies found in the public
-            model specs.
-        """
-        public_model_data_accessor = PublicModelDataAccessor(
-            region=self.region, model_specs=file_input, studio_specs=self.studio_specs
-        )
-        files = []
-        for dependency in HubContentDependencyType:
-            location: S3ObjectLocation = public_model_data_accessor.get_s3_reference(dependency)
-
-            # Prefix
-            if location.key[-1] == "/":
-                parameters = {"Bucket": location.bucket, "Prefix": location.key}
-                response = self.s3_client.list_objects_v2(**parameters)
-                contents = response.get("Contents", None)
-                for s3_obj in contents:
-                    key: str = s3_obj.get("Key")
-                    size: bytes = s3_obj.get("Size", None)
-                    last_modified: datetime = s3_obj.get("LastModified", None)
-                    dependency_type: HubContentDependencyType = dependency
-                    files.append(
-                        FileInfo(
-                            location.bucket,
-                            key,
-                            size,
-                            last_modified,
-                            dependency_type,
-                        )
-                    )
-            else:
-                parameters = {"Bucket": location.bucket, "Key": location.key}
-                response = self.s3_client.head_object(**parameters)
-                size: bytes = response.get("ContentLength", None)
-                last_updated: datetime = response.get("LastModified", None)
+        # Prefix
+        if location.key.endswith("/"):
+            parameters = {"Bucket": location.bucket, "Prefix": location.key}
+            response = s3_client.list_objects_v2(**parameters)
+            contents = response.get("Contents", None)
+            for s3_obj in contents:
+                key: str = s3_obj.get("Key")
+                size: bytes = s3_obj.get("Size", None)
+                last_modified: datetime = s3_obj.get("LastModified", None)
                 dependency_type: HubContentDependencyType = dependency
                 files.append(
-                    FileInfo(location.bucket, location.key, size, last_updated, dependency_type)
+                    FileInfo(
+                        location.bucket,
+                        key,
+                        size,
+                        last_modified,
+                        dependency_type,
+                    )
                 )
-        return files
+        else:
+            parameters = {"Bucket": location.bucket, "Key": location.key}
+            response = s3_client.head_object(**parameters)
+            size: bytes = response.get("ContentLength", None)
+            last_updated: datetime = response.get("LastModified", None)
+            dependency_type: HubContentDependencyType = dependency
+            files.append(
+                FileInfo(location.bucket, location.key, size, last_updated, dependency_type)
+            )
+    return files

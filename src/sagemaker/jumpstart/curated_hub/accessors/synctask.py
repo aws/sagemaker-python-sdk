@@ -17,7 +17,7 @@ from typing import Generator, List
 
 from botocore.compat import six
 from sagemaker.jumpstart.curated_hub.accessors.objectlocation import S3ObjectLocation
-from sagemaker.jumpstart.curated_hub.accessors.synccomparator import SizeAndLastUpdatedComparator
+from sagemaker.jumpstart.curated_hub.accessors.synccomparator import BaseComparator
 
 from sagemaker.jumpstart.curated_hub.accessors.fileinfo import FileInfo
 
@@ -25,8 +25,8 @@ advance_iterator = six.advance_iterator
 
 
 @dataclass
-class FileSyncResult:
-    """File Sync Result class"""
+class SyncTaskInfo:
+    """Sync Task Info class"""
 
     files: List[FileInfo]
     destination: S3ObjectLocation
@@ -34,35 +34,50 @@ class FileSyncResult:
     def __init__(
         self, files_to_copy: Generator[FileInfo, FileInfo, FileInfo], destination: S3ObjectLocation
     ):
+        """Contains information required to sync data.
+
+        Returns:
+            :var: files (List[FileInfo]): Files that shoudl be synced.
+            :var: destination (S3ObjectLocation): Location to which to sync the files.
+        """
         self.files = list(files_to_copy)
         self.destination = destination
 
 
-class FileSync:
-    """FileSync class."""
+class SyncTaskHandler:
+    """Generates a ``SyncTaskInfo`` which contains information required to sync data."""
 
     def __init__(
-        self, src_files: List[FileInfo], dest_files: List[FileInfo], destination: S3ObjectLocation
+        self,
+        src_files: List[FileInfo],
+        dest_files: List[FileInfo],
+        destination: S3ObjectLocation,
+        comparator: BaseComparator,
     ):
-        """Instantiates a ``FileSync`` class. Sorts src and dest files by name for comparisons.
+        """Instantiates a ``SyncTaskGenerator`` class.
 
         Args:
-            src_files (List[FileInfo]): List of files to sync with destination
+            src_files (List[FileInfo]): List of files to sync to destination bucket
             dest_files (List[FileInfo]): List of files already in destination bucket
-            dest_bucket (str): Destination bucket name for copied data
+            destination (S3ObjectLocation): S3 destination for copied data
+
+        Returns:
+            ``SyncTaskInfo`` class containing:
+                :var: files (List[FileInfo]): Files that shoudl be synced.
+                :var: destination (S3ObjectLocation): Location to which to sync the files.
         """
-        self.comparator = SizeAndLastUpdatedComparator()
+        self.comparator = comparator
         self.src_files: List[FileInfo] = sorted(src_files, key=lambda x: x.location.key)
         self.dest_files: List[FileInfo] = sorted(dest_files, key=lambda x: x.location.key)
         self.destination = destination
 
-    def call(self) -> FileSyncResult:
-        """Determines which files to copy based on the comparator.
+    def create(self) -> SyncTaskInfo:
+        """Creates a ``SyncTaskInfo`` object, which contains `files` to copy and the `destination`
 
-        Returns a ``FileSyncResult`` object.
+        Based on the `s3:sync` algorithm.
         """
         files_to_copy = self._determine_files_to_copy()
-        return FileSyncResult(files_to_copy, self.destination)
+        return SyncTaskInfo(files_to_copy, self.destination)
 
     def _determine_files_to_copy(self) -> Generator[FileInfo, FileInfo, FileInfo]:
         """This function performs the actual comparisons. Returns a list of FileInfo to copy.
