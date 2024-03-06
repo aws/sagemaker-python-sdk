@@ -15,7 +15,7 @@ from __future__ import absolute_import
 import pytest
 from sagemaker.serve.builder.schema_builder import SchemaBuilder
 from sagemaker.serve.builder.model_builder import ModelBuilder, Mode
-
+import tests.integ
 from tests.integ.sagemaker.serve.constants import (
     HF_DIR,
     PYTHON_VERSION_IS_NOT_310,
@@ -23,7 +23,7 @@ from tests.integ.sagemaker.serve.constants import (
 )
 
 from tests.integ.timeout import timeout
-from tests.integ.utils import cleanup_model_resources
+from tests.integ.utils import cleanup_model_resources, gpu_list, retry_with_instance_list
 import logging
 
 logger = logging.getLogger(__name__)
@@ -67,7 +67,7 @@ loaded_response = [
 
 
 @pytest.fixture
-def input():
+def model_input():
     return {"inputs": "The man worked as a [MASK]."}
 
 
@@ -87,11 +87,14 @@ def model_builder(request):
 
 @pytest.mark.skipif(
     PYTHON_VERSION_IS_NOT_310,
-    reason="Testing feature",
+    tests.integ.test_region() in tests.integ.TRAINING_NO_P2_REGIONS
+    and tests.integ.test_region() in tests.integ.TRAINING_NO_P3_REGIONS,
+    reason="no ml.p2 or ml.p3 instances in this region",
 )
+@retry_with_instance_list(gpu_list(tests.integ.test_region()))
 @pytest.mark.parametrize("model_builder", ["model_builder_model_schema_builder"], indirect=True)
 def test_pytorch_transformers_sagemaker_endpoint(
-    sagemaker_session, model_builder, gpu_instance_type, input
+    sagemaker_session, model_builder, model_input, **kwargs
 ):
     logger.info("Running in SAGEMAKER_ENDPOINT mode...")
     caught_ex = None
@@ -106,9 +109,12 @@ def test_pytorch_transformers_sagemaker_endpoint(
     with timeout(minutes=SERVE_SAGEMAKER_ENDPOINT_TIMEOUT):
         try:
             logger.info("Deploying and predicting in SAGEMAKER_ENDPOINT mode...")
-            predictor = model.deploy(instance_type=gpu_instance_type, initial_instance_count=1)
+            predictor = model.deploy(
+                instance_type=kwargs["instance_type"], initial_instance_count=2
+            )
             logger.info("Endpoint successfully deployed.")
-            predictor.predict(input)
+            predictor.predict(model_input)
+            assert predictor is not None
         except Exception as e:
             caught_ex = e
         finally:
