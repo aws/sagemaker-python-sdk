@@ -78,6 +78,8 @@ PROPRIETARY_SDK_MANIFEST_FILE = "proprietary-sdk-manifest.json"
 JUMPSTART_BUCKET_BASE_URL = "https://jumpstart-cache-prod-{}.s3.{}.amazonaws.com".format(
     JUMPSTART_REGION, JUMPSTART_REGION
 )
+PROPRIETARY_DOC_BUCKET = "https://jumpstart-cache-prod-us-west-2.s3.us-west-2.amazonaws.com"
+
 TASK_MAP = {
     Tasks.IC: ProblemTypes.IMAGE_CLASSIFICATION,
     Tasks.IC_EMBEDDING: ProblemTypes.IMAGE_EMBEDDING,
@@ -161,14 +163,14 @@ def get_jumpstart_sdk_manifest():
 
 
 def get_proprietary_sdk_manifest():
-    url = "{}/{}".format(JUMPSTART_BUCKET_BASE_URL, PROPRIETARY_SDK_MANIFEST_FILE)
+    url = "{}/{}".format(PROPRIETARY_DOC_BUCKET, PROPRIETARY_SDK_MANIFEST_FILE)
     with request.urlopen(url) as f:
         models_manifest = f.read().decode("utf-8")
     return json.loads(models_manifest)
 
 
 def get_jumpstart_sdk_spec(key):
-    url = "{}/{}".format(JUMPSTART_BUCKET_BASE_URL, key)
+    url = "{}/{}".format(PROPRIETARY_DOC_BUCKET, key)
     with request.urlopen(url) as f:
         model_spec = f.read().decode("utf-8")
     return json.loads(model_spec)
