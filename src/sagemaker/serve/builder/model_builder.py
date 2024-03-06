@@ -244,7 +244,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
         default=None, metadata={"help": "Define the model server to deploy to."}
     )
     model_metadata: Optional[Dict[str, Any]] = field(
-        default=None, metadata={"help": "Define the model metadata to override, currently supports `HF_TASK`"}
+        default=None,
+        metadata={"help": "Define the model metadata to override, currently supports `HF_TASK`"},
     )
 
     def _build_validations(self):
