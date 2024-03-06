@@ -493,6 +493,7 @@ class ModelTest(unittest.TestCase):
             tags=[
                 {"Key": JumpStartTag.MODEL_ID, "Value": "ai21-summarization"},
                 {"Key": JumpStartTag.MODEL_VERSION, "Value": "2.0.004"},
+                {"Key": JumpStartTag.MODEL_TYPE, "Value": "SageMakerJumpStartMarketplace"},
             ],
             endpoint_logging=False,
             model_data_download_timeout=3600,

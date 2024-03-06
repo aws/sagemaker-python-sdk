@@ -214,6 +214,8 @@ class JumpStartModelsCache:
             key (JumpStartVersionedModelId): Key for which to fetch versioned model ID.
             value (Optional[JumpStartVersionedModelId]): Unused variable for current value of
                 old cached model ID/version.
+            model_type (JumpStartModelType): JumpStart model type to indicate whether it is
+                open weights model or proprietary (Marketplace) model.
 
         Raises:
             KeyError: If the semantic version is not found in the manifest, or is found but
@@ -276,10 +278,20 @@ class JumpStartModelsCache:
         )
 
         other_model_id_version = None
-        if model_type != JumpStartModelType.PROPRIETARY:
+        if model_type == JumpStartModelType.OPEN_SOURCE:
             other_model_id_version = self._select_version(
                 model_id, "*", versions_incompatible_with_sagemaker, model_type
             )  # all versions here are incompatible with sagemaker
+        elif model_type == JumpStartModelType.PROPRIETARY:
+            all_possible_model_id_version = [
+                header.version for header in manifest.values()  # type: ignore
+                if header.model_id == model_id
+            ]
+            other_model_id_version = (
+                None
+                if not all_possible_model_id_version
+                else all_possible_model_id_version[0]
+            )
 
         if other_model_id_version is not None:
             error_msg += (

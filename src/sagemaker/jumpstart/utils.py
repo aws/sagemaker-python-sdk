@@ -315,6 +315,7 @@ def add_single_jumpstart_tag(
                 (
                     tag_key_in_array(enums.JumpStartTag.MODEL_ID, curr_tags)
                     or tag_key_in_array(enums.JumpStartTag.MODEL_VERSION, curr_tags)
+                    or tag_key_in_array(enums.JumpStartTag.MODEL_TYPE, curr_tags)
                 )
                 if is_uri
                 else False
@@ -349,6 +350,7 @@ def add_jumpstart_model_id_version_tags(
     tags: Optional[List[TagsDict]],
     model_id: str,
     model_version: str,
+    model_type: Optional[enums.JumpStartModelType] = None,
 ) -> List[TagsDict]:
     """Add custom model ID and version tags to JumpStart related resources."""
     if model_id is None or model_version is None:
@@ -365,6 +367,13 @@ def add_jumpstart_model_id_version_tags(
         tags,
         is_uri=False,
     )
+    if model_type == enums.JumpStartModelType.PROPRIETARY:
+        tags = add_single_jumpstart_tag(
+            enums.JumpStartTag.MARKETPLACE_MODEL_TYPE_VALUE,
+            enums.JumpStartTag.MODEL_TYPE,
+            tags,
+            is_uri=False,
+        )
     return tags
 
 

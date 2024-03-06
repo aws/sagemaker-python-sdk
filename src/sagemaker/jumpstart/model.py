@@ -27,6 +27,7 @@ from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.exceptions import (
     INVALID_MODEL_ID_ERROR_MSG,
     MarketplaceModelSubscriptionError,
+    get_proprietary_model_subscription_msg,
 )
 from sagemaker.jumpstart.factory.model import (
     get_default_predictor,
@@ -39,6 +40,8 @@ from sagemaker.jumpstart.utils import (
     validate_model_id_and_get_type,
     verify_model_region_and_return_specs,
 )
+from sagemaker.jumpstart.constants import JUMPSTART_LOGGER
+from sagemaker.jumpstart.enums import JumpStartModelType
 from sagemaker.utils import stringify_object, format_tags, Tags
 from sagemaker.model import (
     Model,
@@ -336,9 +339,28 @@ class JumpStartModel(Model):
         self.region = model_init_kwargs.region
         self.sagemaker_session = model_init_kwargs.sagemaker_session
 
+        if self.model_type == JumpStartModelType.PROPRIETARY:
+            self.log_subscription_warning()
+
         super(JumpStartModel, self).__init__(**model_init_kwargs.to_kwargs_dict())
 
         self.model_package_arn = model_init_kwargs.model_package_arn
+
+    def log_subscription_warning(self) -> None:
+        """Logs customer facing message for subscribe to the proprietary model."""
+        subscription_link = verify_model_region_and_return_specs(
+            region=self.region,
+            model_id=self.model_id,
+            version=self.model_version,
+            model_type=self.model_type,
+            scope=JumpStartScriptScope.INFERENCE,
+            sagemaker_session=self.sagemaker_session,
+        ).model_subscription_link
+        JUMPSTART_LOGGER.warning(
+            get_proprietary_model_subscription_msg(
+                self.model_id, self.model_version, subscription_link
+            )
+        )
 
     def retrieve_all_examples(self) -> Optional[List[JumpStartSerializablePayload]]:
         """Returns all example payloads associated with the model.
@@ -357,6 +379,7 @@ class JumpStartModel(Model):
             tolerate_deprecated_model=self.tolerate_deprecated_model,
             tolerate_vulnerable_model=self.tolerate_vulnerable_model,
             sagemaker_session=self.sagemaker_session,
+            model_type=self.model_type,
         )
 
     def retrieve_example_payload(self) -> JumpStartSerializablePayload:
@@ -617,6 +640,7 @@ class JumpStartModel(Model):
                     version=self.model_version,
                     model_type=self.model_type,
                     scope=JumpStartScriptScope.INFERENCE,
+                    sagemaker_session=self.sagemaker_session,
                 ).model_subscription_link
                 raise MarketplaceModelSubscriptionError(subscription_link)
             raise

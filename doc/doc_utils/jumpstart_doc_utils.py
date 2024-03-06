@@ -205,8 +205,6 @@ def get_model_source(url):
 
 
 def create_marketplace_model_table():
-    sdk_manifest = get_proprietary_sdk_manifest()
-
     marketpkace_content_intro = []
     marketpkace_content_intro.append("\n")
     marketpkace_content_intro.append(".. list-table:: Available Models\n")
@@ -220,8 +218,20 @@ def create_marketplace_model_table():
     marketpkace_content_intro.append("     - Min SDK Version\n")
     marketpkace_content_intro.append("     - Source\n")
 
-    marketplace_content_entries = []
+    sdk_manifest = get_proprietary_sdk_manifest()
+    sdk_manifest_top_versions_for_models = {}
+
     for model in sdk_manifest:
+        if model["model_id"] not in sdk_manifest_top_versions_for_models:
+            sdk_manifest_top_versions_for_models[model["model_id"]] = model
+        else:
+            if Version(
+                sdk_manifest_top_versions_for_models[model["model_id"]]["version"]
+            ) < Version(model["version"]):
+                sdk_manifest_top_versions_for_models[model["model_id"]] = model
+
+    marketplace_content_entries = []
+    for model in sdk_manifest_top_versions_for_models.values():
         model_spec = get_jumpstart_sdk_spec(model["spec_key"])
         marketplace_content_entries.append("   * - {}\n".format(model_spec["model_id"]))
         marketplace_content_entries.append("     - {}\n".format(False))  # TODO: support training

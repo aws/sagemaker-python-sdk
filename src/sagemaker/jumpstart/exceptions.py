@@ -58,6 +58,19 @@ def get_wildcard_model_version_msg(
     )
 
 
+def get_proprietary_model_subscription_msg(
+    model_id: str,
+    model_version: str,
+    subscription_link: str,
+) -> str:
+    """Returns customer-facing message for using a Marketplace model."""
+
+    return (
+        f"Using Marketplace model '{model_id}' with version identifier '{model_version}'. "
+        f"Please make sure to subscribe to the model from {subscription_link}"
+    )
+
+
 def get_wildcard_proprietary_model_version_msg(
     model_id: str, wildcard_model_version: str, available_versions: List[str]
 ) -> str:
