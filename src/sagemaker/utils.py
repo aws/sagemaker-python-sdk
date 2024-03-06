@@ -22,7 +22,6 @@ import os
 import random
 import re
 import shutil
-import sys
 import tarfile
 import tempfile
 import time
@@ -31,6 +30,7 @@ import json
 import abc
 import uuid
 from datetime import datetime
+from os.path import abspath, realpath, dirname, normpath, join as joinpath
 
 from importlib import import_module
 import botocore
@@ -592,8 +592,7 @@ def _create_or_update_code_dir(
         download_file_from_url(source_directory, local_code_path, sagemaker_session)
 
         with tarfile.open(name=local_code_path, mode="r:gz") as t:
-            check_tarfile_data_filter_attribute()
-            t.extractall(path=code_dir, filter="data")
+            custom_extractall_tarfile(t, code_dir)
 
     elif source_directory:
         if os.path.exists(code_dir):
@@ -630,8 +629,7 @@ def _extract_model(model_uri, sagemaker_session, tmp):
     else:
         local_model_path = model_uri.replace("file://", "")
     with tarfile.open(name=local_model_path, mode="r:gz") as t:
-        check_tarfile_data_filter_attribute()
-        t.extractall(path=tmp_model_dir, filter="data")
+        custom_extractall_tarfile(t, tmp_model_dir)
     return tmp_model_dir
 
 
@@ -1494,23 +1492,92 @@ def format_tags(tags: Tags) -> List[TagsDict]:
     return tags
 
 
-class PythonVersionError(Exception):
-    """Raise when a secure [/patched] version of Python is not used."""
+def _get_resolved_path(path):
+    """Return the normalized absolute path of a given path.
 
-
-def check_tarfile_data_filter_attribute():
-    """Check if tarfile has data_filter utility.
-
-    Tarfile-data_filter utility has guardrails against untrusted de-serialisation.
-
-    Raises:
-        PythonVersionError: if `tarfile.data_filter` is not available.
+    abspath - returns the absolute path without resolving symlinks
+    realpath - resolves the symlinks and gets the actual path
+    normpath - normalizes paths (e.g. remove redudant separators)
+    and handles platform-specific differences
     """
-    # The function and it's usages can be deprecated post support of python >= 3.12
-    if not hasattr(tarfile, "data_filter"):
-        raise PythonVersionError(
-            f"Since tarfile extraction is unsafe the operation is prohibited "
-            f"per PEP-721. Please update your Python [{sys.version}] "
-            f"to latest patch [refer to https://www.python.org/downloads/] "
-            f"to consume the security patch"
-        )
+    return normpath(realpath(abspath(path)))
+
+
+def _is_bad_path(path, base):
+    """Checks if the joined path (base directory + file path) is rooted under the base directory
+
+    Ensuring that the file does not attempt to access paths
+    outside the expected directory structure.
+
+    Args:
+        path (str): The file path.
+        base (str): The base directory.
+
+    Returns:
+        bool: True if the path is not rooted under the base directory, False otherwise.
+    """
+    # joinpath will ignore base if path is absolute
+    return not _get_resolved_path(joinpath(base, path)).startswith(base)
+
+
+def _is_bad_link(info, base):
+    """Checks if the link is rooted under the base directory.
+
+    Ensuring that the link does not attempt to access paths outside the expected directory structure
+
+    Args:
+        info (tarfile.TarInfo): The tar file info.
+        base (str): The base directory.
+
+    Returns:
+        bool: True if the link is not rooted under the base directory, False otherwise.
+    """
+    # Links are interpreted relative to the directory containing the link
+    tip = _get_resolved_path(joinpath(base, dirname(info.name)))
+    return _is_bad_path(info.linkname, base=tip)
+
+
+def _get_safe_members(members):
+    """A generator that yields members that are safe to extract.
+
+    It filters out bad paths and bad links.
+
+    Args:
+        members (list): A list of members to check.
+
+    Yields:
+        tarfile.TarInfo: The tar file info.
+    """
+    base = _get_resolved_path(".")
+
+    for file_info in members:
+        if _is_bad_path(file_info.name, base):
+            logger.error("%s is blocked (illegal path)", file_info.name)
+        elif file_info.issym() and _is_bad_link(file_info, base):
+            logger.error("%s is blocked: Symlink to %s", file_info.name, file_info.linkname)
+        elif file_info.islnk() and _is_bad_link(file_info, base):
+            logger.error("%s is blocked: Hard link to %s", file_info.name, file_info.linkname)
+        else:
+            yield file_info
+
+
+def custom_extractall_tarfile(tar, extract_path):
+    """Extract a tarfile, optionally using data_filter if available.
+
+    # TODO: The function and it's usages can be deprecated once SageMaker Python SDK
+    is upgraded to use Python 3.12+
+
+    If the tarfile has a data_filter attribute, it will be used to extract the contents of the file.
+    Otherwise, the _get_safe_members function will be used to filter bad paths and bad links.
+
+    Args:
+        tar (tarfile.TarFile): The opened tarfile object.
+        extract_path (str): The path to extract the contents of the tarfile.
+
+    Returns:
+        None
+    """
+    if hasattr(tarfile, "data_filter"):
+        tar.extractall(path=extract_path, filter="data")
+    else:
+        tar.extractall(path=extract_path, members=_get_safe_members(tar))
