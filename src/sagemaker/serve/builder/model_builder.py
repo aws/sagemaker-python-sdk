@@ -145,7 +145,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
             to the model server). Possible values for this argument are
             ``TORCHSERVE``, ``MMS``, ``TENSORFLOW_SERVING``, ``DJL_SERVING``,
             ``TRITON``, and``TGI``.
-        model_metadata (Optional[Dict[str, str]): Dictionary used to override the HuggingFace
+        model_metadata (Optional[Dict[str, Any]): Dictionary used to override the HuggingFace
             model metadata. Currently ``HF_TASK`` is overridable.
     """
 
