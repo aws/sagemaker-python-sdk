@@ -678,7 +678,11 @@ def get_training_image_uri(
             if "modelparallel" in distribution["smdistributed"]:
                 if distribution["smdistributed"]["modelparallel"].get("enabled", True):
                     framework = "pytorch-smp"
-                    if "p5" in instance_type or "2.1" in framework_version:
+                    if (
+                        "p5" in instance_type
+                        or "2.1" in framework_version
+                        or "2.2" in framework_version
+                    ):
                         container_version = "cu121"
                     else:
                         container_version = "cu118"
