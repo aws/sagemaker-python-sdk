@@ -12,7 +12,7 @@ awslogs==0.14.0
 black==22.3.0
 stopit==1.1.2
 # Update tox.ini to have correct version of airflow constraints file
-apache-airflow==2.8.1
+apache-airflow==2.8.2
 apache-airflow-providers-amazon==7.2.1
 attrs>=23.1.0,<24
 fabric==2.6.0
@@ -39,3 +39,4 @@ tritonclient[http]<2.37.0
 onnx==1.14.1
 # tf2onnx==1.15.1
 nbformat>=5.9,<6
+accelerate>=0.24.1,<=0.27.0

@@ -1,5 +1,43 @@
 # Changelog
 
+## v2.211.0 (2024-03-05)
+
+### Features
+
+ * pin dll version to support python3.11 to the sdk
+ * instance specific jumpstart host requirements
+ * Add TensorFlow 2.14 image configs
+ * Add AutoMLV2 support
+ * Support selective pipeline execution between function step and regular step
+ * Add new Triton DLC URIs
+
+### Bug Fixes and Other Changes
+
+ * Skip No Canvas regions for test_deploy_best_candidate
+ * make sure gpus are found in local_gpu run
+ * Bump Apache Airflow version to 2.8.2
+ * properly close sagemaker config file after loading config
+ * remove enable_network_isolation from the python doc
+
+### Documentation Changes
+
+ * Add doc for new feature processor APIs and classes
+
+## v2.210.0 (2024-02-28)
+
+### Features
+
+ * Prepend SageMaker Studio App Type to boto3 User Agent string
+ * TGI optimum 0.0.18 (general+llm)
+ * TGI 1.4.2
+
+### Bug Fixes and Other Changes
+
+ * tolerate vulnerable old model for integ test and temporarily skip test_list_jumpstart_models_script_filter
+ * add missing regions to pytorch config
+ * Add validation for sagemaker version on remote job
+ * fixed implementation of fail_on_violation for transform with monitoring
+
 ## v2.209.0 (2024-02-24)
 
 ### Features
