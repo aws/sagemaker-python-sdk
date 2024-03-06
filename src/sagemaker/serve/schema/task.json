@@ -2,7 +2,7 @@
 	"fill-mask": {
         "sample_inputs": {
 			"properties": {
-				"inputs": "Paris is the <mask> of France.",
+				"inputs": "Paris is the [MASK] of France.",
 				"parameters": {}
 			}
         },
