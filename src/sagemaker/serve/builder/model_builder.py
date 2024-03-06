@@ -140,7 +140,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
             ``TORCHSERVE``, ``MMS``, ``TENSORFLOW_SERVING``, ``DJL_SERVING``,
             ``TRITON``, and``TGI``.
         model_metadata (Optional[Dict[str, str]): Dictionary used to override the HuggingFace
-            model metadata.
+            model metadata. Currently ``HF_TASK`` is overridable.
     """
 
     model_path: Optional[str] = field(
@@ -237,8 +237,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
     model_server: Optional[ModelServer] = field(
         default=None, metadata={"help": "Define the model server to deploy to."}
     )
-    model_metadata: Optional[Dict[str, str]] = field(
-        default=None, metadata={"help": "Define the model metadata to override"}
+    model_metadata: Optional[Dict[str, Any]] = field(
+        default=None, metadata={"help": "Define the model metadata to override, currently supports `HF_TASK`"}
     )
 
     def _build_validations(self):
