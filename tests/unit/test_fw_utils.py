@@ -998,6 +998,7 @@ def test_validate_pytorchddp_not_raises():
         "2.0.0",
         "2.0.1",
         "2.1.0",
+        "2.2.0",
     ]
     for framework_version in pytorchddp_supported_fw_versions:
         fw_utils.validate_pytorch_distribution(
@@ -1060,7 +1061,7 @@ def test_validate_torch_distributed_not_raises():
 
     # Case 3: Distribution is torch_distributed enabled, supported framework and instances
     torch_distributed_enabled = {"torch_distributed": {"enabled": True}}
-    torch_distributed_gpu_supported_fw_versions = ["1.13.1", "2.0.0", "2.0.1", "2.1.0"]
+    torch_distributed_gpu_supported_fw_versions = ["1.13.1", "2.0.0", "2.0.1", "2.1.0", "2.2.0"]
     for framework_version in torch_distributed_gpu_supported_fw_versions:
         fw_utils.validate_torch_distributed_distribution(
             instance_type="ml.p3.8xlarge",
