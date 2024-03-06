@@ -35,7 +35,6 @@ import tempfile
 from distutils.dir_util import copy_tree
 
 from os.path import abspath, realpath, dirname, normpath, join as joinpath
-from sys import stderr
 
 logger = logging.getLogger(__name__)
 
@@ -100,11 +99,11 @@ def _get_safe_members(members):
 
     for file_info in members:
         if _is_bad_path(file_info.name, base):
-            logger.error(stderr, file_info.name, "is blocked (illegal path)")
+            logger.error("%s is blocked (illegal path)", file_info.name)
         elif file_info.issym() and _is_bad_link(file_info, base):
-            logger.error(stderr, file_info.name, "is blocked: Symlink to", file_info.linkname)
+            logger.error("%s is blocked: Symlink to %s", file_info.name, file_info.linkname)
         elif file_info.islnk() and _is_bad_link(file_info, base):
-            logger.error(stderr, file_info.name, "is blocked: Hard link to", file_info.linkname)
+            logger.error("%s is blocked: Hard link to %s", file_info.name, file_info.linkname)
         else:
             yield file_info
 
