@@ -5,7 +5,8 @@
         ],
         "version_aliases": {
             "2.0": "2.0.1",
-            "2.1": "2.1.2"
+            "2.1": "2.1.2",
+            "2.2": "2.2.0"
         },
         "versions": {
             "2.0.1": {
@@ -34,6 +35,31 @@
                 "repository": "smdistributed-modelparallel"
             },
             "2.1.2": {
+                "py_versions": [
+                    "py310"
+                ],
+                "registries": {
+                    "ap-northeast-1": "658645717510",
+                    "ap-northeast-2": "658645717510",
+                    "ap-northeast-3": "658645717510",
+                    "ap-south-1": "658645717510",
+                    "ap-southeast-1": "658645717510",
+                    "ap-southeast-2": "658645717510",
+                    "ca-central-1": "658645717510",
+                    "eu-central-1": "658645717510",
+                    "eu-north-1": "658645717510",
+                    "eu-west-1": "658645717510",
+                    "eu-west-2": "658645717510",
+                    "eu-west-3": "658645717510",
+                    "sa-east-1": "658645717510",
+                    "us-east-1": "658645717510",
+                    "us-east-2": "658645717510",
+                    "us-west-1": "658645717510",
+                    "us-west-2": "658645717510"
+                },
+                "repository": "smdistributed-modelparallel"
+            },
+            "2.2.0": {
                 "py_versions": [
                     "py310"
                 ],

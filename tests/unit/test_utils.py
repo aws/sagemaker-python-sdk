@@ -42,8 +42,10 @@ from sagemaker.utils import (
     resolve_nested_dict_value_from_config,
     update_list_of_dicts_with_values_from_config,
     volume_size_supported,
-    PythonVersionError,
-    check_tarfile_data_filter_attribute,
+    _get_resolved_path,
+    _is_bad_path,
+    _is_bad_link,
+    custom_extractall_tarfile,
 )
 from tests.unit.sagemaker.workflow.helpers import CustomStep
 from sagemaker.workflow.parameters import ParameterString, ParameterInteger
@@ -384,6 +386,8 @@ def test_set_nested_value():
 
 
 def test_get_short_version():
+    assert sagemaker.utils.get_short_version("2.2.0") == "2.2"
+    assert sagemaker.utils.get_short_version("2.2") == "2.2"
     assert sagemaker.utils.get_short_version("2.1.0") == "2.1"
     assert sagemaker.utils.get_short_version("2.1") == "2.1"
     assert sagemaker.utils.get_short_version("2.0.1") == "2.0"
@@ -1076,7 +1080,7 @@ def list_tar_files(tar_ball, tmp):
     os.mkdir(startpath)
 
     with tarfile.open(name=tar_ball, mode="r:gz") as t:
-        t.extractall(path=startpath)
+        custom_extractall_tarfile(t, startpath)
 
     def walk():
         for root, dirs, files in os.walk(startpath):
@@ -1752,13 +1756,43 @@ class TestVolumeSizeSupported(TestCase):
             self.assertEqual(family, get_instance_type_family(instance_type))
 
 
-class TestCheckTarfileDataFilterAttribute(TestCase):
-    def test_check_tarfile_data_filter_attribute_unhappy_case(self):
-        with pytest.raises(PythonVersionError):
-            with patch("tarfile.data_filter", None):
-                delattr(tarfile, "data_filter")
-                check_tarfile_data_filter_attribute()
+@pytest.fixture
+def mock_custom_tarfile():
+    class MockTarfile:
+        def __init__(self, data_filter=False):
+            self.data_filter = data_filter
 
-    def test_check_tarfile_data_filter_attribute_happy_case(self):
-        with patch("tarfile.data_filter", "some_value"):
-            check_tarfile_data_filter_attribute()
+        def extractall(self, path, members=None, filter=None):
+            assert path == "/extract/path"
+            if members is not None:
+                assert next(members).name == "file.txt"
+
+    return MockTarfile
+
+
+def test_get_resolved_path():
+    assert _get_resolved_path("path/to/file") == os.path.normpath(
+        os.path.realpath(os.path.abspath("path/to/file"))
+    )
+
+
+@pytest.mark.parametrize("file_path, base, expected", [("file.txt", "/path/to/base", False)])
+def test_is_bad_path(file_path, base, expected):
+    assert _is_bad_path(file_path, base) == expected
+
+
+@pytest.mark.parametrize(
+    "link_name, base, expected", [("link_to_file.txt", "/path/to/base", False)]
+)
+def test_is_bad_link(link_name, base, expected):
+    dummy_info = tarfile.TarInfo(name="dummy.txt")
+    dummy_info.linkname = link_name
+    assert _is_bad_link(dummy_info, base) == expected
+
+
+@pytest.mark.parametrize(
+    "data_filter, expected_extract_path", [(True, "/extract/path"), (False, "/extract/path")]
+)
+def test_custom_extractall_tarfile(mock_custom_tarfile, data_filter, expected_extract_path):
+    tar = mock_custom_tarfile(data_filter)
+    custom_extractall_tarfile(tar, "/extract/path")
