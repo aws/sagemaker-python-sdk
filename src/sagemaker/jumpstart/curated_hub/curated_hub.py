@@ -187,15 +187,14 @@ class CuratedHub:
         return False
 
     def _populate_latest_model_version(self, model: Dict[str, str]) -> Dict[str, str]:
-        """Retrieves the lastest version of a model that has passed a wildcard ('*').
+        """Populates the lastest version of a model from specs no matter what is passed.
 
         Returns model ({ model_id: str, version: str })
         """
         model_specs = utils.verify_model_region_and_return_specs(
             model["model_id"], "*", JumpStartScriptScope.INFERENCE, self.region
         )
-        model["version"] = model_specs.version
-        return model
+        return {"model_id": model["model_id"], "version": model_specs.version}
 
     def _get_jumpstart_models_in_hub(self) -> List[Dict[str, Any]]:
         """Returns list of `HubContent` that have been created from a JumpStart model."""

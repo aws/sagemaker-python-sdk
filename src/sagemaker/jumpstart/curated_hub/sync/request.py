@@ -66,10 +66,17 @@ class HubSyncRequestFactory:
                 :var: destination (S3ObjectLocation): Location to which to sync the files.
         """
         self.comparator = comparator
+        self.destination = destination
         # Need the file lists to be sorted for comparisons below
         self.src_files: List[FileInfo] = sorted(src_files, key=lambda x: x.location.key)
-        self.dest_files: List[FileInfo] = sorted(dest_files, key=lambda x: x.location.key)
-        self.destination = destination
+        formatted_dest_files = [self._format_dest_file(file) for file in dest_files]
+        self.dest_files: List[FileInfo] = sorted(formatted_dest_files, key=lambda x: x.location.key)
+
+    def _format_dest_file(self, file: FileInfo) -> FileInfo:
+        """Strips HubContent data prefix from dest file name"""
+        formatted_key = file.location.key.replace(f"{self.destination.key}/", "")
+        file.location.key = formatted_key
+        return file
 
     def create(self) -> HubSyncRequest:
         """Creates a ``HubSyncRequest`` object, which contains `files` to copy and the `destination`
@@ -106,11 +113,13 @@ class HubSyncRequestFactory:
         for src_file in self.src_files:
             # End of dest, yield remaining src_files
             if dest_done:
+                print("here????", src_file.location.key)
                 yield src_file
                 continue
 
             # We've identified two files that have the same name, further compare
             if self._is_same_file_name(src_file.location.key, dest_file.location.key):
+                print("wait i'm asdfd", src_file.location.key, dest_file.location.key)
                 should_sync = self.comparator.determine_should_sync(src_file, dest_file)
 
                 if should_sync:
@@ -124,21 +133,19 @@ class HubSyncRequestFactory:
                 continue
 
             # Past the src file alphabetically in dest file list. Take the src file and increment src_files.
-            # If there is an alpha-smaller file name in dest as compared to src, it means there is an
+            # If there is an alpha-larger file name in dest as compared to src, it means there is an
             # unexpected file in dest. Do nothing and continue to the next src_file
-            if self._is_alphabetically_larger_file_name(
+            if self._is_alphabetically_earlier_file_name(
                 src_file.location.key, dest_file.location.key
             ):
+                print("wait i'm here", src_file.location.key, dest_file.location.key)
                 yield src_file
                 continue
 
     def _is_same_file_name(self, src_filename: str, dest_filename: str) -> bool:
-        """Determines if two files have the same base path and file name.
+        """Determines if two files have the same file name."""
+        return src_filename == dest_filename
 
-        Destination files might have a prefix, so account for that.
-        """
-        return dest_filename.endswith(src_filename)
-
-    def _is_alphabetically_larger_file_name(self, src_filename: str, dest_filename: str) -> bool:
+    def _is_alphabetically_earlier_file_name(self, src_filename: str, dest_filename: str) -> bool:
         """Determines if one filename is alphabetically earlier than another."""
-        return src_filename > dest_filename
+        return src_filename < dest_filename

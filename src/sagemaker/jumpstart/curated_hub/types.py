@@ -55,7 +55,7 @@ class JumpStartModelInfo:
     """Helper class for storing JumpStart model info."""
 
     model_id: str
-    version: Optional[str] = None
+    version: str
 
 
 class HubContentDependencyType(str, Enum):

@@ -68,10 +68,16 @@ class MultiPartCopyHandler(object):
         region: str,
         sync_request: HubSyncRequest,
     ):
-        """Something."""
+        """Multi-part S3:Copy Handler initializer.
+
+        Args:
+            region (str): Region for the S3 Client
+            sync_request (HubSyncRequest): sync request object containing
+                information required to perform the copy
+        """
         self.region = region
         self.files = sync_request.files
-        self.dest_location = sync_request.dest_location
+        self.dest_location = sync_request.destination
 
         config = botocore.config.Config(max_pool_connections=self.WORKERS)
         self.s3_client = boto3.client("s3", region_name=self.region, config=config)
@@ -87,7 +93,7 @@ class MultiPartCopyHandler(object):
         )
 
     def _copy_file(self, file: FileInfo, progress_cb):
-        """Something."""
+        """Performs the actual MultiPart S3:Copy of the object."""
         copy_source = {"Bucket": file.location.bucket, "Key": file.location.key}
         result = self.transfer_manager.copy(
             bucket=self.dest_location.bucket,
@@ -101,7 +107,10 @@ class MultiPartCopyHandler(object):
         result.result()
 
     def execute(self):
-        """Something."""
+        """Executes the MultiPart S3:Copy on the class.
+
+        Sets up progress bar and kicks off each copy request.
+        """
         total_size = sum([file.size for file in self.files])
         JUMPSTART_LOGGER.warning(
             "Copying %s files (%s) into %s/%s",

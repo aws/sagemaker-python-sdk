@@ -11,12 +11,15 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
+from copy import deepcopy
 from unittest import mock
 from unittest.mock import patch
 import pytest
 from mock import Mock
 from sagemaker.jumpstart.curated_hub.curated_hub import CuratedHub
 from sagemaker.jumpstart.curated_hub.types import JumpStartModelInfo
+from sagemaker.jumpstart.types import JumpStartModelSpecs
+from tests.unit.sagemaker.jumpstart.constants import BASE_SPEC
 from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec
 
 REGION = "us-east-1"
@@ -298,3 +301,188 @@ def test_sync_passes_newer_hub_models(
     mock_sync_public_models.assert_called_once_with(
         JumpStartModelInfo("mock-model-one-huggingface", "*")
     )
+
+
+@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+def test_populate_latest_model_version(mock_get_model_specs, sagemaker_session):
+    mock_get_model_specs.return_value = JumpStartModelSpecs(deepcopy(BASE_SPEC))
+
+    hub_name = "mock_hub_name"
+    hub = CuratedHub(hub_name=hub_name, sagemaker_session=sagemaker_session)
+
+    res = hub._populate_latest_model_version({"model_id": "mock-pytorch-model-one", "version": "*"})
+    assert res == {"model_id": "mock-pytorch-model-one", "version": "1.0.0"}
+
+    res = hub._populate_latest_model_version({"model_id": "mock-pytorch-model-one"})
+    assert res == {"model_id": "mock-pytorch-model-one", "version": "1.0.0"}
+
+    # Should take latest version from specs no matter what. Parent should responsibly call
+    res = hub._populate_latest_model_version(
+        {"model_id": "mock-pytorch-model-one", "version": "2.0.0"}
+    )
+    assert res == {"model_id": "mock-pytorch-model-one", "version": "1.0.0"}
+
+
+@patch(f"{MODULE_PATH}.list_models")
+def test_get_jumpstart_models_in_hub(mock_list_models, sagemaker_session):
+    mock_list_models.return_value = {
+        "HubContentSummaries": [
+            {
+                "name": "mock-model-two-pytorch",
+                "version": "1.0.3",
+                "search_keywords": [
+                    "@jumpstart-model-id:model-two-pytorch",
+                    "@jumpstart-model-version:1.0.3",
+                ],
+            },
+            {
+                "name": "mock-model-three-nonsense",
+                "version": "1.0.2",
+                "search_keywords": ["tag-one", "tag-two"],
+            },
+            {
+                "name": "mock-model-four-huggingface",
+                "version": "2.0.2",
+                "search_keywords": [
+                    "@jumpstart-model-id:model-four-huggingface",
+                    "@jumpstart-model-version:2.0.2",
+                ],
+            },
+        ]
+    }
+
+    hub_name = "mock_hub_name"
+    hub = CuratedHub(hub_name=hub_name, sagemaker_session=sagemaker_session)
+
+    res = hub._get_jumpstart_models_in_hub()
+    assert res == [
+        {
+            "name": "mock-model-two-pytorch",
+            "version": "1.0.3",
+            "search_keywords": [
+                "@jumpstart-model-id:model-two-pytorch",
+                "@jumpstart-model-version:1.0.3",
+            ],
+        },
+        {
+            "name": "mock-model-four-huggingface",
+            "version": "2.0.2",
+            "search_keywords": [
+                "@jumpstart-model-id:model-four-huggingface",
+                "@jumpstart-model-version:2.0.2",
+            ],
+        },
+    ]
+
+    mock_list_models.return_value = {"HubContentSummaries": []}
+
+    res = hub._get_jumpstart_models_in_hub()
+    assert res == []
+
+    mock_list_models.return_value = {
+        "HubContentSummaries": [
+            {
+                "name": "mock-model-three-nonsense",
+                "version": "1.0.2",
+                "search_keywords": ["tag-one", "tag-two"],
+            },
+        ]
+    }
+
+    res = hub._get_jumpstart_models_in_hub()
+    assert res == []
+
+
+def test_determine_models_to_sync(sagemaker_session):
+    hub_name = "mock_hub_name"
+    hub = CuratedHub(hub_name=hub_name, sagemaker_session=sagemaker_session)
+
+    js_models_in_hub = [
+        {
+            "name": "mock-model-two-pytorch",
+            "version": "1.0.1",
+            "search_keywords": [
+                "@jumpstart-model-id:model-two-pytorch",
+                "@jumpstart-model-version:1.0.2",
+            ],
+        },
+        {
+            "name": "mock-model-four-huggingface",
+            "version": "2.0.2",
+            "search_keywords": [
+                "@jumpstart-model-id:model-four-huggingface",
+                "@jumpstart-model-version:2.0.2",
+            ],
+        },
+    ]
+    model_one = JumpStartModelInfo("mock-model-one-huggingface", "1.2.3")
+    model_two = JumpStartModelInfo("mock-model-two-pytorch", "1.0.2")
+    # No model_one, older model_two
+    res = hub._determine_models_to_sync([model_one, model_two], js_models_in_hub)
+    assert res == [model_one, model_two]
+
+    js_models_in_hub = [
+        {
+            "name": "mock-model-two-pytorch",
+            "version": "1.0.3",
+            "search_keywords": [
+                "@jumpstart-model-id:model-two-pytorch",
+                "@jumpstart-model-version:1.0.3",
+            ],
+        },
+        {
+            "name": "mock-model-four-huggingface",
+            "version": "2.0.2",
+            "search_keywords": [
+                "@jumpstart-model-id:model-four-huggingface",
+                "@jumpstart-model-version:2.0.2",
+            ],
+        },
+    ]
+    # No model_one, newer model_two
+    res = hub._determine_models_to_sync([model_one, model_two], js_models_in_hub)
+    assert res == [model_one]
+
+    js_models_in_hub = [
+        {
+            "name": "mock-model-one-huggingface",
+            "version": "1.2.3",
+            "search_keywords": [
+                "@jumpstart-model-id:model-one-huggingface",
+                "@jumpstart-model-version:1.2.3",
+            ],
+        },
+        {
+            "name": "mock-model-two-pytorch",
+            "version": "1.0.2",
+            "search_keywords": [
+                "@jumpstart-model-id:model-two-pytorch",
+                "@jumpstart-model-version:1.0.2",
+            ],
+        },
+    ]
+    # Same model_one, same model_two
+    res = hub._determine_models_to_sync([model_one, model_two], js_models_in_hub)
+    assert res == []
+
+    js_models_in_hub = [
+        {
+            "name": "mock-model-one-huggingface",
+            "version": "1.2.1",
+            "search_keywords": [
+                "@jumpstart-model-id:model-one-huggingface",
+                "@jumpstart-model-version:1.2.1",
+            ],
+        },
+        {
+            "name": "mock-model-two-pytorch",
+            "version": "1.0.2",
+            "search_keywords": [
+                "@jumpstart-model-id:model-two-pytorch",
+                "@jumpstart-model-version:1.0.2",
+            ],
+        },
+    ]
+    # Old model_one, same model_two
+    res = hub._determine_models_to_sync([model_one, model_two], js_models_in_hub)
+    assert res == [model_one]

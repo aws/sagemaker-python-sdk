@@ -66,10 +66,10 @@ def generate_file_infos_from_model_specs(
     files = []
     for dependency in HubContentDependencyType:
         location: S3ObjectLocation = public_model_data_accessor.get_s3_reference(dependency)
-        parameters = {"Bucket": location.bucket, "Prefix": location.key}
         location_type = "prefix" if location.key.endswith("/") else "object"
 
         if location_type == "prefix":
+            parameters = {"Bucket": location.bucket, "Prefix": location.key}
             response = s3_client.list_objects_v2(**parameters)
             contents = response.get("Contents", None)
             for s3_obj in contents:
@@ -87,6 +87,7 @@ def generate_file_infos_from_model_specs(
                     )
                 )
         elif location_type == "object":
+            parameters = {"Bucket": location.bucket, "Key": location.key}
             response = s3_client.head_object(**parameters)
             size: bytes = response.get("ContentLength", None)
             last_updated: datetime = response.get("LastModified", None)
