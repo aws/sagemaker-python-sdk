@@ -104,8 +104,6 @@ class PublicModelDataAccessor:
             model_id=self.model_specs.model_id,
             model_version=self.model_specs.version,
             script_scope=model_scope,
-            tolerate_vulnerable_model=True,
-            tolerate_deprecated_model=True,
         )
 
     def _jumpstart_artifact_s3_uri(self, model_scope: str) -> str:
@@ -115,6 +113,4 @@ class PublicModelDataAccessor:
             model_id=self.model_specs.model_id,
             model_version=self.model_specs.version,
             model_scope=model_scope,
-            tolerate_vulnerable_model=True,
-            tolerate_deprecated_model=True,
         )
