@@ -16,17 +16,16 @@ from dataclasses import dataclass
 from typing import Generator, List
 
 from botocore.compat import six
-from sagemaker.jumpstart.curated_hub.accessors.objectlocation import S3ObjectLocation
-from sagemaker.jumpstart.curated_hub.accessors.synccomparator import BaseComparator
 
-from sagemaker.jumpstart.curated_hub.accessors.fileinfo import FileInfo
+from sagemaker.jumpstart.curated_hub.sync.comparator import BaseComparator
+from sagemaker.jumpstart.curated_hub.types import FileInfo, S3ObjectLocation
 
 advance_iterator = six.advance_iterator
 
 
 @dataclass
-class SyncTaskInfo:
-    """Sync Task Info class"""
+class HubSyncRequest:
+    """HubSyncRequest class"""
 
     files: List[FileInfo]
     destination: S3ObjectLocation
@@ -34,7 +33,7 @@ class SyncTaskInfo:
     def __init__(
         self, files_to_copy: Generator[FileInfo, FileInfo, FileInfo], destination: S3ObjectLocation
     ):
-        """Contains information required to sync data.
+        """Contains information required to sync data into a Hub.
 
         Returns:
             :var: files (List[FileInfo]): Files that shoudl be synced.
@@ -44,8 +43,8 @@ class SyncTaskInfo:
         self.destination = destination
 
 
-class SyncTaskHandler:
-    """Generates a ``SyncTaskInfo`` which contains information required to sync data."""
+class HubSyncRequestFactory:
+    """Generates a ``HubSyncRequest`` which is required to sync data into a Hub."""
 
     def __init__(
         self,
@@ -54,7 +53,7 @@ class SyncTaskHandler:
         destination: S3ObjectLocation,
         comparator: BaseComparator,
     ):
-        """Instantiates a ``SyncTaskGenerator`` class.
+        """Instantiates a ``HubSyncRequestFactory`` class.
 
         Args:
             src_files (List[FileInfo]): List of files to sync to destination bucket
@@ -62,22 +61,23 @@ class SyncTaskHandler:
             destination (S3ObjectLocation): S3 destination for copied data
 
         Returns:
-            ``SyncTaskInfo`` class containing:
+            ``HubSyncRequest`` class containing:
                 :var: files (List[FileInfo]): Files that shoudl be synced.
                 :var: destination (S3ObjectLocation): Location to which to sync the files.
         """
         self.comparator = comparator
+        # Need the file lists to be sorted for comparisons below
         self.src_files: List[FileInfo] = sorted(src_files, key=lambda x: x.location.key)
         self.dest_files: List[FileInfo] = sorted(dest_files, key=lambda x: x.location.key)
         self.destination = destination
 
-    def create(self) -> SyncTaskInfo:
-        """Creates a ``SyncTaskInfo`` object, which contains `files` to copy and the `destination`
+    def create(self) -> HubSyncRequest:
+        """Creates a ``HubSyncRequest`` object, which contains `files` to copy and the `destination`
 
         Based on the `s3:sync` algorithm.
         """
         files_to_copy = self._determine_files_to_copy()
-        return SyncTaskInfo(files_to_copy, self.destination)
+        return HubSyncRequest(files_to_copy, self.destination)
 
     def _determine_files_to_copy(self) -> Generator[FileInfo, FileInfo, FileInfo]:
         """This function performs the actual comparisons. Returns a list of FileInfo to copy.
@@ -89,6 +89,10 @@ class SyncTaskHandler:
             If there is a dest file, compare file names. If the file names are equivalent,
             use the comparator to see if the dest file should be updated. If the file
             names are not equivalent, increment the dest pointer.
+
+        Notes:
+            Increment src_files = continue, Increment dest_files = advance_iterator(iterator),
+            Take src_file = yield
         """
         # :var dest_done: True if there are no files from the dest left.
         dest_done = False
@@ -119,7 +123,9 @@ class SyncTaskHandler:
                     dest_done = True
                 continue
 
-            # Past the src file alphabetically in dest file list. Take the src file and continue
+            # Past the src file alphabetically in dest file list. Take the src file and increment src_files.
+            # If there is an alpha-smaller file name in dest as compared to src, it means there is an
+            # unexpected file in dest. Do nothing and continue to the next src_file
             if self._is_alphabetically_larger_file_name(
                 src_file.location.key, dest_file.location.key
             ):
@@ -127,9 +133,9 @@ class SyncTaskHandler:
                 continue
 
     def _is_same_file_name(self, src_filename: str, dest_filename: str) -> bool:
-        """Compares two file names and determiens if they are the same.
+        """Determines if two files have the same base path and file name.
 
-        Destination files might add a prefix.
+        Destination files might have a prefix, so account for that.
         """
         return dest_filename.endswith(src_filename)
 

@@ -15,7 +15,7 @@ from __future__ import absolute_import
 from datetime import timedelta
 from sagemaker.jumpstart.constants import JUMPSTART_LOGGER
 
-from sagemaker.jumpstart.curated_hub.accessors.fileinfo import FileInfo
+from sagemaker.jumpstart.curated_hub.types import FileInfo
 
 
 class BaseComparator:

@@ -407,8 +407,9 @@ def test_jumpstart_model_specs():
 
     assert specs1.to_json() == BASE_SPEC
 
-    BASE_SPEC["model_id"] = "diff model ID"
-    specs2 = JumpStartModelSpecs(BASE_SPEC)
+    diff_specs = copy.deepcopy(BASE_SPEC)
+    diff_specs["model_id"] = "diff model ID"
+    specs2 = JumpStartModelSpecs(diff_specs)
     assert specs1 != specs2
 
     specs3 = copy.deepcopy(specs1)

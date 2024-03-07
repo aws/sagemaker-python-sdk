@@ -12,15 +12,14 @@
 # language governing permissions and limitations under the License.
 """This module provides a class that perfrms functionalities similar to ``S3:Copy``."""
 from __future__ import absolute_import
-from typing import List
 
 import boto3
 import botocore
 import tqdm
 
 from sagemaker.jumpstart.constants import JUMPSTART_LOGGER
-from sagemaker.jumpstart.curated_hub.accessors.fileinfo import FileInfo
-from sagemaker.jumpstart.curated_hub.accessors.objectlocation import S3ObjectLocation
+from sagemaker.jumpstart.curated_hub.types import FileInfo
+from sagemaker.jumpstart.curated_hub.sync.request import HubSyncRequest
 
 s3transfer = boto3.s3.transfer
 
@@ -67,13 +66,12 @@ class MultiPartCopyHandler(object):
     def __init__(
         self,
         region: str,
-        files: List[FileInfo],
-        dest_location: S3ObjectLocation,
+        sync_request: HubSyncRequest,
     ):
         """Something."""
         self.region = region
-        self.files = files
-        self.dest_location = dest_location
+        self.files = sync_request.files
+        self.dest_location = sync_request.dest_location
 
         config = botocore.config.Config(max_pool_connections=self.WORKERS)
         self.s3_client = boto3.client("s3", region_name=self.region, config=config)
@@ -88,7 +86,7 @@ class MultiPartCopyHandler(object):
             client=self.s3_client, config=transfer_config
         )
 
-    def _copy_file(self, file: FileInfo, update_fn):
+    def _copy_file(self, file: FileInfo, progress_cb):
         """Something."""
         copy_source = {"Bucket": file.location.bucket, "Key": file.location.key}
         result = self.transfer_manager.copy(
@@ -96,9 +94,10 @@ class MultiPartCopyHandler(object):
             key=f"{self.dest_location.key}/{file.location.key}",
             copy_source=copy_source,
             subscribers=[
-                s3transfer.ProgressCallbackInvoker(update_fn),
+                s3transfer.ProgressCallbackInvoker(progress_cb),
             ],
         )
+        # Attempt to access result to throw error if exists. Silently calls if successful.
         result.result()
 
     def execute(self):
@@ -124,5 +123,6 @@ class MultiPartCopyHandler(object):
         for file in self.files:
             self._copy_file(file, progress.update)
 
+        # Call `shutdown` to wait for copy results
         self.transfer_manager.shutdown()
         progress.close()

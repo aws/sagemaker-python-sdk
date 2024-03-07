@@ -10,11 +10,83 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""This module stores types related to SageMaker JumpStart."""
+"""This module stores types related to SageMaker JumpStart CuratedHub."""
 from __future__ import absolute_import
-from typing import Dict, Any
+from typing import Dict, Any, Optional
+from enum import Enum
+from dataclasses import dataclass
+from datetime import datetime
 
 from sagemaker.jumpstart.types import JumpStartDataHolderType, JumpStartModelSpecs
+from sagemaker.s3_utils import parse_s3_url
+
+
+@dataclass
+class S3ObjectLocation:
+    """Helper class for S3 object references"""
+
+    bucket: str
+    key: str
+
+    def format_for_s3_copy(self) -> Dict[str, str]:
+        """Returns a dict formatted for S3 copy calls"""
+        return {
+            "Bucket": self.bucket,
+            "Key": self.key,
+        }
+
+    def get_uri(self) -> str:
+        """Returns the s3 URI"""
+        return f"s3://{self.bucket}/{self.key}"
+
+
+def create_s3_object_reference_from_uri(s3_uri: str) -> S3ObjectLocation:
+    """Utiity to help generate an S3 object reference"""
+    bucket, key = parse_s3_url(s3_uri)
+
+    return S3ObjectLocation(
+        bucket=bucket,
+        key=key,
+    )
+
+
+@dataclass
+class JumpStartModelInfo:
+    """Helper class for storing JumpStart model info."""
+
+    model_id: str
+    version: Optional[str] = None
+
+
+class HubContentDependencyType(str, Enum):
+    """Enum class for HubContent dependency names"""
+
+    INFERENCE_ARTIFACT = "inference_artifact_s3_reference"
+    TRAINING_ARTIFACT = "training_artifact_s3_reference"
+    INFERENCE_SCRIPT = "inference_script_s3_reference"
+    TRAINING_SCRIPT = "training_script_s3_reference"
+    DEFAULT_TRAINING_DATASET = "default_training_dataset_s3_reference"
+    DEMO_NOTEBOOK = "demo_notebook_s3_reference"
+    MARKDOWN = "markdown_s3_reference"
+
+
+class FileInfo(JumpStartDataHolderType):
+    """Data class for additional S3 file info."""
+
+    location: S3ObjectLocation
+
+    def __init__(
+        self,
+        bucket: str,
+        key: str,
+        size: Optional[bytes],
+        last_updated: Optional[datetime],
+        dependecy_type: Optional[HubContentDependencyType] = None,
+    ):
+        self.location = S3ObjectLocation(bucket, key)
+        self.size = size
+        self.last_updated = last_updated
+        self.dependecy_type = dependecy_type
 
 
 class HubContentDocument_v2(JumpStartDataHolderType):

@@ -13,13 +13,12 @@
 from __future__ import absolute_import
 import pytest
 from unittest.mock import Mock, patch
-from sagemaker.jumpstart.curated_hub.accessors.filegenerator import (
+from sagemaker.jumpstart.curated_hub.accessors.file_generator import (
     generate_file_infos_from_model_specs,
     generate_file_infos_from_s3_location,
 )
-from sagemaker.jumpstart.curated_hub.accessors.fileinfo import FileInfo
+from sagemaker.jumpstart.curated_hub.types import FileInfo, S3ObjectLocation
 
-from sagemaker.jumpstart.curated_hub.accessors.objectlocation import S3ObjectLocation
 from sagemaker.jumpstart.types import JumpStartModelSpecs
 from tests.unit.sagemaker.jumpstart.constants import BASE_SPEC
 from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec

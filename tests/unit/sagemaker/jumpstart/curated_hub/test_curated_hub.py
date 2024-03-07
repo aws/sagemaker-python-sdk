@@ -16,6 +16,7 @@ from unittest.mock import patch
 import pytest
 from mock import Mock
 from sagemaker.jumpstart.curated_hub.curated_hub import CuratedHub
+from sagemaker.jumpstart.curated_hub.types import JumpStartModelInfo
 from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec
 
 REGION = "us-east-1"
@@ -157,7 +158,12 @@ def test_sync_kicks_off_parallel_syncs(
 
     hub.sync([model_one, model_two])
 
-    mock_sync_public_models.assert_has_calls([mock.call(model_one), mock.call(model_two)])
+    mock_sync_public_models.assert_has_calls(
+        [
+            mock.call(JumpStartModelInfo("mock-model-one-huggingface", "*")),
+            mock.call(JumpStartModelInfo("mock-model-two-pytorch", "1.0.2")),
+        ]
+    )
 
 
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -196,7 +202,9 @@ def test_sync_filters_models_that_exist_in_hub(
 
     hub.sync([model_one, model_two])
 
-    mock_sync_public_models.assert_called_once_with(model_one)
+    mock_sync_public_models.assert_called_once_with(
+        JumpStartModelInfo("mock-model-one-huggingface", "*")
+    )
 
 
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -239,7 +247,12 @@ def test_sync_updates_old_models_in_hub(
 
     hub.sync([model_one, model_two])
 
-    mock_sync_public_models.assert_has_calls([mock.call(model_one), mock.call(model_two)])
+    mock_sync_public_models.assert_has_calls(
+        [
+            mock.call(JumpStartModelInfo("mock-model-one-huggingface", "*")),
+            mock.call(JumpStartModelInfo("mock-model-two-pytorch", "1.0.2")),
+        ]
+    )
 
 
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -282,4 +295,6 @@ def test_sync_passes_newer_hub_models(
 
     hub.sync([model_one, model_two])
 
-    mock_sync_public_models.assert_called_once_with(model_one)
+    mock_sync_public_models.assert_called_once_with(
+        JumpStartModelInfo("mock-model-one-huggingface", "*")
+    )

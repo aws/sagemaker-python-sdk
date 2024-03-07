@@ -17,8 +17,11 @@ from typing import Any, Dict, List
 from datetime import datetime
 from botocore.client import BaseClient
 
-from sagemaker.jumpstart.curated_hub.accessors.fileinfo import FileInfo, HubContentDependencyType
-from sagemaker.jumpstart.curated_hub.accessors.objectlocation import S3ObjectLocation
+from sagemaker.jumpstart.curated_hub.types import (
+    FileInfo,
+    HubContentDependencyType,
+    S3ObjectLocation,
+)
 from sagemaker.jumpstart.curated_hub.accessors.public_model_data import PublicModelDataAccessor
 from sagemaker.jumpstart.types import JumpStartModelSpecs
 
@@ -63,10 +66,10 @@ def generate_file_infos_from_model_specs(
     files = []
     for dependency in HubContentDependencyType:
         location: S3ObjectLocation = public_model_data_accessor.get_s3_reference(dependency)
+        parameters = {"Bucket": location.bucket, "Prefix": location.key}
+        location_type = "prefix" if location.key.endswith("/") else "object"
 
-        # Prefix
-        if location.key.endswith("/"):
-            parameters = {"Bucket": location.bucket, "Prefix": location.key}
+        if location_type == "prefix":
             response = s3_client.list_objects_v2(**parameters)
             contents = response.get("Contents", None)
             for s3_obj in contents:
@@ -83,8 +86,7 @@ def generate_file_infos_from_model_specs(
                         dependency_type,
                     )
                 )
-        else:
-            parameters = {"Bucket": location.bucket, "Key": location.key}
+        elif location_type == "object":
             response = s3_client.head_object(**parameters)
             size: bytes = response.get("ContentLength", None)
             last_updated: datetime = response.get("LastModified", None)

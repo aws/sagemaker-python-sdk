@@ -13,9 +13,9 @@
 from __future__ import absolute_import
 import unittest
 from datetime import datetime
-from sagemaker.jumpstart.curated_hub.accessors.fileinfo import FileInfo
+from sagemaker.jumpstart.curated_hub.types import FileInfo
 
-from sagemaker.jumpstart.curated_hub.accessors.synccomparator import SizeAndLastUpdatedComparator
+from sagemaker.jumpstart.curated_hub.sync.comparator import SizeAndLastUpdatedComparator
 
 
 class SizeAndLastUpdateComparatorTest(unittest.TestCase):

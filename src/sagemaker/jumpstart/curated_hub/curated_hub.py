@@ -23,11 +23,16 @@ from botocore.client import BaseClient
 from packaging.version import Version
 
 from sagemaker.jumpstart import utils
-from sagemaker.jumpstart.curated_hub.accessors import filegenerator
+from sagemaker.jumpstart.curated_hub.accessors import file_generator
 from sagemaker.jumpstart.curated_hub.accessors.multipartcopy import MultiPartCopyHandler
-from sagemaker.jumpstart.curated_hub.accessors.objectlocation import S3ObjectLocation
-from sagemaker.jumpstart.curated_hub.accessors.synccomparator import SizeAndLastUpdatedComparator
-from sagemaker.jumpstart.curated_hub.accessors.synctask import SyncTaskHandler
+from sagemaker.jumpstart.curated_hub.constants import (
+    JUMPSTART_HUB_MODEL_ID_TAG_PREFIX,
+    JUMPSTART_HUB_MODEL_VERSION_TAG_PREFIX,
+    TASK_TAG_PREFIX,
+    FRAMEWORK_TAG_PREFIX,
+)
+from sagemaker.jumpstart.curated_hub.sync.comparator import SizeAndLastUpdatedComparator
+from sagemaker.jumpstart.curated_hub.sync.request import HubSyncRequestFactory
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.session import Session
 from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION, JUMPSTART_LOGGER
@@ -41,7 +46,11 @@ from sagemaker.jumpstart.curated_hub.utils import (
     create_hub_bucket_if_it_does_not_exist,
     generate_default_hub_bucket_name,
 )
-from sagemaker.jumpstart.curated_hub.types import HubContentDocument_v2
+from sagemaker.jumpstart.curated_hub.types import (
+    HubContentDocument_v2,
+    JumpStartModelInfo,
+    S3ObjectLocation,
+)
 
 
 class CuratedHub:
@@ -78,9 +87,20 @@ class CuratedHub:
             hub_bucket_prefix = hub_response["S3StorageConfig"].get("S3OutputPath", None)
             if hub_bucket_prefix:
                 return hub_bucket_prefix.replace("s3://", "")
-            return generate_default_hub_bucket_name(self._sagemaker_session)
+            default_bucket_name = generate_default_hub_bucket_name(self._sagemaker_session)
+            JUMPSTART_LOGGER.warning(
+                "There is not a Hub bucket associated with %s. Using %s",
+                self.hub_name,
+                default_bucket_name,
+            )
+            return default_bucket_name
         except exceptions.ClientError:
             hub_bucket_name = generate_default_hub_bucket_name(self._sagemaker_session)
+            JUMPSTART_LOGGER.warning(
+                "There is not a Hub bucket associated with %s. Using %s",
+                self.hub_name,
+                default_bucket_name,
+            )
             return hub_bucket_name
 
     def create(
@@ -188,7 +208,7 @@ class CuratedHub:
                 (
                     tag
                     for tag in hub_model["search_keywords"]
-                    if tag.startswith("@jumpstart-model-id")
+                    if tag.startswith(JUMPSTART_HUB_MODEL_ID_TAG_PREFIX)
                 ),
                 None,
             )
@@ -196,7 +216,7 @@ class CuratedHub:
                 (
                     tag
                     for tag in hub_model["search_keywords"]
-                    if tag.startswith("@jumpstart-model-version")
+                    if tag.startswith(JUMPSTART_HUB_MODEL_VERSION_TAG_PREFIX)
                 ),
                 None,
             )
@@ -206,7 +226,9 @@ class CuratedHub:
 
         return js_models_in_hub
 
-    def _determine_models_to_sync(self, model_list, models_in_hub) -> List[Dict[str, str]]:
+    def _determine_models_to_sync(
+        self, model_list: List[JumpStartModelInfo], models_in_hub
+    ) -> List[JumpStartModelInfo]:
         """Determines which models from `sync` params to sync into the CuratedHub.
 
         Algorithm:
@@ -223,7 +245,7 @@ class CuratedHub:
                 (
                     hub_model
                     for hub_model in models_in_hub
-                    if hub_model and hub_model["name"] == model["model_id"]
+                    if hub_model and hub_model["name"] == model.model_id
                 ),
                 None,
             )
@@ -233,7 +255,7 @@ class CuratedHub:
                 models_to_sync.append(model)
 
             if matched_model:
-                model_version = Version(model["version"])
+                model_version = Version(model.version)
                 hub_model_version = Version(matched_model["version"])
 
                 # 1. Model version exists in Hub, pass
@@ -271,11 +293,19 @@ class CuratedHub:
             version = model.get("version", "*")
             if version == "*":
                 model = self._populate_latest_model_version(model)
-            model_version_list.append(model)
+                JUMPSTART_LOGGER.warning(
+                    "No version specified for model %s. Using version %s",
+                    model["model_id"],
+                    model["version"],
+                )
+            model_version_list.append(JumpStartModelInfo(model["model_id"], model["version"]))
 
         js_models_in_hub = self._get_jumpstart_models_in_hub()
 
         models_to_sync = self._determine_models_to_sync(model_version_list, js_models_in_hub)
+        JUMPSTART_LOGGER.warning(
+            "Syncing the following models into Hub %s: %s", self.hub_name, models_to_sync
+        )
 
         # Delete old models?
 
@@ -308,14 +338,11 @@ class CuratedHub:
                 f"Failures when importing models to curated hub in parallel: {failed_imports}"
             )
 
-    def _sync_public_model_to_hub(self, model: Dict[str, str]):
+    def _sync_public_model_to_hub(self, model: JumpStartModelInfo):
         """Syncs a public JumpStart model version to the Hub. Runs in parallel."""
-        model_name = model["model_id"]
-        model_version = model["version"]
-
         model_specs = utils.verify_model_region_and_return_specs(
-            model_id=model_name,
-            version=model_version,
+            model_id=model.model_id,
+            version=model.version,
             region=self.region,
             scope=JumpStartScriptScope.INFERENCE,
             sagemaker_session=self._sagemaker_session,
@@ -323,49 +350,55 @@ class CuratedHub:
         studio_specs = self._fetch_studio_specs(model_specs=model_specs)
 
         dest_location = S3ObjectLocation(
-            bucket=self.hub_bucket_name, key=f"{model_name}/{model_version}"
+            bucket=self.hub_bucket_name, key=f"{model.model_id}/{model.version}"
         )
-
-        src_files = filegenerator.generate_file_infos_from_model_specs(
+        src_files = file_generator.generate_file_infos_from_model_specs(
             model_specs, studio_specs, self.region, self._s3_client
         )
-        dest_files = filegenerator.generate_file_infos_from_s3_location(
+        dest_files = file_generator.generate_file_infos_from_s3_location(
             dest_location, self._s3_client
         )
 
         comparator = SizeAndLastUpdatedComparator()
-        sync_task = SyncTaskHandler(src_files, dest_files, dest_location, comparator).create()
+        sync_request = HubSyncRequestFactory(
+            src_files, dest_files, dest_location, comparator
+        ).create()
 
-        if len(sync_task.files) > 0:
-            MultiPartCopyHandler(
-                region=self.region, files=sync_task.files, dest_location=sync_task.destination
-            ).execute()
+        if len(sync_request.files) > 0:
+            MultiPartCopyHandler(region=self.region, sync_request=sync_request).execute()
         else:
-            JUMPSTART_LOGGER.warning("Nothing to copy for %s v%s", model_name, model_version)
+            JUMPSTART_LOGGER.warning("Nothing to copy for %s v%s", model.model_id, model.version)
 
         # TODO: Tag model if specs say it is deprecated or training/inference
         # vulnerable. Update tag of HubContent ARN without version.
         # Versioned ARNs are not onboarded to Tagris.
         tags = []
 
+        search_keywords = [
+            f"{JUMPSTART_HUB_MODEL_ID_TAG_PREFIX}:{model.model_id}",
+            f"{JUMPSTART_HUB_MODEL_VERSION_TAG_PREFIX}:{model.version}",
+            f"{FRAMEWORK_TAG_PREFIX}:{model_specs.get_framework()}",
+            f"{TASK_TAG_PREFIX}:TODO: pull from specs",
+        ]
+
         hub_content_document = str(HubContentDocument_v2(spec=model_specs))
 
         self._sagemaker_session.import_hub_content(
             document_schema_version=HubContentDocument_v2.SCHEMA_VERSION,
-            hub_content_name=model_name,
-            hub_content_version=model_version,
+            hub_content_name=model.model_id,
+            hub_content_version=model.version,
             hub_name=self.hub_name,
             hub_content_document=hub_content_document,
             hub_content_type=HubContentType.MODEL,
             hub_content_display_name="",
             hub_content_description="",
             hub_content_markdown="",
-            hub_content_search_keywords=[],
+            hub_content_search_keywords=search_keywords,
             tags=tags,
         )
 
     def _fetch_studio_specs(self, model_specs: JumpStartModelSpecs) -> Dict[str, Any]:
-        """Fetches StudioSpecs given a models' SDK Specs."""
+        """Fetches StudioSpecs given a model's SDK Specs."""
         model_id = model_specs.model_id
         model_version = model_specs.version
 
