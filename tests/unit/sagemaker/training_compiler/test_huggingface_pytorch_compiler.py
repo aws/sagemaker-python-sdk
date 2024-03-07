@@ -202,7 +202,7 @@ def test_unsupported_cpu_instance(
         ).fit()
 
 
-@pytest.mark.parametrize("unsupported_gpu_instance_class", UNSUPPORTED_GPU_INSTANCE_CLASSES)
+@pytest.mark.parametrize("unsupported_gpu_instance_class", sorted(UNSUPPORTED_GPU_INSTANCE_CLASSES))
 def test_unsupported_gpu_instance(
     unsupported_gpu_instance_class,
     huggingface_training_compiler_version,
@@ -366,7 +366,7 @@ def test_unsupported_distribution(
 @patch("sagemaker.utils.create_tar_file", MagicMock())
 @patch("sagemaker.estimator.name_from_base", return_value=JOB_NAME)
 @patch("time.time", return_value=TIME)
-@pytest.mark.parametrize("instance_class", SUPPORTED_GPU_INSTANCE_CLASSES)
+@pytest.mark.parametrize("instance_class", sorted(SUPPORTED_GPU_INSTANCE_CLASSES))
 def test_pytorchxla_distribution(
     time,
     name_from_base,
@@ -430,7 +430,7 @@ def test_pytorchxla_distribution(
 @patch("sagemaker.utils.create_tar_file", MagicMock())
 @patch("sagemaker.estimator.name_from_base", return_value=JOB_NAME)
 @patch("time.time", return_value=TIME)
-@pytest.mark.parametrize("instance_class", SUPPORTED_GPU_INSTANCE_CLASSES)
+@pytest.mark.parametrize("instance_class", sorted(SUPPORTED_GPU_INSTANCE_CLASSES))
 def test_default_compiler_config(
     time,
     name_from_base,
