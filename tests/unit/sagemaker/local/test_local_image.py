@@ -871,7 +871,7 @@ def test_container_has_gpu_support(tmpdir, sagemaker_session):
     docker_host = sagemaker_container._create_docker_host("host-1", {}, set(), "train", [])
     assert "deploy" in docker_host
     assert docker_host["deploy"] == {
-        "resources": {"reservations": {"devices": [{"capabilities": ["gpu"]}]}}
+        "resources": {"reservations": {"devices": [{"count": "all", "capabilities": ["gpu"]}]}}
     }
 
 

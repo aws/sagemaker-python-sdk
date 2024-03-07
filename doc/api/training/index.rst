@@ -8,6 +8,7 @@ Training APIs
    algorithm
    analytics
    automl
+   automlv2
    debugger
    estimators
    tuner

@@ -44,6 +44,7 @@ TRAINIUM_ALLOWED_FRAMEWORKS = "pytorch"
 INFERENCE_GRAVITON = "inference_graviton"
 DATA_WRANGLER_FRAMEWORK = "data-wrangler"
 STABILITYAI_FRAMEWORK = "stabilityai"
+SAGEMAKER_TRITONSERVER_FRAMEWORK = "sagemaker-tritonserver"
 
 
 @override_pipeline_parameter_var
@@ -334,6 +335,11 @@ def _get_image_tag(
             key = "-".join([framework, tag])
             if key in container_versions:
                 tag = "-".join([tag, container_versions[key]])
+
+    # Triton images don't have a trailing -gpu tag. Only -cpu images do.
+    if framework == SAGEMAKER_TRITONSERVER_FRAMEWORK:
+        if processor == "gpu":
+            tag = tag.rstrip("-gpu")
 
     return tag
 
@@ -672,7 +678,11 @@ def get_training_image_uri(
             if "modelparallel" in distribution["smdistributed"]:
                 if distribution["smdistributed"]["modelparallel"].get("enabled", True):
                     framework = "pytorch-smp"
-                    if "p5" in instance_type or "2.1" in framework_version:
+                    if (
+                        "p5" in instance_type
+                        or "2.1" in framework_version
+                        or "2.2" in framework_version
+                    ):
                         container_version = "cu121"
                     else:
                         container_version = "cu118"
