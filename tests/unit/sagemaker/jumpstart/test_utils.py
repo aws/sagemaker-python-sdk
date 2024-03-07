@@ -906,7 +906,8 @@ def test_jumpstart_accept_eula_logs(mock_get_manifest):
         )
         mocked_info_log.assert_any_call(
             "Model 'pytorch-eqa-bert-base-cased' requires accepting end-user license agreement (EULA). "
-            "See https://jumpstart-cache-prod-us-east-1.s3.us-east-1.amazonaws.com/read/the/fine/print.txt for terms of use.",
+            "See https://jumpstart-cache-prod-us-east-1.s3.us-east-1.amazonaws.com/read/the/fine/print.txt"
+            " for terms of use.",
         )
 
 

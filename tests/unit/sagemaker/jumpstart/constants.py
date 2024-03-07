@@ -29,7 +29,8 @@ SPECIAL_MODEL_SPECS_DICT = {
         },
         "hosting_artifact_key": "huggingface-llm/huggingface-llm-gemma-7b-instruct/artifacts/inference/v1.0.0/",
         "hosting_script_key": "source-directory-tarballs/huggingface/inference/llm/v1.0.1/sourcedir.tar.gz",
-        "hosting_prepacked_artifact_key": "huggingface-llm/huggingface-llm-gemma-7b-instruct/artifacts/inference-prepack/v1.0.0/",
+        "hosting_prepacked_artifact_key": "huggingface-llm/huggingface-llm-gemma-7b-i"
+        "nstruct/artifacts/inference-prepack/v1.0.0/",
         "hosting_prepacked_artifact_version": "1.0.0",
         "hosting_use_script_uri": False,
         "hosting_eula_key": "fmhMetadata/terms/gemmaTerms.txt",
@@ -417,7 +418,8 @@ SPECIAL_MODEL_SPECS_DICT = {
             },
         ],
         "training_script_key": "source-directory-tarballs/huggingface/transfer_learning/llm/v1.1.1/sourcedir.tar.gz",
-        "training_prepacked_script_key": "source-directory-tarballs/huggingface/transfer_learning/llm/prepack/v1.1.1/sourcedir.tar.gz",
+        "training_prepacked_script_key": "source-directory-tarballs/huggingface/transfer_learning/"
+        "llm/prepack/v1.1.1/sourcedir.tar.gz",
         "training_prepacked_script_version": "1.1.1",
         "training_ecr_specs": {
             "framework": "huggingface",
@@ -593,13 +595,15 @@ SPECIAL_MODEL_SPECS_DICT = {
                 "g4dn": {
                     "regional_properties": {"image_uri": "$gpu_ecr_uri_1"},
                     "properties": {
-                        "gated_model_key_env_var_value": "huggingface-training/g4dn/v1.0.0/train-huggingface-llm-gemma-7b-instruct.tar.gz"
+                        "gated_model_key_env_var_value": "huggingface-training/g4dn/v1.0.0/train-hugg"
+                        "ingface-llm-gemma-7b-instruct.tar.gz"
                     },
                 },
                 "g5": {
                     "regional_properties": {"image_uri": "$gpu_ecr_uri_1"},
                     "properties": {
-                        "gated_model_key_env_var_value": "huggingface-training/g5/v1.0.0/train-huggingface-llm-gemma-7b-instruct.tar.gz"
+                        "gated_model_key_env_var_value": "huggingface-training/g5/v1.0.0/train-huggingf"
+                        "ace-llm-gemma-7b-instruct.tar.gz"
                     },
                 },
                 "local_gpu": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
@@ -608,13 +612,15 @@ SPECIAL_MODEL_SPECS_DICT = {
                 "p3dn": {
                     "regional_properties": {"image_uri": "$gpu_ecr_uri_1"},
                     "properties": {
-                        "gated_model_key_env_var_value": "huggingface-training/p3dn/v1.0.0/train-huggingface-llm-gemma-7b-instruct.tar.gz"
+                        "gated_model_key_env_var_value": "huggingface-training/p3dn/v1.0.0/train-hugg"
+                        "ingface-llm-gemma-7b-instruct.tar.gz"
                     },
                 },
                 "p4d": {
                     "regional_properties": {"image_uri": "$gpu_ecr_uri_1"},
                     "properties": {
-                        "gated_model_key_env_var_value": "huggingface-training/p4d/v1.0.0/train-huggingface-llm-gemma-7b-instruct.tar.gz"
+                        "gated_model_key_env_var_value": "huggingface-training/"
+                        "p4d/v1.0.0/train-huggingface-llm-gemma-7b-instruct.tar.gz"
                     },
                 },
                 "p4de": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},

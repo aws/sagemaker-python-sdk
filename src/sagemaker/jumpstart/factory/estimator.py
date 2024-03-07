@@ -612,7 +612,8 @@ def _add_env_to_kwargs(
         )
         if model_specs.is_gated_model():
             raise ValueError(
-                f"Need to define ‘accept_eula'='true' within Environment. {get_eula_message(model_specs, kwargs.region)}"
+                "Need to define ‘accept_eula'='true' within Environment. "
+                f"{get_eula_message(model_specs, kwargs.region)}"
             )
 
     return kwargs
