@@ -120,7 +120,7 @@ def _retrieve_default_environment_variables(
                 instance_type=instance_type,
             )
 
-            if gated_model_env_var is None and model_specs.gated_bucket:
+            if gated_model_env_var is None and model_specs.is_gated_model():
                 raise ValueError(
                     f"'{model_id}' does not support {instance_type} instance type for training. "
                     "Please use one of the following instance types: "

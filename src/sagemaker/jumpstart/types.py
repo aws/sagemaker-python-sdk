@@ -956,6 +956,10 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         # otherwise, return true is a training model package is not set
         return len(self.training_model_package_artifact_uris or {}) == 0
 
+    def is_gated_model(self) -> bool:
+        """Returns True if the model has a EULA key or the model bucket is gated."""
+        return self.gated_bucket or self.hosting_eula_key is not None
+
     def supports_incremental_training(self) -> bool:
         """Returns True if the model supports incremental training."""
         return self.incremental_training_supported
