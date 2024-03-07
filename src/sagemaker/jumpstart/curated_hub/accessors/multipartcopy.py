@@ -69,7 +69,7 @@ class MultiPartCopyHandler(object):
         region: str,
         sync_request: HubSyncRequest,
         label: Optional[str] = None,
-        thread_num: Optional[int] = 0
+        thread_num: Optional[int] = 0,
     ):
         """Multi-part S3:Copy Handler initializer.
 

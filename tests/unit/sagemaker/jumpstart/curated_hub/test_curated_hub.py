@@ -163,8 +163,8 @@ def test_sync_kicks_off_parallel_syncs(
 
     mock_sync_public_models.assert_has_calls(
         [
-            mock.call(JumpStartModelInfo("mock-model-one-huggingface", "*")),
-            mock.call(JumpStartModelInfo("mock-model-two-pytorch", "1.0.2")),
+            mock.call(JumpStartModelInfo("mock-model-one-huggingface", "*"), 0),
+            mock.call(JumpStartModelInfo("mock-model-two-pytorch", "1.0.2"), 1),
         ]
     )
 
@@ -206,7 +206,7 @@ def test_sync_filters_models_that_exist_in_hub(
     hub.sync([model_one, model_two])
 
     mock_sync_public_models.assert_called_once_with(
-        JumpStartModelInfo("mock-model-one-huggingface", "*")
+        JumpStartModelInfo("mock-model-one-huggingface", "*"), 0
     )
 
 
@@ -252,8 +252,8 @@ def test_sync_updates_old_models_in_hub(
 
     mock_sync_public_models.assert_has_calls(
         [
-            mock.call(JumpStartModelInfo("mock-model-one-huggingface", "*")),
-            mock.call(JumpStartModelInfo("mock-model-two-pytorch", "1.0.2")),
+            mock.call(JumpStartModelInfo("mock-model-one-huggingface", "*"), 0),
+            mock.call(JumpStartModelInfo("mock-model-two-pytorch", "1.0.2"), 1),
         ]
     )
 
@@ -299,7 +299,7 @@ def test_sync_passes_newer_hub_models(
     hub.sync([model_one, model_two])
 
     mock_sync_public_models.assert_called_once_with(
-        JumpStartModelInfo("mock-model-one-huggingface", "*")
+        JumpStartModelInfo("mock-model-one-huggingface", "*"), 0
     )
 
 
