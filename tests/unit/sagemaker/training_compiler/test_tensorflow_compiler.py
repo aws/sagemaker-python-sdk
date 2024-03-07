@@ -176,7 +176,9 @@ class TestUnsupportedConfig:
                 compiler_config=TrainingCompilerConfig(),
             ).fit()
 
-    @pytest.mark.parametrize("unsupported_gpu_instance_class", UNSUPPORTED_GPU_INSTANCE_CLASSES)
+    @pytest.mark.parametrize(
+        "unsupported_gpu_instance_class", sorted(UNSUPPORTED_GPU_INSTANCE_CLASSES)
+    )
     def test_gpu_instance(
         self,
         unsupported_gpu_instance_class,
@@ -254,7 +256,7 @@ class TestUnsupportedConfig:
 @patch("sagemaker.estimator.name_from_base", return_value=JOB_NAME)
 @patch("time.time", return_value=TIME)
 class TestTrainingCompilerConfig:
-    @pytest.mark.parametrize("instance_class", SUPPORTED_GPU_INSTANCE_CLASSES)
+    @pytest.mark.parametrize("instance_class", sorted(SUPPORTED_GPU_INSTANCE_CLASSES))
     def test_default(
         self,
         time,
@@ -308,7 +310,7 @@ class TestTrainingCompilerConfig:
             actual_train_args == expected_train_args
         ), f"{json.dumps(actual_train_args, indent=2)} != {json.dumps(expected_train_args, indent=2)}"
 
-    @pytest.mark.parametrize("instance_class", SUPPORTED_GPU_INSTANCE_CLASSES)
+    @pytest.mark.parametrize("instance_class", sorted(SUPPORTED_GPU_INSTANCE_CLASSES))
     def test_byoc(
         self,
         time,

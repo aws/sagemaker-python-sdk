@@ -39,7 +39,6 @@ from sagemaker.remote_function.errors import SerializationError
 
 from sagemaker.workflow.function_step import _FunctionStep, DelayedReturn
 from sagemaker.workflow.parameters import ParameterFloat
-from sagemaker.utils import sagemaker_timestamp
 
 from tests.unit.sagemaker.experiments.helpers import (
     TEST_EXP_DISPLAY_NAME,
@@ -55,7 +54,7 @@ HMAC_KEY = "some-hmac-key"
 FUNCTION_FOLDER = "function"
 ARGUMENT_FOLDER = "arguments"
 RESULT_FOLDER = "results"
-PIPELINE_BUILD_TIME = sagemaker_timestamp()
+PIPELINE_BUILD_TIME = "2022-05-10T17:30:20Z"
 
 mock_s3 = {}
 
