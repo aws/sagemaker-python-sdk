@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 """This module provides a class that perfrms functionalities similar to ``S3:Copy``."""
 from __future__ import absolute_import
+from typing import Optional
 
 import boto3
 import botocore
@@ -67,6 +68,8 @@ class MultiPartCopyHandler(object):
         self,
         region: str,
         sync_request: HubSyncRequest,
+        label: Optional[str] = None,
+        thread_num: Optional[int] = 0
     ):
         """Multi-part S3:Copy Handler initializer.
 
@@ -75,9 +78,11 @@ class MultiPartCopyHandler(object):
             sync_request (HubSyncRequest): sync request object containing
                 information required to perform the copy
         """
+        self.label = label
         self.region = region
         self.files = sync_request.files
         self.dest_location = sync_request.destination
+        self.thread_num = thread_num
 
         config = botocore.config.Config(max_pool_connections=self.WORKERS)
         self.s3_client = boto3.client("s3", region_name=self.region, config=config)
@@ -121,11 +126,11 @@ class MultiPartCopyHandler(object):
         )
 
         progress = tqdm.tqdm(
-            desc="JumpStart Sync",
+            desc=self.label,
             total=total_size,
             unit="B",
             unit_scale=1,
-            position=0,
+            position=self.thread_num,
             bar_format="{desc:<10}{percentage:3.0f}%|{bar:10}{r_bar}",
         )
 

@@ -21,6 +21,7 @@ import boto3
 from botocore import exceptions
 from botocore.client import BaseClient
 from packaging.version import Version
+import tqdm
 
 from sagemaker.jumpstart import utils
 from sagemaker.jumpstart.curated_hub.accessors import file_generator
@@ -314,9 +315,9 @@ class CuratedHub:
             max_workers=self._default_thread_pool_size,
             thread_name_prefix="import-models-to-curated-hub",
         ) as deploy_executor:
-            for model in models_to_sync:
-                task = deploy_executor.submit(self._sync_public_model_to_hub, model)
-                tasks.append(task)
+                for thread_num, model in enumerate(models_to_sync):
+                    task = deploy_executor.submit(self._sync_public_model_to_hub, model, thread_num)
+                    tasks.append(task)
 
         # Handle failed imports
         results = futures.wait(tasks)
@@ -337,7 +338,7 @@ class CuratedHub:
                 f"Failures when importing models to curated hub in parallel: {failed_imports}"
             )
 
-    def _sync_public_model_to_hub(self, model: JumpStartModelInfo):
+    def _sync_public_model_to_hub(self, model: JumpStartModelInfo, thread_num: int):
         """Syncs a public JumpStart model version to the Hub. Runs in parallel."""
         model_specs = utils.verify_model_region_and_return_specs(
             model_id=model.model_id,
@@ -364,7 +365,7 @@ class CuratedHub:
         ).create()
 
         if len(sync_request.files) > 0:
-            MultiPartCopyHandler(region=self.region, sync_request=sync_request).execute()
+            MultiPartCopyHandler(thread_num=thread_num, sync_request=sync_request, region=self.region, label=dest_location.key).execute()
         else:
             JUMPSTART_LOGGER.warning("Nothing to copy for %s v%s", model.model_id, model.version)
 
