@@ -19,8 +19,6 @@ from pyspark.sql import DataFrame
 import pytest
 
 import test_data_helpers as tdh
-import string
-import random
 from mock import Mock
 
 from sagemaker.feature_store.feature_processor._validation import (
@@ -164,7 +162,7 @@ def test_spark_udf_signature_validator_udf_invalid_non_input_position():
         ("", "unique_id", "data_source_name of input does not match pattern '.*'."),
         (
             "source",
-            "".join(random.choices(string.ascii_uppercase, k=2050)),
+            tdh.DATA_SOURCE_UNIQUE_ID_TOO_LONG,
             "data_source_unique_id of input does not match pattern '.*'.",
         ),
         ("source", "", "data_source_unique_id of input does not match pattern '.*'."),
