@@ -120,6 +120,13 @@ def _retrieve_default_environment_variables(
                 instance_type=instance_type,
             )
 
+            if gated_model_env_var is None and model_specs.gated_bucket:
+                raise ValueError(
+                    f"'{model_id}' does not support {instance_type} instance type for training. "
+                    "Please use one of the following instance types: "
+                    f"{', '.join(model_specs.supported_training_instance_types)}."
+                )
+
             if gated_model_env_var is not None:
                 default_environment_variables.update(
                     {SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY: gated_model_env_var}
