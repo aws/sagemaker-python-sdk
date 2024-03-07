@@ -99,7 +99,7 @@ class CuratedHub:
             JUMPSTART_LOGGER.warning(
                 "There is not a Hub bucket associated with %s. Using %s",
                 self.hub_name,
-                default_bucket_name,
+                hub_bucket_name,
             )
             return hub_bucket_name
 

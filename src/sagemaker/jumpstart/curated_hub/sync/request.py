@@ -113,13 +113,11 @@ class HubSyncRequestFactory:
         for src_file in self.src_files:
             # End of dest, yield remaining src_files
             if dest_done:
-                print("here????", src_file.location.key)
                 yield src_file
                 continue
 
             # We've identified two files that have the same name, further compare
             if self._is_same_file_name(src_file.location.key, dest_file.location.key):
-                print("wait i'm asdfd", src_file.location.key, dest_file.location.key)
                 should_sync = self.comparator.determine_should_sync(src_file, dest_file)
 
                 if should_sync:
@@ -138,7 +136,6 @@ class HubSyncRequestFactory:
             if self._is_alphabetically_earlier_file_name(
                 src_file.location.key, dest_file.location.key
             ):
-                print("wait i'm here", src_file.location.key, dest_file.location.key)
                 yield src_file
                 continue
 
