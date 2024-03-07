@@ -63,7 +63,7 @@ required_packages = [
     "PyYAML~=6.0",
     "jsonschema",
     "platformdirs",
-    "tblib>=1.7.0,<3",
+    "tblib>=1.7.0,<4",
     "urllib3>=1.26.8,<3.0.0",
     "requests",
     "docker",
