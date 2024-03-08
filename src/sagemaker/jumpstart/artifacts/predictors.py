@@ -77,7 +77,7 @@ def _retrieve_default_deserializer(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-    model_type: JumpStartModelType = JumpStartModelType.OPEN_SOURCE,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHT,
 ) -> BaseDeserializer:
     """Retrieves the default deserializer for the model.
 
@@ -123,7 +123,7 @@ def _retrieve_default_serializer(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-    model_type: JumpStartModelType = JumpStartModelType.OPEN_SOURCE,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHT,
 ) -> BaseSerializer:
     """Retrieves the default serializer for the model.
 
@@ -168,7 +168,7 @@ def _retrieve_deserializer_options(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-    model_type: JumpStartModelType = JumpStartModelType.OPEN_SOURCE,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHT,
 ) -> List[BaseDeserializer]:
     """Retrieves the supported deserializers for the model.
 
@@ -283,7 +283,7 @@ def _retrieve_default_content_type(
     region: Optional[str],
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
-    model_type: JumpStartModelType = JumpStartModelType.OPEN_SOURCE,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHT,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> str:
     """Retrieves the default content type for the model.
@@ -334,7 +334,7 @@ def _retrieve_default_accept_type(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-    model_type: JumpStartModelType = JumpStartModelType.OPEN_SOURCE,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHT,
 ) -> str:
     """Retrieves the default accept type for the model.
 
@@ -385,7 +385,7 @@ def _retrieve_supported_accept_types(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-    model_type: JumpStartModelType = JumpStartModelType.OPEN_SOURCE,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHT,
 ) -> List[str]:
     """Retrieves the supported accept types for the model.
 
@@ -436,7 +436,7 @@ def _retrieve_supported_content_types(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-    model_type: JumpStartModelType = JumpStartModelType.OPEN_SOURCE,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHT,
 ) -> List[str]:
     """Retrieves the supported content types for the model.
 

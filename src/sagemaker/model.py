@@ -138,7 +138,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
 
     def __init__(
         self,
-        image_uri: Union[str, PipelineVariable],
+        image_uri: Optional[Union[str, PipelineVariable]] = None,
         model_data: Optional[Union[str, PipelineVariable, dict]] = None,
         role: Optional[str] = None,
         predictor_cls: Optional[callable] = None,

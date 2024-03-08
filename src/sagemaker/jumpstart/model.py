@@ -357,9 +357,7 @@ class JumpStartModel(Model):
             sagemaker_session=self.sagemaker_session,
         ).model_subscription_link
         JUMPSTART_LOGGER.warning(
-            get_proprietary_model_subscription_msg(
-                self.model_id, self.model_version, subscription_link
-            )
+            get_proprietary_model_subscription_msg(self.model_id, subscription_link)
         )
 
     def retrieve_all_examples(self) -> Optional[List[JumpStartSerializablePayload]]:

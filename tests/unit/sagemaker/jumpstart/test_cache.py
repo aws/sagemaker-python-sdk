@@ -177,11 +177,11 @@ def test_jumpstart_cache_get_header():
     with pytest.raises(KeyError) as e:
         cache.get_header(
             model_id="ai21-summarization",
-            semantic_version_str="*",
+            semantic_version_str="3.*",
             model_type=JumpStartModelType.PROPRIETARY,
         )
     assert (
-        "Marketplace model 'ai21-summarization' does not support wildcard version identifier '*'. "
+        "Marketplace model 'ai21-summarization' does not support wildcard version identifier '3.*'. "
         "You can pin to version '1.1.003'. "
         "https://sagemaker.readthedocs.io/en/stable/doc_utils/pretrainedmodels.html "
         "for list of supported model IDs. " in str(e.value)
@@ -275,13 +275,6 @@ def test_jumpstart_cache_get_header():
     with pytest.raises(KeyError):
         cache.get_header(
             model_id="tensorflow-ic-imagenet-inception-v3-classification-4",
-            semantic_version_str="*",
-            model_type=JumpStartModelType.PROPRIETARY,
-        )
-
-    with pytest.raises(KeyError):
-        cache.get_header(
-            model_id="tensorflow-ic-imagenet-inception-v3-classification-4",
             semantic_version_str="1.1.004",
             model_type=JumpStartModelType.PROPRIETARY,
         )
@@ -290,6 +283,13 @@ def test_jumpstart_cache_get_header():
         cache.get_header(
             model_id="ai21-summarization",
             semantic_version_str="2.*",
+            model_type=JumpStartModelType.PROPRIETARY,
+        )
+
+    with pytest.raises(KeyError):
+        cache.get_header(
+            model_id="ai21-summarization",
+            semantic_version_str="v*",
             model_type=JumpStartModelType.PROPRIETARY,
         )
 
@@ -346,7 +346,7 @@ def test_jumpstart_cache_gets_cleared_when_params_are_set(mock_boto3_client):
     cache.clear.assert_called_once()
 
     cache.clear.reset_mock()
-    cache.set_manifest_file_s3_key("some_key1", file_type=JumpStartS3FileType.OPEN_SOURCE_MANIFEST)
+    cache.set_manifest_file_s3_key("some_key1", file_type=JumpStartS3FileType.OPEN_WEIGHT_MANIFEST)
     cache.clear.assert_called_once()
     with pytest.raises(ValueError):
         cache.set_manifest_file_s3_key("some_key1", file_type="unknown_type")
@@ -498,11 +498,11 @@ def test_jumpstart_cache_accepts_input_parameters():
     assert cache._s3_cache._max_cache_items == max_s3_cache_items
     assert cache._s3_cache._expiration_horizon == s3_cache_expiration_horizon
     assert (
-        cache._open_source_model_id_manifest_key_cache._max_cache_items
+        cache._open_weight_model_id_manifest_key_cache._max_cache_items
         == max_semantic_version_cache_items
     )
     assert (
-        cache._open_source_model_id_manifest_key_cache._expiration_horizon
+        cache._open_weight_model_id_manifest_key_cache._expiration_horizon
         == semantic_version_cache_expiration_horizon
     )
 
@@ -822,8 +822,8 @@ def test_jumpstart_cache_handles_bad_semantic_version_manifest_key_cache():
     cache = JumpStartModelsCache(s3_bucket_name="some_bucket")
 
     cache.clear = MagicMock()
-    cache._open_source_model_id_manifest_key_cache = MagicMock()
-    cache._open_source_model_id_manifest_key_cache.get.side_effect = [
+    cache._open_weight_model_id_manifest_key_cache = MagicMock()
+    cache._open_weight_model_id_manifest_key_cache.get.side_effect = [
         (
             JumpStartVersionedModelId(
                 "tensorflow-ic-imagenet-inception-v3-classification-4", "999.0.0"
@@ -852,7 +852,7 @@ def test_jumpstart_cache_handles_bad_semantic_version_manifest_key_cache():
     cache.clear.assert_called_once()
     cache.clear.reset_mock()
 
-    cache._open_source_model_id_manifest_key_cache.get.side_effect = [
+    cache._open_weight_model_id_manifest_key_cache.get.side_effect = [
         (
             JumpStartVersionedModelId(
                 "tensorflow-ic-imagenet-inception-v3-classification-4", "999.0.0"
@@ -937,11 +937,11 @@ def test_jumpstart_cache_get_specs():
     with pytest.raises(KeyError) as e:
         cache.get_specs(
             model_id="ai21-summarization",
-            version_str="*",
+            version_str="3.*",
             model_type=JumpStartModelType.PROPRIETARY,
         )
     assert (
-        "Marketplace model 'ai21-summarization' does not support wildcard version identifier '*'. "
+        "Marketplace model 'ai21-summarization' does not support wildcard version identifier '3.*'. "
         "You can pin to version '1.1.003'. "
         "https://sagemaker.readthedocs.io/en/stable/doc_utils/pretrainedmodels.html "
         "for list of supported model IDs. " in str(e.value)

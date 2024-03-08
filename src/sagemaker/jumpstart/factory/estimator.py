@@ -77,7 +77,7 @@ from sagemaker.workflow.entities import PipelineVariable
 def get_init_kwargs(
     model_id: str,
     model_version: Optional[str] = None,
-    model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_SOURCE,
+    model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_WEIGHT,
     tolerate_vulnerable_model: Optional[bool] = None,
     tolerate_deprecated_model: Optional[bool] = None,
     region: Optional[str] = None,

@@ -79,7 +79,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
         mock_validate_model_id_and_get_type: mock.Mock,
     ):
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
         model_id, _ = "js-trainable-model", "*"
 
         mock_retrieve_kwargs.return_value = {}
@@ -120,7 +120,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
         mock_validate_model_id_and_get_type: mock.Mock,
     ):
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
 
         model_id, _ = "js-trainable-model", "*"
 
@@ -166,7 +166,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
         mock_validate_model_id_and_get_type: mock.Mock,
     ):
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
 
         model_id, _ = "js-trainable-model", "*"
 
@@ -212,7 +212,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
         mock_validate_model_id_and_get_type: mock.Mock,
     ):
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
 
         model_id, _ = "js-trainable-model", "*"
 
@@ -260,7 +260,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
         mock_validate_model_id_and_get_type: mock.Mock,
     ):
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
 
         model_id, _ = "js-trainable-model", "*"
 
@@ -305,7 +305,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
         mock_model_init: mock.Mock,
         mock_validate_model_id_and_get_type: mock.Mock,
     ):
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
 
         model_id, _ = "js-trainable-model", "*"
 
@@ -353,7 +353,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
         mock_validate_model_id_and_get_type: mock.Mock,
     ):
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
 
         model_id, _ = "js-trainable-model", "*"
 
@@ -394,7 +394,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
         mock_validate_model_id_and_get_type: mock.Mock,
     ):
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
 
         model_id, _ = "js-trainable-model", "*"
 

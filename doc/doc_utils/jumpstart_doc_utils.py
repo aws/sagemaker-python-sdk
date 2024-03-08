@@ -298,19 +298,19 @@ def create_jumpstart_model_table():
     file_content_intro.append("     - Source\n")
 
     dynamic_table_files = []
-    open_source_content_entries = []
+    open_weight_content_entries = []
 
     for model in sdk_manifest_top_versions_for_models.values():
         model_spec = get_jumpstart_sdk_spec(model["spec_key"])
         model_task = get_model_task(model_spec["model_id"])
         string_model_task = get_string_model_task(model_spec["model_id"])
         model_source = get_model_source(model_spec["url"])
-        open_source_content_entries.append("   * - {}\n".format(model_spec["model_id"]))
-        open_source_content_entries.append("     - {}\n".format(model_spec["training_supported"]))
-        open_source_content_entries.append("     - {}\n".format(model["version"]))
-        open_source_content_entries.append("     - {}\n".format(model["min_version"]))
-        open_source_content_entries.append("     - {}\n".format(model_task))
-        open_source_content_entries.append(
+        open_weight_content_entries.append("   * - {}\n".format(model_spec["model_id"]))
+        open_weight_content_entries.append("     - {}\n".format(model_spec["training_supported"]))
+        open_weight_content_entries.append("     - {}\n".format(model["version"]))
+        open_weight_content_entries.append("     - {}\n".format(model["min_version"]))
+        open_weight_content_entries.append("     - {}\n".format(model_task))
+        open_weight_content_entries.append(
             "     - `{} <{}>`__ |external-link|\n".format(model_source, model_spec["url"])
         )
 
@@ -352,6 +352,6 @@ def create_jumpstart_model_table():
 
     f = open("doc_utils/pretrainedmodels.rst", "a")
     f.writelines(file_content_intro)
-    f.writelines(open_source_content_entries)
+    f.writelines(open_weight_content_entries)
     f.writelines(marketplace_content_entries)
     f.close()

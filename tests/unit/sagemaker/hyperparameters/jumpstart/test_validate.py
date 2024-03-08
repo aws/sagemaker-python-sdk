@@ -112,7 +112,7 @@ def test_jumpstart_validate_provided_hyperparameters(
         return spec
 
     patched_get_model_specs.side_effect = add_options_to_hyperparameter
-    patched_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+    patched_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
 
     model_id, model_version = "pytorch-eqa-bert-base-cased", "*"
     region = "us-west-2"
@@ -144,7 +144,7 @@ def test_jumpstart_validate_provided_hyperparameters(
         model_id=model_id,
         version=model_version,
         s3_client=mock_client,
-        model_type=JumpStartModelType.OPEN_SOURCE,
+        model_type=JumpStartModelType.OPEN_WEIGHT,
     )
 
     patched_get_model_specs.reset_mock()
@@ -424,7 +424,7 @@ def test_jumpstart_validate_algorithm_hyperparameters(
         return spec
 
     patched_get_model_specs.side_effect = add_options_to_hyperparameter
-    patched_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+    patched_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
 
     model_id, model_version = "pytorch-eqa-bert-base-cased", "*"
     region = "us-west-2"
@@ -450,7 +450,7 @@ def test_jumpstart_validate_algorithm_hyperparameters(
         model_id=model_id,
         version=model_version,
         s3_client=mock_client,
-        model_type=JumpStartModelType.OPEN_SOURCE,
+        model_type=JumpStartModelType.OPEN_WEIGHT,
     )
 
     patched_get_model_specs.reset_mock()
@@ -484,7 +484,7 @@ def test_jumpstart_validate_all_hyperparameters(
 ):
 
     patched_get_model_specs.side_effect = get_spec_from_base_spec
-    patched_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+    patched_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
 
     model_id, model_version = "pytorch-eqa-bert-base-cased", "*"
     region = "us-west-2"
@@ -512,7 +512,7 @@ def test_jumpstart_validate_all_hyperparameters(
         model_id=model_id,
         version=model_version,
         s3_client=mock_client,
-        model_type=JumpStartModelType.OPEN_SOURCE,
+        model_type=JumpStartModelType.OPEN_WEIGHT,
     )
 
     patched_get_model_specs.reset_mock()

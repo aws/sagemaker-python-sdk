@@ -337,7 +337,7 @@ class RetrieveModelPackageArnTest(unittest.TestCase):
         self, patched_get_model_specs: Mock, patched_validate_model_id_and_get_type: Mock
     ):
         patched_get_model_specs.side_effect = get_special_model_spec
-        patched_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+        patched_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
 
         model_id = "variant-model"
         region = "us-west-2"
@@ -447,7 +447,7 @@ class PrivateJumpStartBucketTest(unittest.TestCase):
         self, patched_get_model_specs, patched_validate_model_id_and_get_type
     ):
         patched_get_model_specs.side_effect = get_special_model_spec
-        patched_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+        patched_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
 
         model_id = "private-model"
         region = "us-west-2"

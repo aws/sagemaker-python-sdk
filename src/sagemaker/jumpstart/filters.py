@@ -49,6 +49,7 @@ class SpecialSupportedFilterKeys(str, Enum):
 
     TASK = "task"
     FRAMEWORK = "framework"
+    MODEL_TYPE = "model_type"
 
 
 FILTER_OPERATOR_STRING_MAPPINGS = {

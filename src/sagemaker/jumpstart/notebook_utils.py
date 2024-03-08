@@ -125,21 +125,31 @@ def extract_framework_task_model(model_id: str) -> Tuple[str, str, str]:
 
     Args:
         model_id (str): The model ID for which to extract the framework/task/model.
-
-    Raises:
-        ValueError: If the model ID cannot be parsed into at least 3 components seperated by
-            "-" character.
     """
     _id_parts = model_id.split("-")
 
     if len(_id_parts) < 3:
-        raise ValueError(f"incorrect model ID: {model_id}.")
+        return "", "", ""
 
     framework = _id_parts[0]
     task = _id_parts[1]
     name = "-".join(_id_parts[2:])
 
     return framework, task, name
+
+
+def extract_model_type(spec_key: str) -> str:
+    """Parses model spec key, determine if the model is proprietary or open weight.
+
+    Args:
+        spek_key (str): The model spec key for which to extract the model type.
+    """
+    model_type = spec_key.split("/")[0]
+
+    if model_type == "proprietary-models":
+        return JumpStartModelType.PROPRIETARY.value
+
+    return JumpStartModelType.OPEN_WEIGHT.value
 
 
 def list_jumpstart_tasks(  # pylint: disable=redefined-builtin
@@ -247,7 +257,6 @@ def list_jumpstart_models(  # pylint: disable=redefined-builtin
     list_incomplete_models: bool = False,
     list_old_models: bool = False,
     list_versions: bool = False,
-    marketplace_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> List[Union[Tuple[str], Tuple[str, str]]]:
     """List models for JumpStart, and optionally apply filters to result.
@@ -279,7 +288,6 @@ def list_jumpstart_models(  # pylint: disable=redefined-builtin
         filter=filter,
         region=region,
         list_incomplete_models=list_incomplete_models,
-        marketplace_model=marketplace_model,
         sagemaker_session=sagemaker_session,
     ):
         if model_id not in model_id_version_dict:
@@ -306,7 +314,6 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
     filter: Union[Operator, str] = Constant(BooleanValues.TRUE),
     region: str = JUMPSTART_DEFAULT_REGION_NAME,
     list_incomplete_models: bool = False,
-    marketplace_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> Generator:
     """Generate models for JumpStart, and optionally apply filters to result.
@@ -332,21 +339,17 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
         s3_client=sagemaker_session.s3_client,
         model_type=JumpStartModelType.PROPRIETARY,
     )
-    open_source_manifest_list = accessors.JumpStartModelsAccessor._get_manifest(
+    open_weight_manifest_list = accessors.JumpStartModelsAccessor._get_manifest(
         region=region,
         s3_client=sagemaker_session.s3_client,
-        model_type=JumpStartModelType.OPEN_SOURCE,
+        model_type=JumpStartModelType.OPEN_WEIGHT,
     )
-    models_manifest_list = (
-        prop_models_manifest_list
-        if marketplace_model
-        else (open_source_manifest_list + prop_models_manifest_list)
-    )
+    models_manifest_list = open_weight_manifest_list + prop_models_manifest_list
 
     if isinstance(filter, str):
         filter = Identity(filter)
 
-    manifest_keys = set(models_manifest_list[0].__slots__)
+    manifest_keys = set(models_manifest_list[0].__slots__ + prop_models_manifest_list[0].__slots__)
 
     all_keys: Set[str] = set()
 
@@ -369,6 +372,7 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
 
     is_task_filter = SpecialSupportedFilterKeys.TASK in all_keys
     is_framework_filter = SpecialSupportedFilterKeys.FRAMEWORK in all_keys
+    is_model_type_filter = SpecialSupportedFilterKeys.MODEL_TYPE in all_keys
 
     def evaluate_model(model_manifest: JumpStartModelHeader) -> Optional[Tuple[str, str]]:
 
@@ -390,6 +394,11 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
             manifest_specs_cached_values[
                 SpecialSupportedFilterKeys.FRAMEWORK
             ] = extract_framework_task_model(model_manifest.model_id)[0]
+
+        if is_model_type_filter:
+            manifest_specs_cached_values[
+                SpecialSupportedFilterKeys.MODEL_TYPE
+            ] = extract_model_type(model_manifest.spec_key)
 
         if Version(model_manifest.min_version) > Version(get_sagemaker_version()):
             return None

@@ -75,7 +75,7 @@ class ModelTest(unittest.TestCase):
 
         mock_sagemaker_timestamp.return_value = "7777"
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
         model_id, _ = "js-trainable-model", "*"
 
         mock_get_model_specs.side_effect = get_special_model_spec
@@ -149,7 +149,7 @@ class ModelTest(unittest.TestCase):
 
         mock_sagemaker_timestamp.return_value = "7777"
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
         model_id, _ = "js-trainable-model", "*"
 
         mock_get_model_specs.side_effect = (
@@ -229,7 +229,7 @@ class ModelTest(unittest.TestCase):
 
         mock_sagemaker_timestamp.return_value = "7777"
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
         model_id, _ = "js-model-class-model-prepacked", "*"
 
         mock_get_model_specs.side_effect = get_special_model_spec
@@ -300,7 +300,7 @@ class ModelTest(unittest.TestCase):
     ):
         mock_model_deploy.return_value = default_predictor
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
 
         model_id, _ = "js-model-class-model-prepacked", "*"
 
@@ -364,7 +364,7 @@ class ModelTest(unittest.TestCase):
 
         mock_timestamp.return_value = "1234"
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
 
         model_id, _ = "gated_llama_neuron_model", "*"
 
@@ -398,7 +398,7 @@ class ModelTest(unittest.TestCase):
     ):
         mock_timestamp.return_value = "1234"
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
 
         model_id, _ = "gated_variant-model", "*"
 
@@ -477,11 +477,10 @@ class ModelTest(unittest.TestCase):
         model = JumpStartModel(model_id=model_id, model_version="2.0.004")
 
         mock_model_init.assert_called_once_with(
-            image_uri="",
             predictor_cls=Predictor,
             role=execution_role,
             sagemaker_session=sagemaker_session,
-            enable_network_isolation=False,
+            enable_network_isolation=True,
         )
 
         model.deploy()
@@ -514,7 +513,7 @@ class ModelTest(unittest.TestCase):
     ):
         mock_model_deploy.return_value = default_predictor
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
 
         model_id, _ = "deprecated_model", "*"
 
@@ -539,7 +538,7 @@ class ModelTest(unittest.TestCase):
         mock_get_model_specs: mock.Mock,
         mock_validate_model_id_and_get_type: mock.Mock,
     ):
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
 
         mock_model_deploy.return_value = default_predictor
 
@@ -624,7 +623,7 @@ class ModelTest(unittest.TestCase):
 
         mock_model_deploy.return_value = default_predictor
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
 
         mock_session.return_value = sagemaker_session
 
@@ -727,7 +726,7 @@ class ModelTest(unittest.TestCase):
         mock_init: mock.Mock,
         mock_get_init_kwargs: mock.Mock,
     ):
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
         JumpStartModel(model_id="valid_model_id")
 
         mock_validate_model_id_and_get_type.return_value = False
@@ -754,7 +753,7 @@ class ModelTest(unittest.TestCase):
 
         mock_model_deploy.return_value = default_predictor
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
 
         model_id, _ = "js-model-class-model-prepacked", "*"
 
@@ -776,7 +775,7 @@ class ModelTest(unittest.TestCase):
             tolerate_deprecated_model=False,
             tolerate_vulnerable_model=False,
             sagemaker_session=model.sagemaker_session,
-            model_type=JumpStartModelType.OPEN_SOURCE,
+            model_type=JumpStartModelType.OPEN_WEIGHT,
         )
         self.assertEqual(type(predictor), Predictor)
         self.assertEqual(predictor, default_predictor_with_presets)
@@ -801,7 +800,7 @@ class ModelTest(unittest.TestCase):
 
         mock_model_deploy.return_value = default_predictor
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
 
         model_id, _ = "js-model-class-model-prepacked", "*"
 
@@ -837,7 +836,7 @@ class ModelTest(unittest.TestCase):
 
         mock_model_deploy.return_value = default_predictor
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
 
         model_id, _ = "js-model-class-model-prepacked", "*"
 
@@ -910,7 +909,7 @@ class ModelTest(unittest.TestCase):
 
         mock_validate_model_id_and_get_type.side_effect = [
             False,
-            JumpStartModelType.OPEN_SOURCE,
+            JumpStartModelType.OPEN_WEIGHT,
         ]
         JumpStartModel(
             model_id=model_id,
@@ -945,7 +944,7 @@ class ModelTest(unittest.TestCase):
         mock_validate_model_id_and_get_type: mock.Mock,
     ):
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
 
         model_id, _ = "env-var-variant-model", "*"
 
@@ -981,7 +980,7 @@ class ModelTest(unittest.TestCase):
         mock_validate_model_id_and_get_type: mock.Mock,
     ):
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
 
         model_id, _ = "env-var-variant-model", "*"
 
@@ -1013,7 +1012,7 @@ class ModelTest(unittest.TestCase):
         mock_validate_model_id_and_get_type: mock.Mock,
     ):
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
 
         model_id, _ = "js-model-package-arn", "*"
 
@@ -1047,7 +1046,7 @@ class ModelTest(unittest.TestCase):
         mock_validate_model_id_and_get_type: mock.Mock,
     ):
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
 
         # arbitrary model without model packarn arn
         model_id, _ = "js-trainable-model", "*"
@@ -1091,7 +1090,7 @@ class ModelTest(unittest.TestCase):
         mock_validate_model_id_and_get_type: mock.Mock,
     ):
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
 
         model_id, _ = "js-model-package-arn", "*"
 
@@ -1128,7 +1127,7 @@ class ModelTest(unittest.TestCase):
 
         mock_sagemaker_timestamp.return_value = "7777"
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
         model_id, _ = "js-trainable-model", "*"
 
         mock_get_model_specs.side_effect = get_special_model_spec
@@ -1190,7 +1189,7 @@ class ModelTest(unittest.TestCase):
     ):
         mock_model_deploy.return_value = default_predictor
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
         model_id, _ = "model_data_s3_prefix_model", "*"
 
         mock_get_model_specs.side_effect = get_special_model_spec
@@ -1234,7 +1233,7 @@ class ModelTest(unittest.TestCase):
     ):
         mock_model_deploy.return_value = default_predictor
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
         model_id, _ = "model-artifact-variant-model", "*"
 
         mock_get_model_specs.side_effect = get_special_model_spec
@@ -1297,7 +1296,7 @@ class ModelTest(unittest.TestCase):
     ):
         mock_model_deploy.return_value = default_predictor
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
         model_id, _ = "model_data_s3_prefix_model", "*"
 
         mock_get_model_specs.side_effect = get_special_model_spec

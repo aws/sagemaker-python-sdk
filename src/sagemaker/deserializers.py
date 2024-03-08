@@ -96,7 +96,7 @@ def retrieve_default(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-    model_type: JumpStartModelType = JumpStartModelType.OPEN_SOURCE,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHT,
 ) -> BaseDeserializer:
     """Retrieves the default deserializer for the model matching the given arguments.
 

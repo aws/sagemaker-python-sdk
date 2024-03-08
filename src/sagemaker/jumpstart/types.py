@@ -103,8 +103,8 @@ class JumpStartDataHolderType:
 class JumpStartS3FileType(str, Enum):
     """Type of files published in JumpStart S3 distribution buckets."""
 
-    OPEN_SOURCE_MANIFEST = "manifest"
-    OPEN_SOURCE_SPECS = "specs"
+    OPEN_WEIGHT_MANIFEST = "manifest"
+    OPEN_WEIGHT_SPECS = "specs"
     PROPRIETARY_MANIFEST = "proptietary_manifest"
     PROPRIETARY_SPECS = "proprietary_specs"
 
@@ -1099,7 +1099,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         self,
         model_id: str,
         model_version: Optional[str] = None,
-        model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_SOURCE,
+        model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_WEIGHT,
         region: Optional[str] = None,
         instance_type: Optional[str] = None,
         image_uri: Optional[Union[str, Any]] = None,
@@ -1206,7 +1206,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         self,
         model_id: str,
         model_version: Optional[str] = None,
-        model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_SOURCE,
+        model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_WEIGHT,
         region: Optional[str] = None,
         initial_instance_count: Optional[int] = None,
         instance_type: Optional[str] = None,
@@ -1340,7 +1340,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         self,
         model_id: str,
         model_version: Optional[str] = None,
-        model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_SOURCE,
+        model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_WEIGHT,
         region: Optional[str] = None,
         image_uri: Optional[Union[str, Any]] = None,
         role: Optional[str] = None,
@@ -1485,7 +1485,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         self,
         model_id: str,
         model_version: Optional[str] = None,
-        model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_SOURCE,
+        model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_WEIGHT,
         region: Optional[str] = None,
         inputs: Optional[Union[str, Dict, Any, Any]] = None,
         wait: Optional[bool] = None,

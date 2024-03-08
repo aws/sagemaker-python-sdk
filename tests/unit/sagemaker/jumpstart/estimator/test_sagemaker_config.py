@@ -104,7 +104,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
 
         mock_estimator_deploy.return_value = default_predictor
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
 
         model_id, _ = "js-trainable-model", "*"
 
@@ -161,7 +161,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
 
         mock_estimator_deploy.return_value = default_predictor
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
 
         model_id, _ = "js-trainable-model", "*"
 
@@ -234,7 +234,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
 
         mock_estimator_deploy.return_value = default_predictor
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
 
         model_id, _ = "js-trainable-model", "*"
 
@@ -316,7 +316,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
 
         mock_estimator_deploy.return_value = default_predictor
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
 
         model_id, _ = "js-trainable-model", "*"
 
@@ -393,7 +393,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
 
         mock_estimator_deploy.return_value = default_predictor
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
 
         model_id, _ = "js-trainable-model", "*"
 
@@ -454,7 +454,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
 
         mock_estimator_deploy.return_value = default_predictor
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
 
         mock_get_caller_identity_arn.return_value = execution_role
         model_id, _ = "js-trainable-model", "*"
@@ -525,7 +525,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
     ):
         mock_estimator_deploy.return_value = default_predictor
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
 
         model_id, _ = "js-trainable-model", "*"
 
@@ -599,7 +599,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
     ):
         mock_estimator_deploy.return_value = default_predictor
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_SOURCE
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
 
         model_id, _ = "js-trainable-model", "*"
 

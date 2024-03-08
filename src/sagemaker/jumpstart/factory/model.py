@@ -71,7 +71,7 @@ def get_default_predictor(
     tolerate_vulnerable_model: bool,
     tolerate_deprecated_model: bool,
     sagemaker_session: Session,
-    model_type: JumpStartModelType = JumpStartModelType.OPEN_SOURCE,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHT,
 ) -> Predictor:
     """Converts predictor returned from ``Model.deploy()`` into a JumpStart-specific one.
 
@@ -221,7 +221,7 @@ def _add_image_uri_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModel
     """
 
     if kwargs.model_type == JumpStartModelType.PROPRIETARY:
-        kwargs.image_uri = ""
+        kwargs.image_uri = None
         return kwargs
 
     kwargs.image_uri = kwargs.image_uri or image_uris.retrieve(
@@ -536,7 +536,7 @@ def _add_resources_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModel
 def get_deploy_kwargs(
     model_id: str,
     model_version: Optional[str] = None,
-    model_type: JumpStartModelType = JumpStartModelType.OPEN_SOURCE,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHT,
     region: Optional[str] = None,
     initial_instance_count: Optional[int] = None,
     instance_type: Optional[str] = None,
@@ -703,7 +703,7 @@ def get_init_kwargs(
     model_id: str,
     model_from_estimator: bool = False,
     model_version: Optional[str] = None,
-    model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_SOURCE,
+    model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_WEIGHT,
     tolerate_vulnerable_model: Optional[bool] = None,
     tolerate_deprecated_model: Optional[bool] = None,
     instance_type: Optional[str] = None,
@@ -780,14 +780,12 @@ def get_init_kwargs(
     # we use the model artifact from the training job output
     if not model_from_estimator:
         model_init_kwargs = _add_model_data_to_kwargs(kwargs=model_init_kwargs)
-
     model_init_kwargs = _add_source_dir_to_kwargs(kwargs=model_init_kwargs)
     model_init_kwargs = _add_entry_point_to_kwargs(kwargs=model_init_kwargs)
     model_init_kwargs = _add_env_to_kwargs(kwargs=model_init_kwargs)
     model_init_kwargs = _add_predictor_cls_to_kwargs(kwargs=model_init_kwargs)
     model_init_kwargs = _add_extra_model_kwargs(kwargs=model_init_kwargs)
     model_init_kwargs = _add_role_to_kwargs(kwargs=model_init_kwargs)
-
     model_init_kwargs = _add_model_package_arn_to_kwargs(kwargs=model_init_kwargs)
 
     model_init_kwargs = _add_resources_to_kwargs(kwargs=model_init_kwargs)

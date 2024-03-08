@@ -36,7 +36,7 @@ def _retrieve_model_package_arn(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-    model_type: JumpStartModelType = JumpStartModelType.OPEN_SOURCE,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHT,
 ) -> Optional[str]:
     """Retrieves associated model pacakge arn for the model.
 
