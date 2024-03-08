@@ -467,7 +467,7 @@ def update_inference_tags_with_jumpstart_training_tags(
 
 
 def get_eula_message(model_specs: JumpStartModelSpecs, region: str) -> str:
-    """Returns EULA message to display to customers if one is available, else empty string."""
+    """Returns EULA message to display if one is available, else empty string."""
     if model_specs.hosting_eula_key is None:
         return ""
     return (

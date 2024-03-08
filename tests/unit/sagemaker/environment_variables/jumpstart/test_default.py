@@ -179,26 +179,50 @@ def test_jumpstart_sdk_environment_variables(patched_get_model_specs):
 
 
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-def test_jumpstart_sdk_environment_variables_no_gated_env_var_available(patched_get_model_specs):
+def test_jumpstart_sdk_environment_variables_1_artifact_all_variants(patched_get_model_specs):
+
+    patched_get_model_specs.side_effect = get_special_model_spec
+
+    model_id = "gemma-model-1-artifact"
+    region = "us-west-2"
+
+    assert {
+        "SageMakerGatedModelS3Uri": f"s3://{get_jumpstart_gated_content_bucket(region)}/"
+        "huggingface-training/train-huggingface-llm-gemma-7b-instruct.tar.gz"
+    } == environment_variables.retrieve_default(
+        region=region,
+        model_id=model_id,
+        model_version="*",
+        include_aws_sdk_env_vars=False,
+        sagemaker_session=mock_session,
+        instance_type="ml.p3.2xlarge",
+        script="training",
+    )
+
+
+@patch("sagemaker.jumpstart.artifacts.environment_variables.JUMPSTART_LOGGER")
+@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+def test_jumpstart_sdk_environment_variables_no_gated_env_var_available(
+    patched_get_model_specs, patched_jumpstart_logger
+):
 
     patched_get_model_specs.side_effect = get_special_model_spec
 
     model_id = "gemma-model"
     region = "us-west-2"
 
-    # assert that unsupported instance types raise an exception
-    with pytest.raises(ValueError) as e:
-        environment_variables.retrieve_default(
-            region=region,
-            model_id=model_id,
-            model_version="*",
-            include_aws_sdk_env_vars=False,
-            sagemaker_session=mock_session,
-            instance_type="ml.p3.2xlarge",
-            script="training",
-        )
-    assert (
-        str(e.value) == "'gemma-model' does not support ml.p3.2xlarge instance type for "
+    assert {} == environment_variables.retrieve_default(
+        region=region,
+        model_id=model_id,
+        model_version="*",
+        include_aws_sdk_env_vars=False,
+        sagemaker_session=mock_session,
+        instance_type="ml.p3.2xlarge",
+        script="training",
+    )
+
+    patched_jumpstart_logger.warning.assert_called_once_with(
+        "'gemma-model' does not support ml.p3.2xlarge instance type for "
         "training. Please use one of the following instance types: "
         "ml.g5.12xlarge, ml.g5.24xlarge, ml.g5.48xlarge, ml.p4d.24xlarge."
     )
