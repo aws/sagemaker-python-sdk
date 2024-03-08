@@ -17,7 +17,6 @@ from unittest import mock
 
 import pytest
 from sagemaker.enums import EndpointType
-from sagemaker.jumpstart.filters import And
 from sagemaker.predictor import retrieve_default
 
 import tests.integ

@@ -227,9 +227,9 @@ def create_marketplace_model_table():
         if model["model_id"] not in sdk_manifest_top_versions_for_models:
             sdk_manifest_top_versions_for_models[model["model_id"]] = model
         else:
-            if Version(
+            if str(
                 sdk_manifest_top_versions_for_models[model["model_id"]]["version"]
-            ) < Version(model["version"]):
+            ) < str(model["version"]):
                 sdk_manifest_top_versions_for_models[model["model_id"]] = model
 
     marketplace_content_entries = []
