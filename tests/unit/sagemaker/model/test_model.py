@@ -361,7 +361,7 @@ def test_create_sagemaker_model_tags(prepare_container_def, sagemaker_session):
 
     model = Model(MODEL_IMAGE, MODEL_DATA, name=MODEL_NAME, sagemaker_session=sagemaker_session)
 
-    tags = {"Key": "foo", "Value": "bar"}
+    tags = [{"Key": "foo", "Value": "bar"}]
     model._create_sagemaker_model(INSTANCE_TYPE, tags=tags)
 
     sagemaker_session.create_model.assert_called_with(

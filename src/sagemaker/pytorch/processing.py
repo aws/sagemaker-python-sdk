@@ -24,6 +24,7 @@ from sagemaker.network import NetworkConfig
 from sagemaker.processing import FrameworkProcessor
 from sagemaker.pytorch.estimator import PyTorch
 from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.utils import format_tags, Tags
 
 
 class PyTorchProcessor(FrameworkProcessor):
@@ -48,7 +49,7 @@ class PyTorchProcessor(FrameworkProcessor):
         base_job_name: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
         env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
-        tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+        tags: Optional[Tags] = None,
         network_config: Optional[NetworkConfig] = None,
     ):
         """This processor executes a Python script in a PyTorch execution environment.
@@ -81,6 +82,6 @@ class PyTorchProcessor(FrameworkProcessor):
             base_job_name,
             sagemaker_session,
             env,
-            tags,
+            format_tags(tags),
             network_config,
         )

@@ -141,7 +141,12 @@ class CloudpickleSerializer:
             return cloudpickle.loads(bytes_to_deserialize)
         except Exception as e:
             raise DeserializationError(
-                "Error when deserializing bytes downloaded from {}: {}".format(s3_uri, repr(e))
+                "Error when deserializing bytes downloaded from {}: {}. "
+                "NOTE: this may be caused by inconsistent sagemaker python sdk versions "
+                "where remote function runs versus the one used on client side. "
+                "If the sagemaker versions do not match, a warning message would "
+                "be logged starting with 'Inconsistent sagemaker versions found'. "
+                "Please check it to validate.".format(s3_uri, repr(e))
             ) from e
 
 
@@ -161,17 +166,13 @@ def serialize_func_to_s3(
     Raises:
         SerializationError: when fail to serialize function to bytes.
     """
-    bytes_to_upload = CloudpickleSerializer.serialize(func)
 
-    _upload_bytes_to_s3(bytes_to_upload, f"{s3_uri}/payload.pkl", s3_kms_key, sagemaker_session)
-
-    sha256_hash = _compute_hash(bytes_to_upload, secret_key=hmac_key)
-
-    _upload_bytes_to_s3(
-        _MetaData(sha256_hash).to_json(),
-        f"{s3_uri}/metadata.json",
-        s3_kms_key,
-        sagemaker_session,
+    _upload_payload_and_metadata_to_s3(
+        bytes_to_upload=CloudpickleSerializer.serialize(func),
+        hmac_key=hmac_key,
+        s3_uri=s3_uri,
+        sagemaker_session=sagemaker_session,
+        s3_kms_key=s3_kms_key,
     )
 
 
@@ -220,17 +221,12 @@ def serialize_obj_to_s3(
         SerializationError: when fail to serialize object to bytes.
     """
 
-    bytes_to_upload = CloudpickleSerializer.serialize(obj)
-
-    _upload_bytes_to_s3(bytes_to_upload, f"{s3_uri}/payload.pkl", s3_kms_key, sagemaker_session)
-
-    sha256_hash = _compute_hash(bytes_to_upload, secret_key=hmac_key)
-
-    _upload_bytes_to_s3(
-        _MetaData(sha256_hash).to_json(),
-        f"{s3_uri}/metadata.json",
-        s3_kms_key,
-        sagemaker_session,
+    _upload_payload_and_metadata_to_s3(
+        bytes_to_upload=CloudpickleSerializer.serialize(obj),
+        hmac_key=hmac_key,
+        s3_uri=s3_uri,
+        sagemaker_session=sagemaker_session,
+        s3_kms_key=s3_kms_key,
     )
 
 
@@ -318,8 +314,32 @@ def serialize_exception_to_s3(
     """
     pickling_support.install()
 
-    bytes_to_upload = CloudpickleSerializer.serialize(exc)
+    _upload_payload_and_metadata_to_s3(
+        bytes_to_upload=CloudpickleSerializer.serialize(exc),
+        hmac_key=hmac_key,
+        s3_uri=s3_uri,
+        sagemaker_session=sagemaker_session,
+        s3_kms_key=s3_kms_key,
+    )
 
+
+def _upload_payload_and_metadata_to_s3(
+    bytes_to_upload: Union[bytes, io.BytesIO],
+    hmac_key: str,
+    s3_uri: str,
+    sagemaker_session: Session,
+    s3_kms_key,
+):
+    """Uploads serialized payload and metadata to s3.
+
+    Args:
+        bytes_to_upload (bytes): Serialized bytes to upload.
+        hmac_key (str): Key used to calculate hmac-sha256 hash of the serialized obj.
+        s3_uri (str): S3 root uri to which resulting serialized artifacts will be uploaded.
+        sagemaker_session (sagemaker.session.Session):
+            The underlying Boto3 session which AWS service calls are delegated to.
+        s3_kms_key (str): KMS key used to encrypt artifacts uploaded to S3.
+    """
     _upload_bytes_to_s3(bytes_to_upload, f"{s3_uri}/payload.pkl", s3_kms_key, sagemaker_session)
 
     sha256_hash = _compute_hash(bytes_to_upload, secret_key=hmac_key)

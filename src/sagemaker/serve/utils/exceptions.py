@@ -60,3 +60,12 @@ class SkipTuningComboException(ModelBuilderException):
 
     def __init__(self, message):
         super().__init__(message=message)
+
+
+class TaskNotFoundException(ModelBuilderException):
+    """Raise when HuggingFace task could not be found"""
+
+    fmt = "Error Message: {message}"
+
+    def __init__(self, message):
+        super().__init__(message=message)

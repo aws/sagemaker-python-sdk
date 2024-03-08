@@ -24,6 +24,7 @@ from sagemaker import image_uris, Session
 from sagemaker.processing import ScriptProcessor
 from sagemaker.sklearn import defaults
 from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.utils import format_tags, Tags
 
 
 class SKLearnProcessor(ScriptProcessor):
@@ -43,7 +44,7 @@ class SKLearnProcessor(ScriptProcessor):
         base_job_name: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
         env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
-        tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+        tags: Optional[Tags] = None,
         network_config: Optional[NetworkConfig] = None,
     ):
         """Initialize an ``SKLearnProcessor`` instance.
@@ -81,8 +82,7 @@ class SKLearnProcessor(ScriptProcessor):
                 using the default AWS configuration chain.
             env (dict[str, str] or dict[str, PipelineVariable]): Environment variables
                 to be passed to the processing job.
-            tags (list[dict[str, str] or list[dict[str, PipelineVariable]]): List of tags
-                to be passed to the processing job.
+            tags (Optional[Tags]): Tags to be passed to the processing job.
             network_config (sagemaker.network.NetworkConfig): A NetworkConfig
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
@@ -110,6 +110,6 @@ class SKLearnProcessor(ScriptProcessor):
             base_job_name=base_job_name,
             sagemaker_session=session,
             env=env,
-            tags=tags,
+            tags=format_tags(tags),
             network_config=network_config,
         )

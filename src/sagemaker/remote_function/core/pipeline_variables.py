@@ -19,6 +19,7 @@ from typing import Any, Union, Dict, List, Tuple
 
 from sagemaker.s3 import s3_path_join
 from sagemaker.remote_function.core.serialization import deserialize_obj_from_s3
+from sagemaker.workflow.step_outputs import get_step
 
 
 @dataclass
@@ -78,10 +79,21 @@ class _ExecutionVariable:
 
 
 @dataclass
+class _S3BaseUriIdentifier:
+    """Identifies that the class refers to function step s3 base uri.
+
+    The s3_base_uri = s3_root_uri + pipeline_name.
+    This identifier is resolved in function step runtime by SDK.
+    """
+
+    NAME = "S3_BASE_URI"
+
+
+@dataclass
 class _DelayedReturn:
     """Delayed return from a function."""
 
-    uri: List[Union[str, _Parameter, _ExecutionVariable]]
+    uri: Union[_Properties, List[Union[str, _Parameter, _ExecutionVariable]]]
     reference_path: Tuple = field(default_factory=tuple)
 
 
@@ -153,8 +165,10 @@ class _DelayedReturnResolver:
         self,
         delayed_returns: List[_DelayedReturn],
         hmac_key: str,
+        properties_resolver: _PropertiesResolver,
         parameter_resolver: _ParameterResolver,
         execution_variable_resolver: _ExecutionVariableResolver,
+        s3_base_uri: str,
         **settings,
     ):
         """Resolve delayed return.
@@ -162,12 +176,18 @@ class _DelayedReturnResolver:
         Args:
             delayed_returns: list of delayed returns to resolve.
             hmac_key: key used to encrypt serialized and deserialized function and arguments.
+            properties_resolver: resolver used to resolve step properties.
             parameter_resolver: resolver used to pipeline parameters.
             execution_variable_resolver: resolver used to resolve execution variables.
+            s3_base_uri (str): the s3 base uri of the function step that
+                the serialized artifacts will be uploaded to.
+                The s3_base_uri = s3_root_uri + pipeline_name.
             **settings: settings to pass to the deserialization function.
         """
+        self._s3_base_uri = s3_base_uri
         self._parameter_resolver = parameter_resolver
         self._execution_variable_resolver = execution_variable_resolver
+        self._properties_resolver = properties_resolver
         # different delayed returns can have the same uri, so we need to dedupe
         uris = {
             self._resolve_delayed_return_uri(delayed_return) for delayed_return in delayed_returns
@@ -198,13 +218,18 @@ class _DelayedReturnResolver:
 
     def _resolve_delayed_return_uri(self, delayed_return: _DelayedReturn):
         """Resolve the s3 uri of the delayed return."""
+        if isinstance(delayed_return.uri, _Properties):
+            return self._properties_resolver.resolve(delayed_return.uri)
 
+        # Keep the following old resolution logics to keep backward compatible
         uri = []
         for component in delayed_return.uri:
             if isinstance(component, _Parameter):
                 uri.append(self._parameter_resolver.resolve(component))
             elif isinstance(component, _ExecutionVariable):
                 uri.append(self._execution_variable_resolver.resolve(component))
+            elif isinstance(component, _S3BaseUriIdentifier):
+                uri.append(self._s3_base_uri)
             else:
                 uri.append(component)
         return s3_path_join(*uri)
@@ -219,7 +244,12 @@ def _retrieve_child_item(delayed_return: _DelayedReturn, deserialized_obj: Any):
 
 
 def resolve_pipeline_variables(
-    context: Context, func_args: Tuple, func_kwargs: Dict, hmac_key: str, **settings
+    context: Context,
+    func_args: Tuple,
+    func_kwargs: Dict,
+    hmac_key: str,
+    s3_base_uri: str,
+    **settings,
 ):
     """Resolve pipeline variables.
 
@@ -228,6 +258,8 @@ def resolve_pipeline_variables(
         func_args: function args.
         func_kwargs: function kwargs.
         hmac_key: key used to encrypt serialized and deserialized function and arguments.
+        s3_base_uri: the s3 base uri of the function step that the serialized artifacts
+            will be uploaded to. The s3_base_uri = s3_root_uri + pipeline_name.
         **settings: settings to pass to the deserialization function.
     """
 
@@ -249,8 +281,10 @@ def resolve_pipeline_variables(
     delayed_return_resolver = _DelayedReturnResolver(
         delayed_returns=delayed_returns,
         hmac_key=hmac_key,
+        properties_resolver=properties_resolver,
         parameter_resolver=parameter_resolver,
         execution_variable_resolver=execution_variable_resolver,
+        s3_base_uri=s3_base_uri,
         **settings,
     )
 
@@ -289,30 +323,22 @@ def resolve_pipeline_variables(
     return resolved_func_args, resolved_func_kwargs
 
 
-def convert_pipeline_variables_to_pickleable(s3_base_uri: str, func_args: Tuple, func_kwargs: Dict):
+def convert_pipeline_variables_to_pickleable(func_args: Tuple, func_kwargs: Dict):
     """Convert pipeline variables to pickleable.
 
     Args:
-        s3_base_uri: s3 base uri where artifacts are stored.
         func_args: function args.
         func_kwargs: function kwargs.
     """
 
     from sagemaker.workflow.entities import PipelineVariable
 
-    from sagemaker.workflow.execution_variables import ExecutionVariables
-
     from sagemaker.workflow.function_step import DelayedReturn
 
     def convert(arg):
         if isinstance(arg, DelayedReturn):
             return _DelayedReturn(
-                uri=[
-                    s3_base_uri,
-                    ExecutionVariables.PIPELINE_EXECUTION_ID._pickleable,
-                    arg._step.name,
-                    "results",
-                ],
+                uri=get_step(arg)._properties.OutputDataConfig.S3OutputPath._pickleable,
                 reference_path=arg._reference_path,
             )
 

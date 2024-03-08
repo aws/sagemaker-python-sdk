@@ -60,6 +60,7 @@ Feature Definition
     :members:
     :show-inheritance:
 
+
 Inputs
 ******
 
@@ -75,11 +76,23 @@ Inputs
     :members:
     :show-inheritance:
 
+.. autoclass:: sagemaker.feature_store.inputs.ThroughputConfig
+    :members:
+    :show-inheritance:
+
+.. autoclass:: sagemaker.feature_store.inputs.ThroughputConfigUpdate
+    :members:
+    :show-inheritance:
+
 .. autoclass:: sagemaker.feature_store.inputs.OnlineStoreConfig
     :members:
     :show-inheritance:
 
 .. autoclass:: sagemaker.feature_store.inputs.OnlineStoreSecurityConfig
+    :members:
+    :show-inheritance:
+
+.. autoclass:: sagemaker.feature_store.inputs.TtlDuration
     :members:
     :show-inheritance:
 
@@ -96,6 +109,10 @@ Inputs
     :show-inheritance:
 
 .. autoclass:: sagemaker.feature_store.inputs.OnlineStoreStorageTypeEnum
+    :members:
+    :show-inheritance:
+
+.. autoclass:: sagemaker.feature_store.inputs.ThroughputModeEnum
     :members:
     :show-inheritance:
 
@@ -165,9 +182,13 @@ Feature Processor Data Source
     :members:
     :show-inheritance:
 
+.. autoclass:: sagemaker.feature_store.feature_processor.PySparkDataSource
+    :members:
+    :show-inheritance:
 
-Feature Processor Scheduler
-***************************
+
+Feature Processor Scheduler and Triggers
+****************************************
 
 .. automethod:: sagemaker.feature_store.feature_processor.to_pipeline
 
@@ -180,3 +201,12 @@ Feature Processor Scheduler
 .. automethod:: sagemaker.feature_store.feature_processor.describe
 
 .. automethod:: sagemaker.feature_store.feature_processor.list_pipelines
+
+.. automethod:: sagemaker.feature_store.feature_processor.put_trigger
+
+.. automethod:: sagemaker.feature_store.feature_processor.enable_trigger
+
+.. automethod:: sagemaker.feature_store.feature_processor.disable_trigger
+
+.. automethod:: sagemaker.feature_store.feature_processor.delete_trigger
+

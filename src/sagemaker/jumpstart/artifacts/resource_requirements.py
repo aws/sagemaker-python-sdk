@@ -13,7 +13,7 @@
 """This module contains functions for obtaining JumpStart resoure requirements."""
 from __future__ import absolute_import
 
-from typing import Optional
+from typing import Dict, Optional, Tuple
 
 from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
@@ -28,6 +28,20 @@ from sagemaker.jumpstart.utils import (
 from sagemaker.session import Session
 from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
 
+REQUIREMENT_TYPE_TO_SPEC_FIELD_NAME_TO_RESOURCE_REQUIREMENT_NAME_MAP: Dict[
+    str, Dict[str, Tuple[str, str]]
+] = {
+    "requests": {
+        "num_accelerators": ("num_accelerators", "num_accelerators"),
+        "num_cpus": ("num_cpus", "num_cpus"),
+        "copies": ("copies", "copy_count"),
+        "min_memory_mb": ("memory", "min_memory"),
+    },
+    "limits": {
+        "max_memory_mb": ("memory", "max_memory"),
+    },
+}
+
 
 def _retrieve_default_resources(
     model_id: str,
@@ -37,6 +51,7 @@ def _retrieve_default_resources(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    instance_type: Optional[str] = None,
 ) -> ResourceRequirements:
     """Retrieves the default resource requirements for the model.
 
@@ -60,6 +75,8 @@ def _retrieve_default_resources(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        instance_type (str): An instance type to optionally supply in order to get
+            host requirements specific for the instance type.
     Returns:
         str: The default resource requirements to use for the model or None.
 
@@ -87,23 +104,44 @@ def _retrieve_default_resources(
         is_dynamic_container_deployment_supported = (
             model_specs.dynamic_container_deployment_supported
         )
-        default_resource_requirements = model_specs.hosting_resource_requirements
+        default_resource_requirements: Dict[str, int] = (
+            model_specs.hosting_resource_requirements or {}
+        )
     else:
         raise NotImplementedError(
             f"Unsupported script scope for retrieving default resource requirements: '{scope}'"
         )
 
-    if is_dynamic_container_deployment_supported:
-        requests = {}
-        if "num_accelerators" in default_resource_requirements:
-            requests["num_accelerators"] = default_resource_requirements["num_accelerators"]
-        if "min_memory_mb" in default_resource_requirements:
-            requests["memory"] = default_resource_requirements["min_memory_mb"]
-        if "num_cpus" in default_resource_requirements:
-            requests["num_cpus"] = default_resource_requirements["num_cpus"]
+    instance_specific_resource_requirements: Dict[str, int] = (
+        model_specs.hosting_instance_type_variants.get_instance_specific_resource_requirements(
+            instance_type
+        )
+        if instance_type
+        and getattr(model_specs, "hosting_instance_type_variants", None) is not None
+        else {}
+    )
 
-        limits = {}
-        if "max_memory_mb" in default_resource_requirements:
-            limits["memory"] = default_resource_requirements["max_memory_mb"]
-        return ResourceRequirements(requests=requests, limits=limits)
+    default_resource_requirements = {
+        **default_resource_requirements,
+        **instance_specific_resource_requirements,
+    }
+
+    if is_dynamic_container_deployment_supported:
+
+        all_resource_requirement_kwargs = {}
+
+        for (
+            requirement_type,
+            spec_field_to_resource_requirement_map,
+        ) in REQUIREMENT_TYPE_TO_SPEC_FIELD_NAME_TO_RESOURCE_REQUIREMENT_NAME_MAP.items():
+            requirement_kwargs = {}
+            for spec_field, resource_requirement in spec_field_to_resource_requirement_map.items():
+                if spec_field in default_resource_requirements:
+                    requirement_kwargs[resource_requirement[0]] = default_resource_requirements[
+                        spec_field
+                    ]
+
+            all_resource_requirement_kwargs[requirement_type] = requirement_kwargs
+
+        return ResourceRequirements(**all_resource_requirement_kwargs)
     return None

@@ -1034,7 +1034,7 @@ You can deploy the XGBoost model from the previous example to a SageMaker endpoi
         initial_instance_count=1
     )
 
-For a sample notebook that demonstrates using ``ModelBuilder`` to build a XGBoost model, see `XGBoost example <https://github.com/aws-samples/sagemaker-hosting/SageMaker-Model-Builder/traditional-models/model-builder-xgboost.ipynb>`_.
+For a sample notebook that demonstrates using ``ModelBuilder`` to build a XGBoost model, see `XGBoost example <https://github.com/aws-samples/sagemaker-hosting/blob/main/SageMaker-Model-Builder/traditional-models/model-builder-xgboost.ipynb>`_.
 
 **Triton models**.
 You can use ``ModelBuilder`` to serve PyTorch models on a Triton inference server. Specify the ``model_server`` parameter as ``ModelServer.TRITON``, pass a model, and include a ``SchemaBuilder`` object which requires sample inputs and outputs from the model. The following snippet shows an example.
@@ -1056,7 +1056,7 @@ You can use ``ModelBuilder`` to serve PyTorch models on a Triton inference serve
         initial_instance_count=1
     )
 
-For a sample notebook that demonstrates using ``ModelBuilder`` to build a Triton model, see `Triton example <https://github.com/aws-samples/sagemaker-hosting/SageMaker-Model-Builder/traditional-models/model-builder-triton.ipynb>`_.
+For a sample notebook that demonstrates using ``ModelBuilder`` to build a Triton model, see `Triton example <https://github.com/aws-samples/sagemaker-hosting/blob/main/SageMaker-Model-Builder/traditional-models/model-builder-triton.ipynb>`_.
 
 
 **Hugging Face models**.
@@ -1101,7 +1101,7 @@ Create the ``ModelBuilder`` object and deploy the model onto a SageMaker endpoin
         instance_type='ml.g5.2xlarge'
     )
 
-For a sample notebook that demonstrates using ``ModelBuilder`` to build a Hugging Face model, see `Hugging Face example <https://github.com/aws-samples/sagemaker-hosting/SageMaker-Model-Builder/traditional-models/model-builder-huggingface.ipynb>`_.
+For a sample notebook that demonstrates using ``ModelBuilder`` to build a Hugging Face model, see `Hugging Face example <https://github.com/aws-samples/sagemaker-hosting/blob/main/SageMaker-Model-Builder/traditional-models/model-builder-huggingface.ipynb>`_.
 
 
 Deploy foundation models to SageMaker Endpoints
@@ -1135,7 +1135,7 @@ For gated models on Hugging Face Hub, request access and pass the associated key
 
 A feature of ``ModelBuilder`` is the ability to run local tuning on the container when you use `LOCAL_CONTAINER` mode. In this case ``ModelBuilder`` tunes the parameter(s) for the underlying model server. This feature can be used by executing `tuned_model=model.tune()`. Before running `tune`, clean up other containers running locally or else you might see an "address already in use" error.
 
-For a sample notebook that demonstrates using ``ModelBuilder`` to build a Hugging Face Hub model, see `Hugging Face Hub example <https://github.com/aws-samples/sagemaker-hosting/SageMaker-Model-Builder/model-builder-huggingface-llama2.ipynb>`_.
+For a sample notebook that demonstrates using ``ModelBuilder`` to build a Hugging Face Hub model, see `Hugging Face Hub example <https://github.com/aws-samples/sagemaker-hosting/blob/main/SageMaker-Model-Builder/model-builder-huggingface-llama2.ipynb>`_.
 
 
 **JumpStart**. JumpStart also offers a number of pre-trained foundation models. Again, the model ID is required. Deploying a JumpStart model to a SageMaker endpoint is straightforward, as shown in the following example:
@@ -1154,24 +1154,24 @@ For a sample notebook that demonstrates using ``ModelBuilder`` to build a Huggin
 
 For a list of available JumpStart model IDs, see `Built-in Algorithms with pre-trained Model Table <https://sagemaker.readthedocs.io/en/stable/doc_utils/pretrainedmodels.html>`_.
 
-For a sample notebook that demonstrates using ``ModelBuilder`` to build a JumpStart model, see `JumpStart example <https://github.com/aws-samples/sagemaker-hosting/SageMaker-Model-Builder/foundation-models/model-builder-jumpstart-falcon.ipynb>`_.
+For a sample notebook that demonstrates using ``ModelBuilder`` to build a JumpStart model, see `JumpStart example <https://github.com/aws-samples/sagemaker-hosting/blob/main/SageMaker-Model-Builder/foundation-models/model-builder-jumpstart-falcon.ipynb>`_.
 
 ModelBuilder examples
 ^^^^^^^^^^^^^^^^^^^^^
 
 For example notebooks that demonstrate the use of ``ModelBuilder`` and its supporting classes, as well as model creation of traditional and foundation models, see the following links:
 
-  * `Pytorch example <https://github.com/aws-samples/sagemaker-hosting/SageMaker-Model-Builder/traditional-models/model-builder-pytorch.ipynb>`_
+  * `Pytorch example <https://github.com/aws-samples/sagemaker-hosting/blob/main/SageMaker-Model-Builder/traditional-models/model-builder-pytorch.ipynb>`__
 
-  * `XGBoost example <https://github.com/aws-samples/sagemaker-hosting/SageMaker-Model-Builder/traditional-models/model-builder-xgboost.ipynb>`_
+  * `XGBoost example <https://github.com/aws-samples/sagemaker-hosting/blob/main/SageMaker-Model-Builder/traditional-models/model-builder-xgboost.ipynb>`__
 
-  * `Triton example <https://github.com/aws-samples/sagemaker-hosting/SageMaker-Model-Builder/traditional-models/model-builder-triton.ipynb>`_
+  * `Triton example <https://github.com/aws-samples/sagemaker-hosting/blob/main/SageMaker-Model-Builder/traditional-models/model-builder-triton.ipynb>`__
 
-  * `Hugging Face example <https://github.com/aws-samples/sagemaker-hosting/SageMaker-Model-Builder/traditional-models/model-builder-huggingface.ipynb>`_
+  * `Hugging Face example <https://github.com/aws-samples/sagemaker-hosting/blob/main/SageMaker-Model-Builder/traditional-models/model-builder-huggingface.ipynb>`__
 
-  * `Hugging Face Hub example <https://github.com/aws-samples/sagemaker-hosting/SageMaker-Model-Builder/model-builder-huggingface-llama2.ipynb>`_
+  * `Hugging Face Hub example <https://github.com/aws-samples/sagemaker-hosting/blob/main/SageMaker-Model-Builder/foundation-models/model-builder-huggingface-llama2.ipynb>`__
 
-  * `JumpStart example <https://github.com/aws-samples/sagemaker-hosting/SageMaker-Model-Builder/foundation-models/model-builder-jumpstart-falcon.ipynb>`_
+  * `JumpStart example <https://github.com/aws-samples/sagemaker-hosting/blob/main/SageMaker-Model-Builder/foundation-models/model-builder-jumpstart-falcon.ipynb>`__
 
 
 Fine-tune a Model and Deploy to a SageMaker Endpoint

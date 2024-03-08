@@ -28,7 +28,7 @@ from sagemaker.config import (
 )
 from sagemaker.job import _Job
 from sagemaker.session import Session
-from sagemaker.utils import name_from_base, resolve_value_from_config
+from sagemaker.utils import name_from_base, resolve_value_from_config, format_tags, Tags
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.pipeline_context import runnable_by_pipeline
 
@@ -127,7 +127,7 @@ class AutoML(object):
         total_job_runtime_in_seconds: Optional[int] = None,
         job_objective: Optional[Dict[str, str]] = None,
         generate_candidate_definitions_only: Optional[bool] = False,
-        tags: Optional[List[Dict[str, str]]] = None,
+        tags: Optional[Tags] = None,
         content_type: Optional[str] = None,
         s3_data_type: Optional[str] = None,
         feature_specification_s3_uri: Optional[str] = None,
@@ -167,8 +167,7 @@ class AutoML(object):
                 In the format of: {"MetricName": str}
             generate_candidate_definitions_only (bool): Whether to generates
                 possible candidates without training the models.
-            tags (List[dict[str, str]]): The list of tags to attach to this
-                specific endpoint.
+            tags (Optional[Tags]): Tags to attach to this specific endpoint.
             content_type (str): The content type of the data from the input source.
             s3_data_type (str): The data type for S3 data source.
                 Valid values: ManifestFile or S3Prefix.
@@ -203,7 +202,7 @@ class AutoML(object):
         self.target_attribute_name = target_attribute_name
         self.job_objective = job_objective
         self.generate_candidate_definitions_only = generate_candidate_definitions_only
-        self.tags = tags
+        self.tags = format_tags(tags)
         self.content_type = content_type
         self.s3_data_type = s3_data_type
         self.feature_specification_s3_uri = feature_specification_s3_uri
@@ -332,7 +331,7 @@ class AutoML(object):
             total_job_runtime_in_seconds=auto_ml_job_desc.get("AutoMLJobConfig", {})
             .get("CompletionCriteria", {})
             .get("MaxAutoMLJobRuntimeInSeconds"),
-            job_objective=auto_ml_job_desc.get("AutoMLJobObjective", {}).get("MetricName"),
+            job_objective=auto_ml_job_desc.get("AutoMLJobObjective", {}),
             generate_candidate_definitions_only=auto_ml_job_desc.get(
                 "GenerateCandidateDefinitionsOnly", False
             ),
@@ -581,7 +580,7 @@ class AutoML(object):
                 be selected on each ``deploy``.
             endpoint_name (str): The name of the endpoint to create (default:
                 None). If not specified, a unique endpoint name will be created.
-            tags (List[dict[str, str]]): The list of tags to attach to this
+            tags (Optional[Tags]): The list of tags to attach to this
                 specific endpoint.
             wait (bool): Whether the call should wait until the deployment of
                 model completes (default: True).
@@ -633,7 +632,7 @@ class AutoML(object):
             deserializer=deserializer,
             endpoint_name=endpoint_name,
             kms_key=model_kms_key,
-            tags=tags,
+            tags=format_tags(tags),
             wait=wait,
             volume_size=volume_size,
             model_data_download_timeout=model_data_download_timeout,

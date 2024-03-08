@@ -49,14 +49,18 @@ from sagemaker.image_uris import get_base_python_image_uri
 from sagemaker import image_uris
 from sagemaker.remote_function.checkpoint_location import CheckpointLocation
 from sagemaker.session import get_execution_role, _logs_for_job, Session
-from sagemaker.utils import name_from_base, _tmpdir, resolve_value_from_config
+from sagemaker.utils import (
+    name_from_base,
+    _tmpdir,
+    resolve_value_from_config,
+    format_tags,
+    Tags,
+)
 from sagemaker.s3 import s3_path_join, S3Uploader
 from sagemaker import vpc_utils
-from sagemaker.remote_function.core.stored_function import StoredFunction
-from sagemaker.remote_function.core.pipeline_variables import (
-    Context,
-    convert_pipeline_variables_to_pickleable,
-)
+from sagemaker.remote_function.core.stored_function import StoredFunction, _SerializedData
+from sagemaker.remote_function.core.pipeline_variables import Context
+
 from sagemaker.remote_function.runtime_environment.runtime_environment_manager import (
     RuntimeEnvironmentManager,
     _DependencySettings,
@@ -69,6 +73,8 @@ from sagemaker.remote_function.custom_file_filter import (
     copy_workdir,
     resolve_custom_file_filter_from_config_file,
 )
+from sagemaker.workflow.function_step import DelayedReturn
+from sagemaker.workflow.step_outputs import get_step
 
 if TYPE_CHECKING:
     from sagemaker.workflow.entities import PipelineVariable
@@ -203,7 +209,7 @@ class _JobSettings:
         sagemaker_session: Session = None,
         security_group_ids: List[Union[str, "PipelineVariable"]] = None,
         subnets: List[Union[str, "PipelineVariable"]] = None,
-        tags: List[Dict[str, Union[str, "PipelineVariable"]]] = None,
+        tags: Optional[Tags] = None,
         volume_kms_key: Union[str, "PipelineVariable"] = None,
         volume_size: Union[int, "PipelineVariable"] = 30,
         encrypt_inter_container_traffic: Union[bool, "PipelineVariable"] = None,
@@ -365,9 +371,8 @@ class _JobSettings:
             subnets (List[str, PipelineVariable]): A list of subnet IDs. Defaults to ``None``
               and the job is created without VPC config.
 
-            tags (list[dict[str, str] or list[dict[str, PipelineVariable]]): A list of tags
-              attached to the job. Defaults to ``None`` and the training job is created
-              without tags.
+            tags (Optional[Tags]): Tags attached to the job. Defaults to ``None``
+                and the training job is created without tags.
 
             volume_kms_key (str, PipelineVariable): An Amazon Key Management Service (KMS) key
               used to encrypt an Amazon Elastic Block Storage (EBS) volume attached to the
@@ -547,9 +552,8 @@ class _JobSettings:
         vpc_config = vpc_utils.to_dict(subnets=_subnets, security_group_ids=_security_group_ids)
         self.vpc_config = vpc_utils.sanitize(vpc_config)
 
-        self.tags = self.sagemaker_session._append_sagemaker_config_tags(
-            [{"Key": k, "Value": v} for k, v in tags] if tags else None, REMOTE_FUNCTION_TAGS
-        )
+        tags = format_tags(tags)
+        self.tags = self.sagemaker_session._append_sagemaker_config_tags(tags, REMOTE_FUNCTION_TAGS)
 
     @staticmethod
     def _get_default_image(session):
@@ -695,10 +699,12 @@ class _Job:
         func_args: tuple,
         func_kwargs: dict,
         run_info=None,
+        serialized_data: _SerializedData = None,
     ) -> dict:
         """Build the artifacts and generate the training job request."""
         from sagemaker.workflow.properties import Properties
         from sagemaker.workflow.parameters import Parameter
+        from sagemaker.workflow.functions import Join
         from sagemaker.workflow.execution_variables import ExecutionVariables, ExecutionVariable
         from sagemaker.workflow.utilities import load_step_compilation_context
 
@@ -732,12 +738,8 @@ class _Job:
                     func_step_s3_dir=step_compilation_context.pipeline_build_time,
                 ),
             )
-            converted_func_args, converted_func_kwargs = convert_pipeline_variables_to_pickleable(
-                s3_base_uri=s3_base_uri,
-                func_args=func_args,
-                func_kwargs=func_kwargs,
-            )
-            stored_function.save(func, *converted_func_args, **converted_func_kwargs)
+
+            stored_function.save_pipeline_step_function(serialized_data)
 
         stopping_condition = {
             "MaxRuntimeInSeconds": job_settings.max_runtime_in_seconds,
@@ -762,7 +764,19 @@ class _Job:
             job_settings=job_settings, s3_base_uri=s3_base_uri
         )
 
-        output_config = {"S3OutputPath": s3_base_uri}
+        if step_compilation_context:
+            s3_output_path = Join(
+                on="/",
+                values=[
+                    s3_base_uri,
+                    ExecutionVariables.PIPELINE_EXECUTION_ID,
+                    step_compilation_context.step_name,
+                    "results",
+                ],
+            )
+            output_config = {"S3OutputPath": s3_output_path}
+        else:
+            output_config = {"S3OutputPath": s3_base_uri}
         if job_settings.s3_kms_key is not None:
             output_config["KmsKeyId"] = job_settings.s3_kms_key
         request_dict["OutputDataConfig"] = output_config
@@ -771,6 +785,12 @@ class _Job:
         container_args.extend(["--region", job_settings.sagemaker_session.boto_region_name])
         container_args.extend(
             ["--client_python_version", RuntimeEnvironmentManager()._current_python_version()]
+        )
+        container_args.extend(
+            [
+                "--client_sagemaker_pysdk_version",
+                RuntimeEnvironmentManager()._current_sagemaker_pysdk_version(),
+            ]
         )
         container_args.extend(
             [
@@ -805,6 +825,11 @@ class _Job:
             for arg in func_args + tuple(func_kwargs.values()):
                 if isinstance(arg, (Parameter, ExecutionVariable, Properties)):
                     container_args.extend([arg.expr["Get"], arg.to_string()])
+
+                if isinstance(arg, DelayedReturn):
+                    # The uri is a Properties object
+                    uri = get_step(arg)._properties.OutputDataConfig.S3OutputPath
+                    container_args.extend([uri.expr["Get"], uri.to_string()])
 
         if run_info is not None:
             container_args.extend(["--run_in_context", json.dumps(dataclasses.asdict(run_info))])

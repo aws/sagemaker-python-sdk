@@ -15,7 +15,7 @@ from __future__ import absolute_import
 from copy import deepcopy
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Union
-from sagemaker.utils import get_instance_type_family
+from sagemaker.utils import get_instance_type_family, format_tags, Tags
 from sagemaker.model_metrics import ModelMetrics
 from sagemaker.metadata_properties import MetadataProperties
 from sagemaker.drift_check_baselines import DriftCheckBaselines
@@ -130,7 +130,7 @@ class JumpStartLaunchedRegionInfo(JumpStartDataHolderType):
 class JumpStartModelHeader(JumpStartDataHolderType):
     """Data class JumpStart model header."""
 
-    __slots__ = ["model_id", "version", "min_version", "spec_key"]
+    __slots__ = ["model_id", "version", "min_version", "spec_key", "search_keywords"]
 
     def __init__(self, header: Dict[str, str]):
         """Initializes a JumpStartModelHeader object from its json representation.
@@ -142,7 +142,11 @@ class JumpStartModelHeader(JumpStartDataHolderType):
 
     def to_json(self) -> Dict[str, str]:
         """Returns json representation of JumpStartModelHeader object."""
-        json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
+        json_obj = {
+            att: getattr(self, att)
+            for att in self.__slots__
+            if getattr(self, att, None) is not None
+        }
         return json_obj
 
     def from_json(self, json_obj: Dict[str, str]) -> None:
@@ -155,6 +159,7 @@ class JumpStartModelHeader(JumpStartDataHolderType):
         self.version: str = json_obj["version"]
         self.min_version: str = json_obj["min_version"]
         self.spec_key: str = json_obj["spec_key"]
+        self.search_keywords: Optional[List[str]] = json_obj.get("search_keywords")
 
 
 class JumpStartECRSpecs(JumpStartDataHolderType):
@@ -472,6 +477,29 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
         return self._get_instance_specific_property(
             instance_type=instance_type, property_name="artifact_key"
         )
+
+    def get_instance_specific_resource_requirements(self, instance_type: str) -> Optional[str]:
+        """Returns instance specific resource requirements.
+
+        If a value exists for both the instance family and instance type, the instance type value
+        is chosen.
+        """
+
+        instance_specific_resource_requirements: dict = (
+            self.variants.get(instance_type, {})
+            .get("properties", {})
+            .get("resource_requirements", {})
+        )
+
+        instance_type_family = get_instance_type_family(instance_type)
+
+        instance_family_resource_requirements: dict = (
+            self.variants.get(instance_type_family, {})
+            .get("properties", {})
+            .get("resource_requirements", {})
+        )
+
+        return {**instance_family_resource_requirements, **instance_specific_resource_requirements}
 
     def _get_instance_specific_property(
         self, instance_type: str, property_name: str
@@ -1172,7 +1200,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         deserializer: Optional[Any] = None,
         accelerator_type: Optional[str] = None,
         endpoint_name: Optional[str] = None,
-        tags: List[Dict[str, str]] = None,
+        tags: Optional[Tags] = None,
         kms_key: Optional[str] = None,
         wait: Optional[bool] = None,
         data_capture_config: Optional[Any] = None,
@@ -1203,7 +1231,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         self.deserializer = deserializer
         self.accelerator_type = accelerator_type
         self.endpoint_name = endpoint_name
-        self.tags = deepcopy(tags)
+        self.tags = format_tags(tags)
         self.kms_key = kms_key
         self.wait = wait
         self.data_capture_config = data_capture_config
@@ -1280,6 +1308,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         "container_arguments",
         "disable_output_compression",
         "enable_infra_check",
+        "enable_remote_debug",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -1309,7 +1338,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         base_job_name: Optional[str] = None,
         sagemaker_session: Optional[Any] = None,
         hyperparameters: Optional[Dict[str, Union[str, Any]]] = None,
-        tags: Optional[List[Dict[str, Union[str, Any]]]] = None,
+        tags: Optional[Tags] = None,
         subnets: Optional[List[Union[str, Any]]] = None,
         security_group_ids: Optional[List[Union[str, Any]]] = None,
         model_uri: Optional[str] = None,
@@ -1344,6 +1373,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         container_arguments: Optional[List[str]] = None,
         disable_output_compression: Optional[bool] = None,
         enable_infra_check: Optional[Union[bool, PipelineVariable]] = None,
+        enable_remote_debug: Optional[Union[bool, PipelineVariable]] = None,
     ) -> None:
         """Instantiates JumpStartEstimatorInitKwargs object."""
 
@@ -1368,7 +1398,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         self.output_kms_key = output_kms_key
         self.base_job_name = base_job_name
         self.sagemaker_session = sagemaker_session
-        self.tags = deepcopy(tags)
+        self.tags = format_tags(tags)
         self.subnets = subnets
         self.security_group_ids = security_group_ids
         self.model_channel_name = model_channel_name
@@ -1401,6 +1431,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         self.container_arguments = container_arguments
         self.disable_output_compression = disable_output_compression
         self.enable_infra_check = enable_infra_check
+        self.enable_remote_debug = enable_remote_debug
 
 
 class JumpStartEstimatorFitKwargs(JumpStartKwargs):
@@ -1523,7 +1554,7 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         deserializer: Optional[Any] = None,
         accelerator_type: Optional[str] = None,
         endpoint_name: Optional[str] = None,
-        tags: List[Dict[str, str]] = None,
+        tags: Optional[Tags] = None,
         kms_key: Optional[str] = None,
         wait: Optional[bool] = None,
         data_capture_config: Optional[Any] = None,
@@ -1570,7 +1601,7 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         self.deserializer = deserializer
         self.accelerator_type = accelerator_type
         self.endpoint_name = endpoint_name
-        self.tags = deepcopy(tags)
+        self.tags = format_tags(tags)
         self.kms_key = kms_key
         self.wait = wait
         self.data_capture_config = data_capture_config

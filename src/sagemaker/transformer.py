@@ -13,7 +13,7 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
-from typing import Union, Optional, List, Dict
+from typing import Union, Optional, Dict
 import logging
 import copy
 import time
@@ -42,6 +42,8 @@ from sagemaker.utils import (
     check_and_get_run_experiment_config,
     resolve_value_from_config,
     resolve_class_attribute_from_config,
+    format_tags,
+    Tags,
 )
 
 
@@ -62,7 +64,7 @@ class Transformer(object):
         accept: Optional[Union[str, PipelineVariable]] = None,
         max_concurrent_transforms: Optional[Union[int, PipelineVariable]] = None,
         max_payload: Optional[Union[int, PipelineVariable]] = None,
-        tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+        tags: Optional[Tags] = None,
         env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
         base_transform_job_name: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
@@ -92,9 +94,9 @@ class Transformer(object):
                 to be made to each individual transform container at one time.
             max_payload (int or PipelineVariable): Maximum size of the payload in a single HTTP
                 request to the container in MB.
-            tags (list[dict[str, str] or list[dict[str, PipelineVariable]]): List of tags for
-                labeling a transform job (default: None). For more, see the SageMaker API
-                documentation for `Tag <https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html>`_.
+            tags (Optional[Tags]): Tags for labeling a transform job (default: None).
+                For more, see the SageMaker API documentation for
+                `Tag <https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html>`_.
             env (dict[str, str] or dict[str, PipelineVariable]): Environment variables to be set
                 for use during the transform job (default: None).
             base_transform_job_name (str): Prefix for the transform job when the
@@ -121,7 +123,7 @@ class Transformer(object):
 
         self.max_concurrent_transforms = max_concurrent_transforms
         self.max_payload = max_payload
-        self.tags = tags
+        self.tags = format_tags(tags)
 
         self.base_transform_job_name = base_transform_job_name
         self._current_job_name = None
@@ -335,6 +337,7 @@ class Transformer(object):
         wait: bool = True,
         pipeline_name: str = None,
         role: str = None,
+        fail_on_violation: bool = True,
     ):
         """Runs a transform job with monitoring job.
 
@@ -350,7 +353,6 @@ class Transformer(object):
             ]): the monitoring configuration used for run model monitoring.
             monitoring_resource_config (`sagemaker.workflow.check_job_config.CheckJobConfig`):
                 the check job (processing job) cluster resource configuration.
-            transform_step_args (_JobStepArguments): the transform step transform arguments.
             data (str): Input data location in S3 for the transform job
             data_type (str): What the S3 location defines (default: 'S3Prefix').
                 Valid values:
@@ -398,8 +400,6 @@ class Transformer(object):
             monitor_before_transform (bgool): If to run data quality
                 or model explainability monitoring type,
                 a true value of this flag indicates running the check step before the transform job.
-            fail_on_violation (Union[bool, PipelineVariable]): A opt-out flag to not to fail the
-                check step when a violation is detected.
             supplied_baseline_statistics (Union[str, PipelineVariable]): The S3 path
                 to the supplied statistics object representing the statistics JSON file
                 which will be used for drift to check (default: None).
@@ -409,6 +409,8 @@ class Transformer(object):
             wait (bool): To determine if needed to wait for the pipeline execution to complete
             pipeline_name (str): The name of the Pipeline for the monitoring and transfrom step
             role (str): Execution role
+            fail_on_violation (Union[bool, PipelineVariable]): A opt-out flag to not to fail the
+                check step when a violation is detected.
         """
 
         transformer = self
@@ -452,6 +454,7 @@ class Transformer(object):
             monitor_before_transform=monitor_before_transform,
             supplied_baseline_constraints=supplied_baseline_constraints,
             supplied_baseline_statistics=supplied_baseline_statistics,
+            fail_on_violation=fail_on_violation,
         )
 
         pipeline_name = (

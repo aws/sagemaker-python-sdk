@@ -28,7 +28,7 @@ from sagemaker.workflow.step_outputs import StepOutput
 from sagemaker.workflow.steps import Step, CreateModelStep, TransformStep
 from sagemaker.workflow._utils import _RegisterModelStep, _RepackModelStep
 from sagemaker.workflow.retry import RetryPolicy
-from sagemaker.utils import update_container_with_inference_params
+from sagemaker.utils import update_container_with_inference_params, format_tags
 
 
 @attr.s
@@ -128,7 +128,7 @@ class RegisterModel(StepCollection):  # pragma: no cover
             compile_model_family (str): The instance family for the compiled model. If
                 specified, a compiled model is used (default: None).
             description (str): Model Package description (default: None).
-            tags (List[dict[str, str]]): The list of tags to attach to the model package group. Note
+            tags (Optional[Tags]): The list of tags to attach to the model package group. Note
                 that tags will only be applied to newly created model package groups; if the
                 name of an existing group is passed to "model_package_group_name",
                 tags will not be applied.
@@ -163,6 +163,7 @@ class RegisterModel(StepCollection):  # pragma: no cover
         self.container_def_list = None
         subnets = None
         security_group_ids = None
+        tags = format_tags(tags)
 
         if estimator is not None:
             subnets = estimator.subnets
@@ -390,6 +391,7 @@ class EstimatorTransformer(StepCollection):
         """
         super().__init__(name=name, depends_on=depends_on)
         steps = []
+        tags = format_tags(tags)
         if "entry_point" in kwargs:
             entry_point = kwargs.get("entry_point", None)
             source_dir = kwargs.get("source_dir", None)

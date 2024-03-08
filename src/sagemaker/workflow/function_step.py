@@ -33,15 +33,15 @@ from sagemaker.workflow.entities import (
     PipelineVariable,
 )
 
-from sagemaker.workflow.execution_variables import ExecutionVariables
+from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.retry import RetryPolicy
 from sagemaker.workflow.steps import Step, ConfigurableRetryStep, StepTypeEnum
 from sagemaker.workflow.step_collections import StepCollection
-from sagemaker.workflow.step_outputs import StepOutput
+from sagemaker.workflow.step_outputs import StepOutput, get_step
 from sagemaker.workflow.utilities import trim_request_dict, load_step_compilation_context
 
 from sagemaker.s3_utils import s3_path_join
-from sagemaker.utils import unique_name_from_base_uuid4
+from sagemaker.utils import unique_name_from_base_uuid4, format_tags, Tags
 
 if TYPE_CHECKING:
     from sagemaker.remote_function.spark_config import SparkConfig
@@ -83,6 +83,11 @@ class _FunctionStep(ConfigurableRetryStep):
             func_kwargs (dict): keyword arguments of the python function.
             **kwargs: Additional arguments to be passed to the `step` decorator.
         """
+        from sagemaker.remote_function.core.pipeline_variables import (
+            convert_pipeline_variables_to_pickleable,
+        )
+        from sagemaker.remote_function.core.serialization import CloudpickleSerializer
+        from sagemaker.remote_function.core.stored_function import _SerializedData
 
         super(_FunctionStep, self).__init__(
             name, StepTypeEnum.TRAINING, display_name, description, depends_on, retry_policies
@@ -95,6 +100,27 @@ class _FunctionStep(ConfigurableRetryStep):
         self._step_kwargs = kwargs
 
         self.__job_settings = None
+
+        # It's for internal usage to retrieve execution id from the properties.
+        # However, we won't expose the properties of function step to customers.
+        self._properties = Properties(
+            step_name=name, step=self, shape_name="DescribeTrainingJobResponse"
+        )
+
+        (
+            self._converted_func_args,
+            self._converted_func_kwargs,
+        ) = convert_pipeline_variables_to_pickleable(
+            func_args=self._func_args,
+            func_kwargs=self._func_kwargs,
+        )
+
+        self._serialized_data = _SerializedData(
+            func=CloudpickleSerializer.serialize(self._func),
+            args=CloudpickleSerializer.serialize(
+                (self._converted_func_args, self._converted_func_kwargs)
+            ),
+        )
 
     @property
     def func(self):
@@ -185,6 +211,7 @@ class _FunctionStep(ConfigurableRetryStep):
             func=self.func,
             func_args=self.func_args,
             func_kwargs=self.func_kwargs,
+            serialized_data=self._serialized_data,
         )
         # Continue to pop job name if not explicitly opted-in via config
         request_dict = trim_request_dict(request_dict, "TrainingJobName", step_compilation_context)
@@ -249,14 +276,12 @@ class DelayedReturn(StepOutput):
         """Expression structure for workflow service calls using JsonGet resolution."""
         from sagemaker.remote_function.core.stored_function import (
             JSON_SERIALIZED_RESULT_KEY,
-            RESULTS_FOLDER,
             JSON_RESULTS_FILE,
         )
 
         if not self._step.name:
             raise ValueError("Step name is not defined.")
 
-        s3_root_uri = self._step._job_settings.s3_root_uri
         # Resolve json path --
         #   Deserializer will be able to resolve a JsonGet using path "Return[1]" to
         #   access value 10 from following serialized JSON:
@@ -280,13 +305,9 @@ class DelayedReturn(StepOutput):
 
         return JsonGet(
             s3_uri=Join(
-                "/",
-                [
-                    s3_root_uri,
-                    ExecutionVariables.PIPELINE_NAME,
-                    ExecutionVariables.PIPELINE_EXECUTION_ID,
-                    self._step.name,
-                    RESULTS_FOLDER,
+                on="/",
+                values=[
+                    get_step(self)._properties.OutputDataConfig.S3OutputPath,
                     JSON_RESULTS_FILE,
                 ],
             ),
@@ -353,7 +374,7 @@ def step(
     role: str = None,
     security_group_ids: Optional[List[Union[str, PipelineVariable]]] = None,
     subnets: Optional[List[Union[str, PipelineVariable]]] = None,
-    tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+    tags: Optional[Tags] = None,
     volume_kms_key: Optional[Union[str, PipelineVariable]] = None,
     volume_size: Union[int, PipelineVariable] = 30,
     encrypt_inter_container_traffic: Optional[Union[bool, PipelineVariable]] = None,
@@ -492,8 +513,8 @@ def step(
         subnets (List[str, PipelineVariable]): A list of subnet IDs. Defaults to ``None``
           and the job is created without a VPC config.
 
-        tags (list[dict[str, str] or list[dict[str, PipelineVariable]]): A list of tags attached
-          to the job. Defaults to ``None`` and the training job is created without tags.
+        tags (Optional[Tags]): Tags attached to the job. Defaults to ``None``
+          and the training job is created without tags.
 
         volume_kms_key (str, PipelineVariable): An Amazon Key Management Service (KMS) key used to
           encrypt an Amazon Elastic Block Storage (EBS) volume attached to the training instance.
@@ -577,7 +598,7 @@ def step(
                 role=role,
                 security_group_ids=security_group_ids,
                 subnets=subnets,
-                tags=tags,
+                tags=format_tags(tags),
                 volume_kms_key=volume_kms_key,
                 volume_size=volume_size,
                 encrypt_inter_container_traffic=encrypt_inter_container_traffic,

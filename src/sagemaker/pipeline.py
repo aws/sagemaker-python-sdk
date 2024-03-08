@@ -31,6 +31,7 @@ from sagemaker.utils import (
     name_from_image,
     update_container_with_inference_params,
     resolve_value_from_config,
+    format_tags,
 )
 from sagemaker.transformer import Transformer
 from sagemaker.workflow.entities import PipelineVariable
@@ -262,6 +263,8 @@ class PipelineModel(object):
         data_capture_config_dict = None
         if data_capture_config is not None:
             data_capture_config_dict = data_capture_config._to_request_dict()
+
+        tags = format_tags(tags)
 
         if update_endpoint:
             endpoint_config_name = self.sagemaker_session.create_endpoint_config(
@@ -516,7 +519,7 @@ class PipelineModel(object):
             max_concurrent_transforms=max_concurrent_transforms,
             max_payload=max_payload,
             env=env,
-            tags=tags,
+            tags=format_tags(tags),
             base_transform_job_name=self.name,
             volume_kms_key=volume_kms_key,
             sagemaker_session=self.sagemaker_session,

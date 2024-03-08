@@ -908,6 +908,7 @@ def test_local_pipeline_with_step_decorator_and_condition_step(
             assert exe_step_result["Metadata"]["Condition"]["Outcome"] is True
 
 
+@pytest.mark.local_mode
 def test_local_pipeline_with_step_decorator_data_referenced_by_other_steps(
     local_pipeline_session,
     dummy_container,
@@ -987,6 +988,7 @@ def test_local_pipeline_with_step_decorator_data_referenced_by_other_steps(
             assert exe_step_result["Metadata"]["Condition"]["Outcome"] is True
 
 
+@pytest.mark.local_mode
 def test_local_remote_function_with_additional_dependencies(
     local_pipeline_session, dummy_container
 ):

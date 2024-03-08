@@ -2012,6 +2012,82 @@ def test_sagemaker_model_custom_channel_name(sagemaker_session):
     ]
 
 
+def test_framework_with_remote_debug_config(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+        enable_remote_debug=True,
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args["remote_debug_config"]["EnableRemoteDebug"]
+    assert f.get_remote_debug_config()["EnableRemoteDebug"]
+
+
+def test_framework_without_remote_debug_config(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args.get("remote_debug_config") is None
+    assert f.get_remote_debug_config() is None
+
+
+def test_framework_enable_remote_debug(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+    )
+    f.fit("s3://mydata")
+    f.enable_remote_debug()
+
+    sagemaker_session.update_training_job.assert_called_once()
+    _, args = sagemaker_session.update_training_job.call_args
+    assert args["remote_debug_config"] == {
+        "EnableRemoteDebug": True,
+    }
+    assert f.get_remote_debug_config()["EnableRemoteDebug"]
+    assert len(args) == 2
+
+
+def test_framework_disable_remote_debug(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        enable_remote_debug=True,
+    )
+    f.fit("s3://mydata")
+    f.disable_remote_debug()
+
+    sagemaker_session.update_training_job.assert_called_once()
+    _, args = sagemaker_session.update_training_job.call_args
+    assert args["remote_debug_config"] == {
+        "EnableRemoteDebug": False,
+    }
+    assert not f.get_remote_debug_config()["EnableRemoteDebug"]
+    assert len(args) == 2
+
+
 @patch("time.strftime", return_value=TIMESTAMP)
 def test_custom_code_bucket(time, sagemaker_session):
     code_bucket = "codebucket"

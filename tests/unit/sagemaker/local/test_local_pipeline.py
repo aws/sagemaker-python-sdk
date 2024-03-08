@@ -47,6 +47,7 @@ from sagemaker.workflow.function_step import step
 from sagemaker.workflow.parameters import ParameterInteger, ParameterString
 from sagemaker.workflow.pipeline import Pipeline
 from sagemaker.workflow.pipeline_context import PipelineSession
+from sagemaker.workflow.pipeline_definition_config import PipelineDefinitionConfig
 from sagemaker.workflow.step_outputs import get_step
 from sagemaker.workflow.steps import (
     ProcessingStep,
@@ -111,6 +112,7 @@ S3_FILE_CONTENT = """
     "Result": [1, 2, 3], "Exception": null
 }
 """
+TEST_JOB_NAME = "test-job-name"
 
 
 @pytest.fixture
@@ -188,6 +190,8 @@ def training_step(pipeline_session):
         sagemaker_session=pipeline_session,
         output_path="s3://a/b",
         use_spot_instances=False,
+        # base_job_name would be popped out if no pipeline_definition_config configured
+        base_job_name=TEST_JOB_NAME,
     )
     training_input = TrainingInput(s3_data=f"s3://{BUCKET}/train_manifest")
     step_args = estimator.fit(inputs=training_input)
@@ -207,6 +211,8 @@ def processing_step(pipeline_session):
         instance_count=1,
         instance_type=INSTANCE_TYPE,
         sagemaker_session=pipeline_session,
+        # base_job_name would be popped out if no pipeline_definition_config configured
+        base_job_name=TEST_JOB_NAME,
     )
     processing_input = [
         ProcessingInput(
@@ -239,6 +245,8 @@ def transform_step(pipeline_session):
         instance_count=1,
         output_path="s3://my-bucket/my-output-path",
         sagemaker_session=pipeline_session,
+        # base_transform_job_name would be popped out if no pipeline_definition_config configured
+        base_transform_job_name=TEST_JOB_NAME,
     )
     transform_inputs = TransformInput(data="s3://my-bucket/my-data")
     step_args = transformer.transform(
@@ -871,8 +879,8 @@ def test_execute_pipeline_step_decorator_with_condition_step(
     )
 
 
-@patch("sagemaker.local.image._SageMakerContainer.process")
-def test_execute_pipeline_processing_step(process, local_sagemaker_session, processing_step):
+@patch("sagemaker.local.image._SageMakerContainer.process", MagicMock())
+def test_execute_pipeline_processing_step(local_sagemaker_session, processing_step):
     pipeline = Pipeline(
         name="MyPipeline2",
         steps=[processing_step],
@@ -1362,3 +1370,86 @@ def test_execute_pipeline_step_create_transform_job_fail(
     step_execution = execution.step_execution
     assert step_execution[transform_step.name].status == _LocalExecutionStatus.FAILED.value
     assert "Dummy RuntimeError" in step_execution[transform_step.name].failure_reason
+
+
+@patch(
+    "sagemaker.local.image._SageMakerContainer.train",
+    MagicMock(return_value="/some/path/to/model"),
+)
+@patch("sagemaker.local.image._SageMakerContainer.process", MagicMock())
+def test_pipeline_definition_config_in_local_mode_for_train_process_steps(
+    processing_step,
+    training_step,
+    local_sagemaker_session,
+):
+    exe_steps = [processing_step, training_step]
+
+    def _verify_execution(exe_step_name, execution, with_custom_job_prefix):
+        assert not execution.failure_reason
+        assert execution.status == _LocalExecutionStatus.SUCCEEDED.value
+
+        step_execution = execution.step_execution[exe_step_name]
+        assert step_execution.status == _LocalExecutionStatus.SUCCEEDED.value
+
+        if step_execution.type == StepTypeEnum.PROCESSING:
+            job_name_field = "ProcessingJobName"
+        elif step_execution.type == StepTypeEnum.TRAINING:
+            job_name_field = "TrainingJobName"
+
+        if with_custom_job_prefix:
+            assert step_execution.properties[job_name_field] == TEST_JOB_NAME
+        else:
+            assert step_execution.properties[job_name_field].startswith(step_execution.name)
+
+    for exe_step in exe_steps:
+        pipeline = Pipeline(
+            name="MyPipelineX-" + exe_step.name,
+            steps=[exe_step],
+            sagemaker_session=local_sagemaker_session,
+            parameters=[INSTANCE_COUNT_PIPELINE_PARAMETER],
+        )
+
+        execution = LocalPipelineExecutor(
+            _LocalPipelineExecution("my-execution-x-" + exe_step.name, pipeline),
+            local_sagemaker_session,
+        ).execute()
+
+        _verify_execution(
+            exe_step_name=exe_step.name, execution=execution, with_custom_job_prefix=False
+        )
+
+        pipeline.pipeline_definition_config = PipelineDefinitionConfig(use_custom_job_prefix=True)
+        execution = LocalPipelineExecutor(
+            _LocalPipelineExecution("my-execution-x-" + exe_step.name, pipeline),
+            local_sagemaker_session,
+        ).execute()
+
+        _verify_execution(
+            exe_step_name=exe_step.name, execution=execution, with_custom_job_prefix=True
+        )
+
+
+@patch("sagemaker.local.local_session.LocalSagemakerClient.create_transform_job")
+def test_pipeline_definition_config_in_local_mode_for_transform_step(
+    create_transform_job, local_sagemaker_session, transform_step
+):
+    pipeline = Pipeline(
+        name="MyPipelineX-" + transform_step.name,
+        steps=[transform_step],
+        sagemaker_session=local_sagemaker_session,
+    )
+    LocalPipelineExecutor(
+        _LocalPipelineExecution("my-execution-x-" + transform_step.name, pipeline),
+        local_sagemaker_session,
+    ).execute()
+
+    assert create_transform_job.call_args.args[0].startswith(transform_step.name)
+
+    pipeline.pipeline_definition_config = PipelineDefinitionConfig(use_custom_job_prefix=True)
+
+    LocalPipelineExecutor(
+        _LocalPipelineExecution("my-execution-x-" + transform_step.name, pipeline),
+        local_sagemaker_session,
+    ).execute()
+
+    assert create_transform_job.call_args.args[0] == TEST_JOB_NAME

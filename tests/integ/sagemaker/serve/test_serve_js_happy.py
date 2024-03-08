@@ -17,7 +17,7 @@ from sagemaker.serve.builder.model_builder import ModelBuilder
 from sagemaker.serve.builder.schema_builder import SchemaBuilder
 from tests.integ.sagemaker.serve.constants import (
     SERVE_SAGEMAKER_ENDPOINT_TIMEOUT,
-    NOT_RUNNING_ON_PY310,
+    PYTHON_VERSION_IS_NOT_310,
 )
 
 from tests.integ.timeout import timeout
@@ -25,7 +25,6 @@ from tests.integ.utils import cleanup_model_resources
 import logging
 
 logger = logging.getLogger(__name__)
-
 
 SAMPLE_PROMPT = {"inputs": "Hello, I'm a language model,", "parameters": {}}
 SAMPLE_RESPONSE = [
@@ -47,13 +46,13 @@ def happy_model_builder(sagemaker_session):
 
 
 @pytest.mark.skipif(
-    NOT_RUNNING_ON_PY310,
+    PYTHON_VERSION_IS_NOT_310,
     reason="The goal of these test are to test the serving components of our feature",
 )
+@pytest.mark.slow_test
 def test_happy_tgi_sagemaker_endpoint(happy_model_builder, gpu_instance_type):
     logger.info("Running in SAGEMAKER_ENDPOINT mode...")
     caught_ex = None
-
     model = happy_model_builder.build()
 
     with timeout(minutes=SERVE_SAGEMAKER_ENDPOINT_TIMEOUT):

@@ -24,6 +24,7 @@ from sagemaker.network import NetworkConfig
 from sagemaker.mxnet.estimator import MXNet
 from sagemaker.processing import FrameworkProcessor
 from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.utils import format_tags, Tags
 
 
 class MXNetProcessor(FrameworkProcessor):
@@ -48,7 +49,7 @@ class MXNetProcessor(FrameworkProcessor):
         base_job_name: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
         env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
-        tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+        tags: Optional[Tags] = None,
         network_config: Optional[NetworkConfig] = None,
     ):
         """This processor executes a Python script in a managed MXNet execution environment.
@@ -81,6 +82,6 @@ class MXNetProcessor(FrameworkProcessor):
             base_job_name,
             sagemaker_session,
             env,
-            tags,
+            format_tags(tags),
             network_config,
         )

@@ -33,7 +33,7 @@ from sagemaker.remote_function.errors import RemoteFunctionError
 from sagemaker.remote_function.job import JOBS_CONTAINER_ENTRYPOINT
 from sagemaker.s3_utils import s3_path_join
 from sagemaker.session import Session
-from sagemaker.utils import resolve_value_from_config, retry_with_backoff
+from sagemaker.utils import resolve_value_from_config, retry_with_backoff, format_tags, Tags
 from sagemaker.workflow.callback_step import CallbackOutput, CallbackStep
 from sagemaker.workflow._event_bridge_client_helper import (
     EventBridgeSchedulerHelper,
@@ -41,7 +41,6 @@ from sagemaker.workflow._event_bridge_client_helper import (
     RESOURCE_NOT_FOUND_EXCEPTION,
     EXECUTION_TIME_PIPELINE_PARAMETER_FORMAT,
 )
-from sagemaker.workflow.function_step import DelayedReturn
 from sagemaker.workflow.lambda_step import LambdaOutput, LambdaStep
 from sagemaker.workflow.entities import (
     Expression,
@@ -130,7 +129,7 @@ class Pipeline:
         self,
         role_arn: str = None,
         description: str = None,
-        tags: List[Dict[str, str]] = None,
+        tags: Optional[Tags] = None,
         parallelism_config: ParallelismConfiguration = None,
     ) -> Dict[str, Any]:
         """Creates a Pipeline in the Pipelines service.
@@ -138,8 +137,7 @@ class Pipeline:
         Args:
             role_arn (str): The role arn that is assumed by the pipeline to create step artifacts.
             description (str): A description of the pipeline.
-            tags (List[Dict[str, str]]): A list of {"Key": "string", "Value": "string"} dicts as
-                tags.
+            tags (Optional[Tags]): Tags to be passed to the pipeline.
             parallelism_config (Optional[ParallelismConfiguration]): Parallelism configuration
                 that is applied to each of the executions of the pipeline. It takes precedence
                 over the parallelism configuration of the parent pipeline.
@@ -160,6 +158,7 @@ class Pipeline:
             if parallelism_config:
                 logger.warning("Pipeline parallelism config is not supported in the local mode.")
             return self.sagemaker_session.sagemaker_client.create_pipeline(self, description)
+        tags = format_tags(tags)
         tags = _append_project_tags(tags)
         tags = self.sagemaker_session._append_sagemaker_config_tags(tags, PIPELINE_TAGS_PATH)
         kwargs = self._create_args(role_arn, description, parallelism_config)
@@ -264,7 +263,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         self,
         role_arn: str = None,
         description: str = None,
-        tags: List[Dict[str, str]] = None,
+        tags: Optional[Tags] = None,
         parallelism_config: ParallelismConfiguration = None,
     ) -> Dict[str, Any]:
         """Creates a pipeline or updates it, if it already exists.
@@ -272,8 +271,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         Args:
             role_arn (str): The role arn that is assumed by workflow to create step artifacts.
             description (str): A description of the pipeline.
-            tags (List[Dict[str, str]]): A list of {"Key": "string", "Value": "string"} dicts as
-                tags.
+            tags (Optional[Tags]): Tags to be passed.
             parallelism_config (Optional[Config for parallel steps, Parallelism configuration that
                 is applied to each of the executions
 
@@ -283,6 +281,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         role_arn = resolve_value_from_config(
             role_arn, PIPELINE_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
         )
+        tags = format_tags(tags)
         if not role_arn:
             # Originally IAM role was a required parameter.
             # Now we marked that as Optional because we can fetch it from SageMakerConfig
@@ -725,10 +724,7 @@ def _interpolate(
         pipeline_name (str): The name of the pipeline to be interpolated.
     """
     if isinstance(obj, (Expression, Parameter, Properties, StepOutput)):
-        updated_obj = _replace_pipeline_name_in_json_get_s3_uri(
-            obj=obj, pipeline_name=pipeline_name
-        )
-        return updated_obj.expr
+        return obj.expr
 
     if isinstance(obj, CallbackOutput):
         step_name = callback_output_to_step_map[obj.output_name]
@@ -758,27 +754,6 @@ def _interpolate(
     else:
         return obj
     return new
-
-
-# TODO: we should remove this once the ExecutionVariables.PIPELINE_NAME is fixed in backend
-def _replace_pipeline_name_in_json_get_s3_uri(obj: Union[RequestType, Any], pipeline_name: str):
-    """Replace the ExecutionVariables.PIPELINE_NAME in DelayedReturn's JsonGet s3_uri
-
-    with the pipeline_name, because ExecutionVariables.PIPELINE_NAME
-    is parsed as all lower-cased str in backend.
-    """
-    if not isinstance(obj, DelayedReturn):
-        return obj
-
-    json_get = obj._to_json_get()
-
-    if not json_get.s3_uri:
-        return obj
-    # the s3 uri has to be a Join, which has been validated in JsonGet init
-    for i in range(len(json_get.s3_uri.values)):
-        if json_get.s3_uri.values[i] == ExecutionVariables.PIPELINE_NAME:
-            json_get.s3_uri.values[i] = pipeline_name
-    return json_get
 
 
 def _map_callback_outputs(steps: List[Step]):
@@ -1039,11 +1014,19 @@ def get_function_step_result(
         raise ValueError(_ERROR_MSG_OF_WRONG_STEP_TYPE)
     s3_output_path = describe_training_job_response["OutputDataConfig"]["S3OutputPath"]
 
+    s3_uri_suffix = s3_path_join(execution_id, step_name, RESULTS_FOLDER)
+    if s3_output_path.endswith(s3_uri_suffix) or s3_output_path[0:-1].endswith(s3_uri_suffix):
+        s3_uri = s3_output_path
+    else:
+        # This is the obsoleted version of s3_output_path
+        # Keeping it for backward compatible
+        s3_uri = s3_path_join(s3_output_path, s3_uri_suffix)
+
     job_status = describe_training_job_response["TrainingJobStatus"]
     if job_status == "Completed":
         return deserialize_obj_from_s3(
             sagemaker_session=sagemaker_session,
-            s3_uri=s3_path_join(s3_output_path, execution_id, step_name, RESULTS_FOLDER),
+            s3_uri=s3_uri,
             hmac_key=describe_training_job_response["Environment"]["REMOTE_FUNCTION_SECRET_KEY"],
         )
 

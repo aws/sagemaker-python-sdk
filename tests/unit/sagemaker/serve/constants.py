@@ -11,3 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
+
+
+MOCK_IMAGE_CONFIG = {"RepositoryAccessMode": "Vpc"}
+MOCK_VPC_CONFIG = {"Subnets": ["subnet-1234"], "SecurityGroupIds": ["sg123"]}

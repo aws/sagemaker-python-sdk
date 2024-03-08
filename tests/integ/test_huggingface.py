@@ -71,7 +71,8 @@ def test_huggingface_training(
 
         hf = HuggingFace(
             py_version=huggingface_pytorch_latest_training_py_version,
-            entry_point=os.path.join(data_path, "run_glue.py"),
+            source_dir=data_path,
+            entry_point="run_glue.py",
             role="SageMakerRole",
             transformers_version=huggingface_training_latest_version,
             pytorch_version=huggingface_training_pytorch_latest_version,

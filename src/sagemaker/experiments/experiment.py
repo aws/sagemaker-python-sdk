@@ -20,6 +20,7 @@ from botocore.exceptions import ClientError
 from sagemaker.apiutils import _base_types
 from sagemaker.experiments.trial import _Trial
 from sagemaker.experiments.trial_component import _TrialComponent
+from sagemaker.utils import format_tags
 
 
 class Experiment(_base_types.Record):
@@ -111,7 +112,7 @@ class Experiment(_base_types.Record):
                 manages interactions with Amazon SageMaker APIs and any other
                 AWS services needed. If not specified, one is created using the
                 default AWS configuration chain.
-            tags (List[Dict[str, str]]): A list of tags to associate with the experiment
+            tags (Optional[Tags]): A list of tags to associate with the experiment
                 (default: None).
 
         Returns:
@@ -122,7 +123,7 @@ class Experiment(_base_types.Record):
             experiment_name=experiment_name,
             display_name=display_name,
             description=description,
-            tags=tags,
+            tags=format_tags(tags),
             sagemaker_session=sagemaker_session,
         )
 
@@ -149,7 +150,7 @@ class Experiment(_base_types.Record):
                 manages interactions with Amazon SageMaker APIs and any other
                 AWS services needed. If not specified, one is created using the
                 default AWS configuration chain.
-            tags (List[Dict[str, str]]): A list of tags to associate with the experiment
+            tags (Optional[Tags]): A list of tags to associate with the experiment
                 (default: None). This is used only when the given `experiment_name` does not
                 exist and a new experiment has to be created.
 
@@ -161,7 +162,7 @@ class Experiment(_base_types.Record):
                 experiment_name=experiment_name,
                 display_name=display_name,
                 description=description,
-                tags=tags,
+                tags=format_tags(tags),
                 sagemaker_session=sagemaker_session,
             )
         except ClientError as ce:

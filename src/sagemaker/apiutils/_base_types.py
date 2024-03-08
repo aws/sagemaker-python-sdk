@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 from sagemaker.apiutils import _boto_functions, _utils
+from sagemaker.utils import format_tags
 
 
 class ApiObject(object):
@@ -194,13 +195,13 @@ class Record(ApiObject):
 
         Args:
             resource_arn (str): The arn of the Record
-            tags (dict): An array of Tag objects that set to Record
+            tags (Optional[Tags]): An array of Tag objects that set to Record
 
         Returns:
             A list of key, value pair objects. i.e. [{"key":"value"}]
         """
         tag_list = self.sagemaker_session.sagemaker_client.add_tags(
-            ResourceArn=resource_arn, Tags=tags
+            ResourceArn=resource_arn, Tags=format_tags(tags)
         )["Tags"]
         return tag_list
 

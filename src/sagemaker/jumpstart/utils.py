@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 import logging
 import os
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 from urllib.parse import urlparse
 import boto3
 from packaging.version import Version
@@ -41,7 +41,7 @@ from sagemaker.jumpstart.types import (
 )
 from sagemaker.session import Session
 from sagemaker.config import load_sagemaker_config
-from sagemaker.utils import resolve_value_from_config
+from sagemaker.utils import resolve_value_from_config, TagsDict
 from sagemaker.workflow import is_pipeline_variable
 
 
@@ -345,10 +345,10 @@ def get_jumpstart_base_name_if_jumpstart_model(
 
 
 def add_jumpstart_model_id_version_tags(
-    tags: Optional[List[Dict[str, str]]],
+    tags: Optional[List[TagsDict]],
     model_id: str,
     model_version: str,
-) -> List[Dict[str, str]]:
+) -> List[TagsDict]:
     """Add custom model ID and version tags to JumpStart related resources."""
     if model_id is None or model_version is None:
         return tags
@@ -368,12 +368,12 @@ def add_jumpstart_model_id_version_tags(
 
 
 def add_jumpstart_uri_tags(
-    tags: Optional[List[Dict[str, str]]] = None,
+    tags: Optional[List[TagsDict]] = None,
     inference_model_uri: Optional[Union[str, dict]] = None,
     inference_script_uri: Optional[str] = None,
     training_model_uri: Optional[str] = None,
     training_script_uri: Optional[str] = None,
-) -> Optional[List[Dict[str, str]]]:
+) -> Optional[List[TagsDict]]:
     """Add custom uri tags to JumpStart models, return the updated tags.
 
     No-op if this is not a JumpStart model related resource.
@@ -762,3 +762,51 @@ def is_valid_model_id(
     if script == enums.JumpStartScriptScope.TRAINING:
         return model_id in model_id_set
     raise ValueError(f"Unsupported script: {script}")
+
+
+def get_jumpstart_model_id_version_from_resource_arn(
+    resource_arn: str,
+    sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+) -> Tuple[Optional[str], Optional[str]]:
+    """Returns the JumpStart model ID and version if in resource tags.
+
+    Returns 'None' if model ID or version cannot be inferred from tags.
+    """
+
+    list_tags_result = sagemaker_session.list_tags(resource_arn)
+
+    model_id: Optional[str] = None
+    model_version: Optional[str] = None
+
+    model_id_keys = [enums.JumpStartTag.MODEL_ID, *constants.EXTRA_MODEL_ID_TAGS]
+    model_version_keys = [enums.JumpStartTag.MODEL_VERSION, *constants.EXTRA_MODEL_VERSION_TAGS]
+
+    for model_id_key in model_id_keys:
+        try:
+            model_id_from_tag = get_tag_value(model_id_key, list_tags_result)
+        except KeyError:
+            continue
+        if model_id_from_tag is not None:
+            if model_id is not None and model_id_from_tag != model_id:
+                constants.JUMPSTART_LOGGER.warning(
+                    "Found multiple model ID tags on the following resource: %s", resource_arn
+                )
+                model_id = None
+                break
+            model_id = model_id_from_tag
+
+    for model_version_key in model_version_keys:
+        try:
+            model_version_from_tag = get_tag_value(model_version_key, list_tags_result)
+        except KeyError:
+            continue
+        if model_version_from_tag is not None:
+            if model_version is not None and model_version_from_tag != model_version:
+                constants.JUMPSTART_LOGGER.warning(
+                    "Found multiple model version tags on the following resource: %s", resource_arn
+                )
+                model_version = None
+                break
+            model_version = model_version_from_tag
+
+    return model_id, model_version

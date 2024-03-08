@@ -279,8 +279,8 @@ def test_json_get_invalid_s3_uri_not_join():
 
 def test_json_get_invalid_s3_uri_with_invalid_pipeline_variable(sagemaker_session):
     with pytest.raises(ValueError) as e:
-        JsonGet(s3_uri=Join(on="/", values=["s3:/", Properties(step_name="test")]))
+        JsonGet(s3_uri=Join(on="/", values=["s3:/", Join()]))
     assert (
-        "The Join values in JsonGet's s3_uri can only be a primitive object or Parameter or ExecutionVariable."
-        in str(e.value)
+        "The Join values in JsonGet's s3_uri can only be a primitive object, "
+        "Parameter, ExecutionVariable or Properties." in str(e.value)
     )

@@ -273,8 +273,10 @@ class _TrainingStepExecutor(_StepExecutor):
     """Executor class to execute TrainingStep locally"""
 
     def execute(self):
-        job_name = unique_name_from_base(self.step.name)
         step_arguments = self.pipline_executor.evaluate_step_arguments(self.step)
+        job_name = step_arguments.pop("TrainingJobName", None) or unique_name_from_base(
+            self.step.name
+        )
         try:
             self.pipline_executor.local_sagemaker_client.create_training_job(
                 job_name, **step_arguments
@@ -290,8 +292,10 @@ class _ProcessingStepExecutor(_StepExecutor):
     """Executor class to execute ProcessingStep locally"""
 
     def execute(self):
-        job_name = unique_name_from_base(self.step.name)
         step_arguments = self.pipline_executor.evaluate_step_arguments(self.step)
+        job_name = step_arguments.pop("ProcessingJobName", None) or unique_name_from_base(
+            self.step.name
+        )
         try:
             self.pipline_executor.local_sagemaker_client.create_processing_job(
                 job_name, **step_arguments
@@ -444,7 +448,7 @@ class _ConditionStepExecutor(_StepExecutor):
             True if given ConditionNot evaluated as true,
             False otherwise.
         """
-        return not self._resolve_condition(not_condition["Expression"])
+        return not self._resolve_condition(not_condition["Condition"])
 
     def _resolve_or_condition(self, or_condition: dict):
         """Resolve given ConditionOr.
@@ -482,8 +486,10 @@ class _TransformStepExecutor(_StepExecutor):
     """Executor class to execute TransformStep locally"""
 
     def execute(self):
-        job_name = unique_name_from_base(self.step.name)
         step_arguments = self.pipline_executor.evaluate_step_arguments(self.step)
+        job_name = step_arguments.pop("TransformJobName", None) or unique_name_from_base(
+            self.step.name
+        )
         try:
             self.pipline_executor.local_sagemaker_client.create_transform_job(
                 job_name, **step_arguments

@@ -17,18 +17,23 @@ import sys
 
 import pytest
 from mock import patch, Mock, ANY, mock_open
+from mock.mock import MagicMock
 
 from sagemaker.config import load_sagemaker_config
 from sagemaker.remote_function.checkpoint_location import CheckpointLocation
+from sagemaker.remote_function.core.stored_function import _SerializedData
 from sagemaker.session_settings import SessionSettings
 
 from sagemaker.remote_function.spark_config import SparkConfig
 from sagemaker.remote_function.custom_file_filter import CustomFileFilter
 from sagemaker.remote_function.core.pipeline_variables import Context
+from sagemaker.workflow.function_step import DelayedReturn
+from sagemaker.workflow.functions import Join
 from sagemaker.workflow.pipeline_context import _PipelineConfig
 from sagemaker.workflow.pipeline_definition_config import PipelineDefinitionConfig
 from sagemaker.workflow.execution_variables import ExecutionVariables
 from sagemaker.utils import sagemaker_timestamp
+from sagemaker.workflow.properties import Properties
 
 from tests.unit import DATA_DIR
 from sagemaker.remote_function.job import (
@@ -147,6 +152,10 @@ def job_function(a, b=1, *, c, d=3):
 
 def job_function_with_checkpoint(a, checkpoint_1=None, *, b, checkpoint_2=None):
     return a + b
+
+
+def serialized_data():
+    return _SerializedData(func=b"serialized_func", args=b"serialized_args")
 
 
 @patch("secrets.token_hex", return_value=HMAC_KEY)
@@ -373,6 +382,7 @@ def test_start(
 
     local_dependencies_path = mock_runtime_manager().snapshot()
     mock_python_version = mock_runtime_manager()._current_python_version()
+    mock_sagemaker_pysdk_version = mock_runtime_manager()._current_sagemaker_pysdk_version()
 
     mock_script_upload.assert_called_once_with(
         spark_config=None,
@@ -432,6 +442,8 @@ def test_start(
                 TEST_REGION,
                 "--client_python_version",
                 mock_python_version,
+                "--client_sagemaker_pysdk_version",
+                mock_sagemaker_pysdk_version,
                 "--dependency_settings",
                 '{"dependency_file": null}',
                 "--run_in_context",
@@ -501,6 +513,7 @@ def test_start_with_checkpoint_location(
     )
 
     mock_python_version = mock_runtime_manager()._current_python_version()
+    mock_sagemaker_pysdk_version = mock_runtime_manager()._current_sagemaker_pysdk_version()
 
     session().sagemaker_client.create_training_job.assert_called_once_with(
         TrainingJobName=job.job_name,
@@ -546,6 +559,8 @@ def test_start_with_checkpoint_location(
                 TEST_REGION,
                 "--client_python_version",
                 mock_python_version,
+                "--client_sagemaker_pysdk_version",
+                mock_sagemaker_pysdk_version,
                 "--dependency_settings",
                 '{"dependency_file": null}',
                 "--run_in_context",
@@ -648,6 +663,7 @@ def test_start_with_complete_job_settings(
 
     local_dependencies_path = mock_runtime_manager().snapshot()
     mock_python_version = mock_runtime_manager()._current_python_version()
+    mock_sagemaker_pysdk_version = mock_runtime_manager()._current_sagemaker_pysdk_version()
 
     mock_bootstrap_script_upload.assert_called_once_with(
         spark_config=None,
@@ -707,6 +723,8 @@ def test_start_with_complete_job_settings(
                 TEST_REGION,
                 "--client_python_version",
                 mock_python_version,
+                "--client_sagemaker_pysdk_version",
+                mock_sagemaker_pysdk_version,
                 "--dependency_settings",
                 '{"dependency_file": "req.txt"}',
                 "--s3_kms_key",
@@ -731,7 +749,7 @@ def test_start_with_complete_job_settings(
 
 
 @patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
-@patch("secrets.token_hex", return_value=HMAC_KEY)
+@patch("secrets.token_hex", MagicMock(return_value=HMAC_KEY))
 @patch(
     "sagemaker.remote_function.job._prepare_dependencies_and_pre_execution_scripts",
     return_value="some_s3_uri",
@@ -750,14 +768,19 @@ def test_get_train_args_under_pipeline_context(
     mock_bootstrap_scripts_upload,
     mock_user_workspace_upload,
     mock_user_dependencies_upload,
-    secret_token,
 ):
 
     from sagemaker.workflow.parameters import ParameterInteger
-    from sagemaker.remote_function.core.pipeline_variables import _ParameterInteger
 
     mock_stored_function = Mock()
     mock_stored_function_ctr.return_value = mock_stored_function
+
+    function_step = Mock()
+    function_step.name = "parent_step"
+    func_step_s3_output_prop = Properties(
+        step_name=function_step.name, path="OutputDataConfig.S3OutputPath"
+    )
+    function_step._properties.OutputDataConfig.S3OutputPath = func_step_s3_output_prop
 
     job_settings = _JobSettings(
         dependencies="path/to/dependencies/req.txt",
@@ -776,14 +799,24 @@ def test_get_train_args_under_pipeline_context(
         security_group_ids=["sg"],
     )
 
+    mocked_serialized_data = serialized_data()
     s3_base_uri = f"{S3_URI}/{TEST_PIPELINE_NAME}"
     train_args = _Job.compile(
         job_settings=job_settings,
         job_name=TEST_JOB_NAME,
         s3_base_uri=s3_base_uri,
         func=job_function,
-        func_args=(1, ParameterInteger(name="b", default_value=2)),
-        func_kwargs={"c": 3, "d": ParameterInteger(name="d", default_value=4)},
+        func_args=(
+            1,
+            ParameterInteger(name="b", default_value=2),
+            DelayedReturn(function_step, reference_path=("__getitem__", 0)),
+        ),
+        func_kwargs={
+            "c": 3,
+            "d": ParameterInteger(name="d", default_value=4),
+            "e": DelayedReturn(function_step, reference_path=("__getitem__", 1)),
+        },
+        serialized_data=mocked_serialized_data,
     )
 
     mock_stored_function_ctr.assert_called_once_with(
@@ -796,14 +829,11 @@ def test_get_train_args_under_pipeline_context(
             func_step_s3_dir=MOCKED_PIPELINE_CONFIG.pipeline_build_time,
         ),
     )
-    mock_stored_function.save.assert_called_once_with(
-        job_function,
-        *(1, _ParameterInteger(name="b")),
-        **{"c": 3, "d": _ParameterInteger(name="d")},
-    )
+    mock_stored_function.save_pipeline_step_function.assert_called_once_with(mocked_serialized_data)
 
     local_dependencies_path = mock_runtime_manager().snapshot()
     mock_python_version = mock_runtime_manager()._current_python_version()
+    mock_sagemaker_pysdk_version = mock_runtime_manager()._current_sagemaker_pysdk_version()
 
     mock_bootstrap_scripts_upload.assert_called_once_with(
         spark_config=None,
@@ -860,7 +890,15 @@ def test_get_train_args_under_pipeline_context(
             ),
         ],
         OutputDataConfig={
-            "S3OutputPath": f"{S3_URI}/{TEST_PIPELINE_NAME}",
+            "S3OutputPath": Join(
+                on="/",
+                values=[
+                    "s3://my-s3-bucket/keyprefix/my-pipeline",
+                    ExecutionVariables.PIPELINE_EXECUTION_ID,
+                    "test-function-step",
+                    "results",
+                ],
+            ),
             "KmsKeyId": KMS_KEY_ARN,
         },
         AlgorithmSpecification=dict(
@@ -877,6 +915,8 @@ def test_get_train_args_under_pipeline_context(
                 TEST_REGION,
                 "--client_python_version",
                 mock_python_version,
+                "--client_sagemaker_pysdk_version",
+                mock_sagemaker_pysdk_version,
                 "--dependency_settings",
                 '{"dependency_file": "req.txt"}',
                 "--s3_kms_key",
@@ -894,8 +934,12 @@ def test_get_train_args_under_pipeline_context(
                 ExecutionVariables.PIPELINE_EXECUTION_ID,
                 "Parameters.b",
                 ParameterInteger(name="b", default_value=2).to_string(),
+                "Steps.parent_step.OutputDataConfig.S3OutputPath",
+                func_step_s3_output_prop.to_string(),
                 "Parameters.d",
                 ParameterInteger(name="d", default_value=4).to_string(),
+                "Steps.parent_step.OutputDataConfig.S3OutputPath",
+                func_step_s3_output_prop.to_string(),
             ],
         ),
         ResourceConfig=dict(
@@ -957,6 +1001,7 @@ def test_start_with_spark(
     job = _Job.start(job_settings, job_function, func_args=(1, 2), func_kwargs={"c": 3, "d": 4})
 
     mock_python_version = mock_runtime_manager()._current_python_version()
+    mock_sagemaker_pysdk_version = mock_runtime_manager()._current_sagemaker_pysdk_version()
 
     assert job.job_name.startswith("job-function")
 
@@ -1030,6 +1075,8 @@ def test_start_with_spark(
                 TEST_REGION,
                 "--client_python_version",
                 mock_python_version,
+                "--client_sagemaker_pysdk_version",
+                mock_sagemaker_pysdk_version,
                 "--dependency_settings",
                 '{"dependency_file": null}',
                 "--run_in_context",

@@ -23,7 +23,7 @@ from sagemaker import local, s3
 from sagemaker.deprecations import removed_kwargs
 from sagemaker.model import Model
 from sagemaker.session import Session
-from sagemaker.utils import pop_out_unused_kwarg
+from sagemaker.utils import pop_out_unused_kwarg, format_tags
 from sagemaker.workflow.entities import PipelineVariable
 
 MULTI_MODEL_CONTAINER_MODE = "MultiModel"
@@ -244,6 +244,8 @@ class MultiDataModel(Model):
 
         if instance_type == "local" and not isinstance(self.sagemaker_session, local.LocalSession):
             self.sagemaker_session = local.LocalSession()
+
+        tags = format_tags(tags)
 
         container_def = self.prepare_container_def(instance_type, accelerator_type=accelerator_type)
         self.sagemaker_session.create_model(

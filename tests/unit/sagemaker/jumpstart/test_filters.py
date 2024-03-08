@@ -144,6 +144,10 @@ class TestEvaluateFilterExpression(TestCase):
     def test_in(self):
 
         assert BooleanValues.TRUE == evaluate_filter_expression(
+            ModelFilter(key="hello", operator="in", value="daddy"), "dad"
+        )
+
+        assert BooleanValues.TRUE == evaluate_filter_expression(
             ModelFilter(key="hello", operator="in", value='["mom", "dad"]'), "dad"
         )
 
@@ -170,6 +174,10 @@ class TestEvaluateFilterExpression(TestCase):
     def test_not_in(self):
 
         assert BooleanValues.FALSE == evaluate_filter_expression(
+            ModelFilter(key="hello", operator="not in", value="daddy"), "dad"
+        )
+
+        assert BooleanValues.FALSE == evaluate_filter_expression(
             ModelFilter(key="hello", operator="not in", value='["mom", "dad"]'), "dad"
         )
 
@@ -191,6 +199,44 @@ class TestEvaluateFilterExpression(TestCase):
 
         assert BooleanValues.TRUE == evaluate_filter_expression(
             ModelFilter(key="hello", operator="not in", value='["mom", "fsdfdsfsd"]'), False
+        )
+
+    def test_includes(self):
+
+        assert BooleanValues.TRUE == evaluate_filter_expression(
+            ModelFilter(key="hello", operator="includes", value="dad"), "daddy"
+        )
+
+        assert BooleanValues.TRUE == evaluate_filter_expression(
+            ModelFilter(key="hello", operator="includes", value="dad"), ["dad"]
+        )
+
+    def test_not_includes(self):
+
+        assert BooleanValues.FALSE == evaluate_filter_expression(
+            ModelFilter(key="hello", operator="not includes", value="dad"), "daddy"
+        )
+
+        assert BooleanValues.FALSE == evaluate_filter_expression(
+            ModelFilter(key="hello", operator="not includes", value="dad"), ["dad"]
+        )
+
+    def test_begins_with(self):
+        assert BooleanValues.TRUE == evaluate_filter_expression(
+            ModelFilter(key="hello", operator="begins with", value="dad"), "daddy"
+        )
+
+        assert BooleanValues.FALSE == evaluate_filter_expression(
+            ModelFilter(key="hello", operator="begins with", value="mm"), "mommy"
+        )
+
+    def test_ends_with(self):
+        assert BooleanValues.TRUE == evaluate_filter_expression(
+            ModelFilter(key="hello", operator="ends with", value="car"), "racecar"
+        )
+
+        assert BooleanValues.FALSE == evaluate_filter_expression(
+            ModelFilter(key="hello", operator="begins with", value="ace"), "racecar"
         )
 
 

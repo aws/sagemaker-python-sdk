@@ -1,5 +1,236 @@
 # Changelog
 
+## v2.212.0 (2024-03-06)
+
+### Features
+
+ * Update SM Python SDK for PT 2.2.0 SM DLC
+
+### Bug Fixes and Other Changes
+
+ * Create custom tarfile extractall util to fix backward compatibility issue
+ * Upgrade smp to version 2.2
+ * Enhance model builder selection logic to include model size
+
+## v2.211.0 (2024-03-05)
+
+### Features
+
+ * pin dll version to support python3.11 to the sdk
+ * instance specific jumpstart host requirements
+ * Add TensorFlow 2.14 image configs
+ * Add AutoMLV2 support
+ * Support selective pipeline execution between function step and regular step
+ * Add new Triton DLC URIs
+
+### Bug Fixes and Other Changes
+
+ * Skip No Canvas regions for test_deploy_best_candidate
+ * make sure gpus are found in local_gpu run
+ * Bump Apache Airflow version to 2.8.2
+ * properly close sagemaker config file after loading config
+ * remove enable_network_isolation from the python doc
+
+### Documentation Changes
+
+ * Add doc for new feature processor APIs and classes
+
+## v2.210.0 (2024-02-28)
+
+### Features
+
+ * Prepend SageMaker Studio App Type to boto3 User Agent string
+ * TGI optimum 0.0.18 (general+llm)
+ * TGI 1.4.2
+
+### Bug Fixes and Other Changes
+
+ * tolerate vulnerable old model for integ test and temporarily skip test_list_jumpstart_models_script_filter
+ * add missing regions to pytorch config
+ * Add validation for sagemaker version on remote job
+ * fixed implementation of fail_on_violation for transform with monitoring
+
+## v2.209.0 (2024-02-24)
+
+### Features
+
+ * ModelBuilder to fetch local schema when no SchemaBuilder present.
+ * AutoGluon 1.0.0 image_uris update
+
+### Bug Fixes and Other Changes
+
+ * skip pytorch training compiler integ test
+ * add fixes for tarfile extractall functionality PEP-721
+ * Fix telemetry image uri option logic for ModelBuilder
+ * Add telemetry metrics on usage of default images for ModelBuilder
+ * Fix error message typo
+ * Add "distribution" parameter into record_set
+
+## v2.208.0 (2024-02-15)
+
+### Features
+
+ * Telemetry metrics
+ * TGI 1.4.0
+ * Support collection type and target store for feature store ingestion.
+
+### Bug Fixes and Other Changes
+
+ * bump jinja2 to 3.1.3 in doc/requirments.txt
+ * chore(deps): bump jinja2 from 3.0.3 to 3.1.3 in /requirements/extras
+ * Fix dependabot alert in transformers package
+ * Bump Apache Airflow version to 2.8.0
+ * skip failing mxnet tests
+
+### Documentation Changes
+
+ * change order of pipelines topics
+ * Explain the ClarifyCheckStep and QualityCheckStep parameters
+ * fix the ClarifyCheckStep documentation to mention PDP
+
+## v2.207.1 (2024-02-06)
+
+### Bug Fixes and Other Changes
+
+ * Add PT 2.1 as a supported framework for the smdistributed distribution
+ * Enable private docker registry support for ModelBuilder
+ * HF PT 2.1 Image Configs
+
+### Documentation Changes
+
+ * add setup commands for documentation generation
+
+## v2.207.0 (2024-02-05)
+
+### Features
+
+ * Introduce HF Transformers to ModelBuilder
+ * retrieve jumpstart estimator and predictor without specifying model id (infer from tags)
+
+### Bug Fixes and Other Changes
+
+ * SMP PT upgrade to 2.1
+ * Fetch HF metadata only when explicit type is not selected
+ * relax upper bound for urllib dependency
+
+## v2.206.0 (2024-01-31)
+
+### Features
+
+ * Logic to detect hardware GPU count and aggregate GPU memory size in MiB
+
+### Bug Fixes and Other Changes
+
+ * fixed create monitoring schedule failing after validation error
+ * Support PipelineVariable for ModelQualityCheckConfig attributes
+ * TGI NeuronX 0.0.17
+
+## v2.205.0 (2024-01-25)
+
+### Features
+
+ * Support selective pipeline execution for function step
+
+### Bug Fixes and Other Changes
+
+ * remove fastapi and uvicorn dependencies
+ * Support using PipelineDefinitionConfig in local mode
+ * update get_execution_role_arn from metadata file if present
+ * update image_uri_configs  01-24-2024 06:17:33 PST
+ * Add validation for empty ParameterString value in start local pipeline
+
+## v2.204.0 (2024-01-23)
+
+### Features
+
+ * add throughput management support for feature group
+ * Support custom repack model settings
+ * parallelize notebook search utils, add new operators
+
+### Bug Fixes and Other Changes
+
+ * Enable galactus integ tests
+ * JumpStart - TLV region launch
+ * add warning message for job-prefixed pipeline steps when no job name is provided
+ * TGI NeuronX
+ * Updates for DJL 0.26.0 release
+ * update sphinx version
+ * Add PyTorch 2.1.0 SM Training DLC to UNSUPPORTED_DLC_IMAGE_FOR_SM_PARALLELISM list
+ * Huggingface glue failing tests
+ * change ConditionNot incorrect property Expression to Condition
+
+## v2.203.1 (2024-01-09)
+
+### Bug Fixes and Other Changes
+
+ * TGI 1.3.3
+ * skip failing integs
+ * query hf api for model md
+ * update image_uri_configs  12-29-2023 06:17:34 PST
+
+## v2.203.0 (2023-12-28)
+
+### Features
+
+ * support local mode in SageMaker Studio (#1300)
+ * Supporting tbac in load_run
+
+### Bug Fixes and Other Changes
+
+ * update image_uri_configs  12-25-2023 06:17:33 PST
+ * Disable failed test in IR
+ * Raise Exception for debug
+ * create role if needed in `get_execution_role`
+
+## v2.202.1 (2023-12-22)
+
+### Bug Fixes and Other Changes
+
+ * update image_uri_configs  12-22-2023 06:17:35 PST
+ * update model path in local mode
+ * Using logging instead of prints
+
+### Documentation Changes
+
+ * update issue template.
+
+## v2.202.0 (2023-12-21)
+
+### Features
+
+ * support remote debug for sagemaker training job
+
+### Bug Fixes and Other Changes
+
+ * update image_uri_configs  12-21-2023 08:32:41 PST
+ * Update tblib constraint
+
+## v2.201.0 (2023-12-20)
+
+### Features
+
+ * Use specific images for SMP v2 jobs
+ * Added update for model package
+
+### Bug Fixes and Other Changes
+
+ * Add write permission to job output dirs for remote and step decorator running on non-root job user
+ * Move func and args serialization of function step to step level
+
+### Documentation Changes
+
+ * SMP v2 doc updates (#1423)
+ * fix ModelBuilder sample notebook links
+
+## v2.200.1 (2023-12-14)
+
+### Bug Fixes and Other Changes
+
+ * Merge branch 'master-rba' into local_merge
+ * Fix user agent tag issue
+ * update image_uri_configs  12-13-2023 14:04:54 PST
+ * update image_uri_configs  12-13-2023 12:23:06 PST
+
 ## v2.200.0 (2023-12-13)
 
 ### Deprecations and Removals

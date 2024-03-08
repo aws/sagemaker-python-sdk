@@ -1,6 +1,7 @@
 recursive-include src/sagemaker *.py
 
 include src/sagemaker/image_uri_config/*.json
+include src/sagemaker/serve/schema/*.json
 include src/sagemaker/serve/requirements.txt
 recursive-include requirements *
 
