@@ -21,7 +21,6 @@ from sagemaker.jumpstart.filters import And
 from sagemaker.predictor import retrieve_default
 
 import tests.integ
-from sagemaker.jumpstart import notebook_utils
 
 from sagemaker.jumpstart.model import JumpStartModel
 from tests.integ.sagemaker.jumpstart.constants import (

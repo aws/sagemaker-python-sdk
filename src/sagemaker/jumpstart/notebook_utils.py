@@ -24,6 +24,8 @@ from sagemaker.jumpstart import accessors
 from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     JUMPSTART_DEFAULT_REGION_NAME,
+    PROPRIETARY_MODEL_SPEC_PREFIX,
+    PROPRIETARY_MODEL_FILTER_NAME,
 )
 from sagemaker.jumpstart.enums import JumpStartScriptScope, JumpStartModelType
 from sagemaker.jumpstart.filters import (
@@ -128,7 +130,7 @@ def extract_framework_task_model(model_id: str) -> Tuple[str, str, str]:
     """
     _id_parts = model_id.split("-")
 
-    if len(_id_parts) < 3:
+    if len(_id_parts) != 3:
         return "", "", ""
 
     framework = _id_parts[0]
@@ -144,10 +146,10 @@ def extract_model_type(spec_key: str) -> str:
     Args:
         spek_key (str): The model spec key for which to extract the model type.
     """
-    model_type = spec_key.split("/")[0]
+    model_spec_prefix = spec_key.split("/")[0]
 
-    if model_type == "proprietary-models":
-        return JumpStartModelType.PROPRIETARY.value
+    if model_spec_prefix == PROPRIETARY_MODEL_SPEC_PREFIX:
+        return PROPRIETARY_MODEL_FILTER_NAME
 
     return JumpStartModelType.OPEN_WEIGHT.value
 

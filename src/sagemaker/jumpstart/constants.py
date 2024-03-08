@@ -190,6 +190,9 @@ JUMPSTART_RESOURCE_BASE_NAME = "sagemaker-jumpstart"
 
 SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY = "SageMakerGatedModelS3Uri"
 
+PROPRIETARY_MODEL_SPEC_PREFIX = "proprietary-models"
+PROPRIETARY_MODEL_FILTER_NAME = "marketplace"
+
 CONTENT_TYPE_TO_SERIALIZER_TYPE_MAP: Dict[MIMEType, SerializerType] = {
     MIMEType.X_IMAGE: SerializerType.RAW_BYTES,
     MIMEType.LIST_TEXT: SerializerType.JSON,
