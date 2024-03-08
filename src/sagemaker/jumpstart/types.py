@@ -1065,6 +1065,30 @@ class HubArnExtractedInfo(JumpStartDataHolderType):
         self.hub_content_version = hub_content_version
 
 
+class CreateHubResponse(JumpStartDataHolderType):
+    """Data class for the Hub from session.create_hub()"""
+
+    __slots__ = [
+        "hub_arn",
+    ]
+
+    def __init__(self, json_obj: Dict[str, Any]) -> None:
+        """Instantiates CreateHubResponse object.
+
+        Args:
+            json_obj (Dict[str, Any]): Dictionary representation of session.create_hub() response..
+        """
+        self.from_json(json_obj)
+
+    def from_json(self, json_obj: Dict[str, Any]) -> None:
+        """Sets fields in object based on json.
+
+        Args:
+            json_obj (Dict[str, Any]): Dictionary representation of hub description.
+        """
+        self.hub_arn: str = json_obj["HubArn"]
+
+
 class HubContentDependency(JumpStartDataHolderType):
     """Data class for any dependencies related to hub content.
 
@@ -1088,8 +1112,8 @@ class HubContentDependency(JumpStartDataHolderType):
             json_obj (Dict[str, Any]): Dictionary representation of hub content description.
         """
 
-        self.dependency_copy_path: Optional[str] = json_obj.get("dependency_copy_path", "")
-        self.dependency_origin_path: Optional[str] = json_obj.get("dependency_origin_path", "")
+        self.dependency_copy_path: Optional[str] = json_obj.get("DependencyCopyPath", "")
+        self.dependency_origin_path: Optional[str] = json_obj.get("DependencyOriginPath", "")
 
     def to_json(self) -> Dict[str, Any]:
         """Returns json representation of HubContentDependency object."""
@@ -1097,7 +1121,7 @@ class HubContentDependency(JumpStartDataHolderType):
         return json_obj
 
 
-class DescribeHubContentsResponse(JumpStartDataHolderType):
+class DescribeHubContentResponse(JumpStartDataHolderType):
     """Data class for the Hub Content from session.describe_hub_contents()"""
 
     __slots__ = [
@@ -1120,7 +1144,7 @@ class DescribeHubContentsResponse(JumpStartDataHolderType):
     ]
 
     def __init__(self, json_obj: Dict[str, Any]) -> None:
-        """Instantiates DescribeHubContentsResponse object.
+        """Instantiates DescribeHubContentResponse object.
 
         Args:
             json_obj (Dict[str, Any]): Dictionary representation of hub content description.
@@ -1133,24 +1157,24 @@ class DescribeHubContentsResponse(JumpStartDataHolderType):
         Args:
             json_obj (Dict[str, Any]): Dictionary representation of hub content description.
         """
-        self.creation_time: int = int(json_obj["creation_time"])
-        self.document_schema_version: str = json_obj["document_schema_version"]
-        self.failure_reason: str = json_obj["failure_reason"]
-        self.hub_arn: str = json_obj["hub_arn"]
-        self.hub_content_arn: str = json_obj["hub_content_arn"]
+        self.creation_time: str = json_obj["CreationTime"]
+        self.document_schema_version: str = json_obj["DocumentSchemaVersion"]
+        self.failure_reason: str = json_obj["FailureReason"]
+        self.hub_arn: str = json_obj["HubArn"]
+        self.hub_content_arn: str = json_obj["HubContentArn"]
         self.hub_content_dependencies: List[HubContentDependency] = [
-            HubContentDependency(dep) for dep in json_obj["hub_content_dependencies"]
+            HubContentDependency(dep) for dep in json_obj["HubContentDependencies"]
         ]
-        self.hub_content_description: str = json_obj["hub_content_description"]
-        self.hub_content_display_name: str = json_obj["hub_content_display_name"]
-        self.hub_content_document: str = json_obj["hub_content_document"]
-        self.hub_content_markdown: str = json_obj["hub_content_markdown"]
-        self.hub_content_name: str = json_obj["hub_content_name"]
-        self.hub_content_search_keywords: str = json_obj["hub_content_search_keywords"]
-        self.hub_content_status: str = json_obj["hub_content_status"]
-        self.hub_content_type: HubContentType = json_obj["hub_content_type"]
-        self.hub_content_version: str = json_obj["hub_content_version"]
-        self.hub_name: str = json_obj["hub_name"]
+        self.hub_content_description: str = json_obj["HubContentDescription"]
+        self.hub_content_display_name: str = json_obj["HubContentDisplayName"]
+        self.hub_content_document: str = json_obj["HubContentDocument"]
+        self.hub_content_markdown: str = json_obj["HubContentMarkdown"]
+        self.hub_content_name: str = json_obj["HubContentName"]
+        self.hub_content_search_keywords: str = json_obj["HubContentSearchKeywords"]
+        self.hub_content_status: str = json_obj["HubContentStatus"]
+        self.hub_content_type: HubContentType = json_obj["HubContentType"]
+        self.hub_content_version: str = json_obj["HubContentVersion"]
+        self.hub_name: str = json_obj["HubName"]
 
 
 class HubS3StorageConfig(JumpStartDataHolderType):
@@ -1176,7 +1200,7 @@ class HubS3StorageConfig(JumpStartDataHolderType):
             json_obj (Dict[str, Any]): Dictionary representation of hub content description.
         """
 
-        self.s3_output_path: Optional[str] = json_obj.get("s3_output_path", "")
+        self.s3_output_path: Optional[str] = json_obj.get("S3OutputPath", "")
 
     def to_json(self) -> Dict[str, Any]:
         """Returns json representation of HubS3StorageConfig object."""
@@ -1214,18 +1238,177 @@ class DescribeHubResponse(JumpStartDataHolderType):
             json_obj (Dict[str, Any]): Dictionary representation of hub description.
         """
 
-        self.creation_time: int = int(json_obj["creation_time"])
-        self.failure_reason: str = json_obj["failure_reason"]
-        self.hub_arn: str = json_obj["hub_arn"]
-        self.hub_description: str = json_obj["hub_description"]
-        self.hub_display_name: str = json_obj["hub_display_name"]
-        self.hub_name: str = json_obj["hub_name"]
-        self.hub_search_keywords: List[str] = json_obj["hub_search_keywords"]
-        self.hub_status: str = json_obj["hub_status"]
-        self.last_modified_time: int = int(json_obj["last_modified_time"])
-        self.s3_storage_config: HubS3StorageConfig = HubS3StorageConfig(
-            json_obj["s3_storage_config"]
-        )
+        self.creation_time: str = json_obj["CreationTime"]
+        self.failure_reason: str = json_obj["FailureReason"]
+        self.hub_arn: str = json_obj["HubArn"]
+        self.hub_description: str = json_obj["HubDescription"]
+        self.hub_display_name: str = json_obj["HubDisplayName"]
+        self.hub_name: str = json_obj["HubName"]
+        self.hub_search_keywords: List[str] = json_obj["HubSearchKeywords"]
+        self.hub_status: str = json_obj["HubStatus"]
+        self.last_modified_time: int = int(json_obj["LastModifiedTime"])
+        self.s3_storage_config: HubS3StorageConfig = HubS3StorageConfig(json_obj["S3StorageConfig"])
+
+
+class ImportHubResponse(JumpStartDataHolderType):
+    """Data class for the Hub from session.import_hub()"""
+
+    __slots__ = [
+        "hub_arn",
+        "hub_content_arn",
+    ]
+
+    def __init__(self, json_obj: Dict[str, Any]) -> None:
+        """Instantiates ImportHubResponse object.
+
+        Args:
+            json_obj (Dict[str, Any]): Dictionary representation of hub description.
+        """
+        self.from_json(json_obj)
+
+    def from_json(self, json_obj: Dict[str, Any]) -> None:
+        """Sets fields in object based on json.
+
+        Args:
+            json_obj (Dict[str, Any]): Dictionary representation of hub description.
+        """
+        self.hub_arn: str = json_obj["HubArn"]
+        self.hub_content_arn: str = json_obj["HubContentArn"]
+
+
+class HubSummary(JumpStartDataHolderType):
+    __slots__ = [
+        "creation_time",
+        "hub_arn",
+        "hub_description",
+        "hub_display_name",
+        "hub_name",
+        "hub_search_keywords",
+        "hub_status",
+        "last_modified_time",
+    ]
+
+    def __init__(self, json_obj: Dict[str, Any]) -> None:
+        """Instantiates HubSummary object.
+
+        Args:
+            json_obj (Dict[str, Any]): Dictionary representation of hub description.
+        """
+        self.from_json(json_obj)
+
+    def from_json(self, json_obj: Dict[str, Any]) -> None:
+        """Sets fields in object based on json.
+
+        Args:
+            json_obj (Dict[str, Any]): Dictionary representation of hub description.
+        """
+        self.creation_time: str = json_obj["CreationTime"]
+        self.document_schema_version: str = json_obj["DocumentSchemaVersion"]
+        self.hub_arn: str = json_obj["HubArn"]
+        self.hub_description: str = json_obj["HubDescription"]
+        self.hub_display_name: str = json_obj["HubDisplayName"]
+        self.hub_name: str = json_obj["HubName"]
+        self.hub_search_keywords: List[str] = json_obj["HubSearchKeywords"]
+        self.hub_status: str = json_obj["HubStatus"]
+        self.last_modified_time: str = json_obj["LastModifiedTime"]
+
+
+class ListHubsResponse(JumpStartDataHolderType):
+    """Data class for the Hub from session.list_hubs()"""
+
+    __slots__ = [
+        "hub_summaries",
+        "next_token",
+    ]
+
+    def __init__(self, json_obj: Dict[str, Any]) -> None:
+        """Instantiates ListHubsResponse object.
+
+        Args:
+            json_obj (Dict[str, Any]): Dictionary representation of session.list_hubs() response.
+        """
+        self.from_json(json_obj)
+
+    def from_json(self, json_obj: Dict[str, Any]) -> None:
+        """Sets fields in object based on json.
+
+        Args:
+            json_obj (Dict[str, Any]): Dictionary representation of session.list_hubs() response.
+        """
+        self.hub_summaries: List[HubSummary] = [
+            HubSummary(item) for item in json_obj["HubSummaries"]
+        ]
+        self.next_token: str = json_obj["NextToken"]
+
+
+class HubContentSummary(JumpStartDataHolderType):
+    __slots__ = [
+        "creation_time",
+        "document_schema_version",
+        "hub_content_arn",
+        "hub_content_description",
+        "hub_content_display_name",
+        "hub_content_document",
+        "hub_content_name",
+        "hub_content_search_keywords",
+        "hub_content_status",
+        "hub_content_type",
+        "hub_content_version",
+    ]
+
+    def __init__(self, json_obj: Dict[str, Any]) -> None:
+        """Instantiates HubContentSummary object.
+
+        Args:
+            json_obj (Dict[str, Any]): Dictionary representation of hub content description.
+        """
+        self.from_json(json_obj)
+
+    def from_json(self, json_obj: Dict[str, Any]) -> None:
+        """Sets fields in object based on json.
+
+        Args:
+            json_obj (Dict[str, Any]): Dictionary representation of hub content description.
+        """
+        self.creation_time: str = json_obj["CreationTime"]
+        self.document_schema_version: str = json_obj["DocumentSchemaVersion"]
+        self.hub_content_arn: str = json_obj["HubContentArn"]
+        self.hub_content_description: str = json_obj["HubContentDescription"]
+        self.hub_content_display_name: str = json_obj["HubContentDisplayName"]
+        self.hub_content_document: str = json_obj["HubContentDocument"]
+        self.hub_content_name: str = json_obj["HubContentName"]
+        self.hub_content_search_keywords: str = json_obj["HubContentSearchKeywords"]
+        self.hub_content_status: str = json_obj["HubContentStatus"]
+        self.hub_content_type: HubContentType = HubContentType(json_obj["HubContentType"])
+        self.hub_content_version: str = json_obj["HubContentVersion"]
+
+
+class ListHubContentsResponse(JumpStartDataHolderType):
+    """Data class for the Hub from session.list_hub_contents()"""
+
+    __slots__ = [
+        "hub_content_summaries",
+        "next_token",
+    ]
+
+    def __init__(self, json_obj: Dict[str, Any]) -> None:
+        """Instantiates ImportHubResponse object.
+
+        Args:
+            json_obj (Dict[str, Any]): Dictionary representation of hub  description.
+        """
+        self.from_json(json_obj)
+
+    def from_json(self, json_obj: Dict[str, Any]) -> None:
+        """Sets fields in object based on json.
+
+        Args:
+            json_obj (Dict[str, Any]): Dictionary representation of hub description.
+        """
+        self.hub_content_summaries: List[HubContentSummary] = [
+            HubContentSummary(item) for item in json_obj["HubContentSummaries"]
+        ]
+        self.next_token: str = json_obj["NextToken"]
 
 
 class JumpStartKwargs(JumpStartDataHolderType):

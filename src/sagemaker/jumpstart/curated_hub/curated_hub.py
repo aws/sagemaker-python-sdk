@@ -19,7 +19,7 @@ from sagemaker.session import Session
 from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 from sagemaker.jumpstart.types import (
     DescribeHubResponse,
-    DescribeHubContentsResponse,
+    DescribeHubContentResponse,
     HubContentType,
 )
 from sagemaker.jumpstart.curated_hub.utils import create_hub_bucket_if_it_does_not_exist
@@ -89,7 +89,7 @@ class CuratedHub:
 
     def describe_model(
         self, model_name: str, model_version: str = "*"
-    ) -> DescribeHubContentsResponse:
+    ) -> DescribeHubContentResponse:
         """Returns descriptive information about the Hub Model"""
 
         hub_content_description: Dict[str, Any] = self._sagemaker_session.describe_hub_content(
@@ -99,7 +99,7 @@ class CuratedHub:
             hub_content_type=HubContentType.MODEL,
         )
 
-        return DescribeHubContentsResponse(hub_content_description)
+        return DescribeHubContentResponse(hub_content_description)
 
     def delete_model(self, model_name: str, model_version: str = "*") -> None:
         """Deletes a model from this CuratedHub."""

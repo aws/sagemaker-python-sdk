@@ -22,7 +22,6 @@ import botocore
 from mock.mock import MagicMock
 import pytest
 from mock import patch
-from sagemaker.session_settings import SessionSettings
 from sagemaker.jumpstart.cache import JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY, JumpStartModelsCache
 from sagemaker.jumpstart.constants import (
     ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE,
