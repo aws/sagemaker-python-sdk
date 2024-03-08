@@ -13,6 +13,7 @@
 """This module provides the JumpStart Curated Hub class."""
 from __future__ import absolute_import
 from concurrent import futures
+from datetime import datetime
 import json
 import traceback
 from typing import Optional, Dict, List, Any
@@ -50,6 +51,7 @@ from sagemaker.jumpstart.curated_hub.types import (
     HubContentDocument_v2,
     JumpStartModelInfo,
     S3ObjectLocation,
+    create_s3_object_reference_from_uri,
 )
 
 
@@ -73,20 +75,21 @@ class CuratedHub:
         self.region = sagemaker_session.boto_region_name
         self._sagemaker_session = sagemaker_session
         self._default_thread_pool_size = 20
-        self.hub_bucket_name = bucket_name or self._fetch_hub_bucket_name()
         self._s3_client = self._get_s3_client()
+        self.hub_storage_location = self._generate_hub_storage_location(bucket_name)
 
     def _get_s3_client(self) -> BaseClient:
-        """Returns an S3 client."""
+        """Returns an S3 client used for creating a HubContentDocument."""
         return boto3.client("s3", region_name=self.region)
 
     def _fetch_hub_bucket_name(self) -> str:
         """Retrieves hub bucket name from Hub config if exists"""
         try:
             hub_response = self._sagemaker_session.describe_hub(hub_name=self.hub_name)
-            hub_bucket_prefix = hub_response["S3StorageConfig"].get("S3OutputPath", None)
-            if hub_bucket_prefix:
-                return hub_bucket_prefix.replace("s3://", "")
+            hub_output_location = hub_response["S3StorageConfig"].get("S3OutputPath")
+            if hub_output_location:
+                location = create_s3_object_reference_from_uri(hub_output_location)
+                return location.bucket
             default_bucket_name = generate_default_hub_bucket_name(self._sagemaker_session)
             JUMPSTART_LOGGER.warning(
                 "There is not a Hub bucket associated with %s. Using %s",
@@ -103,6 +106,12 @@ class CuratedHub:
             )
             return hub_bucket_name
 
+    def _generate_hub_storage_location(self, bucket_name: Optional[str] = None) -> None:
+        """Generates an ``S3ObjectLocation`` given a Hub name."""
+        hub_bucket_name = bucket_name or self._fetch_hub_bucket_name()
+        curr_timestamp = datetime.now().timestamp()
+        return S3ObjectLocation(bucket=hub_bucket_name, key=f"{self.hub_name}-{curr_timestamp}")
+
     def create(
         self,
         description: str,
@@ -112,8 +121,8 @@ class CuratedHub:
     ) -> Dict[str, str]:
         """Creates a hub with the given description"""
 
-        bucket_name = create_hub_bucket_if_it_does_not_exist(
-            self.hub_bucket_name, self._sagemaker_session
+        create_hub_bucket_if_it_does_not_exist(
+            self.hub_storage_location.bucket, self._sagemaker_session
         )
 
         return self._sagemaker_session.create_hub(
@@ -121,7 +130,7 @@ class CuratedHub:
             hub_description=description,
             hub_display_name=display_name,
             hub_search_keywords=search_keywords,
-            s3_storage_config={"S3OutputPath": f"s3://{bucket_name}"},
+            s3_storage_config={"S3OutputPath": self.hub_storage_location.get_uri()},
             tags=tags,
         )
 
@@ -226,7 +235,7 @@ class CuratedHub:
         return js_models_in_hub
 
     def _determine_models_to_sync(
-        self, model_list: List[JumpStartModelInfo], models_in_hub
+        self, model_list: List[JumpStartModelInfo], models_in_hub: Dict[str, Any]
     ) -> List[JumpStartModelInfo]:
         """Determines which models from `sync` params to sync into the CuratedHub.
 
@@ -240,14 +249,7 @@ class CuratedHub:
         """
         models_to_sync = []
         for model in model_list:
-            matched_model = next(
-                (
-                    hub_model
-                    for hub_model in models_in_hub
-                    if hub_model and hub_model["name"] == model.model_id
-                ),
-                None,
-            )
+            matched_model = models_in_hub.get(model.model_id)
 
             # Model does not exist in Hub, sync
             if not matched_model:
@@ -300,8 +302,9 @@ class CuratedHub:
             model_version_list.append(JumpStartModelInfo(model["model_id"], model["version"]))
 
         js_models_in_hub = self._get_jumpstart_models_in_hub()
+        mapped_models_in_hub = { model["name"]: model for model in js_models_in_hub }
 
-        models_to_sync = self._determine_models_to_sync(model_version_list, js_models_in_hub)
+        models_to_sync = self._determine_models_to_sync(model_version_list, mapped_models_in_hub)
         JUMPSTART_LOGGER.warning(
             "Syncing the following models into Hub %s: %s", self.hub_name, models_to_sync
         )
@@ -349,7 +352,8 @@ class CuratedHub:
         studio_specs = self._fetch_studio_specs(model_specs=model_specs)
 
         dest_location = S3ObjectLocation(
-            bucket=self.hub_bucket_name, key=f"{model.model_id}/{model.version}"
+            bucket=self.hub_storage_location.bucket,
+            key=f"{self.hub_storage_location.key}/{model.model_id}/{model.version}"
         )
         src_files = file_generator.generate_file_infos_from_model_specs(
             model_specs, studio_specs, self.region, self._s3_client

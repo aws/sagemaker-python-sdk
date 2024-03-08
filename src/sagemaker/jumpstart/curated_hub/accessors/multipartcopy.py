@@ -62,6 +62,7 @@ class MultiPartCopyHandler(object):
     """Multi Part Copy Handler class."""
 
     WORKERS = 20
+    # Config values from in S3:Copy
     MULTIPART_CONFIG = 8 * (1024**2)
 
     def __init__(

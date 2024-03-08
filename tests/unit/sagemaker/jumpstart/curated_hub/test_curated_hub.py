@@ -12,15 +12,17 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 from copy import deepcopy
+import datetime
 from unittest import mock
 from unittest.mock import patch
 import pytest
 from mock import Mock
 from sagemaker.jumpstart.curated_hub.curated_hub import CuratedHub
-from sagemaker.jumpstart.curated_hub.types import JumpStartModelInfo
+from sagemaker.jumpstart.curated_hub.types import JumpStartModelInfo, S3ObjectLocation
 from sagemaker.jumpstart.types import JumpStartModelSpecs
 from tests.unit.sagemaker.jumpstart.constants import BASE_SPEC
 from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec
+
 
 REGION = "us-east-1"
 ACCOUNT_ID = "123456789123"
@@ -28,6 +30,7 @@ HUB_NAME = "mock-hub-name"
 
 MODULE_PATH = "sagemaker.jumpstart.curated_hub.curated_hub.CuratedHub"
 
+FAKE_TIME = datetime.datetime(1997, 8, 14, 00, 00, 00)
 
 @pytest.fixture()
 def sagemaker_session():
@@ -39,7 +42,7 @@ def sagemaker_session():
         "Boto3/1.9.69 Python/3.6.5 Linux/4.14.77-70.82.amzn1.x86_64 Botocore/1.12.69 Resource"
     )
     sagemaker_session_mock.describe_hub.return_value = {
-        "S3StorageConfig": {"S3OutputPath": "mock-bucket-123"}
+        "S3StorageConfig": {"S3OutputPath": "s3://mock-bucket-123"}
     }
     sagemaker_session_mock.account_id.return_value = ACCOUNT_ID
     return sagemaker_session_mock
@@ -66,7 +69,9 @@ def test_instantiates(sagemaker_session):
         ),
     ],
 )
+@patch("sagemaker.jumpstart.curated_hub.curated_hub.CuratedHub._generate_hub_storage_location")
 def test_create_with_no_bucket_name(
+    mock_generate_hub_storage_location,
     sagemaker_session,
     hub_name,
     hub_description,
@@ -75,10 +80,12 @@ def test_create_with_no_bucket_name(
     hub_search_keywords,
     tags,
 ):
+    storage_location = S3ObjectLocation("sagemaker-hubs-us-east-1-123456789123",f"{hub_name}-{FAKE_TIME.timestamp()}")
+    mock_generate_hub_storage_location.return_value = storage_location
     create_hub = {"HubArn": f"arn:aws:sagemaker:us-east-1:123456789123:hub/{hub_name}"}
     sagemaker_session.create_hub = Mock(return_value=create_hub)
     sagemaker_session.describe_hub.return_value = {
-        "S3StorageConfig": {"S3OutputPath": hub_bucket_name}
+        "S3StorageConfig": {"S3OutputPath": f"s3://{hub_bucket_name}/{storage_location.key}"}
     }
     hub = CuratedHub(hub_name=hub_name, sagemaker_session=sagemaker_session)
     request = {
@@ -86,7 +93,9 @@ def test_create_with_no_bucket_name(
         "hub_description": hub_description,
         "hub_display_name": hub_display_name,
         "hub_search_keywords": hub_search_keywords,
-        "s3_storage_config": {"S3OutputPath": "s3://sagemaker-hubs-us-east-1-123456789123"},
+        "s3_storage_config": {
+            "S3OutputPath": f"s3://sagemaker-hubs-us-east-1-123456789123/{storage_location.key}"
+        },
         "tags": tags,
     }
     response = hub.create(
@@ -113,7 +122,9 @@ def test_create_with_no_bucket_name(
         ),
     ],
 )
+@patch("sagemaker.jumpstart.curated_hub.curated_hub.CuratedHub._generate_hub_storage_location")
 def test_create_with_bucket_name(
+    mock_generate_hub_storage_location,
     sagemaker_session,
     hub_name,
     hub_description,
@@ -122,6 +133,8 @@ def test_create_with_bucket_name(
     hub_search_keywords,
     tags,
 ):
+    storage_location = S3ObjectLocation(hub_bucket_name,f"{hub_name}-{FAKE_TIME.timestamp()}")
+    mock_generate_hub_storage_location.return_value = storage_location
     create_hub = {"HubArn": f"arn:aws:sagemaker:us-east-1:123456789123:hub/{hub_name}"}
     sagemaker_session.create_hub = Mock(return_value=create_hub)
     hub = CuratedHub(
@@ -132,7 +145,7 @@ def test_create_with_bucket_name(
         "hub_description": hub_description,
         "hub_display_name": hub_display_name,
         "hub_search_keywords": hub_search_keywords,
-        "s3_storage_config": {"S3OutputPath": "s3://mock-bucket-123"},
+        "s3_storage_config": {"S3OutputPath": f"s3://mock-bucket-123/{storage_location.key}"},
         "tags": tags,
     }
     response = hub.create(
@@ -397,8 +410,8 @@ def test_determine_models_to_sync(sagemaker_session):
     hub_name = "mock_hub_name"
     hub = CuratedHub(hub_name=hub_name, sagemaker_session=sagemaker_session)
 
-    js_models_in_hub = [
-        {
+    js_model_map = {
+        "mock-model-two-pytorch": {
             "name": "mock-model-two-pytorch",
             "version": "1.0.1",
             "search_keywords": [
@@ -406,7 +419,7 @@ def test_determine_models_to_sync(sagemaker_session):
                 "@jumpstart-model-version:1.0.2",
             ],
         },
-        {
+        "mock-model-four-huggingface": {
             "name": "mock-model-four-huggingface",
             "version": "2.0.2",
             "search_keywords": [
@@ -414,15 +427,15 @@ def test_determine_models_to_sync(sagemaker_session):
                 "@jumpstart-model-version:2.0.2",
             ],
         },
-    ]
+    }
     model_one = JumpStartModelInfo("mock-model-one-huggingface", "1.2.3")
     model_two = JumpStartModelInfo("mock-model-two-pytorch", "1.0.2")
     # No model_one, older model_two
-    res = hub._determine_models_to_sync([model_one, model_two], js_models_in_hub)
+    res = hub._determine_models_to_sync([model_one, model_two], js_model_map)
     assert res == [model_one, model_two]
 
-    js_models_in_hub = [
-        {
+    js_model_map = {
+        "mock-model-two-pytorch": {
             "name": "mock-model-two-pytorch",
             "version": "1.0.3",
             "search_keywords": [
@@ -430,7 +443,7 @@ def test_determine_models_to_sync(sagemaker_session):
                 "@jumpstart-model-version:1.0.3",
             ],
         },
-        {
+        "mock-model-four-huggingface": {
             "name": "mock-model-four-huggingface",
             "version": "2.0.2",
             "search_keywords": [
@@ -438,13 +451,13 @@ def test_determine_models_to_sync(sagemaker_session):
                 "@jumpstart-model-version:2.0.2",
             ],
         },
-    ]
+    }
     # No model_one, newer model_two
-    res = hub._determine_models_to_sync([model_one, model_two], js_models_in_hub)
+    res = hub._determine_models_to_sync([model_one, model_two], js_model_map)
     assert res == [model_one]
 
-    js_models_in_hub = [
-        {
+    js_model_map = {
+        "mock-model-one-huggingface": {
             "name": "mock-model-one-huggingface",
             "version": "1.2.3",
             "search_keywords": [
@@ -452,7 +465,7 @@ def test_determine_models_to_sync(sagemaker_session):
                 "@jumpstart-model-version:1.2.3",
             ],
         },
-        {
+        "mock-model-two-pytorch": {
             "name": "mock-model-two-pytorch",
             "version": "1.0.2",
             "search_keywords": [
@@ -460,13 +473,13 @@ def test_determine_models_to_sync(sagemaker_session):
                 "@jumpstart-model-version:1.0.2",
             ],
         },
-    ]
+    }
     # Same model_one, same model_two
-    res = hub._determine_models_to_sync([model_one, model_two], js_models_in_hub)
+    res = hub._determine_models_to_sync([model_one, model_two], js_model_map)
     assert res == []
 
-    js_models_in_hub = [
-        {
+    js_model_map = {
+        "mock-model-one-huggingface": {
             "name": "mock-model-one-huggingface",
             "version": "1.2.1",
             "search_keywords": [
@@ -474,7 +487,7 @@ def test_determine_models_to_sync(sagemaker_session):
                 "@jumpstart-model-version:1.2.1",
             ],
         },
-        {
+        "mock-model-two-pytorch": {
             "name": "mock-model-two-pytorch",
             "version": "1.0.2",
             "search_keywords": [
@@ -482,7 +495,7 @@ def test_determine_models_to_sync(sagemaker_session):
                 "@jumpstart-model-version:1.0.2",
             ],
         },
-    ]
+    }
     # Old model_one, same model_two
-    res = hub._determine_models_to_sync([model_one, model_two], js_models_in_hub)
+    res = hub._determine_models_to_sync([model_one, model_two], js_model_map)
     assert res == [model_one]

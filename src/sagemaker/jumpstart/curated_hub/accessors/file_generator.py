@@ -35,16 +35,16 @@ def generate_file_infos_from_s3_location(
     """
     parameters = {"Bucket": location.bucket, "Prefix": location.key}
     response = s3_client.list_objects_v2(**parameters)
-    contents = response.get("Contents", None)
+    contents = response.get("Contents")
 
     if not contents:
         return []
 
     files = []
     for s3_obj in contents:
-        key: str = s3_obj.get("Key")
-        size: bytes = s3_obj.get("Size", None)
-        last_modified: str = s3_obj.get("LastModified", None)
+        key = s3_obj.get("Key")
+        size = s3_obj.get("Size")
+        last_modified = s3_obj.get("LastModified")
         files.append(FileInfo(location.bucket, key, size, last_modified))
     return files
 
@@ -71,28 +71,26 @@ def generate_file_infos_from_model_specs(
         if location_type == "prefix":
             parameters = {"Bucket": location.bucket, "Prefix": location.key}
             response = s3_client.list_objects_v2(**parameters)
-            contents = response.get("Contents", None)
+            contents = response.get("Contents")
             for s3_obj in contents:
-                key: str = s3_obj.get("Key")
-                size: bytes = s3_obj.get("Size", None)
-                last_modified: datetime = s3_obj.get("LastModified", None)
-                dependency_type: HubContentDependencyType = dependency
+                key = s3_obj.get("Key")
+                size = s3_obj.get("Size")
+                last_modified = s3_obj.get("LastModified")
                 files.append(
                     FileInfo(
                         location.bucket,
                         key,
                         size,
                         last_modified,
-                        dependency_type,
+                        dependency,
                     )
                 )
         elif location_type == "object":
             parameters = {"Bucket": location.bucket, "Key": location.key}
             response = s3_client.head_object(**parameters)
-            size: bytes = response.get("ContentLength", None)
-            last_updated: datetime = response.get("LastModified", None)
-            dependency_type: HubContentDependencyType = dependency
+            size = response.get("ContentLength")
+            last_updated = response.get("LastModified")
             files.append(
-                FileInfo(location.bucket, location.key, size, last_updated, dependency_type)
+                FileInfo(location.bucket, location.key, size, last_updated, dependency)
             )
     return files
