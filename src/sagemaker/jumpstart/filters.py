@@ -430,6 +430,22 @@ class ModelFilter(JumpStartDataHolderType):
         self.value = value
         self.operator = operator
 
+    def set_key(self, key: str) -> None:
+        """Sets the key for the model filter.
+
+        Args:
+            key (str): The key to be set.
+        """
+        self.key = key
+
+    def set_value(self, value: str) -> None:
+        """Sets the value for the model filter.
+
+        Args:
+            value (str): The value to be set.
+        """
+        self.value = value
+
 
 def parse_filter_string(filter_string: str) -> ModelFilter:
     """Parse filter string and return a serialized ``ModelFilter`` object.

@@ -640,6 +640,7 @@ class ListJumpStartModels(TestCase):
         ]
 
         assert list_jumpstart_models("model_type == proprietary") == all_prop_model_ids
+        assert list_jumpstart_models("model_type == marketplace") == all_prop_model_ids
         assert list_jumpstart_models("model_type == open_weight") == all_open_weight_model_ids
 
         assert list_jumpstart_models(list_versions=False) == sorted(

@@ -169,7 +169,7 @@ def _log_model_type(kwargs: JumpStartModelInitKwargs) -> None:
     """Log the model type being used"""
     if kwargs.model_type == JumpStartModelType.PROPRIETARY:
         JUMPSTART_LOGGER.info(
-            "Marketplace model %s of version %s is being used.",
+            "Proprietary model %s of version %s is being used.",
             kwargs.model_id,
             kwargs.model_version,
         )

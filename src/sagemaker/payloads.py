@@ -137,8 +137,8 @@ def retrieve_example(
             the model payload.
         model_version (str): The version of the JumpStart model for which to retrieve
             the model payload.
-        model_type (str): The model type of the JumpStart model, either is open source
-            or marketplace (proprietary).
+        model_type (str): The model type of the JumpStart model, either is open weight
+            or proprietary.
         serialize (bool): Whether to serialize byte-stream valued payloads by downloading
             binary files from s3 and applying encoding, or to keep payload in pre-serialized
             state. Set this option to False if you want to avoid s3 downloads or if you

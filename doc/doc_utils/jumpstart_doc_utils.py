@@ -206,10 +206,10 @@ def get_model_source(url):
         return "Source"
 
 
-def create_marketplace_model_table():
+def create_proprietary_model_table():
     marketpkace_content_intro = []
     marketpkace_content_intro.append("\n")
-    marketpkace_content_intro.append(".. list-table:: Available Models\n")
+    marketpkace_content_intro.append(".. list-table:: Available Proprietary Models\n")
     marketpkace_content_intro.append("   :widths: 50 20 20 20 20\n")
     marketpkace_content_intro.append("   :header-rows: 1\n")
     marketpkace_content_intro.append("   :class: datatable\n")
@@ -232,17 +232,17 @@ def create_marketplace_model_table():
             ):
                 sdk_manifest_top_versions_for_models[model["model_id"]] = model
 
-    marketplace_content_entries = []
+    proprietary_content_entries = []
     for model in sdk_manifest_top_versions_for_models.values():
         model_spec = get_jumpstart_sdk_spec(model["spec_key"])
-        marketplace_content_entries.append("   * - {}\n".format(model_spec["model_id"]))
-        marketplace_content_entries.append("     - {}\n".format(False))  # TODO: support training
-        marketplace_content_entries.append("     - {}\n".format(model["version"]))
-        marketplace_content_entries.append("     - {}\n".format(model["min_version"]))
-        marketplace_content_entries.append(
+        proprietary_content_entries.append("   * - {}\n".format(model_spec["model_id"]))
+        proprietary_content_entries.append("     - {}\n".format(False))  # TODO: support training
+        proprietary_content_entries.append("     - {}\n".format(model["version"]))
+        proprietary_content_entries.append("     - {}\n".format(model["min_version"]))
+        proprietary_content_entries.append(
             "     - `{} <{}>`__ |external-link|\n".format("Source", model_spec.get("url"))
         )
-    return marketpkace_content_intro + marketplace_content_entries + ["\n"]
+    return marketpkace_content_intro + proprietary_content_entries + ["\n"]
 
 
 def create_jumpstart_model_table():
@@ -348,10 +348,10 @@ def create_jumpstart_model_table():
             f.writelines(file_content_single_entry)
             f.close()
 
-    marketplace_content_entries = create_marketplace_model_table()
+    proprietary_content_entries = create_proprietary_model_table()
 
     f = open("doc_utils/pretrainedmodels.rst", "a")
     f.writelines(file_content_intro)
     f.writelines(open_weight_content_entries)
-    f.writelines(marketplace_content_entries)
+    f.writelines(proprietary_content_entries)
     f.close()

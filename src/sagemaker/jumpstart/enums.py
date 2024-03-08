@@ -91,8 +91,6 @@ class JumpStartTag(str, Enum):
     MODEL_VERSION = "sagemaker-sdk:jumpstart-model-version"
     MODEL_TYPE = "sagemaker-sdk:jumpstart-model-type"
 
-    MARKETPLACE_MODEL_TYPE_VALUE = "SageMakerJumpStartMarketplace"
-
 
 class SerializerType(str, Enum):
     """Enum class for serializers associated with JumpStart models."""

@@ -369,7 +369,7 @@ def add_jumpstart_model_id_version_tags(
     )
     if model_type == enums.JumpStartModelType.PROPRIETARY:
         tags = add_single_jumpstart_tag(
-            enums.JumpStartTag.MARKETPLACE_MODEL_TYPE_VALUE,
+            enums.JumpStartModelType.PROPRIETARY.value,
             enums.JumpStartTag.MODEL_TYPE,
             tags,
             is_uri=False,

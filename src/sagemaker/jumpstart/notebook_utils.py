@@ -25,7 +25,6 @@ from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     JUMPSTART_DEFAULT_REGION_NAME,
     PROPRIETARY_MODEL_SPEC_PREFIX,
-    PROPRIETARY_MODEL_FILTER_NAME,
 )
 from sagemaker.jumpstart.enums import JumpStartScriptScope, JumpStartModelType
 from sagemaker.jumpstart.filters import (
@@ -130,7 +129,7 @@ def extract_framework_task_model(model_id: str) -> Tuple[str, str, str]:
     """
     _id_parts = model_id.split("-")
 
-    if len(_id_parts) != 3:
+    if len(_id_parts) < 3:
         return "", "", ""
 
     framework = _id_parts[0]
@@ -149,7 +148,7 @@ def extract_model_type(spec_key: str) -> str:
     model_spec_prefix = spec_key.split("/")[0]
 
     if model_spec_prefix == PROPRIETARY_MODEL_SPEC_PREFIX:
-        return PROPRIETARY_MODEL_FILTER_NAME
+        return JumpStartModelType.PROPRIETARY.value
 
     return JumpStartModelType.OPEN_WEIGHT.value
 
@@ -228,6 +227,7 @@ def list_jumpstart_scripts(  # pylint: disable=redefined-builtin
         sagemaker_session (sagemaker.session.Session): Optional. The SageMaker Session to
             use to perform the model search. (Default: DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     """
+
     if (isinstance(filter, Constant) and filter.resolved_value == BooleanValues.TRUE) or (
         isinstance(filter, str) and filter.lower() == BooleanValues.TRUE.lower()
     ):
@@ -279,8 +279,6 @@ def list_jumpstart_models(  # pylint: disable=redefined-builtin
             versions should be included in the returned result. (Default: False).
         list_versions (bool): Optional. True if versions for models should be returned in addition
             to the id of the model. (Default: False).
-        marketplace_models (bool): Optional. True if only listing JumpStart Marketplace models.
-            (Default: False).
         sagemaker_session (sagemaker.session.Session): Optional. The SageMaker Session to use
             to perform the model search. (Default: DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     """
@@ -361,6 +359,11 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
         model_filter = operator.unresolved_value
         key = model_filter.key
         all_keys.add(key)
+        if model_filter.key == SpecialSupportedFilterKeys.MODEL_TYPE and model_filter.value in [
+            "marketplace",
+            "proprietary",
+        ]:
+            model_filter.set_value(JumpStartModelType.PROPRIETARY.value)
         model_filters.add(model_filter)
 
     for key in all_keys:

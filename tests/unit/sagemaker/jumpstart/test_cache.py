@@ -181,7 +181,7 @@ def test_jumpstart_cache_get_header():
             model_type=JumpStartModelType.PROPRIETARY,
         )
     assert (
-        "Marketplace model 'ai21-summarization' does not support wildcard version identifier '3.*'. "
+        "Proprietary model 'ai21-summarization' does not support wildcard version identifier '3.*'. "
         "You can pin to version '1.1.003'. "
         "https://sagemaker.readthedocs.io/en/stable/doc_utils/pretrainedmodels.html "
         "for list of supported model IDs. " in str(e.value)
@@ -941,7 +941,7 @@ def test_jumpstart_cache_get_specs():
             model_type=JumpStartModelType.PROPRIETARY,
         )
     assert (
-        "Marketplace model 'ai21-summarization' does not support wildcard version identifier '3.*'. "
+        "Proprietary model 'ai21-summarization' does not support wildcard version identifier '3.*'. "
         "You can pin to version '1.1.003'. "
         "https://sagemaker.readthedocs.io/en/stable/doc_utils/pretrainedmodels.html "
         "for list of supported model IDs. " in str(e.value)
