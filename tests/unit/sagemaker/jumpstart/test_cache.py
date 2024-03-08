@@ -873,7 +873,7 @@ def test_jumpstart_local_metadata_override_specs_not_exist_both_directories(
 
     mocked_is_dir.assert_any_call("/some/directory/metadata/manifest/root")
     assert mocked_is_dir.call_count == 2
-    assert mocked_open.call_count == 2
+    mocked_open.assert_not_called()
     mocked_get_json_file_and_etag_from_s3.assert_has_calls(
         calls=[
             call("models_manifest.json"),

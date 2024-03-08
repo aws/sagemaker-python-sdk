@@ -1,4 +1,4 @@
-# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+f# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -1303,7 +1303,6 @@ class HubSummary(JumpStartDataHolderType):
             json_obj (Dict[str, Any]): Dictionary representation of hub description.
         """
         self.creation_time: str = json_obj["CreationTime"]
-        self.document_schema_version: str = json_obj["DocumentSchemaVersion"]
         self.hub_arn: str = json_obj["HubArn"]
         self.hub_description: str = json_obj["HubDescription"]
         self.hub_display_name: str = json_obj["HubDisplayName"]
