@@ -35,16 +35,21 @@ class HubSyncRequest:
     ):
         """Contains information required to sync data into a Hub.
 
-        Returns:
-            :var: files (List[FileInfo]): Files that shoudl be synced.
-            :var: destination (S3ObjectLocation): Location to which to sync the files.
+        Attrs:
+            files (List[FileInfo]): Files that should be synced.
+            destination (S3ObjectLocation): Location to which to sync the files.
         """
         self.files = list(files_to_copy)
         self.destination = destination
 
 
 class HubSyncRequestFactory:
-    """Generates a ``HubSyncRequest`` which is required to sync data into a Hub."""
+    """Generates a ``HubSyncRequest`` which is required to sync data into a Hub.
+
+    Creates a ``HubSyncRequest`` class containing:
+            :var: files (List[FileInfo]): Files that should be synced.
+            :var: destination (S3ObjectLocation): Location to which to sync the files.
+    """
 
     def __init__(
         self,
@@ -59,11 +64,6 @@ class HubSyncRequestFactory:
             src_files (List[FileInfo]): List of files to sync to destination bucket
             dest_files (List[FileInfo]): List of files already in destination bucket
             destination (S3ObjectLocation): S3 destination for copied data
-
-        Returns:
-            ``HubSyncRequest`` class containing:
-                :var: files (List[FileInfo]): Files that shoudl be synced.
-                :var: destination (S3ObjectLocation): Location to which to sync the files.
         """
         self.comparator = comparator
         self.destination = destination

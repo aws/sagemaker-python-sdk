@@ -17,8 +17,8 @@ from sagemaker import model_uris, script_uris
 from sagemaker.jumpstart.curated_hub.types import (
     HubContentDependencyType,
     S3ObjectLocation,
-    create_s3_object_reference_from_uri,
 )
+from sagemaker.jumpstart.curated_hub.utils import create_s3_object_reference_from_uri
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.types import JumpStartModelSpecs
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket

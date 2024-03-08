@@ -46,12 +46,12 @@ from sagemaker.jumpstart.types import (
 from sagemaker.jumpstart.curated_hub.utils import (
     create_hub_bucket_if_it_does_not_exist,
     generate_default_hub_bucket_name,
+    create_s3_object_reference_from_uri,
 )
 from sagemaker.jumpstart.curated_hub.types import (
     HubContentDocument_v2,
     JumpStartModelInfo,
     S3ObjectLocation,
-    create_s3_object_reference_from_uri,
 )
 
 
@@ -302,7 +302,7 @@ class CuratedHub:
             model_version_list.append(JumpStartModelInfo(model["model_id"], model["version"]))
 
         js_models_in_hub = self._get_jumpstart_models_in_hub()
-        mapped_models_in_hub = { model["name"]: model for model in js_models_in_hub }
+        mapped_models_in_hub = {model["name"]: model for model in js_models_in_hub}
 
         models_to_sync = self._determine_models_to_sync(model_version_list, mapped_models_in_hub)
         JUMPSTART_LOGGER.warning(
@@ -316,9 +316,9 @@ class CuratedHub:
         with futures.ThreadPoolExecutor(
             max_workers=self._default_thread_pool_size,
             thread_name_prefix="import-models-to-curated-hub",
-        ) as deploy_executor:
+        ) as import_executor:
             for thread_num, model in enumerate(models_to_sync):
-                task = deploy_executor.submit(self._sync_public_model_to_hub, model, thread_num)
+                task = import_executor.submit(self._sync_public_model_to_hub, model, thread_num)
                 tasks.append(task)
 
         # Handle failed imports
@@ -353,7 +353,7 @@ class CuratedHub:
 
         dest_location = S3ObjectLocation(
             bucket=self.hub_storage_location.bucket,
-            key=f"{self.hub_storage_location.key}/{model.model_id}/{model.version}"
+            key=f"{self.hub_storage_location.key}/curated_models/{model.model_id}/{model.version}",
         )
         src_files = file_generator.generate_file_infos_from_model_specs(
             model_specs, studio_specs, self.region, self._s3_client

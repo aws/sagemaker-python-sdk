@@ -14,7 +14,6 @@
 from __future__ import absolute_import
 from typing import Any, Dict, List
 
-from datetime import datetime
 from botocore.client import BaseClient
 
 from sagemaker.jumpstart.curated_hub.types import (
@@ -90,7 +89,5 @@ def generate_file_infos_from_model_specs(
             response = s3_client.head_object(**parameters)
             size = response.get("ContentLength")
             last_updated = response.get("LastModified")
-            files.append(
-                FileInfo(location.bucket, location.key, size, last_updated, dependency)
-            )
+            files.append(FileInfo(location.bucket, location.key, size, last_updated, dependency))
     return files

@@ -14,6 +14,8 @@
 from __future__ import absolute_import
 import re
 from typing import Optional
+from sagemaker.jumpstart.curated_hub.types import S3ObjectLocation
+from sagemaker.s3_utils import parse_s3_url
 from sagemaker.session import Session
 from sagemaker.utils import aws_partition
 from sagemaker.jumpstart.types import (
@@ -129,6 +131,16 @@ def generate_default_hub_bucket_name(
     # TODO: Validate and fast fail
 
     return f"sagemaker-hubs-{region}-{account_id}"
+
+
+def create_s3_object_reference_from_uri(s3_uri: str) -> S3ObjectLocation:
+    """Utiity to help generate an S3 object reference"""
+    bucket, key = parse_s3_url(s3_uri)
+
+    return S3ObjectLocation(
+        bucket=bucket,
+        key=key,
+    )
 
 
 def create_hub_bucket_if_it_does_not_exist(

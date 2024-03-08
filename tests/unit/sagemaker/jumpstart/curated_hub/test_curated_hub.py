@@ -32,6 +32,7 @@ MODULE_PATH = "sagemaker.jumpstart.curated_hub.curated_hub.CuratedHub"
 
 FAKE_TIME = datetime.datetime(1997, 8, 14, 00, 00, 00)
 
+
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = Mock(name="boto_session")
@@ -80,7 +81,9 @@ def test_create_with_no_bucket_name(
     hub_search_keywords,
     tags,
 ):
-    storage_location = S3ObjectLocation("sagemaker-hubs-us-east-1-123456789123",f"{hub_name}-{FAKE_TIME.timestamp()}")
+    storage_location = S3ObjectLocation(
+        "sagemaker-hubs-us-east-1-123456789123", f"{hub_name}-{FAKE_TIME.timestamp()}"
+    )
     mock_generate_hub_storage_location.return_value = storage_location
     create_hub = {"HubArn": f"arn:aws:sagemaker:us-east-1:123456789123:hub/{hub_name}"}
     sagemaker_session.create_hub = Mock(return_value=create_hub)
@@ -133,7 +136,7 @@ def test_create_with_bucket_name(
     hub_search_keywords,
     tags,
 ):
-    storage_location = S3ObjectLocation(hub_bucket_name,f"{hub_name}-{FAKE_TIME.timestamp()}")
+    storage_location = S3ObjectLocation(hub_bucket_name, f"{hub_name}-{FAKE_TIME.timestamp()}")
     mock_generate_hub_storage_location.return_value = storage_location
     create_hub = {"HubArn": f"arn:aws:sagemaker:us-east-1:123456789123:hub/{hub_name}"}
     sagemaker_session.create_hub = Mock(return_value=create_hub)

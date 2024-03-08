@@ -18,7 +18,6 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from sagemaker.jumpstart.types import JumpStartDataHolderType, JumpStartModelSpecs
-from sagemaker.s3_utils import parse_s3_url
 
 
 @dataclass
@@ -38,16 +37,6 @@ class S3ObjectLocation:
     def get_uri(self) -> str:
         """Returns the s3 URI"""
         return f"s3://{self.bucket}/{self.key}"
-
-
-def create_s3_object_reference_from_uri(s3_uri: str) -> S3ObjectLocation:
-    """Utiity to help generate an S3 object reference"""
-    bucket, key = parse_s3_url(s3_uri)
-
-    return S3ObjectLocation(
-        bucket=bucket,
-        key=key,
-    )
 
 
 @dataclass
