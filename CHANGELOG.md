@@ -1,5 +1,40 @@
 # Changelog
 
+## v2.212.0 (2024-03-06)
+
+### Features
+
+ * Update SM Python SDK for PT 2.2.0 SM DLC
+
+### Bug Fixes and Other Changes
+
+ * Create custom tarfile extractall util to fix backward compatibility issue
+ * Upgrade smp to version 2.2
+ * Enhance model builder selection logic to include model size
+
+## v2.211.0 (2024-03-05)
+
+### Features
+
+ * pin dll version to support python3.11 to the sdk
+ * instance specific jumpstart host requirements
+ * Add TensorFlow 2.14 image configs
+ * Add AutoMLV2 support
+ * Support selective pipeline execution between function step and regular step
+ * Add new Triton DLC URIs
+
+### Bug Fixes and Other Changes
+
+ * Skip No Canvas regions for test_deploy_best_candidate
+ * make sure gpus are found in local_gpu run
+ * Bump Apache Airflow version to 2.8.2
+ * properly close sagemaker config file after loading config
+ * remove enable_network_isolation from the python doc
+
+### Documentation Changes
+
+ * Add doc for new feature processor APIs and classes
+
 ## v2.210.0 (2024-02-28)
 
 ### Features

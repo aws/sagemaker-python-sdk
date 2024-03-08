@@ -20,9 +20,11 @@ import os
 
 from pathlib import Path
 
+from accelerate.commands.estimate import estimate_command_parser, gather_data
 from sagemaker import Session
 from sagemaker.model import Model
 from sagemaker.base_predictor import PredictorBase
+from sagemaker.djl_inference import defaults
 from sagemaker.serializers import NumpySerializer, TorchTensorSerializer
 from sagemaker.deserializers import JSONDeserializer, TorchTensorDeserializer
 from sagemaker.serve.builder.schema_builder import SchemaBuilder
@@ -41,6 +43,7 @@ from sagemaker.serve.spec.inference_spec import InferenceSpec
 from sagemaker.serve.utils import task
 from sagemaker.serve.utils.exceptions import TaskNotFoundException
 from sagemaker.serve.utils.predictors import _get_local_mode_predictor
+from sagemaker.serve.utils.hardware_detector import _get_gpu_info, _get_gpu_info_fallback
 from sagemaker.serve.detector.image_detector import (
     auto_detect_container,
     _detect_framework_and_version,
@@ -66,6 +69,9 @@ supported_model_server = {
     ModelServer.TRITON,
     ModelServer.DJL_SERVING,
 }
+
+MIB_CONVERSION_FACTOR = 0.00000095367431640625
+MEMORY_BUFFER_MULTIPLIER = 1.2  # 20% buffer
 
 
 # pylint: disable=attribute-defined-outside-init
@@ -118,8 +124,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
             into a stream. All translations between the server and the client are handled
             automatically with the specified input and output.
         model (Optional[Union[object, str]): Model object (with ``predict`` method to perform
-            inference) or a HuggingFace/JumpStart Model ID. Either ``model`` or
-            ``inference_spec`` is required for the model builder to build the artifact.
+            inference) or a HuggingFace/JumpStart Model ID. Either ``model`` or ``inference_spec``
+            is required for the model builder to build the artifact.
         inference_spec (InferenceSpec): The inference spec file with your customized
             ``invoke`` and ``load`` functions.
         image_uri (Optional[str]): The container image uri (which is derived from a
@@ -139,6 +145,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
             to the model server). Possible values for this argument are
             ``TORCHSERVE``, ``MMS``, ``TENSORFLOW_SERVING``, ``DJL_SERVING``,
             ``TRITON``, and``TGI``.
+        model_metadata (Optional[Dict[str, Any]): Dictionary used to override the HuggingFace
+            model metadata. Currently ``HF_TASK`` is overridable.
     """
 
     model_path: Optional[str] = field(
@@ -234,6 +242,10 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
     )
     model_server: Optional[ModelServer] = field(
         default=None, metadata={"help": "Define the model server to deploy to."}
+    )
+    model_metadata: Optional[Dict[str, Any]] = field(
+        default=None,
+        metadata={"help": "Define the model metadata to override, currently supports `HF_TASK`"},
     )
 
     def _build_validations(self):
@@ -569,7 +581,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
     # It supports two modes of deployment
     # 1/ SageMaker Endpoint
     # 2/ Local launch with container
-    def build(
+    def build(  # pylint: disable=R0911
         self,
         mode: Type[Mode] = None,
         role_arn: str = None,
@@ -610,6 +622,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
         self._is_custom_image_uri = self.image_uri is not None
 
         if isinstance(self.model, str):
+            model_task = None
+            if self.model_metadata:
+                model_task = self.model_metadata.get("HF_TASK")
             if self._is_jumpstart_model_id():
                 return self._build_for_jumpstart()
             if self._is_djl():  # pylint: disable=R1705
@@ -619,12 +634,19 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
                     self.model, self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
                 )
 
-                model_task = hf_model_md.get("pipeline_tag")
-                if self.schema_builder is None and model_task:
+                if model_task is None:
+                    model_task = hf_model_md.get("pipeline_tag")
+                if self.schema_builder is None and model_task is not None:
                     self._schema_builder_init(model_task)
-
                 if model_task == "text-generation":  # pylint: disable=R1705
                     return self._build_for_tgi()
+                elif self._can_fit_on_single_gpu():
+                    return self._build_for_transformers()
+                elif (
+                    self.model in defaults.DEEPSPEED_RECOMMENDED_ARCHITECTURES
+                    or self.model in defaults.FASTER_TRANSFORMER_RECOMMENDED_ARCHITECTURES
+                ):
+                    return self._build_for_djl()
                 else:
                     return self._build_for_transformers()
 
@@ -696,3 +718,66 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
             self.schema_builder = SchemaBuilder(sample_inputs, sample_outputs)
         except ValueError:
             raise TaskNotFoundException(f"Schema builder for {model_task} could not be found.")
+
+    def _total_inference_model_size_mib(self):
+        """Calculates the model size from HF accelerate
+
+        This function gets the model size from accelerate. It also adds a
+        padding and converts to size MiB. When performing inference, expect
+        to add up to an additional 20% to the given model size as found by EleutherAI.
+        """
+        dtypes = self.env_vars.get("dtypes", "float32")
+        parser = estimate_command_parser()
+        args = parser.parse_args([self.model, "--dtypes", dtypes])
+
+        output = gather_data(
+            args
+        )  # "dtype", "Largest Layer", "Total Size Bytes", "Training using Adam"
+
+        if output is None:
+            raise ValueError(f"Could not get Model size for {self.model}")
+
+        total_memory_size_mib = MEMORY_BUFFER_MULTIPLIER * output[0][2] * MIB_CONVERSION_FACTOR
+        logger.info("Total memory size MIB: %s", total_memory_size_mib)
+        return total_memory_size_mib
+
+    def _can_fit_on_single_gpu(self) -> Type[bool]:
+        """Check if model can fit on a single GPU
+
+        If the size of the model is <= single gpu memory size, returns True else False
+        """
+        try:
+            single_gpu_size_mib = self._try_fetch_gpu_info()
+            if self._total_inference_model_size_mib() <= single_gpu_size_mib:
+                logger.info(
+                    "Total inference model size MIB %s, single GPU size for instance MIB %s",
+                    self._total_inference_model_size_mib(),
+                    single_gpu_size_mib,
+                )
+                return True
+            return False
+        except ValueError:
+            logger.info("Unable to determine single GPU size for instance %s", self.instance_type)
+            return False
+
+    def _try_fetch_gpu_info(self):
+        """Get GPU info
+
+        This function gets the GPU info or fallback to set the size of a single GPU
+        """
+        try:
+            gpu_info = _get_gpu_info(self.instance_type, self.sagemaker_session)
+            logger.info("GPU info %s for instance %s", gpu_info, self.instance_type)
+            return gpu_info[1] / gpu_info[0]
+        except ValueError:
+            pass
+        try:
+            gpu_fallback = _get_gpu_info_fallback(
+                self.instance_type, self.sagemaker_session.boto_region_name
+            )
+            logger.info("GPU fallback picked up %s", gpu_fallback)
+            return gpu_fallback[1] / gpu_fallback[0]
+        except ValueError:
+            raise ValueError(
+                f"Unable to determine single GPU size for instance: [{self.instance_type}]"
+            )
