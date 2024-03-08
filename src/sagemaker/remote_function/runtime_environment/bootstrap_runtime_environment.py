@@ -65,9 +65,6 @@ def main(sys_args=None):
         conda_env = job_conda_env or os.getenv("SAGEMAKER_JOB_CONDA_ENV")
 
         RuntimeEnvironmentManager()._validate_python_version(client_python_version, conda_env)
-        RuntimeEnvironmentManager()._validate_sagemaker_pysdk_version(
-            client_sagemaker_pysdk_version
-        )
 
         user = getpass.getuser()
         if user != "root":
@@ -88,6 +85,10 @@ def main(sys_args=None):
             _bootstrap_runtime_env_for_remote_function(
                 client_python_version, conda_env, dependency_settings
             )
+
+        RuntimeEnvironmentManager()._validate_sagemaker_pysdk_version(
+            client_sagemaker_pysdk_version
+        )
 
         exit_code = SUCCESS_EXIT_CODE
     except Exception as e:  # pylint: disable=broad-except
