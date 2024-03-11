@@ -319,7 +319,7 @@ class JumpStartModelsCache:
         key: JumpStartVersionedModelId,
         value: Optional[JumpStartVersionedModelId],  # pylint: disable=W0613
     ) -> JumpStartVersionedModelId:
-        """For open weights models, retrieve model manifest key for open source model.
+        """For open weights models, retrieve model manifest key for open weight model.
 
         Filters models list by supported versions.
         """

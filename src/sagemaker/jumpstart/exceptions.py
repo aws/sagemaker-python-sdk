@@ -71,7 +71,7 @@ def get_proprietary_model_subscription_msg(
 
     return (
         f"INFO: Using proprietary model '{model_id}'. "
-        f"Please make sure to subscribe to the model on {subscription_link}"
+        f"To subscribe to this model in AWS Marketplace, see {subscription_link}"
     )
 
 
@@ -215,7 +215,7 @@ class MarketplaceModelSubscriptionError(ValueError):
     """Exception raised when trying to deploy a JumpStart Marketplace model.
 
     A caller is required to subscribe to the Marketplace product in order to deploy.
-    This exception is raised when a caller tries to deploy a JumpStart Marketplace
+    This exception is raised when a caller tries to deploy a JumpStart Marketplace model
     but the caller is not subscribed to the model.
     """
 
@@ -227,8 +227,11 @@ class MarketplaceModelSubscriptionError(ValueError):
         if message:
             self.message = message
         else:
-            self.message = "You have not subscribed to this Marketplace model. "
+            self.message = (
+                "To use a proprietary JumpStart model, "
+                "you must first subscribe to the model in AWS Marketplace. "
+            )
             if model_subscription_link:
-                self.message += f"Please subscribe following this link {model_subscription_link}"
+                self.message += f"To subscribe to this model, see {model_subscription_link}"
 
         super().__init__(self.message)
