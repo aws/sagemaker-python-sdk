@@ -202,7 +202,7 @@ def test_unsupported_cpu_instance(
         ).fit()
 
 
-@pytest.mark.parametrize("unsupported_gpu_instance_class", UNSUPPORTED_GPU_INSTANCE_CLASSES)
+@pytest.mark.parametrize("unsupported_gpu_instance_class", sorted(UNSUPPORTED_GPU_INSTANCE_CLASSES))
 def test_unsupported_gpu_instance(
     unsupported_gpu_instance_class,
     huggingface_training_compiler_version,
@@ -366,7 +366,7 @@ def test_unsupported_distribution(
 @patch("sagemaker.utils.create_tar_file", MagicMock())
 @patch("sagemaker.estimator.name_from_base", return_value=JOB_NAME)
 @patch("time.time", return_value=TIME)
-@pytest.mark.parametrize("instance_class", SUPPORTED_GPU_INSTANCE_CLASSES)
+@pytest.mark.parametrize("instance_class", sorted(SUPPORTED_GPU_INSTANCE_CLASSES))
 def test_pytorchxla_distribution(
     time,
     name_from_base,
@@ -430,7 +430,7 @@ def test_pytorchxla_distribution(
 @patch("sagemaker.utils.create_tar_file", MagicMock())
 @patch("sagemaker.estimator.name_from_base", return_value=JOB_NAME)
 @patch("time.time", return_value=TIME)
-@pytest.mark.parametrize("instance_class", SUPPORTED_GPU_INSTANCE_CLASSES)
+@pytest.mark.parametrize("instance_class", sorted(SUPPORTED_GPU_INSTANCE_CLASSES))
 def test_default_compiler_config(
     time,
     name_from_base,
@@ -718,3 +718,32 @@ def test_register_hf_pytorch_model_auto_infer_framework(
     sagemaker_session.create_model_package_from_containers.assert_called_with(
         **expected_create_model_package_request
     )
+
+
+def test_accept_user_defined_environment_variables(
+    sagemaker_session,
+    huggingface_training_compiler_version,
+    huggingface_training_compiler_pytorch_version,
+    huggingface_training_compiler_pytorch_py_version,
+):
+    program = "inference.py"
+    directory = "/opt/ml/model/code"
+
+    hf_model = HuggingFaceModel(
+        model_data="s3://some/data.tar.gz",
+        role=ROLE,
+        transformers_version=huggingface_training_compiler_version,
+        pytorch_version=huggingface_training_compiler_pytorch_version,
+        py_version=huggingface_training_compiler_pytorch_py_version,
+        sagemaker_session=sagemaker_session,
+        env={
+            "SAGEMAKER_PROGRAM": program,
+            "SAGEMAKER_SUBMIT_DIRECTORY": directory,
+        },
+        image_uri="fakeimage",
+    )
+
+    container_env = hf_model.prepare_container_def("ml.m4.xlarge")["Environment"]
+
+    assert container_env["SAGEMAKER_PROGRAM"] == program
+    assert container_env["SAGEMAKER_SUBMIT_DIRECTORY"] == directory
