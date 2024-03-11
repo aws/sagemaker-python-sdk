@@ -269,7 +269,7 @@ def test_main_failure_remote_job_with_root_user(
 
     change_dir_permission.assert_not_called()
     validate_python.assert_called_once_with(TEST_PYTHON_VERSION, TEST_JOB_CONDA_ENV)
-    validate_sagemaker.assert_called_once_with(TEST_SAGEMAKER_PYSDK_VERSION)
+    validate_sagemaker.assert_not_called()
     run_pre_exec_script.assert_not_called()
     bootstrap_runtime.assert_called()
     write_failure.assert_called_with(str(runtime_err))
@@ -317,7 +317,7 @@ def test_main_failure_pipeline_step_with_root_user(
 
     change_dir_permission.assert_not_called()
     validate_python.assert_called_once_with(TEST_PYTHON_VERSION, TEST_JOB_CONDA_ENV)
-    validate_sagemaker.assert_called_once_with(TEST_SAGEMAKER_PYSDK_VERSION)
+    validate_sagemaker.assert_not_called()
     run_pre_exec_script.assert_not_called()
     bootstrap_runtime.assert_called()
     write_failure.assert_called_with(str(runtime_err))
