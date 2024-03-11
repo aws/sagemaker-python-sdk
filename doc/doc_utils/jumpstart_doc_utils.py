@@ -208,19 +208,18 @@ def get_model_source(url):
 
 
 def create_proprietary_model_table():
-    marketpkace_content_intro = """
-    .. list-table:: Available Proprietary Models
-       :widths: 50 20 20 20 20
-       :header-rows: 1
-       :class: datatable
-
-       * - Model ID
-       - Fine Tunable?
-       - Supported Version
-       - Min SDK Version
-       - Source
-
-    """
+    proprietary_content_intro = []
+    proprietary_content_intro.append("\n")
+    proprietary_content_intro.append(".. list-table:: Available Models\n")
+    proprietary_content_intro.append("   :widths: 50 20 20 20 20\n")
+    proprietary_content_intro.append("   :header-rows: 1\n")
+    proprietary_content_intro.append("   :class: datatable\n")
+    proprietary_content_intro.append("\n")
+    proprietary_content_intro.append("   * - Model ID\n")
+    proprietary_content_intro.append("     - Fine Tunable?\n")
+    proprietary_content_intro.append("     - Supported Version\n")
+    proprietary_content_intro.append("     - Min SDK Version\n")
+    proprietary_content_intro.append("     - Source\n")
 
     sdk_manifest = get_proprietary_sdk_manifest()
     sdk_manifest_top_versions_for_models = {}
@@ -244,7 +243,7 @@ def create_proprietary_model_table():
         proprietary_content_entries.append(
             "     - `{} <{}>`__ |external-link|\n".format("Source", model_spec.get("url"))
         )
-    return [marketpkace_content_intro] + proprietary_content_entries + ["\n"]
+    return proprietary_content_intro + proprietary_content_entries + ["\n"]
 
 
 def create_jumpstart_model_table():
