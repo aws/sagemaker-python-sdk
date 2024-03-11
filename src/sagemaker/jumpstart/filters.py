@@ -52,6 +52,13 @@ class SpecialSupportedFilterKeys(str, Enum):
     MODEL_TYPE = "model_type"
 
 
+class ProprietaryModelFilterIdentifiers(str, Enum):
+    """Enum class for proprietary model filter keys."""
+
+    PROPRIETARY = "proprietary"
+    MARKETPLACE = "marketplace"
+
+
 FILTER_OPERATOR_STRING_MAPPINGS = {
     FilterOperators.EQUALS: ["===", "==", "equals", "is"],
     FilterOperators.NOT_EQUALS: ["!==", "!=", "not equals", "is not"],

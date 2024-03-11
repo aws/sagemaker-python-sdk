@@ -29,6 +29,7 @@ from sagemaker.jumpstart.constants import (
 from sagemaker.jumpstart.enums import JumpStartScriptScope, JumpStartModelType
 from sagemaker.jumpstart.filters import (
     SPECIAL_SUPPORTED_FILTER_KEYS,
+    ProprietaryModelFilterIdentifiers,
     BooleanValues,
     Identity,
     SpecialSupportedFilterKeys,
@@ -227,7 +228,6 @@ def list_jumpstart_scripts(  # pylint: disable=redefined-builtin
         sagemaker_session (sagemaker.session.Session): Optional. The SageMaker Session to
             use to perform the model search. (Default: DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     """
-
     if (isinstance(filter, Constant) and filter.resolved_value == BooleanValues.TRUE) or (
         isinstance(filter, str) and filter.lower() == BooleanValues.TRUE.lower()
     ):
@@ -360,8 +360,7 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
         key = model_filter.key
         all_keys.add(key)
         if model_filter.key == SpecialSupportedFilterKeys.MODEL_TYPE and model_filter.value in {
-            "marketplace",
-            "proprietary",
+            identifier.value for identifier in ProprietaryModelFilterIdentifiers
         }:
             model_filter.set_value(JumpStartModelType.PROPRIETARY.value)
         model_filters.add(model_filter)

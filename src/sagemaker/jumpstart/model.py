@@ -631,7 +631,7 @@ class JumpStartModel(Model):
             and endpoint_type == EndpointType.INFERENCE_COMPONENT_BASED
         ):
             raise ValueError(
-                "EndpointType.INFERENCE_COMPONENT_BASED is not supported for Proprietary models."
+                f"{EndpointType.INFERENCE_COMPONENT_BASED} is not supported for Proprietary models."
             )
 
         try:

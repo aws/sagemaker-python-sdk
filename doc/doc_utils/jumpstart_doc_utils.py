@@ -244,7 +244,7 @@ def create_proprietary_model_table():
         proprietary_content_entries.append(
             "     - `{} <{}>`__ |external-link|\n".format("Source", model_spec.get("url"))
         )
-    return marketpkace_content_intro + proprietary_content_entries + ["\n"]
+    return [marketpkace_content_intro] + proprietary_content_entries + ["\n"]
 
 
 def create_jumpstart_model_table():
