@@ -223,22 +223,21 @@ def test_create_sagemaker_model_include_tags(sagemaker_session):
     )
 
 
-def test_model_package_model_data_source_not_supported(sagemaker_session):
-    with pytest.raises(
-        ValueError, match="Creating ModelPackage with ModelDataSource is currently not supported"
-    ):
-        ModelPackage(
-            role="role",
-            model_package_arn="my-model-package",
-            model_data={
-                "S3DataSource": {
-                    "S3Uri": "s3://bucket/model/prefix/",
-                    "S3DataType": "S3Prefix",
-                    "CompressionType": "None",
-                }
-            },
-            sagemaker_session=sagemaker_session,
-        )
+def test_model_package_model_data_source_supported(sagemaker_session):
+    model_data_source = {
+        "S3DataSource": {
+            "S3Uri": "s3://bucket/model/prefix/",
+            "S3DataType": "S3Prefix",
+            "CompressionType": "None",
+        }
+    }
+    model_package = ModelPackage(
+        role="role",
+        model_package_arn="my-model-package",
+        model_data=model_data_source,
+        sagemaker_session=sagemaker_session,
+    )
+    assert model_package.model_data == model_package.model_data
 
 
 @patch("sagemaker.utils.name_from_base")
@@ -398,4 +397,48 @@ def test_add_inference_specification(sagemaker_session):
                 "Name": "Inference",
             }
         ],
+    )
+
+
+def test_update_inference_specification(sagemaker_session):
+    model_package = ModelPackage(
+        role="role",
+        model_package_arn=MODEL_PACKAGE_VERSIONED_ARN,
+        sagemaker_session=sagemaker_session,
+    )
+
+    image_uris = ["image_uri"]
+
+    containers = [{"Image": "image_uri"}]
+
+    try:
+        model_package.update_inference_specification(image_uris=image_uris, containers=containers)
+    except ValueError as ve:
+        assert "Should have either containers or image_uris for inference." in str(ve)
+
+    try:
+        model_package.update_inference_specification()
+    except ValueError as ve:
+        assert "Should have either containers or image_uris for inference." in str(ve)
+
+    model_package.update_inference_specification(image_uris=image_uris)
+
+    sagemaker_session.sagemaker_client.update_model_package.assert_called_with(
+        ModelPackageArn=MODEL_PACKAGE_VERSIONED_ARN,
+        InferenceSpecification={
+            "Containers": [{"Image": "image_uri"}],
+        },
+    )
+
+
+def test_update_source_uri(sagemaker_session):
+    source_uri = "dummy_source_uri"
+    model_package = ModelPackage(
+        role="role",
+        model_package_arn=MODEL_PACKAGE_VERSIONED_ARN,
+        sagemaker_session=sagemaker_session,
+    )
+    model_package.update_source_uri(source_uri=source_uri)
+    sagemaker_session.sagemaker_client.update_model_package.assert_called_with(
+        ModelPackageArn=MODEL_PACKAGE_VERSIONED_ARN, SourceUri=source_uri
     )
