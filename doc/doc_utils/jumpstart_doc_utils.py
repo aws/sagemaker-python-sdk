@@ -208,12 +208,12 @@ def get_model_source(url):
 
 
 def create_proprietary_model_table():
-    marketpkace_content_intro = f"""
+    marketpkace_content_intro = """
     .. list-table:: Available Proprietary Models
        :widths: 50 20 20 20 20
        :header-rows: 1
        :class: datatable
-    
+
        * - Model ID
        - Fine Tunable?
        - Supported Version

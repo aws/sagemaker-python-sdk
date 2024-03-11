@@ -321,7 +321,8 @@ class JumpStartModelsCache:
     ) -> JumpStartVersionedModelId:
         """For open weights models, retrieve model manifest key for open source model.
 
-        Filters models list by supported versions."""
+        Filters models list by supported versions.
+        """
         return self._model_id_retrieval_function(
             key, value, model_type=JumpStartModelType.OPEN_WEIGHTS
         )
@@ -333,7 +334,8 @@ class JumpStartModelsCache:
     ) -> JumpStartVersionedModelId:
         """For proprietary models, retrieve model manifest key for proprietary model.
 
-        Filters models list by supported versions."""
+        Filters models list by supported versions.
+        """
         return self._model_id_retrieval_function(
             key, value, model_type=JumpStartModelType.PROPRIETARY
         )
