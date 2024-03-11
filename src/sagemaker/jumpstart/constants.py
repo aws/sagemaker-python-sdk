@@ -219,12 +219,12 @@ DESERIALIZER_TYPE_TO_CLASS_MAP: Dict[DeserializerType, Type[BaseDeserializer]] =
 }
 
 MODEL_TYPE_TO_MANIFEST_MAP: Dict[Type[JumpStartModelType], Type[JumpStartS3FileType]] = {
-    JumpStartModelType.OPEN_WEIGHT: JumpStartS3FileType.OPEN_WEIGHT_MANIFEST,
+    JumpStartModelType.OPEN_WEIGHTS: JumpStartS3FileType.OPEN_WEIGHT_MANIFEST,
     JumpStartModelType.PROPRIETARY: JumpStartS3FileType.PROPRIETARY_MANIFEST,
 }
 
 MODEL_TYPE_TO_SPECS_MAP: Dict[Type[JumpStartModelType], Type[JumpStartS3FileType]] = {
-    JumpStartModelType.OPEN_WEIGHT: JumpStartS3FileType.OPEN_WEIGHT_SPECS,
+    JumpStartModelType.OPEN_WEIGHTS: JumpStartS3FileType.OPEN_WEIGHT_SPECS,
     JumpStartModelType.PROPRIETARY: JumpStartS3FileType.PROPRIETARY_SPECS,
 }
 

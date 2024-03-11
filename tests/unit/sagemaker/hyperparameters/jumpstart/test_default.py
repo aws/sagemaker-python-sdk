@@ -34,7 +34,7 @@ def test_jumpstart_default_hyperparameters(
 ):
 
     patched_get_model_specs.side_effect = get_spec_from_base_spec
-    patched_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
+    patched_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
     model_id = "pytorch-eqa-bert-base-cased"
     region = "us-west-2"
@@ -52,7 +52,7 @@ def test_jumpstart_default_hyperparameters(
         model_id=model_id,
         version="*",
         s3_client=mock_client,
-        model_type=JumpStartModelType.OPEN_WEIGHT,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
     )
 
     patched_get_model_specs.reset_mock()
@@ -70,7 +70,7 @@ def test_jumpstart_default_hyperparameters(
         model_id=model_id,
         version="1.*",
         s3_client=mock_client,
-        model_type=JumpStartModelType.OPEN_WEIGHT,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
     )
 
     patched_get_model_specs.reset_mock()
@@ -96,7 +96,7 @@ def test_jumpstart_default_hyperparameters(
         model_id=model_id,
         version="1.*",
         s3_client=mock_client,
-        model_type=JumpStartModelType.OPEN_WEIGHT,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
     )
 
     patched_get_model_specs.reset_mock()

@@ -36,7 +36,7 @@ def _retrieve_example_payloads(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHT,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> Optional[Dict[str, JumpStartSerializablePayload]]:
     """Returns example payloads.
 

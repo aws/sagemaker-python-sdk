@@ -84,7 +84,7 @@ class EstimatorTest(unittest.TestCase):
         mock_jumpstart_model_factory_logger: mock.Mock,
         mock_jumpstart_estimator_factory_logger: mock.Mock,
     ):
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
         mock_sagemaker_timestamp.return_value = "9876"
 
@@ -94,7 +94,7 @@ class EstimatorTest(unittest.TestCase):
 
         mock_get_model_specs.side_effect = get_special_model_spec
 
-        mock_get_model_type.return_value = JumpStartModelType.OPEN_WEIGHT
+        mock_get_model_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
         mock_session_estimator.return_value = sagemaker_session
         mock_session_model.return_value = sagemaker_session
@@ -207,7 +207,7 @@ class EstimatorTest(unittest.TestCase):
     ):
         mock_estimator_deploy.return_value = default_predictor
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
         model_id, _ = "js-trainable-model-prepacked", "*"
 
@@ -310,7 +310,7 @@ class EstimatorTest(unittest.TestCase):
 
         mock_timestamp.return_value = "8675309"
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
         model_id, _ = "js-gated-artifact-trainable-model", "*"
 
@@ -448,7 +448,7 @@ class EstimatorTest(unittest.TestCase):
         mock_get_jumpstart_gated_content_bucket.return_value = "top-secret-private-models-bucket"
         mock_timestamp.return_value = "8675309"
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
         model_id, _ = "js-gated-artifact-non-model-package-trainable-model", "*"
 
@@ -601,7 +601,7 @@ class EstimatorTest(unittest.TestCase):
         mock_session_estimator.return_value = sagemaker_session
         mock_session_model.return_value = sagemaker_session
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
         with pytest.raises(ValueError) as e:
             JumpStartEstimator(model_id=model_id, region="eu-north-1")
@@ -628,7 +628,7 @@ class EstimatorTest(unittest.TestCase):
         mock_validate_model_id_and_get_type: mock.Mock,
     ):
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
         model_id, _ = "deprecated_model", "*"
 
@@ -661,7 +661,7 @@ class EstimatorTest(unittest.TestCase):
         mock_get_model_specs: mock.Mock,
         mock_validate_model_id_and_get_type: mock.Mock,
     ):
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
         model_id, _ = "vulnerable_model", "*"
 
         mock_get_model_specs.side_effect = get_special_model_spec
@@ -810,7 +810,7 @@ class EstimatorTest(unittest.TestCase):
 
         mock_estimator_deploy.return_value = default_predictor
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
         model_id, model_version = "js-trainable-model", "*"
 
@@ -921,7 +921,7 @@ class EstimatorTest(unittest.TestCase):
         mock_validate_model_id_and_get_type: mock.Mock,
     ):
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
         model_id, _ = "js-trainable-model-prepacked", "*"
 
@@ -960,7 +960,7 @@ class EstimatorTest(unittest.TestCase):
         mock_validate_model_id_and_get_type: mock.Mock,
     ):
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
         model_id, _ = "js-trainable-model-prepacked", "*"
 
@@ -1004,7 +1004,7 @@ class EstimatorTest(unittest.TestCase):
         mock_attach: mock.Mock,
     ):
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
         get_model_id_version_from_training_job.return_value = (
             "js-trainable-model-prepacked",
@@ -1047,7 +1047,7 @@ class EstimatorTest(unittest.TestCase):
         mock_attach: mock.Mock,
     ):
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
         get_model_id_version_from_training_job.side_effect = ValueError()
 
@@ -1126,7 +1126,7 @@ class EstimatorTest(unittest.TestCase):
         mock_init: mock.Mock,
         mock_get_init_kwargs: mock.Mock,
     ):
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
         JumpStartEstimator(model_id="valid_model_id")
 
         mock_validate_model_id_and_get_type.return_value = False
@@ -1158,7 +1158,7 @@ class EstimatorTest(unittest.TestCase):
 
         mock_get_default_predictor.return_value = default_predictor_with_presets
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
         model_id, _ = "js-trainable-model-prepacked", "*"
 
@@ -1217,7 +1217,7 @@ class EstimatorTest(unittest.TestCase):
 
         mock_get_default_predictor.return_value = default_predictor_with_presets
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
         model_id, _ = "js-trainable-model-prepacked", "*"
 
@@ -1267,7 +1267,7 @@ class EstimatorTest(unittest.TestCase):
 
         mock_get_default_predictor.return_value = default_predictor_with_presets
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
         model_id, _ = "js-trainable-model-prepacked", "*"
 
@@ -1316,7 +1316,7 @@ class EstimatorTest(unittest.TestCase):
         mock_supports_incremental_training: mock.Mock,
         mock_validate_model_id_and_get_type: mock.Mock,
     ):
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
         mock_estimator_deploy.return_value = default_predictor
 
@@ -1370,7 +1370,7 @@ class EstimatorTest(unittest.TestCase):
         mock_supports_incremental_training: mock.Mock,
         mock_validate_model_id_and_get_type: mock.Mock,
     ):
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
         mock_estimator_deploy.return_value = default_predictor
 
@@ -1419,7 +1419,7 @@ class EstimatorTest(unittest.TestCase):
         mock_validate_model_id_and_get_type: mock.Mock,
         mock_sagemaker_timestamp: mock.Mock,
     ):
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
         mock_sagemaker_timestamp.return_value = "3456"
 
@@ -1480,7 +1480,7 @@ class EstimatorTest(unittest.TestCase):
         mock_validate_model_id_and_get_type: mock.Mock,
         mock_sagemaker_timestamp: mock.Mock,
     ):
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
         mock_sagemaker_timestamp.return_value = "3456"
 
@@ -1560,7 +1560,7 @@ class EstimatorTest(unittest.TestCase):
         mock_validate_model_id_and_get_type: mock.Mock,
         mock_sagemaker_timestamp: mock.Mock,
     ):
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
         mock_sagemaker_timestamp.return_value = "3456"
 
@@ -1711,7 +1711,7 @@ class EstimatorTest(unittest.TestCase):
         mock_validate_model_id_and_get_type: mock.Mock,
     ):
 
-        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
         model_id, _ = "model-artifact-variant-model", "*"
 

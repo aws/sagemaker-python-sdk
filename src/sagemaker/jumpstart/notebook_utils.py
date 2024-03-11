@@ -139,7 +139,7 @@ def extract_framework_task_model(model_id: str) -> Tuple[str, str, str]:
     return framework, task, name
 
 
-def extract_model_type(spec_key: str) -> str:
+def extract_model_type_filter_representation(spec_key: str) -> str:
     """Parses model spec key, determine if the model is proprietary or open weight.
 
     Args:
@@ -150,7 +150,7 @@ def extract_model_type(spec_key: str) -> str:
     if model_spec_prefix == PROPRIETARY_MODEL_SPEC_PREFIX:
         return JumpStartModelType.PROPRIETARY.value
 
-    return JumpStartModelType.OPEN_WEIGHT.value
+    return JumpStartModelType.OPEN_WEIGHTS.value
 
 
 def list_jumpstart_tasks(  # pylint: disable=redefined-builtin
@@ -342,7 +342,7 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
     open_weight_manifest_list = accessors.JumpStartModelsAccessor._get_manifest(
         region=region,
         s3_client=sagemaker_session.s3_client,
-        model_type=JumpStartModelType.OPEN_WEIGHT,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
     )
     models_manifest_list = open_weight_manifest_list + prop_models_manifest_list
 
@@ -359,10 +359,10 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
         model_filter = operator.unresolved_value
         key = model_filter.key
         all_keys.add(key)
-        if model_filter.key == SpecialSupportedFilterKeys.MODEL_TYPE and model_filter.value in [
+        if model_filter.key == SpecialSupportedFilterKeys.MODEL_TYPE and model_filter.value in {
             "marketplace",
             "proprietary",
-        ]:
+        }:
             model_filter.set_value(JumpStartModelType.PROPRIETARY.value)
         model_filters.add(model_filter)
 
@@ -403,7 +403,7 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
         if is_model_type_filter:
             manifest_specs_cached_values[
                 SpecialSupportedFilterKeys.MODEL_TYPE
-            ] = extract_model_type(model_manifest.spec_key)
+            ] = extract_model_type_filter_representation(model_manifest.spec_key)
 
         if Version(model_manifest.min_version) > Version(get_sagemaker_version()):
             return None

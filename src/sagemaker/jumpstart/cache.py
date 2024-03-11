@@ -125,7 +125,7 @@ class JumpStartModelsCache:
         self._manifest_file_s3_key = manifest_file_s3_key
         self._proprietary_manifest_s3_key = proprietary_manifest_s3_key
         self._manifest_file_s3_map = {
-            JumpStartModelType.OPEN_WEIGHT: self._manifest_file_s3_key,
+            JumpStartModelType.OPEN_WEIGHTS: self._manifest_file_s3_key,
             JumpStartModelType.PROPRIETARY: self._proprietary_manifest_s3_key,
         }
         self.s3_bucket_name = (
@@ -166,9 +166,7 @@ class JumpStartModelsCache:
         property_name = file_mapping.get(file_type)
         if not property_name:
             raise ValueError(
-                f"Bad value when setting manifest '{file_type}': must be in"
-                f" {JumpStartS3FileType.OPEN_WEIGHT_MANIFEST}"
-                f" {JumpStartS3FileType.PROPRIETARY_MANIFEST}"
+                self._file_type_error_msg(file_type, manifest_only=True)
             )
         if key != property_name:
             setattr(self, property_name, key)
@@ -183,9 +181,7 @@ class JumpStartModelsCache:
         if file_type == JumpStartS3FileType.PROPRIETARY_MANIFEST:
             return self._proprietary_manifest_s3_key
         raise ValueError(
-            f"Bad value when getting manifest '{file_type}':"
-            f"must be in {JumpStartS3FileType.OPEN_WEIGHT_MANIFEST}"
-            f"{JumpStartS3FileType.PROPRIETARY_MANIFEST}"
+            self._file_type_error_msg(file_type, manifest_only=True)
         )
 
     def set_s3_bucket_name(self, s3_bucket_name: str) -> None:
@@ -198,11 +194,24 @@ class JumpStartModelsCache:
         """Return bucket used for cache."""
         return self.s3_bucket_name
 
+    def _file_type_error_msg(self, file_type: str, manifest_only: bool = False) -> str:
+        """Return error message for bad model type."""
+        if manifest_only:
+            return (
+                f"Bad value when getting manifest '{file_type}': "
+                f"must be in {JumpStartS3FileType.OPEN_WEIGHT_MANIFEST} "
+                f"{JumpStartS3FileType.PROPRIETARY_MANIFEST}."
+            )
+        return (
+            f"Bad value when getting manifest '{file_type}': "
+            f"must be in '{' '.join([e.name for e in JumpStartS3FileType])}'."
+        )
+
     def _model_id_retrieval_function(
         self,
         key: JumpStartVersionedModelId,
         value: Optional[JumpStartVersionedModelId],  # pylint: disable=W0613
-        model_type: JumpStartModelType
+        model_type: JumpStartModelType,
     ) -> JumpStartVersionedModelId:
         """Return model ID and version in manifest that matches semantic version/id.
 
@@ -278,7 +287,7 @@ class JumpStartModelsCache:
         )
 
         other_model_id_version = None
-        if model_type == JumpStartModelType.OPEN_WEIGHT:
+        if model_type == JumpStartModelType.OPEN_WEIGHTS:
             other_model_id_version = self._select_version(
                 model_id, "*", versions_incompatible_with_sagemaker, model_type
             )  # all versions here are incompatible with sagemaker
@@ -310,9 +319,11 @@ class JumpStartModelsCache:
         key: JumpStartVersionedModelId,
         value: Optional[JumpStartVersionedModelId],  # pylint: disable=W0613
     ) -> JumpStartVersionedModelId:
-        """Retrieve model manifest key for open source model, by filtering supported versions."""
+        """For open weights models, retrieve model manifest key for open source model.
+
+        Filters models list by supported versions."""
         return self._model_id_retrieval_function(
-            key, value, model_type=JumpStartModelType.OPEN_WEIGHT
+            key, value, model_type=JumpStartModelType.OPEN_WEIGHTS
         )
 
     def _get_proprietary_manifest_key_from_model_id(
@@ -320,7 +331,9 @@ class JumpStartModelsCache:
         key: JumpStartVersionedModelId,
         value: Optional[JumpStartVersionedModelId],  # pylint: disable=W0613
     ) -> JumpStartVersionedModelId:
-        """Retrieve model manifest key for proprietary model, by filtering supported versions."""
+        """For proprietary models, retrieve model manifest key for proprietary model.
+
+        Filters models list by supported versions."""
         return self._model_id_retrieval_function(
             key, value, model_type=JumpStartModelType.PROPRIETARY
         )
@@ -423,14 +436,12 @@ class JumpStartModelsCache:
             utils.emit_logs_based_on_model_specs(model_specs, self.get_region(), self._s3_client)
             return JumpStartCachedS3ContentValue(formatted_content=model_specs)
         raise ValueError(
-            f"Bad value for key '{key}': must be in"
-            f"{JumpStartS3FileType.OPEN_WEIGHT_MANIFEST, JumpStartS3FileType.OPEN_WEIGHT_SPECS}"
-            f"{JumpStartS3FileType.PROPRIETARY_SPECS, JumpStartS3FileType.PROPRIETARY_MANIFEST}"
+            self._file_type_error_msg(file_type)
         )
 
     def get_manifest(
         self,
-        model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHT,
+        model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
     ) -> List[JumpStartModelHeader]:
         """Return entire JumpStart models manifest."""
         manifest_dict = self._s3_cache.get(
@@ -444,7 +455,7 @@ class JumpStartModelsCache:
         self,
         model_id: str,
         semantic_version_str: str,
-        model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHT,
+        model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
     ) -> JumpStartModelHeader:
         """Return header for a given JumpStart model ID and semantic version.
 
@@ -463,7 +474,7 @@ class JumpStartModelsCache:
         model_id: str,
         version_str: str,
         available_versions: List[str],
-        model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHT,
+        model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
     ) -> Optional[str]:
         """Perform semantic version search on available versions.
 
@@ -501,7 +512,7 @@ class JumpStartModelsCache:
         model_id: str,
         semantic_version_str: str,
         attempt: int = 0,
-        model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHT
+        model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS
     ) -> JumpStartModelHeader:
         """Lower-level function to return header.
 
@@ -513,7 +524,7 @@ class JumpStartModelsCache:
                 header.
             attempt (int): attempt number at retrieving a header.
         """
-        if model_type == JumpStartModelType.OPEN_WEIGHT:
+        if model_type == JumpStartModelType.OPEN_WEIGHTS:
             versioned_model_id = self._open_weight_model_id_manifest_key_cache.get(
                 JumpStartVersionedModelId(model_id, semantic_version_str)
             )[0]
@@ -540,7 +551,7 @@ class JumpStartModelsCache:
         self,
         model_id: str,
         version_str: str,
-        model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHT
+        model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS
     ) -> JumpStartModelSpecs:
         """Return specs for a given JumpStart model ID and semantic version.
 
@@ -548,6 +559,7 @@ class JumpStartModelsCache:
             model_id (str): model ID for which to get specs.
             semantic_version_str (str): The semantic version for which to get
                 specs.
+            model_type (JumpStartModelType): The type of the model of interest.
         """
         header = self.get_header(model_id, version_str, model_type)
         spec_key = header.spec_key

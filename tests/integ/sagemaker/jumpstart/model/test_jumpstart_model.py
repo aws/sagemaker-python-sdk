@@ -273,7 +273,7 @@ def test_proprietary_jumpstart_model(setup):
 
     model = JumpStartModel(
         model_id=model_id,
-        model_version="*",
+        model_version="2.0.004",
         role=get_sm_session().get_caller_identity_arn(),
         sagemaker_session=get_sm_session(),
     )

@@ -424,7 +424,7 @@ class ListJumpStartModels(TestCase):
         patched_get_manifest.assert_called_with(
             region="some-region",
             s3_client=DEFAULT_JUMPSTART_SAGEMAKER_SESSION.s3_client,
-            model_type=JumpStartModelType.OPEN_WEIGHT,
+            model_type=JumpStartModelType.OPEN_WEIGHTS,
         )
 
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
@@ -641,7 +641,7 @@ class ListJumpStartModels(TestCase):
 
         assert list_jumpstart_models("model_type == proprietary") == all_prop_model_ids
         assert list_jumpstart_models("model_type == marketplace") == all_prop_model_ids
-        assert list_jumpstart_models("model_type == open_weight") == all_open_weight_model_ids
+        assert list_jumpstart_models("model_type == open_weights") == all_open_weight_model_ids
 
         assert list_jumpstart_models(list_versions=False) == sorted(
             all_prop_model_ids + all_open_weight_model_ids
@@ -720,7 +720,7 @@ def test_get_model_url(
 ):
 
     patched_get_model_specs.side_effect = get_prototype_model_spec
-    patched_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
+    patched_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
     patched_get_manifest.side_effect = lambda region, *args, **kwargs: get_prototype_manifest(
         region
     )
@@ -749,5 +749,5 @@ def test_get_model_url(
         version=version,
         region="us-west-2",
         s3_client=DEFAULT_JUMPSTART_SAGEMAKER_SESSION.s3_client,
-        model_type=JumpStartModelType.OPEN_WEIGHT,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
     )

@@ -200,7 +200,7 @@ class JumpStartModelsAccessor(object):
     def _get_manifest(
         region: str = JUMPSTART_DEFAULT_REGION_NAME,
         s3_client: Optional[boto3.client] = None,
-        model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHT,
+        model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
     ) -> List[JumpStartModelHeader]:
         """Return entire JumpStart models manifest.
 
@@ -229,7 +229,7 @@ class JumpStartModelsAccessor(object):
         region: str,
         model_id: str,
         version: str,
-        model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHT,
+        model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
     ) -> JumpStartModelHeader:
         """Returns model header from JumpStart models cache.
 
@@ -254,7 +254,7 @@ class JumpStartModelsAccessor(object):
         model_id: str,
         version: str,
         s3_client: Optional[boto3.client] = None,
-        model_type=JumpStartModelType.OPEN_WEIGHT,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
     ) -> JumpStartModelSpecs:
         """Returns model specs from JumpStart models cache.
 

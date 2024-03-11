@@ -21,12 +21,13 @@ from sagemaker import payloads
 from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
 from sagemaker.base_deserializers import BaseDeserializer
 from sagemaker.base_serializers import BaseSerializer
+from sagemaker.enums import EndpointType
 from sagemaker.explainer.explainer_config import ExplainerConfig
 from sagemaker.jumpstart.accessors import JumpStartModelsAccessor
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.exceptions import (
     INVALID_MODEL_ID_ERROR_MSG,
-    MarketplaceModelSubscriptionError,
+    get_proprietary_model_subscription_error,
     get_proprietary_model_subscription_msg,
 )
 from sagemaker.jumpstart.factory.model import (
@@ -56,7 +57,6 @@ from sagemaker.model_metrics import ModelMetrics
 from sagemaker.metadata_properties import MetadataProperties
 from sagemaker.drift_check_baselines import DriftCheckBaselines
 from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
-from sagemaker.enums import EndpointType
 
 
 class JumpStartModel(Model):
@@ -347,7 +347,7 @@ class JumpStartModel(Model):
         self.model_package_arn = model_init_kwargs.model_package_arn
 
     def log_subscription_warning(self) -> None:
-        """Logs customer facing message for subscribe to the proprietary model."""
+        """Log message prompting the customer to subscribe to the proprietary model."""
         subscription_link = verify_model_region_and_return_specs(
             region=self.region,
             model_id=self.model_id,
@@ -626,21 +626,26 @@ class JumpStartModel(Model):
             endpoint_type=endpoint_type,
             model_type=self.model_type,
         )
+        if (
+            self.model_type == JumpStartModelType.PROPRIETARY
+            and endpoint_type == EndpointType.INFERENCE_COMPONENT_BASED
+        ):
+            raise ValueError(
+                "EndpointType.INFERENCE_COMPONENT_BASED is not supported for Proprietary models."
+            )
+
         try:
             predictor = super(JumpStartModel, self).deploy(**deploy_kwargs.to_kwargs_dict())
         except ClientError as e:
-            error_code = e.response["Error"]["Code"]
-            error_message = e.response["Error"]["Message"]
-            if error_code == "ValidationException" and "not subscribed" in error_message:
-                subscription_link = verify_model_region_and_return_specs(
-                    region=self.region,
-                    model_id=self.model_id,
-                    version=self.model_version,
-                    model_type=self.model_type,
-                    scope=JumpStartScriptScope.INFERENCE,
-                    sagemaker_session=self.sagemaker_session,
-                ).model_subscription_link
-                raise MarketplaceModelSubscriptionError(subscription_link)
+            subscription_link = verify_model_region_and_return_specs(
+                region=self.region,
+                model_id=self.model_id,
+                version=self.model_version,
+                model_type=self.model_type,
+                scope=JumpStartScriptScope.INFERENCE,
+                sagemaker_session=self.sagemaker_session,
+            ).model_subscription_link
+            get_proprietary_model_subscription_error(e, subscription_link)
             raise
 
         # If no predictor class was passed, add defaults to predictor

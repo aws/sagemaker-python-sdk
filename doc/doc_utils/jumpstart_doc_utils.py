@@ -155,25 +155,26 @@ MODALITY_MAP = {
 }
 
 
-def get_jumpstart_sdk_manifest():
-    url = "{}/{}".format(JUMPSTART_BUCKET_BASE_URL, SDK_MANIFEST_FILE)
+def get_public_s3_json_object(url):
     with request.urlopen(url) as f:
         models_manifest = f.read().decode("utf-8")
     return json.loads(models_manifest)
+
+
+def get_jumpstart_sdk_manifest():
+    return get_public_s3_json_object(f"{JUMPSTART_BUCKET_BASE_URL}/{SDK_MANIFEST_FILE}")
 
 
 def get_proprietary_sdk_manifest():
-    url = "{}/{}".format(PROPRIETARY_DOC_BUCKET, PROPRIETARY_SDK_MANIFEST_FILE)
-    with request.urlopen(url) as f:
-        models_manifest = f.read().decode("utf-8")
-    return json.loads(models_manifest)
+    return get_public_s3_json_object(f"{PROPRIETARY_DOC_BUCKET}/{PROPRIETARY_SDK_MANIFEST_FILE}")
 
 
-def get_jumpstart_sdk_spec(key):
-    url = "{}/{}".format(PROPRIETARY_DOC_BUCKET, key)
-    with request.urlopen(url) as f:
-        model_spec = f.read().decode("utf-8")
-    return json.loads(model_spec)
+def get_jumpstart_sdk_spec(s3_key: str):
+    return get_public_s3_json_object(f"{JUMPSTART_BUCKET_BASE_URL}/{s3_key}")
+
+
+def get_proprietary_sdk_spec(s3_key: str):
+    return get_public_s3_json_object(f"{PROPRIETARY_DOC_BUCKET}/{s3_key}")
 
 
 def get_model_task(id):
@@ -207,18 +208,19 @@ def get_model_source(url):
 
 
 def create_proprietary_model_table():
-    marketpkace_content_intro = []
-    marketpkace_content_intro.append("\n")
-    marketpkace_content_intro.append(".. list-table:: Available Proprietary Models\n")
-    marketpkace_content_intro.append("   :widths: 50 20 20 20 20\n")
-    marketpkace_content_intro.append("   :header-rows: 1\n")
-    marketpkace_content_intro.append("   :class: datatable\n")
-    marketpkace_content_intro.append("\n")
-    marketpkace_content_intro.append("   * - Model ID\n")
-    marketpkace_content_intro.append("     - Fine Tunable?\n")
-    marketpkace_content_intro.append("     - Supported Version\n")
-    marketpkace_content_intro.append("     - Min SDK Version\n")
-    marketpkace_content_intro.append("     - Source\n")
+    marketpkace_content_intro = f"""
+    .. list-table:: Available Proprietary Models
+       :widths: 50 20 20 20 20
+       :header-rows: 1
+       :class: datatable
+    
+       * - Model ID
+       - Fine Tunable?
+       - Supported Version
+       - Min SDK Version
+       - Source
+
+    """
 
     sdk_manifest = get_proprietary_sdk_manifest()
     sdk_manifest_top_versions_for_models = {}
@@ -234,7 +236,7 @@ def create_proprietary_model_table():
 
     proprietary_content_entries = []
     for model in sdk_manifest_top_versions_for_models.values():
-        model_spec = get_jumpstart_sdk_spec(model["spec_key"])
+        model_spec = get_proprietary_sdk_spec(model["spec_key"])
         proprietary_content_entries.append("   * - {}\n".format(model_spec["model_id"]))
         proprietary_content_entries.append("     - {}\n".format(False))  # TODO: support training
         proprietary_content_entries.append("     - {}\n".format(model["version"]))

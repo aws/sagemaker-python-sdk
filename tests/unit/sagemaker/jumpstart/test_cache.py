@@ -184,7 +184,7 @@ def test_jumpstart_cache_get_header():
         "Proprietary model 'ai21-summarization' does not support wildcard version identifier '3.*'. "
         "You can pin to version '1.1.003'. "
         "https://sagemaker.readthedocs.io/en/stable/doc_utils/pretrainedmodels.html "
-        "for list of supported model IDs. " in str(e.value)
+        "for a list of valid model IDs. " in str(e.value)
     )
 
     with pytest.raises(KeyError) as e:
@@ -944,7 +944,7 @@ def test_jumpstart_cache_get_specs():
         "Proprietary model 'ai21-summarization' does not support wildcard version identifier '3.*'. "
         "You can pin to version '1.1.003'. "
         "https://sagemaker.readthedocs.io/en/stable/doc_utils/pretrainedmodels.html "
-        "for list of supported model IDs. " in str(e.value)
+        "for a list of valid model IDs. " in str(e.value)
     )
 
     with pytest.raises(KeyError):

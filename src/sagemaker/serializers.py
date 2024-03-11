@@ -94,7 +94,7 @@ def retrieve_default(
     model_version: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
-    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHT,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> BaseSerializer:
     """Retrieves the default serializer for the model matching the given arguments.

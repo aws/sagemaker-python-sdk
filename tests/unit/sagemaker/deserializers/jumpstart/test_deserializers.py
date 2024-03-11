@@ -38,7 +38,7 @@ def test_jumpstart_default_deserializers(
 
     patched_verify_model_region_and_return_specs.side_effect = verify_model_region_and_return_specs
     patched_get_model_specs.side_effect = get_special_model_spec
-    patched_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
+    patched_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
     model_id, model_version = "predictor-specs-model", "*"
     region = "us-west-2"
@@ -56,7 +56,7 @@ def test_jumpstart_default_deserializers(
         model_id=model_id,
         version=model_version,
         s3_client=mock_client,
-        model_type=JumpStartModelType.OPEN_WEIGHT,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
     )
 
 
@@ -71,7 +71,7 @@ def test_jumpstart_deserializer_options(
 
     patched_verify_model_region_and_return_specs.side_effect = verify_model_region_and_return_specs
     patched_get_model_specs.side_effect = get_special_model_spec
-    patched_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHT
+    patched_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
     model_id, model_version = "predictor-specs-model", "*"
     region = "us-west-2"
@@ -96,5 +96,5 @@ def test_jumpstart_deserializer_options(
         model_id=model_id,
         version=model_version,
         s3_client=mock_client,
-        model_type=JumpStartModelType.OPEN_WEIGHT,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
     )

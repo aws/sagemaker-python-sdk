@@ -36,7 +36,7 @@ def _retrieve_model_init_kwargs(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHT,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> dict:
     """Retrieves kwargs for `Model`.
 
@@ -81,9 +81,6 @@ def _retrieve_model_init_kwargs(
     if model_specs.inference_enable_network_isolation is not None:
         kwargs.update({"enable_network_isolation": model_specs.inference_enable_network_isolation})
 
-    if model_type == JumpStartModelType.PROPRIETARY:
-        kwargs.update({"enable_network_isolation": True})
-
     return kwargs
 
 
@@ -95,7 +92,7 @@ def _retrieve_model_deploy_kwargs(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHT,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> dict:
     """Retrieves kwargs for `Model.deploy`.
 

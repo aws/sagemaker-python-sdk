@@ -51,7 +51,7 @@ def _retrieve_default_resources(
     region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
-    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHT,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     instance_type: Optional[str] = None,
 ) -> ResourceRequirements:

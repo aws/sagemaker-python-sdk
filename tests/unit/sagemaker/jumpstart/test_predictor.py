@@ -127,7 +127,7 @@ def test_jumpstart_predictor_support_no_model_id_supplied_happy_case(
         tolerate_deprecated_model=False,
         tolerate_vulnerable_model=False,
         sagemaker_session=mock_session,
-        model_type=JumpStartModelType.OPEN_WEIGHT,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
     )
 
 

@@ -41,7 +41,7 @@ class JumpStartModelType(str, Enum):
     Proprietary model refers to external provider owned Marketplace models.
     """
 
-    OPEN_WEIGHT = "open_weight"
+    OPEN_WEIGHTS = "open_weights"
     PROPRIETARY = "proprietary"
 
 

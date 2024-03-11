@@ -35,7 +35,7 @@ def retrieve_default(
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     training_instance_type: Optional[str] = None,
-    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHT,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> str:
     """Retrieves the default instance type for the model matching the given arguments.
 

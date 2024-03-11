@@ -540,7 +540,7 @@ def verify_model_region_and_return_specs(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-    model_type: enums.JumpStartModelType = enums.JumpStartModelType.OPEN_WEIGHT,
+    model_type: enums.JumpStartModelType = enums.JumpStartModelType.OPEN_WEIGHTS,
 ) -> JumpStartModelSpecs:
     """Verifies that an acceptable model_id, version, scope, and region combination is provided.
 
@@ -759,13 +759,13 @@ def validate_model_id_and_get_type(
 
     def _get_model_type(
         model_id: str,
-        open_weight_models: Set[str],
-        proprietary_models: Set[str],
+        open_weights_model_ids: Set[str],
+        proprietary_model_ids: Set[str],
         script: enums.JumpStartScriptScope,
     ) -> Optional[enums.JumpStartModelType]:
-        if model_id in open_weight_models:
-            return enums.JumpStartModelType.OPEN_WEIGHT
-        if model_id in proprietary_models:
+        if model_id in open_weights_model_ids:
+            return enums.JumpStartModelType.OPEN_WEIGHTS
+        if model_id in proprietary_model_ids:
             if script == enums.JumpStartScriptScope.INFERENCE:
                 return enums.JumpStartModelType.PROPRIETARY
             raise ValueError(f"Unsupported script for Marketplace models: {script}")
@@ -780,7 +780,7 @@ def validate_model_id_and_get_type(
     region = region or constants.JUMPSTART_DEFAULT_REGION_NAME
     model_version = model_version or "*"
     models_manifest_list = accessors.JumpStartModelsAccessor._get_manifest(
-        region=region, s3_client=s3_client, model_type=enums.JumpStartModelType.OPEN_WEIGHT
+        region=region, s3_client=s3_client, model_type=enums.JumpStartModelType.OPEN_WEIGHTS
     )
     open_weight_model_id_set = {model.model_id for model in models_manifest_list}
 
