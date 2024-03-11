@@ -766,8 +766,8 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
 
     def _script_mode_env_vars(self):
         """Returns a mapping of environment variables for script mode execution"""
-        script_name = None
-        dir_name = None
+        script_name = self.env.get(SCRIPT_PARAM_NAME.upper(), "")
+        dir_name = self.env.get(DIR_PARAM_NAME.upper(), "")
         if self.uploaded_code:
             script_name = self.uploaded_code.script_name
             if self.repacked_model_data or self.enable_network_isolation():
@@ -783,8 +783,8 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                     else "file://" + self.source_dir
                 )
         return {
-            SCRIPT_PARAM_NAME.upper(): script_name or str(),
-            DIR_PARAM_NAME.upper(): dir_name or str(),
+            SCRIPT_PARAM_NAME.upper(): script_name,
+            DIR_PARAM_NAME.upper(): dir_name,
             CONTAINER_LOG_LEVEL_PARAM_NAME.upper(): to_string(self.container_log_level),
             SAGEMAKER_REGION_PARAM_NAME.upper(): self.sagemaker_session.boto_region_name,
         }
