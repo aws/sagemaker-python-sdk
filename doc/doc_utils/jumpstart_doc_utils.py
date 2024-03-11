@@ -210,7 +210,7 @@ def get_model_source(url):
 def create_proprietary_model_table():
     proprietary_content_intro = []
     proprietary_content_intro.append("\n")
-    proprietary_content_intro.append(".. list-table:: Available Models\n")
+    proprietary_content_intro.append(".. list-table:: Available Proprietary Models\n")
     proprietary_content_intro.append("   :widths: 50 20 20 20 20\n")
     proprietary_content_intro.append("   :header-rows: 1\n")
     proprietary_content_intro.append("   :class: datatable\n")
