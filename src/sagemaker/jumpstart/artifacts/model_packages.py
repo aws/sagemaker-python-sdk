@@ -150,10 +150,9 @@ def _retrieve_model_package_model_artifact_s3_uri(
 
     if scope == JumpStartScriptScope.TRAINING:
 
-        if region is None:
-            region = region or get_region_fallback(
-                sagemaker_session=sagemaker_session,
-            )
+        region = region or get_region_fallback(
+            sagemaker_session=sagemaker_session,
+        )
 
         model_specs = verify_model_region_and_return_specs(
             model_id=model_id,
