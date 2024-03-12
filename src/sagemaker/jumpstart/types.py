@@ -2368,6 +2368,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "model_version",
         "model_type",
         "hub_arn",
+        "model_type",
         "region",
         "tolerate_deprecated_model",
         "tolerate_vulnerable_model",

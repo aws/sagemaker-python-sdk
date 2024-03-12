@@ -110,8 +110,12 @@ def test_jumpstart_resource_requirements_instance_type_variants(patched_get_mode
     }
 
 
+@patch("sagemaker.jumpstart.utils.validate_model_id_and_get_type")
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-def test_jumpstart_no_supported_resource_requirements(patched_get_model_specs):
+def test_jumpstart_no_supported_resource_requirements(
+    patched_get_model_specs, patched_validate_model_id_and_get_type
+):
+
     patched_get_model_specs.side_effect = get_special_model_spec
     region = "us-west-2"
     mock_client = boto3.client("s3")
