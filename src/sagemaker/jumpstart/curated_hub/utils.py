@@ -16,11 +16,22 @@ import re
 from typing import Optional
 from sagemaker.session import Session
 from sagemaker.utils import aws_partition
+from typing import Optional, Dict, List, Any, Set
+from botocore.exceptions import ClientError
 from sagemaker.jumpstart.types import (
     HubContentType,
     HubArnExtractedInfo,
 )
 from sagemaker.jumpstart import constants
+from sagemaker.jumpstart.utils import (
+    get_jumpstart_content_bucket,
+    get_sagemaker_version,
+    verify_model_region_and_return_specs,
+)
+from sagemaker.session import Session
+from sagemaker.jumpstart.enums import JumpStartScriptScope
+
+
 
 
 def get_info_from_hub_resource_arn(
@@ -152,3 +163,52 @@ def create_hub_bucket_if_it_does_not_exist(
     )
 
     return bucket_name
+
+def tag_jumpstart_hub_content_on_spec_fields(hub_content_summaries: List[Dict[str, Any]], region: str, session: Session) -> None:
+    tags_to_add_for_all_models: Dict[str, Dict[str, Set]] = _find_all_tags_for_jumpstart_model(hub_content_summaries, region, session)
+    for hub_content_arn, tags_for_versions in tags_to_add_for_all_models:
+        for tag_name, versions in tags_for_versions:
+          session.add_tags(
+            ResourceArn=hub_content_arn,
+            Tags=[
+                {
+                    'Key': tag_name,
+                    'Value': list(versions)
+                },
+            ]
+          )
+
+def _find_all_tags_for_jumpstart_model(hub_content_summaries: List[Dict[str, Any]], region: str, session: Session) -> Dict[str, Dict[str, Set]]:
+    tags_to_add = {}
+
+    for hub_content_summary in hub_content_summaries:
+      if hub_content_summary["HubContentType"] != "Model":
+          continue
+      
+      hub_content_arn = hub_content_summary["HubContentArn"]
+      if hub_content_arn not in tags_to_add:
+          tags_to_add[hub_content_arn] = {
+              "deprecated_versions": set(),
+              "inference_vulnerable_versions": set(),
+              "training_vulnerable_versions": set()
+          }
+      
+      model_version = hub_content_summary["HubContentVersion"]
+      specs = verify_model_region_and_return_specs(
+          model_id=hub_content_summary["HubContentName"], # TODO: This is not the way to pull the JS model ID, should use the tag
+          version=model_version,
+          region=region,
+          scope=JumpStartScriptScope.INFERENCE,
+          tolerate_vulnerable_model = True,
+          tolerate_deprecated_model = True,
+          sagemaker_session=session,
+      )
+
+      if (specs.deprecated):
+          tags_to_add[hub_content_arn]["deprecated_versions"].add(model_version)
+      if (specs.inference_vulnerable):
+          tags_to_add[hub_content_arn]["inference_vulnerable_versions"].add(model_version)
+      if (specs.training_vulnerable):
+          tags_to_add[hub_content_arn]["training_vulnerable_versions"].add(model_version)
+
+      return tags_to_add
