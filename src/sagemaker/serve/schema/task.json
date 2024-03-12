@@ -1,12 +1,12 @@
 {
 	"fill-mask": {
-        "sample_inputs": {
+		"sample_inputs": {
 			"properties": {
 				"inputs": "Paris is the [MASK] of France.",
 				"parameters": {}
 			}
-        },
-        "sample_outputs": {
+		},
+		"sample_outputs": {
 			"properties": [
 				{
 					"sequence": "Paris is the capital of France.",
@@ -14,15 +14,15 @@
 				}
 			]
 		}
-    },
+	},
 	"question-answering": {
-        "sample_inputs": {
+		"sample_inputs": {
 			"properties": {
 				"context": "I have a German Shepherd dog, named Coco.",
 				"question": "What is my dog's breed?"
 			}
-        },
-        "sample_outputs": {
+		},
+		"sample_outputs": {
 			"properties": [
 				{
 					"answer": "German Shepherd",
@@ -32,15 +32,15 @@
 				}
 			]
 		}
-    },
+	},
 	"text-classification": {
-        "sample_inputs": {
+		"sample_inputs": {
 			"properties": {
 				"inputs": "Where is the capital of France?, Paris is the capital of France.",
 				"parameters": {}
 			}
-        },
-        "sample_outputs": {
+		},
+		"sample_outputs": {
 			"properties": [
 				{
 					"label": "entailment",
@@ -48,20 +48,20 @@
 				}
 			]
 		}
-    },
-    "text-generation": {
-        "sample_inputs": {
+	},
+	"text-generation": {
+		"sample_inputs": {
 			"properties": {
 				"inputs": "Hello, I'm a language model",
 				"parameters": {}
 			}
-        },
-        "sample_outputs": {
+		},
+		"sample_outputs": {
 			"properties": [
-				{
-					"generated_text": "Hello, I'm a language modeler. So while writing this, when I went out to meet my wife or come home she told me that my"
-				}
+			{
+				"generated_text": "Hello, I'm a language modeler. So while writing this, when I went out to meet my wife or come home she told me that my"
+			}
 			]
 		}
-    }
+	}
 }
