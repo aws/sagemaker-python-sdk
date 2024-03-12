@@ -15,14 +15,21 @@
 from __future__ import absolute_import
 
 from typing import Dict, List, Optional, Union
+from botocore.exceptions import ClientError
+
 from sagemaker import payloads
 from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
 from sagemaker.base_deserializers import BaseDeserializer
 from sagemaker.base_serializers import BaseSerializer
+from sagemaker.enums import EndpointType
 from sagemaker.explainer.explainer_config import ExplainerConfig
 from sagemaker.jumpstart.accessors import JumpStartModelsAccessor
 from sagemaker.jumpstart.enums import JumpStartScriptScope
-from sagemaker.jumpstart.exceptions import INVALID_MODEL_ID_ERROR_MSG
+from sagemaker.jumpstart.exceptions import (
+    INVALID_MODEL_ID_ERROR_MSG,
+    get_proprietary_model_subscription_error,
+    get_proprietary_model_subscription_msg,
+)
 from sagemaker.jumpstart.factory.model import (
     get_default_predictor,
     get_deploy_kwargs,
@@ -30,7 +37,12 @@ from sagemaker.jumpstart.factory.model import (
     get_register_kwargs,
 )
 from sagemaker.jumpstart.types import JumpStartSerializablePayload
-from sagemaker.jumpstart.utils import is_valid_model_id
+from sagemaker.jumpstart.utils import (
+    validate_model_id_and_get_type,
+    verify_model_region_and_return_specs,
+)
+from sagemaker.jumpstart.constants import JUMPSTART_LOGGER
+from sagemaker.jumpstart.enums import JumpStartModelType
 from sagemaker.utils import stringify_object, format_tags, Tags
 from sagemaker.model import (
     Model,
@@ -45,7 +57,6 @@ from sagemaker.model_metrics import ModelMetrics
 from sagemaker.metadata_properties import MetadataProperties
 from sagemaker.drift_check_baselines import DriftCheckBaselines
 from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
-from sagemaker.enums import EndpointType
 
 
 class JumpStartModel(Model):
@@ -270,8 +281,8 @@ class JumpStartModel(Model):
             ValueError: If the model ID is not recognized by JumpStart.
         """
 
-        def _is_valid_model_id_hook():
-            return is_valid_model_id(
+        def _validate_model_id_and_type():
+            return validate_model_id_and_get_type(
                 model_id=model_id,
                 model_version=model_version,
                 region=region,
@@ -279,16 +290,18 @@ class JumpStartModel(Model):
                 sagemaker_session=sagemaker_session,
             )
 
-        if not _is_valid_model_id_hook():
+        self.model_type = _validate_model_id_and_type()
+        if not self.model_type:
             JumpStartModelsAccessor.reset_cache()
-            if not _is_valid_model_id_hook():
+            self.model_type = _validate_model_id_and_type()
+            if not self.model_type:
                 raise ValueError(INVALID_MODEL_ID_ERROR_MSG.format(model_id=model_id))
 
         self._model_data_is_set = model_data is not None
-
         model_init_kwargs = get_init_kwargs(
             model_id=model_id,
             model_from_estimator=False,
+            model_type=self.model_type,
             model_version=model_version,
             instance_type=instance_type,
             tolerate_vulnerable_model=tolerate_vulnerable_model,
@@ -326,9 +339,26 @@ class JumpStartModel(Model):
         self.region = model_init_kwargs.region
         self.sagemaker_session = model_init_kwargs.sagemaker_session
 
+        if self.model_type == JumpStartModelType.PROPRIETARY:
+            self.log_subscription_warning()
+
         super(JumpStartModel, self).__init__(**model_init_kwargs.to_kwargs_dict())
 
         self.model_package_arn = model_init_kwargs.model_package_arn
+
+    def log_subscription_warning(self) -> None:
+        """Log message prompting the customer to subscribe to the proprietary model."""
+        subscription_link = verify_model_region_and_return_specs(
+            region=self.region,
+            model_id=self.model_id,
+            version=self.model_version,
+            model_type=self.model_type,
+            scope=JumpStartScriptScope.INFERENCE,
+            sagemaker_session=self.sagemaker_session,
+        ).model_subscription_link
+        JUMPSTART_LOGGER.warning(
+            get_proprietary_model_subscription_msg(self.model_id, subscription_link)
+        )
 
     def retrieve_all_examples(self) -> Optional[List[JumpStartSerializablePayload]]:
         """Returns all example payloads associated with the model.
@@ -347,6 +377,7 @@ class JumpStartModel(Model):
             tolerate_deprecated_model=self.tolerate_deprecated_model,
             tolerate_vulnerable_model=self.tolerate_vulnerable_model,
             sagemaker_session=self.sagemaker_session,
+            model_type=self.model_type,
         )
 
     def retrieve_example_payload(self) -> JumpStartSerializablePayload:
@@ -364,6 +395,7 @@ class JumpStartModel(Model):
         return payloads.retrieve_example(
             model_id=self.model_id,
             model_version=self.model_version,
+            model_type=self.model_type,
             region=self.region,
             tolerate_deprecated_model=self.tolerate_deprecated_model,
             tolerate_vulnerable_model=self.tolerate_vulnerable_model,
@@ -558,6 +590,9 @@ class JumpStartModel(Model):
                 endpoint.
             endpoint_type (EndpointType): The type of endpoint used to deploy models.
                 (Default: EndpointType.MODEL_BASED).
+
+        Raises:
+            MarketplaceModelSubscriptionError: If the caller is not subscribed to the model.
         """
 
         deploy_kwargs = get_deploy_kwargs(
@@ -589,9 +624,29 @@ class JumpStartModel(Model):
             resources=resources,
             managed_instance_scaling=managed_instance_scaling,
             endpoint_type=endpoint_type,
+            model_type=self.model_type,
         )
+        if (
+            self.model_type == JumpStartModelType.PROPRIETARY
+            and endpoint_type == EndpointType.INFERENCE_COMPONENT_BASED
+        ):
+            raise ValueError(
+                f"{EndpointType.INFERENCE_COMPONENT_BASED} is not supported for Proprietary models."
+            )
 
-        predictor = super(JumpStartModel, self).deploy(**deploy_kwargs.to_kwargs_dict())
+        try:
+            predictor = super(JumpStartModel, self).deploy(**deploy_kwargs.to_kwargs_dict())
+        except ClientError as e:
+            subscription_link = verify_model_region_and_return_specs(
+                region=self.region,
+                model_id=self.model_id,
+                version=self.model_version,
+                model_type=self.model_type,
+                scope=JumpStartScriptScope.INFERENCE,
+                sagemaker_session=self.sagemaker_session,
+            ).model_subscription_link
+            get_proprietary_model_subscription_error(e, subscription_link)
+            raise
 
         # If no predictor class was passed, add defaults to predictor
         if self.orig_predictor_cls is None and async_inference_config is None:
@@ -603,6 +658,7 @@ class JumpStartModel(Model):
                 tolerate_deprecated_model=self.tolerate_deprecated_model,
                 tolerate_vulnerable_model=self.tolerate_vulnerable_model,
                 sagemaker_session=self.sagemaker_session,
+                model_type=self.model_type,
             )
 
         # If a predictor class was passed, do not mutate predictor
@@ -631,6 +687,7 @@ class JumpStartModel(Model):
         nearest_model_name: Optional[Union[str, PipelineVariable]] = None,
         data_input_configuration: Optional[Union[str, PipelineVariable]] = None,
         skip_model_validation: Optional[Union[str, PipelineVariable]] = None,
+        source_uri: Optional[Union[str, PipelineVariable]] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -676,6 +733,8 @@ class JumpStartModel(Model):
                 (default: None).
             skip_model_validation (str or PipelineVariable): Indicates if you want to skip model
                 validation. Values can be "All" or "None" (default: None).
+            source_uri (str or PipelineVariable): The URI of the source for the model package
+                (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance.
@@ -709,6 +768,7 @@ class JumpStartModel(Model):
             nearest_model_name=nearest_model_name,
             data_input_configuration=data_input_configuration,
             skip_model_validation=skip_model_validation,
+            source_uri=source_uri,
         )
 
         model_package = super(JumpStartModel, self).register(**register_kwargs.to_kwargs_dict())

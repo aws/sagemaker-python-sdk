@@ -18,6 +18,7 @@ from mock.mock import patch, Mock
 import pytest
 
 from sagemaker import hyperparameters
+from sagemaker.jumpstart.enums import JumpStartModelType
 
 from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec, get_special_model_spec
 
@@ -26,10 +27,14 @@ mock_client = boto3.client("s3")
 mock_session = Mock(s3_client=mock_client)
 
 
+@patch("sagemaker.jumpstart.utils.validate_model_id_and_get_type")
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-def test_jumpstart_default_hyperparameters(patched_get_model_specs):
+def test_jumpstart_default_hyperparameters(
+    patched_get_model_specs, patched_validate_model_id_and_get_type
+):
 
     patched_get_model_specs.side_effect = get_spec_from_base_spec
+    patched_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
     model_id = "pytorch-eqa-bert-base-cased"
     region = "us-west-2"
@@ -47,6 +52,7 @@ def test_jumpstart_default_hyperparameters(patched_get_model_specs):
         model_id=model_id,
         version="*",
         s3_client=mock_client,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
     )
 
     patched_get_model_specs.reset_mock()
@@ -64,6 +70,7 @@ def test_jumpstart_default_hyperparameters(patched_get_model_specs):
         model_id=model_id,
         version="1.*",
         s3_client=mock_client,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
     )
 
     patched_get_model_specs.reset_mock()
@@ -89,6 +96,7 @@ def test_jumpstart_default_hyperparameters(patched_get_model_specs):
         model_id=model_id,
         version="1.*",
         s3_client=mock_client,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
     )
 
     patched_get_model_specs.reset_mock()
