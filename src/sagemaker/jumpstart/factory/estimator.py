@@ -50,7 +50,7 @@ from sagemaker.jumpstart.constants import (
     TRAINING_ENTRY_POINT_SCRIPT_NAME,
     SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY,
 )
-from sagemaker.jumpstart.enums import JumpStartScriptScope
+from sagemaker.jumpstart.enums import JumpStartScriptScope, JumpStartModelType
 from sagemaker.jumpstart.factory import model
 from sagemaker.jumpstart.types import (
     JumpStartEstimatorDeployKwargs,
@@ -78,6 +78,7 @@ from sagemaker.workflow.entities import PipelineVariable
 def get_init_kwargs(
     model_id: str,
     model_version: Optional[str] = None,
+    model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_WEIGHTS,
     tolerate_vulnerable_model: Optional[bool] = None,
     tolerate_deprecated_model: Optional[bool] = None,
     region: Optional[str] = None,
@@ -135,6 +136,7 @@ def get_init_kwargs(
     estimator_init_kwargs: JumpStartEstimatorInitKwargs = JumpStartEstimatorInitKwargs(
         model_id=model_id,
         model_version=model_version,
+        model_type=model_type,
         role=role,
         region=region,
         instance_count=instance_count,

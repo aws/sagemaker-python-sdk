@@ -58,7 +58,9 @@ from sagemaker.utils import name_from_base, stringify_object, format_tags
 from sagemaker.model_monitor.model_monitoring import DEFAULT_REPOSITORY_NAME
 
 from sagemaker.lineage.context import EndpointContext
-from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
+from sagemaker.compute_resource_requirements.resource_requirements import (
+    ResourceRequirements,
+)
 
 LOGGER = logging.getLogger("sagemaker")
 

@@ -15,6 +15,7 @@ from __future__ import print_function, absolute_import
 
 from typing import Optional
 from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+from sagemaker.jumpstart.enums import JumpStartModelType
 
 from sagemaker.jumpstart.factory.model import get_default_predictor
 from sagemaker.jumpstart.session_utils import get_model_id_version_from_endpoint
@@ -41,6 +42,7 @@ def retrieve_default(
     model_version: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> Predictor:
     """Retrieves the default predictor for the model matching the given arguments.
 
@@ -107,4 +109,5 @@ def retrieve_default(
         tolerate_deprecated_model=tolerate_deprecated_model,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         sagemaker_session=sagemaker_session,
+        model_type=model_type,
     )

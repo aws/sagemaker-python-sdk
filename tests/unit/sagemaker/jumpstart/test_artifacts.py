@@ -32,7 +32,7 @@ from tests.unit.sagemaker.jumpstart.constants import (
 
 from sagemaker.jumpstart.artifacts.model_packages import _retrieve_model_package_arn
 from sagemaker.jumpstart.artifacts.model_uris import _retrieve_model_uri
-from sagemaker.jumpstart.enums import JumpStartScriptScope
+from sagemaker.jumpstart.enums import JumpStartScriptScope, JumpStartModelType
 
 from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec, get_special_model_spec
 from tests.unit.sagemaker.workflow.conftest import mock_client
@@ -331,9 +331,13 @@ class RetrieveModelPackageArnTest(unittest.TestCase):
 
     mock_session = Mock(s3_client=mock_client)
 
+    @patch("sagemaker.jumpstart.utils.validate_model_id_and_get_type")
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-    def test_retrieve_model_package_arn(self, patched_get_model_specs):
+    def test_retrieve_model_package_arn(
+        self, patched_get_model_specs: Mock, patched_validate_model_id_and_get_type: Mock
+    ):
         patched_get_model_specs.side_effect = get_special_model_spec
+        patched_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
         model_id = "variant-model"
         region = "us-west-2"
@@ -437,9 +441,13 @@ class PrivateJumpStartBucketTest(unittest.TestCase):
 
     mock_session = Mock(s3_client=mock_client)
 
+    @patch("sagemaker.jumpstart.utils.validate_model_id_and_get_type")
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-    def test_retrieve_uri_from_gated_bucket(self, patched_get_model_specs):
+    def test_retrieve_uri_from_gated_bucket(
+        self, patched_get_model_specs, patched_validate_model_id_and_get_type
+    ):
         patched_get_model_specs.side_effect = get_special_model_spec
+        patched_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
         model_id = "private-model"
         region = "us-west-2"

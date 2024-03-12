@@ -24,10 +24,12 @@ from sagemaker.jumpstart import accessors
 from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     JUMPSTART_DEFAULT_REGION_NAME,
+    PROPRIETARY_MODEL_SPEC_PREFIX,
 )
-from sagemaker.jumpstart.enums import JumpStartScriptScope
+from sagemaker.jumpstart.enums import JumpStartScriptScope, JumpStartModelType
 from sagemaker.jumpstart.filters import (
     SPECIAL_SUPPORTED_FILTER_KEYS,
+    ProprietaryModelFilterIdentifiers,
     BooleanValues,
     Identity,
     SpecialSupportedFilterKeys,
@@ -38,6 +40,7 @@ from sagemaker.jumpstart.utils import (
     get_jumpstart_content_bucket,
     get_sagemaker_version,
     verify_model_region_and_return_specs,
+    validate_model_id_and_get_type,
 )
 from sagemaker.session import Session
 
@@ -124,21 +127,31 @@ def extract_framework_task_model(model_id: str) -> Tuple[str, str, str]:
 
     Args:
         model_id (str): The model ID for which to extract the framework/task/model.
-
-    Raises:
-        ValueError: If the model ID cannot be parsed into at least 3 components seperated by
-            "-" character.
     """
     _id_parts = model_id.split("-")
 
     if len(_id_parts) < 3:
-        raise ValueError(f"incorrect model ID: {model_id}.")
+        return "", "", ""
 
     framework = _id_parts[0]
     task = _id_parts[1]
     name = "-".join(_id_parts[2:])
 
     return framework, task, name
+
+
+def extract_model_type_filter_representation(spec_key: str) -> str:
+    """Parses model spec key, determine if the model is proprietary or open weight.
+
+    Args:
+        spek_key (str): The model spec key for which to extract the model type.
+    """
+    model_spec_prefix = spec_key.split("/")[0]
+
+    if model_spec_prefix == PROPRIETARY_MODEL_SPEC_PREFIX:
+        return JumpStartModelType.PROPRIETARY.value
+
+    return JumpStartModelType.OPEN_WEIGHTS.value
 
 
 def list_jumpstart_tasks(  # pylint: disable=redefined-builtin
@@ -321,14 +334,22 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
             to use to perform the model search. (Default: DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     """
 
-    models_manifest_list = accessors.JumpStartModelsAccessor._get_manifest(
-        region=region, s3_client=sagemaker_session.s3_client
+    prop_models_manifest_list = accessors.JumpStartModelsAccessor._get_manifest(
+        region=region,
+        s3_client=sagemaker_session.s3_client,
+        model_type=JumpStartModelType.PROPRIETARY,
     )
+    open_weight_manifest_list = accessors.JumpStartModelsAccessor._get_manifest(
+        region=region,
+        s3_client=sagemaker_session.s3_client,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
+    )
+    models_manifest_list = open_weight_manifest_list + prop_models_manifest_list
 
     if isinstance(filter, str):
         filter = Identity(filter)
 
-    manifest_keys = set(models_manifest_list[0].__slots__)
+    manifest_keys = set(models_manifest_list[0].__slots__ + prop_models_manifest_list[0].__slots__)
 
     all_keys: Set[str] = set()
 
@@ -338,6 +359,10 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
         model_filter = operator.unresolved_value
         key = model_filter.key
         all_keys.add(key)
+        if model_filter.key == SpecialSupportedFilterKeys.MODEL_TYPE and model_filter.value in {
+            identifier.value for identifier in ProprietaryModelFilterIdentifiers
+        }:
+            model_filter.set_value(JumpStartModelType.PROPRIETARY.value)
         model_filters.add(model_filter)
 
     for key in all_keys:
@@ -351,6 +376,7 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
 
     is_task_filter = SpecialSupportedFilterKeys.TASK in all_keys
     is_framework_filter = SpecialSupportedFilterKeys.FRAMEWORK in all_keys
+    is_model_type_filter = SpecialSupportedFilterKeys.MODEL_TYPE in all_keys
 
     def evaluate_model(model_manifest: JumpStartModelHeader) -> Optional[Tuple[str, str]]:
 
@@ -372,6 +398,11 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
             manifest_specs_cached_values[
                 SpecialSupportedFilterKeys.FRAMEWORK
             ] = extract_framework_task_model(model_manifest.model_id)[0]
+
+        if is_model_type_filter:
+            manifest_specs_cached_values[
+                SpecialSupportedFilterKeys.MODEL_TYPE
+            ] = extract_model_type_filter_representation(model_manifest.spec_key)
 
         if Version(model_manifest.min_version) > Version(get_sagemaker_version()):
             return None
@@ -466,6 +497,12 @@ def get_model_url(
         sagemaker_session (sagemaker.session.Session): Optional. The SageMaker Session to use
             to retrieve the model url.
     """
+    model_type = validate_model_id_and_get_type(
+        model_id=model_id,
+        model_version=model_version,
+        region=region,
+        sagemaker_session=sagemaker_session,
+    )
 
     model_specs = verify_model_region_and_return_specs(
         region=region,
@@ -473,5 +510,6 @@ def get_model_url(
         version=model_version,
         sagemaker_session=sagemaker_session,
         scope=JumpStartScriptScope.INFERENCE,
+        model_type=model_type,
     )
     return model_specs.url
