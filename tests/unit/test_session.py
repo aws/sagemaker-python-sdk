@@ -5119,6 +5119,233 @@ def test_create_model_package_with_sagemaker_config_injection(sagemaker_session)
     sagemaker_session.sagemaker_client.create_model_package.assert_called_with(**expected_args)
 
 
+def test_create_model_package_from_containers_with_source_uri_and_inference_spec(sagemaker_session):
+    model_package_group_name = "sagemaker-model-package-group"
+    containers = ["dummy-container"]
+    content_types = ["application/json"]
+    response_types = ["application/json"]
+    inference_instances = ["ml.m4.xlarge"]
+    transform_instances = ["ml.m4.xlarget"]
+    marketplace_cert = (False,)
+    approval_status = ("Approved",)
+    skip_model_validation = "All"
+    source_uri = "dummy-source-uri"
+
+    created_versioned_mp_arn = (
+        "arn:aws:sagemaker:us-west-2:123456789123:model-package/unit-test-package-version/1"
+    )
+    sagemaker_session.sagemaker_client.create_model_package = Mock(
+        return_value={"ModelPackageArn": created_versioned_mp_arn}
+    )
+
+    sagemaker_session.create_model_package_from_containers(
+        model_package_group_name=model_package_group_name,
+        containers=containers,
+        content_types=content_types,
+        response_types=response_types,
+        inference_instances=inference_instances,
+        transform_instances=transform_instances,
+        marketplace_cert=marketplace_cert,
+        approval_status=approval_status,
+        skip_model_validation=skip_model_validation,
+        source_uri=source_uri,
+    )
+    expected_create_mp_args = {
+        "ModelPackageGroupName": model_package_group_name,
+        "InferenceSpecification": {
+            "Containers": containers,
+            "SupportedContentTypes": content_types,
+            "SupportedResponseMIMETypes": response_types,
+            "SupportedRealtimeInferenceInstanceTypes": inference_instances,
+            "SupportedTransformInstanceTypes": transform_instances,
+        },
+        "CertifyForMarketplace": marketplace_cert,
+        "ModelApprovalStatus": approval_status,
+        "SkipModelValidation": skip_model_validation,
+    }
+
+    sagemaker_session.sagemaker_client.create_model_package.assert_called_once_with(
+        **expected_create_mp_args
+    )
+    expected_update_mp_args = {
+        "ModelPackageArn": created_versioned_mp_arn,
+        "SourceUri": source_uri,
+    }
+    sagemaker_session.sagemaker_client.update_model_package.assert_called_once_with(
+        **expected_update_mp_args
+    )
+
+
+def test_create_model_package_from_containers_with_source_uri_for_unversioned_mp(sagemaker_session):
+    model_package_name = "sagemaker-model-package"
+    content_types = ["application/json"]
+    response_types = ["application/json"]
+    inference_instances = ["ml.m4.xlarge"]
+    transform_instances = ["ml.m4.xlarget"]
+    marketplace_cert = (False,)
+    approval_status = ("Approved",)
+    skip_model_validation = "All"
+    source_uri = "dummy-source-uri"
+
+    with pytest.raises(
+        ValueError,
+        match="Un-versioned SageMaker Model Package currently cannot be created with source_uri.",
+    ):
+        sagemaker_session.create_model_package_from_containers(
+            model_package_name=model_package_name,
+            content_types=content_types,
+            response_types=response_types,
+            inference_instances=inference_instances,
+            transform_instances=transform_instances,
+            marketplace_cert=marketplace_cert,
+            approval_status=approval_status,
+            skip_model_validation=skip_model_validation,
+            source_uri=source_uri,
+        )
+
+
+def test_create_model_package_from_containers_with_source_uri_for_versioned_mp(sagemaker_session):
+    model_package_name = "sagemaker-model-package"
+    model_data_source = {
+        "S3DataSource": {
+            "S3Uri": "s3://bucket/model/prefix/",
+            "S3DataType": "S3Prefix",
+            "CompressionType": "None",
+        }
+    }
+    containers = [{"Image": "dummy-image", "ModelDataSource": model_data_source}]
+    content_types = ["application/json"]
+    response_types = ["application/json"]
+    inference_instances = ["ml.m4.xlarge"]
+    transform_instances = ["ml.m4.xlarget"]
+    marketplace_cert = (False,)
+    approval_status = ("Approved",)
+    skip_model_validation = "All"
+
+    with pytest.raises(
+        ValueError,
+        match="Un-versioned SageMaker Model Package currently cannot be created with ModelDataSource.",
+    ):
+        sagemaker_session.create_model_package_from_containers(
+            model_package_name=model_package_name,
+            containers=containers,
+            content_types=content_types,
+            response_types=response_types,
+            inference_instances=inference_instances,
+            transform_instances=transform_instances,
+            marketplace_cert=marketplace_cert,
+            approval_status=approval_status,
+            skip_model_validation=skip_model_validation,
+        )
+
+
+def test_create_model_package_from_containers_with_source_uri_set_to_mp(sagemaker_session):
+    model_package_group_name = "sagemaker-model-package-group"
+    containers = ["dummy-container"]
+    content_types = ["application/json"]
+    response_types = ["application/json"]
+    inference_instances = ["ml.m4.xlarge"]
+    transform_instances = ["ml.m4.xlarget"]
+    marketplace_cert = (False,)
+    approval_status = ("Approved",)
+    skip_model_validation = "All"
+    source_uri = "arn:aws:sagemaker:us-west-2:123456789123:model-package/existing-mp"
+
+    created_versioned_mp_arn = (
+        "arn:aws:sagemaker:us-west-2:123456789123:model-package/unit-test-package-version/1"
+    )
+    sagemaker_session.sagemaker_client.create_model_package = Mock(
+        return_value={"ModelPackageArn": created_versioned_mp_arn}
+    )
+
+    sagemaker_session.create_model_package_from_containers(
+        model_package_group_name=model_package_group_name,
+        containers=containers,
+        content_types=content_types,
+        response_types=response_types,
+        inference_instances=inference_instances,
+        transform_instances=transform_instances,
+        marketplace_cert=marketplace_cert,
+        approval_status=approval_status,
+        skip_model_validation=skip_model_validation,
+        source_uri=source_uri,
+    )
+    expected_create_mp_args = {
+        "ModelPackageGroupName": model_package_group_name,
+        "CertifyForMarketplace": marketplace_cert,
+        "ModelApprovalStatus": approval_status,
+        "SkipModelValidation": skip_model_validation,
+        "SourceUri": source_uri,
+    }
+
+    sagemaker_session.sagemaker_client.create_model_package.assert_called_once_with(
+        **expected_create_mp_args
+    )
+    sagemaker_session.sagemaker_client.update_model_package.assert_not_called()
+
+
+def test_create_model_package_from_algorithm_with_model_data_source(sagemaker_session):
+    model_package_name = "sagemaker-model-package"
+    description = "dummy description"
+    model_data_source = {
+        "S3DataSource": {
+            "S3Uri": "s3://bucket/model/prefix/",
+            "S3DataType": "S3Prefix",
+            "CompressionType": "None",
+        }
+    }
+    algorithm_arn = "arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees"
+    sagemaker_session.create_model_package_from_algorithm(
+        algorithm_arn=algorithm_arn,
+        model_data=model_data_source,
+        name=model_package_name,
+        description=description,
+    )
+    expected_create_mp_args = {
+        "ModelPackageName": model_package_name,
+        "ModelPackageDescription": description,
+        "SourceAlgorithmSpecification": {
+            "SourceAlgorithms": [
+                {
+                    "AlgorithmName": algorithm_arn,
+                    "ModelDataSource": model_data_source,
+                }
+            ]
+        },
+    }
+    sagemaker_session.sagemaker_client.create_model_package.assert_called_once_with(
+        **expected_create_mp_args
+    )
+
+
+def test_create_model_package_from_algorithm_with_model_data_url(sagemaker_session):
+    model_package_name = "sagemaker-model-package"
+    description = "dummy description"
+    model_data_url = "s3://bucket/key"
+    algorithm_arn = "arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees"
+    sagemaker_session.create_model_package_from_algorithm(
+        algorithm_arn=algorithm_arn,
+        model_data=model_data_url,
+        name=model_package_name,
+        description=description,
+    )
+    expected_create_mp_args = {
+        "ModelPackageName": model_package_name,
+        "ModelPackageDescription": description,
+        "SourceAlgorithmSpecification": {
+            "SourceAlgorithms": [
+                {
+                    "AlgorithmName": algorithm_arn,
+                    "ModelDataUrl": model_data_url,
+                }
+            ]
+        },
+    }
+    sagemaker_session.sagemaker_client.create_model_package.assert_called_once_with(
+        **expected_create_mp_args
+    )
+
+
 def test_create_model_package_from_containers_all_args(sagemaker_session):
     model_package_name = "sagemaker-model-package"
     containers = ["dummy-container"]
