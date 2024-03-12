@@ -124,8 +124,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
             into a stream. All translations between the server and the client are handled
             automatically with the specified input and output.
         model (Optional[Union[object, str]): Model object (with ``predict`` method to perform
-            inference) or a HuggingFace/JumpStart Model ID. Either ``model`` or
-            ``inference_spec`` is required for the model builder to build the artifact.
+            inference) or a HuggingFace/JumpStart Model ID. Either ``model`` or ``inference_spec``
+            is required for the model builder to build the artifact.
         inference_spec (InferenceSpec): The inference spec file with your customized
             ``invoke`` and ``load`` functions.
         image_uri (Optional[str]): The container image uri (which is derived from a
@@ -145,6 +145,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
             to the model server). Possible values for this argument are
             ``TORCHSERVE``, ``MMS``, ``TENSORFLOW_SERVING``, ``DJL_SERVING``,
             ``TRITON``, and``TGI``.
+        model_metadata (Optional[Dict[str, Any]): Dictionary used to override the HuggingFace
+            model metadata. Currently ``HF_TASK`` is overridable.
     """
 
     model_path: Optional[str] = field(
@@ -240,6 +242,10 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
     )
     model_server: Optional[ModelServer] = field(
         default=None, metadata={"help": "Define the model server to deploy to."}
+    )
+    model_metadata: Optional[Dict[str, Any]] = field(
+        default=None,
+        metadata={"help": "Define the model metadata to override, currently supports `HF_TASK`"},
     )
 
     def _build_validations(self):
@@ -616,6 +622,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
         self._is_custom_image_uri = self.image_uri is not None
 
         if isinstance(self.model, str):
+            model_task = None
+            if self.model_metadata:
+                model_task = self.model_metadata.get("HF_TASK")
             if self._is_jumpstart_model_id():
                 return self._build_for_jumpstart()
             if self._is_djl():  # pylint: disable=R1705
@@ -625,10 +634,10 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
                     self.model, self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
                 )
 
-                model_task = hf_model_md.get("pipeline_tag")
-                if self.schema_builder is None and model_task:
+                if model_task is None:
+                    model_task = hf_model_md.get("pipeline_tag")
+                if self.schema_builder is None and model_task is not None:
                     self._schema_builder_init(model_task)
-
                 if model_task == "text-generation":  # pylint: disable=R1705
                     return self._build_for_tgi()
                 elif self._can_fit_on_single_gpu():
