@@ -21,6 +21,8 @@ from sagemaker.enums import EndpointType
 from sagemaker.model_metrics import ModelMetrics
 from sagemaker.metadata_properties import MetadataProperties
 from sagemaker.drift_check_baselines import DriftCheckBaselines
+from sagemaker.jumpstart.enums import JumpStartModelType
+
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
 
@@ -120,8 +122,10 @@ class JumpStartDataHolderType:
 class JumpStartS3FileType(str, Enum):
     """Type of files published in JumpStart S3 distribution buckets."""
 
-    MANIFEST = "manifest"
-    SPECS = "specs"
+    OPEN_WEIGHT_MANIFEST = "manifest"
+    OPEN_WEIGHT_SPECS = "specs"
+    PROPRIETARY_MANIFEST = "proptietary_manifest"
+    PROPRIETARY_SPECS = "proprietary_specs"
 
 
 class HubType(str, Enum):
@@ -822,6 +826,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         "training_instance_type_variants",
         "default_payloads",
         "gated_bucket",
+        "model_subscription_link",
     ]
 
     def __init__(self, spec: Dict[str, Any], is_hub_content: bool = False):
@@ -842,29 +847,31 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
             json_obj (Dict[str, Any]): Dictionary representation of spec.
         """
         self.model_id: str = json_obj["model_id"]
-        self.url: str = json_obj["url"]
+        self.url: str = json_obj.get("url", "")
         self.version: str = json_obj["version"]
         self.min_sdk_version: str = json_obj["min_sdk_version"]
-        self.incremental_training_supported: bool = bool(json_obj["incremental_training_supported"])
+        self.incremental_training_supported: bool = bool(
+            json_obj.get("incremental_training_supported", False)
+        )
         self.hosting_ecr_specs: Optional[JumpStartECRSpecs] = (
             JumpStartECRSpecs(json_obj["hosting_ecr_specs"])
             if "hosting_ecr_specs" in json_obj
             else None
         )
-        self.hosting_artifact_key: str = json_obj["hosting_artifact_key"]
-        self.hosting_script_key: str = json_obj["hosting_script_key"]
-        self.training_supported: bool = bool(json_obj["training_supported"])
+        self.hosting_artifact_key: Optional[str] = json_obj.get("hosting_artifact_key")
+        self.hosting_script_key: Optional[str] = json_obj.get("hosting_script_key")
+        self.training_supported: Optional[bool] = bool(json_obj.get("training_supported", False))
         self.inference_environment_variables = [
             JumpStartEnvironmentVariable(env_variable)
-            for env_variable in json_obj["inference_environment_variables"]
+            for env_variable in json_obj.get("inference_environment_variables", [])
         ]
-        self.inference_vulnerable: bool = bool(json_obj["inference_vulnerable"])
-        self.inference_dependencies: List[str] = json_obj["inference_dependencies"]
-        self.inference_vulnerabilities: List[str] = json_obj["inference_vulnerabilities"]
-        self.training_vulnerable: bool = bool(json_obj["training_vulnerable"])
-        self.training_dependencies: List[str] = json_obj["training_dependencies"]
-        self.training_vulnerabilities: List[str] = json_obj["training_vulnerabilities"]
-        self.deprecated: bool = bool(json_obj["deprecated"])
+        self.inference_vulnerable: bool = bool(json_obj.get("inference_vulnerable", False))
+        self.inference_dependencies: List[str] = json_obj.get("inference_dependencies", [])
+        self.inference_vulnerabilities: List[str] = json_obj.get("inference_vulnerabilities", [])
+        self.training_vulnerable: bool = bool(json_obj.get("training_vulnerable", False))
+        self.training_dependencies: List[str] = json_obj.get("training_dependencies", [])
+        self.training_vulnerabilities: List[str] = json_obj.get("training_vulnerabilities", [])
+        self.deprecated: bool = bool(json_obj.get("deprecated", False))
         self.deprecated_message: Optional[str] = json_obj.get("deprecated_message")
         self.deprecate_warn_message: Optional[str] = json_obj.get("deprecate_warn_message")
         self.usage_info_message: Optional[str] = json_obj.get("usage_info_message")
@@ -954,6 +961,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
                 if json_obj.get("training_instance_type_variants")
                 else None
             )
+        self.model_subscription_link = json_obj.get("model_subscription_link")
 
     def from_hub_content_doc(self, hub_content_doc: Dict[str, Any]) -> None:
         """Sets fields in object based on values in HubContentDocument
@@ -1278,6 +1286,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         "model_id",
         "model_version",
         "hub_arn",
+        "model_type",
         "instance_type",
         "tolerate_vulnerable_model",
         "tolerate_deprecated_model",
@@ -1309,6 +1318,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         "model_id",
         "model_version",
         "hub_arn",
+        "model_type",
         "tolerate_vulnerable_model",
         "tolerate_deprecated_model",
         "region",
@@ -1321,6 +1331,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         model_id: str,
         model_version: Optional[str] = None,
         hub_arn: Optional[str] = None,
+        model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_WEIGHTS,
         region: Optional[str] = None,
         instance_type: Optional[str] = None,
         image_uri: Optional[Union[str, Any]] = None,
@@ -1351,6 +1362,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         self.model_id = model_id
         self.model_version = model_version
         self.hub_arn = hub_arn
+        self.model_type = model_type
         self.instance_type = instance_type
         self.region = region
         self.image_uri = image_uri
@@ -1384,6 +1396,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "model_id",
         "model_version",
         "hub_arn",
+        "model_type",
         "initial_instance_count",
         "instance_type",
         "region",
@@ -1416,6 +1429,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "model_id",
         "model_version",
         "hub_arn",
+        "model_type",
         "region",
         "tolerate_deprecated_model",
         "tolerate_vulnerable_model",
@@ -1428,6 +1442,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         model_id: str,
         model_version: Optional[str] = None,
         hub_arn: Optional[str] = None,
+        model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_WEIGHTS,
         region: Optional[str] = None,
         initial_instance_count: Optional[int] = None,
         instance_type: Optional[str] = None,
@@ -1460,6 +1475,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         self.model_id = model_id
         self.model_version = model_version
         self.hub_arn = hub_arn
+        self.model_type = model_type
         self.initial_instance_count = initial_instance_count
         self.instance_type = instance_type
         self.region = region
@@ -1495,6 +1511,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         "model_id",
         "model_version",
         "hub_arn",
+        "model_type",
         "instance_type",
         "instance_count",
         "region",
@@ -1555,6 +1572,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         "model_id",
         "model_version",
         "hub_arn",
+        "model_type",
     }
 
     def __init__(
@@ -1562,6 +1580,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         model_id: str,
         model_version: Optional[str] = None,
         hub_arn: Optional[str] = None,
+        model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_WEIGHTS,
         region: Optional[str] = None,
         image_uri: Optional[Union[str, Any]] = None,
         role: Optional[str] = None,
@@ -1619,6 +1638,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         self.model_id = model_id
         self.model_version = model_version
         self.hub_arn = hub_arn
+        self.model_type = model_type
         self.instance_type = instance_type
         self.instance_count = instance_count
         self.region = region
@@ -1681,6 +1701,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         "model_id",
         "model_version",
         "hub_arn",
+        "model_type",
         "region",
         "inputs",
         "wait",
@@ -1696,6 +1717,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         "model_id",
         "model_version",
         "hub_arn",
+        "model_type",
         "region",
         "tolerate_deprecated_model",
         "tolerate_vulnerable_model",
@@ -1707,6 +1729,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         model_id: str,
         model_version: Optional[str] = None,
         hub_arn: Optional[str] = None,
+        model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_WEIGHTS,
         region: Optional[str] = None,
         inputs: Optional[Union[str, Dict, Any, Any]] = None,
         wait: Optional[bool] = None,
@@ -1722,6 +1745,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         self.model_id = model_id
         self.model_version = model_version
         self.hub_arn = hub_arn
+        self.model_type = model_type
         self.region = region
         self.inputs = inputs
         self.wait = wait

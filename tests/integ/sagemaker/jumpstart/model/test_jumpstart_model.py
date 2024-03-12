@@ -256,9 +256,33 @@ def test_jumpstart_model_register(setup):
     predictor = model_package.deploy(
         instance_type="ml.p3.2xlarge",
         initial_instance_count=1,
-        tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
     )
 
     response = predictor.predict("hello world!")
+
+    assert response is not None
+
+
+@pytest.mark.skipif(
+    True,
+    reason="Only enable if test account is subscribed to the proprietary model",
+)
+def test_proprietary_jumpstart_model(setup):
+
+    model_id = "ai21-jurassic-2-light"
+
+    model = JumpStartModel(
+        model_id=model_id,
+        model_version="2.0.004",
+        role=get_sm_session().get_caller_identity_arn(),
+        sagemaker_session=get_sm_session(),
+    )
+
+    predictor = model.deploy(
+        tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}]
+    )
+    payload = {"prompt": "To be, or", "maxTokens": 4, "temperature": 0, "numResults": 1}
+
+    response = predictor.predict(payload)
 
     assert response is not None

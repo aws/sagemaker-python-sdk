@@ -30,13 +30,16 @@ from sagemaker.jumpstart.types import (
     HubType,
     HubContentType,
 )
-
+from sagemaker.jumpstart.enums import JumpStartModelType
 from sagemaker.jumpstart.utils import get_formatted_manifest
 from tests.unit.sagemaker.jumpstart.constants import (
     PROTOTYPICAL_MODEL_SPECS_DICT,
     BASE_MANIFEST,
     BASE_SPEC,
+    BASE_PROPRIETARY_MANIFEST,
+    BASE_PROPRIETARY_SPEC,
     BASE_HEADER,
+    BASE_PROPRIETARY_HEADER,
     SPECIAL_MODEL_SPECS_DICT,
 )
 
@@ -47,10 +50,15 @@ def get_header_from_base_header(
     model_id: str = None,
     semantic_version_str: str = None,
     version: str = None,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> JumpStartModelHeader:
 
     if version and semantic_version_str:
         raise ValueError("Cannot specify both `version` and `semantic_version_str` fields.")
+
+    if model_type == JumpStartModelType.PROPRIETARY:
+        spec = copy.deepcopy(BASE_PROPRIETARY_HEADER)
+        return JumpStartModelHeader(spec)
 
     if all(
         [
@@ -82,7 +90,10 @@ def get_header_from_base_header(
 
 def get_prototype_manifest(
     region: str = JUMPSTART_DEFAULT_REGION_NAME,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> List[JumpStartModelHeader]:
+    if model_type == JumpStartModelType.PROPRIETARY:
+        return [JumpStartModelHeader(spec) for spec in BASE_PROPRIETARY_MANIFEST]
     return [
         get_header_from_base_header(region=region, model_id=model_id, version=version)
         for model_id in PROTOTYPICAL_MODEL_SPECS_DICT.keys()
@@ -96,6 +107,7 @@ def get_prototype_model_spec(
     version: str = None,
     hub_arn: Optional[str] = None,
     s3_client: boto3.client = None,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> JumpStartModelSpecs:
     """This function mocks cache accessor functions. For this mock,
     we only retrieve model specs based on the model ID.
@@ -112,6 +124,7 @@ def get_special_model_spec(
     version: str = None,
     hub_arn: Optional[str] = None,
     s3_client: boto3.client = None,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> JumpStartModelSpecs:
     """This function mocks cache accessor functions. For this mock,
     we only retrieve model specs based on the model ID. This is reserved
@@ -128,6 +141,7 @@ def get_special_model_spec_for_inference_component_based_endpoint(
     version: str = None,
     hub_arn: Optional[str] = None,
     s3_client: boto3.client = None,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> JumpStartModelSpecs:
     """This function mocks cache accessor functions. For this mock,
     we only retrieve model specs based on the model ID and adding
@@ -148,15 +162,23 @@ def get_spec_from_base_spec(
     _obj: JumpStartModelsCache = None,
     region: str = None,
     model_id: str = None,
-    semantic_version_str: str = None,
+    version_str: str = None,
     version: str = None,
     hub_arn: Optional[str] = None,
     hub_model_arn: Optional[str] = None,
     s3_client: boto3.client = None,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> JumpStartModelSpecs:
 
-    if version and semantic_version_str:
+    if version and version_str:
         raise ValueError("Cannot specify both `version` and `semantic_version_str` fields.")
+
+    if model_type == JumpStartModelType.PROPRIETARY:
+        spec = copy.deepcopy(BASE_PROPRIETARY_SPEC)
+        spec["version"] = version or version_str
+        spec["model_id"] = model_id
+
+        return JumpStartModelSpecs(spec)
 
     if model_id is not None:
         if all(
@@ -181,7 +203,7 @@ def get_spec_from_base_spec(
 
     spec = copy.deepcopy(BASE_SPEC)
 
-    spec["version"] = version or semantic_version_str
+    spec["version"] = version or version_str
     spec["model_id"] = model_id
 
     return JumpStartModelSpecs(spec)
@@ -194,11 +216,14 @@ def patched_retrieval_function(
 ) -> JumpStartCachedContentValue:
 
     datatype, id_info = key.data_type, key.id_info
-    if datatype == JumpStartS3FileType.MANIFEST:
-        return JumpStartCachedContentValue(formatted_content=get_formatted_manifest(BASE_MANIFEST))
+    if datatype == JumpStartS3FileType.OPEN_WEIGHT_MANIFEST:
 
-    if datatype == JumpStartS3FileType.SPECS:
-        _, model_id, specs_version = id_info.split("/")
+        return JumpStartCachedContentValue(
+            formatted_content=get_formatted_manifest(BASE_MANIFEST)
+        )
+
+    if datatype == JumpStartCachedContentValue.OPEN_WEIGHT_SPECS:
+        _, model_id, specs_version = s3_key.split("/")
         version = specs_version.replace("specs_v", "").replace(".json", "")
         return JumpStartCachedContentValue(
             formatted_content=get_spec_from_base_spec(model_id=model_id, version=version)
@@ -214,7 +239,23 @@ def patched_retrieval_function(
     if datatype == HubType.HUB:
         return None
 
-    raise ValueError(f"Bad value for filetype: {datatype}")
+    if datatype == JumpStartS3FileType.PROPRIETARY_MANIFEST:
+        return JumpStartCachedContentValue(
+            formatted_content=get_formatted_manifest(BASE_PROPRIETARY_MANIFEST)
+        )
+
+    if datatype == JumpStartS3FileType.PROPRIETARY_SPECS:
+        _, model_id, specs_version = s3_key.split("/")
+        version = specs_version.replace("proprietary_specs_", "").replace(".json", "")
+        return JumpStartCachedContentValue(
+            formatted_content=get_spec_from_base_spec(
+                model_id=model_id,
+                version=version,
+                model_type=JumpStartModelType.PROPRIETARY,
+            )
+        )
+
+    raise ValueError(f"Bad value for datatype: {datatype}")
 
 
 def overwrite_dictionary(

@@ -6113,6 +6113,7 @@ BASE_SPEC = {
     "deprecated_message": None,
     "hosting_model_package_arns": None,
     "hosting_eula_key": None,
+    "model_subscription_link": None,
     "hyperparameters": [
         {
             "name": "epochs",
@@ -6309,3 +6310,83 @@ BASE_MANIFEST = [
         "imagenet-inception-v3-classification-4/specs_v3.0.0.json",
     },
 ]
+
+BASE_PROPRIETARY_HEADER = {
+    "model_id": "ai21-summarization",
+    "version": "1.1.003",
+    "min_version": "2.0.0",
+    "spec_key": "proprietary-models/ai21-summarization/proprietary_specs_1.1.003.json",
+    "search_keywords": ["Text2Text", "Generation"],
+}
+
+BASE_PROPRIETARY_MANIFEST = [
+    {
+        "model_id": "ai21-summarization",
+        "version": "1.1.003",
+        "min_version": "2.0.0",
+        "spec_key": "proprietary-models/ai21-summarization/proprietary_specs_1.1.003.json",
+        "search_keywords": ["Text2Text", "Generation"],
+    },
+    {
+        "model_id": "lighton-mini-instruct40b",
+        "version": "v1.0",
+        "min_version": "2.0.0",
+        "spec_key": "proprietary-models/lighton-mini-instruct40b/proprietary_specs_v1.0.json",
+        "search_keywords": ["Text2Text", "Generation"],
+    },
+    {
+        "model_id": "ai21-paraphrase",
+        "version": "1.0.005",
+        "min_version": "2.0.0",
+        "spec_key": "proprietary-models/ai21-paraphrase/proprietary_specs_1.0.005.json",
+        "search_keywords": ["Text2Text", "Generation"],
+    },
+]
+
+BASE_PROPRIETARY_SPEC = {
+    "model_id": "ai21-jurassic-2-light",
+    "version": "2.0.004",
+    "min_sdk_version": "2.999.0",
+    "listing_id": "prodview-roz6zicyvi666",
+    "product_id": "1bd680a0-f29b-479d-91c3-9899743021cf",
+    "model_subscription_link": "https://aws.amazon.com/marketplace/ai/procurement?productId=1bd680a0",
+    "hosting_notebook_key": "pmm-notebooks/pmm-notebook-ai21-jurassic-2-light.ipynb",
+    "deploy_kwargs": {
+        "model_data_download_timeout": 3600,
+        "container_startup_health_check_timeout": 600,
+    },
+    "default_payloads": {
+        "Shakespeare": {
+            "content_type": "application/json",
+            "prompt_key": "prompt",
+            "output_keys": {"generated_text": "[0].completions[0].data.text"},
+            "body": {"prompt": "To be, or", "maxTokens": 1, "temperature": 0},
+        }
+    },
+    "predictor_specs": {
+        "supported_content_types": ["application/json"],
+        "supported_accept_types": ["application/json"],
+        "default_content_type": "application/json",
+        "default_accept_type": "application/json",
+    },
+    "default_inference_instance_type": "ml.p4de.24xlarge",
+    "supported_inference_instance_types": ["ml.p4de.24xlarge"],
+    "hosting_model_package_arns": {
+        "us-east-1": "arn:aws:sagemaker:us-east-1:865070037744:model-package/j2-light-v2-0-004",
+        "us-east-2": "arn:aws:sagemaker:us-east-2:057799348421:model-package/j2-light-v2-0-004",
+        "us-west-1": "arn:aws:sagemaker:us-west-1:382657785993:model-package/j2-light-v2-0-004",
+        "us-west-2": "arn:aws:sagemaker:us-west-2:594846645681:model-package/j2-light-v2-0-004",
+        "ca-central-1": "arn:aws:sagemaker:ca-central-1:470592106596:model-package/j2-light-v2-0-004",
+        "eu-central-1": "arn:aws:sagemaker:eu-central-1:446921602837:model-package/j2-light-v2-0-004",
+        "eu-west-1": "arn:aws:sagemaker:eu-west-1:985815980388:model-package/j2-light-v2-0-004",
+        "eu-west-2": "arn:aws:sagemaker:eu-west-2:856760150666:model-package/j2-light-v2-0-004",
+        "eu-west-3": "arn:aws:sagemaker:eu-west-3:843114510376:model-package/j2-light-v2-0-004",
+        "eu-north-1": "arn:aws:sagemaker:eu-north-1:136758871317:model-package/j2-light-v2-0-004",
+        "ap-southeast-1": "arn:aws:sagemaker:ap-southeast-1:192199979996:model-package/j2-light-v2-0-004",
+        "ap-southeast-2": "arn:aws:sagemaker:ap-southeast-2:666831318237:model-package/j2-light-v2-0-004",
+        "ap-northeast-2": "arn:aws:sagemaker:ap-northeast-2:745090734665:model-package/j2-light-v2-0-004",
+        "ap-northeast-1": "arn:aws:sagemaker:ap-northeast-1:977537786026:model-package/j2-light-v2-0-004",
+        "ap-south-1": "arn:aws:sagemaker:ap-south-1:077584701553:model-package/j2-light-v2-0-004",
+        "sa-east-1": "arn:aws:sagemaker:sa-east-1:270155090741:model-package/j2-light-v2-0-004",
+    },
+}
