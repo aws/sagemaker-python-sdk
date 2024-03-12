@@ -129,10 +129,9 @@ def _retrieve_model_uri(
             known security vulnerabilities.
         DeprecatedJumpStartModelError: If the version of the model is deprecated.
     """
-    if region is None:
-        region = region or get_region_fallback(
-            sagemaker_session=sagemaker_session,
-        )
+    region = region or get_region_fallback(
+        sagemaker_session=sagemaker_session,
+    )
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
@@ -208,10 +207,9 @@ def _model_supports_training_model_uri(
         bool: the support status for model uri with training.
     """
 
-    if region is None:
-        region = region or get_region_fallback(
-            sagemaker_session=sagemaker_session,
-        )
+    region = region or get_region_fallback(
+        sagemaker_session=sagemaker_session,
+    )
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,

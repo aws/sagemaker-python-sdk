@@ -309,10 +309,9 @@ def _retrieve_default_content_type(
         str: the default content type to use for the model.
     """
 
-    if region is None:
-        region = region or get_region_fallback(
-            sagemaker_session=sagemaker_session,
-        )
+    region = region or get_region_fallback(
+        sagemaker_session=sagemaker_session,
+    )
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
@@ -361,10 +360,9 @@ def _retrieve_default_accept_type(
         str: the default accept type to use for the model.
     """
 
-    if region is None:
-        region = region or get_region_fallback(
-            sagemaker_session=sagemaker_session,
-        )
+    region = region or get_region_fallback(
+        sagemaker_session=sagemaker_session,
+    )
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
@@ -414,10 +412,9 @@ def _retrieve_supported_accept_types(
         list: the supported accept types to use for the model.
     """
 
-    if region is None:
-        region = region or get_region_fallback(
-            sagemaker_session=sagemaker_session,
-        )
+    region = region or get_region_fallback(
+        sagemaker_session=sagemaker_session,
+    )
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
@@ -467,10 +464,9 @@ def _retrieve_supported_content_types(
         list: the supported content types to use for the model.
     """
 
-    if region is None:
-        region = region or get_region_fallback(
-            sagemaker_session=sagemaker_session,
-        )
+    region = region or get_region_fallback(
+        sagemaker_session=sagemaker_session,
+    )
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,

@@ -71,10 +71,9 @@ def _retrieve_default_environment_variables(
         dict: the inference environment variables to use for the model.
     """
 
-    if region is None:
-        region = region or get_region_fallback(
-            sagemaker_session=sagemaker_session,
-        )
+    region = region or get_region_fallback(
+        sagemaker_session=sagemaker_session,
+    )
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
@@ -170,10 +169,9 @@ def _retrieve_gated_model_uri_env_var_value(
         ValueError: If the model specs specified are invalid.
     """
 
-    if region is None:
-        region = region or get_region_fallback(
-            sagemaker_session=sagemaker_session,
-        )
+    region = region or get_region_fallback(
+        sagemaker_session=sagemaker_session,
+    )
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,

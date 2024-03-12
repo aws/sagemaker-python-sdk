@@ -572,10 +572,9 @@ def verify_model_region_and_return_specs(
         DeprecatedJumpStartModelError: If the version of the model is deprecated.
     """
 
-    if region is None:
-        region = region or get_region_fallback(
-            sagemaker_session=sagemaker_session,
-        )
+    region = region or get_region_fallback(
+        sagemaker_session=sagemaker_session,
+    )
 
     if scope is None:
         raise ValueError(

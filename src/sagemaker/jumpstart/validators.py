@@ -206,10 +206,9 @@ def validate_hyperparameters(
     if validation_mode is None:
         validation_mode = HyperparameterValidationMode.VALIDATE_PROVIDED
 
-    if region is None:
-        region = region or get_region_fallback(
-            sagemaker_session=sagemaker_session,
-        )
+    region = region or get_region_fallback(
+        sagemaker_session=sagemaker_session,
+    )
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
