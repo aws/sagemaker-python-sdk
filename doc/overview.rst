@@ -1461,6 +1461,49 @@ Then use those values to retrieve the model as follows.
        model_id=model_id, model_version=model_version, model_scope=scope
    )
 
+To list the available models and their versions,
+
+.. code:: python
+
+   from sagemaker.jumpstart import notebook_utils
+
+   notebook_utils.list_jumpstart_models(list_versions=True)
+
+You can constuct filters to filter the list of models,
+
+.. code:: python
+
+   from sagemaker.jumpstart import notebook_utils
+
+   # List Huggingface Large language models 
+   filter_value = And("task == llm", "framework == huggingface")
+   notebook_utils.list_jumpstart_models(filter_value)
+
+   # List models that supports fine-tuning
+   filter_value = "training_supported == true"
+   notebook_utils.list_jumpstart_models(filter_value)
+
+   # List models based on search keywords
+   filter_value = "search_keywords includes Foundation Models"
+   notebook_utils.list_jumpstart_models(filter_value)
+
+   # List models based on supported instance types
+   filter_value = "supported_inference_instance_types includes ml.p4de.24xlarge"
+   notebook_utils.list_jumpstart_models(filter_value)
+
+To list available proprietary models or public available models,
+
+.. code:: python
+
+   from sagemaker.jumpstart import notebook_utils
+
+   # List only publicly available models
+   notebook_utils.list_jumpstart_models("model_type == open_weights")
+
+   # List only proprietary models
+   notebook_utils.list_jumpstart_models("model_type == proprietary")
+
+
 Model scripts
 -------------
 
