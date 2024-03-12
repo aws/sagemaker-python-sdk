@@ -1659,6 +1659,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         "nearest_model_name",
         "data_input_configuration",
         "skip_model_validation",
+        "source_uri",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -1699,6 +1700,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         nearest_model_name: Optional[str] = None,
         data_input_configuration: Optional[str] = None,
         skip_model_validation: Optional[str] = None,
+        source_uri: Optional[str] = None,
     ) -> None:
         """Instantiates JumpStartModelRegisterKwargs object."""
 
@@ -1730,3 +1732,4 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         self.nearest_model_name = nearest_model_name
         self.data_input_configuration = data_input_configuration
         self.skip_model_validation = skip_model_validation
+        self.source_uri = source_uri
