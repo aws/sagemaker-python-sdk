@@ -47,6 +47,7 @@ from sagemaker.jumpstart.curated_hub.utils import (
     create_hub_bucket_if_it_does_not_exist,
     generate_default_hub_bucket_name,
     create_s3_object_reference_from_uri,
+    tag_jumpstart_hub_content_on_spec_fields,
 )
 from sagemaker.jumpstart.curated_hub.types import (
     HubContentDocument_v2,
@@ -347,6 +348,8 @@ class CuratedHub:
             version=model.version,
             region=self.region,
             scope=JumpStartScriptScope.INFERENCE,
+            tolerate_vulnerable_model = True,
+            tolerate_deprecated_model = True,
             sagemaker_session=self._sagemaker_session,
         )
         studio_specs = self._fetch_studio_specs(model_specs=model_specs)
@@ -415,3 +418,29 @@ class CuratedHub:
             Bucket=utils.get_jumpstart_content_bucket(self.region), Key=key
         )
         return json.loads(response["Body"].read().decode("utf-8"))
+
+
+    def scan_and_tag_models(self) -> None:
+        """Scans the Hub for JumpStart models and tags the HubContent.
+        
+        If the scan detects a model is deprecated or vulnerable, it will tag the HubContent.
+        The tags that will be added are based off the specifications in the JumpStart public hub:
+        1. "deprecated_versions" -> If the public hub model is deprecated
+        2. "inference_vulnerable_versions" -> If the public hub model has inference vulnerabilities
+        3. "training_vulnerable_versions" -> If the public hub model has training vulnerabilities
+
+        The tag value will be a list of versions in the Curated Hub that fall under those keys. 
+        For example, if model_a version_a is deprecated and inference is vulnerable, the
+        HubContent for `model_a` will have tags [{"deprecated_versions": [version_a]}, 
+        {"inference_vulnerable_versions": [version_a]}]
+        """
+        JUMPSTART_LOGGER.info(
+            "Tagging models in hub: %s", self.hub_name
+        )
+        models_in_hub: List[Dict[str, Any]] = self._get_jumpstart_models_in_hub()
+        tags = tag_jumpstart_hub_content_on_spec_fields(models_in_hub, self.region, self._sagemaker_session)
+
+        output_string = "No tags were added!"
+        if len(tags) > 0:
+          output_string = f"Added the following tags: {tags}"
+        JUMPSTART_LOGGER.info(output_string)
