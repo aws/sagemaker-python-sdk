@@ -18,6 +18,7 @@ from mock.mock import patch
 import pytest
 
 from sagemaker import resource_requirements
+from sagemaker.jumpstart.enums import JumpStartModelType
 from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
 from sagemaker.jumpstart.artifacts.resource_requirements import (
     REQUIREMENT_TYPE_TO_SPEC_FIELD_NAME_TO_RESOURCE_REQUIREMENT_NAME_MAP,
@@ -26,10 +27,14 @@ from sagemaker.jumpstart.artifacts.resource_requirements import (
 from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec, get_special_model_spec
 
 
+@patch("sagemaker.jumpstart.utils.validate_model_id_and_get_type")
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-def test_jumpstart_resource_requirements(patched_get_model_specs):
+def test_jumpstart_resource_requirements(
+    patched_get_model_specs, patched_validate_model_id_and_get_type
+):
 
     patched_get_model_specs.side_effect = get_spec_from_base_spec
+    patched_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
     region = "us-west-2"
     mock_client = boto3.client("s3")
     mock_session = Mock(s3_client=mock_client)
@@ -50,6 +55,7 @@ def test_jumpstart_resource_requirements(patched_get_model_specs):
         model_id=model_id,
         version=model_version,
         s3_client=mock_client,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
     )
     patched_get_model_specs.reset_mock()
 
@@ -103,9 +109,14 @@ def test_jumpstart_resource_requirements_instance_type_variants(patched_get_mode
     }
 
 
+@patch("sagemaker.jumpstart.utils.validate_model_id_and_get_type")
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-def test_jumpstart_no_supported_resource_requirements(patched_get_model_specs):
+def test_jumpstart_no_supported_resource_requirements(
+    patched_get_model_specs, patched_validate_model_id_and_get_type
+):
+
     patched_get_model_specs.side_effect = get_special_model_spec
+    patched_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
     model_id, model_version = "no-supported-instance-types-model", "*"
     region = "us-west-2"
@@ -126,6 +137,7 @@ def test_jumpstart_no_supported_resource_requirements(patched_get_model_specs):
         model_id=model_id,
         version=model_version,
         s3_client=mock_client,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
     )
     patched_get_model_specs.reset_mock()
 

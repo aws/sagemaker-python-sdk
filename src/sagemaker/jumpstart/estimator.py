@@ -35,7 +35,7 @@ from sagemaker.jumpstart.factory.estimator import get_deploy_kwargs, get_fit_kwa
 from sagemaker.jumpstart.factory.model import get_default_predictor
 from sagemaker.jumpstart.session_utils import get_model_id_version_from_training_job
 from sagemaker.jumpstart.utils import (
-    is_valid_model_id,
+    validate_model_id_and_get_type,
     resolve_model_sagemaker_config_field,
 )
 from sagemaker.utils import stringify_object, format_tags, Tags
@@ -504,8 +504,8 @@ class JumpStartEstimator(Estimator):
             ValueError: If the model ID is not recognized by JumpStart.
         """
 
-        def _is_valid_model_id_hook():
-            return is_valid_model_id(
+        def _validate_model_id_and_get_type_hook():
+            return validate_model_id_and_get_type(
                 model_id=model_id,
                 model_version=model_version,
                 region=region,
@@ -513,14 +513,17 @@ class JumpStartEstimator(Estimator):
                 sagemaker_session=sagemaker_session,
             )
 
-        if not _is_valid_model_id_hook():
+        self.model_type = _validate_model_id_and_get_type_hook()
+        if not self.model_type:
             JumpStartModelsAccessor.reset_cache()
-            if not _is_valid_model_id_hook():
+            self.model_type = _validate_model_id_and_get_type_hook()
+            if not self.model_type:
                 raise ValueError(INVALID_MODEL_ID_ERROR_MSG.format(model_id=model_id))
 
         estimator_init_kwargs = get_init_kwargs(
             model_id=model_id,
             model_version=model_version,
+            model_type=self.model_type,
             tolerate_vulnerable_model=tolerate_vulnerable_model,
             tolerate_deprecated_model=tolerate_deprecated_model,
             role=role,
