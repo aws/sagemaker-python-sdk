@@ -486,7 +486,6 @@ class JumpStartModelsCache:
                 formatted_content=DescribeHubResponse(hub_description)
             )
 
-
         raise ValueError(
             self._file_type_error_msg(data_type)
         )
