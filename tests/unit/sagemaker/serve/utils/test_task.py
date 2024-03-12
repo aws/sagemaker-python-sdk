@@ -18,7 +18,7 @@ import pytest
 
 from sagemaker.serve.utils import task
 
-EXPECTED_INPUTS = {"inputs": "Paris is the <mask> of France.", "parameters": {}}
+EXPECTED_INPUTS = {"inputs": "Paris is the [MASK] of France.", "parameters": {}}
 EXPECTED_OUTPUTS = [{"sequence": "Paris is the capital of France.", "score": 0.7}]
 HF_INVALID_TASK = "not-present-task"
 
