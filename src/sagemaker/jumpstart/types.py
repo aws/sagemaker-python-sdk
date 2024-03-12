@@ -964,6 +964,10 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         """Returns True if the model supports incremental training."""
         return self.incremental_training_supported
 
+    def get_framework(self) -> str:
+        """Returns the framework for the model."""
+        return self.model_id.split("-")[0]
+
 
 class JumpStartVersionedModelId(JumpStartDataHolderType):
     """Data class for versioned model IDs."""
