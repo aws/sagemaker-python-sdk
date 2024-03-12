@@ -15,7 +15,7 @@ from __future__ import absolute_import
 import datetime
 from difflib import get_close_matches
 import os
-from typing import List, Optional, Set, Tuple, Union
+from typing import List, Optional, Tuple, Union
 import json
 import boto3
 import botocore
@@ -25,9 +25,7 @@ from sagemaker.jumpstart.constants import (
     ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE,
     ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE,
     JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY,
-    JUMPSTART_DEFAULT_REGION_NAME,
     JUMPSTART_LOGGER,
-    JUMPSTART_REGION_NAME_SET,
     MODEL_ID_LIST_WEB_URL,
 )
 from sagemaker.jumpstart.exceptions import get_wildcard_model_version_msg
@@ -94,7 +92,7 @@ class JumpStartModelsCache:
             s3_client (Optional[boto3.client]): s3 client to use. Default: None.
         """
 
-        self._region = region or self._get_region_fallback(
+        self._region = region or utils.get_region_fallback(
             s3_bucket_name=s3_bucket_name, s3_client=s3_client
         )
 
@@ -121,35 +119,6 @@ class JumpStartModelsCache:
             if s3_client_config
             else boto3.client("s3", region_name=self._region)
         )
-
-    def _get_region_fallback(
-        self, s3_bucket_name: Optional[str], s3_client: Optional[boto3.client]
-    ) -> str:
-        """Returns region to use throughout cache in the absence of one specified in constructor."""
-        regions_in_s3_bucket_name: Set[str] = {
-            region
-            for region in JUMPSTART_REGION_NAME_SET
-            if s3_bucket_name is not None
-            if region in s3_bucket_name
-        }
-        regions_in_s3_client_endpoint_url: Set[str] = {
-            region
-            for region in JUMPSTART_REGION_NAME_SET
-            if s3_client is not None
-            if region in s3_client._endpoint.host
-        }
-
-        combined_regions = regions_in_s3_client_endpoint_url.union(regions_in_s3_bucket_name)
-
-        if len(combined_regions) > 1:
-            raise ValueError(
-                "Unable to resolve a region name from  the s3 bucket and client provided."
-            )
-
-        if len(combined_regions) == 0:
-            return JUMPSTART_DEFAULT_REGION_NAME
-
-        return list(combined_regions)[0]
 
     def set_region(self, region: str) -> None:
         """Set region for cache. Clears cache after new region is set."""
