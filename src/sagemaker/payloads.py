@@ -21,6 +21,7 @@ from sagemaker.jumpstart import artifacts
 from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 from sagemaker.jumpstart.payload_utils import PayloadSerializer
 from sagemaker.jumpstart.types import JumpStartSerializablePayload
+from sagemaker.jumpstart.enums import JumpStartModelType
 from sagemaker.session import Session
 
 
@@ -31,6 +32,7 @@ def retrieve_all_examples(
     region: Optional[str] = None,
     model_id: Optional[str] = None,
     model_version: Optional[str] = None,
+    model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_WEIGHTS,
     serialize: bool = False,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
@@ -83,6 +85,7 @@ def retrieve_all_examples(
         tolerate_vulnerable_model,
         tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
+        model_type=model_type,
     )
 
     if unserialized_payload_dict is None:
@@ -120,6 +123,7 @@ def retrieve_example(
     region: Optional[str] = None,
     model_id: Optional[str] = None,
     model_version: Optional[str] = None,
+    model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_WEIGHTS,
     serialize: bool = False,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
@@ -133,6 +137,8 @@ def retrieve_example(
             the model payload.
         model_version (str): The version of the JumpStart model for which to retrieve
             the model payload.
+        model_type (str): The model type of the JumpStart model, either is open weight
+            or proprietary.
         serialize (bool): Whether to serialize byte-stream valued payloads by downloading
             binary files from s3 and applying encoding, or to keep payload in pre-serialized
             state. Set this option to False if you want to avoid s3 downloads or if you
@@ -162,6 +168,7 @@ def retrieve_example(
         region=region,
         model_id=model_id,
         model_version=model_version,
+        model_type=model_type,
         serialize=serialize,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,

@@ -48,6 +48,10 @@ from sagemaker.workflow import is_pipeline_variable, is_pipeline_parameter_strin
 from sagemaker.workflow.entities import PipelineVariable
 
 ECR_URI_PATTERN = r"^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(.*)(/)(.*:.*)$"
+MODEL_PACKAGE_ARN_PATTERN = (
+    r"arn:aws([a-z\-]*)?:sagemaker:([a-z0-9\-]*):([0-9]{12}):model-package/(.*)"
+)
+MODEL_ARN_PATTERN = r"arn:aws([a-z\-]*):sagemaker:([a-z0-9\-]*):([0-9]{12}):model/(.*)"
 MAX_BUCKET_PATHS_COUNT = 5
 S3_PREFIX = "s3://"
 HTTP_PREFIX = "http://"
@@ -1581,3 +1585,17 @@ def custom_extractall_tarfile(tar, extract_path):
         tar.extractall(path=extract_path, filter="data")
     else:
         tar.extractall(path=extract_path, members=_get_safe_members(tar))
+
+
+def can_model_package_source_uri_autopopulate(source_uri: str):
+    """Checks if the source_uri can lead to auto-population of information in the Model registry.
+
+    Args:
+        source_uri (str): The source uri.
+
+    Returns:
+        bool: True if the source_uri can lead to auto-population, False otherwise.
+    """
+    return bool(
+        re.match(MODEL_PACKAGE_ARN_PATTERN, source_uri) or re.match(MODEL_ARN_PATTERN, source_uri)
+    )

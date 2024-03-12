@@ -77,7 +77,10 @@ from sagemaker.inference_recommender.inference_recommender_mixin import (
 )
 from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
 from sagemaker.enums import EndpointType
-from sagemaker.session import get_add_model_package_inference_args
+from sagemaker.session import (
+    get_add_model_package_inference_args,
+    get_update_model_package_inference_args,
+)
 
 # Setting LOGGER for backward compatibility, in case users import it...
 logger = LOGGER = logging.getLogger("sagemaker")
@@ -138,7 +141,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
 
     def __init__(
         self,
-        image_uri: Union[str, PipelineVariable],
+        image_uri: Optional[Union[str, PipelineVariable]] = None,
         model_data: Optional[Union[str, PipelineVariable, dict]] = None,
         role: Optional[str] = None,
         predictor_cls: Optional[callable] = None,
@@ -423,6 +426,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
         nearest_model_name: Optional[Union[str, PipelineVariable]] = None,
         data_input_configuration: Optional[Union[str, PipelineVariable]] = None,
         skip_model_validation: Optional[Union[str, PipelineVariable]] = None,
+        source_uri: Optional[Union[str, PipelineVariable]] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -472,17 +476,14 @@ class Model(ModelBase, InferenceRecommenderMixin):
                 (default: None).
             skip_model_validation (str or PipelineVariable): Indicates if you want to skip model
                 validation. Values can be "All" or "None" (default: None).
+            source_uri (str or PipelineVariable): The URI of the source for the model package
+                (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance or pipeline step arguments
             in case the Model instance is built with
             :class:`~sagemaker.workflow.pipeline_context.PipelineSession`
         """
-        if isinstance(self.model_data, dict):
-            raise ValueError(
-                "SageMaker Model Package currently cannot be created with ModelDataSource."
-            )
-
         if content_types is not None:
             self.content_types = content_types
 
@@ -513,6 +514,12 @@ class Model(ModelBase, InferenceRecommenderMixin):
                 "Image": self.image_uri,
             }
 
+            if isinstance(self.model_data, dict):
+                raise ValueError(
+                    "Un-versioned SageMaker Model Package currently cannot be "
+                    "created with ModelDataSource."
+                )
+
             if self.model_data is not None:
                 container_def["ModelDataUrl"] = self.model_data
 
@@ -536,6 +543,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
             sample_payload_url=sample_payload_url,
             task=task,
             skip_model_validation=skip_model_validation,
+            source_uri=source_uri,
         )
         model_package = self.sagemaker_session.create_model_package_from_containers(
             **model_pkg_args
@@ -2040,8 +2048,9 @@ class ModelPackage(Model):
                 endpoints use this role to access training data and model
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if it needs to access an AWS resource.
-            model_data (str): The S3 location of a SageMaker model data
-                ``.tar.gz`` file. Must be provided if algorithm_arn is provided.
+            model_data (str or dict[str, Any]): The S3 location of a SageMaker model data
+                ``.tar.gz`` file or a dictionary representing a ``ModelDataSource``
+                object. Must be provided if algorithm_arn is provided.
             algorithm_arn (str): algorithm arn used to train the model, can be
                 just the name if your account owns the algorithm. Must also
                 provide ``model_data``.
@@ -2050,11 +2059,6 @@ class ModelPackage(Model):
                 ``model_data`` is not required.
             **kwargs: Additional kwargs passed to the Model constructor.
         """
-        if isinstance(model_data, dict):
-            raise ValueError(
-                "Creating ModelPackage with ModelDataSource is currently not supported"
-            )
-
         super(ModelPackage, self).__init__(
             role=role, model_data=model_data, image_uri=None, **kwargs
         )
@@ -2221,6 +2225,74 @@ class ModelPackage(Model):
 
         sagemaker_session = self.sagemaker_session or sagemaker.Session()
         sagemaker_session.sagemaker_client.update_model_package(**update_metadata_args)
+
+    def update_inference_specification(
+        self,
+        containers: Dict = None,
+        image_uris: List[str] = None,
+        content_types: List[str] = None,
+        response_types: List[str] = None,
+        inference_instances: List[str] = None,
+        transform_instances: List[str] = None,
+    ):
+        """Inference specification to be set for the model package
+
+        Args:
+            containers (dict): The Amazon ECR registry path of the Docker image
+                that contains the inference code.
+            image_uris (List[str]): The ECR path where inference code is stored.
+            content_types (list[str]): The supported MIME types
+                for the input data.
+            response_types (list[str]): The supported MIME types
+                for the output data.
+            inference_instances (list[str]): A list of the instance
+                types that are used to generate inferences in real-time (default: None).
+            transform_instances (list[str]): A list of the instance
+                types on which a transformation job can be run or on which an endpoint can be
+                deployed (default: None).
+
+        """
+        sagemaker_session = self.sagemaker_session or sagemaker.Session()
+        if (containers is not None) ^ (image_uris is None):
+            raise ValueError("Should have either containers or image_uris for inference.")
+        container_def = []
+        if image_uris:
+            for uri in image_uris:
+                container_def.append(
+                    {
+                        "Image": uri,
+                    }
+                )
+        else:
+            container_def = containers
+
+        model_package_update_args = get_update_model_package_inference_args(
+            model_package_arn=self.model_package_arn,
+            containers=container_def,
+            content_types=content_types,
+            response_types=response_types,
+            inference_instances=inference_instances,
+            transform_instances=transform_instances,
+        )
+
+        sagemaker_session.sagemaker_client.update_model_package(**model_package_update_args)
+
+    def update_source_uri(
+        self,
+        source_uri: str,
+    ):
+        """Source uri to be set for the model package
+
+        Args:
+            source_uri (str): The URI of the source for the model package.
+
+        """
+        update_source_uri_args = {
+            "ModelPackageArn": self.model_package_arn,
+            "SourceUri": source_uri,
+        }
+        sagemaker_session = self.sagemaker_session or sagemaker.Session()
+        sagemaker_session.sagemaker_client.update_model_package(**update_source_uri_args)
 
     def remove_customer_metadata_properties(
         self, customer_metadata_properties_to_remove: List[str]

@@ -21,6 +21,7 @@ from sagemaker.jumpstart.utils import (
 )
 from sagemaker.jumpstart.enums import (
     JumpStartScriptScope,
+    JumpStartModelType,
 )
 from sagemaker.session import Session
 
@@ -34,6 +35,7 @@ def _retrieve_model_package_arn(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> Optional[str]:
     """Retrieves associated model pacakge arn for the model.
 
@@ -73,6 +75,7 @@ def _retrieve_model_package_arn(
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
+        model_type=model_type,
     )
 
     if scope == JumpStartScriptScope.INFERENCE:

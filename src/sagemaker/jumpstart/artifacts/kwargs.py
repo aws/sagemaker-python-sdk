@@ -21,6 +21,7 @@ from sagemaker.jumpstart.constants import (
 )
 from sagemaker.jumpstart.enums import (
     JumpStartScriptScope,
+    JumpStartModelType,
 )
 from sagemaker.jumpstart.utils import (
     verify_model_region_and_return_specs,
@@ -34,6 +35,7 @@ def _retrieve_model_init_kwargs(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> dict:
     """Retrieves kwargs for `Model`.
 
@@ -70,6 +72,7 @@ def _retrieve_model_init_kwargs(
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
+        model_type=model_type,
     )
 
     kwargs = deepcopy(model_specs.model_kwargs)
@@ -88,6 +91,7 @@ def _retrieve_model_deploy_kwargs(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> dict:
     """Retrieves kwargs for `Model.deploy`.
 
@@ -127,6 +131,7 @@ def _retrieve_model_deploy_kwargs(
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
+        model_type=model_type,
     )
 
     if volume_size_supported(instance_type) and model_specs.inference_volume_size is not None:

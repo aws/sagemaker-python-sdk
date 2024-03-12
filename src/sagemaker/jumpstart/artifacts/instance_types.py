@@ -21,6 +21,7 @@ from sagemaker.jumpstart.constants import (
 )
 from sagemaker.jumpstart.enums import (
     JumpStartScriptScope,
+    JumpStartModelType,
 )
 from sagemaker.jumpstart.utils import (
     verify_model_region_and_return_specs,
@@ -37,6 +38,7 @@ def _retrieve_default_instance_type(
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     training_instance_type: Optional[str] = None,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> str:
     """Retrieves the default instance type for the model.
 
@@ -83,6 +85,7 @@ def _retrieve_default_instance_type(
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
+        model_type=model_type,
         sagemaker_session=sagemaker_session,
     )
 

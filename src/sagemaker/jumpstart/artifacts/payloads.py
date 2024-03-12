@@ -19,6 +19,7 @@ from sagemaker.jumpstart.constants import (
 )
 from sagemaker.jumpstart.enums import (
     JumpStartScriptScope,
+    JumpStartModelType,
 )
 from sagemaker.jumpstart.types import JumpStartSerializablePayload
 from sagemaker.jumpstart.utils import (
@@ -34,6 +35,7 @@ def _retrieve_example_payloads(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> Optional[Dict[str, JumpStartSerializablePayload]]:
     """Returns example payloads.
 
@@ -71,6 +73,7 @@ def _retrieve_example_payloads(
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
+        model_type=model_type,
     )
 
     default_payloads = model_specs.default_payloads
