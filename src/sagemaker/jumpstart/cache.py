@@ -474,7 +474,9 @@ class JumpStartModelsCache:
                 formatted_content=hub_description,
             )
 
-        raise ValueError(self._file_type_error_msg(data_type))
+        raise ValueError(
+            self._file_type_error_msg(data_type)
+        )
 
     def get_manifest(
         self,
