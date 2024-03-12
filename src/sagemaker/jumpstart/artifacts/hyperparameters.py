@@ -21,6 +21,7 @@ from sagemaker.jumpstart.enums import (
     VariableScope,
 )
 from sagemaker.jumpstart.utils import (
+    get_region_fallback,
     verify_model_region_and_return_specs,
 )
 from sagemaker.session import Session
@@ -70,7 +71,9 @@ def _retrieve_default_hyperparameters(
     """
 
     if region is None:
-        region = sagemaker_session.boto_region_name
+        region = region or get_region_fallback(
+            sagemaker_session=sagemaker_session,
+        )
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
