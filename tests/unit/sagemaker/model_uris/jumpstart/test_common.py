@@ -19,19 +19,24 @@ import pytest
 
 from sagemaker import model_uris
 from sagemaker.jumpstart.utils import verify_model_region_and_return_specs
+from sagemaker.jumpstart.enums import JumpStartModelType
 
 from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec
 from sagemaker.jumpstart import constants as sagemaker_constants
 
 
+@patch("sagemaker.jumpstart.utils.validate_model_id_and_get_type")
 @patch("sagemaker.jumpstart.artifacts.model_uris.verify_model_region_and_return_specs")
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
 def test_jumpstart_common_model_uri(
-    patched_get_model_specs, patched_verify_model_region_and_return_specs
+    patched_get_model_specs,
+    patched_verify_model_region_and_return_specs,
+    patched_validate_model_id_and_get_type,
 ):
 
     patched_verify_model_region_and_return_specs.side_effect = verify_model_region_and_return_specs
     patched_get_model_specs.side_effect = get_spec_from_base_spec
+    patched_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
     mock_client = boto3.client("s3")
     mock_session = Mock(s3_client=mock_client)
@@ -47,6 +52,7 @@ def test_jumpstart_common_model_uri(
         model_id="pytorch-ic-mobilenet-v2",
         version="*",
         s3_client=mock_client,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
     )
     patched_verify_model_region_and_return_specs.assert_called_once()
 
@@ -64,6 +70,7 @@ def test_jumpstart_common_model_uri(
         model_id="pytorch-ic-mobilenet-v2",
         version="1.*",
         s3_client=mock_client,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
     )
     patched_verify_model_region_and_return_specs.assert_called_once()
 
@@ -82,6 +89,7 @@ def test_jumpstart_common_model_uri(
         model_id="pytorch-ic-mobilenet-v2",
         version="*",
         s3_client=mock_client,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
     )
     patched_verify_model_region_and_return_specs.assert_called_once()
 
@@ -100,6 +108,7 @@ def test_jumpstart_common_model_uri(
         model_id="pytorch-ic-mobilenet-v2",
         version="1.*",
         s3_client=mock_client,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
     )
     patched_verify_model_region_and_return_specs.assert_called_once()
 
