@@ -623,6 +623,7 @@ def get_register_kwargs(
     nearest_model_name: Optional[str] = None,
     data_input_configuration: Optional[str] = None,
     skip_model_validation: Optional[str] = None,
+    source_uri: Optional[str] = None,
 ) -> JumpStartModelRegisterKwargs:
     """Returns kwargs required to call `register` on `sagemaker.estimator.Model` object."""
 
@@ -655,6 +656,7 @@ def get_register_kwargs(
         nearest_model_name=nearest_model_name,
         data_input_configuration=data_input_configuration,
         skip_model_validation=skip_model_validation,
+        source_uri=source_uri,
     )
 
     model_specs = verify_model_region_and_return_specs(

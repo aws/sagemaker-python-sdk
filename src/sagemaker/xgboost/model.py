@@ -159,6 +159,7 @@ class XGBoostModel(FrameworkModel):
         nearest_model_name: Optional[Union[str, PipelineVariable]] = None,
         data_input_configuration: Optional[Union[str, PipelineVariable]] = None,
         skip_model_validation: Optional[Union[str, PipelineVariable]] = None,
+        source_uri: Optional[Union[str, PipelineVariable]] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -208,6 +209,8 @@ class XGBoostModel(FrameworkModel):
                 (default: None).
             skip_model_validation (str or PipelineVariable): Indicates if you want to skip model
                 validation. Values can be "All" or "None" (default: None).
+            source_uri (str or PipelineVariable): The URI of the source for the model package
+                (default: None).
 
         Returns:
             str: A string of SageMaker Model Package ARN.
@@ -247,6 +250,7 @@ class XGBoostModel(FrameworkModel):
             nearest_model_name=nearest_model_name,
             data_input_configuration=data_input_configuration,
             skip_model_validation=skip_model_validation,
+            source_uri=source_uri,
         )
 
     def prepare_container_def(
