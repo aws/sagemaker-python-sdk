@@ -1440,8 +1440,7 @@ unique ID which can be used to retrieve the model URI. The following information
 
    -  ``model_id``: A unique identifier for the JumpStart model.
    -  ``model_version``: The version of the specifications for the
-      model. To use the latest version, enter ``"*"``. This is a
-      required parameter.
+      model. To use the latest version, enter ``"*"``.
 
 To retrieve a model, first select a ``model ID`` and ``version`` from
 the :doc:`available models <./doc_utils/pretrainedmodels>`.
@@ -1461,7 +1460,7 @@ Then use those values to retrieve the model as follows.
        model_id=model_id, model_version=model_version, model_scope=scope
    )
 
-To list the available models and their versions,
+There are utilities built-in to list the available models and their versions,
 
 .. code:: python
 
@@ -1469,7 +1468,7 @@ To list the available models and their versions,
 
    notebook_utils.list_jumpstart_models(list_versions=True)
 
-You can constuct filters to filter the list of models,
+You can constuct custom filters to filter the list of models,
 
 .. code:: python
 
@@ -1490,12 +1489,6 @@ You can constuct filters to filter the list of models,
    # List models based on supported instance types
    filter_value = "supported_inference_instance_types includes ml.p4de.24xlarge"
    notebook_utils.list_jumpstart_models(filter_value)
-
-To list available proprietary models or public available models,
-
-.. code:: python
-
-   from sagemaker.jumpstart import notebook_utils
 
    # List only publicly available models
    notebook_utils.list_jumpstart_models("model_type == open_weights")
