@@ -24,8 +24,6 @@ import time
 import dataclasses
 import json
 
-import sagemaker
-
 
 class _UTCFormatter(logging.Formatter):
     """Class that overrides the default local time provider in log formatter."""
@@ -330,6 +328,7 @@ class RuntimeEnvironmentManager:
 
     def _current_sagemaker_pysdk_version(self):
         """Returns the current sagemaker python sdk version where program is running"""
+        import sagemaker
 
         return sagemaker.__version__
 
@@ -366,10 +365,10 @@ class RuntimeEnvironmentManager:
         ):
             logger.warning(
                 "Inconsistent sagemaker versions found: "
-                "sagemaker pysdk version found in the container is "
+                "sagemaker python sdk version found in the container is "
                 "'%s' which does not match the '%s' on the local client. "
-                "Please make sure that the python version used in the training container "
-                "is the same as the local python version in case of unexpected behaviors.",
+                "Please make sure that the sagemaker version used in the training container "
+                "is the same as the local sagemaker version in case of unexpected behaviors.",
                 job_sagemaker_pysdk_version,
                 client_sagemaker_pysdk_version,
             )
