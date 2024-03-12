@@ -420,7 +420,6 @@ class JumpStartModelsCache:
         """
 
         data_type, id_info = key.data_type, key.id_info
-
         if data_type in {
             JumpStartS3FileType.OPEN_WEIGHT_MANIFEST,
             JumpStartS3FileType.PROPRIETARY_MANIFEST,
@@ -434,7 +433,6 @@ class JumpStartModelsCache:
                 formatted_content=utils.get_formatted_manifest(formatted_body),
                 md5_hash=etag,
             )
-
         if data_type in {
             JumpStartS3FileType.OPEN_WEIGHT_SPECS,
             JumpStartS3FileType.PROPRIETARY_SPECS,
