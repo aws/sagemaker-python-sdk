@@ -86,3 +86,19 @@ class AsyncInferenceModelError(AsyncInferenceError):
 
     def __init__(self, message):
         super().__init__(message=message)
+
+
+class ModelStreamError(Exception):
+    def __init__(self, message="An error occurred", code=None):
+        self.message = message
+        self.code = code
+        if code is not None:
+            super().__init__(f"{message} (Code: {code})")
+        else:
+            super().__init__(message)
+
+
+class InternalStreamFailure(Exception):
+    def __init__(self, message="An error occurred"):
+        self.message = message
+        super().__init__(self.message)
