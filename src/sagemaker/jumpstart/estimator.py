@@ -534,7 +534,6 @@ class JumpStartEstimator(Estimator):
             model_version=model_version,
             hub_arn=hub_arn,
             model_type=self.model_type,
-            hub_arn=hub_arn,
             tolerate_vulnerable_model=tolerate_vulnerable_model,
             tolerate_deprecated_model=tolerate_deprecated_model,
             role=role,

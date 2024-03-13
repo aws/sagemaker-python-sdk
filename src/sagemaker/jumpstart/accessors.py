@@ -257,7 +257,6 @@ class JumpStartModelsAccessor(object):
         hub_arn: Optional[str] = None,
         s3_client: Optional[boto3.client] = None,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
-        hub_arn: Optional[str] = None,
     ) -> JumpStartModelSpecs:
         """Returns model specs from JumpStart models cache.
 
