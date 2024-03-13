@@ -12,10 +12,11 @@
 # language governing permissions and limitations under the License.
 """This module contains functions for obtaining JumpStart environment variables."""
 from __future__ import absolute_import
-from typing import Dict, Optional
+from typing import Callable, Dict, Optional, Set
 from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     JUMPSTART_DEFAULT_REGION_NAME,
+    JUMPSTART_LOGGER,
     SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY,
 )
 from sagemaker.jumpstart.enums import (
@@ -110,7 +111,9 @@ def _retrieve_default_environment_variables(
 
             default_environment_variables.update(instance_specific_environment_variables)
 
-            gated_model_env_var: Optional[str] = _retrieve_gated_model_uri_env_var_value(
+            retrieve_gated_env_var_for_instance_type: Callable[
+                [str], Optional[str]
+            ] = lambda instance_type: _retrieve_gated_model_uri_env_var_value(
                 model_id=model_id,
                 model_version=model_version,
                 region=region,
@@ -119,6 +122,33 @@ def _retrieve_default_environment_variables(
                 sagemaker_session=sagemaker_session,
                 instance_type=instance_type,
             )
+
+            gated_model_env_var: Optional[str] = retrieve_gated_env_var_for_instance_type(
+                instance_type
+            )
+
+            if gated_model_env_var is None and model_specs.is_gated_model():
+
+                possible_env_vars: Set[str] = {
+                    retrieve_gated_env_var_for_instance_type(instance_type)
+                    for instance_type in model_specs.supported_training_instance_types
+                }
+
+                # If all officially supported instance types have the same underlying artifact,
+                # we can use this artifact with high confidence that it'll succeed with
+                # an arbitrary instance.
+                if len(possible_env_vars) == 1:
+                    gated_model_env_var = list(possible_env_vars)[0]
+
+                # If this model does not have 1 artifact for all supported instance types,
+                # we cannot determine which artifact to use for an arbitrary instance.
+                else:
+                    log_msg = (
+                        f"'{model_id}' does not support {instance_type} instance type"
+                        " for training. Please use one of the following instance types: "
+                        f"{', '.join(model_specs.supported_training_instance_types)}."
+                    )
+                    JUMPSTART_LOGGER.warning(log_msg)
 
             if gated_model_env_var is not None:
                 default_environment_variables.update(
