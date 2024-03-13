@@ -325,39 +325,21 @@ class EstimatorTest(unittest.TestCase):
         mock_session_estimator.return_value = sagemaker_session
         mock_session_model.return_value = sagemaker_session
 
-        JumpStartEstimator(
-            model_id=model_id,
-            environment={
-                "accept_eula": "false",
-                "what am i": "doing",
-                "SageMakerGatedModelS3Uri": "none of your business",
-            },
-        )
-
-        mock_estimator_init.assert_called_once_with(
-            instance_type="ml.p3.2xlarge",
-            instance_count=1,
-            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.21.0-deepspeed0.8.3-cu117",
-            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/"
-            "meta/transfer_learning/textgeneration/v1.0.0/sourcedir.tar.gz",
-            entry_point="transfer_learning.py",
-            role=execution_role,
-            sagemaker_session=sagemaker_session,
-            max_run=360000,
-            enable_network_isolation=True,
-            encrypt_inter_container_traffic=True,
-            environment={
-                "accept_eula": "false",
-                "what am i": "doing",
-                "SageMakerGatedModelS3Uri": "none of your business",
-            },
-            tags=[
-                {
-                    "Key": "sagemaker-sdk:jumpstart-model-id",
-                    "Value": "js-gated-artifact-trainable-model",
+        with pytest.raises(ValueError) as e:
+            JumpStartEstimator(
+                model_id=model_id,
+                environment={
+                    "accept_eula": "false",
+                    "what am i": "doing",
+                    "SageMakerGatedModelS3Uri": "none of your business",
                 },
-                {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "2.0.0"},
-            ],
+            )
+        assert str(e.value) == (
+            "Need to define ‘accept_eula'='true' within Environment. "
+            "Model 'meta-textgeneration-llama-2-7b-f' requires accepting end-user "
+            "license agreement (EULA). See "
+            "https://jumpstart-cache-prod-us-west-2.s3.us-west-2.amazonaws.com/fmhMetadata/eula/llamaEula.txt"
+            " for terms of use."
         )
 
         mock_estimator_init.reset_mock()

@@ -476,21 +476,25 @@ def update_inference_tags_with_jumpstart_training_tags(
     return inference_tags
 
 
+def get_eula_message(model_specs: JumpStartModelSpecs, region: str) -> str:
+    """Returns EULA message to display if one is available, else empty string."""
+    if model_specs.hosting_eula_key is None:
+        return ""
+    return (
+        f"Model '{model_specs.model_id}' requires accepting end-user license agreement (EULA). "
+        f"See https://{get_jumpstart_content_bucket(region=region)}.s3.{region}."
+        f"amazonaws.com{'.cn' if region.startswith('cn-') else ''}"
+        f"/{model_specs.hosting_eula_key} for terms of use."
+    )
+
+
 def emit_logs_based_on_model_specs(
     model_specs: JumpStartModelSpecs, region: str, s3_client: boto3.client
 ) -> None:
     """Emits logs based on model specs and region."""
 
     if model_specs.hosting_eula_key:
-        constants.JUMPSTART_LOGGER.info(
-            "Model '%s' requires accepting end-user license agreement (EULA). "
-            "See https://%s.s3.%s.amazonaws.com%s/%s for terms of use.",
-            model_specs.model_id,
-            get_jumpstart_content_bucket(region=region),
-            region,
-            ".cn" if region.startswith("cn-") else "",
-            model_specs.hosting_eula_key,
-        )
+        constants.JUMPSTART_LOGGER.info(get_eula_message(model_specs, region))
 
     full_version: str = model_specs.version
 
