@@ -253,6 +253,13 @@ def patched_retrieval_function(
                 model_type=JumpStartModelType.PROPRIETARY,
             )
         )
+
+    if datatype == HubContentType.MODEL:
+        _, _, _, model_name, model_version = id_info.split("/")
+        return JumpStartCachedContentValue(
+            formatted_content=get_spec_from_base_spec(model_id=model_name, version=model_version)
+        )
+
     # TODO: Implement
     if datatype == HubType.HUB:
         return None
