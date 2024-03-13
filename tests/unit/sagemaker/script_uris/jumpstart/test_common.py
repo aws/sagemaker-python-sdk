@@ -54,8 +54,6 @@ def test_jumpstart_common_script_uri(
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
         hub_arn=None,
-        model_type=JumpStartModelType.OPEN_WEIGHTS,
-        hub_arn=None,
     )
     patched_verify_model_region_and_return_specs.assert_called_once()
 
@@ -75,7 +73,6 @@ def test_jumpstart_common_script_uri(
         s3_client=mock_client,
         hub_arn=None,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
-        hub_arn=None,
     )
     patched_verify_model_region_and_return_specs.assert_called_once()
 
@@ -96,7 +93,6 @@ def test_jumpstart_common_script_uri(
         s3_client=mock_client,
         hub_arn=None,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
-        hub_arn=None,
     )
     patched_verify_model_region_and_return_specs.assert_called_once()
 
@@ -117,7 +113,6 @@ def test_jumpstart_common_script_uri(
         s3_client=mock_client,
         hub_arn=None,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
-        hub_arn=None,
     )
     patched_verify_model_region_and_return_specs.assert_called_once()
 
