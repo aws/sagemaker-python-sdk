@@ -540,7 +540,7 @@ def verify_model_region_and_return_specs(
     model_id: Optional[str],
     version: Optional[str],
     scope: Optional[str],
-    region: str,
+    region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
@@ -575,6 +575,10 @@ def verify_model_region_and_return_specs(
             known security vulnerabilities.
         DeprecatedJumpStartModelError: If the version of the model is deprecated.
     """
+
+    region = region or get_region_fallback(
+        sagemaker_session=sagemaker_session,
+    )
 
     if scope is None:
         raise ValueError(
@@ -842,3 +846,42 @@ def get_jumpstart_model_id_version_from_resource_arn(
             model_version = model_version_from_tag
 
     return model_id, model_version
+
+
+def get_region_fallback(
+    s3_bucket_name: Optional[str] = None,
+    s3_client: Optional[boto3.client] = None,
+    sagemaker_session: Optional[Session] = None,
+) -> str:
+    """Returns region to use for JumpStart functionality implicitly via session objects."""
+    regions_in_s3_bucket_name: Set[str] = {
+        region
+        for region in constants.JUMPSTART_REGION_NAME_SET
+        if s3_bucket_name is not None
+        if region in s3_bucket_name
+    }
+    regions_in_s3_client_endpoint_url: Set[str] = {
+        region
+        for region in constants.JUMPSTART_REGION_NAME_SET
+        if s3_client is not None
+        if region in s3_client._endpoint.host
+    }
+
+    regions_in_sagemaker_session: Set[str] = {
+        region
+        for region in constants.JUMPSTART_REGION_NAME_SET
+        if sagemaker_session
+        if region == sagemaker_session.boto_region_name
+    }
+
+    combined_regions = regions_in_s3_client_endpoint_url.union(
+        regions_in_s3_bucket_name, regions_in_sagemaker_session
+    )
+
+    if len(combined_regions) > 1:
+        raise ValueError("Unable to resolve a region name from the s3 bucket and client provided.")
+
+    if len(combined_regions) == 0:
+        return constants.JUMPSTART_DEFAULT_REGION_NAME
+
+    return list(combined_regions)[0]

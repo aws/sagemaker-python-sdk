@@ -17,13 +17,13 @@ from typing import Optional
 from sagemaker import image_uris
 from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-    JUMPSTART_DEFAULT_REGION_NAME,
 )
 from sagemaker.jumpstart.enums import (
     JumpStartScriptScope,
     ModelFramework,
 )
 from sagemaker.jumpstart.utils import (
+    get_region_fallback,
     verify_model_region_and_return_specs,
 )
 from sagemaker.session import Session
@@ -104,8 +104,9 @@ def _retrieve_image_uri(
             known security vulnerabilities.
         DeprecatedJumpStartModelError: If the version of the model is deprecated.
     """
-    if region is None:
-        region = JUMPSTART_DEFAULT_REGION_NAME
+    region = region or get_region_fallback(
+        sagemaker_session=sagemaker_session,
+    )
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,

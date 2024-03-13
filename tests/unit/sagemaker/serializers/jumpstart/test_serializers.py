@@ -40,7 +40,7 @@ def test_jumpstart_default_serializers(
     model_id, model_version = "predictor-specs-model", "*"
     region = "us-west-2"
     mock_client = boto3.client("s3")
-    mock_session = Mock(s3_client=mock_client)
+    mock_session = Mock(s3_client=mock_client, boto_region_name=region)
 
     default_serializer = serializers.retrieve_default(
         region=region,
@@ -75,7 +75,8 @@ def test_jumpstart_serializer_options(
     patched_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
     mock_client = boto3.client("s3")
-    mock_session = Mock(s3_client=mock_client)
+    region = "us-west-2"
+    mock_session = Mock(s3_client=mock_client, boto_region_name=region)
 
     model_id, model_version = "predictor-specs-model", "*"
     region = "us-west-2"

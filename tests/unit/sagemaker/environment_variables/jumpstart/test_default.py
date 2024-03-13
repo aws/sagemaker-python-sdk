@@ -25,7 +25,8 @@ from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec, get_sp
 
 
 mock_client = boto3.client("s3")
-mock_session = Mock(s3_client=mock_client)
+region = "us-west-2"
+mock_session = Mock(s3_client=mock_client, boto_region_name=region)
 
 
 @patch("sagemaker.jumpstart.utils.validate_model_id_and_get_type")

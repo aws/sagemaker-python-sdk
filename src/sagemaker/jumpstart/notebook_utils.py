@@ -23,7 +23,6 @@ from packaging.version import Version
 from sagemaker.jumpstart import accessors
 from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-    JUMPSTART_DEFAULT_REGION_NAME,
     PROPRIETARY_MODEL_SPEC_PREFIX,
 )
 from sagemaker.jumpstart.enums import JumpStartScriptScope, JumpStartModelType
@@ -38,6 +37,7 @@ from sagemaker.jumpstart.filters import Constant, ModelFilter, Operator, evaluat
 from sagemaker.jumpstart.types import JumpStartModelHeader, JumpStartModelSpecs
 from sagemaker.jumpstart.utils import (
     get_jumpstart_content_bucket,
+    get_region_fallback,
     get_sagemaker_version,
     verify_model_region_and_return_specs,
     validate_model_id_and_get_type,
@@ -156,7 +156,7 @@ def extract_model_type_filter_representation(spec_key: str) -> str:
 
 def list_jumpstart_tasks(  # pylint: disable=redefined-builtin
     filter: Union[Operator, str] = Constant(BooleanValues.TRUE),
-    region: str = JUMPSTART_DEFAULT_REGION_NAME,
+    region: Optional[str] = None,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> List[str]:
     """List tasks for JumpStart, and optionally apply filters to result.
@@ -168,11 +168,14 @@ def list_jumpstart_tasks(  # pylint: disable=redefined-builtin
             (e.g. ``"task == ic"``). If this argument is not supplied, all tasks will be listed.
             (Default: Constant(BooleanValues.TRUE)).
         region (str): Optional. The AWS region from which to retrieve JumpStart metadata regarding
-            models. (Default: JUMPSTART_DEFAULT_REGION_NAME).
+            models. (Default: None).
         sagemaker_session (sagemaker.session.Session): Optional. The SageMaker Session to
             use to perform the model search. (Default: DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     """
 
+    region = region or get_region_fallback(
+        sagemaker_session=sagemaker_session,
+    )
     tasks: Set[str] = set()
     for model_id, _ in _generate_jumpstart_model_versions(
         filter=filter, region=region, sagemaker_session=sagemaker_session
@@ -184,7 +187,7 @@ def list_jumpstart_tasks(  # pylint: disable=redefined-builtin
 
 def list_jumpstart_frameworks(  # pylint: disable=redefined-builtin
     filter: Union[Operator, str] = Constant(BooleanValues.TRUE),
-    region: str = JUMPSTART_DEFAULT_REGION_NAME,
+    region: Optional[str] = None,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> List[str]:
     """List frameworks for JumpStart, and optionally apply filters to result.
@@ -196,11 +199,14 @@ def list_jumpstart_frameworks(  # pylint: disable=redefined-builtin
             (eg. ``"task == ic"``). If this argument is not supplied, all frameworks will be listed.
             (Default: Constant(BooleanValues.TRUE)).
         region (str): Optional. The AWS region from which to retrieve JumpStart metadata regarding
-            models. (Default: JUMPSTART_DEFAULT_REGION_NAME).
+            models. (Default: None).
         sagemaker_session (sagemaker.session.Session): Optional. The SageMaker Session
             to use to perform the model search. (Default: DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     """
 
+    region = region or get_region_fallback(
+        sagemaker_session=sagemaker_session,
+    )
     frameworks: Set[str] = set()
     for model_id, _ in _generate_jumpstart_model_versions(
         filter=filter, region=region, sagemaker_session=sagemaker_session
@@ -212,7 +218,7 @@ def list_jumpstart_frameworks(  # pylint: disable=redefined-builtin
 
 def list_jumpstart_scripts(  # pylint: disable=redefined-builtin
     filter: Union[Operator, str] = Constant(BooleanValues.TRUE),
-    region: str = JUMPSTART_DEFAULT_REGION_NAME,
+    region: Optional[str] = None,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> List[str]:
     """List scripts for JumpStart, and optionally apply filters to result.
@@ -224,10 +230,13 @@ def list_jumpstart_scripts(  # pylint: disable=redefined-builtin
             (e.g. ``"task == ic"``). If this argument is not supplied, all scripts will be listed.
             (Default: Constant(BooleanValues.TRUE)).
         region (str): Optional. The AWS region from which to retrieve JumpStart metadata regarding
-            models. (Default: JUMPSTART_DEFAULT_REGION_NAME).
+            models. (Default: None).
         sagemaker_session (sagemaker.session.Session): Optional. The SageMaker Session to
             use to perform the model search. (Default: DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     """
+    region = region or get_region_fallback(
+        sagemaker_session=sagemaker_session,
+    )
     if (isinstance(filter, Constant) and filter.resolved_value == BooleanValues.TRUE) or (
         isinstance(filter, str) and filter.lower() == BooleanValues.TRUE.lower()
     ):
@@ -255,7 +264,7 @@ def list_jumpstart_scripts(  # pylint: disable=redefined-builtin
 
 def list_jumpstart_models(  # pylint: disable=redefined-builtin
     filter: Union[Operator, str] = Constant(BooleanValues.TRUE),
-    region: str = JUMPSTART_DEFAULT_REGION_NAME,
+    region: Optional[str] = None,
     list_incomplete_models: bool = False,
     list_old_models: bool = False,
     list_versions: bool = False,
@@ -270,7 +279,7 @@ def list_jumpstart_models(  # pylint: disable=redefined-builtin
             (e.g. ``"task == ic"``). If this argument is not supplied, all models will be listed.
             (Default: Constant(BooleanValues.TRUE)).
         region (str): Optional. The AWS region from which to retrieve JumpStart metadata regarding
-            models. (Default: JUMPSTART_DEFAULT_REGION_NAME).
+            models. (Default: None).
         list_incomplete_models (bool): Optional. If a model does not contain metadata fields
             requested by the filter, and the filter cannot be resolved to a include/not include,
             whether the model should be included. By default, these models are omitted from results.
@@ -283,6 +292,9 @@ def list_jumpstart_models(  # pylint: disable=redefined-builtin
             to perform the model search. (Default: DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     """
 
+    region = region or get_region_fallback(
+        sagemaker_session=sagemaker_session,
+    )
     model_id_version_dict: Dict[str, List[str]] = dict()
     for model_id, version in _generate_jumpstart_model_versions(
         filter=filter,
@@ -312,7 +324,7 @@ def list_jumpstart_models(  # pylint: disable=redefined-builtin
 
 def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
     filter: Union[Operator, str] = Constant(BooleanValues.TRUE),
-    region: str = JUMPSTART_DEFAULT_REGION_NAME,
+    region: Optional[str] = None,
     list_incomplete_models: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> Generator:
@@ -325,7 +337,7 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
             (e.g. ``"task == ic"``). If this argument is not supplied, all models will be generated.
             (Default: Constant(BooleanValues.TRUE)).
         region (str): Optional. The AWS region from which to retrieve JumpStart metadata regarding
-            models. (Default: JUMPSTART_DEFAULT_REGION_NAME).
+            models. (Default: None).
         list_incomplete_models (bool): Optional. If a model does not contain metadata fields
             requested by the filter, and the filter cannot be resolved to a include/not include,
             whether the model should be included. By default, these models are omitted from
@@ -333,6 +345,10 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
         sagemaker_session (sagemaker.session.Session): Optional. The SageMaker Session
             to use to perform the model search. (Default: DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
     """
+
+    region = region or get_region_fallback(
+        sagemaker_session=sagemaker_session,
+    )
 
     prop_models_manifest_list = accessors.JumpStartModelsAccessor._get_manifest(
         region=region,
@@ -484,7 +500,7 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
 def get_model_url(
     model_id: str,
     model_version: str,
-    region: str = JUMPSTART_DEFAULT_REGION_NAME,
+    region: Optional[str] = None,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> str:
     """Retrieve web url describing pretrained model.
@@ -493,7 +509,7 @@ def get_model_url(
         model_id (str): The model ID for which to retrieve the url.
         model_version (str): The model version for which to retrieve the url.
         region (str): Optional. The region from which to retrieve metadata.
-            (Default: JUMPSTART_DEFAULT_REGION_NAME)
+            (Default: None)
         sagemaker_session (sagemaker.session.Session): Optional. The SageMaker Session to use
             to retrieve the model url.
     """
@@ -504,6 +520,9 @@ def get_model_url(
         sagemaker_session=sagemaker_session,
     )
 
+    region = region or get_region_fallback(
+        sagemaker_session=sagemaker_session,
+    )
     model_specs = verify_model_region_and_return_specs(
         region=region,
         model_id=model_id,

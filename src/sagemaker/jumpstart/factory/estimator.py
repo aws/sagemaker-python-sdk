@@ -192,8 +192,8 @@ def get_init_kwargs(
 
     estimator_init_kwargs = _add_model_version_to_kwargs(estimator_init_kwargs)
     estimator_init_kwargs = _add_vulnerable_and_deprecated_status_to_kwargs(estimator_init_kwargs)
-    estimator_init_kwargs = _add_region_to_kwargs(estimator_init_kwargs)
     estimator_init_kwargs = _add_sagemaker_session_to_kwargs(estimator_init_kwargs)
+    estimator_init_kwargs = _add_region_to_kwargs(estimator_init_kwargs)
     estimator_init_kwargs = _add_instance_type_and_count_to_kwargs(estimator_init_kwargs)
     estimator_init_kwargs = _add_image_uri_to_kwargs(estimator_init_kwargs)
     estimator_init_kwargs = _add_model_uri_to_kwargs(estimator_init_kwargs)
@@ -393,7 +393,9 @@ def get_deploy_kwargs(
 
 def _add_region_to_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwargs:
     """Sets region in kwargs based on default or override, returns full kwargs."""
-    kwargs.region = kwargs.region or JUMPSTART_DEFAULT_REGION_NAME
+    kwargs.region = (
+        kwargs.region or kwargs.sagemaker_session.boto_region_name or JUMPSTART_DEFAULT_REGION_NAME
+    )
     return kwargs
 
 
@@ -507,6 +509,7 @@ def _add_model_uri_to_kwargs(kwargs: JumpStartEstimatorInitKwargs) -> JumpStartE
             tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
             tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
             sagemaker_session=kwargs.sagemaker_session,
+            region=kwargs.region,
             instance_type=kwargs.instance_type,
         )
 
@@ -553,6 +556,7 @@ def _add_source_dir_to_kwargs(kwargs: JumpStartEstimatorInitKwargs) -> JumpStart
         model_version=kwargs.model_version,
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
+        region=kwargs.region,
         sagemaker_session=kwargs.sagemaker_session,
     )
 

@@ -15,7 +15,9 @@ import os
 from unittest import TestCase
 from mock.mock import Mock, patch
 import pytest
+import boto3
 import random
+from sagemaker import session
 from sagemaker.jumpstart import utils
 from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
@@ -1450,3 +1452,50 @@ class TestJumpStartLogger(TestCase):
         JUMPSTART_LOGGER.warning("Self destruct in 3...2...1...")
 
         mocked_emit.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "s3_bucket_name, s3_client, sagemaker_session, region",
+    [
+        (
+            "jumpstart-cache-prod",
+            boto3.client("s3", region_name="blah-blah"),
+            session.Session(boto3.Session(region_name="blah-blah")),
+            JUMPSTART_DEFAULT_REGION_NAME,
+        ),
+        (
+            "jumpstart-cache-prod-us-west-2",
+            boto3.client("s3", region_name="us-west-2"),
+            session.Session(boto3.Session(region_name="us-west-2")),
+            "us-west-2",
+        ),
+        ("jumpstart-cache-prod", boto3.client("s3", region_name="us-east-2"), None, "us-east-2"),
+    ],
+)
+def test_get_region_fallback_success(s3_bucket_name, s3_client, sagemaker_session, region):
+    assert region == utils.get_region_fallback(s3_bucket_name, s3_client, sagemaker_session)
+
+
+@pytest.mark.parametrize(
+    "s3_bucket_name, s3_client, sagemaker_session",
+    [
+        (
+            "jumpstart-cache-prod-us-west-2",
+            boto3.client("s3", region_name="us-east-2"),
+            session.Session(boto3.Session(region_name="us-west-2")),
+        ),
+        (
+            "jumpstart-cache-prod-us-west-2",
+            boto3.client("s3", region_name="us-west-2"),
+            session.Session(boto3.Session(region_name="eu-north-1")),
+        ),
+        (
+            "jumpstart-cache-prod-us-west-2-us-east-2",
+            boto3.client("s3", region_name="us-east-2"),
+            None,
+        ),
+    ],
+)
+def test_get_region_fallback_failure(s3_bucket_name, s3_client, sagemaker_session):
+    with pytest.raises(ValueError):
+        utils.get_region_fallback(s3_bucket_name, s3_client, sagemaker_session)
