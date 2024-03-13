@@ -62,6 +62,7 @@ from sagemaker.jumpstart.types import (
 )
 from sagemaker.jumpstart.utils import (
     add_jumpstart_model_id_version_tags,
+    get_eula_message,
     update_dict_if_key_not_present,
     resolve_estimator_sagemaker_config_field,
     verify_model_region_and_return_specs,
@@ -596,6 +597,26 @@ def _add_env_to_kwargs(
             key,
             value,
         )
+
+    environment = getattr(kwargs, "environment", {}) or {}
+    if (
+        environment.get(SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY)
+        and str(environment.get("accept_eula", "")).lower() != "true"
+    ):
+        model_specs = verify_model_region_and_return_specs(
+            model_id=kwargs.model_id,
+            version=kwargs.model_version,
+            region=kwargs.region,
+            scope=JumpStartScriptScope.TRAINING,
+            tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
+            tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
+            sagemaker_session=kwargs.sagemaker_session,
+        )
+        if model_specs.is_gated_model():
+            raise ValueError(
+                "Need to define ‘accept_eula'='true' within Environment. "
+                f"{get_eula_message(model_specs, kwargs.region)}"
+            )
 
     return kwargs
 
