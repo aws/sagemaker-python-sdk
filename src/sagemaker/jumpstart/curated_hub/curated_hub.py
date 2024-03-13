@@ -50,7 +50,7 @@ from sagemaker.jumpstart.curated_hub.utils import (
     create_s3_object_reference_from_uri,
     tag_hub_content,
     get_jumpstart_model_and_version,
-    find_all_tags_for_jumpstart_model
+    find_jumpstart_tags_for_model
 )
 from sagemaker.jumpstart.curated_hub.types import (
     HubContentDocument_v2,
@@ -425,7 +425,7 @@ class CuratedHub:
         models_in_hub: List[Dict[str, Any]] = self._get_jumpstart_models_in_hub()
         tags_added: List[Dict[str, List[Dict[str, str]]]] = []
         for model in models_in_hub:
-            tags_to_add: List[Tag] = find_all_tags_for_jumpstart_model(
+            tags_to_add: List[Tag] = find_jumpstart_tags_for_model(
                 hub_name=self.hub_name,
                 hub_content_name=model["HubContentName"],
                 region=self.region,

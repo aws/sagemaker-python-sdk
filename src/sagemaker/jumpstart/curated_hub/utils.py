@@ -195,7 +195,7 @@ def tag_hub_content(hub_content_arn: str, tags: List[Tag], session: Session) -> 
 
     return responses
     
-def find_all_tags_for_jumpstart_model(hub_name: str, hub_content_name: str, region: str, session: Session) -> List[Tag]:
+def find_jumpstart_tags_for_model(hub_name: str, hub_content_name: str, region: str, session: Session) -> List[Tag]:
     list_versions_response = session.list_hub_content_versions(
         hub_name=hub_name,
         hub_content_type='Model',
@@ -208,7 +208,7 @@ def find_all_tags_for_jumpstart_model(hub_name: str, hub_content_name: str, regi
         jumpstart_model = get_jumpstart_model_and_version(hub_content_version_summary)
         if jumpstart_model["model_id"] is None or jumpstart_model["version"] is None:
             continue
-        tag_names_to_add: List[CuratedHubTagName] = find_tags_for_jumpstart_model_version(
+        tag_names_to_add: List[CuratedHubTagName] = find_jumpstart_tags_for_model_version(
             model_id=jumpstart_model["model_id"],
             version=jumpstart_model["version"],
             region=region,
@@ -231,7 +231,7 @@ def find_all_tags_for_jumpstart_model(hub_name: str, hub_content_name: str, regi
 
     
     
-def find_tags_for_jumpstart_model_version(model_id: str, version: str, region: str, session: Session) -> List[CuratedHubTagName]:
+def find_jumpstart_tags_for_model_version(model_id: str, version: str, region: str, session: Session) -> List[CuratedHubTagName]:
     tags_to_add: List[CuratedHubTagName] = []
     specs = utils.verify_model_region_and_return_specs(
         model_id=model_id, 

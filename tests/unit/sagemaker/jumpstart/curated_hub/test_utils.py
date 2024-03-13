@@ -184,7 +184,7 @@ def test_find_tags_for_jumpstart_model_version(mock_spec_util):
     mock_specs.training_vulnerable = True
     mock_spec_util.return_value = mock_specs
 
-    tags = utils.find_tags_for_jumpstart_model_version(
+    tags = utils.find_jumpstart_tags_for_model_version(
         model_id="test",
         version="test",
         region="test",
@@ -212,7 +212,7 @@ def test_find_tags_for_jumpstart_model_version_some_false(mock_spec_util):
     mock_specs.training_vulnerable = False
     mock_spec_util.return_value = mock_specs
 
-    tags = utils.find_tags_for_jumpstart_model_version(
+    tags = utils.find_jumpstart_tags_for_model_version(
         model_id="test",
         version="test",
         region="test",
@@ -263,7 +263,7 @@ def test_find_all_tags_for_jumpstart_model(mock_spec_util):
     mock_specs.training_vulnerable = True
     mock_spec_util.return_value = mock_specs
 
-    tags = utils.find_all_tags_for_jumpstart_model(
+    tags = utils.find_jumpstart_tags_for_model(
         hub_name="test",
         hub_content_name="test",
         region="test",
