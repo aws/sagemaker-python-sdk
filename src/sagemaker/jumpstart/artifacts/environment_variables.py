@@ -15,7 +15,6 @@ from __future__ import absolute_import
 from typing import Callable, Dict, Optional, Set
 from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-    JUMPSTART_DEFAULT_REGION_NAME,
     JUMPSTART_LOGGER,
     SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY,
 )
@@ -24,6 +23,7 @@ from sagemaker.jumpstart.enums import (
 )
 from sagemaker.jumpstart.utils import (
     get_jumpstart_gated_content_bucket,
+    get_region_fallback,
     verify_model_region_and_return_specs,
 )
 from sagemaker.session import Session
@@ -72,8 +72,9 @@ def _retrieve_default_environment_variables(
         dict: the inference environment variables to use for the model.
     """
 
-    if region is None:
-        region = JUMPSTART_DEFAULT_REGION_NAME
+    region = region or get_region_fallback(
+        sagemaker_session=sagemaker_session,
+    )
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
@@ -198,8 +199,9 @@ def _retrieve_gated_model_uri_env_var_value(
         ValueError: If the model specs specified are invalid.
     """
 
-    if region is None:
-        region = JUMPSTART_DEFAULT_REGION_NAME
+    region = region or get_region_fallback(
+        sagemaker_session=sagemaker_session,
+    )
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,

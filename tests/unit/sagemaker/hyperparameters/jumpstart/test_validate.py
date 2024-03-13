@@ -23,8 +23,9 @@ from sagemaker.jumpstart.types import JumpStartHyperparameter
 
 from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec
 
+region = "us-west-2"
 mock_client = boto3.client("s3")
-mock_session = Mock(s3_client=mock_client)
+mock_session = Mock(s3_client=mock_client, boto_region_name=region)
 
 
 @patch("sagemaker.jumpstart.utils.validate_model_id_and_get_type")

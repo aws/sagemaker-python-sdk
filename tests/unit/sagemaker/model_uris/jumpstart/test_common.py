@@ -39,7 +39,8 @@ def test_jumpstart_common_model_uri(
     patched_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
     mock_client = boto3.client("s3")
-    mock_session = Mock(s3_client=mock_client)
+    region = "us-west-2"
+    mock_session = Mock(s3_client=mock_client, boto_region_name=region)
 
     model_uris.retrieve(
         model_scope="training",

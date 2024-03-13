@@ -37,8 +37,9 @@ def test_jumpstart_common_image_uri(
     patched_get_model_specs.side_effect = get_spec_from_base_spec
     patched_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
+    region = "us-west-2"
     mock_client = boto3.client("s3")
-    mock_session = Mock(s3_client=mock_client)
+    mock_session = Mock(s3_client=mock_client, boto_region_name=region)
 
     image_uris.retrieve(
         framework=None,

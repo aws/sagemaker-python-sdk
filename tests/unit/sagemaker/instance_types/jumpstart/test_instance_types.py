@@ -34,7 +34,7 @@ def test_jumpstart_instance_types(patched_get_model_specs, patched_validate_mode
     region = "us-west-2"
 
     mock_client = boto3.client("s3")
-    mock_session = Mock(s3_client=mock_client)
+    mock_session = Mock(s3_client=mock_client, boto_region_name=region)
 
     default_training_instance_types = instance_types.retrieve_default(
         region=region,
@@ -178,7 +178,8 @@ def test_jumpstart_inference_instance_type_variants(patched_get_model_specs):
     patched_get_model_specs.side_effect = get_special_model_spec
 
     mock_client = boto3.client("s3")
-    mock_session = Mock(s3_client=mock_client)
+    region = "us-west-2"
+    mock_session = Mock(s3_client=mock_client, boto_region_name=region)
     model_id, model_version = "inference-instance-types-variant-model", "*"
     region = "us-west-2"
 

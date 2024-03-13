@@ -129,7 +129,9 @@ def get_default_predictor(
 def _add_region_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelInitKwargs:
     """Sets region kwargs based on default or override, returns full kwargs."""
 
-    kwargs.region = kwargs.region or JUMPSTART_DEFAULT_REGION_NAME
+    kwargs.region = (
+        kwargs.region or kwargs.sagemaker_session.boto_region_name or JUMPSTART_DEFAULT_REGION_NAME
+    )
 
     return kwargs
 
@@ -758,8 +760,8 @@ def get_init_kwargs(
 
     model_init_kwargs = _add_vulnerable_and_deprecated_status_to_kwargs(kwargs=model_init_kwargs)
 
-    model_init_kwargs = _add_region_to_kwargs(kwargs=model_init_kwargs)
     model_init_kwargs = _add_sagemaker_session_to_kwargs(kwargs=model_init_kwargs)
+    model_init_kwargs = _add_region_to_kwargs(kwargs=model_init_kwargs)
 
     model_init_kwargs = _add_model_name_to_kwargs(kwargs=model_init_kwargs)
 

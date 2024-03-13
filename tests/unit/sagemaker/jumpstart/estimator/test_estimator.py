@@ -16,6 +16,7 @@ from typing import Optional, Set
 from unittest import mock
 import unittest
 from inspect import signature
+from mock import Mock
 
 import pytest
 from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
@@ -30,12 +31,16 @@ from sagemaker.jumpstart.artifacts.hyperparameters import _retrieve_default_hype
 from sagemaker.jumpstart.artifacts.metric_definitions import (
     _retrieve_default_training_metric_definitions,
 )
-from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+from sagemaker.jumpstart.constants import (
+    DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    JUMPSTART_DEFAULT_REGION_NAME,
+)
 from sagemaker.jumpstart.enums import JumpStartScriptScope, JumpStartTag, JumpStartModelType
 
 from sagemaker.jumpstart.estimator import JumpStartEstimator
 
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
+from sagemaker.session import Session
 from sagemaker.session_settings import SessionSettings
 from tests.integ.sagemaker.jumpstart.utils import get_training_dataset_for_model_and_version
 from sagemaker.model import Model
@@ -44,6 +49,7 @@ from tests.unit.sagemaker.jumpstart.utils import (
     get_special_model_spec,
     overwrite_dictionary,
 )
+import boto3
 
 
 execution_role = "fake role! do not use!"
@@ -1553,7 +1559,8 @@ class EstimatorTest(unittest.TestCase):
         mock_get_model_specs.side_effect = get_special_model_spec
 
         mock_role = f"dsfsdfsd{time.time()}"
-        mock_sagemaker_session = mock.MagicMock(sagemaker_config={})
+        region = "us-west-2"
+        mock_sagemaker_session = mock.MagicMock(sagemaker_config={}, boto_region_name=region)
         mock_sagemaker_session.get_caller_identity_arn = lambda: mock_role
 
         estimator = JumpStartEstimator(
@@ -1757,6 +1764,56 @@ class EstimatorTest(unittest.TestCase):
                 {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "1.0.0"},
             ],
         )
+
+    @mock.patch("sagemaker.jumpstart.estimator.get_default_predictor")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.fit")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.deploy")
+    @mock.patch("sagemaker.jumpstart.estimator.validate_model_id_and_get_type")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_jumpstart_estimator_session(
+        self,
+        mock_get_model_specs: mock.Mock,
+        mock_validate_model_id_and_get_type: mock.Mock,
+        mock_deploy,
+        mock_fit,
+        mock_init,
+        get_default_predictor,
+    ):
+
+        mock_validate_model_id_and_get_type.return_value = True
+
+        model_id, _ = "js-trainable-model", "*"
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        region = "eu-west-1"  # some non-default region
+
+        if region == JUMPSTART_DEFAULT_REGION_NAME:
+            region = "us-west-2"
+
+        session = Session(boto_session=boto3.session.Session(region_name=region))
+
+        assert session.boto_region_name != JUMPSTART_DEFAULT_REGION_NAME
+
+        session.get_caller_identity_arn = Mock(return_value="blah")
+
+        estimator = JumpStartEstimator(model_id=model_id, sagemaker_session=session)
+        estimator.fit()
+
+        estimator.deploy()
+
+        assert len(mock_get_model_specs.call_args_list) > 1
+
+        regions = {call[1]["region"] for call in mock_get_model_specs.call_args_list}
+
+        assert len(regions) == 1
+        assert list(regions)[0] == region
+
+        s3_clients = {call[1]["s3_client"] for call in mock_get_model_specs.call_args_list}
+        assert len(s3_clients) == 1
+        assert list(s3_clients)[0] == session.s3_client
 
 
 def test_jumpstart_estimator_requires_model_id():
