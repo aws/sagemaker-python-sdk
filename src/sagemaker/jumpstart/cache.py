@@ -65,7 +65,9 @@ class JumpStartModelsCache:
         self,
         region: Optional[str] = None,
         max_s3_cache_items: int = JUMPSTART_DEFAULT_MAX_S3_CACHE_ITEMS,
-        s3_cache_expiration_horizon: datetime.timedelta = JUMPSTART_DEFAULT_S3_CACHE_EXPIRATION_HORIZON,
+        s3_cache_expiration_horizon: datetime.timedelta = (
+            JUMPSTART_DEFAULT_S3_CACHE_EXPIRATION_HORIZON
+        ),
         max_semantic_version_cache_items: int = JUMPSTART_DEFAULT_MAX_SEMANTIC_VERSION_CACHE_ITEMS,
         semantic_version_cache_expiration_horizon: datetime.timedelta = (
             JUMPSTART_DEFAULT_SEMANTIC_VERSION_CACHE_EXPIRATION_HORIZON
