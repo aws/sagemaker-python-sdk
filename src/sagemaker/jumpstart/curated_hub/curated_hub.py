@@ -48,6 +48,7 @@ from sagemaker.jumpstart.curated_hub.utils import (
     generate_default_hub_bucket_name,
     create_s3_object_reference_from_uri,
     tag_jumpstart_hub_content_on_spec_fields,
+    get_jumpstart_model_and_version,
 )
 from sagemaker.jumpstart.curated_hub.types import (
     HubContentDocument_v2,
@@ -211,27 +212,10 @@ class CuratedHub:
         hub_models = self.list_models()
 
         js_models_in_hub = []
-        for hub_model in hub_models["HubContentSummaries"]:
-            # TODO: extract both in one pass
-            jumpstart_model_id = next(
-                (
-                    tag
-                    for tag in hub_model["search_keywords"]
-                    if tag.startswith(JUMPSTART_HUB_MODEL_ID_TAG_PREFIX)
-                ),
-                None,
-            )
-            jumpstart_model_version = next(
-                (
-                    tag
-                    for tag in hub_model["search_keywords"]
-                    if tag.startswith(JUMPSTART_HUB_MODEL_VERSION_TAG_PREFIX)
-                ),
-                None,
-            )
-
-            if jumpstart_model_id and jumpstart_model_version:
-                js_models_in_hub.append(hub_model)
+        for hub_model_summary in hub_models["HubContentSummaries"]:
+            jumpstart_model = get_jumpstart_model_and_version(hub_model_summary)
+            if jumpstart_model["model_id"] and jumpstart_model["version"]:
+                js_models_in_hub.append(hub_model_summary)
 
         return js_models_in_hub
 

@@ -206,7 +206,7 @@ def _find_all_tags_for_jumpstart_model(hub_content_summaries: List[Dict[str, Any
 
       jumpstart_model = get_jumpstart_model_and_version(hub_content_summary)
       specs = utils.verify_model_region_and_return_specs(
-          model_id=jumpstart_model["model_id"], # TODO: This is not the way to pull the JS model ID, should use the tag
+          model_id=jumpstart_model["model_id"], 
           version=jumpstart_model["version"],
           region=region,
           scope=JumpStartScriptScope.INFERENCE,
