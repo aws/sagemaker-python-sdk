@@ -332,8 +332,6 @@ class CuratedHub:
             version=model.version,
             region=self.region,
             scope=JumpStartScriptScope.INFERENCE,
-            tolerate_vulnerable_model = True,
-            tolerate_deprecated_model = True,
             sagemaker_session=self._sagemaker_session,
         )
         studio_specs = self._fetch_studio_specs(model_specs=model_specs)

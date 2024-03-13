@@ -13,7 +13,7 @@
 """This module stores constants related to SageMaker JumpStart CuratedHub."""
 from __future__ import absolute_import
 
-JUMPSTART_HUB_MODEL_ID_TAG_PREFIX = "jumpstart-model-id"
-JUMPSTART_HUB_MODEL_VERSION_TAG_PREFIX = "jumpstart-model-version"
-FRAMEWORK_TAG_PREFIX = "framework"
-TASK_TAG_PREFIX = "mltask"
+JUMPSTART_HUB_MODEL_ID_TAG_PREFIX = "@jumpstart-model-id"
+JUMPSTART_HUB_MODEL_VERSION_TAG_PREFIX = "@jumpstart-model-version"
+FRAMEWORK_TAG_PREFIX = "@framework"
+TASK_TAG_PREFIX = "@mltask"
