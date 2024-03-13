@@ -13,6 +13,7 @@
 """This module provides the JumpStart Curated Hub class."""
 from __future__ import absolute_import
 from concurrent import futures
+from functools import lru_cache 
 from datetime import datetime
 import json
 import traceback
@@ -47,13 +48,15 @@ from sagemaker.jumpstart.curated_hub.utils import (
     create_hub_bucket_if_it_does_not_exist,
     generate_default_hub_bucket_name,
     create_s3_object_reference_from_uri,
-    tag_jumpstart_hub_content_on_spec_fields,
+    tag_hub_content,
     get_jumpstart_model_and_version,
+    find_all_tags_for_jumpstart_model
 )
 from sagemaker.jumpstart.curated_hub.types import (
     HubContentDocument_v2,
     JumpStartModelInfo,
     S3ObjectLocation,
+    Tag
 )
 
 
@@ -145,13 +148,19 @@ class CuratedHub:
 
         return hub_description
 
-    def list_models(self, **kwargs) -> Dict[str, Any]:
+    
+    def list_models(self, clear_cache: bool = True, **kwargs) -> Dict[str, Any]:
         """Lists the models in this Curated Hub
 
         **kwargs: Passed to invocation of ``Session:list_hub_contents``.
         """
         # TODO: Validate kwargs and fast-fail?
+        if clear_cache:
+            self._list_models.cache_clear()
+        self._list_models(kwargs)
 
+    @lru_cache(maxsize = 128)
+    def _list_models(self, **kwargs) -> Dict[str, Any]:
         hub_content_summaries = self._sagemaker_session.list_hub_contents(
             hub_name=self.hub_name, hub_content_type=HubContentType.MODEL, **kwargs
         )
@@ -420,9 +429,22 @@ class CuratedHub:
             "Tagging models in hub: %s", self.hub_name
         )
         models_in_hub: List[Dict[str, Any]] = self._get_jumpstart_models_in_hub()
-        tags = tag_jumpstart_hub_content_on_spec_fields(models_in_hub, self.region, self._sagemaker_session)
+        tags_added: List[Dict[str, List[Dict[str, str]]]] = []
+        for model in models_in_hub:
+            tags_to_add: List[Tag] = find_all_tags_for_jumpstart_model(
+                hub_name=self.hub_name,
+                hub_content_name=model["HubContentName"],
+                region=self.region,
+                session=self._sagemaker_session
+            )
+            tags_added_to_model = tag_hub_content(
+                hub_content_arn=model["HubContentArn"],
+                tags=tags_to_add,
+                session=self._sagemaker_session
+            )
+            tags_added.extend(tags_added_to_model)
 
         output_string = "No tags were added!"
-        if len(tags) > 0:
-          output_string = f"Added the following tags: {tags}"
+        if len(tags_added) > 0:
+          output_string = f"Added the following tags: {tags_added}"
         JUMPSTART_LOGGER.info(output_string)

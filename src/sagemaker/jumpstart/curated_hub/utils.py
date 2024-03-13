@@ -24,6 +24,10 @@ from sagemaker.jumpstart.types import (
     HubContentType,
     HubArnExtractedInfo,
 )
+from sagemaker.jumpstart.curated_hub.types import (
+    Tag,
+    CuratedHubTagName
+)
 from sagemaker.jumpstart import constants
 from sagemaker.jumpstart import utils
 from sagemaker.session import Session
@@ -176,62 +180,75 @@ def create_hub_bucket_if_it_does_not_exist(
 
     return bucket_name
 
-def tag_jumpstart_hub_content_on_spec_fields(hub_content_summaries: List[Dict[str, Any]], region: str, session: Session) -> List[Dict[str, List[Dict[str, str]]]]:
-    responses: List[Dict[str, List[Dict[str, str]]]] = []
-
-    tags_to_add_for_all_models: Dict[str, Dict[str, Set]] = _find_all_tags_for_jumpstart_model(hub_content_summaries, region, session)
-    for hub_content_arn, tags_for_versions in tags_to_add_for_all_models:
-        for tag_name, versions in tags_for_versions:
-          if len(versions) == 0:
-              continue
-          
-          responses.add(session.add_tags(
-            ResourceArn=hub_content_arn,
-            Tags=[
-                {
-                    'Key': tag_name,
-                    'Value': list(versions)
-                },
-            ]
-          ))
+def tag_hub_content(hub_content_arn: str, tags: List[Tag], session: Session) -> List[Dict[str, List[Dict[str, str]]]]:
+    responses = []          
+    for tag in tags:
+      responses.add(session.add_tags(
+        ResourceArn=hub_content_arn,
+        Tags=[
+            {
+                'Key': tag.key,
+                'Value': tag.value
+            },
+        ]
+      ))
 
     return responses
+    
+def find_all_tags_for_jumpstart_model(hub_name: str, hub_content_name: str, region: str, session: Session) -> List[Tag]:
+    hub_content_versions = session.list_hub_content_versions(
+        hub_name=hub_name,
+        hub_content_type='Model',
+        hub_content_name=hub_content_name
+    )
 
-def _find_all_tags_for_jumpstart_model(hub_content_summaries: List[Dict[str, Any]], region: str, session: Session) -> Dict[str, Dict[str, Set]]:
-    tags_to_add = {}
+    tag_name_to_versions_map: Dict[CuratedHubTagName, List[str]] = {}
+    for hub_content_version_summary in hub_content_versions:
+        jumpstart_model = get_jumpstart_model_and_version(hub_content_version_summary)
+        tag_names_to_add: List[CuratedHubTagName] = find_tags_for_jumpstart_model_version(
+            model_id=jumpstart_model["model_id"],
+            version=jumpstart_model["version"],
+            region=region,
+            session=session
+        )
 
-    for hub_content_summary in hub_content_summaries:
-      if hub_content_summary["HubContentType"] != "Model":
-          continue
-
-      jumpstart_model = get_jumpstart_model_and_version(hub_content_summary)
-      specs = utils.verify_model_region_and_return_specs(
-          model_id=jumpstart_model["model_id"], 
-          version=jumpstart_model["version"],
-          region=region,
-          scope=JumpStartScriptScope.INFERENCE,
-          tolerate_vulnerable_model = True,
-          tolerate_deprecated_model = True,
-          sagemaker_session=session,
-      )
+        for tag_name in tag_names_to_add:
+          if tag_name not in tag_name_to_versions_map:
+              tag_name_to_versions_map[tag_name] = []
+          tag_name_to_versions_map[tag_name].append(jumpstart_model["version"])
       
-      hub_content_arn = hub_content_summary["HubContentArn"]
-      if hub_content_arn not in tags_to_add:
-          tags_to_add[hub_content_arn] = {
-              "deprecated_versions": set(),
-              "inference_vulnerable_versions": set(),
-              "training_vulnerable_versions": set()
-          }
-      
-      hub_content_version = hub_content_summary["HubContentVersion"]
-      if (specs.deprecated):
-          tags_to_add[hub_content_arn]["deprecated_versions"].add(hub_content_version)
-      if (specs.inference_vulnerable):
-          tags_to_add[hub_content_arn]["inference_vulnerable_versions"].add(hub_content_version)
-      if (specs.training_vulnerable):
-          tags_to_add[hub_content_arn]["training_vulnerable_versions"].add(hub_content_version)
+    tags: List[Tag] = []
+    for tag_name, versions in tag_name_to_versions_map:
+        tags.append(Tag(
+            key=tag_name,
+            versions=str(versions)
+        ))
 
-      return tags_to_add
+    return tags
+
+    
+    
+def find_tags_for_jumpstart_model_version(model_id: str, version: str, region: str, session: Session) -> List[CuratedHubTagName]:
+    tags_to_add: List[CuratedHubTagName] = []
+    specs = utils.verify_model_region_and_return_specs(
+        model_id=model_id, 
+        version=version,
+        region=region,
+        scope=JumpStartScriptScope.INFERENCE,
+        tolerate_vulnerable_model = True,
+        tolerate_deprecated_model = True,
+        sagemaker_session=session,
+    )
+
+    if (specs.deprecated):
+          tags_to_add.add(CuratedHubTagName.DEPRECATED_VERSIONS_TAG)
+    if (specs.inference_vulnerable):
+        tags_to_add.add(CuratedHubTagName.INFERENCE_VULNERABLE_VERSIONS_TAG)
+    if (specs.training_vulnerable):
+        tags_to_add.add(CuratedHubTagName.TRAINING_VULNERABLE_VERSIONS_TAG)
+
+    return tags_to_add
+
     
 
 def get_jumpstart_model_and_version(hub_content_summary: Dict[str, Any]) -> Dict[str, Any]:

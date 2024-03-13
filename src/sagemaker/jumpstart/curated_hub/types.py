@@ -19,6 +19,16 @@ from datetime import datetime
 
 from sagemaker.jumpstart.types import JumpStartDataHolderType, JumpStartModelSpecs
 
+class CuratedHubTagName(str, Enum):
+    """Enum class for Curated Hub """
+    DEPRECATED_VERSIONS_TAG = "deprecated_versions"
+    TRAINING_VULNERABLE_VERSIONS_TAG = "training_vulnerable_versions"
+    INFERENCE_VULNERABLE_VERSIONS_TAG = "inference_vulnerable_versions"
+
+@dataclass
+class Tag:
+  key: str
+  value: str
 
 @dataclass
 class S3ObjectLocation:
