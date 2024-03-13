@@ -285,7 +285,7 @@ class JumpStartModel(Model):
             return validate_model_id_and_get_type(
                 model_id=model_id,
                 model_version=model_version,
-                region=region,
+                region=region or getattr(sagemaker_session, "boto_region_name", None),
                 script=JumpStartScriptScope.INFERENCE,
                 sagemaker_session=sagemaker_session,
             )

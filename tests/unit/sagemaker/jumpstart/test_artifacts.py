@@ -329,7 +329,8 @@ class RetrieveKwargsTest(unittest.TestCase):
 
 class RetrieveModelPackageArnTest(unittest.TestCase):
 
-    mock_session = Mock(s3_client=mock_client)
+    region = "us-west-2"
+    mock_session = Mock(s3_client=mock_client, boto_region_name=region)
 
     @patch("sagemaker.jumpstart.utils.validate_model_id_and_get_type")
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -439,7 +440,8 @@ class RetrieveModelPackageArnTest(unittest.TestCase):
 
 class PrivateJumpStartBucketTest(unittest.TestCase):
 
-    mock_session = Mock(s3_client=mock_client)
+    region = "us-west-2"
+    mock_session = Mock(s3_client=mock_client, boto_region_name=region)
 
     @patch("sagemaker.jumpstart.utils.validate_model_id_and_get_type")
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")

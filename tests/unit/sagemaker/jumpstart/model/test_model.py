@@ -15,18 +15,22 @@ from inspect import signature
 from typing import Optional, Set
 from unittest import mock
 import unittest
-from mock import MagicMock
+from mock import MagicMock, Mock
 import pytest
 from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
 from sagemaker.jumpstart.artifacts.environment_variables import (
     _retrieve_default_environment_variables,
 )
-from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+from sagemaker.jumpstart.constants import (
+    DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    JUMPSTART_DEFAULT_REGION_NAME,
+)
 from sagemaker.jumpstart.enums import JumpStartScriptScope, JumpStartTag, JumpStartModelType
 
 from sagemaker.jumpstart.model import JumpStartModel
 from sagemaker.model import Model
 from sagemaker.predictor import Predictor
+from sagemaker.session import Session
 from sagemaker.session_settings import SessionSettings
 from sagemaker.enums import EndpointType
 from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
@@ -38,6 +42,7 @@ from tests.unit.sagemaker.jumpstart.utils import (
     get_special_model_spec_for_inference_component_based_endpoint,
     get_prototype_manifest,
 )
+import boto3
 
 execution_role = "fake role! do not use!"
 region = "us-west-2"
@@ -950,7 +955,7 @@ class ModelTest(unittest.TestCase):
 
         mock_get_model_specs.side_effect = get_special_model_spec
 
-        mock_session = MagicMock(sagemaker_config={})
+        mock_session = MagicMock(sagemaker_config={}, boto_region_name="us-west-2")
 
         model = JumpStartModel(model_id=model_id, sagemaker_session=mock_session)
 
@@ -987,7 +992,9 @@ class ModelTest(unittest.TestCase):
         mock_get_model_specs.side_effect = get_special_model_spec
 
         settings = SessionSettings(include_jumpstart_tags=False)
-        mock_session = MagicMock(sagemaker_config={}, settings=settings)
+        mock_session = MagicMock(
+            sagemaker_config={}, settings=settings, boto_region_name="us-west-2"
+        )
 
         model = JumpStartModel(model_id=model_id, sagemaker_session=mock_session)
 
@@ -1018,7 +1025,7 @@ class ModelTest(unittest.TestCase):
 
         mock_get_model_specs.side_effect = get_special_model_spec
 
-        mock_session = MagicMock(sagemaker_config={})
+        mock_session = MagicMock(sagemaker_config={}, boto_region_name="us-west-2")
 
         model = JumpStartModel(model_id=model_id, sagemaker_session=mock_session)
 
@@ -1053,7 +1060,7 @@ class ModelTest(unittest.TestCase):
 
         mock_get_model_specs.side_effect = get_special_model_spec
 
-        mock_session = MagicMock(sagemaker_config={})
+        mock_session = MagicMock(sagemaker_config={}, boto_region_name="us-west-2")
 
         model_package_arn = (
             "arn:aws:sagemaker:us-west-2:867530986753:model-package/"
@@ -1311,6 +1318,52 @@ class ModelTest(unittest.TestCase):
             content_types=["application/x-text"],
             response_types=["application/json;verbose", "application/json"],
         )
+
+    @mock.patch("sagemaker.jumpstart.model.get_default_predictor")
+    @mock.patch("sagemaker.jumpstart.model.Model.__init__")
+    @mock.patch("sagemaker.jumpstart.model.Model.deploy")
+    @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_jumpstart_model_session(
+        self,
+        mock_get_model_specs: mock.Mock,
+        mock_validate_model_id_and_get_type: mock.Mock,
+        mock_deploy,
+        mock_init,
+        get_default_predictor,
+    ):
+
+        mock_validate_model_id_and_get_type.return_value = True
+
+        model_id, _ = "model_data_s3_prefix_model", "*"
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        region = "eu-west-1"  # some non-default region
+
+        if region == JUMPSTART_DEFAULT_REGION_NAME:
+            region = "us-west-2"
+
+        session = Session(boto_session=boto3.session.Session(region_name=region))
+
+        assert session.boto_region_name != JUMPSTART_DEFAULT_REGION_NAME
+
+        session.get_caller_identity_arn = Mock(return_value="blah")
+
+        model = JumpStartModel(model_id=model_id, sagemaker_session=session)
+        model.deploy()
+
+        assert len(mock_get_model_specs.call_args_list) > 1
+
+        regions = {call[1]["region"] for call in mock_get_model_specs.call_args_list}
+
+        assert len(regions) == 1
+        assert list(regions)[0] == region
+
+        s3_clients = {call[1]["s3_client"] for call in mock_get_model_specs.call_args_list}
+        assert len(s3_clients) == 1
+        assert list(s3_clients)[0] == session.s3_client
 
 
 def test_jumpstart_model_requires_model_id():
