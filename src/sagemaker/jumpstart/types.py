@@ -15,6 +15,7 @@ from __future__ import absolute_import
 from copy import deepcopy
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Union
+from sagemaker.session import Session
 from sagemaker.utils import get_instance_type_family, format_tags, Tags
 from sagemaker.enums import EndpointType
 from sagemaker.model_metrics import ModelMetrics
@@ -1290,7 +1291,6 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         "model_version",
         "hub_arn",
         "model_type",
-        "hub_arn",
         "instance_type",
         "tolerate_vulnerable_model",
         "tolerate_deprecated_model",
@@ -1323,7 +1323,6 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         "model_version",
         "hub_arn",
         "model_type",
-        "hub_arn",
         "tolerate_vulnerable_model",
         "tolerate_deprecated_model",
         "region",
@@ -1337,7 +1336,6 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         model_version: Optional[str] = None,
         hub_arn: Optional[str] = None,
         model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_WEIGHTS,
-        hub_arn: Optional[str] = None,
         region: Optional[str] = None,
         instance_type: Optional[str] = None,
         image_uri: Optional[Union[str, Any]] = None,
@@ -1369,7 +1367,6 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         self.model_version = model_version
         self.hub_arn = hub_arn
         self.model_type = model_type
-        self.hub_arn = hub_arn
         self.instance_type = instance_type
         self.region = region
         self.image_uri = image_uri
@@ -1404,7 +1401,6 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "model_version",
         "hub_arn",
         "model_type",
-        "hub_arn",
         "initial_instance_count",
         "instance_type",
         "region",
@@ -1486,7 +1482,6 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         self.model_version = model_version
         self.hub_arn = hub_arn
         self.model_type = model_type
-        self.hub_arn = hub_arn
         self.initial_instance_count = initial_instance_count
         self.instance_type = instance_type
         self.region = region
@@ -1523,7 +1518,6 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         "model_version",
         "hub_arn",
         "model_type",
-        "hub_arn",
         "instance_type",
         "instance_count",
         "region",
@@ -1585,7 +1579,6 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         "model_version",
         "hub_arn",
         "model_type",
-        "hub_arn",
     }
 
     def __init__(
@@ -1715,7 +1708,6 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         "model_version",
         "hub_arn",
         "model_type",
-        "hub_arn",
         "region",
         "inputs",
         "wait",
@@ -1732,7 +1724,6 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         "model_version",
         "hub_arn",
         "model_type",
-        "hub_arn",
         "region",
         "tolerate_deprecated_model",
         "tolerate_vulnerable_model",
@@ -1761,7 +1752,6 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         self.model_version = model_version
         self.hub_arn = hub_arn
         self.model_type = model_type
-        self.hub_arn = hub_arn
         self.region = region
         self.inputs = inputs
         self.wait = wait
