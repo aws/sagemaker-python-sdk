@@ -196,15 +196,18 @@ def tag_hub_content(hub_content_arn: str, tags: List[Tag], session: Session) -> 
     return responses
     
 def find_all_tags_for_jumpstart_model(hub_name: str, hub_content_name: str, region: str, session: Session) -> List[Tag]:
-    hub_content_versions = session.list_hub_content_versions(
+    list_versions_response = session.list_hub_content_versions(
         hub_name=hub_name,
         hub_content_type='Model',
         hub_content_name=hub_content_name
     )
+    hub_content_versions = list_versions_response["HubContentSummaries"]
 
     tag_name_to_versions_map: Dict[CuratedHubTagName, List[str]] = {}
     for hub_content_version_summary in hub_content_versions:
         jumpstart_model = get_jumpstart_model_and_version(hub_content_version_summary)
+        if jumpstart_model["model_id"] is None or jumpstart_model["version"] is None:
+            continue
         tag_names_to_add: List[CuratedHubTagName] = find_tags_for_jumpstart_model_version(
             model_id=jumpstart_model["model_id"],
             version=jumpstart_model["version"],
@@ -215,13 +218,13 @@ def find_all_tags_for_jumpstart_model(hub_name: str, hub_content_name: str, regi
         for tag_name in tag_names_to_add:
           if tag_name not in tag_name_to_versions_map:
               tag_name_to_versions_map[tag_name] = []
-          tag_name_to_versions_map[tag_name].append(jumpstart_model["version"])
+          tag_name_to_versions_map[tag_name].append(hub_content_version_summary["HubContentVersion"])
       
     tags: List[Tag] = []
-    for tag_name, versions in tag_name_to_versions_map:
+    for tag_name, versions in tag_name_to_versions_map.items():
         tags.append(Tag(
             key=tag_name,
-            versions=str(versions)
+            value=str(versions)
         ))
 
     return tags
@@ -241,11 +244,11 @@ def find_tags_for_jumpstart_model_version(model_id: str, version: str, region: s
     )
 
     if (specs.deprecated):
-          tags_to_add.add(CuratedHubTagName.DEPRECATED_VERSIONS_TAG)
+          tags_to_add.append(CuratedHubTagName.DEPRECATED_VERSIONS_TAG)
     if (specs.inference_vulnerable):
-        tags_to_add.add(CuratedHubTagName.INFERENCE_VULNERABLE_VERSIONS_TAG)
+        tags_to_add.append(CuratedHubTagName.INFERENCE_VULNERABLE_VERSIONS_TAG)
     if (specs.training_vulnerable):
-        tags_to_add.add(CuratedHubTagName.TRAINING_VULNERABLE_VERSIONS_TAG)
+        tags_to_add.append(CuratedHubTagName.TRAINING_VULNERABLE_VERSIONS_TAG)
 
     return tags_to_add
 

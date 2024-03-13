@@ -27,7 +27,7 @@ class CuratedHubTagName(str, Enum):
 
 @dataclass
 class Tag:
-  key: str
+  key: CuratedHubTagName
   value: str
 
 @dataclass

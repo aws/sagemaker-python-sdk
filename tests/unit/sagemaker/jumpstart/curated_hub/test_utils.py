@@ -15,7 +15,13 @@ from __future__ import absolute_import
 from unittest.mock import Mock
 from sagemaker.jumpstart.types import HubArnExtractedInfo
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
+from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.curated_hub import utils
+from unittest.mock import patch
+from sagemaker.jumpstart.curated_hub.types import (
+    Tag,
+    CuratedHubTagName
+)
 
 
 def test_get_info_from_hub_resource_arn():
@@ -168,3 +174,110 @@ def test_create_hub_bucket_if_it_does_not_exist():
 
     mock_sagemaker_session.boto_session.resource("s3").create_bucketassert_called_once()
     assert created_hub_bucket_name == bucket_name
+
+@patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
+def test_find_tags_for_jumpstart_model_version(mock_spec_util):
+    mock_sagemaker_session = Mock()
+    mock_specs = Mock()
+    mock_specs.deprecated = True
+    mock_specs.inference_vulnerable = True
+    mock_specs.training_vulnerable = True
+    mock_spec_util.return_value = mock_specs
+
+    tags = utils.find_tags_for_jumpstart_model_version(
+        model_id="test",
+        version="test",
+        region="test",
+        session=mock_sagemaker_session
+    )
+
+    mock_spec_util.assert_called_once_with(
+        model_id="test",
+        version="test",
+        region="test",
+        scope=JumpStartScriptScope.INFERENCE,
+        tolerate_vulnerable_model = True,
+        tolerate_deprecated_model = True,
+        sagemaker_session=mock_sagemaker_session,
+    )
+
+    assert tags == [CuratedHubTagName.DEPRECATED_VERSIONS_TAG, CuratedHubTagName.INFERENCE_VULNERABLE_VERSIONS_TAG, CuratedHubTagName.TRAINING_VULNERABLE_VERSIONS_TAG]
+
+@patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
+def test_find_tags_for_jumpstart_model_version_some_false(mock_spec_util):
+    mock_sagemaker_session = Mock()
+    mock_specs = Mock()
+    mock_specs.deprecated = True
+    mock_specs.inference_vulnerable = False
+    mock_specs.training_vulnerable = False
+    mock_spec_util.return_value = mock_specs
+
+    tags = utils.find_tags_for_jumpstart_model_version(
+        model_id="test",
+        version="test",
+        region="test",
+        session=mock_sagemaker_session
+    )
+
+    mock_spec_util.assert_called_once_with(
+        model_id="test",
+        version="test",
+        region="test",
+        scope=JumpStartScriptScope.INFERENCE,
+        tolerate_vulnerable_model = True,
+        tolerate_deprecated_model = True,
+        sagemaker_session=mock_sagemaker_session,
+    )
+
+    assert tags == [CuratedHubTagName.DEPRECATED_VERSIONS_TAG]
+
+@patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
+def test_find_all_tags_for_jumpstart_model(mock_spec_util):
+    mock_sagemaker_session = Mock()
+    mock_sagemaker_session.list_hub_content_versions.return_value = {
+        "HubContentSummaries": [
+            {
+                "HubContentVersion": "1.0.0",
+                "search_keywords": [
+                    "@jumpstart-model-id:model-one-pytorch",
+                    "@jumpstart-model-version:1.0.3",
+                ]
+            },
+            {
+                "HubContentVersion": "2.0.0",
+                "search_keywords": [
+                  "@jumpstart-model-id:model-four-huggingface",
+                  "@jumpstart-model-version:2.0.2",
+                ]
+            },
+            {
+                "HubContentVersion": "3.0.0",
+                "search_keywords": []
+            }
+        ]
+    }
+
+    mock_specs = Mock()
+    mock_specs.deprecated = True
+    mock_specs.inference_vulnerable = True
+    mock_specs.training_vulnerable = True
+    mock_spec_util.return_value = mock_specs
+
+    tags = utils.find_all_tags_for_jumpstart_model(
+        hub_name="test",
+        hub_content_name="test",
+        region="test",
+        session=mock_sagemaker_session
+    )
+
+    mock_sagemaker_session.list_hub_content_versions.assert_called_once_with(
+        hub_name="test",
+        hub_content_type='Model',
+        hub_content_name="test",
+    )
+
+    assert tags == [
+        Tag(key=CuratedHubTagName.DEPRECATED_VERSIONS_TAG, value=str(["1.0.0", "2.0.0"])),
+        Tag(key=CuratedHubTagName.INFERENCE_VULNERABLE_VERSIONS_TAG, value=str(["1.0.0", "2.0.0"])),
+        Tag(key=CuratedHubTagName.TRAINING_VULNERABLE_VERSIONS_TAG, value=str(["1.0.0", "2.0.0"]))
+    ]
