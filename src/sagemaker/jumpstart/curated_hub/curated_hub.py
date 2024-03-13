@@ -155,12 +155,6 @@ class CuratedHub:
         **kwargs: Passed to invocation of ``Session:list_hub_contents``.
         """
         # TODO: Validate kwargs and fast-fail?
-        if clear_cache:
-            self._list_models.cache_clear()
-        self._list_models(kwargs)
-
-    @lru_cache(maxsize = 128)
-    def _list_models(self, **kwargs) -> Dict[str, Any]:
         hub_content_summaries = self._sagemaker_session.list_hub_contents(
             hub_name=self.hub_name, hub_content_type=HubContentType.MODEL, **kwargs
         )
