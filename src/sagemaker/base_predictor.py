@@ -52,7 +52,7 @@ from sagemaker.serializers import (
     JSONSerializer,
     NumpySerializer,
 )
-from sagemaker.iterators import LineIterator
+from sagemaker.iterators import ByteIterator
 from sagemaker.session import production_variant, Session
 from sagemaker.utils import name_from_base, stringify_object, format_tags
 
@@ -303,7 +303,7 @@ class Predictor(PredictorBase):
         custom_attributes=None,
         component_name: Optional[str] = None,
         target_container_hostname=None,
-        iterator=LineIterator,
+        iterator=ByteIterator,
     ):
         """Return the inference from the specified endpoint.
 
@@ -315,14 +315,14 @@ class Predictor(PredictorBase):
                 predict method then sends the bytes in the request body as is.
             initial_args (dict[str,str]): Optional. Default arguments for boto3
                 ``invoke_endpoint_with_response_stream`` call. Default is None (no default
-                arguments).
-            target_variant (str): The name of the production variant to run an inference
+                arguments). (Default: None)
+            target_variant (str): Optional. The name of the production variant to run an inference
                 request on (Default: None). Note that the ProductionVariant identifies the
                 model you want to host and the resources you want to deploy for hosting it.
-            inference_id (str): If you provide a value, it is added to the captured data
+            inference_id (str): Optional. If you provide a value, it is added to the captured data
                 when you enable data capture on the endpoint (Default: None).
-            custom_attributes (str): Provides additional information about a request for an
-                inference submitted to a model hosted at an Amazon SageMaker endpoint.
+            custom_attributes (str): Optional. Provides additional information about a request for
+                an inference submitted to a model hosted at an Amazon SageMaker endpoint.
                 The information is an opaque value that is forwarded verbatim. You could use this
                 value, for example, to provide an ID that you can use to track a request or to
                 provide other metadata that a service endpoint was programmed to process. The value
@@ -334,14 +334,14 @@ class Predictor(PredictorBase):
                 model can prepend the custom attribute with Trace ID: in your post-processing
                 function (Default: None).
             component_name (str): Optional. Name of the Amazon SageMaker inference component
-                corresponding the predictor.
-            target_container_hostname (str): If the endpoint hosts multiple containers and is
-                configured to use direct invocation, this parameter specifies the host name of the
-                container to invoke. (Default: None).
+                corresponding the predictor. (Default: None)
+            target_container_hostname (str): Optional. If the endpoint hosts multiple containers
+                and is configured to use direct invocation, this parameter specifies the host name
+                of the container to invoke. (Default: None).
             iterator (:class:`~sagemaker.iterators.BaseIterator`): An iterator class which provides
-                an iterable interface to deserialize a stream response from Inference Endpoint.
+                an iterable interface to iterate Event stream response from Inference Endpoint.
                 An object of the iterator class provided will be returned by the predict_stream
-                method (Default::class:`~sagemaker.iterators.LineIterator`). Iterators defined in
+                method (Default::class:`~sagemaker.iterators.ByteIterator`). Iterators defined in
                 :class:`~sagemaker.iterators` or custom iterators (needs to inherit
                 :class:`~sagemaker.iterators.BaseIterator`) can be specified as an input.
 

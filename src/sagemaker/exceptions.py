@@ -89,6 +89,8 @@ class AsyncInferenceModelError(AsyncInferenceError):
 
 
 class ModelStreamError(Exception):
+    """Raised when invoke_endpoint_with_response_stream Response returns ModelStreamError"""
+
     def __init__(self, message="An error occurred", code=None):
         self.message = message
         self.code = code
@@ -99,6 +101,8 @@ class ModelStreamError(Exception):
 
 
 class InternalStreamFailure(Exception):
+    """Raised when invoke_endpoint_with_response_stream Response returns InternalStreamFailure"""
+
     def __init__(self, message="An error occurred"):
         self.message = message
         super().__init__(self.message)

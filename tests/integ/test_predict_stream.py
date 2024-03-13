@@ -86,3 +86,24 @@ def test_predict_stream(sagemaker_session, endpoint_name):
         response += resp.get("outputs")[0]
 
     assert "AWS stands for Amazon Web Services." in response
+
+    data = {"inputs": "what does AWS stand for?", "parameters": {"max_new_tokens": 400}}
+    initial_args = {"ContentType": "application/json"}
+    predictor = Predictor(
+        endpoint_name=endpoint_name,
+        sagemaker_session=sagemaker_session,
+    )
+
+    # Validate that no exception is raised when the target_variant is specified.
+    # uses the default `sagemaker.iterator.ByteIterator`
+    stream_iterator = predictor.predict_stream(
+        data=json.dumps(data),
+        initial_args=initial_args,
+    )
+
+    response = ""
+    for line in stream_iterator:
+        resp = json.loads(line)
+        response += resp.get("outputs")[0]
+
+    assert "AWS stands for Amazon Web Services." in response

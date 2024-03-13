@@ -41,7 +41,7 @@ def handle_stream_errors(chunk):
 
 
 class BaseIterator(ABC):
-    """Abstract base class for creation of new iterators.
+    """Abstract base class for Inference Streaming iterators.
 
     Provides a skeleton for customization requiring the overriding of iterator methods
     __iter__ and __next__.
@@ -53,45 +53,75 @@ class BaseIterator(ABC):
     2. Needs to implement logic in __next__ to:
         2.1. Concatenate and provide next chunk of response from botocore.eventstream.EventStream.
             While doing so parse the response_chunk["PayloadPart"]["Bytes"].
-        2.2. Perform deserialization of response chunk based on expected response type.
-        2.3. If PayloadPart not in EventStream response, handle Errors.
+        2.2. If PayloadPart not in EventStream response, handle Errors
+            [Recommended to use `iterators.handle_stream_errors` method].
     """
 
-    def __init__(self, stream):
+    def __init__(self, event_stream):
         """Initialises a Iterator object to help parse the byte event stream input.
 
         Args:
-            stream: (botocore.eventstream.EventStream): Event Stream object to be iterated.
+            event_stream: (botocore.eventstream.EventStream): Event Stream object to be iterated.
         """
-        self.stream = stream
+        self.event_stream = event_stream
 
     @abstractmethod
     def __iter__(self):
-        """Abstract __iter__ method, returns an iterator object itself"""
+        """Abstract method, returns an iterator object itself"""
         return self
 
     @abstractmethod
     def __next__(self):
-        """Abstract __next__ method, is responsible for returning the next element in the
-        iteration"""
-        pass
+        """Abstract method, is responsible for returning the next element in the iteration"""
+
+
+class ByteIterator(BaseIterator):
+    """A helper class for parsing the byte Event Stream input to provide Byte iteration."""
+
+    def __init__(self, event_stream):
+        """Initialises a BytesIterator Iterator object
+
+        Args:
+            event_stream: (botocore.eventstream.EventStream): Event Stream object to be iterated.
+        """
+        super().__init__(event_stream)
+        self.byte_iterator = iter(event_stream)
+
+    def __iter__(self):
+        """Returns an iterator object itself, which allows the object to be iterated.
+
+        Returns:
+            iter : object
+                    An iterator object representing the iterable.
+        """
+        return self
+
+    def __next__(self):
+        """Returns the next chunk of Byte directly."""
+        # Even with "while True" loop the function still behaves like a generator
+        # and sends the next new byte chunk.
+        while True:
+            chunk = next(self.byte_iterator)
+            if "PayloadPart" not in chunk:
+                # handle API response errors and force terminate.
+                handle_stream_errors(chunk)
+                # print and move on to next response byte
+                print("Unknown event type:" + chunk)
+                continue
+            return chunk["PayloadPart"]["Bytes"]
 
 
 class LineIterator(BaseIterator):
-    """
-    A helper class for parsing the byte stream input and provide iteration on lines with
-    '\n' separators.
-    """
+    """A helper class for parsing the byte Event Stream input to provide Line iteration."""
 
-    def __init__(self, stream):
-        """Initialises a Iterator object to help parse the byte stream input and
-        provide iteration on lines with '\n' separators
+    def __init__(self, event_stream):
+        """Initialises a LineIterator Iterator object
 
         Args:
-            stream: (botocore.eventstream.EventStream): Event Stream object to be iterated.
+            event_stream: (botocore.eventstream.EventStream): Event Stream object to be iterated.
         """
-        super().__init__(stream)
-        self.byte_iterator = iter(self.stream)
+        super().__init__(event_stream)
+        self.byte_iterator = iter(self.event_stream)
         self.buffer = io.BytesIO()
         self.read_pos = 0
 
@@ -105,7 +135,8 @@ class LineIterator(BaseIterator):
         return self
 
     def __next__(self):
-        """
+        r"""Returns the next Line for an Line iterable.
+
         The output of the event stream will be in the following format:
 
         ```
@@ -146,8 +177,9 @@ class LineIterator(BaseIterator):
                     continue
                 raise
             if "PayloadPart" not in chunk:
-                # handle errors within API Response if any.
+                # handle API response errors and force terminate.
                 handle_stream_errors(chunk)
+                # print and move on to next response byte
                 print("Unknown event type:" + chunk)
                 continue
             self.buffer.seek(0, io.SEEK_END)
