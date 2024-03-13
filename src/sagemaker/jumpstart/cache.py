@@ -40,7 +40,6 @@ from sagemaker.jumpstart.exceptions import (
     get_wildcard_model_version_msg,
     get_wildcard_proprietary_model_version_msg,
 )
-from sagemaker.jumpstart.exceptions import get_wildcard_model_version_msg
 from sagemaker.jumpstart.parameters import (
     JUMPSTART_DEFAULT_MAX_S3_CACHE_ITEMS,
     JUMPSTART_DEFAULT_MAX_SEMANTIC_VERSION_CACHE_ITEMS,
@@ -453,7 +452,9 @@ class JumpStartModelsCache:
             formatted_body, _ = self._get_json_file(id_info, data_type)
             model_specs = JumpStartModelSpecs(formatted_body)
             utils.emit_logs_based_on_model_specs(model_specs, self.get_region(), self._s3_client)
-            return JumpStartCachedContentValue(formatted_content=model_specs)
+            return JumpStartCachedContentValue(
+                formatted_content=model_specs
+            )
 
         if data_type == HubContentType.MODEL:
             hub_name, _, model_name, model_version = hub_utils.get_info_from_hub_resource_arn(
@@ -478,6 +479,7 @@ class JumpStartModelsCache:
             return JumpStartCachedContentValue(
                 formatted_content=model_specs
             )
+
         if data_type == HubType.HUB:
             hub_name, _, _, _ = hub_utils.get_info_from_hub_resource_arn(id_info)
             response: Dict[str, Any] = self._sagemaker_session.describe_hub(hub_name=hub_name)

@@ -292,7 +292,7 @@ class EstimatorTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_deploy_kwargs")
     @mock.patch("sagemaker.jumpstart.factory.estimator._retrieve_estimator_fit_kwargs")
     @mock.patch("sagemaker.jumpstart.curated_hub.utils.construct_hub_arn_from_name")
-    @mock.patch("sagemaker.jumpstart.estimator.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.estimator.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -309,7 +309,7 @@ class EstimatorTest(unittest.TestCase):
         mock_get_model_specs: mock.Mock,
         mock_session_estimator: mock.Mock,
         mock_session_model: mock.Mock,
-        mock_is_valid_model_id: mock.Mock,
+        mock_validate_model_id_and_get_type: mock.Mock,
         mock_construct_hub_arn_from_name: mock.Mock,
         mock_retrieve_estimator_fit_kwargs: mock.Mock,
         mock_retrieve_model_deploy_kwargs: mock.Mock,
@@ -321,7 +321,7 @@ class EstimatorTest(unittest.TestCase):
         mock_get_caller_identity.return_value = "123456789123"
         mock_estimator_deploy.return_value = default_predictor
 
-        mock_is_valid_model_id.return_value = True
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
         model_id, _ = "pytorch-hub-model-1", "*"
         hub_arn = "arn:aws:sagemaker:us-west-2:123456789123:hub/my-mock-hub"

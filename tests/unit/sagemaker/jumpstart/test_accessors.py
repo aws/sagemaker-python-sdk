@@ -137,6 +137,7 @@ def test_jumpstart_proprietary_models_cache_get(mock_cache):
         > 0
     )
 
+
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._cache")
 def test_jumpstart_models_cache_get_model_specs(mock_cache):
     mock_cache.get_specs = Mock()
@@ -147,7 +148,9 @@ def test_jumpstart_models_cache_get_model_specs(mock_cache):
     accessors.JumpStartModelsAccessor.get_model_specs(
         region=region, model_id=model_id, version=version
     )
-    mock_cache.get_specs.assert_called_once_with(model_id=model_id, semantic_version_str=version)
+    mock_cache.get_specs.assert_called_once_with(
+        model_id=model_id, version_str=version, model_type=JumpStartModelType.OPEN_WEIGHTS
+    )
     mock_cache.get_hub_model.assert_not_called()
 
     accessors.JumpStartModelsAccessor.get_model_specs(
