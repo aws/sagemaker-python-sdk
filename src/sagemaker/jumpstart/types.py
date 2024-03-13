@@ -2272,7 +2272,6 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         model_version: Optional[str] = None,
         hub_arn: Optional[str] = None,
         model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_WEIGHTS,
-        hub_arn: Optional[str] = None,
         region: Optional[str] = None,
         instance_type: Optional[str] = None,
         image_uri: Optional[Union[str, Any]] = None,

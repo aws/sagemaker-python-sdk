@@ -22,7 +22,6 @@ import os
 import random
 import re
 import shutil
-import sys
 import tarfile
 import tempfile
 import time
