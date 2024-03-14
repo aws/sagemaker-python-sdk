@@ -50,6 +50,10 @@ def test_time_series_forecasting_session_job_name():
     return unique_name_from_base("ts-forecast-job", max_length=32)
 
 
+@pytest.mark.skip(
+    reason="The test is disabled because it's causing the ResourceLimit exception. \
+Please run that manually before the proper fix."
+)
 @pytest.mark.skipif(
     tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
     reason="AutoML is not supported in the region yet.",
@@ -116,6 +120,10 @@ def test_auto_ml_v2_describe_auto_ml_job(
     assert desc["OutputDataConfig"] == expected_default_output_config
 
 
+@pytest.mark.skip(
+    reason="The test is disabled because it's causing the ResourceLimit exception. \
+Please run that manually before the proper fix."
+)
 @pytest.mark.skipif(
     tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
     reason="AutoML is not supported in the region yet.",
@@ -181,6 +189,10 @@ def test_auto_ml_v2_attach(problem_type, job_name_fixture_key, sagemaker_session
     assert desc["OutputDataConfig"] == expected_default_output_config
 
 
+@pytest.mark.skip(
+    reason="The test is disabled because it's causing the ResourceLimit exception. \
+Please run that manually before the proper fix."
+)
 @pytest.mark.skipif(
     tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
     reason="AutoML is not supported in the region yet.",
@@ -258,6 +270,10 @@ def test_list_candidates(
         pytest.skip("The job hasn't finished yet")
 
 
+@pytest.mark.skip(
+    reason="The test is disabled because it's causing the ResourceLimit exception. \
+Please run that manually before the proper fix."
+)
 @pytest.mark.skipif(
     tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
     reason="AutoML is not supported in the region yet.",
@@ -329,6 +345,10 @@ def test_best_candidate(
         pytest.skip("The job hasn't finished yet")
 
 
+@pytest.mark.skip(
+    reason="The test is disabled because it's causing the ResourceLimit exception. \
+Please run that manually before the proper fix."
+)
 @pytest.mark.skipif(
     tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS
     or tests.integ.test_region() in tests.integ.NO_CANVAS_REGIONS,
@@ -423,6 +443,10 @@ def test_deploy_best_candidate(
         pytest.skip("The job hasn't finished yet")
 
 
+@pytest.mark.skip(
+    reason="The test is disabled because it's causing the ResourceLimit exception. \
+Please run that manually before the proper fix."
+)
 @pytest.mark.skipif(
     tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
     reason="AutoML is not supported in the region yet.",
