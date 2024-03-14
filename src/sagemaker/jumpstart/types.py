@@ -1710,14 +1710,14 @@ class HubContentDocument(JumpStartDataHolderType):
             "s3://",
             content_bucket,
             specs.hosting_prepacked_artifact_key
-        )
+        ) if specs.hosting_prepacked_artifact_key is not None else None
         self.hosting_prepacked_artifact_version: Optional[str] = None# TODO: Not in specs?
         self.hosting_use_script_uri: Optional[bool] = specs.hosting_use_script_uri
         self.hosting_eula_uri: Optional[str] = s3_path_join(
             "s3://",
             content_bucket,
             specs.hosting_eula_key
-        )
+        ) if specs.hosting_eula_key is not None else None
         self.hosting_model_package_arn: Optional[str] = specs.hosting_model_package_arns
         self.default_inference_instance_type: Optional[str] = specs.default_inference_instance_type
         self.supported_inference_instance_types: Optional[str] = specs.supported_inference_instance_types
@@ -1730,7 +1730,7 @@ class HubContentDocument(JumpStartDataHolderType):
             "s3://",
             content_bucket,
             specs.default_training_dataset_key
-        )
+        ) if specs.default_training_dataset_key is not None else None
         self.resource_name_base: Optional[str] = specs.resource_name_base
         self.gated_bucket: bool = specs.gated_bucket
         self.default_payloads: Optional[Dict[str, JumpStartSerializablePayload]] = specs.default_payloads
@@ -1758,12 +1758,12 @@ class HubContentDocument(JumpStartDataHolderType):
                 "s3://",
                 content_bucket,
                 specs.training_script_key
-            )
+            ) if specs.training_script_key is not None else None
             self.training_prepacked_script_uri: Optional[str] = s3_path_join(
                 "s3://",
                 content_bucket,
                 specs.training_prepacked_script_key
-            )
+            ) if specs.training_prepacked_script_key is not None else None
             self.training_prepacked_script_version: Optional[str] = None # TODO: Missing in ModelSpecs?
             self.training_ecr_uri: Optional[str] = _retrieve_image_uri(
                 model_id = specs.model_id,
@@ -1776,7 +1776,7 @@ class HubContentDocument(JumpStartDataHolderType):
                 "s3://",
                 content_bucket,
                 specs.training_artifact_key
-            )
+            ) if specs.training_artifact_key is not None else None
             self.training_dependencies: Optional[str] = specs.training_dependencies
             self.default_training_instance_type: Optional[str] = specs.default_training_instance_type
             self.supported_training_instance_types: Optional[str] = specs.supported_training_instance_types
