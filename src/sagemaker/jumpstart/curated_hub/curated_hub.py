@@ -50,13 +50,16 @@ from sagemaker.jumpstart.curated_hub.utils import (
     create_s3_object_reference_from_uri,
     tag_hub_content,
     get_jumpstart_model_and_version,
-    find_jumpstart_tags_for_model
+    find_jumpstart_tags_for_hub_content,
+    get_latest_version_for_model,
+    summary_list_from_list_api_response
 )
 from sagemaker.jumpstart.curated_hub.types import (
     HubContentDocument_v2,
     JumpStartModelInfo,
     S3ObjectLocation,
-    Tag
+    CuratedHubTag,
+    HubContentSummary,
 )
 
 
@@ -154,11 +157,19 @@ class CuratedHub:
 
         **kwargs: Passed to invocation of ``Session:list_hub_contents``.
         """
-        # TODO: Validate kwargs and fast-fail?
+        if clear_cache:
+            self._list_models.cache_clear()
+        return self._list_models(**kwargs)
+    
+    @lru_cache(maxsize=5)
+    def _list_models(self, **kwargs) -> Dict[str, Any]:
+        """Lists the models in this Curated Hub
+
+        **kwargs: Passed to invocation of ``Session:list_hub_contents``.
+        """
         hub_content_summaries = self._sagemaker_session.list_hub_contents(
             hub_name=self.hub_name, hub_content_type=HubContentType.MODEL, **kwargs
         )
-        # TODO: Handle pagination
         return hub_content_summaries
 
     def describe_model(
@@ -200,30 +211,13 @@ class CuratedHub:
                 return True
         return False
 
-    def _populate_latest_model_version(self, model: Dict[str, str]) -> Dict[str, str]:
-        """Populates the lastest version of a model from specs no matter what is passed.
-
-        Returns model ({ model_id: str, version: str })
-        """
-        model_specs = utils.verify_model_region_and_return_specs(
-            model["model_id"], "*", JumpStartScriptScope.INFERENCE, self.region
-        )
-        return {"model_id": model["model_id"], "version": model_specs.version}
-
-    def _get_jumpstart_models_in_hub(self) -> List[Dict[str, Any]]:
+    def _get_jumpstart_models_in_hub(self) -> List[HubContentSummary]:
         """Returns list of `HubContent` that have been created from a JumpStart model."""
-        hub_models = self.list_models()
-
-        js_models_in_hub = []
-        for hub_model_summary in hub_models["HubContentSummaries"]:
-            jumpstart_model = get_jumpstart_model_and_version(hub_model_summary)
-            if jumpstart_model["model_id"] and jumpstart_model["version"]:
-                js_models_in_hub.append(hub_model_summary)
-
-        return js_models_in_hub
+        hub_models: List[HubContentSummary] = summary_list_from_list_api_response(self.list_models())
+        return [model for model in hub_models if get_jumpstart_model_and_version(model) is not None]
 
     def _determine_models_to_sync(
-        self, model_list: List[JumpStartModelInfo], models_in_hub: Dict[str, Any]
+        self, model_to_sync: List[JumpStartModelInfo], models_in_hub: List[JumpStartModelInfo]
     ) -> List[JumpStartModelInfo]:
         """Determines which models from `sync` params to sync into the CuratedHub.
 
@@ -235,31 +229,12 @@ class CuratedHub:
             in Hub, don't sync. If newer version in Hub, don't sync. If older version in Hub,
             sync that model.
         """
-        models_to_sync = []
-        for model in model_list:
-            matched_model = models_in_hub.get(model.model_id)
-
-            # Model does not exist in Hub, sync
-            if not matched_model:
+        jumpstart_model_id_to_model_info_map = {model.model_id: model for model in models_in_hub}
+        models_to_sync: List[JumpStartModelInfo] = []
+        for model in model_to_sync:
+            matched_model = jumpstart_model_id_to_model_info_map.get(model.model_id)
+            if not matched_model or Version(matched_model.version) < Version(model.version):
                 models_to_sync.append(model)
-
-            if matched_model:
-                model_version = Version(model.version)
-                hub_model_version = Version(matched_model["version"])
-
-                # 1. Model version exists in Hub, pass
-                if hub_model_version == model_version:
-                    pass
-
-                # 2. Invalid model version exists in Hub, pass
-                # This will only happen if something goes wrong in our metadata
-                if hub_model_version > model_version:
-                    pass
-
-                # 3. Old model version exists in Hub, update
-                if hub_model_version < model_version:
-                    # Check minSDKVersion against current SDK version, emit log
-                    models_to_sync.append(model)
 
         return models_to_sync
 
@@ -277,22 +252,23 @@ class CuratedHub:
             )
 
         # Retrieve latest version of unspecified JumpStart model versions
-        model_version_list = []
+        model_version_list: List[JumpStartModelInfo] = []
         for model in model_list:
+            model_id = model.get("model_id")
             version = model.get("version", "*")
             if version == "*":
-                model = self._populate_latest_model_version(model)
+                version = get_latest_version_for_model(model_id=model_id, region=self.region)
                 JUMPSTART_LOGGER.warning(
                     "No version specified for model %s. Using version %s",
-                    model["model_id"],
-                    model["version"],
+                    model_id,
+                    version,
                 )
-            model_version_list.append(JumpStartModelInfo(model["model_id"], model["version"]))
+            model_version_list.append(JumpStartModelInfo(model_id, version))
 
         js_models_in_hub = self._get_jumpstart_models_in_hub()
-        mapped_models_in_hub = {model["name"]: model for model in js_models_in_hub}
+        js_models_in_hub = [get_jumpstart_model_and_version(model) for model in js_models_in_hub]
 
-        models_to_sync = self._determine_models_to_sync(model_version_list, mapped_models_in_hub)
+        models_to_sync = self._determine_models_to_sync(model_version_list, js_models_in_hub)
         JUMPSTART_LOGGER.warning(
             "Syncing the following models into Hub %s: %s", self.hub_name, models_to_sync
         )
@@ -422,21 +398,21 @@ class CuratedHub:
         JUMPSTART_LOGGER.info(
             "Tagging models in hub: %s", self.hub_name
         )
-        models_in_hub: List[Dict[str, Any]] = self._get_jumpstart_models_in_hub()
-        tags_added: List[Dict[str, List[Dict[str, str]]]] = []
+        models_in_hub: List[HubContentSummary] = self._get_jumpstart_models_in_hub()
+        tags_added: Dict[str, List[CuratedHubTag]] = {}
         for model in models_in_hub:
-            tags_to_add: List[Tag] = find_jumpstart_tags_for_model(
+            tags_to_add: List[CuratedHubTag] = find_jumpstart_tags_for_hub_content(
                 hub_name=self.hub_name,
-                hub_content_name=model["HubContentName"],
+                hub_content_name=model.hub_content_name,
                 region=self.region,
                 session=self._sagemaker_session
             )
-            tags_added_to_model = tag_hub_content(
-                hub_content_arn=model["HubContentArn"],
+            tag_hub_content(
+                hub_content_arn=model.hub_content_arn,
                 tags=tags_to_add,
                 session=self._sagemaker_session
             )
-            tags_added.extend(tags_added_to_model)
+            tags_added.update({model.hub_content_arn: tags_to_add})
 
         output_string = "No tags were added!"
         if len(tags_added) > 0:

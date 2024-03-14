@@ -22,11 +22,13 @@ from typing import Optional, Dict, List, Any, Set
 from botocore.exceptions import ClientError
 from sagemaker.jumpstart.types import (
     HubContentType,
-    HubArnExtractedInfo,
+    HubArnExtractedInfo
 )
 from sagemaker.jumpstart.curated_hub.types import (
-    Tag,
-    CuratedHubTagName
+    CuratedHubTag,
+    CuratedHubTagName,
+    HubContentSummary,
+    JumpStartModelInfo
 )
 from sagemaker.jumpstart import constants
 from sagemaker.jumpstart import utils
@@ -180,37 +182,34 @@ def create_hub_bucket_if_it_does_not_exist(
 
     return bucket_name
 
-def tag_hub_content(hub_content_arn: str, tags: List[Tag], session: Session) -> List[Dict[str, List[Dict[str, str]]]]:
-    responses = []          
-    for tag in tags:
-      responses.add(session.add_tags(
-        ResourceArn=hub_content_arn,
-        Tags=[
-            {
-                'Key': tag.key,
-                'Value': tag.value
-            },
-        ]
-      ))
-
-    return responses
+def tag_hub_content(hub_content_arn: str, tags: List[CuratedHubTag], session: Session) -> None:
+    session.add_tags(
+      ResourceArn=hub_content_arn,
+      Tags=[tag_to_add_tags_api_call(tag) for tag in tags]
+    )
     
-def find_jumpstart_tags_for_model(hub_name: str, hub_content_name: str, region: str, session: Session) -> List[Tag]:
+def find_jumpstart_tags_for_hub_content(hub_name: str, hub_content_name: str, region: str, session: Session) -> List[CuratedHubTag]:
+    """Finds the JumpStart public hub model for a HubContent and calculates relevant tags.
+    
+    Since tags are the same for all versions of a HubContent, these tags will map from the key to a list of versions impacted.
+    For example, if certain public hub model versions are deprecated, 
+    this utility will return a `deprecated` tag mapped to the deprecated versions for the HubContent.
+    """
     list_versions_response = session.list_hub_content_versions(
         hub_name=hub_name,
-        hub_content_type='Model',
+        hub_content_type=HubContentType.MODEL,
         hub_content_name=hub_content_name
     )
-    hub_content_versions = list_versions_response["HubContentSummaries"]
+    hub_content_versions: List[HubContentSummary] = summary_list_from_list_api_response(list_versions_response)
 
     tag_name_to_versions_map: Dict[CuratedHubTagName, List[str]] = {}
     for hub_content_version_summary in hub_content_versions:
         jumpstart_model = get_jumpstart_model_and_version(hub_content_version_summary)
-        if jumpstart_model["model_id"] is None or jumpstart_model["version"] is None:
+        if jumpstart_model is None:
             continue
         tag_names_to_add: List[CuratedHubTagName] = find_jumpstart_tags_for_model_version(
-            model_id=jumpstart_model["model_id"],
-            version=jumpstart_model["version"],
+            model_id=jumpstart_model.model_id,
+            version=jumpstart_model.version,
             region=region,
             session=session
         )
@@ -218,22 +217,19 @@ def find_jumpstart_tags_for_model(hub_name: str, hub_content_name: str, region: 
         for tag_name in tag_names_to_add:
           if tag_name not in tag_name_to_versions_map:
               tag_name_to_versions_map[tag_name] = []
-          tag_name_to_versions_map[tag_name].append(hub_content_version_summary["HubContentVersion"])
-      
-    tags: List[Tag] = []
-    for tag_name, versions in tag_name_to_versions_map.items():
-        tags.append(Tag(
-            key=tag_name,
-            value=str(versions)
-        ))
-
-    return tags
-
+          tag_name_to_versions_map[tag_name].append(hub_content_version_summary.hub_content_version)
+    
+    return [CuratedHubTag(tag_name, str(versions)) for (tag_name, versions) in tag_name_to_versions_map.items()]
     
     
 def find_jumpstart_tags_for_model_version(model_id: str, version: str, region: str, session: Session) -> List[CuratedHubTagName]:
+    """Finds relevant CuratedHubTags for a version of a JumpStart public hub model.
+    
+    For example, if the public hub model is deprecated, this utility will return a `deprecated` tag.
+    Since tags are the same for all versions of a HubContent, these tags will map from the key to a list of versions impacted.
+    """
     tags_to_add: List[CuratedHubTagName] = []
-    specs = utils.verify_model_region_and_return_specs(
+    jumpstart_model_specs = utils.verify_model_region_and_return_specs(
         model_id=model_id, 
         version=version,
         region=region,
@@ -243,22 +239,22 @@ def find_jumpstart_tags_for_model_version(model_id: str, version: str, region: s
         sagemaker_session=session,
     )
 
-    if (specs.deprecated):
-          tags_to_add.append(CuratedHubTagName.DEPRECATED_VERSIONS_TAG)
-    if (specs.inference_vulnerable):
-        tags_to_add.append(CuratedHubTagName.INFERENCE_VULNERABLE_VERSIONS_TAG)
-    if (specs.training_vulnerable):
-        tags_to_add.append(CuratedHubTagName.TRAINING_VULNERABLE_VERSIONS_TAG)
+    if (jumpstart_model_specs.deprecated):
+        tags_to_add.append(CuratedHubTagName.DEPRECATED_VERSIONS)
+    if (jumpstart_model_specs.inference_vulnerable):
+        tags_to_add.append(CuratedHubTagName.INFERENCE_VULNERABLE_VERSIONS)
+    if (jumpstart_model_specs.training_vulnerable):
+        tags_to_add.append(CuratedHubTagName.TRAINING_VULNERABLE_VERSIONS)
 
     return tags_to_add
 
     
 
-def get_jumpstart_model_and_version(hub_content_summary: Dict[str, Any]) -> Dict[str, Any]:
+def get_jumpstart_model_and_version(hub_content_summary: HubContentSummary) -> Optional[JumpStartModelInfo]:
     jumpstart_model_id = next(
         (
             tag
-            for tag in hub_content_summary["search_keywords"]
+            for tag in hub_content_summary.search_keywords
             if tag.startswith(JUMPSTART_HUB_MODEL_ID_TAG_PREFIX)
         ),
         None,
@@ -266,10 +262,43 @@ def get_jumpstart_model_and_version(hub_content_summary: Dict[str, Any]) -> Dict
     jumpstart_model_version = next(
         (
             tag
-            for tag in hub_content_summary["search_keywords"]
+            for tag in hub_content_summary.search_keywords
             if tag.startswith(JUMPSTART_HUB_MODEL_VERSION_TAG_PREFIX)
         ),
         None,
     )
 
-    return {"model_id": jumpstart_model_id, "version": jumpstart_model_version}
+    if jumpstart_model_id is None or jumpstart_model_version is None:
+        return None
+    return JumpStartModelInfo(model_id=jumpstart_model_id, version=jumpstart_model_version)
+    
+def get_latest_version_for_model(model_id: str, region: str) -> str:
+    """Returns the latest version of a model from specs."""
+    model_specs = utils.verify_model_region_and_return_specs(
+        model_id, "*", JumpStartScriptScope.INFERENCE, region
+    )
+    return model_specs.version
+
+
+def summary_from_list_api_response(hub_content_summary: Dict[str, Any]) -> HubContentSummary:
+    return HubContentSummary(
+        hub_content_arn=hub_content_summary.get("HubContentSummary"),
+        hub_content_name=hub_content_summary.get("HubContentName"),
+        hub_content_version=hub_content_summary.get("HubContentVersion"),
+        hub_content_type=hub_content_summary.get("HubContentType"),
+        document_schema_version=hub_content_summary.get("DocumentSchemaVersion"),
+        hub_content_status=hub_content_summary.get("HubContentStatus"),
+        hub_content_display_name=hub_content_summary.get("HubContentDisplayName"),
+        hub_content_description=hub_content_summary.get("HubContentDescription"),
+        hub_content_search_keywords=hub_content_summary.get("HubContentSearchKeywords"),
+        creation_time=hub_content_summary.get("CreationTime")
+    )
+
+def summary_list_from_list_api_response(list_hub_contents_response: Dict[str, Any]) -> List[HubContentSummary]:
+    return list(map(summary_from_list_api_response, list_hub_contents_response["HubContentSummaries"]))
+
+def tag_to_add_tags_api_call(tag: CuratedHubTag) -> Dict[str, str]:
+    return {
+          'Key': tag.key,
+          'Value': tag.value
+    }

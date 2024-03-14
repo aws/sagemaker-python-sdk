@@ -19,7 +19,7 @@ from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.curated_hub import utils
 from unittest.mock import patch
 from sagemaker.jumpstart.curated_hub.types import (
-    Tag,
+    CuratedHubTag,
     CuratedHubTagName
 )
 
@@ -201,7 +201,7 @@ def test_find_tags_for_jumpstart_model_version(mock_spec_util):
         sagemaker_session=mock_sagemaker_session,
     )
 
-    assert tags == [CuratedHubTagName.DEPRECATED_VERSIONS_TAG, CuratedHubTagName.INFERENCE_VULNERABLE_VERSIONS_TAG, CuratedHubTagName.TRAINING_VULNERABLE_VERSIONS_TAG]
+    assert tags == [CuratedHubTagName.DEPRECATED_VERSIONS, CuratedHubTagName.INFERENCE_VULNERABLE_VERSIONS, CuratedHubTagName.TRAINING_VULNERABLE_VERSIONS]
 
 @patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
 def test_find_tags_for_jumpstart_model_version_some_false(mock_spec_util):
@@ -229,7 +229,7 @@ def test_find_tags_for_jumpstart_model_version_some_false(mock_spec_util):
         sagemaker_session=mock_sagemaker_session,
     )
 
-    assert tags == [CuratedHubTagName.DEPRECATED_VERSIONS_TAG]
+    assert tags == [CuratedHubTagName.DEPRECATED_VERSIONS]
 
 @patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
 def test_find_all_tags_for_jumpstart_model(mock_spec_util):
@@ -263,7 +263,7 @@ def test_find_all_tags_for_jumpstart_model(mock_spec_util):
     mock_specs.training_vulnerable = True
     mock_spec_util.return_value = mock_specs
 
-    tags = utils.find_jumpstart_tags_for_model(
+    tags = utils.find_jumpstart_tags_for_hub_content(
         hub_name="test",
         hub_content_name="test",
         region="test",
@@ -277,7 +277,7 @@ def test_find_all_tags_for_jumpstart_model(mock_spec_util):
     )
 
     assert tags == [
-        Tag(key=CuratedHubTagName.DEPRECATED_VERSIONS_TAG, value=str(["1.0.0", "2.0.0"])),
-        Tag(key=CuratedHubTagName.INFERENCE_VULNERABLE_VERSIONS_TAG, value=str(["1.0.0", "2.0.0"])),
-        Tag(key=CuratedHubTagName.TRAINING_VULNERABLE_VERSIONS_TAG, value=str(["1.0.0", "2.0.0"]))
+        CuratedHubTag(key=CuratedHubTagName.DEPRECATED_VERSIONS, value=str(["1.0.0", "2.0.0"])),
+        CuratedHubTag(key=CuratedHubTagName.INFERENCE_VULNERABLE_VERSIONS, value=str(["1.0.0", "2.0.0"])),
+        CuratedHubTag(key=CuratedHubTagName.TRAINING_VULNERABLE_VERSIONS, value=str(["1.0.0", "2.0.0"]))
     ]

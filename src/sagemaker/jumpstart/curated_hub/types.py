@@ -12,23 +12,37 @@
 # language governing permissions and limitations under the License.
 """This module stores types related to SageMaker JumpStart CuratedHub."""
 from __future__ import absolute_import
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from enum import Enum
 from dataclasses import dataclass
 from datetime import datetime
 
-from sagemaker.jumpstart.types import JumpStartDataHolderType, JumpStartModelSpecs
+from sagemaker.jumpstart.types import JumpStartDataHolderType, JumpStartModelSpecs, HubContentType
 
 class CuratedHubTagName(str, Enum):
     """Enum class for Curated Hub """
-    DEPRECATED_VERSIONS_TAG = "deprecated_versions"
-    TRAINING_VULNERABLE_VERSIONS_TAG = "training_vulnerable_versions"
-    INFERENCE_VULNERABLE_VERSIONS_TAG = "inference_vulnerable_versions"
+    DEPRECATED_VERSIONS = "deprecated_versions"
+    TRAINING_VULNERABLE_VERSIONS = "training_vulnerable_versions"
+    INFERENCE_VULNERABLE_VERSIONS = "inference_vulnerable_versions"
 
 @dataclass
-class Tag:
+class HubContentSummary:
+  hub_content_arn: str
+  hub_content_name: str
+  hub_content_version: str
+  hub_content_type: HubContentType
+  document_schema_version: str
+  hub_content_status: str
+  hub_content_display_name: str
+  hub_content_description: str
+  hub_content_search_keywords: List[str]
+  creation_time: str
+
+@dataclass
+class CuratedHubTag:
   key: CuratedHubTagName
   value: str
+
 
 @dataclass
 class S3ObjectLocation:
