@@ -17,7 +17,7 @@ from typing import Any, Dict, List, Optional
 import boto3
 
 from sagemaker.deprecations import deprecated
-from sagemaker.jumpstart.types import JumpStartModelHeader, JumpStartModelSpecs, HubContentDocument
+from sagemaker.jumpstart.types import JumpStartModelHeader, JumpStartModelSpecs
 from sagemaker.jumpstart import cache
 from sagemaker.jumpstart.curated_hub.utils import construct_hub_model_arn_from_inputs
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
@@ -269,8 +269,7 @@ class JumpStartModelsAccessor(object):
             hub_model_arn = construct_hub_model_arn_from_inputs(
                 hub_arn=hub_arn, model_name=model_id, version=version
             )
-            hub_model_document: HubContentDocument = JumpStartModelsAccessor._cache.get_hub_model(hub_model_arn=hub_model_arn)
-            return hub_model_document.to_model_specs()
+            return JumpStartModelsAccessor._cache.get_hub_model(hub_model_arn=hub_model_arn)
 
         return JumpStartModelsAccessor._cache.get_specs(  # type: ignore
             model_id=model_id, semantic_version_str=version

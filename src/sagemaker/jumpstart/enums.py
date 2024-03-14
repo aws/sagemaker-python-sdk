@@ -175,7 +175,7 @@ class ModelSpecKwargType(str, Enum):
         kwarg_type: "ModelSpecKwargType",
         hub_content_document: Dict[str, Any],
         naming_convention: NamingConventionType = NamingConventionType.UPPER_CAMEL_CASE,
-    ):
+    ) -> Dict[str, Any]:
         kwargs = dict()
         keys = ModelSpecKwargType.get_model_spec_kwarg_keys(
             kwarg_type, naming_convention=naming_convention

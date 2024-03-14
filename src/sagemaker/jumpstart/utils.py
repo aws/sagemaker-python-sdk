@@ -14,7 +14,6 @@
 from __future__ import absolute_import
 import logging
 import os
-import re
 from typing import Any, Dict, List, Optional, Tuple, Union
 from urllib.parse import urlparse
 import boto3
@@ -39,7 +38,6 @@ from sagemaker.jumpstart.types import (
     JumpStartModelHeader,
     JumpStartModelSpecs,
     JumpStartVersionedModelId,
-    HubContentDocument
 )
 from sagemaker.session import Session
 from sagemaker.config import load_sagemaker_config
@@ -484,7 +482,7 @@ def update_inference_tags_with_jumpstart_training_tags(
 
 
 def emit_logs_based_on_model_specs(
-    model_specs: Union[HubContentDocument, JumpStartModelSpecs], region: str, s3_client: boto3.client
+    model_specs: JumpStartModelSpecs, region: str, s3_client: boto3.client
 ) -> None:
     """Emits logs based on model specs and region."""
 
@@ -601,10 +599,7 @@ def verify_model_region_and_return_specs(
         s3_client=sagemaker_session.s3_client,
     )
 
-    if (
-        scope == constants.JumpStartScriptScope.TRAINING.value
-        and not model_specs.training_supported
-    ):
+    if scope == enums.JumpStartScriptScope.TRAINING.value and not model_specs.training_supported:
         raise ValueError(
             f"JumpStart model ID '{model_id}' and version '{version}' " "does not support training."
         )
@@ -615,7 +610,7 @@ def verify_model_region_and_return_specs(
                 model_id=model_id, version=version, message=model_specs.deprecated_message
             )
 
-    if scope == constants.JumpStartScriptScope.INFERENCE.value and model_specs.inference_vulnerable:
+    if scope == enums.JumpStartScriptScope.INFERENCE.value and model_specs.inference_vulnerable:
         if not tolerate_vulnerable_model:
             raise VulnerableJumpStartModelError(
                 model_id=model_id,
@@ -624,13 +619,13 @@ def verify_model_region_and_return_specs(
                 scope=constants.JumpStartScriptScope.INFERENCE,
             )
 
-    if scope == constants.JumpStartScriptScope.TRAINING.value and model_specs.training_vulnerable:
+    if scope == enums.JumpStartScriptScope.TRAINING.value and model_specs.training_vulnerable:
         if not tolerate_vulnerable_model:
             raise VulnerableJumpStartModelError(
                 model_id=model_id,
                 version=version,
                 vulnerabilities=model_specs.training_vulnerabilities,
-                scope=constants.JumpStartScriptScope.TRAINING,
+                scope=enums.JumpStartScriptScope.TRAINING,
             )
 
     return model_specs

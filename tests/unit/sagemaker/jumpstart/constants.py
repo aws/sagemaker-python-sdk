@@ -371,11 +371,15 @@ SPECIAL_MODEL_SPECS_DICT = {
                 "ml.p3.200xlarge": {"regional_properties": {"image_uri": "$gpu_image_uri_2"}},
                 "p4": {
                     "regional_properties": {"image_uri": "$gpu_image_uri"},
-                    "properties": {"prepacked_artifact_key": "path/to/prepacked/inference/artifact/prefix/number2/"},
+                    "properties": {
+                        "prepacked_artifact_key": "path/to/prepacked/inference/artifact/prefix/number2/"
+                    },
                 },
                 "g4": {
                     "regional_properties": {"image_uri": "$gpu_image_uri"},
-                    "properties": {"artifact_key": "path/to/prepacked/training/artifact/prefix/number2/"},
+                    "properties": {
+                        "artifact_key": "path/to/prepacked/training/artifact/prefix/number2/"
+                    },
                 },
                 "g4dn": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
                 "g9": {
@@ -458,9 +462,17 @@ SPECIAL_MODEL_SPECS_DICT = {
                 },
                 "c2": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
                 "local": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
-                "ml.g5.48xlarge": {"properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "8"}}},
-                "ml.g5.12xlarge": {"properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"}}},
-                "g5": {"properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "4", "JOHN": "DOE"}}},
+                "ml.g5.48xlarge": {
+                    "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "8"}}
+                },
+                "ml.g5.12xlarge": {
+                    "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"}}
+                },
+                "g5": {
+                    "properties": {
+                        "environment_variables": {"TENSOR_PARALLEL_DEGREE": "4", "JOHN": "DOE"}
+                    }
+                },
                 "ml.g9.12xlarge": {
                     "properties": {
                         "environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"},
@@ -830,8 +842,12 @@ SPECIAL_MODEL_SPECS_DICT = {
                 },
                 "m2": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
                 "c2": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
-                "ml.g5.48xlarge": {"properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "8"}}},
-                "ml.g5.12xlarge": {"properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"}}},
+                "ml.g5.48xlarge": {
+                    "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "8"}}
+                },
+                "ml.g5.12xlarge": {
+                    "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"}}
+                },
                 "inf1": {"regional_properties": {"model_package_arn": "$inf_model_package_arn"}},
                 "inf2": {"regional_properties": {"model_package_arn": "$inf_model_package_arn"}},
             },
@@ -1300,7 +1316,8 @@ SPECIAL_MODEL_SPECS_DICT = {
                 "prompt_key": "inputs",
                 "output_keys": {"generated_text": "generated_text"},
                 "body": {
-                    "inputs": "A brief message congratulating the team on the launch:\n\nHi " "everyone,\n\nI just ",
+                    "inputs": "A brief message congratulating the team on the launch:\n\nHi "
+                    "everyone,\n\nI just ",
                     "parameters": {"max_new_tokens": 64, "top_p": 0.9, "temperature": 0.6},
                 },
             },
@@ -1629,7 +1646,9 @@ SPECIAL_MODEL_SPECS_DICT = {
                     "regional_properties": {
                         "image_uri": "$gpu_image_uri",
                     },
-                    "properties": {"prepacked_artifact_key": "some-instance-specific/model/prefix/"},
+                    "properties": {
+                        "prepacked_artifact_key": "some-instance-specific/model/prefix/"
+                    },
                 },
                 "p3": {
                     "regional_properties": {
@@ -1648,8 +1667,12 @@ SPECIAL_MODEL_SPECS_DICT = {
                 },
                 "m2": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
                 "c2": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
-                "ml.g5.48xlarge": {"properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "8"}}},
-                "ml.g5.12xlarge": {"properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"}}},
+                "ml.g5.48xlarge": {
+                    "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "8"}}
+                },
+                "ml.g5.12xlarge": {
+                    "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"}}
+                },
             },
         },
         "training_ecr_specs": {
@@ -1851,8 +1874,12 @@ SPECIAL_MODEL_SPECS_DICT = {
                 "g4dn": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
                 "m2": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
                 "c2": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
-                "ml.g5.48xlarge": {"properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "8"}}},
-                "ml.g5.12xlarge": {"properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"}}},
+                "ml.g5.48xlarge": {
+                    "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "8"}}
+                },
+                "ml.g5.12xlarge": {
+                    "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"}}
+                },
             },
         },
         "training_ecr_specs": {
@@ -1878,8 +1905,12 @@ SPECIAL_MODEL_SPECS_DICT = {
                 "g4dn": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
                 "m2": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
                 "c2": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
-                "ml.g5.48xlarge": {"properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "8"}}},
-                "ml.g5.12xlarge": {"properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"}}},
+                "ml.g5.48xlarge": {
+                    "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "8"}}
+                },
+                "ml.g5.12xlarge": {
+                    "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"}}
+                },
             },
         },
         "hosting_artifact_key": "pytorch-infer/infer-pytorch-ic-mobilenet-v2.tar.gz",
@@ -2093,8 +2124,12 @@ SPECIAL_MODEL_SPECS_DICT = {
                 },
                 "m2": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
                 "c2": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
-                "ml.g5.48xlarge": {"properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "8"}}},
-                "ml.g5.12xlarge": {"properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"}}},
+                "ml.g5.48xlarge": {
+                    "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "8"}}
+                },
+                "ml.g5.12xlarge": {
+                    "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"}}
+                },
                 "inf1": {"regional_properties": {"model_package_arn": "$inf_model_package_arn"}},
                 "inf2": {"regional_properties": {"model_package_arn": "$inf_model_package_arn"}},
             },
@@ -2510,7 +2545,9 @@ SPECIAL_MODEL_SPECS_DICT = {
                 "required_for_model_class": True,
             },
         ],
-        "metrics": [{"Name": "huggingface-text2text:eval-loss", "Regex": "'eval_loss': ([0-9\\.]+)"}],
+        "metrics": [
+            {"Name": "huggingface-text2text:eval-loss", "Regex": "'eval_loss': ([0-9\\.]+)"}
+        ],
         "default_inference_instance_type": "ml.g5.xlarge",
         "supported_inference_instance_types": [
             "ml.g5.xlarge",
@@ -2733,7 +2770,9 @@ SPECIAL_MODEL_SPECS_DICT = {
                 "required_for_model_class": True,
             },
         ],
-        "metrics": [{"Name": "huggingface-text2text:eval-loss", "Regex": "'eval_loss': ([0-9\\.]+)"}],
+        "metrics": [
+            {"Name": "huggingface-text2text:eval-loss", "Regex": "'eval_loss': ([0-9\\.]+)"}
+        ],
         "default_inference_instance_type": "ml.g5.xlarge",
         "supported_inference_instance_types": [
             "ml.g5.xlarge",
@@ -2856,7 +2895,9 @@ SPECIAL_MODEL_SPECS_DICT = {
                 "required_for_model_class": True,
             },
         ],
-        "metrics": [{"Name": "huggingface-text2text:eval-loss", "Regex": "'eval_loss': ([0-9\\.]+)"}],
+        "metrics": [
+            {"Name": "huggingface-text2text:eval-loss", "Regex": "'eval_loss': ([0-9\\.]+)"}
+        ],
         "default_inference_instance_type": "ml.g5.xlarge",
         "supported_inference_instance_types": [
             "ml.g5.xlarge",
@@ -6207,7 +6248,8 @@ BASE_HEADER = {
     "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
     "version": "1.0.0",
     "min_version": "2.49.0",
-    "spec_key": "community_models_specs/tensorflow-ic-imagenet" "-inception-v3-classification-4/specs_v1.0.0.json",
+    "spec_key": "community_models_specs/tensorflow-ic-imagenet"
+    "-inception-v3-classification-4/specs_v1.0.0.json",
 }
 
 BASE_MANIFEST = [
@@ -6215,31 +6257,36 @@ BASE_MANIFEST = [
         "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
         "version": "1.0.0",
         "min_version": "2.49.0",
-        "spec_key": "community_models_specs/tensorflow-ic-imagenet" "-inception-v3-classification-4/specs_v1.0.0.json",
+        "spec_key": "community_models_specs/tensorflow-ic-imagenet"
+        "-inception-v3-classification-4/specs_v1.0.0.json",
     },
     {
         "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
         "version": "2.0.0",
         "min_version": "2.49.0",
-        "spec_key": "community_models_specs/tensorflow-ic-imagenet" "-inception-v3-classification-4/specs_v2.0.0.json",
+        "spec_key": "community_models_specs/tensorflow-ic-imagenet"
+        "-inception-v3-classification-4/specs_v2.0.0.json",
     },
     {
         "model_id": "pytorch-ic-imagenet-inception-v3-classification-4",
         "version": "1.0.0",
         "min_version": "2.49.0",
-        "spec_key": "community_models_specs/pytorch-ic-" "imagenet-inception-v3-classification-4/specs_v1.0.0.json",
+        "spec_key": "community_models_specs/pytorch-ic-"
+        "imagenet-inception-v3-classification-4/specs_v1.0.0.json",
     },
     {
         "model_id": "pytorch-ic-imagenet-inception-v3-classification-4",
         "version": "2.0.0",
         "min_version": "2.49.0",
-        "spec_key": "community_models_specs/pytorch-ic-imagenet-" "inception-v3-classification-4/specs_v2.0.0.json",
+        "spec_key": "community_models_specs/pytorch-ic-imagenet-"
+        "inception-v3-classification-4/specs_v2.0.0.json",
     },
     {
         "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
         "version": "3.0.0",
         "min_version": "4.49.0",
-        "spec_key": "community_models_specs/tensorflow-ic-" "imagenet-inception-v3-classification-4/specs_v3.0.0.json",
+        "spec_key": "community_models_specs/tensorflow-ic-"
+        "imagenet-inception-v3-classification-4/specs_v3.0.0.json",
     },
 ]
 
@@ -6981,7 +7028,7 @@ HUB_CONTENT_DOCUMENT_MODEL_CONTENT_TYPE_DICTS = {
         "TrainingScriptUri": "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/meta/transfer_learning/textgeneration/v1.0.11/sourcedir.tar.gz",
         "TrainingPrepackedScriptUri": "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/meta/transfer_learning/textgeneration/prepack/v1.0.5/sourcedir.tar.gz",
         "TrainingPrepackedScriptVersion": "1.0.5",
-        "TrainingEcrUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.0-gpu-py310-cu121-ubuntu20.04", # TODO: not a training image
+        "TrainingEcrUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.0-gpu-py310-cu121-ubuntu20.04",  # TODO: not a training image
         "TrainingArtifactUri": "s3://jumpstart-cache-prod-us-west-2/meta-training/train-meta-textgeneration-llama-2-70b.tar.gz",
         "InferenceEnvironmentVariables": [
             {

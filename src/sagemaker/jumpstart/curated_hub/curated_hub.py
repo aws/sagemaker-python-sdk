@@ -389,7 +389,9 @@ class CuratedHub:
             f"{TASK_TAG_PREFIX}:TODO: pull from specs",
         ]
 
-        hub_content_document = HubContentDocument(model_specs=model_specs, region=self.region)
+        hub_content_document = HubContentDocument(
+            json_obj_or_model_specs=model_specs, region=self.region
+        )
 
         self._sagemaker_session.import_hub_content(
             document_schema_version=hub_content_document.get_schema_version(),

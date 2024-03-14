@@ -51,7 +51,6 @@ from sagemaker.jumpstart.types import (
     DescribeHubContentResponse,
     HubType,
     HubContentType,
-    HubContentDocument,
 )
 from sagemaker.jumpstart.curated_hub import utils as hub_utils
 
@@ -121,9 +120,7 @@ class JumpStartModelsCache:
         )
         self._manifest_file_s3_key = manifest_file_s3_key
         self.s3_bucket_name = (
-            utils.get_jumpstart_content_bucket(self._region)
-            if s3_bucket_name is None
-            else s3_bucket_name
+            utils.get_jumpstart_content_bucket(self._region) if s3_bucket_name is None else s3_bucket_name
         )
         self._s3_client = s3_client or (
             boto3.client("s3", region_name=self._region, config=s3_client_config)
@@ -197,28 +194,22 @@ class JumpStartModelsCache:
             if header.model_id == model_id and Version(header.min_version) <= Version(sm_version)
         ]
 
-        sm_compatible_model_version = self._select_version(
-            version, versions_compatible_with_sagemaker
-        )
+        sm_compatible_model_version = self._select_version(version, versions_compatible_with_sagemaker)
 
         if sm_compatible_model_version is not None:
             return JumpStartVersionedModelId(model_id, sm_compatible_model_version)
 
         versions_incompatible_with_sagemaker = [
-            Version(header.version) for header in manifest.values()  # type: ignore
-            if header.model_id == model_id
+            Version(header.version) for header in manifest.values() if header.model_id == model_id  # type: ignore
         ]
-        sm_incompatible_model_version = self._select_version(
-            version, versions_incompatible_with_sagemaker
-        )
+        sm_incompatible_model_version = self._select_version(version, versions_incompatible_with_sagemaker)
 
         if sm_incompatible_model_version is not None:
             model_version_to_use_incompatible_with_sagemaker = sm_incompatible_model_version
             sm_version_to_use_list = [
                 header.min_version
                 for header in manifest.values()  # type: ignore
-                if header.model_id == model_id
-                and header.version == model_version_to_use_incompatible_with_sagemaker
+                if header.model_id == model_id and header.version == model_version_to_use_incompatible_with_sagemaker
             ]
             if len(sm_version_to_use_list) != 1:
                 # ``manifest`` dict should already enforce this
@@ -235,18 +226,13 @@ class JumpStartModelsCache:
             raise KeyError(error_msg)
 
         error_msg = f"Unable to find model manifest for '{model_id}' with version '{version}'. "
-        error_msg += (
-            f"Visit {MODEL_ID_LIST_WEB_URL} for updated list of models. "
-        )
+        error_msg += f"Visit {MODEL_ID_LIST_WEB_URL} for updated list of models. "
 
         other_model_id_version = self._select_version(
             "*", versions_incompatible_with_sagemaker
         )  # all versions here are incompatible with sagemaker
         if other_model_id_version is not None:
-            error_msg += (
-                f"Consider using model ID '{model_id}' with version "
-                f"'{other_model_id_version}'."
-            )
+            error_msg += f"Consider using model ID '{model_id}' with version " f"'{other_model_id_version}'."
 
         else:
             possible_model_ids = [header.model_id for header in manifest.values()]  # type: ignore
@@ -262,16 +248,14 @@ class JumpStartModelsCache:
 
     def _is_local_metadata_mode(self) -> bool:
         """Returns True if the cache should use local metadata mode, based off env variables."""
-        return (ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE in os.environ
-                and os.path.isdir(os.environ[ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE])
-                and ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE in os.environ
-                and os.path.isdir(os.environ[ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE]))
+        return (
+            ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE in os.environ
+            and os.path.isdir(os.environ[ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE])
+            and ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE in os.environ
+            and os.path.isdir(os.environ[ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE])
+        )
 
-    def _get_json_file(
-        self,
-        key: str,
-        filetype: JumpStartS3FileType
-    ) -> Tuple[Union[dict, list], Optional[str]]:
+    def _get_json_file(self, key: str, filetype: JumpStartS3FileType) -> Tuple[Union[dict, list], Optional[str]]:
         """Returns json file either from s3 or local file system.
 
         Returns etag along with json object for s3, or just the json
@@ -293,22 +277,16 @@ class JumpStartModelsCache:
             raise ValueError("Cannot get md5 hash of local file.")
         return self._s3_client.head_object(Bucket=self.s3_bucket_name, Key=key)["ETag"]
 
-    def _get_json_file_from_local_override(
-        self,
-        key: str,
-        filetype: JumpStartS3FileType
-    ) -> Union[dict, list]:
+    def _get_json_file_from_local_override(self, key: str, filetype: JumpStartS3FileType) -> Union[dict, list]:
         """Reads json file from local filesystem and returns data."""
         if filetype == JumpStartS3FileType.MANIFEST:
-            metadata_local_root = (
-                os.environ[ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE]
-            )
+            metadata_local_root = os.environ[ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE]
         elif filetype == JumpStartS3FileType.SPECS:
             metadata_local_root = os.environ[ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE]
         else:
             raise ValueError(f"Unsupported file type for local override: {filetype}")
         file_path = os.path.join(metadata_local_root, key)
-        with open(file_path, 'r') as f:
+        with open(file_path, "r") as f:
             data = json.load(f)
         return data
 
@@ -346,33 +324,22 @@ class JumpStartModelsCache:
             formatted_body, _ = self._get_json_file(id_info, data_type)
             model_specs = JumpStartModelSpecs(formatted_body)
             utils.emit_logs_based_on_model_specs(model_specs, self.get_region(), self._s3_client)
-            return JumpStartCachedContentValue(
-                formatted_content=model_specs
-            )
+            return JumpStartCachedContentValue(formatted_content=model_specs)
         if data_type == HubContentType.MODEL:
-            hub_name, _, model_name, model_version = hub_utils.get_info_from_hub_resource_arn(
-                id_info
-            )
+            hub_name, _, model_name, model_version = hub_utils.get_info_from_hub_resource_arn(id_info)
             hub_model_description: Dict[str, Any] = self._sagemaker_session.describe_hub_content(
                 hub_name=hub_name,
                 hub_content_name=model_name,
                 hub_content_version=model_version,
-                hub_content_type=data_type
+                hub_content_type=data_type,
             )
 
             model_specs = JumpStartModelSpecs(
                 DescribeHubContentResponse(hub_model_description),
-                is_hub_content=True,
             )
 
-            utils.emit_logs_based_on_model_specs(
-                model_specs,
-                self.get_region(),
-                self._s3_client
-            )
-            return JumpStartCachedContentValue(
-                formatted_content=model_specs
-            )
+            utils.emit_logs_based_on_model_specs(model_specs, self.get_region(), self._s3_client)
+            return JumpStartCachedContentValue(formatted_content=model_specs)
         if data_type == HubType.HUB:
             hub_name, _, _, _ = hub_utils.get_info_from_hub_resource_arn(id_info)
             response: Dict[str, Any] = self._sagemaker_session.describe_hub(hub_name=hub_name)
@@ -382,7 +349,7 @@ class JumpStartModelsCache:
             )
         raise ValueError(
             f"Bad value for key '{key}': must be in ",
-            f"{[JumpStartS3FileType.MANIFEST, JumpStartS3FileType.SPECS, HubType.HUB, HubContentType.MODEL]}"
+            f"{[JumpStartS3FileType.MANIFEST, JumpStartS3FileType.SPECS, HubType.HUB, HubContentType.MODEL]}",
         )
 
     def get_manifest(self) -> List[JumpStartModelHeader]:
@@ -427,9 +394,7 @@ class JumpStartModelsCache:
         except InvalidSpecifier:
             raise KeyError(f"Bad semantic version: {semantic_version_str}")
         available_versions_filtered = list(spec.filter(available_versions))
-        return (
-            str(max(available_versions_filtered)) if available_versions_filtered != [] else None
-        )
+        return str(max(available_versions_filtered)) if available_versions_filtered != [] else None
 
     def _get_header_impl(
         self,
@@ -475,30 +440,22 @@ class JumpStartModelsCache:
 
         header = self.get_header(model_id, semantic_version_str)
         spec_key = header.spec_key
-        specs, cache_hit = self._content_cache.get(
-            JumpStartCachedContentKey(JumpStartS3FileType.SPECS, spec_key)
-        )
+        specs, cache_hit = self._content_cache.get(JumpStartCachedContentKey(JumpStartS3FileType.SPECS, spec_key))
         if not cache_hit and "*" in semantic_version_str:
             JUMPSTART_LOGGER.warning(
-                get_wildcard_model_version_msg(
-                    header.model_id,
-                    semantic_version_str,
-                    header.version
-                )
+                get_wildcard_model_version_msg(header.model_id, semantic_version_str, header.version)
             )
         return specs.formatted_content
 
-    def get_hub_model(self, hub_model_arn: str) -> HubContentDocument:
+    def get_hub_model(self, hub_model_arn: str) -> JumpStartModelSpecs:
         """Return JumpStart-compatible specs for a given Hub model
 
         Args:
             hub_model_arn (str): Arn for the Hub model to get specs for
         """
 
-        details, _ = self._content_cache.get(
-            JumpStartCachedContentKey(HubContentType.MODEL, hub_model_arn)
-        )
-        return HubContentDocument(details.formatted_content)
+        details, _ = self._content_cache.get(JumpStartCachedContentKey(HubContentType.MODEL, hub_model_arn))
+        return details.formatted_content
 
     def get_hub(self, hub_arn: str) -> Dict[str, Any]:
         """Return descriptive info for a given Hub
