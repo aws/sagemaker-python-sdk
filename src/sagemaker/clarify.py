@@ -389,9 +389,95 @@ class DatasetType(Enum):
 
 
 class TimeSeriesJSONDatasetFormat(Enum):
-    """Possible dataset formats for JSON time series data files."""
+    """Possible dataset formats for JSON time series data files.
+
+    Below is an example ``COLUMNS`` dataset for time series explainability:
+
+    ```
+    {
+        "ids": [1, 2],
+        "timestamps": [3, 4],
+        "target_ts": [5, 6],
+        "rts1": [0.25, 0.5],
+        "rts2": [1.25, 1.5],
+        "scv1": [10, 20],
+        "scv2": [30, 40]
+    }
+
+    ```
+
+    For this example, JMESPaths are specified when creating ``TimeSeriesDataConfig`` as follows:
+
+    ```
+    item_id="ids"
+    timestamp="timestamps"
+    target_time_series="target_ts"
+    related_time_series=["rts1", "rts2"]
+    static_covariates=["scv1", "scv2"]
+    ```
+
+    Below is an example ``ITEM_RECORDS`` dataset for time series explainability:
+
+    ```
+    [
+        {
+            "id": 1,
+            "scv1": 10,
+            "scv2": "red",
+            "timeseries": [
+                {"timestamp": 1, "target_ts": 5, "rts1": 0.25, "rts2": 10},
+                {"timestamp": 2, "target_ts": 6, "rts1": 0.35, "rts2": 20},
+                {"timestamp": 3, "target_ts": 4, "rts1": 0.45, "rts2": 30}
+            ]
+        },
+        {
+            "id": 2,
+            "scv1": 20,
+            "scv2": "blue",
+            "timeseries": [
+                {"timestamp": 1, "target_ts": 4, "rts1": 0.25, "rts2": 40},
+                {"timestamp": 2, "target_ts": 2, "rts1": 0.35, "rts2": 50}
+            ]
+        }
+    ]
+    ```
+
+    For this example, JMESPaths are specified when creating ``TimeSeriesDataConfig`` as follows:
+
+    ```
+    item_id="[*].id"
+    timestamp="[*].timeseries[].timestamp"
+    target_time_series="[*].timeseries[].target_ts"
+    related_time_series=["[*].timeseries[].rts1", "[*].timeseries[].rts2"]
+    static_covariates=["[*].scv1", "[*].scv2"]
+    ```
+
+    Below is an example ``TIMESTAMP_RECORDS`` dataset for time series explainability:
+
+    ```
+    [
+        {"id": 1, "timestamp": 1, "target_ts": 5, "scv1": 10, "rts1": 0.25},
+        {"id": 1, "timestamp": 2, "target_ts": 6, "scv1": 10, "rts1": 0.5},
+        {"id": 1, "timestamp": 3, "target_ts": 3, "scv1": 10, "rts1": 0.75},
+        {"id": 2, "timestamp": 5, "target_ts": 10, "scv1": 20, "rts1": 1}
+    ]
+
+    ```
+
+    For this example, JMESPaths are specified when creating ``TimeSeriesDataConfig`` as follows:
+
+    ```
+    item_id="[*].id"
+    timestamp="[*].timestamp"
+    target_time_series="[*].target_ts"
+    related_time_series=["[*].rts1"]
+    static_covariates=["[*].scv1"]
+    ```
+
+    """
 
     COLUMNS = "columns"
+    ITEM_RECORDS = "item_records"
     TIMESTAMP_RECORDS = "timestamp_records"
 
 
@@ -607,6 +693,11 @@ class DataConfig:
                 Note: For JSON, the JMESPath query must result in a list of labels for each
                 sample.  For JSON Lines, it must result in the label for each line.
                 Only a single label per sample is supported at this time.
+            headers (str): List of column names in the dataset. If not provided, Clarify will
+                generate headers to use internally. For time series explainability cases,
+                please provide headers in the following order:
+                    item_id, timestamp, target_time_series, all related_time_series columns,
+                    all static_covariate columns
             features (str): JMESPath expression to locate the feature values
                 if the dataset format is JSON/JSON Lines.
                 Note: For JSON, the JMESPath query must result in a 2-D list (or a matrix) of
@@ -716,9 +807,8 @@ class DataConfig:
         if time_series_data_config:
             if dataset_type != "application/json":
                 raise ValueError(
-                    "Currently time series explainability only supports JSON format data"
+                    "Currently time series explainability only supports JSON format data."
                 )
-            assert headers, "Headers are required for time series explainability"
         # features JMESPath is required for JSON as we can't derive it ourselves
         if dataset_type == "application/json" and features is None and not time_series_data_config:
             raise ValueError("features JMESPath is required for application/json dataset_type")
