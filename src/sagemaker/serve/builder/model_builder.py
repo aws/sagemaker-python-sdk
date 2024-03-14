@@ -20,7 +20,6 @@ import os
 
 from pathlib import Path
 
-from accelerate.commands.estimate import estimate_command_parser, gather_data
 from sagemaker import Session
 from sagemaker.model import Model
 from sagemaker.base_predictor import PredictorBase
@@ -72,6 +71,8 @@ supported_model_server = {
 
 MIB_CONVERSION_FACTOR = 0.00000095367431640625
 MEMORY_BUFFER_MULTIPLIER = 1.2  # 20% buffer
+VERSION_DETECTION_ERROR = "Please install accelerate and transformers for HuggingFace (HF) model " \
+                          "size calculations pip install 'sagemaker[huggingface]'"
 
 
 # pylint: disable=attribute-defined-outside-init
@@ -726,13 +727,20 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
         padding and converts to size MiB. When performing inference, expect
         to add up to an additional 20% to the given model size as found by EleutherAI.
         """
-        dtypes = self.env_vars.get("dtypes", "float32")
-        parser = estimate_command_parser()
-        args = parser.parse_args([self.model, "--dtypes", dtypes])
+        try:
+            import accelerate.commands.estimate.estimate_command_parser
+            import accelerate.commands.estimate.gather_data
 
-        output = gather_data(
-            args
-        )  # "dtype", "Largest Layer", "Total Size Bytes", "Training using Adam"
+            dtypes = self.env_vars.get("dtypes", "float32")
+            parser = accelerate.commands.estimate.estimate_command_parser.estimate_command_parser()
+            args = parser.parse_args([self.model, "--dtypes", dtypes])
+
+            output = accelerate.commands.estimate.gather_data.gather_data(
+                    args
+            )  # "dtype", "Largest Layer", "Total Size Bytes", "Training using Adam"
+        except ImportError as e:
+            logger.warning(VERSION_DETECTION_ERROR)
+            raise e
 
         if output is None:
             raise ValueError(f"Could not get Model size for {self.model}")
