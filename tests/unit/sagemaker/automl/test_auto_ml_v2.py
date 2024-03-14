@@ -24,6 +24,7 @@ from sagemaker import (
     CandidateEstimator,
     LocalAutoMLDataChannel,
     PipelineModel,
+    AutoML,
 )
 from sagemaker.predictor import Predictor
 from sagemaker.session_settings import SessionSettings
@@ -1100,3 +1101,29 @@ def test_output_path_default_bucket_and_prefix_combinations(start_new):
         expected__with_user_input__with_default_bucket_only="s3://test",
     )
     assert actual == expected
+
+
+def test_automl_v1_to_automl_v2_mapping():
+    auto_ml = AutoML(
+        role=ROLE,
+        target_attribute_name=TARGET_ATTRIBUTE_NAME,
+        sample_weight_attribute_name=SAMPLE_WEIGHT_ATTRIBUTE_NAME,
+        output_kms_key=OUTPUT_KMS_KEY,
+        output_path=OUTPUT_PATH,
+        max_candidates=MAX_CANDIDATES,
+        base_job_name=BASE_JOB_NAME,
+    )
+
+    auto_ml_v2 = AutoMLV2.from_auto_ml(auto_ml=auto_ml)
+
+    assert isinstance(auto_ml_v2.problem_config, AutoMLTabularConfig)
+    assert auto_ml_v2.role == auto_ml.role
+    assert auto_ml_v2.problem_config.target_attribute_name == auto_ml.target_attribute_name
+    assert (
+        auto_ml_v2.problem_config.sample_weight_attribute_name
+        == auto_ml.sample_weight_attribute_name
+    )
+    assert auto_ml_v2.output_kms_key == auto_ml.output_kms_key
+    assert auto_ml_v2.output_path == auto_ml.output_path
+    assert auto_ml_v2.problem_config.max_candidates == auto_ml.max_candidate
+    assert auto_ml_v2.base_job_name == auto_ml.base_job_name
