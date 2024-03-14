@@ -34,6 +34,7 @@ RETURN_VALUE = 0
 CSV_RETURN_VALUE = "1,2,3\r\n"
 PRODUCTION_VARIANT_1 = "PRODUCTION_VARIANT_1"
 INFERENCE_ID = "inference-id"
+STREAM_ITERABLE_BODY = ["This", "is", "stream", "response"]
 
 ENDPOINT_DESC = {"EndpointArn": "foo", "EndpointConfigName": ENDPOINT}
 
@@ -55,6 +56,11 @@ def empty_sagemaker_session():
     response_body.close = Mock("close", return_value=None)
     ims.sagemaker_runtime_client.invoke_endpoint = Mock(
         name="invoke_endpoint", return_value={"Body": response_body}
+    )
+
+    stream_response_body = STREAM_ITERABLE_BODY
+    ims.sagemaker_runtime_client.invoke_endpoint_with_response_stream = Mock(
+        name="invoke_endpoint_with_response_stream", return_value={"Body": stream_response_body}
     )
     return ims
 
@@ -258,6 +264,75 @@ def test_predict_call_with_multiple_accept_types():
     }
     call_args, kwargs = sagemaker_session.sagemaker_runtime_client.invoke_endpoint.call_args
     assert kwargs == expected_request_args
+
+
+def test_predict_stream_call_pass_through():
+    sagemaker_session = empty_sagemaker_session()
+    predictor = Predictor(ENDPOINT, sagemaker_session)
+
+    data = "dummy"
+    result = predictor.predict_stream(data, iterator=list)
+
+    assert sagemaker_session.sagemaker_runtime_client.invoke_endpoint_with_response_stream.called
+    assert sagemaker_session.sagemaker_client.describe_endpoint.not_called
+    assert sagemaker_session.sagemaker_client.describe_endpoint_config.not_called
+
+    expected_request_args = {
+        "Accept": DEFAULT_ACCEPT,
+        "Body": data,
+        "ContentType": DEFAULT_CONTENT_TYPE,
+        "EndpointName": ENDPOINT,
+    }
+
+    (
+        call_args,
+        kwargs,
+    ) = sagemaker_session.sagemaker_runtime_client.invoke_endpoint_with_response_stream.call_args
+    assert kwargs == expected_request_args
+
+    assert result == STREAM_ITERABLE_BODY
+
+
+def test_predict_stream_call_all_args():
+    sagemaker_session = empty_sagemaker_session()
+    predictor = Predictor(ENDPOINT, sagemaker_session)
+
+    data = "dummy"
+    initial_args = {"ContentType": "application/json"}
+    result = predictor.predict_stream(
+        data,
+        initial_args=initial_args,
+        target_variant=PRODUCTION_VARIANT_1,
+        inference_id=INFERENCE_ID,
+        custom_attributes="custom-attribute",
+        component_name="test_component_name",
+        target_container_hostname="test_target_container_hostname",
+        iterator=list,
+    )
+
+    assert sagemaker_session.sagemaker_runtime_client.invoke_endpoint_with_response_stream.called
+    assert sagemaker_session.sagemaker_client.describe_endpoint.not_called
+    assert sagemaker_session.sagemaker_client.describe_endpoint_config.not_called
+
+    expected_request_args = {
+        "Accept": DEFAULT_ACCEPT,
+        "Body": data,
+        "ContentType": "application/json",
+        "EndpointName": ENDPOINT,
+        "TargetVariant": PRODUCTION_VARIANT_1,
+        "InferenceId": INFERENCE_ID,
+        "CustomAttributes": "custom-attribute",
+        "InferenceComponentName": "test_component_name",
+        "TargetContainerHostname": "test_target_container_hostname",
+    }
+
+    (
+        call_args,
+        kwargs,
+    ) = sagemaker_session.sagemaker_runtime_client.invoke_endpoint_with_response_stream.call_args
+    assert kwargs == expected_request_args
+
+    assert result == STREAM_ITERABLE_BODY
 
 
 @patch("sagemaker.base_predictor.name_from_base")
