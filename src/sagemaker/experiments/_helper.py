@@ -59,11 +59,15 @@ class _ArtifactUploader(object):
         self.artifact_prefix = artifact_prefix
         self._s3_client = self.sagemaker_session.boto_session.client("s3")
 
-    def upload_artifact(self, file_path):
+    def upload_artifact(self, file_path, extra_args=None):
         """Upload an artifact file to S3.
 
         Args:
             file_path (str): the file path of the artifact
+            extra_args (dict): Optional extra arguments that may be passed to the upload operation.
+                Similar to ExtraArgs parameter in S3 upload_file function. Please refer to the
+                ExtraArgs parameter documentation here:
+                https://boto3.amazonaws.com/v1/documentation/api/latest/guide/s3-uploading-files.html#the-extraargs-parameter
 
         Returns:
             (str, str): The s3 URI of the uploaded file and the etag of the file.
@@ -91,7 +95,12 @@ class _ArtifactUploader(object):
         artifact_s3_key = "{}/{}/{}".format(
             self.artifact_prefix, self.trial_component_name, artifact_name
         )
-        self._s3_client.upload_file(file_path, self.artifact_bucket, artifact_s3_key)
+        self._s3_client.upload_file(
+            file_path,
+            self.artifact_bucket,
+            artifact_s3_key,
+            ExtraArgs=extra_args,
+        )
         etag = self._try_get_etag(artifact_s3_key)
         return "s3://{}/{}".format(self.artifact_bucket, artifact_s3_key), etag
 

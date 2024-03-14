@@ -16,6 +16,8 @@ import time
 from unittest import mock
 
 import pytest
+from sagemaker.enums import EndpointType
+from sagemaker.predictor import retrieve_default
 
 import tests.integ
 
@@ -60,8 +62,14 @@ def test_non_prepacked_jumpstart_model(setup):
     )
 
     # uses ml.m5.4xlarge instance
-    predictor = model.deploy(
+    model.deploy(
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
+    )
+
+    predictor = retrieve_default(
+        endpoint_name=model.endpoint_name,
+        sagemaker_session=get_sm_session(),
+        tolerate_vulnerable_model=True,
     )
 
     download_inference_assets()
@@ -178,6 +186,40 @@ def test_jumpstart_gated_model(setup):
     assert response is not None
 
 
+def test_jumpstart_gated_model_inference_component_enabled(setup):
+
+    model_id = "meta-textgeneration-llama-2-7b"
+
+    model = JumpStartModel(
+        model_id=model_id,
+        model_version="3.*",  # version >=3.0.0 stores artifacts in jumpstart-private-cache-* buckets
+        role=get_sm_session().get_caller_identity_arn(),
+        sagemaker_session=get_sm_session(),
+    )
+
+    # uses ml.g5.2xlarge instance
+    model.deploy(
+        tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
+        accept_eula=True,
+        endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
+    )
+
+    predictor = retrieve_default(
+        endpoint_name=model.endpoint_name,
+        sagemaker_session=get_sm_session(),
+        tolerate_vulnerable_model=True,
+    )
+
+    payload = {
+        "inputs": "some-payload",
+        "parameters": {"max_new_tokens": 256, "top_p": 0.9, "temperature": 0.6},
+    }
+
+    response = predictor.predict(payload)
+
+    assert response is not None
+
+
 @mock.patch("sagemaker.jumpstart.cache.JUMPSTART_LOGGER.warning")
 def test_instatiating_model(mock_warning_logger, setup):
 
@@ -214,9 +256,33 @@ def test_jumpstart_model_register(setup):
     predictor = model_package.deploy(
         instance_type="ml.p3.2xlarge",
         initial_instance_count=1,
-        tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
     )
 
     response = predictor.predict("hello world!")
+
+    assert response is not None
+
+
+@pytest.mark.skipif(
+    True,
+    reason="Only enable if test account is subscribed to the proprietary model",
+)
+def test_proprietary_jumpstart_model(setup):
+
+    model_id = "ai21-jurassic-2-light"
+
+    model = JumpStartModel(
+        model_id=model_id,
+        model_version="2.0.004",
+        role=get_sm_session().get_caller_identity_arn(),
+        sagemaker_session=get_sm_session(),
+    )
+
+    predictor = model.deploy(
+        tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}]
+    )
+    payload = {"prompt": "To be, or", "maxTokens": 4, "temperature": 0, "numResults": 1}
+
+    response = predictor.predict(payload)
 
     assert response is not None

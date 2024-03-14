@@ -32,7 +32,12 @@ from sagemaker.workflow.steps import (
     Step,
     ConfigurableRetryStep,
 )
-from sagemaker.utils import _save_model, download_file_from_url
+from sagemaker.utils import (
+    _save_model,
+    download_file_from_url,
+    format_tags,
+    custom_extractall_tarfile,
+)
 from sagemaker.workflow.retry import RetryPolicy
 from sagemaker.workflow.utilities import trim_request_dict
 
@@ -172,8 +177,8 @@ class _RepackModelStep(TrainingStep):
 
         # the real estimator and inputs
         repacker = SKLearn(
-            framework_version=FRAMEWORK_VERSION,
-            instance_type=INSTANCE_TYPE,
+            framework_version=kwargs.pop("framework_version", None) or FRAMEWORK_VERSION,
+            instance_type=kwargs.pop("instance_type", None) or INSTANCE_TYPE,
             entry_point=REPACK_SCRIPT_LAUNCHER,
             source_dir=self._source_dir,
             dependencies=self._dependencies,
@@ -257,7 +262,7 @@ class _RepackModelStep(TrainingStep):
                 download_file_from_url(self._source_dir, old_targz_path, self.sagemaker_session)
 
                 with tarfile.open(name=old_targz_path, mode="r:gz") as t:
-                    t.extractall(path=targz_contents_dir)
+                    custom_extractall_tarfile(t, targz_contents_dir)
 
                 shutil.copy2(fname, os.path.join(targz_contents_dir, REPACK_SCRIPT))
                 with open(
@@ -323,6 +328,7 @@ class _RegisterModelStep(ConfigurableRetryStep):
         sample_payload_url=None,
         task=None,
         skip_model_validation=None,
+        source_uri=None,
         **kwargs,
     ):
         """Constructor of a register model step.
@@ -359,7 +365,7 @@ class _RegisterModelStep(ConfigurableRetryStep):
                 depends on (default: None).
             retry_policies (List[RetryPolicy]): The list of retry policies for the current step
                 (default: None).
-            tags (List[dict[str, str]]): A list of dictionaries containing key-value pairs used to
+            tags (Optional[Tags]): A list of dictionaries containing key-value pairs used to
                 configure the create model package request (default: None).
             container_def_list (list): A list of container definitions (default: None).
             drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
@@ -374,6 +380,7 @@ class _RegisterModelStep(ConfigurableRetryStep):
                 "CLASSIFICATION", "REGRESSION", "OTHER" (default: None).
             skip_model_validation (str): Indicates if you want to skip model validation.
                 Values can be "All" or "None" (default: None).
+            source_uri (str): The URI of the source for the model package (default: None).
             **kwargs: additional arguments to `create_model`.
         """
         super(_RegisterModelStep, self).__init__(
@@ -395,7 +402,7 @@ class _RegisterModelStep(ConfigurableRetryStep):
         self.inference_instances = inference_instances
         self.transform_instances = transform_instances
         self.model_package_group_name = model_package_group_name
-        self.tags = tags
+        self.tags = format_tags(tags)
         self.model_metrics = model_metrics
         self.drift_check_baselines = drift_check_baselines
         self.customer_metadata_properties = customer_metadata_properties
@@ -407,10 +414,10 @@ class _RegisterModelStep(ConfigurableRetryStep):
         self.image_uri = image_uri
         self.compile_model_family = compile_model_family
         self.description = description
-        self.tags = tags
         self.kwargs = kwargs
         self.container_def_list = container_def_list
         self.skip_model_validation = skip_model_validation
+        self.source_uri = source_uri
 
         self._properties = Properties(
             step_name=name, step=self, shape_name="DescribeModelPackageOutput"
@@ -485,6 +492,7 @@ class _RegisterModelStep(ConfigurableRetryStep):
                 sample_payload_url=self.sample_payload_url,
                 task=self.task,
                 skip_model_validation=self.skip_model_validation,
+                source_uri=self.source_uri,
             )
 
             request_dict = get_create_model_package_request(**model_package_args)

@@ -64,6 +64,8 @@ from sagemaker.utils import (
     to_string,
     resolve_value_from_config,
     resolve_nested_dict_value_from_config,
+    format_tags,
+    Tags,
 )
 from sagemaker.async_inference import AsyncInferenceConfig
 from sagemaker.predictor_async import AsyncPredictor
@@ -75,8 +77,13 @@ from sagemaker.inference_recommender.inference_recommender_mixin import (
 )
 from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
 from sagemaker.enums import EndpointType
+from sagemaker.session import (
+    get_add_model_package_inference_args,
+    get_update_model_package_inference_args,
+)
 
-LOGGER = logging.getLogger("sagemaker")
+# Setting LOGGER for backward compatibility, in case users import it...
+logger = LOGGER = logging.getLogger("sagemaker")
 
 NEO_ALLOWED_FRAMEWORKS = set(
     ["mxnet", "tensorflow", "keras", "pytorch", "onnx", "xgboost", "tflite"]
@@ -134,7 +141,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
 
     def __init__(
         self,
-        image_uri: Union[str, PipelineVariable],
+        image_uri: Optional[Union[str, PipelineVariable]] = None,
         model_data: Optional[Union[str, PipelineVariable, dict]] = None,
         role: Optional[str] = None,
         predictor_cls: Optional[callable] = None,
@@ -419,6 +426,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
         nearest_model_name: Optional[Union[str, PipelineVariable]] = None,
         data_input_configuration: Optional[Union[str, PipelineVariable]] = None,
         skip_model_validation: Optional[Union[str, PipelineVariable]] = None,
+        source_uri: Optional[Union[str, PipelineVariable]] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -468,28 +476,19 @@ class Model(ModelBase, InferenceRecommenderMixin):
                 (default: None).
             skip_model_validation (str or PipelineVariable): Indicates if you want to skip model
                 validation. Values can be "All" or "None" (default: None).
+            source_uri (str or PipelineVariable): The URI of the source for the model package
+                (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance or pipeline step arguments
             in case the Model instance is built with
             :class:`~sagemaker.workflow.pipeline_context.PipelineSession`
         """
-        if isinstance(self.model_data, dict):
-            raise ValueError(
-                "SageMaker Model Package currently cannot be created with ModelDataSource."
-            )
-
         if content_types is not None:
             self.content_types = content_types
 
         if response_types is not None:
             self.response_types = response_types
-
-        if self.content_types is None:
-            raise ValueError("The supported MIME types for the input data is not set")
-
-        if self.response_types is None:
-            raise ValueError("The supported MIME types for the output data is not set")
 
         if image_uri is not None:
             self.image_uri = image_uri
@@ -515,6 +514,12 @@ class Model(ModelBase, InferenceRecommenderMixin):
                 "Image": self.image_uri,
             }
 
+            if isinstance(self.model_data, dict):
+                raise ValueError(
+                    "Un-versioned SageMaker Model Package currently cannot be "
+                    "created with ModelDataSource."
+                )
+
             if self.model_data is not None:
                 container_def["ModelDataUrl"] = self.model_data
 
@@ -538,6 +543,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
             sample_payload_url=sample_payload_url,
             task=task,
             skip_model_validation=skip_model_validation,
+            source_uri=source_uri,
         )
         model_package = self.sagemaker_session.create_model_package_from_containers(
             **model_pkg_args
@@ -558,7 +564,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
         instance_type: Optional[str] = None,
         accelerator_type: Optional[str] = None,
         serverless_inference_config: Optional[ServerlessInferenceConfig] = None,
-        tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+        tags: Optional[Tags] = None,
         accept_eula: Optional[bool] = None,
     ):
         """Create a SageMaker Model Entity
@@ -575,10 +581,11 @@ class Model(ModelBase, InferenceRecommenderMixin):
                 Specifies configuration related to serverless endpoint. Instance type is
                 not provided in serverless inference. So this is used to find image URIs
                 (default: None).
-            tags (list[dict[str, str] or list[dict[str, PipelineVariable]]): The list of
-                tags to add to the model (default: None). Example::
+            tags (Optional[Tags]): Tags to add to the model (default: None). Example::
 
                     tags = [{'Key': 'tagname', 'Value':'tagvalue'}]
+                    # Or
+                    tags = {'tagname', 'tagvalue'}
 
                 For more information about tags, see
                 `boto3 documentation <https://boto3.amazonaws.com/v1/documentation/\
@@ -597,7 +604,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         self._create_sagemaker_model(
             instance_type=instance_type,
             accelerator_type=accelerator_type,
-            tags=tags,
+            tags=format_tags(tags),
             serverless_inference_config=serverless_inference_config,
             accept_eula=accept_eula,
         )
@@ -742,7 +749,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                     script_name=os.path.basename(self.entry_point),
                 )
 
-            LOGGER.info(
+            logger.info(
                 "Repacking model artifact (%s), script artifact "
                 "(%s), and dependencies (%s) "
                 "into single tar.gz file located at %s. "
@@ -767,8 +774,8 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
 
     def _script_mode_env_vars(self):
         """Returns a mapping of environment variables for script mode execution"""
-        script_name = None
-        dir_name = None
+        script_name = self.env.get(SCRIPT_PARAM_NAME.upper(), "")
+        dir_name = self.env.get(DIR_PARAM_NAME.upper(), "")
         if self.uploaded_code:
             script_name = self.uploaded_code.script_name
             if self.repacked_model_data or self.enable_network_isolation():
@@ -784,8 +791,8 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                     else "file://" + self.source_dir
                 )
         return {
-            SCRIPT_PARAM_NAME.upper(): script_name or str(),
-            DIR_PARAM_NAME.upper(): dir_name or str(),
+            SCRIPT_PARAM_NAME.upper(): script_name,
+            DIR_PARAM_NAME.upper(): dir_name,
             CONTAINER_LOG_LEVEL_PARAM_NAME.upper(): to_string(self.container_log_level),
             SAGEMAKER_REGION_PARAM_NAME.upper(): self.sagemaker_session.boto_region_name,
         }
@@ -802,7 +809,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         self,
         instance_type=None,
         accelerator_type=None,
-        tags=None,
+        tags: Optional[Tags] = None,
         serverless_inference_config=None,
         accept_eula=None,
     ):
@@ -816,7 +823,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 attach to an endpoint for model loading and inference, for
                 example, 'ml.eia1.medium'. If not specified, no Elastic
                 Inference accelerator will be attached to the endpoint.
-            tags (List[dict[str, str]]): Optional. The list of tags to add to
+            tags (Optional[Tags]): Optional. The tags to add to
                 the model. Example: >>> tags = [{'Key': 'tagname', 'Value':
                 'tagvalue'}] For more information about tags, see
                 https://boto3.amazonaws.com/v1/documentation
@@ -847,7 +854,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             model_package._create_sagemaker_model(
                 instance_type=instance_type,
                 accelerator_type=accelerator_type,
-                tags=tags,
+                tags=format_tags(tags),
                 serverless_inference_config=serverless_inference_config,
             )
             if self._base_name is None and model_package._base_name is not None:
@@ -902,7 +909,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 container_defs=container_def,
                 vpc_config=self.vpc_config,
                 enable_network_isolation=self._enable_network_isolation,
-                tags=tags,
+                tags=format_tags(tags),
             )
             self.sagemaker_session.create_model(**create_model_args)
 
@@ -960,7 +967,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             compilation_job_name (str): what compilation job to source the model from
             resource_key (str): the kms key to encrypt the disk with
             s3_kms_key (str): the kms key to encrypt the output with
-            tags (list[dict]): List of tags for labeling an edge packaging job. For
+            tags (Optional[Tags]): Tags for labeling an edge packaging job. For
                 more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
         Returns:
@@ -975,7 +982,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         return {
             "output_model_config": output_model_config,
             "role": role,
-            "tags": tags,
+            "tags": format_tags(tags),
             "model_name": model_name,
             "model_version": model_version,
             "job_name": packaging_job_name,
@@ -1067,7 +1074,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             "output_model_config": output_model_config,
             "role": role,
             "stop_condition": {"MaxRuntimeInSeconds": compile_max_run},
-            "tags": tags,
+            "tags": format_tags(tags),
             "job_name": job_name,
         }
 
@@ -1095,7 +1102,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             job_name (str): The name of the edge packaging job
             resource_key (str): the kms key to encrypt the disk with
             s3_kms_key (str): the kms key to encrypt the output with
-            tags (list[dict]): List of tags for labeling an edge packaging job. For
+            tags (Optional[Tags]): Tags for labeling an edge packaging job. For
                 more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
 
@@ -1130,7 +1137,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             self._compilation_job_name,
             resource_key,
             s3_kms_key,
-            tags,
+            format_tags(tags),
         )
         self.sagemaker_session.package_model_for_edge(**config)
         job_status = self.sagemaker_session.wait_for_edge_packaging_job(job_name)
@@ -1173,7 +1180,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 https://docs.aws.amazon.com/sagemaker/latest/dg/neo-compilation-preparing-model.html
             output_path (str): Specifies where to store the compiled model
             role (str): Execution role
-            tags (list[dict]): List of tags for labeling a compilation job. For
+            tags (Optional[Tags]): Tags for labeling a compilation job. For
                 more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
             job_name (str): The name of the compilation job
@@ -1246,7 +1253,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             compile_max_run,
             job_name,
             framework,
-            tags,
+            format_tags(tags),
             target_platform_os,
             target_platform_arch,
             target_platform_accelerator,
@@ -1263,13 +1270,13 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 self.image_uri = job_status.get("InferenceImage", None)
                 self._is_compiled_model = True
             else:
-                LOGGER.warning(
+                logger.warning(
                     "The instance type %s is not supported for deployment via SageMaker."
                     "Please deploy the model manually.",
                     target_instance_family,
                 )
         else:
-            LOGGER.warning(
+            logger.warning(
                 "Devices described by Target Platform OS, Architecture and Accelerator are not"
                 "supported for deployment via SageMaker. Please deploy the model manually."
             )
@@ -1346,7 +1353,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
             endpoint_name (str): The name of the endpoint to create (default:
                 None). If not specified, a unique endpoint name will be created.
-            tags (List[dict[str, str]]): The list of tags to attach to this
+            tags (Optional[Tags]): Tags to attach to this
                 specific endpoint.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 data on the storage volume attached to the instance hosting the
@@ -1434,6 +1441,8 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             sagemaker_session=self.sagemaker_session,
         )
 
+        tags = format_tags(tags)
+
         if (
             getattr(self.sagemaker_session, "settings", None) is not None
             and self.sagemaker_session.settings.include_jumpstart_tags
@@ -1489,7 +1498,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             and instance_type.startswith("ml.inf")
             and not self._is_compiled_model
         ):
-            LOGGER.warning(
+            logger.warning(
                 "Your model is not compiled. Please compile your model before using Inferentia."
             )
 
@@ -1737,13 +1746,15 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 to be made to each individual transform container at one time.
             max_payload (int): Maximum size of the payload in a single HTTP
                 request to the container in MB.
-            tags (list[dict]): List of tags for labeling a transform job. If
+            tags (Optional[Tags]): Tags for labeling a transform job. If
                 none specified, then the tags used for the training job are used
                 for the transform job.
             volume_kms_key (str): Optional. KMS key ID for encrypting the volume
                 attached to the ML compute instance (default: None).
         """
         self._init_sagemaker_session_if_does_not_exist(instance_type)
+
+        tags = format_tags(tags)
 
         self._create_sagemaker_model(instance_type, tags=tags)
         if self.enable_network_isolation():
@@ -2037,8 +2048,9 @@ class ModelPackage(Model):
                 endpoints use this role to access training data and model
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if it needs to access an AWS resource.
-            model_data (str): The S3 location of a SageMaker model data
-                ``.tar.gz`` file. Must be provided if algorithm_arn is provided.
+            model_data (str or dict[str, Any]): The S3 location of a SageMaker model data
+                ``.tar.gz`` file or a dictionary representing a ``ModelDataSource``
+                object. Must be provided if algorithm_arn is provided.
             algorithm_arn (str): algorithm arn used to train the model, can be
                 just the name if your account owns the algorithm. Must also
                 provide ``model_data``.
@@ -2047,11 +2059,6 @@ class ModelPackage(Model):
                 ``model_data`` is not required.
             **kwargs: Additional kwargs passed to the Model constructor.
         """
-        if isinstance(model_data, dict):
-            raise ValueError(
-                "Creating ModelPackage with ModelDataSource is currently not supported"
-            )
-
         super(ModelPackage, self).__init__(
             role=role, model_data=model_data, image_uri=None, **kwargs
         )
@@ -2169,7 +2176,7 @@ class ModelPackage(Model):
             container_def,
             vpc_config=self.vpc_config,
             enable_network_isolation=self.enable_network_isolation(),
-            tags=kwargs.get("tags"),
+            tags=format_tags(kwargs.get("tags")),
         )
 
     def _ensure_base_name_if_needed(self, base_name):
@@ -2181,7 +2188,7 @@ class ModelPackage(Model):
         """Update the approval status for the model package
 
         Args:
-            approval_status (str or PipelineVariable): Model Approval Status, values can be
+            approval_status (str): Model Approval Status, values can be
                 "Approved", "Rejected", or "PendingManualApproval".
             approval_description (str): Optional. Description for the approval status of the model
                 (default: None).
@@ -2202,3 +2209,164 @@ class ModelPackage(Model):
             update_approval_args["ApprovalDescription"] = approval_description
 
         sagemaker_session.sagemaker_client.update_model_package(**update_approval_args)
+
+    def update_customer_metadata(self, customer_metadata_properties: Dict[str, str]):
+        """Updating customer metadata properties for the model package
+
+        Args:
+            customer_metadata_properties (dict[str, str]):
+                A dictionary of key-value paired metadata properties (default: None).
+        """
+
+        update_metadata_args = {
+            "ModelPackageArn": self.model_package_arn,
+            "CustomerMetadataProperties": customer_metadata_properties,
+        }
+
+        sagemaker_session = self.sagemaker_session or sagemaker.Session()
+        sagemaker_session.sagemaker_client.update_model_package(**update_metadata_args)
+
+    def update_inference_specification(
+        self,
+        containers: Dict = None,
+        image_uris: List[str] = None,
+        content_types: List[str] = None,
+        response_types: List[str] = None,
+        inference_instances: List[str] = None,
+        transform_instances: List[str] = None,
+    ):
+        """Inference specification to be set for the model package
+
+        Args:
+            containers (dict): The Amazon ECR registry path of the Docker image
+                that contains the inference code.
+            image_uris (List[str]): The ECR path where inference code is stored.
+            content_types (list[str]): The supported MIME types
+                for the input data.
+            response_types (list[str]): The supported MIME types
+                for the output data.
+            inference_instances (list[str]): A list of the instance
+                types that are used to generate inferences in real-time (default: None).
+            transform_instances (list[str]): A list of the instance
+                types on which a transformation job can be run or on which an endpoint can be
+                deployed (default: None).
+
+        """
+        sagemaker_session = self.sagemaker_session or sagemaker.Session()
+        if (containers is not None) ^ (image_uris is None):
+            raise ValueError("Should have either containers or image_uris for inference.")
+        container_def = []
+        if image_uris:
+            for uri in image_uris:
+                container_def.append(
+                    {
+                        "Image": uri,
+                    }
+                )
+        else:
+            container_def = containers
+
+        model_package_update_args = get_update_model_package_inference_args(
+            model_package_arn=self.model_package_arn,
+            containers=container_def,
+            content_types=content_types,
+            response_types=response_types,
+            inference_instances=inference_instances,
+            transform_instances=transform_instances,
+        )
+
+        sagemaker_session.sagemaker_client.update_model_package(**model_package_update_args)
+
+    def update_source_uri(
+        self,
+        source_uri: str,
+    ):
+        """Source uri to be set for the model package
+
+        Args:
+            source_uri (str): The URI of the source for the model package.
+
+        """
+        update_source_uri_args = {
+            "ModelPackageArn": self.model_package_arn,
+            "SourceUri": source_uri,
+        }
+        sagemaker_session = self.sagemaker_session or sagemaker.Session()
+        sagemaker_session.sagemaker_client.update_model_package(**update_source_uri_args)
+
+    def remove_customer_metadata_properties(
+        self, customer_metadata_properties_to_remove: List[str]
+    ):
+        """Removes the specified keys from customer metadata properties
+
+        Args:
+            customer_metadata_properties (list[str, str]):
+                list of keys of customer metadata properties to remove.
+        """
+
+        delete_metadata_args = {
+            "ModelPackageArn": self.model_package_arn,
+            "CustomerMetadataPropertiesToRemove": customer_metadata_properties_to_remove,
+        }
+
+        sagemaker_session = self.sagemaker_session or sagemaker.Session()
+        sagemaker_session.sagemaker_client.update_model_package(**delete_metadata_args)
+
+    def add_inference_specification(
+        self,
+        name: str,
+        containers: Dict = None,
+        image_uris: List[str] = None,
+        description: str = None,
+        content_types: List[str] = None,
+        response_types: List[str] = None,
+        inference_instances: List[str] = None,
+        transform_instances: List[str] = None,
+    ):
+        """Additional inference specification to be added for the model package
+
+        Args:
+            name (str): Name to identify the additional inference specification
+            containers (dict): The Amazon ECR registry path of the Docker image
+                that contains the inference code.
+            image_uris (List[str]): The ECR path where inference code is stored.
+            description (str): Description for the additional inference specification
+            content_types (list[str]): The supported MIME types
+                for the input data.
+            response_types (list[str]): The supported MIME types
+                for the output data.
+            inference_instances (list[str]): A list of the instance
+                types that are used to generate inferences in real-time (default: None).
+            transform_instances (list[str]): A list of the instance
+                types on which a transformation job can be run or on which an endpoint can be
+                deployed (default: None).
+
+        """
+        sagemaker_session = self.sagemaker_session or sagemaker.Session()
+        if containers is not None and image_uris is not None:
+            raise ValueError("Cannot have both containers and image_uris.")
+        if containers is None and image_uris is None:
+            raise ValueError("Should have either containers or image_uris for inference.")
+        container_def = []
+        if image_uris:
+            for uri in image_uris:
+                container_def.append(
+                    {
+                        "Image": uri,
+                    }
+                )
+        else:
+            container_def = containers
+
+        model_package_update_args = get_add_model_package_inference_args(
+            model_package_arn=self.model_package_arn,
+            name=name,
+            containers=container_def,
+            content_types=content_types,
+            description=description,
+            response_types=response_types,
+            inference_instances=inference_instances,
+            transform_instances=transform_instances,
+        )
+
+        sagemaker_session.sagemaker_client.update_model_package(**model_package_update_args)

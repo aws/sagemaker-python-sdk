@@ -25,11 +25,12 @@ import shutil
 import tarfile
 import tempfile
 import time
-from typing import Any, List, Optional, Dict
+from typing import Union, Any, List, Optional, Dict
 import json
 import abc
 import uuid
 from datetime import datetime
+from os.path import abspath, realpath, dirname, normpath, join as joinpath
 
 from importlib import import_module
 import botocore
@@ -44,8 +45,13 @@ from sagemaker.config.config_utils import (
 )
 from sagemaker.session_settings import SessionSettings
 from sagemaker.workflow import is_pipeline_variable, is_pipeline_parameter_string
+from sagemaker.workflow.entities import PipelineVariable
 
 ECR_URI_PATTERN = r"^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(.*)(/)(.*:.*)$"
+MODEL_PACKAGE_ARN_PATTERN = (
+    r"arn:aws([a-z\-]*)?:sagemaker:([a-z0-9\-]*):([0-9]{12}):model-package/(.*)"
+)
+MODEL_ARN_PATTERN = r"arn:aws([a-z\-]*):sagemaker:([a-z0-9\-]*):([0-9]{12}):model/(.*)"
 MAX_BUCKET_PATHS_COUNT = 5
 S3_PREFIX = "s3://"
 HTTP_PREFIX = "http://"
@@ -56,6 +62,9 @@ MAX_ITEMS = 100
 PAGE_SIZE = 10
 
 logger = logging.getLogger(__name__)
+
+TagsDict = Dict[str, Union[str, PipelineVariable]]
+Tags = Union[List[TagsDict], TagsDict]
 
 
 # Use the base name of the image as the job name if the user doesn't give us one
@@ -587,7 +596,7 @@ def _create_or_update_code_dir(
         download_file_from_url(source_directory, local_code_path, sagemaker_session)
 
         with tarfile.open(name=local_code_path, mode="r:gz") as t:
-            t.extractall(path=code_dir)
+            custom_extractall_tarfile(t, code_dir)
 
     elif source_directory:
         if os.path.exists(code_dir):
@@ -624,7 +633,7 @@ def _extract_model(model_uri, sagemaker_session, tmp):
     else:
         local_model_path = model_uri.replace("file://", "")
     with tarfile.open(name=local_model_path, mode="r:gz") as t:
-        t.extractall(path=tmp_model_dir)
+        custom_extractall_tarfile(t, tmp_model_dir)
     return tmp_model_dir
 
 
@@ -746,7 +755,7 @@ def _botocore_resolver():
     return botocore.regions.EndpointResolver(loader.load_data("endpoints"))
 
 
-def _aws_partition(region):
+def aws_partition(region):
     """Given a region name (ex: "cn-north-1"), return the corresponding aws partition ("aws-cn").
 
     Args:
@@ -1477,3 +1486,116 @@ def create_paginator_config(max_items: int = None, page_size: int = None) -> Dic
         "MaxItems": max_items if max_items else MAX_ITEMS,
         "PageSize": page_size if page_size else PAGE_SIZE,
     }
+
+
+def format_tags(tags: Tags) -> List[TagsDict]:
+    """Process tags to turn them into the expected format for Sagemaker."""
+    if isinstance(tags, dict):
+        return [{"Key": str(k), "Value": str(v)} for k, v in tags.items()]
+
+    return tags
+
+
+def _get_resolved_path(path):
+    """Return the normalized absolute path of a given path.
+
+    abspath - returns the absolute path without resolving symlinks
+    realpath - resolves the symlinks and gets the actual path
+    normpath - normalizes paths (e.g. remove redudant separators)
+    and handles platform-specific differences
+    """
+    return normpath(realpath(abspath(path)))
+
+
+def _is_bad_path(path, base):
+    """Checks if the joined path (base directory + file path) is rooted under the base directory
+
+    Ensuring that the file does not attempt to access paths
+    outside the expected directory structure.
+
+    Args:
+        path (str): The file path.
+        base (str): The base directory.
+
+    Returns:
+        bool: True if the path is not rooted under the base directory, False otherwise.
+    """
+    # joinpath will ignore base if path is absolute
+    return not _get_resolved_path(joinpath(base, path)).startswith(base)
+
+
+def _is_bad_link(info, base):
+    """Checks if the link is rooted under the base directory.
+
+    Ensuring that the link does not attempt to access paths outside the expected directory structure
+
+    Args:
+        info (tarfile.TarInfo): The tar file info.
+        base (str): The base directory.
+
+    Returns:
+        bool: True if the link is not rooted under the base directory, False otherwise.
+    """
+    # Links are interpreted relative to the directory containing the link
+    tip = _get_resolved_path(joinpath(base, dirname(info.name)))
+    return _is_bad_path(info.linkname, base=tip)
+
+
+def _get_safe_members(members):
+    """A generator that yields members that are safe to extract.
+
+    It filters out bad paths and bad links.
+
+    Args:
+        members (list): A list of members to check.
+
+    Yields:
+        tarfile.TarInfo: The tar file info.
+    """
+    base = _get_resolved_path(".")
+
+    for file_info in members:
+        if _is_bad_path(file_info.name, base):
+            logger.error("%s is blocked (illegal path)", file_info.name)
+        elif file_info.issym() and _is_bad_link(file_info, base):
+            logger.error("%s is blocked: Symlink to %s", file_info.name, file_info.linkname)
+        elif file_info.islnk() and _is_bad_link(file_info, base):
+            logger.error("%s is blocked: Hard link to %s", file_info.name, file_info.linkname)
+        else:
+            yield file_info
+
+
+def custom_extractall_tarfile(tar, extract_path):
+    """Extract a tarfile, optionally using data_filter if available.
+
+    # TODO: The function and it's usages can be deprecated once SageMaker Python SDK
+    is upgraded to use Python 3.12+
+
+    If the tarfile has a data_filter attribute, it will be used to extract the contents of the file.
+    Otherwise, the _get_safe_members function will be used to filter bad paths and bad links.
+
+    Args:
+        tar (tarfile.TarFile): The opened tarfile object.
+        extract_path (str): The path to extract the contents of the tarfile.
+
+    Returns:
+        None
+    """
+    if hasattr(tarfile, "data_filter"):
+        tar.extractall(path=extract_path, filter="data")
+    else:
+        tar.extractall(path=extract_path, members=_get_safe_members(tar))
+
+
+def can_model_package_source_uri_autopopulate(source_uri: str):
+    """Checks if the source_uri can lead to auto-population of information in the Model registry.
+
+    Args:
+        source_uri (str): The source uri.
+
+    Returns:
+        bool: True if the source_uri can lead to auto-population, False otherwise.
+    """
+    return bool(
+        re.match(MODEL_PACKAGE_ARN_PATTERN, source_uri) or re.match(MODEL_ARN_PATTERN, source_uri)
+    )

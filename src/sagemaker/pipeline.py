@@ -31,6 +31,7 @@ from sagemaker.utils import (
     name_from_image,
     update_container_with_inference_params,
     resolve_value_from_config,
+    format_tags,
 )
 from sagemaker.transformer import Transformer
 from sagemaker.workflow.entities import PipelineVariable
@@ -263,6 +264,8 @@ class PipelineModel(object):
         if data_capture_config is not None:
             data_capture_config_dict = data_capture_config._to_request_dict()
 
+        tags = format_tags(tags)
+
         if update_endpoint:
             endpoint_config_name = self.sagemaker_session.create_endpoint_config(
                 name=self.name,
@@ -357,6 +360,7 @@ class PipelineModel(object):
         nearest_model_name: Optional[Union[str, PipelineVariable]] = None,
         data_input_configuration: Optional[Union[str, PipelineVariable]] = None,
         skip_model_validation: Optional[Union[str, PipelineVariable]] = None,
+        source_uri: Optional[Union[str, PipelineVariable]] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -406,6 +410,8 @@ class PipelineModel(object):
                 (default: None).
             skip_model_validation (str or PipelineVariable): Indicates if you want to skip model
                 validation. Values can be "All" or "None" (default: None).
+            source_uri (str or PipelineVariable): The URI of the source for the model package
+                (default: None).
 
         Returns:
             If ``sagemaker_session`` is a ``PipelineSession`` instance, returns pipeline step
@@ -453,6 +459,7 @@ class PipelineModel(object):
             sample_payload_url=sample_payload_url,
             task=task,
             skip_model_validation=skip_model_validation,
+            source_uri=source_uri,
         )
 
         self.sagemaker_session.create_model_package_from_containers(**model_pkg_args)
@@ -516,7 +523,7 @@ class PipelineModel(object):
             max_concurrent_transforms=max_concurrent_transforms,
             max_payload=max_payload,
             env=env,
-            tags=tags,
+            tags=format_tags(tags),
             base_transform_job_name=self.name,
             volume_kms_key=volume_kms_key,
             sagemaker_session=self.sagemaker_session,

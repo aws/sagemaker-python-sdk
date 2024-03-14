@@ -42,6 +42,11 @@ from sagemaker.utils import (
     resolve_nested_dict_value_from_config,
     update_list_of_dicts_with_values_from_config,
     volume_size_supported,
+    _get_resolved_path,
+    _is_bad_path,
+    _is_bad_link,
+    custom_extractall_tarfile,
+    can_model_package_source_uri_autopopulate,
 )
 from tests.unit.sagemaker.workflow.helpers import CustomStep
 from sagemaker.workflow.parameters import ParameterString, ParameterInteger
@@ -382,6 +387,8 @@ def test_set_nested_value():
 
 
 def test_get_short_version():
+    assert sagemaker.utils.get_short_version("2.2.0") == "2.2"
+    assert sagemaker.utils.get_short_version("2.2") == "2.2"
     assert sagemaker.utils.get_short_version("2.1.0") == "2.1"
     assert sagemaker.utils.get_short_version("2.1") == "2.1"
     assert sagemaker.utils.get_short_version("2.0.1") == "2.0"
@@ -1074,7 +1081,7 @@ def list_tar_files(tar_ball, tmp):
     os.mkdir(startpath)
 
     with tarfile.open(name=tar_ball, mode="r:gz") as t:
-        t.extractall(path=startpath)
+        custom_extractall_tarfile(t, startpath)
 
     def walk():
         for root, dirs, files in os.walk(startpath):
@@ -1101,11 +1108,11 @@ def test_sts_regional_endpoint():
 
 
 def test_partition_by_region():
-    assert sagemaker.utils._aws_partition("us-west-2") == "aws"
-    assert sagemaker.utils._aws_partition("cn-north-1") == "aws-cn"
-    assert sagemaker.utils._aws_partition("us-gov-east-1") == "aws-us-gov"
-    assert sagemaker.utils._aws_partition("us-iso-east-1") == "aws-iso"
-    assert sagemaker.utils._aws_partition("us-isob-east-1") == "aws-iso-b"
+    assert sagemaker.utils.aws_partition("us-west-2") == "aws"
+    assert sagemaker.utils.aws_partition("cn-north-1") == "aws-cn"
+    assert sagemaker.utils.aws_partition("us-gov-east-1") == "aws-us-gov"
+    assert sagemaker.utils.aws_partition("us-iso-east-1") == "aws-iso"
+    assert sagemaker.utils.aws_partition("us-isob-east-1") == "aws-iso-b"
 
 
 def test_pop_out_unused_kwarg():
@@ -1748,3 +1755,57 @@ class TestVolumeSizeSupported(TestCase):
 
         for instance_type, family in instance_type_to_family_test_dict.items():
             self.assertEqual(family, get_instance_type_family(instance_type))
+
+
+@pytest.fixture
+def mock_custom_tarfile():
+    class MockTarfile:
+        def __init__(self, data_filter=False):
+            self.data_filter = data_filter
+
+        def extractall(self, path, members=None, filter=None):
+            assert path == "/extract/path"
+            if members is not None:
+                assert next(members).name == "file.txt"
+
+    return MockTarfile
+
+
+def test_get_resolved_path():
+    assert _get_resolved_path("path/to/file") == os.path.normpath(
+        os.path.realpath(os.path.abspath("path/to/file"))
+    )
+
+
+@pytest.mark.parametrize("file_path, base, expected", [("file.txt", "/path/to/base", False)])
+def test_is_bad_path(file_path, base, expected):
+    assert _is_bad_path(file_path, base) == expected
+
+
+@pytest.mark.parametrize(
+    "link_name, base, expected", [("link_to_file.txt", "/path/to/base", False)]
+)
+def test_is_bad_link(link_name, base, expected):
+    dummy_info = tarfile.TarInfo(name="dummy.txt")
+    dummy_info.linkname = link_name
+    assert _is_bad_link(dummy_info, base) == expected
+
+
+@pytest.mark.parametrize(
+    "data_filter, expected_extract_path", [(True, "/extract/path"), (False, "/extract/path")]
+)
+def test_custom_extractall_tarfile(mock_custom_tarfile, data_filter, expected_extract_path):
+    tar = mock_custom_tarfile(data_filter)
+    custom_extractall_tarfile(tar, "/extract/path")
+
+
+def test_can_model_package_source_uri_autopopulate():
+    test_data = [
+        ("arn:aws:sagemaker:us-west-2:012345678912:model-package/dummy-mpg/1", True),
+        ("arn:aws:sagemaker:us-west-2:012345678912:model-package/dummy-mp", True),
+        ("arn:aws:sagemaker:us-west-2:012345678912:model/dummy-model", True),
+        ("https://path/to/model", False),
+        ("/home/path/to/model", False),
+    ]
+    for source_uri, expected in test_data:
+        assert can_model_package_source_uri_autopopulate(source_uri) == expected

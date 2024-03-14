@@ -53,14 +53,19 @@ from sagemaker.serializers import (
     NumpySerializer,
 )
 from sagemaker.session import production_variant, Session
-from sagemaker.utils import name_from_base, stringify_object
+from sagemaker.utils import name_from_base, stringify_object, format_tags
 
 from sagemaker.model_monitor.model_monitoring import DEFAULT_REPOSITORY_NAME
 
 from sagemaker.lineage.context import EndpointContext
-from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
+from sagemaker.compute_resource_requirements.resource_requirements import (
+    ResourceRequirements,
+)
 
 LOGGER = logging.getLogger("sagemaker")
+
+
+logger = logging.getLogger(__name__)
 
 
 class PredictorBase(abc.ABC):
@@ -406,7 +411,7 @@ class Predictor(PredictorBase):
         self.sagemaker_session.create_endpoint_config_from_existing(
             current_endpoint_config_name,
             new_endpoint_config_name,
-            new_tags=tags,
+            new_tags=format_tags(tags),
             new_kms_key=kms_key,
             new_data_capture_config_dict=data_capture_config_dict,
             new_production_variants=production_variants,
@@ -714,7 +719,7 @@ class Predictor(PredictorBase):
             endpoint_name=self.endpoint_name
         )
         if len(monitoring_schedules_dict["MonitoringScheduleSummaries"]) == 0:
-            print("No monitors found for endpoint. endpoint: {}".format(self.endpoint_name))
+            logger.debug("No monitors found for endpoint. endpoint: %s", self.endpoint_name)
             return []
 
         monitors = []

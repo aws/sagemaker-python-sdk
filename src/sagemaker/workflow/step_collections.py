@@ -28,7 +28,7 @@ from sagemaker.workflow.step_outputs import StepOutput
 from sagemaker.workflow.steps import Step, CreateModelStep, TransformStep
 from sagemaker.workflow._utils import _RegisterModelStep, _RepackModelStep
 from sagemaker.workflow.retry import RetryPolicy
-from sagemaker.utils import update_container_with_inference_params
+from sagemaker.utils import update_container_with_inference_params, format_tags
 
 
 @attr.s
@@ -96,6 +96,7 @@ class RegisterModel(StepCollection):  # pragma: no cover
         nearest_model_name=None,
         data_input_configuration=None,
         skip_model_validation=None,
+        source_uri=None,
         **kwargs,
     ):
         """Construct steps `_RepackModelStep` and `_RegisterModelStep` based on the estimator.
@@ -128,7 +129,7 @@ class RegisterModel(StepCollection):  # pragma: no cover
             compile_model_family (str): The instance family for the compiled model. If
                 specified, a compiled model is used (default: None).
             description (str): Model Package description (default: None).
-            tags (List[dict[str, str]]): The list of tags to attach to the model package group. Note
+            tags (Optional[Tags]): The list of tags to attach to the model package group. Note
                 that tags will only be applied to newly created model package groups; if the
                 name of an existing group is passed to "model_package_group_name",
                 tags will not be applied.
@@ -153,6 +154,7 @@ class RegisterModel(StepCollection):  # pragma: no cover
             data_input_configuration (str): Input object for the model (default: None).
             skip_model_validation (str): Indicates if you want to skip model
                 validation. Values can be "All" or "None" (default: None).
+            source_uri (str): The URI of the source for the model package (default: None).
 
             **kwargs: additional arguments to `create_model`.
         """
@@ -163,6 +165,7 @@ class RegisterModel(StepCollection):  # pragma: no cover
         self.container_def_list = None
         subnets = None
         security_group_ids = None
+        tags = format_tags(tags)
 
         if estimator is not None:
             subnets = estimator.subnets
@@ -290,6 +293,7 @@ class RegisterModel(StepCollection):  # pragma: no cover
             sample_payload_url=sample_payload_url,
             task=task,
             skip_model_validation=skip_model_validation,
+            source_uri=source_uri,
             **kwargs,
         )
         if not repack_model:
@@ -390,6 +394,7 @@ class EstimatorTransformer(StepCollection):
         """
         super().__init__(name=name, depends_on=depends_on)
         steps = []
+        tags = format_tags(tags)
         if "entry_point" in kwargs:
             entry_point = kwargs.get("entry_point", None)
             source_dir = kwargs.get("source_dir", None)

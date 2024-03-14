@@ -15,6 +15,7 @@ from __future__ import absolute_import
 import copy
 import datetime
 import io
+import json
 import logging
 import os
 
@@ -40,6 +41,11 @@ from sagemaker.tuner import WarmStartConfig, WarmStartTypes
 from sagemaker.inputs import BatchDataCaptureConfig
 from sagemaker.config import MODEL_CONTAINERS_PATH
 from sagemaker.utils import update_list_of_dicts_with_values_from_config
+from sagemaker.user_agent import (
+    SDK_PREFIX,
+    STUDIO_PREFIX,
+    NOTEBOOK_PREFIX,
+)
 from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
 from tests.unit import (
     SAGEMAKER_CONFIG_MONITORING_SCHEDULE,
@@ -49,6 +55,7 @@ from tests.unit import (
     SAGEMAKER_CONFIG_ENDPOINT_ENDPOINT_CONFIG_COMBINED,
     SAGEMAKER_CONFIG_ENDPOINT,
     SAGEMAKER_CONFIG_AUTO_ML,
+    SAGEMAKER_CONFIG_AUTO_ML_V2,
     SAGEMAKER_CONFIG_MODEL_PACKAGE,
     SAGEMAKER_CONFIG_FEATURE_GROUP,
     SAGEMAKER_CONFIG_PROCESSING_JOB,
@@ -532,6 +539,67 @@ def test_get_execution_role_throws_exception_if_arn_is_not_role_with_role_in_nam
     assert "The current AWS identity is not a role" in str(error.value)
 
 
+def test_get_execution_role_get_default_role(caplog):
+    session = Mock()
+    session.get_caller_identity_arn.return_value = "arn:aws:iam::369233609183:user/marcos"
+
+    iam_client = Mock()
+    iam_client.get_role.return_value = {"Role": {"Arn": "foo-role"}}
+    boto_session = Mock()
+    boto_session.client.return_value = iam_client
+
+    session.boto_session = boto_session
+    actual = get_execution_role(session, use_default=True)
+
+    iam_client.get_role.assert_called_with(RoleName="AmazonSageMaker-DefaultRole")
+    iam_client.attach_role_policy.assert_called_with(
+        PolicyArn="arn:aws:iam::aws:policy/AmazonSageMakerFullAccess",
+        RoleName="AmazonSageMaker-DefaultRole",
+    )
+    assert "Using default role: AmazonSageMaker-DefaultRole" in caplog.text
+    assert actual == "foo-role"
+
+
+def test_get_execution_role_create_default_role(caplog):
+    session = Mock()
+    session.get_caller_identity_arn.return_value = "arn:aws:iam::369233609183:user/marcos"
+    permissions_policy = json.dumps(
+        {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {"Service": ["sagemaker.amazonaws.com"]},
+                    "Action": "sts:AssumeRole",
+                }
+            ],
+        }
+    )
+    iam_client = Mock()
+    iam_client.exceptions.NoSuchEntityException = Exception
+    iam_client.get_role = Mock(side_effect=[Exception(), {"Role": {"Arn": "foo-role"}}])
+
+    boto_session = Mock()
+    boto_session.client.return_value = iam_client
+
+    session.boto_session = boto_session
+
+    actual = get_execution_role(session, use_default=True)
+
+    iam_client.create_role.assert_called_with(
+        RoleName="AmazonSageMaker-DefaultRole", AssumeRolePolicyDocument=str(permissions_policy)
+    )
+
+    iam_client.attach_role_policy.assert_called_with(
+        PolicyArn="arn:aws:iam::aws:policy/AmazonSageMakerFullAccess",
+        RoleName="AmazonSageMaker-DefaultRole",
+    )
+
+    assert "Created new sagemaker execution role: AmazonSageMaker-DefaultRole" in caplog.text
+
+    assert actual == "foo-role"
+
+
 @patch(
     "six.moves.builtins.open",
     mock_open(read_data='{"ResourceName": "SageMakerInstance"}'),
@@ -634,6 +702,25 @@ def test_fallback_to_domain_if_role_unavailable_in_user_settings(boto_session):
         UserProfileName="default-1617915559064",
     )
     sess.sagemaker_client.describe_domain.assert_called_once_with(DomainId="d-kbnw5yk6tg8j")
+
+
+@patch(
+    "six.moves.builtins.open",
+    mock_open(
+        read_data='{"ResourceName": "SageMakerInstance", '
+        '"DomainId": "d-kbnw5yk6tg8j", '
+        '"ExecutionRoleArn": "arn:aws:iam::369233609183:role/service-role/SageMakerRole-20171129T072388", '
+        '"SpaceName": "space_name"}'
+    ),
+)
+@patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, True))
+def test_get_caller_identity_arn_from_metadata_file_for_space(boto_session):
+    sess = Session(boto_session)
+    expected_role = "arn:aws:iam::369233609183:role/service-role/SageMakerRole-20171129T072388"
+
+    actual = sess.get_caller_identity_arn()
+
+    assert actual == expected_role
 
 
 @patch(
@@ -823,70 +910,64 @@ def test_delete_model(boto_session):
 
 
 def test_user_agent_injected(boto_session):
-    assert (
-        "AWS-SageMaker-Python-SDK" not in boto_session.client("sagemaker")._client_config.user_agent
-    )
+    assert SDK_PREFIX not in boto_session.client("sagemaker")._client_config.user_agent
 
     sess = Session(boto_session)
 
-    assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_client._client_config.user_agent
-    assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_runtime_client._client_config.user_agent
-    assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_metrics_client._client_config.user_agent
-    assert "AWS-SageMaker-Notebook-Instance" not in sess.sagemaker_client._client_config.user_agent
-    assert (
-        "AWS-SageMaker-Notebook-Instance"
-        not in sess.sagemaker_runtime_client._client_config.user_agent
-    )
-    assert (
-        "AWS-SageMaker-Notebook-Instance"
-        not in sess.sagemaker_metrics_client._client_config.user_agent
-    )
+    for client in [
+        sess.sagemaker_client,
+        sess.sagemaker_runtime_client,
+        sess.sagemaker_metrics_client,
+    ]:
+        assert SDK_PREFIX in client._client_config.user_agent
+        assert NOTEBOOK_PREFIX not in client._client_config.user_agent
+        assert STUDIO_PREFIX not in client._client_config.user_agent
 
 
-def test_user_agent_injected_with_nbi(boto_session):
-    assert (
-        "AWS-SageMaker-Python-SDK" not in boto_session.client("sagemaker")._client_config.user_agent
-    )
+@patch("sagemaker.user_agent.process_notebook_metadata_file", return_value="ml.t3.medium")
+def test_user_agent_injected_with_nbi(
+    mock_process_notebook_metadata_file,
+    boto_session,
+):
+    assert SDK_PREFIX not in boto_session.client("sagemaker")._client_config.user_agent
 
-    with patch("six.moves.builtins.open", mock_open(read_data="120.0-0")) as mo:
-        sess = Session(boto_session)
-
-        mo.assert_called_with("/etc/opt/ml/sagemaker-notebook-instance-version.txt")
-
-    assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_client._client_config.user_agent
-    assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_runtime_client._client_config.user_agent
-    assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_metrics_client._client_config.user_agent
-    assert "AWS-SageMaker-Notebook-Instance" in sess.sagemaker_client._client_config.user_agent
-    assert (
-        "AWS-SageMaker-Notebook-Instance" in sess.sagemaker_runtime_client._client_config.user_agent
-    )
-    assert (
-        "AWS-SageMaker-Notebook-Instance" in sess.sagemaker_metrics_client._client_config.user_agent
+    sess = Session(
+        boto_session=boto_session,
     )
 
+    for client in [
+        sess.sagemaker_client,
+        sess.sagemaker_runtime_client,
+        sess.sagemaker_metrics_client,
+    ]:
+        mock_process_notebook_metadata_file.assert_called()
 
-def test_user_agent_injected_with_nbi_ioerror(boto_session):
-    assert (
-        "AWS-SageMaker-Python-SDK" not in boto_session.client("sagemaker")._client_config.user_agent
+        assert SDK_PREFIX in client._client_config.user_agent
+        assert NOTEBOOK_PREFIX in client._client_config.user_agent
+        assert STUDIO_PREFIX not in client._client_config.user_agent
+
+
+@patch("sagemaker.user_agent.process_studio_metadata_file", return_value="dymmy-app-type")
+def test_user_agent_injected_with_studio_app_type(
+    mock_process_studio_metadata_file,
+    boto_session,
+):
+    assert SDK_PREFIX not in boto_session.client("sagemaker")._client_config.user_agent
+
+    sess = Session(
+        boto_session=boto_session,
     )
 
-    with patch("six.moves.builtins.open", MagicMock(side_effect=IOError("File not found"))) as mo:
-        sess = Session(boto_session)
+    for client in [
+        sess.sagemaker_client,
+        sess.sagemaker_runtime_client,
+        sess.sagemaker_metrics_client,
+    ]:
+        mock_process_studio_metadata_file.assert_called()
 
-        mo.assert_called_with("/etc/opt/ml/sagemaker-notebook-instance-version.txt")
-
-    assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_client._client_config.user_agent
-    assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_runtime_client._client_config.user_agent
-    assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_metrics_client._client_config.user_agent
-    assert "AWS-SageMaker-Notebook-Instance" not in sess.sagemaker_client._client_config.user_agent
-    assert (
-        "AWS-SageMaker-Notebook-Instance"
-        not in sess.sagemaker_runtime_client._client_config.user_agent
-    )
-    assert (
-        "AWS-SageMaker-Notebook-Instance"
-        not in sess.sagemaker_metrics_client._client_config.user_agent
-    )
+        assert SDK_PREFIX in client._client_config.user_agent
+        assert NOTEBOOK_PREFIX not in client._client_config.user_agent
+        assert STUDIO_PREFIX in client._client_config.user_agent
 
 
 def test_training_input_all_defaults():
@@ -1876,6 +1957,15 @@ def test_update_training_job_with_sagemaker_config_injection(sagemaker_session):
     )
 
 
+def test_update_training_job_with_remote_debug_config(sagemaker_session):
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
+    sagemaker_session.update_training_job(
+        job_name="MyTestJob", remote_debug_config={"EnableRemoteDebug": False}
+    )
+    _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
+    assert not actual_train_args["RemoteDebugConfig"]["EnableRemoteDebug"]
+
+
 def test_train_with_sagemaker_config_injection(sagemaker_session):
     sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
 
@@ -2128,6 +2218,7 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
     }
     CONTAINER_ENTRY_POINT = ["bin/bash", "test.sh"]
     CONTAINER_ARGUMENTS = ["--arg1", "value1", "--arg2", "value2"]
+    remote_debug_config = {"EnableRemoteDebug": True}
 
     sagemaker_session.train(
         image_uri=IMAGE,
@@ -2152,6 +2243,7 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
         training_image_config=TRAINING_IMAGE_CONFIG,
         container_entry_point=CONTAINER_ENTRY_POINT,
         container_arguments=CONTAINER_ARGUMENTS,
+        remote_debug_config=remote_debug_config,
     )
 
     _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
@@ -2174,6 +2266,7 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
         actual_train_args["AlgorithmSpecification"]["ContainerEntrypoint"] == CONTAINER_ENTRY_POINT
     )
     assert actual_train_args["AlgorithmSpecification"]["ContainerArguments"] == CONTAINER_ARGUMENTS
+    assert actual_train_args["RemoteDebugConfig"]["EnableRemoteDebug"]
 
 
 def test_create_transform_job_with_sagemaker_config_injection(sagemaker_session):
@@ -3579,7 +3672,7 @@ def test_endpoint_from_production_variants_with_sagemaker_config_injection_no_km
     )
 
 
-def test_create_endpoint_config_with_tags(sagemaker_session):
+def test_create_endpoint_config_with_tags_list(sagemaker_session):
     tags = [{"Key": "TagtestKey", "Value": "TagtestValue"}]
 
     sagemaker_session.create_endpoint_config(
@@ -3592,6 +3685,23 @@ def test_create_endpoint_config_with_tags(sagemaker_session):
 
     sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
         EndpointConfigName="endpoint-test", ProductionVariants=ANY, Tags=tags
+    )
+
+
+def test_create_endpoint_config_with_tags_dict(sagemaker_session):
+    tags = {"TagtestKey": "TagtestValue"}
+    call_tags = [{"Key": "TagtestKey", "Value": "TagtestValue"}]
+
+    sagemaker_session.create_endpoint_config(
+        name="endpoint-test",
+        initial_instance_count=1,
+        instance_type="local",
+        model_name="simple-model",
+        tags=tags,
+    )
+
+    sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
+        EndpointConfigName="endpoint-test", ProductionVariants=ANY, Tags=call_tags
     )
 
 
@@ -4334,6 +4444,83 @@ COMPLETE_EXPECTED_AUTO_ML_JOB_ARGS = {
     "Tags": ["tag"],
 }
 
+DEFAULT_EXPECTED_AUTO_ML_V2_JOB_ARGS = {
+    "AutoMLJobName": JOB_NAME,
+    "AutoMLJobInputDataConfig": [
+        {
+            "DataSource": {"S3DataSource": {"S3DataType": "S3Prefix", "S3Uri": S3_INPUT_URI}},
+        }
+    ],
+    "AutoMLProblemTypeConfig": {
+        "TabularJobConfig": {
+            "TargetAttributeName": "y",
+            "SampleWeightAttributeName": "sampleWeight",
+            "CompletionCriteria": {
+                "MaxCandidates": 10,
+                "MaxAutoMLJobRuntimeInSeconds": 36000,
+                "MaxRuntimePerTrainingJobInSeconds": 3600 * 2,
+            },
+            "GenerateCandidateDefinitionsOnly": False,
+        }
+    },
+    "OutputDataConfig": {"S3OutputPath": S3_OUTPUT},
+    "RoleArn": EXPANDED_ROLE,
+}
+
+COMPLETE_EXPECTED_AUTO_ML_V2_JOB_ARGS = {
+    "AutoMLJobName": JOB_NAME,
+    "AutoMLJobInputDataConfig": [
+        {
+            "ChannelType": "training",
+            "CompressionType": "Gzip",
+            "DataSource": {
+                "S3DataSource": {
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": S3_INPUT_URI,
+                }
+            },
+        },
+        {
+            "ChannelType": "validation",
+            "CompressionType": "Gzip",
+            "DataSource": {
+                "S3DataSource": {
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": DEFAULT_S3_VALIDATION_DATA,
+                }
+            },
+        },
+    ],
+    "OutputDataConfig": {"S3OutputPath": S3_OUTPUT},
+    "AutoMLProblemTypeConfig": {
+        "TabularJobConfig": {
+            "TargetAttributeName": "y",
+            "SampleWeightAttributeName": "sampleWeight",
+            "CompletionCriteria": {
+                "MaxCandidates": 10,
+                "MaxAutoMLJobRuntimeInSeconds": 36000,
+                "MaxRuntimePerTrainingJobInSeconds": 3600 * 2,
+            },
+            "GenerateCandidateDefinitionsOnly": False,
+            "ProblemType": "Regression",
+            "FeatureSpecificationS3Uri": "s3://mybucket/features.json",
+            "Mode": "ENSEMBLING",
+        },
+    },
+    "AutoMLJobObjective": {"Type": "type", "MetricName": "metric-name"},
+    "SecurityConfig": {
+        "VolumeKmsKeyId": "volume-kms-key-id-string",
+        "EnableInterContainerTrafficEncryption": False,
+        "VpcConfig": {
+            "SecurityGroupIds": ["security-group-id"],
+            "Subnets": ["subnet"],
+        },
+    },
+    "RoleArn": EXPANDED_ROLE,
+    "Tags": ["tag"],
+}
+
+
 COMPLETE_EXPECTED_LIST_CANDIDATES_ARGS = {
     "AutoMLJobName": JOB_NAME,
     "StatusEquals": "Completed",
@@ -4373,6 +4560,48 @@ def test_auto_ml_pack_to_request(sagemaker_session):
         AutoMLJobConfig=DEFAULT_EXPECTED_AUTO_ML_JOB_ARGS["AutoMLJobConfig"],
         RoleArn=DEFAULT_EXPECTED_AUTO_ML_JOB_ARGS["RoleArn"],
         GenerateCandidateDefinitionsOnly=False,
+    )
+
+
+def test_auto_ml_v2_pack_to_request(sagemaker_session):
+    input_config = [
+        {
+            "DataSource": {"S3DataSource": {"S3DataType": "S3Prefix", "S3Uri": S3_INPUT_URI}},
+        }
+    ]
+
+    output_config = {"S3OutputPath": S3_OUTPUT}
+
+    problem_config = {
+        "TabularJobConfig": {
+            "TargetAttributeName": "y",
+            "SampleWeightAttributeName": "sampleWeight",
+            "CompletionCriteria": {
+                "MaxCandidates": 10,
+                "MaxAutoMLJobRuntimeInSeconds": 36000,
+                "MaxRuntimePerTrainingJobInSeconds": 3600 * 2,
+            },
+            "GenerateCandidateDefinitionsOnly": False,
+        }
+    }
+
+    job_name = JOB_NAME
+    role = EXPANDED_ROLE
+
+    sagemaker_session.create_auto_ml_v2(
+        input_config=input_config,
+        job_name=job_name,
+        problem_config=problem_config,
+        output_config=output_config,
+        role=role,
+    )
+
+    sagemaker_session.sagemaker_client.create_auto_ml_job_v2.assert_called_with(
+        AutoMLJobName=DEFAULT_EXPECTED_AUTO_ML_V2_JOB_ARGS["AutoMLJobName"],
+        AutoMLJobInputDataConfig=DEFAULT_EXPECTED_AUTO_ML_V2_JOB_ARGS["AutoMLJobInputDataConfig"],
+        OutputDataConfig=DEFAULT_EXPECTED_AUTO_ML_V2_JOB_ARGS["OutputDataConfig"],
+        AutoMLProblemTypeConfig=DEFAULT_EXPECTED_AUTO_ML_V2_JOB_ARGS["AutoMLProblemTypeConfig"],
+        RoleArn=DEFAULT_EXPECTED_AUTO_ML_V2_JOB_ARGS["RoleArn"],
     )
 
 
@@ -4430,6 +4659,70 @@ def test_create_auto_ml_with_sagemaker_config_injection(sagemaker_session):
         AutoMLJobConfig=expected_call_args["AutoMLJobConfig"],
         RoleArn=expected_call_args["RoleArn"],
         GenerateCandidateDefinitionsOnly=False,
+        Tags=expected_tags,
+    )
+
+
+def test_create_auto_ml_v2_with_sagemaker_config_injection(sagemaker_session):
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_AUTO_ML_V2
+
+    input_config = [
+        {
+            "DataSource": {"S3DataSource": {"S3DataType": "S3Prefix", "S3Uri": S3_INPUT_URI}},
+        }
+    ]
+
+    output_config = {"S3OutputPath": S3_OUTPUT}
+
+    problem_config = {
+        "TabularJobConfig": {
+            "TargetAttributeName": "y",
+            "SampleWeightAttributeName": "sampleWeight",
+            "CompletionCriteria": {
+                "MaxCandidates": 10,
+                "MaxAutoMLJobRuntimeInSeconds": 36000,
+                "MaxRuntimePerTrainingJobInSeconds": 3600 * 2,
+            },
+            "GenerateCandidateDefinitionsOnly": False,
+        }
+    }
+
+    job_name = JOB_NAME
+    sagemaker_session.create_auto_ml_v2(
+        input_config=input_config,
+        job_name=job_name,
+        problem_config=problem_config,
+        output_config=output_config,
+    )
+
+    expected_call_args = copy.deepcopy(DEFAULT_EXPECTED_AUTO_ML_V2_JOB_ARGS)
+    expected_volume_kms_key_id = SAGEMAKER_CONFIG_AUTO_ML_V2["SageMaker"]["AutoMLJobV2"][
+        "SecurityConfig"
+    ]["VolumeKmsKeyId"]
+    expected_role_arn = SAGEMAKER_CONFIG_AUTO_ML_V2["SageMaker"]["AutoMLJobV2"]["RoleArn"]
+    expected_kms_key_id = SAGEMAKER_CONFIG_AUTO_ML_V2["SageMaker"]["AutoMLJobV2"][
+        "OutputDataConfig"
+    ]["KmsKeyId"]
+    expected_vpc_config = SAGEMAKER_CONFIG_AUTO_ML_V2["SageMaker"]["AutoMLJobV2"]["SecurityConfig"][
+        "VpcConfig"
+    ]
+    expected_tags = SAGEMAKER_CONFIG_AUTO_ML_V2["SageMaker"]["AutoMLJobV2"]["Tags"]
+    expected_enable_inter_container_traffic_encryption = SAGEMAKER_CONFIG_AUTO_ML_V2["SageMaker"][
+        "AutoMLJobV2"
+    ]["SecurityConfig"]["EnableInterContainerTrafficEncryption"]
+    expected_call_args["OutputDataConfig"]["KmsKeyId"] = expected_kms_key_id
+    expected_call_args["RoleArn"] = expected_role_arn
+    expected_call_args["SecurityConfig"] = {
+        "EnableInterContainerTrafficEncryption": expected_enable_inter_container_traffic_encryption
+    }
+    expected_call_args["SecurityConfig"]["VpcConfig"] = expected_vpc_config
+    expected_call_args["SecurityConfig"]["VolumeKmsKeyId"] = expected_volume_kms_key_id
+    sagemaker_session.sagemaker_client.create_auto_ml_job_v2.assert_called_with(
+        AutoMLJobName=expected_call_args["AutoMLJobName"],
+        AutoMLJobInputDataConfig=expected_call_args["AutoMLJobInputDataConfig"],
+        OutputDataConfig=expected_call_args["OutputDataConfig"],
+        AutoMLProblemTypeConfig=expected_call_args["AutoMLProblemTypeConfig"],
+        RoleArn=expected_call_args["RoleArn"],
         Tags=expected_tags,
     )
 
@@ -4501,6 +4794,78 @@ def test_auto_ml_pack_to_request_with_optional_args(sagemaker_session):
         "create_auto_ml_job",
         (),
         COMPLETE_EXPECTED_AUTO_ML_JOB_ARGS,
+    )
+
+
+def test_auto_ml_v2_pack_to_request_with_optional_args(sagemaker_session):
+    input_config = [
+        {
+            "ChannelType": "training",
+            "CompressionType": "Gzip",
+            "DataSource": {
+                "S3DataSource": {
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": S3_INPUT_URI,
+                }
+            },
+        },
+        {
+            "ChannelType": "validation",
+            "CompressionType": "Gzip",
+            "DataSource": {
+                "S3DataSource": {
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": DEFAULT_S3_VALIDATION_DATA,
+                }
+            },
+        },
+    ]
+
+    output_config = {"S3OutputPath": S3_OUTPUT}
+
+    problem_config = {
+        "TabularJobConfig": {
+            "TargetAttributeName": "y",
+            "SampleWeightAttributeName": "sampleWeight",
+            "CompletionCriteria": {
+                "MaxCandidates": 10,
+                "MaxAutoMLJobRuntimeInSeconds": 36000,
+                "MaxRuntimePerTrainingJobInSeconds": 3600 * 2,
+            },
+            "GenerateCandidateDefinitionsOnly": False,
+            "FeatureSpecificationS3Uri": "s3://mybucket/features.json",
+            "Mode": "ENSEMBLING",
+            "ProblemType": "Regression",
+        }
+    }
+
+    security_config = {
+        "VolumeKmsKeyId": "volume-kms-key-id-string",
+        "EnableInterContainerTrafficEncryption": False,
+        "VpcConfig": {
+            "SecurityGroupIds": ["security-group-id"],
+            "Subnets": ["subnet"],
+        },
+    }
+
+    job_name = JOB_NAME
+    role = EXPANDED_ROLE
+
+    sagemaker_session.create_auto_ml_v2(
+        input_config=input_config,
+        job_name=job_name,
+        problem_config=problem_config,
+        output_config=output_config,
+        role=role,
+        security_config=security_config,
+        job_objective={"Type": "type", "MetricName": "metric-name"},
+        tags=["tag"],
+    )
+
+    assert sagemaker_session.sagemaker_client.method_calls[0] == (
+        "create_auto_ml_job_v2",
+        (),
+        COMPLETE_EXPECTED_AUTO_ML_V2_JOB_ARGS,
     )
 
 
@@ -4752,6 +5117,233 @@ def test_create_model_package_with_sagemaker_config_injection(sagemaker_session)
     ] = expected_containers_environment
 
     sagemaker_session.sagemaker_client.create_model_package.assert_called_with(**expected_args)
+
+
+def test_create_model_package_from_containers_with_source_uri_and_inference_spec(sagemaker_session):
+    model_package_group_name = "sagemaker-model-package-group"
+    containers = ["dummy-container"]
+    content_types = ["application/json"]
+    response_types = ["application/json"]
+    inference_instances = ["ml.m4.xlarge"]
+    transform_instances = ["ml.m4.xlarget"]
+    marketplace_cert = (False,)
+    approval_status = ("Approved",)
+    skip_model_validation = "All"
+    source_uri = "dummy-source-uri"
+
+    created_versioned_mp_arn = (
+        "arn:aws:sagemaker:us-west-2:123456789123:model-package/unit-test-package-version/1"
+    )
+    sagemaker_session.sagemaker_client.create_model_package = Mock(
+        return_value={"ModelPackageArn": created_versioned_mp_arn}
+    )
+
+    sagemaker_session.create_model_package_from_containers(
+        model_package_group_name=model_package_group_name,
+        containers=containers,
+        content_types=content_types,
+        response_types=response_types,
+        inference_instances=inference_instances,
+        transform_instances=transform_instances,
+        marketplace_cert=marketplace_cert,
+        approval_status=approval_status,
+        skip_model_validation=skip_model_validation,
+        source_uri=source_uri,
+    )
+    expected_create_mp_args = {
+        "ModelPackageGroupName": model_package_group_name,
+        "InferenceSpecification": {
+            "Containers": containers,
+            "SupportedContentTypes": content_types,
+            "SupportedResponseMIMETypes": response_types,
+            "SupportedRealtimeInferenceInstanceTypes": inference_instances,
+            "SupportedTransformInstanceTypes": transform_instances,
+        },
+        "CertifyForMarketplace": marketplace_cert,
+        "ModelApprovalStatus": approval_status,
+        "SkipModelValidation": skip_model_validation,
+    }
+
+    sagemaker_session.sagemaker_client.create_model_package.assert_called_once_with(
+        **expected_create_mp_args
+    )
+    expected_update_mp_args = {
+        "ModelPackageArn": created_versioned_mp_arn,
+        "SourceUri": source_uri,
+    }
+    sagemaker_session.sagemaker_client.update_model_package.assert_called_once_with(
+        **expected_update_mp_args
+    )
+
+
+def test_create_model_package_from_containers_with_source_uri_for_unversioned_mp(sagemaker_session):
+    model_package_name = "sagemaker-model-package"
+    content_types = ["application/json"]
+    response_types = ["application/json"]
+    inference_instances = ["ml.m4.xlarge"]
+    transform_instances = ["ml.m4.xlarget"]
+    marketplace_cert = (False,)
+    approval_status = ("Approved",)
+    skip_model_validation = "All"
+    source_uri = "dummy-source-uri"
+
+    with pytest.raises(
+        ValueError,
+        match="Un-versioned SageMaker Model Package currently cannot be created with source_uri.",
+    ):
+        sagemaker_session.create_model_package_from_containers(
+            model_package_name=model_package_name,
+            content_types=content_types,
+            response_types=response_types,
+            inference_instances=inference_instances,
+            transform_instances=transform_instances,
+            marketplace_cert=marketplace_cert,
+            approval_status=approval_status,
+            skip_model_validation=skip_model_validation,
+            source_uri=source_uri,
+        )
+
+
+def test_create_model_package_from_containers_with_source_uri_for_versioned_mp(sagemaker_session):
+    model_package_name = "sagemaker-model-package"
+    model_data_source = {
+        "S3DataSource": {
+            "S3Uri": "s3://bucket/model/prefix/",
+            "S3DataType": "S3Prefix",
+            "CompressionType": "None",
+        }
+    }
+    containers = [{"Image": "dummy-image", "ModelDataSource": model_data_source}]
+    content_types = ["application/json"]
+    response_types = ["application/json"]
+    inference_instances = ["ml.m4.xlarge"]
+    transform_instances = ["ml.m4.xlarget"]
+    marketplace_cert = (False,)
+    approval_status = ("Approved",)
+    skip_model_validation = "All"
+
+    with pytest.raises(
+        ValueError,
+        match="Un-versioned SageMaker Model Package currently cannot be created with ModelDataSource.",
+    ):
+        sagemaker_session.create_model_package_from_containers(
+            model_package_name=model_package_name,
+            containers=containers,
+            content_types=content_types,
+            response_types=response_types,
+            inference_instances=inference_instances,
+            transform_instances=transform_instances,
+            marketplace_cert=marketplace_cert,
+            approval_status=approval_status,
+            skip_model_validation=skip_model_validation,
+        )
+
+
+def test_create_model_package_from_containers_with_source_uri_set_to_mp(sagemaker_session):
+    model_package_group_name = "sagemaker-model-package-group"
+    containers = ["dummy-container"]
+    content_types = ["application/json"]
+    response_types = ["application/json"]
+    inference_instances = ["ml.m4.xlarge"]
+    transform_instances = ["ml.m4.xlarget"]
+    marketplace_cert = (False,)
+    approval_status = ("Approved",)
+    skip_model_validation = "All"
+    source_uri = "arn:aws:sagemaker:us-west-2:123456789123:model-package/existing-mp"
+
+    created_versioned_mp_arn = (
+        "arn:aws:sagemaker:us-west-2:123456789123:model-package/unit-test-package-version/1"
+    )
+    sagemaker_session.sagemaker_client.create_model_package = Mock(
+        return_value={"ModelPackageArn": created_versioned_mp_arn}
+    )
+
+    sagemaker_session.create_model_package_from_containers(
+        model_package_group_name=model_package_group_name,
+        containers=containers,
+        content_types=content_types,
+        response_types=response_types,
+        inference_instances=inference_instances,
+        transform_instances=transform_instances,
+        marketplace_cert=marketplace_cert,
+        approval_status=approval_status,
+        skip_model_validation=skip_model_validation,
+        source_uri=source_uri,
+    )
+    expected_create_mp_args = {
+        "ModelPackageGroupName": model_package_group_name,
+        "CertifyForMarketplace": marketplace_cert,
+        "ModelApprovalStatus": approval_status,
+        "SkipModelValidation": skip_model_validation,
+        "SourceUri": source_uri,
+    }
+
+    sagemaker_session.sagemaker_client.create_model_package.assert_called_once_with(
+        **expected_create_mp_args
+    )
+    sagemaker_session.sagemaker_client.update_model_package.assert_not_called()
+
+
+def test_create_model_package_from_algorithm_with_model_data_source(sagemaker_session):
+    model_package_name = "sagemaker-model-package"
+    description = "dummy description"
+    model_data_source = {
+        "S3DataSource": {
+            "S3Uri": "s3://bucket/model/prefix/",
+            "S3DataType": "S3Prefix",
+            "CompressionType": "None",
+        }
+    }
+    algorithm_arn = "arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees"
+    sagemaker_session.create_model_package_from_algorithm(
+        algorithm_arn=algorithm_arn,
+        model_data=model_data_source,
+        name=model_package_name,
+        description=description,
+    )
+    expected_create_mp_args = {
+        "ModelPackageName": model_package_name,
+        "ModelPackageDescription": description,
+        "SourceAlgorithmSpecification": {
+            "SourceAlgorithms": [
+                {
+                    "AlgorithmName": algorithm_arn,
+                    "ModelDataSource": model_data_source,
+                }
+            ]
+        },
+    }
+    sagemaker_session.sagemaker_client.create_model_package.assert_called_once_with(
+        **expected_create_mp_args
+    )
+
+
+def test_create_model_package_from_algorithm_with_model_data_url(sagemaker_session):
+    model_package_name = "sagemaker-model-package"
+    description = "dummy description"
+    model_data_url = "s3://bucket/key"
+    algorithm_arn = "arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees"
+    sagemaker_session.create_model_package_from_algorithm(
+        algorithm_arn=algorithm_arn,
+        model_data=model_data_url,
+        name=model_package_name,
+        description=description,
+    )
+    expected_create_mp_args = {
+        "ModelPackageName": model_package_name,
+        "ModelPackageDescription": description,
+        "SourceAlgorithmSpecification": {
+            "SourceAlgorithms": [
+                {
+                    "AlgorithmName": algorithm_arn,
+                    "ModelDataUrl": model_data_url,
+                }
+            ]
+        },
+    }
+    sagemaker_session.sagemaker_client.create_model_package.assert_called_once_with(
+        **expected_create_mp_args
+    )
 
 
 def test_create_model_package_from_containers_all_args(sagemaker_session):
@@ -5043,7 +5635,7 @@ def test_feature_group_describe(sagemaker_session):
     )
 
 
-def test_feature_group_update(sagemaker_session, feature_group_dummy_definitions):
+def test_feature_group_feature_additions_update(sagemaker_session, feature_group_dummy_definitions):
     sagemaker_session.update_feature_group(
         feature_group_name="MyFeatureGroup",
         feature_additions=feature_group_dummy_definitions,
@@ -5051,6 +5643,32 @@ def test_feature_group_update(sagemaker_session, feature_group_dummy_definitions
     assert sagemaker_session.sagemaker_client.update_feature_group.called_with(
         FeatureGroupName="MyFeatureGroup",
         FeatureAdditions=feature_group_dummy_definitions,
+    )
+
+
+def test_feature_group_online_store_config_update(sagemaker_session):
+    os_conf_update = {"TtlDuration": {"Unit": "Seconds", "Value": 123}}
+    sagemaker_session.update_feature_group(
+        feature_group_name="MyFeatureGroup",
+        online_store_config=os_conf_update,
+    )
+    assert sagemaker_session.sagemaker_client.update_feature_group.called_with(
+        FeatureGroupName="MyFeatureGroup", OnlineStoreConfig=os_conf_update
+    )
+
+
+def test_feature_group_throughput_config_update(sagemaker_session):
+    tp_update = {
+        "ThroughputMode": "Provisioned",
+        "ProvisionedReadCapacityUnits": 123,
+        "ProvisionedWriteCapacityUnits": 456,
+    }
+    sagemaker_session.update_feature_group(
+        feature_group_name="MyFeatureGroup",
+        throughput_config=tp_update,
+    )
+    assert sagemaker_session.sagemaker_client.update_feature_group.called_with(
+        FeatureGroupName="MyFeatureGroup", ThroughputConfig=tp_update
     )
 
 
@@ -5122,6 +5740,46 @@ def test_list_feature_groups(sagemaker_session):
     assert sagemaker_session.sagemaker_client.list_feature_groups.called_once()
     assert sagemaker_session.sagemaker_client.list_feature_groups.called_with(
         **expected_list_feature_groups_args
+    )
+
+
+@pytest.fixture()
+def sagemaker_session_with_fs_runtime_client():
+    boto_mock = MagicMock(name="boto_session")
+    sagemaker_session = sagemaker.Session(
+        boto_session=boto_mock, sagemaker_featurestore_runtime_client=MagicMock()
+    )
+    return sagemaker_session
+
+
+def test_feature_group_put_record(sagemaker_session_with_fs_runtime_client):
+    sagemaker_session_with_fs_runtime_client.put_record(
+        feature_group_name="MyFeatureGroup",
+        record=[{"FeatureName": "feature1", "ValueAsString": "value1"}],
+    )
+    fs_client_mock = sagemaker_session_with_fs_runtime_client.sagemaker_featurestore_runtime_client
+
+    assert fs_client_mock.put_record.called_with(
+        FeatureGroupName="MyFeatureGroup",
+        record=[{"FeatureName": "feature1", "ValueAsString": "value1"}],
+    )
+
+
+def test_feature_group_put_record_with_ttl_and_target_stores(
+    sagemaker_session_with_fs_runtime_client,
+):
+    sagemaker_session_with_fs_runtime_client.put_record(
+        feature_group_name="MyFeatureGroup",
+        record=[{"FeatureName": "feature1", "ValueAsString": "value1"}],
+        ttl_duration={"Unit": "Seconds", "Value": 123},
+        target_stores=["OnlineStore", "OfflineStore"],
+    )
+    fs_client_mock = sagemaker_session_with_fs_runtime_client.sagemaker_featurestore_runtime_client
+    assert fs_client_mock.put_record.called_with(
+        FeatureGroupName="MyFeatureGroup",
+        record=[{"FeatureName": "feature1", "ValueAsString": "value1"}],
+        target_stores=["OnlineStore", "OfflineStore"],
+        ttl_duration={"Unit": "Seconds", "Value": 123},
     )
 
 
@@ -5998,6 +6656,128 @@ def test_upload_data_default_bucket_and_prefix_combinations(
     assert actual == expected
 
 
+def test_is_inference_component_based_endpoint_affirmative(sagemaker_session):
+
+    describe_endpoint_response = {"EndpointConfigName": "some-endpoint-config"}
+    describe_endpoint_config_response = {
+        "ExecutionRoleArn": "some-role-arn",
+        "ProductionVariants": [{"VariantName": "AllTraffic"}],
+    }
+
+    sagemaker_session.sagemaker_client.describe_endpoint = Mock(
+        return_value=describe_endpoint_response
+    )
+    sagemaker_session.sagemaker_client.describe_endpoint_config = Mock(
+        return_value=describe_endpoint_config_response
+    )
+
+    assert sagemaker_session.is_inference_component_based_endpoint("endpoint-name")
+    sagemaker_session.sagemaker_client.describe_endpoint.assert_called_once_with(
+        EndpointName="endpoint-name"
+    )
+    sagemaker_session.sagemaker_client.describe_endpoint_config.assert_called_once_with(
+        EndpointConfigName="some-endpoint-config"
+    )
+
+
+def test_is_inference_component_based_endpoint_negative_no_role(sagemaker_session):
+
+    describe_endpoint_response = {"EndpointConfigName": "some-endpoint-config"}
+    describe_endpoint_config_response = {
+        "ProductionVariants": [{"VariantName": "AllTraffic"}],
+    }
+
+    sagemaker_session.sagemaker_client.describe_endpoint = Mock(
+        return_value=describe_endpoint_response
+    )
+    sagemaker_session.sagemaker_client.describe_endpoint_config = Mock(
+        return_value=describe_endpoint_config_response
+    )
+
+    assert not sagemaker_session.is_inference_component_based_endpoint("endpoint-name")
+    sagemaker_session.sagemaker_client.describe_endpoint.assert_called_once_with(
+        EndpointName="endpoint-name"
+    )
+    sagemaker_session.sagemaker_client.describe_endpoint_config.assert_called_once_with(
+        EndpointConfigName="some-endpoint-config"
+    )
+
+
+def test_is_inference_component_based_endpoint_positive_multiple_variants(sagemaker_session):
+
+    describe_endpoint_response = {"EndpointConfigName": "some-endpoint-config"}
+    describe_endpoint_config_response = {
+        "ExecutionRoleArn": "some-role-arn",
+        "ProductionVariants": [{"VariantName": "AllTraffic1"}, {"VariantName": "AllTraffic2"}],
+    }
+
+    sagemaker_session.sagemaker_client.describe_endpoint = Mock(
+        return_value=describe_endpoint_response
+    )
+    sagemaker_session.sagemaker_client.describe_endpoint_config = Mock(
+        return_value=describe_endpoint_config_response
+    )
+
+    assert sagemaker_session.is_inference_component_based_endpoint("endpoint-name")
+    sagemaker_session.sagemaker_client.describe_endpoint.assert_called_once_with(
+        EndpointName="endpoint-name"
+    )
+    sagemaker_session.sagemaker_client.describe_endpoint_config.assert_called_once_with(
+        EndpointConfigName="some-endpoint-config"
+    )
+
+
+def test_is_inference_component_based_endpoint_negative_no_variants(sagemaker_session):
+
+    describe_endpoint_response = {"EndpointConfigName": "some-endpoint-config"}
+    describe_endpoint_config_response = {
+        "ExecutionRoleArn": "some-role-arn",
+        "ProductionVariants": [],
+    }
+
+    sagemaker_session.sagemaker_client.describe_endpoint = Mock(
+        return_value=describe_endpoint_response
+    )
+    sagemaker_session.sagemaker_client.describe_endpoint_config = Mock(
+        return_value=describe_endpoint_config_response
+    )
+
+    assert not sagemaker_session.is_inference_component_based_endpoint("endpoint-name")
+    sagemaker_session.sagemaker_client.describe_endpoint.assert_called_once_with(
+        EndpointName="endpoint-name"
+    )
+    sagemaker_session.sagemaker_client.describe_endpoint_config.assert_called_once_with(
+        EndpointConfigName="some-endpoint-config"
+    )
+
+
+def test_is_inference_component_based_endpoint_negative_model_name_present(sagemaker_session):
+
+    describe_endpoint_response = {"EndpointConfigName": "some-endpoint-config"}
+    describe_endpoint_config_response = {
+        "ExecutionRoleArn": "some-role-arn",
+        "ProductionVariants": [
+            {"VariantName": "AllTraffic", "ModelName": "blah"},
+            {"VariantName": "AllTraffic1"},
+        ],
+    }
+
+    sagemaker_session.sagemaker_client.describe_endpoint = Mock(
+        return_value=describe_endpoint_response
+    )
+    sagemaker_session.sagemaker_client.describe_endpoint_config = Mock(
+        return_value=describe_endpoint_config_response
+    )
+
+    assert not sagemaker_session.is_inference_component_based_endpoint("endpoint-name")
+    sagemaker_session.sagemaker_client.describe_endpoint.assert_called_once_with(
+        EndpointName="endpoint-name"
+    )
+    sagemaker_session.sagemaker_client.describe_endpoint_config.assert_called_once_with(
+        EndpointConfigName="some-endpoint-config"
+    )
+
+
 def test_create_inference_component(sagemaker_session):
     tags = [{"Key": "TagtestKey", "Value": "TagtestValue"}]
     sagemaker_session.sagemaker_client.describe_inference_component = Mock(
@@ -6053,6 +6833,56 @@ def test_describe_inference_component(sagemaker_session):
 
     sagemaker_session.sagemaker_client.describe_inference_component.assert_called_with(
         InferenceComponentName=inference_component_name
+    )
+
+
+def test_list_and_paginate_inference_component_names_associated_with_endpoint(sagemaker_session):
+    endpoint_name = "test-endpoint"
+
+    sagemaker_session.list_inference_components = Mock()
+    sagemaker_session.list_inference_components.side_effect = [
+        {
+            "InferenceComponents": [
+                {
+                    "CreationTime": 1234,
+                    "EndpointArn": "endpointarn1",
+                    "EndpointName": "endpointname1",
+                    "InferenceComponentArn": "icarn1",
+                    "InferenceComponentName": "icname1",
+                    "InferenceComponentStatus": "icstatus1",
+                    "LastModifiedTime": 5678,
+                    "VariantName": "blah1",
+                }
+            ],
+            "NextToken": "1234",
+        },
+        {
+            "InferenceComponents": [
+                {
+                    "CreationTime": 12345,
+                    "EndpointArn": "endpointarn2",
+                    "EndpointName": "endpointname2",
+                    "InferenceComponentArn": "icarn2",
+                    "InferenceComponentName": "icname2",
+                    "InferenceComponentStatus": "icstatus2",
+                    "LastModifiedTime": 56789,
+                    "VariantName": "blah2",
+                }
+            ]
+        },
+    ]
+    assert [
+        "icname1",
+        "icname2",
+    ] == sagemaker_session.list_and_paginate_inference_component_names_associated_with_endpoint(
+        endpoint_name
+    )
+
+    sagemaker_session.list_inference_components.assert_has_calls(
+        [
+            call(endpoint_name_equals="test-endpoint", next_token=None),
+            call(endpoint_name_equals="test-endpoint", next_token="1234"),
+        ]
     )
 
 

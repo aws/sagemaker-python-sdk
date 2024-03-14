@@ -13,12 +13,16 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 import logging
+from time import perf_counter
+
 import requests
 
-from sagemaker import Session
+from sagemaker import Session, exceptions
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.utils.exceptions import ModelBuilderException
-from sagemaker.serve.utils.types import ModelServer
+from sagemaker.serve.utils.types import ModelServer, ImageUriOption
+from sagemaker.serve.validations.check_image_uri import is_1p_image_uri
+from sagemaker.user_agent import SDK_VERSION
 
 logger = logging.getLogger(__name__)
 
@@ -59,21 +63,53 @@ def _capture_telemetry(func_name: str):
             caught_ex = None
 
             image_uri_tail = self.image_uri.split("/")[1]
-            extra = f"{func_name}&{MODEL_SERVER_TO_CODE[str(self.model_server)]}&{image_uri_tail}"
+            image_uri_option = _get_image_uri_option(self.image_uri, self._is_custom_image_uri)
+            extra = (
+                f"{func_name}"
+                f"&x-modelServer={MODEL_SERVER_TO_CODE[str(self.model_server)]}"
+                f"&x-imageTag={image_uri_tail}"
+                f"&x-sdkVersion={SDK_VERSION}"
+                f"&x-defaultImageUsage={image_uri_option}"
+            )
 
             if self.model_server == ModelServer.DJL_SERVING or self.model_server == ModelServer.TGI:
-                extra += f"&{self.model}"
+                extra += f"&x-modelName={self.model}"
 
+            if self.sagemaker_session and self.sagemaker_session.endpoint_arn:
+                extra += f"&x-endpointArn={self.sagemaker_session.endpoint_arn}"
+
+            start_timer = perf_counter()
             try:
                 response = func(self, *args, **kwargs)
+                stop_timer = perf_counter()
+                elapsed = stop_timer - start_timer
+                extra += f"&x-latency={round(elapsed, 2)}"
                 if not self.serve_settings.telemetry_opt_out:
                     _send_telemetry(
-                        "1", MODE_TO_CODE[str(self.mode)], self.sagemaker_session, None, extra
+                        "1",
+                        MODE_TO_CODE[str(self.mode)],
+                        self.sagemaker_session,
+                        None,
+                        None,
+                        extra,
                     )
-            except ModelBuilderException as e:
+            except (
+                ModelBuilderException,
+                exceptions.CapacityError,
+                exceptions.UnexpectedStatusException,
+                exceptions.AsyncInferenceError,
+            ) as e:
+                stop_timer = perf_counter()
+                elapsed = stop_timer - start_timer
+                extra += f"&x-latency={round(elapsed, 2)}"
                 if not self.serve_settings.telemetry_opt_out:
                     _send_telemetry(
-                        "0", MODE_TO_CODE[str(self.mode)], self.sagemaker_session, str(e), extra
+                        "0",
+                        MODE_TO_CODE[str(self.mode)],
+                        self.sagemaker_session,
+                        str(e),
+                        e.__class__.__name__,
+                        extra,
                     )
                 caught_ex = e
             except Exception as e:  # pylint: disable=W0703
@@ -93,13 +129,22 @@ def _send_telemetry(
     mode: int,
     session: Session,
     failure_reason: str = None,
+    failure_type: str = None,
     extra_info: str = None,
 ) -> None:
     """Make GET request to an empty object in S3 bucket"""
     try:
         accountId = _get_accountId(session)
         region = _get_region_or_default(session)
-        url = _construct_url(accountId, str(mode), status, failure_reason, extra_info, region)
+        url = _construct_url(
+            accountId,
+            str(mode),
+            status,
+            failure_reason,
+            failure_type,
+            extra_info,
+            region,
+        )
         _requests_helper(url, 2)
         logger.debug("ModelBuilder metrics emitted.")
     except Exception:  # pylint: disable=W0703
@@ -111,6 +156,7 @@ def _construct_url(
     mode: str,
     status: str,
     failure_reason: str,
+    failure_type: str,
     extra_info: str,
     region: str,
 ) -> str:
@@ -124,6 +170,7 @@ def _construct_url(
     )
     if failure_reason:
         base_url += f"&x-failureReason={failure_reason}"
+        base_url += f"&x-failureType={failure_type}"
     if extra_info:
         base_url += f"&x-extra={extra_info}"
     return base_url
@@ -157,3 +204,22 @@ def _get_region_or_default(session):
         return session.boto_session.region_name
     except Exception:  # pylint: disable=W0703
         return "us-west-2"
+
+
+def _get_image_uri_option(image_uri: str, is_custom_image: bool) -> int:
+    """Detect whether default values are used for ModelBuilder
+
+    Args:
+        image_uri (str): Image uri used by ModelBuilder.
+        is_custom_image: (bool): Boolean indicating whether customer provides with custom image.
+    Returns:
+        bool: Integer code of image option types.
+    """
+
+    if not is_custom_image:
+        return ImageUriOption.DEFAULT_IMAGE.value
+
+    if is_1p_image_uri(image_uri):
+        return ImageUriOption.CUSTOM_1P_IMAGE.value
+
+    return ImageUriOption.CUSTOM_IMAGE.value

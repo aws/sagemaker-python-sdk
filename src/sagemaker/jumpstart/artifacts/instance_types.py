@@ -18,12 +18,13 @@ from typing import List, Optional
 from sagemaker.jumpstart.exceptions import NO_AVAILABLE_INSTANCES_ERROR_MSG
 from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-    JUMPSTART_DEFAULT_REGION_NAME,
 )
 from sagemaker.jumpstart.enums import (
     JumpStartScriptScope,
+    JumpStartModelType,
 )
 from sagemaker.jumpstart.utils import (
+    get_region_fallback,
     verify_model_region_and_return_specs,
 )
 from sagemaker.session import Session
@@ -38,6 +39,7 @@ def _retrieve_default_instance_type(
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     training_instance_type: Optional[str] = None,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> str:
     """Retrieves the default instance type for the model.
 
@@ -74,8 +76,9 @@ def _retrieve_default_instance_type(
             specified region due to lack of supported computing instances.
     """
 
-    if region is None:
-        region = JUMPSTART_DEFAULT_REGION_NAME
+    region = region or get_region_fallback(
+        sagemaker_session=sagemaker_session,
+    )
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
@@ -84,6 +87,7 @@ def _retrieve_default_instance_type(
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
+        model_type=model_type,
         sagemaker_session=sagemaker_session,
     )
 
@@ -160,8 +164,9 @@ def _retrieve_instance_types(
             specified region due to lack of supported computing instances.
     """
 
-    if region is None:
-        region = JUMPSTART_DEFAULT_REGION_NAME
+    region = region or get_region_fallback(
+        sagemaker_session=sagemaker_session,
+    )
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,

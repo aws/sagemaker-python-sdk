@@ -90,7 +90,7 @@ SM_DATAPARALLEL_SUPPORTED_INSTANCE_TYPES = (
     "local_gpu",
 )
 SM_DATAPARALLEL_SUPPORTED_FRAMEWORK_VERSIONS = {
-    # tf 2.12 should not be supported: smdataparallel excludes support for tf 2.12.
+    # tf 2.12 should not be supported: smdataparallel excludes support for tf>=2.12.
     "tensorflow": [
         "2.3",
         "2.3.1",
@@ -139,6 +139,9 @@ SM_DATAPARALLEL_SUPPORTED_FRAMEWORK_VERSIONS = {
         "1.13.1",
         "2.0.0",
         "2.0.1",
+        "2.1.0",
+        "2.1.2",
+        "2.2.0",
     ],
 }
 
@@ -155,10 +158,17 @@ PYTORCHDDP_SUPPORTED_FRAMEWORK_VERSIONS = [
     "2.0.0",
     "2.0.1",
     "2.1.0",
+    "2.2.0",
 ]
 
-
-TORCH_DISTRIBUTED_GPU_SUPPORTED_FRAMEWORK_VERSIONS = ["1.13.1", "2.0.0", "2.0.1", "2.1.0"]
+TORCH_DISTRIBUTED_GPU_SUPPORTED_FRAMEWORK_VERSIONS = [
+    "1.13.1",
+    "2.0.0",
+    "2.0.1",
+    "2.1.0",
+    "2.1.2",
+    "2.2.0",
+]
 
 TRAINIUM_SUPPORTED_DISTRIBUTION_STRATEGIES = ["torch_distributed"]
 TRAINIUM_SUPPORTED_TORCH_DISTRIBUTED_FRAMEWORK_VERSIONS = [
@@ -474,7 +484,7 @@ def tar_and_upload_dir(
         if s3_resource is None:
             s3_resource = session.resource("s3", region_name=session.region_name)
         else:
-            print("Using provided s3_resource")
+            logger.debug("Using provided s3_resource")
 
         s3_resource.Object(bucket, key).upload_file(tar_file, ExtraArgs=extra_args)
     finally:

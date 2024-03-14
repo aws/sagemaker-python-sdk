@@ -324,7 +324,7 @@ def test_transformer_creation_with_optional_args(
     env = {"foo": "bar"}
     max_concurrent_transforms = 3
     max_payload = 100
-    tags = {"Key": "foo", "Value": "bar"}
+    tags = [{"Key": "foo", "Value": "bar"}]
     new_role = "role"
     vpc_config = {"Subnets": ["1234"], "SecurityGroupIds": ["5678"]}
     model_name = "model-name"

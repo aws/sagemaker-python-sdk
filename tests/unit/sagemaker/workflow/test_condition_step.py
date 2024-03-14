@@ -202,7 +202,7 @@ def test_pipeline_condition_step_interpolated(sagemaker_session):
                         },
                         {
                             "Type": "Not",
-                            "Expression": {
+                            "Condition": {
                                 "Type": "Equals",
                                 "LeftValue": {"Get": "Parameters.MyInt1"},
                                 "RightValue": {"Get": "Parameters.MyInt2"},
@@ -210,7 +210,7 @@ def test_pipeline_condition_step_interpolated(sagemaker_session):
                         },
                         {
                             "Type": "Not",
-                            "Expression": {
+                            "Condition": {
                                 "Type": "In",
                                 "QueryValue": {"Get": "Parameters.MyStr"},
                                 "Values": ["abc", "def"],
@@ -533,9 +533,9 @@ def test_depends_on_condition_not_upstream_delayed_returns(sagemaker_session_moc
             assert len(step_dsl["Arguments"]["Conditions"]) == 1
             condition_dsl = step_dsl["Arguments"]["Conditions"][0]
             assert condition_dsl["Type"] == "Not"
-            cond_expr_dsl = condition_dsl["Expression"]
+            cond_expr_dsl = condition_dsl["Condition"]
             assert cond_expr_dsl["Type"] == "Not"
-            cond_inner_expr_dsl = cond_expr_dsl["Expression"]
+            cond_inner_expr_dsl = cond_expr_dsl["Condition"]
             assert cond_inner_expr_dsl["Type"] == "Or"
             assert len(cond_inner_expr_dsl["Conditions"]) == 2
             assert cond_inner_expr_dsl["Conditions"][0]["LeftValue"] == _get_expected_jsonget_expr(
@@ -602,7 +602,7 @@ def test_depends_on_condition_in_upstream_delayed_returns(sagemaker_session_mock
             assert len(step_dsl["Arguments"]["Conditions"]) == 1
             condition_dsl = step_dsl["Arguments"]["Conditions"][0]
             assert condition_dsl["Type"] == "Not"
-            cond_expr_dsl = condition_dsl["Expression"]
+            cond_expr_dsl = condition_dsl["Condition"]
             assert cond_expr_dsl["Type"] == "In"
             assert cond_expr_dsl["QueryValue"] == _get_expected_jsonget_expr(
                 step_name=step_output3._step.name, path="Result"
@@ -626,11 +626,7 @@ def _get_expected_jsonget_expr(step_name: str, path: str):
                 "Std:Join": {
                     "On": "/",
                     "Values": [
-                        "s3://s3_bucket/test-prefix",
-                        "MyPipeline",
-                        {"Get": "Execution.PipelineExecutionId"},
-                        step_name,
-                        "results",
+                        {"Get": f"Steps.{step_name}.OutputDataConfig.S3OutputPath"},
                         "results.json",
                     ],
                 }

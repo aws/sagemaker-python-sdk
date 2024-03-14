@@ -43,3 +43,15 @@ class HardwareType(Enum):
     INFERENTIA_1 = 3
     INFERENTIA_2 = 4
     GRAVITON = 5
+
+
+class ImageUriOption(Enum):
+    """Enum type for image uri options"""
+
+    def __str__(self) -> str:
+        """Convert enum to string"""
+        return str(self.name)
+
+    CUSTOM_IMAGE = 1
+    CUSTOM_1P_IMAGE = 2
+    DEFAULT_IMAGE = 3

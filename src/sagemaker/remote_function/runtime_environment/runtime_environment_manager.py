@@ -216,6 +216,32 @@ class RuntimeEnvironmentManager:
                 pre_exec_script_path,
             )
 
+    def change_dir_permission(self, dirs: list, new_permission: str):
+        """Change the permission of given directories
+
+        Args:
+            dirs (list[str]): A list of directories for permission update.
+            new_permission (str): The new permission for the given directories.
+        """
+
+        _ERROR_MSG_PREFIX = "Failed to change directory permissions due to: "
+        command = ["sudo", "chmod", "-R", new_permission] + dirs
+        logger.info("Executing '%s'.", " ".join(command))
+
+        try:
+            subprocess.run(command, check=True, stderr=subprocess.PIPE)
+        except subprocess.CalledProcessError as called_process_err:
+            err_msg = called_process_err.stderr.decode("utf-8")
+            raise RuntimeEnvironmentError(f"{_ERROR_MSG_PREFIX} {err_msg}")
+        except FileNotFoundError as file_not_found_err:
+            if "[Errno 2] No such file or directory: 'sudo'" in str(file_not_found_err):
+                raise RuntimeEnvironmentError(
+                    f"{_ERROR_MSG_PREFIX} {file_not_found_err}. "
+                    "Please contact the image owner to install 'sudo' in the job container "
+                    "and provide sudo privilege to the container user."
+                )
+            raise RuntimeEnvironmentError(file_not_found_err)
+
     def _is_file_exists(self, dependencies):
         """Check whether the dependencies file exists at the given location.
 
@@ -226,7 +252,7 @@ class RuntimeEnvironmentManager:
 
     def _install_requirements_txt(self, local_path, python_executable):
         """Install requirements.txt file"""
-        cmd = f"{python_executable} -m pip install -r {local_path}"
+        cmd = f"{python_executable} -m pip install -r {local_path} -U"
         logger.info("Running command: '%s' in the dir: '%s' ", cmd, os.getcwd())
         _run_shell_cmd(cmd)
         logger.info("Command %s ran successfully", cmd)
@@ -242,7 +268,7 @@ class RuntimeEnvironmentManager:
     def _install_req_txt_in_conda_env(self, env_name, local_path):
         """Install requirements.txt in the given conda environment"""
 
-        cmd = f"{self._get_conda_exe()} run -n {env_name} pip install -r {local_path}"
+        cmd = f"{self._get_conda_exe()} run -n {env_name} pip install -r {local_path} -U"
         logger.info("Activating conda env and installing requirements: %s", cmd)
         _run_shell_cmd(cmd)
         logger.info("Requirements installed successfully in conda env %s", env_name)
@@ -300,6 +326,12 @@ class RuntimeEnvironmentManager:
 
         return f"{sys.version_info.major}.{sys.version_info.minor}".strip()
 
+    def _current_sagemaker_pysdk_version(self):
+        """Returns the current sagemaker python sdk version where program is running"""
+        import sagemaker
+
+        return sagemaker.__version__
+
     def _validate_python_version(self, client_python_version: str, conda_env: str = None):
         """Validate the python version
 
@@ -316,6 +348,29 @@ class RuntimeEnvironmentManager:
                 f"does not match python version '{client_python_version}' on the local client. "
                 f"Please make sure that the python version used in the training container "
                 f"is same as the local python version."
+            )
+
+    def _validate_sagemaker_pysdk_version(self, client_sagemaker_pysdk_version):
+        """Validate the sagemaker python sdk version
+
+        Validates if the sagemaker python sdk version where remote function runs
+        matches the one used on client side.
+        Otherwise, log a warning to call out that unexpected behaviors
+        may occur in this case.
+        """
+        job_sagemaker_pysdk_version = self._current_sagemaker_pysdk_version()
+        if (
+            client_sagemaker_pysdk_version
+            and client_sagemaker_pysdk_version != job_sagemaker_pysdk_version
+        ):
+            logger.warning(
+                "Inconsistent sagemaker versions found: "
+                "sagemaker python sdk version found in the container is "
+                "'%s' which does not match the '%s' on the local client. "
+                "Please make sure that the sagemaker version used in the training container "
+                "is the same as the local sagemaker version in case of unexpected behaviors.",
+                job_sagemaker_pysdk_version,
+                client_sagemaker_pysdk_version,
             )
 
 

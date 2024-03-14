@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 import argparse
+import getpass
 import sys
 import os
 import shutil
@@ -38,6 +39,7 @@ DEFAULT_FAILURE_CODE = 1
 REMOTE_FUNCTION_WORKSPACE = "sm_rf_user_ws"
 BASE_CHANNEL_PATH = "/opt/ml/input/data"
 FAILURE_REASON_PATH = "/opt/ml/output/failure"
+JOB_OUTPUT_DIRS = ["/opt/ml/output", "/opt/ml/model", "/tmp"]
 PRE_EXECUTION_SCRIPT_NAME = "pre_exec.sh"
 JOB_REMOTE_FUNCTION_WORKSPACE = "sagemaker_remote_function_workspace"
 SCRIPT_AND_DEPENDENCIES_CHANNEL_NAME = "pre_exec_script_and_dependencies"
@@ -54,6 +56,7 @@ def main(sys_args=None):
     try:
         args = _parse_args(sys_args)
         client_python_version = args.client_python_version
+        client_sagemaker_pysdk_version = args.client_sagemaker_pysdk_version
         job_conda_env = args.job_conda_env
         pipeline_execution_id = args.pipeline_execution_id
         dependency_settings = _DependencySettings.from_string(args.dependency_settings)
@@ -63,6 +66,17 @@ def main(sys_args=None):
 
         RuntimeEnvironmentManager()._validate_python_version(client_python_version, conda_env)
 
+        user = getpass.getuser()
+        if user != "root":
+            log_message = (
+                "The job is running on non-root user: %s. Adding write permissions to the "
+                "following job output directories: %s."
+            )
+            logger.info(log_message, user, JOB_OUTPUT_DIRS)
+            RuntimeEnvironmentManager().change_dir_permission(
+                dirs=JOB_OUTPUT_DIRS, new_permission="777"
+            )
+
         if pipeline_execution_id:
             _bootstrap_runtime_env_for_pipeline_step(
                 client_python_version, func_step_workspace, conda_env, dependency_settings
@@ -71,6 +85,10 @@ def main(sys_args=None):
             _bootstrap_runtime_env_for_remote_function(
                 client_python_version, conda_env, dependency_settings
             )
+
+        RuntimeEnvironmentManager()._validate_sagemaker_pysdk_version(
+            client_sagemaker_pysdk_version
+        )
 
         exit_code = SUCCESS_EXIT_CODE
     except Exception as e:  # pylint: disable=broad-except
@@ -261,6 +279,7 @@ def _parse_args(sys_args):
     parser = argparse.ArgumentParser()
     parser.add_argument("--job_conda_env", type=str)
     parser.add_argument("--client_python_version", type=str)
+    parser.add_argument("--client_sagemaker_pysdk_version", type=str, default=None)
     parser.add_argument("--pipeline_execution_id", type=str)
     parser.add_argument("--dependency_settings", type=str)
     parser.add_argument("--func_step_s3_dir", type=str)

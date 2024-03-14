@@ -33,6 +33,7 @@ from sagemaker import image_uris, s3, utils
 from sagemaker.session import Session
 from sagemaker.network import NetworkConfig
 from sagemaker.processing import ProcessingInput, ProcessingOutput, Processor
+from sagemaker.utils import format_tags, Tags
 
 logger = logging.getLogger(__name__)
 
@@ -1744,7 +1745,7 @@ class SageMakerClarifyProcessor(Processor):
         max_runtime_in_seconds: Optional[int] = None,
         sagemaker_session: Optional[Session] = None,
         env: Optional[Dict[str, str]] = None,
-        tags: Optional[List[Dict[str, str]]] = None,
+        tags: Optional[Tags] = None,
         network_config: Optional[NetworkConfig] = None,
         job_name_prefix: Optional[str] = None,
         version: Optional[str] = None,
@@ -1781,7 +1782,7 @@ class SageMakerClarifyProcessor(Processor):
                 using the default AWS configuration chain.
             env (dict[str, str]): Environment variables to be passed to
                 the processing jobs (default: None).
-            tags (list[dict]): List of tags to be passed to the processing job
+            tags (Optional[Tags]): Tags to be passed to the processing job
                 (default: None). For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
             network_config (:class:`~sagemaker.network.NetworkConfig`):
@@ -1809,7 +1810,7 @@ class SageMakerClarifyProcessor(Processor):
             None,  # We set method-specific job names below.
             sagemaker_session,
             env,
-            tags,
+            format_tags(tags),
             network_config,
         )
 
