@@ -15,7 +15,14 @@ from __future__ import absolute_import
 import pytest
 import pathlib
 
+
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers", "core: subset of integ tests that must run for every pull request"
+    )
+
+
 def pytest_collection_modifyitems(config, items):
     for item in items:
-         if 'tests/integ/core' in str(item.fspath):
+        if "tests/integ/core" in str(item.fspath):
             item.add_marker(pytest.mark.core)
