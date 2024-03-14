@@ -71,8 +71,10 @@ supported_model_server = {
 
 MIB_CONVERSION_FACTOR = 0.00000095367431640625
 MEMORY_BUFFER_MULTIPLIER = 1.2  # 20% buffer
-VERSION_DETECTION_ERROR = "Please install accelerate and transformers for HuggingFace (HF) model " \
-                          "size calculations pip install 'sagemaker[huggingface]'"
+VERSION_DETECTION_ERROR = (
+    "Please install accelerate and transformers for HuggingFace (HF) model "
+    "size calculations pip install 'sagemaker[huggingface]'"
+)
 
 
 # pylint: disable=attribute-defined-outside-init
@@ -736,7 +738,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
             args = parser.parse_args([self.model, "--dtypes", dtypes])
 
             output = accelerate.commands.estimate.gather_data.gather_data(
-                    args
+                args
             )  # "dtype", "Largest Layer", "Total Size Bytes", "Training using Adam"
         except ImportError as e:
             logger.warning(VERSION_DETECTION_ERROR)
