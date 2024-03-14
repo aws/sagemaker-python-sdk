@@ -6937,7 +6937,7 @@ HUB_CONTENT_DOCUMENT_MODEL_CONTENT_TYPE_DICTS = {
         "ContainerStartupHealthCheckTimeout": 1200,
         "EncryptInterContainerTraffic": True,
         "DisableOutputCompression": True,
-        "MaxRun": 360000,
+        "MaxRuntimeInSeconds": 360000,
         "DynamicContainerDeploymentSupported": True,
         "TrainingModelPackageArtifactUri": None,
         "Dependencies": [],

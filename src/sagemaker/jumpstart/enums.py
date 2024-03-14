@@ -158,7 +158,7 @@ class ModelSpecKwargType(str, Enum):
         if kwarg_type == ModelSpecKwargType.DEPLOY:
             kwargs = ["ModelDataDownloadTimeout", "ContainerStartupHealthCheckTimeout"]
         elif kwarg_type == ModelSpecKwargType.ESTIMATOR:
-            kwargs = ["EncryptInterContainerTraffic", "MaxRun", "DisableOutputCompression"]
+            kwargs = ["EncryptInterContainerTraffic", "MaxRuntimeInSeconds", "DisableOutputCompression"]
         elif kwarg_type == ModelSpecKwargType.MODEL:
             kwargs = []
         elif kwarg_type == ModelSpecKwargType.FIT:
