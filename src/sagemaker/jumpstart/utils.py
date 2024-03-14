@@ -836,35 +836,3 @@ def get_jumpstart_model_id_version_from_resource_arn(
 def generate_studio_spec_file_prefix(model_id: str, model_version: str) -> str:
     """Returns the Studio Spec file prefix given a model ID and version."""
     return f"studio_models/{model_id}/studio_specs_v{model_version}.json"
-
-
-def parse_ecr_uri(uri: str) -> :
-    """
-    Parse a given aws ecr image uri into its various components.
-    
-    Params
-        uri: str, uri to an image or repository in ecr
-
-    Returns
-        account: str, account number/ registryId in which the image resides
-        region: str, aws region name
-        repository: str, name of the ecr repository
-        tag: str, image tag specified in the uri
-    """
-    
-    # Docker repo definition: https://docs.docker.com/docker-hub/repos/
-    # Docker tag definition: https://docs.docker.com/engine/reference/commandline/tag/
-    uri_regex_pat = re.compile("(^\d{12})\.dkr\.ecr\.(.+)\.amazonaws\.com/([\d\w\-_/]+)"
-                                "(?::([\d\w_][\d\w_\.\-]*))?$")
-
-    try:
-        uri_components = uri_regex_pat.match(uri).groups()
-        account, region, repository, tag = uri_components
-        if not tag: 
-            tag = ""
-    except Exception as e:
-        raise InvalidURIError("Please check that the ECR image is of the form "
-                                "<account>.dkr.ecr.<region>/<repository> or "
-                                "<account>.dkr.ecr.<region>/<repository>:<tag>")
-
-    return account, region, repository, tag
