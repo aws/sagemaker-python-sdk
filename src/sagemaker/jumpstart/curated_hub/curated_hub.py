@@ -49,7 +49,7 @@ from sagemaker.jumpstart.curated_hub.utils import (
     create_s3_object_reference_from_uri,
 )
 from sagemaker.jumpstart.curated_hub.types import (
-    HubContentDocument_v2,
+    HubContentDocument,
     JumpStartModelInfo,
     S3ObjectLocation,
 )
@@ -389,14 +389,14 @@ class CuratedHub:
             f"{TASK_TAG_PREFIX}:TODO: pull from specs",
         ]
 
-        hub_content_document = str(HubContentDocument_v2(spec=model_specs))
+        hub_content_document = HubContentDocument(model_specs=model_specs, region=self.region)
 
         self._sagemaker_session.import_hub_content(
-            document_schema_version=HubContentDocument_v2.SCHEMA_VERSION,
+            document_schema_version=hub_content_document.get_schema_version(),
             hub_content_name=model.model_id,
             hub_content_version=model.version,
             hub_name=self.hub_name,
-            hub_content_document=hub_content_document,
+            hub_content_document=str(hub_content_document),
             hub_content_type=HubContentType.MODEL,
             hub_content_display_name="",
             hub_content_description="",

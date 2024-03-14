@@ -76,26 +76,3 @@ class FileInfo(JumpStartDataHolderType):
         self.size = size
         self.last_updated = last_updated
         self.dependecy_type = dependecy_type
-
-
-class HubContentDocument_v2(JumpStartDataHolderType):
-    """Data class for HubContentDocument v2.0.0"""
-
-    SCHEMA_VERSION = "2.0.0"
-
-    def __init__(self, spec: Dict[str, Any]):
-        """Initializes a HubContentDocument_v2 object from JumpStart model specs.
-
-        Args:
-            spec (Dict[str, Any]): Dictionary representation of spec.
-        """
-        self.from_specs(spec)
-
-    def from_specs(self, model_specs: JumpStartModelSpecs) -> None:
-        """Sets fields in object based on json.
-
-        Args:
-            json_obj (Dict[str, Any]): Dictionary representatino of spec.
-        """
-        # TODO: Implement
-        self.Url: str = model_specs.url

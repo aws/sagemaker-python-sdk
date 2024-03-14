@@ -51,6 +51,7 @@ from sagemaker.jumpstart.types import (
     DescribeHubContentResponse,
     HubType,
     HubContentType,
+    HubContentDocument,
 )
 from sagemaker.jumpstart.curated_hub import utils as hub_utils
 
@@ -487,7 +488,7 @@ class JumpStartModelsCache:
             )
         return specs.formatted_content
 
-    def get_hub_model(self, hub_model_arn: str) -> JumpStartModelSpecs:
+    def get_hub_model(self, hub_model_arn: str) -> HubContentDocument:
         """Return JumpStart-compatible specs for a given Hub model
 
         Args:
@@ -497,7 +498,7 @@ class JumpStartModelsCache:
         details, _ = self._content_cache.get(
             JumpStartCachedContentKey(HubContentType.MODEL, hub_model_arn)
         )
-        return details.formatted_content
+        return HubContentDocument(details.formatted_content)
 
     def get_hub(self, hub_arn: str) -> Dict[str, Any]:
         """Return descriptive info for a given Hub
