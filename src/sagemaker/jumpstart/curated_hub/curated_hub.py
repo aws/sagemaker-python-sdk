@@ -42,6 +42,7 @@ from sagemaker.jumpstart.types import (
     DescribeHubContentResponse,
     HubContentType,
     JumpStartModelSpecs,
+    HubContentDocument,
 )
 from sagemaker.jumpstart.curated_hub.utils import (
     create_hub_bucket_if_it_does_not_exist,
@@ -49,7 +50,6 @@ from sagemaker.jumpstart.curated_hub.utils import (
     create_s3_object_reference_from_uri,
 )
 from sagemaker.jumpstart.curated_hub.types import (
-    HubContentDocument,
     JumpStartModelInfo,
     S3ObjectLocation,
 )

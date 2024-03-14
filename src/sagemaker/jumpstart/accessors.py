@@ -270,7 +270,7 @@ class JumpStartModelsAccessor(object):
                 hub_arn=hub_arn, model_name=model_id, version=version
             )
             hub_model_document: HubContentDocument = JumpStartModelsAccessor._cache.get_hub_model(hub_model_arn=hub_model_arn)
-            return JumpStartModelSpecs(hub_model_document, is_hub_content=True)
+            return hub_model_document.to_model_specs()
 
         return JumpStartModelsAccessor._cache.get_specs(  # type: ignore
             model_id=model_id, semantic_version_str=version
