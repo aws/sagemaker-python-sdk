@@ -52,6 +52,7 @@ from sagemaker.serializers import (
     JSONSerializer,
     NumpySerializer,
 )
+from sagemaker.iterators import ByteIterator
 from sagemaker.session import production_variant, Session
 from sagemaker.utils import name_from_base, stringify_object, format_tags
 
@@ -225,6 +226,7 @@ class Predictor(PredictorBase):
         target_variant=None,
         inference_id=None,
         custom_attributes=None,
+        target_container_hostname=None,
     ):
         """Placeholder docstring"""
 
@@ -286,8 +288,88 @@ class Predictor(PredictorBase):
         if self._get_component_name():
             args["InferenceComponentName"] = self.component_name
 
+        if target_container_hostname:
+            args["TargetContainerHostname"] = target_container_hostname
+
         args["Body"] = data
         return args
+
+    def predict_stream(
+        self,
+        data,
+        initial_args=None,
+        target_variant=None,
+        inference_id=None,
+        custom_attributes=None,
+        component_name: Optional[str] = None,
+        target_container_hostname=None,
+        iterator=ByteIterator,
+    ):
+        """Return the inference from the specified endpoint.
+
+        Args:
+            data (object): Input data for which you want the model to provide
+                inference. If a serializer was specified when creating the
+                Predictor, the result of the serializer is sent as input
+                data. Otherwise the data must be sequence of bytes, and the
+                predict method then sends the bytes in the request body as is.
+            initial_args (dict[str,str]): Optional. Default arguments for boto3
+                ``invoke_endpoint_with_response_stream`` call. Default is None (no default
+                arguments). (Default: None)
+            target_variant (str): Optional. The name of the production variant to run an inference
+                request on (Default: None). Note that the ProductionVariant identifies the
+                model you want to host and the resources you want to deploy for hosting it.
+            inference_id (str): Optional. If you provide a value, it is added to the captured data
+                when you enable data capture on the endpoint (Default: None).
+            custom_attributes (str): Optional. Provides additional information about a request for
+                an inference submitted to a model hosted at an Amazon SageMaker endpoint.
+                The information is an opaque value that is forwarded verbatim. You could use this
+                value, for example, to provide an ID that you can use to track a request or to
+                provide other metadata that a service endpoint was programmed to process. The value
+                must consist of no more than 1024 visible US-ASCII characters.
+
+                The code in your model is responsible for setting or updating any custom attributes
+                in the response. If your code does not set this value in the response, an empty
+                value is returned. For example, if a custom attribute represents the trace ID, your
+                model can prepend the custom attribute with Trace ID: in your post-processing
+                function (Default: None).
+            component_name (str): Optional. Name of the Amazon SageMaker inference component
+                corresponding the predictor. (Default: None)
+            target_container_hostname (str): Optional. If the endpoint hosts multiple containers
+                and is configured to use direct invocation, this parameter specifies the host name
+                of the container to invoke. (Default: None).
+            iterator (:class:`~sagemaker.iterators.BaseIterator`): An iterator class which provides
+                an iterable interface to iterate Event stream response from Inference Endpoint.
+                An object of the iterator class provided will be returned by the predict_stream
+                method (Default::class:`~sagemaker.iterators.ByteIterator`). Iterators defined in
+                :class:`~sagemaker.iterators` or custom iterators (needs to inherit
+                :class:`~sagemaker.iterators.BaseIterator`) can be specified as an input.
+
+        Returns:
+            object (:class:`~sagemaker.iterators.BaseIterator`): An iterator object which would
+            allow iteration on EventStream response will be returned. The object would be
+            instantiated from `predict_stream` method's `iterator` parameter.
+        """
+        # [TODO]: clean up component_name in _create_request_args
+        request_args = self._create_request_args(
+            data=data,
+            initial_args=initial_args,
+            target_variant=target_variant,
+            inference_id=inference_id,
+            custom_attributes=custom_attributes,
+            target_container_hostname=target_container_hostname,
+        )
+
+        inference_component_name = component_name or self._get_component_name()
+        if inference_component_name:
+            request_args["InferenceComponentName"] = inference_component_name
+
+        response = (
+            self.sagemaker_session.sagemaker_runtime_client.invoke_endpoint_with_response_stream(
+                **request_args
+            )
+        )
+        return iterator(response["Body"])
 
     def update_endpoint(
         self,
