@@ -18,7 +18,7 @@ import sagemaker.utils
 import tests.integ as integ
 from sagemaker.pytorch import PyTorch
 from tests.integ import timeout
-from tests.integ.test_pytorch import _upload_training_data
+from tests.integ.core.test_pytorch import _upload_training_data
 
 pytorchddp_dir = os.path.join(os.path.dirname(__file__), "..", "data", "pytorch_ddp")
 
