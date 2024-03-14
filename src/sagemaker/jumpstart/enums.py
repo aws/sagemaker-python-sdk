@@ -14,7 +14,9 @@
 
 from __future__ import absolute_import
 
+import re
 from enum import Enum
+from typing import List, Dict, Any
 
 
 class ModelFramework(str, Enum):
@@ -112,3 +114,74 @@ class MIMEType(str, Enum):
         """Removes suffix from type and instantiates enum."""
         base_type, _, _ = mime_type_with_suffix.partition(";")
         return MIMEType(base_type)
+
+
+class NamingConventionType(str, Enum):
+    """Enum class for naming conventions."""
+
+    SNAKE_CASE = "snake_case"
+    UPPER_CAMEL_CASE = "upper_camel_case"
+    DEFAULT = UPPER_CAMEL_CASE
+
+    @staticmethod
+    def upper_camel_to_snake(upper_camel_case_string: str):
+        """Converts UpperCamelCaseString to snake_case_string."""
+        snake_case_string = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", upper_camel_case_string)
+        return re.sub("([a-z0-9])([A-Z])", r"\1_\2", snake_case_string).lower()
+
+    @staticmethod
+    def snake_to_upper_camel(snake_case_string: str):
+        """Converts snake_case_string to UpperCamelCaseString."""
+        upper_camel_case_string = "".join(word.title() for word in snake_case_string.split("_"))
+        return upper_camel_case_string
+
+
+class ModelSpecKwargType(str, Enum):
+    """Enum class for types of kwargs for model hub content document and model specs."""
+
+    FIT = "fit_kwargs"
+    MODEL = "model_kwargs"
+    ESTIMATOR = "estimator_kwargs"
+    DEPLOY = "deploy_kwargs"
+
+    @classmethod
+    def kwargs(cls) -> List[str]:
+        """Returns a list of kwargs keys that each type can have"""
+        return [member.value for member in cls]
+
+    @staticmethod
+    def get_model_spec_kwarg_keys(
+        kwarg_type: "ModelSpecKwargType",
+        naming_convention: NamingConventionType = NamingConventionType.DEFAULT,
+    ) -> List[str]:
+        kwargs = []
+        if kwarg_type == ModelSpecKwargType.DEPLOY:
+            kwargs = ["ModelDataDownloadTimeout", "ContainerStartupHealthCheckTimeout"]
+        elif kwarg_type == ModelSpecKwargType.ESTIMATOR:
+            kwargs = ["EncryptInterContainerTraffic", "MaxRun", "DisableOutputCompression"]
+        elif kwarg_type == ModelSpecKwargType.MODEL:
+            kwargs = []
+        elif kwarg_type == ModelSpecKwargType.FIT:
+            kwargs = []
+        if naming_convention == NamingConventionType.SNAKE_CASE:
+            return NamingConventionType.upper_camel_to_snake(kwargs)
+        elif naming_convention == NamingConventionType.UPPER_CAMEL_CASE:
+            return kwargs
+        else:
+            raise ValueError("Please provide a valid naming convention.")
+
+    @staticmethod
+    def get_model_spec_kwargs_from_hub_content_document(
+        kwarg_type: "ModelSpecKwargType",
+        hub_content_document: Dict[str, Any],
+        naming_convention: NamingConventionType = NamingConventionType.UPPER_CAMEL_CASE,
+    ):
+        kwargs = dict()
+        keys = ModelSpecKwargType.get_model_spec_kwarg_keys(
+            kwarg_type, naming_convention=naming_convention
+        )
+        for k in keys:
+            kwarg_value = hub_content_document.get(k, None)
+            if kwarg_value is not None:
+                kwargs[k] = kwarg_value
+        return kwargs
