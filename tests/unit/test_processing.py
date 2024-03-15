@@ -13,13 +13,11 @@
 from __future__ import absolute_import
 
 import copy
-import datetime
 
-import boto3
-from botocore.stub import Stubber
 import pytest
 from mock import Mock, patch, MagicMock
 from packaging import version
+from textwrap import dedent
 
 from sagemaker import LocalSession
 from sagemaker.dataset_definition.inputs import (
@@ -1106,28 +1104,8 @@ def test_pyspark_processor_configuration_path_pipeline_config(
 
 
 @patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
-def test_get_codeartifact_index(pipeline_session):
+def test_get_codeartifact_command(pipeline_session):
     codeartifact_repo_arn = "arn:aws:codeartifact:us-west-2:012345678901:repository/test-domain/test-repository"
-    codeartifact_url = "test-domain-012345678901.d.codeartifact.us-west-2.amazonaws.com/pypi/test-repository/simple/"
-
-    client = boto3.client('codeartifact', region_name=REGION)
-    stubber = Stubber(client)
-        
-    get_auth_token_response = {
-        "authorizationToken": "mocked_token",
-        "expiration": datetime.datetime(2045, 1, 1, 0, 0, 0)
-    }
-    auth_token_expected_params = {"domain": "test-domain", "domainOwner": "012345678901"}
-    stubber.add_response("get_authorization_token", get_auth_token_response, auth_token_expected_params)
-
-    get_repo_endpoint_response = {"repositoryEndpoint": f"https://{codeartifact_url}"}
-    repo_endpoint_expected_params = {
-        "domain": "test-domain",
-        "domainOwner": "012345678901",
-        "repository": "test-repository",
-        "format": "pypi"
-    }
-    stubber.add_response("get_repository_endpoint", get_repo_endpoint_response, repo_endpoint_expected_params)
 
     processor = PyTorchProcessor(
         role=ROLE,
@@ -1138,35 +1116,14 @@ def test_get_codeartifact_index(pipeline_session):
         sagemaker_session=pipeline_session,
     )
 
-    with stubber:
-        codeartifact_index = processor._get_codeartifact_index(codeartifact_repo_arn=codeartifact_repo_arn, codeartifact_client=client)
+    codeartifact_command = processor._get_codeartifact_command(codeartifact_repo_arn=codeartifact_repo_arn)
     
-    assert codeartifact_index == f"https://aws:mocked_token@{codeartifact_url}"
+    assert codeartifact_command == "aws codeartifact login --tool pip --domain test-domain --domain-owner 012345678901 --repository test-repository --region us-west-2"
 
 
 @patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
-def test_get_codeartifact_index_bad_repo_arn(pipeline_session):
+def test_get_codeartifact_command_bad_repo_arn(pipeline_session):
     codeartifact_repo_arn = "arn:aws:codeartifact:us-west-2:012345678901:repository/test-domain"
-    codeartifact_url = "test-domain-012345678901.d.codeartifact.us-west-2.amazonaws.com/pypi/test-repository/simple/"
-
-    client = boto3.client('codeartifact', region_name=REGION)
-    stubber = Stubber(client)
-        
-    get_auth_token_response = {
-        "authorizationToken": "mocked_token",
-        "expiration": datetime.datetime(2045, 1, 1, 0, 0, 0)
-    }
-    auth_token_expected_params = {"domain": "test-domain", "domainOwner": "012345678901"}
-    stubber.add_response("get_authorization_token", get_auth_token_response, auth_token_expected_params)
-
-    get_repo_endpoint_response = {"repositoryEndpoint": f"https://{codeartifact_url}"}
-    repo_endpoint_expected_params = {
-        "domain": "test-domain",
-        "domainOwner": "012345678901",
-        "repository": "test-repository",
-        "format": "pypi"
-    }
-    stubber.add_response("get_repository_endpoint", get_repo_endpoint_response, repo_endpoint_expected_params)
 
     processor = PyTorchProcessor(
         role=ROLE,
@@ -1177,35 +1134,11 @@ def test_get_codeartifact_index_bad_repo_arn(pipeline_session):
         sagemaker_session=pipeline_session,
     )
 
-    with stubber:
-        with pytest.raises(ValueError):
-            processor._get_codeartifact_index(codeartifact_repo_arn=codeartifact_repo_arn, codeartifact_client=client)
-
+    with pytest.raises(ValueError):
+        processor._get_codeartifact_command(codeartifact_repo_arn=codeartifact_repo_arn)
 
 @patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
-def test_get_codeartifact_index_client_error(pipeline_session):
-    codeartifact_repo_arn = "arn:aws:codeartifact:us-west-2:012345678901:repository/test-domain/test-repository"
-    codeartifact_url = "test-domain-012345678901.d.codeartifact.us-west-2.amazonaws.com/pypi/test-repository/simple/"
-
-    client = boto3.client('codeartifact', region_name=REGION)
-    stubber = Stubber(client)
-        
-    get_auth_token_response = {
-        "authorizationToken": "mocked_token",
-        "expiration": datetime.datetime(2045, 1, 1, 0, 0, 0)
-    }
-    auth_token_expected_params = {"domain": "test-domain", "domainOwner": "012345678901"}
-    stubber.add_client_error("get_authorization_token", service_error_code="404", expected_params=auth_token_expected_params)
-
-    get_repo_endpoint_response = {"repositoryEndpoint": f"https://{codeartifact_url}"}
-    repo_endpoint_expected_params = {
-        "domain": "test-domain",
-        "domainOwner": "012345678901",
-        "repository": "test-repository",
-        "format": "pypi"
-    }
-    stubber.add_response("get_repository_endpoint", get_repo_endpoint_response, repo_endpoint_expected_params)
-
+def test_generate_framework_script(pipeline_session):
     processor = PyTorchProcessor(
         role=ROLE,
         instance_type="ml.m4.xlarge",
@@ -1215,10 +1148,79 @@ def test_get_codeartifact_index_client_error(pipeline_session):
         sagemaker_session=pipeline_session,
     )
 
-    with stubber:
-        with pytest.raises(RuntimeError):
-            processor._get_codeartifact_index(codeartifact_repo_arn=codeartifact_repo_arn, codeartifact_client=client)
+    framework_script = processor._generate_framework_script(user_script="process.py")
 
+    assert framework_script == dedent(
+        """\
+        #!/bin/bash
+
+        cd /opt/ml/processing/input/code/
+        tar -xzf sourcedir.tar.gz
+
+        # Exit on any error. SageMaker uses error code to mark failed job.
+        set -e
+
+        if [[ -f 'requirements.txt' ]]; then
+            # Optionally log into CodeArtifact
+            if ! hash aws 2>/dev/null; then
+                echo "AWS CLI is not installed. Skipping CodeArtifact login."
+            else
+                echo 'CodeArtifact repository not specified. Skipping login.'
+            fi
+
+            # Some py3 containers has typing, which may breaks pip install
+            pip uninstall --yes typing
+
+            pip install -r requirements.txt
+        fi
+
+        python process.py "$@"
+    """
+    )
+    
+@patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
+def test_generate_framework_script_with_codeartifact(pipeline_session):
+    processor = PyTorchProcessor(
+        role=ROLE,
+        instance_type="ml.m4.xlarge",
+        framework_version="2.0.1",
+        py_version="py310",
+        instance_count=1,
+        sagemaker_session=pipeline_session,
+    )
+
+    framework_script = processor._generate_framework_script(
+        user_script="process.py",
+        codeartifact_repo_arn="arn:aws:codeartifact:us-west-2:012345678901:repository/test-domain/test-repository"
+    )
+
+    assert framework_script == dedent(
+        """\
+        #!/bin/bash
+
+        cd /opt/ml/processing/input/code/
+        tar -xzf sourcedir.tar.gz
+
+        # Exit on any error. SageMaker uses error code to mark failed job.
+        set -e
+
+        if [[ -f 'requirements.txt' ]]; then
+            # Optionally log into CodeArtifact
+            if ! hash aws 2>/dev/null; then
+                echo "AWS CLI is not installed. Skipping CodeArtifact login."
+            else
+                "aws codeartifact login --tool pip --domain test-domain --domain-owner 012345678901 --repository test-repository --region us-west-2"
+            fi
+
+            # Some py3 containers has typing, which may breaks pip install
+            pip uninstall --yes typing
+
+            pip install -r requirements.txt
+        fi
+
+        python process.py "$@"
+    """
+    )
 
 def _get_script_processor(sagemaker_session):
     return ScriptProcessor(
