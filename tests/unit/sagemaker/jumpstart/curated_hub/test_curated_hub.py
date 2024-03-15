@@ -32,6 +32,48 @@ MODULE_PATH = "sagemaker.jumpstart.curated_hub.curated_hub.CuratedHub"
 
 FAKE_TIME = datetime.datetime(1997, 8, 14, 00, 00, 00)
 
+MOCK_GENERATED_MODEL_ID = "mock_generated_model_id"
+MOCK_LIST_RESPONSE = {
+    "HubContentSummaries": [
+        {
+            "HubContentName": "mock-hub-content-single-version",
+            "HubContentVersion": "1.0.0",
+            "HubContentSearchKeywords": [
+                "@jumpstart-model-id:test-jumpstart-model-exists",
+                "@jumpstart-model-version:2.0.0",
+            ],
+        },
+        {
+            "HubContentName": "mock-hub-content-hub-version-greater",
+            "HubContentVersion": "3.0.0",
+            "HubContentSearchKeywords": [
+                "@jumpstart-model-id:test-jumpstart-model-hub-version-greater",
+                "@jumpstart-model-version:2.0.0",
+            ],
+        },
+        {"HubContentName": "test-model-no-keywords", "HubContentVersion": "1.0.0", "HubContentSearchKeywords": []},
+        {"HubContentName": "test-model-no-keywords", "HubContentVersion": "1.0.1", "HubContentSearchKeywords": []},
+        {"HubContentName": "test-model-no-jumpstart-keywords", "HubContentVersion": "1.0.2", "HubContentSearchKeywords": ["tag", "tag2"]},
+        {"HubContentName": "test-model-missing-jumpstart-keywords", "HubContentVersion": "1.0.2", "HubContentSearchKeywords": ["@jumpstart-model-id:model-one-pytorch", "tag2"]},
+        {
+            "HubContentName": "mock-hub-content-multiple-versions",
+            "HubContentVersion": "1.0.0",
+            "HubContentSearchKeywords": [
+                "@jumpstart-model-id:test-jumpstart-model-multiple-versions",
+                "@jumpstart-model-version:2.0.0",
+            ],
+        },
+        {
+            "HubContentName": "mock-hub-content-multiple-versions",
+            "HubContentVersion": "1.0.1",
+            "HubContentSearchKeywords": [
+                "@jumpstart-model-id:test-jumpstart-model-multiple-versions",
+                "@jumpstart-model-version:2.0.1",
+            ],
+        },
+    ]
+}
+
 
 @pytest.fixture()
 def sagemaker_session():
@@ -200,40 +242,20 @@ def test_sync_filters_models_that_exist_in_hub(
     mock_list_models, mock_sync_public_models, mock_get_model_specs, mock_model_id_generation, sagemaker_session
 ):
     mock_get_model_specs.side_effect = get_spec_from_base_spec
-    mock_list_models.return_value = {
-        "HubContentSummaries": [
-            {
-                "HubContentName": "mock-model-two-pytorch",
-                "HubContentVersion": "1.0.2",
-                "HubContentSearchKeywords": [
-                    "@jumpstart-model-id:mock-pytorch-model-already-exists-in-hub",
-                    "@jumpstart-model-version:1.0.2",
-                ],
-            },
-            {"HubContentName": "mock-model-three-nonsense", "HubContentVersion": "1.0.2", "HubContentSearchKeywords": []},
-            {
-                "HubContentName": "mock-model-four-huggingface",
-                "HubContentVersion": "2.0.2",
-                "HubContentSearchKeywords": [
-                    "@jumpstart-model-id:model-four-huggingface",
-                    "@jumpstart-model-version:2.0.2",
-                ],
-            },
-        ]
-    }
+    mock_list_models.return_value = MOCK_LIST_RESPONSE
     hub_name = "mock_hub_name"
-    model_one = {"model_id": "mock-pytorch-model-does-not-exist"}
-    model_two = {"model_id": "mock-pytorch-model-already-exists-in-hub", "version": "1.0.2"}
+    model_one = {"model_id": "test-jumpstart-model-does-not-exist-pytorch"}
+    model_two = {"model_id": "test-jumpstart-model-exists", "version": "2.0.0"}
     mock_sync_public_models.return_value = ""
-    mock_model_id_generation.return_value = "test_model_id"
+    mock_model_id_generation.return_value = MOCK_GENERATED_MODEL_ID
     hub = CuratedHub(hub_name=hub_name, sagemaker_session=sagemaker_session)
 
     hub.sync([model_one, model_two])
 
     mock_sync_public_models.assert_called_once_with(
         CuratedHubModelInfo(
-            jumpstart_model_info=JumpStartModelInfo("mock-model-does-not-exist", "*"),
-            hub_content_model_id="test_model_id",
+            jumpstart_model_info=JumpStartModelInfo("test-jumpstart-model-does-not-exist-pytorch", "*"),
+            hub_content_model_id=MOCK_GENERATED_MODEL_ID,
             hub_content_version="*"
         ), 0
     )
@@ -242,56 +264,60 @@ def test_sync_filters_models_that_exist_in_hub(
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
 @patch(f"{MODULE_PATH}._sync_public_model_to_hub")
 @patch(f"{MODULE_PATH}._list_models")
-def test_sync_updates_old_models_in_hub(
+def test_sync_set_jumpstart_model_version(
     mock_list_models, mock_sync_public_models, mock_get_model_specs, mock_model_id_generation, sagemaker_session
 ):
     mock_get_model_specs.side_effect = get_spec_from_base_spec
-    mock_list_models.return_value = {
-        "HubContentSummaries": [
-            {
-                "name": "test-model-two-pytorch",
-                "version": "1.0.1",
-                "search_keywords": [
-                    "@jumpstart-model-id:mock-model-two-pytorch",
-                    "@jumpstart-model-version:1.0.0",
-                ],
-            },
-            {
-                "name": "mock-model-three-nonsense",
-                "version": "1.0.2",
-                "search_keywords": ["tag-one", "tag-two"],
-            },
-            {
-                "name": "mock-model-four-huggingface",
-                "version": "2.0.2",
-                "search_keywords": [
-                    "@jumpstart-model-id:model-four-huggingface",
-                    "@jumpstart-model-version:2.0.2",
-                ],
-            },
-        ]
-    }
+    mock_list_models.return_value = MOCK_LIST_RESPONSE
     hub_name = "mock_hub_name"
-    model_one = {"model_id": "mock-model-one-huggingface"}
-    model_two = {"model_id": "mock-model-two-pytorch", "version": "1.0.2"}
+    model_one = {"model_id": "test-jumpstart-model-does-not-exist-pytorch", "version": "2.0.0"}
     mock_sync_public_models.return_value = ""
-    mock_model_id_generation.return_value = "test_model_id"
+    mock_model_id_generation.return_value = MOCK_GENERATED_MODEL_ID
     hub = CuratedHub(hub_name=hub_name, sagemaker_session=sagemaker_session)
 
-    hub.sync([model_one, model_two])
+    hub.sync([model_one])
+
+    mock_sync_public_models.assert_called_once_with(
+        CuratedHubModelInfo(
+            jumpstart_model_info=JumpStartModelInfo("test-jumpstart-model-does-not-exist-pytorch", "2.0.0"),
+            hub_content_model_id=MOCK_GENERATED_MODEL_ID,
+            hub_content_version="*"
+        ), 0
+    )
+
+@patch("sagemaker.jumpstart.curated_hub.curated_hub.generate_unique_hub_content_model_name")
+@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+@patch(f"{MODULE_PATH}._sync_public_model_to_hub")
+@patch(f"{MODULE_PATH}._list_models")
+def test_sync_import_new_version_only_if_jumpstart_model_version_is_greater(
+    mock_list_models, mock_sync_public_models, mock_get_model_specs, mock_model_id_generation, sagemaker_session
+):
+    mock_get_model_specs.side_effect = get_spec_from_base_spec
+    mock_list_models.return_value = MOCK_LIST_RESPONSE
+    hub_name = "mock_hub_name"
+    model_one = {"model_id": "test-jumpstart-model-exists", "version": "1.0.0"}
+    model_two = {"model_id": "test-jumpstart-model-exists", "version": "2.0.0"}
+    model_three = {"model_id": "test-jumpstart-model-exists", "version": "2.0.1"}
+    model_four = {"model_id": "test-jumpstart-model-hub-version-greater", "version": "1.0.0"}
+    model_five = {"model_id": "test-jumpstart-model-hub-version-greater", "version": "2.0.1"}
+    mock_sync_public_models.return_value = ""
+    mock_model_id_generation.return_value = MOCK_GENERATED_MODEL_ID
+    hub = CuratedHub(hub_name=hub_name, sagemaker_session=sagemaker_session)
+
+    hub.sync([model_one, model_two, model_three, model_four, model_five])
 
     mock_sync_public_models.assert_has_calls(
         [
             mock.call(CuratedHubModelInfo(
-                jumpstart_model_info=JumpStartModelInfo("mock-model-one-huggingface", "*"),
-                hub_content_model_id="test_model_id",
+                jumpstart_model_info=JumpStartModelInfo("test-jumpstart-model-exists", "2.0.1"),
+                hub_content_model_id="mock-hub-content-single-version",
                 hub_content_version="*"
             ), 0),
             mock.call(CuratedHubModelInfo(
-                jumpstart_model_info=JumpStartModelInfo("mock-model-two-pytorch", "1.0.2"),
-                hub_content_model_id="test-model-two-pytorch",
+                jumpstart_model_info=JumpStartModelInfo("test-jumpstart-model-hub-version-greater", "2.0.1"),
+                hub_content_model_id="mock-hub-content-hub-version-greater",
                 hub_content_version="*"
-            ), 1),
+            ), 1)
         ]
     )
 

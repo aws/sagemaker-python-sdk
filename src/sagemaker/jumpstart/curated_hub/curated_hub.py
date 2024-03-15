@@ -281,7 +281,7 @@ class CuratedHub:
         jumpstart_models_in_hub = self._get_jumpstart_models_in_hub()
         curated_models = [
             CuratedHubModelInfo(
-                jumpstart_model_id=get_jumpstart_model_and_version(model),
+                jumpstart_model_info=get_jumpstart_model_and_version(model),
                 hub_content_model_id=model.hub_content_name,
                 hub_content_version=model.hub_content_version
             ) for model in jumpstart_models_in_hub
