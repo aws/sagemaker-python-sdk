@@ -1882,7 +1882,9 @@ class FrameworkProcessor(ScriptProcessor):
             region,
         )
 
-        return f"aws codeartifact login --tool pip --domain {domain} --domain-owner {owner} --repository {repository} --region {region}" # pylint: disable=line-too-long
+        return "aws codeartifact login --tool pip --domain {} --domain-owner {} --repository {} --region {}".format(  # noqa: E501 pylint: disable=line-too-long
+            domain, owner, repository, region
+        )
 
     def _generate_framework_script(
         self, user_script: str, codeartifact_repo_arn: str = None

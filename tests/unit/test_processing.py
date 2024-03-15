@@ -1117,8 +1117,8 @@ def test_get_codeartifact_command(pipeline_session):
     )
 
     codeartifact_command = processor._get_codeartifact_command(codeartifact_repo_arn=codeartifact_repo_arn)
-    
-    assert codeartifact_command == "aws codeartifact login --tool pip --domain test-domain --domain-owner 012345678901 --repository test-repository --region us-west-2"
+
+    assert codeartifact_command == "aws codeartifact login --tool pip --domain test-domain --domain-owner 012345678901 --repository test-repository --region us-west-2"  # noqa: E501
 
 
 @patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
@@ -1136,6 +1136,7 @@ def test_get_codeartifact_command_bad_repo_arn(pipeline_session):
 
     with pytest.raises(ValueError):
         processor._get_codeartifact_command(codeartifact_repo_arn=codeartifact_repo_arn)
+
 
 @patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
 def test_generate_framework_script(pipeline_session):
@@ -1177,7 +1178,8 @@ def test_generate_framework_script(pipeline_session):
         python process.py "$@"
     """
     )
-    
+
+
 @patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
 def test_generate_framework_script_with_codeartifact(pipeline_session):
     processor = PyTorchProcessor(
@@ -1209,7 +1211,7 @@ def test_generate_framework_script_with_codeartifact(pipeline_session):
             if ! hash aws 2>/dev/null; then
                 echo "AWS CLI is not installed. Skipping CodeArtifact login."
             else
-                "aws codeartifact login --tool pip --domain test-domain --domain-owner 012345678901 --repository test-repository --region us-west-2"
+                aws codeartifact login --tool pip --domain test-domain --domain-owner 012345678901 --repository test-repository --region us-west-2
             fi
 
             # Some py3 containers has typing, which may breaks pip install
@@ -1219,8 +1221,9 @@ def test_generate_framework_script_with_codeartifact(pipeline_session):
         fi
 
         python process.py "$@"
-    """
+    """  # noqa: E501
     )
+
 
 def _get_script_processor(sagemaker_session):
     return ScriptProcessor(
