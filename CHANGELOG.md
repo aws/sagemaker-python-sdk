@@ -1,5 +1,31 @@
 # Changelog
 
+## v2.213.0 (2024-03-15)
+
+### Features
+
+ * Add support for Streaming Inference
+ * tgi optimum 0.0.19, 0.0.20 releases
+ * support JumpStart proprietary models
+ * Add ModelDataSource and SourceUri support for model package and while registering
+ * Accept user-defined env variables for the entry-point
+ * Add overriding logic in ModelBuilder when task is provided
+
+### Bug Fixes and Other Changes
+
+ * Improvement of the tuner documentation
+ * Skip of tests which are long running and causing the ResourceLimitInUse exception
+ * Add AutoML -> AutoMLV2 mapper
+ * add ci-health checks
+ * split coverage out from testenv in tox.ini
+ * add PT 2.2 support for smdistributed, pytorchddp, and torch_distributed distributions
+ * sagemaker session region not being used
+ * chore: emit warning when no instance specific gated training env var is available, and raise exception when accept_eula flag is not supplied
+ * enable github actions for PRs
+ * Move sagemaker pysdk version check after bootstrap in remote job
+ * make unit tests compatible with pytest-xdist
+ * Update tblib constraint
+
 ## v2.212.0 (2024-03-06)
 
 ### Features
