@@ -40,6 +40,7 @@ from sagemaker.jumpstart.curated_hub.constants import (
     TASK_TAG_PREFIX,
     FRAMEWORK_TAG_PREFIX,
 )
+from uuid import uuid4
 
 
 def get_info_from_hub_resource_arn(
@@ -253,16 +254,16 @@ def find_jumpstart_tags_for_model_version(model_id: str, version: str, region: s
 def get_jumpstart_model_and_version(hub_content_summary: HubContentSummary) -> Optional[JumpStartModelInfo]:
     jumpstart_model_id = next(
         (
-            tag
-            for tag in hub_content_summary.search_keywords
+            tag[len(JUMPSTART_HUB_MODEL_ID_TAG_PREFIX)+1:] # Need to remove the tag_prefix and ":"
+            for tag in hub_content_summary.hub_content_search_keywords
             if tag.startswith(JUMPSTART_HUB_MODEL_ID_TAG_PREFIX)
         ),
         None,
     )
     jumpstart_model_version = next(
         (
-            tag
-            for tag in hub_content_summary.search_keywords
+            tag[len(JUMPSTART_HUB_MODEL_VERSION_TAG_PREFIX)+1:]
+            for tag in hub_content_summary.hub_content_search_keywords
             if tag.startswith(JUMPSTART_HUB_MODEL_VERSION_TAG_PREFIX)
         ),
         None,
@@ -282,7 +283,7 @@ def get_latest_version_for_model(model_id: str, region: str) -> str:
 
 def summary_from_list_api_response(hub_content_summary: Dict[str, Any]) -> HubContentSummary:
     return HubContentSummary(
-        hub_content_arn=hub_content_summary.get("HubContentSummary"),
+        hub_content_arn=hub_content_summary.get("HubContentArn"),
         hub_content_name=hub_content_summary.get("HubContentName"),
         hub_content_version=hub_content_summary.get("HubContentVersion"),
         hub_content_type=hub_content_summary.get("HubContentType"),
@@ -302,3 +303,6 @@ def tag_to_add_tags_api_call(tag: CuratedHubTag) -> Dict[str, str]:
           'Key': tag.key,
           'Value': tag.value
     }
+
+def generate_unique_hub_content_model_name(model_id: str) -> str:
+    return f"{model_id}-{uuid4()}"

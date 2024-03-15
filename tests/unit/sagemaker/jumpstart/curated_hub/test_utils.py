@@ -20,8 +20,11 @@ from sagemaker.jumpstart.curated_hub import utils
 from unittest.mock import patch
 from sagemaker.jumpstart.curated_hub.types import (
     CuratedHubTag,
-    CuratedHubTagName
+    CuratedHubTagName,
+    HubContentSummary
 )
+from sagemaker.jumpstart.types import JumpStartDataHolderType, JumpStartModelSpecs, HubContentType
+
 
 
 def test_get_info_from_hub_resource_arn():
@@ -232,27 +235,55 @@ def test_find_tags_for_jumpstart_model_version_some_false(mock_spec_util):
     assert tags == [CuratedHubTagName.DEPRECATED_VERSIONS]
 
 @patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
-def test_find_all_tags_for_jumpstart_model(mock_spec_util):
+def test_find_tags_for_jumpstart_model_version_all_false(mock_spec_util):
+    mock_sagemaker_session = Mock()
+    mock_specs = Mock()
+    mock_specs.deprecated = False
+    mock_specs.inference_vulnerable = False
+    mock_specs.training_vulnerable = False
+    mock_spec_util.return_value = mock_specs
+
+    tags = utils.find_jumpstart_tags_for_model_version(
+        model_id="test",
+        version="test",
+        region="test",
+        session=mock_sagemaker_session
+    )
+
+    mock_spec_util.assert_called_once_with(
+        model_id="test",
+        version="test",
+        region="test",
+        scope=JumpStartScriptScope.INFERENCE,
+        tolerate_vulnerable_model = True,
+        tolerate_deprecated_model = True,
+        sagemaker_session=mock_sagemaker_session,
+    )
+
+    assert tags == []
+
+@patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
+def test_find_all_tags_for_jumpstart_model_filters_non_jumpstart_models(mock_spec_util):
     mock_sagemaker_session = Mock()
     mock_sagemaker_session.list_hub_content_versions.return_value = {
         "HubContentSummaries": [
             {
                 "HubContentVersion": "1.0.0",
-                "search_keywords": [
+                "HubContentSearchKeywords": [
                     "@jumpstart-model-id:model-one-pytorch",
                     "@jumpstart-model-version:1.0.3",
                 ]
             },
             {
                 "HubContentVersion": "2.0.0",
-                "search_keywords": [
+                "HubContentSearchKeywords": [
                   "@jumpstart-model-id:model-four-huggingface",
                   "@jumpstart-model-version:2.0.2",
                 ]
             },
             {
                 "HubContentVersion": "3.0.0",
-                "search_keywords": []
+                "HubContentSearchKeywords": []
             }
         ]
     }
@@ -280,4 +311,87 @@ def test_find_all_tags_for_jumpstart_model(mock_spec_util):
         CuratedHubTag(key=CuratedHubTagName.DEPRECATED_VERSIONS, value=str(["1.0.0", "2.0.0"])),
         CuratedHubTag(key=CuratedHubTagName.INFERENCE_VULNERABLE_VERSIONS, value=str(["1.0.0", "2.0.0"])),
         CuratedHubTag(key=CuratedHubTagName.TRAINING_VULNERABLE_VERSIONS, value=str(["1.0.0", "2.0.0"]))
+    ]
+
+@patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
+def test_summary_from_list_api_response(mock_spec_util):
+    test = utils.summary_from_list_api_response(
+        {
+            "HubContentArn": "test_arn",
+            "HubContentName": "test_name",
+            "HubContentVersion": "test_version",
+            "HubContentType": "Model",
+            "DocumentSchemaVersion": "test_schema",
+            "HubContentStatus": "test",
+            "HubContentDescription": "test_description",
+            "HubContentSearchKeywords": ["test"],
+            "CreationTime": "test_creation"
+        }
+    )
+
+    assert test == HubContentSummary(
+        hub_content_arn="test_arn",
+        hub_content_name="test_name",
+        hub_content_version="test_version",
+        hub_content_description="test_description",
+        hub_content_type=HubContentType.MODEL,
+        document_schema_version="test_schema",
+        hub_content_status="test",
+        creation_time="test_creation",
+        hub_content_search_keywords=["test"],
+    )
+
+@patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
+def test_summaries_from_list_api_response(mock_spec_util):
+    test = utils.summary_list_from_list_api_response({
+        "HubContentSummaries": [
+            {
+                "HubContentArn": "test",
+                "HubContentName": "test",
+                "HubContentVersion": "test",
+                "HubContentType": "Model",
+                "DocumentSchemaVersion": "test",
+                "HubContentStatus": "test",
+                "HubContentDescription": "test",
+                "HubContentSearchKeywords": ["test", "test_2"],
+                "CreationTime": "test"
+            },
+            {
+                "HubContentArn": "test_2",
+                "HubContentName": "test_2",
+                "HubContentVersion": "test_2",
+                "HubContentType": "Model",
+                "DocumentSchemaVersion": "test_2",
+                "HubContentStatus": "test_2",
+                "HubContentDescription": "test_2",
+                "HubContentSearchKeywords": ["test_2", "test_2_2"],
+                "CreationTime": "test_2"
+            }
+        ]
+    }
+    )
+
+    assert test == [
+        HubContentSummary(
+            hub_content_arn="test",
+            hub_content_name="test",
+            hub_content_version="test",
+            hub_content_description="test",
+            hub_content_type=HubContentType.MODEL,
+            document_schema_version="test",
+            hub_content_status="test",
+            creation_time="test",
+            hub_content_search_keywords=["test", "test_2"],
+        ),
+        HubContentSummary(
+            hub_content_arn="test_2",
+            hub_content_name="test_2",
+            hub_content_version="test_2",
+            hub_content_description="test_2",
+            hub_content_type=HubContentType.MODEL,
+            document_schema_version="test_2",
+            hub_content_status="test_2",
+            creation_time="test_2",
+            hub_content_search_keywords=["test_2", "test_2_2"],
+        )
     ]

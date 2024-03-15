@@ -20,26 +20,29 @@ from datetime import datetime
 from sagemaker.jumpstart.types import JumpStartDataHolderType, JumpStartModelSpecs, HubContentType
 
 class CuratedHubTagName(str, Enum):
-    """Enum class for Curated Hub """
+    """Enum class for Curated Hub tag names."""
     DEPRECATED_VERSIONS = "deprecated_versions"
     TRAINING_VULNERABLE_VERSIONS = "training_vulnerable_versions"
     INFERENCE_VULNERABLE_VERSIONS = "inference_vulnerable_versions"
 
 @dataclass
 class HubContentSummary:
+  """Dataclass to store HubContentSummary from List APIs."""
   hub_content_arn: str
   hub_content_name: str
   hub_content_version: str
   hub_content_type: HubContentType
   document_schema_version: str
   hub_content_status: str
-  hub_content_display_name: str
-  hub_content_description: str
-  hub_content_search_keywords: List[str]
   creation_time: str
+  hub_content_display_name: str = None
+  hub_content_description: str = None
+  hub_content_search_keywords: List[str] = None
+  
 
 @dataclass
 class CuratedHubTag:
+  """Dataclass to store Curated Hub-specific tags."""
   key: CuratedHubTagName
   value: str
 
@@ -62,13 +65,19 @@ class S3ObjectLocation:
         """Returns the s3 URI"""
         return f"s3://{self.bucket}/{self.key}"
 
-
 @dataclass
 class JumpStartModelInfo:
     """Helper class for storing JumpStart model info."""
 
     model_id: str
     version: str
+
+@dataclass
+class CuratedHubModelInfo:
+    """Helper class to store Curated Hub model info."""
+    jumpstart_model_info: JumpStartModelInfo
+    hub_content_model_id: str
+    hub_content_version: str
 
 
 class HubContentDependencyType(str, Enum):

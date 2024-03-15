@@ -187,7 +187,7 @@ def test_sync_kicks_off_parallel_syncs(
 
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
 @patch(f"{MODULE_PATH}._sync_public_model_to_hub")
-@patch(f"{MODULE_PATH}.list_models")
+@patch(f"{MODULE_PATH}._list_models")
 def test_sync_filters_models_that_exist_in_hub(
     mock_list_models, mock_sync_public_models, mock_get_model_specs, sagemaker_session
 ):
@@ -195,18 +195,18 @@ def test_sync_filters_models_that_exist_in_hub(
     mock_list_models.return_value = {
         "HubContentSummaries": [
             {
-                "name": "mock-model-two-pytorch",
-                "version": "1.0.2",
-                "search_keywords": [
-                    "@jumpstart-model-id:model-two-pytorch",
+                "HubContentName": "mock-model-two-pytorch",
+                "HubContentVersion": "1.0.2",
+                "HubContentSearchKeywords": [
+                    "@jumpstart-model-id:mock-pytorch-model-already-exists-in-hub",
                     "@jumpstart-model-version:1.0.2",
                 ],
             },
-            {"name": "mock-model-three-nonsense", "version": "1.0.2", "search_keywords": []},
+            {"HubContentName": "mock-model-three-nonsense", "HubContentVersion": "1.0.2", "HubContentSearchKeywords": []},
             {
-                "name": "mock-model-four-huggingface",
-                "version": "2.0.2",
-                "search_keywords": [
+                "HubContentName": "mock-model-four-huggingface",
+                "HubContentVersion": "2.0.2",
+                "HubContentSearchKeywords": [
                     "@jumpstart-model-id:model-four-huggingface",
                     "@jumpstart-model-version:2.0.2",
                 ],
@@ -214,21 +214,21 @@ def test_sync_filters_models_that_exist_in_hub(
         ]
     }
     hub_name = "mock_hub_name"
-    model_one = {"model_id": "mock-model-one-huggingface"}
-    model_two = {"model_id": "mock-model-two-pytorch", "version": "1.0.2"}
+    model_one = {"model_id": "mock-pytorch-model-does-not-exist"}
+    model_two = {"model_id": "mock-pytorch-model-already-exists-in-hub", "version": "1.0.2"}
     mock_sync_public_models.return_value = ""
     hub = CuratedHub(hub_name=hub_name, sagemaker_session=sagemaker_session)
 
     hub.sync([model_one, model_two])
 
     mock_sync_public_models.assert_called_once_with(
-        JumpStartModelInfo("mock-model-one-huggingface", "*"), 0
+        JumpStartModelInfo("mock-model-does-not-exist", "*"), 0
     )
 
 
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
 @patch(f"{MODULE_PATH}._sync_public_model_to_hub")
-@patch(f"{MODULE_PATH}.list_models")
+@patch(f"{MODULE_PATH}._list_models")
 def test_sync_updates_old_models_in_hub(
     mock_list_models, mock_sync_public_models, mock_get_model_specs, sagemaker_session
 ):
