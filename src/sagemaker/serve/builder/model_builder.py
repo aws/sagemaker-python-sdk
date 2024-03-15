@@ -73,11 +73,11 @@ MIB_CONVERSION_FACTOR = 0.00000095367431640625
 MEMORY_BUFFER_MULTIPLIER = 1.2  # 20% buffer
 VERSION_DETECTION_ERROR = (
     "Please install accelerate and transformers for HuggingFace (HF) model "
-    "size calculations pip install 'sagemaker[huggingface]'"
+    "size calculations e.g. pip install 'sagemaker[huggingface]'"
 )
 
 
-# pylint: disable=attribute-defined-outside-init
+# pylint: disable=attribute-defined-outside-init, disable=E1101
 @dataclass
 class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
     """Class that builds a deployable model.
@@ -730,14 +730,14 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
         to add up to an additional 20% to the given model size as found by EleutherAI.
         """
         try:
-            import accelerate.commands.estimate.estimate_command_parser
-            import accelerate.commands.estimate.gather_data
+            import accelerate.commands.estimate.estimate_command_parser as estimate_parser
+            import accelerate.commands.estimate.gather_data as estimate_gather
 
             dtypes = self.env_vars.get("dtypes", "float32")
-            parser = accelerate.commands.estimate.estimate_command_parser.estimate_command_parser()
+            parser = estimate_parser()
             args = parser.parse_args([self.model, "--dtypes", dtypes])
 
-            output = accelerate.commands.estimate.gather_data.gather_data(
+            output = estimate_gather(
                 args
             )  # "dtype", "Largest Layer", "Total Size Bytes", "Training using Adam"
         except ImportError as e:
