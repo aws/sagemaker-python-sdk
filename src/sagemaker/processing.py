@@ -22,7 +22,7 @@ import os
 import pathlib
 import logging
 from textwrap import dedent
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union
 from copy import copy
 import re
 
@@ -1845,19 +1845,18 @@ class FrameworkProcessor(ScriptProcessor):
 
         return s3_runproc_sh, inputs, job_name
 
-    def _get_codeartifact_index(self, codeartifact_repo_arn: str, codeartifact_client: Any = None):
-        """Build an authenticated codeartifact index url based on the arn provided.
+    def _get_codeartifact_command(self, codeartifact_repo_arn: str) -> str:
+        """Build an AWS CLI CodeArtifact command to configure pip.
 
         The codeartifact_repo_arn property must follow the form
         # `arn:${Partition}:codeartifact:${Region}:${Account}:repository/${Domain}/${Repository}`
         https://docs.aws.amazon.com/codeartifact/latest/ug/python-configure-pip.html
         https://docs.aws.amazon.com/service-authorization/latest/reference/list_awscodeartifact.html#awscodeartifact-resources-for-iam-policies
-        
+
         Args:
             codeartifact_repo_arn: arn of the codeartifact repository
-            codeartifact_client: boto3 client for codeartifact (used for testing)
         Returns:
-            authenticated codeartifact index url
+            codeartifact command string
         """
 
         arn_regex = (
@@ -1866,7 +1865,9 @@ class FrameworkProcessor(ScriptProcessor):
         )
         m = re.match(arn_regex, codeartifact_repo_arn)
         if not m:
-            raise ValueError("invalid CodeArtifact repository arn {}".format(codeartifact_repo_arn))
+            raise ValueError(
+                "invalid CodeArtifact repository arn {}".format(codeartifact_repo_arn)
+            )
         domain = m.group("domain")
         owner = m.group("account")
         repository = m.group("repository")
@@ -1880,28 +1881,8 @@ class FrameworkProcessor(ScriptProcessor):
             repository,
             region,
         )
-        try:
-            if not codeartifact_client:
-                codeartifact_client = self.sagemaker_session.boto_session.client("codeartifact", region_name=region)
-            
-            auth_token_response = codeartifact_client.get_authorization_token(domain=domain, domainOwner=owner)
-            token = auth_token_response["authorizationToken"]
-            endpoint_response = codeartifact_client.get_repository_endpoint(
-                domain=domain, domainOwner=owner, repository=repository, format="pypi"
-            )
-            unauthenticated_index = endpoint_response["repositoryEndpoint"]
-            return re.sub(
-                "https://",
-                "https://aws:{}@".format(token),
-                re.sub(
-                    "{}/?$".format(repository),
-                    "{}/simple/".format(repository),
-                    unauthenticated_index,
-                ),
-            )
-        except Exception as e:
-            logger.error("failed to configure pip to use codeartifact: %s", e, exc_info=True)
-            raise RuntimeError("failed to configure pip to use codeartifact")
+
+        return f"aws codeartifact login --tool pip --domain {domain} --domain-owner {owner} --repository {repository} --region {region}" # pylint: disable=line-too-long
 
     def _generate_framework_script(
         self, user_script: str, codeartifact_repo_arn: str = None
@@ -1920,10 +1901,12 @@ class FrameworkProcessor(ScriptProcessor):
                 logged into before installing dependencies (default: None).
         """
         if codeartifact_repo_arn:
-            index = self._get_codeartifact_index(codeartifact_repo_arn)
-            index_option = "-i {}".format(index)
+            codeartifact_login_command = self._get_codeartifact_command(
+                codeartifact_repo_arn
+            )
         else:
-            index_option = ""
+            codeartifact_login_command = \
+                "echo 'CodeArtifact repository not specified. Skipping login.'"
 
         return dedent(
             """\
@@ -1936,16 +1919,23 @@ class FrameworkProcessor(ScriptProcessor):
             set -e
 
             if [[ -f 'requirements.txt' ]]; then
+                # Optionally log into CodeArtifact
+                if ! hash aws 2>/dev/null; then
+                    echo "AWS CLI is not installed. Skipping CodeArtifact login."
+                else
+                    {codeartifact_login_command}
+                fi
+
                 # Some py3 containers has typing, which may breaks pip install
                 pip uninstall --yes typing
 
-                pip install -r requirements.txt {index_option}
+                pip install -r requirements.txt
             fi
 
             {entry_point_command} {entry_point} "$@"
         """
         ).format(
-            index_option=index_option,
+            codeartifact_login_command=codeartifact_login_command,
             entry_point_command=" ".join(self.command),
             entry_point=user_script,
         )
@@ -2039,7 +2029,9 @@ class FrameworkProcessor(ScriptProcessor):
         from sagemaker.workflow.utilities import _pipeline_config, hash_object
 
         if _pipeline_config and _pipeline_config.pipeline_name:
-            runproc_file_str = self._generate_framework_script(user_script, codeartifact_repo_arn)
+            runproc_file_str = self._generate_framework_script(
+                user_script, codeartifact_repo_arn
+            )
             runproc_file_hash = hash_object(runproc_file_str)
             s3_uri = s3.s3_path_join(
                 "s3://",
