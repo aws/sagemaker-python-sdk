@@ -274,14 +274,6 @@ def get_jumpstart_model_and_version(hub_content_summary: HubContentSummary) -> O
     jumpstart_model_id = jumpstart_model_id_tag[len(JUMPSTART_HUB_MODEL_ID_TAG_PREFIX):] # Need to remove the tag_prefix and ":"
     jumpstart_model_version = jumpstart_model_version_tag[len(JUMPSTART_HUB_MODEL_ID_TAG_PREFIX):]
     return JumpStartModelInfo(model_id=jumpstart_model_id, version=jumpstart_model_version)
-    
-def get_latest_version_for_model(model_id: str, region: str) -> str:
-    """Returns the latest version of a model from specs."""
-    model_specs = utils.verify_model_region_and_return_specs(
-        model_id, "*", JumpStartScriptScope.INFERENCE, region
-    )
-    return model_specs.version
-
 
 def summary_from_list_api_response(hub_content_summary: Dict[str, Any]) -> HubContentSummary:
     return HubContentSummary(

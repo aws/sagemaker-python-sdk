@@ -72,13 +72,6 @@ class JumpStartModelInfo:
     model_id: str
     version: str
 
-@dataclass
-class CuratedHubModelInfo:
-    """Helper class to store Curated Hub model info."""
-    jumpstart_model_info: JumpStartModelInfo
-    hub_content_model_id: str
-    hub_content_version: str
-
 
 class HubContentDependencyType(str, Enum):
     """Enum class for HubContent dependency names"""
