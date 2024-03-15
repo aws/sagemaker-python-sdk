@@ -33,6 +33,7 @@ from sagemaker.lineage.query import (
 from sagemaker.lineage.artifact import Artifact
 from sagemaker.lineage.action import Action
 from sagemaker.lineage.lineage_trial_component import LineageTrialComponent
+from sagemaker.utils import format_tags
 
 
 class Context(_base_types.Record):
@@ -126,7 +127,7 @@ class Context(_base_types.Record):
         Returns:
             list({str:str}): a list of key value pairs
         """
-        return self._set_tags(resource_arn=self.context_arn, tags=tags)
+        return self._set_tags(resource_arn=self.context_arn, tags=format_tags(tags))
 
     @classmethod
     def load(cls, context_name: str, sagemaker_session=None) -> "Context":

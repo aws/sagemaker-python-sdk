@@ -15,26 +15,36 @@ import os
 from unittest import TestCase
 from mock.mock import Mock, patch
 import pytest
+import boto3
 import random
+from sagemaker import session
 from sagemaker.jumpstart import utils
 from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    ENV_VARIABLE_DISABLE_JUMPSTART_LOGGING,
     ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE,
+    ENV_VARIABLE_JUMPSTART_GATED_CONTENT_BUCKET_OVERRIDE,
+    EXTRA_MODEL_ID_TAGS,
+    EXTRA_MODEL_VERSION_TAGS,
     JUMPSTART_DEFAULT_REGION_NAME,
     JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET,
+    JUMPSTART_LOGGER,
     JUMPSTART_REGION_NAME_SET,
     JUMPSTART_RESOURCE_BASE_NAME,
     JumpStartScriptScope,
 )
-
 from functools import partial
-from sagemaker.jumpstart.enums import JumpStartTag, MIMEType
+from sagemaker.jumpstart.enums import JumpStartTag, MIMEType, JumpStartModelType
 from sagemaker.jumpstart.exceptions import (
     DeprecatedJumpStartModelError,
     VulnerableJumpStartModelError,
 )
 from sagemaker.jumpstart.types import JumpStartModelHeader, JumpStartVersionedModelId
 from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec
+from mock import MagicMock
+
+
+MOCK_CLIENT = MagicMock()
 
 
 def random_jumpstart_s3_uri(key):
@@ -60,7 +70,7 @@ def test_get_jumpstart_content_bucket_override():
         with patch("logging.Logger.info") as mocked_info_log:
             random_region = "random_region"
             assert "some-val" == utils.get_jumpstart_content_bucket(random_region)
-            mocked_info_log.assert_called_once_with("Using JumpStart bucket override: 'some-val'")
+            mocked_info_log.assert_called_with("Using JumpStart bucket override: 'some-val'")
 
 
 def test_get_jumpstart_gated_content_bucket():
@@ -78,12 +88,12 @@ def test_get_jumpstart_gated_content_bucket_no_args():
 
 
 def test_get_jumpstart_gated_content_bucket_override():
-    with patch.dict(os.environ, {ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE: "some-val"}):
+    with patch.dict(os.environ, {ENV_VARIABLE_JUMPSTART_GATED_CONTENT_BUCKET_OVERRIDE: "some-val"}):
         with patch("logging.Logger.info") as mocked_info_log:
             random_region = "random_region"
             assert "some-val" == utils.get_jumpstart_gated_content_bucket(random_region)
             mocked_info_log.assert_called_once_with(
-                "Using JumpStart private bucket override: 'some-val'"
+                "Using JumpStart gated bucket override: 'some-val'"
             )
 
 
@@ -883,26 +893,30 @@ def test_update_inference_tags_with_jumpstart_training_model_tags_inference():
     )
 
 
-def test_jumpstart_accept_eula_logs():
+@patch("sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor._get_manifest")
+def test_jumpstart_accept_eula_logs(mock_get_manifest):
+    mock_get_manifest.return_value = []
+
     def make_accept_eula_inference_spec(*largs, **kwargs):
         spec = get_spec_from_base_spec(model_id="pytorch-eqa-bert-base-cased", version="*")
         spec.hosting_eula_key = "read/the/fine/print.txt"
         return spec
 
     with patch("logging.Logger.info") as mocked_info_log:
-        utils.emit_logs_based_on_model_specs(make_accept_eula_inference_spec(), "us-east-1")
-        mocked_info_log.assert_called_once_with(
-            "Model '%s' requires accepting end-user license agreement (EULA). "
-            "See https://%s.s3.%s.amazonaws.com%s/%s for terms of use.",
-            "pytorch-eqa-bert-base-cased",
-            "jumpstart-cache-prod-us-east-1",
-            "us-east-1",
-            "",
-            "read/the/fine/print.txt",
+        utils.emit_logs_based_on_model_specs(
+            make_accept_eula_inference_spec(), "us-east-1", MOCK_CLIENT
+        )
+        mocked_info_log.assert_any_call(
+            "Model 'pytorch-eqa-bert-base-cased' requires accepting end-user license agreement (EULA). "
+            "See https://jumpstart-cache-prod-us-east-1.s3.us-east-1.amazonaws.com/read/the/fine/print.txt"
+            " for terms of use.",
         )
 
 
-def test_jumpstart_vulnerable_model_warnings():
+@patch("sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor._get_manifest")
+def test_jumpstart_vulnerable_model_warnings(mock_get_manifest):
+    mock_get_manifest.return_value = []
+
     def make_vulnerable_inference_spec(*largs, **kwargs):
         spec = get_spec_from_base_spec(model_id="pytorch-eqa-bert-base-cased", version="*")
         spec.inference_vulnerable = True
@@ -910,7 +924,9 @@ def test_jumpstart_vulnerable_model_warnings():
         return spec
 
     with patch("logging.Logger.warning") as mocked_warning_log:
-        utils.emit_logs_based_on_model_specs(make_vulnerable_inference_spec(), "some-region")
+        utils.emit_logs_based_on_model_specs(
+            make_vulnerable_inference_spec(), "us-west-2", MOCK_CLIENT
+        )
         mocked_warning_log.assert_called_once_with(
             "Using vulnerable JumpStart model '%s' and version '%s'.",
             "pytorch-eqa-bert-base-cased",
@@ -918,14 +934,69 @@ def test_jumpstart_vulnerable_model_warnings():
         )
 
 
-def test_jumpstart_deprecated_model_warnings():
+@patch("sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor._get_manifest")
+def test_jumpstart_old_model_spec(mock_get_manifest):
+
+    mock_get_manifest.return_value = [
+        JumpStartModelHeader(
+            {
+                "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
+                "version": "1.1.0",
+                "min_version": "2.49.0",
+                "spec_key": "community_models_specs/tensorflow-ic-imagenet-in"
+                "ception-v3-classification-4/specs_v1.1.0.json",
+            }
+        ),
+        JumpStartModelHeader(
+            {
+                "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
+                "version": "1.0.0",
+                "min_version": "2.49.0",
+                "spec_key": "community_models_specs/tensorflow-ic-imagenet-"
+                "inception-v3-classification-4/specs_v1.0.0.json",
+            }
+        ),
+    ]
+
+    with patch("logging.Logger.info") as mocked_info_log:
+        utils.emit_logs_based_on_model_specs(
+            get_spec_from_base_spec(
+                model_id="tensorflow-ic-imagenet-inception-v3-classification-4", version="1.0.0"
+            ),
+            "us-west-2",
+            MOCK_CLIENT,
+        )
+
+        mocked_info_log.assert_called_once_with(
+            "Using model 'tensorflow-ic-imagenet-inception-v3-classification-4' with version '1.0.0'. "
+            "You can upgrade to version '1.1.0' to get the latest model specifications. Note that models "
+            "may have different input/output signatures after a major version upgrade."
+        )
+
+        mocked_info_log.reset_mock()
+
+        utils.emit_logs_based_on_model_specs(
+            get_spec_from_base_spec(
+                model_id="tensorflow-ic-imagenet-inception-v3-classification-4", version="1.1.0"
+            ),
+            "us-west-2",
+            MOCK_CLIENT,
+        )
+
+        mocked_info_log.assert_not_called()
+
+
+@patch("sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor._get_manifest")
+def test_jumpstart_deprecated_model_warnings(mock_get_manifest):
+    mock_get_manifest.return_value = []
+
     def make_deprecated_spec(*largs, **kwargs):
         spec = get_spec_from_base_spec(model_id="pytorch-eqa-bert-base-cased", version="*")
         spec.deprecated = True
         return spec
 
     with patch("logging.Logger.warning") as mocked_warning_log:
-        utils.emit_logs_based_on_model_specs(make_deprecated_spec(), "some-region")
+        utils.emit_logs_based_on_model_specs(make_deprecated_spec(), "us-west-2", MOCK_CLIENT)
 
         mocked_warning_log.assert_called_once_with(
             "Using deprecated JumpStart model 'pytorch-eqa-bert-base-cased' and version '*'."
@@ -940,7 +1011,9 @@ def test_jumpstart_deprecated_model_warnings():
         return spec
 
     with patch("logging.Logger.warning") as mocked_warning_log:
-        utils.emit_logs_based_on_model_specs(make_deprecated_message_spec(), "some-region")
+        utils.emit_logs_based_on_model_specs(
+            make_deprecated_message_spec(), "us-west-2", MOCK_CLIENT
+        )
 
         mocked_warning_log.assert_called_once_with(deprecated_message)
 
@@ -952,10 +1025,29 @@ def test_jumpstart_deprecated_model_warnings():
         return spec
 
     with patch("logging.Logger.warning") as mocked_warning_log:
-        utils.emit_logs_based_on_model_specs(make_deprecated_warning_message_spec(), "some-region")
+        utils.emit_logs_based_on_model_specs(
+            make_deprecated_warning_message_spec(), "us-west-2", MOCK_CLIENT
+        )
         mocked_warning_log.assert_called_once_with(
             deprecate_warn_message,
         )
+
+
+@patch("sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor._get_manifest")
+def test_jumpstart_usage_info_message(mock_get_manifest):
+    mock_get_manifest.return_value = []
+
+    usage_info_message = "This model might change your life."
+
+    def make_info_spec(*largs, **kwargs):
+        spec = get_spec_from_base_spec(model_id="pytorch-eqa-bert-base-cased", version="*")
+        spec.usage_info_message = usage_info_message
+        return spec
+
+    with patch("logging.Logger.info") as mocked_info_log:
+        utils.emit_logs_based_on_model_specs(make_info_spec(), "us-west-2", MOCK_CLIENT)
+
+        mocked_info_log.assert_called_with(usage_info_message)
 
 
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -978,7 +1070,10 @@ def test_jumpstart_vulnerable_model_errors(patched_get_model_specs):
     assert (
         "Version '*' of JumpStart model 'pytorch-eqa-bert-base-cased' has at least 1 "
         "vulnerable dependency in the inference script. "
-        "Please try targeting a higher version of the model or using a different model. "
+        "We recommend that you specify a more recent model version or "
+        "choose a different model. To access the "
+        "latest models and model versions, be sure to upgrade "
+        "to the latest version of the SageMaker Python SDK. "
         "List of vulnerabilities: some, vulnerability"
     ) == str(e.value.message)
 
@@ -1000,7 +1095,10 @@ def test_jumpstart_vulnerable_model_errors(patched_get_model_specs):
     assert (
         "Version '*' of JumpStart model 'pytorch-eqa-bert-base-cased' has at least 1 "
         "vulnerable dependency in the training script. "
-        "Please try targeting a higher version of the model or using a different model. "
+        "We recommend that you specify a more recent model version or "
+        "choose a different model. To access the "
+        "latest models and model versions, be sure to upgrade "
+        "to the latest version of the SageMaker Python SDK. "
         "List of vulnerabilities: some, vulnerability"
     ) == str(e.value.message)
 
@@ -1080,7 +1178,7 @@ def test_mime_type_enum_from_str():
 class TestIsValidModelId(TestCase):
     @patch("sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor._get_manifest")
     @patch("sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor.get_model_specs")
-    def test_is_valid_model_id_true(
+    def test_validate_model_id_and_get_type_true(
         self,
         mock_get_model_specs: Mock,
         mock_get_manifest: Mock,
@@ -1094,12 +1192,16 @@ class TestIsValidModelId(TestCase):
         mock_session_value = DEFAULT_JUMPSTART_SAGEMAKER_SESSION
         mock_s3_client_value = mock_session_value.s3_client
 
-        patched = partial(utils.is_valid_model_id, sagemaker_session=mock_session_value)
+        patched = partial(
+            utils.validate_model_id_and_get_type, sagemaker_session=mock_session_value
+        )
 
-        with patch("sagemaker.jumpstart.utils.is_valid_model_id", patched):
-            self.assertTrue(utils.is_valid_model_id("bee"))
-            mock_get_manifest.assert_called_once_with(
-                region=JUMPSTART_DEFAULT_REGION_NAME, s3_client=mock_s3_client_value
+        with patch("sagemaker.jumpstart.utils.validate_model_id_and_get_type", patched):
+            self.assertTrue(utils.validate_model_id_and_get_type("bee"))
+            mock_get_manifest.assert_called_with(
+                region=JUMPSTART_DEFAULT_REGION_NAME,
+                s3_client=mock_s3_client_value,
+                model_type=JumpStartModelType.PROPRIETARY,
             )
             mock_get_model_specs.assert_not_called()
 
@@ -1113,20 +1215,20 @@ class TestIsValidModelId(TestCase):
             ]
 
             mock_get_model_specs.return_value = Mock(training_supported=True)
-            self.assertTrue(utils.is_valid_model_id("bee", script=JumpStartScriptScope.TRAINING))
-            mock_get_manifest.assert_called_once_with(
-                region=JUMPSTART_DEFAULT_REGION_NAME, s3_client=mock_s3_client_value
+            self.assertTrue(
+                utils.validate_model_id_and_get_type("bee", script=JumpStartScriptScope.TRAINING)
             )
-            mock_get_model_specs.assert_called_once_with(
+            mock_get_manifest.assert_called_with(
                 region=JUMPSTART_DEFAULT_REGION_NAME,
-                model_id="bee",
-                version="*",
                 s3_client=mock_s3_client_value,
+                model_type=JumpStartModelType.PROPRIETARY,
             )
 
     @patch("sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor._get_manifest")
     @patch("sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor.get_model_specs")
-    def test_is_valid_model_id_false(self, mock_get_model_specs: Mock, mock_get_manifest: Mock):
+    def test_validate_model_id_and_get_type_false(
+        self, mock_get_model_specs: Mock, mock_get_manifest: Mock
+    ):
         mock_get_manifest.return_value = [
             Mock(model_id="ay"),
             Mock(model_id="bee"),
@@ -1136,18 +1238,18 @@ class TestIsValidModelId(TestCase):
         mock_session_value = DEFAULT_JUMPSTART_SAGEMAKER_SESSION
         mock_s3_client_value = mock_session_value.s3_client
 
-        patched = partial(utils.is_valid_model_id, sagemaker_session=mock_session_value)
+        patched = partial(
+            utils.validate_model_id_and_get_type, sagemaker_session=mock_session_value
+        )
 
-        with patch("sagemaker.jumpstart.utils.is_valid_model_id", patched):
+        with patch("sagemaker.jumpstart.utils.validate_model_id_and_get_type", patched):
 
-            self.assertFalse(utils.is_valid_model_id("dee"))
-            self.assertFalse(utils.is_valid_model_id(""))
-            self.assertFalse(utils.is_valid_model_id(None))
-            self.assertFalse(utils.is_valid_model_id(set()))
+            self.assertFalse(utils.validate_model_id_and_get_type("dee"))
+            self.assertFalse(utils.validate_model_id_and_get_type(""))
+            self.assertFalse(utils.validate_model_id_and_get_type(None))
+            self.assertFalse(utils.validate_model_id_and_get_type(set()))
 
-            mock_get_manifest.assert_called_once_with(
-                region=JUMPSTART_DEFAULT_REGION_NAME, s3_client=mock_s3_client_value
-            )
+            mock_get_manifest.assert_called()
 
             mock_get_model_specs.assert_not_called()
 
@@ -1159,34 +1261,241 @@ class TestIsValidModelId(TestCase):
                 Mock(model_id="bee"),
                 Mock(model_id="see"),
             ]
-            self.assertFalse(utils.is_valid_model_id("dee", script=JumpStartScriptScope.TRAINING))
-            mock_get_manifest.assert_called_once_with(
-                region=JUMPSTART_DEFAULT_REGION_NAME, s3_client=mock_s3_client_value
+            self.assertFalse(
+                utils.validate_model_id_and_get_type("dee", script=JumpStartScriptScope.TRAINING)
+            )
+            mock_get_manifest.assert_called_with(
+                region=JUMPSTART_DEFAULT_REGION_NAME,
+                s3_client=mock_s3_client_value,
+                model_type=JumpStartModelType.PROPRIETARY,
             )
 
             mock_get_manifest.reset_mock()
 
-            self.assertFalse(utils.is_valid_model_id("dee", script=JumpStartScriptScope.TRAINING))
-            self.assertFalse(utils.is_valid_model_id("", script=JumpStartScriptScope.TRAINING))
-            self.assertFalse(utils.is_valid_model_id(None, script=JumpStartScriptScope.TRAINING))
-            self.assertFalse(utils.is_valid_model_id(set(), script=JumpStartScriptScope.TRAINING))
+            self.assertFalse(
+                utils.validate_model_id_and_get_type("dee", script=JumpStartScriptScope.TRAINING)
+            )
+            self.assertFalse(
+                utils.validate_model_id_and_get_type("", script=JumpStartScriptScope.TRAINING)
+            )
+            self.assertFalse(
+                utils.validate_model_id_and_get_type(None, script=JumpStartScriptScope.TRAINING)
+            )
+            self.assertFalse(
+                utils.validate_model_id_and_get_type(set(), script=JumpStartScriptScope.TRAINING)
+            )
 
             mock_get_model_specs.assert_not_called()
-            mock_get_manifest.assert_called_once_with(
-                region=JUMPSTART_DEFAULT_REGION_NAME, s3_client=mock_s3_client_value
+            mock_get_manifest.assert_called_with(
+                region=JUMPSTART_DEFAULT_REGION_NAME,
+                s3_client=mock_s3_client_value,
+                model_type=JumpStartModelType.PROPRIETARY,
             )
 
             mock_get_manifest.reset_mock()
             mock_get_model_specs.reset_mock()
 
             mock_get_model_specs.return_value = Mock(training_supported=False)
-            self.assertFalse(utils.is_valid_model_id("ay", script=JumpStartScriptScope.TRAINING))
-            mock_get_manifest.assert_called_once_with(
-                region=JUMPSTART_DEFAULT_REGION_NAME, s3_client=mock_s3_client_value
+            self.assertTrue(
+                utils.validate_model_id_and_get_type("ay", script=JumpStartScriptScope.TRAINING)
             )
-            mock_get_model_specs.assert_called_once_with(
+            mock_get_manifest.assert_called_with(
                 region=JUMPSTART_DEFAULT_REGION_NAME,
-                model_id="ay",
-                version="*",
                 s3_client=mock_s3_client_value,
+                model_type=JumpStartModelType.PROPRIETARY,
             )
+
+
+class TestGetModelIdVersionFromResourceArn(TestCase):
+    def test_no_model_id_no_version_found(self):
+        mock_list_tags = Mock()
+        mock_sagemaker_session = Mock()
+        mock_sagemaker_session.list_tags = mock_list_tags
+        mock_list_tags.return_value = [{"Key": "blah", "Value": "blah1"}]
+
+        self.assertEquals(
+            utils.get_jumpstart_model_id_version_from_resource_arn(
+                "some-arn", mock_sagemaker_session
+            ),
+            (None, None),
+        )
+        mock_list_tags.assert_called_once_with("some-arn")
+
+    def test_model_id_no_version_found(self):
+        mock_list_tags = Mock()
+        mock_sagemaker_session = Mock()
+        mock_sagemaker_session.list_tags = mock_list_tags
+        mock_list_tags.return_value = [
+            {"Key": "blah", "Value": "blah1"},
+            {"Key": JumpStartTag.MODEL_ID, "Value": "model_id"},
+        ]
+
+        self.assertEquals(
+            utils.get_jumpstart_model_id_version_from_resource_arn(
+                "some-arn", mock_sagemaker_session
+            ),
+            ("model_id", None),
+        )
+        mock_list_tags.assert_called_once_with("some-arn")
+
+    def test_no_model_id_version_found(self):
+        mock_list_tags = Mock()
+        mock_sagemaker_session = Mock()
+        mock_sagemaker_session.list_tags = mock_list_tags
+        mock_list_tags.return_value = [
+            {"Key": "blah", "Value": "blah1"},
+            {"Key": JumpStartTag.MODEL_VERSION, "Value": "model_version"},
+        ]
+
+        self.assertEquals(
+            utils.get_jumpstart_model_id_version_from_resource_arn(
+                "some-arn", mock_sagemaker_session
+            ),
+            (None, "model_version"),
+        )
+        mock_list_tags.assert_called_once_with("some-arn")
+
+    def test_model_id_version_found(self):
+        mock_list_tags = Mock()
+        mock_sagemaker_session = Mock()
+        mock_sagemaker_session.list_tags = mock_list_tags
+        mock_list_tags.return_value = [
+            {"Key": "blah", "Value": "blah1"},
+            {"Key": JumpStartTag.MODEL_ID, "Value": "model_id"},
+            {"Key": JumpStartTag.MODEL_VERSION, "Value": "model_version"},
+        ]
+
+        self.assertEquals(
+            utils.get_jumpstart_model_id_version_from_resource_arn(
+                "some-arn", mock_sagemaker_session
+            ),
+            ("model_id", "model_version"),
+        )
+        mock_list_tags.assert_called_once_with("some-arn")
+
+    def test_multiple_model_id_versions_found(self):
+        mock_list_tags = Mock()
+        mock_sagemaker_session = Mock()
+        mock_sagemaker_session.list_tags = mock_list_tags
+        mock_list_tags.return_value = [
+            {"Key": "blah", "Value": "blah1"},
+            {"Key": JumpStartTag.MODEL_ID, "Value": "model_id_1"},
+            {"Key": JumpStartTag.MODEL_VERSION, "Value": "model_version_1"},
+            {"Key": JumpStartTag.MODEL_ID, "Value": "model_id_2"},
+            {"Key": JumpStartTag.MODEL_VERSION, "Value": "model_version_2"},
+        ]
+
+        self.assertEquals(
+            utils.get_jumpstart_model_id_version_from_resource_arn(
+                "some-arn", mock_sagemaker_session
+            ),
+            (None, None),
+        )
+        mock_list_tags.assert_called_once_with("some-arn")
+
+    def test_multiple_model_id_versions_found_aliases_consistent(self):
+        mock_list_tags = Mock()
+        mock_sagemaker_session = Mock()
+        mock_sagemaker_session.list_tags = mock_list_tags
+        mock_list_tags.return_value = [
+            {"Key": "blah", "Value": "blah1"},
+            {"Key": JumpStartTag.MODEL_ID, "Value": "model_id_1"},
+            {"Key": JumpStartTag.MODEL_VERSION, "Value": "model_version_1"},
+            {"Key": random.choice(EXTRA_MODEL_ID_TAGS), "Value": "model_id_1"},
+            {"Key": random.choice(EXTRA_MODEL_VERSION_TAGS), "Value": "model_version_1"},
+        ]
+
+        self.assertEquals(
+            utils.get_jumpstart_model_id_version_from_resource_arn(
+                "some-arn", mock_sagemaker_session
+            ),
+            ("model_id_1", "model_version_1"),
+        )
+        mock_list_tags.assert_called_once_with("some-arn")
+
+    def test_multiple_model_id_versions_found_aliases_inconsistent(self):
+        mock_list_tags = Mock()
+        mock_sagemaker_session = Mock()
+        mock_sagemaker_session.list_tags = mock_list_tags
+        mock_list_tags.return_value = [
+            {"Key": "blah", "Value": "blah1"},
+            {"Key": JumpStartTag.MODEL_ID, "Value": "model_id_1"},
+            {"Key": JumpStartTag.MODEL_VERSION, "Value": "model_version_1"},
+            {"Key": random.choice(EXTRA_MODEL_ID_TAGS), "Value": "model_id_2"},
+            {"Key": random.choice(EXTRA_MODEL_VERSION_TAGS), "Value": "model_version_2"},
+        ]
+
+        self.assertEquals(
+            utils.get_jumpstart_model_id_version_from_resource_arn(
+                "some-arn", mock_sagemaker_session
+            ),
+            (None, None),
+        )
+        mock_list_tags.assert_called_once_with("some-arn")
+
+
+class TestJumpStartLogger(TestCase):
+    @patch.dict("os.environ", {})
+    @patch("logging.StreamHandler.emit")
+    @patch("sagemaker.jumpstart.constants.JUMPSTART_LOGGER.propagate", False)
+    def test_logger_normal_mode(self, mocked_emit: Mock):
+
+        JUMPSTART_LOGGER.warning("Self destruct in 3...2...1...")
+
+        mocked_emit.assert_called_once()
+
+    @patch.dict("os.environ", {ENV_VARIABLE_DISABLE_JUMPSTART_LOGGING: "true"})
+    @patch("logging.StreamHandler.emit")
+    @patch("sagemaker.jumpstart.constants.JUMPSTART_LOGGER.propagate", False)
+    def test_logger_disabled(self, mocked_emit: Mock):
+
+        JUMPSTART_LOGGER.warning("Self destruct in 3...2...1...")
+
+        mocked_emit.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "s3_bucket_name, s3_client, sagemaker_session, region",
+    [
+        (
+            "jumpstart-cache-prod",
+            boto3.client("s3", region_name="blah-blah"),
+            session.Session(boto3.Session(region_name="blah-blah")),
+            JUMPSTART_DEFAULT_REGION_NAME,
+        ),
+        (
+            "jumpstart-cache-prod-us-west-2",
+            boto3.client("s3", region_name="us-west-2"),
+            session.Session(boto3.Session(region_name="us-west-2")),
+            "us-west-2",
+        ),
+        ("jumpstart-cache-prod", boto3.client("s3", region_name="us-east-2"), None, "us-east-2"),
+    ],
+)
+def test_get_region_fallback_success(s3_bucket_name, s3_client, sagemaker_session, region):
+    assert region == utils.get_region_fallback(s3_bucket_name, s3_client, sagemaker_session)
+
+
+@pytest.mark.parametrize(
+    "s3_bucket_name, s3_client, sagemaker_session",
+    [
+        (
+            "jumpstart-cache-prod-us-west-2",
+            boto3.client("s3", region_name="us-east-2"),
+            session.Session(boto3.Session(region_name="us-west-2")),
+        ),
+        (
+            "jumpstart-cache-prod-us-west-2",
+            boto3.client("s3", region_name="us-west-2"),
+            session.Session(boto3.Session(region_name="eu-north-1")),
+        ),
+        (
+            "jumpstart-cache-prod-us-west-2-us-east-2",
+            boto3.client("s3", region_name="us-east-2"),
+            None,
+        ),
+    ],
+)
+def test_get_region_fallback_failure(s3_bucket_name, s3_client, sagemaker_session):
+    with pytest.raises(ValueError):
+        utils.get_region_fallback(s3_bucket_name, s3_client, sagemaker_session)

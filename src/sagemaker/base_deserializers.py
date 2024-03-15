@@ -332,3 +332,48 @@ class JSONLinesDeserializer(SimpleBaseDeserializer):
             return [json.loads(line) for line in lines]
         finally:
             stream.close()
+
+
+class TorchTensorDeserializer(SimpleBaseDeserializer):
+    """Deserialize stream to torch.Tensor.
+
+    Args:
+        stream (botocore.response.StreamingBody): Data to be deserialized.
+        content_type (str): The MIME type of the data.
+
+    Returns:
+        torch.Tensor: The data deserialized into a torch Tensor.
+    """
+
+    def __init__(self, accept="tensor/pt"):
+        super(TorchTensorDeserializer, self).__init__(accept=accept)
+        self.numpy_deserializer = NumpyDeserializer()
+        try:
+            from torch import from_numpy
+
+            self.convert_npy_to_tensor = from_numpy
+        except ImportError:
+            raise Exception("Unable to import pytorch.")
+
+    def deserialize(self, stream, content_type="tensor/pt"):
+        """Deserialize streamed data to TorchTensor
+
+        See https://pytorch.org/docs/stable/generated/torch.from_numpy.html
+
+        Args:
+            stream (botocore.response.StreamingBody): Data to be deserialized.
+            content_type (str): The MIME type of the data.
+
+        Returns:
+            list: A list of TorchTensor serializable objects.
+        """
+        try:
+            numpy_array = self.numpy_deserializer.deserialize(
+                stream=stream, content_type="application/x-npy"
+            )
+            return self.convert_npy_to_tensor(numpy_array)
+        except Exception:
+            raise ValueError(
+                "Unable to deserialize your data to torch.Tensor.\
+                    Please provide custom deserializer in InferenceSpec."
+            )

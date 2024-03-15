@@ -96,6 +96,10 @@ Pipeline Context
 .. autoclass:: sagemaker.workflow.pipeline_context.LocalPipelineSession
     :members:
 
+Pipeline Schedule
+-----------------
+
+.. autoclass:: sagemaker.workflow.triggers.PipelineSchedule
 
 Parallelism Configuration
 -------------------------
@@ -119,7 +123,6 @@ Selective Execution Config
 --------------------------
 
 .. autoclass:: sagemaker.workflow.selective_execution_config.SelectiveExecutionConfig
-
 
 Properties
 ----------
@@ -162,6 +165,8 @@ Steps
 
 .. autoclass:: sagemaker.workflow.steps.ProcessingStep
 
+.. autoclass:: sagemaker.workflow.notebook_job_step.NotebookJobStep
+
 .. autoclass:: sagemaker.workflow.steps.CreateModelStep
 
 .. autoclass:: sagemaker.workflow.callback_step.CallbackStep
@@ -185,3 +190,14 @@ Steps
 .. autoclass:: sagemaker.workflow.emr_step.EMRStep
 
 .. autoclass:: sagemaker.workflow.automl_step.AutoMLStep
+
+@step decorator
+---------------
+
+.. automethod:: sagemaker.workflow.function_step.step
+
+.. autoclass:: sagemaker.workflow.function_step.DelayedReturn
+
+.. autoclass:: sagemaker.workflow.step_outputs.StepOutput
+
+.. autofunction:: sagemaker.workflow.step_outputs.get_step

@@ -18,12 +18,13 @@ from sagemaker.session import Session
 from sagemaker.utils import volume_size_supported
 from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-    JUMPSTART_DEFAULT_REGION_NAME,
 )
 from sagemaker.jumpstart.enums import (
     JumpStartScriptScope,
+    JumpStartModelType,
 )
 from sagemaker.jumpstart.utils import (
+    get_region_fallback,
     verify_model_region_and_return_specs,
 )
 
@@ -35,6 +36,7 @@ def _retrieve_model_init_kwargs(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> dict:
     """Retrieves kwargs for `Model`.
 
@@ -60,8 +62,9 @@ def _retrieve_model_init_kwargs(
         dict: the kwargs to use for the use case.
     """
 
-    if region is None:
-        region = JUMPSTART_DEFAULT_REGION_NAME
+    region = region or get_region_fallback(
+        sagemaker_session=sagemaker_session,
+    )
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
@@ -71,6 +74,7 @@ def _retrieve_model_init_kwargs(
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
+        model_type=model_type,
     )
 
     kwargs = deepcopy(model_specs.model_kwargs)
@@ -89,6 +93,7 @@ def _retrieve_model_deploy_kwargs(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> dict:
     """Retrieves kwargs for `Model.deploy`.
 
@@ -117,8 +122,9 @@ def _retrieve_model_deploy_kwargs(
         dict: the kwargs to use for the use case.
     """
 
-    if region is None:
-        region = JUMPSTART_DEFAULT_REGION_NAME
+    region = region or get_region_fallback(
+        sagemaker_session=sagemaker_session,
+    )
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
@@ -128,6 +134,7 @@ def _retrieve_model_deploy_kwargs(
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
+        model_type=model_type,
     )
 
     if volume_size_supported(instance_type) and model_specs.inference_volume_size is not None:
@@ -171,8 +178,9 @@ def _retrieve_estimator_init_kwargs(
         dict: the kwargs to use for the use case.
     """
 
-    if region is None:
-        region = JUMPSTART_DEFAULT_REGION_NAME
+    region = region or get_region_fallback(
+        sagemaker_session=sagemaker_session,
+    )
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
@@ -228,8 +236,9 @@ def _retrieve_estimator_fit_kwargs(
         dict: the kwargs to use for the use case.
     """
 
-    if region is None:
-        region = JUMPSTART_DEFAULT_REGION_NAME
+    region = region or get_region_fallback(
+        sagemaker_session=sagemaker_session,
+    )
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,

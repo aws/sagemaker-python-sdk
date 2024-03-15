@@ -28,6 +28,8 @@ from sagemaker import s3
 
 logger = logging.getLogger(__name__)
 
+STUDIO_APP_TYPES = ["KernelGateway", "CodeEditor", "JupyterLab"]
+
 
 def copy_directory_structure(destination_directory, relative_path):
     """Creates intermediate directory structure for relative_path.
@@ -53,7 +55,7 @@ def copy_directory_structure(destination_directory, relative_path):
     os.makedirs(destination_directory, relative_path)
 
 
-def move_to_destination(source, destination, job_name, sagemaker_session):
+def move_to_destination(source, destination, job_name, sagemaker_session, prefix=""):
     """Move source to destination.
 
     Can handle uploading to S3.
@@ -64,6 +66,8 @@ def move_to_destination(source, destination, job_name, sagemaker_session):
         job_name (str): SageMaker job name.
         sagemaker_session (sagemaker.Session): a sagemaker_session to interact
             with S3 if needed
+        prefix (str, optional): the directory on S3 used to save files, default
+            to the root of  ``destination``
 
     Returns:
         (str): destination URI
@@ -75,7 +79,7 @@ def move_to_destination(source, destination, job_name, sagemaker_session):
         final_uri = destination
     elif parsed_uri.scheme == "s3":
         bucket = parsed_uri.netloc
-        path = s3.s3_path_join(parsed_uri.path, job_name)
+        path = s3.s3_path_join(parsed_uri.path, job_name, prefix)
         final_uri = s3.s3_path_join("s3://", bucket, path)
         sagemaker_session.upload_data(source, bucket, path)
     else:
@@ -214,3 +218,29 @@ def get_using_dot_notation(dictionary, keys):
         return get_using_dot_notation(inner_dict, rest)
     except (KeyError, IndexError, TypeError):
         raise ValueError(f"{keys} does not exist in input dictionary.")
+
+
+def check_for_studio():
+    """Helper function to determine if the run environment is studio.
+
+    Returns (bool): Returns True if valid Studio request.
+
+    Raises:
+        NotImplementedError:
+            if run environment = Studio and AppType not in STUDIO_APP_TYPES
+    """
+    is_studio = False
+    if os.path.exists("/opt/ml/metadata/resource-metadata.json"):
+        with open("/opt/ml/metadata/resource-metadata.json", "r") as handle:
+            metadata = json.load(handle)
+        app_type = metadata.get("AppType")
+        if app_type:
+            # check if the execution is triggered from Studio KernelGateway App
+            if app_type in STUDIO_APP_TYPES:
+                is_studio = True
+            else:
+                raise NotImplementedError(
+                    f"AppType {app_type} in Studio does not support Local Mode."
+                )
+        # if no apptype, case of classic notebooks
+    return is_studio

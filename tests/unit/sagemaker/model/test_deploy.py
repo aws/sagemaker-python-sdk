@@ -22,6 +22,7 @@ from sagemaker.model import Model, ModelPackage
 from sagemaker.async_inference import AsyncInferenceConfig
 from sagemaker.serverless import ServerlessInferenceConfig
 from sagemaker.explainer import ExplainerConfig
+from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
 from tests.unit.sagemaker.inference_recommender.constants import (
     DESCRIBE_COMPILATION_JOB_RESPONSE,
     DESCRIBE_MODEL_PACKAGE_RESPONSE,
@@ -76,6 +77,14 @@ BASE_PRODUCTION_VARIANT = {
 SHAP_BASELINE = '1,2,3,"good product"'
 CSV_MIME_TYPE = "text/csv"
 BUCKET_NAME = "mybucket"
+RESOURCES = ResourceRequirements(
+    requests={
+        "num_cpus": 1,  # NumberOfCpuCoresRequired
+        "memory": 1024,  # MinMemoryRequiredInMb (required)
+        "copies": 1,
+    },
+    limits={},
+)
 
 
 @pytest.fixture
@@ -105,7 +114,7 @@ def test_deploy(name_from_base, prepare_container_def, production_variant, sagem
     assert 2 == name_from_base.call_count
 
     prepare_container_def.assert_called_with(
-        INSTANCE_TYPE, accelerator_type=None, serverless_inference_config=None
+        INSTANCE_TYPE, accelerator_type=None, serverless_inference_config=None, accept_eula=None
     )
     production_variant.assert_called_with(
         MODEL_NAME,
@@ -136,6 +145,7 @@ def test_deploy(name_from_base, prepare_container_def, production_variant, sagem
         explainer_config_dict=None,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
+        live_logging=False,
     )
 
 
@@ -185,6 +195,7 @@ def test_deploy_accelerator_type(
         explainer_config_dict=None,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
+        live_logging=False,
     )
 
 
@@ -211,6 +222,7 @@ def test_deploy_endpoint_name(sagemaker_session):
         explainer_config_dict=None,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
+        live_logging=False,
     )
 
 
@@ -291,6 +303,7 @@ def test_deploy_tags(create_sagemaker_model, production_variant, name_from_base,
         explainer_config_dict=None,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
+        live_logging=False,
     )
 
 
@@ -314,6 +327,7 @@ def test_deploy_kms_key(production_variant, name_from_base, sagemaker_session):
         explainer_config_dict=None,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
+        live_logging=False,
     )
 
 
@@ -336,6 +350,7 @@ def test_deploy_async(production_variant, name_from_base, sagemaker_session):
         explainer_config_dict=None,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
+        live_logging=False,
     )
 
 
@@ -366,6 +381,7 @@ def test_deploy_data_capture_config(production_variant, name_from_base, sagemake
         explainer_config_dict=None,
         data_capture_config_dict=data_capture_config_dict,
         async_inference_config_dict=None,
+        live_logging=False,
     )
 
 
@@ -400,6 +416,7 @@ def test_deploy_explainer_config(production_variant, name_from_base, sagemaker_s
         explainer_config_dict=explainer_config_dict,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
+        live_logging=False,
     )
 
 
@@ -448,6 +465,7 @@ def test_deploy_async_inference(production_variant, name_from_base, sagemaker_se
         explainer_config_dict=None,
         data_capture_config_dict=None,
         async_inference_config_dict=async_inference_config_dict,
+        live_logging=False,
     )
 
 
@@ -499,6 +517,7 @@ def test_deploy_serverless_inference(production_variant, create_sagemaker_model,
         explainer_config_dict=None,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
+        live_logging=False,
     )
 
 
@@ -908,7 +927,7 @@ def test_deploy_customized_volume_size_and_timeout(
     assert 2 == name_from_base.call_count
 
     prepare_container_def.assert_called_with(
-        INSTANCE_TYPE, accelerator_type=None, serverless_inference_config=None
+        INSTANCE_TYPE, accelerator_type=None, serverless_inference_config=None, accept_eula=None
     )
     production_variant.assert_called_with(
         MODEL_NAME,
@@ -939,4 +958,72 @@ def test_deploy_customized_volume_size_and_timeout(
         explainer_config_dict=None,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
+        live_logging=False,
+    )
+
+
+@patch("sagemaker.production_variant")
+@patch("sagemaker.utils.name_from_base", return_value=ENDPOINT_NAME)
+@patch("sagemaker.model.Model._create_sagemaker_model", Mock())
+@patch("sagemaker.production_variant", return_value=BASE_PRODUCTION_VARIANT)
+def test_deploy_with_resources(sagemaker_session, name_from_base, production_variant):
+    production_variant.return_value = BASE_PRODUCTION_VARIANT
+    sagemaker_session.sagemaker_config = {}
+    model = Model(
+        MODEL_IMAGE, MODEL_DATA, name=MODEL_NAME, role=ROLE, sagemaker_session=sagemaker_session
+    )
+
+    model.deploy(
+        instance_type=INSTANCE_TYPE,
+        initial_instance_count=INSTANCE_COUNT,
+        resource=RESOURCES,
+    )
+    production_variant.assert_called_with(
+        MODEL_NAME,
+        INSTANCE_TYPE,
+        INSTANCE_COUNT,
+        accelerator_type=None,
+        serverless_inference_config=None,
+        volume_size=None,
+        model_data_download_timeout=None,
+        container_startup_health_check_timeout=None,
+    )
+    sagemaker_session.endpoint_from_production_variants.assert_called_with(
+        name=name_from_base(MODEL_NAME),
+        production_variants=[BASE_PRODUCTION_VARIANT],
+        tags=None,
+        kms_key=None,
+        wait=True,
+        explainer_config_dict=None,
+        data_capture_config_dict=None,
+        async_inference_config_dict=None,
+        live_logging=False,
+    )
+
+
+@patch("sagemaker.model.Model._create_sagemaker_model", Mock())
+@patch("sagemaker.production_variant", return_value=BASE_PRODUCTION_VARIANT)
+def test_deploy_with_name_and_resources(sagemaker_session):
+    sagemaker_session.sagemaker_config = {}
+    model = Model(
+        MODEL_IMAGE, MODEL_DATA, name=MODEL_NAME, role=ROLE, sagemaker_session=sagemaker_session
+    )
+
+    endpoint_name = "inference-component-based-endpoint-test"
+    model.deploy(
+        endpoint_name=endpoint_name,
+        instance_type=INSTANCE_TYPE,
+        initial_instance_count=INSTANCE_COUNT,
+        resource=RESOURCES,
+    )
+    sagemaker_session.endpoint_from_production_variants.assert_called_with(
+        name=endpoint_name,
+        production_variants=[BASE_PRODUCTION_VARIANT],
+        tags=None,
+        kms_key=None,
+        wait=True,
+        explainer_config_dict=None,
+        data_capture_config_dict=None,
+        async_inference_config_dict=None,
+        live_logging=False,
     )

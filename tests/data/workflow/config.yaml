@@ -1,0 +1,10 @@
+SchemaVersion: '1.0'
+SageMaker:
+  PythonSDK:
+    Modules:
+      RemoteFunction:
+        IncludeLocalWorkDir: true
+        CustomFileFilter:
+          IgnoreNamePatterns:
+            - "data"
+            - "test"

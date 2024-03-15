@@ -18,6 +18,7 @@ from mock.mock import Mock, patch
 import pytest
 
 from sagemaker.jumpstart import accessors
+from sagemaker.jumpstart.enums import JumpStartModelType
 from tests.unit.sagemaker.jumpstart.constants import BASE_MANIFEST
 from tests.unit.sagemaker.jumpstart.utils import (
     get_header_from_base_header,
@@ -63,8 +64,51 @@ def test_jumpstart_models_cache_get_fxs(mock_cache):
     reload(accessors)
 
 
+@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._cache")
+def test_jumpstart_proprietary_models_cache_get(mock_cache):
+
+    mock_cache.get_manifest = Mock(return_value=BASE_MANIFEST)
+    mock_cache.get_header = Mock(side_effect=get_header_from_base_header)
+    mock_cache.get_specs = Mock(side_effect=get_spec_from_base_spec)
+
+    assert get_header_from_base_header(
+        region="us-west-2",
+        model_id="ai21-summarization",
+        version="*",
+        model_type=JumpStartModelType.PROPRIETARY,
+    ) == accessors.JumpStartModelsAccessor.get_model_header(
+        region="us-west-2",
+        model_id="ai21-summarization",
+        version="*",
+        model_type=JumpStartModelType.PROPRIETARY,
+    )
+    assert get_spec_from_base_spec(
+        region="us-west-2",
+        model_id="ai21-summarization",
+        version="*",
+        model_type=JumpStartModelType.PROPRIETARY,
+    ) == accessors.JumpStartModelsAccessor.get_model_specs(
+        region="us-west-2",
+        model_id="ai21-summarization",
+        version="*",
+        model_type=JumpStartModelType.PROPRIETARY,
+    )
+
+    assert (
+        len(
+            accessors.JumpStartModelsAccessor._get_manifest(
+                model_type=JumpStartModelType.PROPRIETARY
+            )
+        )
+        > 0
+    )
+
+    # necessary because accessors is a static module
+    reload(accessors)
+
+
 @patch("sagemaker.jumpstart.cache.JumpStartModelsCache")
-def test_jumpstart_models_cache_set_reset_fxs(mock_model_cache: Mock):
+def test_jumpstart_models_cache_set_reset(mock_model_cache: Mock):
 
     # test change of region resets cache
     accessors.JumpStartModelsAccessor.get_model_header(
@@ -133,6 +177,50 @@ def test_jumpstart_models_cache_set_reset_fxs(mock_model_cache: Mock):
         accessors.JumpStartModelsAccessor._validate_and_mutate_region_cache_kwargs(
             {"some": "kwarg", "region": "us-east-2"}, "us-west-2"
         )
+
+    # necessary because accessors is a static module
+    reload(accessors)
+
+
+@patch("sagemaker.jumpstart.cache.JumpStartModelsCache")
+def test_jumpstart_proprietary_models_cache_set_reset(mock_model_cache: Mock):
+
+    # test change of region resets cache
+    accessors.JumpStartModelsAccessor.get_model_header(
+        region="us-west-2",
+        model_id="ai21-summarization",
+        version="*",
+        model_type=JumpStartModelType.PROPRIETARY,
+    )
+
+    accessors.JumpStartModelsAccessor.get_model_specs(
+        region="us-west-2",
+        model_id="ai21-summarization",
+        version="*",
+        model_type=JumpStartModelType.PROPRIETARY,
+    )
+
+    mock_model_cache.assert_called_once()
+    mock_model_cache.reset_mock()
+
+    accessors.JumpStartModelsAccessor.get_model_header(
+        region="us-east-2",
+        model_id="ai21-summarization",
+        version="*",
+        model_type=JumpStartModelType.PROPRIETARY,
+    )
+
+    mock_model_cache.assert_called_once()
+    mock_model_cache.reset_mock()
+
+    accessors.JumpStartModelsAccessor.get_model_specs(
+        region="us-west-1",
+        model_id="ai21-summarization",
+        version="*",
+        model_type=JumpStartModelType.PROPRIETARY,
+    )
+    mock_model_cache.assert_called_once()
+    mock_model_cache.reset_mock()
 
     # necessary because accessors is a static module
     reload(accessors)

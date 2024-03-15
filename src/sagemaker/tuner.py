@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Placeholder docstring"""
+
 from __future__ import absolute_import
 
 import importlib
@@ -52,6 +53,8 @@ from sagemaker.utils import (
     base_name_from_image,
     name_from_base,
     to_string,
+    format_tags,
+    Tags,
 )
 
 AMAZON_ESTIMATOR_MODULE = "sagemaker"
@@ -603,7 +606,7 @@ class HyperparameterTuner(object):
         max_jobs: Union[int, PipelineVariable] = None,
         max_parallel_jobs: Union[int, PipelineVariable] = 1,
         max_runtime_in_seconds: Optional[Union[int, PipelineVariable]] = None,
-        tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+        tags: Optional[Tags] = None,
         base_tuning_job_name: Optional[str] = None,
         warm_start_config: Optional[WarmStartConfig] = None,
         strategy_config: Optional[StrategyConfig] = None,
@@ -639,8 +642,11 @@ class HyperparameterTuner(object):
                 extract the metric from the logs. This should be defined only
                 for hyperparameter tuning jobs that don't use an Amazon
                 algorithm.
-            strategy (str or PipelineVariable): Strategy to be used for hyperparameter estimations
-                (default: 'Bayesian').
+            strategy (str or PipelineVariable): Strategy to be used for hyperparameter estimations.
+                More information about different strategies:
+                https://docs.aws.amazon.com/sagemaker/latest/dg/automatic-model-tuning-how-it-works.html.
+                Available options are: 'Bayesian', 'Random', 'Hyperband',
+                'Grid' (default: 'Bayesian')
             objective_type (str or PipelineVariable): The type of the objective metric for
                 evaluating training jobs. This value can be either 'Minimize' or
                 'Maximize' (default: 'Maximize').
@@ -651,9 +657,8 @@ class HyperparameterTuner(object):
                 start (default: 1).
             max_runtime_in_seconds (int or PipelineVariable): The maximum time in seconds
                  that a hyperparameter tuning job can run.
-            tags (list[dict[str, str] or list[dict[str, PipelineVariable]]): List of tags for
-                labeling the tuning job (default: None). For more, see
-                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            tags (Optional[Tags]): Tags for labeling the tuning job (default: None).
+                For more, see https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
             base_tuning_job_name (str): Prefix for the hyperparameter tuning job
                 name when the :meth:`~sagemaker.tuner.HyperparameterTuner.fit`
                 method launches. If not specified, a default job name is
@@ -746,7 +751,7 @@ class HyperparameterTuner(object):
         self.max_parallel_jobs = max_parallel_jobs
         self.max_runtime_in_seconds = max_runtime_in_seconds
 
-        self.tags = tags
+        self.tags = format_tags(tags)
         self.base_tuning_job_name = base_tuning_job_name
         self._current_job_name = None
         self.latest_tuning_job = None
@@ -758,7 +763,8 @@ class HyperparameterTuner(object):
         self.autotune = autotune
 
     def override_resource_config(
-        self, instance_configs: Union[List[InstanceConfig], Dict[str, List[InstanceConfig]]]
+        self,
+        instance_configs: Union[List[InstanceConfig], Dict[str, List[InstanceConfig]]],
     ):
         """Override the instance configuration of the estimators used by the tuner.
 
@@ -965,7 +971,7 @@ class HyperparameterTuner(object):
         include_cls_metadata: Union[bool, Dict[str, bool]] = False,
         estimator_kwargs: Optional[Dict[str, dict]] = None,
         wait: bool = True,
-        **kwargs
+        **kwargs,
     ):
         """Start a hyperparameter tuning job.
 
@@ -1054,7 +1060,7 @@ class HyperparameterTuner(object):
             allowed_keys=estimator_names,
         )
 
-        for (estimator_name, estimator) in self.estimator_dict.items():
+        for estimator_name, estimator in self.estimator_dict.items():
             ins = inputs.get(estimator_name, None) if inputs is not None else None
             args = estimator_kwargs.get(estimator_name, {}) if estimator_kwargs is not None else {}
             self._prepare_estimator_for_tuning(estimator, ins, job_name, **args)
@@ -1281,7 +1287,7 @@ class HyperparameterTuner(object):
             objective_metric_name_dict=objective_metric_name_dict,
             hyperparameter_ranges_dict=hyperparameter_ranges_dict,
             metric_definitions_dict=metric_definitions_dict,
-            **init_params
+            **init_params,
         )
 
     def deploy(
@@ -1296,7 +1302,7 @@ class HyperparameterTuner(object):
         model_name=None,
         kms_key=None,
         data_capture_config=None,
-        **kwargs
+        **kwargs,
     ):
         """Deploy the best trained or user specified model to an Amazon SageMaker endpoint.
 
@@ -1362,7 +1368,7 @@ class HyperparameterTuner(object):
             model_name=model_name,
             kms_key=kms_key,
             data_capture_config=data_capture_config,
-            **kwargs
+            **kwargs,
         )
 
     def stop_tuning_job(self):
@@ -1924,7 +1930,8 @@ class HyperparameterTuner(object):
                 (default: 1).
             max_runtime_in_seconds (int): The maximum time in seconds
                  that a hyperparameter tuning job can run.
-            tags (list[dict]): List of tags for labeling the tuning job (default: None). For more,
+            tags (Optional[Tags]): List of tags for labeling the tuning job (default: None).
+                For more,
                 see https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
             warm_start_config (sagemaker.tuner.WarmStartConfig): A ``WarmStartConfig`` object that
                 has been initialized with the configuration defining the nature of warm start
@@ -1988,7 +1995,7 @@ class HyperparameterTuner(object):
             max_jobs=max_jobs,
             max_parallel_jobs=max_parallel_jobs,
             max_runtime_in_seconds=max_runtime_in_seconds,
-            tags=tags,
+            tags=format_tags(tags),
             warm_start_config=warm_start_config,
             early_stopping_type=early_stopping_type,
             random_seed=random_seed,

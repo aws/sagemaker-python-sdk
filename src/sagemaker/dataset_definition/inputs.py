@@ -198,7 +198,7 @@ class S3Input(ApiObject):
                 the path to a local directory. If not provided, skips data download
                 by SageMaker platform.
             s3_data_type (str, default="S3Prefix"): Valid options are "ManifestFile" or "S3Prefix".
-            s3_input_mode (str, default="File"): Valid options are "Pipe" or "File".
+            s3_input_mode (str, default="File"): Valid options are "Pipe", "File" or "FastFile".
             s3_data_distribution_type (str, default="FullyReplicated"):
                 Valid options are "FullyReplicated" or "ShardedByS3Key".
             s3_compression_type (str, default=None): Valid options are "None" or "Gzip".

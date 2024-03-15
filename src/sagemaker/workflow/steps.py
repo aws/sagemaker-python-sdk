@@ -35,10 +35,8 @@ from sagemaker.processing import (
 )
 from sagemaker.transformer import Transformer, _TransformJob
 from sagemaker.tuner import HyperparameterTuner, _TuningJob
-from sagemaker.workflow.conditions import Condition
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import (
-    DefaultEnumMeta,
     Entity,
     RequestType,
 )
@@ -50,13 +48,14 @@ from sagemaker.workflow.properties import (
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.functions import Join, JsonGet
 from sagemaker.workflow.retry import RetryPolicy
+from sagemaker.workflow.step_outputs import StepOutput
 from sagemaker.workflow.utilities import trim_request_dict
 
 if TYPE_CHECKING:
     from sagemaker.workflow.step_collections import StepCollection
 
 
-class StepTypeEnum(Enum, metaclass=DefaultEnumMeta):
+class StepTypeEnum(Enum):
     """Enum of `Step` types."""
 
     CONDITION = "Condition"
@@ -75,25 +74,51 @@ class StepTypeEnum(Enum, metaclass=DefaultEnumMeta):
     AUTOML = "AutoML"
 
 
-@attr.s
 class Step(Entity):
-    """Pipeline `Step` for SageMaker Pipelines Workflows.
+    """Pipeline `Step` for SageMaker Pipelines Workflows."""
 
-    Attributes:
-        name (str): The name of the `Step`.
-        display_name (str): The display name of the `Step`.
-        description (str): The description of the `Step`.
-        step_type (StepTypeEnum): The type of the `Step`.
-        depends_on (List[Union[str, Step, StepCollection]]): The list of `Step`/`StepCollection`
-            names or `Step` instances or `StepCollection` instances that the current `Step`
-            depends on.
-    """
+    def __init__(
+        self,
+        name: str,
+        display_name: Optional[str] = None,
+        description: Optional[str] = None,
+        step_type: StepTypeEnum = None,
+        depends_on: Optional[List[Union[str, "Step", "StepCollection", StepOutput]]] = None,
+    ):
+        """Initialize a Step
 
-    name: str = attr.ib(factory=str)
-    display_name: Optional[str] = attr.ib(default=None)
-    description: Optional[str] = attr.ib(default=None)
-    step_type: StepTypeEnum = attr.ib(factory=StepTypeEnum.factory)
-    depends_on: Optional[List[Union[str, "Step", "StepCollection"]]] = attr.ib(default=None)
+        Args:
+            name (str): The name of the `Step`.
+            display_name (str): The display name of the `Step`.
+            description (str): The description of the `Step`.
+            step_type (StepTypeEnum): The type of the `Step`.
+            depends_on (List[Union[str, Step, StepCollection]]): The list of `Step`/`StepCollection`
+                names or `Step` or `StepCollection`, `StepOutput` instances that the current `Step`
+                depends on.
+        """
+        self.name = name
+        self.display_name = display_name
+        self.description = description
+        self.step_type = step_type
+        if depends_on is not None:
+            self._depends_on = depends_on
+        else:
+            self._depends_on = None
+
+    @property
+    def depends_on(self) -> Optional[List[Union[str, "Step", "StepCollection", StepOutput]]]:
+        """The list of steps the current `Step` depends on."""
+
+        return self._depends_on
+
+    @depends_on.setter
+    def depends_on(self, depends_on: List[Union[str, "Step", "StepCollection", StepOutput]]):
+        """Set the list of  steps the current step explicitly depends on."""
+
+        if depends_on is not None:
+            self._depends_on = depends_on
+        else:
+            self._depends_on = None
 
     @property
     @abc.abstractmethod
@@ -122,7 +147,7 @@ class Step(Entity):
             "Arguments": self.arguments,
         }
         if self.depends_on:
-            request_dict["DependsOn"] = self._resolve_depends_on(self.depends_on)
+            request_dict["DependsOn"] = list(self.depends_on)
         if self.display_name:
             request_dict["DisplayName"] = self.display_name
         if self.description:
@@ -130,44 +155,27 @@ class Step(Entity):
 
         return request_dict
 
-    def add_depends_on(self, step_names: List[Union[str, "Step", "StepCollection"]]):
+    def add_depends_on(self, step_names: List[Union[str, "Step", "StepCollection", StepOutput]]):
         """Add `Step` names or `Step` instances to the current `Step` depends on list."""
 
         if not step_names:
             return
 
-        if not self.depends_on:
-            self.depends_on = []
-        self.depends_on.extend(step_names)
+        if not self._depends_on:
+            self._depends_on = []
+
+        self._depends_on.extend(step_names)
 
     @property
     def ref(self) -> Dict[str, str]:
         """Gets a reference dictionary for `Step` instances."""
         return {"Name": self.name}
 
-    @staticmethod
-    def _resolve_depends_on(
-        depends_on_list: List[Union[str, "Step", "StepCollection"]]
-    ) -> List[str]:
-        """Resolve the `Step` depends on list."""
-        from sagemaker.workflow.step_collections import StepCollection
-
-        depends_on = []
-        for step in depends_on_list:
-            # As for StepCollection, the names of its sub steps will be interpolated
-            # when generating the pipeline definition
-            if isinstance(step, (Step, StepCollection)):
-                depends_on.append(step.name)
-            elif isinstance(step, str):
-                depends_on.append(step)
-            else:
-                raise ValueError(f"Invalid input step type: {type(step)}")
-        return depends_on
-
+    # TODO: move this method to CompiledStep
     def _find_step_dependencies(
         self, step_map: Dict[str, Union["Step", "StepCollection"]]
     ) -> List[str]:
-        """Find the all step names this step is dependent on."""
+        """Find all step names this step is dependent on."""
         step_dependencies = set()
         if self.depends_on:
             step_dependencies.update(self._find_dependencies_in_depends_on_list(step_map))
@@ -199,36 +207,45 @@ class Step(Entity):
     ):
         """Find the step dependencies referenced in the arguments of this step."""
         dependencies = set()
-        if isinstance(obj, dict):
-            for value in obj.values():
-                if isinstance(value, (PipelineVariable, Condition)):
-                    for referenced_step in value._referenced_steps:
-                        dependencies.add(self._get_step_name_from_str(referenced_step, step_map))
-                    if isinstance(value, JsonGet):
-                        self._validate_json_get_function(value, step_map)
-                dependencies.update(self._find_dependencies_in_step_arguments(value, step_map))
-        elif isinstance(obj, list):
-            for item in obj:
-                if isinstance(item, (PipelineVariable, Condition)):
-                    for referenced_step in item._referenced_steps:
-                        dependencies.add(self._get_step_name_from_str(referenced_step, step_map))
-                    if isinstance(item, JsonGet):
-                        self._validate_json_get_function(item, step_map)
-                dependencies.update(self._find_dependencies_in_step_arguments(item, step_map))
+        pipeline_variables = Step._find_pipeline_variables_in_step_arguments(obj)
+        for pipeline_variable in pipeline_variables:
+            for referenced_step in pipeline_variable._referenced_steps:
+                if isinstance(referenced_step, Step):
+                    dependencies.add(referenced_step.name)
+                else:
+                    dependencies.add(self._get_step_name_from_str(referenced_step, step_map))
+
+            from sagemaker.workflow.function_step import DelayedReturn
+
+            # TODO: we can remove the if-elif once move the validators to JsonGet constructor
+            if isinstance(pipeline_variable, JsonGet):
+                self._validate_json_get_function(pipeline_variable, step_map)
+            elif isinstance(pipeline_variable, DelayedReturn):
+                # DelayedReturn showing up in arguments, meaning that it's data referenced
+                # We should convert it to JsonGet and validate the JsonGet object
+                self._validate_json_get_function(pipeline_variable._to_json_get(), step_map)
+
         return dependencies
 
     def _validate_json_get_function(
         self, json_get: JsonGet, step_map: Dict[str, Union["Step", "StepCollection"]]
     ):
         """Validate the JsonGet function inputs."""
+        if json_get.property_file:
+            self._validate_json_get_property_file_reference(json_get=json_get, step_map=step_map)
+
+    # TODO: move it to JsonGet constructor
+    def _validate_json_get_property_file_reference(self, json_get: JsonGet, step_map: dict):
+        """Validate the property file reference in JsonGet"""
         property_file_reference = json_get.property_file
         processing_step = step_map[json_get.step_name]
         property_file = None
         if isinstance(property_file_reference, str):
-            if not isinstance(processing_step, ProcessingStep):
+            if not processing_step.step_type == StepTypeEnum.PROCESSING:
                 raise ValueError(
-                    f"Invalid JsonGet function {json_get.expr} in step '{self.name}'. JsonGet "
-                    f"function can only be evaluated on processing step outputs."
+                    f"Invalid JsonGet function {json_get.expr} in step '{self.name}'. "
+                    f"JsonGet function (with property_file) can only be evaluated "
+                    f"on processing step outputs."
                 )
             for file in processing_step.property_files:
                 if file.name == property_file_reference:
@@ -252,6 +269,26 @@ class Step(Entity):
                 f"Processing output name '{property_file.output_name}' defined in property file "
                 f"'{property_file.name}' not found in processing step '{processing_step.name}'."
             )
+
+    @staticmethod
+    def _find_pipeline_variables_in_step_arguments(obj: RequestType) -> List[PipelineVariable]:
+        """Recursively find all the pipeline variables in the step arguments."""
+        pipeline_variables = list()
+        if isinstance(obj, dict):
+            for value in obj.values():
+                if isinstance(value, PipelineVariable):
+                    pipeline_variables.append(value)
+                else:
+                    pipeline_variables.extend(
+                        Step._find_pipeline_variables_in_step_arguments(value)
+                    )
+        elif isinstance(obj, list):
+            for item in obj:
+                if isinstance(item, PipelineVariable):
+                    pipeline_variables.append(item)
+                else:
+                    pipeline_variables.extend(Step._find_pipeline_variables_in_step_arguments(item))
+        return pipeline_variables
 
     @staticmethod
     def _get_step_name_from_str(
@@ -327,7 +364,7 @@ class ConfigurableRetryStep(Step):
         step_type: StepTypeEnum,
         display_name: str = None,
         description: str = None,
-        depends_on: Optional[List[Union[str, Step, "StepCollection"]]] = None,
+        depends_on: Optional[List[Union[str, Step, "StepCollection", StepOutput]]] = None,
         retry_policies: List[RetryPolicy] = None,
     ):
         super().__init__(
@@ -429,7 +466,9 @@ class TrainingStep(ConfigurableRetryStep):
         self.estimator = estimator
         self.inputs = inputs
 
-        self._properties = Properties(step_name=name, shape_name="DescribeTrainingJobResponse")
+        self._properties = Properties(
+            step_name=name, step=self, shape_name="DescribeTrainingJobResponse"
+        )
         self.cache_config = cache_config
 
         if self.cache_config:
@@ -581,7 +620,7 @@ class CreateModelStep(ConfigurableRetryStep):
         self.model = model
         self.inputs = inputs or CreateModelInput()
 
-        self._properties = Properties(step_name=name, shape_name="DescribeModelOutput")
+        self._properties = Properties(step_name=name, step=self, shape_name="DescribeModelOutput")
 
         warnings.warn(
             (
@@ -690,7 +729,9 @@ class TransformStep(ConfigurableRetryStep):
         self.transformer = transformer
         self.inputs = inputs
         self.cache_config = cache_config
-        self._properties = Properties(step_name=name, shape_name="DescribeTransformJobResponse")
+        self._properties = Properties(
+            step_name=name, step=self, shape_name="DescribeTransformJobResponse"
+        )
 
         if not self.step_args:
             if inputs is None:
@@ -836,7 +877,9 @@ class ProcessingStep(ConfigurableRetryStep):
         self.job_name = None
         self.kms_key = kms_key
         self.cache_config = cache_config
-        self._properties = Properties(step_name=name, shape_name="DescribeProcessingJobResponse")
+        self._properties = Properties(
+            step_name=name, step=self, shape_name="DescribeProcessingJobResponse"
+        )
 
         if not self.step_args:
             # Examine why run method in `sagemaker.processing.Processor`
@@ -1015,6 +1058,7 @@ class TuningStep(ConfigurableRetryStep):
         self.job_arguments = job_arguments
         self._properties = Properties(
             step_name=name,
+            step=self,
             shape_names=[
                 "DescribeHyperParameterTuningJobResponse",
                 "ListTrainingJobsForHyperParameterTuningJobResponse",

@@ -52,6 +52,7 @@ class MXNetPredictor(Predictor):
         sagemaker_session=None,
         serializer=JSONSerializer(),
         deserializer=JSONDeserializer(),
+        component_name=None,
     ):
         """Initialize an ``MXNetPredictor``.
 
@@ -66,12 +67,15 @@ class MXNetPredictor(Predictor):
                 json. Handles dicts, lists, and numpy arrays.
             deserializer (callable): Optional. Default parses the response using
                 ``json.load(...)``.
+            component_name (str): Optional. Name of the Amazon SageMaker inference
+                component corresponding to the predictor.
         """
         super(MXNetPredictor, self).__init__(
             endpoint_name,
             sagemaker_session,
             serializer=serializer,
             deserializer=deserializer,
+            component_name=component_name,
         )
 
 
@@ -172,6 +176,7 @@ class MXNetModel(FrameworkModel):
         nearest_model_name: Optional[Union[str, PipelineVariable]] = None,
         data_input_configuration: Optional[Union[str, PipelineVariable]] = None,
         skip_model_validation: Optional[Union[str, PipelineVariable]] = None,
+        source_uri: Optional[Union[str, PipelineVariable]] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -221,6 +226,8 @@ class MXNetModel(FrameworkModel):
                 (default: None).
             skip_model_validation (str or PipelineVariable): Indicates if you want to skip model
                 validation. Values can be "All" or "None" (default: None).
+            source_uri (str or PipelineVariable): The URI of the source for the model package
+                (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance.
@@ -260,10 +267,15 @@ class MXNetModel(FrameworkModel):
             nearest_model_name=nearest_model_name,
             data_input_configuration=data_input_configuration,
             skip_model_validation=skip_model_validation,
+            source_uri=source_uri,
         )
 
     def prepare_container_def(
-        self, instance_type=None, accelerator_type=None, serverless_inference_config=None
+        self,
+        instance_type=None,
+        accelerator_type=None,
+        serverless_inference_config=None,
+        accept_eula=None,
     ):
         """Return a container definition with framework configuration.
 
@@ -278,6 +290,11 @@ class MXNetModel(FrameworkModel):
             serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
                 Specifies configuration related to serverless endpoint. Instance type is
                 not provided in serverless inference. So this is used to find image URIs.
+            accept_eula (bool): For models that require a Model Access Config, specify True or
+                False to indicate whether model terms of use have been accepted.
+                The `accept_eula` value must be explicitly defined as `True` in order to
+                accept the end-user license agreement (EULA) that some
+                models require. (Default: None).
 
         Returns:
             dict[str, str]: A container definition object usable with the
@@ -308,7 +325,10 @@ class MXNetModel(FrameworkModel):
                 self.model_server_workers
             )
         return sagemaker.container_def(
-            deploy_image, self.repacked_model_data or self.model_data, deploy_env
+            deploy_image,
+            self.repacked_model_data or self.model_data,
+            deploy_env,
+            accept_eula=accept_eula,
         )
 
     def serving_image_uri(

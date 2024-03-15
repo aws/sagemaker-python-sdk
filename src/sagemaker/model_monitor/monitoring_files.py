@@ -18,6 +18,7 @@ Amazon SageMaker Model Monitoring Schedules.
 from __future__ import print_function, absolute_import
 
 import json
+import logging
 import os
 import uuid
 
@@ -27,6 +28,8 @@ from sagemaker import s3
 from sagemaker.session import Session
 
 NO_SUCH_KEY_CODE = "NoSuchKey"
+
+logger = logging.getLogger(__name__)
 
 
 class ModelMonitoringFile(object):
@@ -123,11 +126,12 @@ class Statistics(ModelMonitoringFile):
                 )
             )
         except ClientError as error:
-            print(
-                "\nCould not retrieve statistics file at location '{}'. "
+            logger.warning(
+                "\nCould not retrieve statistics file at location '%s'. "
                 "To manually retrieve Statistics object from a given uri, "
                 "use 'my_model_monitor.statistics(my_s3_uri)' or "
-                "'Statistics.from_s3_uri(my_s3_uri)'".format(statistics_file_s3_uri)
+                "'Statistics.from_s3_uri(my_s3_uri)'",
+                statistics_file_s3_uri,
             )
             raise error
 
@@ -253,11 +257,12 @@ class Constraints(ModelMonitoringFile):
                 )
             )
         except ClientError as error:
-            print(
-                "\nCould not retrieve constraints file at location '{}'. "
+            logger.warning(
+                "\nCould not retrieve constraints file at location '%s'. "
                 "To manually retrieve Constraints object from a given uri, "
                 "use 'my_model_monitor.constraints(my_s3_uri)' or "
-                "'Constraints.from_s3_uri(my_s3_uri)'".format(constraints_file_s3_uri)
+                "'Constraints.from_s3_uri(my_s3_uri)'",
+                constraints_file_s3_uri,
             )
             raise error
 

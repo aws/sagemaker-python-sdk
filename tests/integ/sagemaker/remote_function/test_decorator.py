@@ -31,6 +31,7 @@ from sagemaker.experiments._api_types import _TrialComponentStatusType
 
 from sagemaker.remote_function import remote
 from sagemaker.remote_function.spark_config import SparkConfig
+from sagemaker.remote_function.custom_file_filter import CustomFileFilter
 from sagemaker.remote_function.runtime_environment.runtime_environment_manager import (
     RuntimeEnvironmentError,
 )
@@ -135,7 +136,7 @@ def test_advanced_job_setting(
     assert divide(10, 2) == 5
 
 
-def test_with_local_dependencies(
+def test_with_custom_file_filter(
     sagemaker_session, dummy_container_without_error, cpu_instance_type, monkeypatch
 ):
     source_dir_path = os.path.join(os.path.dirname(__file__))
@@ -150,6 +151,8 @@ def test_with_local_dependencies(
             instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
             include_local_workdir=True,
+            custom_file_filter=CustomFileFilter(),
+            keep_alive_period_in_seconds=300,
         )
         def train(x):
             from helpers import local_module
@@ -158,6 +161,35 @@ def test_with_local_dependencies(
             return local_module.square(x) + local_module2.cube(x)
 
         assert train(2) == 12
+
+
+def test_with_misconfigured_custom_file_filter(
+    sagemaker_session, dummy_container_without_error, cpu_instance_type, monkeypatch
+):
+    source_dir_path = os.path.join(os.path.dirname(__file__))
+    with monkeypatch.context() as m:
+        m.chdir(source_dir_path)
+        dependencies_path = os.path.join(DATA_DIR, "remote_function", "requirements.txt")
+
+        @remote(
+            role=ROLE,
+            image_uri=dummy_container_without_error,
+            dependencies=dependencies_path,
+            instance_type=cpu_instance_type,
+            sagemaker_session=sagemaker_session,
+            include_local_workdir=True,
+            # exclude critical modules
+            custom_file_filter=CustomFileFilter(ignore_name_patterns=["helpers"]),
+            keep_alive_period_in_seconds=300,
+        )
+        def train(x):
+            from helpers import local_module
+            from helpers.nested_helper import local_module2
+
+            return local_module.square(x) + local_module2.cube(x)
+
+        with pytest.raises(ModuleNotFoundError):
+            train(2)
 
 
 def test_with_additional_dependencies(
@@ -175,7 +207,7 @@ def test_with_additional_dependencies(
     def cuberoot(x):
         from scipy.special import cbrt
 
-        return cbrt(27)
+        return cbrt(x)
 
     assert cuberoot(27) == 3
 
@@ -693,6 +725,45 @@ def test_decorator_with_spot_instances_save_and_load_checkpoints(
         load_checkpoints(CheckpointLocation(checkpoint_s3_location))
         == CHECKPOINT_FILE_CONTENT + CHECKPOINT_FILE_CONTENT
     )
+
+
+def test_with_user_and_workdir_set_in_the_image(
+    sagemaker_session, dummy_container_with_user_and_workdir, cpu_instance_type
+):
+    dependencies_path = os.path.join(DATA_DIR, "remote_function", "requirements.txt")
+
+    @remote(
+        role=ROLE,
+        image_uri=dummy_container_with_user_and_workdir,
+        dependencies=dependencies_path,
+        instance_type=cpu_instance_type,
+        sagemaker_session=sagemaker_session,
+    )
+    def cuberoot(x):
+        from scipy.special import cbrt
+
+        return cbrt(x)
+
+    assert cuberoot(27) == 3
+
+
+def test_with_user_and_workdir_set_in_the_image_client_error_case(
+    sagemaker_session, dummy_container_with_user_and_workdir, cpu_instance_type
+):
+    client_error_message = "Testing client error in job."
+
+    @remote(
+        role=ROLE,
+        image_uri=dummy_container_with_user_and_workdir,
+        instance_type=cpu_instance_type,
+        sagemaker_session=sagemaker_session,
+    )
+    def my_func():
+        raise RuntimeError(client_error_message)
+
+    with pytest.raises(RuntimeError) as error:
+        my_func()
+    assert client_error_message in str(error)
 
 
 @pytest.mark.skip

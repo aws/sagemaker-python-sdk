@@ -24,3 +24,10 @@ Future
 .. automethod:: sagemaker.remote_function.client.list_futures
 
 .. automethod:: sagemaker.remote_function.client.get_future
+
+
+CustomFileFilter
+----------------
+
+.. autoclass:: sagemaker.remote_function.custom_file_filter.CustomFileFilter
+

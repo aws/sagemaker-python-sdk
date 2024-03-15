@@ -15,7 +15,7 @@ from __future__ import absolute_import
 
 import datetime
 import collections
-from typing import TypeVar, Generic, Callable, Optional
+from typing import Tuple, TypeVar, Generic, Callable, Optional
 
 KeyType = TypeVar("KeyType")
 ValType = TypeVar("ValType")
@@ -86,23 +86,26 @@ class LRUCache(Generic[KeyType, ValType]):
         """Deletes all elements from the cache."""
         self._lru_cache.clear()
 
-    def get(self, key: KeyType, data_source_fallback: Optional[bool] = True) -> ValType:
-        """Returns value corresponding to key in cache.
+    def get(
+        self, key: KeyType, data_source_fallback: Optional[bool] = True
+    ) -> Tuple[ValType, bool]:
+        """Returns value corresponding to key in cache and boolean indicating cache hit.
 
         Args:
             key (KeyType): Key in cache to retrieve.
             data_source_fallback (Optional[bool]): True if data should be retrieved if
                 it's stale or not in cache. Default: True.
-            Raises:
-                KeyError: If key is not found in cache or is outdated and
-                ``data_source_fallback`` is False.
+
+        Raises:
+            KeyError: If key is not found in cache or is outdated and
+            ``data_source_fallback`` is False.
         """
         if data_source_fallback:
             if key in self._lru_cache:
-                return self._get_item(key, False)
+                return self._get_item(key, False), True
             self.put(key)
-            return self._get_item(key, False)
-        return self._get_item(key, True)
+            return self._get_item(key, False), False
+        return self._get_item(key, True), True
 
     def put(self, key: KeyType, value: Optional[ValType] = None) -> None:
         """Adds key to cache using ``retrieval_function``.

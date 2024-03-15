@@ -12,6 +12,7 @@ A clear and concise description of what the bug is.
 
 **To reproduce**
 A clear, step-by-step set of instructions to reproduce the bug.
+The provided code need to be **complete** and **runnable**, if additional data is needed, please include them in the issue.
 
 **Expected behavior**
 A clear and concise description of what you expected to happen.

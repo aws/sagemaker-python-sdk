@@ -34,3 +34,4 @@ env/
 **/_repack_script_launcher.sh
 tests/data/**/_repack_model.py
 tests/data/experiment/sagemaker-dev-1.0.tar.gz
+src/sagemaker/serve/tmp_workspace

@@ -15,15 +15,17 @@ from __future__ import absolute_import
 
 from typing import List, Union, Optional
 
-
 from sagemaker.deprecations import deprecated_class
 from sagemaker.workflow.conditions import Condition
+
 from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.functions import JsonGet as NewJsonGet
+from sagemaker.workflow.step_outputs import StepOutput
 from sagemaker.workflow.steps import (
     Step,
     StepTypeEnum,
 )
+
 from sagemaker.workflow.utilities import list_to_request
 from sagemaker.workflow.entities import RequestType
 from sagemaker.workflow.properties import (
@@ -42,12 +44,12 @@ class ConditionStep(Step):
         display_name: str = None,
         description: str = None,
         conditions: List[Condition] = None,
-        if_steps: List[Union[Step, StepCollection]] = None,
-        else_steps: List[Union[Step, StepCollection]] = None,
+        if_steps: List[Union[Step, StepCollection, StepOutput]] = None,
+        else_steps: List[Union[Step, StepCollection, StepOutput]] = None,
     ):
         """Construct a ConditionStep for pipelines to support conditional branching.
 
-        If all of the conditions in the condition list evaluate to True, the `if_steps` are
+        If all the conditions in the condition list evaluate to True, the `if_steps` are
         marked as ready for execution. Otherwise, the `else_steps` are marked as ready for
         execution.
 
@@ -102,10 +104,10 @@ class JsonGet(NewJsonGet):  # pragma: no cover
     """Get JSON properties from PropertyFiles.
 
     Attributes:
-        step (Step): The step from which to get the property file.
-        property_file (Union[PropertyFile, str]): Either a PropertyFile instance
-            or the name of a property file.
-        json_path (str): The JSON path expression to the requested value.
+           step (Step): The step from which to get the property file.
+           property_file (Union[PropertyFile, str]): Either a PropertyFile instance
+               or the name of a property file.
+           json_path (str): The JSON path expression to the requested value.
     """
 
     def __init__(self, step: Step, property_file: Union[PropertyFile, str], json_path: str):

@@ -89,6 +89,11 @@ def fixture_sagemaker_session():
     return session
 
 
+@pytest.fixture()
+def component_name():
+    return "test_component_name"
+
+
 def _get_full_cpu_image_uri(version, py_version):
     return image_uris.retrieve(
         "pytorch",
@@ -813,3 +818,9 @@ def test_pytorch_ddp_distribution_configuration_unsupported(sagemaker_session):
         )
     assert (f"framework_version {unsupported_framework_version} is not supported") in str(error)
     assert (f"py_version {unsupported_py_version} is not supported") in str(error)
+
+
+def test_predictor_with_component_name(sagemaker_session, component_name):
+    predictor = PyTorchPredictor("endpoint", sagemaker_session, component_name=component_name)
+
+    assert predictor._get_component_name() == component_name

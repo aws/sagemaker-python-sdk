@@ -84,6 +84,7 @@ SPARK_SUBMIT_FILE2 = os.path.join(DATA_DIR, "spark/files/sample_spark_event_logs
 MOCKED_PIPELINE_CONFIG = _PipelineConfig(
     "MyPipeline",
     "MyProcessingStep",
+    None,
     hash_files_or_dirs([LOCAL_SCRIPT_PATH]),
     "config-hash-abcdefg",
     None,
@@ -93,6 +94,7 @@ _DEFINITION_CONFIG = PipelineDefinitionConfig(use_custom_job_prefix=True)
 MOCKED_PIPELINE_CONFIG_WITH_CUSTOM_PREFIX = _PipelineConfig(
     "MyPipelineWithCustomPrefix",
     "MyProcessingStep",
+    None,
     None,
     None,
     _DEFINITION_CONFIG,

@@ -13,7 +13,7 @@
 """The `MonitorBatchTransform` definition for SageMaker Pipelines Workflows"""
 from __future__ import absolute_import
 import logging
-from typing import Union, Optional, List
+from typing import Union, Optional
 
 from sagemaker.session import Session
 from sagemaker.workflow.pipeline_context import _JobStepArguments
@@ -29,7 +29,6 @@ from sagemaker.workflow.clarify_check_step import (
     ClarifyCheckConfig,
     ModelExplainabilityCheckConfig,
 )
-from sagemaker.workflow.steps import Step
 from sagemaker.workflow.check_job_config import CheckJobConfig
 from sagemaker.workflow.steps import TransformStep
 from sagemaker.workflow.utilities import validate_step_args_input
@@ -85,8 +84,7 @@ class MonitorBatchTransformStep(StepCollection):
                 will be named `{display_name}-monitoring` (default: None).
             description (str): The description of the `MonitorBatchTransformStep` (default: None).
         """
-        self.name: str = name
-        self.steps: List[Step] = []
+        super().__init__(name=name)
 
         validate_step_args_input(
             step_args=transform_step_args,

@@ -8,6 +8,10 @@ SageMaker:
         EnableInterContainerTrafficEncryption: true
         EnvironmentVariables: {"EnvVarKey": "EnvVarValue"}
         IncludeLocalWorkDir: true
+        CustomFileFilter:
+          IgnoreNamePatterns:
+            - "data"
+            - "test"
         InstanceType: "ml.m5.large"
         JobCondaEnvironment: "my_conda_env"
         S3KmsKeyId: "someS3KmsKey"

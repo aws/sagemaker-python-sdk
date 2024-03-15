@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 import os
+from pathlib import Path
 import subprocess
 import tempfile
 import warnings
@@ -279,11 +280,13 @@ def _run_clone_command(repo_url, dest_dir):
         subprocess.check_call(["git", "clone", repo_url, dest_dir], env=my_env)
     elif repo_url.startswith("git@") or repo_url.startswith("ssh://"):
         try:
-            with tempfile.NamedTemporaryFile() as sshnoprompt:
-                with open(sshnoprompt.name, "w") as write_pipe:
-                    write_pipe.write("ssh -oBatchMode=yes $@")
-                os.chmod(sshnoprompt.name, 0o511)
-                my_env["GIT_SSH"] = sshnoprompt.name
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                custom_ssh_executable = Path(tmp_dir) / "ssh_batch"
+                with open(custom_ssh_executable, "w") as pipe:
+                    print("#!/bin/sh", file=pipe)
+                    print("ssh -oBatchMode=yes $@", file=pipe)
+                os.chmod(custom_ssh_executable, 0o511)
+                my_env["GIT_SSH"] = str(custom_ssh_executable)
                 subprocess.check_call(["git", "clone", repo_url, dest_dir], env=my_env)
         except subprocess.CalledProcessError:
             del my_env["GIT_SSH"]

@@ -21,6 +21,7 @@ from sagemaker.apiutils import _base_types
 from sagemaker.lineage import _api_types, _utils
 from sagemaker.lineage._api_types import ActionSource, ActionSummary
 from sagemaker.lineage.artifact import Artifact
+from sagemaker.utils import format_tags
 
 from sagemaker.lineage.query import (
     LineageQuery,
@@ -159,12 +160,12 @@ class Action(_base_types.Record):
         """Add tags to the object.
 
         Args:
-            tags ([{key:value}]): list of key value pairs.
+            tags (Optional[Tags]): list of key value pairs.
 
         Returns:
             list({str:str}): a list of key value pairs
         """
-        return self._set_tags(resource_arn=self.action_arn, tags=tags)
+        return self._set_tags(resource_arn=self.action_arn, tags=format_tags(tags))
 
     @classmethod
     def create(

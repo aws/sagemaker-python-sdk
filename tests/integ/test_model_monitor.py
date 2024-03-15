@@ -2488,3 +2488,85 @@ def test_one_time_monitoring_schedule(sagemaker_session):
         my_default_monitor.stop_monitoring_schedule()
         my_default_monitor.delete_monitoring_schedule()
         raise e
+
+
+def test_create_monitoring_schedule_with_validation_error(sagemaker_session):
+    my_default_monitor = DefaultModelMonitor(
+        role=ROLE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        volume_size_in_gb=VOLUME_SIZE_IN_GB,
+        max_runtime_in_seconds=MAX_RUNTIME_IN_SECONDS,
+        sagemaker_session=sagemaker_session,
+        env=ENVIRONMENT,
+        tags=TAGS,
+        network_config=NETWORK_CONFIG,
+    )
+
+    output_s3_uri = os.path.join(
+        "s3://",
+        sagemaker_session.default_bucket(),
+        "integ-test-monitoring-output-bucket",
+        str(uuid.uuid4()),
+    )
+
+    data_captured_destination_s3_uri = os.path.join(
+        "s3://",
+        sagemaker_session.default_bucket(),
+        "sagemaker-serving-batch-transform",
+        str(uuid.uuid4()),
+    )
+
+    batch_transform_input = BatchTransformInput(
+        data_captured_destination_s3_uri=data_captured_destination_s3_uri,
+        destination="/opt/ml/processing/output",
+        dataset_format=MonitoringDatasetFormat.csv(header=False),
+    )
+
+    statistics = Statistics.from_file_path(
+        statistics_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/statistics.json"),
+        sagemaker_session=sagemaker_session,
+    )
+
+    constraints = Constraints.from_file_path(
+        constraints_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/constraints.json"),
+        sagemaker_session=sagemaker_session,
+    )
+
+    try:
+        my_default_monitor.create_monitoring_schedule(
+            monitor_schedule_name="schedule-name-more-than-63-characters-to-get-a-validation-exception",
+            batch_transform_input=batch_transform_input,
+            output_s3_uri=output_s3_uri,
+            statistics=statistics,
+            constraints=constraints,
+            schedule_cron_expression=CronExpressionGenerator.now(),
+            data_analysis_start_time="-PT1H",
+            data_analysis_end_time="-PT0H",
+            enable_cloudwatch_metrics=ENABLE_CLOUDWATCH_METRICS,
+        )
+    except Exception as e:
+        assert "ValidationException" in str(e)
+
+    my_default_monitor.create_monitoring_schedule(
+        monitor_schedule_name=unique_name_from_base("valid-schedule-name"),
+        batch_transform_input=batch_transform_input,
+        output_s3_uri=output_s3_uri,
+        statistics=statistics,
+        constraints=constraints,
+        schedule_cron_expression=CronExpressionGenerator.now(),
+        data_analysis_start_time="-PT1H",
+        data_analysis_end_time="-PT0H",
+        enable_cloudwatch_metrics=ENABLE_CLOUDWATCH_METRICS,
+    )
+    try:
+
+        _wait_for_schedule_changes_to_apply(monitor=my_default_monitor)
+
+        my_default_monitor.stop_monitoring_schedule()
+        my_default_monitor.delete_monitoring_schedule()
+
+    except Exception as e:
+        my_default_monitor.stop_monitoring_schedule()
+        my_default_monitor.delete_monitoring_schedule()
+        raise e

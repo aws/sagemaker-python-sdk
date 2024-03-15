@@ -14,6 +14,1242 @@ from __future__ import absolute_import
 
 
 SPECIAL_MODEL_SPECS_DICT = {
+    "gemma-model": {
+        "model_id": "huggingface-llm-gemma-7b-instruct",
+        "url": "https://huggingface.co/google/gemma-7b-it",
+        "version": "1.1.0",
+        "min_sdk_version": "2.189.0",
+        "training_supported": True,
+        "incremental_training_supported": False,
+        "hosting_ecr_specs": {
+            "framework": "huggingface-llm",
+            "framework_version": "1.4.2",
+            "py_version": "py310",
+            "huggingface_transformers_version": "4.33.2",
+        },
+        "hosting_artifact_key": "huggingface-llm/huggingface-llm-gemma-7b-instruct/artifacts/inference/v1.0.0/",
+        "hosting_script_key": "source-directory-tarballs/huggingface/inference/llm/v1.0.1/sourcedir.tar.gz",
+        "hosting_prepacked_artifact_key": "huggingface-llm/huggingface-llm-gemma-7b-i"
+        "nstruct/artifacts/inference-prepack/v1.0.0/",
+        "hosting_prepacked_artifact_version": "1.0.0",
+        "hosting_use_script_uri": False,
+        "hosting_eula_key": "fmhMetadata/terms/gemmaTerms.txt",
+        "inference_vulnerable": False,
+        "inference_dependencies": [],
+        "inference_vulnerabilities": [],
+        "training_vulnerable": False,
+        "training_dependencies": [
+            "accelerate==0.26.1",
+            "bitsandbytes==0.42.0",
+            "deepspeed==0.10.3",
+            "docstring-parser==0.15",
+            "flash_attn==2.5.5",
+            "ninja==1.11.1",
+            "packaging==23.2",
+            "peft==0.8.2",
+            "py_cpuinfo==9.0.0",
+            "rich==13.7.0",
+            "safetensors==0.4.2",
+            "sagemaker_jumpstart_huggingface_script_utilities==1.2.1",
+            "sagemaker_jumpstart_script_utilities==1.1.9",
+            "sagemaker_jumpstart_tabular_script_utilities==1.0.0",
+            "shtab==1.6.5",
+            "tokenizers==0.15.1",
+            "transformers==4.38.1",
+            "trl==0.7.10",
+            "tyro==0.7.2",
+        ],
+        "training_vulnerabilities": [],
+        "deprecated": False,
+        "hyperparameters": [
+            {
+                "name": "peft_type",
+                "type": "text",
+                "default": "lora",
+                "options": ["lora", "None"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "instruction_tuned",
+                "type": "text",
+                "default": "False",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "chat_dataset",
+                "type": "text",
+                "default": "True",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "epoch",
+                "type": "int",
+                "default": 1,
+                "min": 1,
+                "max": 1000,
+                "scope": "algorithm",
+            },
+            {
+                "name": "learning_rate",
+                "type": "float",
+                "default": 0.0001,
+                "min": 1e-08,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "lora_r",
+                "type": "int",
+                "default": 64,
+                "min": 1,
+                "max": 1000,
+                "scope": "algorithm",
+            },
+            {"name": "lora_alpha", "type": "int", "default": 16, "min": 0, "scope": "algorithm"},
+            {
+                "name": "lora_dropout",
+                "type": "float",
+                "default": 0,
+                "min": 0,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {"name": "bits", "type": "int", "default": 4, "scope": "algorithm"},
+            {
+                "name": "double_quant",
+                "type": "text",
+                "default": "True",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "quant_type",
+                "type": "text",
+                "default": "nf4",
+                "options": ["fp4", "nf4"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "per_device_train_batch_size",
+                "type": "int",
+                "default": 1,
+                "min": 1,
+                "max": 1000,
+                "scope": "algorithm",
+            },
+            {
+                "name": "per_device_eval_batch_size",
+                "type": "int",
+                "default": 2,
+                "min": 1,
+                "max": 1000,
+                "scope": "algorithm",
+            },
+            {
+                "name": "warmup_ratio",
+                "type": "float",
+                "default": 0.1,
+                "min": 0,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "train_from_scratch",
+                "type": "text",
+                "default": "False",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "fp16",
+                "type": "text",
+                "default": "True",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "bf16",
+                "type": "text",
+                "default": "False",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "evaluation_strategy",
+                "type": "text",
+                "default": "steps",
+                "options": ["steps", "epoch", "no"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "eval_steps",
+                "type": "int",
+                "default": 20,
+                "min": 1,
+                "max": 1000,
+                "scope": "algorithm",
+            },
+            {
+                "name": "gradient_accumulation_steps",
+                "type": "int",
+                "default": 4,
+                "min": 1,
+                "max": 1000,
+                "scope": "algorithm",
+            },
+            {
+                "name": "logging_steps",
+                "type": "int",
+                "default": 8,
+                "min": 1,
+                "max": 1000,
+                "scope": "algorithm",
+            },
+            {
+                "name": "weight_decay",
+                "type": "float",
+                "default": 0.2,
+                "min": 1e-08,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "load_best_model_at_end",
+                "type": "text",
+                "default": "True",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "max_train_samples",
+                "type": "int",
+                "default": -1,
+                "min": -1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "max_val_samples",
+                "type": "int",
+                "default": -1,
+                "min": -1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "seed",
+                "type": "int",
+                "default": 10,
+                "min": 1,
+                "max": 1000,
+                "scope": "algorithm",
+            },
+            {
+                "name": "max_input_length",
+                "type": "int",
+                "default": 2048,
+                "min": -1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "validation_split_ratio",
+                "type": "float",
+                "default": 0.2,
+                "min": 0,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "train_data_split_seed",
+                "type": "int",
+                "default": 0,
+                "min": 0,
+                "scope": "algorithm",
+            },
+            {
+                "name": "preprocessing_num_workers",
+                "type": "text",
+                "default": "None",
+                "scope": "algorithm",
+            },
+            {"name": "max_steps", "type": "int", "default": -1, "scope": "algorithm"},
+            {
+                "name": "gradient_checkpointing",
+                "type": "text",
+                "default": "False",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "early_stopping_patience",
+                "type": "int",
+                "default": 3,
+                "min": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "early_stopping_threshold",
+                "type": "float",
+                "default": 0.0,
+                "min": 0,
+                "scope": "algorithm",
+            },
+            {
+                "name": "adam_beta1",
+                "type": "float",
+                "default": 0.9,
+                "min": 0,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "adam_beta2",
+                "type": "float",
+                "default": 0.999,
+                "min": 0,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "adam_epsilon",
+                "type": "float",
+                "default": 1e-08,
+                "min": 0,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "max_grad_norm",
+                "type": "float",
+                "default": 1.0,
+                "min": 0,
+                "scope": "algorithm",
+            },
+            {
+                "name": "label_smoothing_factor",
+                "type": "float",
+                "default": 0,
+                "min": 0,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "logging_first_step",
+                "type": "text",
+                "default": "False",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "logging_nan_inf_filter",
+                "type": "text",
+                "default": "True",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "save_strategy",
+                "type": "text",
+                "default": "steps",
+                "options": ["no", "epoch", "steps"],
+                "scope": "algorithm",
+            },
+            {"name": "save_steps", "type": "int", "default": 500, "min": 1, "scope": "algorithm"},
+            {"name": "save_total_limit", "type": "int", "default": 1, "scope": "algorithm"},
+            {
+                "name": "dataloader_drop_last",
+                "type": "text",
+                "default": "False",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "dataloader_num_workers",
+                "type": "int",
+                "default": 0,
+                "min": 0,
+                "scope": "algorithm",
+            },
+            {
+                "name": "eval_accumulation_steps",
+                "type": "text",
+                "default": "None",
+                "scope": "algorithm",
+            },
+            {
+                "name": "auto_find_batch_size",
+                "type": "text",
+                "default": "False",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "lr_scheduler_type",
+                "type": "text",
+                "default": "constant_with_warmup",
+                "options": ["constant_with_warmup", "linear"],
+                "scope": "algorithm",
+            },
+            {"name": "warmup_steps", "type": "int", "default": 0, "min": 0, "scope": "algorithm"},
+            {
+                "name": "deepspeed",
+                "type": "text",
+                "default": "False",
+                "options": ["False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "sagemaker_submit_directory",
+                "type": "text",
+                "default": "/opt/ml/input/data/code/sourcedir.tar.gz",
+                "scope": "container",
+            },
+            {
+                "name": "sagemaker_program",
+                "type": "text",
+                "default": "transfer_learning.py",
+                "scope": "container",
+            },
+            {
+                "name": "sagemaker_container_log_level",
+                "type": "text",
+                "default": "20",
+                "scope": "container",
+            },
+        ],
+        "training_script_key": "source-directory-tarballs/huggingface/transfer_learning/llm/v1.1.1/sourcedir.tar.gz",
+        "training_prepacked_script_key": "source-directory-tarballs/huggingface/transfer_learning/"
+        "llm/prepack/v1.1.1/sourcedir.tar.gz",
+        "training_prepacked_script_version": "1.1.1",
+        "training_ecr_specs": {
+            "framework": "huggingface",
+            "framework_version": "2.0.0",
+            "py_version": "py310",
+            "huggingface_transformers_version": "4.28.1",
+        },
+        "training_artifact_key": "huggingface-training/train-huggingface-llm-gemma-7b-instruct.tar.gz",
+        "inference_environment_variables": [
+            {
+                "name": "SAGEMAKER_PROGRAM",
+                "type": "text",
+                "default": "inference.py",
+                "scope": "container",
+                "required_for_model_class": False,
+            },
+            {
+                "name": "SAGEMAKER_SUBMIT_DIRECTORY",
+                "type": "text",
+                "default": "/opt/ml/model/code",
+                "scope": "container",
+                "required_for_model_class": False,
+            },
+            {
+                "name": "SAGEMAKER_CONTAINER_LOG_LEVEL",
+                "type": "text",
+                "default": "20",
+                "scope": "container",
+                "required_for_model_class": False,
+            },
+            {
+                "name": "SAGEMAKER_MODEL_SERVER_TIMEOUT",
+                "type": "text",
+                "default": "3600",
+                "scope": "container",
+                "required_for_model_class": False,
+            },
+            {
+                "name": "ENDPOINT_SERVER_TIMEOUT",
+                "type": "int",
+                "default": 3600,
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "MODEL_CACHE_ROOT",
+                "type": "text",
+                "default": "/opt/ml/model",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "SAGEMAKER_ENV",
+                "type": "text",
+                "default": "1",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "HF_MODEL_ID",
+                "type": "text",
+                "default": "/opt/ml/model",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "MAX_INPUT_LENGTH",
+                "type": "text",
+                "default": "8191",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "MAX_TOTAL_TOKENS",
+                "type": "text",
+                "default": "8192",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "MAX_BATCH_PREFILL_TOKENS",
+                "type": "text",
+                "default": "8191",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "SAGEMAKER_MODEL_SERVER_WORKERS",
+                "type": "int",
+                "default": 1,
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+        ],
+        "metrics": [
+            {
+                "Name": "huggingface-textgeneration:eval-loss",
+                "Regex": "'eval_loss': ([0-9]+\\.[0-9]+)",
+            },
+            {"Name": "huggingface-textgeneration:train-loss", "Regex": "'loss': ([0-9]+\\.[0-9]+)"},
+        ],
+        "default_inference_instance_type": "ml.g5.12xlarge",
+        "supported_inference_instance_types": [
+            "ml.g5.12xlarge",
+            "ml.g5.24xlarge",
+            "ml.g5.48xlarge",
+            "ml.p4d.24xlarge",
+        ],
+        "default_training_instance_type": "ml.g5.12xlarge",
+        "supported_training_instance_types": [
+            "ml.g5.12xlarge",
+            "ml.g5.24xlarge",
+            "ml.g5.48xlarge",
+            "ml.p4d.24xlarge",
+        ],
+        "model_kwargs": {},
+        "deploy_kwargs": {
+            "model_data_download_timeout": 1200,
+            "container_startup_health_check_timeout": 1200,
+        },
+        "estimator_kwargs": {
+            "encrypt_inter_container_traffic": True,
+            "disable_output_compression": True,
+            "max_run": 360000,
+        },
+        "fit_kwargs": {},
+        "predictor_specs": {
+            "supported_content_types": ["application/json"],
+            "supported_accept_types": ["application/json"],
+            "default_content_type": "application/json",
+            "default_accept_type": "application/json",
+        },
+        "inference_volume_size": 512,
+        "training_volume_size": 512,
+        "inference_enable_network_isolation": True,
+        "training_enable_network_isolation": True,
+        "default_training_dataset_key": "training-datasets/oasst_top/train/",
+        "validation_supported": True,
+        "fine_tuning_supported": True,
+        "resource_name_base": "hf-llm-gemma-7b-instruct",
+        "gated_bucket": True,
+        "hosting_instance_type_variants": {
+            "regional_aliases": {
+                "us-west-2": {
+                    "gpu_ecr_uri_1": "626614931356.dkr.ecr.af-south-1.amazonaws.com/h"
+                    "uggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                },
+            },
+            "variants": {
+                "g4dn": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "g5": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "local_gpu": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p2": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p3": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p3dn": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p4d": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p4de": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p5": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "ml.g5.12xlarge": {"properties": {"environment_variables": {"SM_NUM_GPUS": "4"}}},
+                "ml.g5.24xlarge": {"properties": {"environment_variables": {"SM_NUM_GPUS": "4"}}},
+                "ml.g5.48xlarge": {"properties": {"environment_variables": {"SM_NUM_GPUS": "8"}}},
+                "ml.p4d.24xlarge": {"properties": {"environment_variables": {"SM_NUM_GPUS": "8"}}},
+            },
+        },
+        "training_instance_type_variants": {
+            "regional_aliases": {
+                "us-west-2": {
+                    "gpu_ecr_uri_1": "626614931356.dkr.ecr.af-south-1.amazonaws.com/huggingface-pytorch-training:"
+                    "2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                },
+            },
+            "variants": {
+                "g4dn": {
+                    "regional_properties": {"image_uri": "$gpu_ecr_uri_1"},
+                    "properties": {
+                        "gated_model_key_env_var_value": "huggingface-training/g4dn/v1.0.0/train-hugg"
+                        "ingface-llm-gemma-7b-instruct.tar.gz"
+                    },
+                },
+                "g5": {
+                    "regional_properties": {"image_uri": "$gpu_ecr_uri_1"},
+                    "properties": {
+                        "gated_model_key_env_var_value": "huggingface-training/g5/v1.0.0/train-huggingf"
+                        "ace-llm-gemma-7b-instruct.tar.gz"
+                    },
+                },
+                "local_gpu": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p2": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p3": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p3dn": {
+                    "regional_properties": {"image_uri": "$gpu_ecr_uri_1"},
+                    "properties": {
+                        "gated_model_key_env_var_value": "huggingface-training/p3dn/v1.0.0/train-hugg"
+                        "ingface-llm-gemma-7b-instruct.tar.gz"
+                    },
+                },
+                "p4d": {
+                    "regional_properties": {"image_uri": "$gpu_ecr_uri_1"},
+                    "properties": {
+                        "gated_model_key_env_var_value": "huggingface-training/"
+                        "p4d/v1.0.0/train-huggingface-llm-gemma-7b-instruct.tar.gz"
+                    },
+                },
+                "p4de": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p5": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+            },
+            "hosting_artifact_s3_data_type": "S3Prefix",
+            "hosting_artifact_compression_type": "None",
+            "hosting_resource_requirements": {"min_memory_mb": 98304, "num_accelerators": 4},
+            "dynamic_container_deployment_supported": True,
+        },
+    },
+    "gemma-model-1-artifact": {
+        "model_id": "huggingface-llm-gemma-7b-instruct",
+        "url": "https://huggingface.co/google/gemma-7b-it",
+        "version": "1.1.0",
+        "min_sdk_version": "2.189.0",
+        "training_supported": True,
+        "incremental_training_supported": False,
+        "hosting_ecr_specs": {
+            "framework": "huggingface-llm",
+            "framework_version": "1.4.2",
+            "py_version": "py310",
+            "huggingface_transformers_version": "4.33.2",
+        },
+        "hosting_artifact_key": "huggingface-llm/huggingface-llm-gemma-7b-instruct/artifacts/inference/v1.0.0/",
+        "hosting_script_key": "source-directory-tarballs/huggingface/inference/llm/v1.0.1/sourcedir.tar.gz",
+        "hosting_prepacked_artifact_key": "huggingface-llm/huggingface-llm-gemma-7b-i"
+        "nstruct/artifacts/inference-prepack/v1.0.0/",
+        "hosting_prepacked_artifact_version": "1.0.0",
+        "hosting_use_script_uri": False,
+        "hosting_eula_key": "fmhMetadata/terms/gemmaTerms.txt",
+        "inference_vulnerable": False,
+        "inference_dependencies": [],
+        "inference_vulnerabilities": [],
+        "training_vulnerable": False,
+        "training_dependencies": [
+            "accelerate==0.26.1",
+            "bitsandbytes==0.42.0",
+            "deepspeed==0.10.3",
+            "docstring-parser==0.15",
+            "flash_attn==2.5.5",
+            "ninja==1.11.1",
+            "packaging==23.2",
+            "peft==0.8.2",
+            "py_cpuinfo==9.0.0",
+            "rich==13.7.0",
+            "safetensors==0.4.2",
+            "sagemaker_jumpstart_huggingface_script_utilities==1.2.1",
+            "sagemaker_jumpstart_script_utilities==1.1.9",
+            "sagemaker_jumpstart_tabular_script_utilities==1.0.0",
+            "shtab==1.6.5",
+            "tokenizers==0.15.1",
+            "transformers==4.38.1",
+            "trl==0.7.10",
+            "tyro==0.7.2",
+        ],
+        "training_vulnerabilities": [],
+        "deprecated": False,
+        "hyperparameters": [
+            {
+                "name": "peft_type",
+                "type": "text",
+                "default": "lora",
+                "options": ["lora", "None"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "instruction_tuned",
+                "type": "text",
+                "default": "False",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "chat_dataset",
+                "type": "text",
+                "default": "True",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "epoch",
+                "type": "int",
+                "default": 1,
+                "min": 1,
+                "max": 1000,
+                "scope": "algorithm",
+            },
+            {
+                "name": "learning_rate",
+                "type": "float",
+                "default": 0.0001,
+                "min": 1e-08,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "lora_r",
+                "type": "int",
+                "default": 64,
+                "min": 1,
+                "max": 1000,
+                "scope": "algorithm",
+            },
+            {"name": "lora_alpha", "type": "int", "default": 16, "min": 0, "scope": "algorithm"},
+            {
+                "name": "lora_dropout",
+                "type": "float",
+                "default": 0,
+                "min": 0,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {"name": "bits", "type": "int", "default": 4, "scope": "algorithm"},
+            {
+                "name": "double_quant",
+                "type": "text",
+                "default": "True",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "quant_type",
+                "type": "text",
+                "default": "nf4",
+                "options": ["fp4", "nf4"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "per_device_train_batch_size",
+                "type": "int",
+                "default": 1,
+                "min": 1,
+                "max": 1000,
+                "scope": "algorithm",
+            },
+            {
+                "name": "per_device_eval_batch_size",
+                "type": "int",
+                "default": 2,
+                "min": 1,
+                "max": 1000,
+                "scope": "algorithm",
+            },
+            {
+                "name": "warmup_ratio",
+                "type": "float",
+                "default": 0.1,
+                "min": 0,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "train_from_scratch",
+                "type": "text",
+                "default": "False",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "fp16",
+                "type": "text",
+                "default": "True",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "bf16",
+                "type": "text",
+                "default": "False",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "evaluation_strategy",
+                "type": "text",
+                "default": "steps",
+                "options": ["steps", "epoch", "no"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "eval_steps",
+                "type": "int",
+                "default": 20,
+                "min": 1,
+                "max": 1000,
+                "scope": "algorithm",
+            },
+            {
+                "name": "gradient_accumulation_steps",
+                "type": "int",
+                "default": 4,
+                "min": 1,
+                "max": 1000,
+                "scope": "algorithm",
+            },
+            {
+                "name": "logging_steps",
+                "type": "int",
+                "default": 8,
+                "min": 1,
+                "max": 1000,
+                "scope": "algorithm",
+            },
+            {
+                "name": "weight_decay",
+                "type": "float",
+                "default": 0.2,
+                "min": 1e-08,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "load_best_model_at_end",
+                "type": "text",
+                "default": "True",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "max_train_samples",
+                "type": "int",
+                "default": -1,
+                "min": -1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "max_val_samples",
+                "type": "int",
+                "default": -1,
+                "min": -1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "seed",
+                "type": "int",
+                "default": 10,
+                "min": 1,
+                "max": 1000,
+                "scope": "algorithm",
+            },
+            {
+                "name": "max_input_length",
+                "type": "int",
+                "default": 2048,
+                "min": -1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "validation_split_ratio",
+                "type": "float",
+                "default": 0.2,
+                "min": 0,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "train_data_split_seed",
+                "type": "int",
+                "default": 0,
+                "min": 0,
+                "scope": "algorithm",
+            },
+            {
+                "name": "preprocessing_num_workers",
+                "type": "text",
+                "default": "None",
+                "scope": "algorithm",
+            },
+            {"name": "max_steps", "type": "int", "default": -1, "scope": "algorithm"},
+            {
+                "name": "gradient_checkpointing",
+                "type": "text",
+                "default": "False",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "early_stopping_patience",
+                "type": "int",
+                "default": 3,
+                "min": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "early_stopping_threshold",
+                "type": "float",
+                "default": 0.0,
+                "min": 0,
+                "scope": "algorithm",
+            },
+            {
+                "name": "adam_beta1",
+                "type": "float",
+                "default": 0.9,
+                "min": 0,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "adam_beta2",
+                "type": "float",
+                "default": 0.999,
+                "min": 0,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "adam_epsilon",
+                "type": "float",
+                "default": 1e-08,
+                "min": 0,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "max_grad_norm",
+                "type": "float",
+                "default": 1.0,
+                "min": 0,
+                "scope": "algorithm",
+            },
+            {
+                "name": "label_smoothing_factor",
+                "type": "float",
+                "default": 0,
+                "min": 0,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "logging_first_step",
+                "type": "text",
+                "default": "False",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "logging_nan_inf_filter",
+                "type": "text",
+                "default": "True",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "save_strategy",
+                "type": "text",
+                "default": "steps",
+                "options": ["no", "epoch", "steps"],
+                "scope": "algorithm",
+            },
+            {"name": "save_steps", "type": "int", "default": 500, "min": 1, "scope": "algorithm"},
+            {"name": "save_total_limit", "type": "int", "default": 1, "scope": "algorithm"},
+            {
+                "name": "dataloader_drop_last",
+                "type": "text",
+                "default": "False",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "dataloader_num_workers",
+                "type": "int",
+                "default": 0,
+                "min": 0,
+                "scope": "algorithm",
+            },
+            {
+                "name": "eval_accumulation_steps",
+                "type": "text",
+                "default": "None",
+                "scope": "algorithm",
+            },
+            {
+                "name": "auto_find_batch_size",
+                "type": "text",
+                "default": "False",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "lr_scheduler_type",
+                "type": "text",
+                "default": "constant_with_warmup",
+                "options": ["constant_with_warmup", "linear"],
+                "scope": "algorithm",
+            },
+            {"name": "warmup_steps", "type": "int", "default": 0, "min": 0, "scope": "algorithm"},
+            {
+                "name": "deepspeed",
+                "type": "text",
+                "default": "False",
+                "options": ["False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "sagemaker_submit_directory",
+                "type": "text",
+                "default": "/opt/ml/input/data/code/sourcedir.tar.gz",
+                "scope": "container",
+            },
+            {
+                "name": "sagemaker_program",
+                "type": "text",
+                "default": "transfer_learning.py",
+                "scope": "container",
+            },
+            {
+                "name": "sagemaker_container_log_level",
+                "type": "text",
+                "default": "20",
+                "scope": "container",
+            },
+        ],
+        "training_script_key": "source-directory-tarballs/huggingface/transfer_learning/llm/v1.1.1/sourcedir.tar.gz",
+        "training_prepacked_script_key": "source-directory-tarballs/huggingface/transfer_learning/"
+        "llm/prepack/v1.1.1/sourcedir.tar.gz",
+        "training_prepacked_script_version": "1.1.1",
+        "training_ecr_specs": {
+            "framework": "huggingface",
+            "framework_version": "2.0.0",
+            "py_version": "py310",
+            "huggingface_transformers_version": "4.28.1",
+        },
+        "training_artifact_key": "huggingface-training/train-huggingface-llm-gemma-7b-instruct.tar.gz",
+        "inference_environment_variables": [
+            {
+                "name": "SAGEMAKER_PROGRAM",
+                "type": "text",
+                "default": "inference.py",
+                "scope": "container",
+                "required_for_model_class": False,
+            },
+            {
+                "name": "SAGEMAKER_SUBMIT_DIRECTORY",
+                "type": "text",
+                "default": "/opt/ml/model/code",
+                "scope": "container",
+                "required_for_model_class": False,
+            },
+            {
+                "name": "SAGEMAKER_CONTAINER_LOG_LEVEL",
+                "type": "text",
+                "default": "20",
+                "scope": "container",
+                "required_for_model_class": False,
+            },
+            {
+                "name": "SAGEMAKER_MODEL_SERVER_TIMEOUT",
+                "type": "text",
+                "default": "3600",
+                "scope": "container",
+                "required_for_model_class": False,
+            },
+            {
+                "name": "ENDPOINT_SERVER_TIMEOUT",
+                "type": "int",
+                "default": 3600,
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "MODEL_CACHE_ROOT",
+                "type": "text",
+                "default": "/opt/ml/model",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "SAGEMAKER_ENV",
+                "type": "text",
+                "default": "1",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "HF_MODEL_ID",
+                "type": "text",
+                "default": "/opt/ml/model",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "MAX_INPUT_LENGTH",
+                "type": "text",
+                "default": "8191",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "MAX_TOTAL_TOKENS",
+                "type": "text",
+                "default": "8192",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "MAX_BATCH_PREFILL_TOKENS",
+                "type": "text",
+                "default": "8191",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "SAGEMAKER_MODEL_SERVER_WORKERS",
+                "type": "int",
+                "default": 1,
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+        ],
+        "metrics": [
+            {
+                "Name": "huggingface-textgeneration:eval-loss",
+                "Regex": "'eval_loss': ([0-9]+\\.[0-9]+)",
+            },
+            {"Name": "huggingface-textgeneration:train-loss", "Regex": "'loss': ([0-9]+\\.[0-9]+)"},
+        ],
+        "default_inference_instance_type": "ml.g5.12xlarge",
+        "supported_inference_instance_types": [
+            "ml.g5.12xlarge",
+            "ml.g5.24xlarge",
+            "ml.g5.48xlarge",
+            "ml.p4d.24xlarge",
+        ],
+        "default_training_instance_type": "ml.g5.12xlarge",
+        "supported_training_instance_types": [
+            "ml.g5.12xlarge",
+            "ml.g5.24xlarge",
+            "ml.g5.48xlarge",
+            "ml.p4d.24xlarge",
+        ],
+        "model_kwargs": {},
+        "deploy_kwargs": {
+            "model_data_download_timeout": 1200,
+            "container_startup_health_check_timeout": 1200,
+        },
+        "estimator_kwargs": {
+            "encrypt_inter_container_traffic": True,
+            "disable_output_compression": True,
+            "max_run": 360000,
+        },
+        "fit_kwargs": {},
+        "predictor_specs": {
+            "supported_content_types": ["application/json"],
+            "supported_accept_types": ["application/json"],
+            "default_content_type": "application/json",
+            "default_accept_type": "application/json",
+        },
+        "inference_volume_size": 512,
+        "training_volume_size": 512,
+        "inference_enable_network_isolation": True,
+        "training_enable_network_isolation": True,
+        "default_training_dataset_key": "training-datasets/oasst_top/train/",
+        "validation_supported": True,
+        "fine_tuning_supported": True,
+        "resource_name_base": "hf-llm-gemma-7b-instruct",
+        "gated_bucket": True,
+        "hosting_instance_type_variants": {
+            "regional_aliases": {
+                "us-west-2": {
+                    "gpu_ecr_uri_1": "626614931356.dkr.ecr.af-south-1.amazonaws.com/h"
+                    "uggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                },
+            },
+            "variants": {
+                "g4dn": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "g5": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "local_gpu": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p2": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p3": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p3dn": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p4d": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p4de": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p5": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "ml.g5.12xlarge": {"properties": {"environment_variables": {"SM_NUM_GPUS": "4"}}},
+                "ml.g5.24xlarge": {"properties": {"environment_variables": {"SM_NUM_GPUS": "4"}}},
+                "ml.g5.48xlarge": {"properties": {"environment_variables": {"SM_NUM_GPUS": "8"}}},
+                "ml.p4d.24xlarge": {"properties": {"environment_variables": {"SM_NUM_GPUS": "8"}}},
+            },
+        },
+        "training_instance_type_variants": {
+            "regional_aliases": {
+                "us-west-2": {
+                    "gpu_ecr_uri_1": "626614931356.dkr.ecr.af-south-1.amazonaws.com/huggingface-pytorch-training:"
+                    "2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                },
+            },
+            "variants": {
+                "g4dn": {
+                    "regional_properties": {"image_uri": "$gpu_ecr_uri_1"},
+                    "properties": {
+                        "gated_model_key_env_var_value": "huggingface-training/train-hugg"
+                        "ingface-llm-gemma-7b-instruct.tar.gz"
+                    },
+                },
+                "g5": {
+                    "regional_properties": {"image_uri": "$gpu_ecr_uri_1"},
+                    "properties": {
+                        "gated_model_key_env_var_value": "huggingface-training/train-hugg"
+                        "ingface-llm-gemma-7b-instruct.tar.gz"
+                    },
+                },
+                "local_gpu": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p2": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p3": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p3dn": {
+                    "regional_properties": {"image_uri": "$gpu_ecr_uri_1"},
+                    "properties": {
+                        "gated_model_key_env_var_value": "huggingface-training/train-hugg"
+                        "ingface-llm-gemma-7b-instruct.tar.gz"
+                    },
+                },
+                "p4d": {
+                    "regional_properties": {"image_uri": "$gpu_ecr_uri_1"},
+                    "properties": {
+                        "gated_model_key_env_var_value": "huggingface-training/train-hugg"
+                        "ingface-llm-gemma-7b-instruct.tar.gz"
+                    },
+                },
+                "p4de": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p5": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+            },
+            "hosting_artifact_s3_data_type": "S3Prefix",
+            "hosting_artifact_compression_type": "None",
+            "hosting_resource_requirements": {"min_memory_mb": 98304, "num_accelerators": 4},
+            "dynamic_container_deployment_supported": True,
+        },
+    },
     "env-var-variant-model": {
         "model_id": "huggingface-llm-falcon-180b-bf16",
         "url": "https://huggingface.co/tiiuae/falcon-180B",
@@ -840,8 +2076,22 @@ SPECIAL_MODEL_SPECS_DICT = {
                         "model_package_arn": "$gpu_model_package_arn",
                     }
                 },
+                "g5": {
+                    "properties": {
+                        "resource_requirements": {
+                            "num_accelerators": 888810,
+                            "randon-field-2": 2222,
+                        }
+                    }
+                },
                 "m2": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
                 "c2": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
+                "ml.g5.xlarge": {
+                    "properties": {
+                        "environment_variables": {"TENSOR_PARALLEL_DEGREE": "8"},
+                        "resource_requirements": {"num_accelerators": 10},
+                    }
+                },
                 "ml.g5.48xlarge": {
                     "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "8"}}
                 },
@@ -856,6 +2106,12 @@ SPECIAL_MODEL_SPECS_DICT = {
             "framework": "pytorch",
             "framework_version": "1.5.0",
             "py_version": "py3",
+        },
+        "dynamic_container_deployment_supported": True,
+        "hosting_resource_requirements": {
+            "min_memory_mb": 81999,
+            "num_accelerators": 1,
+            "random_field_1": 1,
         },
         "hosting_artifact_key": "pytorch-infer/infer-pytorch-ic-mobilenet-v2.tar.gz",
         "training_artifact_key": "pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz",
@@ -1007,6 +2263,827 @@ SPECIAL_MODEL_SPECS_DICT = {
         ],
         "model_kwargs": {"some-model-kwarg-key": "some-model-kwarg-value"},
         "deploy_kwargs": {"some-model-deploy-kwarg-key": "some-model-deploy-kwarg-value"},
+        "estimator_kwargs": {
+            "encrypt_inter_container_traffic": True,
+        },
+        "fit_kwargs": {"some-estimator-fit-key": "some-estimator-fit-value"},
+        "predictor_specs": {
+            "supported_content_types": ["application/x-image"],
+            "supported_accept_types": ["application/json;verbose", "application/json"],
+            "default_content_type": "application/x-image",
+            "default_accept_type": "application/json",
+        },
+        "inference_volume_size": 123,
+        "training_volume_size": 456,
+        "inference_enable_network_isolation": True,
+        "training_enable_network_isolation": False,
+        "resource_name_base": "dfsdfsds",
+    },
+    "gated_llama_neuron_model": {
+        "model_id": "meta-textgenerationneuron-llama-2-7b",
+        "url": "https://ai.meta.com/resources/models-and-libraries/llama-downloads/",
+        "version": "1.0.0",
+        "min_sdk_version": "2.198.0",
+        "training_supported": True,
+        "incremental_training_supported": False,
+        "hosting_ecr_specs": {
+            "framework": "djl-neuronx",
+            "framework_version": "0.24.0",
+            "py_version": "py39",
+        },
+        "hosting_artifact_key": "meta-textgenerationneuron/meta-textgenerationneuron-llama-2-7b/artifac"
+        "ts/inference/v1.0.0/",
+        "hosting_script_key": "source-directory-tarballs/meta/inference/textgenerationneuron/v1.0.0/sourcedir.tar.gz",
+        "hosting_prepacked_artifact_key": "meta-textgenerationneuron/meta-textgenerationneuro"
+        "n-llama-2-7b/artifacts/inference-prepack/v1.0.0/",
+        "hosting_prepacked_artifact_version": "1.0.0",
+        "hosting_use_script_uri": False,
+        "hosting_eula_key": "fmhMetadata/eula/llamaEula.txt",
+        "inference_vulnerable": False,
+        "inference_dependencies": [
+            "sagemaker_jumpstart_huggingface_script_utilities==1.0.8",
+            "sagemaker_jumpstart_script_utilities==1.1.8",
+        ],
+        "inference_vulnerabilities": [],
+        "training_vulnerable": False,
+        "training_dependencies": [
+            "sagemaker_jumpstart_huggingface_script_utilities==1.1.3",
+            "sagemaker_jumpstart_script_utilities==1.1.9",
+            "sagemaker_jumpstart_tabular_script_utilities==1.0.0",
+        ],
+        "training_vulnerabilities": [],
+        "deprecated": False,
+        "hyperparameters": [
+            {
+                "name": "max_input_length",
+                "type": "int",
+                "default": 2048,
+                "min": 128,
+                "scope": "algorithm",
+            },
+            {
+                "name": "preprocessing_num_workers",
+                "type": "text",
+                "default": "None",
+                "scope": "algorithm",
+            },
+            {
+                "name": "learning_rate",
+                "type": "float",
+                "default": 6e-06,
+                "min": 1e-08,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "min_learning_rate",
+                "type": "float",
+                "default": 1e-06,
+                "min": 1e-12,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {"name": "max_steps", "type": "int", "default": 20, "min": 2, "scope": "algorithm"},
+            {
+                "name": "global_train_batch_size",
+                "type": "int",
+                "default": 256,
+                "min": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "per_device_train_batch_size",
+                "type": "int",
+                "default": 1,
+                "min": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "layer_norm_epilson",
+                "type": "float",
+                "default": 1e-05,
+                "min": 1e-12,
+                "scope": "algorithm",
+            },
+            {
+                "name": "weight_decay",
+                "type": "float",
+                "default": 0.1,
+                "min": 1e-08,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "lr_scheduler_type",
+                "type": "text",
+                "default": "CosineAnnealing",
+                "options": ["CosineAnnealing"],
+                "scope": "algorithm",
+            },
+            {"name": "warmup_steps", "type": "int", "default": 10, "min": 0, "scope": "algorithm"},
+            {"name": "constant_steps", "type": "int", "default": 0, "min": 0, "scope": "algorithm"},
+            {
+                "name": "adam_beta1",
+                "type": "float",
+                "default": 0.9,
+                "min": 1e-08,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "adam_beta2",
+                "type": "float",
+                "default": 0.95,
+                "min": 1e-08,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "mixed_precision",
+                "type": "text",
+                "default": "True",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "tensor_parallel_degree",
+                "type": "text",
+                "default": "8",
+                "options": ["8"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "pipeline_parallel_degree",
+                "type": "text",
+                "default": "1",
+                "options": ["1"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "append_eod",
+                "type": "text",
+                "default": "False",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "sagemaker_submit_directory",
+                "type": "text",
+                "default": "/opt/ml/input/data/code/sourcedir.tar.gz",
+                "scope": "container",
+            },
+            {
+                "name": "sagemaker_program",
+                "type": "text",
+                "default": "transfer_learning.py",
+                "scope": "container",
+            },
+            {
+                "name": "sagemaker_container_log_level",
+                "type": "text",
+                "default": "20",
+                "scope": "container",
+            },
+        ],
+        "training_script_key": "source-directory-tarballs/meta/transfer_learning/textgenerati"
+        "onneuron/v1.0.0/sourcedir.tar.gz",
+        "training_prepacked_script_key": "source-directory-tarballs/meta/tra"
+        "nsfer_learning/textgenerationneuron/prepack/v1.0.0/sourcedir.tar.gz",
+        "training_prepacked_script_version": "1.0.0",
+        "training_ecr_specs": {
+            "framework": "huggingface",
+            "framework_version": "2.0.0",
+            "py_version": "py310",
+            "huggingface_transformers_version": "4.28.1",
+        },
+        "training_artifact_key": "meta-training/train-meta-textgenerationneuron-llama-2-7b.tar.gz",
+        "inference_environment_variables": [
+            {
+                "name": "SAGEMAKER_PROGRAM",
+                "type": "text",
+                "default": "inference.py",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "SAGEMAKER_SUBMIT_DIRECTORY",
+                "type": "text",
+                "default": "/opt/ml/model/code",
+                "scope": "container",
+                "required_for_model_class": False,
+            },
+            {
+                "name": "SAGEMAKER_CONTAINER_LOG_LEVEL",
+                "type": "text",
+                "default": "20",
+                "scope": "container",
+                "required_for_model_class": False,
+            },
+            {
+                "name": "MODEL_CACHE_ROOT",
+                "type": "text",
+                "default": "/opt/ml/model",
+                "scope": "container",
+                "required_for_model_class": False,
+            },
+            {
+                "name": "SAGEMAKER_ENV",
+                "type": "text",
+                "default": "1",
+                "scope": "container",
+                "required_for_model_class": False,
+            },
+            {
+                "name": "SAGEMAKER_MODEL_SERVER_TIMEOUT",
+                "type": "text",
+                "default": "3600",
+                "scope": "container",
+                "required_for_model_class": False,
+            },
+            {
+                "name": "SAGEMAKER_MODEL_SERVER_WORKERS",
+                "type": "int",
+                "default": 1,
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+        ],
+        "metrics": [
+            {
+                "Name": "meta-textgenerationneuron:train-loss",
+                "Regex": "reduced_train_loss=([0-9]+\\.[0-9]+)",
+            }
+        ],
+        "default_inference_instance_type": "ml.inf2.xlarge",
+        "supported_inference_instance_types": [
+            "ml.inf2.xlarge",
+            "ml.inf2.8xlarge",
+            "ml.inf2.24xlarge",
+            "ml.inf2.48xlarge",
+        ],
+        "default_training_instance_type": "ml.trn1.32xlarge",
+        "supported_training_instance_types": ["ml.trn1.32xlarge", "ml.trn1n.32xlarge"],
+        "model_kwargs": {},
+        "deploy_kwargs": {
+            "model_data_download_timeout": 3600,
+            "container_startup_health_check_timeout": 3600,
+        },
+        "estimator_kwargs": {
+            "encrypt_inter_container_traffic": True,
+            "disable_output_compression": True,
+            "max_run": 360000,
+        },
+        "fit_kwargs": {},
+        "predictor_specs": {
+            "supported_content_types": ["application/json"],
+            "supported_accept_types": ["application/json"],
+            "default_content_type": "application/json",
+            "default_accept_type": "application/json",
+        },
+        "inference_volume_size": 256,
+        "training_volume_size": 256,
+        "inference_enable_network_isolation": True,
+        "training_enable_network_isolation": True,
+        "default_training_dataset_key": "training-datasets/sec_amazon/",
+        "validation_supported": False,
+        "fine_tuning_supported": True,
+        "resource_name_base": "meta-textgenerationneuron-llama-2-7b",
+        "default_payloads": {
+            "meaningOfLife": {
+                "content_type": "application/json",
+                "prompt_key": "inputs",
+                "output_keys": {"generated_text": "generated_text"},
+                "body": {
+                    "inputs": "I believe the meaning of life is",
+                    "parameters": {"max_new_tokens": 64, "top_p": 0.9, "temperature": 0.6},
+                },
+            },
+            "theoryOfRelativity": {
+                "content_type": "application/json",
+                "prompt_key": "inputs",
+                "output_keys": {"generated_text": "generated_text"},
+                "body": {
+                    "inputs": "Simply put, the theory of relativity states that ",
+                    "parameters": {"max_new_tokens": 64, "top_p": 0.9, "temperature": 0.6},
+                },
+            },
+            "teamMessage": {
+                "content_type": "application/json",
+                "prompt_key": "inputs",
+                "output_keys": {"generated_text": "generated_text"},
+                "body": {
+                    "inputs": "A brief message congratulating the team on the launch:\n\nHi "
+                    "everyone,\n\nI just ",
+                    "parameters": {"max_new_tokens": 64, "top_p": 0.9, "temperature": 0.6},
+                },
+            },
+            "englishToFrench": {
+                "content_type": "application/json",
+                "prompt_key": "inputs",
+                "output_keys": {"generated_text": "generated_text"},
+                "body": {
+                    "inputs": "Translate English to French:\nsea otter => loutre de mer\npep"
+                    "permint => menthe poivr\u00e9e\nplush girafe => girafe peluche\ncheese =>",
+                    "parameters": {"max_new_tokens": 64, "top_p": 0.9, "temperature": 0.6},
+                },
+            },
+        },
+        "gated_bucket": True,
+        "hosting_instance_type_variants": {
+            "regional_aliases": {
+                "af-south-1": {
+                    "alias_ecr_uri_1": "626614931356.dkr.ecr.af-south-1.amazonaws.com/djl-in"
+                    "ference:0.24.0-neuronx-sdk2.14.1"
+                },
+                "ap-east-1": {
+                    "alias_ecr_uri_1": "871362719292.dkr.ecr.ap-east-1.amazonaws.com/djl-in"
+                    "ference:0.24.0-neuronx-sdk2.14.1"
+                },
+                "ap-northeast-1": {
+                    "alias_ecr_uri_1": "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/d"
+                    "jl-inference:0.24.0-neuronx-sdk2.14.1"
+                },
+                "ap-northeast-2": {
+                    "alias_ecr_uri_1": "763104351884.dkr.ecr.ap-northeast-2.amazonaws.com"
+                    "/djl-inference:0.24.0-neuronx-sdk2.14.1"
+                },
+                "ap-south-1": {
+                    "alias_ecr_uri_1": "763104351884.dkr.ecr.ap-south-1.amazonaws.com/"
+                    "djl-inference:0.24.0-neuronx-sdk2.14.1"
+                },
+                "ap-southeast-1": {
+                    "alias_ecr_uri_1": "763104351884.dkr.ecr.ap-southeast-1.amazonaws.com"
+                    "/djl-inference:0.24.0-neuronx-sdk2.14.1"
+                },
+                "ap-southeast-2": {
+                    "alias_ecr_uri_1": "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com"
+                    "/djl-inference:0.24.0-neuronx-sdk2.14.1"
+                },
+                "ca-central-1": {
+                    "alias_ecr_uri_1": "763104351884.dkr.ecr.ca-central-1.amazonaws.com/"
+                    "djl-inference:0.24.0-neuronx-sdk2.14.1"
+                },
+                "cn-north-1": {
+                    "alias_ecr_uri_1": "727897471807.dkr.ecr.cn-north-1.amazonaws.com.cn/"
+                    "djl-inference:0.24.0-neuronx-sdk2.14.1"
+                },
+                "eu-central-1": {
+                    "alias_ecr_uri_1": "763104351884.dkr.ecr.eu-central-1.amazonaws.com/"
+                    "djl-inference:0.24.0-neuronx-sdk2.14.1"
+                },
+                "eu-north-1": {
+                    "alias_ecr_uri_1": "763104351884.dkr.ecr.eu-north-1.amazonaws.com/"
+                    "djl-inference:0.24.0-neuronx-sdk2.14.1"
+                },
+                "eu-south-1": {
+                    "alias_ecr_uri_1": "692866216735.dkr.ecr.eu-south-1.amazonaws.com/"
+                    "djl-inference:0.24.0-neuronx-sdk2.14.1"
+                },
+                "eu-west-1": {
+                    "alias_ecr_uri_1": "763104351884.dkr.ecr.eu-west-1.amazonaws.com/d"
+                    "jl-inference:0.24.0-neuronx-sdk2.14.1"
+                },
+                "eu-west-2": {
+                    "alias_ecr_uri_1": "763104351884.dkr.ecr.eu-west-2.amazonaws.com/d"
+                    "jl-inference:0.24.0-neuronx-sdk2.14.1"
+                },
+                "eu-west-3": {
+                    "alias_ecr_uri_1": "763104351884.dkr.ecr.eu-west-3.amazonaws.com/d"
+                    "jl-inference:0.24.0-neuronx-sdk2.14.1"
+                },
+                "me-south-1": {
+                    "alias_ecr_uri_1": "217643126080.dkr.ecr.me-south-1.amazonaws.com"
+                    "/djl-inference:0.24.0-neuronx-sdk2.14.1"
+                },
+                "sa-east-1": {
+                    "alias_ecr_uri_1": "763104351884.dkr.ecr.sa-east-1.amazonaws.com"
+                    "/djl-inference:0.24.0-neuronx-sdk2.14.1"
+                },
+                "us-east-1": {
+                    "alias_ecr_uri_1": "763104351884.dkr.ecr.us-east-1.amazonaws.com/"
+                    "djl-inference:0.24.0-neuronx-sdk2.14.1"
+                },
+                "us-east-2": {
+                    "alias_ecr_uri_1": "763104351884.dkr.ecr.us-east-2.amazonaws.com"
+                    "/djl-inference:0.24.0-neuronx-sdk2.14.1"
+                },
+                "us-west-1": {
+                    "alias_ecr_uri_1": "763104351884.dkr.ecr.us-west-1.amazonaws.co"
+                    "m/djl-inference:0.24.0-neuronx-sdk2.14.1"
+                },
+                "us-west-2": {
+                    "alias_ecr_uri_1": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-"
+                    "inference:0.24.0-neuronx-sdk2.14.1"
+                },
+            },
+            "variants": {
+                "c4": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "c5": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "c5d": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "c5n": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "c6i": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "g4dn": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "g5": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "inf1": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "inf2": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "local": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "local_gpu": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "m4": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "m5": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "m5d": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "p2": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "p3": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "p3dn": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "p4d": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "p4de": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "p5": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "r5": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "r5d": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "t2": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "t3": {"regional_properties": {"image_uri": "$alias_ecr_uri_1"}},
+                "ml.inf2.xlarge": {
+                    "properties": {
+                        "environment_variables": {
+                            "OPTION_TENSOR_PARALLEL_DEGREE": "2",
+                            "OPTION_N_POSITIONS": "1024",
+                            "OPTION_DTYPE": "fp16",
+                            "OPTION_ROLLING_BATCH": "auto",
+                            "OPTION_MAX_ROLLING_BATCH_SIZE": "1",
+                            "OPTION_NEURON_OPTIMIZE_LEVEL": "2",
+                        }
+                    }
+                },
+                "ml.inf2.8xlarge": {
+                    "properties": {
+                        "environment_variables": {
+                            "OPTION_TENSOR_PARALLEL_DEGREE": "2",
+                            "OPTION_N_POSITIONS": "2048",
+                            "OPTION_DTYPE": "fp16",
+                            "OPTION_ROLLING_BATCH": "auto",
+                            "OPTION_MAX_ROLLING_BATCH_SIZE": "4",
+                            "OPTION_NEURON_OPTIMIZE_LEVEL": "2",
+                        }
+                    }
+                },
+                "ml.inf2.24xlarge": {
+                    "properties": {
+                        "environment_variables": {
+                            "OPTION_TENSOR_PARALLEL_DEGREE": "12",
+                            "OPTION_N_POSITIONS": "4096",
+                            "OPTION_DTYPE": "fp16",
+                            "OPTION_ROLLING_BATCH": "auto",
+                            "OPTION_MAX_ROLLING_BATCH_SIZE": "4",
+                            "OPTION_NEURON_OPTIMIZE_LEVEL": "2",
+                        }
+                    }
+                },
+                "ml.inf2.48xlarge": {
+                    "properties": {
+                        "environment_variables": {
+                            "OPTION_TENSOR_PARALLEL_DEGREE": "24",
+                            "OPTION_N_POSITIONS": "4096",
+                            "OPTION_DTYPE": "fp16",
+                            "OPTION_ROLLING_BATCH": "auto",
+                            "OPTION_MAX_ROLLING_BATCH_SIZE": "4",
+                            "OPTION_NEURON_OPTIMIZE_LEVEL": "2",
+                        }
+                    }
+                },
+            },
+        },
+        "training_instance_type_variants": {
+            "regional_aliases": {
+                "af-south-1": {
+                    "gpu_ecr_uri_1": "626614931356.dkr.ecr.af-south-1.amazonaws.com/huggingface-pytorc"
+                    "h-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                },
+                "ap-east-1": {
+                    "gpu_ecr_uri_1": "871362719292.dkr.ecr.ap-east-1.amazonaws.com/huggingface-pytorch"
+                    "-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                },
+                "ap-northeast-1": {
+                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/huggingface-"
+                    "pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                },
+                "ap-northeast-2": {
+                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.ap-northeast-2.amazonaws.com/huggingfa"
+                    "ce-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                },
+                "ap-south-1": {
+                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.ap-south-1.amazonaws.com/huggingface-pytorch"
+                    "-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                },
+                "ap-southeast-1": {
+                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.ap-southeast-1.amazonaws.com/"
+                    "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                },
+                "ap-southeast-2": {
+                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/"
+                    "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                },
+                "ca-central-1": {
+                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.ca-central-1.amazonaws.com/hu"
+                    "ggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                },
+                "cn-north-1": {
+                    "gpu_ecr_uri_1": "727897471807.dkr.ecr.cn-north-1.amazonaws.com.cn/"
+                    "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                },
+                "eu-central-1": {
+                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.eu-central-1.amazonaws.com/hug"
+                    "gingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                },
+                "eu-north-1": {
+                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.eu-north-1.amazonaws.com/hu"
+                    "ggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                },
+                "eu-south-1": {
+                    "gpu_ecr_uri_1": "692866216735.dkr.ecr.eu-south-1.amazonaws.com/hu"
+                    "ggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                },
+                "eu-west-1": {
+                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.eu-west-1.amazonaws.com/hug"
+                    "gingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                },
+                "eu-west-2": {
+                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.eu-west-2.amazonaws.com/hug"
+                    "gingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                },
+                "eu-west-3": {
+                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.eu-west-3.amazonaws.com/huggi"
+                    "ngface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                },
+                "me-south-1": {
+                    "gpu_ecr_uri_1": "217643126080.dkr.ecr.me-south-1.amazonaws.com/huggin"
+                    "gface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                },
+                "sa-east-1": {
+                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.sa-east-1.amazonaws.com/hugg"
+                    "ingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                },
+                "us-east-1": {
+                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.us-east-1.amazonaws.com/hu"
+                    "ggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04",
+                    "neuron_ecr_uri": "763104351884.dkr.ecr.us-east-1.amazonaws.com/pytorch-"
+                    "training-neuronx:1.13.1-neuronx-py310-sdk2.14.1-ubuntu20.04",
+                },
+                "us-east-2": {
+                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.us-east-2.amazonaws.com/huggingface-py"
+                    "torch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04",
+                    "neuron_ecr_uri": "763104351884.dkr.ecr.us-east-2.amazonaws.com/pytorch-trai"
+                    "ning-neuronx:1.13.1-neuronx-py310-sdk2.14.1-ubuntu20.04",
+                },
+                "us-west-1": {
+                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.us-west-1.amazonaws.com/huggingface-pytor"
+                    "ch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                },
+                "us-west-2": {
+                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface"
+                    "-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04",
+                    "neuron_ecr_uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch"
+                    "-training-neuronx:1.13.1-neuronx-py310-sdk2.14.1-ubuntu20.04",
+                },
+            },
+            "variants": {
+                "g4dn": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "g5": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "local_gpu": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p2": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p3": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p3dn": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p4d": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p4de": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p5": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "trn1": {
+                    "regional_properties": {"image_uri": "$neuron_ecr_uri"},
+                    "properties": {
+                        "gated_model_key_env_var_value": "meta-training/trn1/v1.0."
+                        "0/train-meta-textgenerationneuron-llama-2-7b.tar.gz"
+                    },
+                },
+                "trn1n": {
+                    "regional_properties": {"image_uri": "$neuron_ecr_uri"},
+                    "properties": {
+                        "gated_model_key_env_var_value": "meta-training/trn1n/v1.0.0"
+                        "/train-meta-textgenerationneuron-llama-2-7b.tar.gz"
+                    },
+                },
+            },
+        },
+        "hosting_artifact_s3_data_type": "S3Prefix",
+        "hosting_artifact_compression_type": "None",
+        "hosting_resource_requirements": {"min_memory_mb": 8192, "num_accelerators": 1},
+        "dynamic_container_deployment_supported": True,
+    },
+    "gated_variant-model": {
+        "model_id": "pytorch-ic-mobilenet-v2",
+        "gated_bucket": True,
+        "url": "https://pytorch.org/hub/pytorch_vision_mobilenet_v2/",
+        "version": "1.0.0",
+        "min_sdk_version": "2.49.0",
+        "training_supported": True,
+        "incremental_training_supported": True,
+        "hosting_ecr_specs": {
+            "framework": "pytorch",
+            "framework_version": "1.5.0",
+            "py_version": "py3",
+        },
+        "training_instance_type_variants": None,
+        "hosting_instance_type_variants": {
+            "regional_aliases": {
+                "us-west-2": {
+                    "gpu_image_uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
+                    "huggingface-pytorch-inference:1.13.1-transformers4.26.0-gpu-py39-cu117-ubuntu20.04",
+                    "cpu_image_uri": "867930986793.dkr.us-west-2.amazonaws.com/cpu-blah",
+                }
+            },
+            "variants": {
+                "p2": {
+                    "regional_properties": {
+                        "image_uri": "$gpu_image_uri",
+                    },
+                    "properties": {
+                        "prepacked_artifact_key": "some-instance-specific/model/prefix/"
+                    },
+                },
+                "p3": {
+                    "regional_properties": {
+                        "image_uri": "$gpu_image_uri",
+                    }
+                },
+                "p4": {
+                    "regional_properties": {
+                        "image_uri": "$gpu_image_uri",
+                    }
+                },
+                "g4dn": {
+                    "regional_properties": {
+                        "image_uri": "$gpu_image_uri",
+                    }
+                },
+                "m2": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
+                "c2": {"regional_properties": {"image_uri": "$cpu_image_uri"}},
+                "ml.g5.48xlarge": {
+                    "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "8"}}
+                },
+                "ml.g5.12xlarge": {
+                    "properties": {"environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"}}
+                },
+            },
+        },
+        "training_ecr_specs": {
+            "framework": "pytorch",
+            "framework_version": "1.5.0",
+            "py_version": "py3",
+        },
+        "hosting_artifact_key": "pytorch-infer/infer-pytorch-ic-mobilenet-v2.tar.gz",
+        "training_artifact_key": "pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz",
+        "hosting_script_key": "source-directory-tarballs/pytorch/inference/ic/v1.0.0/sourcedir.tar.gz",
+        "training_script_key": "source-directory-tarballs/pytorch/transfer_learning/ic/v1.0.0/sourcedir.tar.gz",
+        "training_prepacked_script_key": None,
+        "hosting_prepacked_artifact_key": None,
+        "training_model_package_artifact_uris": None,
+        "deprecate_warn_message": None,
+        "deprecated_message": None,
+        "hosting_eula_key": None,
+        "hyperparameters": [
+            {
+                "name": "epochs",
+                "type": "int",
+                "default": 3,
+                "min": 1,
+                "max": 1000,
+                "scope": "algorithm",
+            },
+            {
+                "name": "adam-learning-rate",
+                "type": "float",
+                "default": 0.05,
+                "min": 1e-08,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "batch-size",
+                "type": "int",
+                "default": 4,
+                "min": 1,
+                "max": 1024,
+                "scope": "algorithm",
+            },
+            {
+                "name": "sagemaker_submit_directory",
+                "type": "text",
+                "default": "/opt/ml/input/data/code/sourcedir.tar.gz",
+                "scope": "container",
+            },
+            {
+                "name": "sagemaker_program",
+                "type": "text",
+                "default": "transfer_learning.py",
+                "scope": "container",
+            },
+            {
+                "name": "sagemaker_container_log_level",
+                "type": "text",
+                "default": "20",
+                "scope": "container",
+            },
+        ],
+        "inference_environment_variables": [
+            {
+                "name": "SAGEMAKER_PROGRAM",
+                "type": "text",
+                "default": "inference.py",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "SAGEMAKER_SUBMIT_DIRECTORY",
+                "type": "text",
+                "default": "/opt/ml/model/code",
+                "scope": "container",
+                "required_for_model_class": False,
+            },
+            {
+                "name": "SAGEMAKER_CONTAINER_LOG_LEVEL",
+                "type": "text",
+                "default": "20",
+                "scope": "container",
+                "required_for_model_class": False,
+            },
+            {
+                "name": "SAGEMAKER_MODEL_SERVER_TIMEOUT",
+                "type": "text",
+                "default": "3600",
+                "scope": "container",
+                "required_for_model_class": False,
+            },
+            {
+                "name": "ENDPOINT_SERVER_TIMEOUT",
+                "type": "int",
+                "default": 3600,
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "MODEL_CACHE_ROOT",
+                "type": "text",
+                "default": "/opt/ml/model",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "SAGEMAKER_ENV",
+                "type": "text",
+                "default": "1",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "SAGEMAKER_MODEL_SERVER_WORKERS",
+                "type": "int",
+                "default": 1,
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+        ],
+        "inference_vulnerable": False,
+        "inference_dependencies": [],
+        "inference_vulnerabilities": [],
+        "training_vulnerable": False,
+        "training_dependencies": [],
+        "training_vulnerabilities": [],
+        "deprecated": False,
+        "default_inference_instance_type": "ml.p2.xlarge",
+        "supported_inference_instance_types": [
+            "ml.p2.xlarge",
+            "ml.p3.2xlarge",
+            "ml.g4dn.xlarge",
+            "ml.m5.large",
+            "ml.m5.xlarge",
+            "ml.c5.xlarge",
+            "ml.c5.2xlarge",
+        ],
+        "default_training_instance_type": "ml.p3.2xlarge",
+        "supported_training_instance_types": [
+            "ml.p3.2xlarge",
+            "ml.p2.xlarge",
+            "ml.g4dn.2xlarge",
+            "ml.m5.xlarge",
+            "ml.c5.2xlarge",
+        ],
+        "hosting_use_script_uri": False,
+        "metrics": [
+            {
+                "Name": "huggingface-textgeneration:train-loss",
+                "Regex": "'loss default': ([0-9]+\\.[0-9]+)",
+            },
+            {
+                "Name": "huggingface-textgeyyyuyuyuyneration:train-loss",
+                "Regex": "'loss default': ([0-9]+\\.[0-9]+)",
+            },
+        ],
         "estimator_kwargs": {
             "encrypt_inter_container_traffic": True,
         },
@@ -2103,6 +4180,470 @@ SPECIAL_MODEL_SPECS_DICT = {
             "default_accept_type": "application/json",
         },
     },
+    "js-gated-artifact-non-model-package-trainable-model": {
+        "model_id": "meta-textgeneration-llama-2-7b",
+        "url": "https://ai.meta.com/resources/models-and-libraries/llama-downloads/",
+        "version": "3.0.0",
+        "min_sdk_version": "2.189.0",
+        "training_supported": True,
+        "incremental_training_supported": False,
+        "hosting_ecr_specs": {
+            "framework": "huggingface-llm",
+            "framework_version": "1.1.0",
+            "py_version": "py39",
+        },
+        "training_artifact_key": "some/dummy/key",
+        "hosting_artifact_key": "meta-textgeneration/meta-textgeneration-llama-2-7b/artifacts/inference/v1.0.0/",
+        "hosting_script_key": "source-directory-tarballs/meta/inference/textgeneration/v1.2.3/sourcedir.tar.gz",
+        "hosting_prepacked_artifact_key": "meta-textgeneration/meta-textgen"
+        "eration-llama-2-7b/artifacts/inference-prepack/v1.0.0/",
+        "hosting_prepacked_artifact_version": "1.0.0",
+        "hosting_use_script_uri": False,
+        "hosting_eula_key": "fmhMetadata/eula/llamaEula.txt",
+        "inference_vulnerable": False,
+        "inference_dependencies": [
+            "sagemaker_jumpstart_huggingface_script_utilities==1.0.8",
+            "sagemaker_jumpstart_script_utilities==1.1.8",
+        ],
+        "inference_vulnerabilities": [],
+        "training_vulnerable": False,
+        "training_dependencies": [
+            "accelerate==0.21.0",
+            "bitsandbytes==0.39.1",
+            "black==23.7.0",
+            "brotli==1.0.9",
+            "datasets==2.14.1",
+            "fire==0.5.0",
+            "inflate64==0.3.1",
+            "loralib==0.1.1",
+            "multivolumefile==0.2.3",
+            "mypy-extensions==1.0.0",
+            "pathspec==0.11.1",
+            "peft==0.4.0",
+            "py7zr==0.20.5",
+            "pybcj==1.0.1",
+            "pycryptodomex==3.18.0",
+            "pyppmd==1.0.0",
+            "pytorch-triton==2.1.0+e6216047b8",
+            "pyzstd==0.15.9",
+            "safetensors==0.3.1",
+            "sagemaker_jumpstart_huggingface_script_utilities==1.1.3",
+            "sagemaker_jumpstart_script_utilities==1.1.9",
+            "scipy==1.11.1",
+            "termcolor==2.3.0",
+            "texttable==1.6.7",
+            "tokenize-rt==5.1.0",
+            "tokenizers==0.13.3",
+            "torch==2.1.0.dev20230905+cu118",
+            "transformers==4.31.0",
+        ],
+        "training_vulnerabilities": [],
+        "deprecated": False,
+        "hyperparameters": [
+            {
+                "name": "int8_quantization",
+                "type": "text",
+                "default": "False",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "enable_fsdp",
+                "type": "text",
+                "default": "True",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "epoch",
+                "type": "int",
+                "default": 5,
+                "min": 1,
+                "max": 1000,
+                "scope": "algorithm",
+            },
+            {
+                "name": "learning_rate",
+                "type": "float",
+                "default": 0.0001,
+                "min": 1e-08,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {"name": "lora_r", "type": "int", "default": 8, "min": 1, "scope": "algorithm"},
+            {"name": "lora_alpha", "type": "int", "default": 32, "min": 1, "scope": "algorithm"},
+            {
+                "name": "lora_dropout",
+                "type": "float",
+                "default": 0.05,
+                "min": 0,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "instruction_tuned",
+                "type": "text",
+                "default": "False",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "chat_dataset",
+                "type": "text",
+                "default": "False",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "add_input_output_demarcation_key",
+                "type": "text",
+                "default": "True",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "per_device_train_batch_size",
+                "type": "int",
+                "default": 4,
+                "min": 1,
+                "max": 1000,
+                "scope": "algorithm",
+            },
+            {
+                "name": "per_device_eval_batch_size",
+                "type": "int",
+                "default": 1,
+                "min": 1,
+                "max": 1000,
+                "scope": "algorithm",
+            },
+            {
+                "name": "max_train_samples",
+                "type": "int",
+                "default": -1,
+                "min": -1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "max_val_samples",
+                "type": "int",
+                "default": -1,
+                "min": -1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "seed",
+                "type": "int",
+                "default": 10,
+                "min": 1,
+                "max": 1000,
+                "scope": "algorithm",
+            },
+            {
+                "name": "max_input_length",
+                "type": "int",
+                "default": -1,
+                "min": -1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "validation_split_ratio",
+                "type": "float",
+                "default": 0.2,
+                "min": 0,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "train_data_split_seed",
+                "type": "int",
+                "default": 0,
+                "min": 0,
+                "scope": "algorithm",
+            },
+            {
+                "name": "preprocessing_num_workers",
+                "type": "text",
+                "default": "None",
+                "scope": "algorithm",
+            },
+            {
+                "name": "sagemaker_submit_directory",
+                "type": "text",
+                "default": "/opt/ml/input/data/code/sourcedir.tar.gz",
+                "scope": "container",
+            },
+            {
+                "name": "sagemaker_program",
+                "type": "text",
+                "default": "transfer_learning.py",
+                "scope": "container",
+            },
+            {
+                "name": "sagemaker_container_log_level",
+                "type": "text",
+                "default": "20",
+                "scope": "container",
+            },
+        ],
+        "training_script_key": "source-directory-tarballs/"
+        "meta/transfer_learning/textgeneration/v1.0.4/sourcedir.tar.gz",
+        "training_prepacked_script_key": "source-directory-"
+        "tarballs/meta/transfer_learning/textgeneration/prepack/v1.0.1/sourcedir.tar.gz",
+        "training_prepacked_script_version": "1.0.1",
+        "training_ecr_specs": {
+            "framework": "huggingface",
+            "framework_version": "2.0.0",
+            "py_version": "py310",
+            "huggingface_transformers_version": "4.28.1",
+        },
+        "inference_environment_variables": [
+            {
+                "name": "SAGEMAKER_PROGRAM",
+                "type": "text",
+                "default": "inference.py",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "SAGEMAKER_SUBMIT_DIRECTORY",
+                "type": "text",
+                "default": "/opt/ml/model/code",
+                "scope": "container",
+                "required_for_model_class": False,
+            },
+            {
+                "name": "SAGEMAKER_CONTAINER_LOG_LEVEL",
+                "type": "text",
+                "default": "20",
+                "scope": "container",
+                "required_for_model_class": False,
+            },
+            {
+                "name": "SAGEMAKER_MODEL_SERVER_TIMEOUT",
+                "type": "text",
+                "default": "3600",
+                "scope": "container",
+                "required_for_model_class": False,
+            },
+            {
+                "name": "ENDPOINT_SERVER_TIMEOUT",
+                "type": "int",
+                "default": 3600,
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "MODEL_CACHE_ROOT",
+                "type": "text",
+                "default": "/opt/ml/model",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "SAGEMAKER_ENV",
+                "type": "text",
+                "default": "1",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "HF_MODEL_ID",
+                "type": "text",
+                "default": "/opt/ml/model",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "MAX_INPUT_LENGTH",
+                "type": "text",
+                "default": "4095",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "MAX_TOTAL_TOKENS",
+                "type": "text",
+                "default": "4096",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "SM_NUM_GPUS",
+                "type": "text",
+                "default": "1",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "SAGEMAKER_MODEL_SERVER_WORKERS",
+                "type": "int",
+                "default": 1,
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+        ],
+        "metrics": [
+            {
+                "Name": "huggingface-textgeneration:eval-loss",
+                "Regex": "eval_epoch_loss=tensor\\(([0-9\\.]+)",
+            },
+            {
+                "Name": "huggingface-textgeneration:eval-ppl",
+                "Regex": "eval_ppl=tensor\\(([0-9\\.]+)",
+            },
+            {
+                "Name": "huggingface-textgeneration:train-loss",
+                "Regex": "train_epoch_loss=([0-9\\.]+)",
+            },
+        ],
+        "default_inference_instance_type": "ml.g5.2xlarge",
+        "supported_inference_instance_types": [
+            "ml.g5.2xlarge",
+            "ml.g5.4xlarge",
+            "ml.g5.8xlarge",
+            "ml.g5.12xlarge",
+            "ml.g5.24xlarge",
+            "ml.g5.48xlarge",
+            "ml.p4d.24xlarge",
+        ],
+        "default_training_instance_type": "ml.g5.12xlarge",
+        "supported_training_instance_types": [
+            "ml.g5.12xlarge",
+            "ml.g5.24xlarge",
+            "ml.g5.48xlarge",
+            "ml.p3dn.24xlarge",
+        ],
+        "model_kwargs": {},
+        "deploy_kwargs": {
+            "model_data_download_timeout": 1200,
+            "container_startup_health_check_timeout": 1200,
+        },
+        "estimator_kwargs": {"encrypt_inter_container_traffic": True, "max_run": 360000},
+        "fit_kwargs": {},
+        "predictor_specs": {
+            "supported_content_types": ["application/json"],
+            "supported_accept_types": ["application/json"],
+            "default_content_type": "application/json",
+            "default_accept_type": "application/json",
+        },
+        "inference_volume_size": 256,
+        "training_volume_size": 256,
+        "inference_enable_network_isolation": True,
+        "training_enable_network_isolation": True,
+        "default_training_dataset_key": "training-datasets/sec_amazon/",
+        "validation_supported": True,
+        "fine_tuning_supported": True,
+        "resource_name_base": "meta-textgeneration-llama-2-7b",
+        "default_payloads": {
+            "meaningOfLife": {
+                "content_type": "application/json",
+                "prompt_key": "inputs",
+                "output_keys": {"generated_text": "[0].generated_text"},
+                "body": {
+                    "inputs": "I believe the meaning of life is",
+                    "parameters": {"max_new_tokens": 64, "top_p": 0.9, "temperature": 0.6},
+                },
+            },
+            "theoryOfRelativity": {
+                "content_type": "application/json",
+                "prompt_key": "inputs",
+                "output_keys": {"generated_text": "[0].generated_text"},
+                "body": {
+                    "inputs": "Simply put, the theory of relativity states that ",
+                    "parameters": {"max_new_tokens": 64, "top_p": 0.9, "temperature": 0.6},
+                },
+            },
+            "teamMessage": {
+                "content_type": "application/json",
+                "prompt_key": "inputs",
+                "output_keys": {"generated_text": "[0].generated_text"},
+                "body": {
+                    "inputs": "A brief message congratulating the team on the launch:\n\nHi everyone,\n\nI just ",
+                    "parameters": {"max_new_tokens": 64, "top_p": 0.9, "temperature": 0.6},
+                },
+            },
+            "englishToFrench": {
+                "content_type": "application/json",
+                "prompt_key": "inputs",
+                "output_keys": {"generated_text": "[0].generated_text"},
+                "body": {
+                    "inputs": "Translate English to French:\nsea o"
+                    "tter => loutre de mer\npeppermint => ment"
+                    "he poivr\u00e9e\nplush girafe => girafe peluche\ncheese =>",
+                    "parameters": {"max_new_tokens": 64, "top_p": 0.9, "temperature": 0.6},
+                },
+            },
+            "Story": {
+                "content_type": "application/json",
+                "prompt_key": "inputs",
+                "output_keys": {
+                    "generated_text": "[0].generated_text",
+                    "input_logprobs": "[0].details.prefill[*].logprob",
+                },
+                "body": {
+                    "inputs": "Please tell me a story.",
+                    "parameters": {
+                        "max_new_tokens": 64,
+                        "top_p": 0.9,
+                        "temperature": 0.2,
+                        "decoder_input_details": True,
+                        "details": True,
+                    },
+                },
+            },
+        },
+        "gated_bucket": True,
+        "hosting_instance_type_variants": {
+            "regional_aliases": {
+                "us-west-2": {
+                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.us-west-2.amazonaws.com/h"
+                    "uggingface-pytorch-tgi-inference:2.0.1-tgi1.1.0-gpu-py39-cu118-ubuntu20.04"
+                },
+            },
+            "variants": {
+                "g4dn": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "g5": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "local_gpu": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p2": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p3": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p3dn": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p4d": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p4de": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p5": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "ml.g5.12xlarge": {"properties": {"environment_variables": {"SM_NUM_GPUS": "4"}}},
+                "ml.g5.24xlarge": {"properties": {"environment_variables": {"SM_NUM_GPUS": "4"}}},
+                "ml.g5.48xlarge": {"properties": {"environment_variables": {"SM_NUM_GPUS": "8"}}},
+                "ml.p4d.24xlarge": {"properties": {"environment_variables": {"SM_NUM_GPUS": "8"}}},
+            },
+        },
+        "training_instance_type_variants": {
+            "regional_aliases": {
+                "us-west-2": {
+                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.us-west-2.amazon"
+                    "aws.com/huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                },
+            },
+            "variants": {
+                "g4dn": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "g5": {
+                    "regional_properties": {"image_uri": "$gpu_ecr_uri_1"},
+                    "properties": {
+                        "gated_model_key_env_var_value": "meta-training/train-meta-textgeneration-llama-2-7b.tar.gz",
+                        "environment_variables": {"SELF_DESTRUCT": "true"},
+                    },
+                },
+                "local_gpu": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p2": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p3": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p3dn": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p4d": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p4de": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p5": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+            },
+        },
+        "dynamic_container_deployment_supported": False,
+    },
     "js-gated-artifact-trainable-model": {
         "model_id": "meta-textgeneration-llama-2-7b-f",
         "url": "https://ai.meta.com/resources/models-and-libraries/llama-downloads/",
@@ -2844,7 +5385,6 @@ SPECIAL_MODEL_SPECS_DICT = {
             "Dog": {
                 "content_type": "application/json",
                 "prompt_key": "hello.prompt",
-                "generated_text_response_key": "key1.key2.generated_text",
                 "body": {
                     "hello": {"prompt": "a dog"},
                     "seed": 43,
@@ -4809,6 +7349,7 @@ BASE_SPEC = {
     "deprecated_message": None,
     "hosting_model_package_arns": None,
     "hosting_eula_key": None,
+    "model_subscription_link": None,
     "hyperparameters": [
         {
             "name": "epochs",
@@ -4937,6 +7478,7 @@ BASE_SPEC = {
         "ml.c5.2xlarge",
     ],
     "hosting_use_script_uri": True,
+    "usage_info_message": None,
     "metrics": [{"Regex": "val_accuracy: ([0-9\\.]+)", "Name": "pytorch-ic:val-accuracy"}],
     "model_kwargs": {"some-model-kwarg-key": "some-model-kwarg-value"},
     "deploy_kwargs": {"some-model-deploy-kwarg-key": "some-model-deploy-kwarg-value"},
@@ -4955,6 +7497,8 @@ BASE_SPEC = {
     "inference_enable_network_isolation": True,
     "training_enable_network_isolation": False,
     "resource_name_base": "dfsdfsds",
+    "hosting_resource_requirements": {"num_accelerators": 1, "min_memory_mb": 34360},
+    "dynamic_container_deployment_supported": True,
 }
 
 BASE_HEADER = {
@@ -5002,3 +7546,83 @@ BASE_MANIFEST = [
         "imagenet-inception-v3-classification-4/specs_v3.0.0.json",
     },
 ]
+
+BASE_PROPRIETARY_HEADER = {
+    "model_id": "ai21-summarization",
+    "version": "1.1.003",
+    "min_version": "2.0.0",
+    "spec_key": "proprietary-models/ai21-summarization/proprietary_specs_1.1.003.json",
+    "search_keywords": ["Text2Text", "Generation"],
+}
+
+BASE_PROPRIETARY_MANIFEST = [
+    {
+        "model_id": "ai21-summarization",
+        "version": "1.1.003",
+        "min_version": "2.0.0",
+        "spec_key": "proprietary-models/ai21-summarization/proprietary_specs_1.1.003.json",
+        "search_keywords": ["Text2Text", "Generation"],
+    },
+    {
+        "model_id": "lighton-mini-instruct40b",
+        "version": "v1.0",
+        "min_version": "2.0.0",
+        "spec_key": "proprietary-models/lighton-mini-instruct40b/proprietary_specs_v1.0.json",
+        "search_keywords": ["Text2Text", "Generation"],
+    },
+    {
+        "model_id": "ai21-paraphrase",
+        "version": "1.0.005",
+        "min_version": "2.0.0",
+        "spec_key": "proprietary-models/ai21-paraphrase/proprietary_specs_1.0.005.json",
+        "search_keywords": ["Text2Text", "Generation"],
+    },
+]
+
+BASE_PROPRIETARY_SPEC = {
+    "model_id": "ai21-jurassic-2-light",
+    "version": "2.0.004",
+    "min_sdk_version": "2.999.0",
+    "listing_id": "prodview-roz6zicyvi666",
+    "product_id": "1bd680a0-f29b-479d-91c3-9899743021cf",
+    "model_subscription_link": "https://aws.amazon.com/marketplace/ai/procurement?productId=1bd680a0",
+    "hosting_notebook_key": "pmm-notebooks/pmm-notebook-ai21-jurassic-2-light.ipynb",
+    "deploy_kwargs": {
+        "model_data_download_timeout": 3600,
+        "container_startup_health_check_timeout": 600,
+    },
+    "default_payloads": {
+        "Shakespeare": {
+            "content_type": "application/json",
+            "prompt_key": "prompt",
+            "output_keys": {"generated_text": "[0].completions[0].data.text"},
+            "body": {"prompt": "To be, or", "maxTokens": 1, "temperature": 0},
+        }
+    },
+    "predictor_specs": {
+        "supported_content_types": ["application/json"],
+        "supported_accept_types": ["application/json"],
+        "default_content_type": "application/json",
+        "default_accept_type": "application/json",
+    },
+    "default_inference_instance_type": "ml.p4de.24xlarge",
+    "supported_inference_instance_types": ["ml.p4de.24xlarge"],
+    "hosting_model_package_arns": {
+        "us-east-1": "arn:aws:sagemaker:us-east-1:865070037744:model-package/j2-light-v2-0-004",
+        "us-east-2": "arn:aws:sagemaker:us-east-2:057799348421:model-package/j2-light-v2-0-004",
+        "us-west-1": "arn:aws:sagemaker:us-west-1:382657785993:model-package/j2-light-v2-0-004",
+        "us-west-2": "arn:aws:sagemaker:us-west-2:594846645681:model-package/j2-light-v2-0-004",
+        "ca-central-1": "arn:aws:sagemaker:ca-central-1:470592106596:model-package/j2-light-v2-0-004",
+        "eu-central-1": "arn:aws:sagemaker:eu-central-1:446921602837:model-package/j2-light-v2-0-004",
+        "eu-west-1": "arn:aws:sagemaker:eu-west-1:985815980388:model-package/j2-light-v2-0-004",
+        "eu-west-2": "arn:aws:sagemaker:eu-west-2:856760150666:model-package/j2-light-v2-0-004",
+        "eu-west-3": "arn:aws:sagemaker:eu-west-3:843114510376:model-package/j2-light-v2-0-004",
+        "eu-north-1": "arn:aws:sagemaker:eu-north-1:136758871317:model-package/j2-light-v2-0-004",
+        "ap-southeast-1": "arn:aws:sagemaker:ap-southeast-1:192199979996:model-package/j2-light-v2-0-004",
+        "ap-southeast-2": "arn:aws:sagemaker:ap-southeast-2:666831318237:model-package/j2-light-v2-0-004",
+        "ap-northeast-2": "arn:aws:sagemaker:ap-northeast-2:745090734665:model-package/j2-light-v2-0-004",
+        "ap-northeast-1": "arn:aws:sagemaker:ap-northeast-1:977537786026:model-package/j2-light-v2-0-004",
+        "ap-south-1": "arn:aws:sagemaker:ap-south-1:077584701553:model-package/j2-light-v2-0-004",
+        "sa-east-1": "arn:aws:sagemaker:sa-east-1:270155090741:model-package/j2-light-v2-0-004",
+    },
+}

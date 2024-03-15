@@ -20,6 +20,7 @@ from typing import List, Optional
 from sagemaker.jumpstart import utils as jumpstart_utils
 from sagemaker.jumpstart import artifacts
 from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+from sagemaker.jumpstart.enums import JumpStartModelType
 from sagemaker.session import Session
 
 logger = logging.getLogger(__name__)
@@ -34,6 +35,7 @@ def retrieve_default(
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     training_instance_type: Optional[str] = None,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> str:
     """Retrieves the default instance type for the model matching the given arguments.
 
@@ -85,6 +87,7 @@ def retrieve_default(
         tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
         training_instance_type=training_instance_type,
+        model_type=model_type,
     )
 
 

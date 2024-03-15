@@ -20,14 +20,15 @@ from sagemaker.jumpstart.constants import (
     CONTENT_TYPE_TO_SERIALIZER_TYPE_MAP,
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     DESERIALIZER_TYPE_TO_CLASS_MAP,
-    JUMPSTART_DEFAULT_REGION_NAME,
     SERIALIZER_TYPE_TO_CLASS_MAP,
 )
 from sagemaker.jumpstart.enums import (
     JumpStartScriptScope,
     MIMEType,
+    JumpStartModelType,
 )
 from sagemaker.jumpstart.utils import (
+    get_region_fallback,
     verify_model_region_and_return_specs,
 )
 from sagemaker.session import Session
@@ -76,6 +77,7 @@ def _retrieve_default_deserializer(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> BaseDeserializer:
     """Retrieves the default deserializer for the model.
 
@@ -108,6 +110,7 @@ def _retrieve_default_deserializer(
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
+        model_type=model_type,
     )
 
     return _retrieve_deserializer_from_accept_type(MIMEType.from_suffixed_type(default_accept_type))
@@ -120,6 +123,7 @@ def _retrieve_default_serializer(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> BaseSerializer:
     """Retrieves the default serializer for the model.
 
@@ -151,6 +155,7 @@ def _retrieve_default_serializer(
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
+        model_type=model_type,
     )
 
     return _retrieve_serializer_from_content_type(MIMEType.from_suffixed_type(default_content_type))
@@ -163,6 +168,7 @@ def _retrieve_deserializer_options(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> List[BaseDeserializer]:
     """Retrieves the supported deserializers for the model.
 
@@ -194,6 +200,7 @@ def _retrieve_deserializer_options(
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
+        model_type=model_type,
     )
 
     seen_classes: Set[Type] = set()
@@ -276,6 +283,7 @@ def _retrieve_default_content_type(
     region: Optional[str],
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> str:
     """Retrieves the default content type for the model.
@@ -301,8 +309,9 @@ def _retrieve_default_content_type(
         str: the default content type to use for the model.
     """
 
-    if region is None:
-        region = JUMPSTART_DEFAULT_REGION_NAME
+    region = region or get_region_fallback(
+        sagemaker_session=sagemaker_session,
+    )
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
@@ -312,6 +321,7 @@ def _retrieve_default_content_type(
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
+        model_type=model_type,
     )
 
     default_content_type = model_specs.predictor_specs.default_content_type
@@ -325,6 +335,7 @@ def _retrieve_default_accept_type(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> str:
     """Retrieves the default accept type for the model.
 
@@ -349,8 +360,9 @@ def _retrieve_default_accept_type(
         str: the default accept type to use for the model.
     """
 
-    if region is None:
-        region = JUMPSTART_DEFAULT_REGION_NAME
+    region = region or get_region_fallback(
+        sagemaker_session=sagemaker_session,
+    )
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
@@ -360,6 +372,7 @@ def _retrieve_default_accept_type(
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
+        model_type=model_type,
     )
 
     default_accept_type = model_specs.predictor_specs.default_accept_type
@@ -374,6 +387,7 @@ def _retrieve_supported_accept_types(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> List[str]:
     """Retrieves the supported accept types for the model.
 
@@ -398,8 +412,9 @@ def _retrieve_supported_accept_types(
         list: the supported accept types to use for the model.
     """
 
-    if region is None:
-        region = JUMPSTART_DEFAULT_REGION_NAME
+    region = region or get_region_fallback(
+        sagemaker_session=sagemaker_session,
+    )
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
@@ -409,6 +424,7 @@ def _retrieve_supported_accept_types(
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
+        model_type=model_type,
     )
 
     supported_accept_types = model_specs.predictor_specs.supported_accept_types
@@ -423,6 +439,7 @@ def _retrieve_supported_content_types(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> List[str]:
     """Retrieves the supported content types for the model.
 
@@ -447,8 +464,9 @@ def _retrieve_supported_content_types(
         list: the supported content types to use for the model.
     """
 
-    if region is None:
-        region = JUMPSTART_DEFAULT_REGION_NAME
+    region = region or get_region_fallback(
+        sagemaker_session=sagemaker_session,
+    )
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
@@ -458,6 +476,7 @@ def _retrieve_supported_content_types(
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
+        model_type=model_type,
     )
 
     supported_content_types = model_specs.predictor_specs.supported_content_types

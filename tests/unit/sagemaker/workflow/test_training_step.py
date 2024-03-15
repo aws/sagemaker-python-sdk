@@ -75,6 +75,7 @@ DUMMY_S3_SCRIPT_PATH = "s3://dummy-s3/dummy_script.py"
 MOCKED_PIPELINE_CONFIG = _PipelineConfig(
     "MyPipeline",
     "MyTrainingStep",
+    None,
     hash_files_or_dirs([LOCAL_SOURCE_DIR] + LOCAL_DEPS),
     "config-hash-abcdefg",
     None,
@@ -84,6 +85,7 @@ _DEFINITION_CONFIG = PipelineDefinitionConfig(use_custom_job_prefix=True)
 MOCKED_PIPELINE_CONFIG_WITH_CUSTOM_PREFIX = _PipelineConfig(
     "MyPipelineWithCustomPrefix",
     "MyProcessingStep",
+    None,
     None,
     None,
     _DEFINITION_CONFIG,
@@ -260,6 +262,8 @@ INPUT_PARAM_LISTS = [
     ParameterString(name="training_input"),
     Join(on="/", values=["s3://my-bucket", "my-input"]),
 ]
+
+OUTPUT_PARAM_LIST = ["s3://my-bucket/my-output-path", ParameterString(name="OutputPath")]
 
 
 @pytest.fixture
@@ -452,6 +456,7 @@ def test_training_step_estimator_with_param_code_input(
     assert step_def == step_def2
 
 
+@pytest.mark.skip(reason="incompatible with pytest-xdist")
 @pytest.mark.parametrize("estimator", ESTIMATOR_LISTS)
 @pytest.mark.parametrize("training_input", INPUT_PARAM_LISTS)
 @pytest.mark.parametrize(
@@ -521,6 +526,7 @@ def test_training_step_with_framework_estimator(
     assert step_def == step_def2
 
 
+@pytest.mark.skip(reason="incompatible with pytest-xdist")
 @patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
 @pytest.mark.parametrize("estimator", ESTIMATOR_LISTS_LOCAL_CODE)
 @pytest.mark.parametrize("training_input", INPUT_PARAM_LISTS)

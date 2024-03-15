@@ -31,7 +31,7 @@ from sagemaker.lineage.query import (
 )
 from sagemaker.lineage._utils import _disassociate, get_resource_name_from_arn
 from sagemaker.lineage.association import Association
-from sagemaker.utils import get_module
+from sagemaker.utils import get_module, format_tags
 
 LOGGER = logging.getLogger("sagemaker")
 
@@ -288,12 +288,12 @@ class Artifact(_base_types.Record):
         """Add tags to the object.
 
         Args:
-            tags ([{key:value}]): list of key value pairs.
+            tags (Optional[Tags]): list of key value pairs.
 
         Returns:
             list({str:str}): a list of key value pairs
         """
-        return self._set_tags(resource_arn=self.artifact_arn, tags=tags)
+        return self._set_tags(resource_arn=self.artifact_arn, tags=format_tags(tags))
 
     @classmethod
     def create(

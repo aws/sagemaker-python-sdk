@@ -441,7 +441,7 @@ def huggingface_neuron_latest_inference_transformer_version():
 
 @pytest.fixture(scope="module")
 def huggingface_neuronx_latest_inference_transformer_version():
-    return "4.34.1"
+    return "4.36.2"
 
 
 @pytest.fixture(scope="module")

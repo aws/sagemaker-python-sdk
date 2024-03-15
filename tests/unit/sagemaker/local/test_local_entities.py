@@ -20,6 +20,7 @@ from mock import patch, Mock
 from botocore.exceptions import ClientError
 
 import sagemaker.local
+from sagemaker.workflow.fail_step import FailStep
 from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.pipeline import Pipeline
 from sagemaker.workflow.lambda_step import LambdaStep
@@ -229,7 +230,9 @@ def test_start_local_pipeline(mock_local_pipeline_executor, sagemaker_local_sess
 
 
 def test_start_local_pipeline_with_unsupported_step_type(sagemaker_local_session):
-    step = LambdaStep(name="MyLambdaStep", lambda_func=Mock())
+    mock_lambda_func = Mock()
+    mock_lambda_func.update.return_value = {"FunctionArn": "function_arn"}
+    step = LambdaStep(name="MyLambdaStep", lambda_func=mock_lambda_func)
     pipeline = Pipeline(
         name="MyPipeline",
         parameters=[],
@@ -291,3 +294,28 @@ def test_start_local_pipeline_with_wrong_parameter_type(sagemaker_local_session)
         f"Unexpected type for parameter '{parameter.name}'. Expected "
         f"{parameter.parameter_type.python_type} but found {type(True)}." in str(error.value)
     )
+
+
+def test_start_local_pipeline_with_empty_parameter_string_value(
+    local_pipeline_session,
+):
+    param_str_name = "MyParameterString"
+    param_str = ParameterString(name=param_str_name, default_value="default")
+    fail_step = FailStep(
+        name="MyFailStep",
+        error_message=param_str,
+    )
+
+    pipeline = Pipeline(
+        name="MyPipeline",
+        steps=[fail_step],
+        sagemaker_session=local_pipeline_session,
+        parameters=[param_str],
+    )
+
+    local_pipeline = sagemaker.local.entities._LocalPipeline(pipeline)
+    with pytest.raises(ClientError) as error:
+        local_pipeline.start(PipelineParameters={param_str_name: ""})
+    assert (
+        f'Parameter {param_str_name} value "" is too short (length: 0, required minimum: 1).'
+    ) in str(error)

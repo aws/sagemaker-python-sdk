@@ -13,6 +13,7 @@
 """This module stores constants related to SageMaker JumpStart."""
 from __future__ import absolute_import
 import logging
+import os
 from typing import Dict, Set, Type
 import boto3
 from sagemaker.base_deserializers import BaseDeserializer, JSONDeserializer
@@ -21,8 +22,9 @@ from sagemaker.jumpstart.enums import (
     SerializerType,
     DeserializerType,
     MIMEType,
+    JumpStartModelType,
 )
-from sagemaker.jumpstart.types import JumpStartLaunchedRegionInfo
+from sagemaker.jumpstart.types import JumpStartLaunchedRegionInfo, JumpStartS3FileType
 from sagemaker.base_serializers import (
     BaseSerializer,
     CSVSerializer,
@@ -32,6 +34,8 @@ from sagemaker.base_serializers import (
 )
 from sagemaker.session import Session
 
+
+ENV_VARIABLE_DISABLE_JUMPSTART_LOGGING = "DISABLE_JUMPSTART_LOGGING"
 
 JUMPSTART_LAUNCHED_REGIONS: Set[JumpStartLaunchedRegionInfo] = set(
     [
@@ -139,6 +143,11 @@ JUMPSTART_LAUNCHED_REGIONS: Set[JumpStartLaunchedRegionInfo] = set(
             region_name="cn-north-1",
             content_bucket="jumpstart-cache-prod-cn-north-1",
         ),
+        JumpStartLaunchedRegionInfo(
+            region_name="il-central-1",
+            content_bucket="jumpstart-cache-prod-il-central-1",
+            gated_content_bucket="jumpstart-private-cache-prod-il-central-1",
+        ),
     ]
 )
 
@@ -161,6 +170,7 @@ JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET = JUMPSTART_BUCKET_NAME_SET.union(
 JUMPSTART_DEFAULT_REGION_NAME = boto3.session.Session().region_name or "us-west-2"
 
 JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY = "models_manifest.json"
+JUMPSTART_DEFAULT_PROPRIETARY_MANIFEST_KEY = "proprietary-sdk-manifest.json"
 
 INFERENCE_ENTRY_POINT_SCRIPT_NAME = "inference.py"
 TRAINING_ENTRY_POINT_SCRIPT_NAME = "transfer_learning.py"
@@ -168,6 +178,7 @@ TRAINING_ENTRY_POINT_SCRIPT_NAME = "transfer_learning.py"
 SUPPORTED_JUMPSTART_SCOPES = set(scope.value for scope in JumpStartScriptScope)
 
 ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE = "AWS_JUMPSTART_CONTENT_BUCKET_OVERRIDE"
+ENV_VARIABLE_JUMPSTART_GATED_CONTENT_BUCKET_OVERRIDE = "AWS_JUMPSTART_GATED_CONTENT_BUCKET_OVERRIDE"
 ENV_VARIABLE_JUMPSTART_MODEL_ARTIFACT_BUCKET_OVERRIDE = "AWS_JUMPSTART_MODEL_BUCKET_OVERRIDE"
 ENV_VARIABLE_JUMPSTART_SCRIPT_ARTIFACT_BUCKET_OVERRIDE = "AWS_JUMPSTART_SCRIPT_BUCKET_OVERRIDE"
 ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE = (
@@ -178,6 +189,9 @@ ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE = "AWS_JUMPSTART_SPECS_LOCA
 JUMPSTART_RESOURCE_BASE_NAME = "sagemaker-jumpstart"
 
 SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY = "SageMakerGatedModelS3Uri"
+
+PROPRIETARY_MODEL_SPEC_PREFIX = "proprietary-models"
+PROPRIETARY_MODEL_FILTER_NAME = "marketplace"
 
 CONTENT_TYPE_TO_SERIALIZER_TYPE_MAP: Dict[MIMEType, SerializerType] = {
     MIMEType.X_IMAGE: SerializerType.RAW_BYTES,
@@ -204,9 +218,32 @@ DESERIALIZER_TYPE_TO_CLASS_MAP: Dict[DeserializerType, Type[BaseDeserializer]] =
     DeserializerType.JSON: JSONDeserializer,
 }
 
+MODEL_TYPE_TO_MANIFEST_MAP: Dict[Type[JumpStartModelType], Type[JumpStartS3FileType]] = {
+    JumpStartModelType.OPEN_WEIGHTS: JumpStartS3FileType.OPEN_WEIGHT_MANIFEST,
+    JumpStartModelType.PROPRIETARY: JumpStartS3FileType.PROPRIETARY_MANIFEST,
+}
+
+MODEL_TYPE_TO_SPECS_MAP: Dict[Type[JumpStartModelType], Type[JumpStartS3FileType]] = {
+    JumpStartModelType.OPEN_WEIGHTS: JumpStartS3FileType.OPEN_WEIGHT_SPECS,
+    JumpStartModelType.PROPRIETARY: JumpStartS3FileType.PROPRIETARY_SPECS,
+}
+
 MODEL_ID_LIST_WEB_URL = "https://sagemaker.readthedocs.io/en/stable/doc_utils/pretrainedmodels.html"
 
 JUMPSTART_LOGGER = logging.getLogger("sagemaker.jumpstart")
+
+# disable logging if env var is set
+JUMPSTART_LOGGER.addHandler(
+    type(
+        "",
+        (logging.StreamHandler,),
+        {
+            "emit": lambda self, *args, **kwargs: logging.StreamHandler.emit(self, *args, **kwargs)
+            if not os.environ.get(ENV_VARIABLE_DISABLE_JUMPSTART_LOGGING)
+            else None
+        },
+    )()
+)
 
 try:
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION = Session(
@@ -218,3 +255,9 @@ except Exception as e:  # pylint: disable=W0703
         "Unable to create default JumpStart SageMaker Session due to the following error: %s.",
         str(e),
     )
+
+EXTRA_MODEL_ID_TAGS = ["sm-jumpstart-id", "sagemaker-studio:jumpstart-model-id"]
+EXTRA_MODEL_VERSION_TAGS = [
+    "sm-jumpstart-model-version",
+    "sagemaker-studio:jumpstart-model-version",
+]

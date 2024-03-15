@@ -15,9 +15,11 @@
 These utils may be used inside or outside the config module.
 """
 from __future__ import absolute_import
+from collections import deque
 
 import logging
 import sys
+from typing import Callable
 
 
 def get_sagemaker_config_logger():
@@ -197,3 +199,33 @@ def _log_sagemaker_config_merge(
     else:
         # nothing was specified in the config and nothing is being automatically applied
         logger.debug("Skipped value because no value defined\n  config key = %s", config_key_path)
+
+
+def non_repeating_log_factory(logger: logging.Logger, method: str, cache_size=100) -> Callable:
+    """Create log function that filters the repeated messages.
+
+    By default. It only keeps track of last 100 messages, if a repeated
+    message arrives after the ``cache_size`` messages, it will be displayed.
+
+    Args:
+        logger (logging.Logger): the logger to be used to dispatch the message.
+        method (str): the log method, can be info, warning or debug.
+        cache_size (int): the number of last log messages to keep in cache.
+            Default to 100
+
+    Returns:
+        (Callable): the new log method
+    """
+    if method not in ["info", "warning", "debug"]:
+        raise ValueError("Not supported logging method.")
+
+    _caches = deque(maxlen=cache_size)
+    log_method = getattr(logger, method)
+
+    def new_log_method(msg, *args, **kwargs):
+        key = f"{msg}:{args}"
+        if key not in _caches:
+            log_method(msg, *args, **kwargs)
+            _caches.append(key)
+
+    return new_log_method

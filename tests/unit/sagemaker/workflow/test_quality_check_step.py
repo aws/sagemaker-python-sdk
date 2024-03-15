@@ -16,7 +16,8 @@ import json
 import pytest
 
 from sagemaker.model_monitor import DatasetFormat
-from sagemaker.workflow.parameters import ParameterString
+from sagemaker.workflow.execution_variables import ExecutionVariable
+from sagemaker.workflow.parameters import ParameterString, ParameterInteger
 from sagemaker.workflow.pipeline import Pipeline
 from sagemaker.workflow.pipeline import PipelineDefinitionConfig
 from sagemaker.workflow.quality_check_step import (
@@ -178,8 +179,6 @@ _expected_model_quality_dsl = {
             "dataset_source": "/opt/ml/processing/input/baseline_dataset_input",
             "analysis_type": "MODEL_QUALITY",
             "problem_type": "BinaryClassification",
-            "probability_attribute": "0",
-            "probability_threshold_attribute": "0.5",
         },
         "StoppingCondition": {"MaxRuntimeInSeconds": 1800},
     },
@@ -269,23 +268,54 @@ def test_data_quality_check_step(
     assert step_definition == _expected_data_quality_dsl
 
 
+@pytest.mark.parametrize(
+    "quality_cfg_attr_value, expected_value_in_dsl",
+    [
+        (0, "0"),
+        ("attr", "attr"),
+        (None, None),
+        (ParameterString(name="ParamStringEnvVar"), {"Get": "Parameters.ParamStringEnvVar"}),
+        (ExecutionVariable("PipelineArn"), {"Get": "Execution.PipelineArn"}),
+        (ParameterInteger(name="ParamIntEnvVar"), "Error"),
+    ],
+)
 def test_model_quality_check_step(
     sagemaker_session,
     check_job_config,
     model_package_group_name,
     supplied_baseline_statistics_uri,
     supplied_baseline_constraints_uri,
+    quality_cfg_attr_value,
+    expected_value_in_dsl,
 ):
     model_quality_check_config = ModelQualityCheckConfig(
         baseline_dataset="baseline_dataset_s3_url",
         dataset_format=DatasetFormat.csv(header=True),
         problem_type="BinaryClassification",
-        probability_attribute=0,  # the integer should be converted to str by SDK
-        ground_truth_attribute=None,
-        probability_threshold_attribute=0.5,  # the float should be converted to str by SDK
+        inference_attribute=quality_cfg_attr_value,
+        probability_attribute=quality_cfg_attr_value,
+        ground_truth_attribute=quality_cfg_attr_value,
+        probability_threshold_attribute=quality_cfg_attr_value,
         post_analytics_processor_script="s3://my_bucket/data_quality/postprocessor.py",
         output_s3_uri="",
     )
+
+    if expected_value_in_dsl == "Error":
+        with pytest.raises(ValueError) as err:
+            QualityCheckStep(
+                name="ModelQualityCheckStep",
+                register_new_baseline=False,
+                skip_check=False,
+                fail_on_violation=True,
+                quality_check_config=model_quality_check_config,
+                check_job_config=check_job_config,
+                model_package_group_name=model_package_group_name,
+                supplied_baseline_statistics=supplied_baseline_statistics_uri,
+                supplied_baseline_constraints=supplied_baseline_constraints_uri,
+            )
+        assert "cannot be Parameter types other than ParameterString" in str(err)
+        return
+
     model_quality_check_step = QualityCheckStep(
         name="ModelQualityCheckStep",
         register_new_baseline=False,
@@ -297,6 +327,7 @@ def test_model_quality_check_step(
         supplied_baseline_statistics=supplied_baseline_statistics_uri,
         supplied_baseline_constraints=supplied_baseline_constraints_uri,
     )
+
     pipeline = Pipeline(
         name="MyPipeline",
         parameters=[
@@ -309,6 +340,16 @@ def test_model_quality_check_step(
     )
 
     step_definition = _get_step_definition_for_test(pipeline)
+
+    step_def_env = step_definition["Arguments"]["Environment"]
+    for var in [
+        "inference_attribute",
+        "probability_attribute",
+        "ground_truth_attribute",
+        "probability_threshold_attribute",
+    ]:
+        env_var_dsl = step_def_env.pop(var, None)
+        assert env_var_dsl == expected_value_in_dsl
 
     assert step_definition == _expected_model_quality_dsl
 
@@ -351,6 +392,10 @@ def test_quality_check_step_properties(
     assert model_quality_check_step.properties.BaselineUsedForDriftCheckConstraints.expr == {
         "Get": "Steps.ModelQualityCheckStep.BaselineUsedForDriftCheckConstraints"
     }
+    assert (
+        model_quality_check_step.properties.BaselineUsedForDriftCheckConstraints._referenced_steps
+        == [model_quality_check_step]
+    )
 
 
 def test_quality_check_step_invalid_config(

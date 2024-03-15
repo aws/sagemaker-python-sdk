@@ -257,6 +257,442 @@ def test_tb_presigned_url_success(mock_init, mock_client):
             user_profile_name=TEST_USER_PROFILE,
             open_in_default_web_browser=False,
         )
+        mock_web_browser_open.assert_called_with(f"{TEST_PRESIGNED_URL}&redirect=TensorBoard")
+        assert url == ""
+
+
+@patch("boto3.client")
+def test_tb_presigned_url_not_returned_without_presigned_flag(mock_client):
+    mock_client.return_value = boto3.client("sagemaker")
+
+    url = TensorBoardApp(TEST_REGION).get_app_url(
+        domain_id=TEST_DOMAIN,
+        user_profile_name=TEST_USER_PROFILE,
+        create_presigned_domain_url=False,
+        open_in_default_web_browser=False,
+    )
+    assert url == BASE_URL_NON_STUDIO_FORMAT.format(region=TEST_REGION)
+
+
+@patch("boto3.client")
+def test_tb_presigned_url_failure(mock_client):
+    resp = {"ResponseMetadata": {"HTTPStatusCode": 400}}
+    attrs = {"create_presigned_domain_url.return_value": resp}
+    mock_client.return_value = Mock(**attrs)
+
+    with pytest.raises(ValueError):
+        TensorBoardApp(TEST_REGION).get_app_url(
+            domain_id=TEST_DOMAIN,
+            user_profile_name=TEST_USER_PROFILE,
+            create_presigned_domain_url=True,
+            open_in_default_web_browser=False,
+        )
+
+
+def test_tb_invalid_presigned_kwargs():
+    invalid_kwargs = {
+        "fake-parameter": True,
+        "DomainId": TEST_DOMAIN,
+        "UserProfileName": TEST_USER_PROFILE,
+    }
+
+    with pytest.raises(botocore.exceptions.ParamValidationError):
+        TensorBoardApp(TEST_REGION).get_app_url(
+            optional_create_presigned_url_kwargs=invalid_kwargs,
+            create_presigned_domain_url=True,
+        )
+
+
+@patch("boto3.client")
+def test_tb_valid_presigned_kwargs(mock_client):
+
+    rsp = {
+        "ResponseMetadata": {"HTTPStatusCode": 200},
+        "AuthorizedUrl": TEST_PRESIGNED_URL,
+    }
+    mock_client = boto3.client("sagemaker")
+    mock_client.create_presigned_domain_url = Mock(name="create_presigned_domain_url")
+    mock_client.create_presigned_domain_url.return_value = rsp
+
+    valid_kwargs = {"DomainId": TEST_DOMAIN, "UserProfileName": TEST_USER_PROFILE}
+
+    url = TensorBoardApp(TEST_REGION).get_app_url(
+        optional_create_presigned_url_kwargs=valid_kwargs,
+        create_presigned_domain_url=True,
+        open_in_default_web_browser=False,
+    )
+
+    assert url == f"{TEST_PRESIGNED_URL}&redirect=TensorBoard"
+    mock_client.create_presigned_domain_url.assert_called_once_with(**valid_kwargs)
+
+    # test url when opened in web browser
+    with patch("webbrowser.open") as mock_web_browser_open:
+        url = tb_app.get_app_url(
+            domain_id=TEST_DOMAIN,
+            user_profile_name=TEST_USER_PROFILE,
+            create_presigned_domain_url=True,
+            open_in_default_web_browser=True,
+        )
+        mock_web_browser_open.assert_called_with(f"{TEST_PRESIGNED_URL}&redirect=TensorBoard")
+        assert url == ""
+
+
+@patch("boto3.client")
+@patch("sagemaker.interactive_apps.base_interactive_app.BaseInteractiveApp.__init__")
+def test_tb_presigned_url_invalid_params(mock_init, mock_client):
+    mock_init.return_value = None
+    mock_client.return_value = boto3.client("sagemaker")
+
+    tb_app = TensorBoardApp(TEST_REGION)
+    tb_app.region = TEST_REGION
+    tb_app._domain_id = None
+    tb_app._user_profile_name = None
+    tb_app._in_studio_env = False
+
+    url = tb_app.get_app_url(
+        create_presigned_domain_url=False,
+        domain_id=TEST_DOMAIN,
+        user_profile_name=TEST_USER_PROFILE,
+        open_in_default_web_browser=False,
+    )
+    assert url == BASE_URL_NON_STUDIO_FORMAT.format(region=TEST_REGION)
+
+    url = tb_app.get_app_url(
+        create_presigned_domain_url=True,
+        domain_id="d" * 64,
+        user_profile_name=TEST_USER_PROFILE,
+        open_in_default_web_browser=False,
+    )
+    assert url == BASE_URL_NON_STUDIO_FORMAT.format(region=TEST_REGION)
+
+    url = tb_app.get_app_url(
+        create_presigned_domain_url=True,
+        domain_id=TEST_DOMAIN,
+        user_profile_name="u" * 64,
+        open_in_default_web_browser=False,
+    )
+    assert url == BASE_URL_NON_STUDIO_FORMAT.format(region=TEST_REGION)
+
+
+@patch("boto3.client")
+@patch("sagemaker.interactive_apps.base_interactive_app.BaseInteractiveApp.__init__")
+def test_tb_presigned_url_failure(mock_init, mock_client):
+    mock_init.return_value = None
+    resp = {"ResponseMetadata": {"HTTPStatusCode": 400}}
+    attrs = {"create_presigned_domain_url.return_value": resp}
+    mock_client.return_value = Mock(**attrs)
+
+    tb_app = TensorBoardApp(TEST_REGION)
+    tb_app.region = TEST_REGION
+    tb_app._domain_id = None
+    tb_app._user_profile_name = None
+    tb_app._in_studio_env = False
+    tb_app._sagemaker_client = boto3.client("sagemaker", region_name=TEST_REGION)
+
+    with pytest.raises(ValueError):
+        tb_app.get_app_url(
+            domain_id=TEST_DOMAIN,
+            user_profile_name=TEST_USER_PROFILE,
+            create_presigned_domain_url=True,
+            open_in_default_web_browser=False,
+        )
+
+
+@patch("sagemaker.interactive_apps.base_interactive_app.BaseInteractiveApp.__init__")
+def test_tb_invalid_presigned_kwargs(mock_init):
+    mock_init.return_value = None
+    tb_app = TensorBoardApp(TEST_REGION)
+    tb_app.region = TEST_REGION
+    tb_app._domain_id = None
+    tb_app._user_profile_name = None
+    tb_app._in_studio_env = False
+    tb_app._sagemaker_client = boto3.client("sagemaker", region_name=TEST_REGION)
+
+    with pytest.raises(botocore.exceptions.ParamValidationError):
+        invalid_kwargs = {"fake-parameter": True}
+        tb_app.get_app_url(
+            create_presigned_domain_url=True,
+            domain_id=TEST_DOMAIN,
+            user_profile_name=TEST_USER_PROFILE,
+            open_in_default_web_browser=False,
+            optional_create_presigned_url_kwargs=invalid_kwargs,
+        )
+
+
+@patch("boto3.client")
+@patch("sagemaker.interactive_apps.base_interactive_app.BaseInteractiveApp.__init__")
+def test_tb_valid_presigned_kwargs(mock_init, mock_client):
+    mock_init.return_value = None
+    resp = {
+        "ResponseMetadata": {"HTTPStatusCode": 200},
+        "AuthorizedUrl": TEST_PRESIGNED_URL,
+    }
+    mock_client = boto3.client("sagemaker")
+    mock_client.create_presigned_domain_url = Mock(name="create_presigned_domain_url")
+    mock_client.create_presigned_domain_url.return_value = resp
+
+    tb_app = TensorBoardApp(TEST_REGION)
+    tb_app.region = TEST_REGION
+    tb_app._domain_id = None
+    tb_app._user_profile_name = None
+    tb_app._in_studio_env = False
+    tb_app._sagemaker_client = boto3.client("sagemaker", region_name=TEST_REGION)
+
+    valid_kwargs = {"ExpiresInSeconds": 1500}
+    tb_app.get_app_url(
+        create_presigned_domain_url=True,
+        domain_id=TEST_DOMAIN,
+        user_profile_name=TEST_USER_PROFILE,
+        open_in_default_web_browser=False,
+        optional_create_presigned_url_kwargs=valid_kwargs,
+    )
+    mock_client.create_presigned_domain_url.assert_called_with(**valid_kwargs)
+
+    # test url when opened in web browser
+    with patch("webbrowser.open") as mock_web_browser_open:
+        url = tb_app.get_app_url(
+            domain_id=TEST_DOMAIN,
+            user_profile_name=TEST_USER_PROFILE,
+            create_presigned_domain_url=True,
+            open_in_default_web_browser=True,
+        )
+        mock_web_browser_open.assert_called_with(f"{TEST_PRESIGNED_URL}&redirect=TensorBoard")
+        assert url == ""
+
+
+@patch("boto3.client")
+@patch("sagemaker.interactive_apps.base_interactive_app.BaseInteractiveApp.__init__")
+def test_tb_presigned_url_invalid_params(mock_init, mock_client):
+    mock_init.return_value = None
+    mock_client.return_value = boto3.client("sagemaker")
+
+    tb_app = TensorBoardApp(TEST_REGION)
+    tb_app.region = TEST_REGION
+    tb_app._domain_id = None
+    tb_app._user_profile_name = None
+    tb_app._in_studio_env = False
+
+    url = tb_app.get_app_url(
+        create_presigned_domain_url=False,
+        domain_id=TEST_DOMAIN,
+        user_profile_name=TEST_USER_PROFILE,
+        open_in_default_web_browser=False,
+    )
+    assert url == BASE_URL_NON_STUDIO_FORMAT.format(region=TEST_REGION)
+
+    url = tb_app.get_app_url(
+        create_presigned_domain_url=True,
+        domain_id="d" * 64,
+        user_profile_name=TEST_USER_PROFILE,
+        open_in_default_web_browser=False,
+    )
+    assert url == BASE_URL_NON_STUDIO_FORMAT.format(region=TEST_REGION)
+
+    url = tb_app.get_app_url(
+        create_presigned_domain_url=True,
+        domain_id=TEST_DOMAIN,
+        user_profile_name="u" * 64,
+        open_in_default_web_browser=False,
+    )
+    assert url == BASE_URL_NON_STUDIO_FORMAT.format(region=TEST_REGION)
+
+
+@patch("boto3.client")
+@patch("sagemaker.interactive_apps.base_interactive_app.BaseInteractiveApp.__init__")
+def test_tb_presigned_url_failure(mock_init, mock_client):
+    mock_init.return_value = None
+    resp = {"ResponseMetadata": {"HTTPStatusCode": 400}}
+    attrs = {"create_presigned_domain_url.return_value": resp}
+    mock_client.return_value = Mock(**attrs)
+
+    tb_app = TensorBoardApp(TEST_REGION)
+    tb_app.region = TEST_REGION
+    tb_app._domain_id = None
+    tb_app._user_profile_name = None
+    tb_app._in_studio_env = False
+    tb_app._sagemaker_client = boto3.client("sagemaker", region_name=TEST_REGION)
+
+    with pytest.raises(ValueError):
+        tb_app.get_app_url(
+            domain_id=TEST_DOMAIN,
+            user_profile_name=TEST_USER_PROFILE,
+            create_presigned_domain_url=True,
+            open_in_default_web_browser=False,
+        )
+
+
+@patch("sagemaker.interactive_apps.base_interactive_app.BaseInteractiveApp.__init__")
+def test_tb_invalid_presigned_kwargs(mock_init):
+    mock_init.return_value = None
+    tb_app = TensorBoardApp(TEST_REGION)
+    tb_app.region = TEST_REGION
+    tb_app._domain_id = None
+    tb_app._user_profile_name = None
+    tb_app._in_studio_env = False
+    tb_app._sagemaker_client = boto3.client("sagemaker", region_name=TEST_REGION)
+
+    with pytest.raises(botocore.exceptions.ParamValidationError):
+        invalid_kwargs = {"fake-parameter": True}
+        tb_app.get_app_url(
+            create_presigned_domain_url=True,
+            domain_id=TEST_DOMAIN,
+            user_profile_name=TEST_USER_PROFILE,
+            open_in_default_web_browser=False,
+            optional_create_presigned_url_kwargs=invalid_kwargs,
+        )
+
+
+@patch("boto3.client")
+@patch("sagemaker.interactive_apps.base_interactive_app.BaseInteractiveApp.__init__")
+def test_tb_valid_presigned_kwargs(mock_init, mock_client):
+    mock_init.return_value = None
+    resp = {
+        "ResponseMetadata": {"HTTPStatusCode": 200},
+        "AuthorizedUrl": TEST_PRESIGNED_URL,
+    }
+    mock_client = boto3.client("sagemaker")
+    mock_client.create_presigned_domain_url = Mock(name="create_presigned_domain_url")
+    mock_client.create_presigned_domain_url.return_value = resp
+
+    tb_app = TensorBoardApp(TEST_REGION)
+    tb_app.region = TEST_REGION
+    tb_app._domain_id = None
+    tb_app._user_profile_name = None
+    tb_app._in_studio_env = False
+    tb_app._sagemaker_client = boto3.client("sagemaker", region_name=TEST_REGION)
+
+    valid_kwargs = {"ExpiresInSeconds": 1500}
+    tb_app.get_app_url(
+        create_presigned_domain_url=True,
+        domain_id=TEST_DOMAIN,
+        user_profile_name=TEST_USER_PROFILE,
+        open_in_default_web_browser=False,
+        optional_create_presigned_url_kwargs=valid_kwargs,
+    )
+    mock_client.create_presigned_domain_url.assert_called_with(**valid_kwargs)
+
+    # test url when opened in web browser
+    with patch("webbrowser.open") as mock_web_browser_open:
+        url = tb_app.get_app_url(
+            domain_id=TEST_DOMAIN,
+            user_profile_name=TEST_USER_PROFILE,
+            create_presigned_domain_url=True,
+            open_in_default_web_browser=True,
+        )
+        mock_web_browser_open.assert_called_with(f"{TEST_PRESIGNED_URL}&redirect=TensorBoard")
+        assert url == ""
+
+
+@patch("boto3.client")
+@patch("sagemaker.interactive_apps.base_interactive_app.BaseInteractiveApp.__init__")
+def test_tb_presigned_url_invalid_params(mock_init, mock_client):
+    mock_init.return_value = None
+    mock_client.return_value = boto3.client("sagemaker")
+
+    tb_app = TensorBoardApp(TEST_REGION)
+    tb_app.region = TEST_REGION
+    tb_app._domain_id = None
+    tb_app._user_profile_name = None
+    tb_app._in_studio_env = False
+
+    url = tb_app.get_app_url(
+        create_presigned_domain_url=False,
+        domain_id=TEST_DOMAIN,
+        user_profile_name=TEST_USER_PROFILE,
+        open_in_default_web_browser=False,
+    )
+    assert url == BASE_URL_NON_STUDIO_FORMAT.format(region=TEST_REGION)
+
+    url = tb_app.get_app_url(
+        create_presigned_domain_url=True,
+        domain_id="d" * 64,
+        user_profile_name=TEST_USER_PROFILE,
+        open_in_default_web_browser=False,
+    )
+    assert url == BASE_URL_NON_STUDIO_FORMAT.format(region=TEST_REGION)
+
+    url = tb_app.get_app_url(
+        create_presigned_domain_url=True,
+        domain_id=TEST_DOMAIN,
+        user_profile_name="u" * 64,
+        open_in_default_web_browser=False,
+    )
+    assert url == BASE_URL_NON_STUDIO_FORMAT.format(region=TEST_REGION)
+
+
+@patch("boto3.client")
+@patch("sagemaker.interactive_apps.base_interactive_app.BaseInteractiveApp.__init__")
+def test_tb_presigned_url_failure(mock_init, mock_client):
+    mock_init.return_value = None
+    resp = {"ResponseMetadata": {"HTTPStatusCode": 400}}
+    attrs = {"create_presigned_domain_url.return_value": resp}
+    mock_client.return_value = Mock(**attrs)
+
+    tb_app = TensorBoardApp(TEST_REGION)
+    tb_app.region = TEST_REGION
+    tb_app._domain_id = None
+    tb_app._user_profile_name = None
+    tb_app._in_studio_env = False
+    tb_app._sagemaker_client = boto3.client("sagemaker", region_name=TEST_REGION)
+
+    with pytest.raises(ValueError):
+        tb_app.get_app_url(
+            domain_id=TEST_DOMAIN,
+            user_profile_name=TEST_USER_PROFILE,
+            create_presigned_domain_url=True,
+            open_in_default_web_browser=False,
+        )
+
+
+@patch("sagemaker.interactive_apps.base_interactive_app.BaseInteractiveApp.__init__")
+def test_tb_invalid_presigned_kwargs(mock_init):
+    mock_init.return_value = None
+    tb_app = TensorBoardApp(TEST_REGION)
+    tb_app.region = TEST_REGION
+    tb_app._domain_id = None
+    tb_app._user_profile_name = None
+    tb_app._in_studio_env = False
+    tb_app._sagemaker_client = boto3.client("sagemaker", region_name=TEST_REGION)
+
+    with pytest.raises(botocore.exceptions.ParamValidationError):
+        invalid_kwargs = {"fake-parameter": True}
+        tb_app.get_app_url(
+            create_presigned_domain_url=True,
+            domain_id=TEST_DOMAIN,
+            user_profile_name=TEST_USER_PROFILE,
+            open_in_default_web_browser=False,
+            optional_create_presigned_url_kwargs=invalid_kwargs,
+        )
+
+
+@patch("boto3.client")
+@patch("sagemaker.interactive_apps.base_interactive_app.BaseInteractiveApp.__init__")
+def test_tb_valid_presigned_kwargs(mock_init, mock_client):
+    mock_init.return_value = None
+    resp = {
+        "ResponseMetadata": {"HTTPStatusCode": 200},
+        "AuthorizedUrl": TEST_PRESIGNED_URL,
+    }
+    mock_client = boto3.client("sagemaker")
+    mock_client.create_presigned_domain_url = Mock(name="create_presigned_domain_url")
+    mock_client.create_presigned_domain_url.return_value = resp
+
+    tb_app = TensorBoardApp(TEST_REGION)
+    tb_app.region = TEST_REGION
+    tb_app._domain_id = None
+    tb_app._user_profile_name = None
+    tb_app._in_studio_env = False
+    tb_app._sagemaker_client = boto3.client("sagemaker", region_name=TEST_REGION)
+
+    valid_kwargs = {"ExpiresInSeconds": 1500}
+    tb_app.get_app_url(
+        create_presigned_domain_url=True,
+        domain_id=TEST_DOMAIN,
+        user_profile_name=TEST_USER_PROFILE,
+        open_in_default_web_browser=False,
+        optional_create_presigned_url_kwargs=valid_kwargs,
+    )
+    mock_client.create_presigned_domain_url.assert_called_with(**valid_kwargs)
 
     # test url when opened in web browser
     with patch("webbrowser.open") as mock_web_browser_open:

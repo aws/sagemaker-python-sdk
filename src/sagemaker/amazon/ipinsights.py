@@ -196,6 +196,7 @@ class IPInsightsPredictor(Predictor):
         sagemaker_session=None,
         serializer=CSVSerializer(),
         deserializer=JSONDeserializer(),
+        component_name=None,
     ):
         """Creates object to be used to get dot product of entity nad IP address.
 
@@ -210,12 +211,15 @@ class IPInsightsPredictor(Predictor):
                 serializes input data to text/csv.
             deserializer (callable): Optional. Default parses JSON responses
                 using ``json.load(...)``.
+            component_name (str): Optional. Name of the Amazon SageMaker inference
+                component corresponding the predictor.
         """
         super(IPInsightsPredictor, self).__init__(
             endpoint_name,
             sagemaker_session,
             serializer=serializer,
             deserializer=deserializer,
+            component_name=component_name,
         )
 
 

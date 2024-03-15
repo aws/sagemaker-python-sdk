@@ -73,6 +73,11 @@ def sagemaker_session():
     return session
 
 
+@pytest.fixture()
+def component_name():
+    return "test_component_name"
+
+
 @patch("sagemaker.image_uris.retrieve", return_value=IMAGE)
 def test_tfs_model(retrieve_image_uri, sagemaker_session, tensorflow_inference_version):
     model = TensorFlowModel(
@@ -505,3 +510,9 @@ def test_register_tfs_model_auto_infer_framework(sagemaker_session, tensorflow_i
     sagemaker_session.create_model_package_from_containers.assert_called_with(
         **expected_create_model_package_request
     )
+
+
+def test_predictor_with_component_name(sagemaker_session, component_name):
+    predictor = TensorFlowPredictor("endpoint", sagemaker_session, component_name=component_name)
+
+    assert predictor._get_component_name() == component_name

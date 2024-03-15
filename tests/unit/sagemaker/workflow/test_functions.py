@@ -130,6 +130,57 @@ def test_json_get_expressions():
         },
     }
 
+    # JoinFunction input
+    s3uri = Join(
+        on="/",
+        values=[
+            "s3:/",
+            "test-bucket",
+            ExecutionVariables.PIPELINE_NAME,
+            ExecutionVariables.PIPELINE_EXECUTION_ID,
+            "my-step-name",
+        ],
+    )
+    assert JsonGet(s3_uri=s3uri, json_path="my-json-path").expr == {
+        "Std:JsonGet": {
+            "Path": "my-json-path",
+            "S3Uri": {
+                "Std:Join": {
+                    "On": "/",
+                    "Values": [
+                        "s3:/",
+                        "test-bucket",
+                        {"Get": "Execution.PipelineName"},
+                        {"Get": "Execution.PipelineExecutionId"},
+                        "my-step-name",
+                    ],
+                }
+            },
+        }
+    }
+
+
+def test_json_get_expressions_with_incorrect_s3uri_property_file_inputs():
+    with pytest.raises(ValueError) as err:
+        JsonGet(
+            step_name="step-name",
+            property_file="my-property-file",
+            s3_uri=Join(on="/", values=["value1", "value2", "value3"]),
+            json_path="my-json-path",
+        ).expr
+
+    assert "Please specify either a property file or s3 uri as an input, " "but not both." in str(
+        err.value
+    )
+
+    with pytest.raises(ValueError) as err:
+        JsonGet(
+            step_name="step-name",
+            json_path="my-json-path",
+        ).expr
+
+    assert "Missing s3uri or property file as a required input to JsonGet." in str(err.value)
+
 
 def test_json_get_expressions_with_invalid_step_name():
     with pytest.raises(ValueError) as err:
@@ -215,3 +266,21 @@ def test_add_func_of_json_get():
         json_get_func1 + json_get_func2
 
     assert str(error.value) == "Pipeline variables do not support concatenation."
+
+
+def test_json_get_invalid_s3_uri_not_join():
+    with pytest.raises(ValueError) as e:
+        JsonGet(s3_uri="s3://my-bucket/result.json")
+    assert (
+        "JsonGet function's s3_uri can only be a sagemaker.workflow.functions.Join object."
+        in str(e.value)
+    )
+
+
+def test_json_get_invalid_s3_uri_with_invalid_pipeline_variable(sagemaker_session):
+    with pytest.raises(ValueError) as e:
+        JsonGet(s3_uri=Join(on="/", values=["s3:/", Join()]))
+    assert (
+        "The Join values in JsonGet's s3_uri can only be a primitive object, "
+        "Parameter, ExecutionVariable or Properties." in str(e.value)
+    )

@@ -68,3 +68,24 @@ def pipeline_session(mock_boto_session, mock_client):
 
     pipeline_session.sagemaker_config = {}
     return pipeline_session
+
+
+@pytest.fixture
+def sagemaker_session_mock():
+    bucket_name = "s3_bucket"
+    session_mock = Mock()
+    session_mock.default_bucket = Mock(name="default_bucket", return_value=bucket_name)
+    session_mock.local_mode = False
+    session_mock.boto_region_name = "us-west-2"
+    # Explicit set sagemaker_config to None because a non-None value will slow down the test
+    # significantly.
+    session_mock.sagemaker_config = None
+    session_mock.get_caller_identity_arn.return_value = (
+        "arn:aws:iam::111111111111:role/SageMakerRole"
+    )
+    session_mock.default_bucket_prefix = "test-prefix"
+    session_mock._append_sagemaker_config_tags = Mock(
+        name="_append_sagemaker_config_tags", side_effect=lambda tags, config_path_to_tags: tags
+    )
+    session_mock.upload_data.return_value = f"s3://{bucket_name}"
+    return session_mock

@@ -23,6 +23,13 @@ from sagemaker.workflow.pipeline_definition_config import PipelineDefinitionConf
 
 from tests.integ import test_local_mode
 from tests.unit import SAGEMAKER_CONFIG_TRANSFORM_JOB
+from sagemaker.model_monitor import DatasetFormat
+from sagemaker.workflow.quality_check_step import (
+    ModelQualityCheckConfig,
+)
+from sagemaker.workflow.check_job_config import CheckJobConfig
+
+_CHECK_JOB_PREFIX = "CheckJobPrefix"
 
 ROLE = "DummyRole"
 REGION = "us-west-2"
@@ -49,6 +56,16 @@ INIT_PARAMS = {
     "base_transform_job_name": JOB_NAME,
 }
 
+PROCESS_REQUEST_ARGS = {
+    "inputs": "processing_inputs",
+    "output_config": "output_config",
+    "job_name": "job_name",
+    "resources": "resource_config",
+    "stopping_condition": {"MaxRuntimeInSeconds": 3600},
+    "app_specification": "app_specification",
+    "experiment_config": {"ExperimentName": "AnExperiment"},
+}
+
 MODEL_DESC_PRIMARY_CONTAINER = {"PrimaryContainer": {"Image": IMAGE_URI}}
 
 MODEL_DESC_CONTAINERS_ONLY = {"Containers": [{"Image": IMAGE_URI}]}
@@ -57,6 +74,7 @@ _DEFINITION_CONFIG = PipelineDefinitionConfig(use_custom_job_prefix=False)
 MOCKED_PIPELINE_CONFIG = _PipelineConfig(
     "test-pipeline",
     "test-training-step",
+    None,
     "code-hash-0123456789",
     "config-hash-0123456789",
     _DEFINITION_CONFIG,
@@ -71,7 +89,7 @@ def mock_create_tar_file():
 
 @pytest.fixture()
 def sagemaker_session():
-    boto_mock = Mock(name="boto_session")
+    boto_mock = Mock(name="boto_session", region_name=REGION)
     session = Mock(
         name="sagemaker_session",
         boto_session=boto_mock,
@@ -248,7 +266,7 @@ def test_transformer_init_optional_params(sagemaker_session):
     accept = "text/csv"
     max_concurrent_transforms = 100
     max_payload = 100
-    tags = {"Key": "foo", "Value": "bar"}
+    tags = [{"Key": "foo", "Value": "bar"}]
     env = {"FOO": "BAR"}
 
     transformer = Transformer(
@@ -572,7 +590,7 @@ def test_start_new(prepare_data_processing, load_config, sagemaker_session):
     strategy = "MultiRecord"
     max_concurrent_transforms = 100
     max_payload = 100
-    tags = {"Key": "foo", "Value": "bar"}
+    tags = [{"Key": "foo", "Value": "bar"}]
     env = {"FOO": "BAR"}
 
     transformer = Transformer(
@@ -761,6 +779,48 @@ def test_stop_transform_job(sagemaker_session, transformer):
     transformer.stop_transform_job()
 
     sagemaker_session.stop_transform_job.assert_called_once_with(name=JOB_NAME)
+
+
+@patch("sagemaker.transformer.Transformer._retrieve_image_uri", return_value=IMAGE_URI)
+@patch("sagemaker.workflow.pipeline.Pipeline.upsert", return_value={})
+@patch("sagemaker.workflow.pipeline.Pipeline.start", return_value=Mock())
+def test_transform_with_monitoring_create_and_starts_pipeline(
+    pipeline_start, upsert, image_uri, sagemaker_session, transformer
+):
+
+    config = CheckJobConfig(
+        role=ROLE,
+        instance_count=1,
+        instance_type="ml.m5.xlarge",
+        volume_size_in_gb=60,
+        max_runtime_in_seconds=1800,
+        sagemaker_session=sagemaker_session,
+        base_job_name=_CHECK_JOB_PREFIX,
+    )
+
+    quality_check_config = ModelQualityCheckConfig(
+        baseline_dataset="s3://baseline_dataset_s3_url",
+        dataset_format=DatasetFormat.csv(header=True),
+        problem_type="BinaryClassification",
+        inference_attribute="quality_cfg_attr_value",
+        probability_attribute="quality_cfg_attr_value",
+        ground_truth_attribute="quality_cfg_attr_value",
+        probability_threshold_attribute="quality_cfg_attr_value",
+        post_analytics_processor_script="s3://my_bucket/data_quality/postprocessor.py",
+        output_s3_uri="s3://output_s3_uri",
+    )
+
+    transformer.transform_with_monitoring(
+        monitoring_config=quality_check_config,
+        monitoring_resource_config=config,
+        data=DATA,
+        content_type="text/libsvm",
+        supplied_baseline_constraints="supplied_baseline_constraints",
+        role=ROLE,
+    )
+
+    upsert.assert_called_once()
+    pipeline_start.assert_called_once()
 
 
 def test_stop_transform_job_no_transform_job(transformer):

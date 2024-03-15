@@ -459,6 +459,10 @@ def test_clarify_check_step_properties(
     assert model_explainability_check_step.properties.CalculatedBaselineConstraints.expr == {
         "Get": "Steps.ModelExplainabilityCheckStep.CalculatedBaselineConstraints"
     }
+    assert (
+        model_explainability_check_step.properties.CalculatedBaselineConstraints._referenced_steps
+        == [model_explainability_check_step]
+    )
     assert model_explainability_check_step.properties.BaselineUsedForDriftCheckConstraints.expr == {
         "Get": "Steps.ModelExplainabilityCheckStep.BaselineUsedForDriftCheckConstraints"
     }

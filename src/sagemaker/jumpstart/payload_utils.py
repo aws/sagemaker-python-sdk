@@ -22,12 +22,12 @@ from sagemaker.jumpstart.accessors import JumpStartS3PayloadAccessor
 from sagemaker.jumpstart.artifacts.payloads import _retrieve_example_payloads
 from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-    JUMPSTART_DEFAULT_REGION_NAME,
 )
 from sagemaker.jumpstart.enums import MIMEType
 from sagemaker.jumpstart.types import JumpStartSerializablePayload
 from sagemaker.jumpstart.utils import (
     get_jumpstart_content_bucket,
+    get_region_fallback,
 )
 from sagemaker.session import Session
 
@@ -115,80 +115,6 @@ def _construct_payload(
     return payload_to_use
 
 
-def _extract_generated_text_from_response(
-    response: dict,
-    model_id: str,
-    model_version: str,
-    region: Optional[str] = None,
-    tolerate_vulnerable_model: bool = False,
-    tolerate_deprecated_model: bool = False,
-    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-    accept_type: Optional[str] = None,
-) -> str:
-    """Returns generated text extracted from full response payload.
-
-    Args:
-        response (dict): Dictionary-valued response from which to extract
-            generated text.
-        model_id (str): JumpStart model ID of the JumpStart model from which to extract
-            generated text.
-        model_version (str): Version of the JumpStart model for which to extract generated
-            text.
-        region (Optional[str]): Region for which to extract generated
-            text. (Default: None).
-        tolerate_vulnerable_model (bool): True if vulnerable versions of model
-            specifications should be tolerated (exception not raised). If False, raises an
-            exception if the script used by this version of the model has dependencies with known
-            security vulnerabilities. (Default: False).
-        tolerate_deprecated_model (bool): True if deprecated versions of model
-            specifications should be tolerated (exception not raised). If False, raises
-            an exception if the version of the model is deprecated. (Default: False).
-        sagemaker_session (sagemaker.session.Session): A SageMaker Session
-            object, used for SageMaker interactions. If not
-            specified, one is created using the default AWS configuration
-            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
-        accept_type (Optional[str]): The accept type to optionally specify for the response.
-            (Default: None).
-
-    Returns:
-        str: extracted generated text from the endpoint response payload.
-
-    Raises:
-        ValueError: If the model is invalid, the model does not support generated text extraction,
-        or if the response is malformed.
-    """
-
-    if not isinstance(response, dict):
-        raise ValueError(f"Response must be dictionary. Instead, got: {type(response)}")
-
-    payloads: Optional[Dict[str, JumpStartSerializablePayload]] = _retrieve_example_payloads(
-        model_id=model_id,
-        model_version=model_version,
-        region=region,
-        tolerate_vulnerable_model=tolerate_vulnerable_model,
-        tolerate_deprecated_model=tolerate_deprecated_model,
-        sagemaker_session=sagemaker_session,
-    )
-    if payloads is None or len(payloads) == 0:
-        raise ValueError(f"Model ID '{model_id}' does not support generated text extraction.")
-
-    for payload in payloads.values():
-        if accept_type is None or payload.accept == accept_type:
-            generated_text_response_key: Optional[str] = payload.generated_text_response_key
-            if generated_text_response_key is None:
-                raise ValueError(
-                    f"Model ID '{model_id}' does not support generated text extraction."
-                )
-
-            generated_text_response_key_split = generated_text_response_key.split(".")
-            try:
-                return _extract_field_from_json(response, generated_text_response_key_split)
-            except KeyError:
-                raise ValueError(f"Response is malformed: {response}")
-
-    raise ValueError(f"Model ID '{model_id}' does not support generated text extraction.")
-
-
 class PayloadSerializer:
     """Utility class for serializing payloads associated with JumpStart models.
 
@@ -199,12 +125,14 @@ class PayloadSerializer:
     def __init__(
         self,
         bucket: Optional[str] = None,
-        region: str = JUMPSTART_DEFAULT_REGION_NAME,
+        region: Optional[str] = None,
         s3_client: Optional[boto3.client] = None,
     ) -> None:
         """Initializes PayloadSerializer object."""
         self.bucket = bucket or get_jumpstart_content_bucket()
-        self.region = region
+        self.region = region or get_region_fallback(
+            s3_client=s3_client,
+        )
         self.s3_client = s3_client
 
     def get_bytes_payload_with_s3_references(

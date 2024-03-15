@@ -192,6 +192,7 @@ _DEFINITION_CONFIG = PipelineDefinitionConfig(use_custom_job_prefix=False)
 MOCKED_PIPELINE_CONFIG = _PipelineConfig(
     "test-pipeline",
     "test-training-step",
+    None,
     "code-hash-0123456789",
     "config-hash-0123456789",
     _DEFINITION_CONFIG,
@@ -258,7 +259,11 @@ class DummyFrameworkModel(FrameworkModel):
         return None
 
     def prepare_container_def(
-        self, instance_type, accelerator_type=None, serverless_inference_config=None
+        self,
+        instance_type,
+        accelerator_type=None,
+        serverless_inference_config=None,
+        accept_eula=None,
     ):
         return MODEL_CONTAINER_DEF
 
@@ -505,6 +510,24 @@ def test_framework_all_init_args(sagemaker_session):
         "enable_sagemaker_metrics": True,
         "enable_network_isolation": True,
     }
+
+
+def test_subnets_without_security_groups(sagemaker_session):
+    with pytest.raises(RuntimeError):
+        DummyFramework(
+            entry_point=SCRIPT_PATH,
+            sagemaker_session=sagemaker_session,
+            subnets=["123"],
+        )
+
+
+def test_security_groups_without_subnets(sagemaker_session):
+    with pytest.raises(RuntimeError):
+        DummyFramework(
+            entry_point=SCRIPT_PATH,
+            sagemaker_session=sagemaker_session,
+            security_group_ids=["123"],
+        )
 
 
 def test_framework_without_role_parameter(sagemaker_session):
@@ -1989,6 +2012,82 @@ def test_sagemaker_model_custom_channel_name(sagemaker_session):
     ]
 
 
+def test_framework_with_remote_debug_config(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+        enable_remote_debug=True,
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args["remote_debug_config"]["EnableRemoteDebug"]
+    assert f.get_remote_debug_config()["EnableRemoteDebug"]
+
+
+def test_framework_without_remote_debug_config(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args.get("remote_debug_config") is None
+    assert f.get_remote_debug_config() is None
+
+
+def test_framework_enable_remote_debug(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+    )
+    f.fit("s3://mydata")
+    f.enable_remote_debug()
+
+    sagemaker_session.update_training_job.assert_called_once()
+    _, args = sagemaker_session.update_training_job.call_args
+    assert args["remote_debug_config"] == {
+        "EnableRemoteDebug": True,
+    }
+    assert f.get_remote_debug_config()["EnableRemoteDebug"]
+    assert len(args) == 2
+
+
+def test_framework_disable_remote_debug(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        enable_remote_debug=True,
+    )
+    f.fit("s3://mydata")
+    f.disable_remote_debug()
+
+    sagemaker_session.update_training_job.assert_called_once()
+    _, args = sagemaker_session.update_training_job.call_args
+    assert args["remote_debug_config"] == {
+        "EnableRemoteDebug": False,
+    }
+    assert not f.get_remote_debug_config()["EnableRemoteDebug"]
+    assert len(args) == 2
+
+
 @patch("time.strftime", return_value=TIMESTAMP)
 def test_custom_code_bucket(time, sagemaker_session):
     code_bucket = "codebucket"
@@ -3419,6 +3518,7 @@ def test_fit_deploy_tags_in_estimator(name_from_base, sagemaker_session):
         data_capture_config_dict=None,
         async_inference_config_dict=None,
         explainer_config_dict=None,
+        live_logging=False,
     )
 
     sagemaker_session.create_model.assert_called_with(
@@ -3470,6 +3570,7 @@ def test_fit_deploy_tags(name_from_base, sagemaker_session):
         data_capture_config_dict=None,
         async_inference_config_dict=None,
         explainer_config_dict=None,
+        live_logging=False,
     )
 
     sagemaker_session.create_model.assert_called_with(
@@ -3528,6 +3629,7 @@ def test_fit_deploy_uncompressed_s3_model(name_from_base, sagemaker_session):
         async_inference_config_dict=None,
         explainer_config_dict=None,
         tags=None,
+        live_logging=False,
     )
 
     sagemaker_session.create_model.assert_called_with(

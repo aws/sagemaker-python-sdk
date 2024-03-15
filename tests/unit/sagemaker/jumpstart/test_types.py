@@ -34,6 +34,7 @@ INSTANCE_TYPE_VARIANT = JumpStartInstanceTypeVariants(
         "variants": {
             "ml.p2.12xlarge": {
                 "properties": {
+                    "resource_requirements": {"req1": 1, "req2": {"1": 2, "2": 3}, "req3": 9},
                     "environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"},
                     "supported_inference_instance_types": ["ml.p5.xlarge"],
                     "default_inference_instance_type": "ml.p5.xlarge",
@@ -60,6 +61,11 @@ INSTANCE_TYPE_VARIANT = JumpStartInstanceTypeVariants(
             "p2": {
                 "regional_properties": {"image_uri": "$gpu_image_uri"},
                 "properties": {
+                    "resource_requirements": {
+                        "req2": {"2": 5, "9": 999},
+                        "req3": 999,
+                        "req4": "blah",
+                    },
                     "supported_inference_instance_types": ["ml.p2.xlarge", "ml.p3.xlarge"],
                     "default_inference_instance_type": "ml.p2.xlarge",
                     "metrics": [
@@ -303,6 +309,16 @@ def test_jumpstart_model_header():
 
     header3 = copy.deepcopy(header1)
     assert header1 == header3
+
+
+def test_use_training_model_artifact():
+    specs1 = JumpStartModelSpecs(BASE_SPEC)
+    assert specs1.use_training_model_artifact()
+    specs1.gated_bucket = True
+    assert not specs1.use_training_model_artifact()
+    specs1.gated_bucket = False
+    specs1.training_model_package_artifact_uris = {"region1": "blah", "region2": "blah2"}
+    assert not specs1.use_training_model_artifact()
 
 
 def test_jumpstart_model_specs():
@@ -868,4 +884,21 @@ def test_jumpstart_training_artifact_key_instance_variants():
             instance_type="ml.g9dsfsdfs.12xlarge"
         )
         is None
+    )
+
+
+def test_jumpstart_resource_requirements_instance_variants():
+    assert INSTANCE_TYPE_VARIANT.get_instance_specific_resource_requirements(
+        instance_type="ml.p2.xlarge"
+    ) == {"req2": {"2": 5, "9": 999}, "req3": 999, "req4": "blah"}
+
+    assert INSTANCE_TYPE_VARIANT.get_instance_specific_resource_requirements(
+        instance_type="ml.p2.12xlarge"
+    ) == {"req1": 1, "req2": {"1": 2, "2": 3}, "req3": 9, "req4": "blah"}
+
+    assert (
+        INSTANCE_TYPE_VARIANT.get_instance_specific_resource_requirements(
+            instance_type="ml.p99.12xlarge"
+        )
+        == {}
     )

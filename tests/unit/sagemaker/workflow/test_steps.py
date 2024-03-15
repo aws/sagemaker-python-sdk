@@ -10,7 +10,6 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-# language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
 import json
@@ -42,7 +41,7 @@ from sagemaker.network import NetworkConfig
 from sagemaker.transformer import Transformer
 from sagemaker.workflow.functions import Join, JsonGet
 from sagemaker.workflow.pipeline import Pipeline, PipelineGraph
-from sagemaker.workflow.properties import Properties, PropertyFile
+from sagemaker.workflow.properties import PropertyFile
 from sagemaker.workflow.parameters import ParameterString, ParameterInteger, ParameterBoolean
 from sagemaker.workflow.retry import (
     StepRetryPolicy,
@@ -226,6 +225,20 @@ def test_custom_step_with_retry_policy():
     }
 
 
+def test_custom_steps_with_execution_dependency():
+    step_1 = CustomStep(
+        name="MyStep", display_name="CustomStepDisplayName", description="CustomStepDescription"
+    )
+    step_2 = CustomStep(
+        name="MyStep2", display_name="CustomStepDisplayName2", description="CustomStepDescription2"
+    )
+
+    assert step_1.depends_on is None
+
+    step_1.add_depends_on([step_2])
+    assert step_1.depends_on == [step_2]
+
+
 def test_training_step_base_estimator(sagemaker_session):
     custom_step1 = CustomStep("TestStep")
     custom_step2 = CustomStep("AnotherTestStep")
@@ -338,6 +351,7 @@ def test_training_step_base_estimator(sagemaker_session):
     }
     assert step.properties.TrainingJobName.expr == {"Get": "Steps.MyTrainingStep.TrainingJobName"}
     assert step.properties.HyperParameters.expr == {"Get": "Steps.MyTrainingStep.HyperParameters"}
+    assert step.properties.ModelArtifacts._referenced_steps == [step]
     adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
     assert ordered(adjacency_list) == ordered(
         {
@@ -618,6 +632,7 @@ def test_processing_step(sagemaker_session):
     assert step.properties.ProcessingJobName.expr == {
         "Get": "Steps.MyProcessingStep.ProcessingJobName"
     }
+    assert step.properties.ProcessingJobName._referenced_steps == [step]
     adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
     assert ordered(adjacency_list) == ordered(
         {
@@ -807,6 +822,7 @@ def test_create_model_step(sagemaker_session):
         },
     }
     assert step.properties.ModelName.expr == {"Get": "Steps.MyCreateModelStep.ModelName"}
+    assert step.properties.ModelName._referenced_steps == [step]
 
 
 def test_create_model_step_with_invalid_input(sagemaker_session):
@@ -935,28 +951,7 @@ def test_transform_step(sagemaker_session):
     assert step.properties.TransformJobName.expr == {
         "Get": "Steps.MyTransformStep.TransformJobName"
     }
-
-
-def test_properties_describe_training_job_response():
-    prop = Properties(step_name="MyStep", shape_name="DescribeTrainingJobResponse")
-    some_prop_names = ["TrainingJobName", "TrainingJobArn", "HyperParameters", "OutputDataConfig"]
-    for name in some_prop_names:
-        assert name in prop.__dict__.keys()
-    assert prop.CreationTime.expr == {"Get": "Steps.MyStep.CreationTime"}
-    assert prop.OutputDataConfig.S3OutputPath.expr == {
-        "Get": "Steps.MyStep.OutputDataConfig.S3OutputPath"
-    }
-
-
-def test_properties_describe_processing_job_response():
-    prop = Properties(step_name="MyStep", shape_name="DescribeProcessingJobResponse")
-    some_prop_names = ["ProcessingInputs", "ProcessingOutputConfig", "ProcessingEndTime"]
-    for name in some_prop_names:
-        assert name in prop.__dict__.keys()
-    assert prop.ProcessingJobName.expr == {"Get": "Steps.MyStep.ProcessingJobName"}
-    assert prop.ProcessingOutputConfig.Outputs["MyOutputName"].S3Output.S3Uri.expr == {
-        "Get": "Steps.MyStep.ProcessingOutputConfig.Outputs['MyOutputName'].S3Output.S3Uri"
-    }
+    assert step.properties.TransformJobName._referenced_steps == [step]
 
 
 def test_add_depends_on(sagemaker_session):
@@ -1008,8 +1003,8 @@ def test_add_depends_on(sagemaker_session):
     step_3.add_depends_on([step_2.name])
 
     assert "DependsOn" not in step_1.to_request()
-    assert step_2.to_request()["DependsOn"] == ["MyProcessingStep-1"]
-    assert step_3.to_request()["DependsOn"] == ["MyProcessingStep-1", "MyProcessingStep-2"]
+    assert step_2.to_request()["DependsOn"] == [step_1]
+    assert step_3.to_request()["DependsOn"] == [step_1, "MyProcessingStep-2"]
 
 
 def test_single_algo_tuning_step(sagemaker_session):
@@ -1174,6 +1169,9 @@ def test_single_algo_tuning_step(sagemaker_session):
     assert tuning_step.properties.TrainingJobSummaries[0].TrainingJobName.expr == {
         "Get": "Steps.MyTuningStep.TrainingJobSummaries[0].TrainingJobName"
     }
+    assert tuning_step.properties.TrainingJobSummaries[
+        0
+    ].TunedHyperParameters._referenced_steps == [tuning_step]
     assert tuning_step.get_top_model_s3_uri(0, "my-bucket", "my-prefix").expr == {
         "Std:Join": {
             "On": "/",
@@ -1432,7 +1430,8 @@ def test_pipeline_dag_json_get_bad_step_type(sagemaker_session):
         PipelineGraph.from_pipeline(pipeline)
     assert (
         f"Invalid JsonGet function {json_get_function.expr} in step '{custom_step.name}'. "
-        f"JsonGet function can only be evaluated on processing step outputs." in str(e.value)
+        f"JsonGet function (with property_file) can only be evaluated "
+        f"on processing step outputs." in str(e.value)
     )
 
 

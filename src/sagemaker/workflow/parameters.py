@@ -91,6 +91,27 @@ class Parameter(PipelineVariable, Entity):
         return Parameter._expr(self.name)
 
     @property
+    def _pickleable(self):
+        """The pickleable object that can be passed to a remote function invocation."""
+
+        from sagemaker.remote_function.core.pipeline_variables import (
+            _ParameterString,
+            _ParameterInteger,
+            _ParameterBoolean,
+            _ParameterFloat,
+        )
+
+        if self.parameter_type == ParameterTypeEnum.STRING:
+            return _ParameterString(self.name)
+        if self.parameter_type == ParameterTypeEnum.INTEGER:
+            return _ParameterInteger(self.name)
+        if self.parameter_type == ParameterTypeEnum.BOOLEAN:
+            return _ParameterBoolean(self.name)
+        if self.parameter_type == ParameterTypeEnum.FLOAT:
+            return _ParameterFloat(self.name)
+        raise ValueError(f"Unsupported parameter type: {self.parameter_type}")
+
+    @property
     def _referenced_steps(self) -> List[str]:
         """List of step names that this function depends on."""
         return []

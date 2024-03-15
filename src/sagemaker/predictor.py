@@ -15,9 +15,11 @@ from __future__ import print_function, absolute_import
 
 from typing import Optional
 from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+from sagemaker.jumpstart.enums import JumpStartModelType
 
 from sagemaker.jumpstart.factory.model import get_default_predictor
-from sagemaker.jumpstart.utils import is_jumpstart_model_input
+from sagemaker.jumpstart.session_utils import get_model_id_version_from_endpoint
+
 
 from sagemaker.session import Session
 
@@ -33,18 +35,22 @@ from sagemaker.base_predictor import (  # noqa: F401 # pylint: disable=W0611
 
 def retrieve_default(
     endpoint_name: str,
+    inference_component_name: Optional[str] = None,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     region: Optional[str] = None,
     model_id: Optional[str] = None,
     model_version: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> Predictor:
     """Retrieves the default predictor for the model matching the given arguments.
 
     Args:
         endpoint_name (str): Endpoint name for which to create a predictor.
-        sagemaker_session (Session): The SageMaker Session to attach to the Predictor.
+        inference_component_name (str): Name of the Amazon SageMaker inference component
+            from which to optionally create a predictor. (Default: None).
+        sagemaker_session (Session): The SageMaker Session to attach to the predictor.
             (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
         region (str): The AWS Region for which to retrieve the default predictor.
             (Default: None).
@@ -63,16 +69,37 @@ def retrieve_default(
         Predictor: The default predictor to use for the model.
 
     Raises:
-        ValueError: If the combination of arguments specified is not supported.
+        ValueError: If the combination of arguments specified is not supported, or if a model ID or
+            version cannot be inferred from the endpoint.
     """
 
-    if not is_jumpstart_model_input(model_id, model_version):
-        raise ValueError(
-            "Must specify JumpStart `model_id` and `model_version` "
-            "when retrieving default predictor."
+    if model_id is None:
+        (
+            inferred_model_id,
+            inferred_model_version,
+            inferred_inference_component_name,
+        ) = get_model_id_version_from_endpoint(
+            endpoint_name, inference_component_name, sagemaker_session
         )
 
-    predictor = Predictor(endpoint_name=endpoint_name, sagemaker_session=sagemaker_session)
+        if not inferred_model_id:
+            raise ValueError(
+                f"Cannot infer JumpStart model ID from endpoint '{endpoint_name}'. "
+                "Please specify JumpStart `model_id` when retrieving default "
+                "predictor for this endpoint."
+            )
+
+        model_id = inferred_model_id
+        model_version = model_version or inferred_model_version or "*"
+        inference_component_name = inference_component_name or inferred_inference_component_name
+    else:
+        model_version = model_version or "*"
+
+    predictor = Predictor(
+        endpoint_name=endpoint_name,
+        component_name=inference_component_name,
+        sagemaker_session=sagemaker_session,
+    )
 
     return get_default_predictor(
         predictor=predictor,
@@ -82,4 +109,5 @@ def retrieve_default(
         tolerate_deprecated_model=tolerate_deprecated_model,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         sagemaker_session=sagemaker_session,
+        model_type=model_type,
     )

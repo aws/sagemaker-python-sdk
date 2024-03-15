@@ -19,6 +19,7 @@ from typing import Any, Dict, List, Tuple
 import boto3
 import pandas as pd
 import os
+
 from botocore.config import Config
 import pytest
 
@@ -46,6 +47,25 @@ def get_test_suite_id() -> str:
 
 def get_sm_session() -> Session:
     return Session(boto_session=boto3.Session(region_name=JUMPSTART_DEFAULT_REGION_NAME))
+
+
+# def get_sm_session_with_override() -> Session:
+#     # [TODO]: Remove service endpoint override before GA
+#     # boto3.set_stream_logger(name='botocore', level=logging.DEBUG)
+#     boto_session = boto3.Session(region_name="us-west-2")
+#     sagemaker = boto3.client(
+#         service_name="sagemaker-internal",
+#         endpoint_url="https://sagemaker.beta.us-west-2.ml-platform.aws.a2z.com",
+#     )
+#     sagemaker_runtime = boto3.client(
+#         service_name="runtime.maeve",
+#         endpoint_url="https://maeveruntime.beta.us-west-2.ml-platform.aws.a2z.com",
+#     )
+#     return Session(
+#         boto_session=boto_session,
+#         sagemaker_client=sagemaker,
+#         sagemaker_runtime_client=sagemaker_runtime,
+#     )
 
 
 def get_training_dataset_for_model_and_version(model_id: str, version: str) -> dict:

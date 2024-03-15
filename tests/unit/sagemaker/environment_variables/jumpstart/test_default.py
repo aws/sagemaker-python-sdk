@@ -18,17 +18,25 @@ from mock.mock import patch, Mock
 import pytest
 
 from sagemaker import environment_variables
+from sagemaker.jumpstart.utils import get_jumpstart_gated_content_bucket
+from sagemaker.jumpstart.enums import JumpStartModelType
 
 from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec, get_special_model_spec
 
+
 mock_client = boto3.client("s3")
-mock_session = Mock(s3_client=mock_client)
+region = "us-west-2"
+mock_session = Mock(s3_client=mock_client, boto_region_name=region)
 
 
+@patch("sagemaker.jumpstart.utils.validate_model_id_and_get_type")
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-def test_jumpstart_default_environment_variables(patched_get_model_specs):
+def test_jumpstart_default_environment_variables(
+    patched_get_model_specs, patched_validate_model_id_and_get_type
+):
 
     patched_get_model_specs.side_effect = get_spec_from_base_spec
+    patched_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
     model_id = "pytorch-eqa-bert-base-cased"
     region = "us-west-2"
@@ -48,7 +56,11 @@ def test_jumpstart_default_environment_variables(patched_get_model_specs):
     }
 
     patched_get_model_specs.assert_called_once_with(
-        region=region, model_id=model_id, version="*", s3_client=mock_client
+        region=region,
+        model_id=model_id,
+        version="*",
+        s3_client=mock_client,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
     )
 
     patched_get_model_specs.reset_mock()
@@ -68,7 +80,11 @@ def test_jumpstart_default_environment_variables(patched_get_model_specs):
     }
 
     patched_get_model_specs.assert_called_once_with(
-        region=region, model_id=model_id, version="1.*", s3_client=mock_client
+        region=region,
+        model_id=model_id,
+        version="1.*",
+        s3_client=mock_client,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
     )
 
     patched_get_model_specs.reset_mock()
@@ -98,10 +114,14 @@ def test_jumpstart_default_environment_variables(patched_get_model_specs):
         )
 
 
+@patch("sagemaker.jumpstart.utils.validate_model_id_and_get_type")
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-def test_jumpstart_sdk_environment_variables(patched_get_model_specs):
+def test_jumpstart_sdk_environment_variables(
+    patched_get_model_specs, patched_validate_model_id_and_get_type
+):
 
     patched_get_model_specs.side_effect = get_spec_from_base_spec
+    patched_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
     model_id = "pytorch-eqa-bert-base-cased"
     region = "us-west-2"
@@ -122,7 +142,11 @@ def test_jumpstart_sdk_environment_variables(patched_get_model_specs):
     }
 
     patched_get_model_specs.assert_called_once_with(
-        region=region, model_id=model_id, version="*", s3_client=mock_client
+        region=region,
+        model_id=model_id,
+        version="*",
+        s3_client=mock_client,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
     )
 
     patched_get_model_specs.reset_mock()
@@ -143,7 +167,11 @@ def test_jumpstart_sdk_environment_variables(patched_get_model_specs):
     }
 
     patched_get_model_specs.assert_called_once_with(
-        region=region, model_id=model_id, version="1.*", s3_client=mock_client
+        region=region,
+        model_id=model_id,
+        version="1.*",
+        s3_client=mock_client,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
     )
 
     patched_get_model_specs.reset_mock()
@@ -175,6 +203,70 @@ def test_jumpstart_sdk_environment_variables(patched_get_model_specs):
             model_id=model_id,
             include_aws_sdk_env_vars=False,
         )
+
+
+@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+def test_jumpstart_sdk_environment_variables_1_artifact_all_variants(patched_get_model_specs):
+
+    patched_get_model_specs.side_effect = get_special_model_spec
+
+    model_id = "gemma-model-1-artifact"
+    region = "us-west-2"
+
+    assert {
+        "SageMakerGatedModelS3Uri": f"s3://{get_jumpstart_gated_content_bucket(region)}/"
+        "huggingface-training/train-huggingface-llm-gemma-7b-instruct.tar.gz"
+    } == environment_variables.retrieve_default(
+        region=region,
+        model_id=model_id,
+        model_version="*",
+        include_aws_sdk_env_vars=False,
+        sagemaker_session=mock_session,
+        instance_type="ml.p3.2xlarge",
+        script="training",
+    )
+
+
+@patch("sagemaker.jumpstart.artifacts.environment_variables.JUMPSTART_LOGGER")
+@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+def test_jumpstart_sdk_environment_variables_no_gated_env_var_available(
+    patched_get_model_specs, patched_jumpstart_logger
+):
+
+    patched_get_model_specs.side_effect = get_special_model_spec
+
+    model_id = "gemma-model"
+    region = "us-west-2"
+
+    assert {} == environment_variables.retrieve_default(
+        region=region,
+        model_id=model_id,
+        model_version="*",
+        include_aws_sdk_env_vars=False,
+        sagemaker_session=mock_session,
+        instance_type="ml.p3.2xlarge",
+        script="training",
+    )
+
+    patched_jumpstart_logger.warning.assert_called_once_with(
+        "'gemma-model' does not support ml.p3.2xlarge instance type for "
+        "training. Please use one of the following instance types: "
+        "ml.g5.12xlarge, ml.g5.24xlarge, ml.g5.48xlarge, ml.p4d.24xlarge."
+    )
+
+    # assert that supported instance types succeed
+    assert {
+        "SageMakerGatedModelS3Uri": f"s3://{get_jumpstart_gated_content_bucket(region)}/"
+        "huggingface-training/g5/v1.0.0/train-huggingface-llm-gemma-7b-instruct.tar.gz"
+    } == environment_variables.retrieve_default(
+        region=region,
+        model_id=model_id,
+        model_version="*",
+        include_aws_sdk_env_vars=False,
+        sagemaker_session=mock_session,
+        instance_type="ml.g5.24xlarge",
+        script="training",
+    )
 
 
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")

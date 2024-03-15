@@ -1,12 +1,16 @@
 {
     "inference": {
-        "processors": ["gpu"],
+        "processors": [
+            "gpu"
+        ],
         "version_aliases": {
             "0.1": "0.1.0"
         },
         "versions": {
             "0.1.0": {
-                "py_versions": ["py310"],
+                "py_versions": [
+                    "py310"
+                ],
                 "registries": {
                     "af-south-1": "626614931356",
                     "il-central-1": "780543022126",
@@ -35,7 +39,8 @@
                     "us-east-1": "763104351884",
                     "us-east-2": "763104351884",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
                 },
                 "tag_prefix": "2.0.1-sgm0.1.0",
                 "repository": "stabilityai-pytorch-inference",
