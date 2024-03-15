@@ -332,8 +332,24 @@ ANALYSIS_CONFIG_SCHEMA_V1_0 = Schema(
                 SchemaOptional("baseline"): Or(
                     str,
                     {
-                        SchemaOptional("target_time_series", default="zero"): str,
-                        SchemaOptional("related_time_series"): str,
+                        SchemaOptional("target_time_series", default="zero"): And(
+                            str,
+                            Use(str.lower),
+                            lambda s: s
+                            in (
+                                "zero",
+                                "mean",
+                            ),
+                        ),
+                        SchemaOptional("related_time_series"): And(
+                            str,
+                            Use(str.lower),
+                            lambda s: s
+                            in (
+                                "zero",
+                                "mean",
+                            ),
+                        ),
                         SchemaOptional("static_covariates"): {Or(str, int): [Or(str, int, float)]},
                     },
                 ),
@@ -1769,13 +1785,14 @@ class AsymmetricShapleyValueConfig(ExplainabilityConfig):
                 (static covariates), a baseline value for each covariate should be provided for
                 each possible item_id. An example config follows, where ``item1`` and ``item2``
                 are item ids.::
+
                     {
+                        "target_time_series": "zero",
                         "related_time_series": "zero",
                         "static_covariates": {
                             "item1": [1, 1],
                             "item2": [0, 1]
-                        },
-                        "target_time_series": "zero"
+                        }
                     }
 
         Raises:
@@ -1803,13 +1820,27 @@ class AsymmetricShapleyValueConfig(ExplainabilityConfig):
             ), f"{direction} and {granularity} granularity are not supported together."
         elif num_samples:  # validate num_samples is not provided when unnecessary
             raise ValueError("``num_samples`` is only used for fine-grained explanations.")
+        # validate baseline if provided as a dictionary
+        if isinstance(baseline, dict):
+            temporal_baselines = ["zero", "mean"]  # possible baseline options for temporal fields
+            if "target_time_series" in baseline:
+                target_baseline = baseline.get("target_time_series")
+                assert target_baseline in temporal_baselines, (
+                    f"Provided value {target_baseline} for ``target_time_series`` is "
+                    f"invalid. Please select one of {temporal_baselines}."
+                )
+            if "related_time_series" in baseline:
+                related_baseline = baseline.get("related_time_series")
+                assert related_baseline in temporal_baselines, (
+                    f"Provided value {related_baseline} for ``related_time_series`` is "
+                    f"invalid. Please select one of {temporal_baselines}."
+                )
         # set explanation type and (if provided) num_samples in internal config dictionary
         _set(direction, "direction", self.asymmetric_shapley_value_config)
         _set(granularity, "granularity", self.asymmetric_shapley_value_config)
         _set(
             num_samples, "num_samples", self.asymmetric_shapley_value_config
         )  # _set() does nothing if a given argument is None
-        # TODO: add sdk-side validation to baseline
         _set(baseline, "baseline", self.asymmetric_shapley_value_config)
 
     def get_explainability_config(self):

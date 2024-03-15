@@ -17,7 +17,7 @@ import copy
 
 import pytest
 from mock import ANY, MagicMock, Mock, patch
-from typing import List, NamedTuple, Optional, Union
+from typing import Any, Dict, List, NamedTuple, Optional, Union
 
 from sagemaker import Processor, image_uris
 from sagemaker.clarify import (
@@ -1283,9 +1283,10 @@ def test_shap_config_no_parameters():
 class AsymmetricShapleyValueConfigCase(NamedTuple):
     direction: str
     granularity: str
-    num_samples: Optional[int]
-    error: Exception
-    error_message: str
+    num_samples: Optional[int] = None
+    baseline: Optional[Union[str, Dict[str, Any]]] = None
+    error: Exception = None
+    error_message: str = None
 
 
 class TestAsymmetricShapleyValueConfig:
@@ -1296,22 +1297,28 @@ class TestAsymmetricShapleyValueConfig:
                 direction=direction,
                 granularity="timewise",
                 num_samples=None,
-                error=None,
-                error_message=None,
             )
             for direction in ASYM_SHAP_VAL_EXPLANATION_DIRECTIONS
         ]
         + [
-            AsymmetricShapleyValueConfigCase(  # cases for fine_grained granularity
+            AsymmetricShapleyValueConfigCase(  # case for fine_grained granularity
                 direction="chronological",
                 granularity="fine_grained",
                 num_samples=1,
-                error=None,
-                error_message=None,
-            )
+            ),
+            AsymmetricShapleyValueConfigCase(  # case for target time series baseline
+                direction="chronological",
+                granularity="timewise",
+                baseline={"target_time_series": "mean"},
+            ),
+            AsymmetricShapleyValueConfigCase(  # case for related time series baseline
+                direction="chronological",
+                granularity="timewise",
+                baseline={"related_time_series": "zero"},
+            ),
         ],
     )
-    def test_asymmetric_shapley_value_config(self, test_case):
+    def test_asymmetric_shapley_value_config(self, test_case: AsymmetricShapleyValueConfigCase):
         """
         GIVEN valid arguments for an AsymmetricShapleyValueConfig object
         WHEN AsymmetricShapleyValueConfig object is instantiated with those arguments
@@ -1325,11 +1332,14 @@ class TestAsymmetricShapleyValueConfig:
         }
         if test_case.granularity == "fine_grained":
             expected_config["num_samples"] = test_case.num_samples
+        if test_case.baseline:
+            expected_config["baseline"] = test_case.baseline
         # WHEN
         asym_shap_val_config = AsymmetricShapleyValueConfig(
             direction=test_case.direction,
             granularity=test_case.granularity,
             num_samples=test_case.num_samples,
+            baseline=test_case.baseline,
         )
         # THEN
         assert asym_shap_val_config.asymmetric_shapley_value_config == expected_config
@@ -1380,6 +1390,20 @@ class TestAsymmetricShapleyValueConfig:
                 error=AssertionError,
                 error_message="not supported together.",
             ),
+            AsymmetricShapleyValueConfigCase(  # case for unsupported target time series baseline value
+                direction="chronological",
+                granularity="timewise",
+                baseline={"target_time_series": "median"},
+                error=AssertionError,
+                error_message="for ``target_time_series`` is invalid.",
+            ),
+            AsymmetricShapleyValueConfigCase(  # case for unsupported related time series baseline value
+                direction="chronological",
+                granularity="timewise",
+                baseline={"related_time_series": "mode"},
+                error=AssertionError,
+                error_message="for ``related_time_series`` is invalid.",
+            ),
         ],
     )
     def test_asymmetric_shapley_value_config_invalid(self, test_case):
@@ -1394,6 +1418,7 @@ class TestAsymmetricShapleyValueConfig:
                 direction=test_case.direction,
                 granularity=test_case.granularity,
                 num_samples=test_case.num_samples,
+                baseline=test_case.baseline,
             )
 
 
