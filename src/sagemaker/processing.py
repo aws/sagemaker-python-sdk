@@ -1865,9 +1865,7 @@ class FrameworkProcessor(ScriptProcessor):
         )
         m = re.match(arn_regex, codeartifact_repo_arn)
         if not m:
-            raise ValueError(
-                "invalid CodeArtifact repository arn {}".format(codeartifact_repo_arn)
-            )
+            raise ValueError("invalid CodeArtifact repository arn {}".format(codeartifact_repo_arn))
         domain = m.group("domain")
         owner = m.group("account")
         repository = m.group("repository")
@@ -1903,12 +1901,11 @@ class FrameworkProcessor(ScriptProcessor):
                 logged into before installing dependencies (default: None).
         """
         if codeartifact_repo_arn:
-            codeartifact_login_command = self._get_codeartifact_command(
-                codeartifact_repo_arn
-            )
+            codeartifact_login_command = self._get_codeartifact_command(codeartifact_repo_arn)
         else:
-            codeartifact_login_command = \
+            codeartifact_login_command = (
                 "echo 'CodeArtifact repository not specified. Skipping login.'"
+            )
 
         return dedent(
             """\
@@ -2031,9 +2028,7 @@ class FrameworkProcessor(ScriptProcessor):
         from sagemaker.workflow.utilities import _pipeline_config, hash_object
 
         if _pipeline_config and _pipeline_config.pipeline_name:
-            runproc_file_str = self._generate_framework_script(
-                user_script, codeartifact_repo_arn
-            )
+            runproc_file_str = self._generate_framework_script(user_script, codeartifact_repo_arn)
             runproc_file_hash = hash_object(runproc_file_str)
             s3_uri = s3.s3_path_join(
                 "s3://",
