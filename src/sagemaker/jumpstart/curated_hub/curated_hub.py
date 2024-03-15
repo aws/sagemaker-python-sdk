@@ -389,7 +389,7 @@ class CuratedHub:
         return json.loads(response["Body"].read().decode("utf-8"))
 
 
-    def scan_and_tag_models(self) -> None:
+    def scan_and_tag_models(self, model_list: List[Dict[str, str]] = None) -> None:
         """Scans the Hub for JumpStart models and tags the HubContent.
         
         If the scan detects a model is deprecated or vulnerable, it will tag the HubContent.
@@ -402,11 +402,20 @@ class CuratedHub:
         For example, if model_a version_a is deprecated and inference is vulnerable, the
         HubContent for `model_a` will have tags [{"deprecated_versions": [version_a]}, 
         {"inference_vulnerable_versions": [version_a]}]
+
+        If models are passed in, 
         """
         JUMPSTART_LOGGER.info(
             "Tagging models in hub: %s", self.hub_name
         )
-        js_models_in_hub = [model for model in self.list_models() if get_jumpstart_model_and_version(model) is not None]
+        models_to_scan = model_list if model_list else self.list_models()
+        if self._is_invalid_model_list_input(model_list):
+            raise ValueError(
+                "Model list should be a list of objects with values 'model_id',",
+                "and optional 'version'.",
+            )
+        
+        js_models_in_hub = [model for model in models_to_scan if get_jumpstart_model_and_version(model) is not None]
         tags_added: Dict[str, List[CuratedHubTag]] = {}
         for model in js_models_in_hub:
             tags_to_add: List[CuratedHubTag] = find_jumpstart_tags_for_hub_content(
