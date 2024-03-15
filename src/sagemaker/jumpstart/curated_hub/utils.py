@@ -189,7 +189,7 @@ def create_hub_bucket_if_it_does_not_exist(
 def tag_hub_content(hub_content_arn: str, tags: List[TagsDict], session: Session) -> None:
     session.add_tags(
       ResourceArn=hub_content_arn,
-      Tags=str(tags)
+      Tags=tags
     )
     JUMPSTART_LOGGER.info(f"Added tags to HubContentArn %s: %s", hub_content_arn, TagsDict)
     
