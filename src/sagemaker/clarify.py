@@ -110,6 +110,7 @@ ANALYSIS_CONFIG_SCHEMA_V1_0 = Schema(
                 lambda s: s
                 in (
                     "columns",
+                    "item_records",
                     "timestamp_records",
                 ),
             ),
@@ -391,89 +392,74 @@ class DatasetType(Enum):
 class TimeSeriesJSONDatasetFormat(Enum):
     """Possible dataset formats for JSON time series data files.
 
-    Below is an example ``COLUMNS`` dataset for time series explainability:
+    Below is an example ``COLUMNS`` dataset for time series explainability.::
 
-    ```
-    {
-        "ids": [1, 2],
-        "timestamps": [3, 4],
-        "target_ts": [5, 6],
-        "rts1": [0.25, 0.5],
-        "rts2": [1.25, 1.5],
-        "scv1": [10, 20],
-        "scv2": [30, 40]
-    }
-
-    ```
-
-    For this example, JMESPaths are specified when creating ``TimeSeriesDataConfig`` as follows:
-
-    ```
-    item_id="ids"
-    timestamp="timestamps"
-    target_time_series="target_ts"
-    related_time_series=["rts1", "rts2"]
-    static_covariates=["scv1", "scv2"]
-    ```
-
-    Below is an example ``ITEM_RECORDS`` dataset for time series explainability:
-
-    ```
-    [
         {
-            "id": 1,
-            "scv1": 10,
-            "scv2": "red",
-            "timeseries": [
-                {"timestamp": 1, "target_ts": 5, "rts1": 0.25, "rts2": 10},
-                {"timestamp": 2, "target_ts": 6, "rts1": 0.35, "rts2": 20},
-                {"timestamp": 3, "target_ts": 4, "rts1": 0.45, "rts2": 30}
-            ]
-        },
-        {
-            "id": 2,
-            "scv1": 20,
-            "scv2": "blue",
-            "timeseries": [
-                {"timestamp": 1, "target_ts": 4, "rts1": 0.25, "rts2": 40},
-                {"timestamp": 2, "target_ts": 2, "rts1": 0.35, "rts2": 50}
-            ]
+            "ids": [1, 2],
+            "timestamps": [3, 4],
+            "target_ts": [5, 6],
+            "rts1": [0.25, 0.5],
+            "rts2": [1.25, 1.5],
+            "scv1": [10, 20],
+            "scv2": [30, 40]
         }
-    ]
-    ```
 
-    For this example, JMESPaths are specified when creating ``TimeSeriesDataConfig`` as follows:
+    For this example, JMESPaths are specified when creating ``TimeSeriesDataConfig`` as follows.::
 
-    ```
-    item_id="[*].id"
-    timestamp="[*].timeseries[].timestamp"
-    target_time_series="[*].timeseries[].target_ts"
-    related_time_series=["[*].timeseries[].rts1", "[*].timeseries[].rts2"]
-    static_covariates=["[*].scv1", "[*].scv2"]
-    ```
+        item_id="ids"
+        timestamp="timestamps"
+        target_time_series="target_ts"
+        related_time_series=["rts1", "rts2"]
+        static_covariates=["scv1", "scv2"]
 
-    Below is an example ``TIMESTAMP_RECORDS`` dataset for time series explainability:
+    Below is an example ``ITEM_RECORDS`` dataset for time series explainability.::
 
-    ```
-    [
-        {"id": 1, "timestamp": 1, "target_ts": 5, "scv1": 10, "rts1": 0.25},
-        {"id": 1, "timestamp": 2, "target_ts": 6, "scv1": 10, "rts1": 0.5},
-        {"id": 1, "timestamp": 3, "target_ts": 3, "scv1": 10, "rts1": 0.75},
-        {"id": 2, "timestamp": 5, "target_ts": 10, "scv1": 20, "rts1": 1}
-    ]
+        [
+            {
+                "id": 1,
+                "scv1": 10,
+                "scv2": "red",
+                "timeseries": [
+                    {"timestamp": 1, "target_ts": 5, "rts1": 0.25, "rts2": 10},
+                    {"timestamp": 2, "target_ts": 6, "rts1": 0.35, "rts2": 20},
+                    {"timestamp": 3, "target_ts": 4, "rts1": 0.45, "rts2": 30}
+                ]
+            },
+            {
+                "id": 2,
+                "scv1": 20,
+                "scv2": "blue",
+                "timeseries": [
+                    {"timestamp": 1, "target_ts": 4, "rts1": 0.25, "rts2": 40},
+                    {"timestamp": 2, "target_ts": 2, "rts1": 0.35, "rts2": 50}
+                ]
+            }
+        ]
 
-    ```
+    For this example, JMESPaths are specified when creating ``TimeSeriesDataConfig`` as follows.::
 
-    For this example, JMESPaths are specified when creating ``TimeSeriesDataConfig`` as follows:
+        item_id="[*].id"
+        timestamp="[*].timeseries[].timestamp"
+        target_time_series="[*].timeseries[].target_ts"
+        related_time_series=["[*].timeseries[].rts1", "[*].timeseries[].rts2"]
+        static_covariates=["[*].scv1", "[*].scv2"]
 
-    ```
-    item_id="[*].id"
-    timestamp="[*].timestamp"
-    target_time_series="[*].target_ts"
-    related_time_series=["[*].rts1"]
-    static_covariates=["[*].scv1"]
-    ```
+    Below is an example ``TIMESTAMP_RECORDS`` dataset for time series explainability.::
 
+        [
+            {"id": 1, "timestamp": 1, "target_ts": 5, "scv1": 10, "rts1": 0.25},
+            {"id": 1, "timestamp": 2, "target_ts": 6, "scv1": 10, "rts1": 0.5},
+            {"id": 1, "timestamp": 3, "target_ts": 3, "scv1": 10, "rts1": 0.75},
+            {"id": 2, "timestamp": 5, "target_ts": 10, "scv1": 20, "rts1": 1}
+        ]
+
+    For this example, JMESPaths are specified when creating ``TimeSeriesDataConfig`` as follows.::
+
+        item_id="[*].id"
+        timestamp="[*].timestamp"
+        target_time_series="[*].target_ts"
+        related_time_series=["[*].rts1"]
+        static_covariates=["[*].scv1"]
     """
 
     COLUMNS = "columns"
@@ -693,11 +679,10 @@ class DataConfig:
                 Note: For JSON, the JMESPath query must result in a list of labels for each
                 sample.  For JSON Lines, it must result in the label for each line.
                 Only a single label per sample is supported at this time.
-            headers (str): List of column names in the dataset. If not provided, Clarify will
+            headers ([str]): List of column names in the dataset. If not provided, Clarify will
                 generate headers to use internally. For time series explainability cases,
-                please provide headers in the following order:
-                    item_id, timestamp, target_time_series, all related_time_series columns,
-                    all static_covariate columns
+                please provide headers in the order of item_id, timestamp, target_time_series,
+                all related_time_series columns, and then all static_covariate columns.
             features (str): JMESPath expression to locate the feature values
                 if the dataset format is JSON/JSON Lines.
                 Note: For JSON, the JMESPath query must result in a 2-D list (or a matrix) of
@@ -959,10 +944,10 @@ class TimeSeriesModelConfig:
             forecast (str): JMESPath expression to extract the forecast result.
 
         Raises:
-            AssertionError: when either ``forecast`` or ``forecast_horizon`` are not provided
+            AssertionError: when ``forecast`` is not provided
             ValueError: when any provided argument are not of specified type
         """
-        # assert forecast and forecast_horizon are provided
+        # assert forecast is provided
         assert (
             forecast
         ), "Please provide ``forecast``, a JMESPath expression to extract the forecast result."
@@ -1775,8 +1760,23 @@ class AsymmetricShapleyValueConfig(ExplainabilityConfig):
             num_samples (None or int): Number of samples to be used in the Asymmetric Shapley
                 Value forecasting algorithm. Only applicable when using ``"fine_grained"``
                 explanations.
-            baseline (str or dict): Link to a baseline configuration or a dictionary for it.
-            # TODO: improve above.
+            baseline (str or dict): Link to a baseline configuration or a dictionary for it. The
+                baseline config is used to replace out-of-coalition values for the corresponding
+                datasets (also known as background data). For temporal data (target time series,
+                related time series), the baseline value types are "zero", where all
+                out-of-coalition values will be replaced with 0.0, or "mean", all out-of-coalition
+                values will be replaced with the average of a time series. For static data
+                (static covariates), a baseline value for each covariate should be provided for
+                each possible item_id. An example config follows, where ``item1`` and ``item2``
+                are item ids.::
+                    {
+                        "related_time_series": "zero",
+                        "static_covariates": {
+                            "item1": [1, 1],
+                            "item2": [0, 1]
+                        },
+                        "target_time_series": "zero"
+                    }
 
         Raises:
             AssertionError: when ``direction`` or ``granularity`` are not valid,
