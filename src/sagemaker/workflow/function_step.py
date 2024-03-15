@@ -33,12 +33,11 @@ from sagemaker.workflow.entities import (
     PipelineVariable,
 )
 
-from sagemaker.workflow.execution_variables import ExecutionVariables
 from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.retry import RetryPolicy
 from sagemaker.workflow.steps import Step, ConfigurableRetryStep, StepTypeEnum
 from sagemaker.workflow.step_collections import StepCollection
-from sagemaker.workflow.step_outputs import StepOutput
+from sagemaker.workflow.step_outputs import StepOutput, get_step
 from sagemaker.workflow.utilities import trim_request_dict, load_step_compilation_context
 
 from sagemaker.s3_utils import s3_path_join
@@ -277,14 +276,12 @@ class DelayedReturn(StepOutput):
         """Expression structure for workflow service calls using JsonGet resolution."""
         from sagemaker.remote_function.core.stored_function import (
             JSON_SERIALIZED_RESULT_KEY,
-            RESULTS_FOLDER,
             JSON_RESULTS_FILE,
         )
 
         if not self._step.name:
             raise ValueError("Step name is not defined.")
 
-        s3_root_uri = self._step._job_settings.s3_root_uri
         # Resolve json path --
         #   Deserializer will be able to resolve a JsonGet using path "Return[1]" to
         #   access value 10 from following serialized JSON:
@@ -308,13 +305,9 @@ class DelayedReturn(StepOutput):
 
         return JsonGet(
             s3_uri=Join(
-                "/",
-                [
-                    s3_root_uri,
-                    ExecutionVariables.PIPELINE_NAME,
-                    ExecutionVariables.PIPELINE_EXECUTION_ID,
-                    self._step.name,
-                    RESULTS_FOLDER,
+                on="/",
+                values=[
+                    get_step(self)._properties.OutputDataConfig.S3OutputPath,
                     JSON_RESULTS_FILE,
                 ],
             ),

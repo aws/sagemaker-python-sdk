@@ -34,7 +34,9 @@ from yaml.constructor import ConstructorError
 @pytest.fixture()
 def config_file_as_yaml(get_data_dir):
     config_file_path = os.path.join(get_data_dir, "config.yaml")
-    return open(config_file_path, "r").read()
+    with open(config_file_path, "r") as f:
+        content = f.read()
+    return content
 
 
 @pytest.fixture()
@@ -42,7 +44,13 @@ def expected_merged_config(get_data_dir):
     expected_merged_config_file_path = os.path.join(
         get_data_dir, "expected_output_config_after_merge.yaml"
     )
-    return yaml.safe_load(open(expected_merged_config_file_path, "r").read())
+    with open(expected_merged_config_file_path, "r") as f:
+        content = yaml.safe_load(f.read())
+    return content
+
+
+def _raise_valueerror(*args):
+    raise ValueError(args)
 
 
 def test_config_when_default_config_file_and_user_config_file_is_not_found():
@@ -60,7 +68,8 @@ def test_config_when_overriden_default_config_file_is_not_found(get_data_dir):
 def test_invalid_config_file_which_has_python_code(get_data_dir):
     invalid_config_file_path = os.path.join(get_data_dir, "config_file_with_code.yaml")
     # no exceptions will be thrown with yaml.unsafe_load
-    yaml.unsafe_load(open(invalid_config_file_path, "r"))
+    with open(invalid_config_file_path, "r") as f:
+        yaml.unsafe_load(f)
     # PyYAML will throw exceptions for yaml.safe_load. SageMaker Config is using
     # yaml.safe_load internally
     with pytest.raises(ConstructorError) as exception_info:
@@ -228,7 +237,8 @@ def test_merge_of_s3_default_config_file_and_regular_config_file(
     get_data_dir, expected_merged_config, s3_resource_mock
 ):
     config_file_content_path = os.path.join(get_data_dir, "sample_config_for_merge.yaml")
-    config_file_as_yaml = open(config_file_content_path, "r").read()
+    with open(config_file_content_path, "r") as f:
+        config_file_as_yaml = f.read()
     config_file_bucket = "config-file-bucket"
     config_file_s3_prefix = "config/config.yaml"
     config_file_s3_uri = "s3://{}/{}".format(config_file_bucket, config_file_s3_prefix)
@@ -440,8 +450,11 @@ def test_load_local_mode_config(mock_load_config):
     mock_load_config.assert_called_with(_DEFAULT_LOCAL_MODE_CONFIG_FILE_PATH)
 
 
-def test_load_local_mode_config_when_config_file_is_not_found():
+@patch("sagemaker.config.config._load_config_from_file", side_effect=_raise_valueerror)
+def test_load_local_mode_config_when_config_file_is_not_found(mock_load_config):
+    # Patch is needed because one might actually have a local config file
     assert load_local_mode_config() is None
+    mock_load_config.assert_called_with(_DEFAULT_LOCAL_MODE_CONFIG_FILE_PATH)
 
 
 @pytest.mark.parametrize(

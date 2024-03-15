@@ -41,7 +41,6 @@ from sagemaker.workflow._event_bridge_client_helper import (
     RESOURCE_NOT_FOUND_EXCEPTION,
     EXECUTION_TIME_PIPELINE_PARAMETER_FORMAT,
 )
-from sagemaker.workflow.function_step import DelayedReturn
 from sagemaker.workflow.lambda_step import LambdaOutput, LambdaStep
 from sagemaker.workflow.entities import (
     Expression,
@@ -725,10 +724,7 @@ def _interpolate(
         pipeline_name (str): The name of the pipeline to be interpolated.
     """
     if isinstance(obj, (Expression, Parameter, Properties, StepOutput)):
-        updated_obj = _replace_pipeline_name_in_json_get_s3_uri(
-            obj=obj, pipeline_name=pipeline_name
-        )
-        return updated_obj.expr
+        return obj.expr
 
     if isinstance(obj, CallbackOutput):
         step_name = callback_output_to_step_map[obj.output_name]
@@ -758,27 +754,6 @@ def _interpolate(
     else:
         return obj
     return new
-
-
-# TODO: we should remove this once the ExecutionVariables.PIPELINE_NAME is fixed in backend
-def _replace_pipeline_name_in_json_get_s3_uri(obj: Union[RequestType, Any], pipeline_name: str):
-    """Replace the ExecutionVariables.PIPELINE_NAME in DelayedReturn's JsonGet s3_uri
-
-    with the pipeline_name, because ExecutionVariables.PIPELINE_NAME
-    is parsed as all lower-cased str in backend.
-    """
-    if not isinstance(obj, DelayedReturn):
-        return obj
-
-    json_get = obj._to_json_get()
-
-    if not json_get.s3_uri:
-        return obj
-    # the s3 uri has to be a Join, which has been validated in JsonGet init
-    for i in range(len(json_get.s3_uri.values)):
-        if json_get.s3_uri.values[i] == ExecutionVariables.PIPELINE_NAME:
-            json_get.s3_uri.values[i] = pipeline_name
-    return json_get
 
 
 def _map_callback_outputs(steps: List[Step]):

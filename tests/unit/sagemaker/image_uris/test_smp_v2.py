@@ -35,7 +35,7 @@ def test_smp_v2(load_config):
                 for region in ACCOUNTS.keys():
                     for instance_type in CONTAINER_VERSIONS.keys():
                         cuda_vers = CONTAINER_VERSIONS[instance_type]
-                        if "2.1" in version:
+                        if "2.1" in version or "2.2" in version:
                             cuda_vers = "cu121"
 
                         uri = image_uris.get_training_image_uri(
