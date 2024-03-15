@@ -238,3 +238,13 @@ def test_create_hub_bucket_if_it_does_not_exist():
 
     mock_sagemaker_session.boto_session.resource("s3").create_bucketassert_called_once()
     assert created_hub_bucket_name == bucket_name
+
+
+def test_is_gated_bucket():
+    assert utils.is_gated_bucket("jumpstart-private-cache-prod-us-west-2") is True
+
+    assert utils.is_gated_bucket("jumpstart-private-cache-prod-us-east-1") is True
+
+    assert utils.is_gated_bucket("jumpstart-cache-prod-us-west-2") is False
+
+    assert utils.is_gated_bucket("") is False

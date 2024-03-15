@@ -98,6 +98,7 @@ def test_jumpstart_models_cache_get_model_specs(mock_cache):
         )
     )
 
+
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._cache")
 def test_jumpstart_proprietary_models_cache_get(mock_cache):
 

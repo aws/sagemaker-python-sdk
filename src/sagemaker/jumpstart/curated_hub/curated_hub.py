@@ -394,7 +394,6 @@ class CuratedHub:
         self._sagemaker_session.import_hub_content(
             document_schema_version=HubContentDocument_v2.SCHEMA_VERSION,
             hub_content_name=model.model_id,
-            hub_content_version=model.version,
             hub_name=self.hub_name,
             hub_content_document=hub_content_document,
             hub_content_type=HubContentType.MODEL,

@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 """This module accessors for the SageMaker JumpStart Public Hub."""
 from __future__ import absolute_import
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from sagemaker import model_uris, script_uris
 from sagemaker.jumpstart.curated_hub.types import (
     HubContentDependencyType,
@@ -21,7 +21,7 @@ from sagemaker.jumpstart.curated_hub.types import (
 from sagemaker.jumpstart.curated_hub.utils import create_s3_object_reference_from_uri
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.types import JumpStartModelSpecs
-from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
+from sagemaker.jumpstart.utils import get_jumpstart_content_bucket, get_jumpstart_gated_content_bucket
 
 
 class PublicModelDataAccessor:
@@ -34,7 +34,11 @@ class PublicModelDataAccessor:
         studio_specs: Dict[str, Dict[str, Any]],
     ):
         self._region = region
-        self._bucket = get_jumpstart_content_bucket(region)
+        self._bucket = (
+            get_jumpstart_gated_content_bucket(region)
+            if model_specs.gated_bucket
+            else get_jumpstart_content_bucket(region)
+        )
         self.model_specs = model_specs
         self.studio_specs = studio_specs  # Necessary for SDK - Studio metadata drift
 
@@ -52,6 +56,8 @@ class PublicModelDataAccessor:
     @property
     def training_artifact_s3_reference(self):
         """Retrieves s3 reference for model training artifact"""
+        if not self.model_specs.training_supported:
+            return None
         return create_s3_object_reference_from_uri(
             self._jumpstart_artifact_s3_uri(JumpStartScriptScope.TRAINING)
         )
@@ -66,6 +72,8 @@ class PublicModelDataAccessor:
     @property
     def training_script_s3_reference(self):
         """Retrieves s3 reference for model training script"""
+        if not self.model_specs.training_supported:
+            return None
         return create_s3_object_reference_from_uri(
             self._jumpstart_script_s3_uri(JumpStartScriptScope.TRAINING)
         )
@@ -73,6 +81,8 @@ class PublicModelDataAccessor:
     @property
     def default_training_dataset_s3_reference(self):
         """Retrieves s3 reference for s3 directory containing model training datasets"""
+        if not self.model_specs.training_supported:
+            return None
         return S3ObjectLocation(self._get_bucket_name(), self.__get_training_dataset_prefix())
 
     @property
@@ -95,22 +105,28 @@ class PublicModelDataAccessor:
 
     def __get_training_dataset_prefix(self) -> str:
         """Retrieves training dataset location"""
-        return self.studio_specs["defaultDataKey"]
+        return self.studio_specs.get("defaultDataKey")
 
-    def _jumpstart_script_s3_uri(self, model_scope: str) -> str:
+    def _jumpstart_script_s3_uri(self, model_scope: str) -> Optional[str]:
         """Retrieves JumpStart script s3 location"""
-        return script_uris.retrieve(
-            region=self._region,
-            model_id=self.model_specs.model_id,
-            model_version=self.model_specs.version,
-            script_scope=model_scope,
-        )
+        try:
+            return script_uris.retrieve(
+                region=self._region,
+                model_id=self.model_specs.model_id,
+                model_version=self.model_specs.version,
+                script_scope=model_scope,
+            )
+        except ValueError:
+            return None
 
-    def _jumpstart_artifact_s3_uri(self, model_scope: str) -> str:
+    def _jumpstart_artifact_s3_uri(self, model_scope: str) -> Optional[str]:
         """Retrieves JumpStart artifact s3 location"""
-        return model_uris.retrieve(
-            region=self._region,
-            model_id=self.model_specs.model_id,
-            model_version=self.model_specs.version,
-            model_scope=model_scope,
-        )
+        try:
+            return model_uris.retrieve(
+                region=self._region,
+                model_id=self.model_specs.model_id,
+                model_version=self.model_specs.version,
+                model_scope=model_scope,
+            )
+        except ValueError:
+            return None
