@@ -19,7 +19,7 @@ from datetime import datetime
 
 from sagemaker.jumpstart.types import JumpStartDataHolderType, JumpStartModelSpecs, HubContentType
 
-class CuratedHubTagName(str, Enum):
+class CuratedHubUnsupportedFlag(str, Enum):
     """Enum class for Curated Hub tag names."""
     DEPRECATED_VERSIONS = "deprecated_versions"
     TRAINING_VULNERABLE_VERSIONS = "training_vulnerable_versions"
@@ -38,14 +38,6 @@ class HubContentSummary:
   hub_content_display_name: str = None
   hub_content_description: str = None
   hub_content_search_keywords: List[str] = None
-  
-
-@dataclass
-class CuratedHubTag:
-  """Dataclass to store Curated Hub-specific tags."""
-  key: CuratedHubTagName
-  value: str
-
 
 @dataclass
 class S3ObjectLocation:

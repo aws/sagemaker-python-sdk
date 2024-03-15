@@ -177,7 +177,6 @@ def test_sync_kicks_off_parallel_syncs(
 
     hub.sync([model_one, model_two])
 
-    # mock_get_model_specs.assert_called_once()
     mock_sync_public_models.assert_has_calls(
         [
             mock.call(JumpStartModelInfo("mock-model-one-huggingface", "*"), 0),

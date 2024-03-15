@@ -19,8 +19,7 @@ from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.curated_hub import utils
 from unittest.mock import patch
 from sagemaker.jumpstart.curated_hub.types import (
-    CuratedHubTag,
-    CuratedHubTagName,
+    CuratedHubUnsupportedFlag,
     HubContentSummary
 )
 from sagemaker.jumpstart.types import JumpStartDataHolderType, JumpStartModelSpecs, HubContentType
@@ -187,7 +186,7 @@ def test_find_tags_for_jumpstart_model_version(mock_spec_util):
     mock_specs.training_vulnerable = True
     mock_spec_util.return_value = mock_specs
 
-    tags = utils.find_jumpstart_tags_for_model_version(
+    tags = utils.find_unsupported_flags_for_model_version(
         model_id="test",
         version="test",
         region="test",
@@ -204,7 +203,7 @@ def test_find_tags_for_jumpstart_model_version(mock_spec_util):
         sagemaker_session=mock_sagemaker_session,
     )
 
-    assert tags == [CuratedHubTagName.DEPRECATED_VERSIONS, CuratedHubTagName.INFERENCE_VULNERABLE_VERSIONS, CuratedHubTagName.TRAINING_VULNERABLE_VERSIONS]
+    assert tags == [CuratedHubUnsupportedFlag.DEPRECATED_VERSIONS, CuratedHubUnsupportedFlag.INFERENCE_VULNERABLE_VERSIONS, CuratedHubUnsupportedFlag.TRAINING_VULNERABLE_VERSIONS]
 
 @patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
 def test_find_tags_for_jumpstart_model_version_some_false(mock_spec_util):
@@ -215,7 +214,7 @@ def test_find_tags_for_jumpstart_model_version_some_false(mock_spec_util):
     mock_specs.training_vulnerable = False
     mock_spec_util.return_value = mock_specs
 
-    tags = utils.find_jumpstart_tags_for_model_version(
+    tags = utils.find_unsupported_flags_for_model_version(
         model_id="test",
         version="test",
         region="test",
@@ -232,7 +231,7 @@ def test_find_tags_for_jumpstart_model_version_some_false(mock_spec_util):
         sagemaker_session=mock_sagemaker_session,
     )
 
-    assert tags == [CuratedHubTagName.DEPRECATED_VERSIONS]
+    assert tags == [CuratedHubUnsupportedFlag.DEPRECATED_VERSIONS]
 
 @patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
 def test_find_tags_for_jumpstart_model_version_all_false(mock_spec_util):
@@ -243,7 +242,7 @@ def test_find_tags_for_jumpstart_model_version_all_false(mock_spec_util):
     mock_specs.training_vulnerable = False
     mock_spec_util.return_value = mock_specs
 
-    tags = utils.find_jumpstart_tags_for_model_version(
+    tags = utils.find_unsupported_flags_for_model_version(
         model_id="test",
         version="test",
         region="test",
@@ -294,7 +293,7 @@ def test_find_all_tags_for_jumpstart_model_filters_non_jumpstart_models(mock_spe
     mock_specs.training_vulnerable = True
     mock_spec_util.return_value = mock_specs
 
-    tags = utils.find_jumpstart_tags_for_hub_content(
+    tags = utils.find_unsupported_flags_for_hub_content_versions(
         hub_name="test",
         hub_content_name="test",
         region="test",
@@ -308,9 +307,9 @@ def test_find_all_tags_for_jumpstart_model_filters_non_jumpstart_models(mock_spe
     )
 
     assert tags == [
-        CuratedHubTag(key=CuratedHubTagName.DEPRECATED_VERSIONS, value=str(["1.0.0", "2.0.0"])),
-        CuratedHubTag(key=CuratedHubTagName.INFERENCE_VULNERABLE_VERSIONS, value=str(["1.0.0", "2.0.0"])),
-        CuratedHubTag(key=CuratedHubTagName.TRAINING_VULNERABLE_VERSIONS, value=str(["1.0.0", "2.0.0"]))
+        {"Key":CuratedHubUnsupportedFlag.DEPRECATED_VERSIONS.value, "Value":str(["1.0.0", "2.0.0"])},
+        {"Key":CuratedHubUnsupportedFlag.INFERENCE_VULNERABLE_VERSIONS.value, "Value":str(["1.0.0", "2.0.0"])},
+        {"Key":CuratedHubUnsupportedFlag.TRAINING_VULNERABLE_VERSIONS.value, "Value":str(["1.0.0", "2.0.0"])}
     ]
 
 @patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")

@@ -50,21 +50,21 @@ from sagemaker.jumpstart.curated_hub.utils import (
     create_s3_object_reference_from_uri,
     tag_hub_content,
     get_jumpstart_model_and_version,
-    find_jumpstart_tags_for_hub_content,
+    find_unsupported_flags_for_hub_content_versions,
     summary_list_from_list_api_response,
 )
 from sagemaker.jumpstart.curated_hub.types import (
     HubContentDocument_v2,
     JumpStartModelInfo,
     S3ObjectLocation,
-    CuratedHubTag,
     HubContentSummary,
 )
-
-LIST_HUB_CACHE = None
+from sagemaker.utils import TagsDict
 
 class CuratedHub:
     """Class for creating and managing a curated JumpStart hub"""
+
+    _list_hubs_cache: Dict[str, Any] = None
 
     def __init__(
         self,
@@ -153,25 +153,20 @@ class CuratedHub:
 
     
     def list_models(self, clear_cache: bool = True, **kwargs) -> List[Dict[str, Any]]:
-        """Lists the models in this Curated Hub
+        """Lists the models in this Curated Hub.
+
+        This function caches the models in local memory 
 
         **kwargs: Passed to invocation of ``Session:list_hub_contents``.
         """
         if clear_cache:
-            LIST_HUB_CACHE = None
-        if LIST_HUB_CACHE:
-          return LIST_HUB_CACHE
-        return self._list_models(**kwargs)
-    
-    def _list_models(self, **kwargs) -> Dict[str, Any]:
-        """Lists the models in this Curated Hub
-
-        **kwargs: Passed to invocation of ``Session:list_hub_contents``.
-        """
-        hub_content_summaries = self._sagemaker_session.list_hub_contents(
+            self._list_hubs_cache = None
+        if self._list_hubs_cache is None:
+          hub_content_summaries = self._sagemaker_session.list_hub_contents(
             hub_name=self.hub_name, hub_content_type=HubContentType.MODEL, **kwargs
-        )
-        return hub_content_summaries
+          )
+          self._list_hubs_cache = hub_content_summaries
+        return self._list_hubs_cache
 
     def describe_model(
         self, model_name: str, model_version: str = "*"
@@ -242,8 +237,28 @@ class CuratedHub:
         models_to_sync = []
         for model in model_list:
             matched_model = models_in_hub.get(model.model_id)
-            if not matched_model or Version(matched_model.hub_content_version) < Version(model.version):
+
+            # Model does not exist in Hub, sync
+            if not matched_model:
                 models_to_sync.append(model)
+
+            if matched_model:
+                model_version = Version(model.version)
+                hub_model_version = Version(matched_model.hub_content_version)
+
+                # 1. Model version exists in Hub, pass
+                if hub_model_version == model_version:
+                    pass
+
+                # 2. Invalid model version exists in Hub, pass
+                # This will only happen if something goes wrong in our metadata
+                if hub_model_version > model_version:
+                    pass
+
+                # 3. Old model version exists in Hub, update
+                if hub_model_version < model_version:
+                    # Check minSDKVersion against current SDK version, emit log
+                    models_to_sync.append(model)
 
         return models_to_sync
 
@@ -416,9 +431,8 @@ class CuratedHub:
         
         models_to_scan = model_list if model_list else self.list_models()
         js_models_in_hub = [model for model in models_to_scan if get_jumpstart_model_and_version(model) is not None]
-        tags_added: Dict[str, List[CuratedHubTag]] = {}
         for model in js_models_in_hub:
-            tags_to_add: List[CuratedHubTag] = find_jumpstart_tags_for_hub_content(
+            tags_to_add: List[TagsDict] = find_unsupported_flags_for_hub_content_versions(
                 hub_name=self.hub_name,
                 hub_content_name=model.hub_content_name,
                 region=self.region,
@@ -429,9 +443,4 @@ class CuratedHub:
                 tags=tags_to_add,
                 session=self._sagemaker_session
             )
-            tags_added.update({model.hub_content_arn: tags_to_add})
-
-        output_string = "No tags were added!"
-        if len(tags_added) > 0:
-          output_string = f"Added the following tags: {tags_added}"
-        JUMPSTART_LOGGER.info(output_string)
+        JUMPSTART_LOGGER.info("Tagging complete!")

@@ -15,6 +15,7 @@ from __future__ import absolute_import
 import re
 from typing import Optional
 from sagemaker.jumpstart.curated_hub.types import S3ObjectLocation
+from sagemaker.jumpstart.constants import JUMPSTART_LOGGER
 from sagemaker.s3_utils import parse_s3_url
 from sagemaker.session import Session
 from sagemaker.utils import aws_partition
@@ -25,8 +26,7 @@ from sagemaker.jumpstart.types import (
     HubArnExtractedInfo
 )
 from sagemaker.jumpstart.curated_hub.types import (
-    CuratedHubTag,
-    CuratedHubTagName,
+    CuratedHubUnsupportedFlag,
     HubContentSummary,
     JumpStartModelInfo
 )
@@ -40,7 +40,10 @@ from sagemaker.jumpstart.curated_hub.constants import (
     TASK_TAG_PREFIX,
     FRAMEWORK_TAG_PREFIX,
 )
-from uuid import uuid4
+from sagemaker.utils import (
+  format_tags,
+  TagsDict
+)
 
 
 def get_info_from_hub_resource_arn(
@@ -183,13 +186,14 @@ def create_hub_bucket_if_it_does_not_exist(
 
     return bucket_name
 
-def tag_hub_content(hub_content_arn: str, tags: List[CuratedHubTag], session: Session) -> None:
+def tag_hub_content(hub_content_arn: str, tags: List[TagsDict], session: Session) -> None:
     session.add_tags(
       ResourceArn=hub_content_arn,
-      Tags=[tag_to_add_tags_api_call(tag) for tag in tags]
+      Tags=str(tags)
     )
+    JUMPSTART_LOGGER.info(f"Added tags to HubContentArn %s: %s", hub_content_arn, TagsDict)
     
-def find_jumpstart_tags_for_hub_content(hub_name: str, hub_content_name: str, region: str, session: Session) -> List[CuratedHubTag]:
+def find_unsupported_flags_for_hub_content_versions(hub_name: str, hub_content_name: str, region: str, session: Session) -> List[TagsDict]:
     """Finds the JumpStart public hub model for a HubContent and calculates relevant tags.
     
     Since tags are the same for all versions of a HubContent, these tags will map from the key to a list of versions impacted.
@@ -203,12 +207,12 @@ def find_jumpstart_tags_for_hub_content(hub_name: str, hub_content_name: str, re
     )
     hub_content_versions: List[HubContentSummary] = summary_list_from_list_api_response(list_versions_response)
 
-    tag_name_to_versions_map: Dict[CuratedHubTagName, List[str]] = {}
+    unsupported_hub_content_versions_map: Dict[str, List[str]] = {}
     for hub_content_version_summary in hub_content_versions:
         jumpstart_model = get_jumpstart_model_and_version(hub_content_version_summary)
         if jumpstart_model is None:
             continue
-        tag_names_to_add: List[CuratedHubTagName] = find_jumpstart_tags_for_model_version(
+        tag_names_to_add: List[CuratedHubUnsupportedFlag] = find_unsupported_flags_for_model_version(
             model_id=jumpstart_model.model_id,
             version=jumpstart_model.version,
             region=region,
@@ -216,20 +220,20 @@ def find_jumpstart_tags_for_hub_content(hub_name: str, hub_content_name: str, re
         )
 
         for tag_name in tag_names_to_add:
-          if tag_name not in tag_name_to_versions_map:
-              tag_name_to_versions_map[tag_name] = []
-          tag_name_to_versions_map[tag_name].append(hub_content_version_summary.hub_content_version)
+          if tag_name not in unsupported_hub_content_versions_map:
+              unsupported_hub_content_versions_map[tag_name.value] = []
+          unsupported_hub_content_versions_map[tag_name.value].append(hub_content_version_summary.hub_content_version)
     
-    return [CuratedHubTag(tag_name, str(versions)) for (tag_name, versions) in tag_name_to_versions_map.items()]
+    return format_tags(unsupported_hub_content_versions_map)
     
     
-def find_jumpstart_tags_for_model_version(model_id: str, version: str, region: str, session: Session) -> List[CuratedHubTagName]:
+def find_unsupported_flags_for_model_version(model_id: str, version: str, region: str, session: Session) -> List[CuratedHubUnsupportedFlag]:
     """Finds relevant CuratedHubTags for a version of a JumpStart public hub model.
     
     For example, if the public hub model is deprecated, this utility will return a `deprecated` tag.
     Since tags are the same for all versions of a HubContent, these tags will map from the key to a list of versions impacted.
     """
-    tags_to_add: List[CuratedHubTagName] = []
+    flags_to_add: List[CuratedHubUnsupportedFlag] = []
     jumpstart_model_specs = utils.verify_model_region_and_return_specs(
         model_id=model_id, 
         version=version,
@@ -241,13 +245,13 @@ def find_jumpstart_tags_for_model_version(model_id: str, version: str, region: s
     )
 
     if (jumpstart_model_specs.deprecated):
-        tags_to_add.append(CuratedHubTagName.DEPRECATED_VERSIONS)
+        flags_to_add.append(CuratedHubUnsupportedFlag.DEPRECATED_VERSIONS)
     if (jumpstart_model_specs.inference_vulnerable):
-        tags_to_add.append(CuratedHubTagName.INFERENCE_VULNERABLE_VERSIONS)
+        flags_to_add.append(CuratedHubUnsupportedFlag.INFERENCE_VULNERABLE_VERSIONS)
     if (jumpstart_model_specs.training_vulnerable):
-        tags_to_add.append(CuratedHubTagName.TRAINING_VULNERABLE_VERSIONS)
+        flags_to_add.append(CuratedHubUnsupportedFlag.TRAINING_VULNERABLE_VERSIONS)
 
-    return tags_to_add
+    return flags_to_add
 
     
 
@@ -272,7 +276,7 @@ def get_jumpstart_model_and_version(hub_content_summary: HubContentSummary) -> O
     if jumpstart_model_id_tag is None or jumpstart_model_version_tag is None:
         return None
     jumpstart_model_id = jumpstart_model_id_tag[len(JUMPSTART_HUB_MODEL_ID_TAG_PREFIX):] # Need to remove the tag_prefix and ":"
-    jumpstart_model_version = jumpstart_model_version_tag[len(JUMPSTART_HUB_MODEL_ID_TAG_PREFIX):]
+    jumpstart_model_version = jumpstart_model_version_tag[len(JUMPSTART_HUB_MODEL_VERSION_TAG_PREFIX):]
     return JumpStartModelInfo(model_id=jumpstart_model_id, version=jumpstart_model_version)
 
 def summary_from_list_api_response(hub_content_summary: Dict[str, Any]) -> HubContentSummary:
@@ -292,11 +296,3 @@ def summary_from_list_api_response(hub_content_summary: Dict[str, Any]) -> HubCo
 def summary_list_from_list_api_response(list_hub_contents_response: Dict[str, Any]) -> List[HubContentSummary]:
     return list(map(summary_from_list_api_response, list_hub_contents_response["HubContentSummaries"]))
 
-def tag_to_add_tags_api_call(tag: CuratedHubTag) -> Dict[str, str]:
-    return {
-          'Key': tag.key,
-          'Value': tag.value
-    }
-
-def generate_unique_hub_content_model_name(model_id: str) -> str:
-    return f"{model_id}-{uuid4()}"
