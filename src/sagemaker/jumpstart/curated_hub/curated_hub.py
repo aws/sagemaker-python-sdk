@@ -408,13 +408,13 @@ class CuratedHub:
         JUMPSTART_LOGGER.info(
             "Tagging models in hub: %s", self.hub_name
         )
-        models_to_scan = model_list if model_list else self.list_models()
         if self._is_invalid_model_list_input(model_list):
             raise ValueError(
                 "Model list should be a list of objects with values 'model_id',",
                 "and optional 'version'.",
             )
         
+        models_to_scan = model_list if model_list else self.list_models()
         js_models_in_hub = [model for model in models_to_scan if get_jumpstart_model_and_version(model) is not None]
         tags_added: Dict[str, List[CuratedHubTag]] = {}
         for model in js_models_in_hub:
