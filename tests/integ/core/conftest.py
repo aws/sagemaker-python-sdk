@@ -13,7 +13,6 @@
 from __future__ import absolute_import
 
 import pytest
-import pathlib
 
 
 def pytest_configure(config):
