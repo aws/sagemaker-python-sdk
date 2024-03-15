@@ -1105,7 +1105,9 @@ def test_pyspark_processor_configuration_path_pipeline_config(
 
 @patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
 def test_get_codeartifact_command(pipeline_session):
-    codeartifact_repo_arn = "arn:aws:codeartifact:us-west-2:012345678901:repository/test-domain/test-repository"
+    codeartifact_repo_arn = (
+        "arn:aws:codeartifact:us-west-2:012345678901:repository/test-domain/test-repository"
+    )
 
     processor = PyTorchProcessor(
         role=ROLE,
@@ -1116,9 +1118,14 @@ def test_get_codeartifact_command(pipeline_session):
         sagemaker_session=pipeline_session,
     )
 
-    codeartifact_command = processor._get_codeartifact_command(codeartifact_repo_arn=codeartifact_repo_arn)
+    codeartifact_command = processor._get_codeartifact_command(
+        codeartifact_repo_arn=codeartifact_repo_arn
+    )
 
-    assert codeartifact_command == "aws codeartifact login --tool pip --domain test-domain --domain-owner 012345678901 --repository test-repository --region us-west-2"  # noqa: E501
+    assert (
+        codeartifact_command
+        == "aws codeartifact login --tool pip --domain test-domain --domain-owner 012345678901 --repository test-repository --region us-west-2"
+    )  # noqa: E501
 
 
 @patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
@@ -1193,7 +1200,9 @@ def test_generate_framework_script_with_codeartifact(pipeline_session):
 
     framework_script = processor._generate_framework_script(
         user_script="process.py",
-        codeartifact_repo_arn="arn:aws:codeartifact:us-west-2:012345678901:repository/test-domain/test-repository"
+        codeartifact_repo_arn=(
+            "arn:aws:codeartifact:us-west-2:012345678901:repository/test-domain/test-repository"
+        ),
     )
 
     assert framework_script == dedent(
