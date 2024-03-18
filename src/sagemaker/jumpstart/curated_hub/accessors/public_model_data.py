@@ -86,7 +86,7 @@ class PublicModelDataAccessor:
         """Retrieves s3 reference for s3 directory containing model training datasets"""
         if not self.model_specs.training_supported:
             return None
-        return S3ObjectLocation(self._get_bucket_name(), self.__get_training_dataset_prefix())
+        return S3ObjectLocation(self._get_bucket_name(), self._get_training_dataset_prefix())
 
     @property
     def demo_notebook_s3_reference(self) -> S3ObjectLocation:
