@@ -28,7 +28,6 @@ from importlib import reload
 
 
 def test_jumpstart_sagemaker_settings():
-
     assert "" == accessors.SageMakerSettings.get_sagemaker_version()
     accessors.SageMakerSettings.set_sagemaker_version("1.0.1")
     assert "1.0.1" == accessors.SageMakerSettings.get_sagemaker_version()
@@ -42,7 +41,6 @@ def test_jumpstart_sagemaker_settings():
 
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._cache")
 def test_jumpstart_models_cache_get_fxs(mock_cache):
-
     mock_cache.get_manifest = Mock(return_value=BASE_MANIFEST)
     mock_cache.get_header = Mock(side_effect=get_header_from_base_header)
     mock_cache.get_specs = Mock(side_effect=get_spec_from_base_spec)
@@ -98,9 +96,9 @@ def test_jumpstart_models_cache_get_model_specs(mock_cache):
         )
     )
 
+
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._cache")
 def test_jumpstart_proprietary_models_cache_get(mock_cache):
-
     mock_cache.get_manifest = Mock(return_value=BASE_MANIFEST)
     mock_cache.get_header = Mock(side_effect=get_header_from_base_header)
     mock_cache.get_specs = Mock(side_effect=get_spec_from_base_spec)
@@ -139,7 +137,7 @@ def test_jumpstart_proprietary_models_cache_get(mock_cache):
 
 
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._cache")
-def test_jumpstart_models_cache_get_model_specs(mock_cache):
+def test_jumpstart_models_cache_get_model_specs_open_weights(mock_cache):
     mock_cache.get_specs = Mock()
     mock_cache.get_hub_model = Mock()
     model_id, version = "pytorch-ic-mobilenet-v2", "*"
@@ -171,7 +169,6 @@ def test_jumpstart_models_cache_get_model_specs(mock_cache):
 
 @patch("sagemaker.jumpstart.cache.JumpStartModelsCache")
 def test_jumpstart_models_cache_set_reset(mock_model_cache: Mock):
-
     # test change of region resets cache
     accessors.JumpStartModelsAccessor.get_model_header(
         region="us-west-2", model_id="pytorch-ic-mobilenet-v2", version="*"
@@ -251,7 +248,6 @@ def test_jumpstart_models_cache_set_reset(mock_model_cache: Mock):
 
 @patch("sagemaker.jumpstart.cache.JumpStartModelsCache")
 def test_jumpstart_proprietary_models_cache_set_reset(mock_model_cache: Mock):
-
     # test change of region resets cache
     accessors.JumpStartModelsAccessor.get_model_header(
         region="us-west-2",
@@ -294,13 +290,11 @@ def test_jumpstart_proprietary_models_cache_set_reset(mock_model_cache: Mock):
 
 
 class TestS3Accessor(TestCase):
-
     bucket = "bucket"
     key = "key"
 
     @patch("sagemaker.jumpstart.accessors.boto3.client")
     def test_get_object(self, mocked_boto3_client):
-
         # required due to static class
         reload(accessors)
 
@@ -323,7 +317,6 @@ class TestS3Accessor(TestCase):
 
     @patch("sagemaker.jumpstart.accessors.boto3.client")
     def test_get_object_cached(self, mocked_boto3_client):
-
         # required due to static class
         reload(accessors)
 
@@ -352,7 +345,6 @@ class TestS3Accessor(TestCase):
 
     @patch("sagemaker.jumpstart.accessors.boto3.client")
     def test_get_object_limit_exceeded(self, mocked_boto3_client):
-
         # required due to static class
         reload(accessors)
 
