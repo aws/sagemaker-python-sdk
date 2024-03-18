@@ -16,6 +16,7 @@ from __future__ import absolute_import, print_function
 import copy
 
 import pytest
+from dataclasses import dataclass
 from mock import ANY, MagicMock, Mock, patch
 from typing import Any, Dict, List, NamedTuple, Optional, Union
 
@@ -2574,7 +2575,8 @@ def _build_pdp_config_mock():
 
 def _build_asymmetric_shapley_value_config_mock():
     asym_shap_val_config_dict = {
-        "explanation_type": "fine_grained",
+        "direction": "chronological",
+        "granularity": "fine_grained",
         "num_samples": 20,
     }
     asym_shap_val_config = Mock(spec=AsymmetricShapleyValueConfig)
@@ -2611,6 +2613,14 @@ def _build_model_config_mock():
     model_config = Mock(spec=ModelConfig)
     model_config.predictor_config = {"time_series_predictor_config": time_series_model_config}
     return model_config
+
+
+@dataclass
+class ValidateTSXBaselineCase:
+    explainability_config: AsymmetricShapleyValueConfig
+    data_config: DataConfig
+    error: Optional[Exception] = None
+    error_msg: Optional[str] = None
 
 
 class TestAnalysisConfigGeneratorForTimeSeriesExplainability:
@@ -2792,6 +2802,170 @@ class TestAnalysisConfigGeneratorForTimeSeriesExplainability:
         with pytest.raises(error, match=error_message):
             _AnalysisConfigGenerator._merge_explainability_configs(
                 explainability_config=mock_config,
+            )
+
+    @pytest.mark.parametrize(
+        "case",
+        [
+            ValidateTSXBaselineCase(
+                explainability_config=AsymmetricShapleyValueConfig(
+                    direction="chronological",
+                    granularity="timewise",
+                    baseline={
+                        "target_time_series": "zero",
+                        "related_time_series": "zero",
+                        "static_covariates": {
+                            "item1": [0.0, 0.5, 1.0],
+                            "item2": [0.3, 0.6, 0.9],
+                            "item3": [0.0, 1.0, 1.0],
+                            "item4": [0.9, 0.6, 0.3],
+                            "item5": [1.0, 0.5, 0.0],
+                        },
+                    },
+                ),
+                data_config=DataConfig(
+                    s3_data_input_path="s3://data/input",
+                    s3_output_path="s3://data/output",
+                    headers=["id", "time", "tts", "rts_1", "rts_2", "scv1", "scv2", "scv3"],
+                    dataset_type="application/json",
+                    time_series_data_config=TimeSeriesDataConfig(
+                        item_id="[].id",
+                        timestamp="[].temporal[].timestamp",
+                        target_time_series="[].temporal[].target",
+                        related_time_series=["[].temporal[].rts_1", "[].temporal[].rts_2"],
+                        static_covariates=["[].cov_1", "[].cov_2", "[].cov_3"],
+                        dataset_format=TimeSeriesJSONDatasetFormat.ITEM_RECORDS,
+                    ),
+                ),
+            ),
+        ],
+    )
+    def test_time_series_baseline_valid_static_covariates(self, case: ValidateTSXBaselineCase):
+        """
+        GIVEN AsymmetricShapleyValueConfig and TimeSeriesDataConfig are created and a baseline
+            is provided
+        WHEN AnalysisConfigGenerator._validate_time_series_static_covariates_baseline() is called
+        THEN no error is raised
+        """
+        _AnalysisConfigGenerator._validate_time_series_static_covariates_baseline(
+            explainability_config=case.explainability_config,
+            data_config=case.data_config,
+        )
+
+    @pytest.mark.parametrize(
+        "case",
+        [
+            ValidateTSXBaselineCase(  # some item ids are missing baseline values
+                explainability_config=AsymmetricShapleyValueConfig(
+                    direction="chronological",
+                    granularity="timewise",
+                    baseline={
+                        "target_time_series": "zero",
+                        "related_time_series": "zero",
+                        "static_covariates": {
+                            "item1": [0.0, 0.5, 1.0],
+                            "item2": [0.3, 0.6, 0.9],
+                            "item3": [0.0],
+                            "item4": [0.9, 0.6, 0.3],
+                            "item5": [1.0],
+                        },
+                    },
+                ),
+                data_config=DataConfig(
+                    s3_data_input_path="s3://data/input",
+                    s3_output_path="s3://data/output",
+                    headers=["id", "time", "tts", "rts_1", "rts_2", "scv1", "scv2", "scv3"],
+                    dataset_type="application/json",
+                    time_series_data_config=TimeSeriesDataConfig(
+                        item_id="[].id",
+                        timestamp="[].temporal[].timestamp",
+                        target_time_series="[].temporal[].target",
+                        related_time_series=["[].temporal[].rts_1", "[].temporal[].rts_2"],
+                        static_covariates=["[].cov_1", "[].cov_2", "[].cov_3"],
+                        dataset_format=TimeSeriesJSONDatasetFormat.ITEM_RECORDS,
+                    ),
+                ),
+                error=AssertionError,
+                error_msg="baseline entry for item3 does not match number",
+            ),
+            ValidateTSXBaselineCase(  # no static covariates are in data config
+                explainability_config=AsymmetricShapleyValueConfig(
+                    direction="chronological",
+                    granularity="timewise",
+                    baseline={
+                        "target_time_series": "zero",
+                        "related_time_series": "zero",
+                        "static_covariates": {
+                            "item1": [0.0, 0.5, 1.0],
+                            "item2": [0.3, 0.6, 0.9],
+                            "item3": [0.0, 1.0, 1.0],
+                            "item4": [0.9, 0.6, 0.3],
+                            "item5": [1.0, 0.5, 0.0],
+                        },
+                    },
+                ),
+                data_config=DataConfig(
+                    s3_data_input_path="s3://data/input",
+                    s3_output_path="s3://data/output",
+                    headers=["id", "time", "tts", "rts_1", "rts_2"],
+                    dataset_type="application/json",
+                    time_series_data_config=TimeSeriesDataConfig(
+                        item_id="[].id",
+                        timestamp="[].temporal[].timestamp",
+                        target_time_series="[].temporal[].target",
+                        related_time_series=["[].temporal[].rts_1", "[].temporal[].rts_2"],
+                        dataset_format=TimeSeriesJSONDatasetFormat.ITEM_RECORDS,
+                    ),
+                ),
+                error=ValueError,
+                error_msg="no static covariate columns are provided in TimeSeriesDataConfig",
+            ),
+            ValidateTSXBaselineCase(  # some item ids do not have a list as their baseline
+                explainability_config=AsymmetricShapleyValueConfig(
+                    direction="chronological",
+                    granularity="timewise",
+                    baseline={
+                        "target_time_series": "zero",
+                        "related_time_series": "zero",
+                        "static_covariates": {
+                            "item1": [0.0, 0.5, 1.0],
+                            "item2": [0.3, 0.6, 0.9],
+                            "item3": [0.0, 1.0, 1.0],
+                            "item4": [0.9, 0.6, 0.3],
+                            "item5": {"cov_1": 1.0, "cov_2": 0.5, "cov_3": 0.0},
+                        },
+                    },
+                ),
+                data_config=DataConfig(
+                    s3_data_input_path="s3://data/input",
+                    s3_output_path="s3://data/output",
+                    headers=["id", "time", "tts", "rts_1", "rts_2", "scv1", "scv2", "scv3"],
+                    dataset_type="application/json",
+                    time_series_data_config=TimeSeriesDataConfig(
+                        item_id="[].id",
+                        timestamp="[].temporal[].timestamp",
+                        target_time_series="[].temporal[].target",
+                        related_time_series=["[].temporal[].rts_1", "[].temporal[].rts_2"],
+                        static_covariates=["[].cov_1", "[].cov_2", "[].cov_3"],
+                        dataset_format=TimeSeriesJSONDatasetFormat.ITEM_RECORDS,
+                    ),
+                ),
+                error=AssertionError,
+                error_msg="Baseline entry for item5 must be a list",
+            ),
+        ],
+    )
+    def test_time_series_baseline_invalid_static_covariates(self, case: ValidateTSXBaselineCase):
+        """
+        GIVEN AsymmetricShapleyValueConfig and TimeSeriesDataConfig are created and a baseline
+            is provided where the static covariates baseline values are misconfigured
+        WHEN AnalysisConfigGenerator._validate_time_series_static_covariates_baseline() is called
+        THEN the appropriate error is raised
+        """
+        with pytest.raises(case.error, match=case.error_msg):
+            _AnalysisConfigGenerator._validate_time_series_static_covariates_baseline(
+                explainability_config=case.explainability_config,
+                data_config=case.data_config,
             )
 
 

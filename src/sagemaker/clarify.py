@@ -408,7 +408,7 @@ class DatasetType(Enum):
 class TimeSeriesJSONDatasetFormat(Enum):
     """Possible dataset formats for JSON time series data files.
 
-    Below is an example ``COLUMNS`` dataset for time series explainability.::
+    Below is an example ``COLUMNS`` dataset for time series explainability::
 
         {
             "ids": [1, 2],
@@ -420,7 +420,7 @@ class TimeSeriesJSONDatasetFormat(Enum):
             "scv2": [30, 40]
         }
 
-    For this example, JMESPaths are specified when creating ``TimeSeriesDataConfig`` as follows.::
+    For this example, JMESPaths are specified when creating ``TimeSeriesDataConfig`` as follows::
 
         item_id="ids"
         timestamp="timestamps"
@@ -428,7 +428,7 @@ class TimeSeriesJSONDatasetFormat(Enum):
         related_time_series=["rts1", "rts2"]
         static_covariates=["scv1", "scv2"]
 
-    Below is an example ``ITEM_RECORDS`` dataset for time series explainability.::
+    Below is an example ``ITEM_RECORDS`` dataset for time series explainability::
 
         [
             {
@@ -452,7 +452,7 @@ class TimeSeriesJSONDatasetFormat(Enum):
             }
         ]
 
-    For this example, JMESPaths are specified when creating ``TimeSeriesDataConfig`` as follows.::
+    For this example, JMESPaths are specified when creating ``TimeSeriesDataConfig`` as follows::
 
         item_id="[*].id"
         timestamp="[*].timeseries[].timestamp"
@@ -460,7 +460,7 @@ class TimeSeriesJSONDatasetFormat(Enum):
         related_time_series=["[*].timeseries[].rts1", "[*].timeseries[].rts2"]
         static_covariates=["[*].scv1", "[*].scv2"]
 
-    Below is an example ``TIMESTAMP_RECORDS`` dataset for time series explainability.::
+    Below is an example ``TIMESTAMP_RECORDS`` dataset for time series explainability::
 
         [
             {"id": 1, "timestamp": 1, "target_ts": 5, "scv1": 10, "rts1": 0.25},
@@ -469,7 +469,7 @@ class TimeSeriesJSONDatasetFormat(Enum):
             {"id": 2, "timestamp": 5, "target_ts": 10, "scv1": 20, "rts1": 1}
         ]
 
-    For this example, JMESPaths are specified when creating ``TimeSeriesDataConfig`` as follows.::
+    For this example, JMESPaths are specified when creating ``TimeSeriesDataConfig`` as follows::
 
         item_id="[*].id"
         timestamp="[*].timestamp"
@@ -1784,7 +1784,7 @@ class AsymmetricShapleyValueConfig(ExplainabilityConfig):
                 values will be replaced with the average of a time series. For static data
                 (static covariates), a baseline value for each covariate should be provided for
                 each possible item_id. An example config follows, where ``item1`` and ``item2``
-                are item ids.::
+                are item ids::
 
                     {
                         "target_time_series": "zero",
@@ -2548,7 +2548,7 @@ class _AnalysisConfigGenerator:
         explainability_config: Union[ExplainabilityConfig, List[ExplainabilityConfig]],
     ):
         """Generates a config for Explainability"""
-        # determine if this is a timeseries explainability case by checking
+        # determine if this is a time series explainability case by checking
         # if *both* TimeSeriesDataConfig and TimeSeriesModelConfig were given
         ts_data_config_present = "time_series_data_config" in data_config.analysis_config
         ts_model_config_present = "time_series_predictor_config" in model_config.predictor_config
@@ -2556,6 +2556,8 @@ class _AnalysisConfigGenerator:
         if isinstance(explainability_config, AsymmetricShapleyValueConfig):
             assert ts_data_config_present, "Please provide a TimeSeriesDataConfig to DataConfig."
             assert ts_model_config_present, "Please provide a TimeSeriesModelConfig to ModelConfig."
+            # Check static covariates baseline matches number of provided static covariate columns
+
         else:
             if ts_data_config_present:
                 raise ValueError(
@@ -2758,6 +2760,44 @@ class _AnalysisConfigGenerator:
                 raise ValueError("PDP features must be provided when ShapConfig is not provided")
             return explainability_methods
         return explainability_config.get_explainability_config()
+
+    @classmethod
+    def _validate_time_series_static_covariates_baseline(
+        cls,
+        explainability_config: AsymmetricShapleyValueConfig,
+        data_config: DataConfig,
+    ):
+        """Validates static covariates in baseline for asymmetric shapley value (for time series).
+
+        Checks that baseline values set for static covariate columns are
+        consistent between every item_id and the number of static covariate columns
+        provided in DataConfig.
+        """
+        baseline = explainability_config.get_explainability_config()[
+            "asymmetric_shapley_value"
+        ].get("baseline")
+        if baseline and "static_covariates" in baseline:
+            covariate_count = len(
+                data_config.get_config()["time_series_data_config"].get("static_covariates", [])
+            )
+            if covariate_count > 0:
+                for item_id in baseline.get("static_covariates", []):
+                    baseline_entry = baseline["static_covariates"][item_id]
+                    assert isinstance(baseline_entry, list), (
+                        f"Baseline entry for {item_id} must be a list, is "
+                        f"{type(baseline_entry)}."
+                    )
+                    assert len(baseline_entry) == covariate_count, (
+                        f"Length of baseline entry for {item_id} does not match number "
+                        f"of static covariate columns. Please ensure every covariate "
+                        f"has a baseline value for every item id."
+                    )
+            else:
+                raise ValueError(
+                    "Static covariate baselines are provided in AsymmetricShapleyValueConfig "
+                    "when no static covariate columns are provided in TimeSeriesDataConfig. "
+                    "Please check these configs."
+                )
 
 
 def _upload_analysis_config(analysis_config_file, s3_output_path, sagemaker_session, kms_key):
