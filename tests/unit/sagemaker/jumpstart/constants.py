@@ -6290,7 +6290,7 @@ BASE_MANIFEST = [
     },
 ]
 
-HUB_CONTENT_DOCUMENT_MODEL_CONTENT_TYPE_DICTS = {
+HUB_MODEL_DOCUMENT_DICTS = {
     "huggingface-llm-gemma-2b-instruct": {
         "Url": "https://huggingface.co/google/gemma-2b-it",
         "MinSdkVersion": "2.189.0",

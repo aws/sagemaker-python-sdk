@@ -13,6 +13,7 @@
 """This module stores types related to SageMaker JumpStart."""
 from __future__ import absolute_import
 import re
+import datetime
 from copy import deepcopy
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Union
@@ -939,7 +940,7 @@ class DescribeHubContentResponse(JumpStartDataHolderType):
         Args:
             json_obj (Dict[str, Any]): Dictionary representation of hub content description.
         """
-        self.creation_time: str = json_obj["CreationTime"]
+        self.creation_time: datetime.datetime = datetime.datetime(json_obj["CreationTime"])
         self.document_schema_version: str = json_obj["DocumentSchemaVersion"]
         self.failure_reason: str = json_obj["FailureReason"]
         self.hub_arn: str = json_obj["HubArn"]
@@ -952,7 +953,7 @@ class DescribeHubContentResponse(JumpStartDataHolderType):
         self.hub_content_document: str = HubContentDocument(json_obj["HubContentDocument"])
         self.hub_content_markdown: str = json_obj["HubContentMarkdown"]
         self.hub_content_name: str = json_obj["HubContentName"]
-        self.hub_content_search_keywords: str = json_obj["HubContentSearchKeywords"]
+        self.hub_content_search_keywords: List[str] = json_obj["HubContentSearchKeywords"]
         self.hub_content_status: str = json_obj["HubContentStatus"]
         self.hub_content_type: HubContentType = json_obj["HubContentType"]
         self.hub_content_version: str = json_obj["HubContentVersion"]
@@ -1020,7 +1021,7 @@ class DescribeHubResponse(JumpStartDataHolderType):
             json_obj (Dict[str, Any]): Dictionary representation of hub description.
         """
 
-        self.creation_time: str = json_obj["CreationTime"]
+        self.creation_time: datetime.datetime = datetime.datetime(json_obj["CreationTime"])
         self.failure_reason: str = json_obj["FailureReason"]
         self.hub_arn: str = json_obj["HubArn"]
         self.hub_description: str = json_obj["HubDescription"]
@@ -1028,7 +1029,7 @@ class DescribeHubResponse(JumpStartDataHolderType):
         self.hub_name: str = json_obj["HubName"]
         self.hub_search_keywords: List[str] = json_obj["HubSearchKeywords"]
         self.hub_status: str = json_obj["HubStatus"]
-        self.last_modified_time: int = int(json_obj["LastModifiedTime"])
+        self.last_modified_time: datetime.datetime = datetime.datetime(json_obj["LastModifiedTime"])
         self.s3_storage_config: HubS3StorageConfig = HubS3StorageConfig(json_obj["S3StorageConfig"])
 
 
@@ -1086,14 +1087,14 @@ class HubSummary(JumpStartDataHolderType):
         Args:
             json_obj (Dict[str, Any]): Dictionary representation of hub description.
         """
-        self.creation_time: str = json_obj["CreationTime"]
+        self.creation_time: datetime.datetime = datetime.datetime(json_obj["CreationTime"])
         self.hub_arn: str = json_obj["HubArn"]
         self.hub_description: str = json_obj["HubDescription"]
         self.hub_display_name: str = json_obj["HubDisplayName"]
         self.hub_name: str = json_obj["HubName"]
         self.hub_search_keywords: List[str] = json_obj["HubSearchKeywords"]
         self.hub_status: str = json_obj["HubStatus"]
-        self.last_modified_time: str = json_obj["LastModifiedTime"]
+        self.last_modified_time: datetime.datetime = datetime.datetime(json_obj["LastModifiedTime"])
 
 
 class ListHubsResponse(JumpStartDataHolderType):
@@ -1245,6 +1246,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
             if "hosting_ecr_specs" in json_obj
             else None
         )
+        self.hosting_ecr_uri = None
         self.hosting_artifact_key: str = json_obj["hosting_artifact_key"]
         self.hosting_script_key: str = json_obj["hosting_script_key"]
         self.training_supported: bool = bool(json_obj["training_supported"])
@@ -1326,6 +1328,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
                 if "training_ecr_specs" in json_obj
                 else None
             )
+            # self.training_ecr_uri = None
             self.training_artifact_key: str = json_obj["training_artifact_key"]
             self.training_script_key: str = json_obj["training_script_key"]
             hyperparameters: Any = json_obj.get("hyperparameters")
@@ -1359,32 +1362,30 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
                 from SageMaker:DescribeHubContent
         """
         self.model_id: str = response.hub_content_name
-        hub_content_document: HubContentDocument = HubContentDocument(response.hub_content_document)
-        self.url: str = hub_content_document["Url"]
         self.version: str = response.hub_content_version
-        self.min_sdk_version: str = hub_content_document["MinSdkVersion"]
-        self.training_supported: bool = bool(hub_content_document["TrainingSupported"])
+        hub_content_document: HubContentDocument = HubContentDocument(response.hub_content_document)
+        self.url: str = hub_content_document.url
+        self.min_sdk_version: str = hub_content_document.min_sdk_version
+        self.training_supported: bool = hub_content_document.training_supported
         self.incremental_training_supported: bool = bool(
             hub_content_document["IncrementalTrainingSupported"]
         )
-        self.hosting_ecr_uri: str = hub_content_document["HostingEcrUri"]
+        self.hosting_ecr_uri: Optional[str] = hub_content_document.hosting_ecr_uri
+        self.hosting_ecr_specs = hub_content_document.hosting_ecr_specs
         hosting_artifact_bucket, hosting_artifact_key = parse_s3_url(
-            hub_content_document["HostingArtifactUri"]
+            hub_content_document.hosting_artifact_uri
         )
         self.hosting_artifact_key: str = hosting_artifact_key
         hosting_script_bucket, hosting_script_key = parse_s3_url(
-            hub_content_document["HostingScriptUri"]
+            hub_content_document.hosting_script_uri
         )
         self.hosting_script_key: str = hosting_script_key
-        self.inference_environment_variables = [
-            JumpStartEnvironmentVariable(env_variable, is_hub_content=True)
-            for env_variable in hub_content_document["InferenceEnvironmentVariables"]
-        ]
+        self.inference_environment_variables = hub_content_document.inference_environment_variables
         self.inference_vulnerable: bool = False
-        self.inference_dependencies: List[str] = hub_content_document["InferenceDependencies"]
+        self.inference_dependencies: List[str] = hub_content_document.inference_dependencies
         self.inference_vulnerabilities: List[str] = []
         self.training_vulnerable: bool = False
-        self.training_dependencies: List[str] = hub_content_document["TrainingDependencies"]
+        self.training_dependencies: List[str] = hub_content_document.training_dependencies
         self.training_vulnerabilities: List[str] = []
         self.deprecated: bool = False
         self.deprecated_message: Optional[str] = None
@@ -1464,9 +1465,8 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
 
         if self.training_supported:
             # TODO: Handle ecr uri parsing
-            self.training_ecr_uri: str = hub_content_document.training_ecr_uri
-            self.training_ecr_specs: Optional[JumpStartECRSpecs] = None  # TODO: Use uri not specs
-
+            self.training_ecr_uri: Optional[str] = hub_content_document.training_ecr_uri
+            self.training_ecr_specs = hub_content_document.training_ecr_uri
             training_artifact_bucket, training_artifact_key = parse_s3_url(
                 hub_content_document.training_artifact_uri
             )
@@ -1521,179 +1521,19 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         """Returns the framework for the model."""
         return self.model_id.split("-")[0]
 
-    # def retrieve_image_uri_from_ecr_spec(
-    #     self,
-    #     image_scope: str,
-    #     region: str,
-    #     framework: Optional[str] = None,
-    #     version: Optional[str] = None,
-    #     py_version: Optional[str] = None,
-    #     instance_type: Optional[str] = None,
-    #     accelerator_type: Optional[str] = None,
-    #     container_version: Optional[str] = None,
-    #     distribution: Optional[str] = None,
-    #     base_framework_version: Optional[str] = None,
-    #     training_compiler_config: Optional[str] = None,
-    # ):
-    #     """Retrieves the container image URI for JumpStart models.
-
-    #     Only `model_id`, `model_version`, and `image_scope` are required;
-    #     the rest of the fields are auto-populated.
-
-    #     Args:
-    #         model_id (str): JumpStart model ID for which to retrieve image URI.
-    #         model_version (str): Version of the JumpStart model for which to retrieve
-    #             the image URI.
-    #         hub_arn (str): The arn of the SageMaker Hub for which to retrieve
-    #             model details from. (default: None).
-    #         image_scope (str): The image type, i.e. what it is used for.
-    #             Valid values: "training", "inference", "eia". If ``accelerator_type`` is set,
-    #             ``image_scope`` is ignored.
-    #         framework (str): The name of the framework or algorithm.
-    #         region (str): The AWS region. (Default: None).
-    #         version (str): The framework or algorithm version. This is required if there is
-    #             more than one supported version for the given framework or algorithm.
-    #             (Default: None).
-    #         py_version (str): The Python version. This is required if there is
-    #             more than one supported Python version for the given framework version.
-    #         instance_type (str): The SageMaker instance type. For supported types, see
-    #             https://aws.amazon.com/sagemaker/pricing/instance-types. This is required if
-    #             there are different images for different processor types.
-    #             (Default: None).
-    #         accelerator_type (str): Elastic Inference accelerator type. For more, see
-    #             https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html.
-    #             (Default: None).
-    #         container_version (str): the version of docker image.
-    #             Ideally the value of parameter should be created inside the framework.
-    #             For custom use, see the list of supported container versions:
-    #             https://github.com/aws/deep-learning-containers/blob/master/available_images.md.
-    #             (Default: None).
-    #         distribution (dict): A dictionary with information on how to run distributed training.
-    #             (Default: None).
-    #         training_compiler_config (:class:`~sagemaker.training_compiler.TrainingCompilerConfig`):
-    #             A configuration class for the SageMaker Training Compiler.
-    #             (Default: None).
-    #         tolerate_vulnerable_model (bool): True if vulnerable versions of model
-    #             specifications should be tolerated (exception not raised). If False, raises an
-    #             exception if the script used by this version of the model has dependencies with known
-    #             security vulnerabilities. (Default: False).
-    #         tolerate_deprecated_model (bool): True if deprecated versions of model
-    #             specifications should be tolerated (exception not raised). If False, raises
-    #             an exception if the version of the model is deprecated. (Default: False).
-    #         sagemaker_session (sagemaker.session.Session): A SageMaker Session
-    #             object, used for SageMaker interactions. If not
-    #             specified, one is created using the default AWS configuration
-    #             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
-    #     Returns:
-    #         str: the ECR URI for the corresponding SageMaker Docker image.
-
-    #     Raises:
-    #         ValueError: If the combination of arguments specified is not supported.
-    #         VulnerableJumpStartModelError: If any of the dependencies required by the script have
-    #             known security vulnerabilities.
-    #         DeprecatedJumpStartModelError: If the version of the model is deprecated.
-    #     """
-
-    #     model_id = self.model_id
-    #     model_version = self.version
-
-    #     if image_scope == JumpStartScriptScope.INFERENCE:
-    #         hosting_instance_type_variants = self.hosting_instance_type_variants
-    #         if hosting_instance_type_variants:
-    #             image_uri = hosting_instance_type_variants.get_image_uri(
-    #                 instance_type=instance_type, region=region
-    #             )
-    #             if image_uri is not None:
-    #                 return image_uri
-    #         ecr_specs: Optional[JumpStartECRSpecs] = self.hosting_ecr_specs
-    #         if ecr_specs is None:
-    #             raise ValueError(
-    #                 f"No inference ECR configuration found for JumpStart model ID '{model_id}' "
-    #                 f"with {instance_type} instance type in {region}. "
-    #                 "Please try another instance type or region."
-    #             )
-    #     elif image_scope == JumpStartScriptScope.TRAINING:
-    #         training_instance_type_variants = self.training_instance_type_variants
-    #         if training_instance_type_variants:
-    #             image_uri = training_instance_type_variants.get_image_uri(
-    #                 instance_type=instance_type, region=region
-    #             )
-    #             if image_uri is not None:
-    #                 return image_uri
-    #         ecr_specs: Optional[JumpStartECRSpecs] = self.training_ecr_specs
-    #         if ecr_specs is None:
-    #             raise ValueError(
-    #                 f"No training ECR configuration found for JumpStart model ID '{model_id}' "
-    #                 f"with {instance_type} instance type in {region}. "
-    #                 "Please try another instance type or region."
-    #             )
-    #     if framework is not None and framework != ecr_specs.framework:
-    #         raise ValueError(
-    #             f"Incorrect container framework '{framework}' for JumpStart model ID '{model_id}' "
-    #             f"and version '{model_version}'."
-    #         )
-
-    #     if version is not None and version != ecr_specs.framework_version:
-    #         raise ValueError(
-    #             f"Incorrect container framework version '{version}' for JumpStart model ID "
-    #             f"'{model_id}' and version '{model_version}'."
-    #         )
-
-    #     if py_version is not None and py_version != ecr_specs.py_version:
-    #         raise ValueError(
-    #             f"Incorrect python version '{py_version}' for JumpStart model ID '{model_id}' "
-    #             f"and version '{model_version}'."
-    #         )
-
-    #     base_framework_version_override: Optional[str] = None
-    #     version_override: Optional[str] = None
-    #     if ecr_specs.framework == ModelFramework.HUGGINGFACE:
-    #         base_framework_version_override = ecr_specs.framework_version
-    #         version_override = ecr_specs.huggingface_transformers_version
-
-    #     if image_scope == JumpStartScriptScope.TRAINING:
-    #         return get_training_image_uri(
-    #             region=region,
-    #             framework=ecr_specs.framework,
-    #             framework_version=version_override or ecr_specs.framework_version,
-    #             py_version=ecr_specs.py_version,
-    #             image_uri=None,
-    #             distribution=None,
-    #             compiler_config=None,
-    #             tensorflow_version=None,
-    #             pytorch_version=base_framework_version_override or base_framework_version,
-    #             instance_type=instance_type,
-    #         )
-    #     if base_framework_version_override is not None:
-    #         base_framework_version_override = f"pytorch{base_framework_version_override}"
-
-    #     return retrieve(
-    #         framework=ecr_specs.framework,
-    #         region=region,
-    #         version=version_override or ecr_specs.framework_version,
-    #         py_version=ecr_specs.py_version,
-    #         instance_type=instance_type,
-    #         accelerator_type=accelerator_type,
-    #         image_scope=image_scope,
-    #         container_version=container_version,
-    #         distribution=distribution,
-    #         base_framework_version=base_framework_version_override or base_framework_version,
-    #         training_compiler_config=training_compiler_config,
-    #     )
-
 
 class HubContentDocument(JumpStartDataHolderType):
     SCHEMA_VERSION = "2.0.0"
 
     """Data class for HubContentDocument from session.describe_hub_content()."""
     __slots__ = [
-        "_region",
         "url",
         "min_sdk_version",
         "training_supported",
         "incremental_training_supported",
         "dynamic_container_deployment_supported",
         "hosting_ecr_uri",
+        "hosting_ecr_specs",
         "hosting_artifact_s3_data_type",
         "hosting_artifact_compression_type",
         "hosting_artifact_uri",
@@ -1711,6 +1551,7 @@ class HubContentDocument(JumpStartDataHolderType):
         "training_script_uri",
         "training_prepacked_script_uri",
         "training_prepacked_script_version",
+        "training_ecr_specs",
         "training_ecr_uri",
         "training_metrics",
         "training_artifact_uri",
@@ -1748,24 +1589,27 @@ class HubContentDocument(JumpStartDataHolderType):
         "disable_output_compression",
         "model_dir",
         "dependencies",
+        "_region",
     ]
 
     def __init__(
         self,
         json_obj_or_model_specs: Union[Dict[str, Any], JumpStartModelSpecs],
-        region: Optional[str] = None,
+        region: Optional[str],
     ) -> None:
+        self._region = region # Handle region
         if isinstance(json_obj_or_model_specs, Dict):
-            self.from_json(obj)
-        elif isinstance(json_obj_or_model_specs, JumpStartModelSpecs) and region is not None:
-            self.from_model_specs(obj, region)
-        raise ValueError
+            self.from_json(json_obj_or_model_specs)
+        elif isinstance(json_obj_or_model_specs, JumpStartModelSpecs):
+            self.from_model_specs(json_obj_or_model_specs, self._region)
+        else:
+            raise ValueError("Please check args.")
 
     def from_json(self, json_obj: Dict[str, Any]) -> None:
         self.url: str = json_obj["Url"]
         self.min_sdk_version: str = json_obj["MinSdkVersion"]
-        self.hosting_ecr_uri = json_obj["HostingEcrUri"]
-        self._region = EcrUri(self.hosting_ecr_uri).region_name
+        self.hosting_ecr_uri: Optional[str] = json_obj["HostingEcrUri"]
+        self.hosting_ecr_specs = None
         self.hosting_artifact_uri = json_obj["HostingArtifactUri"]
         self.hosting_script_uri = json_obj["HostingScriptUri"]
         self.inference_dependencies: List[str] = json_obj["InferenceDependencies"]
@@ -1886,6 +1730,7 @@ class HubContentDocument(JumpStartDataHolderType):
                 "TrainingPrepackedScriptVersion"
             )
             self.training_ecr_uri: Optional[str] = json_obj.get("TrainingEcrUri")
+            # self.training_ecr_specs = None
             self.training_metrics: Optional[List[Dict[str, str]]] = json_obj.get(
                 "TrainingMetrics", None
             )
@@ -1926,19 +1771,13 @@ class HubContentDocument(JumpStartDataHolderType):
         return self._region
 
     def from_model_specs(self, specs: JumpStartModelSpecs, region: str) -> None:
-        self._region = region
         self.url: str = specs.url
         self.min_sdk_version: str = specs.min_sdk_version
-        # TODO: Revisit - reuse or a more customized function?
-        # self.hosting_ecr_uri = retrieve_image_uri_from_ecr_spec(
-        #     model_id=specs.model_id,
-        #     model_version=specs.version,
-        #     image_scope=JumpStartScriptScope.INFERENCE,
-        #     region=region,
-        # )
+        self.hosting_ecr_specs: Optional[JumpStartECRSpecs] = specs.hosting_ecr_specs
+        self.hosting_ecr_uri: Optional[str] = specs.hosting_ecr_uri
 
-        content_bucket = f"s3://jumpstart-cache–prod-{region}"
-        self.hosting_artifact_uri = s3_path_join(content_bucket, specs.hosting_artifact_key)
+        content_bucket = f"jumpstart-cache–prod-{region}"
+        self.hosting_artifact_uri = s3_path_join("s3://", content_bucket, specs.hosting_artifact_key)
         self.hosting_artifact_s3_data_type: Optional[str] = None  # TODO: Not in specs?
         self.hosting_artifact_compression_type: Optional[str] = None  # TODO: Not in specs?
 
@@ -1979,11 +1818,7 @@ class HubContentDocument(JumpStartDataHolderType):
         ] = specs.inference_enable_network_isolation
         self.fine_tuning_supported: Optional[bool] = None  # TODO: Missing in ModelSpecs?
         self.validation_supported: Optional[bool] = None  # TODO: Missing in ModelSpecs?
-        self.default_training_dataset_uri: Optional[str] = (
-            s3_path_join("s3://", content_bucket, specs.default_training_dataset_key)
-            if specs.default_training_dataset_key is not None
-            else None
-        )
+        self.default_training_dataset_uri: Optional[str] = None # TODO: Missing in ModelSpecs?
         self.resource_name_base: Optional[str] = specs.resource_name_base
         self.gated_bucket: bool = specs.gated_bucket
         self.default_payloads: Optional[
@@ -2034,12 +1869,8 @@ class HubContentDocument(JumpStartDataHolderType):
             self.training_prepacked_script_version: Optional[
                 str
             ] = None  # TODO: Missing in ModelSpecs?
-            # self.training_ecr_uri: Optional[str] = retrieve_image_uri_from_ecr_spec(
-            #     model_id=specs.model_id,
-            #     model_version=specs.version,
-            #     image_scope=JumpStartScriptScope.TRAINING,
-            #     region=region,
-            # )
+            self.training_ecr_specs: Optional[JumpStartECRSpecs] = specs.training_ecr_specs
+            self.training_ecr_uri: Optional[str] = specs.training_ecr_uri
             self.training_metrics: Optional[List[Dict[str, str]]] = specs.metrics
             self.training_artifact_uri: Optional[str] = (
                 s3_path_join("s3://", content_bucket, specs.training_artifact_key)
@@ -2116,7 +1947,7 @@ class HubContentSummary(JumpStartDataHolderType):
             json_obj["HubContentDocument"]
         )
         self.hub_content_name: str = json_obj["HubContentName"]
-        self.hub_content_search_keywords: str = json_obj["HubContentSearchKeywords"]
+        self.hub_content_search_keywords: List[str] = json_obj["HubContentSearchKeywords"]
         self.hub_content_status: str = json_obj["HubContentStatus"]
         self.hub_content_type: HubContentType = HubContentType(json_obj["HubContentType"])
         self.hub_content_version: str = json_obj["HubContentVersion"]
