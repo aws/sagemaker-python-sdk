@@ -2557,7 +2557,10 @@ class _AnalysisConfigGenerator:
             assert ts_data_config_present, "Please provide a TimeSeriesDataConfig to DataConfig."
             assert ts_model_config_present, "Please provide a TimeSeriesModelConfig to ModelConfig."
             # Check static covariates baseline matches number of provided static covariate columns
-
+            _AnalysisConfigGenerator._validate_time_series_static_covariates_baseline(
+                explainability_config=explainability_config,
+                data_config=data_config,
+            )
         else:
             if ts_data_config_present:
                 raise ValueError(
