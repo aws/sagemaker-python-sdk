@@ -901,10 +901,8 @@ def test_hub_content_document_from_model_specs():
     pass
 
 def test_hub_content_document_from_json_obj():
-    for key, value in HUB_MODEL_DOCUMENT_DICTS.items():
-        model_document = HubContentDocument(value, region="us-west-2")
-        #TODO: implement
-        pass
+    #TODO: implement
+    pass
         
         
 def test_jumpstart_resource_requirements_instance_variants():

@@ -870,7 +870,7 @@ def extract_info_from_hub_content_arn(
 ) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:
     """Extracts hub_name, content_name, and content_version from a HubContentArn"""
 
-    match = re.match(constants.HUB_MODEL_ARN_REGEX, arn)
+    match = re.match(constants.HUB_CONTENT_ARN_REGEX, arn)
     if match:
         hub_name = match.group(4)
         hub_region = match.group(2)
