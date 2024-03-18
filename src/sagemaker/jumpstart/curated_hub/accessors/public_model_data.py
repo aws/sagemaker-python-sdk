@@ -33,6 +33,7 @@ class PublicModelDataAccessor:
         model_specs: JumpStartModelSpecs,
         studio_specs: Dict[str, Dict[str, Any]],
     ):
+        """Creates a PublicModelDataAccessor."""
         self._region = region
         self._bucket = get_jumpstart_content_bucket(region)
         self.model_specs = model_specs

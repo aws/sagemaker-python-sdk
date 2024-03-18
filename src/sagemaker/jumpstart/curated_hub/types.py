@@ -50,8 +50,9 @@ class HubContentSummary:
 
 def summary_from_list_api_response(hub_content_summary: Dict[str, Any]) -> HubContentSummary:
     """Creates a single HubContentSummary.
-    
-    This is based on the ListHubContent or ListHubContentVersions API response."""
+
+    This is based on the ListHubContent or ListHubContentVersions API response.
+    """
     return HubContentSummary(
         hub_content_arn=hub_content_summary.get("HubContentArn"),
         hub_content_name=hub_content_summary.get("HubContentName"),
@@ -70,8 +71,9 @@ def summary_list_from_list_api_response(
     list_hub_contents_response: Dict[str, Any]
 ) -> List[HubContentSummary]:
     """Creates a HubContentSummary list.
-    
-    This is based on the ListHubContent or ListHubContentVersions API response."""
+
+    This is based on the ListHubContent or ListHubContentVersions API response.
+    """
     return list(
         map(
             summary_from_list_api_response,
@@ -132,6 +134,7 @@ class FileInfo(JumpStartDataHolderType):
         last_updated: Optional[datetime],
         dependecy_type: Optional[HubContentDependencyType] = None,
     ):
+        """Creates a FileInfo."""
         self.location = S3ObjectLocation(bucket, key)
         self.size = size
         self.last_updated = last_updated

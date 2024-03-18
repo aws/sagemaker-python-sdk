@@ -13,7 +13,7 @@
 """This module contains utilities related to SageMaker JumpStart CuratedHub."""
 from __future__ import absolute_import
 import re
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, List
 from sagemaker.jumpstart.curated_hub.types import S3ObjectLocation
 from sagemaker.s3_utils import parse_s3_url
 from sagemaker.session import Session
@@ -120,11 +120,7 @@ def generate_hub_arn_for_init_kwargs(
         if match:
             hub_arn = hub_name
         else:
-            hub_arn = construct_hub_arn_from_name(
-                hub_name=hub_name,
-                region=region,
-                session=session
-            )
+            hub_arn = construct_hub_arn_from_name(hub_name=hub_name, region=region, session=session)
     return hub_arn
 
 
@@ -212,6 +208,7 @@ def _get_tags_for_all_versions(
     region: str,
     session: Session,
 ) -> Dict[str, List[CuratedHubUnsupportedFlag]]:
+    """Helper function to create mapping between HubContent version and associated tags."""
     version_to_tags_map: Dict[str, List[CuratedHubUnsupportedFlag]] = {}
     for hub_content_version_summary in hub_content_versions:
         jumpstart_model = get_jumpstart_model_and_version(hub_content_version_summary)
@@ -233,6 +230,7 @@ def _get_tags_for_all_versions(
 def _convert_to_tag_to_versions_map(
     version_to_tags_map: Dict[str, List[CuratedHubUnsupportedFlag]]
 ) -> Dict[CuratedHubUnsupportedFlag, List[str]]:
+    """Helper function to create tag to version map from a version to flag mapping."""
     unsupported_hub_content_versions_map: Dict[CuratedHubUnsupportedFlag, List[str]] = {}
     for version, tags in version_to_tags_map.items():
         for tag in tags:
