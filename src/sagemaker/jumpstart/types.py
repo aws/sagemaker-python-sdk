@@ -928,11 +928,6 @@ class HubContentDependency(JumpStartDataHolderType):
         self.dependency_copy_path: Optional[str] = json_obj.get("DependencyCopyPath", "")
         self.dependency_origin_path: Optional[str] = json_obj.get("DependencyOriginPath", "")
 
-    def to_json(self) -> Dict[str, Any]:
-        """Returns json representation of HubContentDependency object."""
-        json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
-        return json_obj
-
 
 class DescribeHubContentResponse(JumpStartDataHolderType):
     """Data class for the Hub Content from session.describe_hub_contents()"""
@@ -1014,11 +1009,6 @@ class HubS3StorageConfig(JumpStartDataHolderType):
         """
 
         self.s3_output_path: Optional[str] = json_obj.get("S3OutputPath", "")
-
-    def to_json(self) -> Dict[str, Any]:
-        """Returns json representation of HubS3StorageConfig object."""
-        return {"s3_output_path": self.s3_output_path}
-
 
 class DescribeHubResponse(JumpStartDataHolderType):
     """Data class for the Hub from session.describe_hub()"""
@@ -1168,21 +1158,18 @@ class EcrUri(JumpStartDataHolderType):
         """
         Parse a given aws ecr image uri into its various components.
         """
-        uri_regex = re.compile(
-            "(^\d{12})\.dkr\.ecr\.(.+)\.amazonaws\.com/([\d\w\-_/]+)" "(?::([\d\w_][\d\w_\.\-]*))?$"
+        uri_regex = (
+            r"^(?:(?P<account_id>[a-zA-Z0-9][\w-]*)\.dkr\.ecr\.(?P<region>[a-zA-Z0-9][\w-]*)"
+            r"\.(?P<tld>[a-zA-Z0-9\.-]+))\/(?P<repository_name>([a-z0-9]+(?:[._-][a-z0-9]+)*\/)*[a-z0-9]+"
+            r"(?:[._-][a-z0-9]+)*)(:*)(?P<image_tag>.*)?"
         )
 
-        try:
-            uri_components = uri_regex.match(uri).groups()
-            account, region, repository, tag = uri_components
-            if not tag:
-                tag = ""
-        except Exception as e:
-            raise ValueError(
-                "Please check that the ECR image is of the form "
-                "<account>.dkr.ecr.<region>/<repository> or "
-                "<account>.dkr.ecr.<region>/<repository>:<tag>"
-            )
+        parsed_image_uri = re.compile(uri_regex).match(uri)
+
+        account = parsed_image_uri.group("account_id")
+        region = parsed_image_uri.group("region")
+        repository = parsed_image_uri.group("repository_name")
+        tag = parsed_image_uri.group("image_tag")
 
         self.account = account
         self.region_name = region
