@@ -1123,9 +1123,11 @@ def test_get_codeartifact_command(pipeline_session):
     )
 
     assert (
-        codeartifact_command
-        == "aws codeartifact login --tool pip --domain test-domain --domain-owner 012345678901 --repository test-repository --region us-west-2"
-    )  # noqa: E501
+        codeartifact_command == (
+            "aws codeartifact login --tool pip --domain test-domain ",
+            "--domain-owner 012345678901 --repository test-repository --region us-west-2"
+        )
+    )
 
 
 @patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
