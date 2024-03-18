@@ -180,6 +180,7 @@ def model_builder(request):
 #                     False
 #                 ), f"{caught_ex} was thrown when running pytorch squeezenet local container test"
 
+
 @pytest.mark.skip(reason="Failing test. Fix is pending.")
 @pytest.mark.skipif(
     PYTHON_VERSION_IS_NOT_310,  # or NOT_RUNNING_ON_INF_EXP_DEV_PIPELINE,
