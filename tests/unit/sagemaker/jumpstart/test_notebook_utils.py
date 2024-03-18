@@ -188,7 +188,7 @@ def test_list_jumpstart_frameworks(
 
 def test_is_valid_version():
     valid_version_strs = ["1.0", "1.0.0", "2012.4", "1!1.0", "1.dev0", "1.2.3+abc.dev1"]
-    invalid_version_strs = ["1.1.053_m", "invalid version", "v1-1.0-v2"]
+    invalid_version_strs = ["1.1.053_m", "invalid version", "v1-1.0-v2", "@"]
     assert all(_is_valid_version(v) for v in valid_version_strs)
     assert not any(_is_valid_version(v) for v in invalid_version_strs)
 
