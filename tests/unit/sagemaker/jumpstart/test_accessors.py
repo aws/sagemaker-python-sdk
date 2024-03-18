@@ -83,7 +83,7 @@ def test_jumpstart_models_cache_get_model_specs(mock_cache):
     accessors.JumpStartModelsAccessor.get_model_specs(
         region=region, model_id=model_id, version=version
     )
-    mock_cache.get_specs.assert_called_once_with(model_id=model_id, semantic_version_str=version)
+    mock_cache.get_specs.assert_called_once_with(model_id=model_id, version_str=version, model_type=JumpStartModelType.OPEN_WEIGHTS)
     mock_cache.get_hub_model.assert_not_called()
 
     accessors.JumpStartModelsAccessor.get_model_specs(
@@ -137,37 +137,6 @@ def test_jumpstart_proprietary_models_cache_get(mock_cache):
         )
         > 0
     )
-
-
-@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._cache")
-def test_jumpstart_models_cache_get_model_specs(mock_cache):
-    mock_cache.get_specs = Mock()
-    mock_cache.get_hub_model = Mock()
-    model_id, version = "pytorch-ic-mobilenet-v2", "*"
-    region = "us-west-2"
-
-    accessors.JumpStartModelsAccessor.get_model_specs(
-        region=region, model_id=model_id, version=version
-    )
-    mock_cache.get_specs.assert_called_once_with(
-        model_id=model_id, version_str=version, model_type=JumpStartModelType.OPEN_WEIGHTS
-    )
-    mock_cache.get_hub_model.assert_not_called()
-
-    accessors.JumpStartModelsAccessor.get_model_specs(
-        region=region,
-        model_id=model_id,
-        version=version,
-        hub_arn=f"arn:aws:sagemaker:{region}:123456789123:hub/my-mock-hub",
-    )
-    mock_cache.get_hub_model.assert_called_once_with(
-        hub_model_arn=(
-            f"arn:aws:sagemaker:{region}:123456789123:hub-content/my-mock-hub/Model/{model_id}/{version}"
-        )
-    )
-
-    # necessary because accessors is a static module
-    reload(accessors)
 
 
 @patch("sagemaker.jumpstart.cache.JumpStartModelsCache")

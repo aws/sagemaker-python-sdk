@@ -128,6 +128,7 @@ def test_s3_path_file_generator_with_no_objects(s3_client):
     s3_client.list_objects_v2.assert_called_once()
     assert response == []
 
+
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
 def test_specs_file_generator_training_unsupported(patched_get_model_specs, s3_client):
     specs = Mock()
@@ -153,6 +154,7 @@ def test_specs_file_generator_training_unsupported(patched_get_model_specs, s3_c
             "08-14-1997 00:00:00",
         ),
     ]
+
 
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
 def test_specs_file_generator_gated_model(patched_get_model_specs, s3_client):
