@@ -18,7 +18,11 @@ from unittest.mock import patch
 import pytest
 from mock import Mock
 from sagemaker.jumpstart.curated_hub.curated_hub import CuratedHub
-from sagemaker.jumpstart.curated_hub.types import JumpStartModelInfo, S3ObjectLocation, HubContentSummary
+from sagemaker.jumpstart.curated_hub.types import (
+    JumpStartModelInfo,
+    S3ObjectLocation,
+    HubContentSummary
+)
 from sagemaker.jumpstart.types import JumpStartModelSpecs
 from tests.unit.sagemaker.jumpstart.constants import BASE_SPEC
 from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec
@@ -202,7 +206,11 @@ def test_sync_filters_models_that_exist_in_hub(
                     "@jumpstart-model-version:1.0.2",
                 ],
             },
-            {"HubContentName": "mock-model-three-nonsense", "HubContentVersion": "1.0.2", "HubContentSearchKeywords": []},
+            {
+                "HubContentName": "mock-model-three-nonsense",
+                "HubContentVersion": "1.0.2",
+                "HubContentSearchKeywords": []
+            },
             {
                 "HubContentName": "mock-model-four-huggingface",
                 "HubContentVersion": "2.0.2",

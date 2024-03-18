@@ -49,16 +49,15 @@ from sagemaker.jumpstart.curated_hub.utils import (
     create_hub_bucket_if_it_does_not_exist,
     generate_default_hub_bucket_name,
     create_s3_object_reference_from_uri,
-    tag_hub_content,
     get_jumpstart_model_and_version,
-    find_unsupported_flags_for_hub_content_versions,
-    summary_list_from_list_api_response,
+    find_deprecated_vulnerable_flags_for_hub_content,
 )
 from sagemaker.jumpstart.curated_hub.types import (
     HubContentDocument_v2,
     JumpStartModelInfo,
     S3ObjectLocation,
     HubContentSummary,
+    summary_list_from_list_api_response,
 )
 from sagemaker.utils import TagsDict
 
@@ -201,6 +200,8 @@ class CuratedHub:
 
         `model_list` objects must have `model_id` (str) and optional `version` (str).
         """
+        if model_list is None:
+            return True
         for obj in model_list:
             if not isinstance(obj.get("model_id"), str):
                 return True
@@ -409,43 +410,54 @@ class CuratedHub:
         )
         return json.loads(response["Body"].read().decode("utf-8"))
 
-    def scan_and_tag_models(self, model_list: List[Dict[str, str]] = None) -> None:
+    def scan_and_tag_models(self, model_ids: List[str] = None) -> None:
         """Scans the Hub for JumpStart models and tags the HubContent.
 
         If the scan detects a model is deprecated or vulnerable, it will tag the HubContent.
         The tags that will be added are based off the specifications in the JumpStart public hub:
         1. "deprecated_versions" -> If the public hub model is deprecated
-        2. "inference_vulnerable_versions" -> If the public hub model has inference vulnerabilities
-        3. "training_vulnerable_versions" -> If the public hub model has training vulnerabilities
+        2. "inference_vulnerable_versions" -> If the inference script has vulnerabilities
+        3. "training_vulnerable_versions" -> If the training script has vulnerabilities
 
         The tag value will be a list of versions in the Curated Hub that fall under those keys.
         For example, if model_a version_a is deprecated and inference is vulnerable, the
         HubContent for `model_a` will have tags [{"deprecated_versions": [version_a]},
         {"inference_vulnerable_versions": [version_a]}]
 
-        If models are passed in,
+        If models are passed in, this will only scan those models if they exist in the Curated Hub.
         """
         JUMPSTART_LOGGER.info("Tagging models in hub: %s", self.hub_name)
-        if self._is_invalid_model_list_input(model_list):
+        model_ids = model_ids if model_ids is not None else []
+        if self._is_invalid_model_list_input(model_ids):
             raise ValueError(
                 "Model list should be a list of objects with values 'model_id',",
                 "and optional 'version'.",
             )
 
-        models_to_scan = model_list if model_list else self.list_models()
+        models_in_hub = summary_list_from_list_api_response(self.list_models(clear_cache=False))
+
+        model_summaries_to_scan = models_in_hub
+        if model_ids:
+            model_summaries_to_scan = list(
+                filter(
+                    lambda model_summary: model_summary.hub_content_name in model_ids, models_in_hub
+                )
+            )
+
         js_models_in_hub = [
-            model for model in models_to_scan if get_jumpstart_model_and_version(model) is not None
+            model
+            for model in model_summaries_to_scan
+            if get_jumpstart_model_and_version(model) is not None
         ]
         for model in js_models_in_hub:
-            tags_to_add: List[TagsDict] = find_unsupported_flags_for_hub_content_versions(
+            tags_to_add: List[TagsDict] = find_deprecated_vulnerable_flags_for_hub_content(
                 hub_name=self.hub_name,
                 hub_content_name=model.hub_content_name,
                 region=self.region,
                 session=self._sagemaker_session,
             )
-            tag_hub_content(
-                hub_content_arn=model.hub_content_arn,
-                tags=tags_to_add,
-                session=self._sagemaker_session,
+            self._sagemaker_session.add_tags(ResourceArn=model.hub_content_arn, Tags=tags_to_add)
+            JUMPSTART_LOGGER.info(
+                "Added tags to HubContentArn %s: %s", model.hub_content_arn, tags_to_add
             )
         JUMPSTART_LOGGER.info("Tagging complete!")

@@ -15,7 +15,6 @@ from __future__ import absolute_import
 import re
 from typing import Optional, Dict, List, Any
 from sagemaker.jumpstart.curated_hub.types import S3ObjectLocation
-from sagemaker.jumpstart.constants import JUMPSTART_LOGGER
 from sagemaker.s3_utils import parse_s3_url
 from sagemaker.session import Session
 from sagemaker.utils import aws_partition
@@ -24,6 +23,7 @@ from sagemaker.jumpstart.curated_hub.types import (
     CuratedHubUnsupportedFlag,
     HubContentSummary,
     JumpStartModelInfo,
+    summary_list_from_list_api_response,
 )
 from sagemaker.jumpstart import constants
 from sagemaker.jumpstart import utils
@@ -176,12 +176,7 @@ def create_hub_bucket_if_it_does_not_exist(
     return bucket_name
 
 
-def tag_hub_content(hub_content_arn: str, tags: List[TagsDict], session: Session) -> None:
-    session.add_tags(ResourceArn=hub_content_arn, Tags=tags)
-    JUMPSTART_LOGGER.info("Added tags to HubContentArn %s: %s", hub_content_arn, TagsDict)
-
-
-def find_unsupported_flags_for_hub_content_versions(
+def find_deprecated_vulnerable_flags_for_hub_content(
     hub_name: str, hub_content_name: str, region: str, session: Session
 ) -> List[TagsDict]:
     """Finds the JumpStart public hub model for a HubContent and calculates relevant tags.
@@ -304,31 +299,3 @@ def get_jumpstart_model_and_version(
         len(JUMPSTART_HUB_MODEL_VERSION_TAG_PREFIX) :
     ]
     return JumpStartModelInfo(model_id=jumpstart_model_id, version=jumpstart_model_version)
-
-
-def summary_from_list_api_response(hub_content_summary: Dict[str, Any]) -> HubContentSummary:
-    """Creates a single HubContentSummary from a HubContentSummary from the HubService List APIs."""
-    return HubContentSummary(
-        hub_content_arn=hub_content_summary.get("HubContentArn"),
-        hub_content_name=hub_content_summary.get("HubContentName"),
-        hub_content_version=hub_content_summary.get("HubContentVersion"),
-        hub_content_type=hub_content_summary.get("HubContentType"),
-        document_schema_version=hub_content_summary.get("DocumentSchemaVersion"),
-        hub_content_status=hub_content_summary.get("HubContentStatus"),
-        hub_content_display_name=hub_content_summary.get("HubContentDisplayName"),
-        hub_content_description=hub_content_summary.get("HubContentDescription"),
-        hub_content_search_keywords=hub_content_summary.get("HubContentSearchKeywords"),
-        creation_time=hub_content_summary.get("CreationTime"),
-    )
-
-
-def summary_list_from_list_api_response(
-    list_hub_contents_response: Dict[str, Any]
-) -> List[HubContentSummary]:
-    """Creates a HubContentSummary list from either the ListHubContent or ListHubContentVersions API response."""
-    return list(
-        map(
-            summary_from_list_api_response,
-            list_hub_contents_response["HubContentSummaries"],
-        )
-    )

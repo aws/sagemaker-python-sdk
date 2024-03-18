@@ -324,7 +324,7 @@ def test_find_all_tags_for_jumpstart_model_filters_non_jumpstart_models(mock_spe
     mock_specs.training_vulnerable = True
     mock_spec_util.return_value = mock_specs
 
-    tags = utils.find_unsupported_flags_for_hub_content_versions(
+    tags = utils.find_deprecated_vulnerable_flags_for_hub_content(
         hub_name="test",
         hub_content_name="test",
         region="test",

@@ -42,10 +42,38 @@ class HubContentSummary:
     hub_content_type: HubContentType
     document_schema_version: str
     hub_content_status: str
-    creation_time: str
+    creation_time: datetime
     hub_content_display_name: str = None
     hub_content_description: str = None
     hub_content_search_keywords: List[str] = None
+
+
+def summary_from_list_api_response(hub_content_summary: Dict[str, Any]) -> HubContentSummary:
+    """Creates a single HubContentSummary from a HubContentSummary from the HubService List APIs."""
+    return HubContentSummary(
+        hub_content_arn=hub_content_summary.get("HubContentArn"),
+        hub_content_name=hub_content_summary.get("HubContentName"),
+        hub_content_version=hub_content_summary.get("HubContentVersion"),
+        hub_content_type=hub_content_summary.get("HubContentType"),
+        document_schema_version=hub_content_summary.get("DocumentSchemaVersion"),
+        hub_content_status=hub_content_summary.get("HubContentStatus"),
+        hub_content_display_name=hub_content_summary.get("HubContentDisplayName"),
+        hub_content_description=hub_content_summary.get("HubContentDescription"),
+        hub_content_search_keywords=hub_content_summary.get("HubContentSearchKeywords"),
+        creation_time=hub_content_summary.get("CreationTime"),
+    )
+
+
+def summary_list_from_list_api_response(
+    list_hub_contents_response: Dict[str, Any]
+) -> List[HubContentSummary]:
+    """Creates a HubContentSummary list from either the ListHubContent or ListHubContentVersions API response."""
+    return list(
+        map(
+            summary_from_list_api_response,
+            list_hub_contents_response["HubContentSummaries"],
+        )
+    )
 
 
 @dataclass
