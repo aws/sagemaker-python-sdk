@@ -49,6 +49,14 @@ class SpecialSupportedFilterKeys(str, Enum):
 
     TASK = "task"
     FRAMEWORK = "framework"
+    MODEL_TYPE = "model_type"
+
+
+class ProprietaryModelFilterIdentifiers(str, Enum):
+    """Enum class for proprietary model filter keys."""
+
+    PROPRIETARY = "proprietary"
+    MARKETPLACE = "marketplace"
 
 
 FILTER_OPERATOR_STRING_MAPPINGS = {
@@ -428,6 +436,22 @@ class ModelFilter(JumpStartDataHolderType):
         self.key = key
         self.value = value
         self.operator = operator
+
+    def set_key(self, key: str) -> None:
+        """Sets the key for the model filter.
+
+        Args:
+            key (str): The key to be set.
+        """
+        self.key = key
+
+    def set_value(self, value: str) -> None:
+        """Sets the value for the model filter.
+
+        Args:
+            value (str): The value to be set.
+        """
+        self.value = value
 
 
 def parse_filter_string(filter_string: str) -> ModelFilter:

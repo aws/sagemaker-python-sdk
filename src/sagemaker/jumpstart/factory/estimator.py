@@ -50,7 +50,7 @@ from sagemaker.jumpstart.constants import (
     TRAINING_ENTRY_POINT_SCRIPT_NAME,
     SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY,
 )
-from sagemaker.jumpstart.enums import JumpStartScriptScope
+from sagemaker.jumpstart.enums import JumpStartScriptScope, JumpStartModelType
 from sagemaker.jumpstart.factory import model
 from sagemaker.jumpstart.types import (
     JumpStartEstimatorDeployKwargs,
@@ -63,6 +63,7 @@ from sagemaker.jumpstart.types import (
 from sagemaker.jumpstart.utils import (
     add_hub_arn_tags,
     add_jumpstart_model_id_version_tags,
+    get_eula_message,
     update_dict_if_key_not_present,
     resolve_estimator_sagemaker_config_field,
     verify_model_region_and_return_specs,
@@ -79,6 +80,7 @@ def get_init_kwargs(
     model_id: str,
     model_version: Optional[str] = None,
     hub_arn: Optional[str] = None,
+    model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_WEIGHTS,
     tolerate_vulnerable_model: Optional[bool] = None,
     tolerate_deprecated_model: Optional[bool] = None,
     region: Optional[str] = None,
@@ -137,6 +139,7 @@ def get_init_kwargs(
         model_id=model_id,
         model_version=model_version,
         hub_arn=hub_arn,
+        model_type=model_type,
         role=role,
         region=region,
         instance_count=instance_count,
@@ -614,6 +617,26 @@ def _add_env_to_kwargs(
             key,
             value,
         )
+
+    environment = getattr(kwargs, "environment", {}) or {}
+    if (
+        environment.get(SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY)
+        and str(environment.get("accept_eula", "")).lower() != "true"
+    ):
+        model_specs = verify_model_region_and_return_specs(
+            model_id=kwargs.model_id,
+            version=kwargs.model_version,
+            region=kwargs.region,
+            scope=JumpStartScriptScope.TRAINING,
+            tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
+            tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
+            sagemaker_session=kwargs.sagemaker_session,
+        )
+        if model_specs.is_gated_model():
+            raise ValueError(
+                "Need to define ‘accept_eula'='true' within Environment. "
+                f"{get_eula_message(model_specs, kwargs.region)}"
+            )
 
     return kwargs
 

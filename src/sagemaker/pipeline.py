@@ -360,6 +360,7 @@ class PipelineModel(object):
         nearest_model_name: Optional[Union[str, PipelineVariable]] = None,
         data_input_configuration: Optional[Union[str, PipelineVariable]] = None,
         skip_model_validation: Optional[Union[str, PipelineVariable]] = None,
+        source_uri: Optional[Union[str, PipelineVariable]] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -409,6 +410,8 @@ class PipelineModel(object):
                 (default: None).
             skip_model_validation (str or PipelineVariable): Indicates if you want to skip model
                 validation. Values can be "All" or "None" (default: None).
+            source_uri (str or PipelineVariable): The URI of the source for the model package
+                (default: None).
 
         Returns:
             If ``sagemaker_session`` is a ``PipelineSession`` instance, returns pipeline step
@@ -456,6 +459,7 @@ class PipelineModel(object):
             sample_payload_url=sample_payload_url,
             task=task,
             skip_model_validation=skip_model_validation,
+            source_uri=source_uri,
         )
 
         self.sagemaker_session.create_model_package_from_containers(**model_pkg_args)

@@ -22,6 +22,7 @@ TRAINING_DEFAULT_TIMEOUT_MINUTES = 40
 TUNING_DEFAULT_TIMEOUT_MINUTES = 40
 TRANSFORM_DEFAULT_TIMEOUT_MINUTES = 40
 AUTO_ML_DEFAULT_TIMEMOUT_MINUTES = 60
+AUTO_ML_V2_DEFAULT_WAITING_TIME_MINUTES = 10
 MODEL_CARD_DEFAULT_TIMEOUT_MINUTES = 10
 
 # these regions have some p2 and p3 instances, but not enough for continuous testing
@@ -137,6 +138,13 @@ NO_AUTO_ML_REGIONS = [
     "eu-west-3",
     "af-south-1",
     "eu-south-1",
+]
+NO_CANVAS_REGIONS = [
+    "ca-central-1",
+    "eu-north-1",
+    "eu-west-2",
+    "sa-east-1",
+    "us-west-1",
 ]
 NO_MODEL_MONITORING_REGIONS = ["me-south-1", "af-south-1", "eu-south-1"]
 DRIFT_CHECK_BASELINES_SUPPORTED_REGIONS = [

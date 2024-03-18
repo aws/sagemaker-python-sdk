@@ -21,7 +21,7 @@ from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.execution_variables import ExecutionVariable
 from sagemaker.workflow.parameters import Parameter
-from sagemaker.workflow.properties import PropertyFile
+from sagemaker.workflow.properties import PropertyFile, Properties
 
 if TYPE_CHECKING:
     from sagemaker.workflow.steps import Step
@@ -172,9 +172,9 @@ class JsonGet(PipelineVariable):
         for join_arg in s3_uri.values:
             if not is_pipeline_variable(join_arg):
                 continue
-            if not isinstance(join_arg, (Parameter, ExecutionVariable)):
+            if not isinstance(join_arg, (Parameter, ExecutionVariable, Properties)):
                 raise ValueError(
                     f"Invalid JsonGet function {self.expr}. "
-                    f"The Join values in JsonGet's s3_uri can only be a primitive object "
-                    f"or Parameter or ExecutionVariable."
+                    f"The Join values in JsonGet's s3_uri can only be a primitive object, "
+                    f"Parameter, ExecutionVariable or Properties."
                 )
