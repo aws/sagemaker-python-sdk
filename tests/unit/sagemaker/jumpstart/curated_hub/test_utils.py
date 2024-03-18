@@ -18,10 +18,7 @@ from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.curated_hub import utils
 from unittest.mock import patch
-from sagemaker.jumpstart.curated_hub.types import (
-    CuratedHubUnsupportedFlag,
-    HubContentSummary
-)
+from sagemaker.jumpstart.curated_hub.types import CuratedHubUnsupportedFlag, HubContentSummary
 from sagemaker.jumpstart.types import HubContentType
 
 
@@ -211,10 +208,7 @@ def test_find_tags_for_jumpstart_model_version(mock_spec_util):
     mock_spec_util.return_value = mock_specs
 
     tags = utils.find_unsupported_flags_for_model_version(
-        model_id="test",
-        version="test",
-        region="test",
-        session=mock_sagemaker_session
+        model_id="test", version="test", region="test", session=mock_sagemaker_session
     )
 
     mock_spec_util.assert_called_once_with(
@@ -230,7 +224,7 @@ def test_find_tags_for_jumpstart_model_version(mock_spec_util):
     assert tags == [
         CuratedHubUnsupportedFlag.DEPRECATED_VERSIONS,
         CuratedHubUnsupportedFlag.INFERENCE_VULNERABLE_VERSIONS,
-        CuratedHubUnsupportedFlag.TRAINING_VULNERABLE_VERSIONS
+        CuratedHubUnsupportedFlag.TRAINING_VULNERABLE_VERSIONS,
     ]
 
 
@@ -244,10 +238,7 @@ def test_find_tags_for_jumpstart_model_version_some_false(mock_spec_util):
     mock_spec_util.return_value = mock_specs
 
     tags = utils.find_unsupported_flags_for_model_version(
-        model_id="test",
-        version="test",
-        region="test",
-        session=mock_sagemaker_session
+        model_id="test", version="test", region="test", session=mock_sagemaker_session
     )
 
     mock_spec_util.assert_called_once_with(
@@ -273,10 +264,7 @@ def test_find_tags_for_jumpstart_model_version_all_false(mock_spec_util):
     mock_spec_util.return_value = mock_specs
 
     tags = utils.find_unsupported_flags_for_model_version(
-        model_id="test",
-        version="test",
-        region="test",
-        session=mock_sagemaker_session
+        model_id="test", version="test", region="test", session=mock_sagemaker_session
     )
 
     mock_spec_util.assert_called_once_with(
@@ -302,19 +290,16 @@ def test_find_all_tags_for_jumpstart_model_filters_non_jumpstart_models(mock_spe
                 "HubContentSearchKeywords": [
                     "@jumpstart-model-id:model-one-pytorch",
                     "@jumpstart-model-version:1.0.3",
-                ]
+                ],
             },
             {
                 "HubContentVersion": "2.0.0",
                 "HubContentSearchKeywords": [
                     "@jumpstart-model-id:model-four-huggingface",
                     "@jumpstart-model-version:2.0.2",
-                ]
+                ],
             },
-            {
-                "HubContentVersion": "3.0.0",
-                "HubContentSearchKeywords": []
-            }
+            {"HubContentVersion": "3.0.0", "HubContentSearchKeywords": []},
         ]
     }
 
@@ -325,22 +310,28 @@ def test_find_all_tags_for_jumpstart_model_filters_non_jumpstart_models(mock_spe
     mock_spec_util.return_value = mock_specs
 
     tags = utils.find_deprecated_vulnerable_flags_for_hub_content(
-        hub_name="test",
-        hub_content_name="test",
-        region="test",
-        session=mock_sagemaker_session
+        hub_name="test", hub_content_name="test", region="test", session=mock_sagemaker_session
     )
 
     mock_sagemaker_session.list_hub_content_versions.assert_called_once_with(
         hub_name="test",
-        hub_content_type='Model',
+        hub_content_type="Model",
         hub_content_name="test",
     )
 
     assert tags == [
-        {"Key": CuratedHubUnsupportedFlag.DEPRECATED_VERSIONS.value, "Value": str(["1.0.0", "2.0.0"])},
-        {"Key": CuratedHubUnsupportedFlag.INFERENCE_VULNERABLE_VERSIONS.value, "Value": str(["1.0.0", "2.0.0"])},
-        {"Key": CuratedHubUnsupportedFlag.TRAINING_VULNERABLE_VERSIONS.value, "Value": str(["1.0.0", "2.0.0"])}
+        {
+            "Key": CuratedHubUnsupportedFlag.DEPRECATED_VERSIONS.value,
+            "Value": str(["1.0.0", "2.0.0"]),
+        },
+        {
+            "Key": CuratedHubUnsupportedFlag.INFERENCE_VULNERABLE_VERSIONS.value,
+            "Value": str(["1.0.0", "2.0.0"]),
+        },
+        {
+            "Key": CuratedHubUnsupportedFlag.TRAINING_VULNERABLE_VERSIONS.value,
+            "Value": str(["1.0.0", "2.0.0"]),
+        },
     ]
 
 
@@ -356,7 +347,7 @@ def test_summary_from_list_api_response(mock_spec_util):
             "HubContentStatus": "test",
             "HubContentDescription": "test_description",
             "HubContentSearchKeywords": ["test"],
-            "CreationTime": "test_creation"
+            "CreationTime": "test_creation",
         }
     )
 
@@ -375,32 +366,33 @@ def test_summary_from_list_api_response(mock_spec_util):
 
 @patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
 def test_summaries_from_list_api_response(mock_spec_util):
-    test = utils.summary_list_from_list_api_response({
-        "HubContentSummaries": [
-            {
-                "HubContentArn": "test",
-                "HubContentName": "test",
-                "HubContentVersion": "test",
-                "HubContentType": "Model",
-                "DocumentSchemaVersion": "test",
-                "HubContentStatus": "test",
-                "HubContentDescription": "test",
-                "HubContentSearchKeywords": ["test", "test_2"],
-                "CreationTime": "test"
-            },
-            {
-                "HubContentArn": "test_2",
-                "HubContentName": "test_2",
-                "HubContentVersion": "test_2",
-                "HubContentType": "Model",
-                "DocumentSchemaVersion": "test_2",
-                "HubContentStatus": "test_2",
-                "HubContentDescription": "test_2",
-                "HubContentSearchKeywords": ["test_2", "test_2_2"],
-                "CreationTime": "test_2"
-            }
-        ]
-    }
+    test = utils.summary_list_from_list_api_response(
+        {
+            "HubContentSummaries": [
+                {
+                    "HubContentArn": "test",
+                    "HubContentName": "test",
+                    "HubContentVersion": "test",
+                    "HubContentType": "Model",
+                    "DocumentSchemaVersion": "test",
+                    "HubContentStatus": "test",
+                    "HubContentDescription": "test",
+                    "HubContentSearchKeywords": ["test", "test_2"],
+                    "CreationTime": "test",
+                },
+                {
+                    "HubContentArn": "test_2",
+                    "HubContentName": "test_2",
+                    "HubContentVersion": "test_2",
+                    "HubContentType": "Model",
+                    "DocumentSchemaVersion": "test_2",
+                    "HubContentStatus": "test_2",
+                    "HubContentDescription": "test_2",
+                    "HubContentSearchKeywords": ["test_2", "test_2_2"],
+                    "CreationTime": "test_2",
+                },
+            ]
+        }
     )
 
     assert test == [
@@ -425,5 +417,5 @@ def test_summaries_from_list_api_response(mock_spec_util):
             hub_content_status="test_2",
             creation_time="test_2",
             hub_content_search_keywords=["test_2", "test_2_2"],
-        )
+        ),
     ]

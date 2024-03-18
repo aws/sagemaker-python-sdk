@@ -49,7 +49,9 @@ class HubContentSummary:
 
 
 def summary_from_list_api_response(hub_content_summary: Dict[str, Any]) -> HubContentSummary:
-    """Creates a single HubContentSummary from a HubContentSummary from the HubService List APIs."""
+    """Creates a single HubContentSummary.
+    
+    This is based on the ListHubContent or ListHubContentVersions API response."""
     return HubContentSummary(
         hub_content_arn=hub_content_summary.get("HubContentArn"),
         hub_content_name=hub_content_summary.get("HubContentName"),
@@ -67,7 +69,9 @@ def summary_from_list_api_response(hub_content_summary: Dict[str, Any]) -> HubCo
 def summary_list_from_list_api_response(
     list_hub_contents_response: Dict[str, Any]
 ) -> List[HubContentSummary]:
-    """Creates a HubContentSummary list from either the ListHubContent or ListHubContentVersions API response."""
+    """Creates a HubContentSummary list.
+    
+    This is based on the ListHubContent or ListHubContentVersions API response."""
     return list(
         map(
             summary_from_list_api_response,
@@ -78,7 +82,7 @@ def summary_list_from_list_api_response(
 
 @dataclass
 class S3ObjectLocation:
-    """Helper class for S3 object references"""
+    """Helper class for S3 object references."""
 
     bucket: str
     key: str

@@ -21,7 +21,7 @@ from sagemaker.jumpstart.curated_hub.curated_hub import CuratedHub
 from sagemaker.jumpstart.curated_hub.types import (
     JumpStartModelInfo,
     S3ObjectLocation,
-    HubContentSummary
+    HubContentSummary,
 )
 from sagemaker.jumpstart.types import JumpStartModelSpecs
 from tests.unit.sagemaker.jumpstart.constants import BASE_SPEC
@@ -209,7 +209,7 @@ def test_sync_filters_models_that_exist_in_hub(
             {
                 "HubContentName": "mock-model-three-nonsense",
                 "HubContentVersion": "1.0.2",
-                "HubContentSearchKeywords": []
+                "HubContentSearchKeywords": [],
             },
             {
                 "HubContentName": "mock-model-four-huggingface",
@@ -391,7 +391,7 @@ def test_get_jumpstart_models_in_hub(mock_list_models, sagemaker_session):
             hub_content_type=None,
             document_schema_version=None,
             hub_content_status=None,
-            creation_time=None
+            creation_time=None,
         ),
         HubContentSummary(
             hub_content_name="mock-model-four-huggingface",
@@ -404,7 +404,7 @@ def test_get_jumpstart_models_in_hub(mock_list_models, sagemaker_session):
             hub_content_type=None,
             document_schema_version=None,
             hub_content_status=None,
-            creation_time=None
+            creation_time=None,
         ),
     ]
 
@@ -443,7 +443,7 @@ def test_determine_models_to_sync(sagemaker_session):
             hub_content_type=None,
             document_schema_version=None,
             hub_content_status=None,
-            creation_time=None
+            creation_time=None,
         ),
         "mock-model-four-huggingface": HubContentSummary(
             hub_content_name="mock-model-four-huggingface",
@@ -456,8 +456,8 @@ def test_determine_models_to_sync(sagemaker_session):
             hub_content_type=None,
             document_schema_version=None,
             hub_content_status=None,
-            creation_time=None
-        )
+            creation_time=None,
+        ),
     }
     model_one = JumpStartModelInfo("mock-model-one-huggingface", "1.2.3")
     model_two = JumpStartModelInfo("mock-model-two-pytorch", "1.0.2")
@@ -477,7 +477,7 @@ def test_determine_models_to_sync(sagemaker_session):
             hub_content_type=None,
             document_schema_version=None,
             hub_content_status=None,
-            creation_time=None
+            creation_time=None,
         ),
         "mock-model-four-huggingface": HubContentSummary(
             hub_content_name="mock-model-four-huggingface",
@@ -490,8 +490,8 @@ def test_determine_models_to_sync(sagemaker_session):
             hub_content_type=None,
             document_schema_version=None,
             hub_content_status=None,
-            creation_time=None
-        )
+            creation_time=None,
+        ),
     }
 
     # No model_one, newer model_two
@@ -510,7 +510,7 @@ def test_determine_models_to_sync(sagemaker_session):
             hub_content_type=None,
             document_schema_version=None,
             hub_content_status=None,
-            creation_time=None
+            creation_time=None,
         ),
         "mock-model-two-pytorch": HubContentSummary(
             hub_content_name="mock-model-two-pytorch",
@@ -523,8 +523,8 @@ def test_determine_models_to_sync(sagemaker_session):
             hub_content_type=None,
             document_schema_version=None,
             hub_content_status=None,
-            creation_time=None
-        )
+            creation_time=None,
+        ),
     }
     # Same model_one, same model_two
     res = hub._determine_models_to_sync([model_one, model_two], js_model_map)
@@ -542,7 +542,7 @@ def test_determine_models_to_sync(sagemaker_session):
             hub_content_type=None,
             document_schema_version=None,
             hub_content_status=None,
-            creation_time=None
+            creation_time=None,
         ),
         "mock-model-two-pytorch": HubContentSummary(
             hub_content_name="mock-model-two-pytorch",
@@ -555,8 +555,8 @@ def test_determine_models_to_sync(sagemaker_session):
             hub_content_type=None,
             document_schema_version=None,
             hub_content_status=None,
-            creation_time=None
-        )
+            creation_time=None,
+        ),
     }
     # Old model_one, same model_two
     res = hub._determine_models_to_sync([model_one, model_two], js_model_map)

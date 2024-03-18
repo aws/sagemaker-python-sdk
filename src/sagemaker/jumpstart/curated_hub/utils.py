@@ -120,7 +120,11 @@ def generate_hub_arn_for_init_kwargs(
         if match:
             hub_arn = hub_name
         else:
-            hub_arn = construct_hub_arn_from_name(hub_name=hub_name, region=region, session=session)
+            hub_arn = construct_hub_arn_from_name(
+                hub_name=hub_name,
+                region=region,
+                session=session
+            )
     return hub_arn
 
 
@@ -184,7 +188,8 @@ def find_deprecated_vulnerable_flags_for_hub_content(
     Since tags are the same for all versions of a HubContent,
     these tags will map from the key to a list of versions impacted.
     For example, if certain public hub model versions are deprecated,
-    this utility will return a `deprecated` tag mapped to the deprecated versions for the HubContent.
+    this utility will return a `deprecated` tag
+    mapped to the deprecated versions for the HubContent.
     """
     list_versions_response = session.list_hub_content_versions(
         hub_name=hub_name,
@@ -244,7 +249,8 @@ def find_unsupported_flags_for_model_version(
 ) -> List[CuratedHubUnsupportedFlag]:
     """Finds relevant CuratedHubTags for a version of a JumpStart public hub model.
 
-    For example, if the public hub model is deprecated, this utility will return a `deprecated` tag.
+    For example, if the public hub model is deprecated,
+    this utility will return a `deprecated` tag.
     Since tags are the same for all versions of a HubContent,
     these tags will map from the key to a list of versions impacted.
     """
