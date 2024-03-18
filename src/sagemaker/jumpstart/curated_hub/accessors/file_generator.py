@@ -21,7 +21,9 @@ from sagemaker.jumpstart.curated_hub.types import (
     HubContentDependencyType,
     S3ObjectLocation,
 )
-from sagemaker.jumpstart.curated_hub.accessors.public_model_data import PublicModelDataAccessor
+from sagemaker.jumpstart.curated_hub.accessors.public_model_data import (
+    PublicModelDataAccessor,
+)
 from sagemaker.jumpstart.types import JumpStartModelSpecs
 
 
@@ -64,7 +66,9 @@ def generate_file_infos_from_model_specs(
     )
     files = []
     for dependency in HubContentDependencyType:
-        location: S3ObjectLocation = public_model_data_accessor.get_s3_reference(dependency)
+        location: S3ObjectLocation = public_model_data_accessor.get_s3_reference(
+            dependency
+        )
         location_type = "prefix" if location.key.endswith("/") else "object"
 
         if location_type == "prefix":
@@ -89,5 +93,7 @@ def generate_file_infos_from_model_specs(
             response = s3_client.head_object(**parameters)
             size = response.get("ContentLength")
             last_updated = response.get("LastModified")
-            files.append(FileInfo(location.bucket, location.key, size, last_updated, dependency))
+            files.append(
+                FileInfo(location.bucket, location.key, size, last_updated, dependency)
+            )
     return files

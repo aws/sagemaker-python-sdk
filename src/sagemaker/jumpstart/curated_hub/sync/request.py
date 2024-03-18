@@ -31,7 +31,9 @@ class HubSyncRequest:
     destination: S3ObjectLocation
 
     def __init__(
-        self, files_to_copy: Generator[FileInfo, FileInfo, FileInfo], destination: S3ObjectLocation
+        self,
+        files_to_copy: Generator[FileInfo, FileInfo, FileInfo],
+        destination: S3ObjectLocation,
     ):
         """Contains information required to sync data into a Hub.
 
@@ -70,7 +72,9 @@ class HubSyncRequestFactory:
         # Need the file lists to be sorted for comparisons below
         self.src_files: List[FileInfo] = sorted(src_files, key=lambda x: x.location.key)
         formatted_dest_files = [self._format_dest_file(file) for file in dest_files]
-        self.dest_files: List[FileInfo] = sorted(formatted_dest_files, key=lambda x: x.location.key)
+        self.dest_files: List[FileInfo] = sorted(
+            formatted_dest_files, key=lambda x: x.location.key
+        )
 
     def _format_dest_file(self, file: FileInfo) -> FileInfo:
         """Strips HubContent data prefix from dest file name"""
@@ -143,6 +147,8 @@ class HubSyncRequestFactory:
         """Determines if two files have the same file name."""
         return src_filename == dest_filename
 
-    def _is_alphabetically_earlier_file_name(self, src_filename: str, dest_filename: str) -> bool:
+    def _is_alphabetically_earlier_file_name(
+        self, src_filename: str, dest_filename: str
+    ) -> bool:
         """Determines if one filename is alphabetically earlier than another."""
         return src_filename < dest_filename

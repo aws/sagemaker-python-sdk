@@ -17,27 +17,36 @@ from enum import Enum
 from dataclasses import dataclass
 from datetime import datetime
 
-from sagemaker.jumpstart.types import JumpStartDataHolderType, JumpStartModelSpecs, HubContentType
+from sagemaker.jumpstart.types import (
+    JumpStartDataHolderType,
+    JumpStartModelSpecs,
+    HubContentType,
+)
+
 
 class CuratedHubUnsupportedFlag(str, Enum):
     """Enum class for Curated Hub tag names."""
+
     DEPRECATED_VERSIONS = "deprecated_versions"
     TRAINING_VULNERABLE_VERSIONS = "training_vulnerable_versions"
     INFERENCE_VULNERABLE_VERSIONS = "inference_vulnerable_versions"
 
+
 @dataclass
 class HubContentSummary:
-  """Dataclass to store HubContentSummary from List APIs."""
-  hub_content_arn: str
-  hub_content_name: str
-  hub_content_version: str
-  hub_content_type: HubContentType
-  document_schema_version: str
-  hub_content_status: str
-  creation_time: str
-  hub_content_display_name: str = None
-  hub_content_description: str = None
-  hub_content_search_keywords: List[str] = None
+    """Dataclass to store HubContentSummary from List APIs."""
+
+    hub_content_arn: str
+    hub_content_name: str
+    hub_content_version: str
+    hub_content_type: HubContentType
+    document_schema_version: str
+    hub_content_status: str
+    creation_time: str
+    hub_content_display_name: str = None
+    hub_content_description: str = None
+    hub_content_search_keywords: List[str] = None
+
 
 @dataclass
 class S3ObjectLocation:
@@ -56,6 +65,7 @@ class S3ObjectLocation:
     def get_uri(self) -> str:
         """Returns the s3 URI"""
         return f"s3://{self.bucket}/{self.key}"
+
 
 @dataclass
 class JumpStartModelInfo:
