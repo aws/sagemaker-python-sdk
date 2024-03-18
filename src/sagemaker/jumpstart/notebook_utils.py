@@ -261,6 +261,16 @@ def list_jumpstart_scripts(  # pylint: disable=redefined-builtin
             break
     return sorted(list(scripts))
 
+def _is_valid_version(version: str) -> bool:
+    """
+    Checks if the version is convertable to Version class
+    """
+    try:
+        Version(version)
+        return True
+    except Exception:
+        return False
+
 
 def list_jumpstart_models(  # pylint: disable=redefined-builtin
     filter: Union[Operator, str] = Constant(BooleanValues.TRUE),
@@ -304,7 +314,8 @@ def list_jumpstart_models(  # pylint: disable=redefined-builtin
     ):
         if model_id not in model_id_version_dict:
             model_id_version_dict[model_id] = list()
-        model_id_version_dict[model_id].append(Version(version))
+        model_version = Version(version) if _is_valid_version(version) else version
+        model_id_version_dict[model_id].append(model_version)
 
     if not list_versions:
         return sorted(list(model_id_version_dict.keys()))

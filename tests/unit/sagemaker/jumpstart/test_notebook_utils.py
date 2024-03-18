@@ -626,6 +626,7 @@ class ListJumpStartModels(TestCase):
             "ai21-paraphrase",
             "ai21-summarization",
             "lighton-mini-instruct40b",
+            "nc-soft-model-1",
         ]
 
         all_open_weight_model_ids = [
