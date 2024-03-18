@@ -13,13 +13,12 @@
 """This module contains utilities related to SageMaker JumpStart CuratedHub."""
 from __future__ import absolute_import
 import re
-from typing import Optional
+from typing import Optional, Dict, List, Any
 from sagemaker.jumpstart.curated_hub.types import S3ObjectLocation
 from sagemaker.jumpstart.constants import JUMPSTART_LOGGER
 from sagemaker.s3_utils import parse_s3_url
 from sagemaker.session import Session
 from sagemaker.utils import aws_partition
-from typing import Optional, Dict, List, Any
 from sagemaker.jumpstart.types import HubContentType, HubArnExtractedInfo
 from sagemaker.jumpstart.curated_hub.types import (
     CuratedHubUnsupportedFlag,
@@ -202,6 +201,18 @@ def find_unsupported_flags_for_hub_content_versions(
     )
 
     unsupported_hub_content_versions_map: Dict[str, List[str]] = {}
+    version_to_tag_map = _get_tags_for_all_versions(hub_content_versions, region, session)
+    unsupported_hub_content_versions_map = _convert_to_tag_to_versions_map(version_to_tag_map)
+
+    return format_tags(unsupported_hub_content_versions_map)
+
+
+def _get_tags_for_all_versions(
+    hub_content_versions: List[HubContentSummary],
+    region: str,
+    session: Session,
+) -> Dict[str, List[CuratedHubUnsupportedFlag]]:
+    version_to_tags_map: Dict[str, List[CuratedHubUnsupportedFlag]] = {}
     for hub_content_version_summary in hub_content_versions:
         jumpstart_model = get_jumpstart_model_and_version(hub_content_version_summary)
         if jumpstart_model is None:
@@ -215,14 +226,22 @@ def find_unsupported_flags_for_hub_content_versions(
             session=session,
         )
 
-        for tag_name in tag_names_to_add:
-            if tag_name not in unsupported_hub_content_versions_map:
-                unsupported_hub_content_versions_map[tag_name.value] = []
-            unsupported_hub_content_versions_map[tag_name.value].append(
-                hub_content_version_summary.hub_content_version
-            )
+        version_to_tags_map[hub_content_version_summary.hub_content_version] = tag_names_to_add
+    return version_to_tags_map
 
-    return format_tags(unsupported_hub_content_versions_map)
+
+def _convert_to_tag_to_versions_map(
+    version_to_tags_map: Dict[str, List[CuratedHubUnsupportedFlag]]
+) -> Dict[CuratedHubUnsupportedFlag, List[str]]:
+    unsupported_hub_content_versions_map: Dict[CuratedHubUnsupportedFlag, List[str]] = {}
+    for version, tags in version_to_tags_map.items():
+        for tag in tags:
+            if tag not in unsupported_hub_content_versions_map:
+                unsupported_hub_content_versions_map[tag] = []
+            # Versions for a HubContent are unique
+            unsupported_hub_content_versions_map[tag].append(version)
+
+    return unsupported_hub_content_versions_map
 
 
 def find_unsupported_flags_for_model_version(
@@ -258,6 +277,7 @@ def find_unsupported_flags_for_model_version(
 def get_jumpstart_model_and_version(
     hub_content_summary: HubContentSummary,
 ) -> Optional[JumpStartModelInfo]:
+    """Retrieves the JumpStart model id and version from the JumpStart tag."""
     jumpstart_model_id_tag = next(
         (
             tag
@@ -287,6 +307,7 @@ def get_jumpstart_model_and_version(
 
 
 def summary_from_list_api_response(hub_content_summary: Dict[str, Any]) -> HubContentSummary:
+    """Creates a single HubContentSummary from a HubContentSummary from the HubService List APIs."""
     return HubContentSummary(
         hub_content_arn=hub_content_summary.get("HubContentArn"),
         hub_content_name=hub_content_summary.get("HubContentName"),
@@ -304,6 +325,7 @@ def summary_from_list_api_response(hub_content_summary: Dict[str, Any]) -> HubCo
 def summary_list_from_list_api_response(
     list_hub_contents_response: Dict[str, Any]
 ) -> List[HubContentSummary]:
+    """Creates a HubContentSummary list from either the ListHubContent or ListHubContentVersions API response."""
     return list(
         map(
             summary_from_list_api_response,

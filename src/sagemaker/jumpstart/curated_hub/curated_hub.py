@@ -219,6 +219,7 @@ class CuratedHub:
         return {"model_id": model["model_id"], "version": model_specs.version}
 
     def _get_jumpstart_models_in_hub(self) -> List[HubContentSummary]:
+        """Retrieves all JumpStart models in a private Hub."""
         hub_models = summary_list_from_list_api_response(self.list_models())
         return [model for model in hub_models if get_jumpstart_model_and_version(model) is not None]
 
