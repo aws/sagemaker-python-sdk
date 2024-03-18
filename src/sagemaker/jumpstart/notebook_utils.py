@@ -267,7 +267,7 @@ def _is_valid_version(version: str) -> bool:
     try:
         Version(version)
         return True
-    except Exception:
+    except Exception:  # pylint: disable=broad-except
         return False
 
 
