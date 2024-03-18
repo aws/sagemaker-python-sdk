@@ -140,6 +140,7 @@ from sagemaker.utils import (
 )
 from sagemaker import exceptions
 from sagemaker.session_settings import SessionSettings
+from sagemaker.utils import can_model_package_source_uri_autopopulate
 
 # Setting LOGGER for backward compatibility, in case users import it...
 logger = LOGGER = logging.getLogger("sagemaker")
@@ -3969,14 +3970,19 @@ class Session(object):  # pylint: disable=too-many-public-methods
             name (str): ModelPackage name
             description (str): Model Package description
             algorithm_arn (str): arn or name of the algorithm used for training.
-            model_data (str): s3 URI to the model artifacts produced by training
+            model_data (str or dict[str, Any]): s3 URI or a dictionary representing a
+            ``ModelDataSource`` to the model artifacts produced by training
         """
+        sourceAlgorithm = {"AlgorithmName": algorithm_arn}
+        if isinstance(model_data, dict):
+            sourceAlgorithm["ModelDataSource"] = model_data
+        else:
+            sourceAlgorithm["ModelDataUrl"] = model_data
+
         request = {
             "ModelPackageName": name,
             "ModelPackageDescription": description,
-            "SourceAlgorithmSpecification": {
-                "SourceAlgorithms": [{"AlgorithmName": algorithm_arn, "ModelDataUrl": model_data}]
-            },
+            "SourceAlgorithmSpecification": {"SourceAlgorithms": [sourceAlgorithm]},
         }
         try:
             logger.info("Creating model package with name: %s", name)
@@ -4011,6 +4017,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         sample_payload_url=None,
         task=None,
         skip_model_validation="None",
+        source_uri=None,
     ):
         """Get request dictionary for CreateModelPackage API.
 
@@ -4047,6 +4054,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 "CLASSIFICATION", "REGRESSION", "OTHER" (default: None).
             skip_model_validation (str): Indicates if you want to skip model validation.
                 Values can be "All" or "None" (default: None).
+            source_uri (str): The URI of the source for the model package (default: None).
         """
         if containers:
             # Containers are provided. Now we can merge missing entries from config.
@@ -4103,6 +4111,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             sample_payload_url=sample_payload_url,
             task=task,
             skip_model_validation=skip_model_validation,
+            source_uri=source_uri,
         )
 
         def submit(request):
@@ -4114,6 +4123,26 @@ class Session(object):  # pylint: disable=too-many-public-methods
                         ModelPackageGroupName=request["ModelPackageGroupName"]
                     )
                 )
+            if "SourceUri" in request and request["SourceUri"] is not None:
+                # Remove inference spec from request if the
+                # given source uri can lead to auto-population of it
+                if can_model_package_source_uri_autopopulate(request["SourceUri"]):
+                    if "InferenceSpecification" in request:
+                        del request["InferenceSpecification"]
+                    return self.sagemaker_client.create_model_package(**request)
+                # If source uri can't autopopulate,
+                # first create model package with just the inference spec
+                # and then update model package with the source uri.
+                # Done this way because passing source uri and inference spec together
+                # in create/update model package is not allowed in the base sdk.
+                request_source_uri = request["SourceUri"]
+                del request["SourceUri"]
+                model_package = self.sagemaker_client.create_model_package(**request)
+                update_source_uri_args = {
+                    "ModelPackageArn": model_package.get("ModelPackageArn"),
+                    "SourceUri": request_source_uri,
+                }
+                return self.sagemaker_client.update_model_package(**update_source_uri_args)
             return self.sagemaker_client.create_model_package(**request)
 
         return self._intercept_create_request(
@@ -6669,6 +6698,7 @@ def get_model_package_args(
     sample_payload_url=None,
     task=None,
     skip_model_validation=None,
+    source_uri=None,
 ):
     """Get arguments for create_model_package method.
 
@@ -6707,6 +6737,7 @@ def get_model_package_args(
             "CLASSIFICATION", "REGRESSION", "OTHER" (default: None).
         skip_model_validation (str): Indicates if you want to skip model validation.
             Values can be "All" or "None" (default: None).
+        source_uri (str): The URI of the source for the model package (default: None).
 
     Returns:
         dict: A dictionary of method argument names and values.
@@ -6761,6 +6792,8 @@ def get_model_package_args(
         model_package_args["task"] = task
     if skip_model_validation is not None:
         model_package_args["skip_model_validation"] = skip_model_validation
+    if source_uri is not None:
+        model_package_args["source_uri"] = source_uri
     return model_package_args
 
 
@@ -6785,6 +6818,7 @@ def get_create_model_package_request(
     sample_payload_url=None,
     task=None,
     skip_model_validation="None",
+    source_uri=None,
 ):
     """Get request dictionary for CreateModelPackage API.
 
@@ -6821,11 +6855,31 @@ def get_create_model_package_request(
             "CLASSIFICATION", "REGRESSION", "OTHER" (default: None).
         skip_model_validation (str): Indicates if you want to skip model validation.
             Values can be "All" or "None" (default: None).
+        source_uri (str): The URI of the source for the model package (default: None).
     """
 
     if all([model_package_name, model_package_group_name]):
         raise ValueError(
             "model_package_name and model_package_group_name cannot be present at the " "same time."
+        )
+    if all([model_package_name, source_uri]):
+        raise ValueError(
+            "Un-versioned SageMaker Model Package currently cannot be " "created with source_uri."
+        )
+    if (containers is not None) and all(
+        [
+            model_package_name,
+            any(
+                [
+                    (("ModelDataSource" in c) and (c["ModelDataSource"] is not None))
+                    for c in containers
+                ]
+            ),
+        ]
+    ):
+        raise ValueError(
+            "Un-versioned SageMaker Model Package currently cannot be "
+            "created with ModelDataSource."
         )
     request_dict = {}
     if model_package_name is not None:
@@ -6852,6 +6906,8 @@ def get_create_model_package_request(
         request_dict["SamplePayloadUrl"] = sample_payload_url
     if task is not None:
         request_dict["Task"] = task
+    if source_uri is not None:
+        request_dict["SourceUri"] = source_uri
     if containers is not None:
         inference_specification = {
             "Containers": containers,
@@ -6897,6 +6953,65 @@ def get_create_model_package_request(
     request_dict["CertifyForMarketplace"] = marketplace_cert
     request_dict["ModelApprovalStatus"] = approval_status
     request_dict["SkipModelValidation"] = skip_model_validation
+    return request_dict
+
+
+def get_update_model_package_inference_args(
+    model_package_arn,
+    containers=None,
+    content_types=None,
+    response_types=None,
+    inference_instances=None,
+    transform_instances=None,
+):
+    """Get request dictionary for UpdateModelPackage API for inference specification.
+
+    Args:
+        model_package_arn (str): Arn for the model package.
+        containers (dict): The Amazon ECR registry path of the Docker image
+            that contains the inference code.
+        content_types (list[str]): The supported MIME types
+            for the input data.
+        response_types (list[str]): The supported MIME types
+            for the output data.
+        inference_instances (list[str]): A list of the instance
+            types that are used to generate inferences in real-time (default: None).
+        transform_instances (list[str]): A list of the instance
+            types on which a transformation job can be run or on which an endpoint can be
+            deployed (default: None).
+    """
+
+    request_dict = {}
+    if containers is not None:
+        inference_specification = {
+            "Containers": containers,
+        }
+        if content_types is not None:
+            inference_specification.update(
+                {
+                    "SupportedContentTypes": content_types,
+                }
+            )
+        if response_types is not None:
+            inference_specification.update(
+                {
+                    "SupportedResponseMIMETypes": response_types,
+                }
+            )
+        if inference_instances is not None:
+            inference_specification.update(
+                {
+                    "SupportedRealtimeInferenceInstanceTypes": inference_instances,
+                }
+            )
+        if transform_instances is not None:
+            inference_specification.update(
+                {
+                    "SupportedTransformInstanceTypes": transform_instances,
+                }
+            )
+        request_dict["InferenceSpecification"] = inference_specification
+        request_dict.update({"ModelPackageArn": model_package_arn})
     return request_dict
 
 

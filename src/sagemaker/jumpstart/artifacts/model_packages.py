@@ -15,13 +15,14 @@ from __future__ import absolute_import
 from typing import Optional
 from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-    JUMPSTART_DEFAULT_REGION_NAME,
 )
 from sagemaker.jumpstart.utils import (
+    get_region_fallback,
     verify_model_region_and_return_specs,
 )
 from sagemaker.jumpstart.enums import (
     JumpStartScriptScope,
+    JumpStartModelType,
 )
 from sagemaker.session import Session
 
@@ -35,6 +36,7 @@ def _retrieve_model_package_arn(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> Optional[str]:
     """Retrieves associated model pacakge arn for the model.
 
@@ -63,8 +65,9 @@ def _retrieve_model_package_arn(
         str: the model package arn to use for the model or None.
     """
 
-    if region is None:
-        region = JUMPSTART_DEFAULT_REGION_NAME
+    region = region or get_region_fallback(
+        sagemaker_session=sagemaker_session,
+    )
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
@@ -74,6 +77,7 @@ def _retrieve_model_package_arn(
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
+        model_type=model_type,
     )
 
     if scope == JumpStartScriptScope.INFERENCE:
@@ -146,8 +150,9 @@ def _retrieve_model_package_model_artifact_s3_uri(
 
     if scope == JumpStartScriptScope.TRAINING:
 
-        if region is None:
-            region = JUMPSTART_DEFAULT_REGION_NAME
+        region = region or get_region_fallback(
+            sagemaker_session=sagemaker_session,
+        )
 
         model_specs = verify_model_region_and_return_specs(
             model_id=model_id,

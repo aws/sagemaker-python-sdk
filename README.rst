@@ -22,6 +22,10 @@ SageMaker Python SDK
    :target: https://sagemaker.readthedocs.io/en/stable/
    :alt: Documentation Status
 
+.. image:: https://github.com/benieric/sagemaker-python-sdk/actions/workflows/codebuild-ci-health.yml/badge.svg
+    :target: https://github.com/benieric/sagemaker-python-sdk/actions/workflows/codebuild-ci-health.yml
+    :alt: CI Health
+
 SageMaker Python SDK is an open source library for training and deploying machine learning models on Amazon SageMaker.
 
 With the SDK, you can train and deploy models using popular deep learning frameworks **Apache MXNet** and **TensorFlow**.
@@ -63,11 +67,10 @@ Table of Contents
 Installing the SageMaker Python SDK
 -----------------------------------
 
-The SageMaker Python SDK is built to PyPI and can be installed with pip as follows:
-
+The SageMaker Python SDK is built to PyPI and the latest version of the SageMaker Python SDK can be installed with pip as follows
 ::
 
-    pip install sagemaker
+    pip install sagemaker==<Latest version from pyPI from https://pypi.org/project/sagemaker/>
 
 You can install from source by cloning this repository and running a pip install command in the root directory of the repository:
 

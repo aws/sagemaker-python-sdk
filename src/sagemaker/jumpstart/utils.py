@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 import logging
 import os
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Set, Optional, Tuple, Union
 from urllib.parse import urlparse
 import boto3
 from packaging.version import Version
@@ -26,6 +26,7 @@ from sagemaker.config.config_schema import (
     TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
     TRAINING_JOB_ROLE_ARN_PATH,
 )
+
 from sagemaker.jumpstart import constants, enums
 from sagemaker.jumpstart import accessors
 from sagemaker.s3 import parse_s3_url
@@ -314,6 +315,7 @@ def add_single_jumpstart_tag(
                 (
                     tag_key_in_array(enums.JumpStartTag.MODEL_ID, curr_tags)
                     or tag_key_in_array(enums.JumpStartTag.MODEL_VERSION, curr_tags)
+                    or tag_key_in_array(enums.JumpStartTag.MODEL_TYPE, curr_tags)
                 )
                 if is_uri
                 else False
@@ -348,6 +350,7 @@ def add_jumpstart_model_id_version_tags(
     tags: Optional[List[TagsDict]],
     model_id: str,
     model_version: str,
+    model_type: Optional[enums.JumpStartModelType] = None,
 ) -> List[TagsDict]:
     """Add custom model ID and version tags to JumpStart related resources."""
     if model_id is None or model_version is None:
@@ -364,6 +367,13 @@ def add_jumpstart_model_id_version_tags(
         tags,
         is_uri=False,
     )
+    if model_type == enums.JumpStartModelType.PROPRIETARY:
+        tags = add_single_jumpstart_tag(
+            enums.JumpStartModelType.PROPRIETARY.value,
+            enums.JumpStartTag.MODEL_TYPE,
+            tags,
+            is_uri=False,
+        )
     return tags
 
 
@@ -466,21 +476,25 @@ def update_inference_tags_with_jumpstart_training_tags(
     return inference_tags
 
 
+def get_eula_message(model_specs: JumpStartModelSpecs, region: str) -> str:
+    """Returns EULA message to display if one is available, else empty string."""
+    if model_specs.hosting_eula_key is None:
+        return ""
+    return (
+        f"Model '{model_specs.model_id}' requires accepting end-user license agreement (EULA). "
+        f"See https://{get_jumpstart_content_bucket(region=region)}.s3.{region}."
+        f"amazonaws.com{'.cn' if region.startswith('cn-') else ''}"
+        f"/{model_specs.hosting_eula_key} for terms of use."
+    )
+
+
 def emit_logs_based_on_model_specs(
     model_specs: JumpStartModelSpecs, region: str, s3_client: boto3.client
 ) -> None:
     """Emits logs based on model specs and region."""
 
     if model_specs.hosting_eula_key:
-        constants.JUMPSTART_LOGGER.info(
-            "Model '%s' requires accepting end-user license agreement (EULA). "
-            "See https://%s.s3.%s.amazonaws.com%s/%s for terms of use.",
-            model_specs.model_id,
-            get_jumpstart_content_bucket(region=region),
-            region,
-            ".cn" if region.startswith("cn-") else "",
-            model_specs.hosting_eula_key,
-        )
+        constants.JUMPSTART_LOGGER.info(get_eula_message(model_specs, region))
 
     full_version: str = model_specs.version
 
@@ -526,10 +540,11 @@ def verify_model_region_and_return_specs(
     model_id: Optional[str],
     version: Optional[str],
     scope: Optional[str],
-    region: str,
+    region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    model_type: enums.JumpStartModelType = enums.JumpStartModelType.OPEN_WEIGHTS,
 ) -> JumpStartModelSpecs:
     """Verifies that an acceptable model_id, version, scope, and region combination is provided.
 
@@ -561,6 +576,10 @@ def verify_model_region_and_return_specs(
         DeprecatedJumpStartModelError: If the version of the model is deprecated.
     """
 
+    region = region or get_region_fallback(
+        sagemaker_session=sagemaker_session,
+    )
+
     if scope is None:
         raise ValueError(
             "Must specify `model_scope` argument to retrieve model "
@@ -578,6 +597,7 @@ def verify_model_region_and_return_specs(
         model_id=model_id,
         version=version,
         s3_client=sagemaker_session.s3_client,
+        model_type=model_type,
     )
 
     if (
@@ -732,36 +752,52 @@ def resolve_estimator_sagemaker_config_field(
     return field_val
 
 
-def is_valid_model_id(
+def validate_model_id_and_get_type(
     model_id: Optional[str],
     region: Optional[str] = None,
     model_version: Optional[str] = None,
     script: enums.JumpStartScriptScope = enums.JumpStartScriptScope.INFERENCE,
     sagemaker_session: Optional[Session] = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-) -> bool:
-    """Returns True if the model ID is supported for the given script.
+) -> Optional[enums.JumpStartModelType]:
+    """Returns model type if the model ID is supported for the given script.
 
     Raises:
         ValueError: If the script is not supported by JumpStart.
     """
+
+    def _get_model_type(
+        model_id: str,
+        open_weights_model_ids: Set[str],
+        proprietary_model_ids: Set[str],
+        script: enums.JumpStartScriptScope,
+    ) -> Optional[enums.JumpStartModelType]:
+        if model_id in open_weights_model_ids:
+            return enums.JumpStartModelType.OPEN_WEIGHTS
+        if model_id in proprietary_model_ids:
+            if script == enums.JumpStartScriptScope.INFERENCE:
+                return enums.JumpStartModelType.PROPRIETARY
+            raise ValueError(f"Unsupported script for Marketplace models: {script}")
+        return None
+
     if model_id in {None, ""}:
-        return False
+        return None
     if not isinstance(model_id, str):
-        return False
+        return None
 
     s3_client = sagemaker_session.s3_client if sagemaker_session else None
     region = region or constants.JUMPSTART_DEFAULT_REGION_NAME
     model_version = model_version or "*"
-
     models_manifest_list = accessors.JumpStartModelsAccessor._get_manifest(
-        region=region, s3_client=s3_client
+        region=region, s3_client=s3_client, model_type=enums.JumpStartModelType.OPEN_WEIGHTS
     )
-    model_id_set = {model.model_id for model in models_manifest_list}
-    if script == enums.JumpStartScriptScope.INFERENCE:
-        return model_id in model_id_set
-    if script == enums.JumpStartScriptScope.TRAINING:
-        return model_id in model_id_set
-    raise ValueError(f"Unsupported script: {script}")
+    open_weight_model_id_set = {model.model_id for model in models_manifest_list}
+
+    proprietary_manifest_list = accessors.JumpStartModelsAccessor._get_manifest(
+        region=region, s3_client=s3_client, model_type=enums.JumpStartModelType.PROPRIETARY
+    )
+
+    proprietary_model_id_set = {model.model_id for model in proprietary_manifest_list}
+    return _get_model_type(model_id, open_weight_model_id_set, proprietary_model_id_set, script)
 
 
 def get_jumpstart_model_id_version_from_resource_arn(
@@ -810,3 +846,42 @@ def get_jumpstart_model_id_version_from_resource_arn(
             model_version = model_version_from_tag
 
     return model_id, model_version
+
+
+def get_region_fallback(
+    s3_bucket_name: Optional[str] = None,
+    s3_client: Optional[boto3.client] = None,
+    sagemaker_session: Optional[Session] = None,
+) -> str:
+    """Returns region to use for JumpStart functionality implicitly via session objects."""
+    regions_in_s3_bucket_name: Set[str] = {
+        region
+        for region in constants.JUMPSTART_REGION_NAME_SET
+        if s3_bucket_name is not None
+        if region in s3_bucket_name
+    }
+    regions_in_s3_client_endpoint_url: Set[str] = {
+        region
+        for region in constants.JUMPSTART_REGION_NAME_SET
+        if s3_client is not None
+        if region in s3_client._endpoint.host
+    }
+
+    regions_in_sagemaker_session: Set[str] = {
+        region
+        for region in constants.JUMPSTART_REGION_NAME_SET
+        if sagemaker_session
+        if region == sagemaker_session.boto_region_name
+    }
+
+    combined_regions = regions_in_s3_client_endpoint_url.union(
+        regions_in_s3_bucket_name, regions_in_sagemaker_session
+    )
+
+    if len(combined_regions) > 1:
+        raise ValueError("Unable to resolve a region name from the s3 bucket and client provided.")
+
+    if len(combined_regions) == 0:
+        return constants.JUMPSTART_DEFAULT_REGION_NAME
+
+    return list(combined_regions)[0]

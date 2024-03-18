@@ -81,7 +81,8 @@ def get_huggingface_model_metadata(model_id: str, hf_hub_token: Optional[str] = 
     Returns:
         dict: The model metadata retrieved with the HuggingFace API
     """
-
+    if not model_id:
+        raise ValueError("Model ID is empty. Please provide a valid Model ID.")
     hf_model_metadata_url = f"https://huggingface.co/api/models/{model_id}"
     hf_model_metadata_json = None
     try:

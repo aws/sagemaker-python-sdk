@@ -34,6 +34,7 @@ from sagemaker.base_serializers import (  # noqa: F401 # pylint: disable=W0611
 
 from sagemaker.jumpstart import artifacts, utils as jumpstart_utils
 from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+from sagemaker.jumpstart.enums import JumpStartModelType
 from sagemaker.session import Session
 
 
@@ -93,6 +94,7 @@ def retrieve_default(
     model_version: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> BaseSerializer:
     """Retrieves the default serializer for the model matching the given arguments.
@@ -134,4 +136,5 @@ def retrieve_default(
         tolerate_vulnerable_model,
         tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
+        model_type=model_type,
     )
