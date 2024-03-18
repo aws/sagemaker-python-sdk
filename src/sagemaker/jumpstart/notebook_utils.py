@@ -263,9 +263,7 @@ def list_jumpstart_scripts(  # pylint: disable=redefined-builtin
 
 
 def _is_valid_version(version: str) -> bool:
-    """
-    Checks if the version is convertable to Version class
-    """
+    """Checks if the version is convertable to Version class."""
     try:
         Version(version)
         return True
