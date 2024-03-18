@@ -19,8 +19,7 @@ from sagemaker.jumpstart.constants import JUMPSTART_LOGGER
 from sagemaker.s3_utils import parse_s3_url
 from sagemaker.session import Session
 from sagemaker.utils import aws_partition
-from typing import Optional, Dict, List, Any, Set
-from botocore.exceptions import ClientError
+from typing import Optional, Dict, List, Any
 from sagemaker.jumpstart.types import HubContentType, HubArnExtractedInfo
 from sagemaker.jumpstart.curated_hub.types import (
     CuratedHubUnsupportedFlag,
@@ -29,13 +28,10 @@ from sagemaker.jumpstart.curated_hub.types import (
 )
 from sagemaker.jumpstart import constants
 from sagemaker.jumpstart import utils
-from sagemaker.session import Session
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.curated_hub.constants import (
     JUMPSTART_HUB_MODEL_ID_TAG_PREFIX,
     JUMPSTART_HUB_MODEL_VERSION_TAG_PREFIX,
-    TASK_TAG_PREFIX,
-    FRAMEWORK_TAG_PREFIX,
 )
 from sagemaker.utils import format_tags, TagsDict
 
@@ -95,9 +91,7 @@ def construct_hub_arn_from_name(
     return f"arn:{partition}:sagemaker:{region}:{account_id}:hub/{hub_name}"
 
 
-def construct_hub_model_arn_from_inputs(
-    hub_arn: str, model_name: str, version: str
-) -> str:
+def construct_hub_model_arn_from_inputs(hub_arn: str, model_name: str, version: str) -> str:
     """Constructs a HubContent model arn from the Hub name, model name, and model version."""
 
     info = get_info_from_hub_resource_arn(hub_arn)
@@ -127,9 +121,7 @@ def generate_hub_arn_for_init_kwargs(
         if match:
             hub_arn = hub_name
         else:
-            hub_arn = construct_hub_arn_from_name(
-                hub_name=hub_name, region=region, session=session
-            )
+            hub_arn = construct_hub_arn_from_name(hub_name=hub_name, region=region, session=session)
     return hub_arn
 
 
@@ -185,13 +177,9 @@ def create_hub_bucket_if_it_does_not_exist(
     return bucket_name
 
 
-def tag_hub_content(
-    hub_content_arn: str, tags: List[TagsDict], session: Session
-) -> None:
+def tag_hub_content(hub_content_arn: str, tags: List[TagsDict], session: Session) -> None:
     session.add_tags(ResourceArn=hub_content_arn, Tags=tags)
-    JUMPSTART_LOGGER.info(
-        f"Added tags to HubContentArn %s: %s", hub_content_arn, TagsDict
-    )
+    JUMPSTART_LOGGER.info("Added tags to HubContentArn %s: %s", hub_content_arn, TagsDict)
 
 
 def find_unsupported_flags_for_hub_content_versions(
@@ -199,7 +187,8 @@ def find_unsupported_flags_for_hub_content_versions(
 ) -> List[TagsDict]:
     """Finds the JumpStart public hub model for a HubContent and calculates relevant tags.
 
-    Since tags are the same for all versions of a HubContent, these tags will map from the key to a list of versions impacted.
+    Since tags are the same for all versions of a HubContent,
+    these tags will map from the key to a list of versions impacted.
     For example, if certain public hub model versions are deprecated,
     this utility will return a `deprecated` tag mapped to the deprecated versions for the HubContent.
     """
@@ -242,7 +231,8 @@ def find_unsupported_flags_for_model_version(
     """Finds relevant CuratedHubTags for a version of a JumpStart public hub model.
 
     For example, if the public hub model is deprecated, this utility will return a `deprecated` tag.
-    Since tags are the same for all versions of a HubContent, these tags will map from the key to a list of versions impacted.
+    Since tags are the same for all versions of a HubContent,
+    these tags will map from the key to a list of versions impacted.
     """
     flags_to_add: List[CuratedHubUnsupportedFlag] = []
     jumpstart_model_specs = utils.verify_model_region_and_return_specs(
@@ -293,14 +283,10 @@ def get_jumpstart_model_and_version(
     jumpstart_model_version = jumpstart_model_version_tag[
         len(JUMPSTART_HUB_MODEL_VERSION_TAG_PREFIX) :
     ]
-    return JumpStartModelInfo(
-        model_id=jumpstart_model_id, version=jumpstart_model_version
-    )
+    return JumpStartModelInfo(model_id=jumpstart_model_id, version=jumpstart_model_version)
 
 
-def summary_from_list_api_response(
-    hub_content_summary: Dict[str, Any]
-) -> HubContentSummary:
+def summary_from_list_api_response(hub_content_summary: Dict[str, Any]) -> HubContentSummary:
     return HubContentSummary(
         hub_content_arn=hub_content_summary.get("HubContentArn"),
         hub_content_name=hub_content_summary.get("HubContentName"),

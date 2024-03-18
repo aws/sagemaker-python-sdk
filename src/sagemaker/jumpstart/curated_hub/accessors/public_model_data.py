@@ -73,9 +73,7 @@ class PublicModelDataAccessor:
     @property
     def default_training_dataset_s3_reference(self):
         """Retrieves s3 reference for s3 directory containing model training datasets"""
-        return S3ObjectLocation(
-            self._get_bucket_name(), self.__get_training_dataset_prefix()
-        )
+        return S3ObjectLocation(self._get_bucket_name(), self.__get_training_dataset_prefix())
 
     @property
     def demo_notebook_s3_reference(self):

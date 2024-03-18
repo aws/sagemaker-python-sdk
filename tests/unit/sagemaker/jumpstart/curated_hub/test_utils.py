@@ -22,7 +22,7 @@ from sagemaker.jumpstart.curated_hub.types import (
     CuratedHubUnsupportedFlag,
     HubContentSummary
 )
-from sagemaker.jumpstart.types import JumpStartDataHolderType, JumpStartModelSpecs, HubContentType
+from sagemaker.jumpstart.types import HubContentType
 
 
 def test_get_info_from_hub_resource_arn():
@@ -149,18 +149,7 @@ def test_generate_hub_arn_for_init_kwargs():
     assert utils.generate_hub_arn_for_init_kwargs(hub_arn, None, mock_custom_session) == hub_arn
 
 
-def test_generate_default_hub_bucket_name():
-    mock_sagemaker_session = Mock()
-    mock_sagemaker_session.account_id.return_value = "123456789123"
-    mock_sagemaker_session.boto_region_name = "us-east-1"
-
-    assert (
-        utils.generate_default_hub_bucket_name(sagemaker_session=mock_sagemaker_session)
-        == "sagemaker-hubs-us-east-1-123456789123"
-    )
-
-
-def test_create_hub_bucket_if_it_does_not_exist():
+def test_create_hub_bucket_if_it_does_not_exist_hub_arn():
     mock_sagemaker_session = Mock()
     mock_sagemaker_session.account_id.return_value = "123456789123"
     mock_sagemaker_session.client("sts").get_caller_identity.return_value = {
@@ -211,6 +200,7 @@ def test_create_hub_bucket_if_it_does_not_exist():
     mock_sagemaker_session.boto_session.resource("s3").create_bucketassert_called_once()
     assert created_hub_bucket_name == bucket_name
 
+
 @patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
 def test_find_tags_for_jumpstart_model_version(mock_spec_util):
     mock_sagemaker_session = Mock()
@@ -232,12 +222,17 @@ def test_find_tags_for_jumpstart_model_version(mock_spec_util):
         version="test",
         region="test",
         scope=JumpStartScriptScope.INFERENCE,
-        tolerate_vulnerable_model = True,
-        tolerate_deprecated_model = True,
+        tolerate_vulnerable_model=True,
+        tolerate_deprecated_model=True,
         sagemaker_session=mock_sagemaker_session,
     )
 
-    assert tags == [CuratedHubUnsupportedFlag.DEPRECATED_VERSIONS, CuratedHubUnsupportedFlag.INFERENCE_VULNERABLE_VERSIONS, CuratedHubUnsupportedFlag.TRAINING_VULNERABLE_VERSIONS]
+    assert tags == [
+        CuratedHubUnsupportedFlag.DEPRECATED_VERSIONS,
+        CuratedHubUnsupportedFlag.INFERENCE_VULNERABLE_VERSIONS,
+        CuratedHubUnsupportedFlag.TRAINING_VULNERABLE_VERSIONS
+    ]
+
 
 @patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
 def test_find_tags_for_jumpstart_model_version_some_false(mock_spec_util):
@@ -260,12 +255,13 @@ def test_find_tags_for_jumpstart_model_version_some_false(mock_spec_util):
         version="test",
         region="test",
         scope=JumpStartScriptScope.INFERENCE,
-        tolerate_vulnerable_model = True,
-        tolerate_deprecated_model = True,
+        tolerate_vulnerable_model=True,
+        tolerate_deprecated_model=True,
         sagemaker_session=mock_sagemaker_session,
     )
 
     assert tags == [CuratedHubUnsupportedFlag.DEPRECATED_VERSIONS]
+
 
 @patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
 def test_find_tags_for_jumpstart_model_version_all_false(mock_spec_util):
@@ -288,12 +284,13 @@ def test_find_tags_for_jumpstart_model_version_all_false(mock_spec_util):
         version="test",
         region="test",
         scope=JumpStartScriptScope.INFERENCE,
-        tolerate_vulnerable_model = True,
-        tolerate_deprecated_model = True,
+        tolerate_vulnerable_model=True,
+        tolerate_deprecated_model=True,
         sagemaker_session=mock_sagemaker_session,
     )
 
     assert tags == []
+
 
 @patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
 def test_find_all_tags_for_jumpstart_model_filters_non_jumpstart_models(mock_spec_util):
@@ -310,8 +307,8 @@ def test_find_all_tags_for_jumpstart_model_filters_non_jumpstart_models(mock_spe
             {
                 "HubContentVersion": "2.0.0",
                 "HubContentSearchKeywords": [
-                  "@jumpstart-model-id:model-four-huggingface",
-                  "@jumpstart-model-version:2.0.2",
+                    "@jumpstart-model-id:model-four-huggingface",
+                    "@jumpstart-model-version:2.0.2",
                 ]
             },
             {
@@ -341,10 +338,11 @@ def test_find_all_tags_for_jumpstart_model_filters_non_jumpstart_models(mock_spe
     )
 
     assert tags == [
-        {"Key":CuratedHubUnsupportedFlag.DEPRECATED_VERSIONS.value, "Value":str(["1.0.0", "2.0.0"])},
-        {"Key":CuratedHubUnsupportedFlag.INFERENCE_VULNERABLE_VERSIONS.value, "Value":str(["1.0.0", "2.0.0"])},
-        {"Key":CuratedHubUnsupportedFlag.TRAINING_VULNERABLE_VERSIONS.value, "Value":str(["1.0.0", "2.0.0"])}
+        {"Key": CuratedHubUnsupportedFlag.DEPRECATED_VERSIONS.value, "Value": str(["1.0.0", "2.0.0"])},
+        {"Key": CuratedHubUnsupportedFlag.INFERENCE_VULNERABLE_VERSIONS.value, "Value": str(["1.0.0", "2.0.0"])},
+        {"Key": CuratedHubUnsupportedFlag.TRAINING_VULNERABLE_VERSIONS.value, "Value": str(["1.0.0", "2.0.0"])}
     ]
+
 
 @patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
 def test_summary_from_list_api_response(mock_spec_util):
@@ -373,6 +371,7 @@ def test_summary_from_list_api_response(mock_spec_util):
         creation_time="test_creation",
         hub_content_search_keywords=["test"],
     )
+
 
 @patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
 def test_summaries_from_list_api_response(mock_spec_util):

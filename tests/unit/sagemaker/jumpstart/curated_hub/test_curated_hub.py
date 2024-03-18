@@ -21,7 +21,7 @@ from sagemaker.jumpstart.curated_hub.curated_hub import CuratedHub
 from sagemaker.jumpstart.curated_hub.types import JumpStartModelInfo, S3ObjectLocation, HubContentSummary
 from sagemaker.jumpstart.types import JumpStartModelSpecs
 from tests.unit.sagemaker.jumpstart.constants import BASE_SPEC
-from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec, HubContentType
+from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec
 
 
 REGION = "us-east-1"
