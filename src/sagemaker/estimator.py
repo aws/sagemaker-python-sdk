@@ -1718,6 +1718,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         nearest_model_name=None,
         data_input_configuration=None,
         skip_model_validation=None,
+        source_uri=None,
         **kwargs,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
@@ -1765,6 +1766,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             data_input_configuration (str): Input object for the model (default: None).
             skip_model_validation (str): Indicates if you want to skip model validation.
                 Values can be "All" or "None" (default: None).
+            source_uri (str): The URI of the source for the model package (default: None).
             **kwargs: Passed to invocation of ``create_model()``. Implementations may customize
                 ``create_model()`` to accept ``**kwargs`` to customize model creation during
                 deploy. For more, see the implementation docs.
@@ -1809,6 +1811,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             nearest_model_name=nearest_model_name,
             data_input_configuration=data_input_configuration,
             skip_model_validation=skip_model_validation,
+            source_uri=source_uri,
         )
 
     @property

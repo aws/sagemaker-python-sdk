@@ -18,14 +18,17 @@ from mock.mock import patch
 import pytest
 
 from sagemaker import instance_types
+from sagemaker.jumpstart.enums import JumpStartModelType
 
 from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec, get_special_model_spec
 
 
+@patch("sagemaker.jumpstart.utils.validate_model_id_and_get_type")
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-def test_jumpstart_instance_types(patched_get_model_specs):
+def test_jumpstart_instance_types(patched_get_model_specs, patched_validate_model_id_and_get_type):
 
     patched_get_model_specs.side_effect = get_spec_from_base_spec
+    patched_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
     model_id, model_version = "huggingface-eqa-bert-base-cased", "*"
     region = "us-west-2"
@@ -48,6 +51,7 @@ def test_jumpstart_instance_types(patched_get_model_specs):
         version=model_version,
         hub_arn=None,
         s3_client=mock_client,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
     )
 
     patched_get_model_specs.reset_mock()
@@ -67,6 +71,7 @@ def test_jumpstart_instance_types(patched_get_model_specs):
         version=model_version,
         hub_arn=None,
         s3_client=mock_client,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
     )
 
     patched_get_model_specs.reset_mock()
@@ -92,6 +97,7 @@ def test_jumpstart_instance_types(patched_get_model_specs):
         version=model_version,
         hub_arn=None,
         s3_client=mock_client,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
     )
 
     patched_get_model_specs.reset_mock()
@@ -117,6 +123,7 @@ def test_jumpstart_instance_types(patched_get_model_specs):
         region=region,
         model_id=model_id,
         version=model_version,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
         hub_arn=None,
         s3_client=mock_client,
     )
@@ -199,6 +206,7 @@ def test_jumpstart_instance_types_from_hub(patched_get_model_specs):
         model_id=model_id,
         version=model_version,
         s3_client=mock_client,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
     )
 
     patched_get_model_specs.reset_mock()
@@ -220,6 +228,7 @@ def test_jumpstart_instance_types_from_hub(patched_get_model_specs):
         model_id=model_id,
         version=model_version,
         s3_client=mock_client,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
     )
 
     patched_get_model_specs.reset_mock()
@@ -246,6 +255,7 @@ def test_jumpstart_instance_types_from_hub(patched_get_model_specs):
         model_id=model_id,
         version=model_version,
         s3_client=mock_client,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
     )
 
     patched_get_model_specs.reset_mock()
@@ -275,6 +285,7 @@ def test_jumpstart_instance_types_from_hub(patched_get_model_specs):
         model_id=model_id,
         version=model_version,
         s3_client=mock_client,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
     )
 
     patched_get_model_specs.reset_mock()

@@ -40,7 +40,7 @@ from sagemaker.config.config_schema import CONTAINER_CONFIG, LOCAL
 import sagemaker.local.data
 import sagemaker.local.utils
 import sagemaker.utils
-from sagemaker.utils import check_tarfile_data_filter_attribute
+from sagemaker.utils import custom_extractall_tarfile
 
 CONTAINER_PREFIX = "algo"
 STUDIO_HOST_NAME = "sagemaker-local"
@@ -687,8 +687,7 @@ class _SageMakerContainer(object):
         for filename in model_data_source.get_file_list():
             if tarfile.is_tarfile(filename):
                 with tarfile.open(filename) as tar:
-                    check_tarfile_data_filter_attribute()
-                    tar.extractall(path=model_data_source.get_root_dir(), filter="data")
+                    custom_extractall_tarfile(tar, model_data_source.get_root_dir())
 
         volumes.append(_Volume(model_data_source.get_root_dir(), "/opt/ml/model"))
 
@@ -860,7 +859,9 @@ class _SageMakerContainer(object):
         # to setting --runtime=nvidia in the docker commandline.
         if self.instance_type == "local_gpu":
             host_config["deploy"] = {
-                "resources": {"reservations": {"devices": [{"capabilities": ["gpu"]}]}}
+                "resources": {
+                    "reservations": {"devices": [{"count": "all", "capabilities": ["gpu"]}]}
+                }
             }
 
         if not self.is_studio and command == "serve":
