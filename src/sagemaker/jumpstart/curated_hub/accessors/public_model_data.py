@@ -50,14 +50,14 @@ class PublicModelDataAccessor:
         return getattr(self, dependency_type.value)
 
     @property
-    def inference_artifact_s3_reference(self):
+    def inference_artifact_s3_reference(self) -> Optional[S3ObjectLocation]:
         """Retrieves s3 reference for model inference artifact"""
         return create_s3_object_reference_from_uri(
             self._jumpstart_artifact_s3_uri(JumpStartScriptScope.INFERENCE)
         )
 
     @property
-    def training_artifact_s3_reference(self):
+    def training_artifact_s3_reference(self) -> Optional[S3ObjectLocation]:
         """Retrieves s3 reference for model training artifact"""
         if not self.model_specs.training_supported:
             return None
@@ -66,14 +66,14 @@ class PublicModelDataAccessor:
         )
 
     @property
-    def inference_script_s3_reference(self):
+    def inference_script_s3_reference(self) -> Optional[S3ObjectLocation]:
         """Retrieves s3 reference for model inference script"""
         return create_s3_object_reference_from_uri(
             self._jumpstart_script_s3_uri(JumpStartScriptScope.INFERENCE)
         )
 
     @property
-    def training_script_s3_reference(self):
+    def training_script_s3_reference(self) -> Optional[S3ObjectLocation]:
         """Retrieves s3 reference for model training script"""
         if not self.model_specs.training_supported:
             return None
@@ -82,21 +82,21 @@ class PublicModelDataAccessor:
         )
 
     @property
-    def default_training_dataset_s3_reference(self):
+    def default_training_dataset_s3_reference(self) -> S3ObjectLocation:
         """Retrieves s3 reference for s3 directory containing model training datasets"""
         if not self.model_specs.training_supported:
             return None
         return S3ObjectLocation(self._get_bucket_name(), self.__get_training_dataset_prefix())
 
     @property
-    def demo_notebook_s3_reference(self):
+    def demo_notebook_s3_reference(self) -> S3ObjectLocation:
         """Retrieves s3 reference for model demo jupyter notebook"""
         framework = self.model_specs.get_framework()
         key = f"{framework}-notebooks/{self.model_specs.model_id}-inference.ipynb"
         return S3ObjectLocation(self._get_bucket_name(), key)
 
     @property
-    def markdown_s3_reference(self):
+    def markdown_s3_reference(self) -> S3ObjectLocation:
         """Retrieves s3 reference for model markdown"""
         framework = self.model_specs.get_framework()
         key = f"{framework}-metadata/{self.model_specs.model_id}.md"
@@ -106,7 +106,7 @@ class PublicModelDataAccessor:
         """Retrieves s3 bucket"""
         return self._bucket
 
-    def __get_training_dataset_prefix(self) -> str:
+    def _get_training_dataset_prefix(self) -> Optional[str]:
         """Retrieves training dataset location"""
         return self.studio_specs.get("defaultDataKey")
 
