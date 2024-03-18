@@ -89,10 +89,6 @@ def main(sys_args=None):
                 client_python_version, conda_env, dependency_settings
             )
 
-        RuntimeEnvironmentManager()._validate_sagemaker_pysdk_version(
-            client_sagemaker_pysdk_version
-        )
-
         exit_code = SUCCESS_EXIT_CODE
     except Exception as e:  # pylint: disable=broad-except
         logger.exception("Error encountered while bootstrapping runtime environment: %s", e)
