@@ -7577,6 +7577,20 @@ BASE_PROPRIETARY_MANIFEST = [
         "spec_key": "proprietary-models/ai21-paraphrase/proprietary_specs_1.0.005.json",
         "search_keywords": ["Text2Text", "Generation"],
     },
+    {
+        "model_id": "ai21-paraphrase",
+        "version": "v1.00-rc2-not-valid-version",
+        "min_version": "2.0.0",
+        "spec_key": "proprietary-models/ai21-paraphrase/proprietary_specs_1.0.005.json",
+        "search_keywords": ["Text2Text", "Generation"],
+    },
+    {
+        "model_id": "nc-soft-model-1",
+        "version": "v3.0-not-valid-version!",
+        "min_version": "2.0.0",
+        "spec_key": "proprietary-models/nc-soft-model-1/proprietary_specs_1.0.005.json",
+        "search_keywords": ["Text2Text", "Generation"],
+    },
 ]
 
 BASE_PROPRIETARY_SPEC = {
