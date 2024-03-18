@@ -84,7 +84,6 @@ def _retrieve_model_package_arn(
     )
 
     if scope == JumpStartScriptScope.INFERENCE:
-
         instance_specific_arn: Optional[str] = (
             model_specs.hosting_instance_type_variants.get_model_package_arn(
                 region=region, instance_type=instance_type
@@ -155,7 +154,6 @@ def _retrieve_model_package_model_artifact_s3_uri(
     """
 
     if scope == JumpStartScriptScope.TRAINING:
-
         if region is None:
             region = JUMPSTART_DEFAULT_REGION_NAME
 

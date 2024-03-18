@@ -379,7 +379,6 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
     is_model_type_filter = SpecialSupportedFilterKeys.MODEL_TYPE in all_keys
 
     def evaluate_model(model_manifest: JumpStartModelHeader) -> Optional[Tuple[str, str]]:
-
         copied_filter = copy.deepcopy(filter)
 
         manifest_specs_cached_values: Dict[str, Union[bool, int, float, str, dict, list]] = {}

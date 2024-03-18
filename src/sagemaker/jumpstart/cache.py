@@ -34,7 +34,6 @@ from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     MODEL_TYPE_TO_MANIFEST_MAP,
     MODEL_TYPE_TO_SPECS_MAP,
-    DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 )
 from sagemaker.jumpstart.exceptions import (
     get_wildcard_model_version_msg,
@@ -178,9 +177,7 @@ class JumpStartModelsCache:
         }
         property_name = file_mapping.get(file_type)
         if not property_name:
-            raise ValueError(
-                self._file_type_error_msg(file_type, manifest_only=True)
-            )
+            raise ValueError(self._file_type_error_msg(file_type, manifest_only=True))
         if key != property_name:
             setattr(self, property_name, key)
             self.clear()
@@ -193,9 +190,7 @@ class JumpStartModelsCache:
             return self._manifest_file_s3_key
         if file_type == JumpStartS3FileType.PROPRIETARY_MANIFEST:
             return self._proprietary_manifest_s3_key
-        raise ValueError(
-            self._file_type_error_msg(file_type, manifest_only=True)
-        )
+        raise ValueError(self._file_type_error_msg(file_type, manifest_only=True))
 
     def set_s3_bucket_name(self, s3_bucket_name: str) -> None:
         """Set s3 bucket used for cache."""
@@ -248,7 +243,8 @@ class JumpStartModelsCache:
         sm_version = utils.get_sagemaker_version()
         manifest = self._content_cache.get(
             JumpStartCachedContentKey(
-                MODEL_TYPE_TO_MANIFEST_MAP[model_type], self._manifest_file_s3_map[model_type])
+                MODEL_TYPE_TO_MANIFEST_MAP[model_type], self._manifest_file_s3_map[model_type]
+            )
         )[0].formatted_content
 
         versions_compatible_with_sagemaker = [
@@ -265,7 +261,8 @@ class JumpStartModelsCache:
             return JumpStartVersionedModelId(model_id, sm_compatible_model_version)
 
         versions_incompatible_with_sagemaker = [
-            Version(header.version) for header in manifest.values()  # type: ignore
+            Version(header.version)
+            for header in manifest.values()  # type: ignore
             if header.model_id == model_id
         ]
         sm_incompatible_model_version = self._select_version(
@@ -295,9 +292,7 @@ class JumpStartModelsCache:
             raise KeyError(error_msg)
 
         error_msg = f"Unable to find model manifest for '{model_id}' with version '{version}'. "
-        error_msg += (
-            f"Visit {MODEL_ID_LIST_WEB_URL} for updated list of models. "
-        )
+        error_msg += f"Visit {MODEL_ID_LIST_WEB_URL} for updated list of models. "
 
         other_model_id_version = None
         if model_type == JumpStartModelType.OPEN_WEIGHTS:
@@ -306,19 +301,17 @@ class JumpStartModelsCache:
             )  # all versions here are incompatible with sagemaker
         elif model_type == JumpStartModelType.PROPRIETARY:
             all_possible_model_id_version = [
-                header.version for header in manifest.values()  # type: ignore
+                header.version
+                for header in manifest.values()  # type: ignore
                 if header.model_id == model_id
             ]
             other_model_id_version = (
-                None
-                if not all_possible_model_id_version
-                else all_possible_model_id_version[0]
+                None if not all_possible_model_id_version else all_possible_model_id_version[0]
             )
 
         if other_model_id_version is not None:
             error_msg += (
-                f"Consider using model ID '{model_id}' with version "
-                f"'{other_model_id_version}'."
+                f"Consider using model ID '{model_id}' with version " f"'{other_model_id_version}'."
             )
         else:
             possible_model_ids = [header.model_id for header in manifest.values()]  # type: ignore
@@ -360,15 +353,15 @@ class JumpStartModelsCache:
 
     def _is_local_metadata_mode(self) -> bool:
         """Returns True if the cache should use local metadata mode, based off env variables."""
-        return (ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE in os.environ
-                and os.path.isdir(os.environ[ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE])
-                and ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE in os.environ
-                and os.path.isdir(os.environ[ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE]))
+        return (
+            ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE in os.environ
+            and os.path.isdir(os.environ[ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE])
+            and ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE in os.environ
+            and os.path.isdir(os.environ[ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE])
+        )
 
     def _get_json_file(
-        self,
-        key: str,
-        filetype: JumpStartS3FileType
+        self, key: str, filetype: JumpStartS3FileType
     ) -> Tuple[Union[dict, list], Optional[str]]:
         """Returns json file either from s3 or local file system.
 
@@ -392,21 +385,19 @@ class JumpStartModelsCache:
         return self._s3_client.head_object(Bucket=self.s3_bucket_name, Key=key)["ETag"]
 
     def _get_json_file_from_local_override(
-        self,
-        key: str,
-        filetype: JumpStartS3FileType
+        self, key: str, filetype: JumpStartS3FileType
     ) -> Union[dict, list]:
         """Reads json file from local filesystem and returns data."""
         if filetype == JumpStartS3FileType.OPEN_WEIGHT_MANIFEST:
-            metadata_local_root = (
-                os.environ[ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE]
-            )
+            metadata_local_root = os.environ[
+                ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE
+            ]
         elif filetype == JumpStartS3FileType.OPEN_WEIGHT_SPECS:
             metadata_local_root = os.environ[ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE]
         else:
             raise ValueError(f"Unsupported file type for local override: {filetype}")
         file_path = os.path.join(metadata_local_root, key)
-        with open(file_path, 'r') as f:
+        with open(file_path, "r") as f:
             data = json.load(f)
         return data
 
@@ -443,7 +434,7 @@ class JumpStartModelsCache:
                 formatted_content=utils.get_formatted_manifest(formatted_body),
                 md5_hash=etag,
             )
-        
+
         if data_type in {
             JumpStartS3FileType.OPEN_WEIGHT_SPECS,
             JumpStartS3FileType.PROPRIETARY_SPECS,
@@ -451,9 +442,7 @@ class JumpStartModelsCache:
             formatted_body, _ = self._get_json_file(id_info, data_type)
             model_specs = JumpStartModelSpecs(formatted_body)
             utils.emit_logs_based_on_model_specs(model_specs, self.get_region(), self._s3_client)
-            return JumpStartCachedContentValue(
-                formatted_content=model_specs
-            )
+            return JumpStartCachedContentValue(formatted_content=model_specs)
 
         if data_type == HubContentType.MODEL:
             hub_name, _, model_name, model_version = hub_utils.get_info_from_hub_resource_arn(
@@ -463,21 +452,15 @@ class JumpStartModelsCache:
                 hub_name=hub_name,
                 hub_content_name=model_name,
                 hub_content_version=model_version,
-                hub_content_type=data_type
+                hub_content_type=data_type,
             )
 
             model_specs = JumpStartModelSpecs(
                 DescribeHubContentsResponse(hub_model_description), is_hub_content=True
             )
 
-            utils.emit_logs_based_on_model_specs(
-                model_specs,
-                self.get_region(),
-                self._s3_client
-            )
-            return JumpStartCachedContentValue(
-                formatted_content=model_specs
-            )
+            utils.emit_logs_based_on_model_specs(model_specs, self.get_region(), self._s3_client)
+            return JumpStartCachedContentValue(formatted_content=model_specs)
 
         if data_type == HubType.HUB:
             hub_name, _, _, _ = hub_utils.get_info_from_hub_resource_arn(id_info)
@@ -487,9 +470,7 @@ class JumpStartModelsCache:
                 formatted_content=DescribeHubResponse(hub_description)
             )
 
-        raise ValueError(
-            self._file_type_error_msg(data_type)
-        )
+        raise ValueError(self._file_type_error_msg(data_type))
 
     def get_manifest(
         self,
@@ -498,7 +479,8 @@ class JumpStartModelsCache:
         """Return entire JumpStart models manifest."""
         manifest_dict = self._content_cache.get(
             JumpStartCachedContentKey(
-                MODEL_TYPE_TO_MANIFEST_MAP[model_type], self._manifest_file_s3_map[model_type])
+                MODEL_TYPE_TO_MANIFEST_MAP[model_type], self._manifest_file_s3_map[model_type]
+            )
         )[0].formatted_content
         manifest = list(manifest_dict.values())  # type: ignore
         return manifest
@@ -555,16 +537,14 @@ class JumpStartModelsCache:
         except InvalidSpecifier:
             raise KeyError(f"Bad semantic version: {version_str}")
         available_versions_filtered = list(spec.filter(available_versions))
-        return (
-            str(max(available_versions_filtered)) if available_versions_filtered != [] else None
-        )
+        return str(max(available_versions_filtered)) if available_versions_filtered != [] else None
 
     def _get_header_impl(
         self,
         model_id: str,
         semantic_version_str: str,
         attempt: int = 0,
-        model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS
+        model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
     ) -> JumpStartModelHeader:
         """Lower-level function to return header.
 
@@ -587,7 +567,8 @@ class JumpStartModelsCache:
 
         manifest = self._content_cache.get(
             JumpStartCachedContentKey(
-                MODEL_TYPE_TO_MANIFEST_MAP[model_type], self._manifest_file_s3_map[model_type])
+                MODEL_TYPE_TO_MANIFEST_MAP[model_type], self._manifest_file_s3_map[model_type]
+            )
         )[0].formatted_content
 
         try:
@@ -603,7 +584,7 @@ class JumpStartModelsCache:
         self,
         model_id: str,
         version_str: str,
-        model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS
+        model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
     ) -> JumpStartModelSpecs:
         """Return specs for a given JumpStart model ID and semantic version.
 
@@ -616,16 +597,12 @@ class JumpStartModelsCache:
         header = self.get_header(model_id, version_str, model_type)
         spec_key = header.spec_key
         specs, cache_hit = self._content_cache.get(
-            JumpStartCachedContentKey(
-                MODEL_TYPE_TO_SPECS_MAP[model_type], spec_key
-            )
+            JumpStartCachedContentKey(MODEL_TYPE_TO_SPECS_MAP[model_type], spec_key)
         )
 
         if not cache_hit and "*" in version_str:
             JUMPSTART_LOGGER.warning(
-                get_wildcard_model_version_msg(
-                    header.model_id, version_str, header.version
-                )
+                get_wildcard_model_version_msg(header.model_id, version_str, header.version)
             )
         return specs.formatted_content
 

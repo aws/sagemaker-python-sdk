@@ -133,7 +133,6 @@ def _retrieve_default_environment_variables(
             )
 
             if gated_model_env_var is None and model_specs.is_gated_model():
-
                 possible_env_vars: Set[str] = {
                     retrieve_gated_env_var_for_instance_type(instance_type)
                     for instance_type in model_specs.supported_training_instance_types

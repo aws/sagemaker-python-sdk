@@ -743,7 +743,6 @@ def resolve_estimator_sagemaker_config_field(
     # JumpStart Estimators have certain default field values. We want
     # sagemaker config values to take priority over the model-specific defaults.
     if field_name == "enable_network_isolation":
-
         resolved_val = resolve_value_from_config(
             direct_input=None,
             config_path=TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
@@ -754,7 +753,6 @@ def resolve_estimator_sagemaker_config_field(
         return resolved_val if resolved_val is not None else field_val
 
     if field_name == "encrypt_inter_container_traffic":
-
         resolved_val = resolve_value_from_config(
             direct_input=None,
             config_path=TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
@@ -868,12 +866,13 @@ def generate_studio_spec_file_prefix(model_id: str, model_version: str) -> str:
     """Returns the Studio Spec file prefix given a model ID and version."""
     return f"studio_models/{model_id}/studio_specs_v{model_version}.json"
 
+
 def extract_info_from_hub_content_arn(
     arn: str,
 ) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:
     """Extracts hub_name, content_name, and content_version from a HubContentArn"""
 
-    match = re.match(constants.HUB_MODEL_ARN_REGEX, arn)
+    match = re.match(constants.HUB_CONTENT_ARN_REGEX, arn)
     if match:
         hub_name = match.group(4)
         hub_region = match.group(2)
