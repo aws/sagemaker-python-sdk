@@ -2779,7 +2779,7 @@ class _AnalysisConfigGenerator:
         baseline = explainability_config.get_explainability_config()[
             "asymmetric_shapley_value"
         ].get("baseline")
-        if baseline and "static_covariates" in baseline:
+        if isinstance(baseline, dict) and "static_covariates" in baseline:
             covariate_count = len(
                 data_config.get_config()["time_series_data_config"].get("static_covariates", [])
             )
