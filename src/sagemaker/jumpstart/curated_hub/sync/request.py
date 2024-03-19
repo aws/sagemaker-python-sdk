@@ -132,8 +132,10 @@ class HubSyncRequestFactory:
                     dest_done = True
                 continue
 
-            # Past the src file alphabetically in dest file list. Take the src file and increment src_files.
-            # If there is an alpha-larger file name in dest as compared to src, it means there is an
+            # Past the src file alphabetically in dest file list.
+            # Take the src file and increment src_files.
+            # If there is an alpha-larger file name in dest as compared to src, 
+            # it means there is an
             # unexpected file in dest. Do nothing and continue to the next src_file
             if self._is_alphabetically_earlier_file_name(
                 src_file.location.key, dest_file.location.key
