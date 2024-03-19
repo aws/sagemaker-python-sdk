@@ -1122,8 +1122,10 @@ def test_get_codeartifact_command(pipeline_session):
         codeartifact_repo_arn=codeartifact_repo_arn
     )
 
-    assert codeartifact_command == \
-        "aws codeartifact login --tool pip --domain test-domain --domain-owner 012345678901 --repository test-repository --region us-west-2"  # noqa: E501
+    assert (
+        codeartifact_command
+        == "aws codeartifact login --tool pip --domain test-domain --domain-owner 012345678901 --repository test-repository --region us-west-2"  # noqa: E501 # pylint: disable=line-too-long
+    )
 
 
 @patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
@@ -1228,7 +1230,7 @@ def test_generate_framework_script_with_codeartifact(pipeline_session):
         fi
 
         python process.py "$@"
-    """  # noqa: E501
+    """  # noqa: E501 # pylint: disable=line-too-long
     )
 
 
