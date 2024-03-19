@@ -127,3 +127,46 @@ def test_s3_path_file_generator_with_no_objects(s3_client):
 
     s3_client.list_objects_v2.assert_called_once()
     assert response == []
+
+
+@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+def test_specs_file_generator_training_unsupported(patched_get_model_specs, s3_client):
+    specs = Mock()
+    specs.model_id = "mock_model_123"
+    specs.training_supported = False
+    specs.gated_bucket = False
+    specs.hosting_prepacked_artifact_key = "/my/inference/tarball.tgz"
+    specs.hosting_script_key = "/my/inference/script.py"
+
+    response = generate_file_infos_from_model_specs(specs, {}, "us-west-2", s3_client)
+
+    assert response == [
+        FileInfo(
+            "jumpstart-cache-prod-us-west-2",
+            "/my/inference/tarball.tgz",
+            123456789,
+            "08-14-1997 00:00:00",
+        ),
+        FileInfo(
+            "jumpstart-cache-prod-us-west-2",
+            "/my/inference/script.py",
+            123456789,
+            "08-14-1997 00:00:00",
+        ),
+    ]
+
+
+@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+def test_specs_file_generator_gated_model(patched_get_model_specs, s3_client):
+    specs = Mock()
+    specs.model_id = "mock_model_123"
+    specs.gated_bucket = True
+    specs.training_supported = True
+    specs.hosting_prepacked_artifact_key = "/my/inference/tarball.tgz"
+    specs.hosting_script_key = "/my/inference/script.py"
+    specs.training_prepacked_artifact_key = "/my/training/tarball.tgz"
+    specs.training_script_key = "/my/training/script.py"
+
+    response = generate_file_infos_from_model_specs(specs, {}, "us-west-2", s3_client)
+
+    assert response == []

@@ -143,8 +143,11 @@ def generate_default_hub_bucket_name(
     return f"sagemaker-hubs-{region}-{account_id}"
 
 
-def create_s3_object_reference_from_uri(s3_uri: str) -> S3ObjectLocation:
+def create_s3_object_reference_from_uri(s3_uri: Optional[str]) -> Optional[S3ObjectLocation]:
     """Utiity to help generate an S3 object reference"""
+    if not s3_uri:
+        return None
+
     bucket, key = parse_s3_url(s3_uri)
 
     return S3ObjectLocation(
@@ -303,3 +306,8 @@ def get_jumpstart_model_and_version(
         len(JUMPSTART_HUB_MODEL_VERSION_TAG_PREFIX) :
     ]
     return JumpStartModelInfo(model_id=jumpstart_model_id, version=jumpstart_model_version)
+
+  
+def is_gated_bucket(bucket_name: str) -> bool:
+    """Returns true if the bucket name is the JumpStart gated bucket."""
+    return bucket_name in constants.JUMPSTART_GATED_BUCKET_NAME_SET
