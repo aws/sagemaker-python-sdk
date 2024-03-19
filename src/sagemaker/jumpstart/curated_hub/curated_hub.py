@@ -42,7 +42,7 @@ from sagemaker.jumpstart.types import (
     DescribeHubContentResponse,
     HubContentType,
     JumpStartModelSpecs,
-    HubContentDocument,
+    HubModelDocument,
 )
 from sagemaker.jumpstart.curated_hub.utils import (
     create_hub_bucket_if_it_does_not_exist,
@@ -389,7 +389,7 @@ class CuratedHub:
             f"{TASK_TAG_PREFIX}:TODO: pull from specs",
         ]
 
-        hub_content_document = HubContentDocument(
+        hub_content_document = HubModelDocument(
             json_obj_or_model_specs=model_specs, region=self.region
         )
 

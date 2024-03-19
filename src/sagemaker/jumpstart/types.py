@@ -928,7 +928,7 @@ class HubContentDependency(JumpStartDataHolderType):
     Content can be scripts, model artifacts, datasets, or notebooks.
     """
 
-    __slots__ = ["dependency_copy_path", "dependency_origin_path"]
+    __slots__ = ["dependency_copy_path", "dependency_origin_path", "dependency_type"]
 
     def __init__(self, json_obj: Dict[str, Any]) -> None:
         """Instantiates HubContentDependency object
@@ -947,6 +947,7 @@ class HubContentDependency(JumpStartDataHolderType):
 
         self.dependency_copy_path: Optional[str] = json_obj.get("DependencyCopyPath", "")
         self.dependency_origin_path: Optional[str] = json_obj.get("DependencyOriginPath", "")
+        self.dependency_type: Optional[str] = json_obj.get("DependencyType", "")
 
 
 class DescribeHubContentResponse(JumpStartDataHolderType):
@@ -1000,14 +1001,24 @@ class DescribeHubContentResponse(JumpStartDataHolderType):
         self.hub_content_display_name: str = json_obj["HubContentDisplayName"]
         hub_region: Optional[str] = HubArnExtractedInfo.extract_region_from_arn(self.hub_arn)
         self._region = hub_region
-        self.hub_content_document: str = HubContentDocument(
-            json_obj_or_model_specs=json_obj["HubContentDocument"], region=self._region
-        )
+        self.hub_content_type: HubContentType = json_obj["HubContentType"]
+        if self.hub_content_type == HubContentType.MODEL:
+            self.hub_content_document: HubContentDocument = HubModelDocument(
+                json_obj_or_model_specs=json_obj["HubContentDocument"], region=self._region
+            )
+        elif self.hub_content_type == HubContentType.NOTEBOOK:
+            self.hub_content_document: HubContentDocument = HubNotebookDocument(
+                json_obj=json_obj["HubContentDocument"], region=self._region
+            )
+        else:
+            raise ValueError(
+                f"[{self.hub_content_type}] is not a valid HubContentType. Should be one of: {[item.name for item in HubContentType]}."
+            )
+
         self.hub_content_markdown: str = json_obj["HubContentMarkdown"]
         self.hub_content_name: str = json_obj["HubContentName"]
         self.hub_content_search_keywords: List[str] = json_obj["HubContentSearchKeywords"]
         self.hub_content_status: str = json_obj["HubContentStatus"]
-        self.hub_content_type: HubContentType = json_obj["HubContentType"]
         self.hub_content_version: str = json_obj["HubContentVersion"]
         self.hub_name: str = json_obj["HubName"]
 
@@ -1425,7 +1436,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         self.version: str = response.hub_content_version
         # CuratedHub is regionalized
         hub_region: Optional[str] = response.get_hub_region()
-        hub_content_document: HubContentDocument = HubContentDocument(
+        hub_content_document: HubModelDocument = HubModelDocument(
             response.hub_content_document, region=hub_region
         )
         self.url: str = hub_content_document.url
@@ -1590,10 +1601,11 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         return self.model_id.split("-")[0]
 
 
-class HubContentDocument(JumpStartDataHolderType):
+class HubModelDocument(JumpStartDataHolderType):
+    """Data class for model type HubContentDocument from session.describe_hub_content()."""
+
     SCHEMA_VERSION = "2.0.0"
 
-    """Data class for HubContentDocument from session.describe_hub_content()."""
     __slots__ = [
         "url",
         "min_sdk_version",
@@ -1659,6 +1671,7 @@ class HubContentDocument(JumpStartDataHolderType):
         "dependencies",
         "_region",
     ]
+
     _non_serializable_slots = ["_region"]
 
     def __init__(
@@ -1666,7 +1679,13 @@ class HubContentDocument(JumpStartDataHolderType):
         json_obj_or_model_specs: Union[Dict[str, Any], JumpStartModelSpecs],
         region: str,
     ) -> None:
-        self._region = region  # Handle region
+        """Instantiates HubModelDocument object.
+
+        Args:
+            json_obj (Dict[str, Any]): Dictionary representation of hub content document.
+        """
+
+        self._region = region
         if isinstance(json_obj_or_model_specs, Dict):
             self.from_json(json_obj_or_model_specs)
         elif isinstance(json_obj_or_model_specs, JumpStartModelSpecs):
@@ -1689,7 +1708,9 @@ class HubContentDocument(JumpStartDataHolderType):
         ]
         self.training_supported: bool = bool(json_obj["TrainingSupported"])
         self.incremental_training_supported: bool = bool(json_obj["IncrementalTrainingSupported"])
-        self.dependencies = json_obj.get("Dependencies", [])
+        self.dependencies: List[HubContentDependency] = [
+            HubContentDependency(dep) for dep in json_obj["Dependencies"]
+        ]
 
         self.dynamic_container_deployment_supported: Optional[bool] = (
             bool(json_obj.get("DynamicContainerDeploymentSupported"))
@@ -1979,6 +2000,45 @@ class HubContentDocument(JumpStartDataHolderType):
         pass
 
 
+class HubNotebookDocument(JumpStartDataHolderType):
+    """Data class for notebook type HubContentDocument from session.describe_hub_content()."""
+
+    SCHEMA_VERSION = "1.0.0"
+
+    __slots__ = ["notebook_location", "dependencies", "_region"]
+
+    _non_serializable_slots = ["_region"]
+
+    def __init__(self, json_obj: Dict[str, Any], region: str) -> None:
+        """Instantiates HubNotebookDocument object.
+
+        Args:
+            json_obj (Dict[str, Any]): Dictionary representation of hub content document.
+        """
+        self._region = region
+        self.from_json(json_obj)
+
+    def from_json(self, json_obj: Dict[str, Any]) -> None:
+        """Sets fields in object based on json.
+
+        Args:
+            json_obj (Dict[str, Any]): Dictionary representation of hub content description.
+        """
+        self.notebook_location = json_obj["NotebookLocation"]
+        self.dependencies: List[HubContentDependency] = [
+            HubContentDependency(dep) for dep in json_obj["Dependencies"]
+        ]
+
+    def get_schema_version(self) -> str:
+        """Returns schema version."""
+        return self.SCHEMA_VERSION
+
+    def get_region(self) -> str:
+        return self._region
+
+HubContentDocument = Union[HubModelDocument, HubNotebookDocument]
+
+
 class HubContentSummary(JumpStartDataHolderType):
     """Data class for the HubContentSummary from session.list_hub_contents()."""
 
@@ -2021,7 +2081,7 @@ class HubContentSummary(JumpStartDataHolderType):
         self._region: Optional[str] = HubArnExtractedInfo.extract_region_from_arn(
             self.hub_content_arn
         )
-        self.hub_content_document: HubContentDocument = HubContentDocument(
+        self.hub_content_document: HubModelDocument = HubModelDocument(
             json_obj_or_model_specs=json_obj["HubContentDocument"], region=self._region
         )
         self.hub_content_name: str = json_obj["HubContentName"]

@@ -8602,3 +8602,14 @@ HUB_MODEL_DOCUMENT_DICTS = {
         "Dependencies": [],
     },
 }
+
+BASE_HUB_NOTEBOOK_DOCUMENT = {
+    "NotebookLocation": "s3://sagemaker-test-objects-do-not-delete/tensorflow-notebooks/tensorflow-ic-bit-s-r101x3-ilsvrc2012-classification-1-inference.ipynb",
+    "Dependencies": [
+        {
+            "DependencyOriginPath": "sagemaker-test-objects-do-not-delete/tensorflow-notebooks/tensorflow-ic-bit-s-r101x3-ilsvrc2012-classification-1-inference.ipynb",
+            "DependencyCopyPath": "sagemaker-hubs-us-west-2-802376408542/default-hub-1667253603.746/Notebook/pentest-3-notebook-1667933000.49/0.0.1/notebook.ipynb",
+            "DependencyType": "Notebook",
+        }
+    ],
+}

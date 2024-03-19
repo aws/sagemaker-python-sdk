@@ -18,9 +18,13 @@ from sagemaker.jumpstart.types import (
     JumpStartInstanceTypeVariants,
     JumpStartModelSpecs,
     JumpStartModelHeader,
-    HubContentDocument,
+    HubModelDocument,
 )
-from tests.unit.sagemaker.jumpstart.constants import BASE_SPEC, HUB_MODEL_DOCUMENT_DICTS
+from tests.unit.sagemaker.jumpstart.constants import (
+    BASE_SPEC,
+    HUB_MODEL_DOCUMENT_DICTS,
+    BASE_HUB_NOTEBOOK_DOCUMENT,
+)
 
 INSTANCE_TYPE_VARIANT = JumpStartInstanceTypeVariants(
     {
@@ -894,16 +898,21 @@ def test_jumpstart_training_artifact_key_instance_variants():
     )
 
 
-def test_hub_content_document_from_model_specs():
+def test_hub_model_document_from_model_specs():
     specs1 = JumpStartModelSpecs(BASE_SPEC)
     region = "us-west-2"
-    specs2 = HubContentDocument(specs1, region)
+    specs2 = HubModelDocument(specs1, region)
     # TODO: Implement
     pass
 
 
-def test_hub_content_document_from_json_obj():
-    # TODO: implement
+def test_hub_model_document_from_json_obj():
+    # TODO: Implement
+    pass
+
+
+def test_hub_notebook_document():
+    # TODO: Implement
     pass
 
 

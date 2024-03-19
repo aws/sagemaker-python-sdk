@@ -441,6 +441,18 @@ class JumpStartModelsCache:
             return JumpStartCachedContentValue(
                 formatted_content=model_specs
             )
+        
+        if data_type == HubContentType.NOTEBOOK:
+            hub_name, _, notebook_name, notebook_version = hub_utils.get_info_from_hub_resource_arn(id_info)
+            response: Dict[str, Any] = self._sagemaker_session.describe_hub_content(
+                hub_name=hub_name,
+                hub_content_name=notebook_name,
+                hub_content_version=notebook_version,
+                hub_content_type=data_type,
+            )
+            hub_notebook_description = DescribeHubContentResponse(response)
+            return JumpStartCachedContentValue(formatted_content=hub_notebook_description)
+
         if data_type == HubContentType.MODEL:
             hub_name, _, model_name, model_version = hub_utils.get_info_from_hub_resource_arn(id_info)
             hub_model_description: Dict[str, Any] = self._sagemaker_session.describe_hub_content(
@@ -468,7 +480,7 @@ class JumpStartModelsCache:
             response: Dict[str, Any] = self._sagemaker_session.describe_hub(hub_name=hub_name)
             hub_description = DescribeHubResponse(response)
             return JumpStartCachedContentValue(
-                formatted_content=DescribeHubResponse(hub_description),
+                formatted_content=hub_description,
             )
 
         raise ValueError(
