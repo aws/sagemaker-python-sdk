@@ -21,7 +21,9 @@ from sagemaker.jumpstart.curated_hub.types import (
     HubContentDependencyType,
     S3ObjectLocation,
 )
-from sagemaker.jumpstart.curated_hub.accessors.public_model_data import PublicModelDataAccessor
+from sagemaker.jumpstart.curated_hub.accessors.public_model_data import (
+    PublicModelDataAccessor,
+)
 from sagemaker.jumpstart.curated_hub.utils import is_gated_bucket
 from sagemaker.jumpstart.types import JumpStartModelSpecs
 

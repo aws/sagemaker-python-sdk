@@ -13,16 +13,26 @@
 """This module contains utilities related to SageMaker JumpStart CuratedHub."""
 from __future__ import absolute_import
 import re
-from typing import Optional
+from typing import Optional, Dict, List
 from sagemaker.jumpstart.curated_hub.types import S3ObjectLocation
 from sagemaker.s3_utils import parse_s3_url
 from sagemaker.session import Session
 from sagemaker.utils import aws_partition
-from sagemaker.jumpstart.types import (
-    HubContentType,
-    HubArnExtractedInfo,
+from sagemaker.jumpstart.types import HubContentType, HubArnExtractedInfo
+from sagemaker.jumpstart.curated_hub.types import (
+    CuratedHubUnsupportedFlag,
+    HubContentSummary,
+    JumpStartModelInfo,
+    summary_list_from_list_api_response,
 )
 from sagemaker.jumpstart import constants
+from sagemaker.jumpstart import utils
+from sagemaker.jumpstart.enums import JumpStartScriptScope
+from sagemaker.jumpstart.curated_hub.constants import (
+    JUMPSTART_HUB_MODEL_ID_TAG_PREFIX,
+    JUMPSTART_HUB_MODEL_VERSION_TAG_PREFIX,
+)
+from sagemaker.utils import format_tags, TagsDict
 
 
 def get_info_from_hub_resource_arn(
@@ -167,6 +177,135 @@ def create_hub_bucket_if_it_does_not_exist(
     )
 
     return bucket_name
+
+
+def find_deprecated_vulnerable_flags_for_hub_content(
+    hub_name: str, hub_content_name: str, region: str, session: Session
+) -> List[TagsDict]:
+    """Finds the JumpStart public hub model for a HubContent and calculates relevant tags.
+
+    Since tags are the same for all versions of a HubContent,
+    these tags will map from the key to a list of versions impacted.
+    For example, if certain public hub model versions are deprecated,
+    this utility will return a `deprecated` tag
+    mapped to the deprecated versions for the HubContent.
+    """
+    list_versions_response = session.list_hub_content_versions(
+        hub_name=hub_name,
+        hub_content_type=HubContentType.MODEL,
+        hub_content_name=hub_content_name,
+    )
+    hub_content_versions: List[HubContentSummary] = summary_list_from_list_api_response(
+        list_versions_response
+    )
+
+    unsupported_hub_content_versions_map: Dict[str, List[str]] = {}
+    version_to_tag_map = _get_tags_for_all_versions(hub_content_versions, region, session)
+    unsupported_hub_content_versions_map = _convert_to_tag_to_versions_map(version_to_tag_map)
+
+    return format_tags(unsupported_hub_content_versions_map)
+
+
+def _get_tags_for_all_versions(
+    hub_content_versions: List[HubContentSummary],
+    region: str,
+    session: Session,
+) -> Dict[str, List[CuratedHubUnsupportedFlag]]:
+    """Helper function to create mapping between HubContent version and associated tags."""
+    version_to_tags_map: Dict[str, List[CuratedHubUnsupportedFlag]] = {}
+    for hub_content_version_summary in hub_content_versions:
+        jumpstart_model = get_jumpstart_model_and_version(hub_content_version_summary)
+        if jumpstart_model is None:
+            continue
+        tag_names_to_add: List[
+            CuratedHubUnsupportedFlag
+        ] = find_unsupported_flags_for_model_version(
+            model_id=jumpstart_model.model_id,
+            version=jumpstart_model.version,
+            region=region,
+            session=session,
+        )
+
+        version_to_tags_map[hub_content_version_summary.hub_content_version] = tag_names_to_add
+    return version_to_tags_map
+
+
+def _convert_to_tag_to_versions_map(
+    version_to_tags_map: Dict[str, List[CuratedHubUnsupportedFlag]]
+) -> Dict[CuratedHubUnsupportedFlag, List[str]]:
+    """Helper function to create tag to version map from a version to flag mapping."""
+    unsupported_hub_content_versions_map: Dict[CuratedHubUnsupportedFlag, List[str]] = {}
+    for version, tags in version_to_tags_map.items():
+        for tag in tags:
+            if tag not in unsupported_hub_content_versions_map:
+                unsupported_hub_content_versions_map[tag.value] = []
+            # Versions for a HubContent are unique
+            unsupported_hub_content_versions_map[tag.value].append(version)
+
+    return unsupported_hub_content_versions_map
+
+
+def find_unsupported_flags_for_model_version(
+    model_id: str, version: str, region: str, session: Session
+) -> List[CuratedHubUnsupportedFlag]:
+    """Finds relevant CuratedHubTags for a version of a JumpStart public hub model.
+
+    For example, if the public hub model is deprecated,
+    this utility will return a `deprecated` tag.
+    Since tags are the same for all versions of a HubContent,
+    these tags will map from the key to a list of versions impacted.
+    """
+    flags_to_add: List[CuratedHubUnsupportedFlag] = []
+    jumpstart_model_specs = utils.verify_model_region_and_return_specs(
+        model_id=model_id,
+        version=version,
+        region=region,
+        scope=JumpStartScriptScope.INFERENCE,
+        tolerate_vulnerable_model=True,
+        tolerate_deprecated_model=True,
+        sagemaker_session=session,
+    )
+
+    if jumpstart_model_specs.deprecated:
+        flags_to_add.append(CuratedHubUnsupportedFlag.DEPRECATED_VERSIONS)
+    if jumpstart_model_specs.inference_vulnerable:
+        flags_to_add.append(CuratedHubUnsupportedFlag.INFERENCE_VULNERABLE_VERSIONS)
+    if jumpstart_model_specs.training_vulnerable:
+        flags_to_add.append(CuratedHubUnsupportedFlag.TRAINING_VULNERABLE_VERSIONS)
+
+    return flags_to_add
+
+
+def get_jumpstart_model_and_version(
+    hub_content_summary: HubContentSummary,
+) -> Optional[JumpStartModelInfo]:
+    """Retrieves the JumpStart model id and version from the JumpStart tag."""
+    jumpstart_model_id_tag = next(
+        (
+            tag
+            for tag in hub_content_summary.hub_content_search_keywords
+            if tag.startswith(JUMPSTART_HUB_MODEL_ID_TAG_PREFIX)
+        ),
+        None,
+    )
+    jumpstart_model_version_tag = next(
+        (
+            tag
+            for tag in hub_content_summary.hub_content_search_keywords
+            if tag.startswith(JUMPSTART_HUB_MODEL_VERSION_TAG_PREFIX)
+        ),
+        None,
+    )
+
+    if jumpstart_model_id_tag is None or jumpstart_model_version_tag is None:
+        return None
+    jumpstart_model_id = jumpstart_model_id_tag[
+        len(JUMPSTART_HUB_MODEL_ID_TAG_PREFIX) :
+    ]  # Need to remove the tag_prefix and ":"
+    jumpstart_model_version = jumpstart_model_version_tag[
+        len(JUMPSTART_HUB_MODEL_VERSION_TAG_PREFIX) :
+    ]
+    return JumpStartModelInfo(model_id=jumpstart_model_id, version=jumpstart_model_version)
 
 
 def is_gated_bucket(bucket_name: str) -> bool:

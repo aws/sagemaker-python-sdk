@@ -12,17 +12,79 @@
 # language governing permissions and limitations under the License.
 """This module stores types related to SageMaker JumpStart CuratedHub."""
 from __future__ import absolute_import
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from enum import Enum
 from dataclasses import dataclass
 from datetime import datetime
 
-from sagemaker.jumpstart.types import JumpStartDataHolderType, JumpStartModelSpecs
+from sagemaker.jumpstart.types import (
+    JumpStartDataHolderType,
+    JumpStartModelSpecs,
+    HubContentType,
+)
+
+
+class CuratedHubUnsupportedFlag(str, Enum):
+    """Enum class for Curated Hub tag names."""
+
+    DEPRECATED_VERSIONS = "deprecated_versions"
+    TRAINING_VULNERABLE_VERSIONS = "training_vulnerable_versions"
+    INFERENCE_VULNERABLE_VERSIONS = "inference_vulnerable_versions"
+
+
+@dataclass
+class HubContentSummary:
+    """Dataclass to store HubContentSummary from List APIs."""
+
+    hub_content_arn: str
+    hub_content_name: str
+    hub_content_version: str
+    hub_content_type: HubContentType
+    document_schema_version: str
+    hub_content_status: str
+    creation_time: datetime
+    hub_content_display_name: str = None
+    hub_content_description: str = None
+    hub_content_search_keywords: List[str] = None
+
+
+def summary_from_list_api_response(hub_content_summary: Dict[str, Any]) -> HubContentSummary:
+    """Creates a single HubContentSummary.
+
+    This is based on the ListHubContent or ListHubContentVersions API response.
+    """
+    return HubContentSummary(
+        hub_content_arn=hub_content_summary.get("HubContentArn"),
+        hub_content_name=hub_content_summary.get("HubContentName"),
+        hub_content_version=hub_content_summary.get("HubContentVersion"),
+        hub_content_type=hub_content_summary.get("HubContentType"),
+        document_schema_version=hub_content_summary.get("DocumentSchemaVersion"),
+        hub_content_status=hub_content_summary.get("HubContentStatus"),
+        hub_content_display_name=hub_content_summary.get("HubContentDisplayName"),
+        hub_content_description=hub_content_summary.get("HubContentDescription"),
+        hub_content_search_keywords=hub_content_summary.get("HubContentSearchKeywords"),
+        creation_time=hub_content_summary.get("CreationTime"),
+    )
+
+
+def summary_list_from_list_api_response(
+    list_hub_contents_response: Dict[str, Any]
+) -> List[HubContentSummary]:
+    """Creates a HubContentSummary list.
+
+    This is based on the ListHubContent or ListHubContentVersions API response.
+    """
+    return list(
+        map(
+            summary_from_list_api_response,
+            list_hub_contents_response["HubContentSummaries"],
+        )
+    )
 
 
 @dataclass
 class S3ObjectLocation:
-    """Helper class for S3 object references"""
+    """Helper class for S3 object references."""
 
     bucket: str
     key: str
@@ -72,6 +134,7 @@ class FileInfo(JumpStartDataHolderType):
         last_updated: Optional[datetime],
         dependecy_type: Optional[HubContentDependencyType] = None,
     ):
+        """Creates a FileInfo."""
         self.location = S3ObjectLocation(bucket, key)
         self.size = size
         self.last_updated = last_updated

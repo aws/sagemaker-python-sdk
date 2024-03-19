@@ -734,7 +734,6 @@ class JumpStartEstimator(Estimator):
         """
 
         if model_id is None:
-
             model_id, model_version = get_model_id_version_from_training_job(
                 training_job_name=training_job_name, sagemaker_session=sagemaker_session
             )
