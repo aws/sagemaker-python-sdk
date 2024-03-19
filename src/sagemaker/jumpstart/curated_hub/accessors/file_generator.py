@@ -22,6 +22,7 @@ from sagemaker.jumpstart.curated_hub.types import (
     S3ObjectLocation,
 )
 from sagemaker.jumpstart.curated_hub.accessors.public_model_data import PublicModelDataAccessor
+from sagemaker.jumpstart.curated_hub.utils import is_gated_bucket
 from sagemaker.jumpstart.types import JumpStartModelSpecs
 
 
@@ -65,6 +66,10 @@ def generate_file_infos_from_model_specs(
     files = []
     for dependency in HubContentDependencyType:
         location: S3ObjectLocation = public_model_data_accessor.get_s3_reference(dependency)
+        # Training dependencies will return as None if training is unsupported
+        if not location or is_gated_bucket(location.bucket):
+            continue
+
         location_type = "prefix" if location.key.endswith("/") else "object"
 
         if location_type == "prefix":

@@ -34,7 +34,6 @@ from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     MODEL_TYPE_TO_MANIFEST_MAP,
     MODEL_TYPE_TO_SPECS_MAP,
-    DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 )
 from sagemaker.jumpstart.exceptions import (
     get_wildcard_model_version_msg,
@@ -431,7 +430,7 @@ class JumpStartModelsCache:
                 formatted_content=utils.get_formatted_manifest(formatted_body),
                 md5_hash=etag,
             )
-        
+
         if data_type in {
             JumpStartS3FileType.OPEN_WEIGHT_SPECS,
             JumpStartS3FileType.PROPRIETARY_SPECS,
