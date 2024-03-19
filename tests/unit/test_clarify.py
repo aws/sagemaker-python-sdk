@@ -328,15 +328,16 @@ def test_s3_data_distribution_type_ignorance():
     assert data_config.s3_data_distribution_type == "FullyReplicated"
 
 
-class TimeSeriesDataConfigCase(NamedTuple):
+@dataclass
+class TimeSeriesDataConfigCase:
     target_time_series: Union[str, int]
     item_id: Union[str, int]
     timestamp: Union[str, int]
     related_time_series: Optional[List[Union[str, int]]]
     static_covariates: Optional[List[Union[str, int]]]
-    dataset_format: Optional[TimeSeriesJSONDatasetFormat]
-    error: Exception
-    error_message: Optional[str]
+    dataset_format: Optional[TimeSeriesJSONDatasetFormat] = None
+    error: Optional[Exception] = None
+    error_message: Optional[str] = None
 
 
 class TestTimeSeriesDataConfig:
@@ -348,8 +349,6 @@ class TestTimeSeriesDataConfig:
             related_time_series=None,
             static_covariates=None,
             dataset_format=TimeSeriesJSONDatasetFormat.COLUMNS,
-            error=None,
-            error_message=None,
         ),
         TimeSeriesDataConfigCase(  # related_time_series provided str case
             target_time_series="target_time_series",
@@ -358,8 +357,6 @@ class TestTimeSeriesDataConfig:
             related_time_series=["ts1", "ts2", "ts3"],
             static_covariates=None,
             dataset_format=TimeSeriesJSONDatasetFormat.COLUMNS,
-            error=None,
-            error_message=None,
         ),
         TimeSeriesDataConfigCase(  # static_covariates provided str case
             target_time_series="target_time_series",
@@ -368,8 +365,6 @@ class TestTimeSeriesDataConfig:
             related_time_series=None,
             static_covariates=["a", "b", "c", "d"],
             dataset_format=TimeSeriesJSONDatasetFormat.COLUMNS,
-            error=None,
-            error_message=None,
         ),
         TimeSeriesDataConfigCase(  # both related_time_series and static_covariates provided str case
             target_time_series="target_time_series",
@@ -378,8 +373,6 @@ class TestTimeSeriesDataConfig:
             related_time_series=["ts1", "ts2", "ts3"],
             static_covariates=["a", "b", "c", "d"],
             dataset_format=TimeSeriesJSONDatasetFormat.COLUMNS,
-            error=None,
-            error_message=None,
         ),
         TimeSeriesDataConfigCase(  # no optional args provided int case
             target_time_series=1,
@@ -387,9 +380,6 @@ class TestTimeSeriesDataConfig:
             timestamp=3,
             related_time_series=None,
             static_covariates=None,
-            dataset_format=None,
-            error=None,
-            error_message=None,
         ),
         TimeSeriesDataConfigCase(  # related_time_series provided int case
             target_time_series=1,
@@ -397,9 +387,6 @@ class TestTimeSeriesDataConfig:
             timestamp=3,
             related_time_series=[4, 5, 6],
             static_covariates=None,
-            dataset_format=None,
-            error=None,
-            error_message=None,
         ),
         TimeSeriesDataConfigCase(  # static_covariates provided int case
             target_time_series=1,
@@ -407,9 +394,6 @@ class TestTimeSeriesDataConfig:
             timestamp=3,
             related_time_series=None,
             static_covariates=[7, 8, 9, 10],
-            dataset_format=None,
-            error=None,
-            error_message=None,
         ),
         TimeSeriesDataConfigCase(  # both related_time_series and static_covariates provided int case
             target_time_series=1,
@@ -417,9 +401,6 @@ class TestTimeSeriesDataConfig:
             timestamp=3,
             related_time_series=[4, 5, 6],
             static_covariates=[7, 8, 9, 10],
-            dataset_format=None,
-            error=None,
-            error_message=None,
         ),
     ]
 
@@ -464,7 +445,7 @@ class TestTimeSeriesDataConfig:
                 related_time_series=None,
                 static_covariates=None,
                 dataset_format=TimeSeriesJSONDatasetFormat.COLUMNS,
-                error=AssertionError,
+                error=ValueError,
                 error_message="Please provide a target time series.",
             ),
             TimeSeriesDataConfigCase(  # no item_id provided
@@ -474,7 +455,7 @@ class TestTimeSeriesDataConfig:
                 related_time_series=None,
                 static_covariates=None,
                 dataset_format=TimeSeriesJSONDatasetFormat.COLUMNS,
-                error=AssertionError,
+                error=ValueError,
                 error_message="Please provide an item id.",
             ),
             TimeSeriesDataConfigCase(  # no timestamp provided
@@ -484,7 +465,7 @@ class TestTimeSeriesDataConfig:
                 related_time_series=None,
                 static_covariates=None,
                 dataset_format=TimeSeriesJSONDatasetFormat.COLUMNS,
-                error=AssertionError,
+                error=ValueError,
                 error_message="Please provide a timestamp.",
             ),
             TimeSeriesDataConfigCase(  # target_time_series not int or str
@@ -604,7 +585,7 @@ class TestTimeSeriesDataConfig:
                 related_time_series=[4, 5, 6],
                 static_covariates=[7, 8, 9, 10],
                 dataset_format=TimeSeriesJSONDatasetFormat.COLUMNS,
-                error=AssertionError,
+                error=ValueError,
                 error_message="Dataset format should only be provided when data files are JSONs.",
             ),
             TimeSeriesDataConfigCase(  # dataset_format not provided str case
@@ -614,7 +595,7 @@ class TestTimeSeriesDataConfig:
                 related_time_series=["ts1", "ts2", "ts3"],
                 static_covariates=["a", "b", "c", "d"],
                 dataset_format=None,
-                error=AssertionError,
+                error=ValueError,
                 error_message="Please provide a valid dataset format.",
             ),
             TimeSeriesDataConfigCase(  # dataset_format wrong type str case
@@ -624,7 +605,7 @@ class TestTimeSeriesDataConfig:
                 related_time_series=["ts1", "ts2", "ts3"],
                 static_covariates=["a", "b", "c", "d"],
                 dataset_format="made_up_format",
-                error=AssertionError,
+                error=ValueError,
                 error_message="Please provide a valid dataset format.",
             ),
         ],
@@ -1039,13 +1020,13 @@ class TestTimeSeriesModelConfig:
         [
             (
                 None,
-                AssertionError,
-                "Please provide ``forecast``, a JMESPath expression to extract the forecast result.",
+                ValueError,
+                "Please provide a string JMESPath expression for ``forecast``",
             ),
             (
                 123,
                 ValueError,
-                "Please provide a string JMESPath expression for ``forecast``.",
+                "Please provide a string JMESPath expression for ``forecast``",
             ),
         ],
     )
@@ -1352,7 +1333,7 @@ class TestAsymmetricShapleyValueConfig:
                 direction="non-directional",
                 granularity="timewise",
                 num_samples=None,
-                error=AssertionError,
+                error=ValueError,
                 error_message="Please provide a valid explanation direction from: "
                 + ", ".join(ASYM_SHAP_VAL_EXPLANATION_DIRECTIONS),
             ),
@@ -1360,14 +1341,14 @@ class TestAsymmetricShapleyValueConfig:
                 direction="chronological",
                 granularity="fine_grained",
                 num_samples=None,
-                error=AssertionError,
+                error=ValueError,
                 error_message="Please provide an integer for ``num_samples``.",
             ),
             AsymmetricShapleyValueConfigCase(  # case for fine_grained and non-integer num_samples
                 direction="chronological",
                 granularity="fine_grained",
                 num_samples="5",
-                error=AssertionError,
+                error=ValueError,
                 error_message="Please provide an integer for ``num_samples``.",
             ),
             AsymmetricShapleyValueConfigCase(  # case for num_samples when non fine-grained explanation
@@ -1381,28 +1362,28 @@ class TestAsymmetricShapleyValueConfig:
                 direction="anti_chronological",
                 granularity="fine_grained",
                 num_samples=5,
-                error=AssertionError,
+                error=ValueError,
                 error_message="not supported together.",
             ),
             AsymmetricShapleyValueConfigCase(  # case for bidirectional and fine_grained
                 direction="bidirectional",
                 granularity="fine_grained",
                 num_samples=5,
-                error=AssertionError,
+                error=ValueError,
                 error_message="not supported together.",
             ),
             AsymmetricShapleyValueConfigCase(  # case for unsupported target time series baseline value
                 direction="chronological",
                 granularity="timewise",
                 baseline={"target_time_series": "median"},
-                error=AssertionError,
+                error=ValueError,
                 error_message="for ``target_time_series`` is invalid.",
             ),
             AsymmetricShapleyValueConfigCase(  # case for unsupported related time series baseline value
                 direction="chronological",
                 granularity="timewise",
                 baseline={"related_time_series": "mode"},
-                error=AssertionError,
+                error=ValueError,
                 error_message="for ``related_time_series`` is invalid.",
             ),
         ],
@@ -2624,9 +2605,12 @@ class ValidateTSXBaselineCase:
 
 
 class TestAnalysisConfigGeneratorForTimeSeriesExplainability:
+    @patch(
+        "sagemaker.clarify._AnalysisConfigGenerator._validate_time_series_static_covariates_baseline"
+    )
     @patch("sagemaker.clarify._AnalysisConfigGenerator._add_methods")
     @patch("sagemaker.clarify._AnalysisConfigGenerator._add_predictor")
-    def test_explainability_for_time_series(self, _add_predictor, _add_methods):
+    def test_explainability_for_time_series(self, _add_predictor, _add_methods, _validate_ts_scv):
         """
         GIVEN a valid DataConfig and ModelConfig that contain time_series_data_config and
             time_series_model_config respectively as well as an AsymmetricShapleyValueConfig
@@ -2671,6 +2655,10 @@ class TestAnalysisConfigGeneratorForTimeSeriesExplainability:
             ANY,
             explainability_config=explainability_config,
         )
+        _validate_ts_scv.assert_called_once_with(
+            explainability_config=explainability_config,
+            data_config=data_config_mock,
+        )
 
     def test_explainability_for_time_series_invalid(self):
         # data config mocks
@@ -2687,7 +2675,7 @@ class TestAnalysisConfigGeneratorForTimeSeriesExplainability:
         pdp_config_mock = _build_pdp_config_mock()
         # case 1: ASV (ts case) and no timeseries data config given
         with pytest.raises(
-            AssertionError, match="Please provide a TimeSeriesDataConfig to DataConfig."
+            ValueError, match="Please provide a TimeSeriesDataConfig to DataConfig."
         ):
             _AnalysisConfigGenerator.explainability(
                 data_config=data_config_without_ts,
@@ -2697,7 +2685,7 @@ class TestAnalysisConfigGeneratorForTimeSeriesExplainability:
             )
         # case 2: ASV (ts case) and no timeseries model config given
         with pytest.raises(
-            AssertionError, match="Please provide a TimeSeriesModelConfig to ModelConfig."
+            ValueError, match="Please provide a TimeSeriesModelConfig to ModelConfig."
         ):
             _AnalysisConfigGenerator.explainability(
                 data_config=data_config_with_ts,
@@ -2885,7 +2873,7 @@ class TestAnalysisConfigGeneratorForTimeSeriesExplainability:
                         dataset_format=TimeSeriesJSONDatasetFormat.ITEM_RECORDS,
                     ),
                 ),
-                error=AssertionError,
+                error=ValueError,
                 error_msg="baseline entry for item3 does not match number",
             ),
             ValidateTSXBaselineCase(  # no static covariates are in data config
@@ -2950,7 +2938,7 @@ class TestAnalysisConfigGeneratorForTimeSeriesExplainability:
                         dataset_format=TimeSeriesJSONDatasetFormat.ITEM_RECORDS,
                     ),
                 ),
-                error=AssertionError,
+                error=ValueError,
                 error_msg="Baseline entry for item5 must be a list",
             ),
         ],

@@ -587,13 +587,15 @@ class TimeSeriesDataConfig:
                 when dataset is in JSON format.
 
         Raises:
-            AssertionError: If any required arguments are not provided.
-            ValueError: If any provided arguments are the wrong type.
+            ValueError: If any required arguments are not provided or are the wrong type.
         """
         # check target_time_series, item_id, and timestamp are provided
-        assert target_time_series, "Please provide a target time series."
-        assert item_id, "Please provide an item id."
-        assert timestamp, "Please provide a timestamp."
+        if not target_time_series:
+            raise ValueError("Please provide a target time series.")
+        if not item_id:
+            raise ValueError("Please provide an item id.")
+        if not timestamp:
+            raise ValueError("Please provide a timestamp.")
         # check all arguments are the right types
         if not isinstance(target_time_series, (str, int)):
             raise ValueError("Please provide a string or an int for ``target_time_series``")
@@ -644,14 +646,14 @@ class TimeSeriesDataConfig:
             )  # static_covariates is valid, add it
         if params_type == str:
             # check dataset_format is provided and valid
-            assert isinstance(
-                dataset_format, TimeSeriesJSONDatasetFormat
-            ), "Please provide a valid dataset format."
+            if not isinstance(dataset_format, TimeSeriesJSONDatasetFormat):
+                raise ValueError("Please provide a valid dataset format.")
             _set(dataset_format.value, "dataset_format", self.time_series_data_config)
         else:
-            assert (
-                not dataset_format
-            ), "Dataset format should only be provided when data files are JSONs."
+            if dataset_format:
+                raise ValueError(
+                    "Dataset format should only be provided when data files are JSONs."
+                )
 
     def get_time_series_data_config(self):
         """Returns part of an analysis config dictionary."""
@@ -960,16 +962,14 @@ class TimeSeriesModelConfig:
             forecast (str): JMESPath expression to extract the forecast result.
 
         Raises:
-            AssertionError: when ``forecast`` is not provided
-            ValueError: when any provided argument are not of specified type
+            ValueError: when ``forecast`` is not a string or not provided
         """
-        # assert forecast is provided
-        assert (
-            forecast
-        ), "Please provide ``forecast``, a JMESPath expression to extract the forecast result."
-        # check provided arguments are of the right type
+        # check string forecast is provided
         if not isinstance(forecast, str):
-            raise ValueError("Please provide a string JMESPath expression for ``forecast``.")
+            raise ValueError(
+                "Please provide a string JMESPath expression for ``forecast`` "
+                "to extract the forecast result."
+            )
         # add fields to an internal config dictionary
         self.time_series_model_config = dict()
         _set(forecast, "forecast", self.time_series_model_config)
@@ -1796,28 +1796,30 @@ class AsymmetricShapleyValueConfig(ExplainabilityConfig):
                     }
 
         Raises:
-            AssertionError: when ``direction`` or ``granularity`` are not valid,
-                or ``num_samples`` is not provided for fine-grained explanations
-            ValueError: when ``num_samples`` is provided for non fine-grained explanations, or
-                when direction is not ``"chronological"`` when granularity is
-                ``"fine_grained"``.
+            ValueError: when ``direction`` or ``granularity`` are not valid, ``num_samples`` is not
+                provided for fine-grained explanations, ``num_samples`` is provided for non
+                fine-grained explanations, or when ``direction`` is not ``"chronological"`` while
+                ``granularity`` is ``"fine_grained"``.
         """
         self.asymmetric_shapley_value_config = dict()
         # validate explanation direction
-        assert (
-            direction in ASYM_SHAP_VAL_EXPLANATION_DIRECTIONS
-        ), "Please provide a valid explanation direction from: " + ", ".join(
-            ASYM_SHAP_VAL_EXPLANATION_DIRECTIONS
-        )
+        if direction not in ASYM_SHAP_VAL_EXPLANATION_DIRECTIONS:
+            raise ValueError(
+                "Please provide a valid explanation direction from: "
+                + ", ".join(ASYM_SHAP_VAL_EXPLANATION_DIRECTIONS)
+            )
         # validate granularity
-        assert (
-            granularity in ASYM_SHAP_VAL_GRANULARITIES
-        ), "Please provide a valid granularity from: " + ", ".join(ASYM_SHAP_VAL_GRANULARITIES)
+        if granularity not in ASYM_SHAP_VAL_GRANULARITIES:
+            raise ValueError(
+                "Please provide a valid granularity from: " + ", ".join(ASYM_SHAP_VAL_GRANULARITIES)
+            )
         if granularity == "fine_grained":
-            assert isinstance(num_samples, int), "Please provide an integer for ``num_samples``."
-            assert (
-                direction == "chronological"
-            ), f"{direction} and {granularity} granularity are not supported together."
+            if not isinstance(num_samples, int):
+                raise ValueError("Please provide an integer for ``num_samples``.")
+            if direction != "chronological":
+                raise ValueError(
+                    f"{direction} and {granularity} granularity are not supported together."
+                )
         elif num_samples:  # validate num_samples is not provided when unnecessary
             raise ValueError("``num_samples`` is only used for fine-grained explanations.")
         # validate baseline if provided as a dictionary
@@ -1825,16 +1827,18 @@ class AsymmetricShapleyValueConfig(ExplainabilityConfig):
             temporal_baselines = ["zero", "mean"]  # possible baseline options for temporal fields
             if "target_time_series" in baseline:
                 target_baseline = baseline.get("target_time_series")
-                assert target_baseline in temporal_baselines, (
-                    f"Provided value {target_baseline} for ``target_time_series`` is "
-                    f"invalid. Please select one of {temporal_baselines}."
-                )
+                if target_baseline not in temporal_baselines:
+                    raise ValueError(
+                        f"Provided value {target_baseline} for ``target_time_series`` is "
+                        f"invalid. Please select one of {temporal_baselines}."
+                    )
             if "related_time_series" in baseline:
                 related_baseline = baseline.get("related_time_series")
-                assert related_baseline in temporal_baselines, (
-                    f"Provided value {related_baseline} for ``related_time_series`` is "
-                    f"invalid. Please select one of {temporal_baselines}."
-                )
+                if related_baseline not in temporal_baselines:
+                    raise ValueError(
+                        f"Provided value {related_baseline} for ``related_time_series`` is "
+                        f"invalid. Please select one of {temporal_baselines}."
+                    )
         # set explanation type and (if provided) num_samples in internal config dictionary
         _set(direction, "direction", self.asymmetric_shapley_value_config)
         _set(granularity, "granularity", self.asymmetric_shapley_value_config)
@@ -2550,25 +2554,27 @@ class _AnalysisConfigGenerator:
         """Generates a config for Explainability"""
         # determine if this is a time series explainability case by checking
         # if *both* TimeSeriesDataConfig and TimeSeriesModelConfig were given
-        ts_data_config_present = "time_series_data_config" in data_config.analysis_config
-        ts_model_config_present = "time_series_predictor_config" in model_config.predictor_config
+        ts_data_conf_absent = "time_series_data_config" not in data_config.analysis_config
+        ts_model_conf_absent = "time_series_predictor_config" not in model_config.predictor_config
 
         if isinstance(explainability_config, AsymmetricShapleyValueConfig):
-            assert ts_data_config_present, "Please provide a TimeSeriesDataConfig to DataConfig."
-            assert ts_model_config_present, "Please provide a TimeSeriesModelConfig to ModelConfig."
+            if ts_data_conf_absent:
+                raise ValueError("Please provide a TimeSeriesDataConfig to DataConfig.")
+            if ts_model_conf_absent:
+                raise ValueError("Please provide a TimeSeriesModelConfig to ModelConfig.")
             # Check static covariates baseline matches number of provided static covariate columns
             _AnalysisConfigGenerator._validate_time_series_static_covariates_baseline(
                 explainability_config=explainability_config,
                 data_config=data_config,
             )
         else:
-            if ts_data_config_present:
+            if not ts_data_conf_absent:
                 raise ValueError(
                     "Please provide an AsymmetricShapleyValueConfig for time series "
                     "explainability cases. For non time series cases, please do not provide a "
                     "TimeSeriesDataConfig."
                 )
-            if ts_model_config_present:
+            if not ts_model_conf_absent:
                 raise ValueError(
                     "Please provide an AsymmetricShapleyValueConfig for time series "
                     "explainability cases. For non time series cases, please do not provide a "
@@ -2786,15 +2792,17 @@ class _AnalysisConfigGenerator:
             if covariate_count > 0:
                 for item_id in baseline.get("static_covariates", []):
                     baseline_entry = baseline["static_covariates"][item_id]
-                    assert isinstance(baseline_entry, list), (
-                        f"Baseline entry for {item_id} must be a list, is "
-                        f"{type(baseline_entry)}."
-                    )
-                    assert len(baseline_entry) == covariate_count, (
-                        f"Length of baseline entry for {item_id} does not match number "
-                        f"of static covariate columns. Please ensure every covariate "
-                        f"has a baseline value for every item id."
-                    )
+                    if not isinstance(baseline_entry, list):
+                        raise ValueError(
+                            f"Baseline entry for {item_id} must be a list, is "
+                            f"{type(baseline_entry)}."
+                        )
+                    if len(baseline_entry) != covariate_count:
+                        raise ValueError(
+                            f"Length of baseline entry for {item_id} does not match number "
+                            f"of static covariate columns. Please ensure every covariate "
+                            f"has a baseline value for every item id."
+                        )
             else:
                 raise ValueError(
                     "Static covariate baselines are provided in AsymmetricShapleyValueConfig "
