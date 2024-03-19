@@ -1343,8 +1343,9 @@ class TestModelBuilder(unittest.TestCase):
         self.assertEqual(model_builder._can_fit_on_single_gpu(), True)
 
     @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_transformers", Mock())
-    @patch("sagemaker.serve.builder.model_builder.estimate_parser")
-    @patch("sagemaker.serve.builder.model_builder.estimate_gather")
+    @patch("sagemaker.serve.builder.model_builder.accelerate.commands.estimate"
+           ".estimate_command_parser")
+    @patch("sagemaker.serve.builder.model_builder.accelerate.commands.estimate.gather_data")
     @patch("sagemaker.image_uris.retrieve")
     @patch("sagemaker.djl_inference.model.urllib")
     @patch("sagemaker.djl_inference.model.json")
