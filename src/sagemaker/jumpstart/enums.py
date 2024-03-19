@@ -34,6 +34,19 @@ class ModelFramework(str, Enum):
     SKLEARN = "sklearn"
 
 
+class JumpStartModelType(str, Enum):
+    """Enum class for JumpStart model type.
+
+    OPEN_WEIGHTS: Publicly available models have open weights
+    and are onboarded and maintained by JumpStart.
+    PROPRIETARY: Proprietary models from third-party providers do not have open weights.
+    You must subscribe to proprietary models in AWS Marketplace before use.
+    """
+
+    OPEN_WEIGHTS = "open_weights"
+    PROPRIETARY = "proprietary"
+
+
 class VariableScope(str, Enum):
     """Possible value of the ``scope`` attribute for a hyperparameter or environment variable.
 
@@ -78,6 +91,7 @@ class JumpStartTag(str, Enum):
 
     MODEL_ID = "sagemaker-sdk:jumpstart-model-id"
     MODEL_VERSION = "sagemaker-sdk:jumpstart-model-version"
+    MODEL_TYPE = "sagemaker-sdk:jumpstart-model-type"
 
 
 class SerializerType(str, Enum):

@@ -21,6 +21,7 @@ from sagemaker.config.config_schema import (
 from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 
 from sagemaker.jumpstart.model import JumpStartModel
+from sagemaker.jumpstart.enums import JumpStartModelType
 from sagemaker.session import Session
 from sagemaker.utils import resolve_value_from_config
 
@@ -59,7 +60,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
     region = "us-west-2"
     sagemaker_session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 
-    @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_init_kwargs")
     @mock.patch("sagemaker.utils.get_sagemaker_config_value")
@@ -75,10 +76,10 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
         mock_get_sagemaker_config_value: mock.Mock,
         mock_retrieve_kwargs: mock.Mock,
         mock_model_init: mock.Mock,
-        mock_is_valid_model_id: mock.Mock,
+        mock_validate_model_id_and_get_type: mock.Mock,
     ):
 
-        mock_is_valid_model_id.return_value = True
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
         model_id, _ = "js-trainable-model", "*"
 
         mock_retrieve_kwargs.return_value = {}
@@ -100,7 +101,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
 
         assert "enable_network_isolation" not in mock_model_init.call_args[1]
 
-    @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_init_kwargs")
     @mock.patch("sagemaker.utils.get_sagemaker_config_value")
@@ -116,10 +117,10 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
         mock_get_sagemaker_config_value: mock.Mock,
         mock_retrieve_kwargs: mock.Mock,
         mock_model_init: mock.Mock,
-        mock_is_valid_model_id: mock.Mock,
+        mock_validate_model_id_and_get_type: mock.Mock,
     ):
 
-        mock_is_valid_model_id.return_value = True
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
         model_id, _ = "js-trainable-model", "*"
 
@@ -146,7 +147,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
             override_enable_network_isolation,
         )
 
-    @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_init_kwargs")
     @mock.patch("sagemaker.utils.get_sagemaker_config_value")
@@ -162,10 +163,10 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
         mock_get_sagemaker_config_value: mock.Mock,
         mock_retrieve_kwargs: mock.Mock,
         mock_model_init: mock.Mock,
-        mock_is_valid_model_id: mock.Mock,
+        mock_validate_model_id_and_get_type: mock.Mock,
     ):
 
-        mock_is_valid_model_id.return_value = True
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
         model_id, _ = "js-trainable-model", "*"
 
@@ -192,7 +193,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
             config_enable_network_isolation,
         )
 
-    @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_init_kwargs")
     @mock.patch("sagemaker.utils.get_sagemaker_config_value")
@@ -208,10 +209,10 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
         mock_get_sagemaker_config_value: mock.Mock,
         mock_retrieve_kwargs: mock.Mock,
         mock_model_init: mock.Mock,
-        mock_is_valid_model_id: mock.Mock,
+        mock_validate_model_id_and_get_type: mock.Mock,
     ):
 
-        mock_is_valid_model_id.return_value = True
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
         model_id, _ = "js-trainable-model", "*"
 
@@ -240,7 +241,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
             override_enable_network_isolation,
         )
 
-    @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_init_kwargs")
     @mock.patch("sagemaker.utils.get_sagemaker_config_value")
@@ -256,10 +257,10 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
         mock_get_sagemaker_config_value: mock.Mock,
         mock_retrieve_kwargs: mock.Mock,
         mock_model_init: mock.Mock,
-        mock_is_valid_model_id: mock.Mock,
+        mock_validate_model_id_and_get_type: mock.Mock,
     ):
 
-        mock_is_valid_model_id.return_value = True
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
         model_id, _ = "js-trainable-model", "*"
 
@@ -286,7 +287,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
             metadata_enable_network_isolation,
         )
 
-    @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_init_kwargs")
     @mock.patch("sagemaker.utils.get_sagemaker_config_value")
@@ -302,9 +303,9 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
         mock_get_sagemaker_config_value: mock.Mock,
         mock_retrieve_kwargs: mock.Mock,
         mock_model_init: mock.Mock,
-        mock_is_valid_model_id: mock.Mock,
+        mock_validate_model_id_and_get_type: mock.Mock,
     ):
-        mock_is_valid_model_id.return_value = True
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
         model_id, _ = "js-trainable-model", "*"
 
@@ -333,7 +334,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
             override_enable_network_isolation,
         )
 
-    @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_init_kwargs")
     @mock.patch("sagemaker.utils.get_sagemaker_config_value")
@@ -349,10 +350,10 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
         mock_get_sagemaker_config_value: mock.Mock,
         mock_retrieve_kwargs: mock.Mock,
         mock_model_init: mock.Mock,
-        mock_is_valid_model_id: mock.Mock,
+        mock_validate_model_id_and_get_type: mock.Mock,
     ):
 
-        mock_is_valid_model_id.return_value = True
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
         model_id, _ = "js-trainable-model", "*"
 
@@ -374,7 +375,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
         self.assertEquals(mock_model_init.call_args[1].get("role"), execution_role)
         assert "enable_network_isolation" not in mock_model_init.call_args[1]
 
-    @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_init_kwargs")
     @mock.patch("sagemaker.utils.get_sagemaker_config_value")
@@ -390,10 +391,10 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
         mock_get_sagemaker_config_value: mock.Mock,
         mock_retrieve_kwargs: mock.Mock,
         mock_model_init: mock.Mock,
-        mock_is_valid_model_id: mock.Mock,
+        mock_validate_model_id_and_get_type: mock.Mock,
     ):
 
-        mock_is_valid_model_id.return_value = True
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
         model_id, _ = "js-trainable-model", "*"
 

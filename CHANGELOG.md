@@ -1,5 +1,66 @@
 # Changelog
 
+## v2.213.0 (2024-03-15)
+
+### Features
+
+ * Add support for Streaming Inference
+ * tgi optimum 0.0.19, 0.0.20 releases
+ * support JumpStart proprietary models
+ * Add ModelDataSource and SourceUri support for model package and while registering
+ * Accept user-defined env variables for the entry-point
+ * Add overriding logic in ModelBuilder when task is provided
+
+### Bug Fixes and Other Changes
+
+ * Improvement of the tuner documentation
+ * Skip of tests which are long running and causing the ResourceLimitInUse exception
+ * Add AutoML -> AutoMLV2 mapper
+ * add ci-health checks
+ * split coverage out from testenv in tox.ini
+ * add PT 2.2 support for smdistributed, pytorchddp, and torch_distributed distributions
+ * sagemaker session region not being used
+ * chore: emit warning when no instance specific gated training env var is available, and raise exception when accept_eula flag is not supplied
+ * enable github actions for PRs
+ * Move sagemaker pysdk version check after bootstrap in remote job
+ * make unit tests compatible with pytest-xdist
+ * Update tblib constraint
+
+## v2.212.0 (2024-03-06)
+
+### Features
+
+ * Update SM Python SDK for PT 2.2.0 SM DLC
+
+### Bug Fixes and Other Changes
+
+ * Create custom tarfile extractall util to fix backward compatibility issue
+ * Upgrade smp to version 2.2
+ * Enhance model builder selection logic to include model size
+
+## v2.211.0 (2024-03-05)
+
+### Features
+
+ * pin dll version to support python3.11 to the sdk
+ * instance specific jumpstart host requirements
+ * Add TensorFlow 2.14 image configs
+ * Add AutoMLV2 support
+ * Support selective pipeline execution between function step and regular step
+ * Add new Triton DLC URIs
+
+### Bug Fixes and Other Changes
+
+ * Skip No Canvas regions for test_deploy_best_candidate
+ * make sure gpus are found in local_gpu run
+ * Bump Apache Airflow version to 2.8.2
+ * properly close sagemaker config file after loading config
+ * remove enable_network_isolation from the python doc
+
+### Documentation Changes
+
+ * Add doc for new feature processor APIs and classes
+
 ## v2.210.0 (2024-02-28)
 
 ### Features

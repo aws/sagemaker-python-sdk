@@ -36,7 +36,7 @@ from sagemaker.utils import (
     _save_model,
     download_file_from_url,
     format_tags,
-    check_tarfile_data_filter_attribute,
+    custom_extractall_tarfile,
 )
 from sagemaker.workflow.retry import RetryPolicy
 from sagemaker.workflow.utilities import trim_request_dict
@@ -262,8 +262,7 @@ class _RepackModelStep(TrainingStep):
                 download_file_from_url(self._source_dir, old_targz_path, self.sagemaker_session)
 
                 with tarfile.open(name=old_targz_path, mode="r:gz") as t:
-                    check_tarfile_data_filter_attribute()
-                    t.extractall(path=targz_contents_dir, filter="data")
+                    custom_extractall_tarfile(t, targz_contents_dir)
 
                 shutil.copy2(fname, os.path.join(targz_contents_dir, REPACK_SCRIPT))
                 with open(
@@ -329,6 +328,7 @@ class _RegisterModelStep(ConfigurableRetryStep):
         sample_payload_url=None,
         task=None,
         skip_model_validation=None,
+        source_uri=None,
         **kwargs,
     ):
         """Constructor of a register model step.
@@ -380,6 +380,7 @@ class _RegisterModelStep(ConfigurableRetryStep):
                 "CLASSIFICATION", "REGRESSION", "OTHER" (default: None).
             skip_model_validation (str): Indicates if you want to skip model validation.
                 Values can be "All" or "None" (default: None).
+            source_uri (str): The URI of the source for the model package (default: None).
             **kwargs: additional arguments to `create_model`.
         """
         super(_RegisterModelStep, self).__init__(
@@ -416,6 +417,7 @@ class _RegisterModelStep(ConfigurableRetryStep):
         self.kwargs = kwargs
         self.container_def_list = container_def_list
         self.skip_model_validation = skip_model_validation
+        self.source_uri = source_uri
 
         self._properties = Properties(
             step_name=name, step=self, shape_name="DescribeModelPackageOutput"
@@ -490,6 +492,7 @@ class _RegisterModelStep(ConfigurableRetryStep):
                 sample_payload_url=self.sample_payload_url,
                 task=self.task,
                 skip_model_validation=self.skip_model_validation,
+                source_uri=self.source_uri,
             )
 
             request_dict = get_create_model_package_request(**model_package_args)
