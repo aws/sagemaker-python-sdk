@@ -459,16 +459,20 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
 
     __slots__ = [
         "regional_aliases",
+        "aliases",
         "variants",
     ]
 
-    def __init__(self, spec: Optional[Dict[str, Any]]):
+    def __init__(self, spec: Optional[Dict[str, Any]], is_hub_content: Optional[bool] = False):
         """Initializes a JumpStartInstanceTypeVariants object from its json representation.
 
         Args:
             spec (Dict[str, Any]): Dictionary representation of instance type variants.
         """
-        self.from_json(spec)
+        if is_hub_content:
+            self.from_describe_hub_content_response(spec)
+        else:
+            self.from_json(spec)
 
     def from_json(self, json_obj: Optional[Dict[str, Any]]) -> None:
         """Sets fields in object based on json.
@@ -480,8 +484,23 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
         if json_obj is None:
             return
 
+        self.aliases = None
         self.regional_aliases: Optional[dict] = json_obj.get("regional_aliases")
         self.variants: Optional[dict] = json_obj.get("variants")
+
+    def from_describe_hub_content_response(self, response: Optional[Dict[str, Any]]) -> None:
+        """Sets fields in object based on DescribeHubContent response.
+
+        Args:
+            response (Dict[str, Any]): Dictionary representation of instance type variants.
+        """
+
+        if response is None:
+            return
+
+        self.aliases: Optional[dict] = response.get("Aliases")
+        self.regional_aliases = None
+        self.variants: Optional[dict] = response.get("Variants")
 
     def to_json(self) -> Dict[str, Any]:
         """Returns json representation of JumpStartInstanceTypeVariants object."""
@@ -737,7 +756,7 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
             )
         )
 
-    def get_image_uri(self, instance_type: str, region: str) -> Optional[str]:
+    def get_image_uri(self, instance_type: str, region: Optional[str] = None) -> Optional[str]:
         """Returns image uri from instance type and region.
 
         Returns None if no instance type is available or found.
@@ -758,7 +777,7 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
         )
 
     def _get_regional_property(
-        self, instance_type: str, region: str, property_name: str
+        self, instance_type: str, region: Optional[str], property_name: str
     ) -> Optional[str]:
         """Returns regional property from instance type and region.
 
@@ -766,23 +785,44 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
         None is also returned if the metadata is improperly formatted.
         """
 
-        if None in [self.regional_aliases, self.variants]:
+        if self.variants is None or (self.aliases is None and self.regional_aliases is None):
             return None
 
-        regional_property_alias: Optional[str] = (
-            self.variants.get(instance_type, {}).get("regional_properties", {}).get(property_name)
-        )
+        if region is None and self.regional_aliases is not None:
+            return None
+
+        regional_property_alias: Optional[str] = None
+        if self.aliases:
+            # if reading from HubContent, aliases are already regionalized
+            regional_property_alias = (
+                self.variants.get(instance_type, {}).get("properties", {}).get(property_name)
+            )
+        elif self.regional_aliases:
+            regional_property_alias = (
+                self.variants.get(instance_type, {})
+                .get("regional_properties", {})
+                .get(property_name)
+            )
+
         if regional_property_alias is None:
             instance_type_family = get_instance_type_family(instance_type)
 
             if instance_type_family in {"", None}:
                 return None
 
-            regional_property_alias = (
-                self.variants.get(instance_type_family, {})
-                .get("regional_properties", {})
-                .get(property_name)
-            )
+            if self.aliases:
+                # if reading from HubContent, aliases are already regionalized
+                regional_property_alias = (
+                    self.variants.get(instance_type_family, {})
+                    .get("properties", {})
+                    .get(property_name)
+                )
+            elif self.regional_aliases:
+                regional_property_alias = (
+                    self.variants.get(instance_type_family, {})
+                    .get("regional_properties", {})
+                    .get(property_name)
+                )
 
         if regional_property_alias is None or len(regional_property_alias) == 0:
             return None
@@ -795,9 +835,13 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
             # We return None, indicating the field does not exist.
             return None
 
-        if region not in self.regional_aliases:
+        if self.regional_aliases and region not in self.regional_aliases:
             return None
-        alias_value = self.regional_aliases[region].get(regional_property_alias[1:], None)
+
+        if self.aliases:
+            alias_value = self.aliases.get(regional_property_alias[1:], None)
+        elif self.regional_aliases:
+            alias_value = self.regional_aliases[region].get(regional_property_alias[1:], None)
         return alias_value
 
 
@@ -1537,7 +1581,11 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         self.hosting_use_script_uri: bool = hub_content_document.hosting_use_script_uri
 
         # TODO: Handle parsing
-        self.hosting_instance_type_variants: Optional[JumpStartInstanceTypeVariants] = None
+        self.hosting_instance_type_variants: Optional[JumpStartInstanceTypeVariants] = (
+            JumpStartInstanceTypeVariants(hub_content_document.hosting_instance_type_variants)
+            if hub_content_document.hosting_instance_type_variants
+            else None
+        )
 
         if self.training_supported:
             self.training_ecr_uri: Optional[str] = hub_content_document.training_ecr_uri
@@ -1773,9 +1821,10 @@ class HubModelDocument(JumpStartDataHolderType):
         self.hosting_resource_requirements: Optional[Dict[str, int]] = json_obj.get(
             "HostingResourceRequirements", None
         )
-        # TODO: Handle parsing (regional_aliases -> aliases, regional_properties -> properties)
-        self.hosting_instance_type_variants: Optional[str] = json_obj.get(
-            "HostingInstanceTypeVariants"
+        self.hosting_instance_type_variants: Optional[JumpStartInstanceTypeVariants] = (
+            JumpStartInstanceTypeVariants(json_obj.get("hosting_instance_type_variants"))
+            if json_obj.get("hosting_instance_type_variants")
+            else None
         )
         self.notebook_location_uris: Optional[str] = json_obj.get("NotebookLocationUris")
         self.model_provider_icon_uri: Optional[str] = json_obj.get("ModelProviderIconUri")
@@ -1837,9 +1886,10 @@ class HubModelDocument(JumpStartDataHolderType):
             self.training_enable_network_isolation: Optional[str] = json_obj.get(
                 "TrainingEnableNetworkIsolation", False
             )
-            # TODO: Handle parsing (regional_aliases -> aliases, regional_properties -> properties)
-            self.training_instance_type_variants: Optional[str] = json_obj.get(
-                "TrainingInstanceTypeVariants"
+            self.training_instance_type_variants: Optional[JumpStartInstanceTypeVariants] = (
+                JumpStartInstanceTypeVariants(json_obj.get("training_instance_type_variants"))
+                if json_obj.get("training_instance_type_variants")
+                else None
             )
             # Estimator kwargs
             self.encrypt_inter_container_traffic: Optional[bool] = (

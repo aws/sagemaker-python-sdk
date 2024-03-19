@@ -7633,22 +7633,22 @@ HUB_MODEL_DOCUMENT_DICTS = {
         "MinSdkVersion": "2.189.0",
         "TrainingSupported": True,
         "IncrementalTrainingSupported": False,
-        "HostingEcrUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04",
+        "HostingEcrUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04",  # noqa: E501
         "HostingArtifactS3DataType": "S3Prefix",
         "HostingArtifactCompressionType": "None",
-        "HostingArtifactUri": "s3://jumpstart-cache-prod-us-west-2/huggingface-llm/huggingface-llm-gemma-2b-instruct/artifacts/inference/v1.0.0/",
-        "HostingScriptUri": "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/huggingface/inference/llm/v1.0.1/sourcedir.tar.gz",
-        "HostingPrepackedArtifactUri": "s3://jumpstart-cache-prod-us-west-2/huggingface-llm/huggingface-llm-gemma-2b-instruct/artifacts/inference-prepack/v1.0.0/",
+        "HostingArtifactUri": "s3://jumpstart-cache-prod-us-west-2/huggingface-llm/huggingface-llm-gemma-2b-instruct/artifacts/inference/v1.0.0/",  # noqa: E501
+        "HostingScriptUri": "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/huggingface/inference/llm/v1.0.1/sourcedir.tar.gz",  # noqa: E501
+        "HostingPrepackedArtifactUri": "s3://jumpstart-cache-prod-us-west-2/huggingface-llm/huggingface-llm-gemma-2b-instruct/artifacts/inference-prepack/v1.0.0/",  # noqa: E501
         "HostingPrepackedArtifactVersion": "1.0.0",
         "HostingUseScriptUri": False,
         "HostingEulaUri": "s3://jumpstart-cache-prod-us-west-2/huggingface-llm/fmhMetadata/terms/gemmaTerms.txt",
-        "TrainingScriptUri": "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/huggingface/transfer_learning/llm/v1.1.1/sourcedir.tar.gz",
-        "TrainingPrepackedScriptUri": "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/huggingface/transfer_learning/llm/prepack/v1.1.1/sourcedir.tar.gz",
+        "TrainingScriptUri": "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/huggingface/transfer_learning/llm/v1.1.1/sourcedir.tar.gz",  # noqa: E501
+        "TrainingPrepackedScriptUri": "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/huggingface/transfer_learning/llm/prepack/v1.1.1/sourcedir.tar.gz",  # noqa: E501
         "TrainingPrepackedScriptVersion": "1.1.1",
-        "TrainingEcrUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04",
+        "TrainingEcrUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04",  # noqa: E501
         "TrainingArtifactS3DataType": "S3Prefix",
         "TrainingArtifactCompressionType": "None",
-        "TrainingArtifactUri": "s3://jumpstart-cache-prod-us-west-2/huggingface-training/train-huggingface-llm-gemma-2b-instruct.tar.gz",
+        "TrainingArtifactUri": "s3://jumpstart-cache-prod-us-west-2/huggingface-training/train-huggingface-llm-gemma-2b-instruct.tar.gz",  # noqa: E501
         "Hyperparameters": [
             {
                 "Name": "peft_type",
@@ -7942,8 +7942,8 @@ HUB_MODEL_DOCUMENT_DICTS = {
                 "Options": ["no", "epoch", "steps"],
                 "Scope": "algorithm",
             },
-            {"Name": "save_steps", "Type": "int", "Default": 500, "Min": 1, "Scope": "algorithm"},
-            {"Name": "save_total_limit", "Type": "int", "Default": 1, "Scope": "algorithm"},
+            {"Name": "save_steps", "Type": "int", "Default": 500, "Min": 1, "Scope": "algorithm"},  # noqa: E501
+            {"Name": "save_total_limit", "Type": "int", "Default": 1, "Scope": "algorithm"},  # noqa: E501
             {
                 "Name": "dataloader_drop_last",
                 "Type": "text",
@@ -7978,7 +7978,7 @@ HUB_MODEL_DOCUMENT_DICTS = {
                 "Options": ["constant_with_warmup", "linear"],
                 "Scope": "algorithm",
             },
-            {"Name": "warmup_steps", "Type": "int", "Default": 0, "Min": 0, "Scope": "algorithm"},
+            {"Name": "warmup_steps", "Type": "int", "Default": 0, "Min": 0, "Scope": "algorithm"},  # noqa: E501
             {
                 "Name": "deepspeed",
                 "Type": "text",
@@ -8103,7 +8103,7 @@ HUB_MODEL_DOCUMENT_DICTS = {
                 "Name": "huggingface-textgeneration:eval-loss",
                 "Regex": "'eval_loss': ([0-9]+\\.[0-9]+)",
             },
-            {"Name": "huggingface-textgeneration:train-loss", "Regex": "'loss': ([0-9]+\\.[0-9]+)"},
+            {"Name": "huggingface-textgeneration:train-loss", "Regex": "'loss': ([0-9]+\\.[0-9]+)"},  # noqa: E501
         ],
         "InferenceDependencies": [],
         "TrainingDependencies": [
@@ -8162,7 +8162,7 @@ HUB_MODEL_DOCUMENT_DICTS = {
         "TrainingEnableNetworkIsolation": True,
         "FineTuningSupported": True,
         "ValidationSupported": True,
-        "DefaultTrainingDatasetUri": "s3://jumpstart-cache-prod-us-west-2/training-datasets/oasst_top/train/",
+        "DefaultTrainingDatasetUri": "s3://jumpstart-cache-prod-us-west-2/training-datasets/oasst_top/train/",  # noqa: E501
         "ResourceNameBase": "hf-llm-gemma-2b-instruct",
         "DefaultPayloads": {
             "HelloWorld": {
@@ -8173,7 +8173,7 @@ HUB_MODEL_DOCUMENT_DICTS = {
                     "InputLogprobs": "[0].details.prefill[*].logprob",
                 },
                 "Body": {
-                    "Inputs": "<bos><start_of_turn>user\nWrite a hello world program<end_of_turn>\n<start_of_turn>model",
+                    "Inputs": "<bos><start_of_turn>user\nWrite a hello world program<end_of_turn>\n<start_of_turn>model",  # noqa: E501
                     "Parameters": {
                         "MaxNewTokens": 256,
                         "DecoderInputDetails": True,
@@ -8202,7 +8202,7 @@ HUB_MODEL_DOCUMENT_DICTS = {
         "HostingResourceRequirements": {"MinMemoryMb": 8192, "NumAccelerators": 1},
         "HostingInstanceTypeVariants": {
             "Aliases": {
-                "gpu_ecr_uri_1": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.0-gpu-py310-cu121-ubuntu20.04"
+                "gpu_ecr_uri_1": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.0-gpu-py310-cu121-ubuntu20.04"  # noqa: E501
             },
             "Variants": {
                 "g4dn": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
@@ -8222,19 +8222,19 @@ HUB_MODEL_DOCUMENT_DICTS = {
         },
         "TrainingInstanceTypeVariants": {
             "Aliases": {
-                "gpu_ecr_uri_1": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                "gpu_ecr_uri_1": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"  # noqa: E501
             },
             "Variants": {
                 "g4dn": {
                     "properties": {
                         "image_uri": "$gpu_ecr_uri_1",
-                        "gated_model_key_env_var_value": "huggingface-training/g4dn/v1.0.0/train-huggingface-llm-gemma-2b-instruct.tar.gz",
+                        "gated_model_key_env_var_value": "huggingface-training/g4dn/v1.0.0/train-huggingface-llm-gemma-2b-instruct.tar.gz",  # noqa: E501
                     },
                 },
                 "g5": {
                     "properties": {
                         "image_uri": "$gpu_ecr_uri_1",
-                        "gated_model_key_env_var_value": "huggingface-training/g5/v1.0.0/train-huggingface-llm-gemma-2b-instruct.tar.gz",
+                        "gated_model_key_env_var_value": "huggingface-training/g5/v1.0.0/train-huggingface-llm-gemma-2b-instruct.tar.gz",  # noqa: E501
                     },
                 },
                 "local_gpu": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
@@ -8243,13 +8243,13 @@ HUB_MODEL_DOCUMENT_DICTS = {
                 "p3dn": {
                     "properties": {
                         "image_uri": "$gpu_ecr_uri_1",
-                        "gated_model_key_env_var_value": "huggingface-training/p3dn/v1.0.0/train-huggingface-llm-gemma-2b-instruct.tar.gz",
+                        "gated_model_key_env_var_value": "huggingface-training/p3dn/v1.0.0/train-huggingface-llm-gemma-2b-instruct.tar.gz",  # noqa: E501
                     },
                 },
                 "p4d": {
                     "properties": {
                         "image_uri": "$gpu_ecr_uri_1",
-                        "gated_model_key_env_var_value": "huggingface-training/p4d/v1.0.0/train-huggingface-llm-gemma-2b-instruct.tar.gz",
+                        "gated_model_key_env_var_value": "huggingface-training/p4d/v1.0.0/train-huggingface-llm-gemma-2b-instruct.tar.gz",  # noqa: E501
                     },
                 },
                 "p4de": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
@@ -8260,13 +8260,13 @@ HUB_MODEL_DOCUMENT_DICTS = {
         "ContextualHelp": {
             "HubFormatTrainData": [
                 "A train and an optional validation directories. Each directory contains a CSV/JSON/TXT. ",
-                "- For CSV/JSON files, the text data is used from the column called 'text' or the first column if no column called 'text' is found",
+                "- For CSV/JSON files, the text data is used from the column called 'text' or the first column if no column called 'text' is found",  # noqa: E501
                 "- The number of files under train and validation (if provided) should equal to one, respectively.",
-                " [Learn how to setup an AWS S3 bucket.](https://docs.aws.amazon.com/AmazonS3/latest/dev/UsingBucket.html)",
+                " [Learn how to setup an AWS S3 bucket.](https://docs.aws.amazon.com/AmazonS3/latest/dev/UsingBucket.html)",  # noqa: E501
             ],
             "HubDefaultTrainData": [
                 "Dataset: [SEC](https://www.sec.gov/edgar/searchedgar/companysearch)",
-                "SEC filing contains regulatory documents that companies and issuers of securities must submit to the Securities and Exchange Commission (SEC) on a regular basis.",
+                "SEC filing contains regulatory documents that companies and issuers of securities must submit to the Securities and Exchange Commission (SEC) on a regular basis.",  # noqa: E501
                 "License: [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/legalcode)",
             ],
         },
@@ -8284,10 +8284,10 @@ HUB_MODEL_DOCUMENT_DICTS = {
         "MinSdkVersion": "2.198.0",
         "TrainingSupported": True,
         "IncrementalTrainingSupported": False,
-        "HostingEcrUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.0-gpu-py310-cu121-ubuntu20.04",
-        "HostingArtifactUri": "s3://jumpstart-cache-prod-us-west-2/meta-textgeneration/meta-textgeneration-llama-2-70b/artifacts/inference/v1.0.0/",
-        "HostingScriptUri": "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/meta/inference/textgeneration/v1.2.3/sourcedir.tar.gz",
-        "HostingPrepackedArtifactUri": "s3://jumpstart-cache-prod-us-west-2/meta-textgeneration/meta-textgeneration-llama-2-70b/artifacts/inference-prepack/v1.0.0/",
+        "HostingEcrUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.0-gpu-py310-cu121-ubuntu20.04",  # noqa: E501
+        "HostingArtifactUri": "s3://jumpstart-cache-prod-us-west-2/meta-textgeneration/meta-textgeneration-llama-2-70b/artifacts/inference/v1.0.0/",  # noqa: E501
+        "HostingScriptUri": "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/meta/inference/textgeneration/v1.2.3/sourcedir.tar.gz",  # noqa: E501
+        "HostingPrepackedArtifactUri": "s3://jumpstart-cache-prod-us-west-2/meta-textgeneration/meta-textgeneration-llama-2-70b/artifacts/inference-prepack/v1.0.0/",  # noqa: E501
         "HostingPrepackedArtifactVersion": "1.0.0",
         "HostingUseScriptUri": False,
         "HostingEulaUri": "s3://jumpstart-cache-prod-us-west-2/fmhMetadata/eula/llamaEula.txt",
@@ -8362,11 +8362,11 @@ HUB_MODEL_DOCUMENT_DICTS = {
                 "Scope": "algorithm",
             },
         ],
-        "TrainingScriptUri": "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/meta/transfer_learning/textgeneration/v1.0.11/sourcedir.tar.gz",
-        "TrainingPrepackedScriptUri": "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/meta/transfer_learning/textgeneration/prepack/v1.0.5/sourcedir.tar.gz",
+        "TrainingScriptUri": "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/meta/transfer_learning/textgeneration/v1.0.11/sourcedir.tar.gz",  # noqa: E501
+        "TrainingPrepackedScriptUri": "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/meta/transfer_learning/textgeneration/prepack/v1.0.5/sourcedir.tar.gz",  # noqa: E501
         "TrainingPrepackedScriptVersion": "1.0.5",
-        "TrainingEcrUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.0-gpu-py310-cu121-ubuntu20.04",  # TODO: not a training image
-        "TrainingArtifactUri": "s3://jumpstart-cache-prod-us-west-2/meta-training/train-meta-textgeneration-llama-2-70b.tar.gz",
+        "TrainingEcrUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.0-gpu-py310-cu121-ubuntu20.04",  # TODO: not a training image  # noqa: E501
+        "TrainingArtifactUri": "s3://jumpstart-cache-prod-us-west-2/meta-training/train-meta-textgeneration-llama-2-70b.tar.gz",  # noqa: E501
         "InferenceEnvironmentVariables": [
             {
                 "name": "SAGEMAKER_PROGRAM",
@@ -8416,7 +8416,7 @@ HUB_MODEL_DOCUMENT_DICTS = {
         "TrainingVolumeSize": 256,
         "InferenceEnableNetworkIsolation": True,
         "TrainingEnableNetworkIsolation": True,
-        "DefaultTrainingDatasetUri": "s3://jumpstart-cache-prod-us-west-2/training-datasets/sec_amazon/",
+        "DefaultTrainingDatasetUri": "s3://jumpstart-cache-prod-us-west-2/training-datasets/sec_amazon/",  # noqa: E501
         "ValidationSupported": True,
         "FineTuningSupported": True,
         "ResourceNameBase": "meta-textgeneration-llama-2-70b",
@@ -8452,7 +8452,7 @@ HUB_MODEL_DOCUMENT_DICTS = {
         "GatedBucket": True,
         "HostingInstanceTypeVariants": {
             "Aliases": {
-                "gpu_ecr_uri_1": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.0-gpu-py310-cu121-ubuntu20.04"
+                "gpu_ecr_uri_1": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.0-gpu-py310-cu121-ubuntu20.04"  # noqa: E501
             },
             "Variants": {
                 "g4dn": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
@@ -8472,14 +8472,14 @@ HUB_MODEL_DOCUMENT_DICTS = {
         },
         "TrainingInstanceTypeVariants": {
             "Aliases": {
-                "gpu_ecr_uri_1": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                "gpu_ecr_uri_1": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"  # noqa: E501
             },
             "Variants": {
                 "g4dn": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
                 "g5": {
                     "properties": {
                         "image_uri": "$gpu_ecr_uri_1",
-                        "gated_model_key_env_var_value": "meta-training/g5/v1.0.0/train-meta-textgeneration-llama-2-70b.tar.gz",
+                        "gated_model_key_env_var_value": "meta-training/g5/v1.0.0/train-meta-textgeneration-llama-2-70b.tar.gz",  # noqa: E501
                     },
                 },
                 "local_gpu": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
@@ -8489,7 +8489,7 @@ HUB_MODEL_DOCUMENT_DICTS = {
                 "p4d": {
                     "properties": {
                         "image_uri": "$gpu_ecr_uri_1",
-                        "gated_model_key_env_var_value": "meta-training/p4d/v1.0.0/train-meta-textgeneration-llama-2-70b.tar.gz",
+                        "gated_model_key_env_var_value": "meta-training/p4d/v1.0.0/train-meta-textgeneration-llama-2-70b.tar.gz",  # noqa: E501
                     },
                 },
                 "p4de": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
@@ -8511,10 +8511,10 @@ HUB_MODEL_DOCUMENT_DICTS = {
         "MinSdkVersion": "2.144.0",
         "TrainingSupported": False,
         "IncrementalTrainingSupported": False,
-        "HostingEcrUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.0-gpu-py310-cu121-ubuntu20.04",
-        "HostingArtifactUri": "s3://jumpstart-cache-prod-us-west-2/huggingface-infer/infer-huggingface-textembedding-bloom-7b1.tar.gz",
-        "HostingScriptUri": "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/huggingface/inference/textembedding/v1.0.1/sourcedir.tar.gz",
-        "HostingPrepackedArtifactUri": "s3://jumpstart-cache-prod-us-west-2/huggingface-infer/prepack/v1.0.1/infer-prepack-huggingface-textembedding-bloom-7b1.tar.gz",
+        "HostingEcrUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.0-gpu-py310-cu121-ubuntu20.04",  # noqa: E501
+        "HostingArtifactUri": "s3://jumpstart-cache-prod-us-west-2/huggingface-infer/infer-huggingface-textembedding-bloom-7b1.tar.gz",  # noqa: E501
+        "HostingScriptUri": "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/huggingface/inference/textembedding/v1.0.1/sourcedir.tar.gz",  # noqa: E501
+        "HostingPrepackedArtifactUri": "s3://jumpstart-cache-prod-us-west-2/huggingface-infer/prepack/v1.0.1/infer-prepack-huggingface-textembedding-bloom-7b1.tar.gz",  # noqa: E501
         "HostingPrepackedArtifactVersion": "1.0.1",
         "InferenceDependencies": [
             "accelerate==0.16.0",
@@ -8561,7 +8561,7 @@ HUB_MODEL_DOCUMENT_DICTS = {
         "ResourceNameBase": "hf-textembedding-bloom-7b1",
         "HostingInstanceTypeVariants": {
             "Aliases": {
-                "alias_ecr_uri_3": "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training-neuron:1.11.0-neuron-py38-sdk2.4.0-ubuntu20.04",
+                "alias_ecr_uri_3": "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training-neuron:1.11.0-neuron-py38-sdk2.4.0-ubuntu20.04",  # noqa: E501
                 "cpu_ecr_uri_1": "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.12.0-cpu-py38",
                 "gpu_ecr_uri_2": "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.12.0-gpu-py38",
             },

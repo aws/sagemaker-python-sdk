@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 """This module stores types related to SageMaker JumpStart CuratedHub."""
 from __future__ import absolute_import
-from typing import Dict, Any, Optional
+from typing import Dict, Optional
 from enum import Enum
 from dataclasses import dataclass
 from datetime import datetime

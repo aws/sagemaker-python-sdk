@@ -18,13 +18,15 @@ from sagemaker.jumpstart.types import (
     JumpStartInstanceTypeVariants,
     JumpStartModelSpecs,
     JumpStartModelHeader,
-    HubModelDocument,
+    # HubModelDocument,
 )
 from tests.unit.sagemaker.jumpstart.constants import (
     BASE_SPEC,
     HUB_MODEL_DOCUMENT_DICTS,
-    BASE_HUB_NOTEBOOK_DOCUMENT,
+    # BASE_HUB_NOTEBOOK_DOCUMENT,
 )
+
+llama_model_document = HUB_MODEL_DOCUMENT_DICTS["meta-textgeneration-llama-2-70b"]
 
 INSTANCE_TYPE_VARIANT = JumpStartInstanceTypeVariants(
     {
@@ -898,24 +900,6 @@ def test_jumpstart_training_artifact_key_instance_variants():
     )
 
 
-def test_hub_model_document_from_model_specs():
-    specs1 = JumpStartModelSpecs(BASE_SPEC)
-    region = "us-west-2"
-    specs2 = HubModelDocument(specs1, region)
-    # TODO: Implement
-    pass
-
-
-def test_hub_model_document_from_json_obj():
-    # TODO: Implement
-    pass
-
-
-def test_hub_notebook_document():
-    # TODO: Implement
-    pass
-
-
 def test_jumpstart_resource_requirements_instance_variants():
     assert INSTANCE_TYPE_VARIANT.get_instance_specific_resource_requirements(
         instance_type="ml.p2.xlarge"
@@ -930,4 +914,59 @@ def test_jumpstart_resource_requirements_instance_variants():
             instance_type="ml.p99.12xlarge"
         )
         == {}
+    )
+
+
+def test_hub_content_document_from_model_specs():
+    # specs1 = JumpStartModelSpecs(BASE_SPEC)
+    # region = "us-west-2"
+    # specs2 = HubContentDocument(specs1, region)
+    # TODO: Implement
+    pass
+
+
+def test_hub_content_document_from_json_obj():
+    # TODO: implement
+    pass
+
+
+def test_hub_instance_varaints():
+    instance_variant = JumpStartInstanceTypeVariants(
+        llama_model_document.get("HostingInstanceTypeVariants"), is_hub_content=True
+    )
+
+    assert instance_variant.get_instance_specific_environment_variables("ml.g5.12xlarge") == {
+        "SM_NUM_GPUS": "4"
+    }
+    assert instance_variant.get_instance_specific_environment_variables("ml.p4d.24xlarge") == {
+        "SM_NUM_GPUS": "8"
+    }
+
+    assert (
+        instance_variant.get_image_uri("ml.g5.2xlarge")
+        == (
+            "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1"
+            "-tgi1.4.0-gpu-py310-cu121-ubuntu20.04"
+        )
+    )
+
+    instance_variant = JumpStartInstanceTypeVariants(
+        llama_model_document.get("TrainingInstanceTypeVariants"), is_hub_content=True
+    )
+
+    assert (
+        instance_variant.get_instance_specific_gated_model_key_env_var_value("ml.p4d.2xlarge")
+        == "meta-training/p4d/v1.0.0/train-meta-textgeneration-llama-2-70b.tar.gz"
+    )
+    assert (
+        instance_variant.get_instance_specific_gated_model_key_env_var_value("ml.g5.24xlarge")
+        == "meta-training/g5/v1.0.0/train-meta-textgeneration-llama-2-70b.tar.gz"
+    )
+
+    assert (
+        instance_variant.get_image_uri("ml.p3.xlarge")
+        == (
+            "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-training"
+            ":2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+        )
     )
