@@ -18,7 +18,12 @@ from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.curated_hub import utils
 from unittest.mock import patch
-from sagemaker.jumpstart.curated_hub.types import CuratedHubUnsupportedFlag, HubContentSummary
+from sagemaker.jumpstart.curated_hub.types import (
+    CuratedHubUnsupportedFlag,
+    HubContentSummary,
+    summary_from_list_api_response,
+    summary_list_from_list_api_response,
+)
 from sagemaker.jumpstart.types import HubContentType
 
 
@@ -337,7 +342,7 @@ def test_find_all_tags_for_jumpstart_model_filters_non_jumpstart_models(mock_spe
 
 @patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
 def test_summary_from_list_api_response(mock_spec_util):
-    test = utils.summary_from_list_api_response(
+    test = summary_from_list_api_response(
         {
             "HubContentArn": "test_arn",
             "HubContentName": "test_name",
@@ -366,7 +371,7 @@ def test_summary_from_list_api_response(mock_spec_util):
 
 @patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
 def test_summaries_from_list_api_response(mock_spec_util):
-    test = utils.summary_list_from_list_api_response(
+    test = summary_list_from_list_api_response(
         {
             "HubContentSummaries": [
                 {

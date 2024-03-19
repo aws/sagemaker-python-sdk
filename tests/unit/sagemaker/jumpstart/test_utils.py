@@ -99,7 +99,6 @@ def test_get_jumpstart_gated_content_bucket_override():
 
 
 def test_get_jumpstart_launched_regions_message():
-
     with patch("sagemaker.jumpstart.constants.JUMPSTART_REGION_NAME_SET", {}):
         assert (
             utils.get_jumpstart_launched_regions_message()
@@ -147,7 +146,6 @@ def test_get_formatted_manifest():
 
 
 def test_parse_sagemaker_version():
-
     with patch("sagemaker.__version__", "1.2.3"):
         assert utils.parse_sagemaker_version() == "1.2.3"
 
@@ -188,7 +186,6 @@ def test_get_sagemaker_version(patched_parse_sm_version: Mock):
 
 
 def test_is_jumpstart_model_uri():
-
     assert not utils.is_jumpstart_model_uri("fdsfdsf")
     assert not utils.is_jumpstart_model_uri("s3://not-jumpstart-bucket/sdfsdfds")
     assert not utils.is_jumpstart_model_uri("some/actual/localfile")
@@ -689,7 +686,6 @@ def test_add_jumpstart_uri_tags_training():
 
 
 def test_update_inference_tags_with_jumpstart_training_script_tags():
-
     random_tag_1 = {"Key": "tag-key-1", "Value": "tag-val-1"}
     random_tag_2 = {"Key": "tag-key-2", "Value": "tag-val-2"}
 
@@ -750,7 +746,6 @@ def test_update_inference_tags_with_jumpstart_training_script_tags():
 
 
 def test_update_inference_tags_with_jumpstart_training_model_tags():
-
     random_tag_1 = {"Key": "tag-key-1", "Value": "tag-val-1"}
     random_tag_2 = {"Key": "tag-key-2", "Value": "tag-val-2"}
 
@@ -811,7 +806,6 @@ def test_update_inference_tags_with_jumpstart_training_model_tags():
 
 
 def test_update_inference_tags_with_jumpstart_training_script_tags_inference():
-
     random_tag_1 = {"Key": "tag-key-1", "Value": "tag-val-1"}
     random_tag_2 = {"Key": "tag-key-2", "Value": "tag-val-2"}
 
@@ -872,7 +866,6 @@ def test_update_inference_tags_with_jumpstart_training_script_tags_inference():
 
 
 def test_update_inference_tags_with_jumpstart_training_model_tags_inference():
-
     random_tag_1 = {"Key": "tag-key-1", "Value": "tag-val-1"}
     random_tag_2 = {"Key": "tag-key-2", "Value": "tag-val-2"}
 
@@ -975,7 +968,6 @@ def test_jumpstart_vulnerable_model_warnings(mock_get_manifest):
 
 @patch("sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor._get_manifest")
 def test_jumpstart_old_model_spec(mock_get_manifest):
-
     mock_get_manifest.return_value = [
         JumpStartModelHeader(
             {
@@ -1282,7 +1274,6 @@ class TestIsValidModelId(TestCase):
         )
 
         with patch("sagemaker.jumpstart.utils.validate_model_id_and_get_type", patched):
-
             self.assertFalse(utils.validate_model_id_and_get_type("dee"))
             self.assertFalse(utils.validate_model_id_and_get_type(""))
             self.assertFalse(utils.validate_model_id_and_get_type(None))
@@ -1478,7 +1469,6 @@ class TestJumpStartLogger(TestCase):
     @patch("logging.StreamHandler.emit")
     @patch("sagemaker.jumpstart.constants.JUMPSTART_LOGGER.propagate", False)
     def test_logger_normal_mode(self, mocked_emit: Mock):
-
         JUMPSTART_LOGGER.warning("Self destruct in 3...2...1...")
 
         mocked_emit.assert_called_once()
@@ -1487,7 +1477,6 @@ class TestJumpStartLogger(TestCase):
     @patch("logging.StreamHandler.emit")
     @patch("sagemaker.jumpstart.constants.JUMPSTART_LOGGER.propagate", False)
     def test_logger_disabled(self, mocked_emit: Mock):
-
         JUMPSTART_LOGGER.warning("Self destruct in 3...2...1...")
 
         mocked_emit.assert_not_called()
