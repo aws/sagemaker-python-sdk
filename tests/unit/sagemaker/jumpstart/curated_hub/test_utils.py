@@ -325,15 +325,15 @@ def test_find_all_tags_for_jumpstart_model_filters_non_jumpstart_models(mock_spe
 
     assert tags == [
         {
-            "Key": CuratedHubUnsupportedFlag.DEPRECATED_VERSIONS.value,
+            "Key": "deprecated_versions",
             "Value": str(["1.0.0", "2.0.0"]),
         },
         {
-            "Key": CuratedHubUnsupportedFlag.INFERENCE_VULNERABLE_VERSIONS.value,
+            "Key": "inference_vulnerable_versions",
             "Value": str(["1.0.0", "2.0.0"]),
         },
         {
-            "Key": CuratedHubUnsupportedFlag.TRAINING_VULNERABLE_VERSIONS.value,
+            "Key": "training_vulnerable_versions",
             "Value": str(["1.0.0", "2.0.0"]),
         },
     ]

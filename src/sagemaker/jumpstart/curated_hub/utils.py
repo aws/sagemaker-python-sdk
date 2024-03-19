@@ -238,9 +238,9 @@ def _convert_to_tag_to_versions_map(
     for version, tags in version_to_tags_map.items():
         for tag in tags:
             if tag not in unsupported_hub_content_versions_map:
-                unsupported_hub_content_versions_map[tag] = []
+                unsupported_hub_content_versions_map[tag.value] = []
             # Versions for a HubContent are unique
-            unsupported_hub_content_versions_map[tag].append(version)
+            unsupported_hub_content_versions_map[tag.value].append(version)
 
     return unsupported_hub_content_versions_map
 
