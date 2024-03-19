@@ -24,11 +24,9 @@ from sagemaker.enums import EndpointType
 from sagemaker.model_metrics import ModelMetrics
 from sagemaker.metadata_properties import MetadataProperties
 from sagemaker.drift_check_baselines import DriftCheckBaselines
-from sagemaker.jumpstart.enums import JumpStartModelType
-
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
-from sagemaker.jumpstart.enums import ModelSpecKwargType
+from sagemaker.jumpstart.enums import JumpStartModelType, ModelSpecKwargType
 
 
 class JumpStartDataHolderType:
@@ -257,7 +255,7 @@ class JumpStartHyperparameter(JumpStartDataHolderType):
         "max",
         "exclusive_min",
         "exclusive_max",
-        "_is_hub_content"
+        "_is_hub_content",
     ]
 
     _non_serializable_slots = ["_is_hub_content"]
@@ -314,7 +312,6 @@ class JumpStartHyperparameter(JumpStartDataHolderType):
             self.exclusive_max = exclusive_max_val
 
 
-
 class JumpStartEnvironmentVariable(JumpStartDataHolderType):
     """Data class for JumpStart environment variable definitions in the hosting container."""
 
@@ -366,7 +363,7 @@ class JumpStartPredictorSpecs(JumpStartDataHolderType):
         "supported_content_types",
         "default_accept_type",
         "supported_accept_types",
-        "_is_hub_content"
+        "_is_hub_content",
     ]
 
     _non_serializable_slots = ["_is_hub_content"]
@@ -877,6 +874,29 @@ class HubArnExtractedInfo(JumpStartDataHolderType):
         self.hub_content_name = hub_content_name
         self.hub_content_version = hub_content_version
 
+    @staticmethod
+    def extract_region_from_arn(arn: str) -> Optional[str]:
+        """Extracts hub_name, content_name, and content_version from a HubContentArn"""
+
+        HUB_CONTENT_ARN_REGEX = (
+            r"arn:(.*?):sagemaker:(.*?):(.*?):hub-content/(.*?)/(.*?)/(.*?)/(.*?)$"
+        )
+        HUB_ARN_REGEX = r"arn:(.*?):sagemaker:(.*?):(.*?):hub/(.*?)$"
+
+        match = re.match(HUB_CONTENT_ARN_REGEX, arn)
+        hub_region = None
+        if match:
+            hub_region = match.group(2)
+
+            return hub_region
+
+        match = re.match(HUB_ARN_REGEX, arn)
+        if match:
+            hub_region = match.group(2)
+            return hub_region
+
+        return hub_region
+
 
 class CreateHubResponse(JumpStartDataHolderType):
     """Data class for the Hub from session.create_hub()"""
@@ -949,7 +969,10 @@ class DescribeHubContentResponse(JumpStartDataHolderType):
         "hub_content_type",
         "hub_content_version",
         "hub_name",
+        "_region",
     ]
+
+    _non_serializable_slots = ["_region"]
 
     def __init__(self, json_obj: Dict[str, Any]) -> None:
         """Instantiates DescribeHubContentResponse object.
@@ -975,7 +998,11 @@ class DescribeHubContentResponse(JumpStartDataHolderType):
         ]
         self.hub_content_description: str = json_obj["HubContentDescription"]
         self.hub_content_display_name: str = json_obj["HubContentDisplayName"]
-        self.hub_content_document: str = HubContentDocument(json_obj["HubContentDocument"])
+        hub_region: Optional[str] = HubArnExtractedInfo.extract_region_from_arn(self.hub_arn)
+        self._region = hub_region
+        self.hub_content_document: str = HubContentDocument(
+            json_obj_or_model_specs=json_obj["HubContentDocument"], region=self._region
+        )
         self.hub_content_markdown: str = json_obj["HubContentMarkdown"]
         self.hub_content_name: str = json_obj["HubContentName"]
         self.hub_content_search_keywords: List[str] = json_obj["HubContentSearchKeywords"]
@@ -983,6 +1010,10 @@ class DescribeHubContentResponse(JumpStartDataHolderType):
         self.hub_content_type: HubContentType = json_obj["HubContentType"]
         self.hub_content_version: str = json_obj["HubContentVersion"]
         self.hub_name: str = json_obj["HubName"]
+
+    def get_hub_region(self) -> Optional[str]:
+        """Returns the region hub is in."""
+        return self._region
 
 
 class HubS3StorageConfig(JumpStartDataHolderType):
@@ -1010,6 +1041,7 @@ class HubS3StorageConfig(JumpStartDataHolderType):
 
         self.s3_output_path: Optional[str] = json_obj.get("S3OutputPath", "")
 
+
 class DescribeHubResponse(JumpStartDataHolderType):
     """Data class for the Hub from session.describe_hub()"""
 
@@ -1024,7 +1056,10 @@ class DescribeHubResponse(JumpStartDataHolderType):
         "hub_status",
         "last_modified_time",
         "s3_storage_config",
+        "_region",
     ]
+
+    _non_serializable_slots = ["_region"]
 
     def __init__(self, json_obj: Dict[str, Any]) -> None:
         """Instantiates DescribeHubResponse object.
@@ -1044,6 +1079,8 @@ class DescribeHubResponse(JumpStartDataHolderType):
         self.creation_time: datetime.datetime = datetime.datetime(json_obj["CreationTime"])
         self.failure_reason: str = json_obj["FailureReason"]
         self.hub_arn: str = json_obj["HubArn"]
+        hub_region: Optional[str] = HubArnExtractedInfo.extract_region_from_arn(self.hub_arn)
+        self._region = hub_region
         self.hub_description: str = json_obj["HubDescription"]
         self.hub_display_name: str = json_obj["HubDisplayName"]
         self.hub_name: str = json_obj["HubName"]
@@ -1051,6 +1088,10 @@ class DescribeHubResponse(JumpStartDataHolderType):
         self.hub_status: str = json_obj["HubStatus"]
         self.last_modified_time: datetime.datetime = datetime.datetime(json_obj["LastModifiedTime"])
         self.s3_storage_config: HubS3StorageConfig = HubS3StorageConfig(json_obj["S3StorageConfig"])
+
+    def get_hub_region(self) -> Optional[str]:
+        """Returns the region hub is in."""
+        return self._region
 
 
 class ImportHubResponse(JumpStartDataHolderType):
@@ -1382,7 +1423,11 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         """
         self.model_id: str = response.hub_content_name
         self.version: str = response.hub_content_version
-        hub_content_document: HubContentDocument = HubContentDocument(response.hub_content_document)
+        # CuratedHub is regionalized
+        hub_region: Optional[str] = response.get_hub_region()
+        hub_content_document: HubContentDocument = HubContentDocument(
+            response.hub_content_document, region=hub_region
+        )
         self.url: str = hub_content_document.url
         self.min_sdk_version: str = hub_content_document.min_sdk_version
         self.training_supported: bool = hub_content_document.training_supported
@@ -1484,7 +1529,6 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         self.hosting_instance_type_variants: Optional[JumpStartInstanceTypeVariants] = None
 
         if self.training_supported:
-            # TODO: Handle ecr uri parsing
             self.training_ecr_uri: Optional[str] = hub_content_document.training_ecr_uri
             self._non_serializable_slots.append("training_ecr_specs")
             training_artifact_bucket, training_artifact_key = parse_s3_url(
@@ -1620,13 +1664,13 @@ class HubContentDocument(JumpStartDataHolderType):
     def __init__(
         self,
         json_obj_or_model_specs: Union[Dict[str, Any], JumpStartModelSpecs],
-        region: Optional[str] = None,
+        region: str,
     ) -> None:
-        self._region = region # Handle region
+        self._region = region  # Handle region
         if isinstance(json_obj_or_model_specs, Dict):
             self.from_json(json_obj_or_model_specs)
         elif isinstance(json_obj_or_model_specs, JumpStartModelSpecs):
-            self.from_model_specs(json_obj_or_model_specs, self._region)
+            self.from_model_specs(json_obj_or_model_specs)
         else:
             raise ValueError("Please check args.")
 
@@ -1796,14 +1840,16 @@ class HubContentDocument(JumpStartDataHolderType):
     def get_region(self) -> str:
         return self._region
 
-    def from_model_specs(self, specs: JumpStartModelSpecs, region: str) -> None:
+    def from_model_specs(self, specs: JumpStartModelSpecs) -> None:
         self.url: str = specs.url
         self.min_sdk_version: str = specs.min_sdk_version
         self.hosting_ecr_specs: Optional[JumpStartECRSpecs] = specs.hosting_ecr_specs
         self._non_serializable_slots.append("hosting_ecr_uri")
 
-        content_bucket = f"jumpstart-cache–prod-{region}"
-        self.hosting_artifact_uri = s3_path_join("s3://", content_bucket, specs.hosting_artifact_key)
+        content_bucket = f"jumpstart-cache–prod-{self._region}"
+        self.hosting_artifact_uri = s3_path_join(
+            "s3://", content_bucket, specs.hosting_artifact_key
+        )
         self.hosting_artifact_s3_data_type: Optional[str] = None  # TODO: Not in specs?
         self.hosting_artifact_compression_type: Optional[str] = None  # TODO: Not in specs?
 
@@ -1844,7 +1890,7 @@ class HubContentDocument(JumpStartDataHolderType):
         ] = specs.inference_enable_network_isolation
         self.fine_tuning_supported: Optional[bool] = None  # TODO: Missing in ModelSpecs?
         self.validation_supported: Optional[bool] = None  # TODO: Missing in ModelSpecs?
-        self.default_training_dataset_uri: Optional[str] = None # TODO: Missing in ModelSpecs?
+        self.default_training_dataset_uri: Optional[str] = None  # TODO: Missing in ModelSpecs?
         self.resource_name_base: Optional[str] = specs.resource_name_base
         self.gated_bucket: bool = specs.gated_bucket
         self.default_payloads: Optional[
@@ -1948,7 +1994,10 @@ class HubContentSummary(JumpStartDataHolderType):
         "hub_content_status",
         "hub_content_type",
         "hub_content_version",
+        "_region",
     ]
+
+    _non_serializable_slots = ["_region"]
 
     def __init__(self, json_obj: Dict[str, Any]) -> None:
         """Instantiates HubContentSummary object.
@@ -1969,14 +2018,21 @@ class HubContentSummary(JumpStartDataHolderType):
         self.hub_content_arn: str = json_obj["HubContentArn"]
         self.hub_content_description: str = json_obj["HubContentDescription"]
         self.hub_content_display_name: str = json_obj["HubContentDisplayName"]
+        self._region: Optional[str] = HubArnExtractedInfo.extract_region_from_arn(
+            self.hub_content_arn
+        )
         self.hub_content_document: HubContentDocument = HubContentDocument(
-            json_obj["HubContentDocument"]
+            json_obj_or_model_specs=json_obj["HubContentDocument"], region=self._region
         )
         self.hub_content_name: str = json_obj["HubContentName"]
         self.hub_content_search_keywords: List[str] = json_obj["HubContentSearchKeywords"]
         self.hub_content_status: str = json_obj["HubContentStatus"]
         self.hub_content_type: HubContentType = HubContentType(json_obj["HubContentType"])
         self.hub_content_version: str = json_obj["HubContentVersion"]
+
+    def get_hub_region(self) -> Optional[str]:
+        """Returns the region hub is in."""
+        return self._region
 
 
 class ListHubContentsResponse(JumpStartDataHolderType):

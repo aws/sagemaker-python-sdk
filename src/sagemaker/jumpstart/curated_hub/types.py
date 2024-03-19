@@ -17,7 +17,7 @@ from enum import Enum
 from dataclasses import dataclass
 from datetime import datetime
 
-from sagemaker.jumpstart.types import JumpStartDataHolderType, JumpStartModelSpecs
+from sagemaker.jumpstart.types import JumpStartDataHolderType
 
 
 @dataclass

@@ -176,13 +176,17 @@ class ModelSpecKwargType(str, Enum):
 
         Raises:
             ValueError: If the naming convention is not valid.
-        
+
         """
         arg_keys = []
         if arg_type == ModelSpecKwargType.DEPLOY:
             arg_keys = ["ModelDataDownloadTimeout", "ContainerStartupHealthCheckTimeout"]
         elif arg_type == ModelSpecKwargType.ESTIMATOR:
-            arg_keys = ["EncryptInterContainerTraffic", "MaxRuntimeInSeconds", "DisableOutputCompression"]
+            arg_keys = [
+                "EncryptInterContainerTraffic",
+                "MaxRuntimeInSeconds",
+                "DisableOutputCompression",
+            ]
         elif arg_type == ModelSpecKwargType.MODEL:
             arg_keys = []
         elif arg_type == ModelSpecKwargType.FIT:

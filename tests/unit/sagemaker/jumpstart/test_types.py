@@ -422,9 +422,11 @@ def test_jumpstart_model_specs():
     specs3 = copy.deepcopy(specs1)
     assert specs3 == specs1
 
+
 def test_jumpstart_model_specs_from_describe_hub_content_response():
-    #TODO: Implement
+    # TODO: Implement
     pass
+
 
 def test_jumpstart_image_uri_instance_variants():
 
@@ -892,19 +894,19 @@ def test_jumpstart_training_artifact_key_instance_variants():
     )
 
 
-
 def test_hub_content_document_from_model_specs():
     specs1 = JumpStartModelSpecs(BASE_SPEC)
     region = "us-west-2"
     specs2 = HubContentDocument(specs1, region)
-    #TODO: Implement
+    # TODO: Implement
     pass
 
+
 def test_hub_content_document_from_json_obj():
-    #TODO: implement
+    # TODO: implement
     pass
-        
-        
+
+
 def test_jumpstart_resource_requirements_instance_variants():
     assert INSTANCE_TYPE_VARIANT.get_instance_specific_resource_requirements(
         instance_type="ml.p2.xlarge"
