@@ -270,10 +270,9 @@ class JumpStart(ABC):
                 break
 
             sm_num_gpus = tensor_parallel_degree
-            sagemaker_model_server_workers = tensor_parallel_degree
+            sagemaker_model_server_workers = None
             self.pysdk_model.env.update({
-                "SM_NUM_GPUS": str(sm_num_gpus),
-                "SAGEMAKER_MODEL_SERVER_WORKERS": str(sagemaker_model_server_workers)
+                "SM_NUM_GPUS": str(sm_num_gpus)
             })
 
             try:
@@ -327,65 +326,58 @@ class JumpStart(ABC):
                         best_tuned_combination = tuned_configuration
             except LocalDeepPingException as e:
                 logger.warning(
-                    "Deployment unsuccessful with SM_NUM_GPUS: %s. SAGEMAKER_MODEL_SERVER_WORKERS: %s. "
+                    "Deployment unsuccessful with SM_NUM_GPUS: %s. "
                     "Failed to invoke the model server: %s",
                     sm_num_gpus,
-                    sagemaker_model_server_workers,
                     str(e),
                 )
                 break
             except LocalModelOutOfMemoryException as e:
                 logger.warning(
-                    "Deployment unsuccessful with SM_NUM_GPUS: %s, SAGEMAKER_MODEL_SERVER_WORKERS: %s. "
+                    "Deployment unsuccessful with SM_NUM_GPUS: %s. "
                     "Out of memory when loading the model: %s",
                     sm_num_gpus,
-                    sagemaker_model_server_workers,
                     str(e),
                 )
                 break
             except LocalModelInvocationException as e:
                 logger.warning(
-                    "Deployment unsuccessful with SM_NUM_GPUS: %s, SAGEMAKER_MODEL_SERVER_WORKERS: %s. "
+                    "Deployment unsuccessful with SM_NUM_GPUS: %s. "
                     "Failed to invoke the model server: %s"
                     "Please check that model server configurations are as expected "
                     "(Ex. serialization, deserialization, content_type, accept).",
                     sm_num_gpus,
-                    sagemaker_model_server_workers,
                     str(e),
                 )
                 break
             except LocalModelLoadException as e:
                 logger.warning(
-                    "Deployment unsuccessful with zSM_NUM_GPUS: %s, SAGEMAKER_MODEL_SERVER_WORKERS: %s. "
+                    "Deployment unsuccessful with zSM_NUM_GPUS: %s. "
                     "Failed to load the model: %s.",
                     sm_num_gpus,
-                    sagemaker_model_server_workers,
                     str(e),
                 )
                 break
             except SkipTuningComboException as e:
                 logger.warning(
-                    "Deployment with SM_NUM_GPUS: %s, SAGEMAKER_MODEL_SERVER_WORKERS: %s "
+                    "Deployment with SM_NUM_GPUS: %s. "
                     "was expected to be successful. However failed with: %s. "
                     "Trying next combination.",
                     sm_num_gpus,
-                    sagemaker_model_server_workers,
                     str(e),
                 )
                 break
             except Exception:
                 logger.exception(
-                    "Deployment unsuccessful with SM_NUM_GPUS: %s, SAGEMAKER_MODEL_SERVER_WORKERS: %s "
+                    "Deployment unsuccessful with SM_NUM_GPUS: %s. "
                     "with uncovered exception",
-                    sm_num_gpus,
-                    sagemaker_model_server_workers,
+                    sm_num_gpus
                 )
                 break
 
         if best_tuned_combination:
             self.pysdk_model.env.update({
-                "SM_NUM_GPUS": str(best_tuned_combination[1]),
-                "SAGEMAKER_MODEL_SERVER_WORKERS": str(best_tuned_combination[2])
+                "SM_NUM_GPUS": str(best_tuned_combination[1])
             })
 
             _pretty_print_results_tgi(benchmark_results)
@@ -431,8 +423,6 @@ class JumpStart(ABC):
             self.image_uri = self.pysdk_model.image_uri
 
             self._build_for_djl_jumpstart()
-
-            self.pysdk_model.tune = self.tune_for_djl_jumpstart
         elif "tgi-inference" in image_uri:
             logger.info("Building for TGI JumpStart Model ID...")
             self.model_server = ModelServer.TGI
@@ -441,11 +431,11 @@ class JumpStart(ABC):
             self.image_uri = self.pysdk_model.image_uri
 
             self._build_for_tgi_jumpstart()
-
-            self.pysdk_model.tune = self.tune_for_tgi_jumpstart
         else:
             raise ValueError(
                 "JumpStart Model ID was not packaged with djl-inference or tgi-inference container."
             )
 
+        if self.model_server == ModelServer.TGI:
+            self.pysdk_model.tune = self.tune_for_tgi_jumpstart
         return self.pysdk_model
