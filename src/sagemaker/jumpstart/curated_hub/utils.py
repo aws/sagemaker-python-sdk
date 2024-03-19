@@ -307,7 +307,7 @@ def get_jumpstart_model_and_version(
     ]
     return JumpStartModelInfo(model_id=jumpstart_model_id, version=jumpstart_model_version)
 
-  
+
 def is_gated_bucket(bucket_name: str) -> bool:
     """Returns true if the bucket name is the JumpStart gated bucket."""
     return bucket_name in constants.JUMPSTART_GATED_BUCKET_NAME_SET

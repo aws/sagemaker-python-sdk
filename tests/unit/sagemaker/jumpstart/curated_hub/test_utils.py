@@ -181,7 +181,7 @@ def test_is_gated_bucket():
     assert utils.is_gated_bucket("jumpstart-private-cache-prod-us-east-1") is True
 
     assert utils.is_gated_bucket("jumpstart-cache-prod-us-west-2") is False
-    
+
     assert utils.is_gated_bucket("") is False
 
 
