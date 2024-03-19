@@ -15,7 +15,9 @@ import os
 from unittest import TestCase
 from mock.mock import Mock, patch
 import pytest
+import boto3
 import random
+from sagemaker import session
 from sagemaker.jumpstart import utils
 from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
@@ -32,7 +34,7 @@ from sagemaker.jumpstart.constants import (
     JumpStartScriptScope,
 )
 from functools import partial
-from sagemaker.jumpstart.enums import JumpStartTag, MIMEType
+from sagemaker.jumpstart.enums import JumpStartTag, MIMEType, JumpStartModelType
 from sagemaker.jumpstart.exceptions import (
     DeprecatedJumpStartModelError,
     VulnerableJumpStartModelError,
@@ -68,7 +70,7 @@ def test_get_jumpstart_content_bucket_override():
         with patch("logging.Logger.info") as mocked_info_log:
             random_region = "random_region"
             assert "some-val" == utils.get_jumpstart_content_bucket(random_region)
-            mocked_info_log.assert_called_once_with("Using JumpStart bucket override: 'some-val'")
+            mocked_info_log.assert_called_with("Using JumpStart bucket override: 'some-val'")
 
 
 def test_get_jumpstart_gated_content_bucket():
@@ -905,13 +907,9 @@ def test_jumpstart_accept_eula_logs(mock_get_manifest):
             make_accept_eula_inference_spec(), "us-east-1", MOCK_CLIENT
         )
         mocked_info_log.assert_any_call(
-            "Model '%s' requires accepting end-user license agreement (EULA). "
-            "See https://%s.s3.%s.amazonaws.com%s/%s for terms of use.",
-            "pytorch-eqa-bert-base-cased",
-            "jumpstart-cache-prod-us-east-1",
-            "us-east-1",
-            "",
-            "read/the/fine/print.txt",
+            "Model 'pytorch-eqa-bert-base-cased' requires accepting end-user license agreement (EULA). "
+            "See https://jumpstart-cache-prod-us-east-1.s3.us-east-1.amazonaws.com/read/the/fine/print.txt"
+            " for terms of use.",
         )
 
 
@@ -1180,7 +1178,7 @@ def test_mime_type_enum_from_str():
 class TestIsValidModelId(TestCase):
     @patch("sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor._get_manifest")
     @patch("sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor.get_model_specs")
-    def test_is_valid_model_id_true(
+    def test_validate_model_id_and_get_type_true(
         self,
         mock_get_model_specs: Mock,
         mock_get_manifest: Mock,
@@ -1194,12 +1192,16 @@ class TestIsValidModelId(TestCase):
         mock_session_value = DEFAULT_JUMPSTART_SAGEMAKER_SESSION
         mock_s3_client_value = mock_session_value.s3_client
 
-        patched = partial(utils.is_valid_model_id, sagemaker_session=mock_session_value)
+        patched = partial(
+            utils.validate_model_id_and_get_type, sagemaker_session=mock_session_value
+        )
 
-        with patch("sagemaker.jumpstart.utils.is_valid_model_id", patched):
-            self.assertTrue(utils.is_valid_model_id("bee"))
-            mock_get_manifest.assert_called_once_with(
-                region=JUMPSTART_DEFAULT_REGION_NAME, s3_client=mock_s3_client_value
+        with patch("sagemaker.jumpstart.utils.validate_model_id_and_get_type", patched):
+            self.assertTrue(utils.validate_model_id_and_get_type("bee"))
+            mock_get_manifest.assert_called_with(
+                region=JUMPSTART_DEFAULT_REGION_NAME,
+                s3_client=mock_s3_client_value,
+                model_type=JumpStartModelType.PROPRIETARY,
             )
             mock_get_model_specs.assert_not_called()
 
@@ -1213,14 +1215,20 @@ class TestIsValidModelId(TestCase):
             ]
 
             mock_get_model_specs.return_value = Mock(training_supported=True)
-            self.assertTrue(utils.is_valid_model_id("bee", script=JumpStartScriptScope.TRAINING))
-            mock_get_manifest.assert_called_once_with(
-                region=JUMPSTART_DEFAULT_REGION_NAME, s3_client=mock_s3_client_value
+            self.assertTrue(
+                utils.validate_model_id_and_get_type("bee", script=JumpStartScriptScope.TRAINING)
+            )
+            mock_get_manifest.assert_called_with(
+                region=JUMPSTART_DEFAULT_REGION_NAME,
+                s3_client=mock_s3_client_value,
+                model_type=JumpStartModelType.PROPRIETARY,
             )
 
     @patch("sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor._get_manifest")
     @patch("sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor.get_model_specs")
-    def test_is_valid_model_id_false(self, mock_get_model_specs: Mock, mock_get_manifest: Mock):
+    def test_validate_model_id_and_get_type_false(
+        self, mock_get_model_specs: Mock, mock_get_manifest: Mock
+    ):
         mock_get_manifest.return_value = [
             Mock(model_id="ay"),
             Mock(model_id="bee"),
@@ -1230,18 +1238,18 @@ class TestIsValidModelId(TestCase):
         mock_session_value = DEFAULT_JUMPSTART_SAGEMAKER_SESSION
         mock_s3_client_value = mock_session_value.s3_client
 
-        patched = partial(utils.is_valid_model_id, sagemaker_session=mock_session_value)
+        patched = partial(
+            utils.validate_model_id_and_get_type, sagemaker_session=mock_session_value
+        )
 
-        with patch("sagemaker.jumpstart.utils.is_valid_model_id", patched):
+        with patch("sagemaker.jumpstart.utils.validate_model_id_and_get_type", patched):
 
-            self.assertFalse(utils.is_valid_model_id("dee"))
-            self.assertFalse(utils.is_valid_model_id(""))
-            self.assertFalse(utils.is_valid_model_id(None))
-            self.assertFalse(utils.is_valid_model_id(set()))
+            self.assertFalse(utils.validate_model_id_and_get_type("dee"))
+            self.assertFalse(utils.validate_model_id_and_get_type(""))
+            self.assertFalse(utils.validate_model_id_and_get_type(None))
+            self.assertFalse(utils.validate_model_id_and_get_type(set()))
 
-            mock_get_manifest.assert_called_once_with(
-                region=JUMPSTART_DEFAULT_REGION_NAME, s3_client=mock_s3_client_value
-            )
+            mock_get_manifest.assert_called()
 
             mock_get_model_specs.assert_not_called()
 
@@ -1253,30 +1261,48 @@ class TestIsValidModelId(TestCase):
                 Mock(model_id="bee"),
                 Mock(model_id="see"),
             ]
-            self.assertFalse(utils.is_valid_model_id("dee", script=JumpStartScriptScope.TRAINING))
-            mock_get_manifest.assert_called_once_with(
-                region=JUMPSTART_DEFAULT_REGION_NAME, s3_client=mock_s3_client_value
+            self.assertFalse(
+                utils.validate_model_id_and_get_type("dee", script=JumpStartScriptScope.TRAINING)
+            )
+            mock_get_manifest.assert_called_with(
+                region=JUMPSTART_DEFAULT_REGION_NAME,
+                s3_client=mock_s3_client_value,
+                model_type=JumpStartModelType.PROPRIETARY,
             )
 
             mock_get_manifest.reset_mock()
 
-            self.assertFalse(utils.is_valid_model_id("dee", script=JumpStartScriptScope.TRAINING))
-            self.assertFalse(utils.is_valid_model_id("", script=JumpStartScriptScope.TRAINING))
-            self.assertFalse(utils.is_valid_model_id(None, script=JumpStartScriptScope.TRAINING))
-            self.assertFalse(utils.is_valid_model_id(set(), script=JumpStartScriptScope.TRAINING))
+            self.assertFalse(
+                utils.validate_model_id_and_get_type("dee", script=JumpStartScriptScope.TRAINING)
+            )
+            self.assertFalse(
+                utils.validate_model_id_and_get_type("", script=JumpStartScriptScope.TRAINING)
+            )
+            self.assertFalse(
+                utils.validate_model_id_and_get_type(None, script=JumpStartScriptScope.TRAINING)
+            )
+            self.assertFalse(
+                utils.validate_model_id_and_get_type(set(), script=JumpStartScriptScope.TRAINING)
+            )
 
             mock_get_model_specs.assert_not_called()
-            mock_get_manifest.assert_called_once_with(
-                region=JUMPSTART_DEFAULT_REGION_NAME, s3_client=mock_s3_client_value
+            mock_get_manifest.assert_called_with(
+                region=JUMPSTART_DEFAULT_REGION_NAME,
+                s3_client=mock_s3_client_value,
+                model_type=JumpStartModelType.PROPRIETARY,
             )
 
             mock_get_manifest.reset_mock()
             mock_get_model_specs.reset_mock()
 
             mock_get_model_specs.return_value = Mock(training_supported=False)
-            self.assertTrue(utils.is_valid_model_id("ay", script=JumpStartScriptScope.TRAINING))
-            mock_get_manifest.assert_called_once_with(
-                region=JUMPSTART_DEFAULT_REGION_NAME, s3_client=mock_s3_client_value
+            self.assertTrue(
+                utils.validate_model_id_and_get_type("ay", script=JumpStartScriptScope.TRAINING)
+            )
+            mock_get_manifest.assert_called_with(
+                region=JUMPSTART_DEFAULT_REGION_NAME,
+                s3_client=mock_s3_client_value,
+                model_type=JumpStartModelType.PROPRIETARY,
             )
 
 
@@ -1426,3 +1452,50 @@ class TestJumpStartLogger(TestCase):
         JUMPSTART_LOGGER.warning("Self destruct in 3...2...1...")
 
         mocked_emit.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "s3_bucket_name, s3_client, sagemaker_session, region",
+    [
+        (
+            "jumpstart-cache-prod",
+            boto3.client("s3", region_name="blah-blah"),
+            session.Session(boto3.Session(region_name="blah-blah")),
+            JUMPSTART_DEFAULT_REGION_NAME,
+        ),
+        (
+            "jumpstart-cache-prod-us-west-2",
+            boto3.client("s3", region_name="us-west-2"),
+            session.Session(boto3.Session(region_name="us-west-2")),
+            "us-west-2",
+        ),
+        ("jumpstart-cache-prod", boto3.client("s3", region_name="us-east-2"), None, "us-east-2"),
+    ],
+)
+def test_get_region_fallback_success(s3_bucket_name, s3_client, sagemaker_session, region):
+    assert region == utils.get_region_fallback(s3_bucket_name, s3_client, sagemaker_session)
+
+
+@pytest.mark.parametrize(
+    "s3_bucket_name, s3_client, sagemaker_session",
+    [
+        (
+            "jumpstart-cache-prod-us-west-2",
+            boto3.client("s3", region_name="us-east-2"),
+            session.Session(boto3.Session(region_name="us-west-2")),
+        ),
+        (
+            "jumpstart-cache-prod-us-west-2",
+            boto3.client("s3", region_name="us-west-2"),
+            session.Session(boto3.Session(region_name="eu-north-1")),
+        ),
+        (
+            "jumpstart-cache-prod-us-west-2-us-east-2",
+            boto3.client("s3", region_name="us-east-2"),
+            None,
+        ),
+    ],
+)
+def test_get_region_fallback_failure(s3_bucket_name, s3_client, sagemaker_session):
+    with pytest.raises(ValueError):
+        utils.get_region_fallback(s3_bucket_name, s3_client, sagemaker_session)

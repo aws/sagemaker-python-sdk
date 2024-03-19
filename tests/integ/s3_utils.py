@@ -19,7 +19,7 @@ import tarfile
 import boto3
 from six.moves.urllib.parse import urlparse
 
-from sagemaker.utils import check_tarfile_data_filter_attribute
+from sagemaker.utils import custom_extractall_tarfile
 
 
 def assert_s3_files_exist(sagemaker_session, s3_url, files):
@@ -57,5 +57,4 @@ def extract_files_from_s3(s3_url, tmpdir, sagemaker_session):
     s3.Bucket(parsed_url.netloc).download_file(parsed_url.path.lstrip("/"), model)
 
     with tarfile.open(model, "r") as tar_file:
-        check_tarfile_data_filter_attribute()
-        tar_file.extractall(tmpdir, filter="data")
+        custom_extractall_tarfile(tar_file, tmpdir)

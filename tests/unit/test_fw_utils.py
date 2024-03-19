@@ -24,7 +24,7 @@ import pytest
 from mock import Mock, patch
 
 from sagemaker import fw_utils
-from sagemaker.utils import name_from_image, check_tarfile_data_filter_attribute
+from sagemaker.utils import name_from_image, custom_extractall_tarfile
 from sagemaker.session_settings import SessionSettings
 from sagemaker.instance_group import InstanceGroup
 
@@ -424,8 +424,7 @@ def list_tar_files(folder, tar_ball, tmpdir):
     startpath = str(tmpdir.ensure(folder, dir=True))
 
     with tarfile.open(name=tar_ball, mode="r:gz") as t:
-        check_tarfile_data_filter_attribute()
-        t.extractall(path=startpath, filter="data")
+        custom_extractall_tarfile(t, startpath)
 
     def walk():
         for root, dirs, files in os.walk(startpath):
@@ -934,6 +933,7 @@ def test_validate_smdataparallel_args_not_raises():
         ("ml.p3.16xlarge", "pytorch", "2.0.0", "py310", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "2.0.1", "py310", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "2.1.0", "py310", smdataparallel_enabled),
+        ("ml.p3.16xlarge", "pytorch", "2.2.0", "py310", smdataparallel_enabled),
         ("ml.p3.16xlarge", "tensorflow", "2.4.1", "py3", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "tensorflow", "2.4.1", "py37", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "tensorflow", "2.4.3", "py3", smdataparallel_enabled_custom_mpi),
@@ -958,6 +958,7 @@ def test_validate_smdataparallel_args_not_raises():
         ("ml.p3.16xlarge", "pytorch", "2.0.0", "py310", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "pytorch", "2.0.1", "py310", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "pytorch", "2.1.0", "py310", smdataparallel_enabled_custom_mpi),
+        ("ml.p3.16xlarge", "pytorch", "2.2.0", "py310", smdataparallel_enabled_custom_mpi),
     ]
     for instance_type, framework_name, framework_version, py_version, distribution in good_args:
         fw_utils._validate_smdataparallel_args(
@@ -998,6 +999,7 @@ def test_validate_pytorchddp_not_raises():
         "2.0.0",
         "2.0.1",
         "2.1.0",
+        "2.2.0",
     ]
     for framework_version in pytorchddp_supported_fw_versions:
         fw_utils.validate_pytorch_distribution(
@@ -1060,7 +1062,7 @@ def test_validate_torch_distributed_not_raises():
 
     # Case 3: Distribution is torch_distributed enabled, supported framework and instances
     torch_distributed_enabled = {"torch_distributed": {"enabled": True}}
-    torch_distributed_gpu_supported_fw_versions = ["1.13.1", "2.0.0", "2.0.1", "2.1.0"]
+    torch_distributed_gpu_supported_fw_versions = ["1.13.1", "2.0.0", "2.0.1", "2.1.0", "2.2.0"]
     for framework_version in torch_distributed_gpu_supported_fw_versions:
         fw_utils.validate_torch_distributed_distribution(
             instance_type="ml.p3.8xlarge",

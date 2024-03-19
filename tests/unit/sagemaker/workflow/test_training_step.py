@@ -263,6 +263,8 @@ INPUT_PARAM_LISTS = [
     Join(on="/", values=["s3://my-bucket", "my-input"]),
 ]
 
+OUTPUT_PARAM_LIST = ["s3://my-bucket/my-output-path", ParameterString(name="OutputPath")]
+
 
 @pytest.fixture
 def training_input():
@@ -454,6 +456,7 @@ def test_training_step_estimator_with_param_code_input(
     assert step_def == step_def2
 
 
+@pytest.mark.skip(reason="incompatible with pytest-xdist")
 @pytest.mark.parametrize("estimator", ESTIMATOR_LISTS)
 @pytest.mark.parametrize("training_input", INPUT_PARAM_LISTS)
 @pytest.mark.parametrize(
@@ -523,6 +526,7 @@ def test_training_step_with_framework_estimator(
     assert step_def == step_def2
 
 
+@pytest.mark.skip(reason="incompatible with pytest-xdist")
 @patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
 @pytest.mark.parametrize("estimator", ESTIMATOR_LISTS_LOCAL_CODE)
 @pytest.mark.parametrize("training_input", INPUT_PARAM_LISTS)

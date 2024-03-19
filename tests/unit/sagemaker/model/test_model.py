@@ -1118,7 +1118,46 @@ def test_register_calls_model_package_args(get_model_package_args, sagemaker_ses
          get_model_package_args"""
 
 
-def test_register_calls_model_data_source_not_supported(sagemaker_session):
+@patch("sagemaker.get_model_package_args")
+def test_register_passes_source_uri_to_model_package_args(
+    get_model_package_args, sagemaker_session
+):
+    source_dir = "s3://blah/blah/blah"
+    source_uri = "dummy_source_uri"
+    t = Model(
+        entry_point=ENTRY_POINT_INFERENCE,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        source_dir=source_dir,
+        image_uri=IMAGE_URI,
+        model_data=MODEL_DATA,
+    )
+
+    t.register(
+        SUPPORTED_CONTENT_TYPES,
+        SUPPORTED_RESPONSE_MIME_TYPES,
+        SUPPORTED_REALTIME_INFERENCE_INSTANCE_TYPES,
+        SUPPORTED_BATCH_TRANSFORM_INSTANCE_TYPES,
+        marketplace_cert=True,
+        description=MODEL_DESCRIPTION,
+        model_package_name=MODEL_NAME,
+        validation_specification=VALIDATION_SPECIFICATION,
+        source_uri=source_uri,
+    )
+
+    # check that the kwarg source_uri was passed to the internal method 'get_model_package_args'
+    assert (
+        "source_uri" in get_model_package_args.call_args_list[0][1]
+    ), "source_uri kwarg was not passed to get_model_package_args"
+
+    # check that the kwarg source_uri is identical to the one passed into the method 'register'
+    assert (
+        source_uri == get_model_package_args.call_args_list[0][1]["source_uri"]
+    ), """source_uri from model.register method is not identical to source_uri from
+         get_model_package_args"""
+
+
+def test_register_with_model_data_source_not_supported_for_unversioned_model(sagemaker_session):
     source_dir = "s3://blah/blah/blah"
     t = Model(
         entry_point=ENTRY_POINT_INFERENCE,
@@ -1137,7 +1176,7 @@ def test_register_calls_model_data_source_not_supported(sagemaker_session):
 
     with pytest.raises(
         ValueError,
-        match="SageMaker Model Package currently cannot be created with ModelDataSource.",
+        match="Un-versioned SageMaker Model Package currently cannot be created with ModelDataSource.",
     ):
         t.register(
             SUPPORTED_CONTENT_TYPES,
@@ -1149,6 +1188,51 @@ def test_register_calls_model_data_source_not_supported(sagemaker_session):
             model_package_name=MODEL_NAME,
             validation_specification=VALIDATION_SPECIFICATION,
         )
+
+
+@patch("sagemaker.get_model_package_args")
+def test_register_with_model_data_source_supported_for_versioned_model(
+    get_model_package_args, sagemaker_session
+):
+    source_dir = "s3://blah/blah/blah"
+    model_data_source = {
+        "S3DataSource": {
+            "S3Uri": "s3://bucket/model/prefix/",
+            "S3DataType": "S3Prefix",
+            "CompressionType": "None",
+        }
+    }
+    t = Model(
+        entry_point=ENTRY_POINT_INFERENCE,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        source_dir=source_dir,
+        image_uri=IMAGE_URI,
+        model_data=model_data_source,
+    )
+
+    t.register(
+        SUPPORTED_CONTENT_TYPES,
+        SUPPORTED_RESPONSE_MIME_TYPES,
+        SUPPORTED_REALTIME_INFERENCE_INSTANCE_TYPES,
+        SUPPORTED_BATCH_TRANSFORM_INSTANCE_TYPES,
+        marketplace_cert=True,
+        description=MODEL_DESCRIPTION,
+        model_package_group_name="dummy_group",
+        validation_specification=VALIDATION_SPECIFICATION,
+    )
+
+    # check that the kwarg container_def_list was set for the internal method 'get_model_package_args'
+    assert (
+        "container_def_list" in get_model_package_args.call_args_list[0][1]
+    ), "container_def_list kwarg was not set to get_model_package_args"
+
+    # check that the kwarg container in container_def_list contains the model data source
+    assert (
+        model_data_source
+        == get_model_package_args.call_args_list[0][1]["container_def_list"][0]["ModelDataSource"]
+    ), """model_data_source from model.register method is not identical to ModelDataSource from
+         get_model_package_args"""
 
 
 @patch("sagemaker.utils.repack_model")

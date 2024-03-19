@@ -17,6 +17,7 @@ from tests.unit.sagemaker.jumpstart.utils import (
     get_prototype_manifest,
     get_prototype_model_spec,
 )
+from sagemaker.jumpstart.enums import JumpStartModelType
 from sagemaker.jumpstart.notebook_utils import (
     _generate_jumpstart_model_versions,
     get_model_url,
@@ -24,6 +25,7 @@ from sagemaker.jumpstart.notebook_utils import (
     list_jumpstart_models,
     list_jumpstart_scripts,
     list_jumpstart_tasks,
+    _is_valid_version,
 )
 
 
@@ -63,7 +65,7 @@ def test_list_jumpstart_scripts(
     patched_generate_jumpstart_models.assert_called_once_with(
         **kwargs, sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION
     )
-    patched_get_manifest.assert_called_once()
+    assert patched_get_manifest.call_count == 2
     assert patched_get_model_specs.call_count == 1
 
     patched_get_model_specs.reset_mock()
@@ -78,8 +80,8 @@ def test_list_jumpstart_scripts(
     patched_generate_jumpstart_models.assert_called_once_with(
         **kwargs, sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION
     )
-    patched_get_manifest.assert_called_once()
-    assert patched_read_s3_file.call_count == len(PROTOTYPICAL_MODEL_SPECS_DICT)
+    assert patched_get_manifest.call_count == 2
+    assert patched_read_s3_file.call_count == 2 * len(PROTOTYPICAL_MODEL_SPECS_DICT)
 
 
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
@@ -107,7 +109,7 @@ def test_list_jumpstart_tasks(
     )  # incomplete list, based on mocked metadata
 
     patched_generate_jumpstart_models.assert_called_once()
-    patched_get_manifest.assert_called_once()
+    assert patched_get_manifest.call_count == 2
     patched_get_model_specs.assert_not_called()
 
     patched_get_model_specs.reset_mock()
@@ -122,7 +124,7 @@ def test_list_jumpstart_tasks(
     patched_generate_jumpstart_models.assert_called_once_with(
         **kwargs, sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION
     )
-    patched_get_manifest.assert_called_once()
+    assert patched_get_manifest.call_count == 2
     patched_get_model_specs.assert_not_called()
 
 
@@ -154,11 +156,11 @@ def test_list_jumpstart_frameworks(
     )
 
     patched_generate_jumpstart_models.assert_called_once()
-    patched_get_manifest.assert_called_once()
+    assert patched_get_manifest.call_count == 2
     patched_get_model_specs.assert_not_called()
 
     patched_get_model_specs.reset_mock()
-    patched_get_manifest.reset_mock()
+    assert patched_get_manifest.call_count == 2
     patched_generate_jumpstart_models.reset_mock()
 
     kwargs = {
@@ -180,8 +182,15 @@ def test_list_jumpstart_frameworks(
     patched_generate_jumpstart_models.assert_called_once_with(
         **kwargs, sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION
     )
-    patched_get_manifest.assert_called_once()
+    assert patched_get_manifest.call_count == 4
     patched_get_model_specs.assert_not_called()
+
+
+def test_is_valid_version():
+    valid_version_strs = ["1.0", "1.0.0", "2012.4", "1!1.0", "1.dev0", "1.2.3+abc.dev1"]
+    invalid_version_strs = ["1.1.053_m", "invalid version", "v1-1.0-v2", "@"]
+    assert all(_is_valid_version(v) for v in valid_version_strs)
+    assert not any(_is_valid_version(v) for v in invalid_version_strs)
 
 
 class ListJumpStartModels(TestCase):
@@ -238,7 +247,7 @@ class ListJumpStartModels(TestCase):
             kwargs = {"filter": f"training_supported != {val}"}
             list_jumpstart_models(**kwargs)
             assert patched_read_s3_file.call_count == manifest_length
-            patched_get_manifest.assert_called_once()
+            assert patched_get_manifest.call_count == 2
 
             patched_get_manifest.reset_mock()
             patched_read_s3_file.reset_mock()
@@ -255,7 +264,7 @@ class ListJumpStartModels(TestCase):
             ("xgboost-classification-model", "1.0.0"),
         ]
         assert patched_read_s3_file.call_count == manifest_length
-        patched_get_manifest.assert_called_once()
+        assert patched_get_manifest.call_count == 2
 
         patched_get_manifest.reset_mock()
         patched_read_s3_file.reset_mock()
@@ -264,7 +273,7 @@ class ListJumpStartModels(TestCase):
         models = list_jumpstart_models(**kwargs)
         assert [] == models
         assert patched_read_s3_file.call_count == manifest_length
-        patched_get_manifest.assert_called_once()
+        assert patched_get_manifest.call_count == 2
 
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -287,7 +296,7 @@ class ListJumpStartModels(TestCase):
             kwargs = {"filter": f"task == {val}"}
             list_jumpstart_models(**kwargs)
             patched_get_model_specs.assert_not_called()
-            patched_get_manifest.assert_called_once()
+            assert patched_get_manifest.call_count == 2
 
             patched_get_manifest.reset_mock()
             patched_get_model_specs.reset_mock()
@@ -295,7 +304,7 @@ class ListJumpStartModels(TestCase):
             kwargs = {"filter": f"task != {val}"}
             list_jumpstart_models(**kwargs)
             patched_get_model_specs.assert_not_called()
-            patched_get_manifest.assert_called_once()
+            assert patched_get_manifest.call_count == 2
 
             patched_get_manifest.reset_mock()
             patched_get_model_specs.reset_mock()
@@ -312,7 +321,7 @@ class ListJumpStartModels(TestCase):
             ("xgboost-classification-model", "1.0.0"),
         ]
         patched_get_model_specs.assert_not_called()
-        patched_get_manifest.assert_called_once()
+        assert patched_get_manifest.call_count == 2
 
         patched_get_manifest.reset_mock()
         patched_get_model_specs.reset_mock()
@@ -321,7 +330,7 @@ class ListJumpStartModels(TestCase):
         models = list_jumpstart_models(**kwargs)
         assert [] == models
         patched_get_model_specs.assert_not_called()
-        patched_get_manifest.assert_called_once()
+        assert patched_get_manifest.call_count == 2
 
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     @patch("sagemaker.jumpstart.notebook_utils.DEFAULT_JUMPSTART_SAGEMAKER_SESSION.read_s3_file")
@@ -348,7 +357,7 @@ class ListJumpStartModels(TestCase):
             kwargs = {"filter": f"framework == {val}"}
             list_jumpstart_models(**kwargs)
             patched_read_s3_file.assert_not_called()
-            patched_get_manifest.assert_called_once()
+            assert patched_get_manifest.call_count == 2
 
             patched_get_manifest.reset_mock()
             patched_read_s3_file.reset_mock()
@@ -356,7 +365,7 @@ class ListJumpStartModels(TestCase):
             kwargs = {"filter": f"framework != {val}"}
             list_jumpstart_models(**kwargs)
             patched_read_s3_file.assert_not_called()
-            patched_get_manifest.assert_called_once()
+            assert patched_get_manifest.call_count == 2
 
             patched_get_manifest.reset_mock()
             patched_read_s3_file.reset_mock()
@@ -372,7 +381,7 @@ class ListJumpStartModels(TestCase):
             ("xgboost-classification-model", "1.0.0"),
         ]
         patched_read_s3_file.assert_not_called()
-        patched_get_manifest.assert_called_once()
+        assert patched_get_manifest.call_count == 2
 
         patched_get_manifest.reset_mock()
         patched_read_s3_file.reset_mock()
@@ -390,8 +399,8 @@ class ListJumpStartModels(TestCase):
         }
         models = list_jumpstart_models(**kwargs)
         assert [("tensorflow-ic-bit-m-r101x1-ilsvrc2012-classification-1", "1.0.0")] == models
-        patched_read_s3_file.assert_called_once()
-        patched_get_manifest.assert_called_once()
+        assert patched_read_s3_file.call_count == 2
+        assert patched_get_manifest.call_count == 2
 
         patched_get_manifest.reset_mock()
         patched_read_s3_file.reset_mock()
@@ -405,7 +414,7 @@ class ListJumpStartModels(TestCase):
         models = list_jumpstart_models(**kwargs)
         assert [] == models
         patched_read_s3_file.assert_not_called()
-        patched_get_manifest.assert_called_once()
+        assert patched_get_manifest.call_count == 2
 
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -420,8 +429,10 @@ class ListJumpStartModels(TestCase):
 
         list_jumpstart_models(region="some-region")
 
-        patched_get_manifest.assert_called_once_with(
-            region="some-region", s3_client=DEFAULT_JUMPSTART_SAGEMAKER_SESSION.s3_client
+        patched_get_manifest.assert_called_with(
+            region="some-region",
+            s3_client=DEFAULT_JUMPSTART_SAGEMAKER_SESSION.s3_client,
+            model_type=JumpStartModelType.OPEN_WEIGHTS,
         )
 
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
@@ -478,7 +489,7 @@ class ListJumpStartModels(TestCase):
         ] == list_jumpstart_models(list_old_models=True, list_versions=True)
 
         patched_get_model_specs.assert_not_called()
-        patched_get_manifest.assert_called_once()
+        assert patched_get_manifest.call_count == 2
 
         patched_get_manifest.reset_mock()
         patched_get_model_specs.reset_mock()
@@ -526,8 +537,8 @@ class ListJumpStartModels(TestCase):
             And("inference_vulnerable is false", "training_vulnerable is false")
         )
 
-        assert patched_read_s3_file.call_count == num_specs
-        patched_get_manifest.assert_called_once()
+        assert patched_read_s3_file.call_count == 2 * num_specs
+        assert patched_get_manifest.call_count == 2
 
         patched_get_manifest.reset_mock()
         patched_read_s3_file.reset_mock()
@@ -538,8 +549,8 @@ class ListJumpStartModels(TestCase):
             And("inference_vulnerable is false", "training_vulnerable is false")
         )
 
-        assert patched_read_s3_file.call_count == num_specs
-        patched_get_manifest.assert_called_once()
+        assert patched_read_s3_file.call_count == 2 * num_specs
+        assert patched_get_manifest.call_count == 2
 
         patched_get_manifest.reset_mock()
         patched_read_s3_file.reset_mock()
@@ -570,8 +581,8 @@ class ListJumpStartModels(TestCase):
         num_specs = len(PROTOTYPICAL_MODEL_SPECS_DICT)
         assert [] == list_jumpstart_models("deprecated equals false")
 
-        assert patched_read_s3_file.call_count == num_specs
-        patched_get_manifest.assert_called_once()
+        assert patched_read_s3_file.call_count == 2 * num_specs
+        assert patched_get_manifest.call_count == 2
 
         patched_get_manifest.reset_mock()
         patched_read_s3_file.reset_mock()
@@ -606,6 +617,44 @@ class ListJumpStartModels(TestCase):
         assert list_jumpstart_models() == all_model_ids
 
         assert list_jumpstart_models(list_versions=False) == all_model_ids
+
+    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
+    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    def test_list_jumpstart_proprietary_models(
+        self,
+        patched_get_model_specs: Mock,
+        patched_get_manifest: Mock,
+    ):
+        patched_get_model_specs.side_effect = get_prototype_model_spec
+        patched_get_manifest.side_effect = (
+            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
+        )
+
+        all_prop_model_ids = [
+            "ai21-paraphrase",
+            "ai21-summarization",
+            "lighton-mini-instruct40b",
+            "nc-soft-model-1",
+        ]
+
+        all_open_weight_model_ids = [
+            "catboost-classification-model",
+            "huggingface-spc-bert-base-cased",
+            "lightgbm-classification-model",
+            "mxnet-semseg-fcn-resnet50-ade",
+            "pytorch-eqa-bert-base-cased",
+            "sklearn-classification-linear",
+            "tensorflow-ic-bit-m-r101x1-ilsvrc2012-classification-1",
+            "xgboost-classification-model",
+        ]
+
+        assert list_jumpstart_models("model_type == proprietary") == all_prop_model_ids
+        assert list_jumpstart_models("model_type == marketplace") == all_prop_model_ids
+        assert list_jumpstart_models("model_type == open_weights") == all_open_weight_model_ids
+
+        assert list_jumpstart_models(list_versions=False) == sorted(
+            all_prop_model_ids + all_open_weight_model_ids
+        )
 
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     @patch("sagemaker.jumpstart.notebook_utils.DEFAULT_JUMPSTART_SAGEMAKER_SESSION.read_s3_file")
@@ -670,12 +719,20 @@ class ListJumpStartModels(TestCase):
             list_jumpstart_models("hosting_ecr_specs.py_version == py3")
 
 
+@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
+@patch("sagemaker.jumpstart.utils.validate_model_id_and_get_type")
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
 def test_get_model_url(
     patched_get_model_specs: Mock,
+    patched_validate_model_id_and_get_type: Mock,
+    patched_get_manifest: Mock,
 ):
 
     patched_get_model_specs.side_effect = get_prototype_model_spec
+    patched_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
+    patched_get_manifest.side_effect = lambda region, *args, **kwargs: get_prototype_manifest(
+        region
+    )
 
     model_id, version = "xgboost-classification-model", "1.0.0"
     assert "https://xgboost.readthedocs.io/en/latest/" == get_model_url(model_id, version)
@@ -686,7 +743,6 @@ def test_get_model_url(
     )
 
     model_id, version = "tensorflow-ic-bit-m-r101x1-ilsvrc2012-classification-1", "1.0.0"
-    region = "fake-region"
 
     patched_get_model_specs.reset_mock()
     patched_get_model_specs.side_effect = lambda *largs, **kwargs: get_prototype_model_spec(
@@ -695,11 +751,12 @@ def test_get_model_url(
         **{key: value for key, value in kwargs.items() if key != "region"},
     )
 
-    get_model_url(model_id, version, region=region)
+    get_model_url(model_id, version, region="us-west-2")
 
     patched_get_model_specs.assert_called_once_with(
         model_id=model_id,
         version=version,
-        region=region,
+        region="us-west-2",
         s3_client=DEFAULT_JUMPSTART_SAGEMAKER_SESSION.s3_client,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
     )
