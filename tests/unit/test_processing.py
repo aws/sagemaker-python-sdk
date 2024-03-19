@@ -13,11 +13,11 @@
 from __future__ import absolute_import
 
 import copy
+from textwrap import dedent
 
 import pytest
 from mock import Mock, patch, MagicMock
 from packaging import version
-from textwrap import dedent
 
 from sagemaker import LocalSession
 from sagemaker.dataset_definition.inputs import (
@@ -1122,12 +1122,8 @@ def test_get_codeartifact_command(pipeline_session):
         codeartifact_repo_arn=codeartifact_repo_arn
     )
 
-    assert (
-        codeartifact_command == (
-            "aws codeartifact login --tool pip --domain test-domain ",
-            "--domain-owner 012345678901 --repository test-repository --region us-west-2"
-        )
-    )
+    assert codeartifact_command == \
+        "aws codeartifact login --tool pip --domain test-domain --domain-owner 012345678901 --repository test-repository --region us-west-2"  # noqa: E501
 
 
 @patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
