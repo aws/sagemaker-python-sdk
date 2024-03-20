@@ -15,7 +15,7 @@ from __future__ import absolute_import
 import pytest
 
 from tests.integ.sagemaker.workflow.helpers import wait_pipeline_execution
-from sagemaker import get_execution_role, utils
+from sagemaker import utils
 from sagemaker.workflow.condition_step import ConditionStep
 from sagemaker.workflow.conditions import ConditionGreaterThan
 from sagemaker.workflow.fail_step import FailStep
@@ -25,16 +25,11 @@ from sagemaker.workflow.pipeline import Pipeline
 
 
 @pytest.fixture
-def role(sagemaker_session):
-    return get_execution_role(sagemaker_session)
-
-
-@pytest.fixture
 def pipeline_name():
     return utils.unique_name_from_base("my-pipeline-vars")
 
 
-def test_ppl_var_to_string_and_add(sagemaker_session, role, pipeline_name):
+def test_ppl_var_to_string_and_add(sagemaker_session_for_pipeline, role, pipeline_name):
     param_str = ParameterString(name="MyString", default_value="1")
     param_int = ParameterInteger(name="MyInteger", default_value=3)
 
@@ -65,7 +60,7 @@ def test_ppl_var_to_string_and_add(sagemaker_session, role, pipeline_name):
         name=pipeline_name,
         parameters=[param_str, param_int],
         steps=[step_cond, step_fail],
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
     )
 
     try:
