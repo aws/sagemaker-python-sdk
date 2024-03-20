@@ -208,13 +208,20 @@ class SchemaBuilder(TritonSchemaBuilder):
 
     def __repr__(self):
         """Placeholder docstring"""
-        return (
-            f"SchemaBuilder(\n"
-            f"input_serializer={self.input_serializer}\n"
-            f"output_serializer={self.output_serializer}\n"
-            f"input_deserializer={self.input_deserializer._deserializer}\n"
-            f"output_deserializer={self.output_deserializer._deserializer})"
-        )
+        if hasattr(self, "input_serializer") and hasattr(self, "output_serializer"):
+            return (
+                f"SchemaBuilder(\n"
+                f"input_serializer={self.input_serializer}\n"
+                f"output_serializer={self.output_serializer}\n"
+                f"input_deserializer={self.input_deserializer._deserializer}\n"
+                f"output_deserializer={self.output_deserializer._deserializer})"
+            )
+        elif hasattr(self, "custom_input_translator") and hasattr(self, "custom_output_translator"):
+            return (
+                f"SchemaBuilder(\n"
+                f"custom_input_translator={self.custom_input_translator}\n"
+                f"custom_output_translator={self.custom_output_translator}\n"
+            )
 
     def generate_marshalling_map(self) -> dict:
         """Generate marshalling map for the schema builder"""

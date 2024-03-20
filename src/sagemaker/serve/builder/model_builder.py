@@ -20,6 +20,7 @@ import os
 
 from pathlib import Path
 
+from accelerate.commands.estimate import estimate_command_parser, gather_data
 from sagemaker import Session
 from sagemaker.model import Model
 from sagemaker.base_predictor import PredictorBase
@@ -730,14 +731,11 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
         to add up to an additional 20% to the given model size as found by EleutherAI.
         """
         try:
-            import accelerate.commands.estimate.estimate_command_parser as estimate_parser
-            import accelerate.commands.estimate.gather_data as estimate_gather
-
             dtypes = self.env_vars.get("dtypes", "float32")
-            parser = estimate_parser()
+            parser = estimate_command_parser()
             args = parser.parse_args([self.model, "--dtypes", dtypes])
 
-            output = estimate_gather(
+            output = gather_data(
                 args
             )  # "dtype", "Largest Layer", "Total Size Bytes", "Training using Adam"
         except ImportError as e:
