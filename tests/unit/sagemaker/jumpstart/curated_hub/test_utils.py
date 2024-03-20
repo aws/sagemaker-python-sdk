@@ -20,11 +20,10 @@ from sagemaker.jumpstart.curated_hub import utils
 from unittest.mock import patch
 from sagemaker.jumpstart.curated_hub.types import (
     CuratedHubUnsupportedFlag,
-    HubContentSummary,
     summary_from_list_api_response,
     summary_list_from_list_api_response,
 )
-from sagemaker.jumpstart.types import HubContentType
+from sagemaker.jumpstart.types import HubContentType, HubContentInfo
 
 
 def test_get_info_from_hub_resource_arn():
@@ -290,20 +289,41 @@ def test_find_all_tags_for_jumpstart_model_filters_non_jumpstart_models(mock_spe
     mock_sagemaker_session.list_hub_content_versions.return_value = {
         "HubContentSummaries": [
             {
+                "CreationTime": "test_creation_timestamp_0",
+                "HubContentArn": "test_arn_0",
+                "HubContentName": "test_name",
                 "HubContentVersion": "1.0.0",
+                "HubContentType": "Model",
+                "DocumentSchemaVersion": "test_schema",
+                "HubContentStatus": "test",
                 "HubContentSearchKeywords": [
                     "@jumpstart-model-id:model-one-pytorch",
                     "@jumpstart-model-version:1.0.3",
                 ],
             },
             {
+                "CreationTime": "test_creation_timestamp_1",
+                "HubContentArn": "test_arn_1",
+                "HubContentName": "test_name",
+                "HubContentType": "Model",
+                "DocumentSchemaVersion": "test_schema",
                 "HubContentVersion": "2.0.0",
+                "HubContentStatus": "test",
                 "HubContentSearchKeywords": [
                     "@jumpstart-model-id:model-four-huggingface",
                     "@jumpstart-model-version:2.0.2",
                 ],
             },
-            {"HubContentVersion": "3.0.0", "HubContentSearchKeywords": []},
+            {
+                "CreationTime": "test_creation_timestamp_3",
+                "HubContentArn": "test_arn_3",
+                "HubContentName": "test_name",
+                "HubContentType": "Model",
+                "DocumentSchemaVersion": "test_schema",
+                "HubContentVersion": "3.0.0",
+                "HubContentStatus": "test",
+                "HubContentSearchKeywords": [],
+            },
         ]
     }
 
@@ -355,16 +375,18 @@ def test_summary_from_list_api_response(mock_spec_util):
         }
     )
 
-    assert test == HubContentSummary(
-        hub_content_arn="test_arn",
-        hub_content_name="test_name",
-        hub_content_version="test_version",
-        hub_content_description="test_description",
-        hub_content_type=HubContentType.MODEL,
-        document_schema_version="test_schema",
-        hub_content_status="test",
-        creation_time="test_creation",
-        hub_content_search_keywords=["test"],
+    assert test == HubContentInfo(
+        {
+            "HubContentArn": "test_arn",
+            "HubContentName": "test_name",
+            "HubContentVersion": "test_version",
+            "HubContentType": "Model",
+            "DocumentSchemaVersion": "test_schema",
+            "HubContentStatus": "test",
+            "HubContentDescription": "test_description",
+            "HubContentSearchKeywords": ["test"],
+            "CreationTime": "test_creation",
+        }
     )
 
 
@@ -400,26 +422,30 @@ def test_summaries_from_list_api_response(mock_spec_util):
     )
 
     assert test == [
-        HubContentSummary(
-            hub_content_arn="test",
-            hub_content_name="test",
-            hub_content_version="test",
-            hub_content_description="test",
-            hub_content_type=HubContentType.MODEL,
-            document_schema_version="test",
-            hub_content_status="test",
-            creation_time="test",
-            hub_content_search_keywords=["test", "test_2"],
+        HubContentInfo(
+            {
+                "HubContentArn": "test",
+                "HubContentName": "test",
+                "HubContentVersion": "test",
+                "HubContentType": "Model",
+                "DocumentSchemaVersion": "test",
+                "HubContentStatus": "test",
+                "HubContentDescription": "test",
+                "HubContentSearchKeywords": ["test", "test_2"],
+                "CreationTime": "test",
+            }
         ),
-        HubContentSummary(
-            hub_content_arn="test_2",
-            hub_content_name="test_2",
-            hub_content_version="test_2",
-            hub_content_description="test_2",
-            hub_content_type=HubContentType.MODEL,
-            document_schema_version="test_2",
-            hub_content_status="test_2",
-            creation_time="test_2",
-            hub_content_search_keywords=["test_2", "test_2_2"],
+        HubContentInfo(
+            {
+                "HubContentArn": "test_2",
+                "HubContentName": "test_2",
+                "HubContentVersion": "test_2",
+                "HubContentType": "Model",
+                "DocumentSchemaVersion": "test_2",
+                "HubContentStatus": "test_2",
+                "HubContentDescription": "test_2",
+                "HubContentSearchKeywords": ["test_2", "test_2_2"],
+                "CreationTime": "test_2",
+            }
         ),
     ]

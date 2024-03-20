@@ -45,6 +45,7 @@ from sagemaker.jumpstart.types import (
     HubContentType,
     JumpStartModelSpecs,
     HubModelDocument,
+    HubContentInfo,
 )
 from sagemaker.jumpstart.curated_hub.utils import (
     create_hub_bucket_if_it_does_not_exist,
@@ -56,7 +57,6 @@ from sagemaker.jumpstart.curated_hub.utils import (
 from sagemaker.jumpstart.curated_hub.types import (
     JumpStartModelInfo,
     S3ObjectLocation,
-    HubContentSummary,
     summary_list_from_list_api_response,
 )
 from sagemaker.utils import TagsDict
@@ -219,7 +219,7 @@ class CuratedHub:
         )
         return {"model_id": model["model_id"], "version": model_specs.version}
 
-    def _get_jumpstart_models_in_hub(self) -> List[HubContentSummary]:
+    def _get_jumpstart_models_in_hub(self) -> List[HubContentInfo]:
         """Retrieves all JumpStart models in a private Hub."""
         hub_models = summary_list_from_list_api_response(self.list_models())
         return [model for model in hub_models if get_jumpstart_model_and_version(model) is not None]
@@ -227,7 +227,7 @@ class CuratedHub:
     def _determine_models_to_sync(
         self,
         model_list: List[JumpStartModelInfo],
-        models_in_hub: Dict[str, HubContentSummary],
+        models_in_hub: Dict[str, HubContentInfo],
     ) -> List[JumpStartModelInfo]:
         """Determines which models from `sync` params to sync into the CuratedHub.
 

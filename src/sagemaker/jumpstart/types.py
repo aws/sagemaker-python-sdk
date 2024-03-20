@@ -435,7 +435,7 @@ class JumpStartSerializablePayload(JumpStartDataHolderType):
 
         if json_obj is None:
             return
-        self.raw_payload = json_obj  # TODO: Convert keys from UpperCamelCase to snake_case?
+        self.raw_payload = json_obj
         if self._is_hub_content:
             self.content_type = json_obj["ContentType"]
             self.body = json_obj["Body"]
@@ -2090,28 +2090,27 @@ class HubNotebookDocument(JumpStartDataHolderType):
 HubContentDocument = Union[HubModelDocument, HubNotebookDocument]
 
 
-class HubContentSummary(JumpStartDataHolderType):
-    """Data class for the HubContentSummary from session.list_hub_contents()."""
+class HubContentInfo(JumpStartDataHolderType):
+    """Data class for the HubContentInfo from session.list_hub_contents()."""
 
     __slots__ = [
         "creation_time",
         "document_schema_version",
         "hub_content_arn",
-        "hub_content_description",
-        "hub_content_display_name",
-        "hub_content_document",
         "hub_content_name",
-        "hub_content_search_keywords",
         "hub_content_status",
         "hub_content_type",
         "hub_content_version",
+        "hub_content_description",
+        "hub_content_display_name",
+        "hub_content_search_keywords",
         "_region",
     ]
 
     _non_serializable_slots = ["_region"]
 
     def __init__(self, json_obj: Dict[str, Any]) -> None:
-        """Instantiates HubContentSummary object.
+        """Instantiates HubContentInfo object.
 
         Args:
             json_obj (Dict[str, Any]): Dictionary representation of hub content description.
@@ -2127,19 +2126,18 @@ class HubContentSummary(JumpStartDataHolderType):
         self.creation_time: str = json_obj["CreationTime"]
         self.document_schema_version: str = json_obj["DocumentSchemaVersion"]
         self.hub_content_arn: str = json_obj["HubContentArn"]
-        self.hub_content_description: str = json_obj["HubContentDescription"]
-        self.hub_content_display_name: str = json_obj["HubContentDisplayName"]
-        self._region: Optional[str] = HubArnExtractedInfo.extract_region_from_arn(
-            self.hub_content_arn
-        )
-        self.hub_content_document: HubModelDocument = HubModelDocument(
-            json_obj_or_model_specs=json_obj["HubContentDocument"], region=self._region
-        )
         self.hub_content_name: str = json_obj["HubContentName"]
-        self.hub_content_search_keywords: List[str] = json_obj["HubContentSearchKeywords"]
         self.hub_content_status: str = json_obj["HubContentStatus"]
         self.hub_content_type: HubContentType = HubContentType(json_obj["HubContentType"])
         self.hub_content_version: str = json_obj["HubContentVersion"]
+        self.hub_content_description: Optional[str] = json_obj.get("HubContentDescription")
+        self.hub_content_display_name: Optional[str] = json_obj.get("HubContentDisplayName")
+        self._region: Optional[str] = HubArnExtractedInfo.extract_region_from_arn(
+            self.hub_content_arn
+        )
+        self.hub_content_search_keywords: Optional[List[str]] = json_obj.get(
+            "HubContentSearchKeywords"
+        )
 
     def get_hub_region(self) -> Optional[str]:
         """Returns the region hub is in."""
@@ -2168,8 +2166,8 @@ class ListHubContentsResponse(JumpStartDataHolderType):
         Args:
             json_obj (Dict[str, Any]): Dictionary representation of hub description.
         """
-        self.hub_content_summaries: List[HubContentSummary] = [
-            HubContentSummary(item) for item in json_obj["HubContentSummaries"]
+        self.hub_content_summaries: List[HubContentInfo] = [
+            HubContentInfo(item) for item in json_obj["HubContentSummaries"]
         ]
         self.next_token: str = json_obj["NextToken"]
 

@@ -615,7 +615,10 @@ class JumpStartModelsCache:
             hub_model_arn (str): Arn for the Hub model to get specs for
         """
 
-        details, _ = self._content_cache.get(JumpStartCachedContentKey(HubContentType.MODEL, hub_model_arn))
+        details, _ = self._content_cache.get(JumpStartCachedContentKey(
+            HubContentType.MODEL,
+            hub_model_arn,
+        ))
         return details.formatted_content
 
     def get_hub(self, hub_arn: str) -> Dict[str, Any]:
