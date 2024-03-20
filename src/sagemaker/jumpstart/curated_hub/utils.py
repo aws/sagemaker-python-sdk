@@ -29,6 +29,7 @@ from sagemaker.jumpstart import constants
 from sagemaker.jumpstart import utils
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.curated_hub.constants import (
+    JUMPSTART_CURATED_HUB_MODEL_TAG,
     JUMPSTART_HUB_MODEL_ID_TAG_PREFIX,
     JUMPSTART_HUB_MODEL_VERSION_TAG_PREFIX,
 )
@@ -280,32 +281,16 @@ def get_jumpstart_model_and_version(
     hub_content_summary: HubContentInfo,
 ) -> Optional[JumpStartModelInfo]:
     """Retrieves the JumpStart model id and version from the JumpStart tag."""
-    jumpstart_model_id_tag = next(
+    is_curated_model = next(
         (
             tag
             for tag in hub_content_summary.hub_content_search_keywords
-            if tag.startswith(JUMPSTART_HUB_MODEL_ID_TAG_PREFIX)
+            if tag.startswith(JUMPSTART_CURATED_HUB_MODEL_TAG)
         ),
         None,
     )
-    jumpstart_model_version_tag = next(
-        (
-            tag
-            for tag in hub_content_summary.hub_content_search_keywords
-            if tag.startswith(JUMPSTART_HUB_MODEL_VERSION_TAG_PREFIX)
-        ),
-        None,
-    )
-
-    if jumpstart_model_id_tag is None or jumpstart_model_version_tag is None:
-        return None
-    jumpstart_model_id = jumpstart_model_id_tag[
-        len(JUMPSTART_HUB_MODEL_ID_TAG_PREFIX) :
-    ]  # Need to remove the tag_prefix and ":"
-    jumpstart_model_version = jumpstart_model_version_tag[
-        len(JUMPSTART_HUB_MODEL_VERSION_TAG_PREFIX) :
-    ]
-    return JumpStartModelInfo(model_id=jumpstart_model_id, version=jumpstart_model_version)
+    
+    return is_curated_model is not None
 
 
 def is_gated_bucket(bucket_name: str) -> bool:

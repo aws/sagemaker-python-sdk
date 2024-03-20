@@ -26,6 +26,7 @@ from sagemaker.jumpstart import utils
 from sagemaker.jumpstart.curated_hub.accessors import file_generator
 from sagemaker.jumpstart.curated_hub.accessors.multipartcopy import MultiPartCopyHandler
 from sagemaker.jumpstart.curated_hub.constants import (
+    JUMPSTART_CURATED_HUB_MODEL_TAG,
     JUMPSTART_HUB_MODEL_ID_TAG_PREFIX,
     JUMPSTART_HUB_MODEL_VERSION_TAG_PREFIX,
     TASK_TAG_PREFIX,
@@ -51,8 +52,8 @@ from sagemaker.jumpstart.curated_hub.utils import (
     create_hub_bucket_if_it_does_not_exist,
     generate_default_hub_bucket_name,
     create_s3_object_reference_from_uri,
-    get_jumpstart_model_and_version,
     find_deprecated_vulnerable_flags_for_hub_content,
+    is_curated_jumpstart_model,
 )
 from sagemaker.jumpstart.curated_hub.types import (
     JumpStartModelInfo,
@@ -224,7 +225,7 @@ class CuratedHub:
     def _get_jumpstart_models_in_hub(self) -> List[HubContentInfo]:
         """Retrieves all JumpStart models in a private Hub."""
         hub_models = summary_list_from_list_api_response(self.list_models())
-        return [model for model in hub_models if get_jumpstart_model_and_version(model) is not None]
+        return [model for model in hub_models if is_curated_jumpstart_model(model) is True]
 
     def _determine_models_to_sync(
         self,
@@ -255,6 +256,7 @@ class CuratedHub:
 
                 # 1. Model version exists in Hub, pass
                 if hub_model_version == model_version:
+                    JUMPSTART_LOGGER.info("%s v%s already exists in your Hub and will not be synced", model.model_id, model.version)
                     pass
 
                 # 2. Invalid model version exists in Hub, pass
@@ -379,10 +381,7 @@ class CuratedHub:
         tags = []
 
         search_keywords = [
-            f"{JUMPSTART_HUB_MODEL_ID_TAG_PREFIX}:{model.model_id.replace('-', '')}",
-            f"{JUMPSTART_HUB_MODEL_VERSION_TAG_PREFIX}:{model.version.replace('.', '')}",
-            f"{FRAMEWORK_TAG_PREFIX}:{model_specs.get_framework()}".lower(),
-            f"{TASK_TAG_PREFIX}:TODOpullfromspecs".lower(),
+            JUMPSTART_CURATED_HUB_MODEL_TAG,
         ]
 
         hub_content_document = HubModelDocument(
@@ -453,7 +452,7 @@ class CuratedHub:
         js_models_in_hub = [
             model
             for model in model_summaries_to_scan
-            if get_jumpstart_model_and_version(model) is not None
+            if is_curated_jumpstart_model(model) is True
         ]
         for model in js_models_in_hub:
             tags_to_add: List[TagsDict] = find_deprecated_vulnerable_flags_for_hub_content(
