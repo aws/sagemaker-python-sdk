@@ -94,35 +94,37 @@ class CuratedHub:
         """Returns an S3 client used for creating a HubContentDocument."""
         return boto3.client("s3", region_name=self.region)
 
-    def _fetch_hub_bucket_name(self) -> str:
+    def _fetch_hub_storage_location(self) -> S3ObjectLocation:
         """Retrieves hub bucket name from Hub config if exists"""
         try:
             hub_response = self._sagemaker_session.describe_hub(hub_name=self.hub_name)
             hub_output_location = hub_response["S3StorageConfig"].get("S3OutputPath")
+            print("aaaaa", hub_output_location)
             if hub_output_location:
                 location = create_s3_object_reference_from_uri(hub_output_location)
-                return location.bucket
+                return location
             default_bucket_name = generate_default_hub_bucket_name(self._sagemaker_session)
+            curr_timestamp = datetime.now().timestamp()
             JUMPSTART_LOGGER.warning(
                 "There is not a Hub bucket associated with %s. Using %s",
                 self.hub_name,
                 default_bucket_name,
             )
-            return default_bucket_name
+            return S3ObjectLocation(bucket=default_bucket_name, key=f"{self.hub_name}-{curr_timestamp}")
         except exceptions.ClientError:
             hub_bucket_name = generate_default_hub_bucket_name(self._sagemaker_session)
+            curr_timestamp = datetime.now().timestamp()
             JUMPSTART_LOGGER.warning(
                 "There is not a Hub bucket associated with %s. Using %s",
                 self.hub_name,
                 hub_bucket_name,
             )
-            return hub_bucket_name
+            return S3ObjectLocation(bucket=hub_bucket_name, key=f"{self.hub_name}-{curr_timestamp}")
 
     def _generate_hub_storage_location(self, bucket_name: Optional[str] = None) -> None:
         """Generates an ``S3ObjectLocation`` given a Hub name."""
-        hub_bucket_name = bucket_name or self._fetch_hub_bucket_name()
         curr_timestamp = datetime.now().timestamp()
-        return S3ObjectLocation(bucket=hub_bucket_name, key=f"{self.hub_name}-{curr_timestamp}")
+        return S3ObjectLocation(bucket=bucket_name, key=f"{self.hub_name}-{curr_timestamp}") if bucket_name else self._fetch_hub_storage_location()
 
     def create(
         self,
