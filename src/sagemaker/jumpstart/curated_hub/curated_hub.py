@@ -297,6 +297,9 @@ class CuratedHub:
                 )
             model_version_list.append(JumpStartModelInfo(model["model_id"], model["version"]))
 
+        # TODO: Flip this logic. We should 1/ get Hub models that align with inputted
+        # name/version, then 2. Check if they are JumpStart models. Elsewhere, we can
+        # check if the JumpStart models in Hub are deprecated/vulnerable
         js_models_in_hub = self._get_jumpstart_models_in_hub()
         mapped_models_in_hub = {model.hub_content_name: model for model in js_models_in_hub}
 
