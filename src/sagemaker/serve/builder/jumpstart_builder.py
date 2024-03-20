@@ -25,16 +25,26 @@ from sagemaker.serve.model_server.djl_serving.prepare import prepare_djl_js_reso
 from sagemaker.serve.model_server.djl_serving.utils import _get_admissible_tensor_parallel_degrees
 from sagemaker.serve.model_server.tgi.prepare import prepare_tgi_js_resources, _create_dir_structure
 from sagemaker.serve.mode.function_pointers import Mode
-from sagemaker.serve.utils.exceptions import LocalDeepPingException, LocalModelOutOfMemoryException, \
-    LocalModelInvocationException, LocalModelLoadException, SkipTuningComboException
+from sagemaker.serve.utils.exceptions import (
+    LocalDeepPingException,
+    LocalModelOutOfMemoryException,
+    LocalModelInvocationException,
+    LocalModelLoadException,
+    SkipTuningComboException
+)
 from sagemaker.serve.utils.predictors import (
     DjlLocalModePredictor,
     TgiLocalModePredictor,
 )
 from sagemaker.serve.utils.local_hardware import _get_nb_instance, _get_ram_usage_mb
 from sagemaker.serve.utils.telemetry_logger import _capture_telemetry
-from sagemaker.serve.utils.tuning import _serial_benchmark, _concurrent_benchmark, _more_performant, \
-    _pretty_print_results_tgi, _pretty_print_results_tgi_js
+from sagemaker.serve.utils.tuning import (
+    _serial_benchmark,
+    _concurrent_benchmark,
+    _more_performant,
+    _pretty_print_results_djl_js,
+    _pretty_print_results_tgi_js
+)
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.base_predictor import PredictorBase
 from sagemaker.jumpstart.model import JumpStartModel
@@ -375,7 +385,7 @@ class JumpStart(ABC):
                 "OPTION_TENSOR_PARALLEL_DEGREE": str(best_tuned_combination[1])
             })
 
-            _pretty_print_results_tgi(benchmark_results)
+            _pretty_print_results_djl_js(benchmark_results)
             logger.info(
                 "Model Configuration: %s was most performant with avg latency: %s, "
                 "p90 latency: %s, average tokens per second: %s, throughput/s: %s, "

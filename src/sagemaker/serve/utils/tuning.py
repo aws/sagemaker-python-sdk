@@ -135,6 +135,43 @@ def _pretty_print_results_tgi_js(results: dict):
     )
 
 
+def _pretty_print_results_djl_js(results: dict):
+    """Placeholder docstring"""
+    avg_latencies = []
+    option_tp_degree = []
+    p90s = []
+    avg_tokens_per_seconds = []
+    throughput_per_seconds = []
+    standard_deviations = []
+    ordered = collections.OrderedDict(sorted(results.items()))
+
+    for key, value in ordered.items():
+        avg_latencies.append(key)
+        option_tp_degree.append(value[0]["OPTION_TENSOR_PARALLEL_DEGREE"])
+        p90s.append(value[1])
+        avg_tokens_per_seconds.append(value[2])
+        throughput_per_seconds.append(value[3])
+        standard_deviations.append(value[4])
+
+    df = pd.DataFrame(
+        {
+            "AverageLatency (Serial)": avg_latencies,
+            "P90_Latency (Serial)": p90s,
+            "AverageTokensPerSecond (Serial)": avg_tokens_per_seconds,
+            "ThroughputPerSecond (Concurrent)": throughput_per_seconds,
+            "StandardDeviationResponse (Concurrent)": standard_deviations,
+            "OPTION_TENSOR_PARALLEL_DEGREE": option_tp_degree,
+        }
+    )
+    logger.info(
+        "\n================================================================== Benchmark "
+        "Results ==================================================================\n%s"
+        "\n============================================================================"
+        "===========================================================================\n",
+        df.to_string(),
+    )
+
+
 def _tokens_per_second(generated_text: str, max_token_length: int, latency: float) -> int:
     """Placeholder docstring"""
     est_tokens = (_tokens_from_chars(generated_text) + _tokens_from_words(generated_text)) / 2
