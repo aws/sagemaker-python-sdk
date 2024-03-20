@@ -216,12 +216,11 @@ class SchemaBuilder(TritonSchemaBuilder):
                 f"input_deserializer={self.input_deserializer._deserializer}\n"
                 f"output_deserializer={self.output_deserializer._deserializer})"
             )
-        elif hasattr(self, "custom_input_translator") and hasattr(self, "custom_output_translator"):
-            return (
-                f"SchemaBuilder(\n"
-                f"custom_input_translator={self.custom_input_translator}\n"
-                f"custom_output_translator={self.custom_output_translator}\n"
-            )
+        return (
+            f"SchemaBuilder(\n"
+            f"custom_input_translator={self.custom_input_translator}\n"
+            f"custom_output_translator={self.custom_output_translator}\n"
+        )
 
     def generate_marshalling_map(self) -> dict:
         """Generate marshalling map for the schema builder"""
