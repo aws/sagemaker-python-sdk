@@ -502,11 +502,6 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
         self.regional_aliases = None
         self.variants: Optional[dict] = response.get("Variants")
 
-    def to_json(self) -> Dict[str, Any]:
-        """Returns json representation of JumpStartInstanceTypeVariants object."""
-        json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
-        return json_obj
-
     def get_instance_specific_metric_definitions(
         self, instance_type: str
     ) -> List[JumpStartHyperparameter]:
@@ -1580,7 +1575,6 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         self.hosting_model_package_arns: Optional[Dict] = None  # TODO: Missing from shcema?
         self.hosting_use_script_uri: bool = hub_content_document.hosting_use_script_uri
 
-        # TODO: Handle parsing
         self.hosting_instance_type_variants: Optional[JumpStartInstanceTypeVariants] = (
             JumpStartInstanceTypeVariants(hub_content_document.hosting_instance_type_variants)
             if hub_content_document.hosting_instance_type_variants
@@ -1657,6 +1651,7 @@ class HubModelDocument(JumpStartDataHolderType):
     __slots__ = [
         "url",
         "min_sdk_version",
+        "min_studio_sdk_version",
         "training_supported",
         "incremental_training_supported",
         "dynamic_container_deployment_supported",
@@ -1713,7 +1708,7 @@ class HubModelDocument(JumpStartDataHolderType):
         "model_data_download_timeout",
         "container_startup_health_check_timeout",
         "encrypt_inter_container_traffic",
-        "max_run",
+        "max_runtime_in_seconds",
         "disable_output_compression",
         "model_dir",
         "dependencies",
@@ -1784,14 +1779,15 @@ class HubModelDocument(JumpStartDataHolderType):
         )
         self.hosting_eula_uri: Optional[str] = json_obj.get("HostingEulaUri")
         self.hosting_model_package_arn: Optional[str] = json_obj.get("HostingModelPackageArn")
-        self.default_inference_instance_type: Optional[str] = (
-            json_obj.get("DefaultInferenceInstanceType"),
-        )
-        self.supported_inference_instance_types: Optional[str] = (
-            json_obj.get("SupportedInferenceInstanceTypes"),
-        )
-        self.sage_maker_sdk_predictor_specifications: Optional[str] = json_obj.get(
-            "SageMakerSdkPredictorSpecifications"
+        self.default_inference_instance_type: Optional[str] = json_obj.get("DefaultInferenceInstanceType")
+        self.supported_inference_instance_types: Optional[str] = json_obj.get("SupportedInferenceInstanceTypes")
+        self.sage_maker_sdk_predictor_specifications: Optional[JumpStartPredictorSpecs] = (
+            JumpStartPredictorSpecs(
+                json_obj.get("SageMakerSdkPredictorSpecifications"),
+                is_hub_content=True,
+            ) 
+            if json_obj.get("SageMakerSdkPredictorSpecifications")
+            else None
         )
         self.inference_volume_size: Optional[int] = json_obj.get("InferenceVolumeSize")
         self.inference_enable_network_isolation: Optional[str] = json_obj.get(
@@ -1822,25 +1818,25 @@ class HubModelDocument(JumpStartDataHolderType):
             "HostingResourceRequirements", None
         )
         self.hosting_instance_type_variants: Optional[JumpStartInstanceTypeVariants] = (
-            JumpStartInstanceTypeVariants(json_obj.get("hosting_instance_type_variants"))
-            if json_obj.get("hosting_instance_type_variants")
+            JumpStartInstanceTypeVariants(
+                json_obj.get("HostingInstanceTypeVariants"),
+                is_hub_content=True,
+            )
+            if json_obj.get("HostingInstanceTypeVariants")
             else None
         )
+        self.min_studio_sdk_version: Optional[str] = json_obj.get("MinStudioSdkVersion")
         self.notebook_location_uris: Optional[str] = json_obj.get("NotebookLocationUris")
         self.model_provider_icon_uri: Optional[str] = json_obj.get("ModelProviderIconUri")
         self.task: Optional[str] = json_obj.get("Task")
         self.framework: Optional[str] = json_obj.get("Framework")
         self.datatype: Optional[str] = json_obj.get("Datatype")
         self.license: Optional[str] = json_obj.get("License")
-        self.contextual_help: Optional[str] = (json_obj.get("ContextualHelp"),)
+        self.contextual_help: Optional[str] = json_obj.get("ContextualHelp")
         self.model_dir: Optional[str] = json_obj.get("ModelDir")
         # Deploy kwargs
-        self.model_data_download_timeout: Optional[str] = (
-            json_obj.get("ModelDataDownloadTimeout"),
-        )
-        self.container_startup_health_check_timeout: Optional[str] = (
-            json_obj.get("ContainerStartupHealthCheckTimeout"),
-        )
+        self.model_data_download_timeout: Optional[str] = json_obj.get("ModelDataDownloadTimeout")
+        self.container_startup_health_check_timeout: Optional[str] = json_obj.get("ContainerStartupHealthCheckTimeout")
 
         if self.training_supported:
             self.training_model_package_artifact_uri: Optional[str] = json_obj.get(
@@ -1879,30 +1875,21 @@ class HubModelDocument(JumpStartDataHolderType):
             self.default_training_instance_type: Optional[str] = json_obj.get(
                 "DefaultTrainingInstanceType"
             )
-            self.supported_training_instance_types: Optional[str] = (
-                json_obj.get("SupportedTrainingInstanceTypes"),
+            self.supported_training_instance_types: Optional[str] = json_obj.get(
+                "SupportedTrainingInstanceTypes"
             )
             self.training_volume_size: Optional[int] = json_obj.get("TrainingVolumeSize")
             self.training_enable_network_isolation: Optional[str] = json_obj.get(
                 "TrainingEnableNetworkIsolation", False
             )
-            self.training_instance_type_variants: Optional[JumpStartInstanceTypeVariants] = (
-                JumpStartInstanceTypeVariants(json_obj.get("training_instance_type_variants"))
-                if json_obj.get("training_instance_type_variants")
-                else None
-            )
+            self.training_instance_type_variants: Optional[JumpStartInstanceTypeVariants] = JumpStartInstanceTypeVariants(
+                json_obj.get("TrainingInstanceTypeVariants"),
+                is_hub_content=True,
+            ) if json_obj.get("TrainingInstanceTypeVariants") else None
             # Estimator kwargs
-            self.encrypt_inter_container_traffic: Optional[bool] = (
-                bool(json_obj.get("EncryptInterContainerTraffic"))
-                if json_obj.get("EncryptInterContainerTraffic")
-                else None
-            )
-            self.max_run: Optional[str] = json_obj.get("MaxRun")
-            self.disable_output_compression: Optional[bool] = (
-                bool(json_obj.get("DisableOutputCompression"))
-                if json_obj.get("DisableOutputCompression") is not None
-                else None
-            )
+            self.encrypt_inter_container_traffic: Optional[bool] = bool(json_obj.get("EncryptInterContainerTraffic")) if json_obj.get("EncryptInterContainerTraffic") else None
+            self.max_runtime_in_seconds: Optional[str] = json_obj.get("MaxRuntimeInSeconds")
+            self.disable_output_compression: Optional[bool] = bool(json_obj.get("DisableOutputCompression")) if json_obj.get("DisableOutputCompression") else None
 
     def get_schema_version(self) -> str:
         """Returns schema version."""
@@ -1970,7 +1957,6 @@ class HubModelDocument(JumpStartDataHolderType):
         self.hosting_resource_requirements: Optional[
             Dict[str, int]
         ] = specs.hosting_resource_requirements
-        # TODO: Handle parsing (regional_aliases -> aliases, regional_properties -> properties)
         self.hosting_instance_type_variants: Optional[str] = specs.hosting_instance_type_variants
         self.notebook_location_uris: Optional[str] = None  # TODO: Missing in ModelSpecs?
         self.model_provider_icon_uri: Optional[str] = None  # TODO: Missing in ModelSpecs?
@@ -1991,13 +1977,9 @@ class HubModelDocument(JumpStartDataHolderType):
         if self.training_supported:
             self.training_model_package_artifact_uri: Optional[
                 str
-            ] = specs.training_model_package_artifact_uris
-            self.training_artifact_compression_type: Optional[
-                str
-            ] = None  # TODO: Missing in ModelSpecs?
-            self.training_artifact_s3_data_type: Optional[
-                str
-            ] = None  # TODO: Missing in ModelSpecs?
+            ] = specs.training_model_package_artifact_uris.get(self._region)
+            self.training_artifact_compression_type: Optional[str] = None
+            self.training_artifact_s3_data_type: Optional[str] = None
             self.hyperparameters: List[JumpStartHyperparameter] = specs.hyperparameters
             self.training_script_uri: Optional[str] = (
                 s3_path_join("s3://", content_bucket, specs.training_script_key)
@@ -2009,9 +1991,7 @@ class HubModelDocument(JumpStartDataHolderType):
                 if specs.training_prepacked_script_key is not None
                 else None
             )
-            self.training_prepacked_script_version: Optional[
-                str
-            ] = None  # TODO: Missing in ModelSpecs?
+            self.training_prepacked_script_version: Optional[str] = None
             self.training_ecr_specs: Optional[JumpStartECRSpecs] = specs.training_ecr_specs
             self._non_serializable_slots.append("training_ecr_uri")
             self.training_metrics: Optional[List[Dict[str, str]]] = specs.metrics
@@ -2031,7 +2011,6 @@ class HubModelDocument(JumpStartDataHolderType):
             self.training_enable_network_isolation: Optional[
                 str
             ] = specs.training_enable_network_isolation
-            # TODO: Handle parsing (regional_aliases -> aliases, regional_properties -> properties)
             self.training_instance_type_variants: Optional[
                 str
             ] = specs.training_instance_type_variants
@@ -2039,7 +2018,7 @@ class HubModelDocument(JumpStartDataHolderType):
             self.encrypt_inter_container_traffic: Optional[bool] = specs.estimator_kwargs.get(
                 "encrypt_inter_container_traffic"
             )
-            self.max_run: Optional[str] = specs.estimator_kwargs.get("max_run")
+            self.max_runtime_in_seconds: Optional[str] = specs.estimator_kwargs.get("max_run")
             self.disable_output_compression: Optional[bool] = specs.estimator_kwargs.get(
                 "disable_output_compression"
             )
