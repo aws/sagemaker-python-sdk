@@ -942,12 +942,9 @@ def test_hub_instance_varaints():
         "SM_NUM_GPUS": "8"
     }
 
-    assert (
-        instance_variant.get_image_uri("ml.g5.2xlarge")
-        == (
-            "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1"
-            "-tgi1.4.0-gpu-py310-cu121-ubuntu20.04"
-        )
+    assert instance_variant.get_image_uri("ml.g5.2xlarge") == (
+        "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1"
+        "-tgi1.4.0-gpu-py310-cu121-ubuntu20.04"
     )
 
     instance_variant = JumpStartInstanceTypeVariants(
@@ -963,10 +960,7 @@ def test_hub_instance_varaints():
         == "meta-training/g5/v1.0.0/train-meta-textgeneration-llama-2-70b.tar.gz"
     )
 
-    assert (
-        instance_variant.get_image_uri("ml.p3.xlarge")
-        == (
-            "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-training"
-            ":2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
-        )
+    assert instance_variant.get_image_uri("ml.p3.xlarge") == (
+        "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-training"
+        ":2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
     )

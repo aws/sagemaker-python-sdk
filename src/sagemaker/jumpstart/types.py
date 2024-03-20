@@ -2086,6 +2086,7 @@ class HubNotebookDocument(JumpStartDataHolderType):
     def get_region(self) -> str:
         return self._region
 
+
 HubContentDocument = Union[HubModelDocument, HubNotebookDocument]
 
 

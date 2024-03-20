@@ -7942,8 +7942,19 @@ HUB_MODEL_DOCUMENT_DICTS = {
                 "Options": ["no", "epoch", "steps"],
                 "Scope": "algorithm",
             },
-            {"Name": "save_steps", "Type": "int", "Default": 500, "Min": 1, "Scope": "algorithm"},  # noqa: E501
-            {"Name": "save_total_limit", "Type": "int", "Default": 1, "Scope": "algorithm"},  # noqa: E501
+            {
+                "Name": "save_steps",
+                "Type": "int",
+                "Default": 500,
+                "Min": 1,
+                "Scope": "algorithm",
+            },  # noqa: E501
+            {
+                "Name": "save_total_limit",
+                "Type": "int",
+                "Default": 1,
+                "Scope": "algorithm",
+            },  # noqa: E501
             {
                 "Name": "dataloader_drop_last",
                 "Type": "text",
@@ -7978,7 +7989,13 @@ HUB_MODEL_DOCUMENT_DICTS = {
                 "Options": ["constant_with_warmup", "linear"],
                 "Scope": "algorithm",
             },
-            {"Name": "warmup_steps", "Type": "int", "Default": 0, "Min": 0, "Scope": "algorithm"},  # noqa: E501
+            {
+                "Name": "warmup_steps",
+                "Type": "int",
+                "Default": 0,
+                "Min": 0,
+                "Scope": "algorithm",
+            },  # noqa: E501
             {
                 "Name": "deepspeed",
                 "Type": "text",
@@ -8103,7 +8120,10 @@ HUB_MODEL_DOCUMENT_DICTS = {
                 "Name": "huggingface-textgeneration:eval-loss",
                 "Regex": "'eval_loss': ([0-9]+\\.[0-9]+)",
             },
-            {"Name": "huggingface-textgeneration:train-loss", "Regex": "'loss': ([0-9]+\\.[0-9]+)"},  # noqa: E501
+            {
+                "Name": "huggingface-textgeneration:train-loss",
+                "Regex": "'loss': ([0-9]+\\.[0-9]+)",
+            },  # noqa: E501
         ],
         "InferenceDependencies": [],
         "TrainingDependencies": [
