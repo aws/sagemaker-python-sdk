@@ -20,8 +20,6 @@ from datetime import datetime
 from sagemaker.jumpstart.types import (
     JumpStartDataHolderType,
     HubContentInfo,
-    JumpStartModelSpecs,
-    HubContentType,
 )
 
 

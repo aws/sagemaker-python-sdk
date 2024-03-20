@@ -302,12 +302,12 @@ def test_find_all_tags_for_jumpstart_model_filters_non_jumpstart_models(mock_spe
                 ],
             },
             {
-                "CreationTime": "test_creation_timestamp_1",
-                "HubContentArn": "test_arn_1",
                 "HubContentName": "test_name",
+                "CreationTime": "test_creation_timestamp_1",
+                "HubContentVersion": "2.0.0",
+                "HubContentArn": "test_arn_1",
                 "HubContentType": "Model",
                 "DocumentSchemaVersion": "test_schema",
-                "HubContentVersion": "2.0.0",
                 "HubContentStatus": "test",
                 "HubContentSearchKeywords": [
                     "@jumpstart-model-id:model-four-huggingface",
