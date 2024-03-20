@@ -134,7 +134,6 @@ def _retrieve_default_resources(
     }
 
     if is_dynamic_container_deployment_supported:
-
         all_resource_requirement_kwargs = {}
 
         for (

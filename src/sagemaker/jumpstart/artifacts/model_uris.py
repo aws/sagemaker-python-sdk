@@ -149,7 +149,6 @@ def _retrieve_model_uri(
     model_artifact_key: str
 
     if model_scope == JumpStartScriptScope.INFERENCE:
-
         is_prepacked = not model_specs.use_inference_script_uri()
 
         model_artifact_key = (
@@ -159,7 +158,6 @@ def _retrieve_model_uri(
         )
 
     elif model_scope == JumpStartScriptScope.TRAINING:
-
         model_artifact_key = _retrieve_training_artifact_key(model_specs, instance_type)
 
     default_jumpstart_bucket: str = (

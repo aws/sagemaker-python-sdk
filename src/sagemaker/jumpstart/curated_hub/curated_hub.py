@@ -17,7 +17,6 @@ from datetime import datetime
 import json
 import traceback
 from typing import Optional, Dict, List, Any
-
 import boto3
 from botocore import exceptions
 from botocore.client import BaseClient
@@ -36,7 +35,10 @@ from sagemaker.jumpstart.curated_hub.sync.comparator import SizeAndLastUpdatedCo
 from sagemaker.jumpstart.curated_hub.sync.request import HubSyncRequestFactory
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.session import Session
-from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION, JUMPSTART_LOGGER
+from sagemaker.jumpstart.constants import (
+    DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    JUMPSTART_LOGGER,
+)
 from sagemaker.jumpstart.types import (
     DescribeHubResponse,
     DescribeHubContentResponse,
@@ -48,15 +50,22 @@ from sagemaker.jumpstart.curated_hub.utils import (
     create_hub_bucket_if_it_does_not_exist,
     generate_default_hub_bucket_name,
     create_s3_object_reference_from_uri,
+    get_jumpstart_model_and_version,
+    find_deprecated_vulnerable_flags_for_hub_content,
 )
 from sagemaker.jumpstart.curated_hub.types import (
     JumpStartModelInfo,
     S3ObjectLocation,
+    HubContentSummary,
+    summary_list_from_list_api_response,
 )
+from sagemaker.utils import TagsDict
 
 
 class CuratedHub:
     """Class for creating and managing a curated JumpStart hub"""
+
+    _list_hubs_cache: Dict[str, Any] = None
 
     def __init__(
         self,
@@ -143,18 +152,21 @@ class CuratedHub:
 
         return hub_description
 
-    def list_models(self, **kwargs) -> Dict[str, Any]:
-        """Lists the models in this Curated Hub
+    def list_models(self, clear_cache: bool = True, **kwargs) -> List[Dict[str, Any]]:
+        """Lists the models in this Curated Hub.
+
+        This function caches the models in local memory
 
         **kwargs: Passed to invocation of ``Session:list_hub_contents``.
         """
-        # TODO: Validate kwargs and fast-fail?
-
-        hub_content_summaries = self._sagemaker_session.list_hub_contents(
-            hub_name=self.hub_name, hub_content_type=HubContentType.MODEL, **kwargs
-        )
-        # TODO: Handle pagination
-        return hub_content_summaries
+        if clear_cache:
+            self._list_hubs_cache = None
+        if self._list_hubs_cache is None:
+            hub_content_summaries = self._sagemaker_session.list_hub_contents(
+                hub_name=self.hub_name, hub_content_type=HubContentType.MODEL, **kwargs
+            )
+            self._list_hubs_cache = hub_content_summaries
+        return self._list_hubs_cache
 
     def describe_model(
         self, model_name: str, model_version: str = "*"
@@ -188,6 +200,8 @@ class CuratedHub:
 
         `model_list` objects must have `model_id` (str) and optional `version` (str).
         """
+        if model_list is None:
+            return True
         for obj in model_list:
             if not isinstance(obj.get("model_id"), str):
                 return True
@@ -205,37 +219,15 @@ class CuratedHub:
         )
         return {"model_id": model["model_id"], "version": model_specs.version}
 
-    def _get_jumpstart_models_in_hub(self) -> List[Dict[str, Any]]:
-        """Returns list of `HubContent` that have been created from a JumpStart model."""
-        hub_models = self.list_models()
-
-        js_models_in_hub = []
-        for hub_model in hub_models["HubContentSummaries"]:
-            # TODO: extract both in one pass
-            jumpstart_model_id = next(
-                (
-                    tag
-                    for tag in hub_model["search_keywords"]
-                    if tag.startswith(JUMPSTART_HUB_MODEL_ID_TAG_PREFIX)
-                ),
-                None,
-            )
-            jumpstart_model_version = next(
-                (
-                    tag
-                    for tag in hub_model["search_keywords"]
-                    if tag.startswith(JUMPSTART_HUB_MODEL_VERSION_TAG_PREFIX)
-                ),
-                None,
-            )
-
-            if jumpstart_model_id and jumpstart_model_version:
-                js_models_in_hub.append(hub_model)
-
-        return js_models_in_hub
+    def _get_jumpstart_models_in_hub(self) -> List[HubContentSummary]:
+        """Retrieves all JumpStart models in a private Hub."""
+        hub_models = summary_list_from_list_api_response(self.list_models())
+        return [model for model in hub_models if get_jumpstart_model_and_version(model) is not None]
 
     def _determine_models_to_sync(
-        self, model_list: List[JumpStartModelInfo], models_in_hub: Dict[str, Any]
+        self,
+        model_list: List[JumpStartModelInfo],
+        models_in_hub: Dict[str, HubContentSummary],
     ) -> List[JumpStartModelInfo]:
         """Determines which models from `sync` params to sync into the CuratedHub.
 
@@ -257,7 +249,7 @@ class CuratedHub:
 
             if matched_model:
                 model_version = Version(model.version)
-                hub_model_version = Version(matched_model["version"])
+                hub_model_version = Version(matched_model.hub_content_version)
 
                 # 1. Model version exists in Hub, pass
                 if hub_model_version == model_version:
@@ -302,11 +294,13 @@ class CuratedHub:
             model_version_list.append(JumpStartModelInfo(model["model_id"], model["version"]))
 
         js_models_in_hub = self._get_jumpstart_models_in_hub()
-        mapped_models_in_hub = {model["name"]: model for model in js_models_in_hub}
+        mapped_models_in_hub = {model.hub_content_name: model for model in js_models_in_hub}
 
         models_to_sync = self._determine_models_to_sync(model_version_list, mapped_models_in_hub)
         JUMPSTART_LOGGER.warning(
-            "Syncing the following models into Hub %s: %s", self.hub_name, models_to_sync
+            "Syncing the following models into Hub %s: %s",
+            self.hub_name,
+            models_to_sync,
         )
 
         # Delete old models?
@@ -417,3 +411,55 @@ class CuratedHub:
             Bucket=utils.get_jumpstart_content_bucket(self.region), Key=key
         )
         return json.loads(response["Body"].read().decode("utf-8"))
+
+    def scan_and_tag_models(self, model_ids: List[str] = None) -> None:
+        """Scans the Hub for JumpStart models and tags the HubContent.
+
+        If the scan detects a model is deprecated or vulnerable, it will tag the HubContent.
+        The tags that will be added are based off the specifications in the JumpStart public hub:
+        1. "deprecated_versions" -> If the public hub model is deprecated
+        2. "inference_vulnerable_versions" -> If the inference script has vulnerabilities
+        3. "training_vulnerable_versions" -> If the training script has vulnerabilities
+
+        The tag value will be a list of versions in the Curated Hub that fall under those keys.
+        For example, if model_a version_a is deprecated and inference is vulnerable, the
+        HubContent for `model_a` will have tags [{"deprecated_versions": [version_a]},
+        {"inference_vulnerable_versions": [version_a]}]
+
+        If models are passed in, this will only scan those models if they exist in the Curated Hub.
+        """
+        JUMPSTART_LOGGER.info("Tagging models in hub: %s", self.hub_name)
+        model_ids = model_ids if model_ids is not None else []
+        if self._is_invalid_model_list_input(model_ids):
+            raise ValueError(
+                "Model list should be a list of objects with values 'model_id',",
+                "and optional 'version'.",
+            )
+
+        models_in_hub = summary_list_from_list_api_response(self.list_models(clear_cache=False))
+
+        model_summaries_to_scan = models_in_hub
+        if model_ids:
+            model_summaries_to_scan = list(
+                filter(
+                    lambda model_summary: model_summary.hub_content_name in model_ids, models_in_hub
+                )
+            )
+
+        js_models_in_hub = [
+            model
+            for model in model_summaries_to_scan
+            if get_jumpstart_model_and_version(model) is not None
+        ]
+        for model in js_models_in_hub:
+            tags_to_add: List[TagsDict] = find_deprecated_vulnerable_flags_for_hub_content(
+                hub_name=self.hub_name,
+                hub_content_name=model.hub_content_name,
+                region=self.region,
+                session=self._sagemaker_session,
+            )
+            self._sagemaker_session.add_tags(ResourceArn=model.hub_content_arn, Tags=tags_to_add)
+            JUMPSTART_LOGGER.info(
+                "Added tags to HubContentArn %s: %s", model.hub_content_arn, tags_to_add
+            )
+        JUMPSTART_LOGGER.info("Tagging complete!")

@@ -35,7 +35,6 @@ def _helper_generate_fileinfos(
     last_updated: Optional[datetime] = None,
     dependecy_type: Optional[HubContentDependencyType] = None,
 ) -> List[FileInfo]:
-
     file_infos = []
     for i in range(num_infos):
         bucket = bucket or "default-bucket"

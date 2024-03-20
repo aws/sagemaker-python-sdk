@@ -330,7 +330,6 @@ def _add_entry_point_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartMod
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
         sagemaker_session=kwargs.sagemaker_session,
     ):
-
         entry_point = entry_point or INFERENCE_ENTRY_POINT_SCRIPT_NAME
 
     kwargs.entry_point = entry_point
