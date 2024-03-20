@@ -34,7 +34,7 @@ from sagemaker.serve.utils.predictors import (
 from sagemaker.serve.utils.local_hardware import _get_nb_instance, _get_ram_usage_mb
 from sagemaker.serve.utils.telemetry_logger import _capture_telemetry
 from sagemaker.serve.utils.tuning import _serial_benchmark, _concurrent_benchmark, _more_performant, \
-    _pretty_print_results_tgi
+    _pretty_print_results_tgi, _pretty_print_results_tgi_js
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.base_predictor import PredictorBase
 from sagemaker.jumpstart.model import JumpStartModel
@@ -392,7 +392,7 @@ class JumpStart(ABC):
             logger.debug(
                 "Failed to gather any tuning results. "
                 "Please inspect the stack trace emitted from live logging for more details. "
-                "Falling back to default serving.properties: %s",
+                "Falling back to default model environment variable configurations: %s",
                 self.pysdk_model.env,
             )
 
@@ -517,7 +517,8 @@ class JumpStart(ABC):
                     str(e),
                 )
                 break
-            except Exception:
+            except Exception as e:
+                logger.exception(e)
                 logger.exception(
                     "Deployment unsuccessful with SM_NUM_GPUS: %s. "
                     "with uncovered exception",
@@ -530,7 +531,7 @@ class JumpStart(ABC):
                 "SM_NUM_GPUS": str(best_tuned_combination[1])
             })
 
-            _pretty_print_results_tgi(benchmark_results)
+            _pretty_print_results_tgi_js(benchmark_results)
             logger.info(
                 "Model Configuration: %s was most performant with avg latency: %s, "
                 "p90 latency: %s, average tokens per second: %s, throughput/s: %s, "
@@ -547,7 +548,7 @@ class JumpStart(ABC):
             logger.debug(
                 "Failed to gather any tuning results. "
                 "Please inspect the stack trace emitted from live logging for more details. "
-                "Falling back to default serving.properties: %s",
+                "Falling back to default model environment variable configurations: %s",
                 self.pysdk_model.env,
             )
 
