@@ -22,10 +22,8 @@ from sagemaker.pytorch.processing import PyTorchProcessor
 from sagemaker.serverless import ServerlessInferenceConfig
 from sagemaker.utils import unique_name_from_base
 from tests.integ import (
-    test_region,
     DATA_DIR,
     TRAINING_DEFAULT_TIMEOUT_MINUTES,
-    EI_SUPPORTED_REGIONS,
 )
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
