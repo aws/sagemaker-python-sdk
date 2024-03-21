@@ -85,6 +85,8 @@ extras = {
 extras["all"] = [item for group in extras.values() for item in group]
 # Tests specific dependencies (do not need to be included in 'all')
 test_dependencies = read_requirements("requirements/extras/test_requirements.txt")
+# test dependencies are a superset of testing and extra dependencies
+test_dependencies.extend(extras["all"])
 # remove torch and torchvision if python version is not 3.10
 if sys.version_info.minor != 10:
     test_dependencies = [

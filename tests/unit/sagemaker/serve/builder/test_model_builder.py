@@ -53,9 +53,6 @@ supported_model_server = {
     ModelServer.DJL_SERVING,
 }
 
-MIB_CONVERSION_FACTOR = 0.00000095367431640625
-MEMORY_BUFFER_MULTIPLIER = 1.2  # 20% buffer
-
 mock_session = MagicMock()
 
 
@@ -1205,7 +1202,7 @@ class TestModelBuilder(unittest.TestCase):
 
     @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_transformers")
     @patch("sagemaker.serve.builder.model_builder.ModelBuilder._try_fetch_gpu_info")
-    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._total_inference_model_size_mib")
+    @patch("sagemaker.serve.builder.model_builder._total_inference_model_size_mib")
     @patch("sagemaker.image_uris.retrieve")
     @patch("sagemaker.djl_inference.model.urllib")
     @patch("sagemaker.djl_inference.model.json")
@@ -1248,7 +1245,7 @@ class TestModelBuilder(unittest.TestCase):
 
     @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_djl", Mock())
     @patch("sagemaker.serve.builder.model_builder._get_gpu_info")
-    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._total_inference_model_size_mib")
+    @patch("sagemaker.serve.builder.model_builder._total_inference_model_size_mib")
     @patch("sagemaker.image_uris.retrieve")
     @patch("sagemaker.djl_inference.model.urllib")
     @patch("sagemaker.djl_inference.model.json")
@@ -1293,7 +1290,7 @@ class TestModelBuilder(unittest.TestCase):
     @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_transformers", Mock())
     @patch("sagemaker.serve.builder.model_builder._get_gpu_info")
     @patch("sagemaker.serve.builder.model_builder._get_gpu_info_fallback")
-    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._total_inference_model_size_mib")
+    @patch("sagemaker.serve.builder.model_builder._total_inference_model_size_mib")
     @patch("sagemaker.image_uris.retrieve")
     @patch("sagemaker.djl_inference.model.urllib")
     @patch("sagemaker.djl_inference.model.json")
@@ -1341,61 +1338,6 @@ class TestModelBuilder(unittest.TestCase):
             model_builder._try_fetch_gpu_info(), INSTANCE_GPU_INFO[1] / INSTANCE_GPU_INFO[0]
         )
         self.assertEqual(model_builder._can_fit_on_single_gpu(), True)
-
-    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_transformers", Mock())
-    @patch("sagemaker.serve.builder.model_builder.estimate_command_parser")
-    @patch("sagemaker.serve.builder.model_builder.gather_data")
-    @patch("sagemaker.image_uris.retrieve")
-    @patch("sagemaker.djl_inference.model.urllib")
-    @patch("sagemaker.djl_inference.model.json")
-    @patch("sagemaker.huggingface.llm_utils.urllib")
-    @patch("sagemaker.huggingface.llm_utils.json")
-    @patch("sagemaker.model_uris.retrieve")
-    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
-    def test_build_for_transformers_happy_case_hugging_face_responses(
-        self,
-        mock_serveSettings,
-        mock_model_uris_retrieve,
-        mock_llm_utils_json,
-        mock_llm_utils_urllib,
-        mock_model_json,
-        mock_model_urllib,
-        mock_image_uris_retrieve,
-        mock_gather_data,
-        mock_parser,
-    ):
-        mock_setting_object = mock_serveSettings.return_value
-        mock_setting_object.role_arn = mock_role_arn
-        mock_setting_object.s3_model_data_url = mock_s3_model_data_url
-
-        mock_model_uris_retrieve.side_effect = KeyError
-        mock_llm_utils_json.load.return_value = {"pipeline_tag": "text-classification"}
-        mock_llm_utils_urllib.request.Request.side_effect = Mock()
-
-        mock_model_json.load.return_value = {"some": "config"}
-        mock_model_urllib.request.Request.side_effect = Mock()
-        mock_image_uris_retrieve.return_value = "https://some-image-uri"
-
-        mock_parser.return_value = Mock()
-        mock_gather_data.return_value = [[1, 1, 1, 1]]
-        product = MIB_CONVERSION_FACTOR * 1 * MEMORY_BUFFER_MULTIPLIER
-
-        model_builder = ModelBuilder(
-            model="stable-diffusion",
-            sagemaker_session=mock_session,
-            instance_type=mock_instance_type,
-        )
-        self.assertEqual(model_builder._total_inference_model_size_mib(), product)
-
-        mock_parser.return_value = Mock()
-        mock_gather_data.return_value = None
-        model_builder = ModelBuilder(
-            model="stable-diffusion",
-            sagemaker_session=mock_session,
-            instance_type=mock_instance_type,
-        )
-        with self.assertRaises(ValueError) as _:
-            model_builder._total_inference_model_size_mib()
 
     @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_djl")
     @patch("sagemaker.serve.builder.model_builder.ModelBuilder._can_fit_on_single_gpu")
@@ -1556,7 +1498,7 @@ class TestModelBuilder(unittest.TestCase):
         self.assertEqual(model_builder._can_fit_on_single_gpu(), False)
 
     @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_transformers", Mock())
-    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._total_inference_model_size_mib")
+    @patch("sagemaker.serve.builder.model_builder._total_inference_model_size_mib")
     @patch("sagemaker.image_uris.retrieve")
     @patch("sagemaker.djl_inference.model.urllib")
     @patch("sagemaker.djl_inference.model.json")
