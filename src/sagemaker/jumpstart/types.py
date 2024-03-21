@@ -15,7 +15,7 @@ from __future__ import absolute_import
 import re
 import json
 import datetime
-from copy import deepcopy
+from copy import copy, deepcopy
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Union
 from sagemaker import image_uris
@@ -427,7 +427,7 @@ class JumpStartSerializablePayload(JumpStartDataHolderType):
 
         if json_obj is None:
             return
-        self.raw_payload = json_obj
+        self.raw_payload = copy(json_obj)
 
         if self._is_hub_content:
             json_obj = walk_and_apply_json(json_obj, camel_to_snake)
@@ -441,7 +441,7 @@ class JumpStartSerializablePayload(JumpStartDataHolderType):
 
     def to_json(self) -> Dict[str, Any]:
         """Returns json representation of JumpStartSerializablePayload object."""
-        return deepcopy(self.raw_payload)
+        return self.raw_payload
 
 
 class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
@@ -1916,12 +1916,14 @@ class HubModelDocument(JumpStartDataHolderType):
         self.hosting_artifact_uri = s3_path_join(
             "s3://", content_bucket, model_specs.hosting_artifact_key
         )
-        self.hosting_artifact_s3_data_type: Optional[str] = studio_specs.get(
+        if studio_specs.get(
             "inferenceArtifactS3DataType"
-        )
-        self.hosting_artifact_compression_type: Optional[str] = studio_specs.get(
+        ):
+            self.hosting_artifact_s3_data_type: Optional[str] = studio_specs["inferenceArtifactS3DataType"]
+        if studio_specs.get(
             "inferenceArtifactCompressionType"
-        )
+        ):
+            self.hosting_artifact_compression_type: Optional[str] = studio_specs["inferenceArtifactCompressionType"]
         self.hosting_script_uri = s3_path_join(
             "s3://", content_bucket, model_specs.hosting_script_key
         )
@@ -1934,19 +1936,15 @@ class HubModelDocument(JumpStartDataHolderType):
         self.dynamic_container_deployment_supported: Optional[
             bool
         ] = model_specs.dynamic_container_deployment_supported
-        self.hosting_prepacked_artifact_uri: Optional[str] = (
-            s3_path_join("s3://", content_bucket, model_specs.hosting_prepacked_artifact_key)
-            if model_specs.hosting_prepacked_artifact_key is not None
-            else None
-        )
-        self.hosting_prepacked_artifact_version: Optional[str] = None  # TODO: Not in specs?
+        if model_specs.hosting_prepacked_artifact_key:
+            self.hosting_prepacked_artifact_uri: Optional[str] = s3_path_join("s3://", content_bucket, model_specs.hosting_prepacked_artifact_key)
+        # self.hosting_prepacked_artifact_version: Optional[str] = None  # TODO: Not in specs?
         self.hosting_use_script_uri: Optional[bool] = model_specs.hosting_use_script_uri
-        self.hosting_eula_uri: Optional[str] = (
-            s3_path_join("s3://", content_bucket, model_specs.hosting_eula_key)
-            if model_specs.hosting_eula_key is not None
-            else None
-        )
-        self.hosting_model_package_arn: Optional[str] = model_specs.hosting_model_package_arns
+        if model_specs.hosting_eula_key:
+            self.hosting_eula_uri: Optional[str] = s3_path_join("s3://", content_bucket, model_specs.hosting_eula_key)
+
+        if model_specs.hosting_model_package_arns:
+            self.hosting_model_package_arn: Optional[str] = model_specs.hosting_model_package_arns
         self.default_inference_instance_type: Optional[
             str
         ] = model_specs.default_inference_instance_type
@@ -2004,7 +2002,7 @@ class HubModelDocument(JumpStartDataHolderType):
         if studio_specs.get("license"):
             self.license = studio_specs["license"]
         self.contextual_help: Optional[str] = studio_specs.get("contextualHelp")
-        self.model_dir: Optional[str] = None
+        # self.model_dir: Optional[str] = None
         # Deploy kwargs
         self.model_data_download_timeout: Optional[str] = model_specs.deploy_kwargs.get(
             "model_data_download_timeout"
@@ -2018,12 +2016,14 @@ class HubModelDocument(JumpStartDataHolderType):
                 self.training_model_package_artifact_uri: Optional[
                     str
                 ] = model_specs.training_model_package_artifact_uris.get(self._region)
-            self.training_artifact_compression_type: Optional[str] = studio_specs.get(
-                "trainingArtifactCompressionType"
-            )
-            self.training_artifact_s3_data_type: Optional[str] = studio_specs.get(
-                "trainingArtifactS3DataType"
-            )
+            if studio_specs.get("trainingArtifactCompressionType"):
+                self.training_artifact_compression_type: Optional[str] = studio_specs.get(
+                    "trainingArtifactCompressionType"
+                )
+            if studio_specs.get("trainingArtifactS3DataType"):
+                self.training_artifact_s3_data_type: Optional[str] = studio_specs.get(
+                    "trainingArtifactS3DataType"
+                )
             self.hyperparameters: List[JumpStartHyperparameter] = model_specs.hyperparameters
             if model_specs.training_script_key:
 
