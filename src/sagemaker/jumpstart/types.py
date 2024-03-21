@@ -424,7 +424,7 @@ class JumpStartSerializablePayload(JumpStartDataHolderType):
 
         if json_obj is None:
             return
-        self.raw_payload = json_obj
+        self.raw_payload = copy(json_obj)
 
         if self._is_hub_content:
             json_obj = walk_and_apply_json(json_obj, camel_to_snake)
@@ -438,7 +438,7 @@ class JumpStartSerializablePayload(JumpStartDataHolderType):
 
     def to_json(self) -> Dict[str, Any]:
         """Returns json representation of JumpStartSerializablePayload object."""
-        return deepcopy(self.raw_payload)
+        return self.raw_payload
 
 
 class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
