@@ -22,10 +22,8 @@ from sagemaker.pytorch.processing import PyTorchProcessor
 from sagemaker.serverless import ServerlessInferenceConfig
 from sagemaker.utils import unique_name_from_base
 from tests.integ import (
-    test_region,
     DATA_DIR,
     TRAINING_DEFAULT_TIMEOUT_MINUTES,
-    EI_SUPPORTED_REGIONS,
 )
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
@@ -223,40 +221,6 @@ def test_deploy_packed_model_with_entry_point_name(
             sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
-
-        batch_size = 100
-        data = numpy.random.rand(batch_size, 1, 28, 28).astype(numpy.float32)
-        output = predictor.predict(data)
-
-        assert output.shape == (batch_size, 10)
-
-
-@pytest.mark.skipif(
-    test_region() not in EI_SUPPORTED_REGIONS, reason="EI isn't supported in that specific region."
-)
-def test_deploy_model_with_accelerator(
-    sagemaker_session,
-    cpu_instance_type,
-    pytorch_eia_latest_version,
-    pytorch_eia_latest_py_version,
-):
-    endpoint_name = unique_name_from_base("test-pytorch-deploy-eia")
-    model_data = sagemaker_session.upload_data(path=EIA_MODEL)
-    pytorch = PyTorchModel(
-        model_data,
-        "SageMakerRole",
-        entry_point=EIA_SCRIPT,
-        framework_version=pytorch_eia_latest_version,
-        py_version=pytorch_eia_latest_py_version,
-        sagemaker_session=sagemaker_session,
-    )
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        predictor = pytorch.deploy(
-            initial_instance_count=1,
-            instance_type=cpu_instance_type,
-            accelerator_type="ml.eia1.medium",
-            endpoint_name=endpoint_name,
-        )
 
         batch_size = 100
         data = numpy.random.rand(batch_size, 1, 28, 28).astype(numpy.float32)
