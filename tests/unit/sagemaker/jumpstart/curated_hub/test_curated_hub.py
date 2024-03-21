@@ -526,7 +526,7 @@ def test_determine_models_to_sync(sagemaker_session):
                 "DocumentSchemaVersion": "test_schema",
                 "HubContentStatus": "test",
             },
-        )
+        ),
     }
     model_one = JumpStartModelInfo("mock-model-one-huggingface", "1.2.3")
     model_two = JumpStartModelInfo("mock-model-two-pytorch", "1.0.2")

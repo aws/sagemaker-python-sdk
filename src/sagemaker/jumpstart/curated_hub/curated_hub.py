@@ -384,7 +384,9 @@ class CuratedHub:
         ]
 
         hub_content_document = HubModelDocument(
-            json_obj_or_model_specs=model_specs, region=self.region
+            model_specs=model_specs,
+            studio_specs=studio_specs,
+            region=self.region,
         )
 
         self._sagemaker_session.import_hub_content(
