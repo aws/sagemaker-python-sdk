@@ -215,14 +215,13 @@ def _get_tags_for_all_versions(
     """Helper function to create mapping between HubContent version and associated tags."""
     version_to_tags_map: Dict[str, List[CuratedHubUnsupportedFlag]] = {}
     for hub_content_version_summary in hub_content_versions:
-        jumpstart_model = get_jumpstart_model_and_version(hub_content_version_summary)
-        if jumpstart_model is None:
+        if is_curated_jumpstart_model(hub_content_version_summary) is False:
             continue
         tag_names_to_add: List[
             CuratedHubUnsupportedFlag
         ] = find_unsupported_flags_for_model_version(
-            model_id=jumpstart_model.model_id,
-            version=jumpstart_model.version,
+            model_id=hub_content_version_summary.hub_content_name,
+            version=hub_content_version_summary.hub_content_version,
             region=region,
             session=session,
         )
@@ -277,7 +276,7 @@ def find_unsupported_flags_for_model_version(
     return flags_to_add
 
 
-def get_jumpstart_model_and_version(
+def is_curated_jumpstart_model(
     hub_content_summary: HubContentInfo,
 ) -> Optional[JumpStartModelInfo]:
     """Retrieves the JumpStart model id and version from the JumpStart tag."""
