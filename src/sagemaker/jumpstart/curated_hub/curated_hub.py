@@ -392,7 +392,7 @@ class CuratedHub:
             studio_specs=studio_specs,
             region=self.region,
         )
-
+        print(str(hub_content_document))
         self._sagemaker_session.import_hub_content(
             document_schema_version=hub_content_document.get_schema_version(),
             hub_content_name=model.model_id,

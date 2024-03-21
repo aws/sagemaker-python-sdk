@@ -1992,7 +1992,7 @@ class HubModelDocument(JumpStartDataHolderType):
                 if notebook_location_keys.get("demoNotebook")
                 else None
             )
-        self.model_provider_icon_uri: Optional[str] = None  # TODO: Missing in specs?
+        # self.model_provider_icon_uri: Optional[str] = None  # TODO: Missing in specs?
         if studio_specs.get("problemType"):
             self.task = studio_specs["problemType"]
         if studio_specs.get("framework"):
