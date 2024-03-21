@@ -1995,10 +1995,14 @@ class HubModelDocument(JumpStartDataHolderType):
                 else None
             )
         self.model_provider_icon_uri: Optional[str] = None  # TODO: Missing in specs?
-        self.task: Optional[str] = studio_specs.get("problemType")
-        self.framework: Optional[str] = studio_specs.get("framework")
-        self.datatype: Optional[str] = studio_specs.get("dataType")
-        self.license: Optional[str] = studio_specs.get("license")
+        if studio_specs.get("problemType"):
+            self.task = studio_specs["problemType"]
+        if studio_specs.get("framework"):
+                self.framework = studio_specs["framework"]
+        if studio_specs.get("dataType"):
+            self.datatype = studio_specs["dataType"]
+        if studio_specs.get("license"):
+            self.license = studio_specs["license"]
         self.contextual_help: Optional[str] = studio_specs.get("contextualHelp")
         self.model_dir: Optional[str] = None
         # Deploy kwargs
@@ -2021,25 +2025,17 @@ class HubModelDocument(JumpStartDataHolderType):
                 "trainingArtifactS3DataType"
             )
             self.hyperparameters: List[JumpStartHyperparameter] = model_specs.hyperparameters
-            self.training_script_uri: Optional[str] = (
-                s3_path_join("s3://", content_bucket, model_specs.training_script_key)
-                if model_specs.training_script_key is not None
-                else None
-            )
-            self.training_prepacked_script_uri: Optional[str] = (
-                s3_path_join("s3://", content_bucket, model_specs.training_prepacked_script_key)
-                if model_specs.training_prepacked_script_key is not None
-                else None
-            )
-            self.training_prepacked_script_version: Optional[
-                str
-            ] = None  # TODO: studio_specs.minTrainingScriptVersion?
+            if model_specs.training_script_key:
+
+                self.training_script_uri: Optional[str] = s3_path_join("s3://", content_bucket, model_specs.training_script_key)
+            if model_specs.training_prepacked_script_key:
+                self.training_prepacked_script_uri: Optional[str] = s3_path_join("s3://", content_bucket, model_specs.training_prepacked_script_key)
+            # self.training_prepacked_script_version: Optional[
+            #     str
+            # ] = None  # TODO: studio_specs.minTrainingScriptVersion?
             self.training_metrics: Optional[List[Dict[str, str]]] = model_specs.metrics
-            self.training_artifact_uri: Optional[str] = (
-                s3_path_join("s3://", content_bucket, model_specs.training_artifact_key)
-                if model_specs.training_artifact_key is not None
-                else None
-            )
+            if model_specs.training_artifact_key:
+                self.training_artifact_uri: Optional[str] = s3_path_join("s3://", content_bucket, model_specs.training_artifact_key)
             self.training_dependencies: Optional[str] = model_specs.training_dependencies
             self.default_training_instance_type: Optional[
                 str
