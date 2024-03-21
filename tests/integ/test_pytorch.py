@@ -230,6 +230,7 @@ def test_deploy_packed_model_with_entry_point_name(
 
         assert output.shape == (batch_size, 10)
 
+
 def test_deploy_model_with_serverless_inference_config(
     pytorch_training_job,
     sagemaker_session,
