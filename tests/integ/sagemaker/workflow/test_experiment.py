@@ -19,7 +19,6 @@ import pytest
 
 from tests.integ.sagemaker.workflow.helpers import wait_pipeline_execution
 from sagemaker.processing import ProcessingInput
-from sagemaker.session import get_execution_role
 from sagemaker.sklearn.processing import SKLearnProcessor
 from sagemaker.dataset_definition.inputs import DatasetDefinition, AthenaDatasetDefinition
 from sagemaker.workflow.execution_variables import ExecutionVariables
@@ -33,33 +32,13 @@ from sagemaker.workflow.pipeline import Pipeline
 from tests.integ import DATA_DIR
 
 
-@pytest.fixture(scope="module")
-def region_name(sagemaker_session):
-    return sagemaker_session.boto_session.region_name
-
-
-@pytest.fixture(scope="module")
-def role(sagemaker_session):
-    return get_execution_role(sagemaker_session)
-
-
-@pytest.fixture(scope="module")
-def script_dir():
-    return os.path.join(DATA_DIR, "sklearn_processing")
-
-
 @pytest.fixture
 def pipeline_name():
     return f"my-pipeline-{int(time.time() * 10**7)}"
 
 
 @pytest.fixture
-def smclient(sagemaker_session):
-    return sagemaker_session.boto_session.client("sagemaker")
-
-
-@pytest.fixture
-def athena_dataset_definition(sagemaker_session):
+def athena_dataset_definition(sagemaker_session_for_pipeline):
     return DatasetDefinition(
         local_path="/opt/ml/processing/input/add",
         data_distribution_type="FullyReplicated",
@@ -69,7 +48,7 @@ def athena_dataset_definition(sagemaker_session):
             database="default",
             work_group="workgroup",
             query_string='SELECT * FROM "default"."s3_test_table_$STAGE_$REGIONUNDERSCORED";',
-            output_s3_uri=f"s3://{sagemaker_session.default_bucket()}/add",
+            output_s3_uri=f"s3://{sagemaker_session_for_pipeline.default_bucket()}/add",
             output_format="JSON",
             output_compression="GZIP",
         ),
@@ -77,7 +56,7 @@ def athena_dataset_definition(sagemaker_session):
 
 
 def test_pipeline_execution_with_default_experiment_config(
-    sagemaker_session,
+    sagemaker_session_for_pipeline,
     smclient,
     role,
     sklearn_latest_version,
@@ -99,7 +78,7 @@ def test_pipeline_execution_with_default_experiment_config(
         instance_type=cpu_instance_type,
         instance_count=instance_count,
         command=["python3"],
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
         base_job_name="test-sklearn",
     )
 
@@ -113,7 +92,7 @@ def test_pipeline_execution_with_default_experiment_config(
         name=pipeline_name,
         parameters=[instance_count],
         steps=[step_sklearn],
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
     )
 
     try:
@@ -142,7 +121,7 @@ def test_pipeline_execution_with_default_experiment_config(
 
 
 def test_pipeline_execution_with_custom_experiment_config(
-    sagemaker_session,
+    sagemaker_session_for_pipeline,
     smclient,
     role,
     sklearn_latest_version,
@@ -164,7 +143,7 @@ def test_pipeline_execution_with_custom_experiment_config(
         instance_type=cpu_instance_type,
         instance_count=instance_count,
         command=["python3"],
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
         base_job_name="test-sklearn",
     )
 
@@ -185,7 +164,7 @@ def test_pipeline_execution_with_custom_experiment_config(
             trial_name=Join(on="-", values=["my-trial", ExecutionVariables.PIPELINE_EXECUTION_ID]),
         ),
         steps=[step_sklearn],
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
     )
 
     try:
