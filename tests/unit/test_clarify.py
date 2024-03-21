@@ -16,23 +16,30 @@ from __future__ import absolute_import, print_function
 import copy
 
 import pytest
-from mock import MagicMock, Mock, patch
+from dataclasses import dataclass
+from mock import ANY, MagicMock, Mock, patch
+from typing import Any, Dict, List, NamedTuple, Optional, Union
 
 from sagemaker import Processor, image_uris
 from sagemaker.clarify import (
     BiasConfig,
     DataConfig,
+    TimeSeriesDataConfig,
     ModelConfig,
+    TimeSeriesModelConfig,
     ModelPredictedLabelConfig,
     PDPConfig,
     SageMakerClarifyProcessor,
     SHAPConfig,
+    AsymmetricShapleyValueConfig,
     TextConfig,
     ImageConfig,
     _AnalysisConfigGenerator,
     DatasetType,
     ProcessingOutputHandler,
     SegmentationConfig,
+    ASYM_SHAP_VAL_EXPLANATION_DIRECTIONS,
+    TimeSeriesJSONDatasetFormat,
 )
 
 JOB_NAME_PREFIX = "my-prefix"
@@ -319,6 +326,353 @@ def test_s3_data_distribution_type_ignorance():
         joinsource="F4",
     )
     assert data_config.s3_data_distribution_type == "FullyReplicated"
+
+
+@dataclass
+class TimeSeriesDataConfigCase:
+    target_time_series: Union[str, int]
+    item_id: Union[str, int]
+    timestamp: Union[str, int]
+    related_time_series: Optional[List[Union[str, int]]]
+    static_covariates: Optional[List[Union[str, int]]]
+    dataset_format: Optional[TimeSeriesJSONDatasetFormat] = None
+    error: Optional[Exception] = None
+    error_message: Optional[str] = None
+
+
+class TestTimeSeriesDataConfig:
+    valid_ts_data_config_case_list = [
+        TimeSeriesDataConfigCase(  # no optional args provided str case
+            target_time_series="target_time_series",
+            item_id="item_id",
+            timestamp="timestamp",
+            related_time_series=None,
+            static_covariates=None,
+            dataset_format=TimeSeriesJSONDatasetFormat.COLUMNS,
+        ),
+        TimeSeriesDataConfigCase(  # related_time_series provided str case
+            target_time_series="target_time_series",
+            item_id="item_id",
+            timestamp="timestamp",
+            related_time_series=["ts1", "ts2", "ts3"],
+            static_covariates=None,
+            dataset_format=TimeSeriesJSONDatasetFormat.COLUMNS,
+        ),
+        TimeSeriesDataConfigCase(  # static_covariates provided str case
+            target_time_series="target_time_series",
+            item_id="item_id",
+            timestamp="timestamp",
+            related_time_series=None,
+            static_covariates=["a", "b", "c", "d"],
+            dataset_format=TimeSeriesJSONDatasetFormat.COLUMNS,
+        ),
+        TimeSeriesDataConfigCase(  # both related_time_series and static_covariates provided str case
+            target_time_series="target_time_series",
+            item_id="item_id",
+            timestamp="timestamp",
+            related_time_series=["ts1", "ts2", "ts3"],
+            static_covariates=["a", "b", "c", "d"],
+            dataset_format=TimeSeriesJSONDatasetFormat.COLUMNS,
+        ),
+        TimeSeriesDataConfigCase(  # no optional args provided int case
+            target_time_series=1,
+            item_id=2,
+            timestamp=3,
+            related_time_series=None,
+            static_covariates=None,
+        ),
+        TimeSeriesDataConfigCase(  # related_time_series provided int case
+            target_time_series=1,
+            item_id=2,
+            timestamp=3,
+            related_time_series=[4, 5, 6],
+            static_covariates=None,
+        ),
+        TimeSeriesDataConfigCase(  # static_covariates provided int case
+            target_time_series=1,
+            item_id=2,
+            timestamp=3,
+            related_time_series=None,
+            static_covariates=[7, 8, 9, 10],
+        ),
+        TimeSeriesDataConfigCase(  # both related_time_series and static_covariates provided int case
+            target_time_series=1,
+            item_id=2,
+            timestamp=3,
+            related_time_series=[4, 5, 6],
+            static_covariates=[7, 8, 9, 10],
+        ),
+    ]
+
+    @pytest.mark.parametrize("test_case", valid_ts_data_config_case_list)
+    def test_time_series_data_config(self, test_case: TimeSeriesDataConfigCase):
+        """
+        GIVEN A set of valid parameters are given
+        WHEN A TimeSeriesDataConfig object is instantiated
+        THEN the returned config dictionary matches what's expected
+        """
+        # construct expected output
+        expected_output = {
+            "target_time_series": test_case.target_time_series,
+            "item_id": test_case.item_id,
+            "timestamp": test_case.timestamp,
+        }
+        if isinstance(test_case.target_time_series, str):
+            expected_output["dataset_format"] = test_case.dataset_format.value
+        if test_case.related_time_series:
+            expected_output["related_time_series"] = test_case.related_time_series
+        if test_case.static_covariates:
+            expected_output["static_covariates"] = test_case.static_covariates
+        # GIVEN, WHEN
+        ts_data_config = TimeSeriesDataConfig(
+            target_time_series=test_case.target_time_series,
+            item_id=test_case.item_id,
+            timestamp=test_case.timestamp,
+            related_time_series=test_case.related_time_series,
+            static_covariates=test_case.static_covariates,
+            dataset_format=test_case.dataset_format,
+        )
+        # THEN
+        assert ts_data_config.time_series_data_config == expected_output
+
+    @pytest.mark.parametrize(
+        "test_case",
+        [
+            TimeSeriesDataConfigCase(  # no target_time_series provided
+                target_time_series=None,
+                item_id="item_id",
+                timestamp="timestamp",
+                related_time_series=None,
+                static_covariates=None,
+                dataset_format=TimeSeriesJSONDatasetFormat.COLUMNS,
+                error=ValueError,
+                error_message="Please provide a target time series.",
+            ),
+            TimeSeriesDataConfigCase(  # no item_id provided
+                target_time_series="target_time_series",
+                item_id=None,
+                timestamp="timestamp",
+                related_time_series=None,
+                static_covariates=None,
+                dataset_format=TimeSeriesJSONDatasetFormat.COLUMNS,
+                error=ValueError,
+                error_message="Please provide an item id.",
+            ),
+            TimeSeriesDataConfigCase(  # no timestamp provided
+                target_time_series="target_time_series",
+                item_id="item_id",
+                timestamp=None,
+                related_time_series=None,
+                static_covariates=None,
+                dataset_format=TimeSeriesJSONDatasetFormat.COLUMNS,
+                error=ValueError,
+                error_message="Please provide a timestamp.",
+            ),
+            TimeSeriesDataConfigCase(  # target_time_series not int or str
+                target_time_series=["target_time_series"],
+                item_id="item_id",
+                timestamp="timestamp",
+                related_time_series=None,
+                static_covariates=None,
+                dataset_format=TimeSeriesJSONDatasetFormat.COLUMNS,
+                error=ValueError,
+                error_message="Please provide a string or an int for ``target_time_series``",
+            ),
+            TimeSeriesDataConfigCase(  # item_id differing type from str target_time_series
+                target_time_series="target_time_series",
+                item_id=5,
+                timestamp="timestamp",
+                related_time_series=None,
+                static_covariates=None,
+                dataset_format=TimeSeriesJSONDatasetFormat.COLUMNS,
+                error=ValueError,
+                error_message=f"Please provide {str} for ``item_id``",
+            ),
+            TimeSeriesDataConfigCase(  # timestamp differing type from str target_time_series
+                target_time_series="target_time_series",
+                item_id="item_id",
+                timestamp=10,
+                related_time_series=None,
+                static_covariates=None,
+                dataset_format=TimeSeriesJSONDatasetFormat.COLUMNS,
+                error=ValueError,
+                error_message=f"Please provide {str} for ``timestamp``",
+            ),
+            TimeSeriesDataConfigCase(  # related_time_series not str list if str target_time_series
+                target_time_series="target_time_series",
+                item_id="item_id",
+                timestamp="timestamp",
+                related_time_series=["ts1", "ts2", "ts3", 4],
+                static_covariates=None,
+                dataset_format=TimeSeriesJSONDatasetFormat.COLUMNS,
+                error=ValueError,
+                error_message=f"Please provide a list of {str} for ``related_time_series``",
+            ),
+            TimeSeriesDataConfigCase(  # static_covariates not str list if str target_time_series
+                target_time_series="target_time_series",
+                item_id="item_id",
+                timestamp="timestamp",
+                related_time_series=None,
+                static_covariates=[4, 5, 6.0],
+                dataset_format=TimeSeriesJSONDatasetFormat.COLUMNS,
+                error=ValueError,
+                error_message=f"Please provide a list of {str} for ``static_covariates``",
+            ),
+            TimeSeriesDataConfigCase(  # item_id differing type from int target_time_series
+                target_time_series=1,
+                item_id="item_id",
+                timestamp=3,
+                related_time_series=None,
+                static_covariates=None,
+                dataset_format=None,
+                error=ValueError,
+                error_message=f"Please provide {int} for ``item_id``",
+            ),
+            TimeSeriesDataConfigCase(  # timestamp differing type from int target_time_series
+                target_time_series=1,
+                item_id=2,
+                timestamp="timestamp",
+                related_time_series=None,
+                static_covariates=None,
+                dataset_format=None,
+                error=ValueError,
+                error_message=f"Please provide {int} for ``timestamp``",
+            ),
+            TimeSeriesDataConfigCase(  # related_time_series not int list if int target_time_series
+                target_time_series=1,
+                item_id=2,
+                timestamp=3,
+                related_time_series=[4, 5, 6, "ts7"],
+                static_covariates=None,
+                dataset_format=None,
+                error=ValueError,
+                error_message=f"Please provide a list of {int} for ``related_time_series``",
+            ),
+            TimeSeriesDataConfigCase(  # static_covariates not int list if int target_time_series
+                target_time_series=1,
+                item_id=2,
+                timestamp=3,
+                related_time_series=[4, 5, 6, 7],
+                static_covariates=[8, 9, "10"],
+                dataset_format=None,
+                error=ValueError,
+                error_message=f"Please provide a list of {int} for ``static_covariates``",
+            ),
+            TimeSeriesDataConfigCase(  # related_time_series contains blank string
+                target_time_series="target_time_series",
+                item_id="item_id",
+                timestamp="timestamp",
+                related_time_series=["ts1", "ts2", "ts3", ""],
+                static_covariates=None,
+                dataset_format=TimeSeriesJSONDatasetFormat.COLUMNS,
+                error=ValueError,
+                error_message="Please do not provide empty strings in ``related_time_series``",
+            ),
+            TimeSeriesDataConfigCase(  # static_covariates contains blank string
+                target_time_series="target_time_series",
+                item_id="item_id",
+                timestamp="timestamp",
+                related_time_series=None,
+                static_covariates=["scv4", "scv5", "scv6", ""],
+                dataset_format=TimeSeriesJSONDatasetFormat.COLUMNS,
+                error=ValueError,
+                error_message="Please do not provide empty strings in ``static_covariates``",
+            ),
+            TimeSeriesDataConfigCase(  # dataset_format provided int case
+                target_time_series=1,
+                item_id=2,
+                timestamp=3,
+                related_time_series=[4, 5, 6],
+                static_covariates=[7, 8, 9, 10],
+                dataset_format=TimeSeriesJSONDatasetFormat.COLUMNS,
+                error=ValueError,
+                error_message="Dataset format should only be provided when data files are JSONs.",
+            ),
+            TimeSeriesDataConfigCase(  # dataset_format not provided str case
+                target_time_series="target_time_series",
+                item_id="item_id",
+                timestamp="timestamp",
+                related_time_series=["ts1", "ts2", "ts3"],
+                static_covariates=["a", "b", "c", "d"],
+                dataset_format=None,
+                error=ValueError,
+                error_message="Please provide a valid dataset format.",
+            ),
+            TimeSeriesDataConfigCase(  # dataset_format wrong type str case
+                target_time_series="target_time_series",
+                item_id="item_id",
+                timestamp="timestamp",
+                related_time_series=["ts1", "ts2", "ts3"],
+                static_covariates=["a", "b", "c", "d"],
+                dataset_format="made_up_format",
+                error=ValueError,
+                error_message="Please provide a valid dataset format.",
+            ),
+        ],
+    )
+    def test_time_series_data_config_invalid(self, test_case: TimeSeriesDataConfigCase):
+        """
+        GIVEN required parameters are incomplete or invalid
+        WHEN TimeSeriesDataConfig constructor is called
+        THEN the expected error and message are raised
+        """
+        with pytest.raises(test_case.error, match=test_case.error_message):
+            TimeSeriesDataConfig(
+                target_time_series=test_case.target_time_series,
+                item_id=test_case.item_id,
+                timestamp=test_case.timestamp,
+                related_time_series=test_case.related_time_series,
+                static_covariates=test_case.static_covariates,
+                dataset_format=test_case.dataset_format,
+            )
+
+    @pytest.mark.parametrize("test_case", valid_ts_data_config_case_list)
+    def test_data_config_with_time_series(self, test_case: TimeSeriesDataConfigCase):
+        """
+        GIVEN a TimeSeriesDataConfig object is created
+        WHEN a DataConfig object is created and given valid params + the TimeSeriesDataConfig
+        THEN the internal config dictionary matches what's expected
+        """
+        # currently TSX only supports json so skip non-json tests
+        if isinstance(test_case.target_time_series, int):
+            return
+        # setup
+        headers = ["item_id", "timestamp", "target_ts", "rts1", "scv1"]
+        # construct expected output
+        mock_ts_data_config_dict = {
+            "target_time_series": test_case.target_time_series,
+            "item_id": test_case.item_id,
+            "timestamp": test_case.timestamp,
+        }
+        if isinstance(test_case.target_time_series, str):
+            dataset_type = "application/json"
+            mock_ts_data_config_dict["dataset_format"] = test_case.dataset_format.value
+        else:
+            dataset_type = "text/csv"
+        if test_case.related_time_series:
+            mock_ts_data_config_dict["related_time_series"] = test_case.related_time_series
+        if test_case.static_covariates:
+            mock_ts_data_config_dict["static_covariates"] = test_case.static_covariates
+        expected_config = {
+            "dataset_type": dataset_type,
+            "headers": headers,
+            "time_series_data_config": mock_ts_data_config_dict,
+        }
+        # GIVEN
+        ts_data_config = Mock()
+        ts_data_config.get_time_series_data_config.return_value = copy.deepcopy(
+            mock_ts_data_config_dict
+        )
+        # WHEN
+        data_config = DataConfig(
+            s3_data_input_path="s3://path/to/input.csv",
+            s3_output_path="s3://path/to/output",
+            headers=headers,
+            dataset_type=dataset_type,
+            time_series_data_config=ts_data_config,
+        )
+        # THEN
+        assert expected_config == data_config.get_config()
 
 
 def test_bias_config():
@@ -641,6 +995,131 @@ def test_invalid_model_predicted_label_config():
     )
 
 
+class TestTimeSeriesModelConfig:
+    def test_time_series_model_config(self):
+        """
+        GIVEN a valid forecast expression
+        WHEN a TimeSeriesModelConfig is constructed with it
+        THEN the predictor_config dictionary matches the expected
+        """
+        # GIVEN
+        forecast = "results.[forecast]"  # mock JMESPath expression for forecast
+        # create expected output
+        expected_config = {
+            "forecast": forecast,
+        }
+        # WHEN
+        ts_model_config = TimeSeriesModelConfig(
+            forecast,
+        )
+        # THEN
+        assert ts_model_config.time_series_model_config == expected_config
+
+    @pytest.mark.parametrize(
+        ("forecast", "error", "error_message"),
+        [
+            (
+                None,
+                ValueError,
+                "Please provide a string JMESPath expression for ``forecast``",
+            ),
+            (
+                123,
+                ValueError,
+                "Please provide a string JMESPath expression for ``forecast``",
+            ),
+        ],
+    )
+    def test_time_series_model_config_invalid(
+        self,
+        forecast,
+        error,
+        error_message,
+    ):
+        """
+        GIVEN invalid args for a TimeSeriesModelConfig
+        WHEN TimeSeriesModelConfig constructor is called
+        THEN The appropriate error is raised
+        """
+        with pytest.raises(error, match=error_message):
+            TimeSeriesModelConfig(
+                forecast=forecast,
+            )
+
+    @pytest.mark.parametrize(
+        ("content_type", "accept_type"),
+        [
+            ("application/json", "application/json"),
+            ("application/json", "application/jsonlines"),
+            ("application/jsonlines", "application/json"),
+            ("application/jsonlines", "application/jsonlines"),
+        ],
+    )
+    def test_model_config_with_time_series(self, content_type, accept_type):
+        """
+        GIVEN valid fields for a ModelConfig and a TimeSeriesModelConfig
+        WHEN a ModelConfig is constructed with them
+        THEN actual predictor_config matches expected
+        """
+        # setup
+        model_name = "xgboost-model"
+        instance_type = "ml.c5.xlarge"
+        instance_count = 1
+        custom_attributes = "c000b4f9-df62-4c85-a0bf-7c525f9104a4"
+        target_model = "target_model_name"
+        accelerator_type = "ml.eia1.medium"
+        content_template = (
+            '{"instances":$features}'
+            if content_type == "application/jsonlines"
+            else "$records"
+            if content_type == "application/json"
+            else None
+        )
+        record_template = "$features_kvp" if content_type == "application/json" else None
+        # create mock config for TimeSeriesModelConfig
+        forecast = "results.[forecast]"  # mock JMESPath expression for forecast
+        mock_ts_model_config_dict = {
+            "forecast": forecast,
+        }
+        # create expected config
+        expected_config = {
+            "model_name": model_name,
+            "instance_type": instance_type,
+            "initial_instance_count": instance_count,
+            "accept_type": accept_type,
+            "content_type": content_type,
+            "custom_attributes": custom_attributes,
+            "accelerator_type": accelerator_type,
+            "target_model": target_model,
+            "time_series_predictor_config": mock_ts_model_config_dict,
+        }
+        if content_template is not None:
+            expected_config["content_template"] = content_template
+        if record_template is not None:
+            expected_config["record_template"] = record_template
+        # GIVEN
+        mock_ts_model_config = Mock()  # create mock TimeSeriesModelConfig object
+        mock_ts_model_config.get_time_series_model_config.return_value = copy.deepcopy(
+            mock_ts_model_config_dict
+        )  # set the mock's get_config return value
+        # WHEN
+        model_config = ModelConfig(
+            model_name=model_name,
+            instance_type=instance_type,
+            instance_count=instance_count,
+            accept_type=accept_type,
+            content_type=content_type,
+            content_template=content_template,
+            record_template=record_template,
+            custom_attributes=custom_attributes,
+            accelerator_type=accelerator_type,
+            target_model=target_model,
+            time_series_model_config=mock_ts_model_config,
+        )
+        # THEN
+        assert expected_config == model_config.get_predictor_config()
+
+
 @pytest.mark.parametrize(
     "baseline",
     [
@@ -781,6 +1260,148 @@ def test_shap_config_no_parameters():
         }
     }
     assert expected_config == shap_config.get_explainability_config()
+
+
+class AsymmetricShapleyValueConfigCase(NamedTuple):
+    direction: str
+    granularity: str
+    num_samples: Optional[int] = None
+    baseline: Optional[Union[str, Dict[str, Any]]] = None
+    error: Exception = None
+    error_message: str = None
+
+
+class TestAsymmetricShapleyValueConfig:
+    @pytest.mark.parametrize(
+        "test_case",
+        [
+            AsymmetricShapleyValueConfigCase(  # cases for timewise granularity
+                direction=direction,
+                granularity="timewise",
+                num_samples=None,
+            )
+            for direction in ASYM_SHAP_VAL_EXPLANATION_DIRECTIONS
+        ]
+        + [
+            AsymmetricShapleyValueConfigCase(  # case for fine_grained granularity
+                direction="chronological",
+                granularity="fine_grained",
+                num_samples=1,
+            ),
+            AsymmetricShapleyValueConfigCase(  # case for target time series baseline
+                direction="chronological",
+                granularity="timewise",
+                baseline={"target_time_series": "mean"},
+            ),
+            AsymmetricShapleyValueConfigCase(  # case for related time series baseline
+                direction="chronological",
+                granularity="timewise",
+                baseline={"related_time_series": "zero"},
+            ),
+        ],
+    )
+    def test_asymmetric_shapley_value_config(self, test_case: AsymmetricShapleyValueConfigCase):
+        """
+        GIVEN valid arguments for an AsymmetricShapleyValueConfig object
+        WHEN AsymmetricShapleyValueConfig object is instantiated with those arguments
+        THEN the asymmetric_shapley_value_config dictionary matches expected
+        """
+        # test case is GIVEN
+        # construct expected config
+        expected_config = {
+            "direction": test_case.direction,
+            "granularity": test_case.granularity,
+        }
+        if test_case.granularity == "fine_grained":
+            expected_config["num_samples"] = test_case.num_samples
+        if test_case.baseline:
+            expected_config["baseline"] = test_case.baseline
+        # WHEN
+        asym_shap_val_config = AsymmetricShapleyValueConfig(
+            direction=test_case.direction,
+            granularity=test_case.granularity,
+            num_samples=test_case.num_samples,
+            baseline=test_case.baseline,
+        )
+        # THEN
+        assert asym_shap_val_config.asymmetric_shapley_value_config == expected_config
+
+    @pytest.mark.parametrize(
+        "test_case",
+        [
+            AsymmetricShapleyValueConfigCase(  # case for invalid direction
+                direction="non-directional",
+                granularity="timewise",
+                num_samples=None,
+                error=ValueError,
+                error_message="Please provide a valid explanation direction from: "
+                + ", ".join(ASYM_SHAP_VAL_EXPLANATION_DIRECTIONS),
+            ),
+            AsymmetricShapleyValueConfigCase(  # case for fine_grained and no num_samples
+                direction="chronological",
+                granularity="fine_grained",
+                num_samples=None,
+                error=ValueError,
+                error_message="Please provide an integer for ``num_samples``.",
+            ),
+            AsymmetricShapleyValueConfigCase(  # case for fine_grained and non-integer num_samples
+                direction="chronological",
+                granularity="fine_grained",
+                num_samples="5",
+                error=ValueError,
+                error_message="Please provide an integer for ``num_samples``.",
+            ),
+            AsymmetricShapleyValueConfigCase(  # case for num_samples when non fine-grained explanation
+                direction="chronological",
+                granularity="timewise",
+                num_samples=5,
+                error=ValueError,
+                error_message="``num_samples`` is only used for fine-grained explanations.",
+            ),
+            AsymmetricShapleyValueConfigCase(  # case for anti_chronological and fine_grained
+                direction="anti_chronological",
+                granularity="fine_grained",
+                num_samples=5,
+                error=ValueError,
+                error_message="not supported together.",
+            ),
+            AsymmetricShapleyValueConfigCase(  # case for bidirectional and fine_grained
+                direction="bidirectional",
+                granularity="fine_grained",
+                num_samples=5,
+                error=ValueError,
+                error_message="not supported together.",
+            ),
+            AsymmetricShapleyValueConfigCase(  # case for unsupported target time series baseline value
+                direction="chronological",
+                granularity="timewise",
+                baseline={"target_time_series": "median"},
+                error=ValueError,
+                error_message="for ``target_time_series`` is invalid.",
+            ),
+            AsymmetricShapleyValueConfigCase(  # case for unsupported related time series baseline value
+                direction="chronological",
+                granularity="timewise",
+                baseline={"related_time_series": "mode"},
+                error=ValueError,
+                error_message="for ``related_time_series`` is invalid.",
+            ),
+        ],
+    )
+    def test_asymmetric_shapley_value_config_invalid(self, test_case):
+        """
+        GIVEN invalid parameters for AsymmetricShapleyValue
+        WHEN AsymmetricShapleyValueConfig constructor is called with them
+        THEN the expected error and message are raised
+        """
+        # test case is GIVEN
+        with pytest.raises(test_case.error, match=test_case.error_message):  # THEN
+            AsymmetricShapleyValueConfig(  # WHEN
+                direction=test_case.direction,
+                granularity=test_case.granularity,
+                num_samples=test_case.num_samples,
+                baseline=test_case.baseline,
+            )
 
 
 def test_pdp_config():
@@ -1915,6 +2536,425 @@ def test_invalid_analysis_config(data_config, data_bias_config, model_config):
             pre_training_methods="all",
             post_training_methods="all",
         )
+
+
+def _build_pdp_config_mock():
+    pdp_config_dict = {
+        "pdp": {
+            "grid_resolution": 15,
+            "top_k_features": 10,
+            "features": [
+                "some",
+                "features",
+            ],
+        }
+    }
+    pdp_config = Mock(spec=PDPConfig)
+    pdp_config.get_explainability_config.return_value = pdp_config_dict
+    return pdp_config
+
+
+def _build_asymmetric_shapley_value_config_mock():
+    asym_shap_val_config_dict = {
+        "direction": "chronological",
+        "granularity": "fine_grained",
+        "num_samples": 20,
+    }
+    asym_shap_val_config = Mock(spec=AsymmetricShapleyValueConfig)
+    asym_shap_val_config.get_explainability_config.return_value = {
+        "asymmetric_shapley_value": asym_shap_val_config_dict
+    }
+    return asym_shap_val_config
+
+
+def _build_data_config_mock():
+    """
+    Builds a mock DataConfig for the time series _AnalysisConfigGenerator unit tests.
+    """
+    # setup a time_series_data_config dictionary
+    time_series_data_config = {
+        "target_time_series": "target_ts",
+        "item_id": "id",
+        "timestamp": "timestamp",
+        "related_time_series": ["rts1", "rts2", "rts3"],
+        "static_covariates": ["scv1", "scv2", "scv3"],
+        "dataset_format": TimeSeriesJSONDatasetFormat.COLUMNS,
+    }
+    # setup DataConfig mock
+    data_config = Mock(spec=DataConfig)
+    data_config.analysis_config = {"time_series_data_config": time_series_data_config}
+    return data_config
+
+
+def _build_model_config_mock():
+    """
+    Builds a mock ModelConfig for the time series _AnalysisConfigGenerator unit tests.
+    """
+    time_series_model_config = {"forecast": "mean"}
+    model_config = Mock(spec=ModelConfig)
+    model_config.predictor_config = {"time_series_predictor_config": time_series_model_config}
+    return model_config
+
+
+@dataclass
+class ValidateTSXBaselineCase:
+    explainability_config: AsymmetricShapleyValueConfig
+    data_config: DataConfig
+    error: Optional[Exception] = None
+    error_msg: Optional[str] = None
+
+
+class TestAnalysisConfigGeneratorForTimeSeriesExplainability:
+    @patch(
+        "sagemaker.clarify._AnalysisConfigGenerator._validate_time_series_static_covariates_baseline"
+    )
+    @patch("sagemaker.clarify._AnalysisConfigGenerator._add_methods")
+    @patch("sagemaker.clarify._AnalysisConfigGenerator._add_predictor")
+    def test_explainability_for_time_series(self, _add_predictor, _add_methods, _validate_ts_scv):
+        """
+        GIVEN a valid DataConfig and ModelConfig that contain time_series_data_config and
+            time_series_model_config respectively as well as an AsymmetricShapleyValueConfig
+        WHEN _AnalysisConfigGenerator.explainability() is called with those args
+        THEN _add_predictor and _add methods calls are as expected
+        """
+        # GIVEN
+        # get DataConfig mock
+        data_config_mock = _build_data_config_mock()
+        # get ModelConfig mock
+        model_config_mock = _build_model_config_mock()
+        # get AsymmetricShapleyValueConfig mock for explainability_config
+        explainability_config = _build_asymmetric_shapley_value_config_mock()
+        # get time_series_data_config dict from mock
+        time_series_data_config = copy.deepcopy(
+            data_config_mock.analysis_config.get("time_series_data_config")
+        )
+        # get time_series_predictor_config from mock
+        time_series_model_config = copy.deepcopy(
+            model_config_mock.predictor_config.get("time_series_model_config")
+        )
+        # setup _add_predictor call to return what would be expected at that stage
+        analysis_config_after_add_predictor = {
+            "time_series_data_config": time_series_data_config,
+            "time_series_predictor_config": time_series_model_config,
+        }
+        _add_predictor.return_value = analysis_config_after_add_predictor
+        # WHEN
+        _AnalysisConfigGenerator.explainability(
+            data_config=data_config_mock,
+            model_config=model_config_mock,
+            model_predicted_label_config=None,
+            explainability_config=explainability_config,
+        )
+        # THEN
+        _add_predictor.assert_called_once_with(
+            data_config_mock.analysis_config,
+            model_config_mock,
+            ANY,
+        )
+        _add_methods.assert_called_once_with(
+            ANY,
+            explainability_config=explainability_config,
+        )
+        _validate_ts_scv.assert_called_once_with(
+            explainability_config=explainability_config,
+            data_config=data_config_mock,
+        )
+
+    def test_explainability_for_time_series_invalid(self):
+        # data config mocks
+        data_config_with_ts = _build_data_config_mock()
+        data_config_without_ts = Mock(spec=DataConfig)
+        data_config_without_ts.analysis_config = dict()
+        # model config mocks
+        model_config_with_ts = _build_model_config_mock()
+        model_config_without_ts = Mock(spec=ModelConfig)
+        model_config_without_ts.predictor_config = dict()
+        # asymmetric shapley value config mock (for ts)
+        asym_shap_val_config_mock = _build_asymmetric_shapley_value_config_mock()
+        # pdp config mock (for non-ts)
+        pdp_config_mock = _build_pdp_config_mock()
+        # case 1: ASV (ts case) and no timeseries data config given
+        with pytest.raises(
+            ValueError, match="Please provide a TimeSeriesDataConfig to DataConfig."
+        ):
+            _AnalysisConfigGenerator.explainability(
+                data_config=data_config_without_ts,
+                model_config=model_config_with_ts,
+                model_predicted_label_config=None,
+                explainability_config=asym_shap_val_config_mock,
+            )
+        # case 2: ASV (ts case) and no timeseries model config given
+        with pytest.raises(
+            ValueError, match="Please provide a TimeSeriesModelConfig to ModelConfig."
+        ):
+            _AnalysisConfigGenerator.explainability(
+                data_config=data_config_with_ts,
+                model_config=model_config_without_ts,
+                model_predicted_label_config=None,
+                explainability_config=asym_shap_val_config_mock,
+            )
+        # case 3: pdp (non ts case) and timeseries data config given
+        with pytest.raises(ValueError, match="please do not provide a TimeSeriesDataConfig."):
+            _AnalysisConfigGenerator.explainability(
+                data_config=data_config_with_ts,
+                model_config=model_config_without_ts,
+                model_predicted_label_config=None,
+                explainability_config=pdp_config_mock,
+            )
+        # case 4: pdp (non ts case) and timeseries model config given
+        with pytest.raises(ValueError, match="please do not provide a TimeSeriesModelConfig."):
+            _AnalysisConfigGenerator.explainability(
+                data_config=data_config_without_ts,
+                model_config=model_config_with_ts,
+                model_predicted_label_config=None,
+                explainability_config=pdp_config_mock,
+            )
+
+    def test_bias_and_explainability_invalid_for_time_series(self):
+        """
+        GIVEN user provides TimeSeriesDataConfig, TimeSeriesModelConfig, and/or
+            AsymmetricShapleyValueConfig for DataConfig, ModelConfig, and as explainability_config
+            respectively
+        WHEN _AnalysisConfigGenerator.bias_and_explainability is called
+        THEN the appropriate error is raised
+        """
+        # data config mocks
+        data_config_with_ts = _build_data_config_mock()
+        data_config_without_ts = Mock(spec=DataConfig)
+        data_config_without_ts.analysis_config = dict()
+        # model config mocks
+        model_config_with_ts = _build_model_config_mock()
+        model_config_without_ts = Mock(spec=ModelConfig)
+        model_config_without_ts.predictor_config = dict()
+        # asymmetric shap config mock (for ts)
+        asym_shap_val_config_mock = _build_asymmetric_shapley_value_config_mock()
+        # pdp config mock (for non-ts)
+        pdp_config_mock = _build_pdp_config_mock()
+        # case 1: asymmetric shap is given as explainability_config
+        with pytest.raises(ValueError, match="Bias metrics are unsupported for time series."):
+            _AnalysisConfigGenerator.bias_and_explainability(
+                data_config=data_config_without_ts,
+                model_config=model_config_without_ts,
+                model_predicted_label_config=None,
+                explainability_config=asym_shap_val_config_mock,
+                bias_config=None,
+            )
+        # case 2: TimeSeriesModelConfig given to ModelConfig
+        with pytest.raises(ValueError, match="Bias metrics are unsupported for time series."):
+            _AnalysisConfigGenerator.bias_and_explainability(
+                data_config=data_config_without_ts,
+                model_config=model_config_with_ts,
+                model_predicted_label_config=None,
+                explainability_config=pdp_config_mock,
+                bias_config=None,
+            )
+        # case 3: TimeSeriesDataConfig given to DataConfig
+        with pytest.raises(ValueError, match="Bias metrics are unsupported for time series."):
+            _AnalysisConfigGenerator.bias_and_explainability(
+                data_config=data_config_with_ts,
+                model_config=model_config_without_ts,
+                model_predicted_label_config=None,
+                explainability_config=pdp_config_mock,
+                bias_config=None,
+            )
+
+    @pytest.mark.parametrize(
+        ("mock_config", "error", "error_message"),
+        [
+            (  # single asym shap config for non TSX
+                _build_asymmetric_shapley_value_config_mock(),
+                ValueError,
+                "Please do not provide Asymmetric Shapley Value configs for non-TimeSeries uses.",
+            ),
+            (  # list with asym shap config for non-TSX
+                [
+                    _build_asymmetric_shapley_value_config_mock(),
+                    _build_pdp_config_mock(),
+                ],
+                ValueError,
+                "Please do not provide Asymmetric Shapley Value configs for non-TimeSeries uses.",
+            ),
+        ],
+    )
+    def test_merge_explainability_configs_with_timeseries_invalid(
+        self,
+        mock_config,
+        error,
+        error_message,
+    ):
+        """
+        GIVEN _merge_explainability_configs is called with a explainability config or list thereof
+        WHEN explainability_config is or contains an AsymmetricShapleyValueConfig
+        THEN the function will raise the appropriate error
+        """
+        with pytest.raises(error, match=error_message):
+            _AnalysisConfigGenerator._merge_explainability_configs(
+                explainability_config=mock_config,
+            )
+
+    @pytest.mark.parametrize(
+        "case",
+        [
+            ValidateTSXBaselineCase(
+                explainability_config=AsymmetricShapleyValueConfig(
+                    direction="chronological",
+                    granularity="timewise",
+                    baseline={
+                        "target_time_series": "zero",
+                        "related_time_series": "zero",
+                        "static_covariates": {
+                            "item1": [0.0, 0.5, 1.0],
+                            "item2": [0.3, 0.6, 0.9],
+                            "item3": [0.0, 1.0, 1.0],
+                            "item4": [0.9, 0.6, 0.3],
+                            "item5": [1.0, 0.5, 0.0],
+                        },
+                    },
+                ),
+                data_config=DataConfig(
+                    s3_data_input_path="s3://data/input",
+                    s3_output_path="s3://data/output",
+                    headers=["id", "time", "tts", "rts_1", "rts_2", "scv1", "scv2", "scv3"],
+                    dataset_type="application/json",
+                    time_series_data_config=TimeSeriesDataConfig(
+                        item_id="[].id",
+                        timestamp="[].temporal[].timestamp",
+                        target_time_series="[].temporal[].target",
+                        related_time_series=["[].temporal[].rts_1", "[].temporal[].rts_2"],
+                        static_covariates=["[].cov_1", "[].cov_2", "[].cov_3"],
+                        dataset_format=TimeSeriesJSONDatasetFormat.ITEM_RECORDS,
+                    ),
+                ),
+            ),
+        ],
+    )
+    def test_time_series_baseline_valid_static_covariates(self, case: ValidateTSXBaselineCase):
+        """
+        GIVEN AsymmetricShapleyValueConfig and TimeSeriesDataConfig are created and a baseline
+            is provided
+        WHEN AnalysisConfigGenerator._validate_time_series_static_covariates_baseline() is called
+        THEN no error is raised
+        """
+        _AnalysisConfigGenerator._validate_time_series_static_covariates_baseline(
+            explainability_config=case.explainability_config,
+            data_config=case.data_config,
+        )
+
+    @pytest.mark.parametrize(
+        "case",
+        [
+            ValidateTSXBaselineCase(  # some item ids are missing baseline values
+                explainability_config=AsymmetricShapleyValueConfig(
+                    direction="chronological",
+                    granularity="timewise",
+                    baseline={
+                        "target_time_series": "zero",
+                        "related_time_series": "zero",
+                        "static_covariates": {
+                            "item1": [0.0, 0.5, 1.0],
+                            "item2": [0.3, 0.6, 0.9],
+                            "item3": [0.0],
+                            "item4": [0.9, 0.6, 0.3],
+                            "item5": [1.0],
+                        },
+                    },
+                ),
+                data_config=DataConfig(
+                    s3_data_input_path="s3://data/input",
+                    s3_output_path="s3://data/output",
+                    headers=["id", "time", "tts", "rts_1", "rts_2", "scv1", "scv2", "scv3"],
+                    dataset_type="application/json",
+                    time_series_data_config=TimeSeriesDataConfig(
+                        item_id="[].id",
+                        timestamp="[].temporal[].timestamp",
+                        target_time_series="[].temporal[].target",
+                        related_time_series=["[].temporal[].rts_1", "[].temporal[].rts_2"],
+                        static_covariates=["[].cov_1", "[].cov_2", "[].cov_3"],
+                        dataset_format=TimeSeriesJSONDatasetFormat.ITEM_RECORDS,
+                    ),
+                ),
+                error=ValueError,
+                error_msg="baseline entry for item3 does not match number",
+            ),
+            ValidateTSXBaselineCase(  # no static covariates are in data config
+                explainability_config=AsymmetricShapleyValueConfig(
+                    direction="chronological",
+                    granularity="timewise",
+                    baseline={
+                        "target_time_series": "zero",
+                        "related_time_series": "zero",
+                        "static_covariates": {
+                            "item1": [0.0, 0.5, 1.0],
+                            "item2": [0.3, 0.6, 0.9],
+                            "item3": [0.0, 1.0, 1.0],
+                            "item4": [0.9, 0.6, 0.3],
+                            "item5": [1.0, 0.5, 0.0],
+                        },
+                    },
+                ),
+                data_config=DataConfig(
+                    s3_data_input_path="s3://data/input",
+                    s3_output_path="s3://data/output",
+                    headers=["id", "time", "tts", "rts_1", "rts_2"],
+                    dataset_type="application/json",
+                    time_series_data_config=TimeSeriesDataConfig(
+                        item_id="[].id",
+                        timestamp="[].temporal[].timestamp",
+                        target_time_series="[].temporal[].target",
+                        related_time_series=["[].temporal[].rts_1", "[].temporal[].rts_2"],
+                        dataset_format=TimeSeriesJSONDatasetFormat.ITEM_RECORDS,
+                    ),
+                ),
+                error=ValueError,
+                error_msg="no static covariate columns are provided in TimeSeriesDataConfig",
+            ),
+            ValidateTSXBaselineCase(  # some item ids do not have a list as their baseline
+                explainability_config=AsymmetricShapleyValueConfig(
+                    direction="chronological",
+                    granularity="timewise",
+                    baseline={
+                        "target_time_series": "zero",
+                        "related_time_series": "zero",
+                        "static_covariates": {
+                            "item1": [0.0, 0.5, 1.0],
+                            "item2": [0.3, 0.6, 0.9],
+                            "item3": [0.0, 1.0, 1.0],
+                            "item4": [0.9, 0.6, 0.3],
+                            "item5": {"cov_1": 1.0, "cov_2": 0.5, "cov_3": 0.0},
+                        },
+                    },
+                ),
+                data_config=DataConfig(
+                    s3_data_input_path="s3://data/input",
+                    s3_output_path="s3://data/output",
+                    headers=["id", "time", "tts", "rts_1", "rts_2", "scv1", "scv2", "scv3"],
+                    dataset_type="application/json",
+                    time_series_data_config=TimeSeriesDataConfig(
+                        item_id="[].id",
+                        timestamp="[].temporal[].timestamp",
+                        target_time_series="[].temporal[].target",
+                        related_time_series=["[].temporal[].rts_1", "[].temporal[].rts_2"],
+                        static_covariates=["[].cov_1", "[].cov_2", "[].cov_3"],
+                        dataset_format=TimeSeriesJSONDatasetFormat.ITEM_RECORDS,
+                    ),
+                ),
+                error=ValueError,
+                error_msg="Baseline entry for item5 must be a list",
+            ),
+        ],
+    )
+    def test_time_series_baseline_invalid_static_covariates(self, case: ValidateTSXBaselineCase):
+        """
+        GIVEN AsymmetricShapleyValueConfig and TimeSeriesDataConfig are created and a baseline
+            is provided where the static covariates baseline values are misconfigured
+        WHEN AnalysisConfigGenerator._validate_time_series_static_covariates_baseline() is called
+        THEN the appropriate error is raised
+        """
+        with pytest.raises(case.error, match=case.error_msg):
+            _AnalysisConfigGenerator._validate_time_series_static_covariates_baseline(
+                explainability_config=case.explainability_config,
+                data_config=case.data_config,
+            )
 
 
 class TestProcessingOutputHandler:

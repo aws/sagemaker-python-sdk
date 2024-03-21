@@ -181,7 +181,6 @@ def model_builder(request):
 #                 ), f"{caught_ex} was thrown when running pytorch squeezenet local container test"
 
 
-@pytest.mark.skip(reason="Failing test. Fix is pending.")
 @pytest.mark.skipif(
     PYTHON_VERSION_IS_NOT_310,  # or NOT_RUNNING_ON_INF_EXP_DEV_PIPELINE,
     reason="The goal of these test are to test the serving components of our feature",
@@ -222,8 +221,10 @@ def test_happy_pytorch_sagemaker_endpoint(
             )
             if caught_ex:
                 logger.exception(caught_ex)
+                ignore_if_worker_dies = "Worker died." in str(caught_ex)
+                # https://github.com/pytorch/serve/issues/3032
                 assert (
-                    False
+                    ignore_if_worker_dies
                 ), f"{caught_ex} was thrown when running pytorch squeezenet sagemaker endpoint test"
 
 

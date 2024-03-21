@@ -35,7 +35,6 @@ from sagemaker import (
     Model,
     ModelMetrics,
     MetricsSource,
-    get_execution_role,
 )
 from sagemaker import FileSource, utils
 from sagemaker.inputs import CreateModelInput
@@ -60,22 +59,12 @@ from tests.integ import DATA_DIR
 
 
 @pytest.fixture
-def role(sagemaker_session):
-    return get_execution_role(sagemaker_session)
-
-
-@pytest.fixture
 def pipeline_name():
     return utils.unique_name_from_base("my-pipeline-model-regis")
 
 
-@pytest.fixture
-def region_name(sagemaker_session):
-    return sagemaker_session.boto_session.region_name
-
-
 def test_conditional_pytorch_training_model_registration(
-    sagemaker_session,
+    sagemaker_session_for_pipeline,
     role,
     cpu_instance_type,
     pipeline_name,
@@ -83,7 +72,7 @@ def test_conditional_pytorch_training_model_registration(
 ):
     base_dir = os.path.join(DATA_DIR, "pytorch_mnist")
     entry_point = os.path.join(base_dir, "mnist.py")
-    input_path = sagemaker_session.upload_data(
+    input_path = sagemaker_session_for_pipeline.upload_data(
         path=os.path.join(base_dir, "training"),
         key_prefix="integ-test-data/pytorch_mnist/training",
     )
@@ -109,7 +98,7 @@ def test_conditional_pytorch_training_model_registration(
         py_version="py3",
         instance_count=instance_count,
         instance_type=instance_type,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
     )
     step_train = TrainingStep(
         name="pytorch-train",
@@ -136,7 +125,7 @@ def test_conditional_pytorch_training_model_registration(
     model = Model(
         image_uri=pytorch_estimator.training_image_uri(),
         model_data=step_train.properties.ModelArtifacts.S3ModelArtifacts,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
         role=role,
     )
     model_inputs = CreateModelInput(
@@ -168,7 +157,7 @@ def test_conditional_pytorch_training_model_registration(
             instance_count,
         ],
         steps=[step_train, step_cond],
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
     )
 
     try:
@@ -200,7 +189,7 @@ def test_conditional_pytorch_training_model_registration(
 
 
 def test_mxnet_model_registration(
-    sagemaker_session,
+    sagemaker_session_for_pipeline,
     role,
     cpu_instance_type,
     pipeline_name,
@@ -227,7 +216,7 @@ def test_mxnet_model_registration(
         model_data=mx_mnist_model_data,
         framework_version="1.7.0",
         py_version="py3",
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
     )
 
     step_register = RegisterModel(
@@ -249,7 +238,7 @@ def test_mxnet_model_registration(
         name=pipeline_name,
         parameters=[instance_count, instance_type],
         steps=[step_register],
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
     )
 
     try:
@@ -281,10 +270,10 @@ def test_mxnet_model_registration(
 
 
 def test_sklearn_xgboost_sip_model_registration(
-    sagemaker_session, role, pipeline_name, region_name
+    sagemaker_session_for_pipeline, role, pipeline_name, region_name
 ):
     prefix = "sip"
-    bucket_name = sagemaker_session.default_bucket()
+    bucket_name = sagemaker_session_for_pipeline.default_bucket()
     instance_count = ParameterInteger(name="InstanceCount", default_value=1)
     instance_type = "ml.m5.xlarge"
 
@@ -301,7 +290,7 @@ def test_sklearn_xgboost_sip_model_registration(
         instance_type=instance_type,
         instance_count=instance_count,
         framework_version="0.20.0",
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
     )
 
     # The path to the raw data.
@@ -376,7 +365,7 @@ def test_sklearn_xgboost_sip_model_registration(
         instance_type=instance_type,
         instance_count=instance_count,
         framework_version="0.90-2",
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
         py_version="py3",
         role=role,
     )
@@ -412,7 +401,7 @@ def test_sklearn_xgboost_sip_model_registration(
         source_dir=source_dir,
         code_location=code_location,
         role=role,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
         framework_version="0.20.0",
         py_version="py3",
     )
@@ -429,11 +418,11 @@ def test_sklearn_xgboost_sip_model_registration(
         framework_version="0.90-2",
         py_version="py3",
         role=role,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
     )
 
     pipeline_model = PipelineModel(
-        [xgboost_model, sklearn_model], role, sagemaker_session=sagemaker_session
+        [xgboost_model, sklearn_model], role, sagemaker_session=sagemaker_session_for_pipeline
     )
 
     step_register = RegisterModel(
@@ -462,7 +451,7 @@ def test_sklearn_xgboost_sip_model_registration(
             output_path_param,
         ],
         steps=[processing_step, training_step, step_register],
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
     )
 
     try:
@@ -500,7 +489,7 @@ def test_sklearn_xgboost_sip_model_registration(
     ),
 )
 def test_model_registration_with_drift_check_baselines(
-    sagemaker_session,
+    sagemaker_session_for_pipeline,
     role,
     pipeline_name,
 ):
@@ -510,12 +499,12 @@ def test_model_registration_with_drift_check_baselines(
     # upload model data to s3
     model_local_path = os.path.join(DATA_DIR, "mxnet_mnist/model.tar.gz")
     model_base_uri = "s3://{}/{}/input/model/{}".format(
-        sagemaker_session.default_bucket(),
+        sagemaker_session_for_pipeline.default_bucket(),
         "register_model_test_with_drift_baseline",
         utils.unique_name_from_base("model"),
     )
     model_uri = S3Uploader.upload(
-        model_local_path, model_base_uri, sagemaker_session=sagemaker_session
+        model_local_path, model_base_uri, sagemaker_session=sagemaker_session_for_pipeline
     )
     model_uri_param = ParameterString(name="model_uri", default_value=model_uri)
 
@@ -525,14 +514,14 @@ def test_model_registration_with_drift_check_baselines(
         '"standard_deviation": 2.219186917819692}}}'
     )
     metrics_base_uri = "s3://{}/{}/input/metrics/{}".format(
-        sagemaker_session.default_bucket(),
+        sagemaker_session_for_pipeline.default_bucket(),
         "register_model_test_with_drift_baseline",
         utils.unique_name_from_base("metrics"),
     )
     metrics_uri = S3Uploader.upload_string_as_file_body(
         body=metrics_data,
         desired_s3_uri=metrics_base_uri,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
     )
     metrics_uri_param = ParameterString(name="metrics_uri", default_value=metrics_uri)
 
@@ -610,7 +599,7 @@ def test_model_registration_with_drift_check_baselines(
         instance_type=instance_type,
         instance_count=instance_count,
         framework_version="0.90-2",
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
         py_version="py3",
         role=role,
     )
@@ -645,7 +634,7 @@ def test_model_registration_with_drift_check_baselines(
             instance_count,
         ],
         steps=[step_register],
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
     )
 
     try:
@@ -677,7 +666,7 @@ def test_model_registration_with_drift_check_baselines(
             assert execution_steps[0]["StepStatus"] == "Succeeded"
             assert execution_steps[0]["StepName"] == "MyRegisterModelStep-RegisterModel"
 
-            response = sagemaker_session.sagemaker_client.describe_model_package(
+            response = sagemaker_session_for_pipeline.sagemaker_client.describe_model_package(
                 ModelPackageName=execution_steps[0]["Metadata"]["RegisterModel"]["Arn"]
             )
 
@@ -715,15 +704,15 @@ def test_model_registration_with_drift_check_baselines(
 
 
 def test_model_registration_with_model_repack(
-    sagemaker_session,
+    sagemaker_session_for_pipeline,
     role,
     pipeline_name,
     region_name,
 ):
-    kms_key = get_or_create_kms_key(sagemaker_session, role)
+    kms_key = get_or_create_kms_key(sagemaker_session_for_pipeline, role)
     base_dir = os.path.join(DATA_DIR, "pytorch_mnist")
     entry_point = os.path.join(base_dir, "mnist.py")
-    input_path = sagemaker_session.upload_data(
+    input_path = sagemaker_session_for_pipeline.upload_data(
         path=os.path.join(base_dir, "training"),
         key_prefix="integ-test-data/pytorch_mnist/training",
     )
@@ -742,7 +731,7 @@ def test_model_registration_with_model_repack(
         py_version="py3",
         instance_count=instance_count,
         instance_type=instance_type,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
         output_kms_key=kms_key,
     )
     step_train = TrainingStep(
@@ -767,7 +756,7 @@ def test_model_registration_with_model_repack(
     model = Model(
         image_uri=pytorch_estimator.training_image_uri(),
         model_data=step_train.properties.ModelArtifacts.S3ModelArtifacts,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
         role=role,
     )
     model_inputs = CreateModelInput(
@@ -791,7 +780,7 @@ def test_model_registration_with_model_repack(
         name=pipeline_name,
         parameters=[good_enough_input, instance_count],
         steps=[step_cond],
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
     )
 
     try:
@@ -823,11 +812,16 @@ def test_model_registration_with_model_repack(
 
 
 def test_model_registration_with_tensorflow_model_with_pipeline_model(
-    sagemaker_session, role, tf_full_version, tf_full_py_version, pipeline_name, region_name
+    sagemaker_session_for_pipeline,
+    role,
+    tf_full_version,
+    tf_full_py_version,
+    pipeline_name,
+    region_name,
 ):
     base_dir = os.path.join(DATA_DIR, "tensorflow_mnist")
     entry_point = os.path.join(base_dir, "mnist_v2.py")
-    input_path = sagemaker_session.upload_data(
+    input_path = sagemaker_session_for_pipeline.upload_data(
         path=os.path.join(base_dir, "data"),
         key_prefix="integ-test-data/tf-scriptmode/mnist/training",
     )
@@ -845,7 +839,7 @@ def test_model_registration_with_tensorflow_model_with_pipeline_model(
         instance_type=instance_type,
         framework_version=tf_full_version,
         py_version=tf_full_py_version,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
     )
     step_train = TrainingStep(
         name="MyTrain",
@@ -858,11 +852,14 @@ def test_model_registration_with_tensorflow_model_with_pipeline_model(
         framework_version="2.4",
         model_data=step_train.properties.ModelArtifacts.S3ModelArtifacts,
         role=role,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
     )
 
     pipeline_model = PipelineModel(
-        name="MyModelPipeline", models=[model], role=role, sagemaker_session=sagemaker_session
+        name="MyModelPipeline",
+        models=[model],
+        role=role,
+        sagemaker_session=sagemaker_session_for_pipeline,
     )
 
     step_register_model = RegisterModel(
@@ -880,7 +877,7 @@ def test_model_registration_with_tensorflow_model_with_pipeline_model(
         name=pipeline_name,
         parameters=[instance_count],
         steps=[step_train, step_register_model],
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
     )
 
     try:

@@ -25,7 +25,7 @@ import re
 
 import tempfile
 from abc import ABC, abstractmethod
-from typing import List, Union, Dict, Optional, Any
+from typing import List, Literal, Union, Dict, Optional, Any
 from enum import Enum
 from schema import Schema, And, Use, Or, Optional as SchemaOptional, Regex
 
@@ -39,6 +39,19 @@ logger = logging.getLogger(__name__)
 
 
 ENDPOINT_NAME_PREFIX_PATTERN = "^[a-zA-Z0-9](-*[a-zA-Z0-9])"
+
+# asym shap val config default values (timeseries)
+ASYM_SHAP_VAL_DEFAULT_EXPLANATION_DIRECTION = "chronological"
+ASYM_SHAP_VAL_DEFAULT_EXPLANATION_GRANULARITY = "timewise"
+ASYM_SHAP_VAL_EXPLANATION_DIRECTIONS = [
+    "chronological",
+    "anti_chronological",
+    "bidirectional",
+]
+ASYM_SHAP_VAL_GRANULARITIES = [
+    "timewise",
+    "fine_grained",
+]
 
 ANALYSIS_CONFIG_SCHEMA_V1_0 = Schema(
     {
@@ -85,6 +98,23 @@ ANALYSIS_CONFIG_SCHEMA_V1_0 = Schema(
         SchemaOptional("excluded_columns"): [Or(int, str)],
         SchemaOptional("joinsource_name_or_index"): Or(str, int),
         SchemaOptional("group_variable"): Or(str, int),
+        SchemaOptional("time_series_data_config"): {
+            "target_time_series": Or(str, int),
+            "item_id": Or(str, int),
+            "timestamp": Or(str, int),
+            SchemaOptional("related_time_series"): Or([str], [int]),
+            SchemaOptional("static_covariates"): Or([str], [int]),
+            SchemaOptional("dataset_format"): And(
+                str,
+                Use(str.lower),
+                lambda s: s
+                in (
+                    "columns",
+                    "item_records",
+                    "timestamp_records",
+                ),
+            ),
+        },
         "methods": {
             SchemaOptional("shap"): {
                 SchemaOptional("baseline"): Or(
@@ -278,6 +308,52 @@ ANALYSIS_CONFIG_SCHEMA_V1_0 = Schema(
                 SchemaOptional("top_k_features"): int,
             },
             SchemaOptional("report"): {"name": str, SchemaOptional("title"): str},
+            SchemaOptional("asymmetric_shapley_value"): {
+                "direction": And(
+                    str,
+                    Use(str.lower),
+                    lambda s: s
+                    in (
+                        "chronological",
+                        "anti_chronological",
+                        "bidirectional",
+                    ),
+                ),
+                "granularity": And(
+                    str,
+                    Use(str.lower),
+                    lambda s: s
+                    in (
+                        "timewise",
+                        "fine_grained",
+                    ),
+                ),
+                SchemaOptional("num_samples"): int,
+                SchemaOptional("baseline"): Or(
+                    str,
+                    {
+                        SchemaOptional("target_time_series", default="zero"): And(
+                            str,
+                            Use(str.lower),
+                            lambda s: s
+                            in (
+                                "zero",
+                                "mean",
+                            ),
+                        ),
+                        SchemaOptional("related_time_series"): And(
+                            str,
+                            Use(str.lower),
+                            lambda s: s
+                            in (
+                                "zero",
+                                "mean",
+                            ),
+                        ),
+                        SchemaOptional("static_covariates"): {Or(str, int): [Or(str, int, float)]},
+                    },
+                ),
+            },
         },
         SchemaOptional("predictor"): {
             SchemaOptional("endpoint_name"): str,
@@ -311,6 +387,9 @@ ANALYSIS_CONFIG_SCHEMA_V1_0 = Schema(
             SchemaOptional("content_template"): Or(str, {str: str}),
             SchemaOptional("record_template"): str,
             SchemaOptional("custom_attributes"): str,
+            SchemaOptional("time_series_predictor_config"): {
+                "forecast": str,
+            },
         },
     }
 )
@@ -324,6 +403,84 @@ class DatasetType(Enum):
     JSON = "application/json"
     PARQUET = "application/x-parquet"
     IMAGE = "application/x-image"
+
+
+class TimeSeriesJSONDatasetFormat(Enum):
+    """Possible dataset formats for JSON time series data files.
+
+    Below is an example ``COLUMNS`` dataset for time series explainability::
+
+        {
+            "ids": [1, 2],
+            "timestamps": [3, 4],
+            "target_ts": [5, 6],
+            "rts1": [0.25, 0.5],
+            "rts2": [1.25, 1.5],
+            "scv1": [10, 20],
+            "scv2": [30, 40]
+        }
+
+    For this example, JMESPaths are specified when creating ``TimeSeriesDataConfig`` as follows::
+
+        item_id="ids"
+        timestamp="timestamps"
+        target_time_series="target_ts"
+        related_time_series=["rts1", "rts2"]
+        static_covariates=["scv1", "scv2"]
+
+    Below is an example ``ITEM_RECORDS`` dataset for time series explainability::
+
+        [
+            {
+                "id": 1,
+                "scv1": 10,
+                "scv2": "red",
+                "timeseries": [
+                    {"timestamp": 1, "target_ts": 5, "rts1": 0.25, "rts2": 10},
+                    {"timestamp": 2, "target_ts": 6, "rts1": 0.35, "rts2": 20},
+                    {"timestamp": 3, "target_ts": 4, "rts1": 0.45, "rts2": 30}
+                ]
+            },
+            {
+                "id": 2,
+                "scv1": 20,
+                "scv2": "blue",
+                "timeseries": [
+                    {"timestamp": 1, "target_ts": 4, "rts1": 0.25, "rts2": 40},
+                    {"timestamp": 2, "target_ts": 2, "rts1": 0.35, "rts2": 50}
+                ]
+            }
+        ]
+
+    For this example, JMESPaths are specified when creating ``TimeSeriesDataConfig`` as follows::
+
+        item_id="[*].id"
+        timestamp="[*].timeseries[].timestamp"
+        target_time_series="[*].timeseries[].target_ts"
+        related_time_series=["[*].timeseries[].rts1", "[*].timeseries[].rts2"]
+        static_covariates=["[*].scv1", "[*].scv2"]
+
+    Below is an example ``TIMESTAMP_RECORDS`` dataset for time series explainability::
+
+        [
+            {"id": 1, "timestamp": 1, "target_ts": 5, "scv1": 10, "rts1": 0.25},
+            {"id": 1, "timestamp": 2, "target_ts": 6, "scv1": 10, "rts1": 0.5},
+            {"id": 1, "timestamp": 3, "target_ts": 3, "scv1": 10, "rts1": 0.75},
+            {"id": 2, "timestamp": 5, "target_ts": 10, "scv1": 20, "rts1": 1}
+        ]
+
+    For this example, JMESPaths are specified when creating ``TimeSeriesDataConfig`` as follows::
+
+        item_id="[*].id"
+        timestamp="[*].timestamp"
+        target_time_series="[*].target_ts"
+        related_time_series=["[*].rts1"]
+        static_covariates=["[*].scv1"]
+    """
+
+    COLUMNS = "columns"
+    ITEM_RECORDS = "item_records"
+    TIMESTAMP_RECORDS = "timestamp_records"
 
 
 class SegmentationConfig:
@@ -394,6 +551,115 @@ class SegmentationConfig:
         return segment_config_dict
 
 
+class TimeSeriesDataConfig:
+    """Config object for TimeSeries explainability data configuration fields."""
+
+    def __init__(
+        self,
+        target_time_series: Union[str, int],
+        item_id: Union[str, int],
+        timestamp: Union[str, int],
+        related_time_series: Optional[List[Union[str, int]]] = None,
+        static_covariates: Optional[List[Union[str, int]]] = None,
+        dataset_format: Optional[TimeSeriesJSONDatasetFormat] = None,
+    ):
+        """Initialises TimeSeries explainability data configuration fields.
+
+        Args:
+            target_time_series (str or int): A string or a zero-based integer index.
+                Used to locate the target time series in the shared input dataset.
+                If this parameter is a string, then all other parameters except
+                `dataset_format` must be strings or lists of strings. If
+                this parameter is an int, then all other parameters except
+                `dataset_format` must be ints or lists of ints.
+            item_id (str or int): A string or a zero-based integer index. Used to
+                locate item id in the shared input dataset.
+            timestamp (str or int): A string or a zero-based integer index. Used to
+                locate timestamp in the shared input dataset.
+            related_time_series (list[str] or list[int]): Optional. An array of strings
+                or array of zero-based integer indices. Used to locate all related time
+                series in the shared input dataset (if present).
+            static_covariates (list[str] or list[int]): Optional.  An array of strings or
+                array of zero-based integer indices. Used to locate all static covariate
+                fields in the shared input dataset (if present).
+            dataset_format (TimeSeriesJSONDatasetFormat): Describes the format
+                of the data files provided for analysis. Should only be provided
+                when dataset is in JSON format.
+
+        Raises:
+            ValueError: If any required arguments are not provided or are the wrong type.
+        """
+        # check target_time_series, item_id, and timestamp are provided
+        if not target_time_series:
+            raise ValueError("Please provide a target time series.")
+        if not item_id:
+            raise ValueError("Please provide an item id.")
+        if not timestamp:
+            raise ValueError("Please provide a timestamp.")
+        # check all arguments are the right types
+        if not isinstance(target_time_series, (str, int)):
+            raise ValueError("Please provide a string or an int for ``target_time_series``")
+        params_type = type(target_time_series)
+        if not isinstance(item_id, params_type):
+            raise ValueError(f"Please provide {params_type} for ``item_id``")
+        if not isinstance(timestamp, params_type):
+            raise ValueError(f"Please provide {params_type} for ``timestamp``")
+        # add mandatory fields to an internal dictionary
+        self.time_series_data_config = dict()
+        _set(target_time_series, "target_time_series", self.time_series_data_config)
+        _set(item_id, "item_id", self.time_series_data_config)
+        _set(timestamp, "timestamp", self.time_series_data_config)
+        # check optional arguments are right types if provided
+        related_time_series_error_message = (
+            f"Please provide a list of {params_type} for ``related_time_series``"
+        )
+        if related_time_series:
+            if not isinstance(related_time_series, list):
+                raise ValueError(
+                    related_time_series_error_message
+                )  # related_time_series is not a list
+            if not all([isinstance(value, params_type) for value in related_time_series]):
+                raise ValueError(
+                    related_time_series_error_message
+                )  # related_time_series is not a list of strings or list of ints
+            if params_type == str and not all(related_time_series):
+                raise ValueError("Please do not provide empty strings in ``related_time_series``.")
+            _set(
+                related_time_series, "related_time_series", self.time_series_data_config
+            )  # related_time_series is valid, add it
+        static_covariates_series_error_message = (
+            f"Please provide a list of {params_type} for ``static_covariates``"
+        )
+        if static_covariates:
+            if not isinstance(static_covariates, list):
+                raise ValueError(
+                    static_covariates_series_error_message
+                )  # static_covariates is not a list
+            if not all([isinstance(value, params_type) for value in static_covariates]):
+                raise ValueError(
+                    static_covariates_series_error_message
+                )  # static_covariates is not a list of strings or list of ints
+            if params_type == str and not all(static_covariates):
+                raise ValueError("Please do not provide empty strings in ``static_covariates``.")
+            _set(
+                static_covariates, "static_covariates", self.time_series_data_config
+            )  # static_covariates is valid, add it
+        if params_type == str:
+            # check dataset_format is provided and valid
+            if not isinstance(dataset_format, TimeSeriesJSONDatasetFormat):
+                raise ValueError("Please provide a valid dataset format.")
+            _set(dataset_format.value, "dataset_format", self.time_series_data_config)
+        else:
+            if dataset_format:
+                raise ValueError(
+                    "Dataset format should only be provided when data files are JSONs."
+                )
+
+    def get_time_series_data_config(self):
+        """Returns part of an analysis config dictionary."""
+        return copy.deepcopy(self.time_series_data_config)
+
+
 class DataConfig:
     """Config object related to configurations of the input and output dataset."""
 
@@ -415,6 +681,7 @@ class DataConfig:
         predicted_label: Optional[Union[str, int]] = None,
         excluded_columns: Optional[Union[List[int], List[str]]] = None,
         segmentation_config: Optional[List[SegmentationConfig]] = None,
+        time_series_data_config: Optional[TimeSeriesDataConfig] = None,
     ):
         """Initializes a configuration of both input and output datasets.
 
@@ -430,6 +697,10 @@ class DataConfig:
                 Note: For JSON, the JMESPath query must result in a list of labels for each
                 sample.  For JSON Lines, it must result in the label for each line.
                 Only a single label per sample is supported at this time.
+            headers ([str]): List of column names in the dataset. If not provided, Clarify will
+                generate headers to use internally. For time series explainability cases,
+                please provide headers in the order of item_id, timestamp, target_time_series,
+                all related_time_series columns, and then all static_covariate columns.
             features (str): JMESPath expression to locate the feature values
                 if the dataset format is JSON/JSON Lines.
                 Note: For JSON, the JMESPath query must result in a 2-D list (or a matrix) of
@@ -483,6 +754,8 @@ class DataConfig:
                 which are to be excluded from making model inference API calls.
             segmentation_config (list[SegmentationConfig]): A list of ``SegmentationConfig``
                 objects.
+            time_series_data_config (TimeSeriesDataConfig): Optional. A config object for TimeSeries
+                data specific fields, required for TimeSeries explainability use cases.
 
         Raises:
             ValueError: when the ``dataset_type`` is invalid, predicted label dataset parameters
@@ -533,8 +806,14 @@ class DataConfig:
                     f" are not supported for dataset_type '{dataset_type}'."
                     f" Please check the API documentation for the supported dataset types."
                 )
+        # check if any other format other than JSON is provided for time series case
+        if time_series_data_config:
+            if dataset_type != "application/json":
+                raise ValueError(
+                    "Currently time series explainability only supports JSON format data."
+                )
         # features JMESPath is required for JSON as we can't derive it ourselves
-        if dataset_type == "application/json" and features is None:
+        if dataset_type == "application/json" and features is None and not time_series_data_config:
             raise ValueError("features JMESPath is required for application/json dataset_type")
         self.s3_data_input_path = s3_data_input_path
         self.s3_output_path = s3_output_path
@@ -572,6 +851,12 @@ class DataConfig:
             _set(
                 [item.to_dict() for item in segmentation_config],
                 "segment_config",
+                self.analysis_config,
+            )
+        if time_series_data_config:
+            _set(
+                time_series_data_config.get_time_series_data_config(),
+                "time_series_data_config",
                 self.analysis_config,
             )
 
@@ -664,6 +949,36 @@ class BiasConfig:
         return copy.deepcopy(self.analysis_config)
 
 
+class TimeSeriesModelConfig:
+    """Config object for TimeSeries predictor configuration fields."""
+
+    def __init__(
+        self,
+        forecast: str,
+    ):
+        """Initializes model configuration fields for TimeSeries explainability use cases.
+
+        Args:
+            forecast (str): JMESPath expression to extract the forecast result.
+
+        Raises:
+            ValueError: when ``forecast`` is not a string or not provided
+        """
+        # check string forecast is provided
+        if not isinstance(forecast, str):
+            raise ValueError(
+                "Please provide a string JMESPath expression for ``forecast`` "
+                "to extract the forecast result."
+            )
+        # add fields to an internal config dictionary
+        self.time_series_model_config = dict()
+        _set(forecast, "forecast", self.time_series_model_config)
+
+    def get_time_series_model_config(self):
+        """Returns TimeSeries model config dictionary"""
+        return copy.deepcopy(self.time_series_model_config)
+
+
 class ModelConfig:
     """Config object related to a model and its endpoint to be created."""
 
@@ -681,6 +996,7 @@ class ModelConfig:
         endpoint_name_prefix: Optional[str] = None,
         target_model: Optional[str] = None,
         endpoint_name: Optional[str] = None,
+        time_series_model_config: Optional[TimeSeriesModelConfig] = None,
     ):
         r"""Initializes a configuration of a model and the endpoint to be created for it.
 
@@ -797,6 +1113,9 @@ class ModelConfig:
             endpoint_name (str): Sets the endpoint_name when re-uses an existing endpoint.
                 Cannot be set when ``model_name``, ``instance_count``,
                 and ``instance_type`` set
+            time_series_model_config (TimeSeriesModelConfig): Optional. A config object for
+                TimeSeries predictor specific fields, required for TimeSeries
+                explainability use cases.
 
         Raises:
             ValueError: when the
@@ -841,6 +1160,10 @@ class ModelConfig:
                     f"Invalid accept_type {accept_type}."
                     f" Please choose text/csv or application/jsonlines."
                 )
+            if time_series_model_config and accept_type == "text/csv":
+                raise ValueError(
+                    "``accept_type`` must be JSON or JSONLines for time series explainability."
+                )
             self.predictor_config["accept_type"] = accept_type
         if content_type is not None:
             if content_type not in [
@@ -877,6 +1200,13 @@ class ModelConfig:
                         f"Invalid content_template {content_template}."
                         f" Please include either placeholder $records or $record."
                     )
+            if time_series_model_config and content_type not in [
+                "application/json",
+                "application/jsonlines",
+            ]:
+                raise ValueError(
+                    "``content_type`` must be JSON or JSONLines for time series explainability."
+                )
             self.predictor_config["content_type"] = content_type
         if content_template is not None:
             self.predictor_config["content_template"] = content_template
@@ -885,6 +1215,12 @@ class ModelConfig:
         _set(custom_attributes, "custom_attributes", self.predictor_config)
         _set(accelerator_type, "accelerator_type", self.predictor_config)
         _set(target_model, "target_model", self.predictor_config)
+        if time_series_model_config:
+            _set(
+                time_series_model_config.get_time_series_model_config(),
+                "time_series_predictor_config",
+                self.predictor_config,
+            )
 
     def get_predictor_config(self):
         """Returns part of the predictor dictionary of the analysis config."""
@@ -1398,6 +1734,122 @@ class SHAPConfig(ExplainabilityConfig):
     def get_explainability_config(self):
         """Returns a shap config dictionary."""
         return copy.deepcopy({"shap": self.shap_config})
+
+
+class AsymmetricShapleyValueConfig(ExplainabilityConfig):
+    """Config class for Asymmetric Shapley value algorithm for time series explainability.
+
+    Asymmetric Shapley Values are a variant of the Shapley Value that drop the symmetry axiom [1].
+    We use these to determine how features contribute to the forecasting outcome. Asymmetric
+    Shapley values can take into account the temporal dependencies of the time series that
+    forecasting models take as input.
+
+    [1] Frye, Christopher, Colin Rowat, and Ilya Feige. "Asymmetric shapley values: incorporating
+    causal knowledge into model-agnostic explainability." NeurIPS (2020).
+    https://doi.org/10.48550/arXiv.1910.06358
+    """
+
+    def __init__(
+        self,
+        direction: Literal[
+            "chronological",
+            "anti_chronological",
+            "bidirectional",
+        ] = ASYM_SHAP_VAL_DEFAULT_EXPLANATION_DIRECTION,
+        granularity: Literal[
+            "timewise",
+            "fine_grained",
+        ] = ASYM_SHAP_VAL_DEFAULT_EXPLANATION_GRANULARITY,
+        num_samples: Optional[int] = None,
+        baseline: Optional[Union[str, Dict[str, Any]]] = None,
+    ):
+        """Initialises config for time series explainability with Asymmetric Shapley Values.
+
+        AsymmetricShapleyValueConfig is used specifically and only for TimeSeries explainability
+        purposes.
+
+        Args:
+            direction (str): Type of explanation to be used. Available explanation
+                types are ``"chronological"``, ``"anti_chronological"``, and ``"bidirectional"``.
+            granularity (str): Explanation granularity to be used. Available granularity options
+                are ``"timewise"`` and ``"fine_grained"``.
+            num_samples (None or int): Number of samples to be used in the Asymmetric Shapley
+                Value forecasting algorithm. Only applicable when using ``"fine_grained"``
+                explanations.
+            baseline (str or dict): Link to a baseline configuration or a dictionary for it. The
+                baseline config is used to replace out-of-coalition values for the corresponding
+                datasets (also known as background data). For temporal data (target time series,
+                related time series), the baseline value types are "zero", where all
+                out-of-coalition values will be replaced with 0.0, or "mean", all out-of-coalition
+                values will be replaced with the average of a time series. For static data
+                (static covariates), a baseline value for each covariate should be provided for
+                each possible item_id. An example config follows, where ``item1`` and ``item2``
+                are item ids::
+
+                    {
+                        "target_time_series": "zero",
+                        "related_time_series": "zero",
+                        "static_covariates": {
+                            "item1": [1, 1],
+                            "item2": [0, 1]
+                        }
+                    }
+
+        Raises:
+            ValueError: when ``direction`` or ``granularity`` are not valid, ``num_samples`` is not
+                provided for fine-grained explanations, ``num_samples`` is provided for non
+                fine-grained explanations, or when ``direction`` is not ``"chronological"`` while
+                ``granularity`` is ``"fine_grained"``.
+        """
+        self.asymmetric_shapley_value_config = dict()
+        # validate explanation direction
+        if direction not in ASYM_SHAP_VAL_EXPLANATION_DIRECTIONS:
+            raise ValueError(
+                "Please provide a valid explanation direction from: "
+                + ", ".join(ASYM_SHAP_VAL_EXPLANATION_DIRECTIONS)
+            )
+        # validate granularity
+        if granularity not in ASYM_SHAP_VAL_GRANULARITIES:
+            raise ValueError(
+                "Please provide a valid granularity from: " + ", ".join(ASYM_SHAP_VAL_GRANULARITIES)
+            )
+        if granularity == "fine_grained":
+            if not isinstance(num_samples, int):
+                raise ValueError("Please provide an integer for ``num_samples``.")
+            if direction != "chronological":
+                raise ValueError(
+                    f"{direction} and {granularity} granularity are not supported together."
+                )
+        elif num_samples:  # validate num_samples is not provided when unnecessary
+            raise ValueError("``num_samples`` is only used for fine-grained explanations.")
+        # validate baseline if provided as a dictionary
+        if isinstance(baseline, dict):
+            temporal_baselines = ["zero", "mean"]  # possible baseline options for temporal fields
+            if "target_time_series" in baseline:
+                target_baseline = baseline.get("target_time_series")
+                if target_baseline not in temporal_baselines:
+                    raise ValueError(
+                        f"Provided value {target_baseline} for ``target_time_series`` is "
+                        f"invalid. Please select one of {temporal_baselines}."
+                    )
+            if "related_time_series" in baseline:
+                related_baseline = baseline.get("related_time_series")
+                if related_baseline not in temporal_baselines:
+                    raise ValueError(
+                        f"Provided value {related_baseline} for ``related_time_series`` is "
+                        f"invalid. Please select one of {temporal_baselines}."
+                    )
+        # set explanation type and (if provided) num_samples in internal config dictionary
+        _set(direction, "direction", self.asymmetric_shapley_value_config)
+        _set(granularity, "granularity", self.asymmetric_shapley_value_config)
+        _set(
+            num_samples, "num_samples", self.asymmetric_shapley_value_config
+        )  # _set() does nothing if a given argument is None
+        _set(baseline, "baseline", self.asymmetric_shapley_value_config)
+
+    def get_explainability_config(self):
+        """Returns an asymmetric shap config dictionary."""
+        return copy.deepcopy({"asymmetric_shapley_value": self.asymmetric_shapley_value_config})
 
 
 class SageMakerClarifyProcessor(Processor):
@@ -2072,6 +2524,13 @@ class _AnalysisConfigGenerator:
         post_training_methods: Union[str, List[str]] = "all",
     ):
         """Generates a config for Bias and Explainability"""
+        # TimeSeries bias metrics are not supported
+        if (
+            isinstance(explainability_config, AsymmetricShapleyValueConfig)
+            or "time_series_data_config" in data_config.analysis_config
+            or (model_config and "time_series_predictor_config" in model_config.predictor_config)
+        ):
+            raise ValueError("Bias metrics are unsupported for time series.")
         analysis_config = {**data_config.get_config(), **bias_config.get_config()}
         analysis_config = cls._add_methods(
             analysis_config,
@@ -2093,12 +2552,43 @@ class _AnalysisConfigGenerator:
         explainability_config: Union[ExplainabilityConfig, List[ExplainabilityConfig]],
     ):
         """Generates a config for Explainability"""
+        # determine if this is a time series explainability case by checking
+        # if *both* TimeSeriesDataConfig and TimeSeriesModelConfig were given
+        ts_data_conf_absent = "time_series_data_config" not in data_config.analysis_config
+        ts_model_conf_absent = "time_series_predictor_config" not in model_config.predictor_config
+
+        if isinstance(explainability_config, AsymmetricShapleyValueConfig):
+            if ts_data_conf_absent:
+                raise ValueError("Please provide a TimeSeriesDataConfig to DataConfig.")
+            if ts_model_conf_absent:
+                raise ValueError("Please provide a TimeSeriesModelConfig to ModelConfig.")
+            # Check static covariates baseline matches number of provided static covariate columns
+            _AnalysisConfigGenerator._validate_time_series_static_covariates_baseline(
+                explainability_config=explainability_config,
+                data_config=data_config,
+            )
+        else:
+            if not ts_data_conf_absent:
+                raise ValueError(
+                    "Please provide an AsymmetricShapleyValueConfig for time series "
+                    "explainability cases. For non time series cases, please do not provide a "
+                    "TimeSeriesDataConfig."
+                )
+            if not ts_model_conf_absent:
+                raise ValueError(
+                    "Please provide an AsymmetricShapleyValueConfig for time series "
+                    "explainability cases. For non time series cases, please do not provide a "
+                    "TimeSeriesModelConfig."
+                )
+
+        # construct whole analysis config
         analysis_config = data_config.analysis_config
         analysis_config = cls._add_predictor(
             analysis_config, model_config, model_predicted_label_config
         )
         analysis_config = cls._add_methods(
-            analysis_config, explainability_config=explainability_config
+            analysis_config,
+            explainability_config=explainability_config,
         )
         return analysis_config
 
@@ -2165,7 +2655,11 @@ class _AnalysisConfigGenerator:
         if isinstance(model_config, ModelConfig):
             analysis_config["predictor"] = model_config.get_predictor_config()
         else:
-            if "shap" in analysis_config["methods"] or "pdp" in analysis_config["methods"]:
+            if (
+                "shap" in analysis_config["methods"]
+                or "pdp" in analysis_config["methods"]
+                or "asymmetric_shapley_value" in analysis_config["methods"]
+            ):
                 raise ValueError(
                     "model_config must be provided when explainability methods are selected."
                 )
@@ -2196,7 +2690,7 @@ class _AnalysisConfigGenerator:
         pre_training_methods: Union[str, List[str]] = None,
         post_training_methods: Union[str, List[str]] = None,
         explainability_config: Union[ExplainabilityConfig, List[ExplainabilityConfig]] = None,
-        report=True,
+        report: bool = True,
     ):
         """Extends analysis config with methods."""
         # validate
@@ -2226,7 +2720,12 @@ class _AnalysisConfigGenerator:
             analysis_config["methods"]["post_training_bias"] = {"methods": post_training_methods}
 
         if explainability_config is not None:
-            explainability_methods = cls._merge_explainability_configs(explainability_config)
+            if isinstance(explainability_config, AsymmetricShapleyValueConfig):
+                explainability_methods = explainability_config.get_explainability_config()
+            else:
+                explainability_methods = cls._merge_explainability_configs(
+                    explainability_config,
+                )
             analysis_config["methods"] = {
                 **analysis_config["methods"],
                 **explainability_methods,
@@ -2239,10 +2738,25 @@ class _AnalysisConfigGenerator:
         explainability_config: Union[ExplainabilityConfig, List[ExplainabilityConfig]],
     ):
         """Merges explainability configs, when more than one."""
+        non_ts = "Please do not provide Asymmetric Shapley Value configs for non-TimeSeries uses."
+        # validation
+        if isinstance(explainability_config, AsymmetricShapleyValueConfig):
+            raise ValueError(non_ts)
+        if (
+            isinstance(explainability_config, PDPConfig)
+            and "features" not in explainability_config.get_explainability_config()["pdp"]
+        ):
+            raise ValueError("PDP features must be provided when ShapConfig is not provided")
         if isinstance(explainability_config, list):
-            explainability_methods = {}
             if len(explainability_config) == 0:
                 raise ValueError("Please provide at least one explainability config.")
+            # list validation
+            for config in explainability_config:
+                # ensure all provided explainability configs are not AsymmetricShapleyValueConfig
+                if isinstance(config, AsymmetricShapleyValueConfig):
+                    raise ValueError(non_ts)
+            # main logic
+            explainability_methods = {}
             for config in explainability_config:
                 explain_config = config.get_explainability_config()
                 explainability_methods.update(explain_config)
@@ -2254,12 +2768,47 @@ class _AnalysisConfigGenerator:
             ):
                 raise ValueError("PDP features must be provided when ShapConfig is not provided")
             return explainability_methods
-        if (
-            isinstance(explainability_config, PDPConfig)
-            and "features" not in explainability_config.get_explainability_config()["pdp"]
-        ):
-            raise ValueError("PDP features must be provided when ShapConfig is not provided")
         return explainability_config.get_explainability_config()
+
+    @classmethod
+    def _validate_time_series_static_covariates_baseline(
+        cls,
+        explainability_config: AsymmetricShapleyValueConfig,
+        data_config: DataConfig,
+    ):
+        """Validates static covariates in baseline for asymmetric shapley value (for time series).
+
+        Checks that baseline values set for static covariate columns are
+        consistent between every item_id and the number of static covariate columns
+        provided in DataConfig.
+        """
+        baseline = explainability_config.get_explainability_config()[
+            "asymmetric_shapley_value"
+        ].get("baseline")
+        if isinstance(baseline, dict) and "static_covariates" in baseline:
+            covariate_count = len(
+                data_config.get_config()["time_series_data_config"].get("static_covariates", [])
+            )
+            if covariate_count > 0:
+                for item_id in baseline.get("static_covariates", []):
+                    baseline_entry = baseline["static_covariates"][item_id]
+                    if not isinstance(baseline_entry, list):
+                        raise ValueError(
+                            f"Baseline entry for {item_id} must be a list, is "
+                            f"{type(baseline_entry)}."
+                        )
+                    if len(baseline_entry) != covariate_count:
+                        raise ValueError(
+                            f"Length of baseline entry for {item_id} does not match number "
+                            f"of static covariate columns. Please ensure every covariate "
+                            f"has a baseline value for every item id."
+                        )
+            else:
+                raise ValueError(
+                    "Static covariate baselines are provided in AsymmetricShapleyValueConfig "
+                    "when no static covariate columns are provided in TimeSeriesDataConfig. "
+                    "Please check these configs."
+                )
 
 
 def _upload_analysis_config(analysis_config_file, s3_output_path, sagemaker_session, kms_key):

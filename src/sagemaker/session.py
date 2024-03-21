@@ -189,7 +189,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         sagemaker_runtime_client=None,
         sagemaker_featurestore_runtime_client=None,
         default_bucket=None,
-        settings=SessionSettings(),
+        settings=None,
         sagemaker_metrics_client=None,
         sagemaker_config: dict = None,
         default_bucket_prefix: str = None,
@@ -260,7 +260,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         self.resource_group_tagging_client = None
         self._config = None
         self.lambda_client = None
-        self.settings = settings
+        self.settings = settings if settings else SessionSettings()
 
         self._initialize(
             boto_session=boto_session,

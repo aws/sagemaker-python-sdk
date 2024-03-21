@@ -20,7 +20,6 @@ import os
 
 from pathlib import Path
 
-from accelerate.commands.estimate import estimate_command_parser, gather_data
 from sagemaker import Session
 from sagemaker.model import Model
 from sagemaker.base_predictor import PredictorBase
@@ -43,7 +42,11 @@ from sagemaker.serve.spec.inference_spec import InferenceSpec
 from sagemaker.serve.utils import task
 from sagemaker.serve.utils.exceptions import TaskNotFoundException
 from sagemaker.serve.utils.predictors import _get_local_mode_predictor
-from sagemaker.serve.utils.hardware_detector import _get_gpu_info, _get_gpu_info_fallback
+from sagemaker.serve.utils.hardware_detector import (
+    _get_gpu_info,
+    _get_gpu_info_fallback,
+    _total_inference_model_size_mib,
+)
 from sagemaker.serve.detector.image_detector import (
     auto_detect_container,
     _detect_framework_and_version,
@@ -70,11 +73,8 @@ supported_model_server = {
     ModelServer.DJL_SERVING,
 }
 
-MIB_CONVERSION_FACTOR = 0.00000095367431640625
-MEMORY_BUFFER_MULTIPLIER = 1.2  # 20% buffer
 
-
-# pylint: disable=attribute-defined-outside-init
+# pylint: disable=attribute-defined-outside-init, disable=E1101
 @dataclass
 class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
     """Class that builds a deployable model.
@@ -719,28 +719,6 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
         except ValueError:
             raise TaskNotFoundException(f"Schema builder for {model_task} could not be found.")
 
-    def _total_inference_model_size_mib(self):
-        """Calculates the model size from HF accelerate
-
-        This function gets the model size from accelerate. It also adds a
-        padding and converts to size MiB. When performing inference, expect
-        to add up to an additional 20% to the given model size as found by EleutherAI.
-        """
-        dtypes = self.env_vars.get("dtypes", "float32")
-        parser = estimate_command_parser()
-        args = parser.parse_args([self.model, "--dtypes", dtypes])
-
-        output = gather_data(
-            args
-        )  # "dtype", "Largest Layer", "Total Size Bytes", "Training using Adam"
-
-        if output is None:
-            raise ValueError(f"Could not get Model size for {self.model}")
-
-        total_memory_size_mib = MEMORY_BUFFER_MULTIPLIER * output[0][2] * MIB_CONVERSION_FACTOR
-        logger.info("Total memory size MIB: %s", total_memory_size_mib)
-        return total_memory_size_mib
-
     def _can_fit_on_single_gpu(self) -> Type[bool]:
         """Check if model can fit on a single GPU
 
@@ -748,10 +726,15 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
         """
         try:
             single_gpu_size_mib = self._try_fetch_gpu_info()
-            if self._total_inference_model_size_mib() <= single_gpu_size_mib:
+            if (
+                _total_inference_model_size_mib(self.model, self.env_vars.get("dtypes", "float32"))
+                <= single_gpu_size_mib
+            ):
                 logger.info(
                     "Total inference model size MIB %s, single GPU size for instance MIB %s",
-                    self._total_inference_model_size_mib(),
+                    _total_inference_model_size_mib(
+                        self.model, self.env_vars.get("dtypes", "float32")
+                    ),
                     single_gpu_size_mib,
                 )
                 return True

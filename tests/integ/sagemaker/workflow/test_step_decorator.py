@@ -19,7 +19,7 @@ import pytest
 import os
 import random
 
-from sagemaker import get_execution_role, utils
+from sagemaker import utils
 from sagemaker.config import load_sagemaker_config
 from sagemaker.processing import ProcessingInput
 from sagemaker.remote_function.errors import RemoteFunctionError
@@ -52,21 +52,13 @@ INSTANCE_TYPE = "ml.m5.large"
 
 
 @pytest.fixture
-def role(sagemaker_session):
-    return get_execution_role(sagemaker_session)
-
-
-@pytest.fixture
-def region_name(sagemaker_session):
-    return sagemaker_session.boto_session.region_name
-
-
-@pytest.fixture
 def pipeline_name():
     return utils.unique_name_from_base("Decorated-Step-Pipeline")
 
 
-def test_compile_pipeline_with_function_steps(sagemaker_session, role, pipeline_name, region_name):
+def test_compile_pipeline_with_function_steps(
+    sagemaker_session_for_pipeline, role, pipeline_name, region_name
+):
     @step(
         name="generate",
         role=role,
@@ -94,7 +86,7 @@ def test_compile_pipeline_with_function_steps(sagemaker_session, role, pipeline_
 
     pipeline = Pipeline(
         name=pipeline_name,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
         steps=[generated, conditional_print],
     )
 
@@ -104,9 +96,9 @@ def test_compile_pipeline_with_function_steps(sagemaker_session, role, pipeline_
         # verify the artifacts are uploaded to the location specified by sagemaker_session
         assert (
             len(
-                sagemaker_session.list_s3_files(
-                    sagemaker_session.default_bucket(),
-                    f"{sagemaker_session.default_bucket_prefix}/{pipeline_name}/generate",
+                sagemaker_session_for_pipeline.list_s3_files(
+                    sagemaker_session_for_pipeline.default_bucket(),
+                    f"{sagemaker_session_for_pipeline.default_bucket_prefix}/{pipeline_name}/generate",
                 )
             )
             > 0
@@ -114,9 +106,9 @@ def test_compile_pipeline_with_function_steps(sagemaker_session, role, pipeline_
 
         assert (
             len(
-                sagemaker_session.list_s3_files(
-                    sagemaker_session.default_bucket(),
-                    f"{sagemaker_session.default_bucket_prefix}/{pipeline_name}/print",
+                sagemaker_session_for_pipeline.list_s3_files(
+                    sagemaker_session_for_pipeline.default_bucket(),
+                    f"{sagemaker_session_for_pipeline.default_bucket_prefix}/{pipeline_name}/print",
                 )
             )
             > 0
@@ -129,7 +121,7 @@ def test_compile_pipeline_with_function_steps(sagemaker_session, role, pipeline_
 
 
 def test_step_decorator_no_dependencies(
-    sagemaker_session, role, pipeline_name, region_name, dummy_container_without_error
+    sagemaker_session_for_pipeline, role, pipeline_name, region_name, dummy_container_without_error
 ):
     os.environ["AWS_DEFAULT_REGION"] = region_name
 
@@ -149,7 +141,7 @@ def test_step_decorator_no_dependencies(
     pipeline = Pipeline(
         name=pipeline_name,
         steps=[step_output_a, step_output_b],
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
     )
 
     try:
@@ -172,7 +164,7 @@ def test_step_decorator_no_dependencies(
 
 
 def test_step_decorator_with_execution_dependencies(
-    sagemaker_session, role, pipeline_name, region_name, dummy_container_without_error
+    sagemaker_session_for_pipeline, role, pipeline_name, region_name, dummy_container_without_error
 ):
     os.environ["AWS_DEFAULT_REGION"] = region_name
 
@@ -193,7 +185,7 @@ def test_step_decorator_with_execution_dependencies(
     pipeline = Pipeline(
         name=pipeline_name,
         steps=[step_output_b],
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
     )
 
     try:
@@ -216,7 +208,7 @@ def test_step_decorator_with_execution_dependencies(
 
 
 def test_step_decorator_with_data_dependencies(
-    sagemaker_session, role, pipeline_name, region_name, dummy_container_without_error
+    sagemaker_session_for_pipeline, role, pipeline_name, region_name, dummy_container_without_error
 ):
     os.environ["AWS_DEFAULT_REGION"] = region_name
 
@@ -242,7 +234,7 @@ def test_step_decorator_with_data_dependencies(
     pipeline = Pipeline(
         name=pipeline_name,
         steps=[step_output_b],
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
     )
 
     try:
@@ -266,7 +258,7 @@ def test_step_decorator_with_data_dependencies(
 
 
 def test_step_decorator_with_pipeline_parameters(
-    sagemaker_session, role, pipeline_name, region_name, dummy_container_without_error
+    sagemaker_session_for_pipeline, role, pipeline_name, region_name, dummy_container_without_error
 ):
     os.environ["AWS_DEFAULT_REGION"] = region_name
     instance_type = ParameterString(name="TrainingInstanceCount", default_value=INSTANCE_TYPE)
@@ -287,7 +279,7 @@ def test_step_decorator_with_pipeline_parameters(
         name=pipeline_name,
         parameters=[instance_type],
         steps=[step_a],
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
     )
 
     try:
@@ -312,7 +304,7 @@ def test_step_decorator_with_pipeline_parameters(
 
 
 def test_passing_different_pipeline_variables_to_function(
-    sagemaker_session,
+    sagemaker_session_for_pipeline,
     role,
     pipeline_name,
     region_name,
@@ -334,7 +326,7 @@ def test_passing_different_pipeline_variables_to_function(
         instance_type=INSTANCE_TYPE,
         instance_count=1,
         command=["python3"],
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
         base_job_name="test-sklearn",
     )
 
@@ -376,7 +368,7 @@ def test_passing_different_pipeline_variables_to_function(
         name=pipeline_name,
         parameters=[param_a, param_b, param_c, param_d],
         steps=[final_output],
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
     )
 
     try:
@@ -402,7 +394,7 @@ def test_passing_different_pipeline_variables_to_function(
 
 
 def test_step_decorator_with_pre_execution_script(
-    sagemaker_session, role, pipeline_name, region_name, dummy_container_without_error
+    sagemaker_session_for_pipeline, role, pipeline_name, region_name, dummy_container_without_error
 ):
     os.environ["AWS_DEFAULT_REGION"] = region_name
     pre_execution_script_path = os.path.join(DATA_DIR, "workflow", "pre_exec_commands")
@@ -428,7 +420,7 @@ def test_step_decorator_with_pre_execution_script(
     pipeline = Pipeline(
         name=pipeline_name,
         steps=[step_a],
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
     )
 
     try:
@@ -450,17 +442,22 @@ def test_step_decorator_with_pre_execution_script(
 
 
 def test_step_decorator_with_include_local_workdir(
-    sagemaker_session, role, pipeline_name, region_name, monkeypatch, dummy_container_without_error
+    sagemaker_session_for_pipeline,
+    role,
+    pipeline_name,
+    region_name,
+    monkeypatch,
+    dummy_container_without_error,
 ):
     os.environ["AWS_DEFAULT_REGION"] = region_name
     source_dir_path = os.path.join(os.path.dirname(__file__))
-    original_sagemaker_config = sagemaker_session.sagemaker_config
+    original_sagemaker_config = sagemaker_session_for_pipeline.sagemaker_config
     with monkeypatch.context() as m:
         m.chdir(source_dir_path)
         sagemaker_config = load_sagemaker_config(
             [os.path.join(DATA_DIR, "workflow", "config.yaml")]
         )
-        sagemaker_session.sagemaker_config = sagemaker_config
+        sagemaker_session_for_pipeline.sagemaker_config = sagemaker_config
         dependencies_path = os.path.join(DATA_DIR, "workflow", "requirements.txt")
 
         @step(
@@ -483,7 +480,7 @@ def test_step_decorator_with_include_local_workdir(
         pipeline = Pipeline(
             name=pipeline_name,
             steps=[step_result],
-            sagemaker_session=sagemaker_session,
+            sagemaker_session=sagemaker_session_for_pipeline,
         )
 
         try:
@@ -504,11 +501,16 @@ def test_step_decorator_with_include_local_workdir(
                 pipeline.delete()
             except Exception:
                 pass
-    sagemaker_session.sagemaker_config = original_sagemaker_config
+    sagemaker_session_for_pipeline.sagemaker_config = original_sagemaker_config
 
 
 def test_decorator_with_conda_env(
-    sagemaker_session, role, pipeline_name, region_name, dummy_container_with_conda, conda_env_yml
+    sagemaker_session_for_pipeline,
+    role,
+    pipeline_name,
+    region_name,
+    dummy_container_with_conda,
+    conda_env_yml,
 ):
     os.environ["AWS_DEFAULT_REGION"] = region_name
 
@@ -529,7 +531,7 @@ def test_decorator_with_conda_env(
     pipeline = Pipeline(
         name=pipeline_name,
         steps=[step_a],
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
     )
 
     try:
@@ -553,7 +555,7 @@ def test_decorator_with_conda_env(
 
 
 def test_decorator_step_failed(
-    sagemaker_session,
+    sagemaker_session_for_pipeline,
     role,
     pipeline_name,
     region_name,
@@ -575,7 +577,7 @@ def test_decorator_step_failed(
     pipeline = Pipeline(
         name=pipeline_name,
         steps=[step_a],
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
     )
 
     try:
@@ -602,7 +604,7 @@ def test_decorator_step_failed(
 
 
 def test_decorator_step_with_json_get(
-    sagemaker_session,
+    sagemaker_session_for_pipeline,
     role,
     pipeline_name,
     region_name,
@@ -651,7 +653,7 @@ def test_decorator_step_with_json_get(
     pipeline = Pipeline(
         name=pipeline_name,
         steps=[cond_step],
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
     )
 
     try:
@@ -754,7 +756,7 @@ def test_decorator_step_data_referenced_by_other_steps(
 
 
 def test_decorator_step_checksum_mismatch(
-    sagemaker_session, dummy_container_without_error, pipeline_name, role
+    sagemaker_session_for_pipeline, dummy_container_without_error, pipeline_name, role
 ):
     step_name = "original_func_step"
 
@@ -778,7 +780,7 @@ def test_decorator_step_checksum_mismatch(
     pipeline = Pipeline(
         name=pipeline_name,
         steps=[step_a],
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
     )
 
     try:
@@ -796,7 +798,7 @@ def test_decorator_step_checksum_mismatch(
             pickled_updated_func,
             s3_path_join(s3_base_uri, step_name, build_time, "function", "payload.pkl"),
             kms_key=None,
-            sagemaker_session=sagemaker_session,
+            sagemaker_session=sagemaker_session_for_pipeline,
         )
         execution = pipeline.start()
         wait_pipeline_execution(execution=execution, delay=20, max_attempts=20)
@@ -815,7 +817,11 @@ def test_decorator_step_checksum_mismatch(
 
 
 def test_with_user_and_workdir_set_in_the_image(
-    sagemaker_session, role, pipeline_name, region_name, dummy_container_with_user_and_workdir
+    sagemaker_session_for_pipeline,
+    role,
+    pipeline_name,
+    region_name,
+    dummy_container_with_user_and_workdir,
 ):
     os.environ["AWS_DEFAULT_REGION"] = region_name
     dependencies_path = os.path.join(DATA_DIR, "workflow", "requirements.txt")
@@ -836,7 +842,7 @@ def test_with_user_and_workdir_set_in_the_image(
     pipeline = Pipeline(
         name=pipeline_name,
         steps=[step_a],
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
     )
 
     try:
@@ -860,7 +866,11 @@ def test_with_user_and_workdir_set_in_the_image(
 
 
 def test_with_user_and_workdir_set_in_the_image_client_error_case(
-    sagemaker_session, role, pipeline_name, region_name, dummy_container_with_user_and_workdir
+    sagemaker_session_for_pipeline,
+    role,
+    pipeline_name,
+    region_name,
+    dummy_container_with_user_and_workdir,
 ):
     # This test aims to ensure client error in step decorated function
     # can be successfully surfaced and the job can be failed.
@@ -880,7 +890,7 @@ def test_with_user_and_workdir_set_in_the_image_client_error_case(
     pipeline = Pipeline(
         name=pipeline_name,
         steps=[step_a],
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
     )
 
     try:
@@ -906,7 +916,7 @@ def test_with_user_and_workdir_set_in_the_image_client_error_case(
 
 
 def test_step_level_serialization(
-    sagemaker_session, role, pipeline_name, region_name, dummy_container_without_error
+    sagemaker_session_for_pipeline, role, pipeline_name, region_name, dummy_container_without_error
 ):
     os.environ["AWS_DEFAULT_REGION"] = region_name
 
@@ -940,7 +950,7 @@ def test_step_level_serialization(
     pipeline = Pipeline(  # noqa: F811
         name=pipeline_name,
         steps=[step_output_b],
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
     )
 
     try:

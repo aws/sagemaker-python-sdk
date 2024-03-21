@@ -24,7 +24,7 @@ from sagemaker.workflow.step_outputs import get_step
 from sagemaker.workflow.selective_execution_config import SelectiveExecutionConfig
 
 from tests.integ.sagemaker.workflow.helpers import create_and_execute_pipeline
-from sagemaker import utils, get_execution_role
+from sagemaker import utils
 from sagemaker.workflow.function_step import step
 from sagemaker.workflow.pipeline import Pipeline
 from sagemaker.workflow.steps import ProcessingStep
@@ -33,22 +33,12 @@ INSTANCE_TYPE = "ml.m5.large"
 
 
 @pytest.fixture
-def role(sagemaker_session):
-    return get_execution_role(sagemaker_session)
-
-
-@pytest.fixture
-def region_name(sagemaker_session):
-    return sagemaker_session.boto_session.region_name
-
-
-@pytest.fixture
 def pipeline_name():
     return utils.unique_name_from_base("Selective-Pipeline")
 
 
 def test_selective_execution_among_pure_function_steps(
-    sagemaker_session, role, pipeline_name, region_name, dummy_container_without_error
+    sagemaker_session_for_pipeline, role, pipeline_name, region_name, dummy_container_without_error
 ):
     # Test Selective Pipeline Execution on function step1 -> [select: function step2]
     os.environ["AWS_DEFAULT_REGION"] = region_name
@@ -75,7 +65,7 @@ def test_selective_execution_among_pure_function_steps(
     pipeline = Pipeline(
         name=pipeline_name,
         steps=[step_output_b],
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
     )
 
     try:
@@ -117,7 +107,7 @@ def test_selective_execution_among_pure_function_steps(
 
 
 def test_selective_execution_of_regular_step_referenced_by_function_step(
-    sagemaker_session,
+    sagemaker_session_for_pipeline,
     role,
     pipeline_name,
     region_name,
@@ -135,7 +125,7 @@ def test_selective_execution_of_regular_step_referenced_by_function_step(
         instance_type=INSTANCE_TYPE,
         instance_count=1,
         command=["python3"],
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
         base_job_name="test-sklearn",
     )
 
@@ -159,7 +149,7 @@ def test_selective_execution_of_regular_step_referenced_by_function_step(
     pipeline = Pipeline(
         name=pipeline_name,
         steps=[final_output],
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
     )
 
     try:
