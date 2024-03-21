@@ -49,7 +49,7 @@ def walk_and_apply_json(json_obj: Dict[Any, Any], apply):
                         new[new_key] = value
             elif isinstance(new, list):
                 new.append(_walk_and_apply_json(json_obj, new={}))
-        else:
+        elif isinstance(new, list):
             new.append(json_obj)
         return new
 

@@ -13,10 +13,12 @@
 """This module stores types related to SageMaker JumpStart."""
 from __future__ import absolute_import
 import re
+import json
 import datetime
 from copy import deepcopy
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Union
+from sagemaker import image_uris
 from sagemaker.s3 import parse_s3_url, s3_path_join
 from sagemaker.session import Session
 from sagemaker.utils import get_instance_type_family, format_tags, Tags
@@ -26,9 +28,10 @@ from sagemaker.metadata_properties import MetadataProperties
 from sagemaker.drift_check_baselines import DriftCheckBaselines
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
-from sagemaker.jumpstart.enums import JumpStartModelType, ModelSpecKwargType
+from sagemaker.jumpstart.enums import JumpStartModelType, JumpStartScriptScope, ModelSpecKwargType
 from sagemaker.jumpstart.converter_utils import (
     camel_to_snake,
+    snake_to_upper_camel,
     walk_and_apply_json,
     get_model_spec_kwargs_from_hub_content_document,
 )
@@ -1639,7 +1642,6 @@ class HubModelDocument(JumpStartDataHolderType):
         "incremental_training_supported",
         "dynamic_container_deployment_supported",
         "hosting_ecr_uri",
-        "hosting_ecr_specs",
         "hosting_artifact_s3_data_type",
         "hosting_artifact_compression_type",
         "hosting_artifact_uri",
@@ -1657,7 +1659,6 @@ class HubModelDocument(JumpStartDataHolderType):
         "training_script_uri",
         "training_prepacked_script_uri",
         "training_prepacked_script_version",
-        "training_ecr_specs",
         "training_ecr_uri",
         "training_metrics",
         "training_artifact_uri",
@@ -1724,13 +1725,20 @@ class HubModelDocument(JumpStartDataHolderType):
             self.from_specs(model_specs, studio_specs)
         else:
             raise ValueError("Please provide either [json_obj] or [model_specs and studio_specs].")
+        
+    def __str__(self) -> str:
+        """Returns string representation of object. Example:
+
+        "{'content_bucket': 'bucket', 'region_name': 'us-west-2'}"
+        """
+
+        att_dict = walk_and_apply_json(self.to_json(), snake_to_upper_camel)
+        return f"{json.dumps(att_dict, default=lambda o: o.to_json())}"
 
     def from_json(self, json_obj: Dict[str, Any]) -> None:
         self.url: str = json_obj["Url"]
         self.min_sdk_version: str = json_obj["MinSdkVersion"]
-        # Only one of ecr_uri and ecr_specs should exist.
         self.hosting_ecr_uri: Optional[str] = json_obj["HostingEcrUri"]
-        self._non_serializable_slots.append("hosting_ecr_specs")
         self.hosting_artifact_uri = json_obj["HostingArtifactUri"]
         self.hosting_script_uri = json_obj["HostingScriptUri"]
         self.inference_dependencies: List[str] = json_obj["InferenceDependencies"]
@@ -1857,7 +1865,6 @@ class HubModelDocument(JumpStartDataHolderType):
                 "TrainingPrepackedScriptVersion"
             )
             self.training_ecr_uri: Optional[str] = json_obj.get("TrainingEcrUri")
-            self._non_serializable_slots.append("training_ecr_specs")
             self.training_metrics: Optional[List[Dict[str, str]]] = json_obj.get(
                 "TrainingMetrics", None
             )
@@ -1904,8 +1911,6 @@ class HubModelDocument(JumpStartDataHolderType):
     def from_specs(self, model_specs: JumpStartModelSpecs, studio_specs: Dict[str, Any]) -> None:
         self.url: str = model_specs.url
         self.min_sdk_version: str = model_specs.min_sdk_version
-        self.hosting_ecr_specs: Optional[JumpStartECRSpecs] = model_specs.hosting_ecr_specs
-        self._non_serializable_slots.append("hosting_ecr_uri")
 
         content_bucket = f"jumpstart-cache-prod-{self._region}"
         self.hosting_artifact_uri = s3_path_join(
@@ -1917,7 +1922,6 @@ class HubModelDocument(JumpStartDataHolderType):
         self.hosting_artifact_compression_type: Optional[str] = studio_specs.get(
             "inferenceArtifactCompressionType"
         )
-
         self.hosting_script_uri = s3_path_join(
             "s3://", content_bucket, model_specs.hosting_script_key
         )
@@ -1946,6 +1950,15 @@ class HubModelDocument(JumpStartDataHolderType):
         self.default_inference_instance_type: Optional[
             str
         ] = model_specs.default_inference_instance_type
+
+        self.hosting_ecr_uri: Optional[str] = image_uris.retrieve(
+            model_id=model_specs.model_id,
+            model_version=model_specs.version,
+            framework=model_specs.hosting_ecr_specs.framework,
+            instance_type=self.default_inference_instance_type,
+            image_scope=JumpStartScriptScope.INFERENCE,
+            region=self._region
+        )
         self.supported_inference_instance_types: Optional[
             str
         ] = model_specs.supported_inference_instance_types
@@ -1973,7 +1986,7 @@ class HubModelDocument(JumpStartDataHolderType):
         self.hosting_instance_type_variants: Optional[
             str
         ] = model_specs.hosting_instance_type_variants
-        self.min_studio_sdk_version: Optional[str] = studio_specs.get("minServerVersion")
+        # self.min_studio_sdk_version: Optional[str] = studio_specs.get("minServerVersion")
         notebook_location_keys = studio_specs.get("notebookLocations")
         if notebook_location_keys:
             self.notebook_location_uris: Optional[Dict[str, str]] = (
@@ -2021,8 +2034,6 @@ class HubModelDocument(JumpStartDataHolderType):
             self.training_prepacked_script_version: Optional[
                 str
             ] = None  # TODO: studio_specs.minTrainingScriptVersion?
-            self.training_ecr_specs: Optional[JumpStartECRSpecs] = model_specs.training_ecr_specs
-            self._non_serializable_slots.append("training_ecr_uri")
             self.training_metrics: Optional[List[Dict[str, str]]] = model_specs.metrics
             self.training_artifact_uri: Optional[str] = (
                 s3_path_join("s3://", content_bucket, model_specs.training_artifact_key)
@@ -2033,6 +2044,15 @@ class HubModelDocument(JumpStartDataHolderType):
             self.default_training_instance_type: Optional[
                 str
             ] = model_specs.default_training_instance_type
+
+            self.training_ecr_uri: Optional[str] = image_uris.retrieve(
+                model_id=model_specs.model_id,
+                model_version=model_specs.version,
+                framework=model_specs.training_ecr_specs.framework,
+                image_scope=JumpStartScriptScope.TRAINING,
+                instance_type=self.default_training_instance_type,
+                region=self._region
+            )
             self.supported_training_instance_types: Optional[
                 str
             ] = model_specs.supported_training_instance_types
