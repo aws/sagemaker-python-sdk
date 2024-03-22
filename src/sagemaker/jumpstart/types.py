@@ -1008,14 +1008,14 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
 
     _non_serializable_slots = ["_is_hub_content"]
 
-    def __init__(self, spec_or_response: Dict[str, Any], is_hub_content: bool = False):
+    def __init__(self, spec: Dict[str, Any], is_hub_content: bool = False):
         """Initializes a JumpStartModelSpecs object from its json representation.
 
         Args:
             spec (Dict[str, Any]): Dictionary representation of spec.
         """
         self._is_hub_content = is_hub_content
-        self.from_json(spec_or_response)
+        self.from_json(spec)
 
     def from_json(self, json_obj: Dict[str, Any]) -> None:
         """Sets fields in object based on json of header.
@@ -1079,15 +1079,17 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         self.training_prepacked_script_key: Optional[str] = json_obj.get(
             "training_prepacked_script_key"
         )
-        self.training_prepacked_script_version: Optional[str] = json_obj.get(
-            "training_prepacked_script_version"
-        )
         self.hosting_prepacked_artifact_key: Optional[str] = json_obj.get(
             "hosting_prepacked_artifact_key"
         )
-        self.hosting_prepacked_artifact_version: Optional[str] = json_obj.get(
-            "hosting_prepacked_artifact_version"
-        )
+        # New fields required for Hub model.
+        if self._is_hub_content:
+            self.training_prepacked_script_version: Optional[str] = json_obj.get(
+                "training_prepacked_script_version"
+            )
+            self.hosting_prepacked_artifact_version: Optional[str] = json_obj.get(
+                "hosting_prepacked_artifact_version"
+            )
         self.model_kwargs = deepcopy(json_obj.get("model_kwargs", {}))
         self.deploy_kwargs = deepcopy(json_obj.get("deploy_kwargs", {}))
         self.predictor_specs: Optional[JumpStartPredictorSpecs] = (
@@ -1124,14 +1126,12 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         if self.training_supported:
             if self._is_hub_content:
                 self.training_ecr_uri: Optional[str] = json_obj["training_ecr_uri"]
-                self._non_serializable_slots.append("training_ecr_specs")
             else:
                 self.training_ecr_specs: Optional[JumpStartECRSpecs] = (
                     JumpStartECRSpecs(json_obj["training_ecr_specs"])
                     if "training_ecr_specs" in json_obj
                     else None
                 )
-                self._non_serializable_slots.append("training_ecr_uri")
             self.training_artifact_key: str = json_obj["training_artifact_key"]
             self.training_script_key: str = json_obj["training_script_key"]
             hyperparameters: Any = json_obj.get("hyperparameters")

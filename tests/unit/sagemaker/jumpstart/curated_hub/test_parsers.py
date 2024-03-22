@@ -40,6 +40,7 @@ gemma_model_document = HUB_MODEL_DOCUMENT_DICTS["huggingface-llm-gemma-2b-instru
                 "EncryptInterContainerTraffic",
                 "MaxRuntimeInSeconds",
                 "DisableOutputCompression",
+                "ModelDir",
             ],
         ),
         pytest.param(
@@ -49,6 +50,7 @@ gemma_model_document = HUB_MODEL_DOCUMENT_DICTS["huggingface-llm-gemma-2b-instru
                 "encrypt_inter_container_traffic",
                 "max_runtime_in_seconds",
                 "disable_output_compression",
+                "model_dir",
             ],
         ),
         pytest.param(
