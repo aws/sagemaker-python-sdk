@@ -392,10 +392,10 @@ class CuratedHub:
             scope=JumpStartScriptScope.INFERENCE,
             sagemaker_session=self._sagemaker_session,
         )
-        manifest_entry = self.studio_manifest[model.model_id]
-        if not manifest_entry:
+        studio_manifest_entry = self.studio_manifest.get(model.model_id)
+        if not studio_manifest_entry:
             raise KeyError(f"Could not find model entry {model.model_id} in studio manifest.")
-        studio_specs = self._fetch_studio_specs(manifest_entry[STUDIO_SPEC_PATH_KEY_IN_MANIFEST])
+        studio_specs = self._fetch_studio_specs(studio_manifest_entry[STUDIO_SPEC_PATH_KEY_IN_MANIFEST])
 
         dest_location = S3ObjectLocation(
             bucket=self.hub_storage_location.bucket,
@@ -450,7 +450,7 @@ class CuratedHub:
 
         hub_content_document: HubModelDocument = make_hub_model_document_from_specs(
             model_specs=model_specs,
-            studio_manifest_entry=manifest_entry,
+            studio_manifest_entry=studio_manifest_entry,
             studio_specs=studio_specs,
             hub_content_dependencies=dependencies,
             region=self.region,
