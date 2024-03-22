@@ -42,8 +42,7 @@ from sagemaker.serve.utils.tuning import (
     _serial_benchmark,
     _concurrent_benchmark,
     _more_performant,
-    _pretty_print_results_djl_js,
-    _pretty_print_results_tgi_js
+    _pretty_print_benchmark_results
 )
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.base_predictor import PredictorBase
@@ -394,7 +393,10 @@ class JumpStart(ABC):
                 "OPTION_TENSOR_PARALLEL_DEGREE": str(best_tuned_combination[1])
             })
 
-            _pretty_print_results_djl_js(benchmark_results)
+            _pretty_print_benchmark_results(
+                benchmark_results,
+                ["OPTION_TENSOR_PARALLEL_DEGREE"]
+            )
             logger.info(
                 "Model Configuration: %s was most performant with avg latency: %s, "
                 "p90 latency: %s, average tokens per second: %s, throughput/s: %s, "
@@ -554,7 +556,10 @@ class JumpStart(ABC):
                 "SM_NUM_GPUS": str(best_tuned_combination[1])
             })
 
-            _pretty_print_results_tgi_js(benchmark_results)
+            _pretty_print_benchmark_results(
+                benchmark_results,
+                ["SM_NUM_GPUS"]
+            )
             logger.info(
                 "Model Configuration: %s was most performant with avg latency: %s, "
                 "p90 latency: %s, average tokens per second: %s, throughput/s: %s, "
