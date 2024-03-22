@@ -6913,6 +6913,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         }
         if hub_content_version:
             request["HubContentVersion"] = hub_content_version
+        print("@@@SESSION REQUEST@@@")
+        print(request)
 
         return self.sagemaker_client.describe_hub_content(**request)
 
