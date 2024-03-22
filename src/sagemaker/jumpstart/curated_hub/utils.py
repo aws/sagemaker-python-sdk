@@ -30,8 +30,6 @@ from sagemaker.jumpstart import utils
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.curated_hub.constants import (
     JUMPSTART_CURATED_HUB_MODEL_TAG,
-    JUMPSTART_HUB_MODEL_ID_TAG_PREFIX,
-    JUMPSTART_HUB_MODEL_VERSION_TAG_PREFIX,
 )
 from sagemaker.utils import format_tags, TagsDict
 
@@ -288,7 +286,7 @@ def is_curated_jumpstart_model(
         ),
         None,
     )
-    
+
     return is_curated_model is not None
 
 
