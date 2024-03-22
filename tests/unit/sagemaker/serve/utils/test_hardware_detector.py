@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 from botocore.exceptions import ClientError
+from unittest.mock import patch, Mock
 import pytest
 
 from sagemaker.serve.utils import hardware_detector
@@ -21,6 +22,8 @@ REGION = "us-west-2"
 VALID_INSTANCE_TYPE = "ml.g5.48xlarge"
 INVALID_INSTANCE_TYPE = "fl.c5.57xxlarge"
 EXPECTED_INSTANCE_GPU_INFO = (8, 196608)
+MIB_CONVERSION_FACTOR = 0.00000095367431640625
+MEMORY_BUFFER_MULTIPLIER = 1.2  # 20% buffer
 
 
 def test_get_gpu_info_success(sagemaker_session, boto_session):
@@ -96,3 +99,24 @@ def test_format_instance_type_without_ml_success():
     formatted_instance_type = hardware_detector._format_instance_type("g5.48xlarge")
 
     assert formatted_instance_type == "g5.48xlarge"
+
+
+@patch("sagemaker.serve.utils.hardware_detector.estimate_command_parser")
+@patch("sagemaker.serve.utils.hardware_detector.gather_data")
+def test_total_inference_model_size_mib(
+    mock_gather_data,
+    mock_parser,
+):
+    mock_parser.return_value = Mock()
+    mock_gather_data.return_value = [[1, 1, 1, 1]]
+    product = MIB_CONVERSION_FACTOR * 1 * MEMORY_BUFFER_MULTIPLIER
+
+    assert (
+        hardware_detector._total_inference_model_size_mib("stable-diffusion", "float32") == product
+    )
+
+    mock_parser.return_value = Mock()
+    mock_gather_data.return_value = None
+
+    with pytest.raises(ValueError):
+        hardware_detector._total_inference_model_size_mib("stable-diffusion", "float32")

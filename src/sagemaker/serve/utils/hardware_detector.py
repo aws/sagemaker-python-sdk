@@ -18,10 +18,16 @@ from typing import Tuple
 
 from botocore.exceptions import ClientError
 
+from accelerate.commands.estimate import estimate_command_parser, gather_data
 from sagemaker import Session
+from sagemaker.model import Model
 from sagemaker import instance_types_gpu_info
 
 logger = logging.getLogger(__name__)
+
+
+MIB_CONVERSION_FACTOR = 0.00000095367431640625
+MEMORY_BUFFER_MULTIPLIER = 1.2  # 20% buffer
 
 
 def _get_gpu_info(instance_type: str, session: Session) -> Tuple[int, int]:
@@ -108,3 +114,24 @@ def _format_instance_type(instance_type: str) -> str:
 
     ec2_instance = ".".join(split_instance)
     return ec2_instance
+
+
+def _total_inference_model_size_mib(model: Model, dtype: str) -> int:
+    """Calculates the model size from HF accelerate
+
+    This function gets the model size from accelerate. It also adds a
+    padding and converts to size MiB. When performing inference, expect
+     to add up to an additional 20% to the given model size as found by EleutherAI.
+    """
+    args = estimate_command_parser().parse_args([model, "--dtypes", dtype])
+
+    output = gather_data(
+        args
+    )  # "dtype", "Largest Layer", "Total Size Bytes", "Training using Adam"
+
+    if output is None:
+        raise ValueError(f"Could not get Model size for {model}")
+
+    total_memory_size_mib = MEMORY_BUFFER_MULTIPLIER * output[0][2] * MIB_CONVERSION_FACTOR
+    logger.info("Total memory size MIB: %s", total_memory_size_mib)
+    return total_memory_size_mib

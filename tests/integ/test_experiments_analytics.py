@@ -19,6 +19,7 @@ from contextlib import contextmanager
 import pytest
 
 from sagemaker.analytics import ExperimentAnalytics
+from tests import integ
 
 
 @contextmanager
@@ -121,6 +122,9 @@ def experiment_with_artifacts(sagemaker_session):
 
 
 @pytest.mark.release
+@pytest.mark.skipif(
+    integ.test_region() == "us-east-2", reason="Currently issues in this region NonSDK related"
+)
 def test_experiment_analytics_artifacts(sagemaker_session):
     with experiment_with_artifacts(sagemaker_session) as experiment_name:
         analytics = ExperimentAnalytics(
