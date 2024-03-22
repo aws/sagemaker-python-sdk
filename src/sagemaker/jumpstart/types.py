@@ -1706,6 +1706,7 @@ class HubModelDocument(JumpStartDataHolderType):
         region: str,
         json_obj: Optional[Dict[str, Any]] = None,
         model_specs: Optional[JumpStartModelSpecs] = None,
+        studio_manifest_entry: Optional[Dict[str, Any]] = None,
         studio_specs: Optional[Dict[str, Any]] = None,
         dependencies: List[HubContentDependency] = [],
     ) -> None:
@@ -1721,7 +1722,8 @@ class HubModelDocument(JumpStartDataHolderType):
         self.dependencies = dependencies
         if json_obj:
             self.from_json(json_obj)
-        elif model_specs is not None and studio_specs is not None:
+        elif model_specs and studio_specs and studio_manifest_entry:
+            self.from_manifest(studio_manifest_entry)
             self.from_specs(model_specs, studio_specs)
         else:
             raise ValueError("Please provide either [json_obj] or [model_specs and studio_specs].")
@@ -1907,6 +1909,14 @@ class HubModelDocument(JumpStartDataHolderType):
 
     def get_region(self) -> str:
         return self._region
+    
+    def from_manifest(self, studio_manifest_entry: Dict[str, Any]):
+        if studio_manifest_entry.get("framework"):
+            self.framework = studio_manifest_entry["framework"]
+        if studio_manifest_entry.get("dataType"):
+            self.datatype = studio_manifest_entry["dataType"]
+        if studio_manifest_entry.get("license"):
+            self.license = studio_manifest_entry["license"]
 
     def from_specs(self, model_specs: JumpStartModelSpecs, studio_specs: Dict[str, Any]) -> None:
         self.url: str = model_specs.url
@@ -1995,10 +2005,6 @@ class HubModelDocument(JumpStartDataHolderType):
         # self.model_provider_icon_uri: Optional[str] = None  # TODO: Missing in specs?
         if studio_specs.get("problemType"):
             self.task = studio_specs["problemType"]
-        if studio_specs.get("framework"):
-                self.framework = studio_specs["framework"]
-        if studio_specs.get("dataType"):
-            self.datatype = studio_specs["dataType"]
         if studio_specs.get("license"):
             self.license = studio_specs["license"]
         self.contextual_help: Optional[str] = studio_specs.get("contextualHelp")
