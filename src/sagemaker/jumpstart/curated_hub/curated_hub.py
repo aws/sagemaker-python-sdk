@@ -174,10 +174,9 @@ class CuratedHub:
         return self._list_hubs_cache
 
     def describe_model(
-        self, model_name: str, model_version: str = "*"
+        self, model_name: str, model_version: Optional[str] = None
     ) -> DescribeHubContentResponse:
         """Returns descriptive information about the Hub Model"""
-
         hub_content_description: Dict[str, Any] = self._sagemaker_session.describe_hub_content(
             hub_name=self.hub_name,
             hub_content_name=model_name,
@@ -187,7 +186,7 @@ class CuratedHub:
 
         return DescribeHubContentResponse(hub_content_description)
 
-    def delete_model(self, model_name: str, model_version: str = "*") -> None:
+    def delete_model(self, model_name: str, model_version: Optional[str] = None) -> None:
         """Deletes a model from this CuratedHub."""
         return self._sagemaker_session.delete_hub_content(
             hub_content_name=model_name,
