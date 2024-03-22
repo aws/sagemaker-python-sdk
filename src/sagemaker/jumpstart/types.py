@@ -1727,7 +1727,7 @@ class HubModelDocument(JumpStartDataHolderType):
             self.from_specs(model_specs, studio_specs)
         else:
             raise ValueError("Please provide either [json_obj] or [model_specs and studio_specs].")
-        
+
     def __str__(self) -> str:
         """Returns string representation of object. Example:
 
@@ -1909,7 +1909,7 @@ class HubModelDocument(JumpStartDataHolderType):
 
     def get_region(self) -> str:
         return self._region
-    
+
     def from_manifest(self, studio_manifest_entry: Dict[str, Any]):
         if studio_manifest_entry.get("framework"):
             self.framework = studio_manifest_entry["framework"]
@@ -1926,14 +1926,14 @@ class HubModelDocument(JumpStartDataHolderType):
         self.hosting_artifact_uri = s3_path_join(
             "s3://", content_bucket, model_specs.hosting_artifact_key
         )
-        if studio_specs.get(
-            "inferenceArtifactS3DataType"
-        ):
-            self.hosting_artifact_s3_data_type: Optional[str] = studio_specs["inferenceArtifactS3DataType"]
-        if studio_specs.get(
-            "inferenceArtifactCompressionType"
-        ):
-            self.hosting_artifact_compression_type: Optional[str] = studio_specs["inferenceArtifactCompressionType"]
+        if studio_specs.get("inferenceArtifactS3DataType"):
+            self.hosting_artifact_s3_data_type: Optional[str] = studio_specs[
+                "inferenceArtifactS3DataType"
+            ]
+        if studio_specs.get("inferenceArtifactCompressionType"):
+            self.hosting_artifact_compression_type: Optional[str] = studio_specs[
+                "inferenceArtifactCompressionType"
+            ]
         self.hosting_script_uri = s3_path_join(
             "s3://", content_bucket, model_specs.hosting_script_key
         )
@@ -1947,11 +1947,15 @@ class HubModelDocument(JumpStartDataHolderType):
             bool
         ] = model_specs.dynamic_container_deployment_supported
         if model_specs.hosting_prepacked_artifact_key:
-            self.hosting_prepacked_artifact_uri: Optional[str] = s3_path_join("s3://", content_bucket, model_specs.hosting_prepacked_artifact_key)
+            self.hosting_prepacked_artifact_uri: Optional[str] = s3_path_join(
+                "s3://", content_bucket, model_specs.hosting_prepacked_artifact_key
+            )
         # self.hosting_prepacked_artifact_version: Optional[str] = None  # TODO: Not in specs?
         self.hosting_use_script_uri: Optional[bool] = model_specs.hosting_use_script_uri
         if model_specs.hosting_eula_key:
-            self.hosting_eula_uri: Optional[str] = s3_path_join("s3://", content_bucket, model_specs.hosting_eula_key)
+            self.hosting_eula_uri: Optional[str] = s3_path_join(
+                "s3://", content_bucket, model_specs.hosting_eula_key
+            )
 
         if model_specs.hosting_model_package_arns:
             self.hosting_model_package_arn: Optional[str] = model_specs.hosting_model_package_arns
@@ -1965,7 +1969,7 @@ class HubModelDocument(JumpStartDataHolderType):
             framework=model_specs.hosting_ecr_specs.framework,
             instance_type=self.default_inference_instance_type,
             image_scope=JumpStartScriptScope.INFERENCE,
-            region=self._region
+            region=self._region,
         )
         self.supported_inference_instance_types: Optional[
             str
@@ -2033,15 +2037,21 @@ class HubModelDocument(JumpStartDataHolderType):
             self.hyperparameters: List[JumpStartHyperparameter] = model_specs.hyperparameters
             if model_specs.training_script_key:
 
-                self.training_script_uri: Optional[str] = s3_path_join("s3://", content_bucket, model_specs.training_script_key)
+                self.training_script_uri: Optional[str] = s3_path_join(
+                    "s3://", content_bucket, model_specs.training_script_key
+                )
             if model_specs.training_prepacked_script_key:
-                self.training_prepacked_script_uri: Optional[str] = s3_path_join("s3://", content_bucket, model_specs.training_prepacked_script_key)
+                self.training_prepacked_script_uri: Optional[str] = s3_path_join(
+                    "s3://", content_bucket, model_specs.training_prepacked_script_key
+                )
             # self.training_prepacked_script_version: Optional[
             #     str
             # ] = None  # TODO: studio_specs.minTrainingScriptVersion?
             self.training_metrics: Optional[List[Dict[str, str]]] = model_specs.metrics
             if model_specs.training_artifact_key:
-                self.training_artifact_uri: Optional[str] = s3_path_join("s3://", content_bucket, model_specs.training_artifact_key)
+                self.training_artifact_uri: Optional[str] = s3_path_join(
+                    "s3://", content_bucket, model_specs.training_artifact_key
+                )
             self.training_dependencies: Optional[str] = model_specs.training_dependencies
             self.default_training_instance_type: Optional[
                 str
@@ -2053,7 +2063,7 @@ class HubModelDocument(JumpStartDataHolderType):
                 framework=model_specs.training_ecr_specs.framework,
                 image_scope=JumpStartScriptScope.TRAINING,
                 instance_type=self.default_training_instance_type,
-                region=self._region
+                region=self._region,
             )
             self.supported_training_instance_types: Optional[
                 str

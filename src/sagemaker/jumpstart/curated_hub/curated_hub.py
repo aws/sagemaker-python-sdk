@@ -108,7 +108,9 @@ class CuratedHub:
                 self.hub_name,
                 default_bucket_name,
             )
-            return S3ObjectLocation(bucket=default_bucket_name, key=f"{self.hub_name}-{curr_timestamp}")
+            return S3ObjectLocation(
+                bucket=default_bucket_name, key=f"{self.hub_name}-{curr_timestamp}"
+            )
         except exceptions.ClientError:
             hub_bucket_name = generate_default_hub_bucket_name(self._sagemaker_session)
             curr_timestamp = datetime.now().timestamp()
@@ -122,7 +124,11 @@ class CuratedHub:
     def _generate_hub_storage_location(self, bucket_name: Optional[str] = None) -> None:
         """Generates an ``S3ObjectLocation`` given a Hub name."""
         curr_timestamp = datetime.now().timestamp()
-        return S3ObjectLocation(bucket=bucket_name, key=f"{self.hub_name}-{curr_timestamp}") if bucket_name else self._fetch_hub_storage_location()
+        return (
+            S3ObjectLocation(bucket=bucket_name, key=f"{self.hub_name}-{curr_timestamp}")
+            if bucket_name
+            else self._fetch_hub_storage_location()
+        )
 
     def create(
         self,
@@ -256,7 +262,11 @@ class CuratedHub:
 
                 # 1. Model version exists in Hub, pass
                 if hub_model_version == model_version:
-                    JUMPSTART_LOGGER.info("%s v%s already exists in your Hub and will not be synced", model.model_id, model.version)
+                    JUMPSTART_LOGGER.info(
+                        "%s v%s already exists in your Hub and will not be synced",
+                        model.model_id,
+                        model.version,
+                    )
                     pass
 
                 # 2. Invalid model version exists in Hub, pass
@@ -350,8 +360,7 @@ class CuratedHub:
             scope=JumpStartScriptScope.INFERENCE,
             sagemaker_session=self._sagemaker_session,
         )
-        
-        manifest_entry = self._find_entry_in_studio_manifest(self.studio_manifest, model.model_id)
+        manifest_entry = self.studio_manifest[model.model_id]
         if not manifest_entry:
             raise KeyError(f"Could not find model entry {model.model_id} in studio manifest.")
         studio_specs = self._fetch_studio_specs(manifest_entry[STUDIO_SPEC_PATH_KEY_IN_MANIFEST])
@@ -419,18 +428,13 @@ class CuratedHub:
             Bucket=utils.get_jumpstart_content_bucket(self.region), Key=studio_spec_path
         )
         return json.loads(response["Body"].read().decode("utf-8"))
-    
-    def _fetch_manifest_from_s3(self, key: str) -> List[Dict[str,Any]]:
+
+    def _fetch_manifest_from_s3(self, key: str) -> Dict[str, Dict[str, Any]]:
         response = self._s3_client.get_object(
             Bucket=utils.get_jumpstart_content_bucket(self.region), Key=key
         )
-        return json.loads(response["Body"].read().decode("utf-8"))
-    
-    def _find_entry_in_studio_manifest(self, studio_manifest: List[Dict[str,Any]], model_id: str) -> Dict[str,Any]:
-        for entry in studio_manifest:
-            if entry.get(STUDIO_MODEL_ID_KEY) == model_id:
-                return entry
-        return None
+        manifest_list = json.loads(response["Body"].read().decode("utf-8"))
+        return {entry.get(STUDIO_MODEL_ID_KEY): entry for entry in manifest_list}
 
     def scan_and_tag_models(self, model_ids: List[str] = None) -> None:
         """Scans the Hub for JumpStart models and tags the HubContent.
@@ -467,9 +471,7 @@ class CuratedHub:
             )
 
         js_models_in_hub = [
-            model
-            for model in model_summaries_to_scan
-            if is_curated_jumpstart_model(model) is True
+            model for model in model_summaries_to_scan if is_curated_jumpstart_model(model) is True
         ]
         for model in js_models_in_hub:
             tags_to_add: List[TagsDict] = find_deprecated_vulnerable_flags_for_hub_content(

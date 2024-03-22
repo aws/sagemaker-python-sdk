@@ -863,6 +863,7 @@ def generate_studio_spec_file_prefix(model_id: str, model_version: str) -> str:
     """Returns the Studio Spec file prefix given a model ID and version."""
     return f"studio_models/{model_id}/studio_specs_v{model_version}.json"
 
+
 def extract_info_from_hub_content_arn(
     arn: str,
 ) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:
