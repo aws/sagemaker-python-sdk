@@ -22,6 +22,9 @@ from botocore import exceptions
 from botocore.client import BaseClient
 from packaging.version import Version
 
+from sagemaker.utils import TagsDict
+from sagemaker.s3 import s3_path_join
+from sagemaker.session import Session
 from sagemaker.jumpstart import utils
 from sagemaker.jumpstart.curated_hub.accessors import file_generator
 from sagemaker.jumpstart.curated_hub.accessors.multipartcopy import MultiPartCopyHandler
@@ -34,18 +37,13 @@ from sagemaker.jumpstart.curated_hub.constants import (
 from sagemaker.jumpstart.curated_hub.sync.comparator import SizeAndLastUpdatedComparator
 from sagemaker.jumpstart.curated_hub.sync.request import HubSyncRequestFactory
 from sagemaker.jumpstart.enums import JumpStartScriptScope
-from sagemaker.session import Session
 from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     JUMPSTART_LOGGER,
 )
 from sagemaker.jumpstart.types import (
-    DescribeHubResponse,
-    DescribeHubContentResponse,
     HubContentType,
     JumpStartModelSpecs,
-    HubModelDocument,
-    HubContentInfo,
 )
 from sagemaker.jumpstart.curated_hub.utils import (
     create_hub_bucket_if_it_does_not_exist,
@@ -54,12 +52,20 @@ from sagemaker.jumpstart.curated_hub.utils import (
     get_jumpstart_model_and_version,
     find_deprecated_vulnerable_flags_for_hub_content,
 )
+from sagemaker.jumpstart.curated_hub.interfaces import (
+    DescribeHubResponse,
+    DescribeHubContentResponse,
+    HubModelDocument,
+    HubContentInfo,
+    HubContentDependency,
+)
 from sagemaker.jumpstart.curated_hub.types import (
+    FileInfo,
     JumpStartModelInfo,
     S3ObjectLocation,
     summary_list_from_list_api_response,
 )
-from sagemaker.utils import TagsDict
+from sagemaker.jumpstart.curated_hub.parsers import make_hub_model_document_from_specs
 
 
 class CuratedHub:
@@ -383,9 +389,24 @@ class CuratedHub:
             f"{TASK_TAG_PREFIX}:TODO: pull from specs",
         ]
 
-        hub_content_document = HubModelDocument(
+        dest_file_dict: Dict[str, FileInfo] = {}
+        for dest_file_info in dest_files:
+            dest_file_dict[dest_file_info.location.key] = dest_file_info
+
+        dependencies: List[HubContentDependency] = []
+        for src_file_info in src_files:
+            copy_path = s3_path_join(dest_location.get_uri(), src_file_info.location.key)
+            hub_content_dependency: HubContentDependency = {
+                "dependency_origin_path": src_file_info.location.get_uri(),
+                "dependency_copy_path": copy_path,
+                "dependency_type": src_file_info.dependecy_type,
+            }
+            dependencies.append(hub_content_dependency)
+
+        hub_content_document: HubModelDocument = make_hub_model_document_from_specs(
             model_specs=model_specs,
             studio_specs=studio_specs,
+            hub_content_dependencies=dependencies,
             region=self.region,
         )
 

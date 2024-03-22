@@ -17,9 +17,10 @@ from unittest import mock
 from unittest.mock import patch
 import pytest
 from mock import Mock
+from sagemaker.jumpstart.types import JumpStartModelSpecs
 from sagemaker.jumpstart.curated_hub.curated_hub import CuratedHub
+from sagemaker.jumpstart.curated_hub.interfaces import HubContentInfo
 from sagemaker.jumpstart.curated_hub.types import JumpStartModelInfo, S3ObjectLocation
-from sagemaker.jumpstart.types import JumpStartModelSpecs, HubContentInfo
 from tests.unit.sagemaker.jumpstart.constants import BASE_SPEC
 from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec
 

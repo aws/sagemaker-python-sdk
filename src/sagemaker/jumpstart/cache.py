@@ -46,6 +46,7 @@ from sagemaker.jumpstart.parameters import (
     JUMPSTART_DEFAULT_SEMANTIC_VERSION_CACHE_EXPIRATION_HORIZON,
 )
 from sagemaker.jumpstart import utils
+from sagemaker.jumpstart.enums import JumpStartModelType
 from sagemaker.jumpstart.types import (
     JumpStartCachedContentKey,
     JumpStartCachedContentValue,
@@ -53,13 +54,17 @@ from sagemaker.jumpstart.types import (
     JumpStartModelSpecs,
     JumpStartS3FileType,
     JumpStartVersionedModelId,
-    DescribeHubResponse,
-    DescribeHubContentResponse,
     HubType,
     HubContentType,
 )
 from sagemaker.jumpstart.curated_hub import utils as hub_utils
-from sagemaker.jumpstart.enums import JumpStartModelType
+from sagemaker.jumpstart.curated_hub.interfaces import (
+    DescribeHubResponse,
+    DescribeHubContentResponse,
+)
+from sagemaker.jumpstart.curated_hub.parsers import (
+    make_model_specs_from_describe_hub_content_response,
+)
 
 
 class JumpStartModelsCache:
@@ -140,7 +145,8 @@ class JumpStartModelsCache:
             JumpStartModelType.PROPRIETARY: self._proprietary_manifest_s3_key,
         }
         self.s3_bucket_name = (
-            utils.get_jumpstart_content_bucket(self._region) if s3_bucket_name is None else s3_bucket_name
+            utils.get_jumpstart_content_bucket(self._region)
+            if s3_bucket_name is None else s3_bucket_name
         )
         self._s3_client = s3_client or (
             boto3.client("s3", region_name=self._region, config=s3_client_config)
@@ -259,7 +265,9 @@ class JumpStartModelsCache:
             return JumpStartVersionedModelId(model_id, sm_compatible_model_version)
 
         versions_incompatible_with_sagemaker = [
-            Version(header.version) for header in manifest.values() if header.model_id == model_id  # type: ignore
+            Version(header.version)
+            for header in manifest.values()
+            if header.model_id == model_id  # type: ignore
         ]
         sm_incompatible_model_version = self._select_version(
             model_id, version, versions_incompatible_with_sagemaker, model_type
@@ -270,7 +278,8 @@ class JumpStartModelsCache:
             sm_version_to_use_list = [
                 header.min_version
                 for header in manifest.values()  # type: ignore
-                if header.model_id == model_id and header.version == model_version_to_use_incompatible_with_sagemaker
+                if header.model_id == model_id and \
+                    header.version == model_version_to_use_incompatible_with_sagemaker
             ]
             if len(sm_version_to_use_list) != 1:
                 # ``manifest`` dict should already enforce this
@@ -438,7 +447,8 @@ class JumpStartModelsCache:
             )
 
         if data_type == HubContentType.NOTEBOOK:
-            hub_name, _, notebook_name, notebook_version = hub_utils.get_info_from_hub_resource_arn(id_info)
+            hub_name, _, notebook_name, notebook_version = hub_utils \
+                .get_info_from_hub_resource_arn(id_info)
             response: Dict[str, Any] = self._sagemaker_session.describe_hub_content(
                 hub_name=hub_name,
                 hub_content_name=notebook_name,
@@ -449,7 +459,9 @@ class JumpStartModelsCache:
             return JumpStartCachedContentValue(formatted_content=hub_notebook_description)
 
         if data_type == HubContentType.MODEL:
-            hub_name, _, model_name, model_version = hub_utils.get_info_from_hub_resource_arn(id_info)
+            hub_name, _, model_name, model_version = hub_utils.get_info_from_hub_resource_arn(
+                id_info
+            )
             hub_model_description: Dict[str, Any] = self._sagemaker_session.describe_hub_content(
                 hub_name=hub_name,
                 hub_content_name=model_name,
@@ -457,7 +469,7 @@ class JumpStartModelsCache:
                 hub_content_type=data_type,
             )
 
-            model_specs = JumpStartModelSpecs(
+            model_specs = make_model_specs_from_describe_hub_content_response(
                 DescribeHubContentResponse(hub_model_description),
             )
 
