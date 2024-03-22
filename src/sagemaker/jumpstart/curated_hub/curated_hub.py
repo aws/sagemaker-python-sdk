@@ -413,6 +413,10 @@ class CuratedHub:
 
         search_keywords = [JUMPSTART_CURATED_HUB_MODEL_TAG]
 
+        dest_file_dict: Dict[str, FileInfo] = {}
+        for dest_file_info in dest_files:
+            dest_file_dict[dest_file_info.location.key] = dest_file_info
+
         dependencies: List[HubContentDependency] = []
         for src_file_info in src_files:
             copy_path = s3_path_join(dest_location.get_uri(), src_file_info.location.key)
