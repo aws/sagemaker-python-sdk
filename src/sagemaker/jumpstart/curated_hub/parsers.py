@@ -29,6 +29,7 @@ from sagemaker.jumpstart.curated_hub.interfaces import (
 )
 from sagemaker.jumpstart.curated_hub.parser_utils import (
     camel_to_snake,
+    snake_to_upper_camel,
     walk_and_apply_json,
 )
 
@@ -37,19 +38,23 @@ def _to_json(dictionary: Dict[Any, Any]) -> Dict[Any, Any]:
     """Convert a complex nested dictionary of JumpStartDataHolderType into json"""
     for key, value in dictionary.items():
         if issubclass(type(value), JumpStartDataHolderType):
-            dictionary[key] = value.to_json()
+            dictionary[key] = walk_and_apply_json(value.to_json(), snake_to_upper_camel)
         elif isinstance(value, list):
             new_value = []
             for value_in_list in value:
                 new_value_in_list = value_in_list
                 if issubclass(type(value_in_list), JumpStartDataHolderType):
-                    new_value_in_list = value_in_list.to_json()
+                    new_value_in_list = walk_and_apply_json(
+                        value_in_list.to_json(), snake_to_upper_camel
+                    )
                 new_value.append(new_value_in_list)
             dictionary[key] = new_value
         elif isinstance(value, dict):
             for key_in_dict, value_in_dict in value.items():
                 if issubclass(type(value_in_dict), JumpStartDataHolderType):
-                    value[key_in_dict] = value_in_dict.to_json()
+                    value[key_in_dict] = walk_and_apply_json(
+                        value_in_dict.to_json(), snake_to_upper_camel
+                    )
     return dictionary
 
 
@@ -74,6 +79,7 @@ def get_model_spec_arg_keys(
             "EncryptInterContainerTraffic",
             "MaxRuntimeInSeconds",
             "DisableOutputCompression",
+            "ModelDir",
         ]
     elif arg_type == ModelSpecKwargType.MODEL:
         arg_keys = []
@@ -306,9 +312,14 @@ def make_hub_model_document_from_specs(
     document["InferenceVolumeSize"] = model_specs.inference_volume_size
     document["InferenceEnableNetworkIsolation"] = model_specs.inference_enable_network_isolation
     document["ResourceNameBase"] = model_specs.resource_name_base
-    document["DefaultPayloads"] = model_specs.default_payloads
+    document["DefaultPayloads"] = {
+        alias: walk_and_apply_json(payload.to_json(), snake_to_upper_camel)
+        for alias, payload in model_specs.default_payloads.items()
+    }
     document["HostingResourceRequirements"] = model_specs.hosting_resource_requirements
-    document["HostingInstanceTypeVariants"] = model_specs.hosting_instance_type_variants
+    document[
+        "HostingInstanceTypeVariants"
+    ] = model_specs.hosting_instance_type_variants.regionalize(region)
     default_training_dataset_key = studio_specs.get("defaultDataKey")
     document["DefaultTrainingDatasetUri"] = (
         s3_path_join("s3://", content_bucket, model_specs.hosting_prepacked_artifact_key)
@@ -343,7 +354,6 @@ def make_hub_model_document_from_specs(
     # document["datatype"] = manifest.get("dataType")
     # document["license"] = manifest.get("license")
     document["ContextualHelp"] = studio_specs.get("contextualHelp")
-    document["ModelDir"] = None
 
     # Deploy kwargs
     document["ModelDataDownloadTimeout"] = model_specs.deploy_kwargs.get(
@@ -362,7 +372,10 @@ def make_hub_model_document_from_specs(
             "trainingArtifactCompressionType"
         )
         document["TrainingArtifactS3DataType"] = studio_specs.get("trainingArtifactS3DataType")
-        document["Hyperparameters"] = model_specs.hyperparameters
+        document["Hyperparameters"] = [
+            walk_and_apply_json(param.to_json(), snake_to_upper_camel)
+            for param in model_specs.hyperparameters
+        ]
         document["TrainingScriptUri"] = (
             s3_path_join("s3://", content_bucket, model_specs.training_script_key)
             if model_specs.training_script_key is not None
@@ -393,7 +406,9 @@ def make_hub_model_document_from_specs(
         document["SupportedTrainingInstanceTypes"] = model_specs.supported_training_instance_types
         document["TrainingVolumeSize"] = model_specs.training_volume_size
         document["TrainingEnableNetworkIsolation"] = model_specs.training_enable_network_isolation
-        document["TrainingInstanceTypeVariants"] = model_specs.training_instance_type_variants
+        document[
+            "TrainingInstanceTypeVariants"
+        ] = model_specs.training_instance_type_variants.regionalize(region)
 
         # Estimator kwargs
         document["Encrypt_inter_container_traffic"] = model_specs.estimator_kwargs.get(
@@ -403,5 +418,5 @@ def make_hub_model_document_from_specs(
         document["DisableOutputCompression"] = model_specs.estimator_kwargs.get(
             "disable_output_compression"
         )
-
+        document["ModelDir"] = model_specs.estimator_kwargs.get("model_dir")
     return HubModelDocument(_to_json(document), region, hub_content_dependencies)

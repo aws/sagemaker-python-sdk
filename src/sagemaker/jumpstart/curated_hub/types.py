@@ -79,8 +79,8 @@ class JumpStartModelInfo:
     version: str
 
 
-class HubContentDependencyType(str, Enum):
-    """Enum class for HubContent dependency names"""
+class HubContentReferenceType(str, Enum):
+    """Enum class for HubContent reference names"""
 
     INFERENCE_ARTIFACT = "inference_artifact_s3_reference"
     TRAINING_ARTIFACT = "training_artifact_s3_reference"
@@ -89,6 +89,16 @@ class HubContentDependencyType(str, Enum):
     DEFAULT_TRAINING_DATASET = "default_training_dataset_s3_reference"
     DEMO_NOTEBOOK = "demo_notebook_s3_reference"
     MARKDOWN = "markdown_s3_reference"
+
+
+class HubContentDependencyType(str, Enum):
+    """Enum class for HubContent dependency names"""
+
+    SCRIPT = "SCRIPT"
+    ARTIFACT = "ARTIFACT"
+    DATASET = "DATASET"
+    NOTEBOOK = "NOTEBOOK"
+    OTHER = "OTHER"
 
 
 class FileInfo(JumpStartDataHolderType):
@@ -102,10 +112,10 @@ class FileInfo(JumpStartDataHolderType):
         key: str,
         size: Optional[bytes],
         last_updated: Optional[datetime],
-        dependecy_type: Optional[HubContentDependencyType] = None,
+        reference_type: Optional[HubContentReferenceType] = None,
     ):
         """Creates a FileInfo."""
         self.location = S3ObjectLocation(bucket, key)
         self.size = size
         self.last_updated = last_updated
-        self.dependecy_type = dependecy_type
+        self.reference_type = reference_type

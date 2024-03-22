@@ -20,7 +20,7 @@ from sagemaker.jumpstart.curated_hub.sync.comparator import SizeAndLastUpdatedCo
 from sagemaker.jumpstart.curated_hub.sync.request import HubSyncRequestFactory
 from sagemaker.jumpstart.curated_hub.types import (
     FileInfo,
-    HubContentDependencyType,
+    HubContentReferenceType,
     S3ObjectLocation,
 )
 
@@ -33,7 +33,7 @@ def _helper_generate_fileinfos(
     key_prefix: Optional[str] = None,
     size: Optional[int] = None,
     last_updated: Optional[datetime] = None,
-    dependecy_type: Optional[HubContentDependencyType] = None,
+    dependecy_type: Optional[HubContentReferenceType] = None,
 ) -> List[FileInfo]:
     file_infos = []
     for i in range(num_infos):

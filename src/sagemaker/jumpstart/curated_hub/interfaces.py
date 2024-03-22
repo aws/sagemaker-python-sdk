@@ -57,6 +57,8 @@ class HubDataHolderType(JumpStartDataHolderType):
                             json_obj[att].append(obj.to_json())
                         else:
                             json_obj[att].append(obj)
+                elif isinstance(cur_val, datetime.datetime):
+                    json_obj[att] = str(cur_val)
                 else:
                     json_obj[att] = cur_val
         return json_obj
@@ -163,26 +165,29 @@ class DescribeHubContentResponse(HubDataHolderType):
         """
         self.creation_time: datetime.datetime = json_obj["CreationTime"]
         self.document_schema_version: str = json_obj["DocumentSchemaVersion"]
-        self.failure_reason: str = json_obj["FailureReason"]
+        self.failure_reason: Optional[str] = json_obj.get("FailureReason")
         self.hub_arn: str = json_obj["HubArn"]
         self.hub_content_arn: str = json_obj["HubContentArn"]
-        self.hub_content_dependencies: List[HubContentDependency] = [
-            HubContentDependency(dep) for dep in json_obj["HubContentDependencies"]
-        ]
-        self.hub_content_description: str = json_obj["HubContentDescription"]
-        self.hub_content_display_name: str = json_obj["HubContentDisplayName"]
+        self.hub_content_dependencies = []
+        if "Dependencies" in json_obj:
+            self.hub_content_dependencies: Optional[List[HubContentDependency]] = [
+                HubContentDependency(dep) for dep in json_obj.get(["Dependencies"])
+            ]
+        self.hub_content_description: str = json_obj.get("HubContentDescription")
+        self.hub_content_display_name: str = json_obj.get("HubContentDisplayName")
         hub_region: Optional[str] = HubArnExtractedInfo.extract_region_from_arn(self.hub_arn)
         self._region = hub_region
-        self.hub_content_type: str = json_obj["HubContentType"]
+        self.hub_content_type: str = json_obj.get("HubContentType")
+        hub_content_document = json.loads(json_obj["HubContentDocument"])
         if self.hub_content_type == HubContentType.MODEL:
             self.hub_content_document: HubContentDocument = HubModelDocument(
+                json_obj=hub_content_document,
                 region=self._region,
-                json_obj=json_obj["HubContentDocument"],
                 dependencies=self.hub_content_dependencies,
             )
         elif self.hub_content_type == HubContentType.NOTEBOOK:
             self.hub_content_document: HubContentDocument = HubNotebookDocument(
-                json_obj=json_obj["HubContentDocument"], region=self._region
+                json_obj=hub_content_document, region=self._region
             )
         else:
             raise ValueError(
@@ -190,9 +195,9 @@ class DescribeHubContentResponse(HubDataHolderType):
                 f"Should be one of: {[item.name for item in HubContentType]}."
             )
 
-        self.hub_content_markdown: str = json_obj["HubContentMarkdown"]
+        self.hub_content_markdown: str = json_obj.get("HubContentMarkdown")
         self.hub_content_name: str = json_obj["HubContentName"]
-        self.hub_content_search_keywords: List[str] = json_obj["HubContentSearchKeywords"]
+        self.hub_content_search_keywords: List[str] = json_obj.get("HubContentSearchKeywords")
         self.hub_content_status: str = json_obj["HubContentStatus"]
         self.hub_content_version: str = json_obj["HubContentVersion"]
         self.hub_name: str = json_obj["HubName"]

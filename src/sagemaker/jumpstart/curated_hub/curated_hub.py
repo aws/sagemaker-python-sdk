@@ -28,13 +28,7 @@ from sagemaker.session import Session
 from sagemaker.jumpstart import utils
 from sagemaker.jumpstart.curated_hub.accessors import file_generator
 from sagemaker.jumpstart.curated_hub.accessors.multipartcopy import MultiPartCopyHandler
-from sagemaker.jumpstart.curated_hub.constants import (
-    JUMPSTART_CURATED_HUB_MODEL_TAG,
-    JUMPSTART_HUB_MODEL_ID_TAG_PREFIX,
-    JUMPSTART_HUB_MODEL_VERSION_TAG_PREFIX,
-    TASK_TAG_PREFIX,
-    FRAMEWORK_TAG_PREFIX,
-)
+from sagemaker.jumpstart.curated_hub.constants import JUMPSTART_CURATED_HUB_MODEL_TAG
 from sagemaker.jumpstart.curated_hub.sync.comparator import SizeAndLastUpdatedComparator
 from sagemaker.jumpstart.curated_hub.sync.request import HubSyncRequestFactory
 from sagemaker.jumpstart.enums import JumpStartScriptScope
@@ -62,6 +56,8 @@ from sagemaker.jumpstart.curated_hub.interfaces import (
 )
 from sagemaker.jumpstart.curated_hub.types import (
     FileInfo,
+    HubContentDependencyType,
+    HubContentReferenceType,
     JumpStartModelInfo,
     S3ObjectLocation,
     summary_list_from_list_api_response,
@@ -172,7 +168,7 @@ class CuratedHub:
             self._list_hubs_cache = None
         if self._list_hubs_cache is None:
             hub_content_summaries = self._sagemaker_session.list_hub_contents(
-                hub_name=self.hub_name, hub_content_type=HubContentType.MODEL, **kwargs
+                hub_name=self.hub_name, hub_content_type=HubContentType.MODEL.value, **kwargs
             )
             self._list_hubs_cache = hub_content_summaries
         return self._list_hubs_cache
@@ -186,7 +182,7 @@ class CuratedHub:
             hub_name=self.hub_name,
             hub_content_name=model_name,
             hub_content_version=model_version,
-            hub_content_type=HubContentType.MODEL,
+            hub_content_type=HubContentType.MODEL.value,
         )
 
         return DescribeHubContentResponse(hub_content_description)
@@ -196,7 +192,7 @@ class CuratedHub:
         return self._sagemaker_session.delete_hub_content(
             hub_content_name=model_name,
             hub_content_version=model_version,
-            hub_content_type=HubContentType.MODEL,
+            hub_content_type=HubContentType.MODEL.value,
             hub_name=self.hub_name,
         )
 
@@ -276,6 +272,33 @@ class CuratedHub:
                     models_to_sync.append(model)
 
         return models_to_sync
+
+    def _reference_type_to_dependency_type(
+        self, reference_type: HubContentReferenceType
+    ) -> Optional[HubContentDependencyType]:
+        if reference_type in [
+            HubContentReferenceType.INFERENCE_ARTIFACT,
+            HubContentReferenceType.TRAINING_ARTIFACT,
+        ]:
+            return HubContentDependencyType.ARTIFACT
+        elif reference_type in [
+            HubContentReferenceType.INFERENCE_SCRIPT,
+            HubContentReferenceType.TRAINING_SCRIPT,
+        ]:
+            return HubContentDependencyType.SCRIPT
+        elif reference_type in [
+            HubContentReferenceType.DEFAULT_TRAINING_DATASET,
+        ]:
+            return HubContentDependencyType.DATASET
+        elif reference_type in [
+            HubContentReferenceType.DEMO_NOTEBOOK,
+        ]:
+            return HubContentDependencyType.NOTEBOOK
+        elif reference_type in [
+            HubContentReferenceType.MARKDOWN,
+        ]:
+            return HubContentDependencyType.OTHER
+        return None
 
     def sync(self, model_list: List[Dict[str, str]]):
         """Syncs a list of JumpStart model ids and versions with a CuratedHub
@@ -403,7 +426,9 @@ class CuratedHub:
             hub_content_dependency: HubContentDependency = {
                 "dependency_origin_path": src_file_info.location.get_uri(),
                 "dependency_copy_path": copy_path,
-                "dependency_type": src_file_info.dependecy_type,
+                "dependency_type": self._reference_type_to_dependency_type(
+                    src_file_info.reference_type
+                ),
             }
             dependencies.append(hub_content_dependency)
 
@@ -413,7 +438,6 @@ class CuratedHub:
             hub_content_dependencies=dependencies,
             region=self.region,
         )
-        print(str(hub_content_document))
         self._sagemaker_session.import_hub_content(
             document_schema_version=hub_content_document.get_schema_version(),
             hub_content_name=model.model_id,

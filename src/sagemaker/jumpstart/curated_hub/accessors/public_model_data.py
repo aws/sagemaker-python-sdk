@@ -15,7 +15,7 @@ from __future__ import absolute_import
 from typing import Dict, Any, Optional
 from sagemaker import model_uris, script_uris
 from sagemaker.jumpstart.curated_hub.types import (
-    HubContentDependencyType,
+    HubContentReferenceType,
     S3ObjectLocation,
 )
 from sagemaker.jumpstart.curated_hub.utils import create_s3_object_reference_from_uri
@@ -46,8 +46,8 @@ class PublicModelDataAccessor:
         self.model_specs = model_specs
         self.studio_specs = studio_specs  # Necessary for SDK - Studio metadata drift
 
-    def get_s3_reference(self, dependency_type: HubContentDependencyType):
-        """Retrieves S3 reference given a HubContentDependencyType."""
+    def get_s3_reference(self, dependency_type: HubContentReferenceType):
+        """Retrieves S3 reference given a HubContentReferenceType."""
         return getattr(self, dependency_type.value)
 
     @property

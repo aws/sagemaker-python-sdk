@@ -294,22 +294,24 @@ class JumpStartHyperparameter(JumpStartDataHolderType):
         options = json_obj.get("options")
         min_val = json_obj.get("min")
         max_val = json_obj.get("max")
-        exclusive_min_val = json_obj.get("exclusive_min")
-        exclusive_max_val = json_obj.get("exclusive_max")
 
-        if options is not None:
+        if options is not None and len(options) > 0:
             self.options = options
         if min_val is not None:
             self.min = min_val
-
         if max_val is not None:
             self.max = max_val
 
-        if exclusive_min_val is not None:
-            self.exclusive_min = exclusive_min_val
+        # HubContentDocument model schema does not allow exclusive min/max.
+        if self._is_hub_content:
+            return
 
-        if exclusive_max_val is not None:
-            self.exclusive_max = exclusive_max_val
+        exclusive_min = json_obj.get("exclusive_min")
+        exclusive_max = json_obj.get("exclusive_max")
+        if exclusive_min is not None:
+            self.exclusive_min = exclusive_min
+        if exclusive_max is not None:
+            self.exclusive_max = exclusive_max
 
 
 class JumpStartEnvironmentVariable(JumpStartDataHolderType):
@@ -491,6 +493,20 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
         self.aliases: Optional[dict] = response.get("Aliases")
         self.regional_aliases = None
         self.variants: Optional[dict] = response.get("Variants")
+
+    def regionalize(self, region: str) -> Optional[Dict[str, Any]]:
+        """Returns regionalized instance type variants."""
+
+        if self.regional_aliases is None or self.aliases is not None:
+            return
+        aliases = self.regional_aliases.get(region, {})
+        variants = {}
+        for instance_name, properties in self.variants.items():
+            if properties.get("regional_properties") is not None:
+                variants.update({instance_name: properties.get("regional_properties")})
+            if properties.get("properties") is not None:
+                variants.update({instance_name: properties.get("properties")})
+        return {"Aliases": aliases, "Variants": variants}
 
     def get_instance_specific_metric_definitions(
         self, instance_type: str
