@@ -17,10 +17,8 @@ from enum import Enum
 from dataclasses import dataclass
 from datetime import datetime
 
-from sagemaker.jumpstart.types import (
-    JumpStartDataHolderType,
-    HubContentInfo,
-)
+from sagemaker.jumpstart.types import JumpStartDataHolderType
+from sagemaker.jumpstart.curated_hub.interfaces import HubContentInfo
 
 
 class CuratedHubUnsupportedFlag(str, Enum):

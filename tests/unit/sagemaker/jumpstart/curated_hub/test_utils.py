@@ -23,7 +23,7 @@ from sagemaker.jumpstart.curated_hub.types import (
     summary_from_list_api_response,
     summary_list_from_list_api_response,
 )
-from sagemaker.jumpstart.types import HubContentType, HubContentInfo
+from sagemaker.jumpstart.curated_hub.interfaces import HubContentInfo
 
 
 def test_get_info_from_hub_resource_arn():
