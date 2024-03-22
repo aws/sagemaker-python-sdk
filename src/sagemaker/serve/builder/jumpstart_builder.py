@@ -253,12 +253,6 @@ class JumpStart(ABC):
 
         self.pysdk_model.env.update(env)
 
-    def _log_delete_me(self, data: any):
-        """Placeholder docstring"""
-        logger.debug("*****************************************")
-        logger.debug(data)
-        logger.debug("*****************************************")
-
     @_capture_telemetry("djl_jumpstart.tune")
     def tune_for_djl_jumpstart(self, max_tuning_duration: int = 1800):
         """pass"""
@@ -269,21 +263,18 @@ class JumpStart(ABC):
             return self.pysdk_model
 
         initial_model_configuration = copy.deepcopy(self.pysdk_model.env)
-        self._log_delete_me(f"initial_model_configuration: {initial_model_configuration}")
 
-        self._log_delete_me(f"self.js_model_config: {self.js_model_config}")
         admissible_tensor_parallel_degrees = _get_admissible_tensor_parallel_degrees(self.js_model_config)
-        self._log_delete_me(f"admissible_tensor_parallel_degrees: {admissible_tensor_parallel_degrees}")
 
         benchmark_results = {}
         best_tuned_combination = None
         timeout = datetime.now() + timedelta(seconds=max_tuning_duration)
         for tensor_parallel_degree in admissible_tensor_parallel_degrees:
-            self._log_delete_me(f"tensor_parallel_degree: {tensor_parallel_degree}")
             if datetime.now() > timeout:
                 logger.info("Max tuning duration reached. Tuning stopped.")
                 break
 
+            sagemaker_model_server_workers = None
             self.pysdk_model.env.update({
                 "OPTION_TENSOR_PARALLEL_DEGREE": str(tensor_parallel_degree)
             })
@@ -319,7 +310,7 @@ class JumpStart(ABC):
                     best_tuned_combination = [
                         avg_latency,
                         tensor_parallel_degree,
-                        None,
+                        sagemaker_model_server_workers,
                         p90,
                         avg_tokens_per_second,
                         throughput_per_second,
@@ -329,7 +320,7 @@ class JumpStart(ABC):
                     tuned_configuration = [
                         avg_latency,
                         tensor_parallel_degree,
-                        None,
+                        sagemaker_model_server_workers,
                         p90,
                         avg_tokens_per_second,
                         throughput_per_second,
@@ -429,23 +420,19 @@ class JumpStart(ABC):
             return self.pysdk_model
 
         initial_model_configuration = copy.deepcopy(self.pysdk_model.env)
-        self._log_delete_me(f"initial_model_configuration: {initial_model_configuration}")
-
-        self._log_delete_me(f"self.js_model_config: {self.js_model_config}")
 
         admissible_tensor_parallel_degrees = _get_admissible_tensor_parallel_degrees(self.js_model_config)
-        self._log_delete_me(f"admissible_tensor_parallel_degrees: {admissible_tensor_parallel_degrees}")
 
         benchmark_results = {}
         best_tuned_combination = None
         timeout = datetime.now() + timedelta(seconds=max_tuning_duration)
         for tensor_parallel_degree in admissible_tensor_parallel_degrees:
-            self._log_delete_me(f"tensor_parallel_degree: {tensor_parallel_degree}")
             if datetime.now() > timeout:
                 logger.info("Max tuning duration reached. Tuning stopped.")
                 break
 
             sm_num_gpus = tensor_parallel_degree
+            sagemaker_model_server_workers = None
             self.pysdk_model.env.update({
                 "SM_NUM_GPUS": str(sm_num_gpus)
             })
@@ -481,7 +468,7 @@ class JumpStart(ABC):
                     best_tuned_combination = [
                         avg_latency,
                         sm_num_gpus,
-                        None,
+                        sagemaker_model_server_workers,
                         p90,
                         avg_tokens_per_second,
                         throughput_per_second,
@@ -491,7 +478,7 @@ class JumpStart(ABC):
                     tuned_configuration = [
                         avg_latency,
                         sm_num_gpus,
-                        None,
+                        sagemaker_model_server_workers,
                         p90,
                         avg_tokens_per_second,
                         throughput_per_second,
