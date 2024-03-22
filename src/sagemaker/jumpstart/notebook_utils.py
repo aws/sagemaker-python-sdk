@@ -393,7 +393,9 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
     if isinstance(filter, str):
         filter = Identity(filter)
 
-    manifest_keys = set(models_manifest_list[0].__slots__)
+    manifest_keys = set(
+        open_weight_manifest_list[0].__slots__ + prop_models_manifest_list[0].__slots__
+    )
 
     all_keys: Set[str] = set()
 
