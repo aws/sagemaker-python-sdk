@@ -34,7 +34,10 @@ from sagemaker.jumpstart.curated_hub.sync.request import HubSyncRequestFactory
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    JUMPSTART_DEFAULT_STUDIO_MANIFEST_KEY,
     JUMPSTART_LOGGER,
+    STUDIO_MODEL_ID_KEY,
+    STUDIO_SPEC_PATH_KEY_IN_MANIFEST,
 )
 from sagemaker.jumpstart.types import (
     HubContentType,
@@ -89,6 +92,7 @@ class CuratedHub:
         self._default_thread_pool_size = 20
         self._s3_client = self._get_s3_client()
         self.hub_storage_location = self._generate_hub_storage_location(bucket_name)
+        self.studio_manifest = self._fetch_manifest_from_s3(JUMPSTART_DEFAULT_STUDIO_MANIFEST_KEY)
 
     def _get_s3_client(self) -> BaseClient:
         """Returns an S3 client used for creating a HubContentDocument."""
@@ -378,7 +382,11 @@ class CuratedHub:
             scope=JumpStartScriptScope.INFERENCE,
             sagemaker_session=self._sagemaker_session,
         )
-        studio_specs = self._fetch_studio_specs(model_specs=model_specs)
+        
+        manifest_entry = self._find_entry_in_studio_manifest(self.studio_manifest, model.model_id)
+        if not manifest_entry:
+            raise KeyError(f"Could not find model entry {model.model_id} in studio manifest.")
+        studio_specs = self._fetch_studio_specs(manifest_entry[STUDIO_SPEC_PATH_KEY_IN_MANIFEST])
 
         dest_location = S3ObjectLocation(
             bucket=self.hub_storage_location.bucket,
@@ -433,6 +441,7 @@ class CuratedHub:
 
         hub_content_document: HubModelDocument = make_hub_model_document_from_specs(
             model_specs=model_specs,
+            studio_manifest_entry=manifest_entry,
             studio_specs=studio_specs,
             hub_content_dependencies=dependencies,
             region=self.region,
@@ -451,16 +460,25 @@ class CuratedHub:
             tags=tags,
         )
 
-    def _fetch_studio_specs(self, model_specs: JumpStartModelSpecs) -> Dict[str, Any]:
-        """Fetches StudioSpecs given a model's SDK Specs."""
-        model_id = model_specs.model_id
-        model_version = model_specs.version
+    def _fetch_studio_specs(self, studio_spec_path: str) -> Dict[str, Any]:
+        """Fetches StudioSpec given spec path."""
 
-        key = utils.generate_studio_spec_file_prefix(model_id, model_version)
+        response = self._s3_client.get_object(
+            Bucket=utils.get_jumpstart_content_bucket(self.region), Key=studio_spec_path
+        )
+        return json.loads(response["Body"].read().decode("utf-8"))
+    
+    def _fetch_manifest_from_s3(self, key: str) -> List[Dict[str,Any]]:
         response = self._s3_client.get_object(
             Bucket=utils.get_jumpstart_content_bucket(self.region), Key=key
         )
         return json.loads(response["Body"].read().decode("utf-8"))
+    
+    def _find_entry_in_studio_manifest(self, studio_manifest: List[Dict[str,Any]], model_id: str) -> Dict[str,Any]:
+        for entry in studio_manifest:
+            if entry.get(STUDIO_MODEL_ID_KEY) == model_id:
+                return entry
+        return None
 
     def scan_and_tag_models(self, model_ids: List[str] = None) -> None:
         """Scans the Hub for JumpStart models and tags the HubContent.
