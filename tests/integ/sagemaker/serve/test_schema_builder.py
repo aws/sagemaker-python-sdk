@@ -49,7 +49,7 @@ def test_model_builder_happy_path_with_only_model_id_fill_mask(sagemaker_session
     reason="Testing Schema Builder Simplification feature",
 )
 def test_model_builder_happy_path_with_only_model_id_question_answering(
-    sagemaker_session, gpu_instance_type
+        sagemaker_session, gpu_instance_type
 ):
     model_builder = ModelBuilder(model="bert-large-uncased-whole-word-masking-finetuned-squad")
 
@@ -93,10 +93,10 @@ def test_model_builder_happy_path_with_only_model_id_question_answering(
 
 def test_model_builder_negative_path(sagemaker_session):
     model_builder = ModelBuilder(model="CompVis/stable-diffusion-v1-4")
-
     with pytest.raises(
         TaskNotFoundException,
-        match="Error Message: Schema builder for text-to-image could not be found.",
+        match="Error Message: HuggingFace Schema builder samples for text-to-image could not be found locally or via "
+              "remote.",
     ):
         model_builder.build(sagemaker_session=sagemaker_session)
 
@@ -113,7 +113,7 @@ def test_model_builder_negative_path(sagemaker_session):
     ],
 )
 def test_model_builder_happy_path_with_task_provided(
-    model_id, task_provided, sagemaker_session, gpu_instance_type
+        model_id, task_provided, sagemaker_session, gpu_instance_type
 ):
     model_builder = ModelBuilder(model=model_id, model_metadata={"HF_TASK": task_provided})
 
@@ -162,6 +162,7 @@ def test_model_builder_negative_path_with_invalid_task(sagemaker_session):
 
     with pytest.raises(
         TaskNotFoundException,
-        match="Error Message: Schema builder for invalid-task could not be found.",
+        match="Error Message: HuggingFace Schema builder samples for invalid-task could not be found locally or via "
+              "remote.",
     ):
         model_builder.build(sagemaker_session=sagemaker_session)
