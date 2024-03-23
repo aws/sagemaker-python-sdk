@@ -18,6 +18,8 @@ from sagemaker.serve.utils import task
 import pytest
 
 from sagemaker.serve.utils.exceptions import TaskNotFoundException
+from sagemaker_schema_inference_artifacts.huggingface import remote_schema_retriever
+from sagemaker.serve.builder.schema_builder import SchemaBuilder
 from tests.integ.sagemaker.serve.constants import (
     PYTHON_VERSION_IS_NOT_310,
     SERVE_SAGEMAKER_ENDPOINT_TIMEOUT,
@@ -49,7 +51,7 @@ def test_model_builder_happy_path_with_only_model_id_fill_mask(sagemaker_session
     reason="Testing Schema Builder Simplification feature",
 )
 def test_model_builder_happy_path_with_only_model_id_question_answering(
-    sagemaker_session, gpu_instance_type
+        sagemaker_session, gpu_instance_type
 ):
     model_builder = ModelBuilder(model="bert-large-uncased-whole-word-masking-finetuned-squad")
 
@@ -92,18 +94,19 @@ def test_model_builder_happy_path_with_only_model_id_question_answering(
 
 
 def test_model_builder_negative_path(sagemaker_session):
-    model_builder = ModelBuilder(model="CompVis/stable-diffusion-v1-4")
-
+    # A model-task combo unsupported by both the local and remote schema fallback options. (eg: text-to-video)
+    model_builder = ModelBuilder(model="ByteDance/AnimateDiff-Lightning")
     with pytest.raises(
         TaskNotFoundException,
-        match="Error Message: Schema builder for text-to-image could not be found.",
+        match="Error Message: HuggingFace Schema builder samples for text-to-video could not be found locally or via "
+              "remote.",
     ):
         model_builder.build(sagemaker_session=sagemaker_session)
 
 
 @pytest.mark.skipif(
     PYTHON_VERSION_IS_NOT_310,
-    reason="Testing Schema Builder Simplification feature",
+    reason="Testing Schema Builder Simplification feature - Local Schema fallback",
 )
 @pytest.mark.parametrize(
     "model_id, task_provided",
@@ -112,8 +115,8 @@ def test_model_builder_negative_path(sagemaker_session):
         ("bert-large-uncased-whole-word-masking-finetuned-squad", "question-answering"),
     ],
 )
-def test_model_builder_happy_path_with_task_provided(
-    model_id, task_provided, sagemaker_session, gpu_instance_type
+def test_model_builder_happy_path_with_task_provided_local_schema_mode(
+        model_id, task_provided, sagemaker_session, gpu_instance_type
 ):
     model_builder = ModelBuilder(model=model_id, model_metadata={"HF_TASK": task_provided})
 
@@ -154,6 +157,65 @@ def test_model_builder_happy_path_with_task_provided(
                     False
                 ), f"{caught_ex} was thrown when running transformers sagemaker endpoint test"
 
+@pytest.mark.skipif(
+    PYTHON_VERSION_IS_NOT_310,
+    reason="Testing Schema Builder Simplification feature - Remote Schema fallback",
+)
+@pytest.mark.parametrize(
+    "model_id, task_provided, gpu_instance_type",
+    [
+        ("bert-large-uncased-whole-word-masking-finetuned-squad", "question-answering", "ml.m5.xlarge"),
+    ],
+)
+def test_model_builder_happy_path_with_task_provided_remote_schema_mode(
+        model_id, task_provided, sagemaker_session, gpu_instance_type
+):
+
+    model_builder = ModelBuilder(model=model_id,
+                                 model_metadata={"HF_TASK": task_provided},
+                                 instance_type=gpu_instance_type)
+    model = model_builder.build(sagemaker_session=sagemaker_session)
+
+    assert model is not None
+    assert model_builder.schema_builder is not None
+
+    remote_hf_schema_helper = remote_schema_retriever.RemoteSchemaRetriever()
+    inputs, outputs = remote_hf_schema_helper.get_resolved_hf_schema_for_task(task_provided)
+
+    if task_provided == "question-answering":
+        # Override model builder to use remote hf schema samples for question-answering for this e2e test.
+        model_builder.schema_builder = SchemaBuilder(inputs, outputs)
+
+    assert model_builder.schema_builder.sample_input == inputs
+    assert model_builder.schema_builder.sample_output == outputs
+
+    with timeout(minutes=SERVE_SAGEMAKER_ENDPOINT_TIMEOUT):
+        caught_ex = None
+        try:
+            iam_client = sagemaker_session.boto_session.client("iam")
+            role_arn = iam_client.get_role(RoleName="SageMakerRole")["Role"]["Arn"]
+
+            logger.info("Deploying and predicting in SAGEMAKER_ENDPOINT mode...")
+            predictor = model.deploy(
+                role=role_arn, instance_count=1, instance_type=gpu_instance_type
+            )
+
+            predicted_outputs = predictor.predict(inputs)
+            assert predicted_outputs is not None
+
+        except Exception as e:
+            caught_ex = e
+        finally:
+            cleanup_model_resources(
+                sagemaker_session=model_builder.sagemaker_session,
+                model_name=model.name,
+                endpoint_name=model.endpoint_name,
+            )
+            if caught_ex:
+                logger.exception(caught_ex)
+                assert (
+                    False
+                ), f"{caught_ex} was thrown when running transformers sagemaker endpoint test"
 
 def test_model_builder_negative_path_with_invalid_task(sagemaker_session):
     model_builder = ModelBuilder(
@@ -162,6 +224,7 @@ def test_model_builder_negative_path_with_invalid_task(sagemaker_session):
 
     with pytest.raises(
         TaskNotFoundException,
-        match="Error Message: Schema builder for invalid-task could not be found.",
+        match="Error Message: HuggingFace Schema builder samples for invalid-task could not be found locally or via "
+              "remote.",
     ):
         model_builder.build(sagemaker_session=sagemaker_session)
