@@ -36,7 +36,7 @@ from sagemaker.serve.utils.predictors import (
     DjlLocalModePredictor,
     TgiLocalModePredictor,
 )
-from sagemaker.serve.utils.local_hardware import _get_nb_instance, _get_ram_usage_mb
+from sagemaker.serve.utils.local_hardware import _get_nb_instance, _get_ram_usage_mb, _get_available_gpus
 from sagemaker.serve.utils.telemetry_logger import _capture_telemetry
 from sagemaker.serve.utils.tuning import (
     _serial_benchmark,
@@ -150,7 +150,10 @@ class JumpStart(ABC):
                         model_data=self.pysdk_model.model_data,
                     )
                 elif not hasattr(self, "prepared_for_tgi"):
-                    self.prepared_for_tgi = prepare_tgi_js_resources(
+                    (
+                        self.js_model_config,
+                        self.prepared_for_tgi
+                    ) = prepare_tgi_js_resources(
                         model_path=self.model_path,
                         js_id=self.model,
                         dependencies=self.dependencies,
@@ -253,6 +256,186 @@ class JumpStart(ABC):
 
         self.pysdk_model.env.update(env)
 
+    def _tune_for_js(
+            self,
+            num_shard_env_var: str = "SM_NUM_GPUS",
+            num_model_copies_env_var: str = "SAGEMAKER_MODEL_SERVER_WORKERS",
+            multiple_model_copies_enabled: bool = False,
+            max_tuning_duration: int = 1800):
+        """Placeholder docstring"""
+        if self.mode != Mode.LOCAL_CONTAINER:
+            logger.warning(
+                "Tuning is only a %s capability. Returning original model.", Mode.LOCAL_CONTAINER
+            )
+            return self.pysdk_model
+
+        initial_env_vars = copy.deepcopy(self.pysdk_model.env)
+        admissible_tensor_parallel_degrees = _get_admissible_tensor_parallel_degrees(self.js_model_config)
+
+        available_gpus = None
+        if multiple_model_copies_enabled:
+            available_gpus = _get_available_gpus()
+
+        benchmark_results = {}
+        best_tuned_combination = None
+        timeout = datetime.now() + timedelta(seconds=max_tuning_duration)
+        for tensor_parallel_degree in admissible_tensor_parallel_degrees:
+            if datetime.now() > timeout:
+                logger.info("Max tuning duration reached. Tuning stopped.")
+                break
+
+            self.pysdk_model.env.update({
+                num_shard_env_var: str(tensor_parallel_degree)
+            })
+            logging_msg = f"{num_shard_env_var}: {tensor_parallel_degree}."
+
+            sagemaker_model_server_workers = None
+            if multiple_model_copies_enabled:
+                sagemaker_model_server_workers = available_gpus / tensor_parallel_degree
+                self.pysdk_model.env.update({
+                    num_model_copies_env_var: str(sagemaker_model_server_workers)
+                })
+                logging_msg = f"{logging_msg} {num_model_copies_env_var}: {sagemaker_model_server_workers}."
+
+            try:
+                predictor = self.pysdk_model.deploy(
+                    model_data_download_timeout=max_tuning_duration
+                )
+
+                avg_latency, p90, avg_tokens_per_second = _serial_benchmark(
+                    predictor, self.schema_builder.sample_input
+                )
+                throughput_per_second, standard_deviation = _concurrent_benchmark(
+                    predictor, self.schema_builder.sample_input
+                )
+
+                tested_env = self.pysdk_model.env.copy()
+                logger.info(
+                    "Average latency: %s, throughput/s: %s for configuration: %s",
+                    avg_latency,
+                    throughput_per_second,
+                    tested_env,
+                )
+                benchmark_results[avg_latency] = [
+                    tested_env,
+                    p90,
+                    avg_tokens_per_second,
+                    throughput_per_second,
+                    standard_deviation,
+                ]
+
+                if not best_tuned_combination:
+                    best_tuned_combination = [
+                        avg_latency,
+                        tensor_parallel_degree,
+                        sagemaker_model_server_workers,
+                        p90,
+                        avg_tokens_per_second,
+                        throughput_per_second,
+                        standard_deviation,
+                    ]
+                else:
+                    tuned_configuration = [
+                        avg_latency,
+                        tensor_parallel_degree,
+                        sagemaker_model_server_workers,
+                        p90,
+                        avg_tokens_per_second,
+                        throughput_per_second,
+                        standard_deviation,
+                    ]
+                    if _more_performant(best_tuned_combination, tuned_configuration):
+                        best_tuned_combination = tuned_configuration
+            except LocalDeepPingException as e:
+                logger.warning(
+                    f"Deployment unsuccessful with {num_shard_env_var}: %s. "
+                    "Failed to invoke the model server: %s",
+                    tensor_parallel_degree,
+                    str(e),
+                )
+                break
+            except LocalModelOutOfMemoryException as e:
+                logger.warning(
+                    f"Deployment unsuccessful with {logging_msg} "
+                    "Out of memory when loading the model: %s",
+                    tensor_parallel_degree,
+                    str(e),
+                )
+                break
+            except LocalModelInvocationException as e:
+                logger.warning(
+                    f"Deployment unsuccessful with {logging_msg} "
+                    "Failed to invoke the model server: %s"
+                    "Please check that model server configurations are as expected "
+                    "(Ex. serialization, deserialization, content_type, accept).",
+                    tensor_parallel_degree,
+                    str(e),
+                )
+                break
+            except LocalModelLoadException as e:
+                logger.warning(
+                    f"Deployment unsuccessful with {logging_msg} "
+                    "Failed to load the model: %s.",
+                    tensor_parallel_degree,
+                    str(e),
+                )
+                break
+            except SkipTuningComboException as e:
+                logger.warning(
+                    f"Deployment with {logging_msg} "
+                    "was expected to be successful. However failed with: %s. "
+                    "Trying next combination.",
+                    tensor_parallel_degree,
+                    str(e),
+                )
+                break
+            except Exception as e:
+                logger.exception(e)
+                logger.exception(
+                    f"Deployment unsuccessful with {logging_msg} "
+                    "with uncovered exception",
+                    tensor_parallel_degree
+                )
+                break
+
+        if best_tuned_combination:
+            model_env_vars = [num_shard_env_var]
+
+            self.pysdk_model.env.update({
+                num_shard_env_var: str(best_tuned_combination[1])
+            })
+            if multiple_model_copies_enabled:
+                self.pysdk_model.env.update({
+                    num_model_copies_env_var: str(best_tuned_combination[2])
+                })
+                model_env_vars.append(num_model_copies_env_var)
+
+            _pretty_print_benchmark_results(
+                benchmark_results,
+                model_env_vars
+            )
+            logger.info(
+                "Model Configuration: %s was most performant with avg latency: %s, "
+                "p90 latency: %s, average tokens per second: %s, throughput/s: %s, "
+                "standard deviation of request %s",
+                self.pysdk_model.env,
+                best_tuned_combination[0],
+                best_tuned_combination[3],
+                best_tuned_combination[4],
+                best_tuned_combination[5],
+                best_tuned_combination[6],
+            )
+        else:
+            self.pysdk_model.env.update(initial_env_vars)
+            logger.debug(
+                "Failed to gather any tuning results. "
+                "Please inspect the stack trace emitted from live logging for more details. "
+                "Falling back to default model environment variable configurations: %s",
+                self.pysdk_model.env,
+            )
+
+        return self.pysdk_model
+
     @_capture_telemetry("djl_jumpstart.tune")
     def tune_for_djl_jumpstart(self, max_tuning_duration: int = 1800):
         """pass"""
@@ -262,8 +445,7 @@ class JumpStart(ABC):
             )
             return self.pysdk_model
 
-        initial_model_configuration = copy.deepcopy(self.pysdk_model.env)
-
+        initial_env_vars = copy.deepcopy(self.pysdk_model.env)
         admissible_tensor_parallel_degrees = _get_admissible_tensor_parallel_degrees(self.js_model_config)
 
         benchmark_results = {}
@@ -400,7 +582,7 @@ class JumpStart(ABC):
                 best_tuned_combination[6],
             )
         else:
-            self.pysdk_model.env.update(initial_model_configuration)
+            self.pysdk_model.env.update(initial_env_vars)
             logger.debug(
                 "Failed to gather any tuning results. "
                 "Please inspect the stack trace emitted from live logging for more details. "
@@ -419,8 +601,7 @@ class JumpStart(ABC):
             )
             return self.pysdk_model
 
-        initial_model_configuration = copy.deepcopy(self.pysdk_model.env)
-
+        initial_env_vars = copy.deepcopy(self.pysdk_model.env)
         admissible_tensor_parallel_degrees = _get_admissible_tensor_parallel_degrees(self.js_model_config)
 
         benchmark_results = {}
@@ -559,7 +740,7 @@ class JumpStart(ABC):
                 best_tuned_combination[6],
             )
         else:
-            self.pysdk_model.env.update(initial_model_configuration)
+            self.pysdk_model.env.update(initial_env_vars)
             logger.debug(
                 "Failed to gather any tuning results. "
                 "Please inspect the stack trace emitted from live logging for more details. "
