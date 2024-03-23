@@ -171,8 +171,10 @@ JUMPSTART_DEFAULT_REGION_NAME = boto3.session.Session().region_name or "us-west-
 
 JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY = "models_manifest.json"
 JUMPSTART_DEFAULT_PROPRIETARY_MANIFEST_KEY = "proprietary-sdk-manifest.json"
+JUMPSTART_DEFAULT_STUDIO_MANIFEST_KEY = "studio_models_manifest.json"
 
-HUB_CONTENT_ARN_REGEX = r"arn:(.*?):sagemaker:(.*?):(.*?):hub-content/(.*?)/(.*?)/(.*?)/(.*?)$"
+# works cross-partition
+HUB_MODEL_ARN_REGEX = r"arn:(.*?):sagemaker:(.*?):(.*?):hub_content/(.*?)/Model/(.*?)/(.*?)$"
 HUB_ARN_REGEX = r"arn:(.*?):sagemaker:(.*?):(.*?):hub/(.*?)$"
 
 INFERENCE_ENTRY_POINT_SCRIPT_NAME = "inference.py"
@@ -195,6 +197,9 @@ SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY = "SageMakerGatedModelS3Uri"
 
 PROPRIETARY_MODEL_SPEC_PREFIX = "proprietary-models"
 PROPRIETARY_MODEL_FILTER_NAME = "marketplace"
+
+STUDIO_MODEL_ID_KEY = "modelId"
+STUDIO_SPEC_PATH_KEY_IN_MANIFEST = "studioSpecKey"
 
 CONTENT_TYPE_TO_SERIALIZER_TYPE_MAP: Dict[MIMEType, SerializerType] = {
     MIMEType.X_IMAGE: SerializerType.RAW_BYTES,

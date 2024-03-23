@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
+
 import copy
 from sagemaker.jumpstart.types import (
     JumpStartECRSpecs,
@@ -19,7 +20,14 @@ from sagemaker.jumpstart.types import (
     JumpStartModelSpecs,
     JumpStartModelHeader,
 )
-from tests.unit.sagemaker.jumpstart.constants import BASE_SPEC
+from tests.unit.sagemaker.jumpstart.constants import (
+    BASE_SPEC,
+    HUB_MODEL_DOCUMENT_DICTS,
+    SPECIAL_MODEL_SPECS_DICT,
+)
+
+llama_model_document = HUB_MODEL_DOCUMENT_DICTS["meta-textgeneration-llama-2-70b"]
+gemma_model_spec = SPECIAL_MODEL_SPECS_DICT["gemma-model-2b-v1_1_0"]
 
 INSTANCE_TYPE_VARIANT = JumpStartInstanceTypeVariants(
     {
@@ -902,4 +910,40 @@ def test_jumpstart_resource_requirements_instance_variants():
             instance_type="ml.p99.12xlarge"
         )
         == {}
+    )
+
+
+def test_hub_instance_varaints():
+    instance_variant = JumpStartInstanceTypeVariants(
+        llama_model_document.get("HostingInstanceTypeVariants"), is_hub_content=True
+    )
+
+    assert instance_variant.get_instance_specific_environment_variables("ml.g5.12xlarge") == {
+        "SM_NUM_GPUS": "4"
+    }
+    assert instance_variant.get_instance_specific_environment_variables("ml.p4d.24xlarge") == {
+        "SM_NUM_GPUS": "8"
+    }
+
+    assert instance_variant.get_image_uri("ml.g5.2xlarge") == (
+        "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1"
+        "-tgi1.4.0-gpu-py310-cu121-ubuntu20.04"
+    )
+
+    instance_variant = JumpStartInstanceTypeVariants(
+        llama_model_document.get("TrainingInstanceTypeVariants"), is_hub_content=True
+    )
+
+    assert (
+        instance_variant.get_instance_specific_gated_model_key_env_var_value("ml.p4d.2xlarge")
+        == "meta-training/p4d/v1.0.0/train-meta-textgeneration-llama-2-70b.tar.gz"
+    )
+    assert (
+        instance_variant.get_instance_specific_gated_model_key_env_var_value("ml.g5.24xlarge")
+        == "meta-training/g5/v1.0.0/train-meta-textgeneration-llama-2-70b.tar.gz"
+    )
+
+    assert instance_variant.get_image_uri("ml.p3.xlarge") == (
+        "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-training"
+        ":2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
     )

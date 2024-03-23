@@ -18,7 +18,7 @@ from botocore.client import BaseClient
 
 from sagemaker.jumpstart.curated_hub.types import (
     FileInfo,
-    HubContentDependencyType,
+    HubContentReferenceType,
     S3ObjectLocation,
 )
 from sagemaker.jumpstart.curated_hub.accessors.public_model_data import (
@@ -66,7 +66,7 @@ def generate_file_infos_from_model_specs(
         region=region, model_specs=model_specs, studio_specs=studio_specs
     )
     files = []
-    for dependency in HubContentDependencyType:
+    for dependency in HubContentReferenceType:
         location: S3ObjectLocation = public_model_data_accessor.get_s3_reference(dependency)
         # Training dependencies will return as None if training is unsupported
         if not location or is_gated_bucket(location.bucket):
