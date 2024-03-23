@@ -256,6 +256,11 @@ class JumpStart(ABC):
 
         self.pysdk_model.env.update(env)
 
+    def _logging_debug(self, message):
+        logging.debug("**************************************")
+        logging.debug(message)
+        logging.debug("**************************************")
+
     def _tune_for_js(
             self,
             num_shard_env_var: str = "SM_NUM_GPUS",
@@ -286,9 +291,15 @@ class JumpStart(ABC):
         initial_env_vars = copy.deepcopy(self.pysdk_model.env)
         admissible_tensor_parallel_degrees = _get_admissible_tensor_parallel_degrees(self.js_model_config)
 
+        self._logging_debug(
+            f"initial_env_vars: {initial_env_vars},"
+            f" admissible_tensor_parallel_degrees: {admissible_tensor_parallel_degrees}")
+
         available_gpus = None
         if multiple_model_copies_enabled:
             available_gpus = _get_available_gpus()
+        self._logging_debug(
+            f"multiple_model_copies_enabled: {multiple_model_copies_enabled}, available_gpus: {available_gpus}")
 
         benchmark_results = {}
         best_tuned_combination = None
@@ -297,18 +308,30 @@ class JumpStart(ABC):
             if datetime.now() > timeout:
                 logger.info("Max tuning duration reached. Tuning stopped.")
                 break
+            try:
+                self.pysdk_model.env.update({
+                    num_shard_env_var: str(tensor_parallel_degree)
+                })
+                self._logging_debug(
+                    f"num_shard_env_var: {num_shard_env_var}, tensor_parallel_degree: {tensor_parallel_degree}")
+            except Exception as e:
+                self._logging_debug(str(e))
 
-            self.pysdk_model.env.update({
-                num_shard_env_var: str(tensor_parallel_degree)
-            })
             logging_msg = f"{num_shard_env_var}: {tensor_parallel_degree}."
 
             sagemaker_model_server_workers = None
             if multiple_model_copies_enabled:
                 sagemaker_model_server_workers = int(available_gpus / tensor_parallel_degree)
-                self.pysdk_model.env.update({
-                    num_model_copies_env_var: str(sagemaker_model_server_workers)
-                })
+                self._logging_debug(f"sagemaker_model_server_workers: {sagemaker_model_server_workers}")
+                try:
+                    self.pysdk_model.env.update({
+                        num_model_copies_env_var: str(sagemaker_model_server_workers)
+                    })
+                    self._logging_debug(
+                        f"num_model_copies_env_var: {num_model_copies_env_var}, "
+                        f"sagemaker_model_server_workers: {sagemaker_model_server_workers}")
+                except Exception as e:
+                    self._logging_debug(str(e))
                 logging_msg = f"{logging_msg} {num_model_copies_env_var}: {sagemaker_model_server_workers}."
 
             try:
