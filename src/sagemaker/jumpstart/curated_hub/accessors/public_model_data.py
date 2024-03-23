@@ -106,6 +106,8 @@ class PublicModelDataAccessor:
     @property
     def eula_s3_reference(self) -> S3ObjectLocation:
         """Retrieves s3 reference for Eula txt file"""
+        if not self.model_specs.gated_bucket:
+            return None
         eula_key = self.model_specs.hosting_eula_key
         return S3ObjectLocation(self._get_bucket_name(), eula_key)
 

@@ -412,9 +412,8 @@ class CuratedHub:
             src_files, dest_files, dest_location, comparator
         ).create()
 
-        dependencies: List[HubContentDependency] = None
         if len(sync_request.files) > 0:
-            dependencies = MultiPartCopyHandler(
+            MultiPartCopyHandler(
                 thread_num=thread_num,
                 sync_request=sync_request,
                 region=self.region,
@@ -436,7 +435,8 @@ class CuratedHub:
             model_specs=model_specs,
             studio_manifest_entry=studio_manifest_entry,
             studio_specs=studio_specs,
-            sync_request=sync_request,
+            files=src_files,
+            dest_location=dest_location,
             hub_content_dependencies=dependencies,
             region=self.region,
         )
