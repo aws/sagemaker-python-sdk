@@ -14,6 +14,8 @@
 from __future__ import absolute_import
 
 from typing import Any, Dict, List
+from sagemaker.jumpstart.curated_hub.sync.request import HubSyncRequest
+from sagemaker.jumpstart.curated_hub.types import HubContentReferenceType
 from sagemaker.jumpstart.enums import ModelSpecKwargType, NamingConventionType, JumpStartScriptScope
 from sagemaker import image_uris
 from sagemaker.s3 import s3_path_join, parse_s3_url
@@ -252,6 +254,7 @@ def make_hub_model_document_from_specs(
     model_specs: JumpStartModelSpecs,
     studio_manifest_entry: Dict[str, Any],
     studio_specs: Dict[str, Any],
+    sync_request: HubSyncRequest,
     hub_content_dependencies: List[HubContentDependency],
     region: str,
 ) -> HubModelDocument:
@@ -270,22 +273,21 @@ def make_hub_model_document_from_specs(
         region=region,
     )
     document["GatedBucket"] = model_specs.gated_bucket
-    content_bucket = (
-        f"jumpstart-private-cache-prod-{region}"
-        if document["GatedBucket"]
-        else f"jumpstart-cache-prod-{region}"
-    )
-    document["HostingArtifactUri"] = s3_path_join(
-        "s3://", content_bucket, model_specs.hosting_artifact_key
-    )
+    document["HostingArtifactUri"] = next(
+            f"{sync_request.destination.bucket}/{sync_request.destination.key}/{file.location.key}"
+            for file in sync_request.files
+            if file.reference_type is HubContentReferenceType.INFERENCE_ARTIFACT
+        )
     document["HostingArtifactS3DataType"] = studio_specs.get("inferenceArtifactS3DataType")
     document["HostingArtifactCompressionType"] = studio_specs.get(
         "inferenceArtifactCompressionType"
     )
 
-    document["HostingScriptUri"] = s3_path_join(
-        "s3://", content_bucket, model_specs.hosting_script_key
-    )
+    document["HostingScriptUri"] = next(
+            f"{sync_request.destination.bucket}/{sync_request.destination.key}/{file.location.key}"
+            for file in sync_request.files
+            if file.reference_type is HubContentReferenceType.INFERENCE_SCRIPT
+        )
     document["InferenceDependencies"] = model_specs.inference_dependencies
     document["InferenceEnvironmentVariables"] = model_specs.inference_environment_variables
     document["TrainingSupported"] = model_specs.training_supported
@@ -293,18 +295,18 @@ def make_hub_model_document_from_specs(
     document[
         "DynamicContainerDeploymentSupported"
     ] = model_specs.dynamic_container_deployment_supported
-    document["HostingPrepackedArtifactUri"] = (
-        s3_path_join("s3://", content_bucket, model_specs.hosting_prepacked_artifact_key)
-        if model_specs.hosting_prepacked_artifact_key is not None
-        else None
-    )
+    document["HostingPrepackedArtifactUri"] = next(
+            f"{sync_request.destination.bucket}/{sync_request.destination.key}/{file.location.key}"
+            for file in sync_request.files
+            if file.reference_type is HubContentReferenceType.INFERENCE_ARTIFACT
+        )
     # document["HostingPrepackedArtifactVersion"] = model_specs.hosting_prepacked_artifact_version
     document["HostingUseScriptUri"] = model_specs.hosting_use_script_uri
-    document["HostingEulaUri"] = (
-        s3_path_join("s3://", content_bucket, model_specs.hosting_eula_key)
-        if model_specs.hosting_eula_key is not None
-        else None
-    )
+    document["HostingEulaUri"] = next(
+            f"{sync_request.destination.bucket}/{sync_request.destination.key}/{file.location.key}"
+            for file in sync_request.files
+            if file.reference_type is HubContentReferenceType.EULA
+        )
     if model_specs.hosting_model_package_arns and region in model_specs.hosting_model_package_arns:
         document["HostingModelPackageArn"] = model_specs.hosting_model_package_arns[region]
     document["DefaultInferenceInstanceType"] = model_specs.default_inference_instance_type
@@ -321,30 +323,29 @@ def make_hub_model_document_from_specs(
     document[
         "HostingInstanceTypeVariants"
     ] = model_specs.hosting_instance_type_variants.regionalize(region)
-    default_training_dataset_key = studio_specs.get("defaultDataKey")
-    document["DefaultTrainingDatasetUri"] = (
-        s3_path_join("s3://", content_bucket, model_specs.hosting_prepacked_artifact_key)
-        if default_training_dataset_key
-        else None
-    )
+    document["DefaultTrainingDatasetUri"] = next(
+            f"{sync_request.destination.bucket}/{sync_request.destination.key}/{file.location.key}"
+            for file in sync_request.files
+            if file.reference_type is HubContentReferenceType.DEFAULT_TRAINING_DATASET
+        )
     document["FineTuningSupported"] = studio_specs.get("fineTuningSupported")
     document["ValidationSupported"] = studio_specs.get("validationSupported")
     document["MinStudioSdkVersion"] = studio_specs.get("minServerVersion")
     if studio_specs.get("notebookLocations"):
-        notebook_locations = studio_specs.get("notebookLocations")
         notebook_location_uris = {}
-        if notebook_locations.get("demoNotebook"):
-            notebook_location_uris["demo_notebook"] = s3_path_join(
-                "s3://", content_bucket, notebook_locations.get("demoNotebook")
-            )
-        if notebook_locations.get("modelFit"):
-            notebook_location_uris["model_fit"] = s3_path_join(
-                "s3://", content_bucket, notebook_locations.get("modelFit")
-            )
-        if notebook_locations.get("modelDeploy"):
-            notebook_location_uris["model_deploy"] = s3_path_join(
-                "s3://", content_bucket, notebook_locations.get("modelDeploy")
-            )
+        # if notebook_locations.get("demoNotebook"):
+        #     notebook_location_uris["demo_notebook"] = s3_path_join(
+        #         "s3://", content_bucket, notebook_locations.get("demoNotebook")
+        #     )
+        # if notebook_locations.get("modelFit"):
+        #     notebook_location_uris["model_fit"] = s3_path_join(
+        #         "s3://", content_bucket, notebook_locations.get("modelFit")
+        #     )
+        notebook_location_uris["model_deploy"] = next(
+            f"{sync_request.destination.bucket}/{sync_request.destination.key}/{file.location.key}"
+            for file in sync_request.files
+            if file.reference_type is HubContentReferenceType.INFERENCE_NOTEBOOK
+        )
         document["NotebookLocationUris"] = notebook_location_uris
 
     document["ModelProviderIconUri"] = None  # Not needed for private beta.
@@ -376,15 +377,15 @@ def make_hub_model_document_from_specs(
             walk_and_apply_json(param.to_json(), snake_to_upper_camel)
             for param in model_specs.hyperparameters
         ]
-        document["TrainingScriptUri"] = (
-            s3_path_join("s3://", content_bucket, model_specs.training_script_key)
-            if model_specs.training_script_key is not None
-            else None
+        document["TrainingScriptUri"] = next(
+            f"{sync_request.destination.bucket}/{sync_request.destination.key}/{file.location.key}"
+            for file in sync_request.files
+            if file.reference_type is HubContentReferenceType.TRAINING_SCRIPT
         )
-        document["TrainingPrepackedScriptUri"] = (
-            s3_path_join("s3://", content_bucket, model_specs.training_prepacked_script_key)
-            if model_specs.training_prepacked_script_key is not None
-            else None
+        document["TrainingPrepackedScriptUri"] = next(
+            f"{sync_request.destination.bucket}/{sync_request.destination.key}/{file.location.key}"
+            for file in sync_request.files
+            if file.reference_type is HubContentReferenceType.TRAINING_SCRIPT
         )
         # document["TrainingPrepackedScriptVersion"] = model_specs.training_prepacked_script_version
         document["TrainingEcrUri"] = image_uris.retrieve(
@@ -396,10 +397,10 @@ def make_hub_model_document_from_specs(
             region=region,
         )
         document["TrainingMetrics"] = model_specs.metrics
-        document["TrainingArtifactUri"] = (
-            s3_path_join("s3://", content_bucket, model_specs.training_artifact_key)
-            if model_specs.training_artifact_key is not None
-            else None
+        document["TrainingArtifactUri"] = next(
+            f"{sync_request.destination.bucket}/{sync_request.destination.key}/{file.location.key}"
+            for file in sync_request.files
+            if file.reference_type is HubContentReferenceType.TRAINING_ARTIFACT
         )
         document["Training_dependencies"] = model_specs.training_dependencies
         document["DefaultTrainingInstanceType"] = model_specs.default_training_instance_type

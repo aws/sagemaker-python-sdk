@@ -90,8 +90,8 @@ class PublicModelDataAccessor:
         return S3ObjectLocation(self._get_bucket_name(), self._get_training_dataset_prefix())
 
     @property
-    def demo_notebook_s3_reference(self) -> S3ObjectLocation:
-        """Retrieves s3 reference for model demo jupyter notebook"""
+    def inference_notebook_s3_reference(self) -> S3ObjectLocation:
+        """Retrieves s3 reference for inference jupyter notebook"""
         framework = self.model_specs.get_framework()
         key = f"{framework}-notebooks/{self.model_specs.model_id}-inference.ipynb"
         return S3ObjectLocation(self._get_bucket_name(), key)
@@ -102,6 +102,12 @@ class PublicModelDataAccessor:
         framework = self.model_specs.get_framework()
         key = f"{framework}-metadata/{self.model_specs.model_id}.md"
         return S3ObjectLocation(self._get_bucket_name(), key)
+
+    @property
+    def eula_s3_reference(self) -> S3ObjectLocation:
+        """Retrieves s3 reference for Eula txt file"""
+        eula_key = self.model_specs.hosting_eula_key
+        return S3ObjectLocation(self._get_bucket_name(), eula_key)
 
     def _get_bucket_name(self) -> str:
         """Retrieves s3 bucket"""

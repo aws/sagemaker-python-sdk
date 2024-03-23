@@ -30,7 +30,7 @@ from sagemaker.jumpstart.curated_hub.accessors import file_generator
 from sagemaker.jumpstart.curated_hub.accessors.multipartcopy import MultiPartCopyHandler
 from sagemaker.jumpstart.curated_hub.constants import JUMPSTART_CURATED_HUB_MODEL_TAG
 from sagemaker.jumpstart.curated_hub.sync.comparator import SizeAndLastUpdatedComparator
-from sagemaker.jumpstart.curated_hub.sync.request import HubSyncRequestFactory
+from sagemaker.jumpstart.curated_hub.sync.request import HubSyncRequest, HubSyncRequestFactory
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
@@ -41,7 +41,6 @@ from sagemaker.jumpstart.constants import (
 )
 from sagemaker.jumpstart.types import (
     HubContentType,
-    JumpStartModelSpecs,
 )
 from sagemaker.jumpstart.curated_hub.utils import (
     create_hub_bucket_if_it_does_not_exist,
@@ -304,7 +303,7 @@ class CuratedHub:
         ]:
             return HubContentDependencyType.DATASET
         elif reference_type in [
-            HubContentReferenceType.DEMO_NOTEBOOK,
+            HubContentReferenceType.INFERENCE_NOTEBOOK,
         ]:
             return HubContentDependencyType.NOTEBOOK
         elif reference_type in [
@@ -413,8 +412,9 @@ class CuratedHub:
             src_files, dest_files, dest_location, comparator
         ).create()
 
+        dependencies: List[HubContentDependency] = None
         if len(sync_request.files) > 0:
-            MultiPartCopyHandler(
+            dependencies = MultiPartCopyHandler(
                 thread_num=thread_num,
                 sync_request=sync_request,
                 region=self.region,
@@ -430,29 +430,17 @@ class CuratedHub:
 
         search_keywords = [JUMPSTART_CURATED_HUB_MODEL_TAG]
 
-        dest_file_dict: Dict[str, FileInfo] = {}
-        for dest_file_info in dest_files:
-            dest_file_dict[dest_file_info.location.key] = dest_file_info
-
-        dependencies: List[HubContentDependency] = []
-        for src_file_info in src_files:
-            copy_path = s3_path_join(dest_location.get_uri(), src_file_info.location.key)
-            hub_content_dependency: HubContentDependency = {
-                "dependency_origin_path": src_file_info.location.get_uri(),
-                "dependency_copy_path": copy_path,
-                "dependency_type": self._reference_type_to_dependency_type(
-                    src_file_info.reference_type
-                ),
-            }
-            dependencies.append(hub_content_dependency)
+        dependencies = self._calculate_dependencies(sync_request)
 
         hub_content_document: HubModelDocument = make_hub_model_document_from_specs(
             model_specs=model_specs,
             studio_manifest_entry=studio_manifest_entry,
             studio_specs=studio_specs,
+            sync_request=sync_request,
             hub_content_dependencies=dependencies,
             region=self.region,
         )
+
         self._sagemaker_session.import_hub_content(
             document_schema_version=hub_content_document.get_schema_version(),
             hub_content_name=model.model_id,
@@ -481,6 +469,21 @@ class CuratedHub:
         )
         manifest_list = json.loads(response["Body"].read().decode("utf-8"))
         return {entry.get(STUDIO_MODEL_ID_KEY): entry for entry in manifest_list}
+    
+    def _calculate_dependencies(self, sync_request: HubSyncRequest) -> List[HubContentDependency]:
+        """Something."""
+
+        files = sync_request.files
+        dest_location = sync_request.destination
+        dependencies: List[HubContentDependency] = []
+        for file in files:
+            dependencies.push(HubContentDependency({
+                "dependency_origin_path": f"{file.location.bucket}/{file.location.key}",
+                "depenency_copy_path": f"{dest_location.bucket}/{dest_location.key}/{file.location.key}",
+                "dependency_type": self._reference_type_to_dependency_type(file.reference_type)
+            }))
+
+        return dependencies
 
     def scan_and_tag_models(self, model_ids: List[str] = None) -> None:
         """Scans the Hub for JumpStart models and tags the HubContent.

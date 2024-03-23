@@ -87,7 +87,8 @@ class HubContentReferenceType(str, Enum):
     INFERENCE_SCRIPT = "inference_script_s3_reference"
     TRAINING_SCRIPT = "training_script_s3_reference"
     DEFAULT_TRAINING_DATASET = "default_training_dataset_s3_reference"
-    DEMO_NOTEBOOK = "demo_notebook_s3_reference"
+    EULA = "eula_s3_reference"
+    INFERENCE_NOTEBOOK = "inference_notebook_s3_reference"
     MARKDOWN = "markdown_s3_reference"
 
 
