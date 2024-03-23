@@ -250,6 +250,7 @@ def make_model_specs_from_describe_hub_content_response(
 
 def make_hub_model_document_from_specs(
     model_specs: JumpStartModelSpecs,
+    studio_manifest_entry: Dict[str, Any],
     studio_specs: Dict[str, Any],
     hub_content_dependencies: List[HubContentDependency],
     region: str,
@@ -348,11 +349,10 @@ def make_hub_model_document_from_specs(
 
     document["ModelProviderIconUri"] = None  # Not needed for private beta.
 
-    # TODO: Fetch from studio manifest
-    # document["task"] = manifest.get("problemType")
-    # document["framework"] = manifest.get("framework")
-    # document["datatype"] = manifest.get("dataType")
-    # document["license"] = manifest.get("license")
+    document["Task"] = studio_manifest_entry.get("problemType")
+    document["Framework"] = studio_manifest_entry.get("framework")
+    document["Datatype"] = studio_manifest_entry.get("dataType")
+    document["License"] = studio_manifest_entry.get("license")
     document["ContextualHelp"] = studio_specs.get("contextualHelp")
 
     # Deploy kwargs

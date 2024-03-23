@@ -39,22 +39,22 @@ def get_info_from_hub_resource_arn(
 ) -> HubArnExtractedInfo:
     """Extracts descriptive information from a Hub or HubContent Arn."""
 
-    match = re.match(constants.HUB_CONTENT_ARN_REGEX, arn)
+
+    match = re.match(constants.HUB_MODEL_ARN_REGEX, arn)
     if match:
         partition = match.group(1)
         hub_region = match.group(2)
         account_id = match.group(3)
         hub_name = match.group(4)
-        hub_content_type = match.group(5)
-        hub_content_name = match.group(6)
-        hub_content_version = match.group(7)
+        hub_content_name = match.group(5)
+        hub_content_version = match.group(6)
 
         return HubArnExtractedInfo(
             partition=partition,
             region=hub_region,
             account_id=account_id,
             hub_name=hub_name,
-            hub_content_type=hub_content_type,
+            hub_content_type=HubContentType.MODEL.value,
             hub_content_name=hub_content_name,
             hub_content_version=hub_content_version,
         )
@@ -112,6 +112,9 @@ def generate_hub_arn_for_init_kwargs(
         region (str): Region from JumpStart class args
         session (Session): Custom SageMaker Session from JumpStart class args
     """
+
+    if session is None:
+        session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 
     hub_arn = None
     if hub_name:

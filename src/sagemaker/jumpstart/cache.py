@@ -459,14 +459,14 @@ class JumpStartModelsCache:
             return JumpStartCachedContentValue(formatted_content=hub_notebook_description)
 
         if data_type == HubContentType.MODEL:
-            hub_name, _, model_name, model_version = hub_utils.get_info_from_hub_resource_arn(
+            model_info = hub_utils.get_info_from_hub_resource_arn(
                 id_info
             )
             hub_model_description: Dict[str, Any] = self._sagemaker_session.describe_hub_content(
-                hub_name=hub_name,
-                hub_content_name=model_name,
-                hub_content_version=model_version,
-                hub_content_type=data_type,
+                hub_name=model_info.hub_name,
+                hub_content_name=model_info.hub_content_name,
+                hub_content_version=model_info.hub_content_version,
+                hub_content_type=model_info.hub_content_type,
             )
 
             model_specs = make_model_specs_from_describe_hub_content_response(

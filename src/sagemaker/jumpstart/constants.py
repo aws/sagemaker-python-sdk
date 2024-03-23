@@ -174,7 +174,7 @@ JUMPSTART_DEFAULT_PROPRIETARY_MANIFEST_KEY = "proprietary-sdk-manifest.json"
 JUMPSTART_DEFAULT_STUDIO_MANIFEST_KEY = "studio_models_manifest.json"
 
 # works cross-partition
-HUB_MODEL_ARN_REGEX = r"arn:(.*?):sagemaker:(.*?):(.*?):hub_content/(.*?)/Model/(.*?)/(.*?)$"
+HUB_MODEL_ARN_REGEX = r"arn:(.*?):sagemaker:(.*?):(.*?):hub-content/(.*?)/Model/(.*?)/(.*?)$"
 HUB_ARN_REGEX = r"arn:(.*?):sagemaker:(.*?):(.*?):hub/(.*?)$"
 
 INFERENCE_ENTRY_POINT_SCRIPT_NAME = "inference.py"
@@ -255,7 +255,8 @@ JUMPSTART_LOGGER.addHandler(
 
 try:
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION = Session(
-        boto3.Session(region_name=JUMPSTART_DEFAULT_REGION_NAME)
+        boto3.Session(region_name=JUMPSTART_DEFAULT_REGION_NAME),
+        boto3.Session().client("sagemaker", endpoint_url="https://sagemaker.beta.us-west-2.ml-platform.aws.a2z.com")
     )
 except Exception as e:  # pylint: disable=W0703
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION = None

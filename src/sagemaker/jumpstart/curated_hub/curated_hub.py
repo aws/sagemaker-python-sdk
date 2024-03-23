@@ -103,7 +103,7 @@ class CuratedHub:
         try:
             hub_response = self._sagemaker_session.describe_hub(hub_name=self.hub_name)
             hub_output_location = hub_response["S3StorageConfig"].get("S3OutputPath")
-            print("aaaaa", hub_output_location)
+
             if hub_output_location:
                 location = create_s3_object_reference_from_uri(hub_output_location)
                 return location
