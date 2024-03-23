@@ -18,7 +18,7 @@ import json
 import datetime
 from copy import copy, deepcopy
 from enum import Enum
-from copy import deepcopy
+from copy import deepcopy, copy
 from typing import Any, Dict, List, Optional, Set, Union
 from sagemaker import image_uris
 from sagemaker.s3 import parse_s3_url, s3_path_join
@@ -1156,148 +1156,148 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
             )
         self.model_subscription_link = json_obj.get("model_subscription_link")
 
-    def from_describe_hub_content_response(self, response: DescribeHubContentResponse) -> None:
-        """Sets fields in object based on values in HubContentDocument
+    # def from_describe_hub_content_response(self, response: DescribeHubContentResponse) -> None:
+    #     """Sets fields in object based on values in HubContentDocument
 
-        Args:
-            hub_content_doc (Dict[str, any]): parsed HubContentDocument returned
-                from SageMaker:DescribeHubContent
-        """
-        self.model_id: str = response.hub_content_name
-        self.version: str = response.hub_content_version
-        hub_content_document: HubModelDocument = response.hub_content_document
-        self.url: str = hub_content_document.url
-        self.min_sdk_version: str = hub_content_document.min_sdk_version
-        self.training_supported: bool = hub_content_document.training_supported
-        self.incremental_training_supported: bool = bool(
-            hub_content_document["IncrementalTrainingSupported"]
-        )
-        self.hosting_ecr_uri: Optional[str] = hub_content_document.hosting_ecr_uri
-        self._non_serializable_slots.append("hosting_ecr_specs")
+    #     Args:
+    #         hub_content_doc (Dict[str, any]): parsed HubContentDocument returned
+    #             from SageMaker:DescribeHubContent
+    #     """
+    #     self.model_id: str = response.hub_content_name
+    #     self.version: str = response.hub_content_version
+    #     hub_content_document: HubModelDocument = response.hub_content_document
+    #     self.url: str = hub_content_document.url
+    #     self.min_sdk_version: str = hub_content_document.min_sdk_version
+    #     self.training_supported: bool = hub_content_document.training_supported
+    #     self.incremental_training_supported: bool = bool(
+    #         hub_content_document["IncrementalTrainingSupported"]
+    #     )
+    #     self.hosting_ecr_uri: Optional[str] = hub_content_document.hosting_ecr_uri
+    #     self._non_serializable_slots.append("hosting_ecr_specs")
 
-        hosting_artifact_bucket, hosting_artifact_key = parse_s3_url(
-            hub_content_document.hosting_artifact_uri
-        )
-        self.hosting_artifact_key: str = hosting_artifact_key
-        hosting_script_bucket, hosting_script_key = parse_s3_url(
-            hub_content_document.hosting_script_uri
-        )
-        self.hosting_script_key: str = hosting_script_key
-        self.inference_environment_variables = hub_content_document.inference_environment_variables
-        self.inference_vulnerable: bool = False
-        self.inference_dependencies: List[str] = hub_content_document.inference_dependencies
-        self.inference_vulnerabilities: List[str] = []
-        self.training_vulnerable: bool = False
-        self.training_dependencies: List[str] = hub_content_document.training_dependencies
-        self.training_vulnerabilities: List[str] = []
-        self.deprecated: bool = False
-        self.deprecated_message: Optional[str] = None
-        self.deprecate_warn_message: Optional[str] = None
-        self.usage_info_message: Optional[str] = None
-        self.default_inference_instance_type: Optional[
-            str
-        ] = hub_content_document.default_inference_instance_type
-        self.default_training_instance_type: Optional[
-            str
-        ] = hub_content_document.default_training_instance_type
-        self.supported_inference_instance_types: Optional[
-            List[str]
-        ] = hub_content_document.supported_inference_instance_types
-        self.supported_training_instance_types: Optional[
-            List[str]
-        ] = hub_content_document.supported_training_instance_types
-        self.dynamic_container_deployment_supported: Optional[
-            bool
-        ] = hub_content_document.dynamic_container_deployment_supported
-        self.hosting_resource_requirements: Optional[
-            Dict[str, int]
-        ] = hub_content_document.hosting_resource_requirements
-        self.metrics: Optional[List[Dict[str, str]]] = hub_content_document.training_metrics
-        self.training_prepacked_script_key: Optional[str] = None
-        if hub_content_document.training_prepacked_script_uri is not None:
-            training_prepacked_script_bucket, training_prepacked_script_key = parse_s3_url(
-                hub_content_document.training_prepacked_script_uri
-            )
-            self.training_prepacked_script_key = training_prepacked_script_key
+    #     hosting_artifact_bucket, hosting_artifact_key = parse_s3_url(
+    #         hub_content_document.hosting_artifact_uri
+    #     )
+    #     self.hosting_artifact_key: str = hosting_artifact_key
+    #     hosting_script_bucket, hosting_script_key = parse_s3_url(
+    #         hub_content_document.hosting_script_uri
+    #     )
+    #     self.hosting_script_key: str = hosting_script_key
+    #     self.inference_environment_variables = hub_content_document.inference_environment_variables
+    #     self.inference_vulnerable: bool = False
+    #     self.inference_dependencies: List[str] = hub_content_document.inference_dependencies
+    #     self.inference_vulnerabilities: List[str] = []
+    #     self.training_vulnerable: bool = False
+    #     self.training_dependencies: List[str] = hub_content_document.training_dependencies
+    #     self.training_vulnerabilities: List[str] = []
+    #     self.deprecated: bool = False
+    #     self.deprecated_message: Optional[str] = None
+    #     self.deprecate_warn_message: Optional[str] = None
+    #     self.usage_info_message: Optional[str] = None
+    #     self.default_inference_instance_type: Optional[
+    #         str
+    #     ] = hub_content_document.default_inference_instance_type
+    #     self.default_training_instance_type: Optional[
+    #         str
+    #     ] = hub_content_document.default_training_instance_type
+    #     self.supported_inference_instance_types: Optional[
+    #         List[str]
+    #     ] = hub_content_document.supported_inference_instance_types
+    #     self.supported_training_instance_types: Optional[
+    #         List[str]
+    #     ] = hub_content_document.supported_training_instance_types
+    #     self.dynamic_container_deployment_supported: Optional[
+    #         bool
+    #     ] = hub_content_document.dynamic_container_deployment_supported
+    #     self.hosting_resource_requirements: Optional[
+    #         Dict[str, int]
+    #     ] = hub_content_document.hosting_resource_requirements
+    #     self.metrics: Optional[List[Dict[str, str]]] = hub_content_document.training_metrics
+    #     self.training_prepacked_script_key: Optional[str] = None
+    #     if hub_content_document.training_prepacked_script_uri is not None:
+    #         training_prepacked_script_bucket, training_prepacked_script_key = parse_s3_url(
+    #             hub_content_document.training_prepacked_script_uri
+    #         )
+    #         self.training_prepacked_script_key = training_prepacked_script_key
 
-        self.hosting_prepacked_artifact_key: Optional[str] = None
-        if hub_content_document.hosting_prepacked_artifact_uri is not None:
-            hosting_prepacked_artifact_bucket, hosting_prepacked_artifact_key = parse_s3_url(
-                hub_content_document.hosting_prepacked_artifact_uri
-            )
-            self.hosting_prepacked_artifact_key = hosting_prepacked_artifact_key
+    #     self.hosting_prepacked_artifact_key: Optional[str] = None
+    #     if hub_content_document.hosting_prepacked_artifact_uri is not None:
+    #         hosting_prepacked_artifact_bucket, hosting_prepacked_artifact_key = parse_s3_url(
+    #             hub_content_document.hosting_prepacked_artifact_uri
+    #         )
+    #         self.hosting_prepacked_artifact_key = hosting_prepacked_artifact_key
 
-        self.fit_kwargs = get_model_spec_kwargs_from_hub_content_document(
-            ModelSpecKwargType.FIT, hub_content_document
-        )
-        self.model_kwargs = get_model_spec_kwargs_from_hub_content_document(
-            ModelSpecKwargType.MODEL, hub_content_document
-        )
-        self.deploy_kwargs = get_model_spec_kwargs_from_hub_content_document(
-            ModelSpecKwargType.DEPLOY, hub_content_document
-        )
-        self.estimator_kwargs = get_model_spec_kwargs_from_hub_content_document(
-            ModelSpecKwargType.ESTIMATOR, hub_content_document
-        )
+    #     self.fit_kwargs = get_model_spec_kwargs_from_hub_content_document(
+    #         ModelSpecKwargType.FIT, hub_content_document
+    #     )
+    #     self.model_kwargs = get_model_spec_kwargs_from_hub_content_document(
+    #         ModelSpecKwargType.MODEL, hub_content_document
+    #     )
+    #     self.deploy_kwargs = get_model_spec_kwargs_from_hub_content_document(
+    #         ModelSpecKwargType.DEPLOY, hub_content_document
+    #     )
+    #     self.estimator_kwargs = get_model_spec_kwargs_from_hub_content_document(
+    #         ModelSpecKwargType.ESTIMATOR, hub_content_document
+    #     )
 
-        self.predictor_specs: Optional[
-            JumpStartPredictorSpecs
-        ] = hub_content_document.sage_maker_sdk_predictor_specifications
-        self.default_payloads: Optional[
-            Dict[str, JumpStartSerializablePayload]
-        ] = hub_content_document.default_payloads
-        self.gated_bucket = hub_content_document.gated_bucket
-        self.inference_volume_size: Optional[int] = hub_content_document.inference_volume_size
-        self.inference_enable_network_isolation: bool = (
-            hub_content_document.inference_enable_network_isolation
-        )
-        self.resource_name_base: Optional[str] = hub_content_document.resource_name_base
+    #     self.predictor_specs: Optional[
+    #         JumpStartPredictorSpecs
+    #     ] = hub_content_document.sage_maker_sdk_predictor_specifications
+    #     self.default_payloads: Optional[
+    #         Dict[str, JumpStartSerializablePayload]
+    #     ] = hub_content_document.default_payloads
+    #     self.gated_bucket = hub_content_document.gated_bucket
+    #     self.inference_volume_size: Optional[int] = hub_content_document.inference_volume_size
+    #     self.inference_enable_network_isolation: bool = (
+    #         hub_content_document.inference_enable_network_isolation
+    #     )
+    #     self.resource_name_base: Optional[str] = hub_content_document.resource_name_base
 
-        self.hosting_eula_key: Optional[str] = None
-        if hub_content_document.hosting_eula_uri is not None:
-            hosting_eula_bucket, hosting_eula_key = parse_s3_url(
-                hub_content_document.hosting_eula_uri
-            )
-            self.hosting_eula_key = hosting_eula_key
+    #     self.hosting_eula_key: Optional[str] = None
+    #     if hub_content_document.hosting_eula_uri is not None:
+    #         hosting_eula_bucket, hosting_eula_key = parse_s3_url(
+    #             hub_content_document.hosting_eula_uri
+    #         )
+    #         self.hosting_eula_key = hosting_eula_key
 
-        self.hosting_model_package_arns: Optional[Dict] = None  # TODO: Missing from shcema?
-        self.hosting_use_script_uri: bool = hub_content_document.hosting_use_script_uri
+    #     self.hosting_model_package_arns: Optional[Dict] = None  # TODO: Missing from shcema?
+    #     self.hosting_use_script_uri: bool = hub_content_document.hosting_use_script_uri
 
-        self.hosting_instance_type_variants: Optional[JumpStartInstanceTypeVariants] = (
-            JumpStartInstanceTypeVariants(hub_content_document.hosting_instance_type_variants)
-            if hub_content_document.hosting_instance_type_variants
-            else None
-        )
+    #     self.hosting_instance_type_variants: Optional[JumpStartInstanceTypeVariants] = (
+    #         JumpStartInstanceTypeVariants(hub_content_document.hosting_instance_type_variants)
+    #         if hub_content_document.hosting_instance_type_variants
+    #         else None
+    #     )
 
-        if self.training_supported:
-            self.training_ecr_uri: Optional[str] = hub_content_document.training_ecr_uri
-            self._non_serializable_slots.append("training_ecr_specs")
-            training_artifact_bucket, training_artifact_key = parse_s3_url(
-                hub_content_document.training_artifact_uri
-            )
-            self.training_artifact_key: str = training_artifact_key
-            training_script_bucket, training_script_key = parse_s3_url(
-                hub_content_document.training_script_uri
-            )
-            self.training_script_key: str = training_script_key
+    #     if self.training_supported:
+    #         self.training_ecr_uri: Optional[str] = hub_content_document.training_ecr_uri
+    #         self._non_serializable_slots.append("training_ecr_specs")
+    #         training_artifact_bucket, training_artifact_key = parse_s3_url(
+    #             hub_content_document.training_artifact_uri
+    #         )
+    #         self.training_artifact_key: str = training_artifact_key
+    #         training_script_bucket, training_script_key = parse_s3_url(
+    #             hub_content_document.training_script_uri
+    #         )
+    #         self.training_script_key: str = training_script_key
 
-            self.hyperparameters: List[
-                JumpStartHyperparameter
-            ] = hub_content_document.hyperparameters
-            self.training_volume_size: Optional[int] = hub_content_document.training_volume_size
-            self.training_enable_network_isolation: bool = (
-                hub_content_document.training_enable_network_isolation
-            )
-            self.training_model_package_artifact_uris: Optional[
-                Dict
-            ] = hub_content_document.training_model_package_artifact_uri
-            self.training_instance_type_variants: Optional[
-                JumpStartInstanceTypeVariants
-            ] = JumpStartInstanceTypeVariants(
-                hub_content_document.training_instance_type_variants
-                if hub_content_document.training_instance_type_variants
-                else None
-            )
+    #         self.hyperparameters: List[
+    #             JumpStartHyperparameter
+    #         ] = hub_content_document.hyperparameters
+    #         self.training_volume_size: Optional[int] = hub_content_document.training_volume_size
+    #         self.training_enable_network_isolation: bool = (
+    #             hub_content_document.training_enable_network_isolation
+    #         )
+    #         self.training_model_package_artifact_uris: Optional[
+    #             Dict
+    #         ] = hub_content_document.training_model_package_artifact_uri
+    #         self.training_instance_type_variants: Optional[
+    #             JumpStartInstanceTypeVariants
+    #         ] = JumpStartInstanceTypeVariants(
+    #             hub_content_document.training_instance_type_variants
+    #             if hub_content_document.training_instance_type_variants
+    #             else None
+    #         )
 
     def supports_prepacked_inference(self) -> bool:
         """Returns True if the model has a prepacked inference artifact."""
