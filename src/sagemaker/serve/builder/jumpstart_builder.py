@@ -262,7 +262,21 @@ class JumpStart(ABC):
             num_model_copies_env_var: str = "SAGEMAKER_MODEL_SERVER_WORKERS",
             multiple_model_copies_enabled: bool = False,
             max_tuning_duration: int = 1800):
-        """Placeholder docstring"""
+        """Tune for Jumpstart Models
+
+        Args:
+            num_shard_env_var (str): The name of the environment variable specifies the
+                number of GPUs available for training or inference. Default: ``SM_NUM_GPUS``
+                For example SM_NUM_GPUS, or OPTION_TENSOR_PARALLEL_DEGREE.
+            num_model_copies_env_var (str): The name of the environment variable that specifies the
+                number of worker processes used by this model. Default: ``SAGEMAKER_MODEL_SERVER_WORKERS``
+            multiple_model_copies_enabled (bool): Whether multiple model copies serving is enable by
+                the Serving container. Defaults to ``False``
+            max_tuning_duration (int): The maximum duration to deploy this ``Model`` locally.
+                Default: ``1800``
+        returns:
+            Tuned Model.
+        """
         if self.mode != Mode.LOCAL_CONTAINER:
             logger.warning(
                 "Tuning is only a %s capability. Returning original model.", Mode.LOCAL_CONTAINER
