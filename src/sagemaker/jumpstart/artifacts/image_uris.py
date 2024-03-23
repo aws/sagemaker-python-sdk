@@ -151,7 +151,7 @@ def _retrieve_image_uri(
             if image_uri is not None:
                 return image_uri
 
-        ecr_specs: Optional[JumpStartECRSpecs] = model_specs.training_ecr_specs    
+        ecr_specs: Optional[JumpStartECRSpecs] = model_specs.training_ecr_specs
         if ecr_specs is None:
             if hub_arn:
                 return model_specs.training_ecr_uri

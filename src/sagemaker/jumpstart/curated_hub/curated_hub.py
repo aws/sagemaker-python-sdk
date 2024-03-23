@@ -394,7 +394,9 @@ class CuratedHub:
         studio_manifest_entry = self.studio_manifest.get(model.model_id)
         if not studio_manifest_entry:
             raise KeyError(f"Could not find model entry {model.model_id} in studio manifest.")
-        studio_specs = self._fetch_studio_specs(studio_manifest_entry[STUDIO_SPEC_PATH_KEY_IN_MANIFEST])
+        studio_specs = self._fetch_studio_specs(
+            studio_manifest_entry[STUDIO_SPEC_PATH_KEY_IN_MANIFEST]
+        )
 
         dest_location = S3ObjectLocation(
             bucket=self.hub_storage_location.bucket,
@@ -469,7 +471,7 @@ class CuratedHub:
         )
         manifest_list = json.loads(response["Body"].read().decode("utf-8"))
         return {entry.get(STUDIO_MODEL_ID_KEY): entry for entry in manifest_list}
-    
+
     def _calculate_dependencies(self, sync_request: HubSyncRequest) -> List[HubContentDependency]:
         """Something."""
 
@@ -477,11 +479,17 @@ class CuratedHub:
         dest_location = sync_request.destination
         dependencies: List[HubContentDependency] = []
         for file in files:
-            dependencies.push(HubContentDependency({
-                "dependency_origin_path": f"{file.location.bucket}/{file.location.key}",
-                "depenency_copy_path": f"{dest_location.bucket}/{dest_location.key}/{file.location.key}",
-                "dependency_type": self._reference_type_to_dependency_type(file.reference_type)
-            }))
+            dependencies.push(
+                HubContentDependency(
+                    {
+                        "dependency_origin_path": f"{file.location.bucket}/{file.location.key}",
+                        "depenency_copy_path": f"{dest_location.bucket}/{dest_location.key}/{file.location.key}",
+                        "dependency_type": self._reference_type_to_dependency_type(
+                            file.reference_type
+                        ),
+                    }
+                )
+            )
 
         return dependencies
 

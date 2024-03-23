@@ -39,7 +39,6 @@ def get_info_from_hub_resource_arn(
 ) -> HubArnExtractedInfo:
     """Extracts descriptive information from a Hub or HubContent Arn."""
 
-
     match = re.match(constants.HUB_MODEL_ARN_REGEX, arn)
     if match:
         partition = match.group(1)

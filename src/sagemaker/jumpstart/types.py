@@ -344,7 +344,12 @@ class JumpStartEnvironmentVariable(JumpStartDataHolderType):
         self.type = json_obj["type"] if json_obj.get("type") else json_obj.get("Type")
         self.default = json_obj["default"] if json_obj.get("default") else json_obj.get("Default")
         self.scope = json_obj["scope"] if json_obj.get("scope") else json_obj.get("Scope")
-        self.required_for_model_class: bool = json_obj.get("required_for_model_class", False) if json_obj.get("required_for_model_class") else json_obj.get("RequiredForModelClass", False)
+        self.required_for_model_class: bool = (
+            json_obj.get("required_for_model_class", False)
+            if json_obj.get("required_for_model_class")
+            else json_obj.get("RequiredForModelClass", False)
+        )
+
 
 class JumpStartPredictorSpecs(JumpStartDataHolderType):
     """Data class for JumpStart Predictor specs."""
