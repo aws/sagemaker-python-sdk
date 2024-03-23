@@ -297,7 +297,7 @@ def make_hub_model_document_from_specs(
         if model_specs.hosting_prepacked_artifact_key is not None
         else None
     )
-    document["HostingPrepackedArtifactVersion"] = model_specs.hosting_prepacked_artifact_version
+    # document["HostingPrepackedArtifactVersion"] = model_specs.hosting_prepacked_artifact_version
     document["HostingUseScriptUri"] = model_specs.hosting_use_script_uri
     document["HostingEulaUri"] = (
         s3_path_join("s3://", content_bucket, model_specs.hosting_eula_key)
@@ -386,7 +386,7 @@ def make_hub_model_document_from_specs(
             if model_specs.training_prepacked_script_key is not None
             else None
         )
-        document["TrainingPrepackedScriptVersion"] = model_specs.training_prepacked_script_version
+        # document["TrainingPrepackedScriptVersion"] = model_specs.training_prepacked_script_version
         document["TrainingEcrUri"] = image_uris.retrieve(
             model_id=model_specs.model_id,
             model_version=model_specs.version,
