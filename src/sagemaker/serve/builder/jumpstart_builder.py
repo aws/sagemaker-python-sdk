@@ -295,49 +295,42 @@ class JumpStart(ABC):
             f"initial_env_vars: {initial_env_vars},"
             f" admissible_tensor_parallel_degrees: {admissible_tensor_parallel_degrees}")
 
-        available_gpus = None
-        if multiple_model_copies_enabled:
-            available_gpus = _get_available_gpus()
+        available_gpus = _get_available_gpus() if multiple_model_copies_enabled else None
         self._logging_debug(
             f"multiple_model_copies_enabled: {multiple_model_copies_enabled}, available_gpus: {available_gpus}")
 
         benchmark_results = {}
         best_tuned_combination = None
         timeout = datetime.now() + timedelta(seconds=max_tuning_duration)
+
         for tensor_parallel_degree in admissible_tensor_parallel_degrees:
             if datetime.now() > timeout:
                 logger.info("Max tuning duration reached. Tuning stopped.")
                 break
-            try:
-                self.pysdk_model.env.update({
-                    num_shard_env_var: str(tensor_parallel_degree)
-                })
-                self._logging_debug(
-                    f"num_shard_env_var: {num_shard_env_var}, tensor_parallel_degree: {tensor_parallel_degree}")
-            except Exception as e:
-                self._logging_debug(str(e))
 
-            logging_msg = f"{num_shard_env_var}: {tensor_parallel_degree}."
-
-            sagemaker_model_server_workers = None
+            sagemaker_model_server_workers = 1
             if multiple_model_copies_enabled:
                 sagemaker_model_server_workers = int(available_gpus / tensor_parallel_degree)
-                self._logging_debug(f"sagemaker_model_server_workers: {sagemaker_model_server_workers}")
-                try:
-                    self.pysdk_model.env.update({
-                        num_model_copies_env_var: str(sagemaker_model_server_workers)
-                    })
-                    self._logging_debug(
-                        f"num_model_copies_env_var: {num_model_copies_env_var}, "
-                        f"sagemaker_model_server_workers: {sagemaker_model_server_workers}")
-                except Exception as e:
-                    self._logging_debug(str(e))
-                logging_msg = f"{logging_msg} {num_model_copies_env_var}: {sagemaker_model_server_workers}."
+
+            self.pysdk_model.env.update({
+                num_shard_env_var: str(tensor_parallel_degree),
+                num_model_copies_env_var: str(sagemaker_model_server_workers)
+            })
+
+            self._logging_debug(
+                f"num_shard_env_var: {num_shard_env_var}, tensor_parallel_degree: {tensor_parallel_degree}")
+            self._logging_debug(f"sagemaker_model_server_workers: {sagemaker_model_server_workers}")
+            self._logging_debug(
+                f"num_model_copies_env_var: {num_model_copies_env_var}, "
+                f"sagemaker_model_server_workers: {sagemaker_model_server_workers}")
+            self._logging_debug(f"current model.env: {self.pysdk_model.env}")
 
             try:
+                self._logging_debug(f"Deploying model with env config {self.pysdk_model.env}")
                 predictor = self.pysdk_model.deploy(
                     model_data_download_timeout=max_tuning_duration
                 )
+                self._logging_debug(f"Deployed model with env config {self.pysdk_model.env}")
 
                 avg_latency, p90, avg_tokens_per_second = _serial_benchmark(
                     predictor, self.schema_builder.sample_input
@@ -385,53 +378,71 @@ class JumpStart(ABC):
                         best_tuned_combination = tuned_configuration
             except LocalDeepPingException as e:
                 logger.warning(
-                    f"Deployment unsuccessful with {num_shard_env_var}: %s. "
+                    "Deployment unsuccessful with %s: %s. %s: %s"
                     "Failed to invoke the model server: %s",
+                    num_shard_env_var,
                     tensor_parallel_degree,
+                    num_model_copies_env_var,
+                    sagemaker_model_server_workers,
                     str(e),
                 )
                 break
             except LocalModelOutOfMemoryException as e:
                 logger.warning(
-                    f"Deployment unsuccessful with {logging_msg} "
+                    f"Deployment unsuccessful with %s: %s. %s: %s. "
                     "Out of memory when loading the model: %s",
+                    num_shard_env_var,
                     tensor_parallel_degree,
+                    num_model_copies_env_var,
+                    sagemaker_model_server_workers,
                     str(e),
                 )
                 break
             except LocalModelInvocationException as e:
                 logger.warning(
-                    f"Deployment unsuccessful with {logging_msg} "
+                    f"Deployment unsuccessful with %s: %s. %s: %s. "
                     "Failed to invoke the model server: %s"
                     "Please check that model server configurations are as expected "
                     "(Ex. serialization, deserialization, content_type, accept).",
+                    num_shard_env_var,
                     tensor_parallel_degree,
+                    num_model_copies_env_var,
+                    sagemaker_model_server_workers,
                     str(e),
                 )
                 break
             except LocalModelLoadException as e:
                 logger.warning(
-                    f"Deployment unsuccessful with {logging_msg} "
+                    f"Deployment unsuccessful with %s: %s. %s: %s. "
                     "Failed to load the model: %s.",
+                    num_shard_env_var,
                     tensor_parallel_degree,
+                    num_model_copies_env_var,
+                    sagemaker_model_server_workers,
                     str(e),
                 )
                 break
             except SkipTuningComboException as e:
                 logger.warning(
-                    f"Deployment with {logging_msg} "
+                    f"Deployment with %s: %s. %s: %s. "
                     "was expected to be successful. However failed with: %s. "
                     "Trying next combination.",
+                    num_shard_env_var,
                     tensor_parallel_degree,
+                    num_model_copies_env_var,
+                    sagemaker_model_server_workers,
                     str(e),
                 )
                 break
             except Exception as e:
                 logger.exception(e)
                 logger.exception(
-                    f"Deployment unsuccessful with {logging_msg} "
+                    f"Deployment unsuccessful with %s: %s. %s: %s. "
                     "with uncovered exception",
-                    tensor_parallel_degree
+                    num_shard_env_var,
+                    tensor_parallel_degree,
+                    num_model_copies_env_var,
+                    sagemaker_model_server_workers,
                 )
                 break
 
@@ -446,6 +457,8 @@ class JumpStart(ABC):
                     num_model_copies_env_var: str(best_tuned_combination[2])
                 })
                 model_env_vars.append(num_model_copies_env_var)
+
+            self._logging_debug(f"benchmark_results: {benchmark_results}, model_env_vars: {model_env_vars}")
 
             _pretty_print_benchmark_results(
                 benchmark_results,
@@ -482,7 +495,6 @@ class JumpStart(ABC):
 
         return self._tune_for_js(
             num_shard_env_var=num_shard_env_var,
-            # DJL does enable multiple model copies serving.
             multiple_model_copies_enabled=True,
             max_tuning_duration=max_tuning_duration
         )
@@ -491,7 +503,6 @@ class JumpStart(ABC):
     def tune_for_tgi_jumpstart(self, max_tuning_duration: int = 1800):
         """Tune for Jumpstart Models with TGI serving"""
         return self._tune_for_js(
-            num_shard_env_var="SM_NUM_GPUS",
             # Currently, TGI does not enable multiple model copies serving.
             multiple_model_copies_enabled=False,
             max_tuning_duration=max_tuning_duration

@@ -33,13 +33,13 @@ SAMPLE_PROMPT = {"inputs": "Hello, I'm a language model,", "parameters": {}}
 SAMPLE_RESPONSE = [
     {"generated_text": "Hello, I'm a language model, and I'm here to help you with your English."}
 ]
-TGI_JS_MODEL_ID = "huggingface-llm-amazon-falconlite"
+JS_MODEL_ID = "huggingface-textgeneration-gpt2"
 
 
 @pytest.fixture
 def model_builder(sagemaker_local_session):
     return ModelBuilder(
-        model=TGI_JS_MODEL_ID,
+        model=JS_MODEL_ID,
         schema_builder=SchemaBuilder(SAMPLE_PROMPT, SAMPLE_RESPONSE),
         mode=Mode.LOCAL_CONTAINER,
         sagemaker_session=sagemaker_local_session,
@@ -50,7 +50,7 @@ def model_builder(sagemaker_local_session):
 #     PYTHON_VERSION_IS_NOT_310,
 #     reason="The goal of these tests are to test the serving components of our feature",
 # )
-@pytest.mark.local_mode
+# @pytest.mark.local_mode
 def test_happy_tgi_sagemaker_endpoint(model_builder, gpu_instance_type):
     logger.info("Running in LOCAL_CONTAINER mode...")
     caught_ex = None
