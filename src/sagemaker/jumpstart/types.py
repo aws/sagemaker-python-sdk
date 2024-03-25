@@ -1917,6 +1917,10 @@ class HubModelDocument(JumpStartDataHolderType):
             self.datatype = studio_manifest_entry["dataType"]
         if studio_manifest_entry.get("license"):
             self.license = studio_manifest_entry["license"]
+        task_pattern = r'\| Task: \| (.+?)\|'
+        task_value = self._extract_task_value(studio_manifest_entry["description"], task_pattern)
+        if task_value:
+            self.task = task_value
 
     def from_specs(self, model_specs: JumpStartModelSpecs, studio_specs: Dict[str, Any]) -> None:
         self.url: str = model_specs.url
@@ -2083,6 +2087,21 @@ class HubModelDocument(JumpStartDataHolderType):
             self.disable_output_compression: Optional[bool] = model_specs.estimator_kwargs.get(
                 "disable_output_compression"
             )
+
+    def _extract_task_value(self, input_string: Optional[str], pattern: str) -> Optional[str]:
+        """Returns value of Task field from Studio manifest's description field.
+
+        Args:
+            input_string (Optional[str]): The value of description field.
+            pattern (str): The regex pattern to use for searching.
+        """
+        if not input_string:
+            return None
+        match = re.search(pattern, input_string)
+        if match:
+            return match.group(1).strip()
+        else:
+            return None
 
 
 class HubNotebookDocument(JumpStartDataHolderType):
