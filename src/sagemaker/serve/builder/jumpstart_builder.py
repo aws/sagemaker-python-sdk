@@ -30,19 +30,23 @@ from sagemaker.serve.utils.exceptions import (
     LocalModelOutOfMemoryException,
     LocalModelInvocationException,
     LocalModelLoadException,
-    SkipTuningComboException
+    SkipTuningComboException,
 )
 from sagemaker.serve.utils.predictors import (
     DjlLocalModePredictor,
     TgiLocalModePredictor,
 )
-from sagemaker.serve.utils.local_hardware import _get_nb_instance, _get_ram_usage_mb, _get_available_gpus
+from sagemaker.serve.utils.local_hardware import (
+    _get_nb_instance,
+    _get_ram_usage_mb,
+    _get_available_gpus,
+)
 from sagemaker.serve.utils.telemetry_logger import _capture_telemetry
 from sagemaker.serve.utils.tuning import (
     _serial_benchmark,
     _concurrent_benchmark,
     _more_performant,
-    _pretty_print_benchmark_results
+    _pretty_print_benchmark_results,
 )
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.base_predictor import PredictorBase
@@ -150,10 +154,7 @@ class JumpStart(ABC):
                         model_data=self.pysdk_model.model_data,
                     )
                 elif not hasattr(self, "prepared_for_tgi"):
-                    (
-                        self.js_model_config,
-                        self.prepared_for_tgi
-                    ) = prepare_tgi_js_resources(
+                    (self.js_model_config, self.prepared_for_tgi) = prepare_tgi_js_resources(
                         model_path=self.model_path,
                         js_id=self.model,
                         dependencies=self.dependencies,
@@ -241,10 +242,7 @@ class JumpStart(ABC):
         env = {}
         if self.mode == Mode.LOCAL_CONTAINER:
             if not hasattr(self, "prepared_for_tgi"):
-                (
-                    self.js_model_config,
-                    self.prepared_for_tgi
-                ) = prepare_tgi_js_resources(
+                (self.js_model_config, self.prepared_for_tgi) = prepare_tgi_js_resources(
                     model_path=self.model_path,
                     js_id=self.model,
                     dependencies=self.dependencies,
@@ -256,28 +254,15 @@ class JumpStart(ABC):
 
         self.pysdk_model.env.update(env)
 
-    def _logging_debug(self, message):
-        logging.debug("**************************************")
-        logging.debug(message)
-        logging.debug("**************************************")
-
     def _tune_for_js(
-            self,
-            num_shard_env_var: str = "SM_NUM_GPUS",
-            num_model_copies_env_var: str = "SAGEMAKER_MODEL_SERVER_WORKERS",
-            multiple_model_copies_enabled: bool = False,
-            max_tuning_duration: int = 1800):
-        """Tune for Jumpstart Models
+        self, multiple_model_copies_enabled: bool = False, max_tuning_duration: int = 1800
+    ):
+        """Tune for Jumpstart Models.
 
         Args:
-            num_shard_env_var (str): The name of the environment variable specifies the
-                number of GPUs available for training or inference. Default: ``SM_NUM_GPUS``
-                For example SM_NUM_GPUS, or OPTION_TENSOR_PARALLEL_DEGREE.
-            num_model_copies_env_var (str): The name of the environment variable that specifies the
-                number of worker processes used by this model. Default: ``SAGEMAKER_MODEL_SERVER_WORKERS``
             multiple_model_copies_enabled (bool): Whether multiple model copies serving is enable by
-                the Serving container. Defaults to ``False``
-            max_tuning_duration (int): The maximum duration to deploy this ``Model`` locally.
+                this ``DLC``. Defaults to ``False``
+            max_tuning_duration (int): The maximum timeout to deploy this ``Model`` locally.
                 Default: ``1800``
         returns:
             Tuned Model.
@@ -288,21 +273,19 @@ class JumpStart(ABC):
             )
             return self.pysdk_model
 
+        num_shard_env_var_name = "SM_NUM_GPUS"
+        if "OPTION_TENSOR_PARALLEL_DEGREE" in self.pysdk_model.env.keys():
+            num_shard_env_var_name = "OPTION_TENSOR_PARALLEL_DEGREE"
+
         initial_env_vars = copy.deepcopy(self.pysdk_model.env)
-        admissible_tensor_parallel_degrees = _get_admissible_tensor_parallel_degrees(self.js_model_config)
-
-        self._logging_debug(
-            f"initial_env_vars: {initial_env_vars},"
-            f" admissible_tensor_parallel_degrees: {admissible_tensor_parallel_degrees}")
-
+        admissible_tensor_parallel_degrees = _get_admissible_tensor_parallel_degrees(
+            self.js_model_config
+        )
         available_gpus = _get_available_gpus() if multiple_model_copies_enabled else None
-        self._logging_debug(
-            f"multiple_model_copies_enabled: {multiple_model_copies_enabled}, available_gpus: {available_gpus}")
 
         benchmark_results = {}
         best_tuned_combination = None
         timeout = datetime.now() + timedelta(seconds=max_tuning_duration)
-
         for tensor_parallel_degree in admissible_tensor_parallel_degrees:
             if datetime.now() > timeout:
                 logger.info("Max tuning duration reached. Tuning stopped.")
@@ -312,25 +295,15 @@ class JumpStart(ABC):
             if multiple_model_copies_enabled:
                 sagemaker_model_server_workers = int(available_gpus / tensor_parallel_degree)
 
-            self.pysdk_model.env.update({
-                num_shard_env_var: str(tensor_parallel_degree),
-                num_model_copies_env_var: str(sagemaker_model_server_workers)
-            })
-
-            self._logging_debug(
-                f"num_shard_env_var: {num_shard_env_var}, tensor_parallel_degree: {tensor_parallel_degree}")
-            self._logging_debug(f"sagemaker_model_server_workers: {sagemaker_model_server_workers}")
-            self._logging_debug(
-                f"num_model_copies_env_var: {num_model_copies_env_var}, "
-                f"sagemaker_model_server_workers: {sagemaker_model_server_workers}")
-            self._logging_debug(f"current model.env: {self.pysdk_model.env}")
+            self.pysdk_model.env.update(
+                {
+                    num_shard_env_var_name: str(tensor_parallel_degree),
+                    "SAGEMAKER_MODEL_SERVER_WORKERS": str(sagemaker_model_server_workers),
+                }
+            )
 
             try:
-                self._logging_debug(f"Deploying model with env config {self.pysdk_model.env}")
-                predictor = self.pysdk_model.deploy(
-                    model_data_download_timeout=max_tuning_duration
-                )
-                self._logging_debug(f"Deployed model with env config {self.pysdk_model.env}")
+                predictor = self.pysdk_model.deploy(model_data_download_timeout=max_tuning_duration)
 
                 avg_latency, p90, avg_tokens_per_second = _serial_benchmark(
                     predictor, self.schema_builder.sample_input
@@ -378,91 +351,77 @@ class JumpStart(ABC):
                         best_tuned_combination = tuned_configuration
             except LocalDeepPingException as e:
                 logger.warning(
-                    "Deployment unsuccessful with %s: %s. %s: %s"
+                    "Deployment unsuccessful with %s: %s. SAGEMAKER_MODEL_SERVER_WORKERS: %s"
                     "Failed to invoke the model server: %s",
-                    num_shard_env_var,
+                    num_shard_env_var_name,
                     tensor_parallel_degree,
-                    num_model_copies_env_var,
                     sagemaker_model_server_workers,
                     str(e),
                 )
                 break
             except LocalModelOutOfMemoryException as e:
                 logger.warning(
-                    f"Deployment unsuccessful with %s: %s. %s: %s. "
+                    "Deployment unsuccessful with %s: %s. SAGEMAKER_MODEL_SERVER_WORKERS: %s. "
                     "Out of memory when loading the model: %s",
-                    num_shard_env_var,
+                    num_shard_env_var_name,
                     tensor_parallel_degree,
-                    num_model_copies_env_var,
                     sagemaker_model_server_workers,
                     str(e),
                 )
                 break
             except LocalModelInvocationException as e:
                 logger.warning(
-                    f"Deployment unsuccessful with %s: %s. %s: %s. "
+                    "Deployment unsuccessful with %s: %s. SAGEMAKER_MODEL_SERVER_WORKERS: %s. "
                     "Failed to invoke the model server: %s"
                     "Please check that model server configurations are as expected "
                     "(Ex. serialization, deserialization, content_type, accept).",
-                    num_shard_env_var,
+                    num_shard_env_var_name,
                     tensor_parallel_degree,
-                    num_model_copies_env_var,
                     sagemaker_model_server_workers,
                     str(e),
                 )
                 break
             except LocalModelLoadException as e:
                 logger.warning(
-                    f"Deployment unsuccessful with %s: %s. %s: %s. "
+                    "Deployment unsuccessful with %s: %s. SAGEMAKER_MODEL_SERVER_WORKERS: %s. "
                     "Failed to load the model: %s.",
-                    num_shard_env_var,
+                    num_shard_env_var_name,
                     tensor_parallel_degree,
-                    num_model_copies_env_var,
                     sagemaker_model_server_workers,
                     str(e),
                 )
                 break
             except SkipTuningComboException as e:
                 logger.warning(
-                    f"Deployment with %s: %s. %s: %s. "
+                    "Deployment with %s: %s. SAGEMAKER_MODEL_SERVER_WORKERS: %s. "
                     "was expected to be successful. However failed with: %s. "
                     "Trying next combination.",
-                    num_shard_env_var,
+                    num_shard_env_var_name,
                     tensor_parallel_degree,
-                    num_model_copies_env_var,
                     sagemaker_model_server_workers,
                     str(e),
                 )
                 break
-            except Exception as e:
-                logger.exception(e)
+            except Exception:  # pylint: disable=W0703
                 logger.exception(
-                    f"Deployment unsuccessful with %s: %s. %s: %s. "
+                    "Deployment unsuccessful with %s: %s. SAGEMAKER_MODEL_SERVER_WORKERS: %s. "
                     "with uncovered exception",
-                    num_shard_env_var,
+                    num_shard_env_var_name,
                     tensor_parallel_degree,
-                    num_model_copies_env_var,
                     sagemaker_model_server_workers,
                 )
                 break
 
         if best_tuned_combination:
-            model_env_vars = [num_shard_env_var]
-
-            self.pysdk_model.env.update({
-                num_shard_env_var: str(best_tuned_combination[1])
-            })
-            if multiple_model_copies_enabled:
-                self.pysdk_model.env.update({
-                    num_model_copies_env_var: str(best_tuned_combination[2])
-                })
-                model_env_vars.append(num_model_copies_env_var)
-
-            self._logging_debug(f"benchmark_results: {benchmark_results}, model_env_vars: {model_env_vars}")
+            self.pysdk_model.env.update(
+                {
+                    num_shard_env_var_name: str(best_tuned_combination[1]),
+                    "SAGEMAKER_MODEL_SERVER_WORKERS": str(best_tuned_combination[2]),
+                }
+            )
 
             _pretty_print_benchmark_results(
-                benchmark_results,
-                model_env_vars
+                benchmark_results, [num_shard_env_var_name, "SAGEMAKER_MODEL_SERVER_WORKERS"]
             )
             logger.info(
                 "Model Configuration: %s was most performant with avg latency: %s, "
@@ -480,7 +439,7 @@ class JumpStart(ABC):
             logger.debug(
                 "Failed to gather any tuning results. "
                 "Please inspect the stack trace emitted from live logging for more details. "
-                "Falling back to default model environment variable configurations: %s",
+                "Falling back to default model configurations: %s",
                 self.pysdk_model.env,
             )
 
@@ -488,24 +447,18 @@ class JumpStart(ABC):
 
     @_capture_telemetry("djl_jumpstart.tune")
     def tune_for_djl_jumpstart(self, max_tuning_duration: int = 1800):
-        """Tune for Jumpstart Models with DJL serving"""
-        num_shard_env_var = "SM_NUM_GPUS"
-        if "OPTION_TENSOR_PARALLEL_DEGREE" in self.pysdk_model.env.keys():
-            num_shard_env_var = "OPTION_TENSOR_PARALLEL_DEGREE"
-
+        """Tune for Jumpstart Models with DJL DLC"""
         return self._tune_for_js(
-            num_shard_env_var=num_shard_env_var,
-            multiple_model_copies_enabled=True,
-            max_tuning_duration=max_tuning_duration
+            multiple_model_copies_enabled=True, max_tuning_duration=max_tuning_duration
         )
 
     @_capture_telemetry("tgi_jumpstart.tune")
     def tune_for_tgi_jumpstart(self, max_tuning_duration: int = 1800):
-        """Tune for Jumpstart Models with TGI serving"""
+        """Tune for Jumpstart Models with TGI DLC"""
         return self._tune_for_js(
             # Currently, TGI does not enable multiple model copies serving.
             multiple_model_copies_enabled=False,
-            max_tuning_duration=max_tuning_duration
+            max_tuning_duration=max_tuning_duration,
         )
 
     def _build_for_jumpstart(self):
@@ -528,6 +481,8 @@ class JumpStart(ABC):
             self.image_uri = self.pysdk_model.image_uri
 
             self._build_for_djl_jumpstart()
+
+            self.pysdk_model.tune = self.tune_for_djl_jumpstart
         elif "tgi-inference" in image_uri:
             logger.info("Building for TGI JumpStart Model ID...")
             self.model_server = ModelServer.TGI
@@ -536,13 +491,11 @@ class JumpStart(ABC):
             self.image_uri = self.pysdk_model.image_uri
 
             self._build_for_tgi_jumpstart()
+
+            self.pysdk_model.tune = self.tune_for_tgi_jumpstart
         else:
             raise ValueError(
                 "JumpStart Model ID was not packaged with djl-inference or tgi-inference container."
             )
 
-        if self.model_server == ModelServer.TGI:
-            self.pysdk_model.tune = self.tune_for_tgi_jumpstart
-        elif self.model_server == ModelServer.DJL_SERVING:
-            self.pysdk_model.tune = self.tune_for_djl_jumpstart
         return self.pysdk_model

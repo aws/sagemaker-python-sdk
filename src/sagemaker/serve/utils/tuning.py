@@ -131,7 +131,7 @@ def _pretty_print_benchmark_results(results: dict, model_env_vars=None):
             "AverageTokensPerSecond (Serial)": avg_tokens_per_seconds,
             "ThroughputPerSecond (Concurrent)": throughput_per_seconds,
             "StandardDeviationResponse (Concurrent)": standard_deviations,
-            **__env_var_data
+            **__env_var_data,
         }
     )
     logger.info(

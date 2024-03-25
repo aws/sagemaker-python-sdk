@@ -11,7 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
-from unittest.mock import MagicMock, patch, Mock
+from unittest.mock import MagicMock, patch
 
 import unittest
 
@@ -36,25 +36,25 @@ mock_sample_output = [{"generated_text": mock_response}]
 mock_set_serving_properties = (4, "fp16", 1, 256, 256)
 
 mock_tgi_most_performant_model_serving_properties = {
-    'SAGEMAKER_PROGRAM': 'inference.py',
-    'SAGEMAKER_MODEL_SERVER_WORKERS': '1',
-    'SM_NUM_GPUS': '4'
+    "SAGEMAKER_PROGRAM": "inference.py",
+    "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+    "SM_NUM_GPUS": "4",
 }
 mock_tgi_model_serving_properties = {
-    'SAGEMAKER_PROGRAM': 'inference.py',
-    'SAGEMAKER_MODEL_SERVER_WORKERS': '1',
-    'SM_NUM_GPUS': '2'
+    "SAGEMAKER_PROGRAM": "inference.py",
+    "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+    "SM_NUM_GPUS": "2",
 }
 
 mock_djl_most_performant_model_serving_properties = {
-    'SAGEMAKER_PROGRAM': 'inference.py',
-    'SAGEMAKER_MODEL_SERVER_WORKERS': '2',
-    'SM_NUM_GPUS': '4'
+    "SAGEMAKER_PROGRAM": "inference.py",
+    "SAGEMAKER_MODEL_SERVER_WORKERS": "2",
+    "SM_NUM_GPUS": "4",
 }
 mock_djl_model_serving_properties = {
-    'SAGEMAKER_PROGRAM': 'inference.py',
-    'SAGEMAKER_MODEL_SERVER_WORKERS': '1',
-    'SM_NUM_GPUS': '2'
+    "SAGEMAKER_PROGRAM": "inference.py",
+    "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+    "SM_NUM_GPUS": "2",
 }
 
 mock_schema_builder = MagicMock()
@@ -65,9 +65,13 @@ mock_schema_builder_invalid = MagicMock()
 mock_schema_builder_invalid.sample_input = {"invalid": "format"}
 mock_schema_builder_invalid.sample_output = mock_sample_output
 
-mock_tgi_image_uri = ("123456789712.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi"
-                      "-inference:2.1.1-tgi1.4.0-gpu-py310-cu121-ubuntu20.04")
-mock_djl_image_uri = "123456789712.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.24.0-neuronx-sdk2.14.1"
+mock_tgi_image_uri = (
+    "123456789712.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi"
+    "-inference:2.1.1-tgi1.4.0-gpu-py310-cu121-ubuntu20.04"
+)
+mock_djl_image_uri = (
+    "123456789712.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.24.0-neuronx-sdk2.14.1"
+)
 
 
 class TestJumpStartBuilder(unittest.TestCase):
@@ -85,7 +89,9 @@ class TestJumpStartBuilder(unittest.TestCase):
         return_value=({"model_type": "RefinedWebModel", "n_head": 71}, True),
     )
     @patch("sagemaker.serve.builder.jumpstart_builder._get_ram_usage_mb", return_value=1024)
-    @patch("sagemaker.serve.builder.jumpstart_builder._get_nb_instance", return_value="ml.g5.24xlarge")
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder._get_nb_instance", return_value="ml.g5.24xlarge"
+    )
     @patch(
         "sagemaker.serve.builder.jumpstart_builder._get_admissible_tensor_parallel_degrees",
         return_value=[4, 2, 1],
@@ -99,21 +105,19 @@ class TestJumpStartBuilder(unittest.TestCase):
         side_effect=[(0.9, 1), (0.10, 4), (0.13, 2)],
     )
     def test_tune_for_tgi_js_local_container(
-            self,
-            mock_concurrent_benchmarks,
-            mock_serial_benchmarks,
-            mock_admissible_tensor_parallel_degrees,
-            mock_get_nb_instance,
-            mock_get_ram_usage_mb,
-            mock_prepare_for_tgi,
-            mock_pre_trained_model,
-            mock_is_jumpstart_model,
-            mock_telemetry,
+        self,
+        mock_concurrent_benchmarks,
+        mock_serial_benchmarks,
+        mock_admissible_tensor_parallel_degrees,
+        mock_get_nb_instance,
+        mock_get_ram_usage_mb,
+        mock_prepare_for_tgi,
+        mock_pre_trained_model,
+        mock_is_jumpstart_model,
+        mock_telemetry,
     ):
         builder = ModelBuilder(
-            model=mock_model_id,
-            schema_builder=mock_schema_builder,
-            mode=Mode.LOCAL_CONTAINER
+            model=mock_model_id, schema_builder=mock_schema_builder, mode=Mode.LOCAL_CONTAINER
         )
 
         mock_pre_trained_model.return_value.image_uri = mock_tgi_image_uri
@@ -140,7 +144,9 @@ class TestJumpStartBuilder(unittest.TestCase):
         return_value=({"model_type": "RefinedWebModel", "n_head": 71}, True),
     )
     @patch("sagemaker.serve.builder.jumpstart_builder._get_ram_usage_mb", return_value=1024)
-    @patch("sagemaker.serve.builder.jumpstart_builder._get_nb_instance", return_value="ml.g5.24xlarge")
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder._get_nb_instance", return_value="ml.g5.24xlarge"
+    )
     @patch(
         "sagemaker.serve.builder.jumpstart_builder._get_admissible_tensor_parallel_degrees",
         return_value=[4, 2, 1],
@@ -150,20 +156,18 @@ class TestJumpStartBuilder(unittest.TestCase):
         **{"return_value.raiseError.side_effect": LocalDeepPingException("mock_exception")}
     )
     def test_tune_for_tgi_js_local_container_deep_ping_ex(
-            self,
-            mock_serial_benchmarks,
-            mock_admissible_tensor_parallel_degrees,
-            mock_get_nb_instance,
-            mock_get_ram_usage_mb,
-            mock_prepare_for_tgi,
-            mock_pre_trained_model,
-            mock_is_jumpstart_model,
-            mock_telemetry,
+        self,
+        mock_serial_benchmarks,
+        mock_admissible_tensor_parallel_degrees,
+        mock_get_nb_instance,
+        mock_get_ram_usage_mb,
+        mock_prepare_for_tgi,
+        mock_pre_trained_model,
+        mock_is_jumpstart_model,
+        mock_telemetry,
     ):
         builder = ModelBuilder(
-            model=mock_model_id,
-            schema_builder=mock_schema_builder,
-            mode=Mode.LOCAL_CONTAINER
+            model=mock_model_id, schema_builder=mock_schema_builder, mode=Mode.LOCAL_CONTAINER
         )
 
         mock_pre_trained_model.return_value.image_uri = mock_tgi_image_uri
@@ -190,7 +194,9 @@ class TestJumpStartBuilder(unittest.TestCase):
         return_value=({"model_type": "RefinedWebModel", "n_head": 71}, True),
     )
     @patch("sagemaker.serve.builder.jumpstart_builder._get_ram_usage_mb", return_value=1024)
-    @patch("sagemaker.serve.builder.jumpstart_builder._get_nb_instance", return_value="ml.g5.24xlarge")
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder._get_nb_instance", return_value="ml.g5.24xlarge"
+    )
     @patch(
         "sagemaker.serve.builder.jumpstart_builder._get_admissible_tensor_parallel_degrees",
         return_value=[4, 2, 1],
@@ -200,20 +206,18 @@ class TestJumpStartBuilder(unittest.TestCase):
         **{"return_value.raiseError.side_effect": LocalModelLoadException("mock_exception")}
     )
     def test_tune_for_tgi_js_local_container_load_ex(
-            self,
-            mock_serial_benchmarks,
-            mock_admissible_tensor_parallel_degrees,
-            mock_get_nb_instance,
-            mock_get_ram_usage_mb,
-            mock_prepare_for_tgi,
-            mock_pre_trained_model,
-            mock_is_jumpstart_model,
-            mock_telemetry,
+        self,
+        mock_serial_benchmarks,
+        mock_admissible_tensor_parallel_degrees,
+        mock_get_nb_instance,
+        mock_get_ram_usage_mb,
+        mock_prepare_for_tgi,
+        mock_pre_trained_model,
+        mock_is_jumpstart_model,
+        mock_telemetry,
     ):
         builder = ModelBuilder(
-            model=mock_model_id,
-            schema_builder=mock_schema_builder,
-            mode=Mode.LOCAL_CONTAINER
+            model=mock_model_id, schema_builder=mock_schema_builder, mode=Mode.LOCAL_CONTAINER
         )
 
         mock_pre_trained_model.return_value.image_uri = mock_tgi_image_uri
@@ -240,7 +244,9 @@ class TestJumpStartBuilder(unittest.TestCase):
         return_value=({"model_type": "RefinedWebModel", "n_head": 71}, True),
     )
     @patch("sagemaker.serve.builder.jumpstart_builder._get_ram_usage_mb", return_value=1024)
-    @patch("sagemaker.serve.builder.jumpstart_builder._get_nb_instance", return_value="ml.g5.24xlarge")
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder._get_nb_instance", return_value="ml.g5.24xlarge"
+    )
     @patch(
         "sagemaker.serve.builder.jumpstart_builder._get_admissible_tensor_parallel_degrees",
         return_value=[4, 2, 1],
@@ -250,20 +256,18 @@ class TestJumpStartBuilder(unittest.TestCase):
         **{"return_value.raiseError.side_effect": LocalModelOutOfMemoryException("mock_exception")}
     )
     def test_tune_for_tgi_js_local_container_oom_ex(
-            self,
-            mock_serial_benchmarks,
-            mock_admissible_tensor_parallel_degrees,
-            mock_get_nb_instance,
-            mock_get_ram_usage_mb,
-            mock_prepare_for_tgi,
-            mock_pre_trained_model,
-            mock_is_jumpstart_model,
-            mock_telemetry,
+        self,
+        mock_serial_benchmarks,
+        mock_admissible_tensor_parallel_degrees,
+        mock_get_nb_instance,
+        mock_get_ram_usage_mb,
+        mock_prepare_for_tgi,
+        mock_pre_trained_model,
+        mock_is_jumpstart_model,
+        mock_telemetry,
     ):
         builder = ModelBuilder(
-            model=mock_model_id,
-            schema_builder=mock_schema_builder,
-            mode=Mode.LOCAL_CONTAINER
+            model=mock_model_id, schema_builder=mock_schema_builder, mode=Mode.LOCAL_CONTAINER
         )
 
         mock_pre_trained_model.return_value.image_uri = mock_tgi_image_uri
@@ -290,7 +294,9 @@ class TestJumpStartBuilder(unittest.TestCase):
         return_value=({"model_type": "RefinedWebModel", "n_head": 71}, True),
     )
     @patch("sagemaker.serve.builder.jumpstart_builder._get_ram_usage_mb", return_value=1024)
-    @patch("sagemaker.serve.builder.jumpstart_builder._get_nb_instance", return_value="ml.g5.24xlarge")
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder._get_nb_instance", return_value="ml.g5.24xlarge"
+    )
     @patch(
         "sagemaker.serve.builder.jumpstart_builder._get_admissible_tensor_parallel_degrees",
         return_value=[4, 2, 1],
@@ -300,20 +306,18 @@ class TestJumpStartBuilder(unittest.TestCase):
         **{"return_value.raiseError.side_effect": LocalModelInvocationException("mock_exception")}
     )
     def test_tune_for_tgi_js_local_container_invoke_ex(
-            self,
-            mock_serial_benchmarks,
-            mock_admissible_tensor_parallel_degrees,
-            mock_get_nb_instance,
-            mock_get_ram_usage_mb,
-            mock_prepare_for_tgi,
-            mock_pre_trained_model,
-            mock_is_jumpstart_model,
-            mock_telemetry,
+        self,
+        mock_serial_benchmarks,
+        mock_admissible_tensor_parallel_degrees,
+        mock_get_nb_instance,
+        mock_get_ram_usage_mb,
+        mock_prepare_for_tgi,
+        mock_pre_trained_model,
+        mock_is_jumpstart_model,
+        mock_telemetry,
     ):
         builder = ModelBuilder(
-            model=mock_model_id,
-            schema_builder=mock_schema_builder,
-            mode=Mode.LOCAL_CONTAINER
+            model=mock_model_id, schema_builder=mock_schema_builder, mode=Mode.LOCAL_CONTAINER
         )
 
         mock_pre_trained_model.return_value.image_uri = mock_tgi_image_uri
@@ -340,16 +344,14 @@ class TestJumpStartBuilder(unittest.TestCase):
         return_value=({"model_type": "RefinedWebModel", "n_head": 71}, True),
     )
     def test_tune_for_tgi_js_endpoint_mode_ex(
-            self,
-            mock_prepare_for_tgi,
-            mock_pre_trained_model,
-            mock_is_jumpstart_model,
-            mock_telemetry,
+        self,
+        mock_prepare_for_tgi,
+        mock_pre_trained_model,
+        mock_is_jumpstart_model,
+        mock_telemetry,
     ):
         builder = ModelBuilder(
-            model=mock_model_id,
-            schema_builder=mock_schema_builder,
-            mode=Mode.SAGEMAKER_ENDPOINT
+            model=mock_model_id, schema_builder=mock_schema_builder, mode=Mode.SAGEMAKER_ENDPOINT
         )
 
         mock_pre_trained_model.return_value.image_uri = mock_tgi_image_uri
@@ -371,10 +373,16 @@ class TestJumpStartBuilder(unittest.TestCase):
     )
     @patch(
         "sagemaker.serve.builder.jumpstart_builder.prepare_djl_js_resources",
-        return_value=(mock_set_serving_properties, {"model_type": "RefinedWebModel", "n_head": 71}, True),
+        return_value=(
+            mock_set_serving_properties,
+            {"model_type": "RefinedWebModel", "n_head": 71},
+            True,
+        ),
     )
     @patch("sagemaker.serve.builder.jumpstart_builder._get_ram_usage_mb", return_value=1024)
-    @patch("sagemaker.serve.builder.jumpstart_builder._get_nb_instance", return_value="ml.g5.24xlarge")
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder._get_nb_instance", return_value="ml.g5.24xlarge"
+    )
     @patch(
         "sagemaker.serve.builder.jumpstart_builder._get_admissible_tensor_parallel_degrees",
         return_value=[4, 2, 1],
@@ -392,22 +400,20 @@ class TestJumpStartBuilder(unittest.TestCase):
         side_effect=[(0.9, 1), (0.10, 4), (0.13, 2)],
     )
     def test_tune_for_djl_js_local_container(
-            self,
-            mock_concurrent_benchmarks,
-            mock_serial_benchmarks,
-            mock__get_available_gpus,
-            mock_admissible_tensor_parallel_degrees,
-            mock_get_nb_instance,
-            mock_get_ram_usage_mb,
-            mock_prepare_for_tgi,
-            mock_pre_trained_model,
-            mock_is_jumpstart_model,
-            mock_telemetry,
+        self,
+        mock_concurrent_benchmarks,
+        mock_serial_benchmarks,
+        mock__get_available_gpus,
+        mock_admissible_tensor_parallel_degrees,
+        mock_get_nb_instance,
+        mock_get_ram_usage_mb,
+        mock_prepare_for_tgi,
+        mock_pre_trained_model,
+        mock_is_jumpstart_model,
+        mock_telemetry,
     ):
         builder = ModelBuilder(
-            model=mock_model_id,
-            schema_builder=mock_schema_builder,
-            mode=Mode.LOCAL_CONTAINER
+            model=mock_model_id, schema_builder=mock_schema_builder, mode=Mode.LOCAL_CONTAINER
         )
 
         mock_pre_trained_model.return_value.image_uri = mock_djl_image_uri
