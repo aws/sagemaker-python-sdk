@@ -1917,8 +1917,10 @@ class HubModelDocument(JumpStartDataHolderType):
             self.datatype = studio_manifest_entry["dataType"]
         if studio_manifest_entry.get("license"):
             self.license = studio_manifest_entry["license"]
-        task_pattern = r'\| Task: \| (.+?)\|'
-        task_value = self._extract_task_value(studio_manifest_entry["description"], task_pattern)
+        task_pattern = r"\| Task: \| (.+?)\|"
+        task_value = self._extract_task_value(
+            studio_manifest_entry.get("description"), task_pattern
+        )
         if task_value:
             self.task = task_value
 

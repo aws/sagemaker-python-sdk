@@ -967,9 +967,10 @@ def test_extract_task_value_with_match():
         json_obj=HUB_MODEL_DOCUMENT_DICTS["huggingface-llm-gemma-2b-instruct"], region=region
     )
     input_string = "| | |\n|---|---|\n||\n| Task: | Text to image|\n| Fine-tunable: | No|\n| Source: | Stability AI"
-    pattern = r'\| Task: \| (.+?)\|'
+    pattern = r"\| Task: \| (.+?)\|"
     expected_output = "Text to image"
     assert gemma_model_document._extract_task_value(input_string, pattern) == expected_output
+
 
 def test_extract_task_value_without_match():
     region = "us-west-2"
@@ -977,8 +978,9 @@ def test_extract_task_value_without_match():
         json_obj=HUB_MODEL_DOCUMENT_DICTS["huggingface-llm-gemma-2b-instruct"], region=region
     )
     input_string = "| | |\n|---|---|\n||\n| Fine-tunable: | No|\n| Source: | Stability AI"
-    pattern = r'\| Task: \| (.+?)\|'
+    pattern = r"\| Task: \| (.+?)\|"
     assert gemma_model_document._extract_task_value(input_string, pattern) is None
+
 
 def test_extract_task_value_with_none_input():
     region = "us-west-2"
@@ -986,8 +988,9 @@ def test_extract_task_value_with_none_input():
         json_obj=HUB_MODEL_DOCUMENT_DICTS["huggingface-llm-gemma-2b-instruct"], region=region
     )
     input_string = None
-    pattern = r'\| Task: \| (.+?)\|'
+    pattern = r"\| Task: \| (.+?)\|"
     assert gemma_model_document._extract_task_value(input_string, pattern) is None
+
 
 def test_extract_task_value_with_empty_string():
     region = "us-west-2"
@@ -995,9 +998,9 @@ def test_extract_task_value_with_empty_string():
         json_obj=HUB_MODEL_DOCUMENT_DICTS["huggingface-llm-gemma-2b-instruct"], region=region
     )
     input_string = ""
-    pattern = r'\| Task: \| (.+?)\|'
+    pattern = r"\| Task: \| (.+?)\|"
     assert gemma_model_document._extract_task_value(input_string, pattern) is None
-    
+
 
 def test_hub_content_document_from_json_obj():
     region = "us-west-2"

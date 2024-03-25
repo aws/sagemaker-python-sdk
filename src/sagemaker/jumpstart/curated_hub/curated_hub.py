@@ -363,7 +363,9 @@ class CuratedHub:
         studio_manifest_entry = self.studio_manifest.get(model.model_id)
         if not studio_manifest_entry:
             raise KeyError(f"Could not find model entry {model.model_id} in studio manifest.")
-        studio_specs = self._fetch_studio_specs(studio_manifest_entry[STUDIO_SPEC_PATH_KEY_IN_MANIFEST])
+        studio_specs = self._fetch_studio_specs(
+            studio_manifest_entry[STUDIO_SPEC_PATH_KEY_IN_MANIFEST]
+        )
 
         dest_location = S3ObjectLocation(
             bucket=self.hub_storage_location.bucket,
