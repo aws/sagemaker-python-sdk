@@ -446,3 +446,10 @@ def make_hub_model_document_from_specs(
         )
         document["ModelDir"] = model_specs.estimator_kwargs.get("model_dir")
     return HubModelDocument(_to_json(document), region, hub_content_dependencies)
+
+
+def _calculate_model_dependencies(document: Dict[str, str]) -> List[HubContentDependency]:
+    dependencies = [
+        document.get("HostingArtifactUri"),
+        document.get("HostingEulaUri")
+    ]

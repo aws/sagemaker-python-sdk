@@ -311,7 +311,7 @@ class CuratedHub:
             HubContentReferenceType.MARKDOWN,
         ]:
             return HubContentDependencyType.OTHER
-        return None
+        return HubContentDependencyType.OTHER
 
     def sync(self, model_list: List[Dict[str, str]]):
         """Syncs a list of JumpStart model ids and versions with a CuratedHub
@@ -482,17 +482,16 @@ class CuratedHub:
         dest_location = sync_request.destination
         dependencies: List[HubContentDependency] = []
         for file in files:
-            dependencies.append(
-                HubContentDependency(
-                    {
-                        "dependency_origin_path": f"{file.location.bucket}/{file.location.key}",
-                        "depenency_copy_path": f"{dest_location.bucket}/{dest_location.key}/{file.location.key}",
-                        "dependency_type": self._reference_type_to_dependency_type(
-                            file.reference_type
-                        ),
-                    }
-                )
-            )
+            dependency = HubContentDependency(
+                  {
+                      "dependency_origin_path": f"s3://{file.location.bucket}/{file.location.key}",
+                      "dependency_copy_path": f"s3://{dest_location.bucket}/{dest_location.key}/{file.location.key}",
+                      "dependency_type": self._reference_type_to_dependency_type(
+                          file.reference_type
+                      )
+                  }
+              )
+            dependencies.append(dependency)
 
         return dependencies
 
