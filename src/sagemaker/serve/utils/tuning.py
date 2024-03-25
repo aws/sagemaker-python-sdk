@@ -99,13 +99,13 @@ def _pretty_print_results_tgi(results: dict):
 
 
 def _pretty_print_benchmark_results(results: dict, model_env_vars=None):
-    """Placeholder docstring"""
+    """Pretty prints benchmark results"""
     if model_env_vars is None:
         model_env_vars = []
 
     __env_var_data = {}
-    for e in model_env_vars:
-        __env_var_data[e] = []
+    for model_env_var in model_env_vars:
+        __env_var_data[model_env_var] = []
 
     avg_latencies = []
     p90s = []
@@ -116,13 +116,13 @@ def _pretty_print_benchmark_results(results: dict, model_env_vars=None):
 
     for key, value in ordered.items():
         avg_latencies.append(key)
-        p90s.append(value[1])
-        avg_tokens_per_seconds.append(value[2])
-        throughput_per_seconds.append(value[3])
-        standard_deviations.append(value[4])
+        p90s.append(value["P90"])
+        avg_tokens_per_seconds.append(value["AVG_TOKENS_PER_SECOND"])
+        throughput_per_seconds.append(value["THROUGHPUT_PER_SECOND"])
+        standard_deviations.append(value["STD_DEVIATION"])
 
-        for k in __env_var_data:
-            __env_var_data[k].append(value[0][k])
+        for model_env_var in __env_var_data:
+            __env_var_data[model_env_var].append(value["TESTED_ENV"][model_env_var])
 
     df = pd.DataFrame(
         {
@@ -134,13 +134,14 @@ def _pretty_print_benchmark_results(results: dict, model_env_vars=None):
             **__env_var_data,
         }
     )
-    logger.info(
-        "\n================================================================== Benchmark "
-        "Results ==================================================================\n%s"
-        "\n============================================================================"
-        "===========================================================================\n",
-        df.to_string(),
+
+    separator = "=" * 78
+    log_message = (
+        f"\n{separator} Benchmark Results {separator}\n"
+        f"{df.to_string()}\n"
+        f"{separator}{separator}\n"
     )
+    logger.info(log_message)
 
 
 def _tokens_per_second(generated_text: str, max_token_length: int, latency: float) -> int:
@@ -255,6 +256,20 @@ def _more_performant(best_tuned_configuration: list, tuned_configuration: list) 
     tuned_avg_latency = tuned_configuration[0]
     best_standard_deviation = best_tuned_configuration[6]
     tuned_standard_deviation = tuned_configuration[6]
+
+    if _within_margins(MARGIN, 5, tuned_avg_latency, best_avg_latency):
+        if tuned_standard_deviation <= best_standard_deviation:
+            return True
+        return False
+    return tuned_avg_latency <= best_avg_latency
+
+
+def _more_performant_benchmark(current_tuned_configuration: dict, previous_tuned_configuration: dict) -> bool:
+    """Returns ``True`` if the current benchmark is more performant than the previous one."""
+    best_avg_latency = current_tuned_configuration["AGV_LATENCY"]
+    tuned_avg_latency = previous_tuned_configuration["AGV_LATENCY"]
+    best_standard_deviation = current_tuned_configuration["STD_DEVIATION"]
+    tuned_standard_deviation = previous_tuned_configuration["STD_DEVIATION"]
 
     if _within_margins(MARGIN, 5, tuned_avg_latency, best_avg_latency):
         if tuned_standard_deviation <= best_standard_deviation:

@@ -31,8 +31,6 @@ mock_response = "Hello, I'm a language model, and I'm here to help you with your
 mock_sample_input = {"inputs": mock_prompt, "parameters": {}}
 mock_sample_output = [{"generated_text": mock_response}]
 
-# mock_model_config_properties = {"model_type": "llama", "n_head": 71}
-# mock_model_config_properties_faster_transformer = {"model_type": "t5", "n_head": 71}
 mock_set_serving_properties = (4, "fp16", 1, 256, 256)
 
 mock_tgi_most_performant_model_serving_properties = {
@@ -48,22 +46,18 @@ mock_tgi_model_serving_properties = {
 
 mock_djl_most_performant_model_serving_properties = {
     "SAGEMAKER_PROGRAM": "inference.py",
-    "SAGEMAKER_MODEL_SERVER_WORKERS": "2",
-    "SM_NUM_GPUS": "4",
+    "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+    "OPTION_TENSOR_PARALLEL_DEGREE": "4",
 }
 mock_djl_model_serving_properties = {
     "SAGEMAKER_PROGRAM": "inference.py",
-    "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
-    "SM_NUM_GPUS": "2",
+    "SAGEMAKER_MODEL_SERVER_WORKERS": "4",
+    "OPTION_TENSOR_PARALLEL_DEGREE": "4",
 }
 
 mock_schema_builder = MagicMock()
 mock_schema_builder.sample_input = mock_sample_input
 mock_schema_builder.sample_output = mock_sample_output
-
-mock_schema_builder_invalid = MagicMock()
-mock_schema_builder_invalid.sample_input = {"invalid": "format"}
-mock_schema_builder_invalid.sample_output = mock_sample_output
 
 mock_tgi_image_uri = (
     "123456789712.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi"
@@ -389,7 +383,7 @@ class TestJumpStartBuilder(unittest.TestCase):
     )
     @patch(
         "sagemaker.serve.builder.jumpstart_builder._get_available_gpus",
-        return_value=8,
+        return_value=4,
     )
     @patch(
         "sagemaker.serve.builder.jumpstart_builder._serial_benchmark",
