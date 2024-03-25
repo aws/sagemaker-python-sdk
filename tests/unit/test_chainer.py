@@ -174,7 +174,15 @@ def test_additional_hyperparameters(sagemaker_session, chainer_version, chainer_
         framework_version=chainer_version,
         py_version=chainer_py_version,
     )
-    assert bool(strtobool(chainer.hyperparameters()["sagemaker_use_mpi"]))
+
+    assert chainer.hyperparameters()["sagemaker_use_mpi"].lower() in (
+        "y",
+        "yes",
+        "t",
+        "true",
+        "on",
+        "1",
+    )
     assert int(chainer.hyperparameters()["sagemaker_num_processes"]) == 4
     assert int(chainer.hyperparameters()["sagemaker_process_slots_per_host"]) == 10
     assert (
