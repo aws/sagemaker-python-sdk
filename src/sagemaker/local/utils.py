@@ -21,7 +21,6 @@ import json
 import re
 import errno
 
-from distutils.dir_util import copy_tree
 from six.moves.urllib.parse import urlparse
 
 from sagemaker import s3
@@ -102,7 +101,7 @@ def move_to_destination(source, destination, job_name, sagemaker_session, prefix
 
 
 def recursive_copy(source, destination):
-    """A wrapper around distutils.dir_util.copy_tree.
+    """A wrapper around shutil.copy_tree.
 
     This won't throw any exception when the source directory does not exist.
 
@@ -111,7 +110,7 @@ def recursive_copy(source, destination):
         destination (str): destination path
     """
     if os.path.isdir(source):
-        copy_tree(source, destination)
+        shutil.copytree(source, destination, dirs_exist_ok=True)
 
 
 def kill_child_processes(pid):

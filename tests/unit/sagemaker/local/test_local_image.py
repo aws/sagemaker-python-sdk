@@ -160,7 +160,7 @@ def test_get_compose_cmd_prefix_with_docker_cli():
     "subprocess.check_output",
     side_effect=subprocess.CalledProcessError(returncode=1, cmd="docker compose version"),
 )
-@patch("sagemaker.local.image.find_executable", Mock(return_value="/usr/bin/docker-compose"))
+@patch("sagemaker.local.image.shutil.which", Mock(return_value="/usr/bin/docker-compose"))
 def test_get_compose_cmd_prefix_with_docker_compose_cli(check_output):
     compose_cmd_prefix = _SageMakerContainer._get_compose_cmd_prefix()
     assert compose_cmd_prefix == ["docker-compose"]
@@ -170,7 +170,7 @@ def test_get_compose_cmd_prefix_with_docker_compose_cli(check_output):
     "subprocess.check_output",
     side_effect=subprocess.CalledProcessError(returncode=1, cmd="docker compose version"),
 )
-@patch("sagemaker.local.image.find_executable", Mock(return_value=None))
+@patch("sagemaker.local.image.shutil.which", Mock(return_value=None))
 def test_get_compose_cmd_prefix_raises_import_error(check_output):
     with pytest.raises(ImportError) as e:
         _SageMakerContainer._get_compose_cmd_prefix()
