@@ -6,6 +6,7 @@ import subprocess
 import cloudpickle
 import shutil
 import platform
+import mlflow
 from pathlib import Path
 from functools import partial
 import logging
@@ -33,10 +34,15 @@ def model_fn(model_dir):
         shutil.copytree(shared_libs_path, "/lib", dirs_exist_ok=True)
 
     serve_path = Path(__file__).parent.joinpath("serve.pkl")
+    mlflow_flavor = _get_mlflow_flavor()
     with open(str(serve_path), mode="rb") as file:
         global inference_spec, native_model, schema_builder
         obj = cloudpickle.load(file)
-        if isinstance(obj[0], InferenceSpec):
+        if mlflow_flavor is not None:
+            schema_builder = obj
+            loaded_model = _load_mlflow_model(deployment_flavor=mlflow_flavor, model_dir=model_dir)
+            return loaded_model if callable(loaded_model) else loaded_model.predict
+        elif isinstance(obj[0], InferenceSpec):
             inference_spec, schema_builder = obj
         elif isinstance(obj[0], str) and obj[0] == "xgboost":
             model_class_name = os.getenv("MODEL_CLASS_NAME")
@@ -130,6 +136,26 @@ def install_package(package_name, version=None):
         print(f"Successfully installed {package_name} using install_package")
     except subprocess.CalledProcessError as e:
         print(f"Failed to install {package_name}. Error: {e}")
+
+
+def _get_mlflow_flavor():
+    mlflow_model_flavor = os.getenv("MLFLOW_MODEL_FLAVOR")
+    return mlflow_model_flavor
+
+
+def _load_mlflow_model(deployment_flavor, model_dir):
+    flavor_loader_map = {
+        "Keras": mlflow.keras.load_model,
+        "PyFunc": mlflow.pyfunc.load_model,
+        "PyTorch": mlflow.pytorch.load_model,
+        "SKLearn": mlflow.sklearn.load_model,
+        "XGBoost": mlflow.xgboost.load_model,
+        "LangChain": mlflow.pyfunc.load_model,
+    }
+
+    load_function = flavor_loader_map.get(deployment_flavor, mlflow.pyfunc.load_model)
+
+    return load_function(model_dir)
 
 
 # on import, execute

@@ -37,6 +37,16 @@ from sagemaker.serve.builder.tgi_builder import TGI
 from sagemaker.serve.builder.jumpstart_builder import JumpStart
 from sagemaker.serve.builder.transformers_builder import Transformers
 from sagemaker.predictor import Predictor
+from sagemaker.serve.model_format.mlflow.utils import (
+    _get_default_download_path,
+    _get_default_model_server_for_mlflow,
+    _mlflow_input_is_local_path,
+    _download_s3_artifacts,
+    _select_container_for_mlflow_model,
+    _generate_mlflow_artifact_path,
+    _get_all_flavor_metadata,
+    _get_deployment_flavor,
+)
 from sagemaker.serve.save_retrive.version_1_0_0.metadata.metadata import Metadata
 from sagemaker.serve.spec.inference_spec import InferenceSpec
 from sagemaker.serve.utils import task
@@ -297,6 +307,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
                 save_pkl(code_path, (self._framework, self.schema_builder))
             else:
                 save_pkl(code_path, (self.model, self.schema_builder))
+        elif self._is_mlflow_model:
+            save_pkl(code_path, self.schema_builder)
         else:
             raise ValueError("Cannot detect required model or inference spec")
 
@@ -577,6 +589,59 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
 
         return wrapper
 
+    def _check_if_input_is_mlflow_model(self) -> bool:
+        """Checks whether an MLmodel file exists in the given directory.
+
+        Returns:
+            bool: True if the MLmodel file exists, False otherwise.
+        """
+        path = self.model_path
+        if not path:
+            return False
+
+        mlmodel_file = "MLmodel"
+        # Check for S3 path
+        if self.model_path.startswith("s3://"):
+            s3_client = self.sagemaker_session.boto_session.clint("s3")
+            bucket_name, key = path.replace("s3://", "").split("/", 1)
+            key_prefix = f"{key.rstrip('/')}/{mlmodel_file}"
+
+            # Use the list_objects_v2 method to check for the MLmodel file
+            response = s3_client.list_objects_v2(Bucket=bucket_name, Prefix=key_prefix)
+            # Check if 'Contents' are present in the response and if any object is found
+            return "Contents" in response and len(response["Contents"]) > 0
+
+        # Local filesystem path
+        else:
+            file_path = os.path.join(path, mlmodel_file)
+            return os.path.isfile(file_path)
+
+    def _initialize_for_mlflow(self) -> None:
+        """Initialize mlflow model artifacts, image uri and model server."""
+        if not _mlflow_input_is_local_path(self.model_path):
+            download_path = _get_default_download_path()
+            # TODO: extend to pakage arn, run id and etc.
+            _download_s3_artifacts(self.model_path, download_path, self.sagemaker_session)
+            self.model_path = download_path
+        mlflow_model_metadata_path = _generate_mlflow_artifact_path(self.model_path, "MLmodel")
+        mlflow_model_dependency_path = _generate_mlflow_artifact_path(
+            self.model_path, "requirements.txt"
+        )
+        flavor_metadata = _get_all_flavor_metadata(mlflow_model_metadata_path)
+        deployment_flavor = _get_deployment_flavor(flavor_metadata)
+
+        self.model_server = self.model_server or _get_default_model_server_for_mlflow(
+            deployment_flavor
+        )
+        self.image_uri = self.image_uri or _select_container_for_mlflow_model(
+            mlflow_model_src_path=self.model_path,
+            deployment_flavor=deployment_flavor,
+            region=self.sagemaker_session.boto_region_name,
+            instance_type=self.instance_type,
+        )
+        self.env_vars.update({"MLFLOW_MODEL_FLAVOR": f"{deployment_flavor}"})
+        self.dependencies.update({"requirements": mlflow_model_dependency_path})
+
     # Model Builder is a class to build the model for deployment.
     # It supports two modes of deployment
     # 1/ SageMaker Endpoint
@@ -620,6 +685,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
         self.serve_settings = self._get_serve_setting()
 
         self._is_custom_image_uri = self.image_uri is not None
+        self._is_mlflow_model = self._check_if_input_is_mlflow_model()
+        if self._is_mlflow_model:
+            self._initialize_for_mlflow()
 
         if isinstance(self.model, str):
             model_task = None
