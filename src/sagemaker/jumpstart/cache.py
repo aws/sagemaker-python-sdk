@@ -465,7 +465,7 @@ class JumpStartModelsCache:
             hub_model_description: Dict[str, Any] = self._sagemaker_session.describe_hub_content(
                 hub_name=model_info.hub_name,
                 hub_content_name=model_info.hub_content_name,
-                hub_content_version=model_info.hub_content_version,
+                hub_content_version=None if model_info.hub_content_version == "*" else model_info.hub_content_version,
                 hub_content_type=model_info.hub_content_type,
             )
 
