@@ -65,6 +65,9 @@ def main(sys_args=None):
         conda_env = job_conda_env or os.getenv("SAGEMAKER_JOB_CONDA_ENV")
 
         RuntimeEnvironmentManager()._validate_python_version(client_python_version, conda_env)
+        RuntimeEnvironmentManager()._validate_sagemaker_pysdk_version(
+            client_sagemaker_pysdk_version
+        )
 
         user = getpass.getuser()
         if user != "root":

@@ -616,10 +616,7 @@ def verify_model_region_and_return_specs(
         model_type=model_type,
     )
 
-    if (
-        scope == constants.JumpStartScriptScope.TRAINING.value
-        and not model_specs.training_supported
-    ):
+    if scope == enums.JumpStartScriptScope.TRAINING.value and not model_specs.training_supported:
         raise ValueError(
             f"JumpStart model ID '{model_id}' and version '{version}' " "does not support training."
         )
@@ -630,7 +627,7 @@ def verify_model_region_and_return_specs(
                 model_id=model_id, version=version, message=model_specs.deprecated_message
             )
 
-    if scope == constants.JumpStartScriptScope.INFERENCE.value and model_specs.inference_vulnerable:
+    if scope == enums.JumpStartScriptScope.INFERENCE.value and model_specs.inference_vulnerable:
         if not tolerate_vulnerable_model:
             raise VulnerableJumpStartModelError(
                 model_id=model_id,
@@ -639,13 +636,13 @@ def verify_model_region_and_return_specs(
                 scope=constants.JumpStartScriptScope.INFERENCE,
             )
 
-    if scope == constants.JumpStartScriptScope.TRAINING.value and model_specs.training_vulnerable:
+    if scope == enums.JumpStartScriptScope.TRAINING.value and model_specs.training_vulnerable:
         if not tolerate_vulnerable_model:
             raise VulnerableJumpStartModelError(
                 model_id=model_id,
                 version=version,
                 vulnerabilities=model_specs.training_vulnerabilities,
-                scope=constants.JumpStartScriptScope.TRAINING,
+                scope=enums.JumpStartScriptScope.TRAINING,
             )
 
     return model_specs
