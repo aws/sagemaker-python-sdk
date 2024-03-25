@@ -15,7 +15,6 @@ from __future__ import absolute_import
 import logging
 import json
 import os
-from distutils.util import strtobool
 
 import pytest
 from mock import MagicMock, Mock, ANY
