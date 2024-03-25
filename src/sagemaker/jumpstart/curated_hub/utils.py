@@ -298,8 +298,10 @@ def is_gated_bucket(bucket_name: str) -> bool:
 
 def get_data_location_uri(src_file: FileInfo, dest_location: S3ObjectLocation, is_gated: bool) -> str:
     """Util to create data location uri"""
+    # This whole thing is hacky!!
     file_location = src_file.location
     if is_gated and src_file.reference_type in [HubContentReferenceType.INFERENCE_ARTIFACT, HubContentReferenceType.TRAINING_ARTIFACT]:
-        return f"s3://{file_location.bucket}/{file_location.key}"
+        bucket = file_location.bucket.replace('prod', 'beta')
+        return f"s3://{bucket}/{file_location.key}"
     
     return f"s3://{dest_location.bucket}/{dest_location.key}/{file_location.key}"

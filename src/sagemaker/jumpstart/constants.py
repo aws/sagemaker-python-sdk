@@ -256,7 +256,9 @@ JUMPSTART_LOGGER.addHandler(
 try:
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION = Session(
         boto3.Session(region_name=JUMPSTART_DEFAULT_REGION_NAME),
-        boto3.Session().client("sagemaker", endpoint_url="https://sagemaker.beta.us-west-2.ml-platform.aws.a2z.com")
+        boto3.Session().client(
+            "sagemaker", endpoint_url="https://sagemaker.beta.us-west-2.ml-platform.aws.a2z.com"
+        ),
     )
 except Exception as e:  # pylint: disable=W0703
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION = None
