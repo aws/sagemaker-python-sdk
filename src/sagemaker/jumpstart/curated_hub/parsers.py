@@ -20,6 +20,7 @@ from sagemaker.jumpstart.curated_hub.types import (
     HubContentReferenceType,
     S3ObjectLocation,
 )
+from sagemaker.jumpstart.curated_hub.utils import get_data_location_uri
 from sagemaker.jumpstart.enums import ModelSpecKwargType, NamingConventionType, JumpStartScriptScope
 from sagemaker import image_uris
 from sagemaker.s3 import s3_path_join, parse_s3_url
@@ -272,8 +273,7 @@ def make_hub_model_document_from_specs(
     document["GatedBucket"] = model_specs.gated_bucket
     document["HostingArtifactUri"] = next(
         (
-            f"s3://{dest_location.bucket}/{dest_location.key}/{file.location.key}"
-                if not model_specs.gated_bucket else f"s3://{file.location.bucket}/{file.location.key}"
+            get_data_location_uri(file, dest_location, model_specs.gated_bucket)
             for file in files
             if file.reference_type is HubContentReferenceType.INFERENCE_ARTIFACT
         ),
@@ -286,7 +286,7 @@ def make_hub_model_document_from_specs(
 
     document["HostingScriptUri"] = next(
         (
-            f"s3://{dest_location.bucket}/{dest_location.key}/{file.location.key}"
+            get_data_location_uri(file, dest_location, model_specs.gated_bucket)
             for file in files
             if file.reference_type is HubContentReferenceType.INFERENCE_SCRIPT
         ),
@@ -301,7 +301,7 @@ def make_hub_model_document_from_specs(
     ] = model_specs.dynamic_container_deployment_supported
     document["HostingPrepackedArtifactUri"] = next(
         (
-            f"s3://{dest_location.bucket}/{dest_location.key}/{file.location.key}"
+            get_data_location_uri(file, dest_location, model_specs.gated_bucket)
             for file in files
             if file.reference_type is HubContentReferenceType.INFERENCE_ARTIFACT
         ),
@@ -311,7 +311,7 @@ def make_hub_model_document_from_specs(
     document["HostingUseScriptUri"] = model_specs.hosting_use_script_uri
     document["HostingEulaUri"] = next(
         (
-            f"s3://{dest_location.bucket}/{dest_location.key}/{file.location.key}"
+            get_data_location_uri(file, dest_location, model_specs.gated_bucket)
             for file in files
             if file.reference_type is HubContentReferenceType.EULA
         ),
@@ -335,7 +335,7 @@ def make_hub_model_document_from_specs(
     ] = model_specs.hosting_instance_type_variants.regionalize(region)
     document["DefaultTrainingDatasetUri"] = next(
         (
-            f"s3://{dest_location.bucket}/{dest_location.key}/{file.location.key}"
+            get_data_location_uri(file, dest_location, model_specs.gated_bucket)
             for file in files
             if file.reference_type is HubContentReferenceType.DEFAULT_TRAINING_DATASET
         ),
@@ -356,7 +356,7 @@ def make_hub_model_document_from_specs(
         #     )
         notebook_location_uris["model_deploy"] = next(
             (
-                f"s3://{dest_location.bucket}/{dest_location.key}/{file.location.key}"
+                get_data_location_uri(file, dest_location, model_specs.gated_bucket)
                 for file in files
                 if file.reference_type is HubContentReferenceType.INFERENCE_NOTEBOOK
             ),
@@ -395,7 +395,7 @@ def make_hub_model_document_from_specs(
         ]
         document["TrainingScriptUri"] = next(
             (
-                f"s3://{dest_location.bucket}/{dest_location.key}/{file.location.key}"
+                get_data_location_uri(file, dest_location, model_specs.gated_bucket)
                 for file in files
                 if file.reference_type is HubContentReferenceType.TRAINING_SCRIPT
             ),
@@ -403,7 +403,7 @@ def make_hub_model_document_from_specs(
         )
         document["TrainingPrepackedScriptUri"] = next(
             (
-                f"s3://{dest_location.bucket}/{dest_location.key}/{file.location.key}"
+                get_data_location_uri(file, dest_location, model_specs.gated_bucket)
                 for file in files
                 if file.reference_type is HubContentReferenceType.TRAINING_SCRIPT
             ),
@@ -421,7 +421,7 @@ def make_hub_model_document_from_specs(
         document["TrainingMetrics"] = model_specs.metrics
         document["TrainingArtifactUri"] = next(
             (
-                f"s3://{dest_location.bucket}/{dest_location.key}/{file.location.key}"
+                get_data_location_uri(file, dest_location, model_specs.gated_bucket)
                 for file in files
                 if file.reference_type is HubContentReferenceType.TRAINING_ARTIFACT
             ),

@@ -38,11 +38,9 @@ class PublicModelDataAccessor:
     ):
         """Creates a PublicModelDataAccessor."""
         self._region = region
-        self._bucket = (
-            get_jumpstart_gated_content_bucket(region)
-            if model_specs.gated_bucket
-            else get_jumpstart_content_bucket(region)
-        )
+        # Only model artifacts are stored in gated bucket. This is handled by
+        # model_uris.retrieve
+        self._public_bucket = get_jumpstart_content_bucket(region)
         self.model_specs = model_specs
         self.studio_specs = studio_specs  # Necessary for SDK - Studio metadata drift
 
@@ -87,21 +85,21 @@ class PublicModelDataAccessor:
         """Retrieves s3 reference for s3 directory containing model training datasets"""
         if not self.model_specs.training_supported:
             return None
-        return S3ObjectLocation(self._get_bucket_name(), self._get_training_dataset_prefix())
+        return S3ObjectLocation(self._get_public_bucket_name(), self._get_training_dataset_prefix())
 
     @property
     def inference_notebook_s3_reference(self) -> S3ObjectLocation:
         """Retrieves s3 reference for inference jupyter notebook"""
         framework = self.model_specs.get_framework()
         key = f"{framework}-notebooks/{self.model_specs.model_id}-inference.ipynb"
-        return S3ObjectLocation(self._get_bucket_name(), key)
+        return S3ObjectLocation(self._get_public_bucket_name(), key)
 
     @property
     def markdown_s3_reference(self) -> S3ObjectLocation:
         """Retrieves s3 reference for model markdown"""
         framework = self.model_specs.get_framework()
         key = f"{framework}-metadata/{self.model_specs.model_id}.md"
-        return S3ObjectLocation(self._get_bucket_name(), key)
+        return S3ObjectLocation(self._get_public_bucket_name(), key)
 
     @property
     def eula_s3_reference(self) -> S3ObjectLocation:
@@ -109,11 +107,11 @@ class PublicModelDataAccessor:
         if not self.model_specs.gated_bucket:
             return None
         eula_key = self.model_specs.hosting_eula_key
-        return S3ObjectLocation(self._get_bucket_name(), eula_key)
+        return S3ObjectLocation(self._get_public_bucket_name(), eula_key)
 
-    def _get_bucket_name(self) -> str:
-        """Retrieves s3 bucket"""
-        return self._bucket
+    def _get_public_bucket_name(self) -> str:
+        """Retrieves public s3 bucket"""
+        return self._public_bucket
 
     def _get_training_dataset_prefix(self) -> Optional[str]:
         """Retrieves training dataset location"""
