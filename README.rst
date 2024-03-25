@@ -22,8 +22,8 @@ SageMaker Python SDK
    :target: https://sagemaker.readthedocs.io/en/stable/
    :alt: Documentation Status
 
-.. image:: https://github.com/benieric/sagemaker-python-sdk/actions/workflows/codebuild-ci-health.yml/badge.svg
-    :target: https://github.com/benieric/sagemaker-python-sdk/actions/workflows/codebuild-ci-health.yml
+.. image:: https://github.com/aws/sagemaker-python-sdk/actions/workflows/codebuild-ci-health.yml/badge.svg
+    :target: https://github.com/aws/sagemaker-python-sdk/actions/workflows/codebuild-ci-health.yml
     :alt: CI Health
 
 SageMaker Python SDK is an open source library for training and deploying machine learning models on Amazon SageMaker.

@@ -17,6 +17,7 @@ from tests.unit.sagemaker.jumpstart.utils import (
     get_prototype_manifest,
     get_prototype_model_spec,
 )
+from tests.unit.sagemaker.jumpstart.constants import BASE_PROPRIETARY_MANIFEST
 from sagemaker.jumpstart.enums import JumpStartModelType
 from sagemaker.jumpstart.notebook_utils import (
     _generate_jumpstart_model_versions,
@@ -40,8 +41,8 @@ def test_list_jumpstart_scripts(
     patched_read_s3_file: Mock,
 ):
     patched_get_model_specs.side_effect = get_prototype_model_spec
-    patched_get_manifest.side_effect = lambda region, *args, **kwargs: get_prototype_manifest(
-        region
+    patched_get_manifest.side_effect = (
+        lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
     )
     patched_generate_jumpstart_models.side_effect = _generate_jumpstart_model_versions
     patched_read_s3_file.side_effect = lambda *args, **kwargs: json.dumps(
@@ -63,7 +64,9 @@ def test_list_jumpstart_scripts(
     }
     assert list_jumpstart_scripts(**kwargs) == sorted(["inference", "training"])
     patched_generate_jumpstart_models.assert_called_once_with(
-        **kwargs, sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+        **kwargs,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
+        sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     )
     assert patched_get_manifest.call_count == 2
     assert patched_get_model_specs.call_count == 1
@@ -76,12 +79,15 @@ def test_list_jumpstart_scripts(
         "filter": "training_supported is False",
         "region": "sa-east-1",
     }
+    num_specs = len(PROTOTYPICAL_MODEL_SPECS_DICT)
     assert list_jumpstart_scripts(**kwargs) == []
     patched_generate_jumpstart_models.assert_called_once_with(
-        **kwargs, sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+        **kwargs,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
+        sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     )
     assert patched_get_manifest.call_count == 2
-    assert patched_read_s3_file.call_count == 2 * len(PROTOTYPICAL_MODEL_SPECS_DICT)
+    assert patched_read_s3_file.call_count == num_specs
 
 
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
@@ -93,8 +99,8 @@ def test_list_jumpstart_tasks(
     patched_get_manifest: Mock,
 ):
     patched_get_model_specs.side_effect = get_prototype_model_spec
-    patched_get_manifest.side_effect = lambda region, *args, **kwargs: get_prototype_manifest(
-        region
+    patched_get_manifest.side_effect = (
+        lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
     )
     patched_generate_jumpstart_models.side_effect = _generate_jumpstart_model_versions
 
@@ -122,7 +128,9 @@ def test_list_jumpstart_tasks(
     }
     assert list_jumpstart_tasks(**kwargs) == ["ic"]
     patched_generate_jumpstart_models.assert_called_once_with(
-        **kwargs, sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+        **kwargs,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
+        sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     )
     assert patched_get_manifest.call_count == 2
     patched_get_model_specs.assert_not_called()
@@ -137,8 +145,8 @@ def test_list_jumpstart_frameworks(
     patched_get_manifest: Mock,
 ):
     patched_get_model_specs.side_effect = get_prototype_model_spec
-    patched_get_manifest.side_effect = lambda region, *args, **kwargs: get_prototype_manifest(
-        region
+    patched_get_manifest.side_effect = (
+        lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
     )
     patched_generate_jumpstart_models.side_effect = _generate_jumpstart_model_versions
 
@@ -180,7 +188,9 @@ def test_list_jumpstart_frameworks(
     )
 
     patched_generate_jumpstart_models.assert_called_once_with(
-        **kwargs, sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+        **kwargs,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
+        sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     )
     assert patched_get_manifest.call_count == 4
     patched_get_model_specs.assert_not_called()
@@ -229,8 +239,8 @@ class ListJumpStartModels(TestCase):
         patched_read_s3_file.side_effect = lambda *args, **kwargs: json.dumps(
             get_prototype_model_spec(None, "pytorch-eqa-bert-base-cased").to_json()
         )
-        patched_get_manifest.side_effect = lambda region, *args, **kwargs: get_prototype_manifest(
-            region
+        patched_get_manifest.side_effect = (
+            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
         )
 
         manifest_length = len(get_prototype_manifest())
@@ -516,8 +526,8 @@ class ListJumpStartModels(TestCase):
         patched_get_manifest: Mock,
     ):
 
-        patched_get_manifest.side_effect = lambda region, *args, **kwargs: get_prototype_manifest(
-            region
+        patched_get_manifest.side_effect = (
+            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
         )
 
         def vulnerable_inference_model_spec(bucket, key, *args, **kwargs) -> str:
@@ -533,11 +543,12 @@ class ListJumpStartModels(TestCase):
         patched_read_s3_file.side_effect = vulnerable_inference_model_spec
 
         num_specs = len(PROTOTYPICAL_MODEL_SPECS_DICT)
+        num_prop_specs = len(BASE_PROPRIETARY_MANIFEST)
         assert [] == list_jumpstart_models(
             And("inference_vulnerable is false", "training_vulnerable is false")
         )
 
-        assert patched_read_s3_file.call_count == 2 * num_specs
+        assert patched_read_s3_file.call_count == num_specs + num_prop_specs
         assert patched_get_manifest.call_count == 2
 
         patched_get_manifest.reset_mock()
@@ -549,7 +560,7 @@ class ListJumpStartModels(TestCase):
             And("inference_vulnerable is false", "training_vulnerable is false")
         )
 
-        assert patched_read_s3_file.call_count == 2 * num_specs
+        assert patched_read_s3_file.call_count == num_specs + num_prop_specs
         assert patched_get_manifest.call_count == 2
 
         patched_get_manifest.reset_mock()
@@ -567,8 +578,8 @@ class ListJumpStartModels(TestCase):
         patched_get_manifest: Mock,
     ):
 
-        patched_get_manifest.side_effect = lambda region, *args, **kwargs: get_prototype_manifest(
-            region
+        patched_get_manifest.side_effect = (
+            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
         )
 
         def deprecated_model_spec(bucket, key, *args, **kwargs) -> str:
@@ -579,9 +590,10 @@ class ListJumpStartModels(TestCase):
         patched_read_s3_file.side_effect = deprecated_model_spec
 
         num_specs = len(PROTOTYPICAL_MODEL_SPECS_DICT)
+        num_prop_specs = len(BASE_PROPRIETARY_MANIFEST)
         assert [] == list_jumpstart_models("deprecated equals false")
 
-        assert patched_read_s3_file.call_count == 2 * num_specs
+        assert patched_read_s3_file.call_count == num_specs + num_prop_specs
         assert patched_get_manifest.call_count == 2
 
         patched_get_manifest.reset_mock()
@@ -666,8 +678,8 @@ class ListJumpStartModels(TestCase):
         patched_read_s3_file.side_effect = lambda *args, **kwargs: json.dumps(
             get_prototype_model_spec(None, "pytorch-eqa-bert-base-cased").to_json()
         )
-        patched_get_manifest.side_effect = lambda region, *args, **kwargs: get_prototype_manifest(
-            region
+        patched_get_manifest.side_effect = (
+            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
         )
 
         assert list_jumpstart_models(
@@ -711,8 +723,8 @@ class ListJumpStartModels(TestCase):
         patched_get_manifest: Mock,
     ):
         patched_get_model_specs.side_effect = get_prototype_model_spec
-        patched_get_manifest.side_effect = lambda region, *args, **kwargs: get_prototype_manifest(
-            region
+        patched_get_manifest.side_effect = (
+            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
         )
 
         with pytest.raises(NotImplementedError):
@@ -730,8 +742,8 @@ def test_get_model_url(
 
     patched_get_model_specs.side_effect = get_prototype_model_spec
     patched_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
-    patched_get_manifest.side_effect = lambda region, *args, **kwargs: get_prototype_manifest(
-        region
+    patched_get_manifest.side_effect = (
+        lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
     )
 
     model_id, version = "xgboost-classification-model", "1.0.0"
