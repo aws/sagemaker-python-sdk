@@ -173,6 +173,7 @@ class CuratedHub:
 
         **kwargs: Passed to invocation of ``Session:list_hub_contents``.
         """
+        JUMPSTART_LOGGER.info(f"Listing models in {self.hub_name}")
         if clear_cache:
             self._list_hubs_cache = None
         if self._list_hubs_cache is None:
@@ -443,6 +444,8 @@ class CuratedHub:
             region=self.region,
         )
 
+        print(f"Importing {model.model_id}/{model.version}")
+
         self._sagemaker_session.import_hub_content(
             document_schema_version=hub_content_document.get_schema_version(),
             hub_content_name=model.model_id,
@@ -479,7 +482,7 @@ class CuratedHub:
         dest_location = sync_request.destination
         dependencies: List[HubContentDependency] = []
         for file in files:
-            dependencies.push(
+            dependencies.append(
                 HubContentDependency(
                     {
                         "dependency_origin_path": f"{file.location.bucket}/{file.location.key}",

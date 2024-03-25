@@ -111,8 +111,8 @@ class FileInfo(JumpStartDataHolderType):
         self,
         bucket: str,
         key: str,
-        size: Optional[bytes],
-        last_updated: Optional[datetime],
+        size: Optional[bytes] = None,
+        last_updated: Optional[datetime] = None,
         reference_type: Optional[HubContentReferenceType] = None,
     ):
         """Creates a FileInfo."""

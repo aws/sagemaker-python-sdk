@@ -69,7 +69,15 @@ def generate_file_infos_from_model_specs(
     for dependency in HubContentReferenceType:
         location: S3ObjectLocation = public_model_data_accessor.get_s3_reference(dependency)
         # Training dependencies will return as None if training is unsupported
-        if not location or is_gated_bucket(location.bucket):
+        if not location:
+            continue
+
+        # Do not copy any data from gated bucket, so no need
+        # to explore inside a prefix or get object details.
+        # Those S3 calls would be blocked anyway.
+        # Only need to track s3 uri for the import call
+        if is_gated_bucket(location.bucket):
+            files.append(FileInfo(location.bucket, location.key, reference_type=dependency))
             continue
 
         location_type = "prefix" if location.key.endswith("/") else "object"
@@ -88,9 +96,12 @@ def generate_file_infos_from_model_specs(
                         key,
                         size,
                         last_modified,
-                        dependency,
                     )
                 )
+            # Keep track of all files in the prefix to copy, but
+            # flag the entire prefix to be used in the import call.
+            # For example, prepacked model data
+            files.append(FileInfo(location.bucket, location.key, reference_type=dependency))
         elif location_type == "object":
             parameters = {"Bucket": location.bucket, "Key": location.key}
             response = s3_client.head_object(**parameters)

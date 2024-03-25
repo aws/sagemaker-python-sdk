@@ -147,11 +147,10 @@ def make_model_specs_from_describe_hub_content_response(
     )
     specs["hosting_ecr_uri"] = hub_model_document.hosting_ecr_uri
 
-    hosting_artifact_bucket, hosting_artifact_key = parse_s3_url(
-        hub_model_document.hosting_artifact_uri
-    )
+    hosting_artifact_key = hub_model_document.hosting_artifact_uri
+
     specs["hosting_artifact_key"] = hosting_artifact_key
-    hosting_script_bucket, hosting_script_key = parse_s3_url(hub_model_document.hosting_script_uri)
+    hosting_script_key = parse_s3_url(hub_model_document.hosting_script_uri)
     specs["hosting_script_key"] = hosting_script_key
     specs["inference_environment_variables"] = hub_model_document.inference_environment_variables
     specs["inference_vulnerable"] = False
@@ -179,16 +178,14 @@ def make_model_specs_from_describe_hub_content_response(
     specs["metrics"] = hub_model_document.training_metrics
     specs["training_prepacked_script_key"] = None
     if hub_model_document.training_prepacked_script_uri is not None:
-        training_prepacked_script_bucket, training_prepacked_script_key = parse_s3_url(
-            hub_model_document.training_prepacked_script_uri
-        )
+        training_prepacked_script_key = hub_model_document.training_prepacked_script_uri
+
         specs["training_prepacked_script_key"] = training_prepacked_script_key
 
     specs["hosting_prepacked_artifact_key"] = None
     if hub_model_document.hosting_prepacked_artifact_uri is not None:
-        hosting_prepacked_artifact_bucket, hosting_prepacked_artifact_key = parse_s3_url(
-            hub_model_document.hosting_prepacked_artifact_uri
-        )
+        hosting_prepacked_artifact_key = hub_model_document.hosting_prepacked_artifact_uri
+
         specs["hosting_prepacked_artifact_key"] = hosting_prepacked_artifact_key
 
     specs["fit_kwargs"] = get_model_spec_kwargs_from_hub_model_document(
@@ -218,8 +215,7 @@ def make_model_specs_from_describe_hub_content_response(
 
     specs["hosting_eula_key"] = None
     if hub_model_document.hosting_eula_uri is not None:
-        hosting_eula_bucket, hosting_eula_key = parse_s3_url(hub_model_document.hosting_eula_uri)
-        specs["hosting_eula_key"] = hosting_eula_key
+        specs["hosting_eula_key"] = hub_model_document.hosting_eula_uri
 
     if hub_model_document.hosting_model_package_arn:
         specs["hosting_model_package_arns"] = {region: hub_model_document.hosting_model_package_arn}
@@ -230,13 +226,9 @@ def make_model_specs_from_describe_hub_content_response(
 
     if specs["training_supported"]:
         specs["training_ecr_uri"] = hub_model_document.training_ecr_uri
-        training_artifact_bucket, training_artifact_key = parse_s3_url(
-            hub_model_document.training_artifact_uri
-        )
+        training_artifact_key = hub_model_document.training_artifact_uri
         specs["training_artifact_key"] = training_artifact_key
-        training_script_bucket, training_script_key = parse_s3_url(
-            hub_model_document.training_script_uri
-        )
+        training_script_key = hub_model_document.training_script_uri
         specs["training_script_key"] = training_script_key
 
         specs["hyperparameters"] = hub_model_document.hyperparameters
@@ -281,6 +273,7 @@ def make_hub_model_document_from_specs(
     document["HostingArtifactUri"] = next(
         (
             f"s3://{dest_location.bucket}/{dest_location.key}/{file.location.key}"
+                if not model_specs.gated_bucket else f"s3://{file.location.bucket}/{file.location.key}"
             for file in files
             if file.reference_type is HubContentReferenceType.INFERENCE_ARTIFACT
         ),

@@ -289,6 +289,7 @@ class JumpStartHyperparameter(JumpStartDataHolderType):
         options = json_obj["options"] if json_obj.get("options") else json_obj.get("Options")
         min_val = json_obj["min"] if json_obj.get("min") else json_obj.get("Min")
         max_val = json_obj["max"] if json_obj.get("max") else json_obj.get("Max")
+        self.default = self.default if self.default else max_val if max_val else 0
 
         if options is not None and len(options) > 0:
             self.options = options

@@ -19,6 +19,7 @@ from botocore.compat import six
 
 from sagemaker.jumpstart.curated_hub.sync.comparator import BaseComparator
 from sagemaker.jumpstart.curated_hub.types import FileInfo, S3ObjectLocation
+from sagemaker.jumpstart.curated_hub.utils import is_gated_bucket
 
 advance_iterator = six.advance_iterator
 
@@ -113,6 +114,9 @@ class HubSyncRequestFactory:
             dest_done = True
 
         for src_file in self.src_files:
+            # Skip over any files in gated bucket or prefixes
+            if is_gated_bucket(src_file.location.bucket) or src_file.location.key.endswith("/"):
+                continue
             # End of dest, yield remaining src_files
             if dest_done:
                 yield src_file
