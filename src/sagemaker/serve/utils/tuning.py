@@ -98,6 +98,51 @@ def _pretty_print_results_tgi(results: dict):
     )
 
 
+def _pretty_print_benchmark_results(results: dict, model_env_vars=None):
+    """Placeholder docstring"""
+    if model_env_vars is None:
+        model_env_vars = []
+
+    __env_var_data = {}
+    for e in model_env_vars:
+        __env_var_data[e] = []
+
+    avg_latencies = []
+    p90s = []
+    avg_tokens_per_seconds = []
+    throughput_per_seconds = []
+    standard_deviations = []
+    ordered = collections.OrderedDict(sorted(results.items()))
+
+    for key, value in ordered.items():
+        avg_latencies.append(key)
+        p90s.append(value[1])
+        avg_tokens_per_seconds.append(value[2])
+        throughput_per_seconds.append(value[3])
+        standard_deviations.append(value[4])
+
+        for k in __env_var_data:
+            __env_var_data[k].append(value[0][k])
+
+    df = pd.DataFrame(
+        {
+            "AverageLatency (Serial)": avg_latencies,
+            "P90_Latency (Serial)": p90s,
+            "AverageTokensPerSecond (Serial)": avg_tokens_per_seconds,
+            "ThroughputPerSecond (Concurrent)": throughput_per_seconds,
+            "StandardDeviationResponse (Concurrent)": standard_deviations,
+            **__env_var_data,
+        }
+    )
+    logger.info(
+        "\n================================================================== Benchmark "
+        "Results ==================================================================\n%s"
+        "\n============================================================================"
+        "===========================================================================\n",
+        df.to_string(),
+    )
+
+
 def _tokens_per_second(generated_text: str, max_token_length: int, latency: float) -> int:
     """Placeholder docstring"""
     est_tokens = (_tokens_from_chars(generated_text) + _tokens_from_words(generated_text)) / 2
