@@ -152,6 +152,7 @@ def test_predict(tfs_predictor):
     result = tfs_predictor.predict(input_data)
     assert expected_result == result
 
+
 @pytest.mark.local_mode
 def test_predict_with_entry_point(tfs_predictor_with_model_and_entry_point_same_tar):
     input_data = {"instances": [1.0, 2.0, 5.0]}
