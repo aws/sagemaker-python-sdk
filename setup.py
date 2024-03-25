@@ -87,8 +87,8 @@ extras["all"] = [item for group in extras.values() for item in group]
 test_dependencies = read_requirements("requirements/extras/test_requirements.txt")
 # test dependencies are a superset of testing and extra dependencies
 test_dependencies.extend(extras["all"])
-# remove torch and torchvision if python version is not 3.10
-if sys.version_info.minor != 10:
+# remove torch and torchvision if python version is not 3.10/3.11
+if sys.version_info.minor != 10 or sys.version_info.minor != 11:
     test_dependencies = [
         module
         for module in test_dependencies
@@ -126,6 +126,7 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
     ],
     install_requires=required_packages,
     extras_require=extras,
