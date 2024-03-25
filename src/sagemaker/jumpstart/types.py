@@ -1701,6 +1701,8 @@ class HubModelDocument(JumpStartDataHolderType):
 
     _non_serializable_slots = ["_region"]
 
+    TASK_REGEX_IN_STUDIO_DESCRIPTION = r"\| Task: \| (.+?)\|"
+
     def __init__(
         self,
         region: str,
@@ -1917,9 +1919,9 @@ class HubModelDocument(JumpStartDataHolderType):
             self.datatype = studio_manifest_entry["dataType"]
         if studio_manifest_entry.get("license"):
             self.license = studio_manifest_entry["license"]
-        task_pattern = r"\| Task: \| (.+?)\|"
+
         task_value = self._extract_task_value(
-            studio_manifest_entry.get("description"), task_pattern
+            studio_manifest_entry.get("description")
         )
         if task_value:
             self.task = task_value
@@ -2090,16 +2092,15 @@ class HubModelDocument(JumpStartDataHolderType):
                 "disable_output_compression"
             )
 
-    def _extract_task_value(self, input_string: Optional[str], pattern: str) -> Optional[str]:
+    def _extract_task_value(self, input_string: Optional[str]) -> Optional[str]:
         """Returns value of Task field from Studio manifest's description field.
 
         Args:
             input_string (Optional[str]): The value of description field.
-            pattern (str): The regex pattern to use for searching.
         """
         if not input_string:
             return None
-        match = re.search(pattern, input_string)
+        match = re.search(self.TASK_REGEX_IN_STUDIO_DESCRIPTION, input_string)
         if match:
             return match.group(1).strip()
         else:
