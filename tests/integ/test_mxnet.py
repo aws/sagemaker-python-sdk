@@ -18,7 +18,6 @@ import time
 import numpy
 import pytest
 
-import tests.integ
 from sagemaker import ModelPackage
 from sagemaker.mxnet.estimator import MXNet
 from sagemaker.mxnet.model import MXNetModel
