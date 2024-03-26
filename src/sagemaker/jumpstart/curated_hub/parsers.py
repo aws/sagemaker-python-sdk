@@ -152,8 +152,7 @@ def make_model_specs_from_describe_hub_content_response(
     hosting_artifact_key = hub_model_document.hosting_artifact_uri
 
     specs["hosting_artifact_key"] = hosting_artifact_key
-    hosting_script_key = parse_s3_url(hub_model_document.hosting_script_uri)
-    specs["hosting_script_key"] = hosting_script_key
+    specs["hosting_script_key"] = hub_model_document.hosting_script_uri
     specs["inference_environment_variables"] = hub_model_document.inference_environment_variables
     specs["inference_vulnerable"] = False
     specs["inference_dependencies"] = hub_model_document.inference_dependencies
@@ -176,7 +175,7 @@ def make_model_specs_from_describe_hub_content_response(
     specs[
         "dynamic_container_deployment_supported"
     ] = hub_model_document.dynamic_container_deployment_supported
-    specs["hosting_resource_requirements"] = hub_model_document.hosting_resource_requirements
+    specs["hosting_resource_requirements"] = walk_and_apply_json(hub_model_document.hosting_resource_requirements, camel_to_snake)
     specs["metrics"] = hub_model_document.training_metrics
     specs["training_prepacked_script_key"] = None
     if hub_model_document.training_prepacked_script_uri is not None:
@@ -260,7 +259,7 @@ def make_hub_model_document_from_specs(
     """Sets fields in HubModelDocument based on model specs, studio specs,
     and hub content dependencies.
     """
-    print(f"Converting from model spec: {model_specs}")
+    print(f"Converting from model spec: {model_specs}\n\n\n")
     document = {}
     document["Url"] = model_specs.url
     document["MinSdkVersion"] = model_specs.min_sdk_version
@@ -294,7 +293,7 @@ def make_hub_model_document_from_specs(
         ),
         None,
     )
-    document["InferenceDependencies"] = model_specs.inference_dependencies
+    document["InferenceDependencies"] = list(str(model_specs.inference_dependencies)) # ensure uniqueness
     document["InferenceEnvironmentVariables"] = model_specs.inference_environment_variables
     document["TrainingSupported"] = model_specs.training_supported
     document["IncrementalTrainingSupported"] = model_specs.incremental_training_supported
@@ -430,7 +429,7 @@ def make_hub_model_document_from_specs(
             ),
             None,
         )
-        document["Training_dependencies"] = model_specs.training_dependencies
+        document["TrainingDependencies"] = list(set(model_specs.training_dependencies)) # Ensure uniqueness
         document["DefaultTrainingInstanceType"] = model_specs.default_training_instance_type
         document["SupportedTrainingInstanceTypes"] = model_specs.supported_training_instance_types
         document["TrainingVolumeSize"] = model_specs.training_volume_size
@@ -448,5 +447,6 @@ def make_hub_model_document_from_specs(
             "disable_output_compression"
         )
         document["ModelDir"] = model_specs.estimator_kwargs.get("model_dir")
+    print(f"Full conervsion to json: {_to_json(document)}\n\n\n")
     return HubModelDocument(_to_json(document), region, hub_content_dependencies)
 

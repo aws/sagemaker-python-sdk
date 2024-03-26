@@ -486,7 +486,6 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
         if response is None:
             return
 
-        print(f"Retrieving aliases from HubContentDocument: {response}\n\n\n")
         self.aliases: Optional[dict] = _get_key_or_upper_camel_key(response, "aliases")
         self.regional_aliases: Optional[dict] = _get_key_or_upper_camel_key(response, "regional_aliases")
         self.variants: Optional[dict] = _get_key_or_upper_camel_key(response, "variants")
