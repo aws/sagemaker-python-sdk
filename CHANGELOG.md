@@ -1,5 +1,22 @@
 # Changelog
 
+## v2.214.0 (2024-03-22)
+
+### Features
+
+ * add support to ``clarify.py`` for time series explainability jobs
+
+### Bug Fixes and Other Changes
+
+ * remove pytorch test for deprecated function
+ * skip test_experiment_analytics to unblock release
+ * Create workflow module scoped sagemaker_session to resolve test race condition
+ * Simplify how we process test dependencies, which are supposed to include all extras.
+ * skip failing feature store search integ test
+ * skip failing pt test
+ * list jumpstart models with invalid version strings
+ * urge customers to install latest version
+
 ## v2.213.0 (2024-03-15)
 
 ### Features

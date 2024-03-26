@@ -50,7 +50,6 @@ from sagemaker.processing import (
     ScriptProcessor,
 )
 from sagemaker.s3 import S3Uploader
-from sagemaker.session import get_execution_role
 from sagemaker.sklearn.estimator import SKLearn
 from sagemaker.transformer import Transformer
 from sagemaker.sklearn.processing import SKLearnProcessor
@@ -107,23 +106,8 @@ def ordered(obj):
 
 
 @pytest.fixture(scope="module")
-def region_name(sagemaker_session):
-    return sagemaker_session.boto_session.region_name
-
-
-@pytest.fixture(scope="module")
-def role(sagemaker_session):
-    return get_execution_role(sagemaker_session)
-
-
-@pytest.fixture(scope="module")
-def script_dir():
-    return os.path.join(DATA_DIR, "sklearn_processing")
-
-
-@pytest.fixture(scope="module")
-def feature_store_session(sagemaker_session):
-    boto_session = sagemaker_session.boto_session
+def feature_store_session(sagemaker_session_for_pipeline):
+    boto_session = sagemaker_session_for_pipeline.boto_session
     sagemaker_client = boto_session.client("sagemaker")
     featurestore_runtime_client = boto_session.client("sagemaker-featurestore-runtime")
 
@@ -140,7 +124,7 @@ def pipeline_name():
 
 
 @pytest.fixture(scope="module")
-def athena_dataset_definition(sagemaker_session):
+def athena_dataset_definition(sagemaker_session_for_pipeline):
     return DatasetDefinition(
         local_path="/opt/ml/processing/input/add",
         data_distribution_type="FullyReplicated",
@@ -150,7 +134,7 @@ def athena_dataset_definition(sagemaker_session):
             database="default",
             work_group="workgroup",
             query_string=('SELECT * FROM "default"."s3_test_table_$STAGE_$REGIONUNDERSCORED";'),
-            output_s3_uri=f"s3://{sagemaker_session.default_bucket()}/add",
+            output_s3_uri=f"s3://{sagemaker_session_for_pipeline.default_bucket()}/add",
             output_format="JSON",
             output_compression="GZIP",
         ),
@@ -486,7 +470,7 @@ def test_steps_with_map_params_pipeline(
 
 
 def test_one_step_ingestion_pipeline(
-    sagemaker_session, feature_store_session, feature_definitions, role, pipeline_name
+    sagemaker_session_for_pipeline, feature_store_session, feature_definitions, role, pipeline_name
 ):
     instance_count = ParameterInteger(name="InstanceCount", default_value=1)
     instance_type = ParameterString(name="InstanceType", default_value="ml.m5.4xlarge")
@@ -495,7 +479,7 @@ def test_one_step_ingestion_pipeline(
     input_file_path = os.path.join(DATA_DIR, "workflow", "features.csv")
     input_data_uri = os.path.join(
         "s3://",
-        sagemaker_session.default_bucket(),
+        sagemaker_session_for_pipeline.default_bucket(),
         "py-sdk-ingestion-test-input/features.csv",
     )
 
@@ -504,7 +488,7 @@ def test_one_step_ingestion_pipeline(
         S3Uploader.upload_string_as_file_body(
             body=body,
             desired_s3_uri=input_data_uri,
-            sagemaker_session=sagemaker_session,
+            sagemaker_session=sagemaker_session_for_pipeline,
         )
 
     inputs = [
@@ -550,7 +534,7 @@ def test_one_step_ingestion_pipeline(
             data_wrangler_flow_source=temp_flow_path,
             instance_count=instance_count,
             instance_type=instance_type,
-            sagemaker_session=sagemaker_session,
+            sagemaker_session=sagemaker_session_for_pipeline,
             max_runtime_in_seconds=86400,
         )
 
@@ -566,7 +550,7 @@ def test_one_step_ingestion_pipeline(
             name=pipeline_name,
             parameters=[instance_count, instance_type],
             steps=[data_wrangler_step],
-            sagemaker_session=sagemaker_session,
+            sagemaker_session=sagemaker_session_for_pipeline,
         )
 
         try:
@@ -574,7 +558,7 @@ def test_one_step_ingestion_pipeline(
             create_arn = response["PipelineArn"]
 
             offline_store_s3_uri = os.path.join(
-                "s3://", sagemaker_session.default_bucket(), feature_group_name
+                "s3://", sagemaker_session_for_pipeline.default_bucket(), feature_group_name
             )
             feature_group.create(
                 s3_uri=offline_store_s3_uri,
@@ -626,15 +610,15 @@ def test_one_step_ingestion_pipeline(
                             and only run as part of the 'lineage' test suite."""
 )
 def test_end_to_end_pipeline_successful_execution(
-    sagemaker_session, region_name, role, pipeline_name, wait=False
+    sagemaker_session_for_pipeline, region_name, role, pipeline_name, wait=False
 ):
     model_package_group_name = f"{pipeline_name}ModelPackageGroup"
     data_path = os.path.join(DATA_DIR, "workflow")
-    default_bucket = sagemaker_session.default_bucket()
+    default_bucket = sagemaker_session_for_pipeline.default_bucket()
 
     # download the input data
     local_input_path = os.path.join(data_path, "abalone-dataset.csv")
-    s3 = sagemaker_session.boto_session.resource("s3")
+    s3 = sagemaker_session_for_pipeline.boto_session.resource("s3")
     s3.Bucket(f"sagemaker-servicecatalog-seedcode-{region_name}").download_file(
         "dataset/abalone-dataset.csv", local_input_path
     )
@@ -646,7 +630,7 @@ def test_end_to_end_pipeline_successful_execution(
         input_data_uri = S3Uploader.upload_string_as_file_body(
             body=body,
             desired_s3_uri=f"{base_uri}/abalone-dataset.csv",
-            sagemaker_session=sagemaker_session,
+            sagemaker_session=sagemaker_session_for_pipeline,
         )
 
     # download batch transform data
@@ -661,7 +645,7 @@ def test_end_to_end_pipeline_successful_execution(
         batch_data_uri = S3Uploader.upload_string_as_file_body(
             body=body,
             desired_s3_uri=f"{base_uri}/abalone-dataset-batch",
-            sagemaker_session=sagemaker_session,
+            sagemaker_session=sagemaker_session_for_pipeline,
         )
 
     # define parameters
@@ -690,7 +674,7 @@ def test_end_to_end_pipeline_successful_execution(
         instance_count=processing_instance_count,
         base_job_name=f"{pipeline_name}-process",
         role=role,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
     )
     step_process = ProcessingStep(
         name="AbaloneProcess",
@@ -721,7 +705,7 @@ def test_end_to_end_pipeline_successful_execution(
         instance_count=1,
         output_path=model_path,
         role=role,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
     )
     xgb_train.set_hyperparameters(
         objective="reg:linear",
@@ -760,7 +744,7 @@ def test_end_to_end_pipeline_successful_execution(
         instance_count=1,
         base_job_name=f"{pipeline_name}-eval",
         role=role,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
     )
     evaluation_report = PropertyFile(
         name="EvaluationReport", output_name="evaluation", path="evaluation.json"
@@ -791,7 +775,7 @@ def test_end_to_end_pipeline_successful_execution(
     model = Model(
         image_uri=image_uri,
         model_data=step_train.properties.ModelArtifacts.S3ModelArtifacts,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
         role=role,
     )
     inputs = CreateModelInput(
@@ -810,7 +794,7 @@ def test_end_to_end_pipeline_successful_execution(
         instance_type="ml.m5.xlarge",
         instance_count=1,
         output_path=f"s3://{default_bucket}/{pipeline_name}Transform",
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
     )
     step_transform = TransformStep(
         name="AbaloneTransform",
@@ -869,7 +853,7 @@ def test_end_to_end_pipeline_successful_execution(
             batch_data,
         ],
         steps=[step_process, step_train, step_eval, step_cond],
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
     )
 
     pipeline.create(role)
@@ -924,7 +908,7 @@ def cleanup_feature_group(feature_group: FeatureGroup):
             pass
 
 
-def test_large_pipeline(sagemaker_session, role, pipeline_name, region_name):
+def test_large_pipeline(sagemaker_session_for_pipeline, role, pipeline_name, region_name):
     instance_count = ParameterInteger(name="InstanceCount", default_value=2)
 
     outputParam = CallbackOutput(output_name="output", output_type=CallbackOutputTypeEnum.String)
@@ -942,7 +926,7 @@ def test_large_pipeline(sagemaker_session, role, pipeline_name, region_name):
         name=pipeline_name,
         parameters=[instance_count],
         steps=callback_steps,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
     )
 
     try:
@@ -970,7 +954,7 @@ def test_large_pipeline(sagemaker_session, role, pipeline_name, region_name):
 
 
 def test_create_and_update_with_parallelism_config(
-    sagemaker_session, role, pipeline_name, region_name
+    sagemaker_session_for_pipeline, role, pipeline_name, region_name
 ):
     instance_count = ParameterInteger(name="InstanceCount", default_value=2)
 
@@ -989,7 +973,7 @@ def test_create_and_update_with_parallelism_config(
         name=pipeline_name,
         parameters=[instance_count],
         steps=callback_steps,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
     )
 
     try:
@@ -1228,7 +1212,7 @@ def test_model_registration_with_tuning_model(
             pass
 
 
-def _verify_repack_output(repack_step_dict, sagemaker_session):
+def _verify_repack_output(repack_step_dict, sagemaker_session_for_pipeline):
     # This is to verify if the `requirements.txt` provided in ModelStep
     # is not auto installed in the Repack step but is successfully repacked
     # in the new model.tar.gz
@@ -1236,12 +1220,14 @@ def _verify_repack_output(repack_step_dict, sagemaker_session):
     # so if the `requirements.txt` is auto installed, it should raise an exception
     # caused by the unsupported library version listed in the `requirements.txt`
     training_job_arn = repack_step_dict["Metadata"]["TrainingJob"]["Arn"]
-    job_description = sagemaker_session.sagemaker_client.describe_training_job(
+    job_description = sagemaker_session_for_pipeline.sagemaker_client.describe_training_job(
         TrainingJobName=training_job_arn.split("/")[1]
     )
     model_uri = job_description["ModelArtifacts"]["S3ModelArtifacts"]
     with tempfile.TemporaryDirectory() as tmp:
-        extract_files_from_s3(s3_url=model_uri, tmpdir=tmp, sagemaker_session=sagemaker_session)
+        extract_files_from_s3(
+            s3_url=model_uri, tmpdir=tmp, sagemaker_session=sagemaker_session_for_pipeline
+        )
 
         def walk():
             results = set()

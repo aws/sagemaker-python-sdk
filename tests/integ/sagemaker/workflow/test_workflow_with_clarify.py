@@ -32,7 +32,6 @@ from sagemaker.clarify import (
     SageMakerClarifyProcessor,
 )
 from sagemaker.processing import ProcessingInput, ProcessingOutput
-from sagemaker.session import get_execution_role
 from sagemaker.workflow.conditions import ConditionLessThanOrEqualTo
 from sagemaker.workflow.condition_step import ConditionStep, JsonGet
 
@@ -47,11 +46,6 @@ from sagemaker.workflow.pipeline import Pipeline
 from sagemaker import utils
 from tests import integ
 from tests.integ import timeout
-
-
-@pytest.fixture(scope="module")
-def role(sagemaker_session):
-    return get_execution_role(sagemaker_session)
 
 
 @pytest.fixture
@@ -88,8 +82,10 @@ def headers():
 
 
 @pytest.fixture(scope="module")
-def data_config(sagemaker_session, data_path, headers):
-    output_path = f"s3://{sagemaker_session.default_bucket()}/linear_learner_analysis_result"
+def data_config(sagemaker_session_for_pipeline, data_path, headers):
+    output_path = (
+        f"s3://{sagemaker_session_for_pipeline.default_bucket()}/linear_learner_analysis_result"
+    )
     return DataConfig(
         s3_data_input_path=data_path,
         s3_output_path=output_path,
@@ -110,7 +106,7 @@ def data_bias_config():
 
 
 @pytest.yield_fixture(scope="module")
-def model_name(sagemaker_session, cpu_instance_type, training_set):
+def model_name(sagemaker_session_for_pipeline, cpu_instance_type, training_set):
     job_name = utils.unique_name_from_base("clarify-xgb")
 
     with timeout.timeout(minutes=integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
@@ -119,7 +115,7 @@ def model_name(sagemaker_session, cpu_instance_type, training_set):
             1,
             cpu_instance_type,
             predictor_type="binary_classifier",
-            sagemaker_session=sagemaker_session,
+            sagemaker_session=sagemaker_session_for_pipeline,
             disable_profiler=True,
         )
         ll.binary_classifier_model_selection_criteria = "accuracy"
@@ -135,7 +131,7 @@ def model_name(sagemaker_session, cpu_instance_type, training_set):
             job_name=job_name,
         )
 
-    with timeout.timeout_and_delete_endpoint_by_name(job_name, sagemaker_session):
+    with timeout.timeout_and_delete_endpoint_by_name(job_name, sagemaker_session_for_pipeline):
         ll.deploy(1, cpu_instance_type, endpoint_name=job_name, model_name=job_name, wait=True)
         yield job_name
 
@@ -151,10 +147,10 @@ def model_config(model_name):
 
 
 @pytest.fixture(scope="module")
-def model_predicted_label_config(sagemaker_session, model_name, training_set):
+def model_predicted_label_config(sagemaker_session_for_pipeline, model_name, training_set):
     predictor = LinearLearnerPredictor(
         model_name,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_session_for_pipeline,
     )
     result = predictor.predict(training_set[0].astype(np.float32))
     predictions = [float(record.label["score"].float32_tensor.values[0]) for record in result]
@@ -169,7 +165,7 @@ def test_workflow_with_clarify(
     model_predicted_label_config,
     pipeline_name,
     role,
-    sagemaker_session,
+    sagemaker_session_for_pipeline,
 ):
 
     instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
@@ -221,7 +217,7 @@ def test_workflow_with_clarify(
             role="SageMakerRole",
             instance_count=instance_count,
             instance_type=instance_type,
-            sagemaker_session=sagemaker_session,
+            sagemaker_session=sagemaker_session_for_pipeline,
         )
 
         property_file = PropertyFile(
@@ -256,7 +252,7 @@ def test_workflow_with_clarify(
             name=pipeline_name,
             parameters=[instance_type, instance_count],
             steps=[step_process, step_condition],
-            sagemaker_session=sagemaker_session,
+            sagemaker_session=sagemaker_session_for_pipeline,
         )
 
         try:
