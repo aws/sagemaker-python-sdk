@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 import re
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 
 def camel_to_snake(camel_case_string: str) -> str:
@@ -29,28 +29,32 @@ def snake_to_upper_camel(snake_case_string: str) -> str:
     return upper_camel_case_string
 
 
-def walk_and_apply_json(json_obj: Dict[Any, Any], apply) -> Dict[Any, Any]:
+def walk_and_apply_json(json_obj: Dict[Any, Any], apply, keys_to_skip: List[str] = None) -> Dict[Any, Any]:
     """Recursively walks a json object and applies a given function to the keys."""
+    if keys_to_skip is None:
+        keys_to_skip = []
 
-    def _walk_and_apply_json(json_obj, new):
-        if isinstance(json_obj, dict) and isinstance(new, dict):
-            for key, value in json_obj.items():
-                new_key = apply(key)
-                if isinstance(value, dict):
-                    new[new_key] = {}
-                    _walk_and_apply_json(value, new=new[new_key])
-                elif isinstance(value, list):
-                    new[new_key] = []
-                    for item in value:
-                        _walk_and_apply_json(item, new=new[new_key])
-                else:
-                    new[new_key] = value
-        elif isinstance(json_obj, dict) and isinstance(new, list):
-            new.append(_walk_and_apply_json(json_obj, new={}))
-        elif isinstance(json_obj, list) and isinstance(new, dict):
-            new.update(json_obj)
-        elif isinstance(json_obj, list) and isinstance(new, list):
-            new.append(json_obj)
-        return new
+    def _walk_and_apply_json(json_obj):
+      print(f"new iteration: {json_obj}\n")
+      new_object = None
+      if isinstance(json_obj, dict):
+          new_object = {}
+          for key, value in json_obj.items():
+              new_key = apply(key)
+              new_value = value
+              if key not in keys_to_skip:
+                  
+                  new_value = _walk_and_apply_json(value)
+              else:
+                  print("Found a key to skip!\n\n\n")
+              new_object[new_key] = new_value
+      elif isinstance(json_obj, list):
+          new_object = []
+          for obj in json_obj:
+              new_object.append(_walk_and_apply_json(obj))
+      else:
+          new_object = json_obj
+      return new_object
 
-    return _walk_and_apply_json(json_obj, new={})
+    return _walk_and_apply_json(json_obj)
+

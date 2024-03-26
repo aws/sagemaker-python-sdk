@@ -40,7 +40,6 @@ from sagemaker.jumpstart.curated_hub.parser_utils import (
     walk_and_apply_json,
 )
 
-
 def _to_json(dictionary: Dict[Any, Any]) -> Dict[Any, Any]:
     """Convert a complex nested dictionary of JumpStartDataHolderType into json"""
     for key, value in dictionary.items():
@@ -259,6 +258,7 @@ def make_hub_model_document_from_specs(
     """Sets fields in HubModelDocument based on model specs, studio specs,
     and hub content dependencies.
     """
+    print(f"Converting from model spec: {model_specs}")
     document = {}
     document["Url"] = model_specs.url
     document["MinSdkVersion"] = model_specs.min_sdk_version
@@ -325,10 +325,11 @@ def make_hub_model_document_from_specs(
     document["InferenceVolumeSize"] = model_specs.inference_volume_size
     document["InferenceEnableNetworkIsolation"] = model_specs.inference_enable_network_isolation
     document["ResourceNameBase"] = model_specs.resource_name_base
-    document["DefaultPayloads"] = {
-        alias: walk_and_apply_json(payload.to_json(), snake_to_upper_camel)
-        for alias, payload in model_specs.default_payloads.items()
-    }
+    if model_specs.default_payloads:
+      document["DefaultPayloads"] = {
+          alias: walk_and_apply_json(payload.to_json(), snake_to_upper_camel)
+          for alias, payload in model_specs.default_payloads.items()
+      }
     document["HostingResourceRequirements"] = model_specs.hosting_resource_requirements
     document[
         "HostingInstanceTypeVariants"
@@ -447,9 +448,3 @@ def make_hub_model_document_from_specs(
         document["ModelDir"] = model_specs.estimator_kwargs.get("model_dir")
     return HubModelDocument(_to_json(document), region, hub_content_dependencies)
 
-
-def _calculate_model_dependencies(document: Dict[str, str]) -> List[HubContentDependency]:
-    dependencies = [
-        document.get("HostingArtifactUri"),
-        document.get("HostingEulaUri")
-    ]
