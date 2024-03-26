@@ -503,6 +503,8 @@ class CuratedHub:
         dest_location = sync_request.destination
         dependencies: List[HubContentDependency] = []
         for file in files:
+            if self._reference_type_to_dependency_type(file.reference_type) is None:
+                continue
             dependency = HubContentDependency(
                   {
                       "dependency_origin_path": f"s3://{file.location.bucket}/{file.location.key}",
@@ -512,8 +514,7 @@ class CuratedHub:
                       )
                   }
               )
-            dependencies.add(dependency)
-        JUMPSTART_LOGGER.info(f"Dependencies found: {dependencies}")
+            dependencies.append(dependency)
         return list(dependencies)
 
     def scan_and_tag_models(self, model_ids: List[str] = None) -> None:
