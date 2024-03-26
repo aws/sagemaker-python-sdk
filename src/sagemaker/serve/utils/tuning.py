@@ -1,5 +1,7 @@
 """Holds mixin logic to support deployment of Model ID"""
 from __future__ import absolute_import
+
+import copy
 import logging
 from time import perf_counter
 import collections
@@ -265,16 +267,47 @@ def _more_performant(best_tuned_configuration: list, tuned_configuration: list) 
 
 
 def _more_performant_benchmark(
-    current_tuned_configuration: dict, previous_tuned_configuration: dict
-) -> bool:
+    best_tuned_configuration: dict, current_tuned_configuration: dict
+) -> dict:
     """Returns ``True`` if the current benchmark is more performant than the previous one."""
-    best_avg_latency = current_tuned_configuration["AGV_LATENCY"]
-    tuned_avg_latency = previous_tuned_configuration["AGV_LATENCY"]
-    best_standard_deviation = current_tuned_configuration["STD_DEVIATION"]
-    tuned_standard_deviation = previous_tuned_configuration["STD_DEVIATION"]
+    if best_tuned_configuration is None:
+        return current_tuned_configuration
 
-    if _within_margins(MARGIN, 5, tuned_avg_latency, best_avg_latency):
-        if tuned_standard_deviation <= best_standard_deviation:
-            return True
-        return False
-    return tuned_avg_latency <= best_avg_latency
+    best_avg_latency = best_tuned_configuration["AGV_LATENCY"]
+    current_tuned_avg_latency = current_tuned_configuration["AGV_LATENCY"]
+    best_standard_deviation = best_tuned_configuration["STD_DEVIATION"]
+    current_tuned_standard_deviation = current_tuned_configuration["STD_DEVIATION"]
+
+    if _within_margins(MARGIN, 5, current_tuned_avg_latency, best_avg_latency):
+        if current_tuned_standard_deviation <= best_standard_deviation:
+            return current_tuned_configuration
+        return best_tuned_configuration
+
+    if current_tuned_avg_latency <= best_avg_latency:
+        return current_tuned_configuration
+    return best_tuned_configuration
+
+
+def _run_benchmarks(pysdk_model, sample_input, max_tuning_duration) -> dict:
+    """Run the benchmarks"""
+    predictor = pysdk_model.deploy(model_data_download_timeout=max_tuning_duration)
+
+    avg_latency, p90, avg_tokens_per_second = _serial_benchmark(predictor, sample_input)
+    throughput_per_second, standard_deviation = _concurrent_benchmark(predictor, sample_input)
+
+    tested_env = copy.deepcopy(pysdk_model.env)
+    logger.info(
+        "Average latency: %s, throughput/s: %s for configuration: %s",
+        avg_latency,
+        throughput_per_second,
+        tested_env,
+    )
+
+    return {
+        "AVG_LATENCY": avg_latency,
+        "TESTED_ENV": tested_env,
+        "P90": p90,
+        "AVG_TOKENS_PER_SECOND": avg_tokens_per_second,
+        "THROUGHPUT_PER_SECOND": throughput_per_second,
+        "STD_DEVIATION": standard_deviation,
+    }

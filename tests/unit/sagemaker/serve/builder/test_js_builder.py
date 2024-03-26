@@ -36,7 +36,7 @@ mock_set_serving_properties = (4, "fp16", 1, 256, 256)
 mock_tgi_most_performant_model_serving_properties = {
     "SAGEMAKER_PROGRAM": "inference.py",
     "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
-    "SM_NUM_GPUS": "4",
+    "SM_NUM_GPUS": "2",
 }
 mock_tgi_model_serving_properties = {
     "SAGEMAKER_PROGRAM": "inference.py",
@@ -51,7 +51,7 @@ mock_djl_most_performant_model_serving_properties = {
 }
 mock_djl_model_serving_properties = {
     "SAGEMAKER_PROGRAM": "inference.py",
-    "SAGEMAKER_MODEL_SERVER_WORKERS": "4",
+    "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
     "OPTION_TENSOR_PARALLEL_DEGREE": "4",
 }
 
@@ -438,7 +438,7 @@ class TestJumpStartBuilder(unittest.TestCase):
     )
     @patch(
         "sagemaker.serve.builder.jumpstart_builder._get_admissible_tensor_parallel_degrees",
-        return_value=1,
+        return_value=[1],
     )
     @patch(
         "sagemaker.serve.builder.djl_builder._serial_benchmark",

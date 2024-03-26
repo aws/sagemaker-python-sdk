@@ -14,7 +14,6 @@
 from __future__ import absolute_import
 
 import copy
-import math
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from typing import Type
@@ -43,10 +42,9 @@ from sagemaker.serve.utils.local_hardware import (
 )
 from sagemaker.serve.utils.telemetry_logger import _capture_telemetry
 from sagemaker.serve.utils.tuning import (
-    _serial_benchmark,
-    _concurrent_benchmark,
     _more_performant_benchmark,
     _pretty_print_benchmark_results,
+    _run_benchmarks,
 )
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.base_predictor import PredictorBase
@@ -254,14 +252,10 @@ class JumpStart(ABC):
 
         self.pysdk_model.env.update(env)
 
-    def _tune_for_js(
-        self, multiple_model_copies_enabled: bool = False, max_tuning_duration: int = 1800
-    ):
+    def _tune_for_js(self, max_tuning_duration: int = 1800):
         """Tune for Jumpstart Models in Local Mode.
 
         Args:
-            multiple_model_copies_enabled (bool): Whether multiple model copies serving is enable by
-                this ``DLC``. Defaults to ``False``
             max_tuning_duration (int): The maximum timeout to deploy this ``Model`` locally.
                 Default: ``1800``
         returns:
@@ -281,9 +275,6 @@ class JumpStart(ABC):
         admissible_tensor_parallel_degrees = _get_admissible_tensor_parallel_degrees(
             self.js_model_config
         )
-        if isinstance(admissible_tensor_parallel_degrees, int):
-            admissible_tensor_parallel_degrees = [admissible_tensor_parallel_degrees]
-        available_gpus = max(admissible_tensor_parallel_degrees)
 
         benchmark_results = {}
         best_tuned_combination = None
@@ -293,140 +284,76 @@ class JumpStart(ABC):
                 logger.info("Max tuning duration reached. Tuning stopped.")
                 break
 
-            sagemaker_model_server_workers = 1
-            if multiple_model_copies_enabled:
-                sagemaker_model_server_workers = math.floor(available_gpus / tensor_parallel_degree)
-
-            self.pysdk_model.env.update(
-                {
-                    num_shard_env_var_name: str(tensor_parallel_degree),
-                    "SAGEMAKER_MODEL_SERVER_WORKERS": str(sagemaker_model_server_workers),
-                }
-            )
-
-            logger.info(
-                "Trying tensor parallel degree: %s, model server workers: %s...",
-                tensor_parallel_degree,
-                sagemaker_model_server_workers,
-            )
-
+            self.pysdk_model.env.update({num_shard_env_var_name: str(tensor_parallel_degree)})
             try:
-                predictor = self.pysdk_model.deploy(model_data_download_timeout=max_tuning_duration)
-
-                avg_latency, p90, avg_tokens_per_second = _serial_benchmark(
-                    predictor, self.schema_builder.sample_input
+                logger.info("Trying tensor parallel degree: %s", tensor_parallel_degree)
+                result = _run_benchmarks(
+                    self.pysdk_model, self.schema_builder.sample_input, max_tuning_duration
                 )
-                throughput_per_second, standard_deviation = _concurrent_benchmark(
-                    predictor, self.schema_builder.sample_input
-                )
-
-                tested_env = copy.deepcopy(self.pysdk_model.env)
-                logger.info(
-                    "Average latency: %s, throughput/s: %s for configuration: %s",
-                    avg_latency,
-                    throughput_per_second,
-                    tested_env,
-                )
-                benchmark_results[avg_latency] = {
-                    "TESTED_ENV": tested_env,
-                    "P90": p90,
-                    "AVG_TOKENS_PER_SECOND": avg_tokens_per_second,
-                    "THROUGHPUT_PER_SECOND": throughput_per_second,
-                    "STD_DEVIATION": standard_deviation,
+                benchmark_results[result["AVG_LATENCY"]] = {
+                    "TESTED_ENV": result["TESTED_ENV"],
+                    "P90": result["P90"],
+                    "AVG_TOKENS_PER_SECOND": result["AVG_TOKENS_PER_SECOND"],
+                    "THROUGHPUT_PER_SECOND": result["THROUGHPUT_PER_SECOND"],
+                    "STD_DEVIATION": result["STD_DEVIATION"],
                 }
 
-                if not best_tuned_combination:
-                    best_tuned_combination = {
-                        "AVG_LATENCY": avg_latency,
-                        num_shard_env_var_name: tensor_parallel_degree,
-                        "SAGEMAKER_MODEL_SERVER_WORKERS": sagemaker_model_server_workers,
-                        "P90": p90,
-                        "AVG_TOKENS_PER_SECOND": avg_tokens_per_second,
-                        "THROUGHPUT_PER_SECOND": throughput_per_second,
-                        "STD_DEVIATION": standard_deviation,
-                    }
-                else:
-                    tuned_configuration = {
-                        "AVG_LATENCY": avg_latency,
-                        num_shard_env_var_name: tensor_parallel_degree,
-                        "SAGEMAKER_MODEL_SERVER_WORKERS": sagemaker_model_server_workers,
-                        "P90": p90,
-                        "AVG_TOKENS_PER_SECOND": avg_tokens_per_second,
-                        "THROUGHPUT_PER_SECOND": throughput_per_second,
-                        "STD_DEVIATION": standard_deviation,
-                    }
-                    if _more_performant_benchmark(best_tuned_combination, tuned_configuration):
-                        best_tuned_combination = tuned_configuration
+                result[num_shard_env_var_name] = tensor_parallel_degree
+                best_tuned_combination = _more_performant_benchmark(best_tuned_combination, result)
             except LocalDeepPingException as e:
                 logger.warning(
-                    "Deployment unsuccessful with %s: %s. SAGEMAKER_MODEL_SERVER_WORKERS: %s"
-                    "Failed to invoke the model server: %s",
+                    "Deployment unsuccessful with %s: %s. " "Failed to invoke the model server: %s",
                     num_shard_env_var_name,
                     tensor_parallel_degree,
-                    sagemaker_model_server_workers,
                     str(e),
                 )
             except LocalModelOutOfMemoryException as e:
                 logger.warning(
-                    "Deployment unsuccessful with %s: %s. SAGEMAKER_MODEL_SERVER_WORKERS: %s. "
+                    "Deployment unsuccessful with %s: %s. "
                     "Out of memory when loading the model: %s",
                     num_shard_env_var_name,
                     tensor_parallel_degree,
-                    sagemaker_model_server_workers,
                     str(e),
                 )
             except LocalModelInvocationException as e:
                 logger.warning(
-                    "Deployment unsuccessful with %s: %s. SAGEMAKER_MODEL_SERVER_WORKERS: %s. "
+                    "Deployment unsuccessful with %s: %s. "
                     "Failed to invoke the model server: %s"
                     "Please check that model server configurations are as expected "
                     "(Ex. serialization, deserialization, content_type, accept).",
                     num_shard_env_var_name,
                     tensor_parallel_degree,
-                    sagemaker_model_server_workers,
                     str(e),
                 )
             except LocalModelLoadException as e:
                 logger.warning(
-                    "Deployment unsuccessful with %s: %s. SAGEMAKER_MODEL_SERVER_WORKERS: %s. "
-                    "Failed to load the model: %s.",
+                    "Deployment unsuccessful with %s: %s. " "Failed to load the model: %s.",
                     num_shard_env_var_name,
                     tensor_parallel_degree,
-                    sagemaker_model_server_workers,
                     str(e),
                 )
             except SkipTuningComboException as e:
                 logger.warning(
-                    "Deployment with %s: %s. SAGEMAKER_MODEL_SERVER_WORKERS: %s. "
+                    "Deployment with %s: %s"
                     "was expected to be successful. However failed with: %s. "
                     "Trying next combination.",
                     num_shard_env_var_name,
                     tensor_parallel_degree,
-                    sagemaker_model_server_workers,
                     str(e),
                 )
             except Exception:  # pylint: disable=W0703
                 logger.exception(
-                    "Deployment unsuccessful with %s: %s. SAGEMAKER_MODEL_SERVER_WORKERS: %s. "
-                    "with uncovered exception",
+                    "Deployment unsuccessful with %s: %s. " "with uncovered exception",
                     num_shard_env_var_name,
                     tensor_parallel_degree,
-                    sagemaker_model_server_workers,
                 )
 
         if best_tuned_combination:
             self.pysdk_model.env.update(
-                {
-                    num_shard_env_var_name: str(best_tuned_combination[num_shard_env_var_name]),
-                    "SAGEMAKER_MODEL_SERVER_WORKERS": str(
-                        best_tuned_combination["SAGEMAKER_MODEL_SERVER_WORKERS"]
-                    ),
-                }
+                {num_shard_env_var_name: str(best_tuned_combination[num_shard_env_var_name])}
             )
 
-            _pretty_print_benchmark_results(
-                benchmark_results, [num_shard_env_var_name, "SAGEMAKER_MODEL_SERVER_WORKERS"]
-            )
+            _pretty_print_benchmark_results(benchmark_results, [num_shard_env_var_name])
             logger.info(
                 "Model Configuration: %s was most performant with avg latency: %s, "
                 "p90 latency: %s, average tokens per second: %s, throughput/s: %s, "
@@ -452,18 +379,12 @@ class JumpStart(ABC):
     @_capture_telemetry("djl_jumpstart.tune")
     def tune_for_djl_jumpstart(self, max_tuning_duration: int = 1800):
         """Tune for Jumpstart Models with DJL DLC"""
-        return self._tune_for_js(
-            multiple_model_copies_enabled=True, max_tuning_duration=max_tuning_duration
-        )
+        return self._tune_for_js(max_tuning_duration=max_tuning_duration)
 
     @_capture_telemetry("tgi_jumpstart.tune")
     def tune_for_tgi_jumpstart(self, max_tuning_duration: int = 1800):
         """Tune for Jumpstart Models with TGI DLC"""
-        return self._tune_for_js(
-            # Currently, TGI does not enable multiple model copies serving.
-            multiple_model_copies_enabled=False,
-            max_tuning_duration=max_tuning_duration,
-        )
+        return self._tune_for_js(max_tuning_duration=max_tuning_duration)
 
     def _build_for_jumpstart(self):
         """Placeholder docstring"""
