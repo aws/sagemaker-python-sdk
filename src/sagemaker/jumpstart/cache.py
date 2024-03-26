@@ -473,6 +473,8 @@ class JumpStartModelsCache:
                 DescribeHubContentResponse(hub_model_description),
             )
 
+            print(f"Created spec file from HubContentDocument: {model_specs}\n\n\n")
+
             utils.emit_logs_based_on_model_specs(
                 model_specs,
                 self.get_region(),
