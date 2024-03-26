@@ -41,7 +41,8 @@ def test_hub_content_document_from_json_obj():
     assert gemma_model_document.incremental_training_supported is False
     assert (
         gemma_model_document.hosting_ecr_uri
-        == "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+        == "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:"
+        "2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
     )
     with pytest.raises(AttributeError) as excinfo:
         gemma_model_document.hosting_ecr_specs
@@ -50,11 +51,13 @@ def test_hub_content_document_from_json_obj():
     assert gemma_model_document.hosting_artifact_compression_type == "None"
     assert (
         gemma_model_document.hosting_artifact_uri
-        == "s3://jumpstart-cache-prod-us-west-2/huggingface-llm/huggingface-llm-gemma-2b-instruct/artifacts/inference/v1.0.0/"
+        == "s3://jumpstart-cache-prod-us-west-2/huggingface-llm/huggingface-llm-gemma-2b-instruct"
+        "/artifacts/inference/v1.0.0/"
     )
     assert (
         gemma_model_document.hosting_script_uri
-        == "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/huggingface/inference/llm/v1.0.1/sourcedir.tar.gz"
+        == "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/huggingface/inference/"
+        "llm/v1.0.1/sourcedir.tar.gz"
     )
     assert gemma_model_document.inference_dependencies == []
     assert gemma_model_document.training_dependencies == [
@@ -80,7 +83,8 @@ def test_hub_content_document_from_json_obj():
     ]
     assert (
         gemma_model_document.hosting_prepacked_artifact_uri
-        == "s3://jumpstart-cache-prod-us-west-2/huggingface-llm/huggingface-llm-gemma-2b-instruct/artifacts/inference-prepack/v1.0.0/"
+        == "s3://jumpstart-cache-prod-us-west-2/huggingface-llm/huggingface-llm-gemma-2b-instruct/"
+        "artifacts/inference-prepack/v1.0.0/"
     )
     assert gemma_model_document.hosting_prepacked_artifact_version == "1.0.0"
     assert gemma_model_document.hosting_use_script_uri is False
@@ -90,25 +94,29 @@ def test_hub_content_document_from_json_obj():
     )
     assert (
         gemma_model_document.training_ecr_uri
-        == "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+        == "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-training:2.0.0-transformers"
+        "4.28.1-gpu-py310-cu118-ubuntu20.04"
     )
     with pytest.raises(AttributeError) as excinfo:
         gemma_model_document.training_ecr_specs
     assert str(excinfo.value) == "'HubModelDocument' object has no attribute 'training_ecr_specs'"
     assert (
         gemma_model_document.training_prepacked_script_uri
-        == "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/huggingface/transfer_learning/llm/prepack/v1.1.1/sourcedir.tar.gz"
+        == "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/huggingface/transfer_learning/"
+        "llm/prepack/v1.1.1/sourcedir.tar.gz"
     )
     assert gemma_model_document.training_prepacked_script_version == "1.1.1"
     assert (
         gemma_model_document.training_script_uri
-        == "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/huggingface/transfer_learning/llm/v1.1.1/sourcedir.tar.gz"
+        == "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/huggingface/transfer_learning/"
+        "llm/v1.1.1/sourcedir.tar.gz"
     )
     assert gemma_model_document.training_artifact_s3_data_type == "S3Prefix"
     assert gemma_model_document.training_artifact_compression_type == "None"
     assert (
         gemma_model_document.training_artifact_uri
-        == "s3://jumpstart-cache-prod-us-west-2/huggingface-training/train-huggingface-llm-gemma-2b-instruct.tar.gz"
+        == "s3://jumpstart-cache-prod-us-west-2/huggingface-training/train-huggingface-llm-gemma-2b-instruct"
+        ".tar.gz"
     )
     assert gemma_model_document.hyperparameters == [
         JumpStartHyperparameter(
@@ -842,7 +850,8 @@ def test_hub_content_document_from_json_obj():
                     "InputLogprobs": "[0].details.prefill[*].logprob",
                 },
                 "Body": {
-                    "Inputs": "<bos><start_of_turn>user\nWrite a hello world program<end_of_turn>\n<start_of_turn>model",
+                    "Inputs": "<bos><start_of_turn>user\nWrite a hello world program<end_of_turn>"
+                    "\n<start_of_turn>model",
                     "Parameters": {
                         "MaxNewTokens": 256,
                         "DecoderInputDetails": True,
@@ -880,7 +889,8 @@ def test_hub_content_document_from_json_obj():
     assert gemma_model_document.hosting_instance_type_variants == JumpStartInstanceTypeVariants(
         {
             "Aliases": {
-                "gpu_ecr_uri_1": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.0-gpu-py310-cu121-ubuntu20.04"
+                "gpu_ecr_uri_1": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch"
+                "-tgi-inference:2.1.1-tgi1.4.0-gpu-py310-cu121-ubuntu20.04"
             },
             "Variants": {
                 "g4dn": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
@@ -903,19 +913,22 @@ def test_hub_content_document_from_json_obj():
     assert gemma_model_document.training_instance_type_variants == JumpStartInstanceTypeVariants(
         {
             "Aliases": {
-                "gpu_ecr_uri_1": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                "gpu_ecr_uri_1": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-"
+                "training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
             },
             "Variants": {
                 "g4dn": {
                     "properties": {
                         "image_uri": "$gpu_ecr_uri_1",
-                        "gated_model_key_env_var_value": "huggingface-training/g4dn/v1.0.0/train-huggingface-llm-gemma-2b-instruct.tar.gz",
+                        "gated_model_key_env_var_value": "huggingface-training/g4dn/v1.0.0/train-"
+                        "huggingface-llm-gemma-2b-instruct.tar.gz",
                     },
                 },
                 "g5": {
                     "properties": {
                         "image_uri": "$gpu_ecr_uri_1",
-                        "gated_model_key_env_var_value": "huggingface-training/g5/v1.0.0/train-huggingface-llm-gemma-2b-instruct.tar.gz",
+                        "gated_model_key_env_var_value": "huggingface-training/g5/v1.0.0/train-"
+                        "huggingface-llm-gemma-2b-instruct.tar.gz",
                     },
                 },
                 "local_gpu": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
@@ -924,13 +937,15 @@ def test_hub_content_document_from_json_obj():
                 "p3dn": {
                     "properties": {
                         "image_uri": "$gpu_ecr_uri_1",
-                        "gated_model_key_env_var_value": "huggingface-training/p3dn/v1.0.0/train-huggingface-llm-gemma-2b-instruct.tar.gz",
+                        "gated_model_key_env_var_value": "huggingface-training/p3dn/v1.0.0/train-"
+                        "huggingface-llm-gemma-2b-instruct.tar.gz",
                     },
                 },
                 "p4d": {
                     "properties": {
                         "image_uri": "$gpu_ecr_uri_1",
-                        "gated_model_key_env_var_value": "huggingface-training/p4d/v1.0.0/train-huggingface-llm-gemma-2b-instruct.tar.gz",
+                        "gated_model_key_env_var_value": "huggingface-training/p4d/v1.0.0/train-"
+                        "huggingface-llm-gemma-2b-instruct.tar.gz",
                     },
                 },
                 "p4de": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
@@ -942,13 +957,17 @@ def test_hub_content_document_from_json_obj():
     assert gemma_model_document.contextual_help == {
         "HubFormatTrainData": [
             "A train and an optional validation directories. Each directory contains a CSV/JSON/TXT. ",
-            "- For CSV/JSON files, the text data is used from the column called 'text' or the first column if no column called 'text' is found",
-            "- The number of files under train and validation (if provided) should equal to one, respectively.",
-            " [Learn how to setup an AWS S3 bucket.](https://docs.aws.amazon.com/AmazonS3/latest/dev/UsingBucket.html)",
+            "- For CSV/JSON files, the text data is used from the column called 'text' or the "
+            "first column if no column called 'text' is found",
+            "- The number of files under train and validation (if provided) should equal to one,"
+            " respectively.",
+            " [Learn how to setup an AWS S3 bucket.]"
+            "(https://docs.aws.amazon.com/AmazonS3/latest/dev/UsingBucket.html)",
         ],
         "HubDefaultTrainData": [
             "Dataset: [SEC](https://www.sec.gov/edgar/searchedgar/companysearch)",
-            "SEC filing contains regulatory documents that companies and issuers of securities must submit to the Securities and Exchange Commission (SEC) on a regular basis.",
+            "SEC filing contains regulatory documents that companies and issuers of securities must "
+            "submit to the Securities and Exchange Commission (SEC) on a regular basis.",
             "License: [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/legalcode)",
         ],
     }

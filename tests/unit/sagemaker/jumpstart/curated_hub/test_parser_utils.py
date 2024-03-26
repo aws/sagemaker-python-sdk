@@ -50,11 +50,14 @@ def test_naming_convention_type_interchangable():
 
 def test_walk_and_apply_json():
     assert walk_and_apply_json(BASE_HUB_NOTEBOOK_DOCUMENT, camel_to_snake) == {
-        "notebook_location": "s3://sagemaker-test-objects-do-not-delete/tensorflow-notebooks/tensorflow-ic-bit-s-r101x3-ilsvrc2012-classification-1-inference.ipynb",
+        "notebook_location": "s3://sagemaker-test-objects-do-not-delete/tensorflow-notebooks/"
+        "tensorflow-ic-bit-s-r101x3-ilsvrc2012-classification-1-inference.ipynb",
         "dependencies": [
             {
-                "dependency_origin_path": "sagemaker-test-objects-do-not-delete/tensorflow-notebooks/tensorflow-ic-bit-s-r101x3-ilsvrc2012-classification-1-inference.ipynb",
-                "dependency_copy_path": "sagemaker-hubs-us-west-2-802376408542/default-hub-1667253603.746/Notebook/pentest-3-notebook-1667933000.49/0.0.1/notebook.ipynb",
+                "dependency_origin_path": "sagemaker-test-objects-do-not-delete/tensorflow-notebooks"
+                "/tensorflow-ic-bit-s-r101x3-ilsvrc2012-classification-1-inference.ipynb",
+                "dependency_copy_path": "sagemaker-hubs-us-west-2-802376408542/default-hub-1667253603"
+                ".746/Notebook/pentest-3-notebook-1667933000.49/0.0.1/notebook.ipynb",
                 "dependency_type": "Notebook",
             }
         ],
@@ -63,11 +66,14 @@ def test_walk_and_apply_json():
     assert (
         walk_and_apply_json(
             {
-                "notebook_location": "s3://sagemaker-test-objects-do-not-delete/tensorflow-notebooks/tensorflow-ic-bit-s-r101x3-ilsvrc2012-classification-1-inference.ipynb",
+                "notebook_location": "s3://sagemaker-test-objects-do-not-delete/tensorflow-notebooks"
+                "/tensorflow-ic-bit-s-r101x3-ilsvrc2012-classification-1-inference.ipynb",
                 "dependencies": [
                     {
-                        "dependency_origin_path": "sagemaker-test-objects-do-not-delete/tensorflow-notebooks/tensorflow-ic-bit-s-r101x3-ilsvrc2012-classification-1-inference.ipynb",
-                        "dependency_copy_path": "sagemaker-hubs-us-west-2-802376408542/default-hub-1667253603.746/Notebook/pentest-3-notebook-1667933000.49/0.0.1/notebook.ipynb",
+                        "dependency_origin_path": "sagemaker-test-objects-do-not-delete/tensorflow-"
+                        "notebooks/tensorflow-ic-bit-s-r101x3-ilsvrc2012-classification-1-inference.ipynb",
+                        "dependency_copy_path": "sagemaker-hubs-us-west-2-802376408542/default-hub-"
+                        "1667253603.746/Notebook/pentest-3-notebook-1667933000.49/0.0.1/notebook.ipynb",
                         "dependency_type": "Notebook",
                     }
                 ],
