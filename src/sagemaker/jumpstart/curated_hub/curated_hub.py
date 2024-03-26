@@ -287,12 +287,12 @@ class CuratedHub:
                         model.version,
                         self.hub_name,
                     )
-                    pass
+                    continue
 
                 # 2. Invalid model version exists in Hub, pass
                 # This will only happen if something goes wrong in our metadata
                 if hub_model_version > model_version:
-                    pass
+                    continue
 
                 # 3. Old model version exists in Hub, update
                 if hub_model_version < model_version:
@@ -304,29 +304,32 @@ class CuratedHub:
     def _reference_type_to_dependency_type(
         self, reference_type: HubContentReferenceType
     ) -> Optional[HubContentDependencyType]:
+        """Returns a corresponding DependencyType for a given ReferenceType."""
+
+        dependency_type = None
         if reference_type in [
             HubContentReferenceType.INFERENCE_ARTIFACT,
             HubContentReferenceType.TRAINING_ARTIFACT,
         ]:
-            return HubContentDependencyType.ARTIFACT
+            dependency_type = HubContentDependencyType.ARTIFACT
         elif reference_type in [
             HubContentReferenceType.INFERENCE_SCRIPT,
             HubContentReferenceType.TRAINING_SCRIPT,
         ]:
-            return HubContentDependencyType.SCRIPT
+            dependency_type = HubContentDependencyType.SCRIPT
         elif reference_type in [
             HubContentReferenceType.DEFAULT_TRAINING_DATASET,
         ]:
-            return HubContentDependencyType.DATASET
+            dependency_type = HubContentDependencyType.DATASET
         elif reference_type in [
             HubContentReferenceType.INFERENCE_NOTEBOOK,
         ]:
-            return HubContentDependencyType.NOTEBOOK
+            dependency_type = HubContentDependencyType.NOTEBOOK
         elif reference_type in [
             HubContentReferenceType.MARKDOWN,
         ]:
-            return HubContentDependencyType.OTHER
-        return None
+            dependency_type = HubContentDependencyType.OTHER
+        return dependency_type
 
     def sync(self, model_list: List[Dict[str, str]]):
         """Syncs a list of JumpStart model ids and versions with a CuratedHub
@@ -454,7 +457,7 @@ class CuratedHub:
             region=self.region,
         )
 
-        JUMPSTART_LOGGER.info(f"Importing {model.model_id}/{model.version}...")
+        JUMPSTART_LOGGER.info("Importing %s/%s...", model.model_id, model.version)
 
         self._sagemaker_session.import_hub_content(
             document_schema_version=hub_content_document.get_schema_version(),

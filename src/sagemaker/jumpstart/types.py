@@ -494,7 +494,9 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
         self.regional_aliases = None
         self.variants: Optional[dict] = response.get("Variants")
 
-    def regionalize(self, region: str) -> Optional[Dict[str, Any]]:
+    def regionalize(  # pylint: disable=inconsistent-return-statements
+        self, region: str
+    ) -> Optional[Dict[str, Any]]:
         """Returns regionalized instance type variants."""
 
         if self.regional_aliases is None or self.aliases is not None:
@@ -785,7 +787,7 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
         Returns None if no instance type is available or found.
         None is also returned if the metadata is improperly formatted.
         """
-
+        # pylint: disable=too-many-return-statements
         if self.variants is None or (self.aliases is None and self.regional_aliases is None):
             return None
 

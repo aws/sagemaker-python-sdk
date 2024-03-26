@@ -504,7 +504,7 @@ class HubModelDocument(HubDataHolderType):
         self,
         json_obj: Dict[str, Any],
         region: str,
-        dependencies: List[HubContentDependency] = [],
+        dependencies: List[HubContentDependency] = None,
     ) -> None:
         """Instantiates HubModelDocument object.
 
@@ -515,7 +515,7 @@ class HubModelDocument(HubDataHolderType):
             ValueError: When one of (json_obj) or (model_specs and studio_specs) is not provided.
         """
         self._region = region
-        self.dependencies = dependencies
+        self.dependencies = dependencies or []
         self.from_json(json_obj)
 
     def from_json(self, json_obj: Dict[str, Any]) -> None:

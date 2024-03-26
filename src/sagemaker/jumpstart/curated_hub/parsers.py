@@ -94,11 +94,12 @@ def get_model_spec_arg_keys(
         arg_keys = []
 
     if naming_convention == NamingConventionType.SNAKE_CASE:
-        return [camel_to_snake(key) for key in arg_keys]
+        arg_keys = [camel_to_snake(key) for key in arg_keys]
     elif naming_convention == NamingConventionType.UPPER_CAMEL_CASE:
         return arg_keys
     else:
         raise ValueError("Please provide a valid naming convention.")
+    return arg_keys
 
 
 def get_model_spec_kwargs_from_hub_model_document(
@@ -434,7 +435,9 @@ def make_hub_model_document_from_specs(
         document["TrainingEnableNetworkIsolation"] = model_specs.training_enable_network_isolation
         document[
             "TrainingInstanceTypeVariants"
-        ] = model_specs.training_instance_type_variants.regionalize(region)
+        ] = model_specs.training_instance_type_variants.regionalize(
+            region
+        )  # pylint: disable=inconsistent-return-statements
 
         # Estimator kwargs
         document["Encrypt_inter_container_traffic"] = model_specs.estimator_kwargs.get(

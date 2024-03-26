@@ -365,7 +365,11 @@ class JumpStartModelsCache:
             and os.path.isdir(os.environ[ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE])
         )
 
-    def _get_json_file(self, key: str, filetype: JumpStartS3FileType) -> Tuple[Union[dict, list], Optional[str]]:
+    def _get_json_file(
+        self,
+        key: str,
+        filetype: JumpStartS3FileType
+    ) -> Tuple[Union[dict, list], Optional[str]]:
         """Returns json file either from s3 or local file system.
 
         Returns etag along with json object for s3, or just the json
@@ -387,7 +391,11 @@ class JumpStartModelsCache:
             raise ValueError("Cannot get md5 hash of local file.")
         return self._s3_client.head_object(Bucket=self.s3_bucket_name, Key=key)["ETag"]
 
-    def _get_json_file_from_local_override(self, key: str, filetype: JumpStartS3FileType) -> Union[dict, list]:
+    def _get_json_file_from_local_override(
+        self,
+        key: str,
+        filetype: JumpStartS3FileType
+    ) -> Union[dict, list]:
         """Reads json file from local filesystem and returns data."""
         if filetype == JumpStartS3FileType.OPEN_WEIGHT_MANIFEST:
             metadata_local_root = os.environ[
