@@ -501,7 +501,7 @@ class CuratedHub:
 
         files = sync_request.files
         dest_location = sync_request.destination
-        dependencies: Set[HubContentDependency] = set()
+        dependencies: List[HubContentDependency] = []
         for file in files:
             dependency = HubContentDependency(
                   {
@@ -513,7 +513,7 @@ class CuratedHub:
                   }
               )
             dependencies.add(dependency)
-        print(f"Dependencies found: {dependencies}")
+        JUMPSTART_LOGGER.info(f"Dependencies found: {dependencies}")
         return list(dependencies)
 
     def scan_and_tag_models(self, model_ids: List[str] = None) -> None:
