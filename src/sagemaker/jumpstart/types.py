@@ -28,6 +28,7 @@ from sagemaker.compute_resource_requirements.resource_requirements import Resour
 from sagemaker.jumpstart.enums import JumpStartModelType
 from sagemaker.jumpstart.curated_hub.parser_utils import (
     camel_to_snake,
+    snake_to_upper_camel,
     walk_and_apply_json,
 )
 

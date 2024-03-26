@@ -288,7 +288,7 @@ def make_hub_model_document_from_specs(
         ),
         None,
     )
-    document["InferenceDependencies"] = list(str(model_specs.inference_dependencies)) # ensure uniqueness
+    document["InferenceDependencies"] = list(set(model_specs.inference_dependencies)) # ensure uniqueness
     document["InferenceEnvironmentVariables"] = model_specs.inference_environment_variables
     document["TrainingSupported"] = model_specs.training_supported
     document["IncrementalTrainingSupported"] = model_specs.incremental_training_supported
@@ -441,7 +441,7 @@ def make_hub_model_document_from_specs(
         )
         document["MaxRuntimeInSeconds"] = model_specs.estimator_kwargs.get("max_run")
         document["DisableOutputCompression"] = model_specs.estimator_kwargs.get(
-            "disable_output_compression"s
+            "disable_output_compression"
         )
         document["ModelDir"] = model_specs.estimator_kwargs.get("model_dir")
     return HubModelDocument(_to_json(document), region, hub_content_dependencies)
