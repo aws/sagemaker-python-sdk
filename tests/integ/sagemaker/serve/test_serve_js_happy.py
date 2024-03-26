@@ -94,7 +94,7 @@ def test_happy_tgi_sagemaker_endpoint(happy_model_builder, gpu_instance_type):
     reason="The goal of these tests are to test the serving components of our feature",
 )
 @pytest.mark.local_mode
-def test_happy_tgi_sagemaker_endpoint(happy_local_model_builder):
+def test_happy_tune_tgi_local_mode(happy_local_model_builder):
     logger.info("Running in LOCAL_CONTAINER mode...")
     caught_ex = None
     model = happy_local_model_builder.build()

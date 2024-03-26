@@ -308,7 +308,7 @@ class JumpStart(ABC):
             logger.info(
                 "Trying tensor parallel degree: %s, model server workers: %s...",
                 tensor_parallel_degree,
-                sagemaker_model_server_workers
+                sagemaker_model_server_workers,
             )
 
             try:
@@ -333,7 +333,7 @@ class JumpStart(ABC):
                     "P90": p90,
                     "AVG_TOKENS_PER_SECOND": avg_tokens_per_second,
                     "THROUGHPUT_PER_SECOND": throughput_per_second,
-                    "STD_DEVIATION": standard_deviation
+                    "STD_DEVIATION": standard_deviation,
                 }
 
                 if not best_tuned_combination:
@@ -344,7 +344,7 @@ class JumpStart(ABC):
                         "P90": p90,
                         "AVG_TOKENS_PER_SECOND": avg_tokens_per_second,
                         "THROUGHPUT_PER_SECOND": throughput_per_second,
-                        "STD_DEVIATION": standard_deviation
+                        "STD_DEVIATION": standard_deviation,
                     }
                 else:
                     tuned_configuration = {
@@ -354,7 +354,7 @@ class JumpStart(ABC):
                         "P90": p90,
                         "AVG_TOKENS_PER_SECOND": avg_tokens_per_second,
                         "THROUGHPUT_PER_SECOND": throughput_per_second,
-                        "STD_DEVIATION": standard_deviation
+                        "STD_DEVIATION": standard_deviation,
                     }
                     if _more_performant_benchmark(best_tuned_combination, tuned_configuration):
                         best_tuned_combination = tuned_configuration
@@ -419,7 +419,9 @@ class JumpStart(ABC):
             self.pysdk_model.env.update(
                 {
                     num_shard_env_var_name: str(best_tuned_combination[num_shard_env_var_name]),
-                    "SAGEMAKER_MODEL_SERVER_WORKERS": str(best_tuned_combination["SAGEMAKER_MODEL_SERVER_WORKERS"]),
+                    "SAGEMAKER_MODEL_SERVER_WORKERS": str(
+                        best_tuned_combination["SAGEMAKER_MODEL_SERVER_WORKERS"]
+                    ),
                 }
             )
 

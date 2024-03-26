@@ -264,7 +264,9 @@ def _more_performant(best_tuned_configuration: list, tuned_configuration: list) 
     return tuned_avg_latency <= best_avg_latency
 
 
-def _more_performant_benchmark(current_tuned_configuration: dict, previous_tuned_configuration: dict) -> bool:
+def _more_performant_benchmark(
+    current_tuned_configuration: dict, previous_tuned_configuration: dict
+) -> bool:
     """Returns ``True`` if the current benchmark is more performant than the previous one."""
     best_avg_latency = current_tuned_configuration["AGV_LATENCY"]
     tuned_avg_latency = previous_tuned_configuration["AGV_LATENCY"]
