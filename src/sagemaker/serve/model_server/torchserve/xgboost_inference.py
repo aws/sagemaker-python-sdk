@@ -6,7 +6,7 @@ import subprocess
 import cloudpickle
 import shutil
 import platform
-import mlflow
+import importlib
 from pathlib import Path
 from functools import partial
 import logging
@@ -145,17 +145,21 @@ def _get_mlflow_flavor():
 
 def _load_mlflow_model(deployment_flavor, model_dir):
     flavor_loader_map = {
-        "Keras": mlflow.keras.load_model,
-        "PyFunc": mlflow.pyfunc.load_model,
-        "PyTorch": mlflow.pytorch.load_model,
-        "SKLearn": mlflow.sklearn.load_model,
-        "XGBoost": mlflow.xgboost.load_model,
-        "LangChain": mlflow.pyfunc.load_model,
+        "keras": ("mlflow.keras", "load_model"),
+        "python_function": ("mlflow.pyfunc", "load_model"),
+        "pytorch": ("mlflow.pytorch", "load_model"),
+        "sklearn": ("mlflow.sklearn", "load_model"),
+        "xgboost": ("mlflow.xgboost", "load_model"),
+        "langchain": ("mlflow.pyfunc", "load_model"),
     }
 
-    load_function = flavor_loader_map.get(deployment_flavor, mlflow.pyfunc.load_model)
-
-    return load_function(model_dir)
+    flavor_module_name, load_function_name = flavor_loader_map.get(
+        deployment_flavor, ("mlflow.pyfunc", "load_model")
+    )
+    logger.info(f"Using {flavor_module_name}{load_function_name} loading the model.")
+    flavor_module = importlib.import_module(flavor_module_name)
+    load_model_function = getattr(flavor_module, load_function_name)
+    return load_model_function(model_dir)
 
 
 # on import, execute

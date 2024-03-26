@@ -5,7 +5,6 @@ import io
 import cloudpickle
 import shutil
 import platform
-import mlflow
 import importlib
 from pathlib import Path
 from functools import partial
