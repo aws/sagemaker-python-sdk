@@ -464,6 +464,8 @@ class CuratedHub:
             region=self.region,
         )
 
+        print(f"Creating final HubContentDocument: {hub_content_document}\n\n\n")
+
         JUMPSTART_LOGGER.info("Importing %s/%s...", model.model_id, model.version)
 
         self._sagemaker_session.import_hub_content(
