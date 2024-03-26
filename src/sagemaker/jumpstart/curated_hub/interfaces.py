@@ -112,9 +112,8 @@ class HubContentDependency(HubDataHolderType):
         Args:
             json_obj (Dict[str, Any]): Dictionary representation of hub content description.
         """
-        self.dependency_copy_path: Optional[str] = json_obj.get("dependency_copy_path", "")
-        self.dependency_origin_path: Optional[str] = json_obj.get("dependency_origin_path", "")
-        self.dependency_type: Optional[str] = json_obj.get("dependency_type", "")
+        self.from_json(json_obj)
+        
 
     def from_json(self, json_obj: Optional[Dict[str, Any]]) -> None:
         """Sets fields in object based on json.
