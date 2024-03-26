@@ -29,32 +29,33 @@ def snake_to_upper_camel(snake_case_string: str) -> str:
     return upper_camel_case_string
 
 
-def walk_and_apply_json(json_obj: Dict[Any, Any], apply, keys_to_skip: List[str] = None) -> Dict[Any, Any]:
+def walk_and_apply_json(
+    json_obj: Dict[Any, Any], apply, keys_to_skip: List[str] = None
+) -> Dict[Any, Any]:
     """Recursively walks a json object and applies a given function to the keys."""
     if keys_to_skip is None:
-      keys_to_skip = []
-    
+        keys_to_skip = []
+
     def _walk_and_apply_json(json_obj, new):
-      if isinstance(json_obj, dict):
-          if isinstance(new, dict):
-              for key, value in json_obj.items():
-                  new_key = apply(key)
-                  if key in keys_to_skip:
-                      new[new_key] = value
-                  elif isinstance(value, dict):
-                      new[new_key] = {}
-                      _walk_and_apply_json(value, new=new[new_key])
-                  elif isinstance(value, list):
-                      new[new_key] = []
-                      for item in value:
-                          _walk_and_apply_json(item, new=new[new_key])
-                  else:
-                      new[new_key] = value
-          elif isinstance(new, list):
-              new.append(_walk_and_apply_json(json_obj, new={}))
-      elif isinstance(new, list):
-          new.append(json_obj)
-      return new
+        if isinstance(json_obj, dict):
+            if isinstance(new, dict):
+                for key, value in json_obj.items():
+                    new_key = apply(key)
+                    if key in keys_to_skip:
+                        new[new_key] = value
+                    elif isinstance(value, dict):
+                        new[new_key] = {}
+                        _walk_and_apply_json(value, new=new[new_key])
+                    elif isinstance(value, list):
+                        new[new_key] = []
+                        for item in value:
+                            _walk_and_apply_json(item, new=new[new_key])
+                    else:
+                        new[new_key] = value
+            elif isinstance(new, list):
+                new.append(_walk_and_apply_json(json_obj, new={}))
+        elif isinstance(new, list):
+            new.append(json_obj)
+        return new
 
     return _walk_and_apply_json(json_obj, {})
-

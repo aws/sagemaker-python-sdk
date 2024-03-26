@@ -22,7 +22,6 @@ from sagemaker.jumpstart.curated_hub.types import (
 from sagemaker.jumpstart.curated_hub.utils import get_data_location_uri
 from sagemaker.jumpstart.enums import ModelSpecKwargType, NamingConventionType, JumpStartScriptScope
 from sagemaker import image_uris
-from sagemaker.s3 import parse_s3_url
 from sagemaker.jumpstart.types import (
     JumpStartModelSpecs,
     HubContentType,
@@ -41,18 +40,23 @@ from sagemaker.jumpstart.curated_hub.parser_utils import (
 
 KEYS_TO_SKIP_UPPER_APPLICATION = ["aliases", "variants"]
 
+
 def _to_json(dictionary: Dict[Any, Any]) -> Dict[Any, Any]:
     """Convert a complex nested dictionary of JumpStartDataHolderType into json"""
     for key, value in dictionary.items():
         if issubclass(type(value), JumpStartDataHolderType):
-            dictionary[key] = walk_and_apply_json(value.to_json(), snake_to_upper_camel, KEYS_TO_SKIP_UPPER_APPLICATION)
+            dictionary[key] = walk_and_apply_json(
+                value.to_json(), snake_to_upper_camel, KEYS_TO_SKIP_UPPER_APPLICATION
+            )
         elif isinstance(value, list):
             new_value = []
             for value_in_list in value:
                 new_value_in_list = value_in_list
                 if issubclass(type(value_in_list), JumpStartDataHolderType):
                     new_value_in_list = walk_and_apply_json(
-                        value_in_list.to_json(), snake_to_upper_camel, KEYS_TO_SKIP_UPPER_APPLICATION
+                        value_in_list.to_json(),
+                        snake_to_upper_camel,
+                        KEYS_TO_SKIP_UPPER_APPLICATION,
                     )
                 new_value.append(new_value_in_list)
             dictionary[key] = new_value
@@ -60,7 +64,9 @@ def _to_json(dictionary: Dict[Any, Any]) -> Dict[Any, Any]:
             for key_in_dict, value_in_dict in value.items():
                 if issubclass(type(value_in_dict), JumpStartDataHolderType):
                     value[key_in_dict] = walk_and_apply_json(
-                        value_in_dict.to_json(), snake_to_upper_camel, KEYS_TO_SKIP_UPPER_APPLICATION
+                        value_in_dict.to_json(),
+                        snake_to_upper_camel,
+                        KEYS_TO_SKIP_UPPER_APPLICATION,
                     )
     return dictionary
 
@@ -175,7 +181,9 @@ def make_model_specs_from_describe_hub_content_response(
     specs[
         "dynamic_container_deployment_supported"
     ] = hub_model_document.dynamic_container_deployment_supported
-    specs["hosting_resource_requirements"] = walk_and_apply_json(hub_model_document.hosting_resource_requirements, camel_to_snake)
+    specs["hosting_resource_requirements"] = walk_and_apply_json(
+        hub_model_document.hosting_resource_requirements, camel_to_snake
+    )
     specs["metrics"] = hub_model_document.training_metrics
     specs["training_prepacked_script_key"] = None
     if hub_model_document.training_prepacked_script_uri is not None:
@@ -288,7 +296,9 @@ def make_hub_model_document_from_specs(
         ),
         None,
     )
-    document["InferenceDependencies"] = list(set(model_specs.inference_dependencies)) # ensure uniqueness
+    document["InferenceDependencies"] = list(
+        set(model_specs.inference_dependencies)
+    )  # ensure uniqueness
     document["InferenceEnvironmentVariables"] = model_specs.inference_environment_variables
     document["TrainingSupported"] = model_specs.training_supported
     document["IncrementalTrainingSupported"] = model_specs.incremental_training_supported
@@ -322,10 +332,10 @@ def make_hub_model_document_from_specs(
     document["InferenceEnableNetworkIsolation"] = model_specs.inference_enable_network_isolation
     document["ResourceNameBase"] = model_specs.resource_name_base
     if model_specs.default_payloads:
-      document["DefaultPayloads"] = {
-          alias: walk_and_apply_json(payload.to_json(), snake_to_upper_camel)
-          for alias, payload in model_specs.default_payloads.items()
-      }
+        document["DefaultPayloads"] = {
+            alias: walk_and_apply_json(payload.to_json(), snake_to_upper_camel)
+            for alias, payload in model_specs.default_payloads.items()
+        }
     document["HostingResourceRequirements"] = model_specs.hosting_resource_requirements
     document[
         "HostingInstanceTypeVariants"
@@ -424,7 +434,9 @@ def make_hub_model_document_from_specs(
             ),
             None,
         )
-        document["TrainingDependencies"] = list(set(model_specs.training_dependencies)) # Ensure uniqueness
+        document["TrainingDependencies"] = list(
+            set(model_specs.training_dependencies)
+        )  # Ensure uniqueness
         document["DefaultTrainingInstanceType"] = model_specs.default_training_instance_type
         document["SupportedTrainingInstanceTypes"] = model_specs.supported_training_instance_types
         document["TrainingVolumeSize"] = model_specs.training_volume_size
@@ -445,4 +457,3 @@ def make_hub_model_document_from_specs(
         )
         document["ModelDir"] = model_specs.estimator_kwargs.get("model_dir")
     return HubModelDocument(_to_json(document), region, hub_content_dependencies)
-

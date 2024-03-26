@@ -35,6 +35,7 @@ from sagemaker.jumpstart.curated_hub.parser_utils import (
 
 KEYS_TO_SKIP_UPPER_APPLICATION = ["aliases", "variants"]
 
+
 class HubDataHolderType(JumpStartDataHolderType):
     """Base class for many Hub API interfaces."""
 
@@ -70,7 +71,9 @@ class HubDataHolderType(JumpStartDataHolderType):
         Example: "{'content_bucket': 'bucket', 'region_name': 'us-west-2'}"
         """
 
-        att_dict = walk_and_apply_json(self.to_json(), snake_to_upper_camel, KEYS_TO_SKIP_UPPER_APPLICATION)
+        att_dict = walk_and_apply_json(
+            self.to_json(), snake_to_upper_camel, KEYS_TO_SKIP_UPPER_APPLICATION
+        )
         return f"{json.dumps(att_dict, default=lambda o: o.to_json())}"
 
 
@@ -113,7 +116,6 @@ class HubContentDependency(HubDataHolderType):
             json_obj (Dict[str, Any]): Dictionary representation of hub content description.
         """
         self.from_json(json_obj)
-        
 
     def from_json(self, json_obj: Optional[Dict[str, Any]]) -> None:
         """Sets fields in object based on json.

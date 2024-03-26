@@ -205,5 +205,5 @@ def test_specs_file_generator_gated_model(patched_get_model_specs, s3_client):
             "123456789",
             "08-14-1997 00:00:00",
             HubContentReferenceType.DEFAULT_TRAINING_DATASET,
-        )
+        ),
     ]

@@ -16,7 +16,7 @@ from concurrent import futures
 from datetime import datetime
 import json
 import traceback
-from typing import Optional, Dict, List, Any, Set
+from typing import Optional, Dict, List, Any
 import boto3
 from botocore import exceptions
 from botocore.client import BaseClient
@@ -50,13 +50,6 @@ from sagemaker.jumpstart.curated_hub.utils import (
     create_s3_object_reference_from_uri,
     find_deprecated_vulnerable_flags_for_hub_content,
     is_curated_jumpstart_model,
-)
-from sagemaker.jumpstart.curated_hub.interfaces import (
-    DescribeHubResponse,
-    DescribeHubContentResponse,
-    HubModelDocument,
-    HubContentInfo,
-    HubContentDependency,
 )
 from sagemaker.jumpstart.curated_hub.interfaces import (
     DescribeHubResponse,
@@ -335,7 +328,7 @@ class CuratedHub:
             HubContentReferenceType.MARKDOWN,
         ]:
             dependency_type = HubContentDependencyType.OTHER
-        return None
+        return dependency_type
 
     def sync(self, model_list: List[Dict[str, str]]):
         """Syncs a list of JumpStart model ids and versions with a CuratedHub
@@ -505,14 +498,12 @@ class CuratedHub:
             if self._reference_type_to_dependency_type(file.reference_type) is None:
                 continue
             dependency = HubContentDependency(
-                  {
-                      "dependency_origin_path": f"s3://{file.location.bucket}/{file.location.key}",
-                      "dependency_copy_path": f"s3://{dest_location.bucket}/{dest_location.key}/{file.location.key}",
-                      "dependency_type": self._reference_type_to_dependency_type(
-                          file.reference_type
-                      )
-                  }
-              )
+                {
+                    "dependency_origin_path": f"s3://{file.location.bucket}/{file.location.key}",
+                    "dependency_copy_path": f"s3://{dest_location.bucket}/{dest_location.key}/{file.location.key}",
+                    "dependency_type": self._reference_type_to_dependency_type(file.reference_type),
+                }
+            )
             dependencies.append(dependency)
         return list(dependencies)
 
