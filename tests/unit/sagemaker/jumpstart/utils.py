@@ -22,7 +22,6 @@ from sagemaker.jumpstart.constants import (
     JUMPSTART_REGION_NAME_SET,
 )
 from sagemaker.jumpstart.types import (
-    HubDataType,
     JumpStartCachedContentKey,
     JumpStartCachedContentValue,
     JumpStartModelSpecs,

@@ -14,7 +14,11 @@
 from __future__ import absolute_import
 import re
 from typing import Optional, Dict, List
-from sagemaker.jumpstart.curated_hub.types import FileInfo, HubContentReferenceType, S3ObjectLocation
+from sagemaker.jumpstart.curated_hub.types import (
+    FileInfo,
+    HubContentReferenceType,
+    S3ObjectLocation,
+)
 from sagemaker.s3_utils import parse_s3_url
 from sagemaker.session import Session
 from sagemaker.utils import aws_partition
@@ -296,12 +300,18 @@ def is_gated_bucket(bucket_name: str) -> bool:
     """Returns true if the bucket name is the JumpStart gated bucket."""
     return bucket_name in constants.JUMPSTART_GATED_BUCKET_NAME_SET
 
-def get_data_location_uri(src_file: FileInfo, dest_location: S3ObjectLocation, is_gated: bool) -> str:
+
+def get_data_location_uri(
+    src_file: FileInfo, dest_location: S3ObjectLocation, is_gated: bool
+) -> str:
     """Util to create data location uri"""
     # This whole thing is hacky!!
     file_location = src_file.location
-    if is_gated and src_file.reference_type in [HubContentReferenceType.INFERENCE_ARTIFACT, HubContentReferenceType.TRAINING_ARTIFACT]:
-        bucket = file_location.bucket.replace('prod', 'beta')
+    if is_gated and src_file.reference_type in [
+        HubContentReferenceType.INFERENCE_ARTIFACT,
+        HubContentReferenceType.TRAINING_ARTIFACT,
+    ]:
+        bucket = file_location.bucket.replace("prod", "beta")
         return f"s3://{bucket}/{file_location.key}"
-    
+
     return f"s3://{dest_location.bucket}/{dest_location.key}/{file_location.key}"

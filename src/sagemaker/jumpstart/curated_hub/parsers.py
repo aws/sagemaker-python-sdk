@@ -14,7 +14,6 @@
 from __future__ import absolute_import
 
 from typing import Any, Dict, List
-from sagemaker.jumpstart.curated_hub.sync.request import HubSyncRequest
 from sagemaker.jumpstart.curated_hub.types import (
     FileInfo,
     HubContentReferenceType,
@@ -23,7 +22,7 @@ from sagemaker.jumpstart.curated_hub.types import (
 from sagemaker.jumpstart.curated_hub.utils import get_data_location_uri
 from sagemaker.jumpstart.enums import ModelSpecKwargType, NamingConventionType, JumpStartScriptScope
 from sagemaker import image_uris
-from sagemaker.s3 import s3_path_join, parse_s3_url
+from sagemaker.s3 import parse_s3_url
 from sagemaker.jumpstart.types import (
     JumpStartModelSpecs,
     HubContentType,

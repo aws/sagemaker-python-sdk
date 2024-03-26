@@ -28,7 +28,6 @@ from sagemaker.jumpstart.cache import (
     JUMPSTART_DEFAULT_PROPRIETARY_MANIFEST_KEY,
     JumpStartModelsCache,
 )
-from sagemaker.session_settings import SessionSettings
 from sagemaker.jumpstart.constants import (
     ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE,
     ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE,

@@ -85,10 +85,9 @@ def get_model_spec_arg_keys(
         arg_keys = []
     if naming_convention == NamingConventionType.SNAKE_CASE:
         return camel_to_snake(arg_keys)
-    elif naming_convention == NamingConventionType.UPPER_CAMEL_CASE:
+    if naming_convention == NamingConventionType.UPPER_CAMEL_CASE:
         return arg_keys
-    else:
-        raise ValueError("Please provide a valid naming convention.")
+    raise ValueError("Please provide a valid naming convention.")
 
 
 def get_model_spec_kwargs_from_hub_content_document(
@@ -96,6 +95,7 @@ def get_model_spec_kwargs_from_hub_content_document(
     hub_content_document: Dict[str, Any],
     naming_convention: NamingConventionType = NamingConventionType.UPPER_CAMEL_CASE,
 ) -> Dict[str, Any]:
+    """Util to retrun model spec kwargs from HubContentDocument"""
     kwargs = dict()
     keys = get_model_spec_arg_keys(arg_type, naming_convention=naming_convention)
     for k in keys:

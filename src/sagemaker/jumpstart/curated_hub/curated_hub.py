@@ -24,7 +24,6 @@ from packaging.version import Version
 
 from sagemaker.utils import TagsDict
 from sagemaker.session import Session
-from sagemaker.s3 import s3_path_join
 from sagemaker.jumpstart import utils
 from sagemaker.jumpstart.curated_hub.accessors import file_generator
 from sagemaker.jumpstart.curated_hub.accessors.multipartcopy import MultiPartCopyHandler
@@ -175,7 +174,7 @@ class CuratedHub:
 
         **kwargs: Passed to invocation of ``Session:list_hub_contents``.
         """
-        JUMPSTART_LOGGER.info(f"Listing models in {self.hub_name}")
+        JUMPSTART_LOGGER.info("Listing models in %s", self.hub_name)
         if clear_cache:
             self._list_hubs_cache = None
         if self._list_hubs_cache is None:
@@ -482,6 +481,7 @@ class CuratedHub:
         return json.loads(response["Body"].read().decode("utf-8"))
 
     def _fetch_manifest_from_s3(self, key: str) -> Dict[str, Dict[str, Any]]:
+        """Fetches Studio manifest from S3"""
         response = self._s3_client.get_object(
             Bucket=utils.get_jumpstart_content_bucket(self.region), Key=key
         )
@@ -489,7 +489,7 @@ class CuratedHub:
         return {entry.get(STUDIO_MODEL_ID_KEY): entry for entry in manifest_list}
 
     def _calculate_dependencies(self, sync_request: HubSyncRequest) -> List[HubContentDependency]:
-        """Something."""
+        """Calculates dependencies for HubContentDocument"""
 
         files = sync_request.files
         dest_location = sync_request.destination
