@@ -23,12 +23,11 @@ from botocore.client import BaseClient
 from packaging.version import Version
 
 from sagemaker.utils import TagsDict
-from sagemaker.s3 import s3_path_join
 from sagemaker.session import Session
 from sagemaker.jumpstart import utils
 from sagemaker.jumpstart.curated_hub.accessors import file_generator
 from sagemaker.jumpstart.curated_hub.accessors.multipartcopy import MultiPartCopyHandler
-from sagemaker.jumpstart.curated_hub.constants import JUMPSTART_CURATED_HUB_MODEL_TAG
+from sagemaker.jumpstart.curated_hub.constants import JUMPSTART_CURATED_HUB_MODEL_TAG, LATEST_VERSION_WILDCARD
 from sagemaker.jumpstart.curated_hub.sync.comparator import SizeAndLastUpdatedComparator
 from sagemaker.jumpstart.curated_hub.sync.request import HubSyncRequestFactory
 from sagemaker.jumpstart.enums import JumpStartScriptScope
@@ -55,7 +54,6 @@ from sagemaker.jumpstart.curated_hub.interfaces import (
     HubContentDependency,
 )
 from sagemaker.jumpstart.curated_hub.types import (
-    FileInfo,
     HubContentDependencyType,
     HubContentReferenceType,
     JumpStartModelInfo,
@@ -175,6 +173,8 @@ class CuratedHub:
         self, model_name: str, model_version: Optional[str] = None
     ) -> DescribeHubContentResponse:
         """Returns descriptive information about the Hub Model"""
+        if model_version == LATEST_VERSION_WILDCARD or model_version is None:
+            model_version = self._get_latest_model_version(model_name)
         hub_content_description: Dict[str, Any] = self._sagemaker_session.describe_hub_content(
             hub_name=self.hub_name,
             hub_content_name=model_name,
@@ -186,6 +186,8 @@ class CuratedHub:
 
     def delete_model(self, model_name: str, model_version: Optional[str] = None) -> None:
         """Deletes a model from this CuratedHub."""
+        if model_version == LATEST_VERSION_WILDCARD:
+            model_version = self._get_latest_model_version(model_name)
         return self._sagemaker_session.delete_hub_content(
             hub_content_name=model_name,
             hub_content_version=model_version,
@@ -211,15 +213,23 @@ class CuratedHub:
                 return True
         return False
 
-    def _populate_latest_model_version(self, model: Dict[str, str]) -> Dict[str, str]:
+    def _get_latest_model_version(self, model_id: str) -> str:
         """Populates the lastest version of a model from specs no matter what is passed.
 
         Returns model ({ model_id: str, version: str })
         """
         model_specs = utils.verify_model_region_and_return_specs(
-            model["model_id"], "*", JumpStartScriptScope.INFERENCE, self.region
+            model_id, LATEST_VERSION_WILDCARD, JumpStartScriptScope.INFERENCE, self.region
         )
-        return {"model_id": model["model_id"], "version": model_specs.version}
+        return model_specs.version
+
+    def _populate_latest_model_version(self, model: Dict[str, str]) -> Dict[str, str]:
+        """Populates the lastest version of a model from specs no matter what is passed.
+
+        Returns model ({ model_id: str, version: str })
+        """
+        model_version = self._get_latest_model_version(model["model_id"])
+        return {"model_id": model["model_id"], "version": model_version}
 
     def _get_jumpstart_models_in_hub(self) -> List[HubContentInfo]:
         """Retrieves all JumpStart models in a private Hub."""
@@ -255,6 +265,12 @@ class CuratedHub:
 
                 # 1. Model version exists in Hub, pass
                 if hub_model_version == model_version:
+                    JUMPSTART_LOGGER.info(
+                        "Model %s/%s already exists in your Hub %s and will not be synced.",
+                        model.model_id,
+                        model.version,
+                        self.hub_name,
+                    )
                     pass
 
                 # 2. Invalid model version exists in Hub, pass
@@ -312,14 +328,9 @@ class CuratedHub:
         # Retrieve latest version of unspecified JumpStart model versions
         model_version_list = []
         for model in model_list:
-            version = model.get("version", "*")
-            if version == "*":
+            version = model.get("version")
+            if version == LATEST_VERSION_WILDCARD or version is None:
                 model = self._populate_latest_model_version(model)
-                JUMPSTART_LOGGER.warning(
-                    "No version specified for model %s. Using version %s",
-                    model["model_id"],
-                    model["version"],
-                )
             model_version_list.append(JumpStartModelInfo(model["model_id"], model["version"]))
 
         js_models_in_hub = self._get_jumpstart_models_in_hub()
@@ -360,7 +371,7 @@ class CuratedHub:
                 )
         if failed_imports:
             raise RuntimeError(
-                f"Failures when importing models to curated hub in parallel: {failed_imports}"
+                f"Failures when importing models to curated hub in parallel: {failed_imports}."
             )
 
     def _sync_public_model_to_hub(self, model: JumpStartModelInfo, thread_num: int):
@@ -398,7 +409,7 @@ class CuratedHub:
                 label=dest_location.key,
             ).execute()
         else:
-            JUMPSTART_LOGGER.warning("Nothing to copy for %s v%s", model.model_id, model.version)
+            JUMPSTART_LOGGER.warning("Nothing to copy for model %s/%s.", model.model_id, model.version)
 
         # TODO: Tag model if specs say it is deprecated or training/inference
         # vulnerable. Update tag of HubContent ARN without version.
@@ -425,6 +436,9 @@ class CuratedHub:
             hub_content_dependencies=dependencies,
             region=self.region,
         )
+
+        JUMPSTART_LOGGER.info(f"Importing {model.model_id}/{model.version}...")
+
         self._sagemaker_session.import_hub_content(
             document_schema_version=hub_content_document.get_schema_version(),
             hub_content_name=model.model_id,

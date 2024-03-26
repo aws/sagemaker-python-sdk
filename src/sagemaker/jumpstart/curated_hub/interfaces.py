@@ -526,7 +526,6 @@ class HubModelDocument(HubDataHolderType):
         """
         self.url: str = json_obj["Url"]
         self.min_sdk_version: str = json_obj["MinSdkVersion"]
-        # Only one of ecr_uri and ecr_specs should exist.
         self.hosting_ecr_uri: Optional[str] = json_obj["HostingEcrUri"]
         self.hosting_artifact_uri = json_obj["HostingArtifactUri"]
         self.hosting_script_uri = json_obj["HostingScriptUri"]
