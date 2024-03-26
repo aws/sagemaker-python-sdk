@@ -190,7 +190,7 @@ class CuratedHub:
 
     def delete_model(self, model_name: str, model_version: Optional[str] = None) -> None:
         """Deletes a model from this CuratedHub."""
-        if model_version == LATEST_VERSION_WILDCARD:
+        if model_version == LATEST_VERSION_WILDCARD or model_version is None:
             model_version = self._get_latest_model_version(model_name)
         return self._sagemaker_session.delete_hub_content(
             hub_content_name=model_name,

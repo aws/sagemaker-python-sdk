@@ -263,7 +263,7 @@ def make_hub_model_document_from_specs(
     hub_content_dependencies: List[HubContentDependency],
     region: str,
 ) -> HubModelDocument:
-    """Sets fields in HubModelDocument based on model and studio specs and hub content dependencies."""
+    """Sets fields in HubModelDocument based on model and studio specs and dependencies."""
     document = {}
     document["Url"] = model_specs.url
     document["MinSdkVersion"] = model_specs.min_sdk_version

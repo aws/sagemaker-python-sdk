@@ -65,7 +65,7 @@ class HubDataHolderType(JumpStartDataHolderType):
 
     def __str__(self) -> str:
         """Returns string representation of object.
-        
+
         Example: "{'content_bucket': 'bucket', 'region_name': 'us-west-2'}"
         """
 
