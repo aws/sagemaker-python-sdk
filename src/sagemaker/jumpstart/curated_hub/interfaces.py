@@ -64,8 +64,9 @@ class HubDataHolderType(JumpStartDataHolderType):
         return json_obj
 
     def __str__(self) -> str:
-        """Returns string representation of object. Example:
-        "{'content_bucket': 'bucket', 'region_name': 'us-west-2'}"
+        """Returns string representation of object.
+        
+        Example: "{'content_bucket': 'bucket', 'region_name': 'us-west-2'}"
         """
 
         att_dict = walk_and_apply_json(self.to_json(), snake_to_upper_camel)
@@ -387,9 +388,7 @@ class EcrUri(HubDataHolderType):
         self.from_ecr_uri(uri)
 
     def from_ecr_uri(self, uri: str) -> None:
-        """
-        Parse a given aws ecr image uri into its various components.
-        """
+        """Parse a given aws ecr image uri into its various components."""
         uri_regex = (
             r"^(?:(?P<account_id>[a-zA-Z0-9][\w-]*)\.dkr\.ecr\.(?P<region>[a-zA-Z0-9][\w-]*)"
             r"\.(?P<tld>[a-zA-Z0-9\.-]+))\/(?P<repository_name>([a-z0-9]+"
