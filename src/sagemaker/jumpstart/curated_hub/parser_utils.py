@@ -42,10 +42,7 @@ def walk_and_apply_json(json_obj: Dict[Any, Any], apply, keys_to_skip: List[str]
               new_key = apply(key)
               new_value = value
               if key not in keys_to_skip:
-                  
                   new_value = _walk_and_apply_json(value)
-              else:
-                  print("Found a key to skip!\n\n\n")
               new_object[new_key] = new_value
       elif isinstance(json_obj, list):
           new_object = []

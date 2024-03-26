@@ -34,8 +34,6 @@ from sagemaker.jumpstart.curated_hub.parser_utils import (
 )
 
 KEYS_TO_SKIP_UPPER_APPLICATION = ["aliases", "variants"]
-# KEYS_TO_SKIP_UPPER_APPLICATION = []
-
 
 class HubDataHolderType(JumpStartDataHolderType):
     """Base class for many Hub API interfaces."""

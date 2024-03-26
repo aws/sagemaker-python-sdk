@@ -40,18 +40,20 @@ from sagemaker.jumpstart.curated_hub.parser_utils import (
     walk_and_apply_json,
 )
 
+KEYS_TO_SKIP_UPPER_APPLICATION = ["aliases", "variants"]
+
 def _to_json(dictionary: Dict[Any, Any]) -> Dict[Any, Any]:
     """Convert a complex nested dictionary of JumpStartDataHolderType into json"""
     for key, value in dictionary.items():
         if issubclass(type(value), JumpStartDataHolderType):
-            dictionary[key] = walk_and_apply_json(value.to_json(), snake_to_upper_camel)
+            dictionary[key] = walk_and_apply_json(value.to_json(), snake_to_upper_camel, KEYS_TO_SKIP_UPPER_APPLICATION)
         elif isinstance(value, list):
             new_value = []
             for value_in_list in value:
                 new_value_in_list = value_in_list
                 if issubclass(type(value_in_list), JumpStartDataHolderType):
                     new_value_in_list = walk_and_apply_json(
-                        value_in_list.to_json(), snake_to_upper_camel
+                        value_in_list.to_json(), snake_to_upper_camel, KEYS_TO_SKIP_UPPER_APPLICATION
                     )
                 new_value.append(new_value_in_list)
             dictionary[key] = new_value
@@ -59,7 +61,7 @@ def _to_json(dictionary: Dict[Any, Any]) -> Dict[Any, Any]:
             for key_in_dict, value_in_dict in value.items():
                 if issubclass(type(value_in_dict), JumpStartDataHolderType):
                     value[key_in_dict] = walk_and_apply_json(
-                        value_in_dict.to_json(), snake_to_upper_camel
+                        value_in_dict.to_json(), snake_to_upper_camel, KEYS_TO_SKIP_UPPER_APPLICATION
                     )
     return dictionary
 
