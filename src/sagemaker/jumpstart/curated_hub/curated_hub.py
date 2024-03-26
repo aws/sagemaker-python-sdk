@@ -245,7 +245,6 @@ class CuratedHub:
         )
         return model_specs.version
 
-
     def _populate_latest_model_version(self, model: Dict[str, str]) -> Dict[str, str]:
         """Populates the lastest version of a model from specs no matter what is passed.
 
@@ -253,7 +252,7 @@ class CuratedHub:
         """
         model_version = self._get_latest_model_version(model["model_id"])
         return {"model_id": model["model_id"], "version": model_version}
- 
+
     def _get_jumpstart_models_in_hub(self) -> List[HubContentInfo]:
         """Retrieves all JumpStart models in a private Hub."""
         hub_models = summary_list_from_list_api_response(self.list_models())

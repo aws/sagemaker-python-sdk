@@ -346,10 +346,10 @@ class EstimatorTest(unittest.TestCase):
             instance_type="ml.p3.2xlarge",
             instance_count=1,
             image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.5.0-gpu-py3",
-            model_uri="s3://jumpstart-cache-prod-us-west-2/pytorch-training/"
-            "train-pytorch-ic-mobilenet-v2.tar.gz",
-            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/pytorch/"
-            "transfer_learning/ic/v1.0.0/sourcedir.tar.gz",
+            # Hub models will only return key. This will be populated with full URI in HCD
+            model_uri="pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz",
+            # Hub models will only return key. This will be populated with full URI in HCD
+            source_dir="source-directory-tarballs/pytorch/transfer_learning/ic/v1.0.0/sourcedir.tar.gz",
             entry_point="transfer_learning.py",
             hyperparameters={
                 "epochs": "3",
@@ -423,7 +423,7 @@ class EstimatorTest(unittest.TestCase):
         )
 
         mock_construct_hub_arn_from_name.assert_called_once_with(
-            hub_name="my-mock-hub", region=None, session=None
+            hub_name="my-mock-hub", region=None, session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION
         )
 
     @mock.patch("sagemaker.utils.sagemaker_timestamp")

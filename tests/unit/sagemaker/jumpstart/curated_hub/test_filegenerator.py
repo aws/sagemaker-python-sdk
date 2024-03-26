@@ -17,7 +17,11 @@ from sagemaker.jumpstart.curated_hub.accessors.file_generator import (
     generate_file_infos_from_model_specs,
     generate_file_infos_from_s3_location,
 )
-from sagemaker.jumpstart.curated_hub.types import FileInfo, S3ObjectLocation
+from sagemaker.jumpstart.curated_hub.types import (
+    FileInfo,
+    HubContentReferenceType,
+    S3ObjectLocation,
+)
 
 from sagemaker.jumpstart.types import JumpStartModelSpecs
 from tests.unit.sagemaker.jumpstart.constants import BASE_SPEC
@@ -159,14 +163,47 @@ def test_specs_file_generator_training_unsupported(patched_get_model_specs, s3_c
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
 def test_specs_file_generator_gated_model(patched_get_model_specs, s3_client):
     specs = Mock()
-    specs.model_id = "mock_model_123"
+    specs.model_id = "framework-mock_model_123"
     specs.gated_bucket = True
     specs.training_supported = True
     specs.hosting_prepacked_artifact_key = "/my/inference/tarball.tgz"
     specs.hosting_script_key = "/my/inference/script.py"
     specs.training_prepacked_artifact_key = "/my/training/tarball.tgz"
     specs.training_script_key = "/my/training/script.py"
+    specs.hosting_eula_key = "/eula/key.txt"
+    specs.get_framework.return_value = "framework"
 
-    response = generate_file_infos_from_model_specs(specs, {}, "us-west-2", s3_client)
+    studio_specs = {"defaultDataKey": "/training/data/location"}
 
-    assert response == []
+    response = generate_file_infos_from_model_specs(specs, studio_specs, "us-west-2", s3_client)
+
+    assert response == [
+        FileInfo(
+            "jumpstart-cache-prod-us-west-2",
+            "/eula/key.txt",
+            "123456789",
+            "08-14-1997 00:00:00",
+            HubContentReferenceType.EULA,
+        ),
+        FileInfo(
+            "jumpstart-cache-prod-us-west-2",
+            "framework-notebooks/framework-mock_model_123-inference.ipynb",
+            "123456789",
+            "08-14-1997 00:00:00",
+            HubContentReferenceType.INFERENCE_NOTEBOOK,
+        ),
+        FileInfo(
+            "jumpstart-cache-prod-us-west-2",
+            "framework-metadata/framework-mock_model_123.md",
+            "123456789",
+            "08-14-1997 00:00:00",
+            HubContentReferenceType.MARKDOWN,
+        ),
+        FileInfo(
+            "jumpstart-cache-prod-us-west-2",
+            "/training/data/location",
+            "123456789",
+            "08-14-1997 00:00:00",
+            HubContentReferenceType.DEFAULT_TRAINING_DATASET,
+        )
+    ]

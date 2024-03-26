@@ -65,7 +65,7 @@ def generate_file_infos_from_model_specs(
     public_model_data_accessor = PublicModelDataAccessor(
         region=region, model_specs=model_specs, studio_specs=studio_specs
     )
-    files = []
+    files: List[FileInfo] = []
     for dependency in HubContentReferenceType:
         location: S3ObjectLocation = public_model_data_accessor.get_s3_reference(dependency)
         # Training dependencies will return as None if training is unsupported
@@ -108,4 +108,6 @@ def generate_file_infos_from_model_specs(
             size = response.get("ContentLength")
             last_updated = response.get("LastModified")
             files.append(FileInfo(location.bucket, location.key, size, last_updated, dependency))
+    for file in files:
+        print(file, file.location, file.last_updated, file.size, file.reference_type)
     return files

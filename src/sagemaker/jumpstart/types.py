@@ -289,7 +289,7 @@ class JumpStartHyperparameter(JumpStartDataHolderType):
         options = json_obj.get("options")
         min_val = json_obj.get("min")
         max_val = json_obj.get("max")
-        self.default = self.default if self.default else max_val if max_val else 0
+        self.default = self.default if self.default is not None else max_val if max_val else 0
 
         if options is not None and len(options) > 0:
             self.options = options
@@ -346,6 +346,7 @@ class JumpStartEnvironmentVariable(JumpStartDataHolderType):
         self.default = _get_key_or_upper_camel_key(json_obj, "default")
         self.scope = _get_key_or_upper_camel_key(json_obj, "scope")
         self.required_for_model_class: bool = _get_key_or_upper_camel_key(json_obj, "required_for_model_class", False)
+
 
 
 class JumpStartPredictorSpecs(JumpStartDataHolderType):

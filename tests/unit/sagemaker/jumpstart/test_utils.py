@@ -1208,7 +1208,7 @@ def test_mime_type_enum_from_str():
 
 def test_extract_info_from_hub_content_arn():
     model_arn = (
-        "arn:aws:sagemaker:us-west-2:000000000000:hub_content/MockHub/Model/my-mock-model/1.0.2"
+        "arn:aws:sagemaker:us-west-2:000000000000:hub-content/MockHub/Model/my-mock-model/1.0.2"
     )
     assert utils.extract_info_from_hub_content_arn(model_arn) == (
         "MockHub",
@@ -1230,7 +1230,7 @@ def test_extract_info_from_hub_content_arn():
     assert utils.extract_info_from_hub_content_arn(invalid_arn) == (None, None, None, None)
 
     invalid_arn = (
-        "arn:aws:sagemaker:us-west-2:000000000000:hub-content/MyHub/Notebook/my-notebook/1.0.0"
+        "arn:aws:sagemaker:us-west-2:000000000000:hub_content/MyHub/Notebook/my-notebook/1.0.0"
     )
     assert utils.extract_info_from_hub_content_arn(invalid_arn) == (None, None, None, None)
 
