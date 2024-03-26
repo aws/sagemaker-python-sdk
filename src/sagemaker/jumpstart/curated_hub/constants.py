@@ -18,3 +18,5 @@ JUMPSTART_HUB_MODEL_VERSION_TAG_PREFIX = "@jumpstart-model-version"
 JUMPSTART_CURATED_HUB_MODEL_TAG = "curatedjumpstartmodel"
 FRAMEWORK_TAG_PREFIX = "framework"
 TASK_TAG_PREFIX = "mltask"
+
+LATEST_VERSION_WILDCARD = "*"
