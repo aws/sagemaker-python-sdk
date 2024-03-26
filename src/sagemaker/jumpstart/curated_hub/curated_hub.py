@@ -464,8 +464,6 @@ class CuratedHub:
             region=self.region,
         )
 
-        print(f"Creating final HubContentDocument: {hub_content_document}\n\n\n")
-
         JUMPSTART_LOGGER.info("Importing %s/%s...", model.model_id, model.version)
 
         self._sagemaker_session.import_hub_content(
@@ -505,17 +503,16 @@ class CuratedHub:
         dest_location = sync_request.destination
         dependencies: List[HubContentDependency] = []
         for file in files:
-            dependencies.append(
-                HubContentDependency(
-                    {
-                        "dependency_origin_path": f"{file.location.bucket}/{file.location.key}",
-                        "depenency_copy_path": f"{dest_location.bucket}/{dest_location.key}/{file.location.key}",
-                        "dependency_type": self._reference_type_to_dependency_type(
-                            file.reference_type
-                        ),
-                    }
-                )
-            )
+            dependency = HubContentDependency(
+                  {
+                      "dependency_origin_path": f"s3://{file.location.bucket}/{file.location.key}",
+                      "dependency_copy_path": f"s3://{dest_location.bucket}/{dest_location.key}/{file.location.key}",
+                      "dependency_type": self._reference_type_to_dependency_type(
+                          file.reference_type
+                      )
+                  }
+              )
+            dependencies.append(dependency)
 
         return dependencies
 

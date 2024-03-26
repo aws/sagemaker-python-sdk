@@ -33,6 +33,7 @@ from sagemaker.jumpstart.curated_hub.parser_utils import (
     walk_and_apply_json,
 )
 
+KEYS_TO_SKIP_UPPER_APPLICATION = ["aliases", "variants"]
 
 class HubDataHolderType(JumpStartDataHolderType):
     """Base class for many Hub API interfaces."""
@@ -69,7 +70,7 @@ class HubDataHolderType(JumpStartDataHolderType):
         Example: "{'content_bucket': 'bucket', 'region_name': 'us-west-2'}"
         """
 
-        att_dict = walk_and_apply_json(self.to_json(), snake_to_upper_camel)
+        att_dict = walk_and_apply_json(self.to_json(), snake_to_upper_camel, KEYS_TO_SKIP_UPPER_APPLICATION)
         return f"{json.dumps(att_dict, default=lambda o: o.to_json())}"
 
 
@@ -111,7 +112,9 @@ class HubContentDependency(HubDataHolderType):
         Args:
             json_obj (Dict[str, Any]): Dictionary representation of hub content description.
         """
-        self.from_json(json_obj)
+        self.dependency_copy_path: Optional[str] = json_obj.get("dependency_copy_path", "")
+        self.dependency_origin_path: Optional[str] = json_obj.get("dependency_origin_path", "")
+        self.dependency_type: Optional[str] = json_obj.get("dependency_type", "")
 
     def from_json(self, json_obj: Optional[Dict[str, Any]]) -> None:
         """Sets fields in object based on json.
@@ -562,7 +565,7 @@ class HubModelDocument(HubDataHolderType):
         self.default_inference_instance_type: Optional[str] = json_obj.get(
             "DefaultInferenceInstanceType"
         )
-        self.supported_inference_instance_types: Optional[str] = json_obj.get(
+        self.supported_inference_instance_types: Optional[List[str]] = json_obj.get(
             "SupportedInferenceInstanceTypes"
         )
         self.sage_maker_sdk_predictor_specifications: Optional[JumpStartPredictorSpecs] = (
