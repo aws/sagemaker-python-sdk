@@ -24,10 +24,14 @@ from packaging.version import Version
 
 from sagemaker.utils import TagsDict
 from sagemaker.session import Session
+from sagemaker.s3 import s3_path_join
 from sagemaker.jumpstart import utils
 from sagemaker.jumpstart.curated_hub.accessors import file_generator
 from sagemaker.jumpstart.curated_hub.accessors.multipartcopy import MultiPartCopyHandler
-from sagemaker.jumpstart.curated_hub.constants import JUMPSTART_CURATED_HUB_MODEL_TAG, LATEST_VERSION_WILDCARD
+from sagemaker.jumpstart.curated_hub.constants import (
+    JUMPSTART_CURATED_HUB_MODEL_TAG,
+    LATEST_VERSION_WILDCARD,
+)
 from sagemaker.jumpstart.curated_hub.sync.comparator import SizeAndLastUpdatedComparator
 from sagemaker.jumpstart.curated_hub.sync.request import HubSyncRequest, HubSyncRequestFactory
 from sagemaker.jumpstart.enums import JumpStartScriptScope
@@ -429,7 +433,7 @@ class CuratedHub:
                 label=dest_location.key,
             ).execute()
         else:
-            JUMPSTART_LOGGER.warning("Nothing to copy for model %s/%s.", model.model_id, model.version)
+            JUMPSTART_LOGGER.info("Nothing to copy for model %s/%s.", model.model_id, model.version)
 
         # TODO: Tag model if specs say it is deprecated or training/inference
         # vulnerable. Update tag of HubContent ARN without version.
