@@ -281,7 +281,6 @@ class JumpStart(ABC):
         admissible_tensor_parallel_degrees = _get_admissible_tensor_parallel_degrees(
             self.js_model_config
         )
-
         if isinstance(admissible_tensor_parallel_degrees, int):
             admissible_tensor_parallel_degrees = [admissible_tensor_parallel_degrees]
         available_gpus = max(admissible_tensor_parallel_degrees)
