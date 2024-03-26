@@ -279,16 +279,16 @@ class JumpStartHyperparameter(JumpStartDataHolderType):
         Args:
             json_obj (Dict[str, Any]): Dictionary representation of hyperparameter.
         """
-        if self._is_hub_content:
+        if self._is_hub_content is False:
             json_obj = walk_and_apply_json(json_obj, camel_to_snake)
 
-        self.name = json_obj["name"]
-        self.type = json_obj["type"]
-        self.default = json_obj["default"]
-        self.scope = json_obj["scope"]
-        options = json_obj.get("options")
-        min_val = json_obj.get("min")
-        max_val = json_obj.get("max")
+        self.name = _get_key_or_upper_camel_key(json_obj, "name")
+        self.type = _get_key_or_upper_camel_key(json_obj, "type")
+        self.default = _get_key_or_upper_camel_key(json_obj, "default")
+        self.scope = _get_key_or_upper_camel_key(json_obj, "scope")
+        options = _get_key_or_upper_camel_key(json_obj,"options")
+        min_val = _get_key_or_upper_camel_key(json_obj,"min")
+        max_val = _get_key_or_upper_camel_key(json_obj,"max")
         self.default = self.default if self.default is not None else max_val if max_val else 0
 
         if options is not None and len(options) > 0:
@@ -339,7 +339,7 @@ class JumpStartEnvironmentVariable(JumpStartDataHolderType):
         Args:
             json_obj (Dict[str, Any]): Dictionary representation of environment variable.
         """
-        if self._is_hub_content:
+        if self._is_hub_content is False:
             json_obj = walk_and_apply_json(json_obj, camel_to_snake)
         self.name = _get_key_or_upper_camel_key(json_obj, "name")
         self.type = _get_key_or_upper_camel_key(json_obj, "type")
@@ -382,7 +382,7 @@ class JumpStartPredictorSpecs(JumpStartDataHolderType):
         if json_obj is None:
             return
 
-        if self._is_hub_content:
+        if self._is_hub_content is False:
             json_obj = walk_and_apply_json(json_obj, camel_to_snake)
 
         self.default_content_type = _get_key_or_upper_camel_key(json_obj, "default_content_type")
@@ -433,7 +433,7 @@ class JumpStartSerializablePayload(JumpStartDataHolderType):
             return
         self.raw_payload = copy(json_obj)
 
-        if self._is_hub_content:
+        if self._is_hub_content is False:
             json_obj = walk_and_apply_json(json_obj, camel_to_snake)
 
         self.content_type = _get_key_or_upper_camel_key(json_obj, "content_type")
