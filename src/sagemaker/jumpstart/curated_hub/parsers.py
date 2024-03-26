@@ -180,13 +180,11 @@ def make_model_specs_from_describe_hub_content_response(
     specs["training_prepacked_script_key"] = None
     if hub_model_document.training_prepacked_script_uri is not None:
         training_prepacked_script_key = hub_model_document.training_prepacked_script_uri
-
         specs["training_prepacked_script_key"] = training_prepacked_script_key
 
     specs["hosting_prepacked_artifact_key"] = None
     if hub_model_document.hosting_prepacked_artifact_uri is not None:
         hosting_prepacked_artifact_key = hub_model_document.hosting_prepacked_artifact_uri
-
         specs["hosting_prepacked_artifact_key"] = hosting_prepacked_artifact_key
 
     specs["fit_kwargs"] = get_model_spec_kwargs_from_hub_model_document(

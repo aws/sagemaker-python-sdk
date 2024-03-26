@@ -281,13 +281,13 @@ class JumpStartHyperparameter(JumpStartDataHolderType):
         if self._is_hub_content:
             json_obj = walk_and_apply_json(json_obj, camel_to_snake)
 
-        self.name = json_obj["name"] if json_obj.get("name") else json_obj.get("Name")
-        self.type = json_obj["type"] if json_obj.get("type") else json_obj.get("Type")
-        self.default = json_obj["default"] if json_obj.get("default") else json_obj.get("Default")
-        self.scope = json_obj["scope"] if json_obj.get("scope") else json_obj.get("Scope")
-        options = json_obj["options"] if json_obj.get("options") else json_obj.get("Options")
-        min_val = json_obj["min"] if json_obj.get("min") else json_obj.get("Min")
-        max_val = json_obj["max"] if json_obj.get("max") else json_obj.get("Max")
+        self.name = json_obj["name"]
+        self.type = json_obj["type"]
+        self.default = json_obj["default"]
+        self.scope = json_obj["scope"]
+        options = json_obj.get("options")
+        min_val = json_obj.get("min")
+        max_val = json_obj.get("max")
         self.default = self.default if self.default else max_val if max_val else 0
 
         if options is not None and len(options) > 0:
@@ -340,16 +340,11 @@ class JumpStartEnvironmentVariable(JumpStartDataHolderType):
         """
         if self._is_hub_content:
             json_obj = walk_and_apply_json(json_obj, camel_to_snake)
-        self.name = json_obj["name"] if json_obj.get("name") else json_obj.get("Name")
-        self.type = json_obj["type"] if json_obj.get("type") else json_obj.get("Type")
-        self.default = json_obj["default"] if json_obj.get("default") else json_obj.get("Default")
-        self.scope = json_obj["scope"] if json_obj.get("scope") else json_obj.get("Scope")
-        self.required_for_model_class: bool = (
-            json_obj.get("required_for_model_class", False)
-            if json_obj.get("required_for_model_class")
-            else json_obj.get("RequiredForModelClass", False)
-        )
-
+        self.name = json_obj["name"]
+        self.type = json_obj["type"]
+        self.default = json_obj["default"]
+        self.scope = json_obj["scope"]
+        self.required_for_model_class: bool = json_obj.get("required_for_model_class", False)
 
 class JumpStartPredictorSpecs(JumpStartDataHolderType):
     """Data class for JumpStart Predictor specs."""
@@ -1034,7 +1029,6 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         if self._is_hub_content:
             self.hosting_ecr_uri: Optional[str] = json_obj["hosting_ecr_uri"]
             self.hosting_ecr_specs = None
-            # self._non_serializable_slots.append("hosting_ecr_specs")
         else:
             self.hosting_ecr_specs: Optional[JumpStartECRSpecs] = (
                 JumpStartECRSpecs(json_obj["hosting_ecr_specs"])
