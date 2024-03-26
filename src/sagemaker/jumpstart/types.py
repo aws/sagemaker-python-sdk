@@ -12,8 +12,10 @@
 # language governing permissions and limitations under the License.
 """This module stores types related to SageMaker JumpStart."""
 from __future__ import absolute_import
-from copy import deepcopy
+
+import re
 from enum import Enum
+from copy import deepcopy
 from typing import Any, Dict, List, Optional, Set, Union
 from sagemaker.session import Session
 from sagemaker.utils import get_instance_type_family, format_tags, Tags
@@ -21,10 +23,13 @@ from sagemaker.enums import EndpointType
 from sagemaker.model_metrics import ModelMetrics
 from sagemaker.metadata_properties import MetadataProperties
 from sagemaker.drift_check_baselines import DriftCheckBaselines
-from sagemaker.jumpstart.enums import JumpStartModelType
-
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
+from sagemaker.jumpstart.enums import JumpStartModelType
+from sagemaker.jumpstart.curated_hub.parser_utils import (
+    camel_to_snake,
+    walk_and_apply_json,
+)
 
 
 class JumpStartDataHolderType:
@@ -103,6 +108,8 @@ class JumpStartDataHolderType:
         """Returns json representation of object."""
         json_obj = {}
         for att in self.__slots__:
+            if att in self._non_serializable_slots:
+                continue
             if hasattr(self, att):
                 cur_val = getattr(self, att)
                 if issubclass(type(cur_val), JumpStartDataHolderType):
@@ -251,14 +258,18 @@ class JumpStartHyperparameter(JumpStartDataHolderType):
         "max",
         "exclusive_min",
         "exclusive_max",
+        "_is_hub_content",
     ]
 
-    def __init__(self, spec: Dict[str, Any]):
+    _non_serializable_slots = ["_is_hub_content"]
+
+    def __init__(self, spec: Dict[str, Any], is_hub_content: bool = False):
         """Initializes a JumpStartHyperparameter object from its json representation.
 
         Args:
             spec (Dict[str, Any]): Dictionary representation of hyperparameter.
         """
+        self._is_hub_content = is_hub_content
         self.from_json(spec)
 
     def from_json(self, json_obj: Dict[str, Any]) -> None:
@@ -267,36 +278,34 @@ class JumpStartHyperparameter(JumpStartDataHolderType):
         Args:
             json_obj (Dict[str, Any]): Dictionary representation of hyperparameter.
         """
+        if self._is_hub_content:
+            json_obj = walk_and_apply_json(json_obj, camel_to_snake)
 
         self.name = json_obj["name"]
         self.type = json_obj["type"]
         self.default = json_obj["default"]
         self.scope = json_obj["scope"]
-
         options = json_obj.get("options")
-        if options is not None:
-            self.options = options
-
         min_val = json_obj.get("min")
+        max_val = json_obj.get("max")
+
+        if options is not None and len(options) > 0:
+            self.options = options
         if min_val is not None:
             self.min = min_val
-
-        max_val = json_obj.get("max")
         if max_val is not None:
             self.max = max_val
 
-        exclusive_min_val = json_obj.get("exclusive_min")
-        if exclusive_min_val is not None:
-            self.exclusive_min = exclusive_min_val
+        # HubContentDocument model schema does not allow exclusive min/max.
+        if self._is_hub_content:
+            return
 
-        exclusive_max_val = json_obj.get("exclusive_max")
-        if exclusive_max_val is not None:
-            self.exclusive_max = exclusive_max_val
-
-    def to_json(self) -> Dict[str, Any]:
-        """Returns json representation of JumpStartHyperparameter object."""
-        json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
-        return json_obj
+        exclusive_min = json_obj.get("exclusive_min")
+        exclusive_max = json_obj.get("exclusive_max")
+        if exclusive_min is not None:
+            self.exclusive_min = exclusive_min
+        if exclusive_max is not None:
+            self.exclusive_max = exclusive_max
 
 
 class JumpStartEnvironmentVariable(JumpStartDataHolderType):
@@ -308,14 +317,18 @@ class JumpStartEnvironmentVariable(JumpStartDataHolderType):
         "default",
         "scope",
         "required_for_model_class",
+        "_is_hub_content",
     ]
 
-    def __init__(self, spec: Dict[str, Any]):
+    _non_serializable_slots = ["_is_hub_content"]
+
+    def __init__(self, spec: Dict[str, Any], is_hub_content: bool = False):
         """Initializes a JumpStartEnvironmentVariable object from its json representation.
 
         Args:
             spec (Dict[str, Any]): Dictionary representation of environment variable.
         """
+        self._is_hub_content = is_hub_content
         self.from_json(spec)
 
     def from_json(self, json_obj: Dict[str, Any]) -> None:
@@ -324,17 +337,13 @@ class JumpStartEnvironmentVariable(JumpStartDataHolderType):
         Args:
             json_obj (Dict[str, Any]): Dictionary representation of environment variable.
         """
-
+        if self._is_hub_content:
+            json_obj = walk_and_apply_json(json_obj, camel_to_snake)
         self.name = json_obj["name"]
         self.type = json_obj["type"]
         self.default = json_obj["default"]
         self.scope = json_obj["scope"]
         self.required_for_model_class: bool = json_obj.get("required_for_model_class", False)
-
-    def to_json(self) -> Dict[str, Any]:
-        """Returns json representation of JumpStartEnvironmentVariable object."""
-        json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
-        return json_obj
 
 
 class JumpStartPredictorSpecs(JumpStartDataHolderType):
@@ -345,14 +354,18 @@ class JumpStartPredictorSpecs(JumpStartDataHolderType):
         "supported_content_types",
         "default_accept_type",
         "supported_accept_types",
+        "_is_hub_content",
     ]
 
-    def __init__(self, spec: Optional[Dict[str, Any]]):
+    _non_serializable_slots = ["_is_hub_content"]
+
+    def __init__(self, spec: Optional[Dict[str, Any]], is_hub_content: bool = False):
         """Initializes a JumpStartPredictorSpecs object from its json representation.
 
         Args:
             spec (Dict[str, Any]): Dictionary representation of predictor specs.
         """
+        self._is_hub_content = is_hub_content
         self.from_json(spec)
 
     def from_json(self, json_obj: Optional[Dict[str, Any]]) -> None:
@@ -365,15 +378,13 @@ class JumpStartPredictorSpecs(JumpStartDataHolderType):
         if json_obj is None:
             return
 
+        if self._is_hub_content:
+            json_obj = walk_and_apply_json(json_obj, camel_to_snake)
+
         self.default_content_type = json_obj["default_content_type"]
         self.supported_content_types = json_obj["supported_content_types"]
         self.default_accept_type = json_obj["default_accept_type"]
         self.supported_accept_types = json_obj["supported_accept_types"]
-
-    def to_json(self) -> Dict[str, Any]:
-        """Returns json representation of JumpStartPredictorSpecs object."""
-        json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
-        return json_obj
 
 
 class JumpStartSerializablePayload(JumpStartDataHolderType):
@@ -385,16 +396,18 @@ class JumpStartSerializablePayload(JumpStartDataHolderType):
         "accept",
         "body",
         "prompt_key",
+        "_is_hub_content",
     ]
 
-    _non_serializable_slots = ["raw_payload", "prompt_key"]
+    _non_serializable_slots = ["raw_payload", "prompt_key", "_is_hub_content"]
 
-    def __init__(self, spec: Optional[Dict[str, Any]]):
+    def __init__(self, spec: Optional[Dict[str, Any]], is_hub_content: bool = False):
         """Initializes a JumpStartSerializablePayload object from its json representation.
 
         Args:
             spec (Dict[str, Any]): Dictionary representation of payload specs.
         """
+        self._is_hub_content = is_hub_content
         self.from_json(spec)
 
     def from_json(self, json_obj: Optional[Dict[str, Any]]) -> None:
@@ -410,12 +423,15 @@ class JumpStartSerializablePayload(JumpStartDataHolderType):
 
         if json_obj is None:
             return
-
         self.raw_payload = json_obj
+
+        if self._is_hub_content:
+            json_obj = walk_and_apply_json(json_obj, camel_to_snake)
+
         self.content_type = json_obj["content_type"]
         self.body = json_obj["body"]
-        accept = json_obj.get("accept")
         self.prompt_key = json_obj.get("prompt_key")
+        accept = json_obj.get("accept")
         if accept:
             self.accept = accept
 
@@ -429,16 +445,20 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
 
     __slots__ = [
         "regional_aliases",
+        "aliases",
         "variants",
     ]
 
-    def __init__(self, spec: Optional[Dict[str, Any]]):
+    def __init__(self, spec: Optional[Dict[str, Any]], is_hub_content: Optional[bool] = False):
         """Initializes a JumpStartInstanceTypeVariants object from its json representation.
 
         Args:
             spec (Dict[str, Any]): Dictionary representation of instance type variants.
         """
-        self.from_json(spec)
+        if is_hub_content:
+            self.from_describe_hub_content_response(spec)
+        else:
+            self.from_json(spec)
 
     def from_json(self, json_obj: Optional[Dict[str, Any]]) -> None:
         """Sets fields in object based on json.
@@ -450,13 +470,39 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
         if json_obj is None:
             return
 
+        self.aliases = None
         self.regional_aliases: Optional[dict] = json_obj.get("regional_aliases")
         self.variants: Optional[dict] = json_obj.get("variants")
 
-    def to_json(self) -> Dict[str, Any]:
-        """Returns json representation of JumpStartInstanceTypeVariants object."""
-        json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
-        return json_obj
+    def from_describe_hub_content_response(self, response: Optional[Dict[str, Any]]) -> None:
+        """Sets fields in object based on DescribeHubContent response.
+
+        Args:
+            response (Dict[str, Any]): Dictionary representation of instance type variants.
+        """
+
+        if response is None:
+            return
+
+        self.aliases: Optional[dict] = response.get("Aliases")
+        self.regional_aliases = None
+        self.variants: Optional[dict] = response.get("Variants")
+
+    def regionalize(  # pylint: disable=inconsistent-return-statements
+        self, region: str
+    ) -> Optional[Dict[str, Any]]:
+        """Returns regionalized instance type variants."""
+
+        if self.regional_aliases is None or self.aliases is not None:
+            return
+        aliases = self.regional_aliases.get(region, {})
+        variants = {}
+        for instance_name, properties in self.variants.items():
+            if properties.get("regional_properties") is not None:
+                variants.update({instance_name: properties.get("regional_properties")})
+            if properties.get("properties") is not None:
+                variants.update({instance_name: properties.get("properties")})
+        return {"Aliases": aliases, "Variants": variants}
 
     def get_instance_specific_metric_definitions(
         self, instance_type: str
@@ -707,7 +753,7 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
             )
         )
 
-    def get_image_uri(self, instance_type: str, region: str) -> Optional[str]:
+    def get_image_uri(self, instance_type: str, region: Optional[str] = None) -> Optional[str]:
         """Returns image uri from instance type and region.
 
         Returns None if no instance type is available or found.
@@ -728,31 +774,52 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
         )
 
     def _get_regional_property(
-        self, instance_type: str, region: str, property_name: str
+        self, instance_type: str, region: Optional[str], property_name: str
     ) -> Optional[str]:
         """Returns regional property from instance type and region.
 
         Returns None if no instance type is available or found.
         None is also returned if the metadata is improperly formatted.
         """
-
-        if None in [self.regional_aliases, self.variants]:
+        # pylint: disable=too-many-return-statements
+        if self.variants is None or (self.aliases is None and self.regional_aliases is None):
             return None
 
-        regional_property_alias: Optional[str] = (
-            self.variants.get(instance_type, {}).get("regional_properties", {}).get(property_name)
-        )
+        if region is None and self.regional_aliases is not None:
+            return None
+
+        regional_property_alias: Optional[str] = None
+        if self.aliases:
+            # if reading from HubContent, aliases are already regionalized
+            regional_property_alias = (
+                self.variants.get(instance_type, {}).get("properties", {}).get(property_name)
+            )
+        elif self.regional_aliases:
+            regional_property_alias = (
+                self.variants.get(instance_type, {})
+                .get("regional_properties", {})
+                .get(property_name)
+            )
+
         if regional_property_alias is None:
             instance_type_family = get_instance_type_family(instance_type)
 
             if instance_type_family in {"", None}:
                 return None
 
-            regional_property_alias = (
-                self.variants.get(instance_type_family, {})
-                .get("regional_properties", {})
-                .get(property_name)
-            )
+            if self.aliases:
+                # if reading from HubContent, aliases are already regionalized
+                regional_property_alias = (
+                    self.variants.get(instance_type_family, {})
+                    .get("properties", {})
+                    .get(property_name)
+                )
+            elif self.regional_aliases:
+                regional_property_alias = (
+                    self.variants.get(instance_type_family, {})
+                    .get("regional_properties", {})
+                    .get(property_name)
+                )
 
         if regional_property_alias is None or len(regional_property_alias) == 0:
             return None
@@ -765,243 +832,14 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
             # We return None, indicating the field does not exist.
             return None
 
-        if region not in self.regional_aliases:
+        if self.regional_aliases and region not in self.regional_aliases:
             return None
-        alias_value = self.regional_aliases[region].get(regional_property_alias[1:], None)
+
+        if self.aliases:
+            alias_value = self.aliases.get(regional_property_alias[1:], None)
+        elif self.regional_aliases:
+            alias_value = self.regional_aliases[region].get(regional_property_alias[1:], None)
         return alias_value
-
-
-class JumpStartModelSpecs(JumpStartDataHolderType):
-    """Data class JumpStart model specs."""
-
-    __slots__ = [
-        "model_id",
-        "url",
-        "version",
-        "min_sdk_version",
-        "incremental_training_supported",
-        "hosting_ecr_specs",
-        "hosting_artifact_key",
-        "hosting_script_key",
-        "training_supported",
-        "training_ecr_specs",
-        "training_artifact_key",
-        "training_script_key",
-        "hyperparameters",
-        "inference_environment_variables",
-        "inference_vulnerable",
-        "inference_dependencies",
-        "inference_vulnerabilities",
-        "training_vulnerable",
-        "training_dependencies",
-        "training_vulnerabilities",
-        "deprecated",
-        "usage_info_message",
-        "deprecated_message",
-        "deprecate_warn_message",
-        "default_inference_instance_type",
-        "supported_inference_instance_types",
-        "dynamic_container_deployment_supported",
-        "hosting_resource_requirements",
-        "default_training_instance_type",
-        "supported_training_instance_types",
-        "metrics",
-        "training_prepacked_script_key",
-        "hosting_prepacked_artifact_key",
-        "model_kwargs",
-        "deploy_kwargs",
-        "estimator_kwargs",
-        "fit_kwargs",
-        "predictor_specs",
-        "inference_volume_size",
-        "training_volume_size",
-        "inference_enable_network_isolation",
-        "training_enable_network_isolation",
-        "resource_name_base",
-        "hosting_eula_key",
-        "hosting_model_package_arns",
-        "training_model_package_artifact_uris",
-        "hosting_use_script_uri",
-        "hosting_instance_type_variants",
-        "training_instance_type_variants",
-        "default_payloads",
-        "gated_bucket",
-        "model_subscription_link",
-    ]
-
-    def __init__(self, spec: Dict[str, Any], is_hub_content: bool = False):
-        """Initializes a JumpStartModelSpecs object from its json representation.
-
-        Args:
-            spec (Dict[str, Any]): Dictionary representation of spec.
-        """
-        if is_hub_content:
-            self.from_hub_content_doc(spec)
-        else:
-            self.from_json(spec)
-
-    def from_json(self, json_obj: Dict[str, Any]) -> None:
-        """Sets fields in object based on json of header.
-
-        Args:
-            json_obj (Dict[str, Any]): Dictionary representation of spec.
-        """
-        self.model_id: str = json_obj["model_id"]
-        self.url: str = json_obj.get("url", "")
-        self.version: str = json_obj["version"]
-        self.min_sdk_version: str = json_obj["min_sdk_version"]
-        self.incremental_training_supported: bool = bool(
-            json_obj.get("incremental_training_supported", False)
-        )
-        self.hosting_ecr_specs: Optional[JumpStartECRSpecs] = (
-            JumpStartECRSpecs(json_obj["hosting_ecr_specs"])
-            if "hosting_ecr_specs" in json_obj
-            else None
-        )
-        self.hosting_artifact_key: Optional[str] = json_obj.get("hosting_artifact_key")
-        self.hosting_script_key: Optional[str] = json_obj.get("hosting_script_key")
-        self.training_supported: Optional[bool] = bool(json_obj.get("training_supported", False))
-        self.inference_environment_variables = [
-            JumpStartEnvironmentVariable(env_variable)
-            for env_variable in json_obj.get("inference_environment_variables", [])
-        ]
-        self.inference_vulnerable: bool = bool(json_obj.get("inference_vulnerable", False))
-        self.inference_dependencies: List[str] = json_obj.get("inference_dependencies", [])
-        self.inference_vulnerabilities: List[str] = json_obj.get("inference_vulnerabilities", [])
-        self.training_vulnerable: bool = bool(json_obj.get("training_vulnerable", False))
-        self.training_dependencies: List[str] = json_obj.get("training_dependencies", [])
-        self.training_vulnerabilities: List[str] = json_obj.get("training_vulnerabilities", [])
-        self.deprecated: bool = bool(json_obj.get("deprecated", False))
-        self.deprecated_message: Optional[str] = json_obj.get("deprecated_message")
-        self.deprecate_warn_message: Optional[str] = json_obj.get("deprecate_warn_message")
-        self.usage_info_message: Optional[str] = json_obj.get("usage_info_message")
-        self.default_inference_instance_type: Optional[str] = json_obj.get(
-            "default_inference_instance_type"
-        )
-        self.default_training_instance_type: Optional[str] = json_obj.get(
-            "default_training_instance_type"
-        )
-        self.supported_inference_instance_types: Optional[List[str]] = json_obj.get(
-            "supported_inference_instance_types"
-        )
-        self.supported_training_instance_types: Optional[List[str]] = json_obj.get(
-            "supported_training_instance_types"
-        )
-        self.dynamic_container_deployment_supported: Optional[bool] = bool(
-            json_obj.get("dynamic_container_deployment_supported")
-        )
-        self.hosting_resource_requirements: Optional[Dict[str, int]] = json_obj.get(
-            "hosting_resource_requirements", None
-        )
-        self.metrics: Optional[List[Dict[str, str]]] = json_obj.get("metrics", None)
-        self.training_prepacked_script_key: Optional[str] = json_obj.get(
-            "training_prepacked_script_key", None
-        )
-        self.hosting_prepacked_artifact_key: Optional[str] = json_obj.get(
-            "hosting_prepacked_artifact_key", None
-        )
-        self.model_kwargs = deepcopy(json_obj.get("model_kwargs", {}))
-        self.deploy_kwargs = deepcopy(json_obj.get("deploy_kwargs", {}))
-        self.predictor_specs: Optional[JumpStartPredictorSpecs] = (
-            JumpStartPredictorSpecs(json_obj["predictor_specs"])
-            if "predictor_specs" in json_obj
-            else None
-        )
-        self.default_payloads: Optional[Dict[str, JumpStartSerializablePayload]] = (
-            {
-                alias: JumpStartSerializablePayload(payload)
-                for alias, payload in json_obj["default_payloads"].items()
-            }
-            if json_obj.get("default_payloads")
-            else None
-        )
-        self.gated_bucket = json_obj.get("gated_bucket", False)
-        self.inference_volume_size: Optional[int] = json_obj.get("inference_volume_size")
-        self.inference_enable_network_isolation: bool = json_obj.get(
-            "inference_enable_network_isolation", False
-        )
-        self.resource_name_base: Optional[str] = json_obj.get("resource_name_base")
-
-        self.hosting_eula_key: Optional[str] = json_obj.get("hosting_eula_key")
-
-        self.hosting_model_package_arns: Optional[Dict] = json_obj.get("hosting_model_package_arns")
-        self.hosting_use_script_uri: bool = json_obj.get("hosting_use_script_uri", True)
-
-        self.hosting_instance_type_variants: Optional[JumpStartInstanceTypeVariants] = (
-            JumpStartInstanceTypeVariants(json_obj["hosting_instance_type_variants"])
-            if json_obj.get("hosting_instance_type_variants")
-            else None
-        )
-
-        if self.training_supported:
-            self.training_ecr_specs: Optional[JumpStartECRSpecs] = (
-                JumpStartECRSpecs(json_obj["training_ecr_specs"])
-                if "training_ecr_specs" in json_obj
-                else None
-            )
-            self.training_artifact_key: str = json_obj["training_artifact_key"]
-            self.training_script_key: str = json_obj["training_script_key"]
-            hyperparameters: Any = json_obj.get("hyperparameters")
-            self.hyperparameters: List[JumpStartHyperparameter] = []
-            if hyperparameters is not None:
-                self.hyperparameters.extend(
-                    [JumpStartHyperparameter(hyperparameter) for hyperparameter in hyperparameters]
-                )
-            self.estimator_kwargs = deepcopy(json_obj.get("estimator_kwargs", {}))
-            self.fit_kwargs = deepcopy(json_obj.get("fit_kwargs", {}))
-            self.training_volume_size: Optional[int] = json_obj.get("training_volume_size")
-            self.training_enable_network_isolation: bool = json_obj.get(
-                "training_enable_network_isolation", False
-            )
-            self.training_model_package_artifact_uris: Optional[Dict] = json_obj.get(
-                "training_model_package_artifact_uris"
-            )
-            self.training_instance_type_variants: Optional[JumpStartInstanceTypeVariants] = (
-                JumpStartInstanceTypeVariants(json_obj["training_instance_type_variants"])
-                if json_obj.get("training_instance_type_variants")
-                else None
-            )
-        self.model_subscription_link = json_obj.get("model_subscription_link")
-
-    def from_hub_content_doc(self, hub_content_doc: Dict[str, Any]) -> None:
-        """Sets fields in object based on values in HubContentDocument
-
-        Args:
-            hub_content_doc (Dict[str, any]): parsed HubContentDocument returned
-                from SageMaker:DescribeHubContent
-        """
-        # TODO: Implement
-
-    def supports_prepacked_inference(self) -> bool:
-        """Returns True if the model has a prepacked inference artifact."""
-        return getattr(self, "hosting_prepacked_artifact_key", None) is not None
-
-    def use_inference_script_uri(self) -> bool:
-        """Returns True if the model should use a script uri when deploying inference model."""
-        if self.supports_prepacked_inference():
-            return False
-        return self.hosting_use_script_uri
-
-    def use_training_model_artifact(self) -> bool:
-        """Returns True if the model should use a model uri when kicking off training job."""
-        # gated model never use training model artifact
-        if self.gated_bucket:
-            return False
-
-        # otherwise, return true is a training model package is not set
-        return len(self.training_model_package_artifact_uris or {}) == 0
-
-    def is_gated_model(self) -> bool:
-        """Returns True if the model has a EULA key or the model bucket is gated."""
-        return self.gated_bucket or self.hosting_eula_key is not None
-
-    def supports_incremental_training(self) -> bool:
-        """Returns True if the model supports incremental training."""
-        return self.incremental_training_supported
-
-    def get_framework(self) -> str:
-        """Returns the framework for the model."""
-        return self.model_id.split("-")[0]
 
 
 class JumpStartVersionedModelId(JumpStartDataHolderType):
@@ -1044,32 +882,6 @@ class JumpStartCachedContentKey(JumpStartDataHolderType):
         self.id_info = id_info
 
 
-class JumpStartCachedContentValue(JumpStartDataHolderType):
-    """Data class for the s3 cached content values."""
-
-    __slots__ = ["formatted_content", "md5_hash"]
-
-    def __init__(
-        self,
-        formatted_content: Union[
-            Dict[JumpStartVersionedModelId, JumpStartModelHeader],
-            JumpStartModelSpecs,
-        ],
-        md5_hash: Optional[str] = None,
-    ) -> None:
-        """Instantiates JumpStartCachedContentValue object.
-
-        Args:
-            formatted_content (Union[Dict[JumpStartVersionedModelId, JumpStartModelHeader],
-            JumpStartModelSpecs]):
-                Formatted content for model specs and mappings from
-                versioned model IDs to specs.
-            md5_hash (str): md5_hash for stored file content from s3.
-        """
-        self.formatted_content = formatted_content
-        self.md5_hash = md5_hash
-
-
 class HubArnExtractedInfo(JumpStartDataHolderType):
     """Data class for info extracted from Hub arn."""
 
@@ -1103,168 +915,323 @@ class HubArnExtractedInfo(JumpStartDataHolderType):
         self.hub_content_name = hub_content_name
         self.hub_content_version = hub_content_version
 
+    @staticmethod
+    def extract_region_from_arn(arn: str) -> Optional[str]:
+        """Extracts hub_name, content_name, and content_version from a HubContentArn"""
 
-class HubContentDependency(JumpStartDataHolderType):
-    """Data class for any dependencies related to hub content.
+        HUB_CONTENT_ARN_REGEX = (
+            r"arn:(.*?):sagemaker:(.*?):(.*?):hub-content/(.*?)/(.*?)/(.*?)/(.*?)$"
+        )
+        HUB_ARN_REGEX = r"arn:(.*?):sagemaker:(.*?):(.*?):hub/(.*?)$"
 
-    Content can be scripts, model artifacts, datasets, or notebooks.
-    """
+        match = re.match(HUB_CONTENT_ARN_REGEX, arn)
+        hub_region = None
+        if match:
+            hub_region = match.group(2)
 
-    __slots__ = ["dependency_copy_path", "dependency_origin_path"]
+            return hub_region
 
-    def __init__(self, json_obj: Dict[str, Any]) -> None:
-        """Instantiates HubContentDependency object
+        match = re.match(HUB_ARN_REGEX, arn)
+        if match:
+            hub_region = match.group(2)
+            return hub_region
+
+        return hub_region
+
+
+class JumpStartModelSpecs(JumpStartDataHolderType):
+    """Data class JumpStart model specs."""
+
+    __slots__ = [
+        "model_id",
+        "url",
+        "version",
+        "min_sdk_version",
+        "incremental_training_supported",
+        "hosting_ecr_specs",
+        "hosting_ecr_uri",
+        "hosting_artifact_key",
+        "hosting_script_key",
+        "training_supported",
+        "training_ecr_specs",
+        "training_ecr_uri",
+        "training_artifact_key",
+        "training_script_key",
+        "hyperparameters",
+        "inference_environment_variables",
+        "inference_vulnerable",
+        "inference_dependencies",
+        "inference_vulnerabilities",
+        "training_vulnerable",
+        "training_dependencies",
+        "training_vulnerabilities",
+        "deprecated",
+        "usage_info_message",
+        "deprecated_message",
+        "deprecate_warn_message",
+        "default_inference_instance_type",
+        "supported_inference_instance_types",
+        "dynamic_container_deployment_supported",
+        "hosting_resource_requirements",
+        "default_training_instance_type",
+        "supported_training_instance_types",
+        "metrics",
+        "training_prepacked_script_key",
+        "training_prepacked_script_version",
+        "hosting_prepacked_artifact_key",
+        "hosting_prepacked_artifact_version",
+        "model_kwargs",
+        "deploy_kwargs",
+        "estimator_kwargs",
+        "fit_kwargs",
+        "predictor_specs",
+        "inference_volume_size",
+        "training_volume_size",
+        "inference_enable_network_isolation",
+        "training_enable_network_isolation",
+        "resource_name_base",
+        "hosting_eula_key",
+        "hosting_model_package_arns",
+        "training_model_package_artifact_uris",
+        "hosting_use_script_uri",
+        "hosting_instance_type_variants",
+        "training_instance_type_variants",
+        "default_payloads",
+        "gated_bucket",
+        "model_subscription_link",
+        "_is_hub_content",
+    ]
+
+    _non_serializable_slots = ["_is_hub_content"]
+
+    def __init__(self, spec: Dict[str, Any], is_hub_content: bool = False):
+        """Initializes a JumpStartModelSpecs object from its json representation.
 
         Args:
-            json_obj (Dict[str, Any]): Dictionary representation of hub content description.
+            spec (Dict[str, Any]): Dictionary representation of spec.
         """
-        self.from_json(json_obj)
+        self._is_hub_content = is_hub_content
+        self.from_json(spec)
 
-    def from_json(self, json_obj: Optional[Dict[str, Any]]) -> None:
-        """Sets fields in object based on json.
+    def from_json(self, json_obj: Dict[str, Any]) -> None:
+        """Sets fields in object based on json of header.
 
         Args:
-            json_obj (Dict[str, Any]): Dictionary representation of hub content description.
+            json_obj (Dict[str, Any]): Dictionary representation of spec.
         """
+        self.model_id: str = json_obj["model_id"]
+        self.url: str = json_obj.get("url", "")
+        self.version: str = json_obj["version"]
+        self.min_sdk_version: str = json_obj["min_sdk_version"]
+        self.incremental_training_supported: bool = bool(
+            json_obj.get("incremental_training_supported", False)
+        )
+        if self._is_hub_content:
+            self.hosting_ecr_uri: Optional[str] = json_obj["hosting_ecr_uri"]
+            self._non_serializable_slots.append("hosting_ecr_specs")
+        else:
+            self.hosting_ecr_specs: Optional[JumpStartECRSpecs] = (
+                JumpStartECRSpecs(json_obj["hosting_ecr_specs"])
+                if "hosting_ecr_specs" in json_obj
+                else None
+            )
+            self._non_serializable_slots.append("hosting_ecr_uri")
+        self.hosting_artifact_key: Optional[str] = json_obj.get("hosting_artifact_key")
+        self.hosting_script_key: Optional[str] = json_obj.get("hosting_script_key")
+        self.training_supported: Optional[bool] = bool(json_obj.get("training_supported", False))
+        self.inference_environment_variables = [
+            JumpStartEnvironmentVariable(env_variable)
+            for env_variable in json_obj.get("inference_environment_variables", [])
+        ]
+        self.inference_vulnerable: bool = bool(json_obj.get("inference_vulnerable", False))
+        self.inference_dependencies: List[str] = json_obj.get("inference_dependencies", [])
+        self.inference_vulnerabilities: List[str] = json_obj.get("inference_vulnerabilities", [])
+        self.training_vulnerable: bool = bool(json_obj.get("training_vulnerable", False))
+        self.training_dependencies: List[str] = json_obj.get("training_dependencies", [])
+        self.training_vulnerabilities: List[str] = json_obj.get("training_vulnerabilities", [])
+        self.deprecated: bool = bool(json_obj.get("deprecated", False))
+        self.deprecated_message: Optional[str] = json_obj.get("deprecated_message")
+        self.deprecate_warn_message: Optional[str] = json_obj.get("deprecate_warn_message")
+        self.usage_info_message: Optional[str] = json_obj.get("usage_info_message")
+        self.default_inference_instance_type: Optional[str] = json_obj.get(
+            "default_inference_instance_type"
+        )
+        self.default_training_instance_type: Optional[str] = json_obj.get(
+            "default_training_instance_type"
+        )
+        self.supported_inference_instance_types: Optional[List[str]] = json_obj.get(
+            "supported_inference_instance_types"
+        )
+        self.supported_training_instance_types: Optional[List[str]] = json_obj.get(
+            "supported_training_instance_types"
+        )
+        self.dynamic_container_deployment_supported: Optional[bool] = bool(
+            json_obj.get("dynamic_container_deployment_supported")
+        )
+        self.hosting_resource_requirements: Optional[Dict[str, int]] = json_obj.get(
+            "hosting_resource_requirements"
+        )
+        self.metrics: Optional[List[Dict[str, str]]] = json_obj.get("metrics")
+        self.training_prepacked_script_key: Optional[str] = json_obj.get(
+            "training_prepacked_script_key"
+        )
+        self.hosting_prepacked_artifact_key: Optional[str] = json_obj.get(
+            "hosting_prepacked_artifact_key"
+        )
+        # New fields required for Hub model.
+        if self._is_hub_content:
+            self.training_prepacked_script_version: Optional[str] = json_obj.get(
+                "training_prepacked_script_version"
+            )
+            self.hosting_prepacked_artifact_version: Optional[str] = json_obj.get(
+                "hosting_prepacked_artifact_version"
+            )
+        self.model_kwargs = deepcopy(json_obj.get("model_kwargs", {}))
+        self.deploy_kwargs = deepcopy(json_obj.get("deploy_kwargs", {}))
+        self.predictor_specs: Optional[JumpStartPredictorSpecs] = (
+            JumpStartPredictorSpecs(json_obj["predictor_specs"])
+            if "predictor_specs" in json_obj
+            else None
+        )
+        self.default_payloads: Optional[Dict[str, JumpStartSerializablePayload]] = (
+            {
+                alias: JumpStartSerializablePayload(payload)
+                for alias, payload in json_obj["default_payloads"].items()
+            }
+            if json_obj.get("default_payloads")
+            else None
+        )
+        self.gated_bucket = json_obj.get("gated_bucket", False)
+        self.inference_volume_size: Optional[int] = json_obj.get("inference_volume_size")
+        self.inference_enable_network_isolation: bool = json_obj.get(
+            "inference_enable_network_isolation", False
+        )
+        self.resource_name_base: Optional[str] = json_obj.get("resource_name_base")
 
-        self.dependency_copy_path: Optional[str] = json_obj.get("dependency_copy_path", "")
-        self.dependency_origin_path: Optional[str] = json_obj.get("dependency_origin_path", "")
+        self.hosting_eula_key: Optional[str] = json_obj.get("hosting_eula_key")
+
+        self.hosting_model_package_arns: Optional[Dict] = json_obj.get("hosting_model_package_arns")
+        self.hosting_use_script_uri: bool = json_obj.get("hosting_use_script_uri", True)
+
+        self.hosting_instance_type_variants: Optional[JumpStartInstanceTypeVariants] = (
+            JumpStartInstanceTypeVariants(json_obj["hosting_instance_type_variants"])
+            if json_obj.get("hosting_instance_type_variants")
+            else None
+        )
+
+        if self.training_supported:
+            if self._is_hub_content:
+                self.training_ecr_uri: Optional[str] = json_obj["training_ecr_uri"]
+            else:
+                self.training_ecr_specs: Optional[JumpStartECRSpecs] = (
+                    JumpStartECRSpecs(json_obj["training_ecr_specs"])
+                    if "training_ecr_specs" in json_obj
+                    else None
+                )
+            self.training_artifact_key: str = json_obj["training_artifact_key"]
+            self.training_script_key: str = json_obj["training_script_key"]
+            hyperparameters: Any = json_obj.get("hyperparameters")
+            self.hyperparameters: List[JumpStartHyperparameter] = []
+            if hyperparameters is not None:
+                self.hyperparameters.extend(
+                    [JumpStartHyperparameter(hyperparameter) for hyperparameter in hyperparameters]
+                )
+            self.estimator_kwargs = deepcopy(json_obj.get("estimator_kwargs", {}))
+            self.fit_kwargs = deepcopy(json_obj.get("fit_kwargs", {}))
+            self.training_volume_size: Optional[int] = json_obj.get("training_volume_size")
+            self.training_enable_network_isolation: bool = json_obj.get(
+                "training_enable_network_isolation", False
+            )
+            self.training_model_package_artifact_uris: Optional[Dict] = json_obj.get(
+                "training_model_package_artifact_uris"
+            )
+            self.training_instance_type_variants: Optional[JumpStartInstanceTypeVariants] = (
+                JumpStartInstanceTypeVariants(json_obj["training_instance_type_variants"])
+                if json_obj.get("training_instance_type_variants")
+                else None
+            )
+        self.model_subscription_link = json_obj.get("model_subscription_link")
+
+    def supports_prepacked_inference(self) -> bool:
+        """Returns True if the model has a prepacked inference artifact."""
+        return getattr(self, "hosting_prepacked_artifact_key", None) is not None
+
+    def use_inference_script_uri(self) -> bool:
+        """Returns True if the model should use a script uri when deploying inference model."""
+        if self.supports_prepacked_inference():
+            return False
+        return self.hosting_use_script_uri
+
+    def use_training_model_artifact(self) -> bool:
+        """Returns True if the model should use a model uri when kicking off training job."""
+        # gated model never use training model artifact
+        if self.gated_bucket:
+            return False
+
+        # otherwise, return true is a training model package is not set
+        return len(self.training_model_package_artifact_uris or {}) == 0
+
+    def is_gated_model(self) -> bool:
+        """Returns True if the model has a EULA key or the model bucket is gated."""
+        return self.gated_bucket or self.hosting_eula_key is not None
+
+    def supports_incremental_training(self) -> bool:
+        """Returns True if the model supports incremental training."""
+        return self.incremental_training_supported
+
+    def get_framework(self) -> str:
+        """Returns the framework for the model."""
+        return self.model_id.split("-")[0]
 
     def to_json(self) -> Dict[str, Any]:
-        """Returns json representation of HubContentDependency object."""
-        json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
+        """Returns json representation of object."""
+        json_obj = {}
+        for att in self.__slots__:
+            if att in self._non_serializable_slots:
+                continue
+            if hasattr(self, att):
+                cur_val = getattr(self, att)
+                # Do not serialize null values.
+                if self._is_hub_content and cur_val is None:
+                    continue
+                if issubclass(type(cur_val), JumpStartDataHolderType):
+                    json_obj[att] = cur_val.to_json()
+                elif isinstance(cur_val, list):
+                    json_obj[att] = []
+                    for obj in cur_val:
+                        if issubclass(type(obj), JumpStartDataHolderType):
+                            json_obj[att].append(obj.to_json())
+                        else:
+                            json_obj[att].append(obj)
+                else:
+                    json_obj[att] = cur_val
         return json_obj
 
 
-class DescribeHubContentsResponse(JumpStartDataHolderType):
-    """Data class for the Hub Content from session.describe_hub_contents()"""
+class JumpStartCachedContentValue(JumpStartDataHolderType):
+    """Data class for the s3 cached content values."""
 
-    __slots__ = [
-        "creation_time",
-        "document_schema_version",
-        "failure_reason",
-        "hub_arn",
-        "hub_content_arn",
-        "hub_content_dependencies",
-        "hub_content_description",
-        "hub_content_display_name",
-        "hub_content_document",
-        "hub_content_markdown",
-        "hub_content_name",
-        "hub_content_search_keywords",
-        "hub_content_status",
-        "hub_content_type",
-        "hub_content_version",
-        "hub_name",
-    ]
+    __slots__ = ["formatted_content", "md5_hash"]
 
-    def __init__(self, json_obj: Dict[str, Any]) -> None:
-        """Instantiates DescribeHubContentsResponse object.
+    def __init__(
+        self,
+        formatted_content: Union[
+            Dict[JumpStartVersionedModelId, JumpStartModelHeader],
+            JumpStartModelSpecs,
+        ],
+        md5_hash: Optional[str] = None,
+    ) -> None:
+        """Instantiates JumpStartCachedContentValue object.
 
         Args:
-            json_obj (Dict[str, Any]): Dictionary representation of hub content description.
+            formatted_content (Union[Dict[JumpStartVersionedModelId, JumpStartModelHeader],
+            JumpStartModelSpecs]):
+                Formatted content for model specs and mappings from
+                versioned model IDs to specs.
+            md5_hash (str): md5_hash for stored file content from s3.
         """
-        self.from_json(json_obj)
-
-    def from_json(self, json_obj: Dict[str, Any]) -> None:
-        """Sets fields in object based on json.
-
-        Args:
-            json_obj (Dict[str, Any]): Dictionary representation of hub content description.
-        """
-        self.creation_time: int = int(json_obj["creation_time"])
-        self.document_schema_version: str = json_obj["document_schema_version"]
-        self.failure_reason: str = json_obj["failure_reason"]
-        self.hub_arn: str = json_obj["hub_arn"]
-        self.hub_content_arn: str = json_obj["hub_content_arn"]
-        self.hub_content_dependencies: List[HubContentDependency] = [
-            HubContentDependency(dep) for dep in json_obj["hub_content_dependencies"]
-        ]
-        self.hub_content_description: str = json_obj["hub_content_description"]
-        self.hub_content_display_name: str = json_obj["hub_content_display_name"]
-        self.hub_content_document: str = json_obj["hub_content_document"]
-        self.hub_content_markdown: str = json_obj["hub_content_markdown"]
-        self.hub_content_name: str = json_obj["hub_content_name"]
-        self.hub_content_search_keywords: str = json_obj["hub_content_search_keywords"]
-        self.hub_content_status: str = json_obj["hub_content_status"]
-        self.hub_content_type: HubContentType = json_obj["hub_content_type"]
-        self.hub_content_version: str = json_obj["hub_content_version"]
-        self.hub_name: str = json_obj["hub_name"]
-
-
-class HubS3StorageConfig(JumpStartDataHolderType):
-    """Data class for any dependencies related to hub content.
-
-    Includes scripts, model artifacts, datasets, or notebooks.
-    """
-
-    __slots__ = ["s3_output_path"]
-
-    def __init__(self, json_obj: Dict[str, Any]) -> None:
-        """Instantiates HubS3StorageConfig object
-
-        Args:
-            json_obj (Dict[str, Any]): Dictionary representation of hub content description.
-        """
-        self.from_json(json_obj)
-
-    def from_json(self, json_obj: Optional[Dict[str, Any]]) -> None:
-        """Sets fields in object based on json.
-
-        Args:
-            json_obj (Dict[str, Any]): Dictionary representation of hub content description.
-        """
-
-        self.s3_output_path: Optional[str] = json_obj.get("s3_output_path", "")
-
-    def to_json(self) -> Dict[str, Any]:
-        """Returns json representation of HubS3StorageConfig object."""
-        return {"s3_output_path": self.s3_output_path}
-
-
-class DescribeHubResponse(JumpStartDataHolderType):
-    """Data class for the Hub from session.describe_hub()"""
-
-    __slots__ = [
-        "creation_time",
-        "failure_reason",
-        "hub_arn",
-        "hub_description",
-        "hub_display_name",
-        "hub_name",
-        "hub_search_keywords",
-        "hub_status",
-        "last_modified_time",
-        "s3_storage_config",
-    ]
-
-    def __init__(self, json_obj: Dict[str, Any]) -> None:
-        """Instantiates DescribeHubResponse object.
-
-        Args:
-            json_obj (Dict[str, Any]): Dictionary representation of hub  description.
-        """
-        self.from_json(json_obj)
-
-    def from_json(self, json_obj: Dict[str, Any]) -> None:
-        """Sets fields in object based on json.
-
-        Args:
-            json_obj (Dict[str, Any]): Dictionary representation of hub description.
-        """
-
-        self.creation_time: int = int(json_obj["creation_time"])
-        self.failure_reason: str = json_obj["failure_reason"]
-        self.hub_arn: str = json_obj["hub_arn"]
-        self.hub_description: str = json_obj["hub_description"]
-        self.hub_display_name: str = json_obj["hub_display_name"]
-        self.hub_name: str = json_obj["hub_name"]
-        self.hub_search_keywords: List[str] = json_obj["hub_search_keywords"]
-        self.hub_status: str = json_obj["hub_status"]
-        self.last_modified_time: int = int(json_obj["last_modified_time"])
-        self.s3_storage_config: HubS3StorageConfig = HubS3StorageConfig(
-            json_obj["s3_storage_config"]
-        )
+        self.formatted_content = formatted_content
+        self.md5_hash = md5_hash
 
 
 class JumpStartKwargs(JumpStartDataHolderType):

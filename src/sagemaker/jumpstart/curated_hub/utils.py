@@ -21,7 +21,7 @@ from sagemaker.utils import aws_partition
 from sagemaker.jumpstart.types import HubContentType, HubArnExtractedInfo
 from sagemaker.jumpstart.curated_hub.types import (
     CuratedHubUnsupportedFlag,
-    HubContentSummary,
+    HubContentInfo,
     JumpStartModelInfo,
     summary_list_from_list_api_response,
 )
@@ -195,7 +195,7 @@ def find_deprecated_vulnerable_flags_for_hub_content(
         hub_content_type=HubContentType.MODEL,
         hub_content_name=hub_content_name,
     )
-    hub_content_versions: List[HubContentSummary] = summary_list_from_list_api_response(
+    hub_content_versions: List[HubContentInfo] = summary_list_from_list_api_response(
         list_versions_response
     )
 
@@ -207,7 +207,7 @@ def find_deprecated_vulnerable_flags_for_hub_content(
 
 
 def _get_tags_for_all_versions(
-    hub_content_versions: List[HubContentSummary],
+    hub_content_versions: List[HubContentInfo],
     region: str,
     session: Session,
 ) -> Dict[str, List[CuratedHubUnsupportedFlag]]:
@@ -277,7 +277,7 @@ def find_unsupported_flags_for_model_version(
 
 
 def get_jumpstart_model_and_version(
-    hub_content_summary: HubContentSummary,
+    hub_content_summary: HubContentInfo,
 ) -> Optional[JumpStartModelInfo]:
     """Retrieves the JumpStart model id and version from the JumpStart tag."""
     jumpstart_model_id_tag = next(

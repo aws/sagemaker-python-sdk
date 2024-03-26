@@ -22,26 +22,24 @@ from botocore import exceptions
 from botocore.client import BaseClient
 from packaging.version import Version
 
+from sagemaker.utils import TagsDict
+from sagemaker.session import Session
+from sagemaker.s3 import s3_path_join
 from sagemaker.jumpstart import utils
 from sagemaker.jumpstart.curated_hub.accessors import file_generator
 from sagemaker.jumpstart.curated_hub.accessors.multipartcopy import MultiPartCopyHandler
 from sagemaker.jumpstart.curated_hub.constants import (
-    JUMPSTART_HUB_MODEL_ID_TAG_PREFIX,
-    JUMPSTART_HUB_MODEL_VERSION_TAG_PREFIX,
-    TASK_TAG_PREFIX,
-    FRAMEWORK_TAG_PREFIX,
+    JUMPSTART_CURATED_HUB_MODEL_TAG,
+    LATEST_VERSION_WILDCARD,
 )
 from sagemaker.jumpstart.curated_hub.sync.comparator import SizeAndLastUpdatedComparator
 from sagemaker.jumpstart.curated_hub.sync.request import HubSyncRequestFactory
 from sagemaker.jumpstart.enums import JumpStartScriptScope
-from sagemaker.session import Session
 from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     JUMPSTART_LOGGER,
 )
 from sagemaker.jumpstart.types import (
-    DescribeHubResponse,
-    DescribeHubContentsResponse,
     HubContentType,
     JumpStartModelSpecs,
 )
@@ -52,14 +50,21 @@ from sagemaker.jumpstart.curated_hub.utils import (
     get_jumpstart_model_and_version,
     find_deprecated_vulnerable_flags_for_hub_content,
 )
+from sagemaker.jumpstart.curated_hub.interfaces import (
+    DescribeHubResponse,
+    DescribeHubContentResponse,
+    HubModelDocument,
+    HubContentInfo,
+    HubContentDependency,
+)
 from sagemaker.jumpstart.curated_hub.types import (
-    HubContentDocument_v2,
+    HubContentDependencyType,
+    HubContentReferenceType,
     JumpStartModelInfo,
     S3ObjectLocation,
-    HubContentSummary,
     summary_list_from_list_api_response,
 )
-from sagemaker.utils import TagsDict
+from sagemaker.jumpstart.curated_hub.parsers import make_hub_model_document_from_specs
 
 
 class CuratedHub:
@@ -163,31 +168,34 @@ class CuratedHub:
             self._list_hubs_cache = None
         if self._list_hubs_cache is None:
             hub_content_summaries = self._sagemaker_session.list_hub_contents(
-                hub_name=self.hub_name, hub_content_type=HubContentType.MODEL, **kwargs
+                hub_name=self.hub_name, hub_content_type=HubContentType.MODEL.value, **kwargs
             )
             self._list_hubs_cache = hub_content_summaries
         return self._list_hubs_cache
 
     def describe_model(
-        self, model_name: str, model_version: str = "*"
-    ) -> DescribeHubContentsResponse:
+        self, model_name: str, model_version: Optional[str] = None
+    ) -> DescribeHubContentResponse:
         """Returns descriptive information about the Hub Model"""
-
+        if model_version == LATEST_VERSION_WILDCARD or model_version is None:
+            model_version = self._get_latest_model_version(model_name)
         hub_content_description: Dict[str, Any] = self._sagemaker_session.describe_hub_content(
             hub_name=self.hub_name,
             hub_content_name=model_name,
             hub_content_version=model_version,
-            hub_content_type=HubContentType.MODEL,
+            hub_content_type=HubContentType.MODEL.value,
         )
 
-        return DescribeHubContentsResponse(hub_content_description)
+        return DescribeHubContentResponse(hub_content_description)
 
-    def delete_model(self, model_name: str, model_version: str = "*") -> None:
+    def delete_model(self, model_name: str, model_version: Optional[str] = None) -> None:
         """Deletes a model from this CuratedHub."""
+        if model_version == LATEST_VERSION_WILDCARD or model_version is None:
+            model_version = self._get_latest_model_version(model_name)
         return self._sagemaker_session.delete_hub_content(
             hub_content_name=model_name,
             hub_content_version=model_version,
-            hub_content_type=HubContentType.MODEL,
+            hub_content_type=HubContentType.MODEL.value,
             hub_name=self.hub_name,
         )
 
@@ -209,17 +217,25 @@ class CuratedHub:
                 return True
         return False
 
-    def _populate_latest_model_version(self, model: Dict[str, str]) -> Dict[str, str]:
+    def _get_latest_model_version(self, model_id: str) -> str:
         """Populates the lastest version of a model from specs no matter what is passed.
 
         Returns model ({ model_id: str, version: str })
         """
         model_specs = utils.verify_model_region_and_return_specs(
-            model["model_id"], "*", JumpStartScriptScope.INFERENCE, self.region
+            model_id, LATEST_VERSION_WILDCARD, JumpStartScriptScope.INFERENCE, self.region
         )
-        return {"model_id": model["model_id"], "version": model_specs.version}
+        return model_specs.version
 
-    def _get_jumpstart_models_in_hub(self) -> List[HubContentSummary]:
+    def _populate_latest_model_version(self, model: Dict[str, str]) -> Dict[str, str]:
+        """Populates the lastest version of a model from specs no matter what is passed.
+
+        Returns model ({ model_id: str, version: str })
+        """
+        model_version = self._get_latest_model_version(model["model_id"])
+        return {"model_id": model["model_id"], "version": model_version}
+
+    def _get_jumpstart_models_in_hub(self) -> List[HubContentInfo]:
         """Retrieves all JumpStart models in a private Hub."""
         hub_models = summary_list_from_list_api_response(self.list_models())
         return [model for model in hub_models if get_jumpstart_model_and_version(model) is not None]
@@ -227,7 +243,7 @@ class CuratedHub:
     def _determine_models_to_sync(
         self,
         model_list: List[JumpStartModelInfo],
-        models_in_hub: Dict[str, HubContentSummary],
+        models_in_hub: Dict[str, HubContentInfo],
     ) -> List[JumpStartModelInfo]:
         """Determines which models from `sync` params to sync into the CuratedHub.
 
@@ -253,12 +269,18 @@ class CuratedHub:
 
                 # 1. Model version exists in Hub, pass
                 if hub_model_version == model_version:
-                    pass
+                    JUMPSTART_LOGGER.info(
+                        "Model %s/%s already exists in your Hub %s and will not be synced.",
+                        model.model_id,
+                        model.version,
+                        self.hub_name,
+                    )
+                    continue
 
                 # 2. Invalid model version exists in Hub, pass
                 # This will only happen if something goes wrong in our metadata
                 if hub_model_version > model_version:
-                    pass
+                    continue
 
                 # 3. Old model version exists in Hub, update
                 if hub_model_version < model_version:
@@ -266,6 +288,36 @@ class CuratedHub:
                     models_to_sync.append(model)
 
         return models_to_sync
+
+    def _reference_type_to_dependency_type(
+        self, reference_type: HubContentReferenceType
+    ) -> Optional[HubContentDependencyType]:
+        """Returns a corresponding DependencyType for a given ReferenceType."""
+
+        dependency_type = None
+        if reference_type in [
+            HubContentReferenceType.INFERENCE_ARTIFACT,
+            HubContentReferenceType.TRAINING_ARTIFACT,
+        ]:
+            dependency_type = HubContentDependencyType.ARTIFACT
+        elif reference_type in [
+            HubContentReferenceType.INFERENCE_SCRIPT,
+            HubContentReferenceType.TRAINING_SCRIPT,
+        ]:
+            dependency_type = HubContentDependencyType.SCRIPT
+        elif reference_type in [
+            HubContentReferenceType.DEFAULT_TRAINING_DATASET,
+        ]:
+            dependency_type = HubContentDependencyType.DATASET
+        elif reference_type in [
+            HubContentReferenceType.DEMO_NOTEBOOK,
+        ]:
+            dependency_type = HubContentDependencyType.NOTEBOOK
+        elif reference_type in [
+            HubContentReferenceType.MARKDOWN,
+        ]:
+            dependency_type = HubContentDependencyType.OTHER
+        return dependency_type
 
     def sync(self, model_list: List[Dict[str, str]]):
         """Syncs a list of JumpStart model ids and versions with a CuratedHub
@@ -283,14 +335,9 @@ class CuratedHub:
         # Retrieve latest version of unspecified JumpStart model versions
         model_version_list = []
         for model in model_list:
-            version = model.get("version", "*")
-            if version == "*":
+            version = model.get("version")
+            if version == LATEST_VERSION_WILDCARD or version is None:
                 model = self._populate_latest_model_version(model)
-                JUMPSTART_LOGGER.warning(
-                    "No version specified for model %s. Using version %s",
-                    model["model_id"],
-                    model["version"],
-                )
             model_version_list.append(JumpStartModelInfo(model["model_id"], model["version"]))
 
         js_models_in_hub = self._get_jumpstart_models_in_hub()
@@ -331,7 +378,7 @@ class CuratedHub:
                 )
         if failed_imports:
             raise RuntimeError(
-                f"Failures when importing models to curated hub in parallel: {failed_imports}"
+                f"Failures when importing models to curated hub in parallel: {failed_imports}."
             )
 
     def _sync_public_model_to_hub(self, model: JumpStartModelInfo, thread_num: int):
@@ -369,28 +416,42 @@ class CuratedHub:
                 label=dest_location.key,
             ).execute()
         else:
-            JUMPSTART_LOGGER.warning("Nothing to copy for %s v%s", model.model_id, model.version)
+            JUMPSTART_LOGGER.info("Nothing to copy for model %s/%s.", model.model_id, model.version)
 
         # TODO: Tag model if specs say it is deprecated or training/inference
         # vulnerable. Update tag of HubContent ARN without version.
         # Versioned ARNs are not onboarded to Tagris.
         tags = []
 
-        search_keywords = [
-            f"{JUMPSTART_HUB_MODEL_ID_TAG_PREFIX}:{model.model_id}",
-            f"{JUMPSTART_HUB_MODEL_VERSION_TAG_PREFIX}:{model.version}",
-            f"{FRAMEWORK_TAG_PREFIX}:{model_specs.get_framework()}",
-            f"{TASK_TAG_PREFIX}:TODO: pull from specs",
-        ]
+        search_keywords = [JUMPSTART_CURATED_HUB_MODEL_TAG]
 
-        hub_content_document = str(HubContentDocument_v2(spec=model_specs))
+        dependencies: List[HubContentDependency] = []
+        for src_file_info in src_files:
+            copy_path = s3_path_join(dest_location.get_uri(), src_file_info.location.key)
+            hub_content_dependency: HubContentDependency = {
+                "dependency_origin_path": src_file_info.location.get_uri(),
+                "dependency_copy_path": copy_path,
+                "dependency_type": self._reference_type_to_dependency_type(
+                    src_file_info.reference_type
+                ),
+            }
+            dependencies.append(hub_content_dependency)
+
+        hub_content_document: HubModelDocument = make_hub_model_document_from_specs(
+            model_specs=model_specs,
+            studio_specs=studio_specs,
+            hub_content_dependencies=dependencies,
+            region=self.region,
+        )
+
+        JUMPSTART_LOGGER.info("Importing %s/%s...", model.model_id, model.version)
 
         self._sagemaker_session.import_hub_content(
-            document_schema_version=HubContentDocument_v2.SCHEMA_VERSION,
+            document_schema_version=hub_content_document.get_schema_version(),
             hub_content_name=model.model_id,
             hub_content_version=model.version,
             hub_name=self.hub_name,
-            hub_content_document=hub_content_document,
+            hub_content_document=str(hub_content_document),
             hub_content_type=HubContentType.MODEL,
             hub_content_display_name="",
             hub_content_description="",

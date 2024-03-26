@@ -15,5 +15,8 @@ from __future__ import absolute_import
 
 JUMPSTART_HUB_MODEL_ID_TAG_PREFIX = "@jumpstart-model-id"
 JUMPSTART_HUB_MODEL_VERSION_TAG_PREFIX = "@jumpstart-model-version"
-FRAMEWORK_TAG_PREFIX = "@framework"
-TASK_TAG_PREFIX = "@mltask"
+JUMPSTART_CURATED_HUB_MODEL_TAG = "curatedjumpstartmodel"
+FRAMEWORK_TAG_PREFIX = "framework"
+TASK_TAG_PREFIX = "mltask"
+
+LATEST_VERSION_WILDCARD = "*"
