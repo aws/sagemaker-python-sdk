@@ -444,8 +444,6 @@ class CuratedHub:
             region=self.region,
         )
 
-        print(f"HubContentDocument to save: {hub_content_document}\n\n\n")
-
         print(f"Importing {model.model_id}/{model.version}")
 
         self._sagemaker_session.import_hub_content(

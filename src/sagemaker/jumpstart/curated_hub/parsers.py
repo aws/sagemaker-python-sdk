@@ -63,10 +63,6 @@ def _to_json(dictionary: Dict[Any, Any]) -> Dict[Any, Any]:
                     value[key_in_dict] = walk_and_apply_json(
                         value_in_dict.to_json(), snake_to_upper_camel, KEYS_TO_SKIP_UPPER_APPLICATION
                     )
-                # else:
-                #     value[key_in_dict] = walk_and_apply_json(
-                #         value_in_dict, snake_to_upper_camel, KEYS_TO_SKIP_UPPER_APPLICATION
-                #     )
     return dictionary
 
 
