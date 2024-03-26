@@ -16,7 +16,7 @@ from concurrent import futures
 from datetime import datetime
 import json
 import traceback
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, List, Any, Set
 import boto3
 from botocore import exceptions
 from botocore.client import BaseClient
@@ -336,7 +336,7 @@ class CuratedHub:
             HubContentReferenceType.MARKDOWN,
         ]:
             dependency_type = HubContentDependencyType.OTHER
-        return dependency_type
+        return None
 
     def sync(self, model_list: List[Dict[str, str]]):
         """Syncs a list of JumpStart model ids and versions with a CuratedHub
@@ -501,7 +501,7 @@ class CuratedHub:
 
         files = sync_request.files
         dest_location = sync_request.destination
-        dependencies: List[HubContentDependency] = []
+        dependencies: Set[HubContentDependency] = set
         for file in files:
             dependency = HubContentDependency(
                   {
@@ -512,9 +512,9 @@ class CuratedHub:
                       )
                   }
               )
-            dependencies.append(dependency)
+            dependencies.add(dependency)
 
-        return dependencies
+        return list(dependencies)
 
     def scan_and_tag_models(self, model_ids: List[str] = None) -> None:
         """Scans the Hub for JumpStart models and tags the HubContent.
