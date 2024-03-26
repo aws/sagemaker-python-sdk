@@ -35,7 +35,6 @@ def walk_and_apply_json(json_obj: Dict[Any, Any], apply, keys_to_skip: List[str]
         keys_to_skip = []
 
     def _walk_and_apply_json(json_obj):
-      print(f"new iteration: {json_obj}\n")
       new_object = None
       if isinstance(json_obj, dict):
           new_object = {}

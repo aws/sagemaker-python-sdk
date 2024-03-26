@@ -387,10 +387,10 @@ class JumpStartPredictorSpecs(JumpStartDataHolderType):
         if self._is_hub_content:
             json_obj = walk_and_apply_json(json_obj, camel_to_snake)
 
-        self.default_content_type = json_obj.get("default_content_type")
-        self.supported_content_types = json_obj.get("supported_content_types")
-        self.default_accept_type = json_obj.get("default_accept_type")
-        self.supported_accept_types = json_obj.get("supported_accept_types")
+        self.default_content_type = _get_key_or_upper_camel_key(json_obj, "default_content_type")
+        self.supported_content_types = _get_key_or_upper_camel_key(json_obj, "supported_content_types")
+        self.default_accept_type = _get_key_or_upper_camel_key(json_obj, "default_accept_type")
+        self.supported_accept_types = _get_key_or_upper_camel_key(json_obj, "supported_accept_types")
 
 
 class JumpStartSerializablePayload(JumpStartDataHolderType):
@@ -2129,3 +2129,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         self.data_input_configuration = data_input_configuration
         self.skip_model_validation = skip_model_validation
         self.source_uri = source_uri
+
+def _get_key_or_upper_camel_key(json_obj: Dict[str, Any], snake_case_key: str) -> Optional[Any]:
+    upper_camel_key = snake_to_upper_camel(snake_case_key)
+    return json_obj.get(snake_case_key) if json_obj.get(snake_case_key) else json_obj.get(upper_camel_key)
