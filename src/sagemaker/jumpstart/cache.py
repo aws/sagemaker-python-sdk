@@ -279,7 +279,7 @@ class JumpStartModelsCache:
                 header.min_version
                 for header in manifest.values()  # type: ignore
                 if header.model_id == model_id and \
-                    header.version == model_version_to_use_incompatible_with_sagemaker
+                header.version == model_version_to_use_incompatible_with_sagemaker
             ]
             if len(sm_version_to_use_list) != 1:
                 # ``manifest`` dict should already enforce this

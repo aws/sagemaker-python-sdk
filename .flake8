@@ -4,3 +4,4 @@ import-order-style = google
 per-file-ignores =
     tests/unit/test_tuner.py: F405
     src/sagemaker/config/config_schema.py: E501
+    tests/unit/sagemaker/jumpstart/constants.py: E501
