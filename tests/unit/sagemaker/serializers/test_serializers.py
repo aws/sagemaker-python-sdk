@@ -345,7 +345,8 @@ def test_data_serializer_raw(data_serializer):
         input_image = image.read()
     input_image_data = data_serializer.serialize(input_image)
     validation_image_file_path = os.path.join(DATA_DIR, "", "cuteCat.raw")
-    validation_image_data = open(validation_image_file_path, "rb").read()
+    with open(validation_image_file_path, "rb") as f:
+        validation_image_data = f.read()
     assert input_image_data == validation_image_data
 
 
@@ -353,5 +354,6 @@ def test_data_serializer_file_like(data_serializer):
     input_image_file_path = os.path.join(DATA_DIR, "", "cuteCat.jpg")
     validation_image_file_path = os.path.join(DATA_DIR, "", "cuteCat.raw")
     input_image_data = data_serializer.serialize(input_image_file_path)
-    validation_image_data = open(validation_image_file_path, "rb").read()
+    with open(validation_image_file_path, "rb") as f:
+        validation_image_data = f.read()
     assert input_image_data == validation_image_data

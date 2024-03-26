@@ -73,7 +73,8 @@ def main():
     )
 
     model_dir = os.environ.get("SM_MODEL_DIR")
-    pkl.dump(bst, open(model_dir + "/model.bin", "wb"))
+    with open(model_dir + "/model.bin", "wb") as f:
+        pkl.dump(bst, f)
 
 
 if __name__ == "__main__":

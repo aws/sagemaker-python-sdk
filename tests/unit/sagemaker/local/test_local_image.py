@@ -221,9 +221,12 @@ def test_write_config_file(LocalSession, tmpdir):
     assert os.path.exists(resource_config_file)
     assert os.path.exists(input_data_config_file)
 
-    hyperparameters_data = json.load(open(hyperparameters_file))
-    resource_config_data = json.load(open(resource_config_file))
-    input_data_config_data = json.load(open(input_data_config_file))
+    with open(hyperparameters_file) as f:
+        hyperparameters_data = json.load(f)
+    with open(resource_config_file) as f:
+        resource_config_data = json.load(f)
+    with open(input_data_config_file) as f:
+        input_data_config_data = json.load(f)
 
     # Validate HyperParameters
     for k, v in HYPERPARAMETERS.items():
@@ -280,7 +283,8 @@ def test_write_config_files_input_content_type(LocalSession, tmpdir):
     sagemaker_container.write_config_files(host, HYPERPARAMETERS, input_data_config)
 
     assert os.path.exists(input_data_config_file)
-    parsed_input_config = json.load(open(input_data_config_file))
+    with open(input_data_config_file) as f:
+        parsed_input_config = json.load(f)
     # Validate Input Data Config
     for channel in input_data_config:
         assert channel["ChannelName"] in parsed_input_config
