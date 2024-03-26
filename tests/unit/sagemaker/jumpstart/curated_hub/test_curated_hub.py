@@ -370,6 +370,17 @@ def test_sync_passes_newer_hub_models(
 
 
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+def test_get_latest_model_version(mock_get_model_specs, sagemaker_session):
+    mock_get_model_specs.return_value = JumpStartModelSpecs(deepcopy(BASE_SPEC))
+
+    hub_name = "mock_hub_name"
+    hub = CuratedHub(hub_name=hub_name, sagemaker_session=sagemaker_session)
+
+    res = hub._get_latest_model_version("pytorch-ic-mobilenet-v2")
+    assert res == "1.0.0"
+
+
+@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
 def test_populate_latest_model_version(mock_get_model_specs, sagemaker_session):
     mock_get_model_specs.return_value = JumpStartModelSpecs(deepcopy(BASE_SPEC))
 
@@ -382,7 +393,7 @@ def test_populate_latest_model_version(mock_get_model_specs, sagemaker_session):
     res = hub._populate_latest_model_version({"model_id": "mock-pytorch-model-one"})
     assert res == {"model_id": "mock-pytorch-model-one", "version": "1.0.0"}
 
-    # Should take latest version from specs no matter what. Parent should responsibly call
+    # Should take latest version from specs no matter what. Parent should responsibly call.
     res = hub._populate_latest_model_version(
         {"model_id": "mock-pytorch-model-one", "version": "2.0.0"}
     )
@@ -646,3 +657,71 @@ def test_determine_models_to_sync(sagemaker_session):
     # Old model_one, same model_two
     res = hub._determine_models_to_sync([model_one, model_two], js_model_map)
     assert res == [model_one]
+
+
+@patch(f"{MODULE_PATH}._get_latest_model_version")
+@patch("sagemaker.jumpstart.curated_hub.interfaces.DescribeHubContentResponse.from_json")
+def test_describe_model_with_none_version(
+    mock_describe_hub_content_response, mock_get_latest_model_version, sagemaker_session
+):
+    hub = CuratedHub(hub_name=HUB_NAME, sagemaker_session=sagemaker_session)
+    model_name = "mock-model-one-huggingface"
+    mock_get_latest_model_version.return_value = "1.1.1"
+    mock_describe_hub_content_response.return_value = Mock()
+
+    hub.describe_model(model_name, None)
+    sagemaker_session.describe_hub_content.assert_called_with(
+        hub_name=HUB_NAME,
+        hub_content_name="mock-model-one-huggingface",
+        hub_content_version="1.1.1",
+        hub_content_type="Model",
+    )
+
+
+@patch(f"{MODULE_PATH}._get_latest_model_version")
+@patch("sagemaker.jumpstart.curated_hub.interfaces.DescribeHubContentResponse.from_json")
+def test_describe_model_with_wildcard_version(
+    mock_describe_hub_content_response, mock_get_latest_model_version, sagemaker_session
+):
+    hub = CuratedHub(hub_name=HUB_NAME, sagemaker_session=sagemaker_session)
+    model_name = "mock-model-one-huggingface"
+    mock_get_latest_model_version.return_value = "1.1.1"
+    mock_describe_hub_content_response.return_value = Mock()
+
+    hub.describe_model(model_name, "*")
+    sagemaker_session.describe_hub_content.assert_called_with(
+        hub_name=HUB_NAME,
+        hub_content_name="mock-model-one-huggingface",
+        hub_content_version="1.1.1",
+        hub_content_type="Model",
+    )
+
+
+@patch(f"{MODULE_PATH}._get_latest_model_version")
+def test_delete_model_with_none_version(mock_get_latest_model_version, sagemaker_session):
+    hub = CuratedHub(hub_name=HUB_NAME, sagemaker_session=sagemaker_session)
+    model_name = "mock-model-one-huggingface"
+    mock_get_latest_model_version.return_value = "1.1.1"
+
+    hub.delete_model(model_name, None)
+    sagemaker_session.delete_hub_content.assert_called_with(
+        hub_name=HUB_NAME,
+        hub_content_name="mock-model-one-huggingface",
+        hub_content_version="1.1.1",
+        hub_content_type="Model",
+    )
+
+
+@patch(f"{MODULE_PATH}._get_latest_model_version")
+def test_delete_model_with_wildcard_version(mock_get_latest_model_version, sagemaker_session):
+    hub = CuratedHub(hub_name=HUB_NAME, sagemaker_session=sagemaker_session)
+    model_name = "mock-model-one-huggingface"
+    mock_get_latest_model_version.return_value = "1.1.1"
+
+    hub.delete_model(model_name, "*")
+    sagemaker_session.delete_hub_content.assert_called_with(
+        hub_name=HUB_NAME,
+        hub_content_name="mock-model-one-huggingface",
+        hub_content_version="1.1.1",
+        hub_content_type="Model",
+    )
