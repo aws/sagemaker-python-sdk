@@ -33,24 +33,28 @@ def walk_and_apply_json(json_obj: Dict[Any, Any], apply, keys_to_skip: List[str]
     """Recursively walks a json object and applies a given function to the keys."""
     if keys_to_skip is None:
         keys_to_skip = []
-
-    def _walk_and_apply_json(json_obj):
-      new_object = None
+    
+    def _walk_and_apply_json(json_obj, new):
       if isinstance(json_obj, dict):
-          new_object = {}
-          for key, value in json_obj.items():
-              new_key = apply(key)
-              new_value = value
-              if key not in keys_to_skip:
-                  new_value = _walk_and_apply_json(value)
-              new_object[new_key] = new_value
-      elif isinstance(json_obj, list):
-          new_object = []
-          for obj in json_obj:
-              new_object.append(_walk_and_apply_json(obj))
-      else:
-          new_object = json_obj
-      return new_object
+          if isinstance(new, dict):
+              for key, value in json_obj.items():
+                  if key in keys_to_skip:
+                      continue
+                  new_key = apply(key)
+                  if isinstance(value, dict):
+                      new[new_key] = {}
+                      _walk_and_apply_json(value, new=new[new_key])
+                  elif isinstance(value, list):
+                      new[new_key] = []
+                      for item in value:
+                          _walk_and_apply_json(item, new=new[new_key])
+                  else:
+                      new[new_key] = value
+          elif isinstance(new, list):
+              new.append(_walk_and_apply_json(json_obj, new={}))
+      elif isinstance(new, list):
+          new.append(json_obj)
+      return new
 
-    return _walk_and_apply_json(json_obj)
+    return _walk_and_apply_json(json_obj, {})
 
