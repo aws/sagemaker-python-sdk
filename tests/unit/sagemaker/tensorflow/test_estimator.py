@@ -141,6 +141,7 @@ def _create_train_job(tf_version, horovod=False, ps=False, py_version="py2", smd
         "vpc_config": None,
         "metric_definitions": None,
         "environment": None,
+        "enable_network_isolation": False,
         "experiment_config": None,
         "profiler_config": {
             "DisableProfiler": False,

@@ -150,6 +150,7 @@ def _create_train_job(version, py_version):
         "tags": None,
         "vpc_config": None,
         "metric_definitions": None,
+        "enable_network_isolation": False,
         "environment": None,
         "experiment_config": None,
         "debugger_hook_config": {
