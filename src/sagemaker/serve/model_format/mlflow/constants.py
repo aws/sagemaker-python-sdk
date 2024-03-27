@@ -15,6 +15,11 @@ from __future__ import absolute_import
 
 DEFAULT_LOCAL_DOWNLOAD_PATH_BASE = "/tmp/sagemaker/model-builder/"
 DEFAULT_FW_USED_FOR_DEFAULT_IMAGE = "pytorch"
+DEFAULT_PYTORCH_VERSION = {
+    "py38": "1.12.1",
+    "py39": "1.13.1",
+    "py310": "2.2.0",
+}
 MLFLOW_PYFUNC = "python_function"
 MLFLOW_FLAVOR_TO_PYTHON_PACKAGE_MAP = {
     "sklearn": "scikit-learn",

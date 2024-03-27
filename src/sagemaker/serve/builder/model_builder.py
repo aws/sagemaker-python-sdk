@@ -595,6 +595,13 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
         Returns:
             bool: True if the MLmodel file exists, False otherwise.
         """
+        if self.inference_spec or self.model:
+            logger.info(
+                "Either inference spec or model is provided. "
+                "ModelBuilder is not handling MLflow model input"
+            )
+            return False
+
         path = self.model_path
         if not path:
             return False
@@ -602,25 +609,20 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
         mlmodel_file = "MLmodel"
         # Check for S3 path
         if self.model_path.startswith("s3://"):
-            s3_client = self.sagemaker_session.boto_session.clint("s3")
+            s3_client = self.sagemaker_session.boto_session.client("s3")
             bucket_name, key = path.replace("s3://", "").split("/", 1)
             key_prefix = f"{key.rstrip('/')}/{mlmodel_file}"
-
-            # Use the list_objects_v2 method to check for the MLmodel file
             response = s3_client.list_objects_v2(Bucket=bucket_name, Prefix=key_prefix)
-            # Check if 'Contents' are present in the response and if any object is found
             return "Contents" in response and len(response["Contents"]) > 0
 
-        # Local filesystem path
-        else:
-            file_path = os.path.join(path, mlmodel_file)
-            return os.path.isfile(file_path)
+        file_path = os.path.join(path, mlmodel_file)
+        return os.path.isfile(file_path)
 
     def _initialize_for_mlflow(self) -> None:
         """Initialize mlflow model artifacts, image uri and model server."""
         if not _mlflow_input_is_local_path(self.model_path):
             download_path = _get_default_download_path()
-            # TODO: extend to pakage arn, run id and etc.
+            # TODO: extend to package arn, run id and etc.
             _download_s3_artifacts(self.model_path, download_path, self.sagemaker_session)
             self.model_path = download_path
         mlflow_model_metadata_path = _generate_mlflow_artifact_path(self.model_path, "MLmodel")

@@ -27,7 +27,7 @@ from sagemaker.serve.model_format.mlflow.constants import (
     MLFLOW_PYFUNC,
     DEFAULT_LOCAL_DOWNLOAD_PATH_BASE,
     FLAVORS_WITH_FRAMEWORK_SPECIFIC_DLC_SUPPORT,
-    DEFAULT_FW_USED_FOR_DEFAULT_IMAGE,
+    DEFAULT_FW_USED_FOR_DEFAULT_IMAGE, DEFAULT_PYTORCH_VERSION,
 )
 
 logger = logging.getLogger(__name__)
@@ -57,6 +57,7 @@ def _get_default_model_server_for_mlflow(deployment_flavor: str) -> ModelServer:
 
 def _get_default_image_for_mlflow(python_version: str, region: str, instance_type: str) -> str:
     """Retrieves the default Docker image URI for MLflow deployments based on the specified Python
+
     version, AWS region, and instance type.
 
     Args:
@@ -73,13 +74,16 @@ def _get_default_image_for_mlflow(python_version: str, region: str, instance_typ
             provided arguments.
     """
     major, minor, _ = python_version.split(".")
+    shortened_py_version = f"py{major}{minor}"
     default_dlc = None
+    # TODO: Dynamically getting fw version after beta
     try:
         default_dlc = image_uris.retrieve(
             framework=DEFAULT_FW_USED_FOR_DEFAULT_IMAGE,
+            version=DEFAULT_PYTORCH_VERSION.get(shortened_py_version),
             region=region,
             image_scope="inference",
-            py_version=f"py{major}{minor}",
+            py_version=shortened_py_version,
             instance_type=instance_type,
         )
     except ValueError:
@@ -101,6 +105,7 @@ def _get_default_image_for_mlflow(python_version: str, region: str, instance_typ
 
 def _generate_mlflow_artifact_path(src_folder: str, artifact_name: str) -> str:
     """Generates the path to a specific MLflow model artifacts based on the source folder and
+
     convention.
 
     Args:
@@ -283,8 +288,7 @@ def _select_container_for_mlflow_model(
     region: str,
     instance_type: str,
 ) -> str:
-    """
-    Select framework specific DLC for mlflow model based on flavor, region and isntance type.
+    """Select framework specific DLC for mlflow model based on flavor, region and isntance type.
 
     Args:
         - mlflow_model_src_path (str): The local path to mlflow model artifacts.
