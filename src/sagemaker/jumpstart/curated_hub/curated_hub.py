@@ -499,13 +499,14 @@ class CuratedHub:
                 continue
             dependency = HubContentDependency(
                 {
-                    "dependency_origin_path": f"s3://{file.location.bucket}/{file.location.key}",
-                    "dependency_copy_path": f"s3://{dest_location.bucket}/{dest_location.key}/{file.location.key}",
-                    "dependency_type": self._reference_type_to_dependency_type(file.reference_type),
+                    "DependencyOriginPath": f"s3://{file.location.bucket}/{file.location.key}",
+                    "DependencyCopyPath": f"s3://{dest_location.bucket}/{dest_location.key}/{file.location.key}",
+                    "DependencyType": self._reference_type_to_dependency_type(file.reference_type),
                 }
             )
             dependencies.append(dependency)
-        return list(dependencies)
+        print(f"Dependencies found: {dependencies}")
+        return dependencies
 
     def scan_and_tag_models(self, model_ids: List[str] = None) -> None:
         """Scans the Hub for JumpStart models and tags the HubContent.
