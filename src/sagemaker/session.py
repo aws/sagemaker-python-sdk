@@ -6823,6 +6823,64 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         return self.sagemaker_client.list_hub_contents(**request)
 
+    def list_hub_content_versions(self,
+        hub_name: str,
+        hub_content_type: str,
+        hub_content_name: str,
+        min_version: str = None,
+        max_schema_version: str = None,
+        creation_time_before: datetime = None,
+        creation_time_after: datetime = None,
+        sort_by: str = None,
+        sort_order: str = None,
+        max_results: int = None,
+        next_token: str = None,
+    ) -> Dict[str, Any]:
+        """Lists the versions of a HubContent in a SageMaker Hub
+
+        Args:
+            hub_name (str): The name of the Hub to list the contents of.
+            hub_content_type (str): The type of the HubContent to list.
+            hub_content_name (str): The name of the hub content.
+            min_version (str): The lower bound of the hub content versions to list.
+            max_schema_version (str): The upper bound of the hub content schema version.
+            creation_time_before (datetime): Only list hub content versions that were created
+                before the time specified.
+            creation_time_after (datetime): Only list hub content versions that were created
+                after the time specified.
+            sort_by (str): Sort hub content versions by either name or creation time.
+            sort_order (str): Sort hub content versions by ascending or descending order.
+            max_results (int): The maximum number of hub content versions to list.
+            next_token (str): If the response to a previous ``ListHubContentVersions`` request was
+                truncated, the response includes a ``NextToken``. To retrieve the next set of 
+                hub content versions, use the token in the next request.            
+        Returns:
+            (dict): Return value for ``ListHubContentsVersions`` API
+        """
+        request = {
+            "HubName": hub_name,
+            "HubContentType": hub_content_type,
+            "HubContentName": hub_content_name
+        }
+        if creation_time_after:
+            request["CreationTimeAfter"] = creation_time_after
+        if min_version:
+            request["MinVersion"] = min_version
+        if creation_time_before:
+            request["CreationTimeBefore"] = creation_time_before
+        if max_results:
+            request["MaxResults"] = max_results
+        if max_schema_version:
+            request["MaxSchemaVersion"] = max_schema_version
+        if next_token:
+            request["NextToken"] = next_token
+        if sort_by:
+            request["SortBy"] = sort_by
+        if sort_order:
+            request["SortOrder"] = sort_order
+
+        return self.sagemaker_client.list_hub_content_versions(**request)
+
     def delete_hub(self, hub_name: str) -> None:
         """Deletes a SageMaker Hub
 
