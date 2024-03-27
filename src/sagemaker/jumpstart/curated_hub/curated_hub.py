@@ -32,7 +32,7 @@ from sagemaker.jumpstart.curated_hub.constants import (
     LATEST_VERSION_WILDCARD,
 )
 from sagemaker.jumpstart.curated_hub.sync.comparator import SizeAndLastUpdatedComparator
-from sagemaker.jumpstart.curated_hub.sync.request import HubSyncRequest, HubSyncRequestFactory
+from sagemaker.jumpstart.curated_hub.sync.request import HubSyncRequestFactory
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
@@ -50,6 +50,7 @@ from sagemaker.jumpstart.curated_hub.utils import (
     create_s3_object_reference_from_uri,
     find_deprecated_vulnerable_flags_for_hub_content,
     is_curated_jumpstart_model,
+    is_gated_bucket,
 )
 from sagemaker.jumpstart.curated_hub.interfaces import (
     DescribeHubResponse,
@@ -59,6 +60,7 @@ from sagemaker.jumpstart.curated_hub.interfaces import (
     HubContentDependency,
 )
 from sagemaker.jumpstart.curated_hub.types import (
+    FileInfo,
     HubContentDependencyType,
     HubContentReferenceType,
     JumpStartModelInfo,
@@ -444,7 +446,7 @@ class CuratedHub:
 
         search_keywords = [JUMPSTART_CURATED_HUB_MODEL_TAG]
 
-        dependencies = self._calculate_dependencies(sync_request)
+        dependencies = self._calculate_dependencies(src_files, sync_request.destination)
 
         hub_content_document: HubModelDocument = make_hub_model_document_from_specs(
             model_specs=model_specs,
@@ -488,19 +490,25 @@ class CuratedHub:
         manifest_list = json.loads(response["Body"].read().decode("utf-8"))
         return {entry.get(STUDIO_MODEL_ID_KEY): entry for entry in manifest_list}
 
-    def _calculate_dependencies(self, sync_request: HubSyncRequest) -> List[HubContentDependency]:
+    def _calculate_dependencies(
+        self, src_files: List[FileInfo], dest_location: S3ObjectLocation
+    ) -> List[HubContentDependency]:
         """Calculates dependencies for HubContentDocument"""
 
-        files = sync_request.files
-        dest_location = sync_request.destination
         dependencies: List[HubContentDependency] = []
-        for file in files:
+        for file in src_files:
             if self._reference_type_to_dependency_type(file.reference_type) is None:
                 continue
+
+            copy_prefix = (
+                f"{file.location.bucket}"
+                if is_gated_bucket(file.location.bucket)
+                else f"{dest_location.bucket}/{dest_location.key}"
+            )
             dependency = HubContentDependency(
                 {
                     "DependencyOriginPath": f"s3://{file.location.bucket}/{file.location.key}",
-                    "DependencyCopyPath": f"s3://{dest_location.bucket}/{dest_location.key}/{file.location.key}",
+                    "DependencyCopyPath": f"s3://{copy_prefix}/{file.location.key}",
                     "DependencyType": self._reference_type_to_dependency_type(file.reference_type),
                 }
             )

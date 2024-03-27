@@ -284,11 +284,13 @@ class JumpStartHyperparameter(JumpStartDataHolderType):
 
         self.name = _get_key_or_upper_camel_key(json_obj, "name")
         self.type = _get_key_or_upper_camel_key(json_obj, "type")
-        self.default = _get_key_or_upper_camel_key(json_obj, "default", "None" if self.type is "text" else 0)
+        self.default = _get_key_or_upper_camel_key(
+            json_obj, "default", "None" if self.type == "text" else 0
+        )
         self.scope = _get_key_or_upper_camel_key(json_obj, "scope")
-        options = _get_key_or_upper_camel_key(json_obj,"options")
-        min_val = _get_key_or_upper_camel_key(json_obj,"min")
-        max_val = _get_key_or_upper_camel_key(json_obj,"max")
+        options = _get_key_or_upper_camel_key(json_obj, "options")
+        min_val = _get_key_or_upper_camel_key(json_obj, "min")
+        max_val = _get_key_or_upper_camel_key(json_obj, "max")
 
         if options is not None and len(options) > 0:
             self.options = options

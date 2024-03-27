@@ -6823,7 +6823,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         return self.sagemaker_client.list_hub_contents(**request)
 
-    def list_hub_content_versions(self,
+    def list_hub_content_versions(
+        self,
         hub_name: str,
         hub_content_type: str,
         hub_content_name: str,
@@ -6852,15 +6853,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
             sort_order (str): Sort hub content versions by ascending or descending order.
             max_results (int): The maximum number of hub content versions to list.
             next_token (str): If the response to a previous ``ListHubContentVersions`` request was
-                truncated, the response includes a ``NextToken``. To retrieve the next set of 
-                hub content versions, use the token in the next request.            
+                truncated, the response includes a ``NextToken``. To retrieve the next set of
+                hub content versions, use the token in the next request.
         Returns:
             (dict): Return value for ``ListHubContentsVersions`` API
         """
         request = {
             "HubName": hub_name,
             "HubContentType": hub_content_type,
-            "HubContentName": hub_content_name
+            "HubContentName": hub_content_name,
         }
         if creation_time_after:
             request["CreationTimeAfter"] = creation_time_after
