@@ -282,8 +282,8 @@ class JumpStart(ABC):
         ):
             admissible_tensor_parallel_degrees = [1]
             logger.warning(
-                "Sharded across multiple GPUs is not supported for this model."
-                "\nModel can only be sharded across [1] GPU"
+                "Sharded across multiple GPUs is not supported for this model. "
+                "Model can only be sharded across [1] GPU"
             )
 
         benchmark_results = {}

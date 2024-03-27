@@ -317,6 +317,9 @@ def sharded_supported(model_id: str, config_dict: dict) -> bool:
     """Check if sharded is supported for this ``Model``"""
     model_type = config_dict.get("model_type", None)
 
+    if model_type is None:
+        return False
+
     if model_id.startswith("facebook/galactica"):
         return True
 
