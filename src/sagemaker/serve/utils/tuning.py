@@ -269,7 +269,7 @@ def _more_performant(best_tuned_configuration: list, tuned_configuration: list) 
 def _more_performant_benchmark(
     best_tuned_configuration: dict, current_tuned_configuration: dict
 ) -> dict:
-    """Returns ``True`` if the current benchmark is more performant than the previous one."""
+    """Returns the configuration with the lowest latency"""
     if best_tuned_configuration is None:
         return current_tuned_configuration
 
@@ -288,7 +288,7 @@ def _more_performant_benchmark(
     return best_tuned_configuration
 
 
-def _run_benchmarks(pysdk_model, sample_input, max_tuning_duration) -> dict:
+def _run_serial_and_concurrent_benchmarks(pysdk_model, sample_input, max_tuning_duration) -> dict:
     """Run the benchmarks"""
     predictor = pysdk_model.deploy(model_data_download_timeout=max_tuning_duration)
 
@@ -311,3 +311,21 @@ def _run_benchmarks(pysdk_model, sample_input, max_tuning_duration) -> dict:
         "THROUGHPUT_PER_SECOND": throughput_per_second,
         "STD_DEVIATION": standard_deviation,
     }
+
+
+def sharded_supported(model_id: str, config_dict: dict) -> bool:
+    """Check if sharded is supported for this ``Model``"""
+    model_type = config_dict.get("model_type", None)
+
+    if model_id.startswith("facebook/galactica"):
+        return True
+
+    if model_type in ["bloom", "mpt", "ssm", "gpt_neox", "phi", "phi-msft", "opt", "t5"]:
+        return True
+
+    if model_type in ["RefinedWeb", "RefinedWebModel", "falcon"] and not config_dict.get(
+        "alibi", False
+    ):
+        return True
+
+    return False

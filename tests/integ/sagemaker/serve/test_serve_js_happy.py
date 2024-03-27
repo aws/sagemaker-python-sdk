@@ -48,26 +48,6 @@ def happy_model_builder(sagemaker_session):
     )
 
 
-@pytest.fixture
-def happy_local_tgi_model_builder(sagemaker_local_session):
-    return ModelBuilder(
-        model=JS_MODEL_ID,
-        schema_builder=SchemaBuilder(SAMPLE_PROMPT, SAMPLE_RESPONSE),
-        mode=Mode.LOCAL_CONTAINER,
-        sagemaker_session=sagemaker_local_session,
-    )
-
-
-@pytest.fixture
-def happy_local_model_djl_builder(sagemaker_local_session):
-    return ModelBuilder(
-        model="huggingface-textgeneration1-gpt-j-6b-fp16",
-        schema_builder=SchemaBuilder(SAMPLE_PROMPT, SAMPLE_RESPONSE),
-        mode=Mode.LOCAL_CONTAINER,
-        sagemaker_session=sagemaker_local_session,
-    )
-
-
 @pytest.mark.skipif(
     PYTHON_VERSION_IS_NOT_310,
     reason="The goal of these test are to test the serving components of our feature",
@@ -104,12 +84,17 @@ def test_happy_tgi_sagemaker_endpoint(happy_model_builder, gpu_instance_type):
     reason="The goal of these tests are to test the serving components of our feature",
 )
 @pytest.mark.local_mode
-@pytest.mark.parametrize(
-    "model_builder", [happy_local_tgi_model_builder, happy_local_model_djl_builder]
-)
-def test_happy_tune_tgi_local_mode(model_builder):
+def test_happy_tune_tgi_local_mode(sagemaker_local_session):
     logger.info("Running in LOCAL_CONTAINER mode...")
     caught_ex = None
+
+    model_builder = ModelBuilder(
+        model="huggingface-llm-bilingual-rinna-4b-instruction-ppo-bf16",
+        schema_builder=SchemaBuilder(SAMPLE_PROMPT, SAMPLE_RESPONSE),
+        mode=Mode.LOCAL_CONTAINER,
+        sagemaker_session=sagemaker_local_session,
+    )
+
     model = model_builder.build()
 
     with timeout(minutes=SERVE_LOCAL_CONTAINER_TUNE_TIMEOUT):

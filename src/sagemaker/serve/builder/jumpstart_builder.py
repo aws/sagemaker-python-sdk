@@ -44,7 +44,8 @@ from sagemaker.serve.utils.telemetry_logger import _capture_telemetry
 from sagemaker.serve.utils.tuning import (
     _more_performant_benchmark,
     _pretty_print_benchmark_results,
-    _run_benchmarks,
+    _run_serial_and_concurrent_benchmarks,
+    sharded_supported,
 )
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.base_predictor import PredictorBase
@@ -267,6 +268,10 @@ class JumpStart(ABC):
             )
             return self.pysdk_model
 
+        if not sharded_supported(self.model, self.pysdk_model):
+            logger.warning("Sharded is not supported for this model. Returning original model.")
+            return self.pysdk_model
+
         num_shard_env_var_name = "SM_NUM_GPUS"
         if "OPTION_TENSOR_PARALLEL_DEGREE" in self.pysdk_model.env.keys():
             num_shard_env_var_name = "OPTION_TENSOR_PARALLEL_DEGREE"
@@ -287,7 +292,8 @@ class JumpStart(ABC):
             self.pysdk_model.env.update({num_shard_env_var_name: str(tensor_parallel_degree)})
             try:
                 logger.info("Trying tensor parallel degree: %s", tensor_parallel_degree)
-                result = _run_benchmarks(
+
+                result = _run_serial_and_concurrent_benchmarks(
                     self.pysdk_model, self.schema_builder.sample_input, max_tuning_duration
                 )
                 benchmark_results[result["AVG_LATENCY"]] = {
