@@ -163,32 +163,20 @@ def make_model_specs_from_describe_hub_content_response(
     specs["inference_vulnerable"] = False
     specs["inference_dependencies"] = hub_model_document.inference_dependencies
     specs["inference_vulnerabilities"] = []
-    specs["training_vulnerable"] = False
-    specs["training_dependencies"] = hub_model_document.training_dependencies
-    specs["training_vulnerabilities"] = []
     specs["deprecated"] = False
     specs["deprecated_message"] = None
     specs["deprecate_warn_message"] = None
     specs["usage_info_message"] = None
     specs["default_inference_instance_type"] = hub_model_document.default_inference_instance_type
-    specs["default_training_instance_type"] = hub_model_document.default_training_instance_type
     specs[
         "supported_inference_instance_types"
     ] = hub_model_document.supported_inference_instance_types
-    specs[
-        "supported_training_instance_types"
-    ] = hub_model_document.supported_training_instance_types
     specs[
         "dynamic_container_deployment_supported"
     ] = hub_model_document.dynamic_container_deployment_supported
     specs["hosting_resource_requirements"] = walk_and_apply_json(
         hub_model_document.hosting_resource_requirements, camel_to_snake
     )
-    specs["metrics"] = hub_model_document.training_metrics
-    specs["training_prepacked_script_key"] = None
-    if hub_model_document.training_prepacked_script_uri is not None:
-        training_prepacked_script_key = hub_model_document.training_prepacked_script_uri
-        specs["training_prepacked_script_key"] = training_prepacked_script_key
 
     specs["hosting_prepacked_artifact_key"] = None
     if hub_model_document.hosting_prepacked_artifact_uri is not None:
@@ -203,9 +191,6 @@ def make_model_specs_from_describe_hub_content_response(
     )
     specs["deploy_kwargs"] = get_model_spec_kwargs_from_hub_model_document(
         ModelSpecKwargType.DEPLOY, hub_model_document.to_json()
-    )
-    specs["estimator_kwargs"] = get_model_spec_kwargs_from_hub_model_document(
-        ModelSpecKwargType.ESTIMATOR, hub_model_document.to_json()
     )
 
     specs["predictor_specs"] = hub_model_document.sage_maker_sdk_predictor_specifications
@@ -232,6 +217,23 @@ def make_model_specs_from_describe_hub_content_response(
     specs["hosting_instance_type_variants"] = hub_model_document.hosting_instance_type_variants
 
     if specs["training_supported"]:
+        if hub_model_document.training_model_package_artifact_uri:
+            specs["training_model_package_artifact_uris"] = {
+                region: hub_model_document.training_model_package_artifact_uri
+            }
+        specs["default_training_instance_type"] = hub_model_document.default_training_instance_type
+        specs[
+            "supported_training_instance_types"
+        ] = hub_model_document.supported_training_instance_types
+        specs["metrics"] = hub_model_document.training_metrics
+        specs["training_prepacked_script_key"] = None
+        if hub_model_document.training_prepacked_script_uri is not None:
+            training_prepacked_script_key = hub_model_document.training_prepacked_script_uri
+            specs["training_prepacked_script_key"] = training_prepacked_script_key
+        specs[
+            "training_instance_type_variants"
+        ] = hub_model_document.training_instance_type_variants
+
         specs["training_ecr_uri"] = hub_model_document.training_ecr_uri
         training_artifact_key = hub_model_document.training_artifact_uri
         specs["training_artifact_key"] = training_artifact_key
@@ -243,13 +245,9 @@ def make_model_specs_from_describe_hub_content_response(
         specs[
             "training_enable_network_isolation"
         ] = hub_model_document.training_enable_network_isolation
-        if hub_model_document.training_model_package_artifact_uri:
-            specs["training_model_package_artifact_uris"] = {
-                region: hub_model_document.training_model_package_artifact_uri
-            }
-        specs[
-            "training_instance_type_variants"
-        ] = hub_model_document.training_instance_type_variants
+        specs["estimator_kwargs"] = get_model_spec_kwargs_from_hub_model_document(
+            ModelSpecKwargType.ESTIMATOR, hub_model_document.to_json()
+        )
     return JumpStartModelSpecs(_to_json(specs), is_hub_content=True)
 
 
@@ -448,7 +446,7 @@ def make_hub_model_document_from_specs(
         )  # pylint: disable=inconsistent-return-statements
 
         # Estimator kwargs
-        document["Encrypt_inter_container_traffic"] = model_specs.estimator_kwargs.get(
+        document["EncryptInterContainerTraffic"] = model_specs.estimator_kwargs.get(
             "encrypt_inter_container_traffic"
         )
         document["MaxRuntimeInSeconds"] = model_specs.estimator_kwargs.get("max_run")
