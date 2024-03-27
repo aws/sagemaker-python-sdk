@@ -1664,6 +1664,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             model = self._compiled_models[family]
         else:
             kwargs["model_kms_key"] = self.output_kms_key
+            kwargs["code_location"] = self.code_location
             model = self.create_model(**kwargs)
 
         model.name = model_name
