@@ -484,7 +484,7 @@ class TestJumpStartBuilder(unittest.TestCase):
         "sagemaker.serve.builder.jumpstart_builder.prepare_djl_js_resources",
         return_value=(
             mock_set_serving_properties,
-            {"model_type": "sharded_not_supported", "n_head": 71},
+            {"model_type": "sharded_not_enabled", "n_head": 71},
             True,
         ),
     )
@@ -492,8 +492,23 @@ class TestJumpStartBuilder(unittest.TestCase):
     @patch(
         "sagemaker.serve.builder.jumpstart_builder._get_nb_instance", return_value="ml.g5.24xlarge"
     )
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder._get_admissible_tensor_parallel_degrees",
+        return_value=[4, 2, 1],
+    )
+    @patch(
+        "sagemaker.serve.utils.tuning._serial_benchmark",
+        side_effect=[(5, 5, 25), (5.4, 5.4, 20), (5.2, 5.2, 15)],
+    )
+    @patch(
+        "sagemaker.serve.utils.tuning._concurrent_benchmark",
+        side_effect=[(0.9, 1), (0.10, 4), (0.13, 2)],
+    )
     def test_tune_for_djl_js_local_container_sharded_not_enabled(
         self,
+        mock_concurrent_benchmarks,
+        mock_serial_benchmarks,
+        mock_admissible_tensor_parallel_degrees,
         mock_get_nb_instance,
         mock_get_ram_usage_mb,
         mock_prepare_for_tgi,
@@ -502,7 +517,9 @@ class TestJumpStartBuilder(unittest.TestCase):
         mock_telemetry,
     ):
         builder = ModelBuilder(
-            model=mock_model_id, schema_builder=mock_schema_builder, mode=Mode.LOCAL_CONTAINER
+            model=mock_model_id,
+            schema_builder=mock_schema_builder,
+            mode=Mode.LOCAL_CONTAINER,
         )
 
         mock_pre_trained_model.return_value.image_uri = mock_djl_image_uri
@@ -513,4 +530,8 @@ class TestJumpStartBuilder(unittest.TestCase):
         mock_pre_trained_model.return_value.env = mock_djl_model_serving_properties
 
         tuned_model = model.tune()
-        assert tuned_model.env == mock_djl_model_serving_properties
+        assert tuned_model.env == {
+            "SAGEMAKER_PROGRAM": "inference.py",
+            "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+            "OPTION_TENSOR_PARALLEL_DEGREE": "1",
+        }

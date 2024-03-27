@@ -268,10 +268,6 @@ class JumpStart(ABC):
             )
             return self.pysdk_model
 
-        if not sharded_supported(self.model, self.js_model_config):
-            logger.warning("Sharded is not supported for this model. Returning original model.")
-            return self.pysdk_model
-
         num_shard_env_var_name = "SM_NUM_GPUS"
         if "OPTION_TENSOR_PARALLEL_DEGREE" in self.pysdk_model.env.keys():
             num_shard_env_var_name = "OPTION_TENSOR_PARALLEL_DEGREE"
@@ -280,6 +276,15 @@ class JumpStart(ABC):
         admissible_tensor_parallel_degrees = _get_admissible_tensor_parallel_degrees(
             self.js_model_config
         )
+
+        if len(admissible_tensor_parallel_degrees) > 1 and not sharded_supported(
+            self.model, self.js_model_config
+        ):
+            admissible_tensor_parallel_degrees = [1]
+            logger.warning(
+                "Sharded across multiple GPUs is not supported for this model."
+                "\nModel can only be sharded across [1] GPU"
+            )
 
         benchmark_results = {}
         best_tuned_combination = None
