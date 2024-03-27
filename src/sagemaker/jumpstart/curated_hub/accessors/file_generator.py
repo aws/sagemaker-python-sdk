@@ -108,6 +108,4 @@ def generate_file_infos_from_model_specs(
             size = response.get("ContentLength")
             last_updated = response.get("LastModified")
             files.append(FileInfo(location.bucket, location.key, size, last_updated, dependency))
-    for file in files:
-        print(file, file.location, file.last_updated, file.size, file.reference_type)
     return files

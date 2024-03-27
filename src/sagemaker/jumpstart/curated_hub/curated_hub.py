@@ -505,7 +505,6 @@ class CuratedHub:
                 }
             )
             dependencies.append(dependency)
-        print(f"Dependencies found: {dependencies}")
         return dependencies
 
     def scan_and_tag_models(self, model_ids: List[str] = None) -> None:
