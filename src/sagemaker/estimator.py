@@ -2434,6 +2434,7 @@ class _TrainingJob(_Job):
         """
         train_args = cls._get_train_args(estimator, inputs, experiment_config)
 
+        logger.debug("Train args after processing defaults: %s", train_args)
         estimator.sagemaker_session.train(**train_args)
 
         return cls(estimator.sagemaker_session, estimator._current_job_name)
@@ -2501,6 +2502,9 @@ class _TrainingJob(_Job):
         # which is parsed in execution time
         if estimator.enable_network_isolation():
             train_args["enable_network_isolation"] = estimator.enable_network_isolation()
+        if estimator.enable_network_isolation() is False:
+            train_args["enable_network_isolation"] = estimator.enable_network_isolation()
+
 
         if estimator.max_retry_attempts is not None:
             train_args["retry_strategy"] = {"MaximumRetryAttempts": estimator.max_retry_attempts}
