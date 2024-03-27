@@ -1,7 +1,6 @@
 """Holds mixin logic to support deployment of Model ID"""
 from __future__ import absolute_import
 
-import copy
 import logging
 from time import perf_counter
 import collections
@@ -118,13 +117,13 @@ def _pretty_print_benchmark_results(results: dict, model_env_vars=None):
 
     for key, value in ordered.items():
         avg_latencies.append(key)
-        p90s.append(value["P90"])
-        avg_tokens_per_seconds.append(value["AVG_TOKENS_PER_SECOND"])
-        throughput_per_seconds.append(value["THROUGHPUT_PER_SECOND"])
-        standard_deviations.append(value["STD_DEVIATION"])
+        p90s.append(value[1])
+        avg_tokens_per_seconds.append(value[2])
+        throughput_per_seconds.append(value[3])
+        standard_deviations.append(value[4])
 
         for model_env_var in __env_var_data:
-            __env_var_data[model_env_var].append(value["TESTED_ENV"][model_env_var])
+            __env_var_data[model_env_var].append(value[0][model_env_var])
 
     df = pd.DataFrame(
         {
@@ -137,13 +136,13 @@ def _pretty_print_benchmark_results(results: dict, model_env_vars=None):
         }
     )
 
-    separator = "=" * 78
-    log_message = (
-        f"\n{separator} Benchmark Results {separator}\n"
-        f"{df.to_string()}\n"
-        f"{separator}{separator}\n"
+    logger.info(
+        "\n================================================================== Benchmark "
+        "Results ==================================================================\n%s"
+        "\n============================================================================"
+        "===========================================================================\n",
+        df.to_string(),
     )
-    logger.info(log_message)
 
 
 def _tokens_per_second(generated_text: str, max_token_length: int, latency: float) -> int:
@@ -264,53 +263,6 @@ def _more_performant(best_tuned_configuration: list, tuned_configuration: list) 
             return True
         return False
     return tuned_avg_latency <= best_avg_latency
-
-
-def _more_performant_benchmark(
-    best_tuned_configuration: dict, current_tuned_configuration: dict
-) -> dict:
-    """Returns the configuration with the lowest latency"""
-    if best_tuned_configuration is None:
-        return current_tuned_configuration
-
-    best_avg_latency = best_tuned_configuration["AGV_LATENCY"]
-    current_tuned_avg_latency = current_tuned_configuration["AGV_LATENCY"]
-    best_standard_deviation = best_tuned_configuration["STD_DEVIATION"]
-    current_tuned_standard_deviation = current_tuned_configuration["STD_DEVIATION"]
-
-    if _within_margins(MARGIN, 5, current_tuned_avg_latency, best_avg_latency):
-        if current_tuned_standard_deviation <= best_standard_deviation:
-            return current_tuned_configuration
-        return best_tuned_configuration
-
-    if current_tuned_avg_latency <= best_avg_latency:
-        return current_tuned_configuration
-    return best_tuned_configuration
-
-
-def _run_serial_and_concurrent_benchmarks(pysdk_model, sample_input, max_tuning_duration) -> dict:
-    """Run the benchmarks"""
-    predictor = pysdk_model.deploy(model_data_download_timeout=max_tuning_duration)
-
-    avg_latency, p90, avg_tokens_per_second = _serial_benchmark(predictor, sample_input)
-    throughput_per_second, standard_deviation = _concurrent_benchmark(predictor, sample_input)
-
-    tested_env = copy.deepcopy(pysdk_model.env)
-    logger.info(
-        "Average latency: %s, throughput/s: %s for configuration: %s",
-        avg_latency,
-        throughput_per_second,
-        tested_env,
-    )
-
-    return {
-        "AVG_LATENCY": avg_latency,
-        "TESTED_ENV": tested_env,
-        "P90": p90,
-        "AVG_TOKENS_PER_SECOND": avg_tokens_per_second,
-        "THROUGHPUT_PER_SECOND": throughput_per_second,
-        "STD_DEVIATION": standard_deviation,
-    }
 
 
 def sharded_supported(model_id: str, config_dict: dict) -> bool:

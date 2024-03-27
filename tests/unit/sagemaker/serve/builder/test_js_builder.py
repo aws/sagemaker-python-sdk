@@ -36,7 +36,7 @@ mock_set_serving_properties = (4, "fp16", 1, 256, 256)
 mock_tgi_most_performant_model_serving_properties = {
     "SAGEMAKER_PROGRAM": "inference.py",
     "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
-    "SM_NUM_GPUS": "4",
+    "SM_NUM_GPUS": "2",
 }
 mock_tgi_model_serving_properties = {
     "SAGEMAKER_PROGRAM": "inference.py",
@@ -530,8 +530,4 @@ class TestJumpStartBuilder(unittest.TestCase):
         mock_pre_trained_model.return_value.env = mock_djl_model_serving_properties
 
         tuned_model = model.tune()
-        assert tuned_model.env == {
-            "SAGEMAKER_PROGRAM": "inference.py",
-            "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
-            "OPTION_TENSOR_PARALLEL_DEGREE": "1",
-        }
+        assert tuned_model.env == mock_djl_most_performant_model_serving_properties

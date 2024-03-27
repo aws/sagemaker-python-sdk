@@ -42,10 +42,11 @@ from sagemaker.serve.utils.local_hardware import (
 )
 from sagemaker.serve.utils.telemetry_logger import _capture_telemetry
 from sagemaker.serve.utils.tuning import (
-    _more_performant_benchmark,
     _pretty_print_benchmark_results,
-    _run_serial_and_concurrent_benchmarks,
     sharded_supported,
+    _serial_benchmark,
+    _concurrent_benchmark,
+    _more_performant,
 )
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.base_predictor import PredictorBase
@@ -298,19 +299,52 @@ class JumpStart(ABC):
             try:
                 logger.info("Trying tensor parallel degree: %s", tensor_parallel_degree)
 
-                result = _run_serial_and_concurrent_benchmarks(
-                    self.pysdk_model, self.schema_builder.sample_input, max_tuning_duration
-                )
-                benchmark_results[result["AVG_LATENCY"]] = {
-                    "TESTED_ENV": result["TESTED_ENV"],
-                    "P90": result["P90"],
-                    "AVG_TOKENS_PER_SECOND": result["AVG_TOKENS_PER_SECOND"],
-                    "THROUGHPUT_PER_SECOND": result["THROUGHPUT_PER_SECOND"],
-                    "STD_DEVIATION": result["STD_DEVIATION"],
-                }
+                predictor = self.pysdk_model.deploy(model_data_download_timeout=max_tuning_duration)
 
-                result[num_shard_env_var_name] = tensor_parallel_degree
-                best_tuned_combination = _more_performant_benchmark(best_tuned_combination, result)
+                avg_latency, p90, avg_tokens_per_second = _serial_benchmark(
+                    predictor, self.schema_builder.sample_input
+                )
+                throughput_per_second, standard_deviation = _concurrent_benchmark(
+                    predictor, self.schema_builder.sample_input
+                )
+
+                tested_env = copy.deepcopy(self.pysdk_model.env)
+                logger.info(
+                    "Average latency: %s, throughput/s: %s for configuration: %s",
+                    avg_latency,
+                    throughput_per_second,
+                    tested_env,
+                )
+                benchmark_results[avg_latency] = [
+                    tested_env,
+                    p90,
+                    avg_tokens_per_second,
+                    throughput_per_second,
+                    standard_deviation,
+                ]
+
+                if not best_tuned_combination:
+                    best_tuned_combination = [
+                        avg_latency,
+                        tensor_parallel_degree,
+                        None,
+                        p90,
+                        avg_tokens_per_second,
+                        throughput_per_second,
+                        standard_deviation,
+                    ]
+                else:
+                    tuned_configuration = [
+                        avg_latency,
+                        tensor_parallel_degree,
+                        None,
+                        p90,
+                        avg_tokens_per_second,
+                        throughput_per_second,
+                        standard_deviation,
+                    ]
+                    if _more_performant(best_tuned_combination, tuned_configuration):
+                        best_tuned_combination = tuned_configuration
             except LocalDeepPingException as e:
                 logger.warning(
                     "Deployment unsuccessful with %s: %s. " "Failed to invoke the model server: %s",
@@ -360,9 +394,7 @@ class JumpStart(ABC):
                 )
 
         if best_tuned_combination:
-            self.pysdk_model.env.update(
-                {num_shard_env_var_name: str(best_tuned_combination[num_shard_env_var_name])}
-            )
+            self.pysdk_model.env.update({num_shard_env_var_name: str(best_tuned_combination[1])})
 
             _pretty_print_benchmark_results(benchmark_results, [num_shard_env_var_name])
             logger.info(
@@ -370,11 +402,11 @@ class JumpStart(ABC):
                 "p90 latency: %s, average tokens per second: %s, throughput/s: %s, "
                 "standard deviation of request %s",
                 self.pysdk_model.env,
-                best_tuned_combination["AVG_LATENCY"],
-                best_tuned_combination["P90"],
-                best_tuned_combination["AVG_TOKENS_PER_SECOND"],
-                best_tuned_combination["THROUGHPUT_PER_SECOND"],
-                best_tuned_combination["STD_DEVIATION"],
+                best_tuned_combination[0],
+                best_tuned_combination[3],
+                best_tuned_combination[4],
+                best_tuned_combination[5],
+                best_tuned_combination[6],
             )
         else:
             self.pysdk_model.env.update(initial_env_vars)
