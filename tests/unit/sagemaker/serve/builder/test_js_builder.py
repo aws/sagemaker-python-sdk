@@ -36,7 +36,7 @@ mock_set_serving_properties = (4, "fp16", 1, 256, 256)
 mock_tgi_most_performant_model_serving_properties = {
     "SAGEMAKER_PROGRAM": "inference.py",
     "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
-    "SM_NUM_GPUS": "2",
+    "SM_NUM_GPUS": "4",
 }
 mock_tgi_model_serving_properties = {
     "SAGEMAKER_PROGRAM": "inference.py",

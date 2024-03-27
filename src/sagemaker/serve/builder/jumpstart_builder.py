@@ -268,7 +268,7 @@ class JumpStart(ABC):
             )
             return self.pysdk_model
 
-        if not sharded_supported(self.model, self.pysdk_model):
+        if not sharded_supported(self.model, self.js_model_config):
             logger.warning("Sharded is not supported for this model. Returning original model.")
             return self.pysdk_model
 
