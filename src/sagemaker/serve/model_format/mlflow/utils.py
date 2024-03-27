@@ -27,7 +27,8 @@ from sagemaker.serve.model_format.mlflow.constants import (
     MLFLOW_PYFUNC,
     DEFAULT_LOCAL_DOWNLOAD_PATH_BASE,
     FLAVORS_WITH_FRAMEWORK_SPECIFIC_DLC_SUPPORT,
-    DEFAULT_FW_USED_FOR_DEFAULT_IMAGE, DEFAULT_PYTORCH_VERSION,
+    DEFAULT_FW_USED_FOR_DEFAULT_IMAGE,
+    DEFAULT_PYTORCH_VERSION,
 )
 
 logger = logging.getLogger(__name__)
@@ -262,7 +263,7 @@ def _download_s3_artifacts(s3_path: str, dst_path: str, session: Session) -> Non
 
     s3_bucket, s3_key = s3_path.replace("s3://", "").split("/", 1)
 
-    s3 = session.boto_session.client("s3")
+    s3 = Session().boto_session.client("s3")
 
     os.makedirs(dst_path, exist_ok=True)
 
@@ -273,13 +274,13 @@ def _download_s3_artifacts(s3_path: str, dst_path: str, session: Session) -> Non
             rel_path = os.path.relpath(key, s3_key)
             local_file_path = os.path.join(dst_path, rel_path)
 
-            # Create subdirectories if they don't exist
-            local_file_dir = os.path.dirname(local_file_path)
-            os.makedirs(local_file_dir, exist_ok=True)
+            if not key.endswith("/"):
+                local_file_dir = os.path.dirname(local_file_path)
+                os.makedirs(local_file_dir, exist_ok=True)
 
-            # Download the file
-            print(f"Downloading {key} to {local_file_path}")
-            s3.download_file(s3_bucket, key, local_file_path)
+                # Download the file
+                print(f"Downloading {key} to {local_file_path}")
+                s3.download_file(s3_bucket, key, local_file_path)
 
 
 def _select_container_for_mlflow_model(
