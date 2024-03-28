@@ -200,8 +200,9 @@ def make_model_specs_from_describe_hub_content_response(
 
     specs["predictor_specs"] = hub_model_document.sage_maker_sdk_predictor_specifications
     default_payloads = {}
-    for alias, payload in hub_model_document.default_payloads.items():
-        default_payloads[alias] = walk_and_apply_json(payload.to_json(), camel_to_snake)
+    if hub_model_document.default_payloads is not None:
+        for alias, payload in hub_model_document.default_payloads.items():
+            default_payloads[alias] = walk_and_apply_json(payload.to_json(), camel_to_snake)
     specs["default_payloads"] = default_payloads
     specs["gated_bucket"] = hub_model_document.gated_bucket
     specs["inference_volume_size"] = hub_model_document.inference_volume_size
