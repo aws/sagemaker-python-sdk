@@ -113,7 +113,29 @@ def test_make_model_specs_from_describe_hub_content_response():
         "training_ecr_uri"
     ] = "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-training"
     ":2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+
     expected_specs = JumpStartModelSpecs(gemma_model_spec, is_hub_content=True)
+    expected_specs.training_artifact_key = (
+        "s3://jumpstart-cache-prod-us-west-2/" + expected_specs.training_artifact_key
+    )
+    expected_specs.hosting_artifact_key = (
+        "s3://jumpstart-cache-prod-us-west-2/" + expected_specs.hosting_artifact_key
+    )
+    expected_specs.hosting_prepacked_artifact_key = (
+        "s3://jumpstart-cache-prod-us-west-2/" + expected_specs.hosting_prepacked_artifact_key
+    )
+    expected_specs.training_prepacked_script_key = (
+        "s3://jumpstart-cache-prod-us-west-2/" + expected_specs.training_prepacked_script_key
+    )
+    expected_specs.hosting_eula_key = (
+        "s3://jumpstart-cache-prod-us-west-2/" + expected_specs.hosting_eula_key
+    )
+    expected_specs.training_script_key = (
+        "s3://jumpstart-cache-prod-us-west-2/" + expected_specs.training_script_key
+    )
+    expected_specs.hosting_script_key = (
+        "s3://jumpstart-cache-prod-us-west-2/" + expected_specs.hosting_script_key
+    )
 
     expected_specs.hosting_instance_type_variants = {
         "regional_aliases": None,

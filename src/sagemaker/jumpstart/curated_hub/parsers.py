@@ -22,7 +22,6 @@ from sagemaker.jumpstart.curated_hub.types import (
 from sagemaker.jumpstart.curated_hub.utils import get_data_location_uri
 from sagemaker.jumpstart.enums import ModelSpecKwargType, NamingConventionType, JumpStartScriptScope
 from sagemaker import image_uris
-from sagemaker.s3 import parse_s3_url
 from sagemaker.jumpstart.types import (
     JumpStartModelSpecs,
     HubContentType,
@@ -161,14 +160,8 @@ def make_model_specs_from_describe_hub_content_response(
         hub_model_document.incremental_training_supported
     )
     specs["hosting_ecr_uri"] = hub_model_document.hosting_ecr_uri
-    hosting_artifact_bucket, hosting_artifact_key = parse_s3_url(  # pylint: disable=unused-variable
-        hub_model_document.hosting_artifact_uri
-    )
-    specs["hosting_artifact_key"] = hosting_artifact_key
-    hosting_script_bucket, hosting_script_key = parse_s3_url(  # pylint: disable=unused-variable
-        hub_model_document.hosting_script_uri
-    )
-    specs["hosting_script_key"] = hosting_script_key
+    specs["hosting_artifact_key"] = hub_model_document.hosting_artifact_uri
+    specs["hosting_script_key"] = hub_model_document.hosting_script_uri
     specs["inference_environment_variables"] = hub_model_document.inference_environment_variables
     specs["inference_vulnerable"] = False
     specs["inference_dependencies"] = hub_model_document.inference_dependencies
@@ -190,13 +183,7 @@ def make_model_specs_from_describe_hub_content_response(
 
     specs["hosting_prepacked_artifact_key"] = None
     if hub_model_document.hosting_prepacked_artifact_uri is not None:
-        (
-            hosting_prepacked_artifact_bucket,  # pylint: disable=unused-variable
-            hosting_prepacked_artifact_key,
-        ) = parse_s3_url(
-            hub_model_document.hosting_prepacked_artifact_uri
-        )
-        specs["hosting_prepacked_artifact_key"] = hosting_prepacked_artifact_key
+        specs["hosting_prepacked_artifact_key"] = hub_model_document.hosting_prepacked_artifact_uri
         specs[
             "hosting_prepacked_artifact_version"
         ] = hub_model_document.hosting_prepacked_artifact_version
@@ -225,10 +212,7 @@ def make_model_specs_from_describe_hub_content_response(
 
     specs["hosting_eula_key"] = None
     if hub_model_document.hosting_eula_uri is not None:
-        hosting_eula_bucket, hosting_eula_key = parse_s3_url(  # pylint: disable=unused-variable
-            hub_model_document.hosting_eula_uri
-        )
-        specs["hosting_eula_key"] = hosting_eula_key
+        specs["hosting_eula_key"] = hub_model_document.hosting_eula_uri
 
     if hub_model_document.hosting_model_package_arn:
         specs["hosting_model_package_arns"] = {region: hub_model_document.hosting_model_package_arn}
@@ -249,37 +233,20 @@ def make_model_specs_from_describe_hub_content_response(
         specs["metrics"] = hub_model_document.training_metrics
         specs["training_prepacked_script_key"] = None
         if hub_model_document.training_prepacked_script_uri is not None:
-            (
-                training_prepacked_script_bucket,  # pylint: disable=unused-variable
-                training_prepacked_script_key,
-            ) = parse_s3_url(
-                hub_model_document.training_prepacked_script_uri
-            )
-            specs["training_prepacked_script_key"] = training_prepacked_script_key
+            specs[
+                "training_prepacked_script_key"
+            ] = hub_model_document.training_prepacked_script_uri
         specs[
             "training_instance_type_variants"
         ] = hub_model_document.training_instance_type_variants
 
-        specs["training_ecr_uri"] = hub_model_document.training_ecr_uri
-        (
-            training_artifact_bucket,  # pylint: disable=unused-variable
-            training_artifact_key,
-        ) = parse_s3_url(
-            hub_model_document.training_artifact_uri
-        )
         specs["training_dependencies"] = hub_model_document.training_dependencies
-        specs["training_artifact_key"] = training_artifact_key
+        specs["training_ecr_uri"] = hub_model_document.training_ecr_uri
+        specs["training_artifact_key"] = hub_model_document.training_artifact_uri
         specs[
             "training_prepacked_script_version"
         ] = hub_model_document.training_prepacked_script_version
-        training_script_key = hub_model_document.training_script_uri
-        (
-            training_script_bucket,  # pylint: disable=unused-variable
-            training_script_key,
-        ) = parse_s3_url(
-            hub_model_document.training_script_uri
-        )
-        specs["training_script_key"] = training_script_key
+        specs["training_script_key"] = hub_model_document.training_script_uri
 
         specs["hyperparameters"] = hub_model_document.hyperparameters
         specs["training_volume_size"] = hub_model_document.training_volume_size

@@ -1095,7 +1095,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         self.hosting_prepacked_artifact_key: Optional[str] = json_obj.get(
             "hosting_prepacked_artifact_key"
         )
-        
+
         if json_obj.get("training_prepacked_script_version"):
             self.training_prepacked_script_version: Optional[str] = json_obj.get(
                 "training_prepacked_script_version"
@@ -1104,7 +1104,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
             self.hosting_prepacked_artifact_version: Optional[str] = json_obj.get(
                 "hosting_prepacked_artifact_version"
             )
-        
+
         self.model_kwargs = deepcopy(json_obj.get("model_kwargs", {}))
         self.deploy_kwargs = deepcopy(json_obj.get("deploy_kwargs", {}))
         self.predictor_specs: Optional[JumpStartPredictorSpecs] = (
