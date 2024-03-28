@@ -160,8 +160,16 @@ def test_gated_model_training_v2(setup):
         }
     )
 
+    # test that we can create a JumpStartEstimator from existing job with `attach`
+    attached_estimator = JumpStartEstimator.attach(
+        training_job_name=estimator.latest_training_job.name,
+        model_id=model_id,
+        model_version=model_version,
+        sagemaker_session=get_sm_session(),
+    )
+
     # uses ml.g5.2xlarge instance
-    predictor = estimator.deploy(
+    predictor = attached_estimator.deploy(
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
         role=get_sm_session().get_caller_identity_arn(),
         sagemaker_session=get_sm_session(),
@@ -172,7 +180,7 @@ def test_gated_model_training_v2(setup):
         "parameters": {"max_new_tokens": 256, "top_p": 0.9, "temperature": 0.6},
     }
 
-    response = predictor.predict(payload, custom_attributes="accept_eula=true")
+    response = predictor.predict(payload)
 
     assert response is not None
 
