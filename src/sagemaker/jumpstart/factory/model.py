@@ -609,8 +609,6 @@ def get_deploy_kwargs(
         resources=resources,
     )
 
-    print(f"Received deploy kwargs: {deploy_kwargs.__dict__}")
-
     deploy_kwargs = _add_sagemaker_session_to_kwargs(kwargs=deploy_kwargs)
 
     deploy_kwargs = _add_model_version_to_kwargs(kwargs=deploy_kwargs)
