@@ -160,9 +160,6 @@ def _retrieve_model_uri(
     elif model_scope == JumpStartScriptScope.TRAINING:
         model_artifact_key = _retrieve_training_artifact_key(model_specs, instance_type)
 
-    # this is the full arn for HubContent
-    if hub_arn:
-        return model_artifact_key
 
     default_jumpstart_bucket: str = (
         get_jumpstart_gated_content_bucket(region)
