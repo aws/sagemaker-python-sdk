@@ -97,6 +97,7 @@ def _retrieve_default_environment_variables(
                     environment_variable.default
                 )
 
+
     if instance_type:
         if script == JumpStartScriptScope.INFERENCE and getattr(
             model_specs, "hosting_instance_type_variants", None
@@ -131,6 +132,7 @@ def _retrieve_default_environment_variables(
             gated_model_env_var: Optional[str] = retrieve_gated_env_var_for_instance_type(
                 instance_type
             )
+
 
             if gated_model_env_var is None and model_specs.is_gated_model():
                 possible_env_vars: Set[str] = {
@@ -227,4 +229,5 @@ def _retrieve_gated_model_uri_env_var_value(
     if s3_key is None:
         return None
 
-    return f"s3://{get_jumpstart_gated_content_bucket(region)}/{s3_key}"
+    return f"s3://jumpstart-private-cache-beta-us-west-2/{s3_key}"
+    # return f"s3://{get_jumpstart_gated_content_bucket(region)}/{s3_key}"
