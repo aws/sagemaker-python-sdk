@@ -263,24 +263,3 @@ def _more_performant(best_tuned_configuration: list, tuned_configuration: list) 
             return True
         return False
     return tuned_avg_latency <= best_avg_latency
-
-
-def sharded_supported(model_id: str, config_dict: dict) -> bool:
-    """Check if sharded is supported for this ``Model``"""
-    model_type = config_dict.get("model_type", None)
-
-    if model_type is None:
-        return False
-
-    if model_id.startswith("facebook/galactica"):
-        return True
-
-    if model_type in ["bloom", "mpt", "ssm", "gpt_neox", "phi", "phi-msft", "opt", "t5"]:
-        return True
-
-    if model_type in ["RefinedWeb", "RefinedWebModel", "falcon"] and not config_dict.get(
-        "alibi", False
-    ):
-        return True
-
-    return False

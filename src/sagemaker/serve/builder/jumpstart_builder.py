@@ -43,7 +43,6 @@ from sagemaker.serve.utils.local_hardware import (
 from sagemaker.serve.utils.telemetry_logger import _capture_telemetry
 from sagemaker.serve.utils.tuning import (
     _pretty_print_benchmark_results,
-    sharded_supported,
     _serial_benchmark,
     _concurrent_benchmark,
     _more_performant,
@@ -277,15 +276,6 @@ class JumpStart(ABC):
         admissible_tensor_parallel_degrees = _get_admissible_tensor_parallel_degrees(
             self.js_model_config
         )
-
-        if len(admissible_tensor_parallel_degrees) > 1 and not sharded_supported(
-            self.model, self.js_model_config
-        ):
-            admissible_tensor_parallel_degrees = [1]
-            logger.warning(
-                "Sharded across multiple GPUs is not supported for this model. "
-                "Model can only be sharded across [1] GPU"
-            )
 
         benchmark_results = {}
         best_tuned_combination = None
