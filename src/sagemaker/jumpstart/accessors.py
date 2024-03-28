@@ -22,7 +22,7 @@ from sagemaker.jumpstart.enums import JumpStartModelType
 from sagemaker.jumpstart import cache
 from sagemaker.jumpstart.curated_hub.utils import construct_hub_model_arn_from_inputs
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
-
+from sagemaker.session import Session
 
 class SageMakerSettings(object):
     """Static class for storing the SageMaker settings."""
@@ -256,6 +256,7 @@ class JumpStartModelsAccessor(object):
         version: str,
         hub_arn: Optional[str] = None,
         s3_client: Optional[boto3.client] = None,
+        sagemaker_session: Optional[Session] = None,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
     ) -> JumpStartModelSpecs:
         """Returns model specs from JumpStart models cache.
@@ -271,6 +272,8 @@ class JumpStartModelsAccessor(object):
         additional_kwargs = {}
         if s3_client is not None:
             additional_kwargs.update({"s3_client": s3_client})
+        if sagemaker_session is not None:
+            additional_kwargs.update({"sagemaker_session": sagemaker_session})
 
         cache_kwargs = JumpStartModelsAccessor._validate_and_mutate_region_cache_kwargs(
             {**JumpStartModelsAccessor._cache_kwargs, **additional_kwargs}

@@ -613,6 +613,7 @@ def verify_model_region_and_return_specs(
         hub_arn=hub_arn,
         version=version,
         s3_client=sagemaker_session.s3_client,
+        sagemaker_session=sagemaker_session,
         model_type=model_type,
     )
 
