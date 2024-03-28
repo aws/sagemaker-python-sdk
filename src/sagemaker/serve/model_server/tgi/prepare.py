@@ -13,6 +13,8 @@
 """Prepare TgiModel for Deployment"""
 
 from __future__ import absolute_import
+
+import json
 import tarfile
 import logging
 from typing import List
@@ -32,7 +34,7 @@ def _extract_js_resource(js_model_dir: str, code_dir: Path, js_id: str):
         custom_extractall_tarfile(resources, code_dir)
 
 
-def _copy_jumpstart_artifacts(model_data: str, js_id: str, code_dir: Path) -> bool:
+def _copy_jumpstart_artifacts(model_data: str, js_id: str, code_dir: Path) -> tuple:
     """Copy the associated JumpStart Resource into the code directory"""
     logger.info("Downloading JumpStart artifacts from S3...")
 
@@ -56,7 +58,13 @@ def _copy_jumpstart_artifacts(model_data: str, js_id: str, code_dir: Path) -> bo
     else:
         raise ValueError("JumpStart model data compression format is unsupported: %s", model_data)
 
-    return True
+    config_json_file = code_dir.joinpath("config.json")
+    hf_model_config = None
+    if config_json_file.is_file():
+        with open(str(config_json_file)) as config_json:
+            hf_model_config = json.load(config_json)
+
+    return (hf_model_config, True)
 
 
 def _create_dir_structure(model_path: str) -> tuple:
@@ -82,7 +90,7 @@ def prepare_tgi_js_resources(
     shared_libs: List[str] = None,
     dependencies: str = None,
     model_data: str = None,
-) -> bool:
+) -> tuple:
     """Prepare serving when a JumpStart model id is given
 
     Args:
