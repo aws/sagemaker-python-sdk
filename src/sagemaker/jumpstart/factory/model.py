@@ -144,6 +144,7 @@ def _add_sagemaker_session_to_kwargs(
     kwargs: Union[JumpStartModelInitKwargs, JumpStartModelDeployKwargs]
 ) -> JumpStartModelInitKwargs:
     """Sets session in kwargs based on default or override, returns full kwargs."""
+    print(f"Setting sagemaker client to: {kwargs.sagemaker_session.sagemaker_client.__dict__}")
     kwargs.sagemaker_session = kwargs.sagemaker_session or DEFAULT_JUMPSTART_SAGEMAKER_SESSION
     return kwargs
 
@@ -609,6 +610,8 @@ def get_deploy_kwargs(
         resources=resources,
     )
 
+    print(f"Received deploy kwargs: {deploy_kwargs.__dict__}")
+
     deploy_kwargs = _add_sagemaker_session_to_kwargs(kwargs=deploy_kwargs)
 
     deploy_kwargs = _add_model_version_to_kwargs(kwargs=deploy_kwargs)
@@ -781,6 +784,8 @@ def get_init_kwargs(
         training_instance_type=training_instance_type,
         resources=resources,
     )
+
+    print(f"Received init kwargs: {model_init_kwargs.__dict__}")
 
     model_init_kwargs = _add_model_version_to_kwargs(kwargs=model_init_kwargs)
 
