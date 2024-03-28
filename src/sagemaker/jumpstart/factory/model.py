@@ -144,7 +144,6 @@ def _add_sagemaker_session_to_kwargs(
     kwargs: Union[JumpStartModelInitKwargs, JumpStartModelDeployKwargs]
 ) -> JumpStartModelInitKwargs:
     """Sets session in kwargs based on default or override, returns full kwargs."""
-    print(f"Setting sagemaker client to: {kwargs.sagemaker_session.sagemaker_client.__dict__}")
     kwargs.sagemaker_session = kwargs.sagemaker_session or DEFAULT_JUMPSTART_SAGEMAKER_SESSION
     return kwargs
 
