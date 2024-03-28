@@ -511,10 +511,14 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
         aliases = self.regional_aliases.get(region, {})
         variants = {}
         for instance_name, properties in self.variants.items():
+            instance_variant_properties = {}
             if properties.get("regional_properties") is not None:
-                variants.update({instance_name: properties.get("regional_properties")})
+                instance_variant_properties.update(properties.get("regional_properties"))
             if properties.get("properties") is not None:
-                variants.update({instance_name: properties.get("properties")})
+                instance_variant_properties.update(properties.get("properties"))
+            
+            if instance_variant_properties:
+                variants.update({instance_name: {"properties": instance_variant_properties}})
         return {"Aliases": aliases, "Variants": variants}
 
     def get_instance_specific_metric_definitions(
