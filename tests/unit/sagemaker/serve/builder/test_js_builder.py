@@ -135,6 +135,61 @@ class TestJumpStartBuilder(unittest.TestCase):
     )
     @patch(
         "sagemaker.serve.builder.jumpstart_builder.prepare_tgi_js_resources",
+        return_value=({"model_type": "sharding_not_supported", "n_head": 71}, True),
+    )
+    @patch("sagemaker.serve.builder.jumpstart_builder._get_ram_usage_mb", return_value=1024)
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder._get_nb_instance", return_value="ml.g5.24xlarge"
+    )
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder._get_admissible_tensor_parallel_degrees",
+        return_value=[4, 2, 1],
+    )
+    @patch(
+        "sagemaker.serve.utils.tuning._serial_benchmark",
+        side_effect=[(5, 5, 25), (5.4, 5.4, 20), (5.2, 5.2, 15)],
+    )
+    @patch(
+        "sagemaker.serve.utils.tuning._concurrent_benchmark",
+        side_effect=[(0.9, 1), (0.10, 4), (0.13, 2)],
+    )
+    def test_tune_for_tgi_js_local_container_sharding_not_supported(
+        self,
+        mock_concurrent_benchmarks,
+        mock_serial_benchmarks,
+        mock_admissible_tensor_parallel_degrees,
+        mock_get_nb_instance,
+        mock_get_ram_usage_mb,
+        mock_prepare_for_tgi,
+        mock_pre_trained_model,
+        mock_is_jumpstart_model,
+        mock_telemetry,
+    ):
+        builder = ModelBuilder(
+            model=mock_model_id, schema_builder=mock_schema_builder, mode=Mode.LOCAL_CONTAINER
+        )
+
+        mock_pre_trained_model.return_value.image_uri = mock_tgi_image_uri
+
+        model = builder.build()
+        builder.serve_settings.telemetry_opt_out = True
+
+        mock_pre_trained_model.return_value.env = mock_tgi_model_serving_properties
+
+        tuned_model = model.tune()
+        assert tuned_model.env == mock_tgi_most_performant_model_serving_properties
+
+    @patch("sagemaker.serve.builder.jumpstart_builder._capture_telemetry", side_effect=None)
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_jumpstart_model_id",
+        return_value=True,
+    )
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._create_pre_trained_js_model",
+        return_value=MagicMock(),
+    )
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.prepare_tgi_js_resources",
         return_value=({"model_type": "t5", "n_head": 71}, True),
     )
     @patch("sagemaker.serve.builder.jumpstart_builder._get_ram_usage_mb", return_value=1024)
@@ -334,38 +389,6 @@ class TestJumpStartBuilder(unittest.TestCase):
         return_value=MagicMock(),
     )
     @patch(
-        "sagemaker.serve.builder.jumpstart_builder.prepare_tgi_js_resources",
-        return_value=({"model_type": "t5", "n_head": 71}, True),
-    )
-    def test_tune_for_tgi_js_endpoint_mode_ex(
-        self,
-        mock_prepare_for_tgi,
-        mock_pre_trained_model,
-        mock_is_jumpstart_model,
-        mock_telemetry,
-    ):
-        builder = ModelBuilder(
-            model=mock_model_id, schema_builder=mock_schema_builder, mode=Mode.SAGEMAKER_ENDPOINT
-        )
-
-        mock_pre_trained_model.return_value.image_uri = mock_tgi_image_uri
-
-        model = builder.build()
-        builder.serve_settings.telemetry_opt_out = True
-
-        tuned_model = model.tune()
-        assert tuned_model == model
-
-    @patch("sagemaker.serve.builder.jumpstart_builder._capture_telemetry", side_effect=None)
-    @patch(
-        "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_jumpstart_model_id",
-        return_value=True,
-    )
-    @patch(
-        "sagemaker.serve.builder.jumpstart_builder.JumpStart._create_pre_trained_js_model",
-        return_value=MagicMock(),
-    )
-    @patch(
         "sagemaker.serve.builder.jumpstart_builder.prepare_djl_js_resources",
         return_value=(
             mock_set_serving_properties,
@@ -470,3 +493,35 @@ class TestJumpStartBuilder(unittest.TestCase):
 
         tuned_model = model.tune()
         assert tuned_model.env == mock_djl_model_serving_properties
+
+    @patch("sagemaker.serve.builder.jumpstart_builder._capture_telemetry", side_effect=None)
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_jumpstart_model_id",
+        return_value=True,
+    )
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._create_pre_trained_js_model",
+        return_value=MagicMock(),
+    )
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.prepare_tgi_js_resources",
+        return_value=({"model_type": "t5", "n_head": 71}, True),
+    )
+    def test_tune_for_djl_js_endpoint_mode_ex(
+        self,
+        mock_prepare_for_tgi,
+        mock_pre_trained_model,
+        mock_is_jumpstart_model,
+        mock_telemetry,
+    ):
+        builder = ModelBuilder(
+            model=mock_model_id, schema_builder=mock_schema_builder, mode=Mode.SAGEMAKER_ENDPOINT
+        )
+
+        mock_pre_trained_model.return_value.image_uri = mock_djl_image_uri
+
+        model = builder.build()
+        builder.serve_settings.telemetry_opt_out = True
+
+        tuned_model = model.tune()
+        assert tuned_model == model

@@ -46,6 +46,7 @@ from sagemaker.serve.utils.tuning import (
     _serial_benchmark,
     _concurrent_benchmark,
     _more_performant,
+    _sharded_supported,
 )
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.base_predictor import PredictorBase
@@ -253,10 +254,11 @@ class JumpStart(ABC):
 
         self.pysdk_model.env.update(env)
 
-    def _tune_for_js(self, max_tuning_duration: int = 1800):
+    def _tune_for_js(self, sharded_supported: bool, max_tuning_duration: int = 1800):
         """Tune for Jumpstart Models in Local Mode.
 
         Args:
+            sharded_supported (bool): Indicates whether sharding is supported by this ``Model``
             max_tuning_duration (int): The maximum timeout to deploy this ``Model`` locally.
                 Default: ``1800``
         returns:
@@ -276,6 +278,13 @@ class JumpStart(ABC):
         admissible_tensor_parallel_degrees = _get_admissible_tensor_parallel_degrees(
             self.js_model_config
         )
+
+        if len(admissible_tensor_parallel_degrees) > 1 and not sharded_supported:
+            admissible_tensor_parallel_degrees = [1]
+            logger.warning(
+                "Sharding across multiple GPUs is not supported for this model. "
+                "Model can only be sharded across [1] GPU"
+            )
 
         benchmark_results = {}
         best_tuned_combination = None
@@ -412,12 +421,15 @@ class JumpStart(ABC):
     @_capture_telemetry("djl_jumpstart.tune")
     def tune_for_djl_jumpstart(self, max_tuning_duration: int = 1800):
         """Tune for Jumpstart Models with DJL DLC"""
-        return self._tune_for_js(max_tuning_duration=max_tuning_duration)
+        return self._tune_for_js(sharded_supported=True, max_tuning_duration=max_tuning_duration)
 
     @_capture_telemetry("tgi_jumpstart.tune")
     def tune_for_tgi_jumpstart(self, max_tuning_duration: int = 1800):
         """Tune for Jumpstart Models with TGI DLC"""
-        return self._tune_for_js(max_tuning_duration=max_tuning_duration)
+        sharded_supported = _sharded_supported(self.model, self.js_model_config)
+        return self._tune_for_js(
+            sharded_supported=sharded_supported, max_tuning_duration=max_tuning_duration
+        )
 
     def _build_for_jumpstart(self):
         """Placeholder docstring"""
