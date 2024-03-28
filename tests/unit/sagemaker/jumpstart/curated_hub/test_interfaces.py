@@ -90,7 +90,7 @@ def test_hub_content_document_from_json_obj():
     assert gemma_model_document.hosting_use_script_uri is False
     assert (
         gemma_model_document.hosting_eula_uri
-        == "s3://jumpstart-cache-prod-us-west-2/huggingface-llm/fmhMetadata/terms/gemmaTerms.txt"
+        == "s3://jumpstart-cache-prod-us-west-2/fmhMetadata/terms/gemmaTerms.txt"
     )
     assert (
         gemma_model_document.training_ecr_uri
@@ -212,7 +212,7 @@ def test_hub_content_document_from_json_obj():
         ),
         JumpStartHyperparameter(
             {
-                "Name": "quant_Type",
+                "Name": "quant_type",
                 "Type": "text",
                 "Default": "nf4",
                 "Options": ["fp4", "nf4"],

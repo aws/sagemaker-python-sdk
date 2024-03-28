@@ -516,7 +516,7 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
                 instance_variant_properties.update(properties.get("regional_properties"))
             if properties.get("properties") is not None:
                 instance_variant_properties.update(properties.get("properties"))
-            
+
             if instance_variant_properties:
                 variants.update({instance_name: {"properties": instance_variant_properties}})
         return {"Aliases": aliases, "Variants": variants}
@@ -1095,14 +1095,16 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         self.hosting_prepacked_artifact_key: Optional[str] = json_obj.get(
             "hosting_prepacked_artifact_key"
         )
-        # New fields required for Hub model.
-        if self._is_hub_content:
+        
+        if json_obj.get("training_prepacked_script_version"):
             self.training_prepacked_script_version: Optional[str] = json_obj.get(
                 "training_prepacked_script_version"
             )
+        if json_obj.get("hosting_prepacked_artifact_version"):
             self.hosting_prepacked_artifact_version: Optional[str] = json_obj.get(
                 "hosting_prepacked_artifact_version"
             )
+        
         self.model_kwargs = deepcopy(json_obj.get("model_kwargs", {}))
         self.deploy_kwargs = deepcopy(json_obj.get("deploy_kwargs", {}))
         self.predictor_specs: Optional[JumpStartPredictorSpecs] = (
@@ -1146,6 +1148,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
                     if "training_ecr_specs" in json_obj
                     else None
                 )
+                self._non_serializable_slots.append("training_ecr_uri")
             self.training_artifact_key: str = json_obj["training_artifact_key"]
             self.training_script_key: str = json_obj["training_script_key"]
             hyperparameters: Any = json_obj.get("hyperparameters")

@@ -8428,7 +8428,7 @@ HUB_MODEL_DOCUMENT_DICTS = {
         "HostingPrepackedArtifactUri": "s3://jumpstart-cache-prod-us-west-2/huggingface-llm/huggingface-llm-gemma-2b-instruct/artifacts/inference-prepack/v1.0.0/",  # noqa: E501
         "HostingPrepackedArtifactVersion": "1.0.0",
         "HostingUseScriptUri": False,
-        "HostingEulaUri": "s3://jumpstart-cache-prod-us-west-2/huggingface-llm/fmhMetadata/terms/gemmaTerms.txt",
+        "HostingEulaUri": "s3://jumpstart-cache-prod-us-west-2/fmhMetadata/terms/gemmaTerms.txt",
         "TrainingScriptUri": "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/huggingface/transfer_learning/llm/v1.1.1/sourcedir.tar.gz",  # noqa: E501
         "TrainingPrepackedScriptUri": "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/huggingface/transfer_learning/llm/prepack/v1.1.1/sourcedir.tar.gz",  # noqa: E501
         "TrainingPrepackedScriptVersion": "1.1.1",
@@ -8500,7 +8500,7 @@ HUB_MODEL_DOCUMENT_DICTS = {
                 "Scope": "algorithm",
             },
             {
-                "Name": "quant_Type",
+                "Name": "quant_type",
                 "Type": "text",
                 "Default": "nf4",
                 "Options": ["fp4", "nf4"],

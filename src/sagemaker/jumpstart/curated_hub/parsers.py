@@ -22,6 +22,7 @@ from sagemaker.jumpstart.curated_hub.types import (
 from sagemaker.jumpstart.curated_hub.utils import get_data_location_uri
 from sagemaker.jumpstart.enums import ModelSpecKwargType, NamingConventionType, JumpStartScriptScope
 from sagemaker import image_uris
+from sagemaker.s3 import parse_s3_url
 from sagemaker.jumpstart.types import (
     JumpStartModelSpecs,
     HubContentType,
@@ -39,6 +40,10 @@ from sagemaker.jumpstart.curated_hub.parser_utils import (
 )
 
 KEYS_TO_SKIP_UPPER_APPLICATION = ["aliases", "variants"]
+HUB_CONTENT_KWARG_KEY_TO_SPECS_KEY = {
+    "max_runtime_in_seconds": "max_run",
+    "MaxRuntimeInSeconds": "MaxRun",
+}
 
 
 def _to_json(dictionary: Dict[Any, Any]) -> Dict[Any, Any]:
@@ -125,6 +130,8 @@ def get_model_spec_kwargs_from_hub_model_document(
     keys = get_model_spec_arg_keys(arg_type, naming_convention=naming_convention)
     for k in keys:
         kwarg_value = hub_content_document.get(k, None)
+        if k in HUB_CONTENT_KWARG_KEY_TO_SPECS_KEY.keys():
+            k = HUB_CONTENT_KWARG_KEY_TO_SPECS_KEY[k]
         if kwarg_value is not None:
             kwargs[k] = kwarg_value
     return kwargs
@@ -154,11 +161,14 @@ def make_model_specs_from_describe_hub_content_response(
         hub_model_document.incremental_training_supported
     )
     specs["hosting_ecr_uri"] = hub_model_document.hosting_ecr_uri
-
-    hosting_artifact_key = hub_model_document.hosting_artifact_uri
-
+    hosting_artifact_bucket, hosting_artifact_key = parse_s3_url(  # pylint: disable=unused-variable
+        hub_model_document.hosting_artifact_uri
+    )
     specs["hosting_artifact_key"] = hosting_artifact_key
-    specs["hosting_script_key"] = hub_model_document.hosting_script_uri
+    hosting_script_bucket, hosting_script_key = parse_s3_url(  # pylint: disable=unused-variable
+        hub_model_document.hosting_script_uri
+    )
+    specs["hosting_script_key"] = hosting_script_key
     specs["inference_environment_variables"] = hub_model_document.inference_environment_variables
     specs["inference_vulnerable"] = False
     specs["inference_dependencies"] = hub_model_document.inference_dependencies
@@ -180,17 +190,25 @@ def make_model_specs_from_describe_hub_content_response(
 
     specs["hosting_prepacked_artifact_key"] = None
     if hub_model_document.hosting_prepacked_artifact_uri is not None:
-        hosting_prepacked_artifact_key = hub_model_document.hosting_prepacked_artifact_uri
+        (
+            hosting_prepacked_artifact_bucket,  # pylint: disable=unused-variable
+            hosting_prepacked_artifact_key,
+        ) = parse_s3_url(
+            hub_model_document.hosting_prepacked_artifact_uri
+        )
         specs["hosting_prepacked_artifact_key"] = hosting_prepacked_artifact_key
+        specs[
+            "hosting_prepacked_artifact_version"
+        ] = hub_model_document.hosting_prepacked_artifact_version
 
     specs["fit_kwargs"] = get_model_spec_kwargs_from_hub_model_document(
-        ModelSpecKwargType.FIT, hub_model_document.to_json()
+        ModelSpecKwargType.FIT, hub_model_document.to_json(), NamingConventionType.SNAKE_CASE
     )
     specs["model_kwargs"] = get_model_spec_kwargs_from_hub_model_document(
-        ModelSpecKwargType.MODEL, hub_model_document.to_json()
+        ModelSpecKwargType.MODEL, hub_model_document.to_json(), NamingConventionType.SNAKE_CASE
     )
     specs["deploy_kwargs"] = get_model_spec_kwargs_from_hub_model_document(
-        ModelSpecKwargType.DEPLOY, hub_model_document.to_json()
+        ModelSpecKwargType.DEPLOY, hub_model_document.to_json(), NamingConventionType.SNAKE_CASE
     )
 
     specs["predictor_specs"] = hub_model_document.sage_maker_sdk_predictor_specifications
@@ -207,7 +225,10 @@ def make_model_specs_from_describe_hub_content_response(
 
     specs["hosting_eula_key"] = None
     if hub_model_document.hosting_eula_uri is not None:
-        specs["hosting_eula_key"] = hub_model_document.hosting_eula_uri
+        hosting_eula_bucket, hosting_eula_key = parse_s3_url(  # pylint: disable=unused-variable
+            hub_model_document.hosting_eula_uri
+        )
+        specs["hosting_eula_key"] = hosting_eula_key
 
     if hub_model_document.hosting_model_package_arn:
         specs["hosting_model_package_arns"] = {region: hub_model_document.hosting_model_package_arn}
@@ -228,16 +249,36 @@ def make_model_specs_from_describe_hub_content_response(
         specs["metrics"] = hub_model_document.training_metrics
         specs["training_prepacked_script_key"] = None
         if hub_model_document.training_prepacked_script_uri is not None:
-            training_prepacked_script_key = hub_model_document.training_prepacked_script_uri
+            (
+                training_prepacked_script_bucket,  # pylint: disable=unused-variable
+                training_prepacked_script_key,
+            ) = parse_s3_url(
+                hub_model_document.training_prepacked_script_uri
+            )
             specs["training_prepacked_script_key"] = training_prepacked_script_key
         specs[
             "training_instance_type_variants"
         ] = hub_model_document.training_instance_type_variants
 
         specs["training_ecr_uri"] = hub_model_document.training_ecr_uri
-        training_artifact_key = hub_model_document.training_artifact_uri
+        (
+            training_artifact_bucket,  # pylint: disable=unused-variable
+            training_artifact_key,
+        ) = parse_s3_url(
+            hub_model_document.training_artifact_uri
+        )
+        specs["training_dependencies"] = hub_model_document.training_dependencies
         specs["training_artifact_key"] = training_artifact_key
+        specs[
+            "training_prepacked_script_version"
+        ] = hub_model_document.training_prepacked_script_version
         training_script_key = hub_model_document.training_script_uri
+        (
+            training_script_bucket,  # pylint: disable=unused-variable
+            training_script_key,
+        ) = parse_s3_url(
+            hub_model_document.training_script_uri
+        )
         specs["training_script_key"] = training_script_key
 
         specs["hyperparameters"] = hub_model_document.hyperparameters
@@ -246,7 +287,9 @@ def make_model_specs_from_describe_hub_content_response(
             "training_enable_network_isolation"
         ] = hub_model_document.training_enable_network_isolation
         specs["estimator_kwargs"] = get_model_spec_kwargs_from_hub_model_document(
-            ModelSpecKwargType.ESTIMATOR, hub_model_document.to_json()
+            ModelSpecKwargType.ESTIMATOR,
+            hub_model_document.to_json(),
+            NamingConventionType.SNAKE_CASE,
         )
     return JumpStartModelSpecs(_to_json(specs), is_hub_content=True)
 
@@ -311,7 +354,7 @@ def make_hub_model_document_from_specs(
         ),
         None,
     )
-    # document["HostingPrepackedArtifactVersion"] = model_specs.hosting_prepacked_artifact_version
+    document["HostingPrepackedArtifactVersion"] = model_specs.hosting_prepacked_artifact_version
     document["HostingUseScriptUri"] = model_specs.hosting_use_script_uri
     document["HostingEulaUri"] = next(
         (
@@ -414,7 +457,7 @@ def make_hub_model_document_from_specs(
             ),
             None,
         )
-        # document["TrainingPrepackedScriptVersion"] = model_specs.training_prepacked_script_version
+        document["TrainingPrepackedScriptVersion"] = model_specs.training_prepacked_script_version
         document["TrainingEcrUri"] = image_uris.retrieve(
             model_id=model_specs.model_id,
             model_version=model_specs.version,

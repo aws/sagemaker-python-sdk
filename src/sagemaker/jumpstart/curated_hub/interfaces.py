@@ -34,6 +34,12 @@ from sagemaker.jumpstart.curated_hub.parser_utils import (
 )
 
 KEYS_TO_SKIP_UPPER_APPLICATION = ["aliases", "variants"]
+KEYS_TO_INCLUDE_NONE_SERIALIZATION = [
+    "deprecate_warn_message",
+    "deprecated_message",
+    "model_subscription_link",
+    "usage_info_message",
+]
 
 
 class HubDataHolderType(JumpStartDataHolderType):
@@ -48,7 +54,7 @@ class HubDataHolderType(JumpStartDataHolderType):
             if hasattr(self, att):
                 cur_val = getattr(self, att)
                 # Do not serialize null values.
-                if cur_val is None:
+                if cur_val is None and cur_val not in KEYS_TO_INCLUDE_NONE_SERIALIZATION:
                     continue
                 if issubclass(type(cur_val), JumpStartDataHolderType):
                     json_obj[att] = cur_val.to_json()
@@ -176,7 +182,7 @@ class DescribeHubContentResponse(HubDataHolderType):
         self.hub_content_dependencies = []
         if "Dependencies" in json_obj:
             self.hub_content_dependencies: Optional[List[HubContentDependency]] = [
-                HubContentDependency(dep) for dep in json_obj.get(["Dependencies"])
+                HubContentDependency(dep) for dep in json_obj.get("Dependencies")
             ]
         self.hub_content_description: str = json_obj.get("HubContentDescription")
         self.hub_content_display_name: str = json_obj.get("HubContentDisplayName")
