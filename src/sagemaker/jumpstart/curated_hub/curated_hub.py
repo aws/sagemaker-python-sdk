@@ -230,13 +230,14 @@ class CuratedHub:
                 return True
         return False
 
-    def _get_latest_model_version(self, model_id: str) -> str:
+    def _get_latest_model_version(self, model_id: str, model_version: str = None) -> str:
         """Populates the lastest version of a model from specs no matter what is passed.
 
         Returns model ({ model_id: str, version: str })
         """
+        model_version = model_version if model_version else LATEST_VERSION_WILDCARD
         model_specs = utils.verify_model_region_and_return_specs(
-            model_id, LATEST_VERSION_WILDCARD, JumpStartScriptScope.INFERENCE, self.region
+            model_id, model_version, JumpStartScriptScope.INFERENCE, self.region
         )
         return model_specs.version
 
@@ -245,8 +246,8 @@ class CuratedHub:
 
         Returns model ({ model_id: str, version: str })
         """
-        model_version = self._get_latest_model_version(model["model_id"])
-        return {"model_id": model["model_id"], "version": model_version}
+        latest_model_version = self._get_latest_model_version(model["model_id"], model_version=model.get("version"))
+        return {"model_id": model["model_id"], "version": latest_model_version}
 
     def _get_jumpstart_models_in_hub(self) -> List[HubContentInfo]:
         """Retrieves all JumpStart models in a private Hub."""
@@ -348,10 +349,8 @@ class CuratedHub:
         # Retrieve latest version of unspecified JumpStart model versions
         model_version_list = []
         for model in model_list:
-            version = model.get("version")
-            if version == LATEST_VERSION_WILDCARD or version is None:
-                model = self._populate_latest_model_version(model)
-            model_version_list.append(JumpStartModelInfo(model["model_id"], model["version"]))
+            model_with_latest_version = self._populate_latest_model_version(model)
+            model_version_list.append(JumpStartModelInfo(model_with_latest_version["model_id"], model_with_latest_version["version"]))
 
         # TODO: Flip this logic. We should 1/ get Hub models that align with inputted
         # name/version, then 2. Check if they are JumpStart models. Elsewhere, we can
