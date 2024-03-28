@@ -1062,7 +1062,7 @@ class TestModelBuilder(unittest.TestCase):
 
         # HF Pipeline Tag
         mock_model_uris_retrieve.side_effect = KeyError
-        mock_llm_utils_json.load.return_value = {"pipeline_tag": "text-to-image"}
+        mock_llm_utils_json.load.return_value = {"pipeline_tag": "unsupported-task"}
         mock_llm_utils_urllib.request.Request.side_effect = Mock()
 
         # HF Model config
@@ -1075,7 +1075,8 @@ class TestModelBuilder(unittest.TestCase):
 
         self.assertRaisesRegex(
             TaskNotFoundException,
-            "Error Message: Schema builder for text-to-image could not be found.",
+            "Error Message: HuggingFace Schema builder samples for unsupported-task could not be found locally or via "
+            "remote.",
             lambda: model_builder.build(sagemaker_session=mock_session),
         )
 
@@ -1627,7 +1628,8 @@ class TestModelBuilder(unittest.TestCase):
 
             self.assertRaisesRegex(
                 TaskNotFoundException,
-                f"Error Message: Schema builder for {provided_task} could not be found.",
+                f"Error Message: HuggingFace Schema builder samples for {provided_task} could not be found locally or "
+                f"via remote.",
                 lambda: model_builder.build(sagemaker_session=mock_session),
             )
 
