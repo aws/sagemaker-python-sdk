@@ -232,4 +232,5 @@ def _retrieve_gated_model_uri_env_var_value(
     if s3_key is None:
         return None
 
-    return f"s3://{get_jumpstart_gated_content_bucket(region)}/{s3_key}"
+    return f"s3://jumpstart-private-cache-beta-us-west-2/{s3_key}"
+    # return f"s3://{get_jumpstart_gated_content_bucket(region)}/{s3_key}"
