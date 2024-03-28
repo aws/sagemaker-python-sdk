@@ -280,10 +280,6 @@ class JumpStartModelsAccessor(object):
         )
         JumpStartModelsAccessor._set_cache_and_region(region, cache_kwargs)
 
-        print(f"Cache is now set with the following session: {JumpStartModelsAccessor._cache._sagemaker_session.__dict__}")
-        print(f"Sagemaker client: {JumpStartModelsAccessor._cache._sagemaker_session.sagemaker_client.__dict__}")
-        print("\n\n\n")
-
         if hub_arn:
             hub_model_arn = construct_hub_model_arn_from_inputs(
                 hub_arn=hub_arn, model_name=model_id, version=version

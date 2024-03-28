@@ -171,7 +171,7 @@ def _retrieve_gated_model_uri_env_var_value(
     region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
-    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    sagemaker_session: Session = None,
     instance_type: Optional[str] = None,
 ) -> Optional[str]:
     """Retrieves the gated model env var URI matching the given arguments.
@@ -208,7 +208,10 @@ def _retrieve_gated_model_uri_env_var_value(
     """
 
     if region is None:
-        region = JUMPSTART_DEFAULT_REGION_NAME
+        if sagemaker_session is None or sagemaker_session.boto_region_name is None:
+            region = JUMPSTART_DEFAULT_REGION_NAME
+        else:
+            region = sagemaker_session.boto_region_name
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,

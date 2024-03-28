@@ -92,13 +92,9 @@ class CuratedHub:
         self.region = sagemaker_session.boto_region_name
         self._sagemaker_session = sagemaker_session
         self._default_thread_pool_size = 20
-        self._s3_client = self._get_s3_client()
+        self._s3_client = sagemaker_session.s3_client
         self.hub_storage_location = self._generate_hub_storage_location(bucket_name)
         self.studio_manifest = self._fetch_manifest_from_s3(JUMPSTART_DEFAULT_STUDIO_MANIFEST_KEY)
-
-    def _get_s3_client(self) -> BaseClient:
-        """Returns an S3 client used for creating a HubContentDocument."""
-        return boto3.client("s3", region_name=self.region)
 
     def _fetch_hub_storage_location(self) -> S3ObjectLocation:
         """Retrieves hub bucket name from Hub config if exists"""
@@ -405,6 +401,7 @@ class CuratedHub:
             scope=JumpStartScriptScope.INFERENCE,
             sagemaker_session=self._sagemaker_session,
         )
+
         studio_manifest_entry = self.studio_manifest.get(model.model_id)
         if not studio_manifest_entry:
             raise KeyError(f"Could not find model entry {model.model_id} in studio manifest.")
@@ -455,6 +452,7 @@ class CuratedHub:
             dest_location=dest_location,
             hub_content_dependencies=dependencies,
             region=self.region,
+            sagemaker_session=self._sagemaker_session
         )
 
         JUMPSTART_LOGGER.info("Importing %s/%s...", model.model_id, model.version)

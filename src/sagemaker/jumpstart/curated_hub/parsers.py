@@ -37,6 +37,8 @@ from sagemaker.jumpstart.curated_hub.parser_utils import (
     snake_to_upper_camel,
     walk_and_apply_json,
 )
+from sagemaker.session import Session
+
 
 KEYS_TO_SKIP_UPPER_APPLICATION = ["aliases", "variants"]
 HUB_CONTENT_KWARG_KEY_TO_SPECS_KEY = {
@@ -270,6 +272,7 @@ def make_hub_model_document_from_specs(
     dest_location: S3ObjectLocation,
     hub_content_dependencies: List[HubContentDependency],
     region: str,
+    sagemaker_session: Session,
 ) -> HubModelDocument:
     """Sets fields in HubModelDocument based on model and studio specs and dependencies."""
     document = {}
@@ -282,6 +285,7 @@ def make_hub_model_document_from_specs(
         instance_type=model_specs.default_inference_instance_type,
         image_scope=JumpStartScriptScope.INFERENCE,
         region=region,
+        sagemaker_session=sagemaker_session,
     )
     document["GatedBucket"] = model_specs.gated_bucket
     document["HostingArtifactUri"] = next(

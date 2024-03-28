@@ -785,8 +785,6 @@ def get_init_kwargs(
         resources=resources,
     )
 
-    print(f"Received init kwargs: {model_init_kwargs.__dict__}")
-
     model_init_kwargs = _add_model_version_to_kwargs(kwargs=model_init_kwargs)
 
     model_init_kwargs = _add_vulnerable_and_deprecated_status_to_kwargs(kwargs=model_init_kwargs)
