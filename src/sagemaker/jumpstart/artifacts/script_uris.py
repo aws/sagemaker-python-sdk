@@ -95,6 +95,9 @@ def _retrieve_script_uri(
             getattr(model_specs, "training_prepacked_script_key") or model_specs.training_script_key
         )
 
+    # this is the full ARN for HubContent
+    if hub_arn:
+        return model_script_key
 
     bucket = os.environ.get(
         ENV_VARIABLE_JUMPSTART_SCRIPT_ARTIFACT_BUCKET_OVERRIDE
