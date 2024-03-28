@@ -156,7 +156,7 @@ def _load_mlflow_model(deployment_flavor, model_dir):
     flavor_module_name, load_function_name = flavor_loader_map.get(
         deployment_flavor, ("mlflow.pyfunc", "load_model")
     )
-    logger.info(f"Using {flavor_module_name}{load_function_name} loading the model.")
+    logger.info(f"Using {flavor_module_name}.{load_function_name} loading the model.")
     flavor_module = importlib.import_module(flavor_module_name)
     load_model_function = getattr(flavor_module, load_function_name)
     return load_model_function(model_dir)
