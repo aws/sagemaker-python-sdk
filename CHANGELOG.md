@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.214.1 (2024-03-27)
+
+### Bug Fixes and Other Changes
+
+ * Update schema dependency version
+ * remove failing deprecated tests from suite
+ * update readme, trigger p311 tests
+ * JumpStart list models flaky tests
+ * fix badge in README
+
 ## v2.214.0 (2024-03-22)
 
 ### Features
