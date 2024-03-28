@@ -111,7 +111,9 @@ class TestJumpStartBuilder(unittest.TestCase):
         mock_telemetry,
     ):
         builder = ModelBuilder(
-            model=mock_model_id, schema_builder=mock_schema_builder, mode=Mode.LOCAL_CONTAINER
+            model="facebook/galactica-mock-model-id",
+            schema_builder=mock_schema_builder,
+            mode=Mode.LOCAL_CONTAINER,
         )
 
         mock_pre_trained_model.return_value.image_uri = mock_tgi_image_uri
@@ -240,7 +242,7 @@ class TestJumpStartBuilder(unittest.TestCase):
     )
     @patch(
         "sagemaker.serve.builder.jumpstart_builder.prepare_tgi_js_resources",
-        return_value=({"model_type": "t5", "n_head": 71}, True),
+        return_value=({"model_type": "RefinedWebModel", "n_head": 71}, True),
     )
     @patch("sagemaker.serve.builder.jumpstart_builder._get_ram_usage_mb", return_value=1024)
     @patch(
@@ -290,7 +292,7 @@ class TestJumpStartBuilder(unittest.TestCase):
     )
     @patch(
         "sagemaker.serve.builder.jumpstart_builder.prepare_tgi_js_resources",
-        return_value=({"model_type": "t5", "n_head": 71}, True),
+        return_value=({"n_head": 71}, True),
     )
     @patch("sagemaker.serve.builder.jumpstart_builder._get_ram_usage_mb", return_value=1024)
     @patch(
