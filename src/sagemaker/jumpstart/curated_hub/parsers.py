@@ -14,9 +14,14 @@
 from __future__ import absolute_import
 
 from typing import Any, Dict, List
+from sagemaker.jumpstart.curated_hub.types import (
+    FileInfo,
+    HubContentReferenceType,
+    S3ObjectLocation,
+)
+from sagemaker.jumpstart.curated_hub.utils import get_data_location_uri
 from sagemaker.jumpstart.enums import ModelSpecKwargType, NamingConventionType, JumpStartScriptScope
 from sagemaker import image_uris
-from sagemaker.s3 import s3_path_join, parse_s3_url
 from sagemaker.jumpstart.types import (
     JumpStartModelSpecs,
     HubContentType,
@@ -33,19 +38,29 @@ from sagemaker.jumpstart.curated_hub.parser_utils import (
     walk_and_apply_json,
 )
 
+KEYS_TO_SKIP_UPPER_APPLICATION = ["aliases", "variants"]
+HUB_CONTENT_KWARG_KEY_TO_SPECS_KEY = {
+    "max_runtime_in_seconds": "max_run",
+    "MaxRuntimeInSeconds": "MaxRun",
+}
+
 
 def _to_json(dictionary: Dict[Any, Any]) -> Dict[Any, Any]:
     """Convert a complex nested dictionary of JumpStartDataHolderType into json"""
     for key, value in dictionary.items():
         if issubclass(type(value), JumpStartDataHolderType):
-            dictionary[key] = walk_and_apply_json(value.to_json(), snake_to_upper_camel)
+            dictionary[key] = walk_and_apply_json(
+                value.to_json(), snake_to_upper_camel, KEYS_TO_SKIP_UPPER_APPLICATION
+            )
         elif isinstance(value, list):
             new_value = []
             for value_in_list in value:
                 new_value_in_list = value_in_list
                 if issubclass(type(value_in_list), JumpStartDataHolderType):
                     new_value_in_list = walk_and_apply_json(
-                        value_in_list.to_json(), snake_to_upper_camel
+                        value_in_list.to_json(),
+                        snake_to_upper_camel,
+                        KEYS_TO_SKIP_UPPER_APPLICATION,
                     )
                 new_value.append(new_value_in_list)
             dictionary[key] = new_value
@@ -53,7 +68,9 @@ def _to_json(dictionary: Dict[Any, Any]) -> Dict[Any, Any]:
             for key_in_dict, value_in_dict in value.items():
                 if issubclass(type(value_in_dict), JumpStartDataHolderType):
                     value[key_in_dict] = walk_and_apply_json(
-                        value_in_dict.to_json(), snake_to_upper_camel
+                        value_in_dict.to_json(),
+                        snake_to_upper_camel,
+                        KEYS_TO_SKIP_UPPER_APPLICATION,
                     )
     return dictionary
 
@@ -112,6 +129,8 @@ def get_model_spec_kwargs_from_hub_model_document(
     keys = get_model_spec_arg_keys(arg_type, naming_convention=naming_convention)
     for k in keys:
         kwarg_value = hub_content_document.get(k, None)
+        if k in HUB_CONTENT_KWARG_KEY_TO_SPECS_KEY.keys():
+            k = HUB_CONTENT_KWARG_KEY_TO_SPECS_KEY[k]
         if kwarg_value is not None:
             kwargs[k] = kwarg_value
     return kwargs
@@ -141,72 +160,49 @@ def make_model_specs_from_describe_hub_content_response(
         hub_model_document.incremental_training_supported
     )
     specs["hosting_ecr_uri"] = hub_model_document.hosting_ecr_uri
-
-    hosting_artifact_bucket, hosting_artifact_key = parse_s3_url(  # pylint: disable=unused-variable
-        hub_model_document.hosting_artifact_uri
-    )
-    specs["hosting_artifact_key"] = hosting_artifact_key
-    hosting_script_bucket, hosting_script_key = parse_s3_url(  # pylint: disable=unused-variable
-        hub_model_document.hosting_script_uri
-    )
-    specs["hosting_script_key"] = hosting_script_key
+    specs["hosting_artifact_key"] = hub_model_document.hosting_artifact_uri
+    specs["hosting_script_key"] = hub_model_document.hosting_script_uri
     specs["inference_environment_variables"] = hub_model_document.inference_environment_variables
     specs["inference_vulnerable"] = False
     specs["inference_dependencies"] = hub_model_document.inference_dependencies
     specs["inference_vulnerabilities"] = []
-    specs["training_vulnerable"] = False
-    specs["training_dependencies"] = hub_model_document.training_dependencies
-    specs["training_vulnerabilities"] = []
     specs["deprecated"] = False
     specs["deprecated_message"] = None
     specs["deprecate_warn_message"] = None
     specs["usage_info_message"] = None
     specs["default_inference_instance_type"] = hub_model_document.default_inference_instance_type
-    specs["default_training_instance_type"] = hub_model_document.default_training_instance_type
     specs[
         "supported_inference_instance_types"
     ] = hub_model_document.supported_inference_instance_types
     specs[
-        "supported_training_instance_types"
-    ] = hub_model_document.supported_training_instance_types
-    specs[
         "dynamic_container_deployment_supported"
     ] = hub_model_document.dynamic_container_deployment_supported
-    specs["hosting_resource_requirements"] = hub_model_document.hosting_resource_requirements
-    specs["metrics"] = hub_model_document.training_metrics
-    specs["training_prepacked_script_key"] = None
-    if hub_model_document.training_prepacked_script_uri is not None:
-        (
-            training_prepacked_script_bucket,  # pylint: disable=unused-variable
-            training_prepacked_script_key,
-        ) = parse_s3_url(hub_model_document.training_prepacked_script_uri)
-        specs["training_prepacked_script_key"] = training_prepacked_script_key
+    specs["hosting_resource_requirements"] = walk_and_apply_json(
+        hub_model_document.hosting_resource_requirements, camel_to_snake
+    )
 
     specs["hosting_prepacked_artifact_key"] = None
     if hub_model_document.hosting_prepacked_artifact_uri is not None:
-        (
-            hosting_prepacked_artifact_bucket,  # pylint: disable=unused-variable
-            hosting_prepacked_artifact_key,
-        ) = parse_s3_url(hub_model_document.hosting_prepacked_artifact_uri)
-        specs["hosting_prepacked_artifact_key"] = hosting_prepacked_artifact_key
+        specs["hosting_prepacked_artifact_key"] = hub_model_document.hosting_prepacked_artifact_uri
+        specs[
+            "hosting_prepacked_artifact_version"
+        ] = hub_model_document.hosting_prepacked_artifact_version
 
     specs["fit_kwargs"] = get_model_spec_kwargs_from_hub_model_document(
-        ModelSpecKwargType.FIT, hub_model_document.to_json()
+        ModelSpecKwargType.FIT, hub_model_document.to_json(), NamingConventionType.SNAKE_CASE
     )
     specs["model_kwargs"] = get_model_spec_kwargs_from_hub_model_document(
-        ModelSpecKwargType.MODEL, hub_model_document.to_json()
+        ModelSpecKwargType.MODEL, hub_model_document.to_json(), NamingConventionType.SNAKE_CASE
     )
     specs["deploy_kwargs"] = get_model_spec_kwargs_from_hub_model_document(
-        ModelSpecKwargType.DEPLOY, hub_model_document.to_json()
-    )
-    specs["estimator_kwargs"] = get_model_spec_kwargs_from_hub_model_document(
-        ModelSpecKwargType.ESTIMATOR, hub_model_document.to_json()
+        ModelSpecKwargType.DEPLOY, hub_model_document.to_json(), NamingConventionType.SNAKE_CASE
     )
 
     specs["predictor_specs"] = hub_model_document.sage_maker_sdk_predictor_specifications
     default_payloads = {}
-    for alias, payload in hub_model_document.default_payloads.items():
-        default_payloads[alias] = walk_and_apply_json(payload.to_json(), camel_to_snake)
+    if hub_model_document.default_payloads is not None:
+        for alias, payload in hub_model_document.default_payloads.items():
+            default_payloads[alias] = walk_and_apply_json(payload.to_json(), camel_to_snake)
     specs["default_payloads"] = default_payloads
     specs["gated_bucket"] = hub_model_document.gated_bucket
     specs["inference_volume_size"] = hub_model_document.inference_volume_size
@@ -217,10 +213,7 @@ def make_model_specs_from_describe_hub_content_response(
 
     specs["hosting_eula_key"] = None
     if hub_model_document.hosting_eula_uri is not None:
-        hosting_eula_bucket, hosting_eula_key = parse_s3_url(  # pylint: disable=unused-variable
-            hub_model_document.hosting_eula_uri
-        )
-        specs["hosting_eula_key"] = hosting_eula_key
+        specs["hosting_eula_key"] = hub_model_document.hosting_eula_uri
 
     if hub_model_document.hosting_model_package_arn:
         specs["hosting_model_package_arns"] = {region: hub_model_document.hosting_model_package_arn}
@@ -230,36 +223,51 @@ def make_model_specs_from_describe_hub_content_response(
     specs["hosting_instance_type_variants"] = hub_model_document.hosting_instance_type_variants
 
     if specs["training_supported"]:
+        if hub_model_document.training_model_package_artifact_uri:
+            specs["training_model_package_artifact_uris"] = {
+                region: hub_model_document.training_model_package_artifact_uri
+            }
+        specs["default_training_instance_type"] = hub_model_document.default_training_instance_type
+        specs[
+            "supported_training_instance_types"
+        ] = hub_model_document.supported_training_instance_types
+        specs["metrics"] = hub_model_document.training_metrics
+        specs["training_prepacked_script_key"] = None
+        if hub_model_document.training_prepacked_script_uri is not None:
+            specs[
+                "training_prepacked_script_key"
+            ] = hub_model_document.training_prepacked_script_uri
+        specs[
+            "training_instance_type_variants"
+        ] = hub_model_document.training_instance_type_variants
+
+        specs["training_dependencies"] = hub_model_document.training_dependencies
         specs["training_ecr_uri"] = hub_model_document.training_ecr_uri
-        (
-            training_artifact_bucket,  # pylint: disable=unused-variable
-            training_artifact_key,
-        ) = parse_s3_url(hub_model_document.training_artifact_uri)
-        specs["training_artifact_key"] = training_artifact_key
-        (
-            training_script_bucket,  # pylint: disable=unused-variable
-            training_script_key,
-        ) = parse_s3_url(hub_model_document.training_script_uri)
-        specs["training_script_key"] = training_script_key
+        specs["training_artifact_key"] = hub_model_document.training_artifact_uri
+        specs[
+            "training_prepacked_script_version"
+        ] = hub_model_document.training_prepacked_script_version
+        specs["training_script_key"] = hub_model_document.training_script_uri
 
         specs["hyperparameters"] = hub_model_document.hyperparameters
         specs["training_volume_size"] = hub_model_document.training_volume_size
         specs[
             "training_enable_network_isolation"
         ] = hub_model_document.training_enable_network_isolation
-        if hub_model_document.training_model_package_artifact_uri:
-            specs["training_model_package_artifact_uris"] = {
-                region: hub_model_document.training_model_package_artifact_uri
-            }
-        specs[
-            "training_instance_type_variants"
-        ] = hub_model_document.training_instance_type_variants
+        specs["estimator_kwargs"] = get_model_spec_kwargs_from_hub_model_document(
+            ModelSpecKwargType.ESTIMATOR,
+            hub_model_document.to_json(),
+            NamingConventionType.SNAKE_CASE,
+        )
     return JumpStartModelSpecs(_to_json(specs), is_hub_content=True)
 
 
 def make_hub_model_document_from_specs(
     model_specs: JumpStartModelSpecs,
+    studio_manifest_entry: Dict[str, Any],
     studio_specs: Dict[str, Any],
+    files: List[FileInfo],
+    dest_location: S3ObjectLocation,
     hub_content_dependencies: List[HubContentDependency],
     region: str,
 ) -> HubModelDocument:
@@ -276,40 +284,53 @@ def make_hub_model_document_from_specs(
         region=region,
     )
     document["GatedBucket"] = model_specs.gated_bucket
-    content_bucket = (
-        f"jumpstart-private-cache-prod-{region}"
-        if document["GatedBucket"]
-        else f"jumpstart-cache-prod-{region}"
-    )
-    document["HostingArtifactUri"] = s3_path_join(
-        "s3://", content_bucket, model_specs.hosting_artifact_key
+    document["HostingArtifactUri"] = next(
+        (
+            get_data_location_uri(file, dest_location, model_specs.gated_bucket)
+            for file in files
+            if file.reference_type is HubContentReferenceType.INFERENCE_ARTIFACT
+        ),
+        None,
     )
     document["HostingArtifactS3DataType"] = studio_specs.get("inferenceArtifactS3DataType")
     document["HostingArtifactCompressionType"] = studio_specs.get(
         "inferenceArtifactCompressionType"
     )
 
-    document["HostingScriptUri"] = s3_path_join(
-        "s3://", content_bucket, model_specs.hosting_script_key
+    document["HostingScriptUri"] = next(
+        (
+            get_data_location_uri(file, dest_location, model_specs.gated_bucket)
+            for file in files
+            if file.reference_type is HubContentReferenceType.INFERENCE_SCRIPT
+        ),
+        None,
     )
-    document["InferenceDependencies"] = model_specs.inference_dependencies
+    document["InferenceDependencies"] = list(
+        set(model_specs.inference_dependencies)
+    )  # ensure uniqueness
     document["InferenceEnvironmentVariables"] = model_specs.inference_environment_variables
     document["TrainingSupported"] = model_specs.training_supported
     document["IncrementalTrainingSupported"] = model_specs.incremental_training_supported
     document[
         "DynamicContainerDeploymentSupported"
     ] = model_specs.dynamic_container_deployment_supported
-    document["HostingPrepackedArtifactUri"] = (
-        s3_path_join("s3://", content_bucket, model_specs.hosting_prepacked_artifact_key)
-        if model_specs.hosting_prepacked_artifact_key is not None
-        else None
+    document["HostingPrepackedArtifactUri"] = next(
+        (
+            get_data_location_uri(file, dest_location, model_specs.gated_bucket)
+            for file in files
+            if file.reference_type is HubContentReferenceType.INFERENCE_ARTIFACT
+        ),
+        None,
     )
-    document["HostingPrepackedArtifactVersion"] = model_specs.hosting_prepacked_artifact_version
+    document["HostingPrepackedArtifactVersion"] = model_specs.hosting_prepacked_artifact_version if hasattr(model_specs, 'hosting_prepacked_artifact_version') else None
     document["HostingUseScriptUri"] = model_specs.hosting_use_script_uri
-    document["HostingEulaUri"] = (
-        s3_path_join("s3://", content_bucket, model_specs.hosting_eula_key)
-        if model_specs.hosting_eula_key is not None
-        else None
+    document["HostingEulaUri"] = next(
+        (
+            get_data_location_uri(file, dest_location, model_specs.gated_bucket)
+            for file in files
+            if file.reference_type is HubContentReferenceType.EULA
+        ),
+        None,
     )
     if model_specs.hosting_model_package_arns and region in model_specs.hosting_model_package_arns:
         document["HostingModelPackageArn"] = model_specs.hosting_model_package_arns[region]
@@ -319,49 +340,52 @@ def make_hub_model_document_from_specs(
     document["InferenceVolumeSize"] = model_specs.inference_volume_size
     document["InferenceEnableNetworkIsolation"] = model_specs.inference_enable_network_isolation
     document["ResourceNameBase"] = model_specs.resource_name_base
-    document["DefaultPayloads"] = {
-        alias: walk_and_apply_json(payload.to_json(), snake_to_upper_camel)
-        for alias, payload in model_specs.default_payloads.items()
-    }
+    if model_specs.default_payloads:
+        document["DefaultPayloads"] = {
+            alias: walk_and_apply_json(payload.to_json(), snake_to_upper_camel)
+            for alias, payload in model_specs.default_payloads.items()
+        }
     document["HostingResourceRequirements"] = model_specs.hosting_resource_requirements
     document[
         "HostingInstanceTypeVariants"
-    ] = model_specs.hosting_instance_type_variants.regionalize(
-        region
-    )  # pylint: disable=inconsistent-return-statements
-    default_training_dataset_key = studio_specs.get("defaultDataKey")
-    document["DefaultTrainingDatasetUri"] = (
-        s3_path_join("s3://", content_bucket, model_specs.hosting_prepacked_artifact_key)
-        if default_training_dataset_key
-        else None
+    ] = model_specs.hosting_instance_type_variants.regionalize(region)
+    document["DefaultTrainingDatasetUri"] = next(
+        (
+            get_data_location_uri(file, dest_location, model_specs.gated_bucket)
+            for file in files
+            if file.reference_type is HubContentReferenceType.DEFAULT_TRAINING_DATASET
+        ),
+        None,
     )
     document["FineTuningSupported"] = studio_specs.get("fineTuningSupported")
     document["ValidationSupported"] = studio_specs.get("validationSupported")
     document["MinStudioSdkVersion"] = studio_specs.get("minServerVersion")
     if studio_specs.get("notebookLocations"):
-        notebook_locations = studio_specs.get("notebookLocations")
         notebook_location_uris = {}
-        if notebook_locations.get("demoNotebook"):
-            notebook_location_uris["demo_notebook"] = s3_path_join(
-                "s3://", content_bucket, notebook_locations.get("demoNotebook")
-            )
-        if notebook_locations.get("modelFit"):
-            notebook_location_uris["model_fit"] = s3_path_join(
-                "s3://", content_bucket, notebook_locations.get("modelFit")
-            )
-        if notebook_locations.get("modelDeploy"):
-            notebook_location_uris["model_deploy"] = s3_path_join(
-                "s3://", content_bucket, notebook_locations.get("modelDeploy")
-            )
+        # if notebook_locations.get("demoNotebook"):
+        #     notebook_location_uris["demo_notebook"] = s3_path_join(
+        #         "s3://", content_bucket, notebook_locations.get("demoNotebook")
+        #     )
+        # if notebook_locations.get("modelFit"):
+        #     notebook_location_uris["model_fit"] = s3_path_join(
+        #         "s3://", content_bucket, notebook_locations.get("modelFit")
+        #     )
+        notebook_location_uris["model_deploy"] = next(
+            (
+                get_data_location_uri(file, dest_location, model_specs.gated_bucket)
+                for file in files
+                if file.reference_type is HubContentReferenceType.INFERENCE_NOTEBOOK
+            ),
+            None,
+        )
         document["NotebookLocationUris"] = notebook_location_uris
 
     document["ModelProviderIconUri"] = None  # Not needed for private beta.
 
-    # TODO: Fetch from studio manifest
-    # document["task"] = manifest.get("problemType")
-    # document["framework"] = manifest.get("framework")
-    # document["datatype"] = manifest.get("dataType")
-    # document["license"] = manifest.get("license")
+    document["Task"] = studio_manifest_entry.get("problemType")
+    document["Framework"] = studio_manifest_entry.get("framework")
+    document["Datatype"] = studio_manifest_entry.get("dataType")
+    document["License"] = studio_manifest_entry.get("license")
     document["ContextualHelp"] = studio_specs.get("contextualHelp")
 
     # Deploy kwargs
@@ -385,17 +409,23 @@ def make_hub_model_document_from_specs(
             walk_and_apply_json(param.to_json(), snake_to_upper_camel)
             for param in model_specs.hyperparameters
         ]
-        document["TrainingScriptUri"] = (
-            s3_path_join("s3://", content_bucket, model_specs.training_script_key)
-            if model_specs.training_script_key is not None
-            else None
+        document["TrainingScriptUri"] = next(
+            (
+                get_data_location_uri(file, dest_location, model_specs.gated_bucket)
+                for file in files
+                if file.reference_type is HubContentReferenceType.TRAINING_SCRIPT
+            ),
+            None,
         )
-        document["TrainingPrepackedScriptUri"] = (
-            s3_path_join("s3://", content_bucket, model_specs.training_prepacked_script_key)
-            if model_specs.training_prepacked_script_key is not None
-            else None
+        document["TrainingPrepackedScriptUri"] = next(
+            (
+                get_data_location_uri(file, dest_location, model_specs.gated_bucket)
+                for file in files
+                if file.reference_type is HubContentReferenceType.TRAINING_SCRIPT
+            ),
+            None,
         )
-        document["TrainingPrepackedScriptVersion"] = model_specs.training_prepacked_script_version
+        document["TrainingPrepackedScriptVersion"] = model_specs.training_prepacked_script_version if hasattr(model_specs, 'training_prepacked_script_version') else None
         document["TrainingEcrUri"] = image_uris.retrieve(
             model_id=model_specs.model_id,
             model_version=model_specs.version,
@@ -405,12 +435,17 @@ def make_hub_model_document_from_specs(
             region=region,
         )
         document["TrainingMetrics"] = model_specs.metrics
-        document["TrainingArtifactUri"] = (
-            s3_path_join("s3://", content_bucket, model_specs.training_artifact_key)
-            if model_specs.training_artifact_key is not None
-            else None
+        document["TrainingArtifactUri"] = next(
+            (
+                get_data_location_uri(file, dest_location, model_specs.gated_bucket)
+                for file in files
+                if file.reference_type is HubContentReferenceType.TRAINING_ARTIFACT
+            ),
+            None,
         )
-        document["Training_dependencies"] = model_specs.training_dependencies
+        document["TrainingDependencies"] = list(
+            set(model_specs.training_dependencies)
+        )  # Ensure uniqueness
         document["DefaultTrainingInstanceType"] = model_specs.default_training_instance_type
         document["SupportedTrainingInstanceTypes"] = model_specs.supported_training_instance_types
         document["TrainingVolumeSize"] = model_specs.training_volume_size
@@ -422,7 +457,7 @@ def make_hub_model_document_from_specs(
         )  # pylint: disable=inconsistent-return-statements
 
         # Estimator kwargs
-        document["Encrypt_inter_container_traffic"] = model_specs.estimator_kwargs.get(
+        document["EncryptInterContainerTraffic"] = model_specs.estimator_kwargs.get(
             "encrypt_inter_container_traffic"
         )
         document["MaxRuntimeInSeconds"] = model_specs.estimator_kwargs.get("max_run")

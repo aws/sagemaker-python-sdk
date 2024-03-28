@@ -41,15 +41,7 @@ def test_get_info_from_hub_resource_arn():
     )
 
     notebook_arn = "arn:aws:sagemaker:us-west-2:000000000000:hub-content/MockHub/Notebook/my-mock-notebook/1.0.2"
-    assert utils.get_info_from_hub_resource_arn(notebook_arn) == HubArnExtractedInfo(
-        partition="aws",
-        region="us-west-2",
-        account_id="000000000000",
-        hub_name="MockHub",
-        hub_content_type="Notebook",
-        hub_content_name="my-mock-notebook",
-        hub_content_version="1.0.2",
-    )
+    assert None is utils.get_info_from_hub_resource_arn(notebook_arn)
 
     hub_arn = "arn:aws:sagemaker:us-west-2:000000000000:hub/MockHub"
     assert utils.get_info_from_hub_resource_arn(hub_arn) == HubArnExtractedInfo(
@@ -148,6 +140,17 @@ def test_generate_hub_arn_for_init_kwargs():
     )
 
     assert utils.generate_hub_arn_for_init_kwargs(hub_arn, None, mock_custom_session) == hub_arn
+
+
+def test_generate_default_hub_bucket_name():
+    mock_sagemaker_session = Mock()
+    mock_sagemaker_session.account_id.return_value = "123456789123"
+    mock_sagemaker_session.boto_region_name = "us-east-1"
+
+    assert (
+        utils.generate_default_hub_bucket_name(sagemaker_session=mock_sagemaker_session)
+        == "sagemaker-hubs-us-east-1-123456789123"
+    )
 
 
 def test_create_hub_bucket_if_it_does_not_exist_hub_arn():

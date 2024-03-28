@@ -24,7 +24,6 @@ from packaging.version import Version
 
 from sagemaker.utils import TagsDict
 from sagemaker.session import Session
-from sagemaker.s3 import s3_path_join
 from sagemaker.jumpstart import utils
 from sagemaker.jumpstart.curated_hub.accessors import file_generator
 from sagemaker.jumpstart.curated_hub.accessors.multipartcopy import MultiPartCopyHandler
@@ -37,18 +36,21 @@ from sagemaker.jumpstart.curated_hub.sync.request import HubSyncRequestFactory
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    JUMPSTART_DEFAULT_STUDIO_MANIFEST_KEY,
     JUMPSTART_LOGGER,
+    STUDIO_MODEL_ID_KEY,
+    STUDIO_SPEC_PATH_KEY_IN_MANIFEST,
 )
 from sagemaker.jumpstart.types import (
     HubContentType,
-    JumpStartModelSpecs,
 )
 from sagemaker.jumpstart.curated_hub.utils import (
     create_hub_bucket_if_it_does_not_exist,
     generate_default_hub_bucket_name,
     create_s3_object_reference_from_uri,
-    get_jumpstart_model_and_version,
     find_deprecated_vulnerable_flags_for_hub_content,
+    is_curated_jumpstart_model,
+    is_gated_bucket,
 )
 from sagemaker.jumpstart.curated_hub.interfaces import (
     DescribeHubResponse,
@@ -58,6 +60,7 @@ from sagemaker.jumpstart.curated_hub.interfaces import (
     HubContentDependency,
 )
 from sagemaker.jumpstart.curated_hub.types import (
+    FileInfo,
     HubContentDependencyType,
     HubContentReferenceType,
     JumpStartModelInfo,
@@ -91,40 +94,49 @@ class CuratedHub:
         self._default_thread_pool_size = 20
         self._s3_client = self._get_s3_client()
         self.hub_storage_location = self._generate_hub_storage_location(bucket_name)
+        self.studio_manifest = self._fetch_manifest_from_s3(JUMPSTART_DEFAULT_STUDIO_MANIFEST_KEY)
 
     def _get_s3_client(self) -> BaseClient:
         """Returns an S3 client used for creating a HubContentDocument."""
         return boto3.client("s3", region_name=self.region)
 
-    def _fetch_hub_bucket_name(self) -> str:
+    def _fetch_hub_storage_location(self) -> S3ObjectLocation:
         """Retrieves hub bucket name from Hub config if exists"""
         try:
             hub_response = self._sagemaker_session.describe_hub(hub_name=self.hub_name)
             hub_output_location = hub_response["S3StorageConfig"].get("S3OutputPath")
+
             if hub_output_location:
                 location = create_s3_object_reference_from_uri(hub_output_location)
-                return location.bucket
+                return location
             default_bucket_name = generate_default_hub_bucket_name(self._sagemaker_session)
+            curr_timestamp = datetime.now().timestamp()
             JUMPSTART_LOGGER.warning(
                 "There is not a Hub bucket associated with %s. Using %s",
                 self.hub_name,
                 default_bucket_name,
             )
-            return default_bucket_name
+            return S3ObjectLocation(
+                bucket=default_bucket_name, key=f"{self.hub_name}-{curr_timestamp}"
+            )
         except exceptions.ClientError:
             hub_bucket_name = generate_default_hub_bucket_name(self._sagemaker_session)
+            curr_timestamp = datetime.now().timestamp()
             JUMPSTART_LOGGER.warning(
                 "There is not a Hub bucket associated with %s. Using %s",
                 self.hub_name,
                 hub_bucket_name,
             )
-            return hub_bucket_name
+            return S3ObjectLocation(bucket=hub_bucket_name, key=f"{self.hub_name}-{curr_timestamp}")
 
     def _generate_hub_storage_location(self, bucket_name: Optional[str] = None) -> None:
         """Generates an ``S3ObjectLocation`` given a Hub name."""
-        hub_bucket_name = bucket_name or self._fetch_hub_bucket_name()
         curr_timestamp = datetime.now().timestamp()
-        return S3ObjectLocation(bucket=hub_bucket_name, key=f"{self.hub_name}-{curr_timestamp}")
+        return (
+            S3ObjectLocation(bucket=bucket_name, key=f"{self.hub_name}-{curr_timestamp}")
+            if bucket_name
+            else self._fetch_hub_storage_location()
+        )
 
     def create(
         self,
@@ -164,6 +176,7 @@ class CuratedHub:
 
         **kwargs: Passed to invocation of ``Session:list_hub_contents``.
         """
+        JUMPSTART_LOGGER.info("Listing models in %s", self.hub_name)
         if clear_cache:
             self._list_hubs_cache = None
         if self._list_hubs_cache is None:
@@ -217,13 +230,14 @@ class CuratedHub:
                 return True
         return False
 
-    def _get_latest_model_version(self, model_id: str) -> str:
+    def _get_latest_model_version(self, model_id: str, model_version: str = None) -> str:
         """Populates the lastest version of a model from specs no matter what is passed.
 
         Returns model ({ model_id: str, version: str })
         """
+        model_version = model_version if model_version else LATEST_VERSION_WILDCARD
         model_specs = utils.verify_model_region_and_return_specs(
-            model_id, LATEST_VERSION_WILDCARD, JumpStartScriptScope.INFERENCE, self.region
+            model_id, model_version, JumpStartScriptScope.INFERENCE, self.region
         )
         return model_specs.version
 
@@ -232,13 +246,13 @@ class CuratedHub:
 
         Returns model ({ model_id: str, version: str })
         """
-        model_version = self._get_latest_model_version(model["model_id"])
-        return {"model_id": model["model_id"], "version": model_version}
+        latest_model_version = self._get_latest_model_version(model["model_id"], model_version=model.get("version"))
+        return {"model_id": model["model_id"], "version": latest_model_version}
 
     def _get_jumpstart_models_in_hub(self) -> List[HubContentInfo]:
         """Retrieves all JumpStart models in a private Hub."""
         hub_models = summary_list_from_list_api_response(self.list_models())
-        return [model for model in hub_models if get_jumpstart_model_and_version(model) is not None]
+        return [model for model in hub_models if is_curated_jumpstart_model(model) is True]
 
     def _determine_models_to_sync(
         self,
@@ -310,7 +324,7 @@ class CuratedHub:
         ]:
             dependency_type = HubContentDependencyType.DATASET
         elif reference_type in [
-            HubContentReferenceType.DEMO_NOTEBOOK,
+            HubContentReferenceType.INFERENCE_NOTEBOOK,
         ]:
             dependency_type = HubContentDependencyType.NOTEBOOK
         elif reference_type in [
@@ -335,11 +349,12 @@ class CuratedHub:
         # Retrieve latest version of unspecified JumpStart model versions
         model_version_list = []
         for model in model_list:
-            version = model.get("version")
-            if version == LATEST_VERSION_WILDCARD or version is None:
-                model = self._populate_latest_model_version(model)
-            model_version_list.append(JumpStartModelInfo(model["model_id"], model["version"]))
+            model_with_latest_version = self._populate_latest_model_version(model)
+            model_version_list.append(JumpStartModelInfo(model_with_latest_version["model_id"], model_with_latest_version["version"]))
 
+        # TODO: Flip this logic. We should 1/ get Hub models that align with inputted
+        # name/version, then 2. Check if they are JumpStart models. Elsewhere, we can
+        # check if the JumpStart models in Hub are deprecated/vulnerable
         js_models_in_hub = self._get_jumpstart_models_in_hub()
         mapped_models_in_hub = {model.hub_content_name: model for model in js_models_in_hub}
 
@@ -390,7 +405,12 @@ class CuratedHub:
             scope=JumpStartScriptScope.INFERENCE,
             sagemaker_session=self._sagemaker_session,
         )
-        studio_specs = self._fetch_studio_specs(model_specs=model_specs)
+        studio_manifest_entry = self.studio_manifest.get(model.model_id)
+        if not studio_manifest_entry:
+            raise KeyError(f"Could not find model entry {model.model_id} in studio manifest.")
+        studio_specs = self._fetch_studio_specs(
+            studio_manifest_entry[STUDIO_SPEC_PATH_KEY_IN_MANIFEST]
+        )
 
         dest_location = S3ObjectLocation(
             bucket=self.hub_storage_location.bucket,
@@ -425,21 +445,14 @@ class CuratedHub:
 
         search_keywords = [JUMPSTART_CURATED_HUB_MODEL_TAG]
 
-        dependencies: List[HubContentDependency] = []
-        for src_file_info in src_files:
-            copy_path = s3_path_join(dest_location.get_uri(), src_file_info.location.key)
-            hub_content_dependency: HubContentDependency = {
-                "dependency_origin_path": src_file_info.location.get_uri(),
-                "dependency_copy_path": copy_path,
-                "dependency_type": self._reference_type_to_dependency_type(
-                    src_file_info.reference_type
-                ),
-            }
-            dependencies.append(hub_content_dependency)
+        dependencies = self._calculate_dependencies(src_files, sync_request.destination)
 
         hub_content_document: HubModelDocument = make_hub_model_document_from_specs(
             model_specs=model_specs,
+            studio_manifest_entry=studio_manifest_entry,
             studio_specs=studio_specs,
+            files=src_files,
+            dest_location=dest_location,
             hub_content_dependencies=dependencies,
             region=self.region,
         )
@@ -460,16 +473,46 @@ class CuratedHub:
             tags=tags,
         )
 
-    def _fetch_studio_specs(self, model_specs: JumpStartModelSpecs) -> Dict[str, Any]:
-        """Fetches StudioSpecs given a model's SDK Specs."""
-        model_id = model_specs.model_id
-        model_version = model_specs.version
+    def _fetch_studio_specs(self, studio_spec_path: str) -> Dict[str, Any]:
+        """Fetches StudioSpec given spec path."""
 
-        key = utils.generate_studio_spec_file_prefix(model_id, model_version)
+        response = self._s3_client.get_object(
+            Bucket=utils.get_jumpstart_content_bucket(self.region), Key=studio_spec_path
+        )
+        return json.loads(response["Body"].read().decode("utf-8"))
+
+    def _fetch_manifest_from_s3(self, key: str) -> Dict[str, Dict[str, Any]]:
+        """Fetches Studio manifest from S3"""
         response = self._s3_client.get_object(
             Bucket=utils.get_jumpstart_content_bucket(self.region), Key=key
         )
-        return json.loads(response["Body"].read().decode("utf-8"))
+        manifest_list = json.loads(response["Body"].read().decode("utf-8"))
+        return {entry.get(STUDIO_MODEL_ID_KEY): entry for entry in manifest_list}
+
+    def _calculate_dependencies(
+        self, src_files: List[FileInfo], dest_location: S3ObjectLocation
+    ) -> List[HubContentDependency]:
+        """Calculates dependencies for HubContentDocument"""
+
+        dependencies: List[HubContentDependency] = []
+        for file in src_files:
+            if self._reference_type_to_dependency_type(file.reference_type) is None:
+                continue
+
+            copy_prefix = (
+                f"{file.location.bucket}"
+                if is_gated_bucket(file.location.bucket)
+                else f"{dest_location.bucket}/{dest_location.key}"
+            )
+            dependency = HubContentDependency(
+                {
+                    "DependencyOriginPath": f"s3://{file.location.bucket}/{file.location.key}",
+                    "DependencyCopyPath": f"s3://{copy_prefix}/{file.location.key}",
+                    "DependencyType": self._reference_type_to_dependency_type(file.reference_type),
+                }
+            )
+            dependencies.append(dependency)
+        return dependencies
 
     def scan_and_tag_models(self, model_ids: List[str] = None) -> None:
         """Scans the Hub for JumpStart models and tags the HubContent.
@@ -506,9 +549,7 @@ class CuratedHub:
             )
 
         js_models_in_hub = [
-            model
-            for model in model_summaries_to_scan
-            if get_jumpstart_model_and_version(model) is not None
+            model for model in model_summaries_to_scan if is_curated_jumpstart_model(model) is True
         ]
         for model in js_models_in_hub:
             tags_to_add: List[TagsDict] = find_deprecated_vulnerable_flags_for_hub_content(

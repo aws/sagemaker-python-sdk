@@ -442,7 +442,6 @@ class JumpStartModelsCache:
                 formatted_content=utils.get_formatted_manifest(formatted_body),
                 md5_hash=etag,
             )
-
         if data_type in {
             JumpStartS3FileType.OPEN_WEIGHT_SPECS,
             JumpStartS3FileType.PROPRIETARY_SPECS,
@@ -467,22 +466,33 @@ class JumpStartModelsCache:
             return JumpStartCachedContentValue(formatted_content=hub_notebook_description)
 
         if data_type == HubContentType.MODEL:
-            hub_name, _, model_name, model_version = hub_utils.get_info_from_hub_resource_arn(
+            model_info = hub_utils.get_info_from_hub_resource_arn(
                 id_info
             )
+            model_version = (
+                None
+                if model_info.hub_content_version == "*"
+                else model_info.hub_content_version
+            )
             hub_model_description: Dict[str, Any] = self._sagemaker_session.describe_hub_content(
-                hub_name=hub_name,
-                hub_content_name=model_name,
+                hub_name=model_info.hub_name,
+                hub_content_name=model_info.hub_content_name,
                 hub_content_version=model_version,
-                hub_content_type=data_type,
+                hub_content_type=model_info.hub_content_type,
             )
 
             model_specs = make_model_specs_from_describe_hub_content_response(
                 DescribeHubContentResponse(hub_model_description),
             )
 
-            utils.emit_logs_based_on_model_specs(model_specs, self.get_region(), self._s3_client)
-            return JumpStartCachedContentValue(formatted_content=model_specs)
+            utils.emit_logs_based_on_model_specs(
+                model_specs,
+                self.get_region(),
+                self._s3_client
+            )
+            return JumpStartCachedContentValue(
+                formatted_content=model_specs
+            )
 
         if data_type == HubType.HUB:
             hub_name, _, _, _ = hub_utils.get_info_from_hub_resource_arn(id_info)
@@ -492,7 +502,9 @@ class JumpStartModelsCache:
                 formatted_content=hub_description,
             )
 
-        raise ValueError(self._file_type_error_msg(data_type))
+        raise ValueError(
+            self._file_type_error_msg(data_type)
+        )
 
     def get_manifest(
         self,

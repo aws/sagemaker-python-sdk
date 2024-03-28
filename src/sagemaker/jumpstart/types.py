@@ -15,7 +15,7 @@ from __future__ import absolute_import
 
 import re
 from enum import Enum
-from copy import deepcopy
+from copy import deepcopy, copy
 from typing import Any, Dict, List, Optional, Set, Union
 from sagemaker.session import Session
 from sagemaker.utils import get_instance_type_family, format_tags, Tags
@@ -28,6 +28,7 @@ from sagemaker.compute_resource_requirements.resource_requirements import Resour
 from sagemaker.jumpstart.enums import JumpStartModelType
 from sagemaker.jumpstart.curated_hub.parser_utils import (
     camel_to_snake,
+    snake_to_upper_camel,
     walk_and_apply_json,
 )
 
@@ -278,16 +279,18 @@ class JumpStartHyperparameter(JumpStartDataHolderType):
         Args:
             json_obj (Dict[str, Any]): Dictionary representation of hyperparameter.
         """
-        if self._is_hub_content:
+        if self._is_hub_content is False:
             json_obj = walk_and_apply_json(json_obj, camel_to_snake)
 
-        self.name = json_obj["name"]
-        self.type = json_obj["type"]
-        self.default = json_obj["default"]
-        self.scope = json_obj["scope"]
-        options = json_obj.get("options")
-        min_val = json_obj.get("min")
-        max_val = json_obj.get("max")
+        self.name = _get_key_or_upper_camel_key(json_obj, "name")
+        self.type = _get_key_or_upper_camel_key(json_obj, "type")
+        self.default = _get_key_or_upper_camel_key(
+            json_obj, "default", "None" if self.type == "text" else 0
+        )
+        self.scope = _get_key_or_upper_camel_key(json_obj, "scope")
+        options = _get_key_or_upper_camel_key(json_obj, "options")
+        min_val = _get_key_or_upper_camel_key(json_obj, "min")
+        max_val = _get_key_or_upper_camel_key(json_obj, "max")
 
         if options is not None and len(options) > 0:
             self.options = options
@@ -337,13 +340,15 @@ class JumpStartEnvironmentVariable(JumpStartDataHolderType):
         Args:
             json_obj (Dict[str, Any]): Dictionary representation of environment variable.
         """
-        if self._is_hub_content:
+        if self._is_hub_content is False:
             json_obj = walk_and_apply_json(json_obj, camel_to_snake)
-        self.name = json_obj["name"]
-        self.type = json_obj["type"]
-        self.default = json_obj["default"]
-        self.scope = json_obj["scope"]
-        self.required_for_model_class: bool = json_obj.get("required_for_model_class", False)
+        self.name = _get_key_or_upper_camel_key(json_obj, "name")
+        self.type = _get_key_or_upper_camel_key(json_obj, "type")
+        self.default = _get_key_or_upper_camel_key(json_obj, "default")
+        self.scope = _get_key_or_upper_camel_key(json_obj, "scope")
+        self.required_for_model_class: bool = _get_key_or_upper_camel_key(
+            json_obj, "required_for_model_class", False
+        )
 
 
 class JumpStartPredictorSpecs(JumpStartDataHolderType):
@@ -378,13 +383,17 @@ class JumpStartPredictorSpecs(JumpStartDataHolderType):
         if json_obj is None:
             return
 
-        if self._is_hub_content:
+        if self._is_hub_content is False:
             json_obj = walk_and_apply_json(json_obj, camel_to_snake)
 
-        self.default_content_type = json_obj["default_content_type"]
-        self.supported_content_types = json_obj["supported_content_types"]
-        self.default_accept_type = json_obj["default_accept_type"]
-        self.supported_accept_types = json_obj["supported_accept_types"]
+        self.default_content_type = _get_key_or_upper_camel_key(json_obj, "default_content_type")
+        self.supported_content_types = _get_key_or_upper_camel_key(
+            json_obj, "supported_content_types"
+        )
+        self.default_accept_type = _get_key_or_upper_camel_key(json_obj, "default_accept_type")
+        self.supported_accept_types = _get_key_or_upper_camel_key(
+            json_obj, "supported_accept_types"
+        )
 
 
 class JumpStartSerializablePayload(JumpStartDataHolderType):
@@ -423,21 +432,21 @@ class JumpStartSerializablePayload(JumpStartDataHolderType):
 
         if json_obj is None:
             return
-        self.raw_payload = json_obj
+        self.raw_payload = copy(json_obj)
 
-        if self._is_hub_content:
+        if self._is_hub_content is False:
             json_obj = walk_and_apply_json(json_obj, camel_to_snake)
 
-        self.content_type = json_obj["content_type"]
-        self.body = json_obj["body"]
-        self.prompt_key = json_obj.get("prompt_key")
-        accept = json_obj.get("accept")
+        self.content_type = _get_key_or_upper_camel_key(json_obj, "content_type")
+        self.body = _get_key_or_upper_camel_key(json_obj, "body")
+        self.prompt_key = _get_key_or_upper_camel_key(json_obj, "prompt_key")
+        accept = _get_key_or_upper_camel_key(json_obj, "accept")
         if accept:
             self.accept = accept
 
     def to_json(self) -> Dict[str, Any]:
         """Returns json representation of JumpStartSerializablePayload object."""
-        return deepcopy(self.raw_payload)
+        return self.raw_payload
 
 
 class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
@@ -470,9 +479,11 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
         if json_obj is None:
             return
 
-        self.aliases = None
-        self.regional_aliases: Optional[dict] = json_obj.get("regional_aliases")
-        self.variants: Optional[dict] = json_obj.get("variants")
+        self.aliases: Optional[dict] = _get_key_or_upper_camel_key(json_obj, "aliases")
+        self.regional_aliases: Optional[dict] = _get_key_or_upper_camel_key(
+            json_obj, "regional_aliases"
+        )
+        self.variants: Optional[dict] = _get_key_or_upper_camel_key(json_obj, "variants")
 
     def from_describe_hub_content_response(self, response: Optional[Dict[str, Any]]) -> None:
         """Sets fields in object based on DescribeHubContent response.
@@ -484,9 +495,11 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
         if response is None:
             return
 
-        self.aliases: Optional[dict] = response.get("Aliases")
-        self.regional_aliases = None
-        self.variants: Optional[dict] = response.get("Variants")
+        self.aliases: Optional[dict] = _get_key_or_upper_camel_key(response, "aliases")
+        self.regional_aliases: Optional[dict] = _get_key_or_upper_camel_key(
+            response, "regional_aliases"
+        )
+        self.variants: Optional[dict] = _get_key_or_upper_camel_key(response, "variants")
 
     def regionalize(  # pylint: disable=inconsistent-return-statements
         self, region: str
@@ -498,10 +511,14 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
         aliases = self.regional_aliases.get(region, {})
         variants = {}
         for instance_name, properties in self.variants.items():
+            instance_variant_properties = {}
             if properties.get("regional_properties") is not None:
-                variants.update({instance_name: properties.get("regional_properties")})
+                instance_variant_properties.update(properties.get("regional_properties"))
             if properties.get("properties") is not None:
-                variants.update({instance_name: properties.get("properties")})
+                instance_variant_properties.update(properties.get("properties"))
+
+            if instance_variant_properties:
+                variants.update({instance_name: {"properties": instance_variant_properties}})
         return {"Aliases": aliases, "Variants": variants}
 
     def get_instance_specific_metric_definitions(
@@ -1028,7 +1045,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         )
         if self._is_hub_content:
             self.hosting_ecr_uri: Optional[str] = json_obj["hosting_ecr_uri"]
-            self._non_serializable_slots.append("hosting_ecr_specs")
+            self.hosting_ecr_specs = None
         else:
             self.hosting_ecr_specs: Optional[JumpStartECRSpecs] = (
                 JumpStartECRSpecs(json_obj["hosting_ecr_specs"])
@@ -1078,14 +1095,16 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         self.hosting_prepacked_artifact_key: Optional[str] = json_obj.get(
             "hosting_prepacked_artifact_key"
         )
-        # New fields required for Hub model.
-        if self._is_hub_content:
+
+        if json_obj.get("training_prepacked_script_version"):
             self.training_prepacked_script_version: Optional[str] = json_obj.get(
                 "training_prepacked_script_version"
             )
+        if json_obj.get("hosting_prepacked_artifact_version"):
             self.hosting_prepacked_artifact_version: Optional[str] = json_obj.get(
                 "hosting_prepacked_artifact_version"
             )
+
         self.model_kwargs = deepcopy(json_obj.get("model_kwargs", {}))
         self.deploy_kwargs = deepcopy(json_obj.get("deploy_kwargs", {}))
         self.predictor_specs: Optional[JumpStartPredictorSpecs] = (
@@ -1122,12 +1141,14 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         if self.training_supported:
             if self._is_hub_content:
                 self.training_ecr_uri: Optional[str] = json_obj["training_ecr_uri"]
+                self.training_ecr_specs = None
             else:
                 self.training_ecr_specs: Optional[JumpStartECRSpecs] = (
                     JumpStartECRSpecs(json_obj["training_ecr_specs"])
                     if "training_ecr_specs" in json_obj
                     else None
                 )
+                self._non_serializable_slots.append("training_ecr_uri")
             self.training_artifact_key: str = json_obj["training_artifact_key"]
             self.training_script_key: str = json_obj["training_script_key"]
             hyperparameters: Any = json_obj.get("hyperparameters")
@@ -1980,3 +2001,15 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         self.data_input_configuration = data_input_configuration
         self.skip_model_validation = skip_model_validation
         self.source_uri = source_uri
+
+
+def _get_key_or_upper_camel_key(
+    json_obj: Dict[str, Any], snake_case_key: str, default: Any = None
+) -> Optional[Any]:
+    """Method to get key or upper camel case"""
+    upper_camel_key = snake_to_upper_camel(snake_case_key)
+    return (
+        json_obj.get(snake_case_key, default)
+        if json_obj.get(snake_case_key)
+        else json_obj.get(upper_camel_key, default)
+    )

@@ -33,6 +33,14 @@ from sagemaker.jumpstart.curated_hub.parser_utils import (
     walk_and_apply_json,
 )
 
+KEYS_TO_SKIP_UPPER_APPLICATION = ["aliases", "variants"]
+KEYS_TO_INCLUDE_NONE_SERIALIZATION = [
+    "deprecate_warn_message",
+    "deprecated_message",
+    "model_subscription_link",
+    "usage_info_message",
+]
+
 
 class HubDataHolderType(JumpStartDataHolderType):
     """Base class for many Hub API interfaces."""
@@ -46,7 +54,7 @@ class HubDataHolderType(JumpStartDataHolderType):
             if hasattr(self, att):
                 cur_val = getattr(self, att)
                 # Do not serialize null values.
-                if cur_val is None:
+                if cur_val is None and cur_val not in KEYS_TO_INCLUDE_NONE_SERIALIZATION:
                     continue
                 if issubclass(type(cur_val), JumpStartDataHolderType):
                     json_obj[att] = cur_val.to_json()
@@ -69,7 +77,9 @@ class HubDataHolderType(JumpStartDataHolderType):
         Example: "{'content_bucket': 'bucket', 'region_name': 'us-west-2'}"
         """
 
-        att_dict = walk_and_apply_json(self.to_json(), snake_to_upper_camel)
+        att_dict = walk_and_apply_json(
+            self.to_json(), snake_to_upper_camel, KEYS_TO_SKIP_UPPER_APPLICATION
+        )
         return f"{json.dumps(att_dict, default=lambda o: o.to_json())}"
 
 
@@ -172,7 +182,7 @@ class DescribeHubContentResponse(HubDataHolderType):
         self.hub_content_dependencies = []
         if "Dependencies" in json_obj:
             self.hub_content_dependencies: Optional[List[HubContentDependency]] = [
-                HubContentDependency(dep) for dep in json_obj.get(["Dependencies"])
+                HubContentDependency(dep) for dep in json_obj.get("Dependencies")
             ]
         self.hub_content_description: str = json_obj.get("HubContentDescription")
         self.hub_content_display_name: str = json_obj.get("HubContentDisplayName")
@@ -562,7 +572,7 @@ class HubModelDocument(HubDataHolderType):
         self.default_inference_instance_type: Optional[str] = json_obj.get(
             "DefaultInferenceInstanceType"
         )
-        self.supported_inference_instance_types: Optional[str] = json_obj.get(
+        self.supported_inference_instance_types: Optional[List[str]] = json_obj.get(
             "SupportedInferenceInstanceTypes"
         )
         self.sage_maker_sdk_predictor_specifications: Optional[JumpStartPredictorSpecs] = (

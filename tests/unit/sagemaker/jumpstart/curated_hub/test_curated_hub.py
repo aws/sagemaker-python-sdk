@@ -204,8 +204,7 @@ def test_sync_filters_models_that_exist_in_hub(
                 "HubContentVersion": "1.0.2",
                 "HubContentStatus": "test",
                 "HubContentSearchKeywords": [
-                    "@jumpstart-model-id:model-two-pytorch",
-                    "@jumpstart-model-version:1.0.2",
+                    "curatedjumpstartmodel",
                 ],
             },
             {
@@ -227,8 +226,7 @@ def test_sync_filters_models_that_exist_in_hub(
                 "HubContentVersion": "2.0.2",
                 "HubContentStatus": "test",
                 "HubContentSearchKeywords": [
-                    "@jumpstart-model-id:model-four-huggingface",
-                    "@jumpstart-model-version:2.0.2",
+                    "curatedjumpstartmodel",
                 ],
             },
         ]
@@ -259,8 +257,7 @@ def test_sync_updates_old_models_in_hub(
                 "HubContentName": "mock-model-two-pytorch",
                 "HubContentVersion": "1.0.1",
                 "HubContentSearchKeywords": [
-                    "@jumpstart-model-id:model-two-pytorch",
-                    "@jumpstart-model-version:1.0.2",
+                    "curatedjumpstartmodel",
                 ],
                 "CreationTime": "test_creation_timestamp_2",
                 "HubContentArn": "test_arn_2",
@@ -282,8 +279,7 @@ def test_sync_updates_old_models_in_hub(
                 "HubContentName": "mock-model-four-huggingface",
                 "HubContentVersion": "2.0.2",
                 "HubContentSearchKeywords": [
-                    "@jumpstart-model-id:model-four-huggingface",
-                    "@jumpstart-model-version:2.0.2",
+                    "curatedjumpstartmodel",
                 ],
                 "CreationTime": "test_creation_timestamp_4",
                 "HubContentArn": "test_arn_4",
@@ -322,8 +318,7 @@ def test_sync_passes_newer_hub_models(
                 "HubContentName": "mock-model-two-pytorch",
                 "HubContentVersion": "1.0.3",
                 "HubContentSearchKeywords": [
-                    "@jumpstart-model-id:model-two-pytorch",
-                    "@jumpstart-model-version:1.0.2",
+                    "curatedjumpstartmodel",
                 ],
                 "CreationTime": "test_creation_timestamp_2",
                 "HubContentArn": "test_arn_2",
@@ -345,8 +340,7 @@ def test_sync_passes_newer_hub_models(
                 "HubContentName": "mock-model-four-huggingface",
                 "HubContentVersion": "2.0.2",
                 "HubContentSearchKeywords": [
-                    "@jumpstart-model-id:model-four-huggingface",
-                    "@jumpstart-model-version:2.0.2",
+                    "curatedjumpstartmodel",
                 ],
                 "CreationTime": "test_creation_timestamp_4",
                 "HubContentArn": "test_arn_4",
@@ -408,8 +402,7 @@ def test_get_jumpstart_models_in_hub(mock_list_models, sagemaker_session):
                 "HubContentName": "mock-model-two-pytorch",
                 "HubContentVersion": "1.0.3",
                 "HubContentSearchKeywords": [
-                    "@jumpstart-model-id:model-two-pytorch",
-                    "@jumpstart-model-version:1.0.3",
+                    "curatedjumpstartmodel",
                 ],
                 "CreationTime": "test_creation_timestamp_2",
                 "HubContentArn": "test_arn_2",
@@ -431,8 +424,7 @@ def test_get_jumpstart_models_in_hub(mock_list_models, sagemaker_session):
                 "HubContentName": "mock-model-four-huggingface",
                 "HubContentVersion": "2.0.2",
                 "HubContentSearchKeywords": [
-                    "@jumpstart-model-id:model-four-huggingface",
-                    "@jumpstart-model-version:2.0.2",
+                    "curatedjumpstartmodel",
                 ],
                 "CreationTime": "test_creation_timestamp_4",
                 "HubContentArn": "test_arn_4",
@@ -453,8 +445,7 @@ def test_get_jumpstart_models_in_hub(mock_list_models, sagemaker_session):
                 "HubContentName": "mock-model-two-pytorch",
                 "HubContentVersion": "1.0.3",
                 "HubContentSearchKeywords": [
-                    "@jumpstart-model-id:model-two-pytorch",
-                    "@jumpstart-model-version:1.0.3",
+                    "curatedjumpstartmodel",
                 ],
                 "CreationTime": "test_creation_timestamp_2",
                 "HubContentArn": "test_arn_2",
@@ -468,8 +459,7 @@ def test_get_jumpstart_models_in_hub(mock_list_models, sagemaker_session):
                 "HubContentName": "mock-model-four-huggingface",
                 "HubContentVersion": "2.0.2",
                 "HubContentSearchKeywords": [
-                    "@jumpstart-model-id:model-four-huggingface",
-                    "@jumpstart-model-version:2.0.2",
+                    "curatedjumpstartmodel",
                 ],
                 "CreationTime": "test_creation_timestamp_4",
                 "HubContentArn": "test_arn_4",
@@ -514,8 +504,7 @@ def test_determine_models_to_sync(sagemaker_session):
                 "HubContentName": "mock-model-two-pytorch",
                 "HubContentVersion": "1.0.1",
                 "HubContentSearchKeywords": [
-                    "@jumpstart-model-id:model-two-pytorch",
-                    "@jumpstart-model-version:1.0.2",
+                    "curatedjumpstartmodel",
                 ],
                 "CreationTime": "test_creation_timestamp_2",
                 "HubContentArn": "test_arn_2",
@@ -529,8 +518,7 @@ def test_determine_models_to_sync(sagemaker_session):
                 "HubContentName": "mock-model-four-huggingface",
                 "HubContentVersion": "2.0.2",
                 "HubContentSearchKeywords": [
-                    "@jumpstart-model-id:model-four-huggingface",
-                    "@jumpstart-model-version:2.0.2",
+                    "curatedjumpstartmodel",
                 ],
                 "CreationTime": "test_creation_timestamp_4",
                 "HubContentArn": "test_arn_4",
@@ -555,8 +543,7 @@ def test_determine_models_to_sync(sagemaker_session):
                 "HubContentName": "mock-model-two-pytorch",
                 "HubContentVersion": "1.0.3",
                 "HubContentSearchKeywords": [
-                    "@jumpstart-model-id:model-two-pytorch",
-                    "@jumpstart-model-version:1.0.3",
+                    "curatedjumpstartmodel",
                 ],
                 "CreationTime": "test_creation_timestamp_2",
                 "HubContentArn": "test_arn_2",
@@ -570,8 +557,7 @@ def test_determine_models_to_sync(sagemaker_session):
                 "HubContentName": "mock-model-four-huggingface",
                 "HubContentVersion": "2.0.2",
                 "HubContentSearchKeywords": [
-                    "@jumpstart-model-id:model-four-huggingface",
-                    "@jumpstart-model-version:2.0.2",
+                    "curatedjumpstartmodel",
                 ],
                 "CreationTime": "test_creation_timestamp_4",
                 "HubContentArn": "test_arn_4",
@@ -592,8 +578,7 @@ def test_determine_models_to_sync(sagemaker_session):
                 "HubContentName": "mock-model-one-huggingface",
                 "HubContentVersion": "1.2.3",
                 "HubContentSearchKeywords": [
-                    "@jumpstart-model-id:mock-model-one-huggingface",
-                    "@jumpstart-model-version:1.2.3",
+                    "curatedjumpstartmodel",
                 ],
                 "CreationTime": "test_creation_timestamp_4",
                 "HubContentArn": "test_arn_4",
@@ -607,8 +592,7 @@ def test_determine_models_to_sync(sagemaker_session):
                 "HubContentName": "mock-model-two-pytorch",
                 "HubContentVersion": "1.0.2",
                 "HubContentSearchKeywords": [
-                    "@jumpstart-model-id:mock-model-two-pytorch",
-                    "@jumpstart-model-version:1.0.2",
+                    "curatedjumpstartmodel",
                 ],
                 "CreationTime": "test_creation_timestamp_4",
                 "HubContentArn": "test_arn_4",
@@ -628,8 +612,7 @@ def test_determine_models_to_sync(sagemaker_session):
                 "HubContentName": "mock-model-one-huggingface",
                 "HubContentVersion": "1.2.1",
                 "HubContentSearchKeywords": [
-                    "@jumpstart-model-id:mock-model-one-huggingface",
-                    "@jumpstart-model-version:1.2.1",
+                    "curatedjumpstartmodel",
                 ],
                 "CreationTime": "test_creation_timestamp_4",
                 "HubContentArn": "test_arn_4",
@@ -643,8 +626,7 @@ def test_determine_models_to_sync(sagemaker_session):
                 "HubContentName": "mock-model-two-pytorch",
                 "HubContentVersion": "1.0.2",
                 "HubContentSearchKeywords": [
-                    "@jumpstart-model-id:mock-model-two-pytorch",
-                    "@jumpstart-model-version:1.0.2",
+                    "curatedjumpstartmodel",
                 ],
                 "CreationTime": "test_creation_timestamp_4",
                 "HubContentArn": "test_arn_4",

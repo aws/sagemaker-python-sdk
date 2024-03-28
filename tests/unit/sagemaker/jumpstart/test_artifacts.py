@@ -636,7 +636,7 @@ class HubModelTest(unittest.TestCase):
             _retrieve_model_uri(
                 model_id=model_id, model_version=version, hub_arn=hub_arn, model_scope="training"
             ),
-            "s3://jumpstart-cache-prod-us-west-2/pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz",
+            "pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz",
         )
         mock_get_hub_model.assert_called_once_with(
             hub_model_arn=(
@@ -648,7 +648,7 @@ class HubModelTest(unittest.TestCase):
             _retrieve_model_uri(
                 model_id=model_id, model_version=version, hub_arn=hub_arn, model_scope="inference"
             ),
-            "s3://jumpstart-cache-prod-us-west-2/pytorch-infer/infer-pytorch-ic-mobilenet-v2.tar.gz",
+            "pytorch-infer/infer-pytorch-ic-mobilenet-v2.tar.gz",
         )
 
     @patch("sagemaker.jumpstart.cache.JumpStartModelsCache.get_hub_model")
@@ -665,8 +665,7 @@ class HubModelTest(unittest.TestCase):
                 hub_arn=hub_arn,
                 script_scope=JumpStartScriptScope.TRAINING,
             ),
-            "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/pytorch/"
-            "transfer_learning/ic/v1.0.0/sourcedir.tar.gz",
+            "source-directory-tarballs/pytorch/transfer_learning/ic/v1.0.0/sourcedir.tar.gz",
         )
         mock_get_hub_model.assert_called_once_with(
             hub_model_arn=(
@@ -681,6 +680,5 @@ class HubModelTest(unittest.TestCase):
                 hub_arn=hub_arn,
                 script_scope=JumpStartScriptScope.INFERENCE,
             ),
-            "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/pytorch/"
-            "inference/ic/v1.0.0/sourcedir.tar.gz",
+            "source-directory-tarballs/pytorch/inference/ic/v1.0.0/sourcedir.tar.gz",
         )
