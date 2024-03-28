@@ -99,7 +99,7 @@ def _pretty_print_results_tgi(results: dict):
     )
 
 
-def _pretty_print_benchmark_results(results: dict, model_env_vars=None):
+def _pretty_print_results_jumpstart(results: dict, model_env_vars=None):
     """Pretty prints benchmark results"""
     if model_env_vars is None:
         model_env_vars = []

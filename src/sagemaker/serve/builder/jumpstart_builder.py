@@ -42,7 +42,7 @@ from sagemaker.serve.utils.local_hardware import (
 )
 from sagemaker.serve.utils.telemetry_logger import _capture_telemetry
 from sagemaker.serve.utils.tuning import (
-    _pretty_print_benchmark_results,
+    _pretty_print_results_jumpstart,
     _serial_benchmark,
     _concurrent_benchmark,
     _more_performant,
@@ -386,7 +386,7 @@ class JumpStart(ABC):
         if best_tuned_combination:
             self.pysdk_model.env.update({num_shard_env_var_name: str(best_tuned_combination[1])})
 
-            _pretty_print_benchmark_results(benchmark_results, [num_shard_env_var_name])
+            _pretty_print_results_jumpstart(benchmark_results, [num_shard_env_var_name])
             logger.info(
                 "Model Configuration: %s was most performant with avg latency: %s, "
                 "p90 latency: %s, average tokens per second: %s, throughput/s: %s, "
