@@ -118,7 +118,7 @@ class MultiPartCopyHandler(object):
         Sets up progress bar and kicks off each copy request.
         """
         total_size = sum([file.size or 0 for file in self.files])
-        JUMPSTART_LOGGER.warning(
+        JUMPSTART_LOGGER.info(
             "Copying %s files (%s) into %s/%s",
             len(self.files),
             human_readable_size(total_size),

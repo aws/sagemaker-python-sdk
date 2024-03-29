@@ -38,7 +38,7 @@ class SizeAndLastUpdatedComparator(BaseComparator):
         is_newer_dest_file = self.compare_file_updates(src_file, dest_file)
         should_sync = (not same_size) or (not is_newer_dest_file)
         if should_sync:
-            JUMPSTART_LOGGER.warning(
+            JUMPSTART_LOGGER.info(
                 "syncing: %s -> %s, size: %s -> %s, modified time: %s -> %s",
                 src_file.location.key,
                 src_file.location.key,

@@ -108,7 +108,7 @@ class CuratedHub:
                 return location
             default_bucket_name = generate_default_hub_bucket_name(self._sagemaker_session)
             curr_timestamp = datetime.now().timestamp()
-            JUMPSTART_LOGGER.warning(
+            JUMPSTART_LOGGER.info(
                 "There is not a Hub bucket associated with %s. Using %s",
                 self.hub_name,
                 default_bucket_name,
@@ -119,7 +119,7 @@ class CuratedHub:
         except exceptions.ClientError:
             hub_bucket_name = generate_default_hub_bucket_name(self._sagemaker_session)
             curr_timestamp = datetime.now().timestamp()
-            JUMPSTART_LOGGER.warning(
+            JUMPSTART_LOGGER.info(
                 "There is not a Hub bucket associated with %s. Using %s",
                 self.hub_name,
                 hub_bucket_name,
@@ -362,7 +362,7 @@ class CuratedHub:
         mapped_models_in_hub = {model.hub_content_name: model for model in js_models_in_hub}
 
         models_to_sync = self._determine_models_to_sync(model_version_list, mapped_models_in_hub)
-        JUMPSTART_LOGGER.warning(
+        JUMPSTART_LOGGER.info(
             "Syncing the following models into Hub %s: %s",
             self.hub_name,
             models_to_sync,
