@@ -124,14 +124,17 @@ def _total_inference_model_size_mib(model: str, dtype: str) -> int:
     output = None
     try:
         from accelerate.commands.estimate import estimate_command_parser, gather_data
+
         args = estimate_command_parser().parse_args([model, "--dtypes", dtype])
 
         output = gather_data(
             args
         )  # "dtype", "Largest Layer", "Total Size Bytes", "Training using Adam"
     except ImportError:
-        logger.error("To enable Model size calculations: Install HuggingFace extras dependencies "
-                     "using pip install 'sagemaker[huggingface]>=2.212.0'")
+        logger.error(
+            "To enable Model size calculations: Install HuggingFace extras dependencies "
+            "using pip install 'sagemaker[huggingface]>=2.212.0'"
+        )
 
     if output is None:
         raise ValueError(f"Could not get Model size for {model}")
