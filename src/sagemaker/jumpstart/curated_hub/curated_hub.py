@@ -243,7 +243,9 @@ class CuratedHub:
 
         Returns model ({ model_id: str, version: str })
         """
-        latest_model_version = self._get_latest_model_version(model["model_id"], model_version=model.get("version"))
+        latest_model_version = self._get_latest_model_version(
+            model["model_id"], model_version=model.get("version")
+        )
         return {"model_id": model["model_id"], "version": latest_model_version}
 
     def _get_jumpstart_models_in_hub(self) -> List[HubContentInfo]:
@@ -347,7 +349,11 @@ class CuratedHub:
         model_version_list = []
         for model in model_list:
             model_with_latest_version = self._populate_latest_model_version(model)
-            model_version_list.append(JumpStartModelInfo(model_with_latest_version["model_id"], model_with_latest_version["version"]))
+            model_version_list.append(
+                JumpStartModelInfo(
+                    model_with_latest_version["model_id"], model_with_latest_version["version"]
+                )
+            )
 
         # TODO: Flip this logic. We should 1/ get Hub models that align with inputted
         # name/version, then 2. Check if they are JumpStart models. Elsewhere, we can
@@ -453,7 +459,7 @@ class CuratedHub:
             dest_location=dest_location,
             hub_content_dependencies=dependencies,
             region=self.region,
-            sagemaker_session=self._sagemaker_session
+            sagemaker_session=self._sagemaker_session,
         )
 
         JUMPSTART_LOGGER.info("Importing %s/%s...", model.model_id, model.version)
@@ -558,13 +564,15 @@ class CuratedHub:
                 session=self._sagemaker_session,
             )
 
-            hub_content_arn_without_version = get_hub_content_arn_without_version(model.hub_content_arn)
+            hub_content_arn_without_version = get_hub_content_arn_without_version(
+                model.hub_content_arn
+            )
             if not tags_to_add:
-              JUMPSTART_LOGGER.info(
-                "No tags to add for %s", hub_content_arn_without_version
-              )
-              continue
-            self._sagemaker_session.sagemaker_client.add_tags(ResourceArn=hub_content_arn_without_version, Tags=tags_to_add)
+                JUMPSTART_LOGGER.info("No tags to add for %s", hub_content_arn_without_version)
+                continue
+            self._sagemaker_session.sagemaker_client.add_tags(
+                ResourceArn=hub_content_arn_without_version, Tags=tags_to_add
+            )
             JUMPSTART_LOGGER.info(
                 "Added tags to HubContent %s: %s", hub_content_arn_without_version, tags_to_add
             )

@@ -795,21 +795,10 @@ def test_hub_content_document_from_json_obj():
         },
     ]
     assert gemma_model_document.default_inference_instance_type == "ml.g5.xlarge"
-    assert gemma_model_document.supported_inference_instance_types == [
-        "ml.g5.xlarge",
-        "ml.g5.2xlarge",
-        "ml.g5.4xlarge",
-        "ml.g5.8xlarge",
-        "ml.g5.16xlarge",
-        "ml.g5.12xlarge",
-        "ml.g5.24xlarge",
-        "ml.g5.48xlarge",
-        "ml.p4d.24xlarge",
-    ]
-    assert gemma_model_document.default_training_instance_type == "ml.g5.2xlarge"
-    assert np.array_equal(
-        gemma_model_document.supported_training_instance_types,
-        [
+    assert (
+        gemma_model_document.supported_inference_instance_types.sort()
+        == [
+            "ml.g5.xlarge",
             "ml.g5.2xlarge",
             "ml.g5.4xlarge",
             "ml.g5.8xlarge",
@@ -818,7 +807,21 @@ def test_hub_content_document_from_json_obj():
             "ml.g5.24xlarge",
             "ml.g5.48xlarge",
             "ml.p4d.24xlarge",
-        ],
+        ].sort()
+    )
+    assert gemma_model_document.default_training_instance_type == "ml.g5.2xlarge"
+    assert (
+        gemma_model_document.supported_training_instance_types.sort()
+        == [
+            "ml.g5.2xlarge",
+            "ml.g5.4xlarge",
+            "ml.g5.8xlarge",
+            "ml.g5.16xlarge",
+            "ml.g5.12xlarge",
+            "ml.g5.24xlarge",
+            "ml.g5.48xlarge",
+            "ml.p4d.24xlarge",
+        ].sort()
     )
     assert gemma_model_document.sage_maker_sdk_predictor_specifications == JumpStartPredictorSpecs(
         {

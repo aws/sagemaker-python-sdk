@@ -572,9 +572,15 @@ class HubModelDocument(HubDataHolderType):
         self.default_inference_instance_type: Optional[str] = json_obj.get(
             "DefaultInferenceInstanceType"
         )
-        self.supported_inference_instance_types: Optional[List[str]] = json_obj.get(
+        supported_inference_instance_types: Optional[List[str]] = json_obj.get(
             "SupportedInferenceInstanceTypes"
         )
+
+        self.supported_inference_instance_types = (
+            list(set(supported_inference_instance_types))
+            if supported_inference_instance_types is not None
+            else None
+        )  # Ensure uniqueness
         self.sage_maker_sdk_predictor_specifications: Optional[JumpStartPredictorSpecs] = (
             JumpStartPredictorSpecs(
                 json_obj.get("SageMakerSdkPredictorSpecifications"),
@@ -674,9 +680,14 @@ class HubModelDocument(HubDataHolderType):
             self.default_training_instance_type: Optional[str] = json_obj.get(
                 "DefaultTrainingInstanceType"
             )
-            self.supported_training_instance_types: Optional[str] = json_obj.get(
-                "SupportedTrainingInstanceTypes"
+            supported_training_instance_types: Optional[List[str]] = json_obj.get(
+                "SupportedTrainingInstanceTypes", []
             )
+            self.supported_training_instance_types = (
+                list(set(supported_training_instance_types))
+                if supported_training_instance_types is not None
+                else None
+            )  # Ensure uniqueness
             self.training_volume_size: Optional[int] = json_obj.get("TrainingVolumeSize")
             self.training_enable_network_isolation: Optional[str] = json_obj.get(
                 "TrainingEnableNetworkIsolation", False

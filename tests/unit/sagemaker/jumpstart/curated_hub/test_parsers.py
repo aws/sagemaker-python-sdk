@@ -103,16 +103,17 @@ def test_make_model_specs_from_describe_hub_content_response():
         }
     )
     test_specs = make_model_specs_from_describe_hub_content_response(response)
-
+    test_specs.supported_inference_instance_types.sort()
+    test_specs.supported_training_instance_types.sort()
     # Known mismatched fields
-    gemma_model_spec[
-        "hosting_ecr_uri"
-    ] = "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-"
-    "inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
-    gemma_model_spec[
-        "training_ecr_uri"
-    ] = "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-training"
-    ":2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+    gemma_model_spec["hosting_ecr_uri"] = (
+        "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-"
+        "inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+    )
+    gemma_model_spec["training_ecr_uri"] = (
+        "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-training"
+        ":2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+    )
 
     expected_specs = JumpStartModelSpecs(gemma_model_spec, is_hub_content=True)
     expected_specs.training_artifact_key = (
@@ -136,7 +137,8 @@ def test_make_model_specs_from_describe_hub_content_response():
     expected_specs.hosting_script_key = (
         "s3://jumpstart-cache-prod-us-west-2/" + expected_specs.hosting_script_key
     )
-
+    expected_specs.supported_inference_instance_types.sort()
+    expected_specs.supported_training_instance_types.sort()
     expected_specs.hosting_instance_type_variants = {
         "regional_aliases": None,
         "aliases": {
