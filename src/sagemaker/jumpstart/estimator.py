@@ -534,7 +534,7 @@ class JumpStartEstimator(Estimator):
         estimator_init_kwargs = get_init_kwargs(
             model_id=model_id,
             model_version=model_version,
-            hub_arn=hub_arn,
+            hub_arn=self.hub_arn,
             model_type=self.model_type,
             tolerate_vulnerable_model=tolerate_vulnerable_model,
             tolerate_deprecated_model=tolerate_deprecated_model,
