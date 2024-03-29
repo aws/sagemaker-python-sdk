@@ -31,6 +31,7 @@ from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 from sagemaker.jumpstart.curated_hub.utils import generate_hub_arn_for_init_kwargs
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.exceptions import INVALID_MODEL_ID_ERROR_MSG
+from sagemaker.jumpstart.enums import JumpStartModelType
 
 from sagemaker.jumpstart.factory.estimator import get_deploy_kwargs, get_fit_kwargs, get_init_kwargs
 from sagemaker.jumpstart.factory.model import get_default_predictor
@@ -516,18 +517,19 @@ class JumpStartEstimator(Estimator):
                 sagemaker_session=sagemaker_session,
             )
 
-        self.model_type = _validate_model_id_and_get_type_hook()
-        if not self.model_type:
-            JumpStartModelsAccessor.reset_cache()
+        self.hub_arn = None
+        if hub_name:
+            self.hub_arn = generate_hub_arn_for_init_kwargs(
+                hub_name=hub_name, region=region, session=sagemaker_session
+            ) 
+            self.model_type = JumpStartModelType.OPEN_WEIGHTS
+        else:
             self.model_type = _validate_model_id_and_get_type_hook()
             if not self.model_type:
-                raise ValueError(INVALID_MODEL_ID_ERROR_MSG.format(model_id=model_id))
-
-        hub_arn = None
-        if hub_name:
-            hub_arn = generate_hub_arn_for_init_kwargs(
-                hub_name=hub_name, region=region, session=sagemaker_session
-            )
+                JumpStartModelsAccessor.reset_cache()
+                self.model_type = _validate_model_id_and_get_type_hook()
+                if not self.model_type:
+                    raise ValueError(INVALID_MODEL_ID_ERROR_MSG.format(model_id=model_id))
 
         estimator_init_kwargs = get_init_kwargs(
             model_id=model_id,
