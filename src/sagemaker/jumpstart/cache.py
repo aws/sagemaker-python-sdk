@@ -485,11 +485,6 @@ class JumpStartModelsCache:
                 DescribeHubContentResponse(hub_model_description),
             )
 
-            utils.emit_logs_based_on_model_specs(
-                model_specs,
-                self.get_region(),
-                self._s3_client
-            )
             return JumpStartCachedContentValue(
                 formatted_content=model_specs
             )
