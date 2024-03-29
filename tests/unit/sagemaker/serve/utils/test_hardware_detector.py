@@ -120,3 +120,7 @@ def test_total_inference_model_size_mib(
 
     with pytest.raises(ValueError):
         hardware_detector._total_inference_model_size_mib("stable-diffusion", "float32")
+
+    mock_parser.side_effect = ImportError
+    with pytest.raises(ValueError):
+        hardware_detector._total_inference_model_size_mib("stable-diffusion", "float32")
