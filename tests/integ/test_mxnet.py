@@ -18,7 +18,6 @@ import time
 import numpy
 import pytest
 
-import tests.integ
 from sagemaker import ModelPackage
 from sagemaker.mxnet.estimator import MXNet
 from sagemaker.mxnet.model import MXNetModel
@@ -382,42 +381,6 @@ def test_deploy_model_and_update_endpoint(
         assert old_config_name != new_config_name
         assert new_config["ProductionVariants"][0]["InstanceType"] == cpu_instance_type
         assert new_config["ProductionVariants"][0]["InitialInstanceCount"] == 1
-
-
-@pytest.mark.skipif(
-    tests.integ.test_region() not in tests.integ.EI_SUPPORTED_REGIONS,
-    reason="EI isn't supported in that specific region.",
-)
-def test_deploy_model_with_accelerator(
-    mxnet_training_job,
-    sagemaker_session,
-    mxnet_eia_latest_version,
-    mxnet_eia_latest_py_version,
-    cpu_instance_type,
-):
-    endpoint_name = unique_name_from_base("test-mxnet-deploy-model-ei")
-
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        desc = sagemaker_session.sagemaker_client.describe_training_job(
-            TrainingJobName=mxnet_training_job
-        )
-        model_data = desc["ModelArtifacts"]["S3ModelArtifacts"]
-        script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist_ei.py")
-        model = MXNetModel(
-            model_data,
-            "SageMakerRole",
-            entry_point=script_path,
-            framework_version=mxnet_eia_latest_version,
-            py_version=mxnet_eia_latest_py_version,
-            sagemaker_session=sagemaker_session,
-        )
-        predictor = model.deploy(
-            1, cpu_instance_type, endpoint_name=endpoint_name, accelerator_type="ml.eia1.medium"
-        )
-
-        data = numpy.zeros(shape=(1, 1, 28, 28))
-        result = predictor.predict(data)
-        assert result is not None
 
 
 def test_deploy_model_with_serverless_inference_config(

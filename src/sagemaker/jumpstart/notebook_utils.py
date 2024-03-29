@@ -178,7 +178,10 @@ def list_jumpstart_tasks(  # pylint: disable=redefined-builtin
     )
     tasks: Set[str] = set()
     for model_id, _ in _generate_jumpstart_model_versions(
-        filter=filter, region=region, sagemaker_session=sagemaker_session
+        filter=filter,
+        region=region,
+        sagemaker_session=sagemaker_session,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
     ):
         _, task, _ = extract_framework_task_model(model_id)
         tasks.add(task)
@@ -209,7 +212,10 @@ def list_jumpstart_frameworks(  # pylint: disable=redefined-builtin
     )
     frameworks: Set[str] = set()
     for model_id, _ in _generate_jumpstart_model_versions(
-        filter=filter, region=region, sagemaker_session=sagemaker_session
+        filter=filter,
+        region=region,
+        sagemaker_session=sagemaker_session,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
     ):
         framework, _, _ = extract_framework_task_model(model_id)
         frameworks.add(framework)
@@ -244,7 +250,10 @@ def list_jumpstart_scripts(  # pylint: disable=redefined-builtin
 
     scripts: Set[str] = set()
     for model_id, version in _generate_jumpstart_model_versions(
-        filter=filter, region=region, sagemaker_session=sagemaker_session
+        filter=filter,
+        region=region,
+        sagemaker_session=sagemaker_session,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
     ):
         scripts.add(JumpStartScriptScope.INFERENCE)
         model_specs = verify_model_region_and_return_specs(
@@ -337,6 +346,7 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
     region: Optional[str] = None,
     list_incomplete_models: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    model_type: Optional[JumpStartModelType] = None,
 ) -> Generator:
     """Generate models for JumpStart, and optionally apply filters to result.
 
@@ -370,12 +380,22 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
         s3_client=sagemaker_session.s3_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
     )
-    models_manifest_list = open_weight_manifest_list + prop_models_manifest_list
+    models_manifest_list = (
+        open_weight_manifest_list
+        if model_type == JumpStartModelType.OPEN_WEIGHTS
+        else (
+            prop_models_manifest_list
+            if model_type == JumpStartModelType.PROPRIETARY
+            else open_weight_manifest_list + prop_models_manifest_list
+        )
+    )
 
     if isinstance(filter, str):
         filter = Identity(filter)
 
-    manifest_keys = set(models_manifest_list[0].__slots__ + prop_models_manifest_list[0].__slots__)
+    manifest_keys = set(
+        open_weight_manifest_list[0].__slots__ + prop_models_manifest_list[0].__slots__
+    )
 
     all_keys: Set[str] = set()
 
