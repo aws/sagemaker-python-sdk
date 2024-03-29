@@ -28,6 +28,7 @@ from tests.integ.sagemaker.serve.constants import (
     PYTORCH_SQUEEZENET_RESOURCE_DIR,
     PYTORCH_SQUEEZENET_MLFLOW_RESOURCE_DIR,
     SERVE_SAGEMAKER_ENDPOINT_TIMEOUT,
+    SERVE_LOCAL_CONTAINER_TIMEOUT,
     PYTHON_VERSION_IS_NOT_310,
 )
 from tests.integ.timeout import timeout
@@ -65,7 +66,7 @@ def custom_request_translator():
             # converts an image to bytes
             image_tensor = self.transform(payload)
             input_batch = image_tensor.unsqueeze(0)
-            input_ndarray = input_batch.numpy()
+            input_ndarray = input_batch.detach().numpy()
             return self._convert_numpy_to_bytes(input_ndarray)
 
         # This function converts the bytes to payload - happens on server side
@@ -79,8 +80,6 @@ def custom_request_translator():
             np.save(buffer, np_array)
             return buffer.getvalue()
 
-    return MyRequestTranslator()
-
 
 @pytest.fixture
 def custom_response_translator():
@@ -88,7 +87,7 @@ def custom_response_translator():
     class MyResponseTranslator(CustomPayloadTranslator):
         # This function converts the payload to bytes - happens on server side
         def serialize_payload_to_bytes(self, payload: torch.Tensor) -> bytes:
-            return self._convert_numpy_to_bytes(payload.numpy())
+            return self._convert_numpy_to_bytes(payload.detach().numpy())
 
         # This function converts the bytes to payload - happens on client side
         def deserialize_payload_from_stream(self, stream) -> object:
