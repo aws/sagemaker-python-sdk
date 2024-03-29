@@ -363,6 +363,7 @@ class JumpStartModel(Model):
         subscription_link = verify_model_region_and_return_specs(
             region=self.region,
             model_id=self.model_id,
+            hub_arn=self.hub_arn,
             version=self.model_version,
             model_type=self.model_type,
             scope=JumpStartScriptScope.INFERENCE,
@@ -653,6 +654,7 @@ class JumpStartModel(Model):
             subscription_link = verify_model_region_and_return_specs(
                 region=self.region,
                 model_id=self.model_id,
+                hub_arn=self.hub_arn,
                 version=self.model_version,
                 model_type=self.model_type,
                 scope=JumpStartScriptScope.INFERENCE,
