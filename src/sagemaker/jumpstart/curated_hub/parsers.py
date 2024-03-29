@@ -311,7 +311,7 @@ def make_hub_model_document_from_specs(
     )
     document["InferenceDependencies"] = list(
         set(model_specs.inference_dependencies)
-    )  # ensure uniqueness
+    )  # Ensure uniqueness
     document["InferenceEnvironmentVariables"] = model_specs.inference_environment_variables
     document["TrainingSupported"] = model_specs.training_supported
     document["IncrementalTrainingSupported"] = model_specs.incremental_training_supported
@@ -326,7 +326,11 @@ def make_hub_model_document_from_specs(
         ),
         None,
     )
-    document["HostingPrepackedArtifactVersion"] = model_specs.hosting_prepacked_artifact_version if hasattr(model_specs, 'hosting_prepacked_artifact_version') else None
+    document["HostingPrepackedArtifactVersion"] = (
+        model_specs.hosting_prepacked_artifact_version
+        if hasattr(model_specs, "hosting_prepacked_artifact_version")
+        else None
+    )
     document["HostingUseScriptUri"] = model_specs.hosting_use_script_uri
     document["HostingEulaUri"] = next(
         (
@@ -339,7 +343,11 @@ def make_hub_model_document_from_specs(
     if model_specs.hosting_model_package_arns and region in model_specs.hosting_model_package_arns:
         document["HostingModelPackageArn"] = model_specs.hosting_model_package_arns[region]
     document["DefaultInferenceInstanceType"] = model_specs.default_inference_instance_type
-    document["SupportedInferenceInstanceTypes"] = model_specs.supported_inference_instance_types
+    document["SupportedInferenceInstanceTypes"] = (
+        list(set(model_specs.supported_inference_instance_types))
+        if model_specs.supported_inference_instance_types is not None
+        else None
+    )
     document["SageMakerSdkPredictorSpecifications"] = model_specs.predictor_specs
     document["InferenceVolumeSize"] = model_specs.inference_volume_size
     document["InferenceEnableNetworkIsolation"] = model_specs.inference_enable_network_isolation
@@ -429,7 +437,11 @@ def make_hub_model_document_from_specs(
             ),
             None,
         )
-        document["TrainingPrepackedScriptVersion"] = model_specs.training_prepacked_script_version if hasattr(model_specs, 'training_prepacked_script_version') else None
+        document["TrainingPrepackedScriptVersion"] = (
+            model_specs.training_prepacked_script_version
+            if hasattr(model_specs, "training_prepacked_script_version")
+            else None
+        )
         document["TrainingEcrUri"] = image_uris.retrieve(
             model_id=model_specs.model_id,
             model_version=model_specs.version,
@@ -451,7 +463,11 @@ def make_hub_model_document_from_specs(
             set(model_specs.training_dependencies)
         )  # Ensure uniqueness
         document["DefaultTrainingInstanceType"] = model_specs.default_training_instance_type
-        document["SupportedTrainingInstanceTypes"] = model_specs.supported_training_instance_types
+        document["SupportedTrainingInstanceTypes"] = (
+            list(set(model_specs.supported_training_instance_types))
+            if model_specs.supported_training_instance_types is not None
+            else None
+        )
         document["TrainingVolumeSize"] = model_specs.training_volume_size
         document["TrainingEnableNetworkIsolation"] = model_specs.training_enable_network_isolation
         document[

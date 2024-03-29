@@ -24,6 +24,7 @@ from sagemaker.jumpstart.curated_hub.utils import construct_hub_model_arn_from_i
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
 from sagemaker.session import Session
 
+
 class SageMakerSettings(object):
     """Static class for storing the SageMaker settings."""
 
