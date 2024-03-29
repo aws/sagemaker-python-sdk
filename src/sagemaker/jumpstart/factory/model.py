@@ -225,6 +225,7 @@ def _add_image_uri_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModel
         region=kwargs.region,
         framework=None,
         image_scope=JumpStartScriptScope.INFERENCE,
+        hub_arn=kwargs.hub_arn,
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
         hub_arn=kwargs.hub_arn,
