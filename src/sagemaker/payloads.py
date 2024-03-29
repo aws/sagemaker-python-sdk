@@ -32,6 +32,7 @@ def retrieve_all_examples(
     region: Optional[str] = None,
     model_id: Optional[str] = None,
     model_version: Optional[str] = None,
+    hub_arn: Optional[str] = None,
     model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_WEIGHTS,
     serialize: bool = False,
     tolerate_vulnerable_model: bool = False,
@@ -84,6 +85,7 @@ def retrieve_all_examples(
         region,
         tolerate_vulnerable_model,
         tolerate_deprecated_model,
+        hub_arn=hub_arn,
         sagemaker_session=sagemaker_session,
         model_type=model_type,
     )
