@@ -121,6 +121,7 @@ def _total_inference_model_size_mib(model: str, dtype: str) -> int:
     padding and converts to size MiB. When performing inference, expect
      to add up to an additional 20% to the given model size as found by EleutherAI.
     """
+    output = None
     try:
         from accelerate.commands.estimate import estimate_command_parser, gather_data
         args = estimate_command_parser().parse_args([model, "--dtypes", dtype])
@@ -129,8 +130,8 @@ def _total_inference_model_size_mib(model: str, dtype: str) -> int:
             args
         )  # "dtype", "Largest Layer", "Total Size Bytes", "Training using Adam"
     except ImportError:
-        logger.error("Install HuggingFace extras dependencies using pip install 'sagemaker["
-                     "huggingface]>=2.212.0'")
+        logger.error("To enable Model size calculations: Install HuggingFace extras dependencies "
+                     "using pip install 'sagemaker[huggingface]>=2.212.0'")
 
     if output is None:
         raise ValueError(f"Could not get Model size for {model}")
