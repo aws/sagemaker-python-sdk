@@ -627,6 +627,7 @@ def _add_env_to_kwargs(
             model_id=kwargs.model_id,
             version=kwargs.model_version,
             region=kwargs.region,
+            hub_arn=kwargs.hub_arn,
             scope=JumpStartScriptScope.TRAINING,
             tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
             tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,

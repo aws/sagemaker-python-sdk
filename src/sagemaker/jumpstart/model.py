@@ -293,9 +293,9 @@ class JumpStartModel(Model):
                 sagemaker_session=sagemaker_session,
             )
 
-        hub_arn = None
+        self.hub_arn = None
         if hub_name:
-            hub_arn = generate_hub_arn_for_init_kwargs(
+            self.hub_arn = generate_hub_arn_for_init_kwargs(
                 hub_name=hub_name, region=region, session=sagemaker_session
             ) 
             self.model_type = JumpStartModelType.OPEN_WEIGHTS
@@ -622,6 +622,7 @@ class JumpStartModel(Model):
             tags=format_tags(tags),
             kms_key=kms_key,
             wait=wait,
+            hub_arn=self.hub_arn,
             data_capture_config=data_capture_config,
             async_inference_config=async_inference_config,
             serverless_inference_config=serverless_inference_config,
