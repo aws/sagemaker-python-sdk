@@ -221,7 +221,7 @@ def test_happy_pytorch_sagemaker_endpoint(
             )
             if caught_ex:
                 logger.exception(caught_ex)
-                assert (
+                assert (  # noqa: F631
                     False,
                 ), f"{caught_ex} was thrown when running pytorch squeezenet sagemaker endpoint test"
 
