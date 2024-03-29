@@ -297,7 +297,7 @@ class JumpStartModel(Model):
         if hub_name:
             self.hub_arn = generate_hub_arn_for_init_kwargs(
                 hub_name=hub_name, region=region, session=sagemaker_session
-            ) 
+            )
             self.model_type = JumpStartModelType.OPEN_WEIGHTS
         else:
             self.model_type = _validate_model_id_and_type()
