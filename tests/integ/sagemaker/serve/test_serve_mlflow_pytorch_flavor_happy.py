@@ -80,6 +80,8 @@ def custom_request_translator():
             np.save(buffer, np_array)
             return buffer.getvalue()
 
+    return MyRequestTranslator()
+
 
 @pytest.fixture
 def custom_response_translator():
