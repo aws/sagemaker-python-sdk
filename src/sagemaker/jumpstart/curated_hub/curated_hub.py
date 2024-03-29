@@ -16,7 +16,7 @@ from concurrent import futures
 from datetime import datetime
 import json
 import traceback
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, List, Any, Tuple
 import boto3
 from botocore import exceptions
 from botocore.client import BaseClient
@@ -371,6 +371,7 @@ class CuratedHub:
         self.studio_manifest = self._fetch_manifest_from_s3(JUMPSTART_DEFAULT_STUDIO_MANIFEST_KEY)
 
         # CopyContentWorkflow + `SageMaker:ImportHubContent` for each model-to-sync in parallel
+        model_to_task_list: List[Tuple[JumpStartModelInfo, futures.Future]] = []
         tasks: List[futures.Future] = []
         with futures.ThreadPoolExecutor(
             max_workers=self._default_thread_pool_size,
@@ -379,15 +380,17 @@ class CuratedHub:
             for thread_num, model in enumerate(models_to_sync):
                 task = import_executor.submit(self._sync_public_model_to_hub, model, thread_num)
                 tasks.append(task)
+                model_to_task_list.append((model, task))
 
         # Handle failed imports
-        results = futures.wait(tasks)
+        futures.wait(tasks)
         failed_imports: List[Dict[str, Any]] = []
-        for result in results.done:
+        for model, result in model_to_task_list:
             exception = result.exception()
             if exception:
                 failed_imports.append(
                     {
+                        "ModelInfo": model,
                         "Exception": exception,
                         "Traceback": "".join(
                             traceback.TracebackException.from_exception(exception).format()
@@ -396,8 +399,21 @@ class CuratedHub:
                 )
         if failed_imports:
             raise RuntimeError(
-                f"Failures when importing models to curated hub in parallel: {failed_imports}."
+                f"Failures when importing models to curated hub in parallel: {self._format_failed_imports(failed_imports)}"
             )
+        
+    def _format_failed_imports(self, failed_imports: List[Dict[str, Any]]) -> str:
+        formatted_errors = []
+        for failed_import in failed_imports:
+          formatted_errors.append(
+              "\n"
+              "-----------\n"
+              f"ModelId: {failed_import.get('ModelInfo').model_id}\n"
+              f"Version: {failed_import.get('ModelInfo').version}\n"
+              f"Exception: {failed_import.get('Exception', 'No exception found!')}\n"
+              f"{failed_import.get('Traceback', 'No traceback found!')}\n"
+          )
+        return "".join(formatted_errors)
 
     def _sync_public_model_to_hub(self, model: JumpStartModelInfo, thread_num: int):
         """Syncs a public JumpStart model version to the Hub. Runs in parallel."""
