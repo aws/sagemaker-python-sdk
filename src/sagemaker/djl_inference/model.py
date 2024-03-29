@@ -213,7 +213,7 @@ def _create_estimator(
     vpc_config: Optional[
         Dict[
             str,
-            List[str,],
+            List[str],
         ]
     ] = None,
     volume_kms_key=None,
