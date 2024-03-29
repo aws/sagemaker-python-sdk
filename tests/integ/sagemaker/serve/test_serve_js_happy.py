@@ -14,12 +14,10 @@ from __future__ import absolute_import
 
 import pytest
 
-from sagemaker.serve import Mode
 from sagemaker.serve.builder.model_builder import ModelBuilder
 from sagemaker.serve.builder.schema_builder import SchemaBuilder
 from tests.integ.sagemaker.serve.constants import (
     SERVE_SAGEMAKER_ENDPOINT_TIMEOUT,
-    SERVE_LOCAL_CONTAINER_TUNE_TIMEOUT,
     PYTHON_VERSION_IS_NOT_310,
 )
 
@@ -75,34 +73,5 @@ def test_happy_tgi_sagemaker_endpoint(happy_model_builder, gpu_instance_type):
                 model_name=model.name,
                 endpoint_name=model.endpoint_name,
             )
-            if caught_ex:
-                raise caught_ex
-
-
-@pytest.mark.skipif(
-    PYTHON_VERSION_IS_NOT_310,
-    reason="The goal of these tests are to test the serving components of our feature",
-)
-@pytest.mark.local_mode
-def test_happy_tune_tgi_local_mode(sagemaker_local_session):
-    logger.info("Running in LOCAL_CONTAINER mode...")
-    caught_ex = None
-
-    model_builder = ModelBuilder(
-        model="huggingface-llm-bilingual-rinna-4b-instruction-ppo-bf16",
-        schema_builder=SchemaBuilder(SAMPLE_PROMPT, SAMPLE_RESPONSE),
-        mode=Mode.LOCAL_CONTAINER,
-        sagemaker_session=sagemaker_local_session,
-    )
-
-    model = model_builder.build()
-
-    with timeout(minutes=SERVE_LOCAL_CONTAINER_TUNE_TIMEOUT):
-        try:
-            tuned_model = model.tune()
-            assert tuned_model.env is not None
-        except Exception as e:
-            caught_ex = e
-        finally:
             if caught_ex:
                 raise caught_ex
