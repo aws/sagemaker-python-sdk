@@ -79,9 +79,9 @@ def test_happy_tgi_sagemaker_endpoint(happy_model_builder, gpu_instance_type):
                 raise caught_ex
 
 
-@pytest.mark.skipif(
-    PYTHON_VERSION_IS_NOT_310,
-    reason="The goal of these tests are to test the serving components of our feature",
+@pytest.mark.skip(
+    reason="available_gpus is None as InstanceType is not picked up. Need to see if this test case can be added as "
+    "Notebook tests: /tests/scripts/run-notebook-test.sh",
 )
 @pytest.mark.local_mode
 def test_happy_tune_tgi_local_mode(sagemaker_local_session):
