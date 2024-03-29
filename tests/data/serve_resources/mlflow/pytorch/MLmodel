@@ -1,0 +1,27 @@
+artifact_path: working_dir/models/resnet_v2_demo
+flavors:
+  python_function:
+    config:
+      device: null
+    data: data
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.pytorch
+    pickle_module_name: mlflow.pytorch.pickle_module
+    python_version: 3.10.13
+  pytorch:
+    code: null
+    model_data: data
+    pytorch_version: 2.0.1+cu117
+mlflow_version: 2.10.2
+model_size_bytes: 4971001
+model_uuid: 2d85043bbf504b1e9950e124c46a1719
+run_id: 98b8d2e2c0e74ab59f4c26f7cb3de233
+signature:
+  inputs: '[{"type": "tensor", "tensor-spec": {"dtype": "float32", "shape": [-1, 3,
+    224, 224]}}]'
+  outputs: '[{"type": "tensor", "tensor-spec": {"dtype": "float32", "shape": [-1,
+    1000]}}]'
+  params: null
+utc_time_created: '2024-03-29 22:26:45.927932'
