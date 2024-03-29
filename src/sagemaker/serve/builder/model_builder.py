@@ -611,8 +611,13 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
         # Check for S3 path
         if self.model_path.startswith("s3://"):
             s3_client = self.sagemaker_session.boto_session.client("s3")
-            bucket_name, key = path.replace("s3://", "").split("/", 1)
-            key_prefix = f"{key.rstrip('/')}/{mlmodel_file}"
+            path_components = path.replace("s3://", "").split("/", 1)
+            bucket_name = path_components[0]
+            if len(path_components) > 1:
+                key = path_components[1]
+            else:
+                key = ""
+            key_prefix = f"{key.rstrip('/')}/{mlmodel_file}" if key else mlmodel_file
             response = s3_client.list_objects_v2(Bucket=bucket_name, Prefix=key_prefix)
             return "Contents" in response and len(response["Contents"]) > 0
 
@@ -627,6 +632,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
             _download_s3_artifacts(self.model_path, download_path, self.sagemaker_session)
             self.model_path = download_path
         mlflow_model_metadata_path = _generate_mlflow_artifact_path(self.model_path, "MLmodel")
+        # TODO: add validation on MLmodel file
         mlflow_model_dependency_path = _generate_mlflow_artifact_path(
             self.model_path, "requirements.txt"
         )
