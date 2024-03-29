@@ -1164,9 +1164,9 @@ def _test_data_quality_monitor_update_schedule(data_quality_monitor, sagemaker_s
     assert data_quality_monitor.max_runtime_in_seconds == MAX_RUNTIME_IN_SECONDS
     assert data_quality_monitor.env == ENVIRONMENT
     assert data_quality_monitor.network_config == NETWORK_CONFIG
-    expected_arguments[
-        "RoleArn"
-    ] = NEW_ROLE_ARN  # all but role arn are from existing job definition
+    expected_arguments["RoleArn"] = (
+        NEW_ROLE_ARN  # all but role arn are from existing job definition
+    )
     sagemaker_session.sagemaker_client.create_data_quality_job_definition.assert_called_once_with(
         **expected_arguments
     )
@@ -1786,9 +1786,9 @@ def _test_model_quality_monitor_update_schedule(model_quality_monitor, sagemaker
     assert model_quality_monitor.max_runtime_in_seconds == MAX_RUNTIME_IN_SECONDS
     assert model_quality_monitor.env == ENVIRONMENT
     assert model_quality_monitor.network_config == NETWORK_CONFIG
-    expected_arguments[
-        "RoleArn"
-    ] = NEW_ROLE_ARN  # all but role arn are from existing job definition
+    expected_arguments["RoleArn"] = (
+        NEW_ROLE_ARN  # all but role arn are from existing job definition
+    )
     sagemaker_session.sagemaker_client.create_model_quality_job_definition.assert_called_once_with(
         **expected_arguments
     )

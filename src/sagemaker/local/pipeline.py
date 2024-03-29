@@ -307,10 +307,10 @@ class _ProcessingStepExecutor(_StepExecutor):
                 "ProcessingOutputConfig" in job_describe_response
                 and "Outputs" in job_describe_response["ProcessingOutputConfig"]
             ):
-                job_describe_response["ProcessingOutputConfig"][
-                    "Outputs"
-                ] = self._convert_list_to_dict(
-                    job_describe_response, "ProcessingOutputConfig.Outputs", "OutputName"
+                job_describe_response["ProcessingOutputConfig"]["Outputs"] = (
+                    self._convert_list_to_dict(
+                        job_describe_response, "ProcessingOutputConfig.Outputs", "OutputName"
+                    )
                 )
             if "ProcessingInputs" in job_describe_response:
                 job_describe_response["ProcessingInputs"] = self._convert_list_to_dict(

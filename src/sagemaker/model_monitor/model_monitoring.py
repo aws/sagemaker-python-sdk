@@ -2739,9 +2739,9 @@ class DefaultModelMonitor(ModelMonitor):
 
         app_specification["ImageUri"] = image_uri
         if post_analytics_processor_script_s3_uri:
-            app_specification[
-                "PostAnalyticsProcessorSourceUri"
-            ] = post_analytics_processor_script_s3_uri
+            app_specification["PostAnalyticsProcessorSourceUri"] = (
+                post_analytics_processor_script_s3_uri
+            )
         if record_preprocessor_script_s3_uri:
             app_specification["RecordPreprocessorSourceUri"] = record_preprocessor_script_s3_uri
 
@@ -3519,9 +3519,9 @@ class ModelQualityMonitor(ModelMonitor):
             )
 
         if post_analytics_processor_script_s3_uri:
-            app_specification[
-                "PostAnalyticsProcessorSourceUri"
-            ] = post_analytics_processor_script_s3_uri
+            app_specification["PostAnalyticsProcessorSourceUri"] = (
+                post_analytics_processor_script_s3_uri
+            )
         if record_preprocessor_script_s3_uri:
             app_specification["RecordPreprocessorSourceUri"] = record_preprocessor_script_s3_uri
 
@@ -4107,9 +4107,9 @@ class BatchTransformInput(MonitoringInput):
         if self.probability_attribute is not None:
             batch_transform_input_data["ProbabilityAttribute"] = self.probability_attribute
         if self.probability_threshold_attribute is not None:
-            batch_transform_input_data[
-                "ProbabilityThresholdAttribute"
-            ] = self.probability_threshold_attribute
+            batch_transform_input_data["ProbabilityThresholdAttribute"] = (
+                self.probability_threshold_attribute
+            )
         if self.exclude_features_attribute is not None:
             batch_transform_input_data["ExcludeFeaturesAttribute"] = self.exclude_features_attribute
 

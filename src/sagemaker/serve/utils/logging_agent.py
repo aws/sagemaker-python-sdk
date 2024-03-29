@@ -1,4 +1,5 @@
 """Module for pulling logs from container"""
+
 from __future__ import absolute_import
 import logging
 from threading import Thread

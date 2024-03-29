@@ -299,9 +299,9 @@ class TestTrainingCompilerConfig:
         )
         expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
         expected_train_args["enable_sagemaker_metrics"] = False
-        expected_train_args["hyperparameters"][
-            TrainingCompilerConfig.HP_ENABLE_COMPILER
-        ] = json.dumps(True)
+        expected_train_args["hyperparameters"][TrainingCompilerConfig.HP_ENABLE_COMPILER] = (
+            json.dumps(True)
+        )
         expected_train_args["hyperparameters"][TrainingCompilerConfig.HP_ENABLE_DEBUG] = json.dumps(
             False
         )
@@ -358,9 +358,9 @@ class TestTrainingCompilerConfig:
         )
         expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
         expected_train_args["enable_sagemaker_metrics"] = False
-        expected_train_args["hyperparameters"][
-            TrainingCompilerConfig.HP_ENABLE_COMPILER
-        ] = json.dumps(True)
+        expected_train_args["hyperparameters"][TrainingCompilerConfig.HP_ENABLE_COMPILER] = (
+            json.dumps(True)
+        )
         expected_train_args["hyperparameters"][TrainingCompilerConfig.HP_ENABLE_DEBUG] = json.dumps(
             False
         )
@@ -409,9 +409,9 @@ class TestTrainingCompilerConfig:
         )
         expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
         expected_train_args["enable_sagemaker_metrics"] = False
-        expected_train_args["hyperparameters"][
-            TrainingCompilerConfig.HP_ENABLE_COMPILER
-        ] = json.dumps(True)
+        expected_train_args["hyperparameters"][TrainingCompilerConfig.HP_ENABLE_COMPILER] = (
+            json.dumps(True)
+        )
         expected_train_args["hyperparameters"][TrainingCompilerConfig.HP_ENABLE_DEBUG] = json.dumps(
             True
         )
@@ -460,9 +460,9 @@ class TestTrainingCompilerConfig:
         )
         expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
         expected_train_args["enable_sagemaker_metrics"] = False
-        expected_train_args["hyperparameters"][
-            TrainingCompilerConfig.HP_ENABLE_COMPILER
-        ] = json.dumps(False)
+        expected_train_args["hyperparameters"][TrainingCompilerConfig.HP_ENABLE_COMPILER] = (
+            json.dumps(False)
+        )
         expected_train_args["hyperparameters"][TrainingCompilerConfig.HP_ENABLE_DEBUG] = json.dumps(
             False
         )

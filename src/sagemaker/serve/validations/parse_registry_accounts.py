@@ -1,4 +1,5 @@
 """Script to scrape account IDs for 1p image URIs defined in src/sagemaker/image_uri_config."""
+
 from __future__ import absolute_import
 import os
 

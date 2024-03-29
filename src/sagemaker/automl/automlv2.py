@@ -1446,9 +1446,9 @@ class AutoMLJobV2(_Job):
 
         auto_ml_model_deploy_config = {}
         if auto_ml.auto_generate_endpoint_name is not None:
-            auto_ml_model_deploy_config[
-                "AutoGenerateEndpointName"
-            ] = auto_ml.auto_generate_endpoint_name
+            auto_ml_model_deploy_config["AutoGenerateEndpointName"] = (
+                auto_ml.auto_generate_endpoint_name
+            )
         if not auto_ml.auto_generate_endpoint_name and auto_ml.endpoint_name is not None:
             auto_ml_model_deploy_config["EndpointName"] = auto_ml.endpoint_name
 

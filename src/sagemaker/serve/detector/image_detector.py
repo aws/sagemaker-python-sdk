@@ -1,4 +1,5 @@
 """Detects the image to deploy model"""
+
 from __future__ import absolute_import
 from typing import Tuple, List
 import platform
