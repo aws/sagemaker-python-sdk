@@ -293,18 +293,19 @@ class JumpStartModel(Model):
                 sagemaker_session=sagemaker_session,
             )
 
-        self.model_type = _validate_model_id_and_type()
-        if not self.model_type:
-            JumpStartModelsAccessor.reset_cache()
-            self.model_type = _validate_model_id_and_type()
-            if not self.model_type:
-                raise ValueError(INVALID_MODEL_ID_ERROR_MSG.format(model_id=model_id))
-
         hub_arn = None
         if hub_name:
             hub_arn = generate_hub_arn_for_init_kwargs(
                 hub_name=hub_name, region=region, session=sagemaker_session
-            )
+            ) 
+            self.model_type = JumpStartModelType.OPEN_WEIGHTS
+        else:
+            self.model_type = _validate_model_id_and_type()
+            if not self.model_type:
+                JumpStartModelsAccessor.reset_cache()
+                self.model_type = _validate_model_id_and_type()
+                if not self.model_type:
+                    raise ValueError(INVALID_MODEL_ID_ERROR_MSG.format(model_id=model_id))
 
         self._model_data_is_set = model_data is not None
         model_init_kwargs = get_init_kwargs(

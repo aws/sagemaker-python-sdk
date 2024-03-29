@@ -95,7 +95,7 @@ class CuratedHub:
         self._default_thread_pool_size = 20
         self._s3_client = sagemaker_session.s3_client
         self.hub_storage_location = self._generate_hub_storage_location(bucket_name)
-        self.studio_manifest = self._fetch_manifest_from_s3(JUMPSTART_DEFAULT_STUDIO_MANIFEST_KEY)
+        self.studio_manifest = None
 
     def _fetch_hub_storage_location(self) -> S3ObjectLocation:
         """Retrieves hub bucket name from Hub config if exists"""
@@ -362,7 +362,7 @@ class CuratedHub:
             models_to_sync,
         )
 
-        # Delete old models?
+        self.studio_manifest = self._fetch_manifest_from_s3(JUMPSTART_DEFAULT_STUDIO_MANIFEST_KEY)
 
         # CopyContentWorkflow + `SageMaker:ImportHubContent` for each model-to-sync in parallel
         tasks: List[futures.Future] = []
