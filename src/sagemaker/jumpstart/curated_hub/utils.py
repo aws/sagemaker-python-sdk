@@ -313,3 +313,7 @@ def get_data_location_uri(
         return file_location.get_uri()
 
     return f"s3://{dest_location.bucket}/{dest_location.key}/{file_location.key}"
+
+def get_hub_content_arn_without_version(hub_content_arn: str) -> str:
+    arn_split = hub_content_arn.split("/")
+    return "/".join(arn_split[:-1])

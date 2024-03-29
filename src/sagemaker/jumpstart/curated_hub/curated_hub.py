@@ -51,6 +51,7 @@ from sagemaker.jumpstart.curated_hub.utils import (
     find_deprecated_vulnerable_flags_for_hub_content,
     is_curated_jumpstart_model,
     is_gated_bucket,
+    get_hub_content_arn_without_version,
 )
 from sagemaker.jumpstart.curated_hub.interfaces import (
     DescribeHubResponse,
@@ -536,7 +537,7 @@ class CuratedHub:
                 "and optional 'version'.",
             )
 
-        models_in_hub = summary_list_from_list_api_response(self.list_models(clear_cache=False))
+        models_in_hub = summary_list_from_list_api_response(self.list_models())
 
         model_summaries_to_scan = models_in_hub
         if model_ids:
@@ -556,8 +557,15 @@ class CuratedHub:
                 region=self.region,
                 session=self._sagemaker_session,
             )
-            self._sagemaker_session.add_tags(ResourceArn=model.hub_content_arn, Tags=tags_to_add)
+
+            hub_content_arn_without_version = get_hub_content_arn_without_version(model.hub_content_arn)
+            if not tags_to_add:
+              JUMPSTART_LOGGER.info(
+                "No tags to add for %s", hub_content_arn_without_version
+              )
+              continue
+            self._sagemaker_session.sagemaker_client.add_tags(ResourceArn=hub_content_arn_without_version, Tags=tags_to_add)
             JUMPSTART_LOGGER.info(
-                "Added tags to HubContentArn %s: %s", model.hub_content_arn, tags_to_add
+                "Added tags to HubContent %s: %s", hub_content_arn_without_version, tags_to_add
             )
         JUMPSTART_LOGGER.info("Tagging complete!")
