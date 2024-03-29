@@ -533,6 +533,7 @@ def _add_resources_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModel
         region=kwargs.region,
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
+        hub_arn=kwargs.hub_arn,
         scope=JumpStartScriptScope.INFERENCE,
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
