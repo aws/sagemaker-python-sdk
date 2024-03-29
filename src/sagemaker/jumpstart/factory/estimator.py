@@ -327,6 +327,7 @@ def get_deploy_kwargs(
         model_id=model_id,
         model_from_estimator=True,
         model_version=model_version,
+        hub_arn=hub_arn,
         instance_type=model_deploy_kwargs.instance_type if training_instance_type is None else None,
         region=region,
         image_uri=image_uri,
@@ -354,6 +355,7 @@ def get_deploy_kwargs(
     estimator_deploy_kwargs: JumpStartEstimatorDeployKwargs = JumpStartEstimatorDeployKwargs(
         model_id=model_init_kwargs.model_id,
         model_version=model_init_kwargs.model_version,
+        hub_arn=hub_arn,
         instance_type=model_init_kwargs.instance_type,
         initial_instance_count=model_deploy_kwargs.initial_instance_count,
         region=model_init_kwargs.region,
