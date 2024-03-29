@@ -187,8 +187,8 @@ class CuratedHub:
         self, model_name: str, model_version: Optional[str] = None
     ) -> DescribeHubContentResponse:
         """Returns descriptive information about the Hub Model"""
-        if model_version == LATEST_VERSION_WILDCARD or model_version is None:
-            model_version = self._get_latest_model_version(model_name)
+        if model_version == LATEST_VERSION_WILDCARD:
+            model_version = None
         hub_content_description: Dict[str, Any] = self._sagemaker_session.describe_hub_content(
             hub_name=self.hub_name,
             hub_content_name=model_name,
