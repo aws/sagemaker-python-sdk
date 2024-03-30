@@ -13,20 +13,17 @@
 from __future__ import absolute_import
 
 import pytest
-import torch
-from PIL import Image
-import os
 import io
 import numpy as np
 
 from sagemaker.s3 import S3Uploader
 from sagemaker.serve.builder.model_builder import ModelBuilder, Mode
 from sagemaker.serve.builder.schema_builder import SchemaBuilder, CustomPayloadTranslator
-from torchvision.transforms import transforms
+from sklearn.datasets import load_diabetes
+
 
 from tests.integ.sagemaker.serve.constants import (
-    PYTORCH_SQUEEZENET_RESOURCE_DIR,
-    PYTORCH_SQUEEZENET_MLFLOW_RESOURCE_DIR,
+    XGBOOST_MLFLOW_RESOURCE_DIR,
     SERVE_SAGEMAKER_ENDPOINT_TIMEOUT,
     SERVE_LOCAL_CONTAINER_TIMEOUT,
     PYTHON_VERSION_IS_NOT_310,
@@ -41,39 +38,24 @@ ROLE_NAME = "SageMakerRole"
 
 
 @pytest.fixture
-def test_image():
-    return Image.open(str(os.path.join(PYTORCH_SQUEEZENET_RESOURCE_DIR, "zidane.jpeg")))
+def test_data():
+    return load_diabetes(return_X_y=True, as_frame=True)
+
 
 
 @pytest.fixture
 def custom_request_translator():
     # request translator
     class MyRequestTranslator(CustomPayloadTranslator):
-        def __init__(self):
-            super().__init__()
-            # Define image transformation
-            self.transform = transforms.Compose(
-                [
-                    transforms.Resize(256),
-                    transforms.CenterCrop(224),
-                    transforms.ToTensor(),
-                    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-                ]
-            )
 
         # This function converts the payload to bytes - happens on client side
         def serialize_payload_to_bytes(self, payload: object) -> bytes:
-            # converts an image to bytes
-            image_tensor = self.transform(payload)
-            input_batch = image_tensor.unsqueeze(0)
-            input_ndarray = input_batch.detach().numpy()
-            return self._convert_numpy_to_bytes(input_ndarray)
+            return self._convert_numpy_to_bytes(payload)
 
         # This function converts the bytes to payload - happens on server side
-        def deserialize_payload_from_stream(self, stream) -> torch.Tensor:
-            # convert payload back to torch.Tensor
+        def deserialize_payload_from_stream(self, stream) -> object:
             np_array = np.load(io.BytesIO(stream.read()))
-            return torch.from_numpy(np_array)
+            return np_array
 
         def _convert_numpy_to_bytes(self, np_array: np.ndarray) -> bytes:
             buffer = io.BytesIO()
@@ -88,12 +70,12 @@ def custom_response_translator():
     # response translator
     class MyResponseTranslator(CustomPayloadTranslator):
         # This function converts the payload to bytes - happens on server side
-        def serialize_payload_to_bytes(self, payload: torch.Tensor) -> bytes:
-            return self._convert_numpy_to_bytes(payload.detach().numpy())
+        def serialize_payload_to_bytes(self, payload: object) -> bytes:
+            return self._convert_numpy_to_bytes(payload)
 
         # This function converts the bytes to payload - happens on client side
         def deserialize_payload_from_stream(self, stream) -> object:
-            return torch.from_numpy(np.load(io.BytesIO(stream.read())))
+            return np.load(io.BytesIO(stream.read()))
 
         def _convert_numpy_to_bytes(self, np_array: np.ndarray) -> bytes:
             buffer = io.BytesIO()
@@ -104,22 +86,21 @@ def custom_response_translator():
 
 
 @pytest.fixture
-def squeezenet_schema(custom_request_translator, custom_response_translator):
-    input_image = Image.open(os.path.join(PYTORCH_SQUEEZENET_RESOURCE_DIR, "zidane.jpeg"))
-    output_tensor = torch.rand(3, 4)
+def xgboost_schema(custom_request_translator, custom_response_translator, test_data):
+    test_x, test_y = test_data
     return SchemaBuilder(
-        sample_input=input_image,
-        sample_output=output_tensor,
+        sample_input=test_x,
+        sample_output=test_y,
         input_translator=custom_request_translator,
         output_translator=custom_response_translator,
     )
 
 
 @pytest.fixture
-def model_builder_local_builder(squeezenet_schema):
+def model_builder_local_builder(xgboost_schema):
     return ModelBuilder(
-        model_path=PYTORCH_SQUEEZENET_MLFLOW_RESOURCE_DIR,
-        schema_builder=squeezenet_schema,
+        model_path=XGBOOST_MLFLOW_RESOURCE_DIR,
+        schema_builder=xgboost_schema,
     )
 
 
@@ -135,18 +116,20 @@ def model_builder(request):
 @pytest.mark.parametrize(
     "model_builder", ["model_builder_local_builder"], indirect=True
 )
-def test_happy_mlflow_pytorch_local_container_with_torch_serve(sagemaker_session, model_builder, test_image):
+def test_happy_mlflow_pytorch_local_container_with_torch_serve(
+        sagemaker_session, model_builder, test_data):
     logger.info("Running in LOCAL_CONTAINER mode...")
     caught_ex = None
 
     model = model_builder.build(mode=Mode.LOCAL_CONTAINER, sagemaker_session=sagemaker_session)
+    test_x, _ = test_data
 
     with timeout(minutes=SERVE_LOCAL_CONTAINER_TIMEOUT):
         try:
             logger.info("Deploying and predicting in LOCAL_CONTAINER mode...")
             predictor = model.deploy()
             logger.info("Local container successfully deployed.")
-            predictor.predict(test_image)
+            predictor.predict(test_x)
         except Exception as e:
             logger.exception("test failed")
             caught_ex = e
@@ -165,25 +148,26 @@ def test_happy_mlflow_pytorch_local_container_with_torch_serve(sagemaker_session
 )
 def test_happy_pytorch_sagemaker_endpoint_with_torch_serve(
     sagemaker_session,
-    squeezenet_schema,
+    xgboost_schema,
     cpu_instance_type,
-    test_image,
+    test_data,
 ):
     logger.info("Running in SAGEMAKER_ENDPOINT mode...")
     caught_ex = None
 
     iam_client = sagemaker_session.boto_session.client("iam")
     role_arn = iam_client.get_role(RoleName=ROLE_NAME)["Role"]["Arn"]
+    test_x, _ = test_data
 
     model_artifacts_uri = "s3://{}/{}/{}/{}".format(
         sagemaker_session.default_bucket(),
         "model_builder_integ_test",
         "mlflow",
-        "pytorch",
+        "xgboost",
     )
 
     model_path = S3Uploader.upload(
-        local_path=PYTORCH_SQUEEZENET_MLFLOW_RESOURCE_DIR,
+        local_path=XGBOOST_MLFLOW_RESOURCE_DIR,
         desired_s3_uri=model_artifacts_uri,
         sagemaker_session=sagemaker_session
     )
@@ -191,7 +175,7 @@ def test_happy_pytorch_sagemaker_endpoint_with_torch_serve(
     model_builder = ModelBuilder(
         mode=Mode.SAGEMAKER_ENDPOINT,
         model_path=model_path,
-        schema_builder=squeezenet_schema,
+        schema_builder=xgboost_schema,
         role_arn=role_arn,
         sagemaker_session=sagemaker_session
     )
@@ -203,7 +187,7 @@ def test_happy_pytorch_sagemaker_endpoint_with_torch_serve(
             logger.info("Deploying and predicting in SAGEMAKER_ENDPOINT mode...")
             predictor = model.deploy(instance_type=cpu_instance_type, initial_instance_count=1)
             logger.info("Endpoint successfully deployed.")
-            predictor.predict(test_image)
+            predictor.predict(test_x)
         except Exception as e:
             caught_ex = e
         finally:

@@ -34,6 +34,12 @@ PYTORCH_SQUEEZENET_MLFLOW_RESOURCE_DIR = os.path.join(
     "mlflow",
     "pytorch"
 )
+XGBOOST_MLFLOW_RESOURCE_DIR = os.path.join(
+    DATA_DIR,
+    "serve_resources",
+    "mlflow",
+    "xgboost"
+)
 TF_EFFICIENT_RESOURCE_DIR = os.path.join(DATA_DIR, "serve_resources", "tensorflow")
 HF_DIR = os.path.join(DATA_DIR, "serve_resources", "hf")
 

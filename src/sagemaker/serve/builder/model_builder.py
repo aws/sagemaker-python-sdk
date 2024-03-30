@@ -627,6 +627,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
             _download_s3_artifacts(self.model_path, download_path, self.sagemaker_session)
             self.model_path = download_path
         mlflow_model_metadata_path = _generate_mlflow_artifact_path(self.model_path, "MLmodel")
+        # TODO: add validation on MLmodel file
         mlflow_model_dependency_path = _generate_mlflow_artifact_path(
             self.model_path, "requirements.txt"
         )
