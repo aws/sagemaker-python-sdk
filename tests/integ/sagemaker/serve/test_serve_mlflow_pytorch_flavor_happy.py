@@ -132,10 +132,10 @@ def model_builder(request):
     PYTHON_VERSION_IS_NOT_310,
     reason="The goal of these test are to test the serving components of our feature",
 )
-@pytest.mark.parametrize(
-    "model_builder", ["model_builder_local_builder"], indirect=True
-)
-def test_happy_mlflow_pytorch_local_container_with_torch_serve(sagemaker_session, model_builder, test_image):
+@pytest.mark.parametrize("model_builder", ["model_builder_local_builder"], indirect=True)
+def test_happy_mlflow_pytorch_local_container_with_torch_serve(
+    sagemaker_session, model_builder, test_image
+):
     logger.info("Running in LOCAL_CONTAINER mode...")
     caught_ex = None
 
@@ -185,7 +185,7 @@ def test_happy_pytorch_sagemaker_endpoint_with_torch_serve(
     model_path = S3Uploader.upload(
         local_path=PYTORCH_SQUEEZENET_MLFLOW_RESOURCE_DIR,
         desired_s3_uri=model_artifacts_uri,
-        sagemaker_session=sagemaker_session
+        sagemaker_session=sagemaker_session,
     )
 
     model_builder = ModelBuilder(
@@ -193,7 +193,7 @@ def test_happy_pytorch_sagemaker_endpoint_with_torch_serve(
         model_path=model_path,
         schema_builder=squeezenet_schema,
         role_arn=role_arn,
-        sagemaker_session=sagemaker_session
+        sagemaker_session=sagemaker_session,
     )
 
     model = model_builder.build()
@@ -219,4 +219,3 @@ def test_happy_pytorch_sagemaker_endpoint_with_torch_serve(
                 assert (
                     ignore_if_worker_dies
                 ), f"{caught_ex} was thrown when running pytorch squeezenet sagemaker endpoint test"
-
