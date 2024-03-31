@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+# flake8: noqa: F631
 from __future__ import absolute_import
 
 import pytest
@@ -221,10 +222,8 @@ def test_happy_pytorch_sagemaker_endpoint(
             )
             if caught_ex:
                 logger.exception(caught_ex)
-                ignore_if_worker_dies = "Worker died." in str(caught_ex)
-                # https://github.com/pytorch/serve/issues/3032
                 assert (
-                    ignore_if_worker_dies
+                    False,
                 ), f"{caught_ex} was thrown when running pytorch squeezenet sagemaker endpoint test"
 
 

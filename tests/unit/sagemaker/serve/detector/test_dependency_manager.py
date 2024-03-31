@@ -99,7 +99,7 @@ class DepedencyManagerTest(unittest.TestCase):
             call("custom_module==1.2.3\n"),
             call("numpy==4.5\n"),
             call("boto3=1.28.*\n"),
-            call("sagemaker>=2.199\n"),
+            call("sagemaker[huggingface]>=2.199\n"),
             call("other_module@http://some/website.whl\n"),
         ]
         mocked_writes.assert_has_calls(expected_calls)
