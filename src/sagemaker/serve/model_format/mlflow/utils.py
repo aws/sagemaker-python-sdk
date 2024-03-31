@@ -313,6 +313,10 @@ def _select_container_for_mlflow_model(
     )
 
     if deployment_flavor not in FLAVORS_WITH_FRAMEWORK_SPECIFIC_DLC_SUPPORT:
+        logger.warning(
+            f"{deployment_flavor} flavor currently doesn't have optimized framework "
+            f"specific DLC support. Defaulting to generic image..."
+        )
         return _get_default_image_for_mlflow(python_version, region, instance_type)
     framework_version = _get_framework_version_from_requirements(
         deployment_flavor, requirement_path
@@ -360,3 +364,19 @@ def _select_container_for_mlflow_model(
         )
         % (deployment_flavor, framework_version, f"py{major_python_version}{minor_python_version}")
     )
+
+
+def _validate_input_for_mlflow(model_server: ModelServer) -> None:
+    """Validates arguments provided with mlflow models.
+
+    Args:
+        - model_server (ModelServer): Model server used for orchestrating mlflow model.
+
+    Raises:
+    - ValueError: If model server is not torchserve.
+    """
+    if model_server != ModelServer.TORCHSERVE:
+        raise ValueError(
+            f"{model_server} is currently not supported for MLflow Model. "
+            f"Please choose another model server."
+        )

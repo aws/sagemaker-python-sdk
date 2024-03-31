@@ -46,6 +46,7 @@ from sagemaker.serve.model_format.mlflow.utils import (
     _generate_mlflow_artifact_path,
     _get_all_flavor_metadata,
     _get_deployment_flavor,
+    _validate_input_for_mlflow,
 )
 from sagemaker.serve.save_retrive.version_1_0_0.metadata.metadata import Metadata
 from sagemaker.serve.spec.inference_spec import InferenceSpec
@@ -690,6 +691,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
         self._is_mlflow_model = self._check_if_input_is_mlflow_model()
         if self._is_mlflow_model:
             self._initialize_for_mlflow()
+            _validate_input_for_mlflow(self.model_server)
 
         if isinstance(self.model, str):
             model_task = None
