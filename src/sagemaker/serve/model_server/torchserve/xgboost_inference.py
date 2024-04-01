@@ -149,6 +149,7 @@ def _load_mlflow_model(deployment_flavor, model_dir):
         "python_function": ("mlflow.pyfunc", "load_model"),
         "pytorch": ("mlflow.pytorch", "load_model"),
         "sklearn": ("mlflow.sklearn", "load_model"),
+        "tensorflow": ("mlflow.tensorflow", "load_model"),
         "xgboost": ("mlflow.xgboost", "load_model"),
         "langchain": ("mlflow.pyfunc", "load_model"),
     }
