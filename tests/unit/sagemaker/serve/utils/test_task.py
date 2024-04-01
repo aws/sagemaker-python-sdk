@@ -18,23 +18,29 @@ import pytest
 
 from sagemaker.serve.utils import task
 
-EXPECTED_INPUTS = {"inputs": "Paris is the [MASK] of France.", "parameters": {}}
-EXPECTED_OUTPUTS = [{"sequence": "Paris is the capital of France.", "score": 0.7}]
 HF_INVALID_TASK = "not-present-task"
-
-
-def test_retrieve_local_schemas_success():
-    inputs, outputs = task.retrieve_local_schemas("fill-mask")
-
-    assert inputs == EXPECTED_INPUTS
-    assert outputs == EXPECTED_OUTPUTS
 
 
 def test_retrieve_local_schemas_text_generation_success():
     inputs, outputs = task.retrieve_local_schemas("text-generation")
 
-    assert inputs is not None
-    assert outputs is not None
+    assert inputs == {"inputs": "Hello, I'm a language model", "parameters": {}}
+    assert outputs == [
+        {
+            "generated_text": "Hello, I'm a language modeler. So while writing this, when I went out to "
+            "meet my wife or come home she told me that my"
+        }
+    ]
+
+
+def test_retrieve_local_schemas_text_classification_success():
+    inputs, outputs = task.retrieve_local_schemas("text-classification")
+
+    assert inputs == {
+        "inputs": "Where is the capital of France?, Paris is the capital of France.",
+        "parameters": {},
+    }
+    assert outputs == [{"label": "entailment", "score": 0.997}]
 
 
 def test_retrieve_local_schemas_throws():

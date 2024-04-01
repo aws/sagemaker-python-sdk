@@ -64,7 +64,6 @@ from sagemaker.serve.validations.check_image_and_hardware_type import (
 )
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.huggingface.llm_utils import get_huggingface_model_metadata
-from sagemaker_schema_inference_artifacts.huggingface import remote_schema_retriever
 
 logger = logging.getLogger(__name__)
 
@@ -718,13 +717,25 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
             try:
                 sample_inputs, sample_outputs = task.retrieve_local_schemas(model_task)
             except ValueError:
-                # samples could not be loaded locally, try to fetch it from sagemaker_schema_inference_artifacts
+                # samples could not be loaded locally, try to fetch remote hf schema
+                from sagemaker_schema_inference_artifacts.huggingface import remote_schema_retriever
+                if model_task in ("text-to-image", "automatic-speech-recognition"):
+                    logger.warning(
+                        "HF SchemaBuilder for %s is in beta mode, and is not guaranteed to work "
+                        "with all models at this time."
+                        % model_task
+                    )
                 remote_hf_schema_helper = remote_schema_retriever.RemoteSchemaRetriever()
-                sample_inputs, sample_outputs = remote_hf_schema_helper.get_resolved_hf_schema_for_task(model_task)
+                (
+                    sample_inputs,
+                    sample_outputs,
+                ) = remote_hf_schema_helper.get_resolved_hf_schema_for_task(model_task)
             self.schema_builder = SchemaBuilder(sample_inputs, sample_outputs)
         except ValueError:
-            raise TaskNotFoundException(f"HuggingFace Schema builder samples for {model_task} could not be found "
-                                        f"locally or via remote.")
+            raise TaskNotFoundException(
+                f"HuggingFace Schema builder samples for {model_task} could not be found "
+                f"locally or via remote."
+            )
 
     def _can_fit_on_single_gpu(self) -> Type[bool]:
         """Check if model can fit on a single GPU

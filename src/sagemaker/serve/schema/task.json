@@ -1,38 +1,4 @@
 {
-	"fill-mask": {
-		"sample_inputs": {
-			"properties": {
-				"inputs": "Paris is the [MASK] of France.",
-				"parameters": {}
-			}
-		},
-		"sample_outputs": {
-			"properties": [
-				{
-					"sequence": "Paris is the capital of France.",
-					"score": 0.7
-				}
-			]
-		}
-	},
-	"question-answering": {
-		"sample_inputs": {
-			"properties": {
-				"context": "I have a German Shepherd dog, named Coco.",
-				"question": "What is my dog's breed?"
-			}
-		},
-		"sample_outputs": {
-			"properties": [
-				{
-					"answer": "German Shepherd",
-					"score": 0.972,
-					"start": 9,
-					"end": 24
-				}
-			]
-		}
-	},
 	"text-classification": {
 		"sample_inputs": {
 			"properties": {
