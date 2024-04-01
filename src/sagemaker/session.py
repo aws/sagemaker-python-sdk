@@ -5665,44 +5665,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if os.path.exists(NOTEBOOK_METADATA_FILE):
             with open(NOTEBOOK_METADATA_FILE, "rb") as f:
                 metadata = json.loads(f.read())
-                instance_name = metadata.get("ResourceName")
-                domain_id = metadata.get("DomainId")
-                user_profile_name = metadata.get("UserProfileName")
-                space_name = metadata.get("SpaceName")
                 execution_role_arn = metadata.get("ExecutionRoleArn")
-            try:
-                if domain_id is None:
-                    instance_desc = self.sagemaker_client.describe_notebook_instance(
-                        NotebookInstanceName=instance_name
-                    )
-                    return instance_desc["RoleArn"]
 
-                # find execution role from the metadata file if present
-                if execution_role_arn is not None:
-                    return execution_role_arn
+            # find execution role from the metadata file if present
+            if execution_role_arn is not None:
+                return execution_role_arn
 
-                # In Shared Space app, find execution role from DefaultSpaceSettings on domain level
-                if space_name is not None:
-                    domain_desc = self.sagemaker_client.describe_domain(DomainId=domain_id)
-                    return domain_desc["DefaultSpaceSettings"]["ExecutionRole"]
-
-                user_profile_desc = self.sagemaker_client.describe_user_profile(
-                    DomainId=domain_id, UserProfileName=user_profile_name
-                )
-
-                # First, try to find role in userSettings
-                if user_profile_desc.get("UserSettings", {}).get("ExecutionRole"):
-                    return user_profile_desc["UserSettings"]["ExecutionRole"]
-
-                # If not found, fallback to the domain
-                domain_desc = self.sagemaker_client.describe_domain(DomainId=domain_id)
-                return domain_desc["DefaultUserSettings"]["ExecutionRole"]
-            except ClientError:
-                logger.debug(
-                    "Couldn't call 'describe_notebook_instance' to get the Role "
-                    "ARN of the instance %s.",
-                    instance_name,
-                )
+            # We always expect execution role arn to be present in metadata file
+            raise ValueError("Execution role arn not present in metadata file.")
 
         assumed_role = self.boto_session.client(
             "sts",
