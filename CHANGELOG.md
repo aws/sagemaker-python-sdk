@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.214.2 (2024-04-01)
+
+### Bug Fixes and Other Changes
+
+ * Skip JS Tune integration test
+ * bump apache-airflow version to 2.8.3
+ * bump onnx version to >=1.15.0
+ * Updates for DJL 0.27.0 release
+ * Tune (local mode) support for Jumpstart Models
+ * attach jumpstart estimator for gated model
+
 ## v2.214.1 (2024-03-27)
 
 ### Bug Fixes and Other Changes
