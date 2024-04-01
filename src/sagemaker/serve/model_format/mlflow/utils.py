@@ -263,7 +263,7 @@ def _download_s3_artifacts(s3_path: str, dst_path: str, session: Session) -> Non
 
     s3_bucket, s3_key = s3_path.replace("s3://", "").split("/", 1)
 
-    s3 = Session().boto_session.client("s3")
+    s3 = session.boto_session.client("s3")
 
     os.makedirs(dst_path, exist_ok=True)
 
