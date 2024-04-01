@@ -397,6 +397,8 @@ class DataSerializer(SimpleBaseSerializer):
                 raise ValueError(f"Could not open/read file: {data}. {e}")
         if isinstance(data, bytes):
             return data
+        if isinstance(data, dict) and "data" in data:
+            return self.serialize(data["data"])
 
         raise ValueError(f"Object of type {type(data)} is not Data serializable.")
 

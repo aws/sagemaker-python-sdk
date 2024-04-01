@@ -164,6 +164,15 @@ class SchemaBuilder(TritonSchemaBuilder):
             return StringSerializer()
         if _is_jsonable(obj):
             return JSONSerializerWrapper()
+        if isinstance(obj, dict) and "content_type" in obj:
+            try:
+                return DataSerializer(content_type=obj["content_type"])
+            except ValueError as e:
+                logger.error(
+                    "Unable to determine serializer for content_type %s."
+                    % obj['content_type']
+                )
+                logger.error(e)
 
         raise ValueError(
             (
