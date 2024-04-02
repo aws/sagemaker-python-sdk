@@ -100,9 +100,9 @@ def capture_dependencies(requirements_path: str):
         return
 
     command = ["pigar", "gen", "-f", str(Path(requirements_path)), str(os.getcwd())]
-    logging.info("Running command: %s", ' '.join(command))
+    logging.info("Running command: %s", " ".join(command))
 
-    subprocess.run(command)
+    subprocess.run(command, check=True, capture_output=True)
     logger.info("Dependencies captured successfully")
 
 
