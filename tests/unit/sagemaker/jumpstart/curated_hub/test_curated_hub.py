@@ -167,7 +167,11 @@ def test_create_with_bucket_name(
 @patch(f"{MODULE_PATH}.list_models")
 @patch(f"{MODULE_PATH}._fetch_manifest_from_s3")
 def test_sync_kicks_off_parallel_syncs(
-    mock_fetch_manifest, mock_list_models, mock_sync_public_models, mock_get_model_specs, sagemaker_session
+    mock_fetch_manifest,
+    mock_list_models,
+    mock_sync_public_models,
+    mock_get_model_specs,
+    sagemaker_session,
 ):
     mock_fetch_manifest.return_value = {}
     mock_get_model_specs.side_effect = get_spec_from_base_spec
@@ -193,7 +197,11 @@ def test_sync_kicks_off_parallel_syncs(
 @patch(f"{MODULE_PATH}.list_models")
 @patch(f"{MODULE_PATH}._fetch_manifest_from_s3")
 def test_sync_filters_models_that_exist_in_hub(
-    mock_fetch_manifest, mock_list_models, mock_sync_public_models, mock_get_model_specs, sagemaker_session
+    mock_fetch_manifest,
+    mock_list_models,
+    mock_sync_public_models,
+    mock_get_model_specs,
+    sagemaker_session,
 ):
     mock_fetch_manifest.return_value = {}
     mock_get_model_specs.side_effect = get_spec_from_base_spec
@@ -253,7 +261,11 @@ def test_sync_filters_models_that_exist_in_hub(
 @patch(f"{MODULE_PATH}.list_models")
 @patch(f"{MODULE_PATH}._fetch_manifest_from_s3")
 def test_sync_updates_old_models_in_hub(
-    mock_fetch_manifest, mock_list_models, mock_sync_public_models, mock_get_model_specs, sagemaker_session
+    mock_fetch_manifest,
+    mock_list_models,
+    mock_sync_public_models,
+    mock_get_model_specs,
+    sagemaker_session,
 ):
     mock_fetch_manifest.return_value = {}
     mock_get_model_specs.side_effect = get_spec_from_base_spec
@@ -316,7 +328,11 @@ def test_sync_updates_old_models_in_hub(
 @patch(f"{MODULE_PATH}.list_models")
 @patch(f"{MODULE_PATH}._fetch_manifest_from_s3")
 def test_sync_passes_newer_hub_models(
-    mock_fetch_manifest, mock_list_models, mock_sync_public_models, mock_get_model_specs, sagemaker_session
+    mock_fetch_manifest,
+    mock_list_models,
+    mock_sync_public_models,
+    mock_get_model_specs,
+    sagemaker_session,
 ):
     mock_fetch_manifest.return_value = {}
     mock_get_model_specs.side_effect = get_spec_from_base_spec

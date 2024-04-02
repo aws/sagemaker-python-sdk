@@ -58,7 +58,7 @@ def test_jumpstart_default_metric_definitions(
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
         hub_arn=None,
-        sagemaker_session=mock_session
+        sagemaker_session=mock_session,
     )
 
     patched_get_model_specs.reset_mock()
@@ -80,7 +80,7 @@ def test_jumpstart_default_metric_definitions(
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
         hub_arn=None,
-        sagemaker_session=mock_session
+        sagemaker_session=mock_session,
     )
 
     patched_get_model_specs.reset_mock()
