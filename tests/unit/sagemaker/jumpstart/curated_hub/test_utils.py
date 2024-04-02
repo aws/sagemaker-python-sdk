@@ -300,8 +300,7 @@ def test_find_all_tags_for_jumpstart_model_filters_non_jumpstart_models(mock_spe
                 "DocumentSchemaVersion": "test_schema",
                 "HubContentStatus": "test",
                 "HubContentSearchKeywords": [
-                    "@jumpstart-model-id:model-one-pytorch",
-                    "@jumpstart-model-version:1.0.3",
+                    "curatedjumpstartmodel",
                 ],
             },
             {
@@ -313,8 +312,7 @@ def test_find_all_tags_for_jumpstart_model_filters_non_jumpstart_models(mock_spe
                 "DocumentSchemaVersion": "test_schema",
                 "HubContentStatus": "test",
                 "HubContentSearchKeywords": [
-                    "@jumpstart-model-id:model-four-huggingface",
-                    "@jumpstart-model-version:2.0.2",
+                    "curatedjumpstartmodel",
                 ],
             },
             {

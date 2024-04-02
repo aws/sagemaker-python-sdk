@@ -390,8 +390,7 @@ class EstimatorTest(unittest.TestCase):
             initial_instance_count=1,
             image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference"
             ":1.5.0-gpu-py3",
-            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/"
-            "pytorch/inference/ic/v1.0.0/sourcedir.tar.gz",
+            source_dir="source-directory-tarballs/pytorch/inference/ic/v1.0.0/sourcedir.tar.gz",
             entry_point="inference.py",
             endpoint_name="go-blue",
             model_name="go-blue",

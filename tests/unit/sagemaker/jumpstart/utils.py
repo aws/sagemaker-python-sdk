@@ -33,6 +33,7 @@ from sagemaker.jumpstart.types import (
 from sagemaker.jumpstart.enums import JumpStartModelType
 
 from sagemaker.jumpstart.utils import get_formatted_manifest
+from sagemaker.session import Session
 from tests.unit.sagemaker.jumpstart.constants import (
     PROTOTYPICAL_MODEL_SPECS_DICT,
     BASE_MANIFEST,
@@ -106,6 +107,7 @@ def get_prototype_model_spec(
     region: str = None,
     model_id: str = None,
     version: str = None,
+    sagemaker_session: Session = None,
     hub_arn: Optional[str] = None,
     s3_client: boto3.client = None,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
@@ -124,6 +126,7 @@ def get_special_model_spec(
     model_id: str = None,
     version: str = None,
     hub_arn: Optional[str] = None,
+    sagemaker_session: Session = None,
     s3_client: boto3.client = None,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> JumpStartModelSpecs:
@@ -143,6 +146,7 @@ def get_special_model_spec_for_inference_component_based_endpoint(
     hub_arn: Optional[str] = None,
     s3_client: boto3.client = None,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
+    sagemaker_session: Session = None,
 ) -> JumpStartModelSpecs:
     """This function mocks cache accessor functions. For this mock,
     we only retrieve model specs based on the model ID and adding
@@ -165,6 +169,7 @@ def get_spec_from_base_spec(
     model_id: str = None,
     version_str: str = None,
     version: str = None,
+    sagemaker_session: Session = None,
     hub_arn: Optional[str] = None,
     hub_model_arn: Optional[str] = None,
     s3_client: boto3.client = None,

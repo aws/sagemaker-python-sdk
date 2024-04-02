@@ -57,6 +57,7 @@ def test_jumpstart_default_serializers(
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
         hub_arn=None,
+        sagemaker_session=mock_session
     )
 
     patched_get_model_specs.reset_mock()
@@ -102,4 +103,5 @@ def test_jumpstart_serializer_options(
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
         hub_arn=None,
+        sagemaker_session=mock_session
     )

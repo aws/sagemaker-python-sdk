@@ -165,9 +165,11 @@ def test_create_with_bucket_name(
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
 @patch(f"{MODULE_PATH}._sync_public_model_to_hub")
 @patch(f"{MODULE_PATH}.list_models")
+@patch(f"{MODULE_PATH}._fetch_manifest_from_s3")
 def test_sync_kicks_off_parallel_syncs(
-    mock_list_models, mock_sync_public_models, mock_get_model_specs, sagemaker_session
+    mock_fetch_manifest, mock_list_models, mock_sync_public_models, mock_get_model_specs, sagemaker_session
 ):
+    mock_fetch_manifest.return_value = {}
     mock_get_model_specs.side_effect = get_spec_from_base_spec
     mock_list_models.return_value = {"HubContentSummaries": []}
     hub_name = "mock_hub_name"
@@ -189,9 +191,11 @@ def test_sync_kicks_off_parallel_syncs(
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
 @patch(f"{MODULE_PATH}._sync_public_model_to_hub")
 @patch(f"{MODULE_PATH}.list_models")
+@patch(f"{MODULE_PATH}._fetch_manifest_from_s3")
 def test_sync_filters_models_that_exist_in_hub(
-    mock_list_models, mock_sync_public_models, mock_get_model_specs, sagemaker_session
+    mock_fetch_manifest, mock_list_models, mock_sync_public_models, mock_get_model_specs, sagemaker_session
 ):
+    mock_fetch_manifest.return_value = {}
     mock_get_model_specs.side_effect = get_spec_from_base_spec
     mock_list_models.return_value = {
         "HubContentSummaries": [
@@ -247,9 +251,11 @@ def test_sync_filters_models_that_exist_in_hub(
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
 @patch(f"{MODULE_PATH}._sync_public_model_to_hub")
 @patch(f"{MODULE_PATH}.list_models")
+@patch(f"{MODULE_PATH}._fetch_manifest_from_s3")
 def test_sync_updates_old_models_in_hub(
-    mock_list_models, mock_sync_public_models, mock_get_model_specs, sagemaker_session
+    mock_fetch_manifest, mock_list_models, mock_sync_public_models, mock_get_model_specs, sagemaker_session
 ):
+    mock_fetch_manifest.return_value = {}
     mock_get_model_specs.side_effect = get_spec_from_base_spec
     mock_list_models.return_value = {
         "HubContentSummaries": [
@@ -308,9 +314,11 @@ def test_sync_updates_old_models_in_hub(
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
 @patch(f"{MODULE_PATH}._sync_public_model_to_hub")
 @patch(f"{MODULE_PATH}.list_models")
+@patch(f"{MODULE_PATH}._fetch_manifest_from_s3")
 def test_sync_passes_newer_hub_models(
-    mock_list_models, mock_sync_public_models, mock_get_model_specs, sagemaker_session
+    mock_fetch_manifest, mock_list_models, mock_sync_public_models, mock_get_model_specs, sagemaker_session
 ):
+    mock_fetch_manifest.return_value = {}
     mock_get_model_specs.side_effect = get_spec_from_base_spec
     mock_list_models.return_value = {
         "HubContentSummaries": [
@@ -655,7 +663,7 @@ def test_describe_model_with_none_version(
     sagemaker_session.describe_hub_content.assert_called_with(
         hub_name=HUB_NAME,
         hub_content_name="mock-model-one-huggingface",
-        hub_content_version="1.1.1",
+        hub_content_version=None,
         hub_content_type="Model",
     )
 
@@ -674,7 +682,7 @@ def test_describe_model_with_wildcard_version(
     sagemaker_session.describe_hub_content.assert_called_with(
         hub_name=HUB_NAME,
         hub_content_name="mock-model-one-huggingface",
-        hub_content_version="1.1.1",
+        hub_content_version=None,
         hub_content_type="Model",
     )
 
