@@ -37,6 +37,7 @@ from sagemaker.jumpstart.session_utils import get_model_id_version_from_training
 from sagemaker.jumpstart.utils import (
     validate_model_id_and_get_type,
     resolve_model_sagemaker_config_field,
+    verify_model_region_and_return_specs,
 )
 from sagemaker.utils import stringify_object, format_tags, Tags
 from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
@@ -729,11 +730,27 @@ class JumpStartEstimator(Estimator):
 
         model_version = model_version or "*"
 
+        additional_kwargs = {"model_id": model_id, "model_version": model_version}
+
+        model_specs = verify_model_region_and_return_specs(
+            model_id=model_id,
+            version=model_version,
+            region=sagemaker_session.boto_region_name,
+            scope=JumpStartScriptScope.TRAINING,
+            tolerate_deprecated_model=True,  # model is already trained, so tolerate if deprecated
+            tolerate_vulnerable_model=True,  # model is already trained, so tolerate if vulnerable
+            sagemaker_session=sagemaker_session,
+        )
+
+        # eula was already accepted if the model was successfully trained
+        if model_specs.is_gated_model():
+            additional_kwargs.update({"environment": {"accept_eula": "true"}})
+
         return cls._attach(
             training_job_name=training_job_name,
             sagemaker_session=sagemaker_session,
             model_channel_name=model_channel_name,
-            additional_kwargs={"model_id": model_id, "model_version": model_version},
+            additional_kwargs=additional_kwargs,
         )
 
     def deploy(

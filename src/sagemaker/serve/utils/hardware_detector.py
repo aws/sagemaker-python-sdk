@@ -18,9 +18,7 @@ from typing import Tuple
 
 from botocore.exceptions import ClientError
 
-from accelerate.commands.estimate import estimate_command_parser, gather_data
 from sagemaker import Session
-from sagemaker.model import Model
 from sagemaker import instance_types_gpu_info
 
 logger = logging.getLogger(__name__)
@@ -116,18 +114,27 @@ def _format_instance_type(instance_type: str) -> str:
     return ec2_instance
 
 
-def _total_inference_model_size_mib(model: Model, dtype: str) -> int:
+def _total_inference_model_size_mib(model: str, dtype: str) -> int:
     """Calculates the model size from HF accelerate
 
     This function gets the model size from accelerate. It also adds a
     padding and converts to size MiB. When performing inference, expect
      to add up to an additional 20% to the given model size as found by EleutherAI.
     """
-    args = estimate_command_parser().parse_args([model, "--dtypes", dtype])
+    output = None
+    try:
+        from accelerate.commands.estimate import estimate_command_parser, gather_data
 
-    output = gather_data(
-        args
-    )  # "dtype", "Largest Layer", "Total Size Bytes", "Training using Adam"
+        args = estimate_command_parser().parse_args([model, "--dtypes", dtype])
+
+        output = gather_data(
+            args
+        )  # "dtype", "Largest Layer", "Total Size Bytes", "Training using Adam"
+    except ImportError:
+        logger.error(
+            "To enable Model size calculations: Install HuggingFace extras dependencies "
+            "using pip install 'sagemaker[huggingface]>=2.212.0'"
+        )
 
     if output is None:
         raise ValueError(f"Could not get Model size for {model}")
