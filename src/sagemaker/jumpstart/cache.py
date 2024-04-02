@@ -452,16 +452,17 @@ class JumpStartModelsCache:
             return JumpStartCachedContentValue(
                 formatted_content=model_specs
             )
-        
+
         if data_type in [item.value for item in HubContentType]:
             model_info = hub_utils.get_info_from_hub_resource_arn(id_info)
-            if (model_info.hub_content_version 
-              and "*" in model_info.hub_content_version
-              and model_info.hub_content_version != "*"):
+            if (
+                model_info.hub_content_version
+                and "*" in model_info.hub_content_version
+                and model_info.hub_content_version != "*"
+            ):
                 raise ValueError(
                     "You can only pass in `*` or the full version when using the argument hub_name."
-                  )
-
+                )
 
         if data_type == HubContentType.NOTEBOOK:
             hub_name, _, notebook_name, notebook_version = hub_utils \

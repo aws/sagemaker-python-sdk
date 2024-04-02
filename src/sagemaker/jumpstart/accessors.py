@@ -266,6 +266,8 @@ class JumpStartModelsAccessor(object):
             region (str): region for which to retrieve header.
             model_id (str): model ID to retrieve.
             version (str): semantic version to retrieve for the model ID.
+            hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+                model details from. (default: None).
             s3_client (boto3.client): boto3 client to use for accessing JumpStart models s3 cache.
                 If not set, a default client will be made.
         """

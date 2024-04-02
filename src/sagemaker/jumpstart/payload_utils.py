@@ -71,6 +71,8 @@ def _construct_payload(
             the payload.
         model_version (str): Version of the JumpStart model for which to retrieve the
             payload.
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (default: None).
         region (Optional[str]): Region for which to retrieve the
             payload. (Default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model

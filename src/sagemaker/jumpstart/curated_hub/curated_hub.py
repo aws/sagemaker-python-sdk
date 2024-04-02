@@ -17,9 +17,7 @@ from datetime import datetime
 import json
 import traceback
 from typing import Optional, Dict, List, Any, Tuple
-import boto3
 from botocore import exceptions
-from botocore.client import BaseClient
 from packaging.version import Version
 
 from sagemaker.utils import TagsDict
@@ -399,20 +397,23 @@ class CuratedHub:
                 )
         if failed_imports:
             raise RuntimeError(
-                f"Failures when importing models to curated hub in parallel: {self._format_failed_imports(failed_imports)}"
+                f"Failures when importing models to curated hub in parallel:"
+                f" {self._format_failed_imports(failed_imports)}"
             )
-        
+
     def _format_failed_imports(self, failed_imports: List[Dict[str, Any]]) -> str:
+        """Make failed import exception logs look nicer."""
+
         formatted_errors = []
         for failed_import in failed_imports:
-          formatted_errors.append(
-              "\n"
-              "-----------\n"
-              f"ModelId: {failed_import.get('ModelInfo').model_id}\n"
-              f"Version: {failed_import.get('ModelInfo').version}\n"
-              f"Exception: {failed_import.get('Exception', 'No exception found!')}\n"
-              f"{failed_import.get('Traceback', 'No traceback found!')}\n"
-          )
+            formatted_errors.append(
+                "\n"
+                "-----------\n"
+                f"ModelId: {failed_import.get('ModelInfo').model_id}\n"
+                f"Version: {failed_import.get('ModelInfo').version}\n"
+                f"Exception: {failed_import.get('Exception', 'No exception found!')}\n"
+                f"{failed_import.get('Traceback', 'No traceback found!')}\n"
+            )
         return "".join(formatted_errors)
 
     def _sync_public_model_to_hub(self, model: JumpStartModelInfo, thread_num: int):

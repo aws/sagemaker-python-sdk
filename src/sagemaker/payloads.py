@@ -47,6 +47,8 @@ def retrieve_all_examples(
             the model payloads.
         model_version (str): The version of the JumpStart model for which to retrieve
             the model payloads.
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (default: None).
         serialize (bool): Whether to serialize byte-stream valued payloads by downloading
             binary files from s3 and applying encoding, or to keep payload in pre-serialized
             state. Set this option to False if you want to avoid s3 downloads or if you
@@ -125,6 +127,7 @@ def retrieve_example(
     region: Optional[str] = None,
     model_id: Optional[str] = None,
     model_version: Optional[str] = None,
+    hub_arn: Optional[str] = None,
     model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_WEIGHTS,
     serialize: bool = False,
     tolerate_vulnerable_model: bool = False,
@@ -139,6 +142,8 @@ def retrieve_example(
             the model payload.
         model_version (str): The version of the JumpStart model for which to retrieve
             the model payload.
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (default: None).
         model_type (str): The model type of the JumpStart model, either is open weight
             or proprietary.
         serialize (bool): Whether to serialize byte-stream valued payloads by downloading
@@ -170,6 +175,7 @@ def retrieve_example(
         region=region,
         model_id=model_id,
         model_version=model_version,
+        hub_arn=hub_arn,
         model_type=model_type,
         serialize=serialize,
         tolerate_vulnerable_model=tolerate_vulnerable_model,

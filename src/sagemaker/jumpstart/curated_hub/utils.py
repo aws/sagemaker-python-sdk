@@ -13,7 +13,7 @@
 """This module contains utilities related to SageMaker JumpStart CuratedHub."""
 from __future__ import absolute_import
 import re
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, List
 from sagemaker.jumpstart.curated_hub.types import (
     FileInfo,
     HubContentReferenceType,
@@ -316,5 +316,7 @@ def get_data_location_uri(
 
 
 def get_hub_content_arn_without_version(hub_content_arn: str) -> str:
+    """Returns the ARN of a hub content without the version."""
+
     arn_split = hub_content_arn.split("/")
     return "/".join(arn_split[:-1])
