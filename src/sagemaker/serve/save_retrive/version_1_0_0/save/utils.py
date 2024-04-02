@@ -5,6 +5,7 @@ import hmac
 import hashlib
 import os
 import logging
+import subprocess
 import sys
 import platform
 from collections import defaultdict
@@ -98,10 +99,10 @@ def capture_dependencies(requirements_path: str):
             f.write(sagemaker_dependency)
         return
 
-    command = f"pigar gen -f {Path(requirements_path)} {os.getcwd()}"
-    logging.info("Running command %s", command)
+    command = ["pigar", "gen", "-f", str(Path(requirements_path)), str(os.getcwd())]
+    logging.info("Running command: %s", " ".join(command))
 
-    os.system(command)
+    subprocess.run(command, check=True, capture_output=True)
     logger.info("Dependencies captured successfully")
 
 
