@@ -154,8 +154,6 @@ def _get_all_flavor_metadata(mlmodel_path: str) -> Optional[Dict[str, Any]]:
                 raise ValueError("The 'flavors' key is missing in the MLmodel file.")
     except yaml.YAMLError as e:
         raise ValueError(f"Error parsing the file as YAML: {e}")
-    except Exception as e:
-        logger.error(f"An error occurred: {e}")
 
 
 def _get_framework_version_from_requirements(flavor: str, requirements_path: str) -> Optional[str]:
@@ -191,15 +189,20 @@ def _get_framework_version_from_requirements(flavor: str, requirements_path: str
     return None
 
 
-def _get_deployment_flavor(flavor_metadata: Dict[str, Any]) -> str:
+def _get_deployment_flavor(flavor_metadata: Optional[Dict[str, Any]]) -> str:
     """Get deployment flavor from all parsed flavor metadata.
 
     Args:
-    - flavor_metadata (str): Dictionary contains mlflow flavors and their metadata.
+    - flavor_metadata (Optional[Dict[str, Any]]): Dictionary contains mlflow flavors and
+        their metadata.
 
     Returns:
     - str: The flavor mlflow model is saved with. Default to pyfunc if no other flavor is found.
     """
+
+    if not flavor_metadata:
+        raise ValueError("Flavor metadata is not found")
+
     deployment_flavor = MLFLOW_PYFUNC
     for flavor in flavor_metadata:
         if flavor != MLFLOW_PYFUNC:
