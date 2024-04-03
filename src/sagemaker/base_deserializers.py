@@ -229,15 +229,15 @@ class NumpyDeserializer(SimpleBaseDeserializer):
             if content_type == "application/x-npy":
                 try:
                     return np.load(io.BytesIO(stream.read()), allow_pickle=self.allow_pickle)
-                except ValueError as  ve:
-                    error_message = "Please set the param allow_pickle=True to deserialize pickle objects" + str(ve)
-                    raise ValueError(error_message)   
+                except ValueError as ve:
+                    raise ValueError("Please set the param allow_pickle=True \
+                        to deserialize pickle objects in NumpyDeserializer").with_traceback(ve.__traceback__)
             if content_type == "application/x-npz":
                 try:
                     return np.load(io.BytesIO(stream.read()), allow_pickle=self.allow_pickle)
-                except ValueError as  ve:
-                    error_message = "Please set the param allow_pickle=True to deserialize pickle objects" + str(ve)
-                    raise ValueError(error_message)   
+                except ValueError as ve:
+                    raise ValueError("Please set the param allow_pickle=True \
+                        to deserialize pickle objectsin NumpyDeserializer").with_traceback(ve.__traceback__)
                 finally:
                     stream.close()
         finally:
