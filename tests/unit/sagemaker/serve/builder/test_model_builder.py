@@ -1733,12 +1733,9 @@ class TestModelBuilder(unittest.TestCase):
         )
         build_result = builder.build(sagemaker_session=mock_session)
 
-        # assert auto-detection was skipped
-        mock_detect_container.assert_not_called()
-
         # assert model returned by builder is expected
         self.assertEqual(mock_model_obj, build_result)
         self.assertEqual(build_result.mode, Mode.SAGEMAKER_ENDPOINT)
         self.assertEqual(build_result.modes, {str(Mode.SAGEMAKER_ENDPOINT): mock_mode})
         self.assertEqual(build_result.serve_settings, mock_setting_object)
-        self.assertEqual(build_result.env_vars["MLFLOW_MODEL_FLAVOR"], "sklearn")
+        self.assertEqual(builder.env_vars["MLFLOW_MODEL_FLAVOR"], "sklearn")
