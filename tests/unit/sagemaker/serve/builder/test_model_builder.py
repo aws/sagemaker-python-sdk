@@ -1818,7 +1818,7 @@ class TestModelBuilder(unittest.TestCase):
         self.assertEqual(builder.model_path, "test_local_path")
         self.assertEqual(builder.env_vars["MLFLOW_MODEL_FLAVOR"], "sklearn")
 
-@patch("os.makedirs", Mock())
+    @patch("os.makedirs", Mock())
     @patch("sagemaker.serve.builder.model_builder.ModelBuilder._check_if_input_is_mlflow_model")
     @patch("sagemaker.serve.builder.model_builder._detect_framework_and_version")
     @patch("sagemaker.serve.builder.model_builder.prepare_for_torchserve")
