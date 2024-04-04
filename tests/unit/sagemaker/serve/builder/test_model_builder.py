@@ -15,6 +15,7 @@ from unittest.mock import MagicMock, patch, Mock, mock_open
 
 import unittest
 from pathlib import Path
+from copy import deepcopy
 
 from sagemaker.serve.builder.model_builder import ModelBuilder
 from sagemaker.serve.mode.function_pointers import Mode
@@ -1735,15 +1736,15 @@ class TestModelBuilder(unittest.TestCase):
             else None
         )
 
+        updated_env_var = deepcopy(ENV_VARS)
+        updated_env_var.update({"MLFLOW_MODEL_FLAVOR": "sklearn"})
         mock_model_obj = Mock()
         mock_sdk_model.side_effect = (
-            lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls: mock_model_obj  # noqa E501
+            lambda image_uri, model_data, role, env, sagemaker_session, predictor_cls: mock_model_obj  # noqa E501
             if image_uri == mock_image_uri
-            and image_config == MOCK_IMAGE_CONFIG
-            and vpc_config == MOCK_VPC_CONFIG
             and model_data == model_data
             and role == mock_role_arn
-            and env == ENV_VARS
+            and env == updated_env_var
             and sagemaker_session == mock_session
             else None
         )
