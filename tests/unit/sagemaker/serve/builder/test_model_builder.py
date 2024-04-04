@@ -1723,7 +1723,7 @@ class TestModelBuilder(unittest.TestCase):
         updated_env_var.update({"MLFLOW_MODEL_FLAVOR": "sklearn"})
         mock_model_obj = Mock()
         mock_sdk_model.side_effect = (
-            lambda image_uri, model_data, role, env, sagemaker_session, predictor_cls: mock_model_obj  # noqa E501
+            lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls: mock_model_obj  # noqa E501
             if image_uri == mock_image_uri
             and model_data == model_data
             and role == mock_role_arn
