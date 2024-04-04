@@ -1,5 +1,6 @@
 """Holds mixin logic to support deployment of Model ID"""
 from __future__ import absolute_import
+
 import logging
 from time import perf_counter
 import collections
@@ -89,6 +90,52 @@ def _pretty_print_results_tgi(results: dict):
             "DType": dtypes,
         }
     )
+    logger.info(
+        "\n================================================================== Benchmark "
+        "Results ==================================================================\n%s"
+        "\n============================================================================"
+        "===========================================================================\n",
+        df.to_string(),
+    )
+
+
+def _pretty_print_results_jumpstart(results: dict, model_env_vars=None):
+    """Pretty prints benchmark results"""
+    if model_env_vars is None:
+        model_env_vars = []
+
+    __env_var_data = {}
+    for model_env_var in model_env_vars:
+        __env_var_data[model_env_var] = []
+
+    avg_latencies = []
+    p90s = []
+    avg_tokens_per_seconds = []
+    throughput_per_seconds = []
+    standard_deviations = []
+    ordered = collections.OrderedDict(sorted(results.items()))
+
+    for key, value in ordered.items():
+        avg_latencies.append(key)
+        p90s.append(value[1])
+        avg_tokens_per_seconds.append(value[2])
+        throughput_per_seconds.append(value[3])
+        standard_deviations.append(value[4])
+
+        for model_env_var in __env_var_data:
+            __env_var_data[model_env_var].append(value[0][model_env_var])
+
+    df = pd.DataFrame(
+        {
+            "AverageLatency (Serial)": avg_latencies,
+            "P90_Latency (Serial)": p90s,
+            "AverageTokensPerSecond (Serial)": avg_tokens_per_seconds,
+            "ThroughputPerSecond (Concurrent)": throughput_per_seconds,
+            "StandardDeviationResponse (Concurrent)": standard_deviations,
+            **__env_var_data,
+        }
+    )
+
     logger.info(
         "\n================================================================== Benchmark "
         "Results ==================================================================\n%s"
@@ -216,3 +263,24 @@ def _more_performant(best_tuned_configuration: list, tuned_configuration: list) 
             return True
         return False
     return tuned_avg_latency <= best_avg_latency
+
+
+def _sharded_supported(model_id: str, config_dict: dict) -> bool:
+    """Check if sharded is supported for this ``Model``"""
+    model_type = config_dict.get("model_type", None)
+
+    if model_type is None:
+        return False
+
+    if model_id.startswith("facebook/galactica"):
+        return True
+
+    if model_type in ["bloom", "mpt", "ssm", "gpt_neox", "phi", "phi-msft", "opt", "t5"]:
+        return True
+
+    if model_type in ["RefinedWeb", "RefinedWebModel", "falcon"] and not config_dict.get(
+        "alibi", False
+    ):
+        return True
+
+    return False
