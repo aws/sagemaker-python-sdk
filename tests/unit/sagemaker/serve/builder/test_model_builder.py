@@ -11,7 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
-from unittest.mock import MagicMock, patch, Mock
+from unittest.mock import MagicMock, patch, Mock, mock_open
 
 import unittest
 from pathlib import Path
@@ -1670,12 +1670,14 @@ class TestModelBuilder(unittest.TestCase):
     @patch("sagemaker.serve.builder.model_builder._ServeSettings")
     @patch("sagemaker.serve.builder.model_builder.SageMakerEndpointMode")
     @patch("sagemaker.serve.builder.model_builder.Model")
+    @patch("builtins.open", new_callable=mock_open, read_data="data")
     @patch("os.path.isfile")
     @patch("os.path.exists")
     def test_build_mlflow_model_local_input_happy(
         self,
         mock_path_exists,
         mock_is_file,
+        mock_open,
         mock_sdk_model,
         mock_sageMakerEndpointMode,
         mock_serveSettings,
