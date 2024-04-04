@@ -1665,21 +1665,17 @@ class TestModelBuilder(unittest.TestCase):
     @patch("sagemaker.serve.builder.model_builder.prepare_for_torchserve")
     @patch("sagemaker.serve.builder.model_builder.save_pkl")
     @patch("sagemaker.serve.builder.model_builder._generate_mlflow_artifact_path")
-    @patch("sagemaker.serve.model_format.mlflow.utils._get_all_flavor_metadata")
+    @patch("sagemaker.serve.builder.model_builder._get_all_flavor_metadata")
     @patch("sagemaker.serve.model_format.mlflow.utils._select_container_for_mlflow_model")
     @patch("sagemaker.serve.builder.model_builder._ServeSettings")
     @patch("sagemaker.serve.builder.model_builder.SageMakerEndpointMode")
     @patch("sagemaker.serve.builder.model_builder.Model")
-    @patch("yaml.safe_load")
     @patch("builtins.open", new_callable=mock_open, read_data="data")
-    @patch("os.path.isfile")
     @patch("os.path.exists")
     def test_build_mlflow_model_local_input_happy(
         self,
         mock_path_exists,
-        mock_is_file,
         mock_open,
-        mock_yaml_load,
         mock_sdk_model,
         mock_sageMakerEndpointMode,
         mock_serveSettings,
@@ -1701,12 +1697,6 @@ class TestModelBuilder(unittest.TestCase):
             ]
         }
         mock_generate_mlflow_artifact_path.return_value = "some_path"
-        mock_is_file.return_value = True
-        # mock_yaml_load.return_value = {
-        #     "flavors": [
-        #         {"sklearn": "some_data"}
-        #     ]
-        # }
 
         mock_prepare_for_torchserve.side_effect = (
             lambda model_path, shared_libs, dependencies, session, image_uri, inference_spec: mock_secret_key
