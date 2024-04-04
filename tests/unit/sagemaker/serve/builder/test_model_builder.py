@@ -1737,7 +1737,7 @@ class TestModelBuilder(unittest.TestCase):
         self.assertEqual(builder.env_vars["MLFLOW_MODEL_FLAVOR"], "sklearn")
 
     @patch("os.makedirs", Mock())
-    @patch("sagemaker.serve.builder.model_builder.ModelBuilder.sagemaker_session.boto_session.client")
+    @patch("sagemaker.serve.builder.model_builder.sagemaker_session.boto_session.client")
     @patch("sagemaker.serve.builder.model_builder._detect_framework_and_version")
     @patch("sagemaker.serve.builder.model_builder.prepare_for_torchserve")
     @patch("sagemaker.serve.builder.model_builder.save_pkl")
@@ -1821,7 +1821,7 @@ class TestModelBuilder(unittest.TestCase):
         self.assertEqual(builder.env_vars["MLFLOW_MODEL_FLAVOR"], "sklearn")
 
     @patch("os.makedirs", Mock())
-    @patch("sagemaker.serve.builder.model_builder.ModelBuilder.sagemaker_session.boto_session.client")
+    @patch("sagemaker.serve.builder.model_builder.sagemaker_session.boto_session.client")
     @patch("sagemaker.serve.builder.model_builder._detect_framework_and_version")
     @patch("sagemaker.serve.builder.model_builder.prepare_for_torchserve")
     @patch("sagemaker.serve.builder.model_builder.save_pkl")
