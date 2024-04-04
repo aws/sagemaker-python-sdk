@@ -1699,16 +1699,7 @@ class TestModelBuilder(unittest.TestCase):
         }
         mock_generate_mlflow_artifact_path.return_value = "some_path"
 
-        mock_prepare_for_torchserve.side_effect = (
-            lambda model_path, shared_libs, dependencies, session, image_uri, inference_spec: mock_secret_key
-            if model_path == MODEL_PATH
-            and shared_libs == []
-            and dependencies == {"auto": False}
-            and session == session
-            and image_uri == mock_image_uri
-            and inference_spec is None
-            else None
-        )
+        mock_prepare_for_torchserve.return_value = mock_secret_key
 
         # Mock _ServeSettings
         mock_setting_object = mock_serveSettings.return_value
@@ -1723,18 +1714,10 @@ class TestModelBuilder(unittest.TestCase):
             if inference_spec is None and model_server == ModelServer.TORCHSERVE
             else None
         )
-        mock_mode.prepare.side_effect = (
-            lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart: (
+        mock_mode.prepare.return_value = (
                 model_data,
                 ENV_VAR_PAIR,
             )
-            if model_path == MODEL_PATH
-            and secret_key == mock_secret_key
-            and s3_model_data_url == mock_s3_model_data_url
-            and sagemaker_session == mock_session
-            and image_uri == mock_image_uri
-            else None
-        )
 
         updated_env_var = deepcopy(ENV_VARS)
         updated_env_var.update({"MLFLOW_MODEL_FLAVOR": "sklearn"})
