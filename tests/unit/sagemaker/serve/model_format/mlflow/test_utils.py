@@ -191,7 +191,12 @@ def test_get_deployment_flavor_metadata_none():
 
 
 def test_get_python_version_from_parsed_mlflow_model_file():
-    assert _get_python_version_from_parsed_mlflow_model_file({MLFLOW_PYFUNC: {"python_version": "3.8.6"}}) == "3.8.6"
+    assert (
+        _get_python_version_from_parsed_mlflow_model_file(
+            {MLFLOW_PYFUNC: {"python_version": "3.8.6"}}
+        )
+        == "3.8.6"
+    )
 
     with pytest.raises(ValueError, match=f"{MLFLOW_PYFUNC} cannot be found in MLmodel file."):
         _get_python_version_from_parsed_mlflow_model_file({})
@@ -225,29 +230,36 @@ def test_download_s3_artifacts_valid_s3_path(mock_os_makedirs, mock_session):
 
     mock_s3_client = MagicMock()
     mock_s3_client.get_paginator.return_value.paginate.return_value = [
-        {"Contents": [{"Key": "key/file1.txt"}, {"Key": "key/file2.txt"}]}]
+        {"Contents": [{"Key": "key/file1.txt"}, {"Key": "key/file2.txt"}]}
+    ]
     mock_session.boto_session.client.return_value = mock_s3_client
 
     _download_s3_artifacts(s3_path, dst_path, mock_session)
 
     mock_os_makedirs.assert_called_with(dst_path, exist_ok=True)
-    mock_s3_client.download_file.assert_any_call("bucket", "key/file1.txt", os.path.join(dst_path, "file1.txt"))
-    mock_s3_client.download_file.assert_any_call("bucket", "key/file2.txt", os.path.join(dst_path, "file2.txt"))
+    mock_s3_client.download_file.assert_any_call(
+        "bucket", "key/file1.txt", os.path.join(dst_path, "file1.txt")
+    )
+    mock_s3_client.download_file.assert_any_call(
+        "bucket", "key/file2.txt", os.path.join(dst_path, "file2.txt")
+    )
 
 
 @patch("sagemaker.image_uris.retrieve")
 @patch("sagemaker.serve.model_format.mlflow.utils._cast_to_compatible_version")
 @patch("sagemaker.serve.model_format.mlflow.utils._get_framework_version_from_requirements")
-@patch("sagemaker.serve.model_format.mlflow.utils._get_python_version_from_parsed_mlflow_model_file")
+@patch(
+    "sagemaker.serve.model_format.mlflow.utils._get_python_version_from_parsed_mlflow_model_file"
+)
 @patch("sagemaker.serve.model_format.mlflow.utils._get_all_flavor_metadata")
 @patch("sagemaker.serve.model_format.mlflow.utils._generate_mlflow_artifact_path")
 def test_select_container_for_mlflow_model_with_framework_specific_dlc(
-        mock_generate_mlflow_artifact_path,
-        mock_get_all_flavor_metadata,
-        mock_get_python_version_from_parsed_mlflow_model_file,
-        mock_get_framework_version_from_requirements,
-        mock_cast_to_compatible_version,
-        mock_image_uris_retrieve,
+    mock_generate_mlflow_artifact_path,
+    mock_get_all_flavor_metadata,
+    mock_get_python_version_from_parsed_mlflow_model_file,
+    mock_get_framework_version_from_requirements,
+    mock_cast_to_compatible_version,
+    mock_image_uris_retrieve,
 ):
     mlflow_model_src_path = "/path/to/mlflow_model"
     deployment_flavor = "pytorch"
@@ -271,9 +283,12 @@ def test_select_container_for_mlflow_model_with_framework_specific_dlc(
     mock_cast_to_compatible_version.return_value = (mock_casted_version,)
     mock_image_uris_retrieve.return_value = mock_image_uri
 
-    assert _select_container_for_mlflow_model(
-        mlflow_model_src_path, deployment_flavor, region, instance_type
-    ) == mock_image_uri
+    assert (
+        _select_container_for_mlflow_model(
+            mlflow_model_src_path, deployment_flavor, region, instance_type
+        )
+        == mock_image_uri
+    )
 
     mock_generate_mlflow_artifact_path.assert_any_call(mlflow_model_src_path, "requirements.txt")
     mock_generate_mlflow_artifact_path.assert_any_call(mlflow_model_src_path, "MLmodel")
@@ -290,19 +305,21 @@ def test_select_container_for_mlflow_model_with_framework_specific_dlc(
         version=mock_casted_version,
         image_scope="inference",
         py_version="py38",
-        instance_type=instance_type
+        instance_type=instance_type,
     )
 
 
 @patch("sagemaker.serve.model_format.mlflow.utils._get_default_image_for_mlflow")
-@patch("sagemaker.serve.model_format.mlflow.utils._get_python_version_from_parsed_mlflow_model_file")
+@patch(
+    "sagemaker.serve.model_format.mlflow.utils._get_python_version_from_parsed_mlflow_model_file"
+)
 @patch("sagemaker.serve.model_format.mlflow.utils._get_all_flavor_metadata")
 @patch("sagemaker.serve.model_format.mlflow.utils._generate_mlflow_artifact_path")
 def test_select_container_for_mlflow_model_with_no_framework_specific_dlc(
-        mock_generate_mlflow_artifact_path,
-        mock_get_all_flavor_metadata,
-        mock_get_python_version_from_parsed_mlflow_model_file,
-        mock_get_default_image_for_mlflow,
+    mock_generate_mlflow_artifact_path,
+    mock_get_all_flavor_metadata,
+    mock_get_python_version_from_parsed_mlflow_model_file,
+    mock_get_default_image_for_mlflow,
 ):
     mlflow_model_src_path = "/path/to/mlflow_model"
     deployment_flavor = "scikit-learn"
@@ -323,14 +340,19 @@ def test_select_container_for_mlflow_model_with_no_framework_specific_dlc(
     mock_get_default_image_for_mlflow.return_value = mock_image_uri
 
     with patch("sagemaker.serve.model_format.mlflow.utils.logger") as mock_logger:
-        assert _select_container_for_mlflow_model(
-            mlflow_model_src_path, deployment_flavor, region, instance_type
-        ) == mock_image_uri
+        assert (
+            _select_container_for_mlflow_model(
+                mlflow_model_src_path, deployment_flavor, region, instance_type
+            )
+            == mock_image_uri
+        )
 
     mock_generate_mlflow_artifact_path.assert_any_call(mlflow_model_src_path, "requirements.txt")
     mock_generate_mlflow_artifact_path.assert_any_call(mlflow_model_src_path, "MLmodel")
     mock_get_all_flavor_metadata.assert_called_once_with(mock_metadata_path)
-    mock_get_python_version_from_parsed_mlflow_model_file.assert_called_once_with(mock_flavor_metadata)
+    mock_get_python_version_from_parsed_mlflow_model_file.assert_called_once_with(
+        mock_flavor_metadata
+    )
     mock_logger.warning.assert_called_once_with(
         f"{deployment_flavor} flavor currently doesn't have optimized framework specific DLC support. "
         f"Defaulting to generic image..."
@@ -340,16 +362,18 @@ def test_select_container_for_mlflow_model_with_no_framework_specific_dlc(
 @patch("sagemaker.image_uris.retrieve")
 @patch("sagemaker.serve.model_format.mlflow.utils._cast_to_compatible_version")
 @patch("sagemaker.serve.model_format.mlflow.utils._get_framework_version_from_requirements")
-@patch("sagemaker.serve.model_format.mlflow.utils._get_python_version_from_parsed_mlflow_model_file")
+@patch(
+    "sagemaker.serve.model_format.mlflow.utils._get_python_version_from_parsed_mlflow_model_file"
+)
 @patch("sagemaker.serve.model_format.mlflow.utils._get_all_flavor_metadata")
 @patch("sagemaker.serve.model_format.mlflow.utils._generate_mlflow_artifact_path")
 def test_select_container_for_mlflow_model_no_dlc_detected(
-        mock_generate_mlflow_artifact_path,
-        mock_get_all_flavor_metadata,
-        mock_get_python_version_from_parsed_mlflow_model_file,
-        mock_get_framework_version_from_requirements,
-        mock_cast_to_compatible_version,
-        mock_image_uris_retrieve,
+    mock_generate_mlflow_artifact_path,
+    mock_get_all_flavor_metadata,
+    mock_get_python_version_from_parsed_mlflow_model_file,
+    mock_get_framework_version_from_requirements,
+    mock_cast_to_compatible_version,
+    mock_image_uris_retrieve,
 ):
     mlflow_model_src_path = "/path/to/mlflow_model"
     deployment_flavor = "pytorch"
@@ -374,9 +398,13 @@ def test_select_container_for_mlflow_model_no_dlc_detected(
     mock_image_uris_retrieve.return_value = mock_image_uri
 
     with pytest.raises(ValueError, match="Unable to auto detect a DLC for framework"):
-        _select_container_for_mlflow_model(mlflow_model_src_path, deployment_flavor, region, instance_type)
+        _select_container_for_mlflow_model(
+            mlflow_model_src_path, deployment_flavor, region, instance_type
+        )
 
-        mock_generate_mlflow_artifact_path.assert_any_call(mlflow_model_src_path, "requirements.txt")
+        mock_generate_mlflow_artifact_path.assert_any_call(
+            mlflow_model_src_path, "requirements.txt"
+        )
         mock_generate_mlflow_artifact_path.assert_any_call(mlflow_model_src_path, "MLmodel")
         mock_get_all_flavor_metadata.assert_called_once_with(mock_metadata_path)
         mock_get_framework_version_from_requirements.assert_called_once_with(
@@ -391,7 +419,7 @@ def test_select_container_for_mlflow_model_no_dlc_detected(
             version=mock_casted_version,
             image_scope="inference",
             py_version="py38",
-            instance_type=instance_type
+            instance_type=instance_type,
         )
 
 
