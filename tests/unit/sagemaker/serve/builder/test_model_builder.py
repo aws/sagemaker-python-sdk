@@ -1722,15 +1722,7 @@ class TestModelBuilder(unittest.TestCase):
         updated_env_var = deepcopy(ENV_VARS)
         updated_env_var.update({"MLFLOW_MODEL_FLAVOR": "sklearn"})
         mock_model_obj = Mock()
-        mock_sdk_model.side_effect = (
-            lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls: mock_model_obj  # noqa E501
-            if image_uri == mock_image_uri
-            and model_data == model_data
-            and role == mock_role_arn
-            and env == updated_env_var
-            and sagemaker_session == mock_session
-            else None
-        )
+        mock_sdk_model.return_value = mock_model_obj
 
         mock_session.sagemaker_client._user_agent_creator.to_string = lambda: "sample agent"
 
