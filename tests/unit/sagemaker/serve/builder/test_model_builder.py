@@ -1692,11 +1692,7 @@ class TestModelBuilder(unittest.TestCase):
 
         mock_detect_container.return_value = mock_image_uri
         mock_check_if_is_mlflow_model.return_value = True
-        mock_get_all_flavor_metadata.return_value = {
-            "flavors": [
-                {"sklearn": "some_data"}
-            ]
-        }
+        mock_get_all_flavor_metadata.return_value = {"sklearn": "some_data"}
         mock_generate_mlflow_artifact_path.return_value = "some_path"
 
         mock_prepare_for_torchserve.return_value = mock_secret_key
