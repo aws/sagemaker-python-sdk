@@ -1670,10 +1670,12 @@ class TestModelBuilder(unittest.TestCase):
     @patch("sagemaker.serve.builder.model_builder._ServeSettings")
     @patch("sagemaker.serve.builder.model_builder.SageMakerEndpointMode")
     @patch("sagemaker.serve.builder.model_builder.Model")
+    @patch("os.path.isfile")
     @patch("os.path.exists")
     def test_build_mlflow_model_local_input_happy(
         self,
         mock_path_exists,
+        mock_is_file,
         mock_sdk_model,
         mock_sageMakerEndpointMode,
         mock_serveSettings,
@@ -1695,6 +1697,7 @@ class TestModelBuilder(unittest.TestCase):
             ]
         }
         mock_generate_mlflow_artifact_path.return_value = "some_path"
+        mock_is_file.return_value = True
 
         mock_prepare_for_torchserve.side_effect = (
             lambda model_path, shared_libs, dependencies, session, image_uri, inference_spec: mock_secret_key
