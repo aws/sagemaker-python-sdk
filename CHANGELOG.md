@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.214.3 (2024-04-04)
+
+### Bug Fixes and Other Changes
+
+ * [Fix] Switch to subprocess in ModelBuilder when capturing dependencies
+ * chore: skip flaky test
+
 ## v2.214.2 (2024-04-01)
 
 ### Bug Fixes and Other Changes
