@@ -1737,7 +1737,7 @@ class TestModelBuilder(unittest.TestCase):
         self.assertEqual(builder.env_vars["MLFLOW_MODEL_FLAVOR"], "sklearn")
 
     @patch("os.makedirs", Mock())
-    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._check_if_input_is_mlflow_model")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder.sagemaker_session.boto_session.client")
     @patch("sagemaker.serve.builder.model_builder._detect_framework_and_version")
     @patch("sagemaker.serve.builder.model_builder.prepare_for_torchserve")
     @patch("sagemaker.serve.builder.model_builder.save_pkl")
@@ -1767,12 +1767,14 @@ class TestModelBuilder(unittest.TestCase):
         mock_save_pkl,
         mock_prepare_for_torchserve,
         mock_detect_fw_version,
-        mock_check_if_is_mlflow_model,
+        mock_s3_client,
     ):
         # setup mocks
+        mock_s3 = MagicMock()
+        mock_s3.list_objects_v2.return_value = {"Contents": ["something"]}
+        mock_s3_client.return_value = mock_s3
 
         mock_detect_container.return_value = mock_image_uri
-        mock_check_if_is_mlflow_model.return_value = True
         mock_get_all_flavor_metadata.return_value = {"sklearn": "some_data"}
         mock_generate_mlflow_artifact_path.return_value = "some_path"
 
@@ -1819,7 +1821,7 @@ class TestModelBuilder(unittest.TestCase):
         self.assertEqual(builder.env_vars["MLFLOW_MODEL_FLAVOR"], "sklearn")
 
     @patch("os.makedirs", Mock())
-    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._check_if_input_is_mlflow_model")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder.sagemaker_session.boto_session.client")
     @patch("sagemaker.serve.builder.model_builder._detect_framework_and_version")
     @patch("sagemaker.serve.builder.model_builder.prepare_for_torchserve")
     @patch("sagemaker.serve.builder.model_builder.save_pkl")
@@ -1849,12 +1851,14 @@ class TestModelBuilder(unittest.TestCase):
         mock_save_pkl,
         mock_prepare_for_torchserve,
         mock_detect_fw_version,
-        mock_check_if_is_mlflow_model,
+        mock_s3_client
     ):
         # setup mocks
+        mock_s3 = MagicMock()
+        mock_s3.list_objects_v2.return_value = {}  # No contents found
+        mock_s3_client.return_value = mock_s3
 
         mock_detect_container.return_value = mock_image_uri
-        mock_check_if_is_mlflow_model.return_value = False
         mock_get_all_flavor_metadata.return_value = {"sklearn": "some_data"}
         mock_generate_mlflow_artifact_path.return_value = "some_path"
 
