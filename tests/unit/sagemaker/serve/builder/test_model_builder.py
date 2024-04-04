@@ -1666,7 +1666,7 @@ class TestModelBuilder(unittest.TestCase):
     @patch("sagemaker.serve.builder.model_builder.save_pkl")
     @patch("sagemaker.serve.builder.model_builder._generate_mlflow_artifact_path")
     @patch("sagemaker.serve.builder.model_builder._get_all_flavor_metadata")
-    @patch("sagemaker.serve.model_format.mlflow.utils._select_container_for_mlflow_model")
+    @patch("sagemaker.serve.builder.model_builder._select_container_for_mlflow_model")
     @patch("sagemaker.serve.builder.model_builder._ServeSettings")
     @patch("sagemaker.serve.builder.model_builder.SageMakerEndpointMode")
     @patch("sagemaker.serve.builder.model_builder.Model")
