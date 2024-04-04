@@ -1664,6 +1664,7 @@ class TestModelBuilder(unittest.TestCase):
     @patch("sagemaker.serve.builder.model_builder._detect_framework_and_version")
     @patch("sagemaker.serve.builder.model_builder.prepare_for_torchserve")
     @patch("sagemaker.serve.builder.model_builder.save_pkl")
+    @patch("sagemaker.serve.model_format.mlflow.utils._generate_mlflow_artifact_path")
     @patch("sagemaker.serve.model_format.mlflow.utils._get_all_flavor_metadata")
     @patch("sagemaker.serve.model_format.mlflow.utils._select_container_for_mlflow_model")
     @patch("sagemaker.serve.builder.model_builder._ServeSettings")
@@ -1678,6 +1679,7 @@ class TestModelBuilder(unittest.TestCase):
         mock_serveSettings,
         mock_detect_container,
         mock_get_all_flavor_metadata,
+        mock_generate_mlflow_artifact_path,
         mock_save_pkl,
         mock_prepare_for_torchserve,
         mock_detect_fw_version,
@@ -1692,6 +1694,7 @@ class TestModelBuilder(unittest.TestCase):
                 {"sklearn": "some_data"}
             ]
         }
+        mock_generate_mlflow_artifact_path.return_value = "some_path"
 
         mock_prepare_for_torchserve.side_effect = (
             lambda model_path, shared_libs, dependencies, session, image_uri, inference_spec: mock_secret_key
