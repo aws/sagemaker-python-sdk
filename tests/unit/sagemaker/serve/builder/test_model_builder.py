@@ -1660,7 +1660,7 @@ class TestModelBuilder(unittest.TestCase):
     #         model_builder.build(sagemaker_session=mock_session)
 
     @patch("os.makedirs", Mock())
-    @patch("sagemaker.serve.builder.model_builder._check_if_input_is_mlflow_model")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._check_if_input_is_mlflow_model")
     @patch("sagemaker.serve.builder.model_builder._detect_framework_and_version")
     @patch("sagemaker.serve.builder.model_builder.prepare_for_torchserve")
     @patch("sagemaker.serve.builder.model_builder.save_pkl")
