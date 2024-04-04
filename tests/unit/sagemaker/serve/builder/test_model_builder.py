@@ -1664,11 +1664,7 @@ class TestModelBuilder(unittest.TestCase):
     @patch("sagemaker.serve.builder.model_builder._detect_framework_and_version")
     @patch("sagemaker.serve.builder.model_builder.prepare_for_torchserve")
     @patch("sagemaker.serve.builder.model_builder.save_pkl")
-    @patch("sagemaker.serve.model_format.mlflow.utils._generate_mlflow_artifact_path", return_value={
-            "flavors": [
-                {"sklearn": "some_data"}
-            ]
-        })
+    @patch("sagemaker.serve.builder.model_builder._generate_mlflow_artifact_path")
     @patch("sagemaker.serve.model_format.mlflow.utils._get_all_flavor_metadata")
     @patch("sagemaker.serve.model_format.mlflow.utils._select_container_for_mlflow_model")
     @patch("sagemaker.serve.builder.model_builder._ServeSettings")
