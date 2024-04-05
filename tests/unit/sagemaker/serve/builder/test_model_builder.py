@@ -1805,7 +1805,7 @@ class TestModelBuilder(unittest.TestCase):
 
         # run
         builder = ModelBuilder(
-            model_path="s3://test_path",
+            model_path="s3://test_path/",
             schema_builder=schema_builder,
         )
         build_result = builder.build(sagemaker_session=mock_session)
@@ -1886,7 +1886,7 @@ class TestModelBuilder(unittest.TestCase):
 
         # run
         builder = ModelBuilder(
-            model_path="s3://test_path",
+            model_path="s3://test_path/",
             schema_builder=schema_builder,
         )
 
