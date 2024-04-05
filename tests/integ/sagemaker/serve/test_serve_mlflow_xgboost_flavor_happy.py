@@ -113,7 +113,7 @@ def model_builder(request):
     reason="The goal of these test are to test the serving components of our feature",
 )
 @pytest.mark.parametrize("model_builder", ["model_builder_local_builder"], indirect=True)
-def test_happy_mlflow_pytorch_local_container_with_torch_serve(
+def test_happy_mlflow_xgboost_local_container_with_torch_serve(
     sagemaker_session, model_builder, test_data
 ):
     logger.info("Running in LOCAL_CONTAINER mode...")
@@ -144,7 +144,7 @@ def test_happy_mlflow_pytorch_local_container_with_torch_serve(
     PYTHON_VERSION_IS_NOT_310,  # or NOT_RUNNING_ON_INF_EXP_DEV_PIPELINE,
     reason="The goal of these test are to test the serving components of our feature",
 )
-def test_happy_pytorch_sagemaker_endpoint_with_torch_serve(
+def test_happy_xgboost_sagemaker_endpoint_with_torch_serve(
     sagemaker_session,
     xgboost_schema,
     cpu_instance_type,
