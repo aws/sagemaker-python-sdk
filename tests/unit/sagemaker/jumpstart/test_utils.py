@@ -1291,6 +1291,11 @@ class TestIsValidModelId(TestCase):
                 model_type=JumpStartModelType.OPEN_WEIGHTS,
             )
 
+        with pytest.raises(ValueError):
+            utils.validate_model_id_and_get_type(
+                "ai21-summarization", script=JumpStartScriptScope.TRAINING
+            )
+
 
 class TestGetModelIdVersionFromResourceArn(TestCase):
     def test_no_model_id_no_version_found(self):
