@@ -1676,6 +1676,7 @@ class TestModelBuilder(unittest.TestCase):
     def test_build_mlflow_model_local_input_happy(
         self,
         mock_path_exists,
+        mock_is_file,
         mock_open,
         mock_sdk_model,
         mock_sageMakerEndpointMode,
