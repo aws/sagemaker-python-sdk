@@ -611,9 +611,16 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
         # Check for S3 path
         if self.model_path.startswith("s3://"):
             s3_client = self.sagemaker_session.boto_session.client("s3")
-            bucket_name, key = path.replace("s3://", "").split("/", 1)
-            key_prefix = f"{key.rstrip('/')}/{mlmodel_file}"
+            path_components = path.replace("s3://", "").split("/", 1)
+            bucket_name = path_components[0]
+            if len(path_components) > 1:
+                key = path_components[1]
+            else:
+                key = ""
+            key_prefix = f"{key.rstrip('/')}/{mlmodel_file}" if key else mlmodel_file
             response = s3_client.list_objects_v2(Bucket=bucket_name, Prefix=key_prefix)
+            print("intercepting responses")
+            print(response)
             return "Contents" in response and len(response["Contents"]) > 0
 
         file_path = os.path.join(path, mlmodel_file)
