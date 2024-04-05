@@ -178,7 +178,7 @@ def test_happy_xgboost_sagemaker_endpoint_with_torch_serve(
         sagemaker_session=sagemaker_session,
     )
 
-    model = model_builder.build()
+    model = model_builder.build(sagemaker_session=sagemaker_session)
 
     with timeout(minutes=SERVE_SAGEMAKER_ENDPOINT_TIMEOUT):
         try:
