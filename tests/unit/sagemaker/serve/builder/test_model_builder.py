@@ -1661,7 +1661,6 @@ class TestModelBuilder(unittest.TestCase):
     #         model_builder.build(sagemaker_session=mock_session)
 
     @patch("os.makedirs", Mock())
-    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._check_if_input_is_mlflow_model")
     @patch("sagemaker.serve.builder.model_builder._detect_framework_and_version")
     @patch("sagemaker.serve.builder.model_builder.prepare_for_torchserve")
     @patch("sagemaker.serve.builder.model_builder.save_pkl")
@@ -1672,6 +1671,7 @@ class TestModelBuilder(unittest.TestCase):
     @patch("sagemaker.serve.builder.model_builder.SageMakerEndpointMode")
     @patch("sagemaker.serve.builder.model_builder.Model")
     @patch("builtins.open", new_callable=mock_open, read_data="data")
+    @patch("os.path.isfile", return_value=True)
     @patch("os.path.exists")
     def test_build_mlflow_model_local_input_happy(
         self,
@@ -1686,12 +1686,10 @@ class TestModelBuilder(unittest.TestCase):
         mock_save_pkl,
         mock_prepare_for_torchserve,
         mock_detect_fw_version,
-        mock_check_if_is_mlflow_model,
     ):
         # setup mocks
 
         mock_detect_container.return_value = mock_image_uri
-        mock_check_if_is_mlflow_model.return_value = True
         mock_get_all_flavor_metadata.return_value = {"sklearn": "some_data"}
         mock_generate_mlflow_artifact_path.return_value = "some_path"
 
@@ -1769,8 +1767,8 @@ class TestModelBuilder(unittest.TestCase):
     ):
         # setup mocks
         mock_s3 = MagicMock()
-        mock_s3.list_objects_v2.return_value = {"Contents": ["something"]}
         mock_session.boto_session.client("s3").return_value = mock_s3
+        mock_session.boto_session.client("s3").list_objects_v2.return_value = {"Contents": ["something"]}
 
         mock_detect_container.return_value = mock_image_uri
         mock_get_all_flavor_metadata.return_value = {"sklearn": "some_data"}
@@ -1851,8 +1849,8 @@ class TestModelBuilder(unittest.TestCase):
     ):
         # setup mocks
         mock_s3 = MagicMock()
-        mock_s3.list_objects_v2.return_value = {}  # No contents found
         mock_session.boto_session.client("s3").return_value = mock_s3
+        mock_session.boto_session.client("s3").list_objects_v2.return_value = {}
         mock_detect_container.return_value = mock_image_uri
         mock_get_all_flavor_metadata.return_value = {"sklearn": "some_data"}
         mock_generate_mlflow_artifact_path.return_value = "some_path"

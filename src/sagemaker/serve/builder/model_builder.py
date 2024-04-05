@@ -619,8 +619,6 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
                 key = ""
             key_prefix = f"{key.rstrip('/')}/{mlmodel_file}" if key else mlmodel_file
             response = s3_client.list_objects_v2(Bucket=bucket_name, Prefix=key_prefix)
-            print("intercepting responses")
-            print(response)
             return "Contents" in response and len(response["Contents"]) > 0
 
         file_path = os.path.join(path, mlmodel_file)
