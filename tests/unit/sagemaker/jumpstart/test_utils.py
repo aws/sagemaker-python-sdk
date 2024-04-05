@@ -1267,7 +1267,7 @@ class TestIsValidModelId(TestCase):
                 s3_client=mock_s3_client_value,
                 model_type=JumpStartModelType.PROPRIETARY,
             )
-            
+
             self.assertIsNone(
                 utils.validate_model_id_and_get_type("dee", script=JumpStartScriptScope.TRAINING)
             )
