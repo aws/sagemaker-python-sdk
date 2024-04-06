@@ -183,10 +183,10 @@ def test_get_deployment_flavor_metadata_none():
 
 def test_get_python_version_from_parsed_mlflow_model_file():
     assert (
-            _get_python_version_from_parsed_mlflow_model_file(
-                {MLFLOW_PYFUNC: {"python_version": "3.8.6"}}
-            )
-            == "3.8.6"
+        _get_python_version_from_parsed_mlflow_model_file(
+            {MLFLOW_PYFUNC: {"python_version": "3.8.6"}}
+        )
+        == "3.8.6"
     )
 
     with pytest.raises(ValueError, match=f"{MLFLOW_PYFUNC} cannot be found in MLmodel file."):
@@ -245,12 +245,12 @@ def test_download_s3_artifacts_valid_s3_path(mock_os_makedirs, mock_session):
 @patch("sagemaker.serve.model_format.mlflow.utils._get_all_flavor_metadata")
 @patch("sagemaker.serve.model_format.mlflow.utils._generate_mlflow_artifact_path")
 def test_select_container_for_mlflow_model_with_framework_specific_dlc(
-        mock_generate_mlflow_artifact_path,
-        mock_get_all_flavor_metadata,
-        mock_get_python_version_from_parsed_mlflow_model_file,
-        mock_get_framework_version_from_requirements,
-        mock_cast_to_compatible_version,
-        mock_image_uris_retrieve,
+    mock_generate_mlflow_artifact_path,
+    mock_get_all_flavor_metadata,
+    mock_get_python_version_from_parsed_mlflow_model_file,
+    mock_get_framework_version_from_requirements,
+    mock_cast_to_compatible_version,
+    mock_image_uris_retrieve,
 ):
     mlflow_model_src_path = "/path/to/mlflow_model"
     deployment_flavor = "pytorch"
@@ -275,10 +275,10 @@ def test_select_container_for_mlflow_model_with_framework_specific_dlc(
     mock_image_uris_retrieve.return_value = mock_image_uri
 
     assert (
-            _select_container_for_mlflow_model(
-                mlflow_model_src_path, deployment_flavor, region, instance_type
-            )
-            == mock_image_uri
+        _select_container_for_mlflow_model(
+            mlflow_model_src_path, deployment_flavor, region, instance_type
+        )
+        == mock_image_uri
     )
 
     mock_generate_mlflow_artifact_path.assert_any_call(mlflow_model_src_path, "requirements.txt")
@@ -307,10 +307,10 @@ def test_select_container_for_mlflow_model_with_framework_specific_dlc(
 @patch("sagemaker.serve.model_format.mlflow.utils._get_all_flavor_metadata")
 @patch("sagemaker.serve.model_format.mlflow.utils._generate_mlflow_artifact_path")
 def test_select_container_for_mlflow_model_with_no_framework_specific_dlc(
-        mock_generate_mlflow_artifact_path,
-        mock_get_all_flavor_metadata,
-        mock_get_python_version_from_parsed_mlflow_model_file,
-        mock_get_default_image_for_mlflow,
+    mock_generate_mlflow_artifact_path,
+    mock_get_all_flavor_metadata,
+    mock_get_python_version_from_parsed_mlflow_model_file,
+    mock_get_default_image_for_mlflow,
 ):
     mlflow_model_src_path = "/path/to/mlflow_model"
     deployment_flavor = "scikit-learn"
@@ -332,10 +332,10 @@ def test_select_container_for_mlflow_model_with_no_framework_specific_dlc(
 
     with patch("sagemaker.serve.model_format.mlflow.utils.logger") as mock_logger:
         assert (
-                _select_container_for_mlflow_model(
-                    mlflow_model_src_path, deployment_flavor, region, instance_type
-                )
-                == mock_image_uri
+            _select_container_for_mlflow_model(
+                mlflow_model_src_path, deployment_flavor, region, instance_type
+            )
+            == mock_image_uri
         )
 
     mock_generate_mlflow_artifact_path.assert_any_call(mlflow_model_src_path, "requirements.txt")
@@ -359,12 +359,12 @@ def test_select_container_for_mlflow_model_with_no_framework_specific_dlc(
 @patch("sagemaker.serve.model_format.mlflow.utils._get_all_flavor_metadata")
 @patch("sagemaker.serve.model_format.mlflow.utils._generate_mlflow_artifact_path")
 def test_select_container_for_mlflow_model_no_dlc_detected(
-        mock_generate_mlflow_artifact_path,
-        mock_get_all_flavor_metadata,
-        mock_get_python_version_from_parsed_mlflow_model_file,
-        mock_get_framework_version_from_requirements,
-        mock_cast_to_compatible_version,
-        mock_image_uris_retrieve,
+    mock_generate_mlflow_artifact_path,
+    mock_get_all_flavor_metadata,
+    mock_get_python_version_from_parsed_mlflow_model_file,
+    mock_get_framework_version_from_requirements,
+    mock_cast_to_compatible_version,
+    mock_image_uris_retrieve,
 ):
     mlflow_model_src_path = "/path/to/mlflow_model"
     deployment_flavor = "pytorch"
@@ -425,7 +425,7 @@ def test_validate_input_for_mlflow():
 @patch("sagemaker.serve.model_format.mlflow.utils.os.makedirs")
 @patch("sagemaker.serve.model_format.mlflow.utils.os.walk")
 def test_copy_directory_contents_preserves_structure(
-        mock_os_walk, mock_os_makedirs, mock_shutil_copy2
+    mock_os_walk, mock_os_makedirs, mock_shutil_copy2
 ):
     src_dir = "/fake/source/dir"
     dest_dir = "/fake/dest/dir"
@@ -447,7 +447,7 @@ def test_copy_directory_contents_preserves_structure(
 @patch("sagemaker.serve.model_format.mlflow.utils.os.makedirs")
 @patch("sagemaker.serve.model_format.mlflow.utils.os.walk")
 def test_copy_directory_contents_handles_empty_source_dir(
-        mock_os_walk, mock_os_makedirs, mock_shutil_copy2
+    mock_os_walk, mock_os_makedirs, mock_shutil_copy2
 ):
     src_dir = "/fake/empty/source/dir"
     dest_dir = "/fake/dest/dir"
