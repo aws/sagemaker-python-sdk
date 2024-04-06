@@ -34,7 +34,26 @@ from sagemaker.serve.model_format.mlflow.utils import (
     _download_s3_artifacts,
     _select_container_for_mlflow_model,
     _validate_input_for_mlflow,
+    _copy_directory_contents,
 )
+
+
+@pytest.fixture
+def mock_os_walk():
+    with patch("your_module.os.walk") as mock:
+        yield mock
+
+
+@pytest.fixture
+def mock_os_makedirs():
+    with patch("your_module.os.makedirs") as mock:
+        yield mock
+
+
+@pytest.fixture
+def mock_shutil_copy2():
+    with patch("your_module.shutil.copy2") as mock:
+        yield mock
 
 
 def test_get_default_model_server_for_mlflow():
@@ -418,3 +437,45 @@ def test_validate_input_for_mlflow():
 
     with pytest.raises(ValueError):
         _validate_input_for_mlflow(ModelServer.DJL_SERVING)
+
+
+def test_copy_directory_contents_preserves_structure(
+    mock_os_walk, mock_os_makedirs, mock_shutil_copy2
+):
+    src_dir = "/fake/source/dir"
+    dest_dir = "/fake/dest/dir"
+
+    # Setup mock for os.walk to simulate directory structure
+    mock_os_walk.return_value = [
+        (src_dir, ["dir1"], ["file1.txt"]),  # root level contains dir1 and file1.txt
+        (f"{src_dir}/dir1", [], ["file2.txt"]),  # dir1 contains file2.txt
+    ]
+
+    # Call the function with the mocked environment
+    _copy_directory_contents(src_dir, dest_dir)
+
+    # Assertions to verify behaviors
+
+    # Verify that directories are created in the destination
+    mock_os_makedirs.assert_any_call(f"{dest_dir}/dir1", exist_ok=True)
+
+    # Verify that files are copied over with metadata
+    mock_shutil_copy2.assert_any_call(f"{src_dir}/file1.txt", f"{dest_dir}/file1.txt")
+    mock_shutil_copy2.assert_any_call(f"{src_dir}/dir1/file2.txt", f"{dest_dir}/dir1/file2.txt")
+
+
+def test_copy_directory_contents_handles_empty_source_dir(
+    mock_os_walk, mock_os_makedirs, mock_shutil_copy2
+):
+    src_dir = "/fake/empty/source/dir"
+    dest_dir = "/fake/dest/dir"
+
+    # Setup mock for os.walk to simulate an empty directory
+    mock_os_walk.return_value = [(src_dir, [], [])]
+
+    # Call the function with the mocked environment
+    _copy_directory_contents(src_dir, dest_dir)
+
+    # Assertions to verify behaviors
+    mock_os_makedirs.assert_not_called()  # No directories should be created
+    mock_shutil_copy2.assert_not_called()  # No files should be copied
