@@ -1739,10 +1739,6 @@ class TestModelBuilder(unittest.TestCase):
     @patch("sagemaker.serve.builder.model_builder.prepare_for_torchserve")
     @patch("sagemaker.serve.builder.model_builder.save_pkl")
     @patch("sagemaker.serve.builder.model_builder._download_s3_artifacts")
-    @patch(
-        "sagemaker.serve.builder.model_builder._get_default_download_path",
-        return_value="test_local_path",
-    )
     @patch("sagemaker.serve.builder.model_builder._generate_mlflow_artifact_path")
     @patch("sagemaker.serve.builder.model_builder._get_all_flavor_metadata")
     @patch("sagemaker.serve.builder.model_builder._select_container_for_mlflow_model")
@@ -1761,7 +1757,6 @@ class TestModelBuilder(unittest.TestCase):
         mock_detect_container,
         mock_get_all_flavor_metadata,
         mock_generate_mlflow_artifact_path,
-        mock_get_default_download_path,
         mock_download_s3_artifacts,
         mock_save_pkl,
         mock_prepare_for_torchserve,
@@ -1824,10 +1819,6 @@ class TestModelBuilder(unittest.TestCase):
     @patch("sagemaker.serve.builder.model_builder.prepare_for_torchserve")
     @patch("sagemaker.serve.builder.model_builder.save_pkl")
     @patch("sagemaker.serve.builder.model_builder._download_s3_artifacts")
-    @patch(
-        "sagemaker.serve.builder.model_builder._get_default_download_path",
-        return_value="test_local_path",
-    )
     @patch("sagemaker.serve.builder.model_builder._generate_mlflow_artifact_path")
     @patch("sagemaker.serve.builder.model_builder._get_all_flavor_metadata")
     @patch("sagemaker.serve.builder.model_builder._select_container_for_mlflow_model")
@@ -1846,7 +1837,6 @@ class TestModelBuilder(unittest.TestCase):
         mock_detect_container,
         mock_get_all_flavor_metadata,
         mock_generate_mlflow_artifact_path,
-        mock_get_default_download_path,
         mock_download_s3_artifacts,
         mock_save_pkl,
         mock_prepare_for_torchserve,
