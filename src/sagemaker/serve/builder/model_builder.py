@@ -37,8 +37,8 @@ from sagemaker.serve.builder.tgi_builder import TGI
 from sagemaker.serve.builder.jumpstart_builder import JumpStart
 from sagemaker.serve.builder.transformers_builder import Transformers
 from sagemaker.predictor import Predictor
+from sagemaker.serve.model_format.mlflow.constants import MLFLOW_MODEL_PATH_MODEL_METADATA_ENTRY_KEY
 from sagemaker.serve.model_format.mlflow.utils import (
-    _get_default_download_path,
     _get_default_model_server_for_mlflow,
     _mlflow_input_is_local_path,
     _download_s3_artifacts,
@@ -256,7 +256,10 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
     )
     model_metadata: Optional[Dict[str, Any]] = field(
         default=None,
-        metadata={"help": "Define the model metadata to override, currently supports `HF_TASK`"},
+        metadata={
+            "help": "Define the model metadata to override, currently supports `HF_TASK`, "
+            "`MLFLOW_MODEL_PATH`"
+        },
     )
 
     def _build_validations(self):
@@ -603,13 +606,23 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
             )
             return False
 
-        path = self.model_path
+        if not self.model_metadata:
+            logger.info(
+                "No ModelMetadata provided. ModelBuilder is not handling MLflow model input"
+            )
+            return False
+
+        path = self.model_metadata.get(MLFLOW_MODEL_PATH_MODEL_METADATA_ENTRY_KEY)
         if not path:
+            logger.info(
+                f"{MLFLOW_MODEL_PATH_MODEL_METADATA_ENTRY_KEY} is not provided in ModelMetadata."
+                f" ModelBuilder is not handling MLflow model input"
+            )
             return False
 
         mlmodel_file = "MLmodel"
         # Check for S3 path
-        if self.model_path.startswith("s3://"):
+        if path.startswith("s3://"):
             s3_client = self.sagemaker_session.boto_session.client("s3")
             path_components = path.replace("s3://", "").split("/", 1)
             bucket_name = path_components[0]
@@ -626,11 +639,10 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
 
     def _initialize_for_mlflow(self) -> None:
         """Initialize mlflow model artifacts, image uri and model server."""
-        if not _mlflow_input_is_local_path(self.model_path):
-            download_path = _get_default_download_path()
+        mlflow_path = self.model_metadata.get(MLFLOW_MODEL_PATH_MODEL_METADATA_ENTRY_KEY)
+        if not _mlflow_input_is_local_path(mlflow_path):
             # TODO: extend to package arn, run id and etc.
-            _download_s3_artifacts(self.model_path, download_path, self.sagemaker_session)
-            self.model_path = download_path
+            _download_s3_artifacts(mlflow_path, self.model_path, self.sagemaker_session)
         mlflow_model_metadata_path = _generate_mlflow_artifact_path(self.model_path, "MLmodel")
         # TODO: add validation on MLmodel file
         mlflow_model_dependency_path = _generate_mlflow_artifact_path(

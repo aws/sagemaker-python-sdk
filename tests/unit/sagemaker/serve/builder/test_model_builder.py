@@ -1723,8 +1723,7 @@ class TestModelBuilder(unittest.TestCase):
 
         # run
         builder = ModelBuilder(
-            model_path=MODEL_PATH,
-            schema_builder=schema_builder,
+            schema_builder=schema_builder, model_metadata={"MLFLOW_MODEL_PATH": MODEL_PATH}
         )
         build_result = builder.build(sagemaker_session=mock_session)
 
@@ -1808,8 +1807,7 @@ class TestModelBuilder(unittest.TestCase):
 
         # run
         builder = ModelBuilder(
-            model_path="s3://test_path/",
-            schema_builder=schema_builder,
+            schema_builder=schema_builder, model_metadata={"MLFLOW_MODEL_PATH": "s3://test_path/"}
         )
         build_result = builder.build(sagemaker_session=mock_session)
 
@@ -1891,8 +1889,7 @@ class TestModelBuilder(unittest.TestCase):
 
         # run
         builder = ModelBuilder(
-            model_path="s3://test_path/",
-            schema_builder=schema_builder,
+            schema_builder=schema_builder, model_metadata={"MLFLOW_MODEL_PATH": "s3://test_path/"}
         )
 
         self.assertRaisesRegex(

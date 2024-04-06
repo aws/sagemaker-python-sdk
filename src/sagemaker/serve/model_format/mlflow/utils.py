@@ -13,7 +13,6 @@
 """Holds the util functions used for MLflow model format"""
 from __future__ import absolute_import
 
-import uuid
 from typing import Optional, Dict, Any
 import yaml
 import logging
@@ -25,22 +24,12 @@ from sagemaker.serve.detector.image_detector import _cast_to_compatible_version
 from sagemaker.serve.model_format.mlflow.constants import (
     MLFLOW_FLAVOR_TO_PYTHON_PACKAGE_MAP,
     MLFLOW_PYFUNC,
-    DEFAULT_LOCAL_DOWNLOAD_PATH_BASE,
     FLAVORS_WITH_FRAMEWORK_SPECIFIC_DLC_SUPPORT,
     DEFAULT_FW_USED_FOR_DEFAULT_IMAGE,
     DEFAULT_PYTORCH_VERSION,
 )
 
 logger = logging.getLogger(__name__)
-
-
-def _get_default_download_path() -> str:
-    """Generate the default download path of mlflow artifacts.
-
-    Returns:
-        str: Local path for downloading mlflow artifacts
-    """
-    return DEFAULT_LOCAL_DOWNLOAD_PATH_BASE + uuid.uuid1().hex
 
 
 def _get_default_model_server_for_mlflow(deployment_flavor: str) -> ModelServer:
