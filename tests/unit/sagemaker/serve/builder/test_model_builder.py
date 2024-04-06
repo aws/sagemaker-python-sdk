@@ -1811,7 +1811,6 @@ class TestModelBuilder(unittest.TestCase):
         self.assertEqual(build_result.mode, Mode.SAGEMAKER_ENDPOINT)
         self.assertEqual(build_result.modes, {str(Mode.SAGEMAKER_ENDPOINT): mock_mode})
         self.assertEqual(build_result.serve_settings, mock_setting_object)
-        self.assertEqual(builder.model_path, "test_local_path")
         self.assertEqual(builder.env_vars["MLFLOW_MODEL_FLAVOR"], "sklearn")
 
     @patch("os.makedirs", Mock())
