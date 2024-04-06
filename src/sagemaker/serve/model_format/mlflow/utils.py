@@ -286,12 +286,14 @@ def _copy_directory_contents(src_dir, dest_dir) -> None:
     for root, dirs, files in os.walk(src_dir):
         relative_path = os.path.relpath(root, src_dir)
         dest_path = os.path.join(dest_dir, relative_path)
-        os.makedirs(dest_path, exist_ok=True)
+        normalized_dest_path = os.path.normpath(dest_path)
+        os.makedirs(normalized_dest_path, exist_ok=True)
 
         for file in files:
             file_src_path = os.path.join(root, file)
             file_dest_path = os.path.join(dest_path, file)
-            shutil.copy2(file_src_path, file_dest_path)
+            normalized_file_dest_path = os.path.normpath(file_dest_path)
+            shutil.copy2(file_src_path, normalized_file_dest_path)
 
 
 def _select_container_for_mlflow_model(
