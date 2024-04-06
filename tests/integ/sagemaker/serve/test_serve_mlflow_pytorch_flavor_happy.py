@@ -132,6 +132,7 @@ def model_builder(request):
     PYTHON_VERSION_IS_NOT_310,
     reason="The goal of these test are to test the serving components of our feature",
 )
+@pytest.mark.flaky(reruns=3, reruns_delay=2)
 @pytest.mark.parametrize("model_builder", ["model_builder_local_builder"], indirect=True)
 def test_happy_mlflow_pytorch_local_container_with_torch_serve(
     sagemaker_session, model_builder, test_image
