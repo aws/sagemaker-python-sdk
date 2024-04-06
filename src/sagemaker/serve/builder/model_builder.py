@@ -47,6 +47,7 @@ from sagemaker.serve.model_format.mlflow.utils import (
     _get_all_flavor_metadata,
     _get_deployment_flavor,
     _validate_input_for_mlflow,
+    _copy_directory_contents,
 )
 from sagemaker.serve.save_retrive.version_1_0_0.metadata.metadata import Metadata
 from sagemaker.serve.spec.inference_spec import InferenceSpec
@@ -615,8 +616,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
         path = self.model_metadata.get(MLFLOW_MODEL_PATH_MODEL_METADATA_ENTRY_KEY)
         if not path:
             logger.info(
-                f"{MLFLOW_MODEL_PATH_MODEL_METADATA_ENTRY_KEY} is not provided in ModelMetadata."
-                f" ModelBuilder is not handling MLflow model input"
+                "%s is not provided in ModelMetadata. ModelBuilder is not handling MLflow model "
+                "input",
+                MLFLOW_MODEL_PATH_MODEL_METADATA_ENTRY_KEY,
             )
             return False
 
@@ -643,6 +645,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
         if not _mlflow_input_is_local_path(mlflow_path):
             # TODO: extend to package arn, run id and etc.
             _download_s3_artifacts(mlflow_path, self.model_path, self.sagemaker_session)
+        else:
+            _copy_directory_contents(mlflow_path, self.model_path)
         mlflow_model_metadata_path = _generate_mlflow_artifact_path(self.model_path, "MLmodel")
         # TODO: add validation on MLmodel file
         mlflow_model_dependency_path = _generate_mlflow_artifact_path(

@@ -34,6 +34,7 @@ from sagemaker.serve.model_format.mlflow.utils import (
     _download_s3_artifacts,
     _select_container_for_mlflow_model,
     _validate_input_for_mlflow,
+    _copy_directory_contents,
 )
 
 
@@ -418,3 +419,41 @@ def test_validate_input_for_mlflow():
 
     with pytest.raises(ValueError):
         _validate_input_for_mlflow(ModelServer.DJL_SERVING)
+
+
+@patch("sagemaker.serve.model_format.mlflow.utils.shutil.copy2")
+@patch("sagemaker.serve.model_format.mlflow.utils.os.makedirs")
+@patch("sagemaker.serve.model_format.mlflow.utils.os.walk")
+def test_copy_directory_contents_preserves_structure(
+    mock_os_walk, mock_os_makedirs, mock_shutil_copy2
+):
+    src_dir = "/fake/source/dir"
+    dest_dir = "/fake/dest/dir"
+
+    mock_os_walk.return_value = [
+        (src_dir, ["dir1"], ["file1.txt"]),
+        (f"{src_dir}/dir1", [], ["file2.txt"]),
+    ]
+
+    _copy_directory_contents(src_dir, dest_dir)
+
+    mock_os_makedirs.assert_any_call(f"{dest_dir}/dir1", exist_ok=True)
+
+    mock_shutil_copy2.assert_any_call(f"{src_dir}/file1.txt", f"{dest_dir}/file1.txt")
+    mock_shutil_copy2.assert_any_call(f"{src_dir}/dir1/file2.txt", f"{dest_dir}/dir1/file2.txt")
+
+
+@patch("sagemaker.serve.model_format.mlflow.utils.shutil.copy2")
+@patch("sagemaker.serve.model_format.mlflow.utils.os.makedirs")
+@patch("sagemaker.serve.model_format.mlflow.utils.os.walk")
+def test_copy_directory_contents_handles_empty_source_dir(
+    mock_os_walk, mock_os_makedirs, mock_shutil_copy2
+):
+    src_dir = "/fake/empty/source/dir"
+    dest_dir = "/fake/dest/dir"
+
+    mock_os_walk.return_value = [(src_dir, [], [])]
+
+    _copy_directory_contents(src_dir, dest_dir)
+
+    mock_shutil_copy2.assert_not_called()

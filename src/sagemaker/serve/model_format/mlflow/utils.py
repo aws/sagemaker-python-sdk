@@ -16,6 +16,7 @@ from __future__ import absolute_import
 from typing import Optional, Dict, Any
 import yaml
 import logging
+import shutil
 import os
 
 from sagemaker import Session, image_uris
@@ -273,6 +274,26 @@ def _download_s3_artifacts(s3_path: str, dst_path: str, session: Session) -> Non
                 # Download the file
                 print(f"Downloading {key} to {local_file_path}")
                 s3.download_file(s3_bucket, key, local_file_path)
+
+
+def _copy_directory_contents(src_dir, dest_dir) -> None:
+    """Copy everything under src_dir to dest_dir preserving the directory structure.
+
+    Args:
+        src_dir (str): The source directory path from which to copy the contents.
+        dest_dir (str): The destination directory path where the contents of src_dir will be copied.
+    """
+    for root, dirs, files in os.walk(src_dir):
+        relative_path = os.path.relpath(root, src_dir)
+        dest_path = os.path.join(dest_dir, relative_path)
+        normalized_dest_path = os.path.normpath(dest_path)
+        os.makedirs(normalized_dest_path, exist_ok=True)
+
+        for file in files:
+            file_src_path = os.path.join(root, file)
+            file_dest_path = os.path.join(dest_path, file)
+            normalized_file_dest_path = os.path.normpath(file_dest_path)
+            shutil.copy2(file_src_path, normalized_file_dest_path)
 
 
 def _select_container_for_mlflow_model(
