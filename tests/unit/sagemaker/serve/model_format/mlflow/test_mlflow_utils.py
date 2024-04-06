@@ -21,10 +21,8 @@ import yaml
 from sagemaker.serve import ModelServer
 from sagemaker.serve.model_format.mlflow.constants import (
     MLFLOW_PYFUNC,
-    DEFAULT_LOCAL_DOWNLOAD_PATH_BASE,
 )
 from sagemaker.serve.model_format.mlflow.utils import (
-    _get_default_download_path,
     _get_default_model_server_for_mlflow,
     _get_default_image_for_mlflow,
     _generate_mlflow_artifact_path,
@@ -37,14 +35,6 @@ from sagemaker.serve.model_format.mlflow.utils import (
     _select_container_for_mlflow_model,
     _validate_input_for_mlflow,
 )
-
-
-@patch("uuid.uuid1")
-def test_get_default_download_pat(mock_uuid):
-    mock_hex = "mock-hex"
-    mock_uuid.return_value.hex = mock_hex
-    expected_path = DEFAULT_LOCAL_DOWNLOAD_PATH_BASE + mock_hex
-    assert _get_default_download_path() == expected_path
 
 
 def test_get_default_model_server_for_mlflow():

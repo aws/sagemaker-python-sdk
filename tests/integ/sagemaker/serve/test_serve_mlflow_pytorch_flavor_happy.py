@@ -118,8 +118,8 @@ def squeezenet_schema(custom_request_translator, custom_response_translator):
 @pytest.fixture
 def model_builder_local_builder(squeezenet_schema):
     return ModelBuilder(
-        model_path=PYTORCH_SQUEEZENET_MLFLOW_RESOURCE_DIR,
         schema_builder=squeezenet_schema,
+        model_metadata={"MLFLOW_MODEL_PATH": PYTORCH_SQUEEZENET_MLFLOW_RESOURCE_DIR},
     )
 
 
@@ -190,10 +190,10 @@ def test_happy_pytorch_sagemaker_endpoint_with_torch_serve(
 
     model_builder = ModelBuilder(
         mode=Mode.SAGEMAKER_ENDPOINT,
-        model_path=model_path,
         schema_builder=squeezenet_schema,
         role_arn=role_arn,
         sagemaker_session=sagemaker_session,
+        model_metadata={"MLFLOW_MODEL_PATH": model_path},
     )
 
     model = model_builder.build(sagemaker_session=sagemaker_session)
