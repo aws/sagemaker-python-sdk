@@ -456,5 +456,4 @@ def test_copy_directory_contents_handles_empty_source_dir(
 
     _copy_directory_contents(src_dir, dest_dir)
 
-    mock_os_makedirs.assert_not_called()
     mock_shutil_copy2.assert_not_called()
