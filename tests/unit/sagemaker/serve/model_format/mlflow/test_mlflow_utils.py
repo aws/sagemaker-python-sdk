@@ -38,24 +38,6 @@ from sagemaker.serve.model_format.mlflow.utils import (
 )
 
 
-@pytest.fixture
-def mock_os_walk():
-    with patch("os.walk") as mock:
-        yield mock
-
-
-@pytest.fixture
-def mock_os_makedirs():
-    with patch("os.makedirs") as mock:
-        yield mock
-
-
-@pytest.fixture
-def mock_shutil_copy2():
-    with patch("shutil.copy2") as mock:
-        yield mock
-
-
 def test_get_default_model_server_for_mlflow():
     assert _get_default_model_server_for_mlflow("pyfunc") == ModelServer.TORCHSERVE
 
@@ -201,10 +183,10 @@ def test_get_deployment_flavor_metadata_none():
 
 def test_get_python_version_from_parsed_mlflow_model_file():
     assert (
-        _get_python_version_from_parsed_mlflow_model_file(
-            {MLFLOW_PYFUNC: {"python_version": "3.8.6"}}
-        )
-        == "3.8.6"
+            _get_python_version_from_parsed_mlflow_model_file(
+                {MLFLOW_PYFUNC: {"python_version": "3.8.6"}}
+            )
+            == "3.8.6"
     )
 
     with pytest.raises(ValueError, match=f"{MLFLOW_PYFUNC} cannot be found in MLmodel file."):
@@ -263,12 +245,12 @@ def test_download_s3_artifacts_valid_s3_path(mock_os_makedirs, mock_session):
 @patch("sagemaker.serve.model_format.mlflow.utils._get_all_flavor_metadata")
 @patch("sagemaker.serve.model_format.mlflow.utils._generate_mlflow_artifact_path")
 def test_select_container_for_mlflow_model_with_framework_specific_dlc(
-    mock_generate_mlflow_artifact_path,
-    mock_get_all_flavor_metadata,
-    mock_get_python_version_from_parsed_mlflow_model_file,
-    mock_get_framework_version_from_requirements,
-    mock_cast_to_compatible_version,
-    mock_image_uris_retrieve,
+        mock_generate_mlflow_artifact_path,
+        mock_get_all_flavor_metadata,
+        mock_get_python_version_from_parsed_mlflow_model_file,
+        mock_get_framework_version_from_requirements,
+        mock_cast_to_compatible_version,
+        mock_image_uris_retrieve,
 ):
     mlflow_model_src_path = "/path/to/mlflow_model"
     deployment_flavor = "pytorch"
@@ -293,10 +275,10 @@ def test_select_container_for_mlflow_model_with_framework_specific_dlc(
     mock_image_uris_retrieve.return_value = mock_image_uri
 
     assert (
-        _select_container_for_mlflow_model(
-            mlflow_model_src_path, deployment_flavor, region, instance_type
-        )
-        == mock_image_uri
+            _select_container_for_mlflow_model(
+                mlflow_model_src_path, deployment_flavor, region, instance_type
+            )
+            == mock_image_uri
     )
 
     mock_generate_mlflow_artifact_path.assert_any_call(mlflow_model_src_path, "requirements.txt")
@@ -325,10 +307,10 @@ def test_select_container_for_mlflow_model_with_framework_specific_dlc(
 @patch("sagemaker.serve.model_format.mlflow.utils._get_all_flavor_metadata")
 @patch("sagemaker.serve.model_format.mlflow.utils._generate_mlflow_artifact_path")
 def test_select_container_for_mlflow_model_with_no_framework_specific_dlc(
-    mock_generate_mlflow_artifact_path,
-    mock_get_all_flavor_metadata,
-    mock_get_python_version_from_parsed_mlflow_model_file,
-    mock_get_default_image_for_mlflow,
+        mock_generate_mlflow_artifact_path,
+        mock_get_all_flavor_metadata,
+        mock_get_python_version_from_parsed_mlflow_model_file,
+        mock_get_default_image_for_mlflow,
 ):
     mlflow_model_src_path = "/path/to/mlflow_model"
     deployment_flavor = "scikit-learn"
@@ -350,10 +332,10 @@ def test_select_container_for_mlflow_model_with_no_framework_specific_dlc(
 
     with patch("sagemaker.serve.model_format.mlflow.utils.logger") as mock_logger:
         assert (
-            _select_container_for_mlflow_model(
-                mlflow_model_src_path, deployment_flavor, region, instance_type
-            )
-            == mock_image_uri
+                _select_container_for_mlflow_model(
+                    mlflow_model_src_path, deployment_flavor, region, instance_type
+                )
+                == mock_image_uri
         )
 
     mock_generate_mlflow_artifact_path.assert_any_call(mlflow_model_src_path, "requirements.txt")
@@ -377,12 +359,12 @@ def test_select_container_for_mlflow_model_with_no_framework_specific_dlc(
 @patch("sagemaker.serve.model_format.mlflow.utils._get_all_flavor_metadata")
 @patch("sagemaker.serve.model_format.mlflow.utils._generate_mlflow_artifact_path")
 def test_select_container_for_mlflow_model_no_dlc_detected(
-    mock_generate_mlflow_artifact_path,
-    mock_get_all_flavor_metadata,
-    mock_get_python_version_from_parsed_mlflow_model_file,
-    mock_get_framework_version_from_requirements,
-    mock_cast_to_compatible_version,
-    mock_image_uris_retrieve,
+        mock_generate_mlflow_artifact_path,
+        mock_get_all_flavor_metadata,
+        mock_get_python_version_from_parsed_mlflow_model_file,
+        mock_get_framework_version_from_requirements,
+        mock_cast_to_compatible_version,
+        mock_image_uris_retrieve,
 ):
     mlflow_model_src_path = "/path/to/mlflow_model"
     deployment_flavor = "pytorch"
@@ -439,43 +421,40 @@ def test_validate_input_for_mlflow():
         _validate_input_for_mlflow(ModelServer.DJL_SERVING)
 
 
+@patch("sagemaker.serve.model_format.mlflow.utils.shutil.copy2")
+@patch("sagemaker.serve.model_format.mlflow.utils.os.makedirs")
+@patch("sagemaker.serve.model_format.mlflow.utils.os.walk")
 def test_copy_directory_contents_preserves_structure(
-    mock_os_walk, mock_os_makedirs, mock_shutil_copy2
+        mock_os_walk, mock_os_makedirs, mock_shutil_copy2
 ):
     src_dir = "/fake/source/dir"
     dest_dir = "/fake/dest/dir"
 
-    # Setup mock for os.walk to simulate directory structure
     mock_os_walk.return_value = [
-        (src_dir, ["dir1"], ["file1.txt"]),  # root level contains dir1 and file1.txt
-        (f"{src_dir}/dir1", [], ["file2.txt"]),  # dir1 contains file2.txt
+        (src_dir, ["dir1"], ["file1.txt"]),
+        (f"{src_dir}/dir1", [], ["file2.txt"]),
     ]
 
-    # Call the function with the mocked environment
     _copy_directory_contents(src_dir, dest_dir)
 
-    # Assertions to verify behaviors
-
-    # Verify that directories are created in the destination
     mock_os_makedirs.assert_any_call(f"{dest_dir}/dir1", exist_ok=True)
 
-    # Verify that files are copied over with metadata
     mock_shutil_copy2.assert_any_call(f"{src_dir}/file1.txt", f"{dest_dir}/file1.txt")
     mock_shutil_copy2.assert_any_call(f"{src_dir}/dir1/file2.txt", f"{dest_dir}/dir1/file2.txt")
 
 
+@patch("sagemaker.serve.model_format.mlflow.utils.shutil.copy2")
+@patch("sagemaker.serve.model_format.mlflow.utils.os.makedirs")
+@patch("sagemaker.serve.model_format.mlflow.utils.os.walk")
 def test_copy_directory_contents_handles_empty_source_dir(
-    mock_os_walk, mock_os_makedirs, mock_shutil_copy2
+        mock_os_walk, mock_os_makedirs, mock_shutil_copy2
 ):
     src_dir = "/fake/empty/source/dir"
     dest_dir = "/fake/dest/dir"
 
-    # Setup mock for os.walk to simulate an empty directory
     mock_os_walk.return_value = [(src_dir, [], [])]
 
-    # Call the function with the mocked environment
     _copy_directory_contents(src_dir, dest_dir)
 
-    # Assertions to verify behaviors
-    mock_os_makedirs.assert_not_called()  # No directories should be created
-    mock_shutil_copy2.assert_not_called()  # No files should be copied
+    mock_os_makedirs.assert_not_called()
+    mock_shutil_copy2.assert_not_called()

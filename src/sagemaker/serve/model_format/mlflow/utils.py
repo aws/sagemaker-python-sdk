@@ -284,16 +284,10 @@ def _copy_directory_contents(src_dir, dest_dir) -> None:
         dest_dir (str): The destination directory path where the contents of src_dir will be copied.
     """
     for root, dirs, files in os.walk(src_dir):
-        # Calculate the relative path to the source directory
         relative_path = os.path.relpath(root, src_dir)
-
-        # Construct the corresponding path in the destination directory
         dest_path = os.path.join(dest_dir, relative_path)
-
-        # Ensure the destination directory exists
         os.makedirs(dest_path, exist_ok=True)
 
-        # Copy each file in the current directory
         for file in files:
             file_src_path = os.path.join(root, file)
             file_dest_path = os.path.join(dest_path, file)
