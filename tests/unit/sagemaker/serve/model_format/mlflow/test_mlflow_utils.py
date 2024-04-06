@@ -40,19 +40,19 @@ from sagemaker.serve.model_format.mlflow.utils import (
 
 @pytest.fixture
 def mock_os_walk():
-    with patch("your_module.os.walk") as mock:
+    with patch("os.walk") as mock:
         yield mock
 
 
 @pytest.fixture
 def mock_os_makedirs():
-    with patch("your_module.os.makedirs") as mock:
+    with patch("os.makedirs") as mock:
         yield mock
 
 
 @pytest.fixture
 def mock_shutil_copy2():
-    with patch("your_module.shutil.copy2") as mock:
+    with patch("shutil.copy2") as mock:
         yield mock
 
 
