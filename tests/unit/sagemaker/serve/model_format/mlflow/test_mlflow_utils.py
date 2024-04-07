@@ -457,3 +457,18 @@ def test_copy_directory_contents_handles_empty_source_dir(
     _copy_directory_contents(src_dir, dest_dir)
 
     mock_shutil_copy2.assert_not_called()
+
+
+@patch("sagemaker.serve.model_format.mlflow.utils.shutil.copy2")
+@patch("sagemaker.serve.model_format.mlflow.utils.os.makedirs")
+@patch("sagemaker.serve.model_format.mlflow.utils.os.walk")
+def test_copy_directory_contents_handles_same_src_dst(
+    mock_os_walk, mock_os_makedirs, mock_shutil_copy2
+):
+    src_dir = "/fake/empty/source/dir"
+    dest_dir = "/fake/empty/source/./dir"
+
+    _copy_directory_contents(src_dir, dest_dir)
+    mock_os_walk.assert_not_called()
+    mock_os_makedirs.assert_not_called()
+    mock_shutil_copy2.assert_not_called()

@@ -283,6 +283,13 @@ def _copy_directory_contents(src_dir, dest_dir) -> None:
         src_dir (str): The source directory path from which to copy the contents.
         dest_dir (str): The destination directory path where the contents of src_dir will be copied.
     """
+    src_dir = os.path.normpath(src_dir)
+    dest_dir = os.path.normpath(dest_dir)
+
+    if src_dir == dest_dir:
+        logger.info("Source and destination directories are the same. No action taken.")
+        return
+
     for root, dirs, files in os.walk(src_dir):
         relative_path = os.path.relpath(root, src_dir)
         dest_path = os.path.join(dest_dir, relative_path)
