@@ -31,6 +31,7 @@ from sagemaker.serve.utils.exceptions import (
     LocalModelInvocationException,
     LocalModelLoadException,
     SkipTuningComboException,
+    JumpStartGatedModelNotSupported,
 )
 from sagemaker.serve.utils.predictors import (
     DjlLocalModePredictor,
@@ -443,6 +444,11 @@ class JumpStart(ABC):
 
         logger.info("JumpStart ID %s is packaged with Image URI: %s", self.model, image_uri)
 
+        if self._is_gated_model() and self.mode != Mode.SAGEMAKER_ENDPOINT:
+            raise JumpStartGatedModelNotSupported(
+                "JumpStart Gated Models are only supported in SAGEMAKER_ENDPOINT mode"
+            )
+
         if "djl-inference" in image_uri:
             logger.info("Building for DJL JumpStart Model ID...")
             self.model_server = ModelServer.DJL_SERVING
@@ -469,3 +475,12 @@ class JumpStart(ABC):
             )
 
         return self.pysdk_model
+
+    def _is_gated_model(self) -> bool:
+        """Determine if ``this`` Model is Gated"""
+
+        s3_uri = self.pysdk_model.model_data
+        if isinstance(s3_uri, dict):
+            s3_uri = s3_uri.get("S3DataSource").get("S3Uri")
+
+        return "private" in s3_uri
