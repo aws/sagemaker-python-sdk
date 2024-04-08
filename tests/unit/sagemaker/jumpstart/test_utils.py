@@ -1215,6 +1215,11 @@ class TestIsValidModelId(TestCase):
             ]
 
             mock_get_model_specs.return_value = Mock(training_supported=True)
+            self.assertIsNone(
+                utils.validate_model_id_and_get_type(
+                    "invalid", script=JumpStartScriptScope.TRAINING
+                )
+            )
             assert (
                 utils.validate_model_id_and_get_type("bee", script=JumpStartScriptScope.TRAINING)
                 == JumpStartModelType.OPEN_WEIGHTS
