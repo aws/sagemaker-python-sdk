@@ -7499,6 +7499,13 @@ BASE_SPEC = {
     "resource_name_base": "dfsdfsds",
     "hosting_resource_requirements": {"num_accelerators": 1, "min_memory_mb": 34360},
     "dynamic_container_deployment_supported": True,
+    "benchmarh_stats": None,
+    "inference_configs": None,
+    "training_configs": None,
+    "inference_components": None,
+    "training_components": None,
+    "hosting_config_rankings": None,
+    "training_config_rankings": None,
 }
 
 BASE_HEADER = {
