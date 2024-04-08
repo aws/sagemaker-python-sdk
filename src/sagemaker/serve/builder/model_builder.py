@@ -20,6 +20,8 @@ import os
 
 from pathlib import Path
 
+from sagemaker.s3 import S3Downloader
+
 from sagemaker import Session
 from sagemaker.model import Model
 from sagemaker.base_predictor import PredictorBase
@@ -37,7 +39,11 @@ from sagemaker.serve.builder.tgi_builder import TGI
 from sagemaker.serve.builder.jumpstart_builder import JumpStart
 from sagemaker.serve.builder.transformers_builder import Transformers
 from sagemaker.predictor import Predictor
-from sagemaker.serve.model_format.mlflow.constants import MLFLOW_MODEL_PATH_MODEL_METADATA_ENTRY_KEY
+from sagemaker.serve.model_format.mlflow.constants import (
+    MLFLOW_MODEL_PATH,
+    MLFLOW_METADATA_FILE,
+    MLFLOW_PIP_DEPENDENCY_FILE,
+)
 from sagemaker.serve.model_format.mlflow.utils import (
     _get_default_model_server_for_mlflow,
     _mlflow_input_is_local_path,
@@ -613,44 +619,41 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
             )
             return False
 
-        path = self.model_metadata.get(MLFLOW_MODEL_PATH_MODEL_METADATA_ENTRY_KEY)
+        path = self.model_metadata.get(MLFLOW_MODEL_PATH)
         if not path:
             logger.info(
                 "%s is not provided in ModelMetadata. ModelBuilder is not handling MLflow model "
                 "input",
-                MLFLOW_MODEL_PATH_MODEL_METADATA_ENTRY_KEY,
+                MLFLOW_MODEL_PATH,
             )
             return False
 
-        mlmodel_file = "MLmodel"
         # Check for S3 path
         if path.startswith("s3://"):
-            s3_client = self.sagemaker_session.boto_session.client("s3")
-            path_components = path.replace("s3://", "").split("/", 1)
-            bucket_name = path_components[0]
-            if len(path_components) > 1:
-                key = path_components[1]
-            else:
-                key = ""
-            key_prefix = f"{key.rstrip('/')}/{mlmodel_file}" if key else mlmodel_file
-            response = s3_client.list_objects_v2(Bucket=bucket_name, Prefix=key_prefix)
-            return "Contents" in response and len(response["Contents"]) > 0
+            s3_downloader = S3Downloader()
+            if not path.endswith("/"):
+                path += "/"
+            s3_uri_to_mlmodel_file = f"{path}{MLFLOW_METADATA_FILE}"
+            response = s3_downloader.list(s3_uri_to_mlmodel_file, self.sagemaker_session)
+            return len(response) > 0
 
-        file_path = os.path.join(path, mlmodel_file)
+        file_path = os.path.join(path, MLFLOW_METADATA_FILE)
         return os.path.isfile(file_path)
 
     def _initialize_for_mlflow(self) -> None:
         """Initialize mlflow model artifacts, image uri and model server."""
-        mlflow_path = self.model_metadata.get(MLFLOW_MODEL_PATH_MODEL_METADATA_ENTRY_KEY)
+        mlflow_path = self.model_metadata.get(MLFLOW_MODEL_PATH)
         if not _mlflow_input_is_local_path(mlflow_path):
             # TODO: extend to package arn, run id and etc.
             _download_s3_artifacts(mlflow_path, self.model_path, self.sagemaker_session)
         else:
             _copy_directory_contents(mlflow_path, self.model_path)
-        mlflow_model_metadata_path = _generate_mlflow_artifact_path(self.model_path, "MLmodel")
+        mlflow_model_metadata_path = _generate_mlflow_artifact_path(
+            self.model_path, MLFLOW_METADATA_FILE
+        )
         # TODO: add validation on MLmodel file
         mlflow_model_dependency_path = _generate_mlflow_artifact_path(
-            self.model_path, "requirements.txt"
+            self.model_path, MLFLOW_PIP_DEPENDENCY_FILE
         )
         flavor_metadata = _get_all_flavor_metadata(mlflow_model_metadata_path)
         deployment_flavor = _get_deployment_flavor(flavor_metadata)

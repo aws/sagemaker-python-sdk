@@ -28,6 +28,8 @@ from sagemaker.serve.model_format.mlflow.constants import (
     FLAVORS_WITH_FRAMEWORK_SPECIFIC_DLC_SUPPORT,
     DEFAULT_FW_USED_FOR_DEFAULT_IMAGE,
     DEFAULT_PYTORCH_VERSION,
+    MLFLOW_METADATA_FILE,
+    MLFLOW_PIP_DEPENDENCY_FILE,
 )
 
 logger = logging.getLogger(__name__)
@@ -321,8 +323,12 @@ def _select_container_for_mlflow_model(
         str: The image uri chosen for mlflow model.
     """
     # TODO: Extend this for model server specific DLC as well, ie. DJL, Triton
-    requirement_path = _generate_mlflow_artifact_path(mlflow_model_src_path, "requirements.txt")
-    mlflow_model_metadata_path = _generate_mlflow_artifact_path(mlflow_model_src_path, "MLmodel")
+    requirement_path = _generate_mlflow_artifact_path(
+        mlflow_model_src_path, MLFLOW_PIP_DEPENDENCY_FILE
+    )
+    mlflow_model_metadata_path = _generate_mlflow_artifact_path(
+        mlflow_model_src_path, MLFLOW_METADATA_FILE
+    )
     flavor_metadata = _get_all_flavor_metadata(mlflow_model_metadata_path)
     python_version = _get_python_version_from_parsed_mlflow_model_file(flavor_metadata)
     major_python_version, minor_python_version, _ = python_version.split(".")

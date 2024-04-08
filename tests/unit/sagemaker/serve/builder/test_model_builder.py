@@ -1737,6 +1737,7 @@ class TestModelBuilder(unittest.TestCase):
         self.assertEqual(builder.env_vars["MLFLOW_MODEL_FLAVOR"], "sklearn")
 
     @patch("os.makedirs", Mock())
+    @patch("sagemaker.serve.builder.model_builder.S3Downloader.list")
     @patch("sagemaker.serve.builder.model_builder._detect_framework_and_version")
     @patch("sagemaker.serve.builder.model_builder.prepare_for_torchserve")
     @patch("sagemaker.serve.builder.model_builder.save_pkl")
@@ -1763,13 +1764,10 @@ class TestModelBuilder(unittest.TestCase):
         mock_save_pkl,
         mock_prepare_for_torchserve,
         mock_detect_fw_version,
+        mock_s3_downloader,
     ):
         # setup mocks
-        mock_s3 = MagicMock()
-        mock_session.boto_session.client("s3").return_value = mock_s3
-        mock_session.boto_session.client("s3").list_objects_v2.return_value = {
-            "Contents": ["something"]
-        }
+        mock_s3_downloader.return_value = ["s3://some_path/MLmodel"]
 
         mock_detect_container.return_value = mock_image_uri
         mock_get_all_flavor_metadata.return_value = {"sklearn": "some_data"}
@@ -1816,6 +1814,7 @@ class TestModelBuilder(unittest.TestCase):
         self.assertEqual(builder.env_vars["MLFLOW_MODEL_FLAVOR"], "sklearn")
 
     @patch("os.makedirs", Mock())
+    @patch("sagemaker.serve.builder.model_builder.S3Downloader.list")
     @patch("sagemaker.serve.builder.model_builder._detect_framework_and_version")
     @patch("sagemaker.serve.builder.model_builder.prepare_for_torchserve")
     @patch("sagemaker.serve.builder.model_builder.save_pkl")
@@ -1842,11 +1841,10 @@ class TestModelBuilder(unittest.TestCase):
         mock_save_pkl,
         mock_prepare_for_torchserve,
         mock_detect_fw_version,
+        mock_s3_downloader,
     ):
         # setup mocks
-        mock_s3 = MagicMock()
-        mock_session.boto_session.client("s3").return_value = mock_s3
-        mock_session.boto_session.client("s3").list_objects_v2.return_value = {}
+        mock_s3_downloader.return_value = []
         mock_detect_container.return_value = mock_image_uri
         mock_get_all_flavor_metadata.return_value = {"sklearn": "some_data"}
         mock_generate_mlflow_artifact_path.return_value = "some_path"
