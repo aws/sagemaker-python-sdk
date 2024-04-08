@@ -916,7 +916,7 @@ class JumpStartAlternativeConfig(JumpStartDataHolderType):
         """
         resolved_config = {}
         for component_name in self.component_names:
-            if not component_name in self.components:
+            if component_name not in self.components:
                 raise RuntimeError(
                     f"Alternative config component {component_name} is not in "
                     "required component names of config {self.config_name}"
@@ -973,7 +973,9 @@ class JumpStartInferenceAlternativeConfigs(JumpStartDataHolderType):
         self.configs: Optional[Dict[str, JumpStartAlternativeConfig]] = configs
         self.config_ranking: Optional[Dict[str, JumpStartConfigRanking]] = config_ranking
 
-    def get_alternative_config(self, instance_type: str) -> Optional[JumpStartAlternativeConfig]:
+    def get_instance_type_alternative_config(
+        self, instance_type: Optional[str]
+    ) -> Optional[JumpStartAlternativeConfig]:
         """Returns the inference alternative config that matches the instance type.
 
         Args:
@@ -984,7 +986,7 @@ class JumpStartInferenceAlternativeConfigs(JumpStartDataHolderType):
 
         TODO: add logic to choose the best config conditioned on banchmarking and user input
         """
-        
+
         if not self.configs or not self.config_ranking:
             return None
 
@@ -994,13 +996,14 @@ class JumpStartInferenceAlternativeConfigs(JumpStartDataHolderType):
             else self.config_ranking.values(0)
         )  # TODO: choose the best ranking
 
-        for config in ranking.ranking:
-            if instance_type in self.configs[config].resolved_config["inference_instance_type"]:
+        for config_name in ranking.ranking:
+            config = self.configs[config_name]
+            if instance_type in config.resolved_config["inference_instance_type"]:
                 return config
         raise RuntimeError(
             f"No inference alternative config found for instance type {instance_type}"
         )
-    
+
     def to_json(self) -> Dict[str, Any]:
         """Returns json representation of JumpStartInferenceAlternativeConfigs object."""
         json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
@@ -1024,7 +1027,9 @@ class JumpStartTrainingAlternativeConfigs(JumpStartDataHolderType):
         self.configs: Optional[Dict[str, JumpStartAlternativeConfig]] = configs
         self.config_ranking: Optional[Dict[str, JumpStartConfigRanking]] = config_ranking
 
-    def get_alternative_config(self, instance_type: str) -> JumpStartAlternativeConfig:
+    def get_instance_type_alternative_config(
+        self, instance_type: str
+    ) -> JumpStartAlternativeConfig:
         """Returns the training alternative config that matches the instance type.
 
         Args:
@@ -1045,13 +1050,14 @@ class JumpStartTrainingAlternativeConfigs(JumpStartDataHolderType):
             else self.config_ranking.values(0)
         )  # TODO: choose the best ranking
 
-        for config in ranking.ranking:
-            if instance_type in self.configs[config].resolved_config["training_instance_type"]:
+        for config_name in ranking.ranking:
+            config = self.configs[config_name]
+            if instance_type in config.resolved_config["training_instance_type"]:
                 return config
         raise RuntimeError(
             f"No training alternative config found for instance type {instance_type}"
         )
-    
+
     def to_json(self) -> Dict[str, Any]:
         """Returns json representation of JumpStartTrainingAlternativeConfigs object."""
         json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
@@ -1243,7 +1249,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
             {
                 alias: JumpStartConfigRanking(ranking)
                 for alias, ranking in json_obj["hosting_config_rankings"].items()
-            } 
+            }
             if json_obj.get("hosting_config_rankings")
             else None
         )
@@ -1252,7 +1258,9 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
                 {
                     alias: JumpStartAlternativeConfig(config, self.inference_components)
                     for alias, config in json_obj["inference_configs"].items()
-                } if json_obj.get("inference_configs") else None,
+                }
+                if json_obj.get("inference_configs")
+                else None,
                 self.hosting_config_rankings,
             )
             if "inference_configs" in json_obj
@@ -1308,7 +1316,9 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
                     {
                         alias: JumpStartAlternativeConfig(config, self.inference_components)
                         for alias, config in json_obj["training_configs"].items()
-                    } if json_obj.get("training_configs") else None,
+                    }
+                    if json_obj.get("training_configs")
+                    else None,
                     self.training_config_rankings,
                 )
                 if "training_configs" in json_obj
