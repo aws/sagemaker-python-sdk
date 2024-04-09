@@ -33,7 +33,7 @@ SAMPLE_RESPONSE = [
     {"generated_text": "Hello, I'm a language model, and I'm here to help you with your English."}
 ]
 JS_MODEL_ID = "huggingface-textgeneration1-gpt-neo-125m-fp16"
-JS_Gated_MODEL_ID = "huggingface-llm-zephyr-7b-gemma"
+JS_GATED_MODEL_ID = "huggingface-llm-zephyr-7b-gemma"
 ROLE_NAME = "SageMakerRole"
 
 
@@ -52,7 +52,7 @@ def happy_model_builder(sagemaker_session):
 def happy_model_builder_gated_model(sagemaker_session):
     iam_client = sagemaker_session.boto_session.client("iam")
     return ModelBuilder(
-        model=JS_Gated_MODEL_ID,
+        model=JS_GATED_MODEL_ID,
         schema_builder=SchemaBuilder(SAMPLE_PROMPT, SAMPLE_RESPONSE),
         role_arn=iam_client.get_role(RoleName=ROLE_NAME)["Role"]["Arn"],
         sagemaker_session=sagemaker_session,
@@ -108,7 +108,7 @@ def test_happy_js_gated_model(happy_model_builder_gated_model, gpu_instance_type
 def test_js_gated_model_throws(happy_model_builder_gated_model, gpu_instance_type):
     logger.info("Running in Local mode...")
     model_builder = ModelBuilder(
-        model=JS_Gated_MODEL_ID,
+        model=JS_GATED_MODEL_ID,
         schema_builder=SchemaBuilder(SAMPLE_PROMPT, SAMPLE_RESPONSE),
         mode=Mode.LOCAL_CONTAINER,
     )
