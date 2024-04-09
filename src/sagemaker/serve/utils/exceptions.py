@@ -69,12 +69,3 @@ class TaskNotFoundException(ModelBuilderException):
 
     def __init__(self, message):
         super().__init__(message=message)
-
-
-class JumpStartGatedModelNotSupported(ModelBuilderException):
-    """Raise when deploying JumpStart gated model locally"""
-
-    fmt = "Error Message: {message}"
-
-    def __init__(self, message):
-        super().__init__(message=message)

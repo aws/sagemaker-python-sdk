@@ -14,6 +14,7 @@ from __future__ import absolute_import
 
 import pytest
 
+from sagemaker.serve import Mode
 from sagemaker.serve.builder.model_builder import ModelBuilder
 from sagemaker.serve.builder.schema_builder import SchemaBuilder
 from tests.integ.sagemaker.serve.constants import (
@@ -32,6 +33,7 @@ SAMPLE_RESPONSE = [
     {"generated_text": "Hello, I'm a language model, and I'm here to help you with your English."}
 ]
 JS_MODEL_ID = "huggingface-textgeneration1-gpt-neo-125m-fp16"
+JS_Gated_MODEL_ID = "huggingface-llm-zephyr-7b-gemma"
 ROLE_NAME = "SageMakerRole"
 
 
@@ -40,6 +42,17 @@ def happy_model_builder(sagemaker_session):
     iam_client = sagemaker_session.boto_session.client("iam")
     return ModelBuilder(
         model=JS_MODEL_ID,
+        schema_builder=SchemaBuilder(SAMPLE_PROMPT, SAMPLE_RESPONSE),
+        role_arn=iam_client.get_role(RoleName=ROLE_NAME)["Role"]["Arn"],
+        sagemaker_session=sagemaker_session,
+    )
+
+
+@pytest.fixture
+def happy_model_builder_gated_model(sagemaker_session):
+    iam_client = sagemaker_session.boto_session.client("iam")
+    return ModelBuilder(
+        model=JS_Gated_MODEL_ID,
         schema_builder=SchemaBuilder(SAMPLE_PROMPT, SAMPLE_RESPONSE),
         role_arn=iam_client.get_role(RoleName=ROLE_NAME)["Role"]["Arn"],
         sagemaker_session=sagemaker_session,
@@ -75,3 +88,33 @@ def test_happy_tgi_sagemaker_endpoint(happy_model_builder, gpu_instance_type):
             )
             if caught_ex:
                 raise caught_ex
+
+
+@pytest.mark.skipif(
+    PYTHON_VERSION_IS_NOT_310,
+    reason="The goal of these test are to test the serving components of our feature",
+)
+@pytest.mark.slow_test
+def test_happy_js_gated_model(happy_model_builder_gated_model, gpu_instance_type):
+    logger.info("Running in SAGEMAKER_ENDPOINT mode...")
+    happy_model_builder_gated_model.build()
+
+
+@pytest.mark.skipif(
+    PYTHON_VERSION_IS_NOT_310,
+    reason="The goal of these test are to test the serving components of our feature",
+)
+@pytest.mark.slow_test
+def test_js_gated_model_throws(happy_model_builder_gated_model, gpu_instance_type):
+    logger.info("Running in Local mode...")
+    model_builder = ModelBuilder(
+        model=JS_Gated_MODEL_ID,
+        schema_builder=SchemaBuilder(SAMPLE_PROMPT, SAMPLE_RESPONSE),
+        mode=Mode.LOCAL_CONTAINER,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="JumpStart Gated Models are only supported in SAGEMAKER_ENDPOINT mode.",
+    ):
+        model_builder.build()
