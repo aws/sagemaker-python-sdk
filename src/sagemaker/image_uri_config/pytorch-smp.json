@@ -6,8 +6,7 @@
         "version_aliases": {
             "2.0": "2.0.1",
             "2.1": "2.1.2",
-            "2.2": "2.2.0",
-            "2.3": "2.3.0"
+            "2.2": "2.2.1",
         },
         "versions": {
             "2.0.1": {
@@ -85,7 +84,7 @@
                 },
                 "repository": "smdistributed-modelparallel"
             },
-            "2.3.0": {
+            "2.2.1": {
                 "py_versions": [
                     "py310"
                 ],
