@@ -118,11 +118,11 @@ def _pickle_file_integrity_check():
 
 
 def _get_mlflow_flavor():
-    mlflow_model_flavor = os.getenv("MLFLOW_MODEL_FLAVOR")
-    return mlflow_model_flavor
+    return os.getenv("MLFLOW_MODEL_FLAVOR")
 
 
 def _load_mlflow_model(deployment_flavor, model_dir):
+    # TODO: move this to constants section
     flavor_loader_map = {
         "keras": ("mlflow.keras", "load_model"),
         "python_function": ("mlflow.pyfunc", "load_model"),

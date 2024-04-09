@@ -34,17 +34,6 @@ MLFLOW_FLAVOR_TO_PYTHON_PACKAGE_MAP = {
     "spark": "pyspark",
     "onnx": "onnxruntime",
 }
-MLFLOW_FLAVOR_TO_FRAMEWORK_MAP = {
-    "sklearn": "scikit-learn",
-    "pytorch": "torch",
-    "tensorflow": "tensorflow",
-    "keras": "tensorflow",
-    "xgboost": "xgboost",
-    "lightgbm": "lightgbm",
-    "h2o": "h2o",
-    "spark": "pyspark",
-    "onnx": "onnxruntime",
-}
 FLAVORS_WITH_FRAMEWORK_SPECIFIC_DLC_SUPPORT = [  # will extend to keras and tf
     "sklearn",
     "pytorch",
