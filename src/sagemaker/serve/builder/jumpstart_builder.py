@@ -476,7 +476,13 @@ class JumpStart(ABC):
         return self.pysdk_model
 
     def _is_gated_model(self, model) -> bool:
-        """Determine if ``this`` Model is Gated"""
+        """Determine if ``this`` Model is Gated
+
+        Args:
+            model (Model): Jumpstart Model
+        Returns:
+            bool: ``True`` if ``this`` Model is Gated
+        """
         s3_uri = model.model_data
         if isinstance(s3_uri, dict):
             s3_uri = s3_uri.get("S3DataSource").get("S3Uri")
