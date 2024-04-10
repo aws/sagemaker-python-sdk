@@ -169,7 +169,7 @@ class SchemaBuilder(TritonSchemaBuilder):
                 return DataSerializer(content_type=obj["content_type"])
             except ValueError as e:
                 logger.error(
-                    "Unable to determine serializer for content_type %s." % obj["content_type"]
+                    "Unable to determine serializer for content_type %s", obj["content_type"]
                 )
                 logger.error(e)
 
