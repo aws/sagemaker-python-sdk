@@ -94,7 +94,6 @@ def test_happy_tgi_sagemaker_endpoint(happy_model_builder, gpu_instance_type):
     PYTHON_VERSION_IS_NOT_310,
     reason="The goal of these test are to test the serving components of our feature",
 )
-@pytest.mark.slow_test
 def test_happy_js_gated_model(happy_model_builder_gated_model, gpu_instance_type):
     logger.info("Running in SAGEMAKER_ENDPOINT mode...")
     happy_model_builder_gated_model.build()
@@ -104,7 +103,6 @@ def test_happy_js_gated_model(happy_model_builder_gated_model, gpu_instance_type
     PYTHON_VERSION_IS_NOT_310,
     reason="The goal of these test are to test the serving components of our feature",
 )
-@pytest.mark.slow_test
 def test_js_gated_model_throws(happy_model_builder_gated_model, gpu_instance_type):
     logger.info("Running in Local mode...")
     model_builder = ModelBuilder(
