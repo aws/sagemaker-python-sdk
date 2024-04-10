@@ -719,11 +719,11 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
             except ValueError:
                 # samples could not be loaded locally, try to fetch remote hf schema
                 from sagemaker_schema_inference_artifacts.huggingface import remote_schema_retriever
+
                 if model_task in ("text-to-image", "automatic-speech-recognition"):
                     logger.warning(
                         "HF SchemaBuilder for %s is in beta mode, and is not guaranteed to work "
-                        "with all models at this time."
-                        % model_task
+                        "with all models at this time." % model_task
                     )
                 remote_hf_schema_helper = remote_schema_retriever.RemoteSchemaRetriever()
                 (
