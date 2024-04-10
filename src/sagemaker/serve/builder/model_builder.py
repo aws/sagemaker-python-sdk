@@ -164,9 +164,10 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
             ``TORCHSERVE``, ``MMS``, ``TENSORFLOW_SERVING``, ``DJL_SERVING``,
             ``TRITON``, and``TGI``.
         model_metadata (Optional[Dict[str, Any]): Dictionary used to override model metadata.
-            Currently, ``HF_TASK`` is overridable for HuggingFace model. ``MLFLOW_MODEL_PATH`` is available for
-            providing local path or s3 path to MLflow artifacts. However, ``MLFLOW_MODEL_PATH`` is experimental and
-            not intended for production use at this moment.
+            Currently, ``HF_TASK`` is overridable for HuggingFace model. ``MLFLOW_MODEL_PATH``
+            is available for providing local path or s3 path to MLflow artifacts. However,
+            ``MLFLOW_MODEL_PATH`` is experimental and is not intended for production use
+            at this moment.
     """
 
     model_path: Optional[str] = field(
@@ -717,6 +718,10 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
         self._is_custom_image_uri = self.image_uri is not None
         self._is_mlflow_model = self._check_if_input_is_mlflow_model()
         if self._is_mlflow_model:
+            logger.warning(
+                "Support of MLflow format models is experimental and is not intended"
+                " for production at this moment."
+            )
             self._initialize_for_mlflow()
             _validate_input_for_mlflow(self.model_server)
 
