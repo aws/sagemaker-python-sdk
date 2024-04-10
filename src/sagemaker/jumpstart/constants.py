@@ -105,6 +105,11 @@ JUMPSTART_LAUNCHED_REGIONS: Set[JumpStartLaunchedRegionInfo] = set(
             gated_content_bucket="jumpstart-private-cache-prod-ap-northeast-2",
         ),
         JumpStartLaunchedRegionInfo(
+            region_name="ap-northeast-3",
+            content_bucket="jumpstart-cache-prod-ap-northeast-3",
+            gated_content_bucket="jumpstart-private-cache-prod-ap-northeast-3",
+        ),
+        JumpStartLaunchedRegionInfo(
             region_name="eu-west-2",
             content_bucket="jumpstart-cache-prod-eu-west-2",
             gated_content_bucket="jumpstart-private-cache-prod-eu-west-2",
