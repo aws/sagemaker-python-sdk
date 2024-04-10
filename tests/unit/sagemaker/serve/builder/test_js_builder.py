@@ -609,3 +609,32 @@ class TestJumpStartBuilder(unittest.TestCase):
             "JumpStart Gated Models are only supported in SAGEMAKER_ENDPOINT mode.",
             lambda: builder.build(),
         )
+
+    @patch("sagemaker.serve.builder.jumpstart_builder._capture_telemetry", side_effect=None)
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_jumpstart_model_id",
+        return_value=True,
+    )
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._create_pre_trained_js_model",
+        return_value=MagicMock(),
+    )
+    def test_js_gated_model_ex(
+        self,
+        mock_pre_trained_model,
+        mock_is_jumpstart_model,
+        mock_telemetry,
+    ):
+        builder = ModelBuilder(
+            model="huggingface-llm-zephyr-7b-gemma",
+            schema_builder=mock_schema_builder,
+            mode=Mode.LOCAL_CONTAINER,
+        )
+
+        mock_pre_trained_model.return_value.image_uri = mock_tgi_image_uri
+        mock_pre_trained_model.return_value.model_data = None
+
+        self.assertRaises(
+            ValueError,
+            lambda: builder.build(),
+        )
