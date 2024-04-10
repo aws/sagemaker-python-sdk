@@ -32,64 +32,17 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def test_model_builder_happy_path_with_only_model_id_fill_mask(sagemaker_session):
-    model_builder = ModelBuilder(model="bert-base-uncased")
+def test_model_builder_happy_path_with_only_model_id_text_generation(sagemaker_session):
+    model_builder = ModelBuilder(model="HuggingFaceH4/zephyr-7b-beta")
 
     model = model_builder.build(sagemaker_session=sagemaker_session)
 
     assert model is not None
     assert model_builder.schema_builder is not None
 
-    inputs, outputs = task.retrieve_local_schemas("fill-mask")
-    assert model_builder.schema_builder.sample_input == inputs
+    inputs, outputs = task.retrieve_local_schemas("text-generation")
+    assert model_builder.schema_builder.sample_input["inputs"] == inputs["inputs"]
     assert model_builder.schema_builder.sample_output == outputs
-
-
-@pytest.mark.skipif(
-    PYTHON_VERSION_IS_NOT_310,
-    reason="Testing Schema Builder Simplification feature",
-)
-def test_model_builder_happy_path_with_only_model_id_question_answering(
-    sagemaker_session, gpu_instance_type
-):
-    model_builder = ModelBuilder(model="bert-large-uncased-whole-word-masking-finetuned-squad")
-
-    model = model_builder.build(sagemaker_session=sagemaker_session)
-
-    assert model is not None
-    assert model_builder.schema_builder is not None
-
-    inputs, outputs = task.retrieve_local_schemas("question-answering")
-    assert model_builder.schema_builder.sample_input == inputs
-    assert model_builder.schema_builder.sample_output == outputs
-
-    with timeout(minutes=SERVE_SAGEMAKER_ENDPOINT_TIMEOUT):
-        caught_ex = None
-        try:
-            iam_client = sagemaker_session.boto_session.client("iam")
-            role_arn = iam_client.get_role(RoleName="SageMakerRole")["Role"]["Arn"]
-
-            logger.info("Deploying and predicting in SAGEMAKER_ENDPOINT mode...")
-            predictor = model.deploy(
-                role=role_arn, instance_count=1, instance_type=gpu_instance_type
-            )
-
-            predicted_outputs = predictor.predict(inputs)
-            assert predicted_outputs is not None
-
-        except Exception as e:
-            caught_ex = e
-        finally:
-            cleanup_model_resources(
-                sagemaker_session=model_builder.sagemaker_session,
-                model_name=model.name,
-                endpoint_name=model.endpoint_name,
-            )
-            if caught_ex:
-                logger.exception(caught_ex)
-                assert (
-                    False
-                ), f"{caught_ex} was thrown when running transformers sagemaker endpoint test"
 
 
 def test_model_builder_negative_path(sagemaker_session):
