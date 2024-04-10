@@ -25,6 +25,10 @@ from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     JUMPSTART_DEFAULT_REGION_NAME,
 )
+from sagemaker.jumpstart.constants import (
+    ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE,
+    ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE,
+)
 from sagemaker.jumpstart.enums import JumpStartScriptScope, JumpStartTag, JumpStartModelType
 
 from sagemaker.jumpstart.model import JumpStartModel
@@ -41,6 +45,7 @@ from tests.unit.sagemaker.jumpstart.utils import (
     overwrite_dictionary,
     get_special_model_spec_for_inference_component_based_endpoint,
     get_prototype_manifest,
+    get_prototype_model_spec,
 )
 import boto3
 
@@ -1364,6 +1369,50 @@ class ModelTest(unittest.TestCase):
         s3_clients = {call[1]["s3_client"] for call in mock_get_model_specs.call_args_list}
         assert len(s3_clients) == 1
         assert list(s3_clients)[0] == session.s3_client
+
+    @mock.patch.dict(
+        "sagemaker.jumpstart.cache.os.environ",
+        {
+            ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE: "/some/directory/metadata/manifest/root",
+            ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE: "/some/directory/metadata/specs/root",
+        },
+    )
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.model.Model.deploy")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_model_local_mode(
+        self,
+        mock_model_deploy: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_get_manifest: mock.Mock,
+    ):
+        mock_get_model_specs.side_effect = get_prototype_model_spec
+        mock_get_manifest.side_effect = (
+            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
+        )
+        mock_model_deploy.return_value = default_predictor
+
+        model_id, _ = "pytorch-eqa-bert-base-cased", "*"
+
+        mock_session.return_value = sagemaker_session
+
+        model = JumpStartModel(model_id=model_id, instance_type="ml.p2.xlarge")
+
+        model.deploy()
+
+        mock_model_deploy.assert_called_once_with(
+            initial_instance_count=1,
+            instance_type="ml.p2.xlarge",
+            tags=[
+                {"Key": JumpStartTag.MODEL_ID, "Value": "pytorch-eqa-bert-base-cased"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.0.0"},
+            ],
+            wait=True,
+            endpoint_logging=False,
+        )
 
 
 def test_jumpstart_model_requires_model_id():
