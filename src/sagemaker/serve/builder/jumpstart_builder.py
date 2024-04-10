@@ -484,9 +484,9 @@ class JumpStart(ABC):
             bool: ``True`` if ``this`` Model is Gated
         """
         s3_uri = model.model_data
-        if s3_uri is None:
-            return False
-
         if isinstance(s3_uri, dict):
             s3_uri = s3_uri.get("S3DataSource").get("S3Uri")
+
+        if s3_uri is None:
+            return False
         return "private" in s3_uri
