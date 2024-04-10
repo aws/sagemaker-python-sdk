@@ -765,20 +765,6 @@ def validate_model_id_and_get_type(
         ValueError: If the script is not supported by JumpStart.
     """
 
-    def _get_model_type(
-        model_id: str,
-        open_weights_model_ids: Set[str],
-        proprietary_model_ids: Set[str],
-        script: enums.JumpStartScriptScope,
-    ) -> Optional[enums.JumpStartModelType]:
-        if model_id in open_weights_model_ids:
-            return enums.JumpStartModelType.OPEN_WEIGHTS
-        if model_id in proprietary_model_ids:
-            if script == enums.JumpStartScriptScope.INFERENCE:
-                return enums.JumpStartModelType.PROPRIETARY
-            raise ValueError(f"Unsupported script for Marketplace models: {script}")
-        return None
-
     if model_id in {None, ""}:
         return None
     if not isinstance(model_id, str):
@@ -792,12 +778,19 @@ def validate_model_id_and_get_type(
     )
     open_weight_model_id_set = {model.model_id for model in models_manifest_list}
 
+    if model_id in open_weight_model_id_set:
+        return enums.JumpStartModelType.OPEN_WEIGHTS
+
     proprietary_manifest_list = accessors.JumpStartModelsAccessor._get_manifest(
         region=region, s3_client=s3_client, model_type=enums.JumpStartModelType.PROPRIETARY
     )
 
     proprietary_model_id_set = {model.model_id for model in proprietary_manifest_list}
-    return _get_model_type(model_id, open_weight_model_id_set, proprietary_model_id_set, script)
+    if model_id in proprietary_model_id_set:
+        if script == enums.JumpStartScriptScope.INFERENCE:
+            return enums.JumpStartModelType.PROPRIETARY
+        raise ValueError(f"Unsupported script for Proprietary models: {script}")
+    return None
 
 
 def get_jumpstart_model_id_version_from_resource_arn(
