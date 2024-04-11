@@ -443,6 +443,11 @@ class JumpStart(ABC):
 
         logger.info("JumpStart ID %s is packaged with Image URI: %s", self.model, image_uri)
 
+        if self._is_gated_model(pysdk_model) and self.mode != Mode.SAGEMAKER_ENDPOINT:
+            raise ValueError(
+                "JumpStart Gated Models are only supported in SAGEMAKER_ENDPOINT mode."
+            )
+
         if "djl-inference" in image_uri:
             logger.info("Building for DJL JumpStart Model ID...")
             self.model_server = ModelServer.DJL_SERVING
@@ -469,3 +474,19 @@ class JumpStart(ABC):
             )
 
         return self.pysdk_model
+
+    def _is_gated_model(self, model) -> bool:
+        """Determine if ``this`` Model is Gated
+
+        Args:
+            model (Model): Jumpstart Model
+        Returns:
+            bool: ``True`` if ``this`` Model is Gated
+        """
+        s3_uri = model.model_data
+        if isinstance(s3_uri, dict):
+            s3_uri = s3_uri.get("S3DataSource").get("S3Uri")
+
+        if s3_uri is None:
+            return False
+        return "private" in s3_uri
