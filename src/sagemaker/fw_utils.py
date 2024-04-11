@@ -142,6 +142,7 @@ SM_DATAPARALLEL_SUPPORTED_FRAMEWORK_VERSIONS = {
         "2.1.0",
         "2.1.2",
         "2.2.0",
+        "2.3.0",
     ],
 }
 
@@ -168,6 +169,7 @@ TORCH_DISTRIBUTED_GPU_SUPPORTED_FRAMEWORK_VERSIONS = [
     "2.1.0",
     "2.1.2",
     "2.2.0",
+    "2.3.0",
 ]
 
 TRAINIUM_SUPPORTED_DISTRIBUTION_STRATEGIES = ["torch_distributed"]
