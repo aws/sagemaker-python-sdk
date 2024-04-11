@@ -79,3 +79,18 @@ jobs:
             PY_VERSION
         env:
           PY_VERSION: ${{ matrix.python-version }}
+  integ-tests:
+    runs-on: ubuntu-latest
+    needs: [wait-for-approval]
+    steps: 
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.CI_AWS_ROLE_ARN }}
+          aws-region: us-west-2
+          role-duration-seconds: 10800
+      - name: Run Integ Tests
+        uses: aws-actions/aws-codebuild-run-build@v1
+        with:
+          project-name: sagemaker-python-sdk-ci-integ-tests
+          source-version-override: 'refs/pull/${{ github.event.pull_request.number }}/head^{${{ github.event.pull_request.head.sha }}}'
