@@ -637,7 +637,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
                 if model_task is None:
                     model_task = hf_model_md.get("pipeline_tag")
                 if self.schema_builder is None and model_task is not None:
-                    self._schema_builder_init(model_task)
+                    self._hf_schema_builder_init(model_task)
                 if model_task == "text-generation":  # pylint: disable=R1705
                     return self._build_for_tgi()
                 elif self._can_fit_on_single_gpu():
@@ -704,8 +704,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
 
         return get_metadata(model_dir)
 
-    def _schema_builder_init(self, model_task: str):
-        """Initialize the schema builder
+    def _hf_schema_builder_init(self, model_task: str):
+        """Initialize the schema builder for the given HF_TASK
 
         Args:
             model_task (str): Required, the task name
@@ -714,10 +714,29 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
             TaskNotFoundException: If the I/O schema for the given task is not found.
         """
         try:
-            sample_inputs, sample_outputs = task.retrieve_local_schemas(model_task)
+            try:
+                sample_inputs, sample_outputs = task.retrieve_local_schemas(model_task)
+            except ValueError:
+                # samples could not be loaded locally, try to fetch remote hf schema
+                from sagemaker_schema_inference_artifacts.huggingface import remote_schema_retriever
+
+                if model_task in ("text-to-image", "automatic-speech-recognition"):
+                    logger.warning(
+                        "HF SchemaBuilder for %s is in beta mode, and is not guaranteed to work "
+                        "with all models at this time.",
+                        model_task,
+                    )
+                remote_hf_schema_helper = remote_schema_retriever.RemoteSchemaRetriever()
+                (
+                    sample_inputs,
+                    sample_outputs,
+                ) = remote_hf_schema_helper.get_resolved_hf_schema_for_task(model_task)
             self.schema_builder = SchemaBuilder(sample_inputs, sample_outputs)
         except ValueError:
-            raise TaskNotFoundException(f"Schema builder for {model_task} could not be found.")
+            raise TaskNotFoundException(
+                f"HuggingFace Schema builder samples for {model_task} could not be found "
+                f"locally or via remote."
+            )
 
     def _can_fit_on_single_gpu(self) -> Type[bool]:
         """Check if model can fit on a single GPU
