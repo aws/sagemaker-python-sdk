@@ -20,6 +20,8 @@ import os
 
 from pathlib import Path
 
+from sagemaker.s3 import S3Downloader
+
 from sagemaker import Session
 from sagemaker.model import Model
 from sagemaker.base_predictor import PredictorBase
@@ -37,6 +39,22 @@ from sagemaker.serve.builder.tgi_builder import TGI
 from sagemaker.serve.builder.jumpstart_builder import JumpStart
 from sagemaker.serve.builder.transformers_builder import Transformers
 from sagemaker.predictor import Predictor
+from sagemaker.serve.model_format.mlflow.constants import (
+    MLFLOW_MODEL_PATH,
+    MLFLOW_METADATA_FILE,
+    MLFLOW_PIP_DEPENDENCY_FILE,
+)
+from sagemaker.serve.model_format.mlflow.utils import (
+    _get_default_model_server_for_mlflow,
+    _mlflow_input_is_local_path,
+    _download_s3_artifacts,
+    _select_container_for_mlflow_model,
+    _generate_mlflow_artifact_path,
+    _get_all_flavor_metadata,
+    _get_deployment_flavor,
+    _validate_input_for_mlflow,
+    _copy_directory_contents,
+)
 from sagemaker.serve.save_retrive.version_1_0_0.metadata.metadata import Metadata
 from sagemaker.serve.spec.inference_spec import InferenceSpec
 from sagemaker.serve.utils import task
@@ -145,8 +163,11 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
             to the model server). Possible values for this argument are
             ``TORCHSERVE``, ``MMS``, ``TENSORFLOW_SERVING``, ``DJL_SERVING``,
             ``TRITON``, and``TGI``.
-        model_metadata (Optional[Dict[str, Any]): Dictionary used to override the HuggingFace
-            model metadata. Currently ``HF_TASK`` is overridable.
+        model_metadata (Optional[Dict[str, Any]): Dictionary used to override model metadata.
+            Currently, ``HF_TASK`` is overridable for HuggingFace model. ``MLFLOW_MODEL_PATH``
+            is available for providing local path or s3 path to MLflow artifacts. However,
+            ``MLFLOW_MODEL_PATH`` is experimental and is not intended for production use
+            at this moment.
     """
 
     model_path: Optional[str] = field(
@@ -245,7 +266,10 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
     )
     model_metadata: Optional[Dict[str, Any]] = field(
         default=None,
-        metadata={"help": "Define the model metadata to override, currently supports `HF_TASK`"},
+        metadata={
+            "help": "Define the model metadata to override, currently supports `HF_TASK`, "
+            "`MLFLOW_MODEL_PATH`"
+        },
     )
 
     def _build_validations(self):
@@ -297,6 +321,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
                 save_pkl(code_path, (self._framework, self.schema_builder))
             else:
                 save_pkl(code_path, (self.model, self.schema_builder))
+        elif self._is_mlflow_model:
+            save_pkl(code_path, self.schema_builder)
         else:
             raise ValueError("Cannot detect required model or inference spec")
 
@@ -577,6 +603,76 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
 
         return wrapper
 
+    def _check_if_input_is_mlflow_model(self) -> bool:
+        """Checks whether an MLmodel file exists in the given directory.
+
+        Returns:
+            bool: True if the MLmodel file exists, False otherwise.
+        """
+        if self.inference_spec or self.model:
+            logger.info(
+                "Either inference spec or model is provided. "
+                "ModelBuilder is not handling MLflow model input"
+            )
+            return False
+
+        if not self.model_metadata:
+            logger.info(
+                "No ModelMetadata provided. ModelBuilder is not handling MLflow model input"
+            )
+            return False
+
+        path = self.model_metadata.get(MLFLOW_MODEL_PATH)
+        if not path:
+            logger.info(
+                "%s is not provided in ModelMetadata. ModelBuilder is not handling MLflow model "
+                "input",
+                MLFLOW_MODEL_PATH,
+            )
+            return False
+
+        # Check for S3 path
+        if path.startswith("s3://"):
+            s3_downloader = S3Downloader()
+            if not path.endswith("/"):
+                path += "/"
+            s3_uri_to_mlmodel_file = f"{path}{MLFLOW_METADATA_FILE}"
+            response = s3_downloader.list(s3_uri_to_mlmodel_file, self.sagemaker_session)
+            return len(response) > 0
+
+        file_path = os.path.join(path, MLFLOW_METADATA_FILE)
+        return os.path.isfile(file_path)
+
+    def _initialize_for_mlflow(self) -> None:
+        """Initialize mlflow model artifacts, image uri and model server."""
+        mlflow_path = self.model_metadata.get(MLFLOW_MODEL_PATH)
+        if not _mlflow_input_is_local_path(mlflow_path):
+            # TODO: extend to package arn, run id and etc.
+            _download_s3_artifacts(mlflow_path, self.model_path, self.sagemaker_session)
+        else:
+            _copy_directory_contents(mlflow_path, self.model_path)
+        mlflow_model_metadata_path = _generate_mlflow_artifact_path(
+            self.model_path, MLFLOW_METADATA_FILE
+        )
+        # TODO: add validation on MLmodel file
+        mlflow_model_dependency_path = _generate_mlflow_artifact_path(
+            self.model_path, MLFLOW_PIP_DEPENDENCY_FILE
+        )
+        flavor_metadata = _get_all_flavor_metadata(mlflow_model_metadata_path)
+        deployment_flavor = _get_deployment_flavor(flavor_metadata)
+
+        self.model_server = self.model_server or _get_default_model_server_for_mlflow(
+            deployment_flavor
+        )
+        self.image_uri = self.image_uri or _select_container_for_mlflow_model(
+            mlflow_model_src_path=self.model_path,
+            deployment_flavor=deployment_flavor,
+            region=self.sagemaker_session.boto_region_name,
+            instance_type=self.instance_type,
+        )
+        self.env_vars.update({"MLFLOW_MODEL_FLAVOR": f"{deployment_flavor}"})
+        self.dependencies.update({"requirements": mlflow_model_dependency_path})
+
     # Model Builder is a class to build the model for deployment.
     # It supports two modes of deployment
     # 1/ SageMaker Endpoint
@@ -620,6 +716,14 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
         self.serve_settings = self._get_serve_setting()
 
         self._is_custom_image_uri = self.image_uri is not None
+        self._is_mlflow_model = self._check_if_input_is_mlflow_model()
+        if self._is_mlflow_model:
+            logger.warning(
+                "Support of MLflow format models is experimental and is not intended"
+                " for production at this moment."
+            )
+            self._initialize_for_mlflow()
+            _validate_input_for_mlflow(self.model_server)
 
         if isinstance(self.model, str):
             model_task = None
