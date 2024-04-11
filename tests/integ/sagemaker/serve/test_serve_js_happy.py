@@ -103,12 +103,13 @@ def test_happy_js_gated_model(happy_model_builder_gated_model, gpu_instance_type
     PYTHON_VERSION_IS_NOT_310,
     reason="The goal of these test are to test the serving components of our feature",
 )
-def test_js_gated_model_throws(happy_model_builder_gated_model, gpu_instance_type):
+def test_js_gated_model_throws(sagemaker_session, gpu_instance_type):
     logger.info("Running in Local mode...")
     model_builder = ModelBuilder(
         model=JS_GATED_MODEL_ID,
         schema_builder=SchemaBuilder(SAMPLE_PROMPT, SAMPLE_RESPONSE),
         mode=Mode.LOCAL_CONTAINER,
+        sagemaker_session=sagemaker_session,
     )
 
     with pytest.raises(
