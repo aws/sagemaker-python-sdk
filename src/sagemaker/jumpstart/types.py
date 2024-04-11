@@ -12,11 +12,10 @@
 # language governing permissions and limitations under the License.
 """This module stores types related to SageMaker JumpStart."""
 from __future__ import absolute_import
-from abc import abstractmethod
 from copy import deepcopy
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Union
-from sagemaker.utils import get_instance_type_family, format_tags, Tags
+from sagemaker.utils import get_instance_type_family, format_tags, Tags, deep_override_dict
 from sagemaker.model_metrics import ModelMetrics
 from sagemaker.metadata_properties import MetadataProperties
 from sagemaker.drift_check_baselines import DriftCheckBaselines
@@ -191,9 +190,12 @@ class JumpStartECRSpecs(JumpStartDataHolderType):
             json_obj (Dict[str, Any]): Dictionary representation of spec.
         """
 
-        self.framework = json_obj["framework"]
-        self.framework_version = json_obj["framework_version"]
-        self.py_version = json_obj["py_version"]
+        if not json_obj:
+            return
+
+        self.framework = json_obj.get("framework")
+        self.framework_version = json_obj.get("framework_version")
+        self.py_version = json_obj.get("py_version")
         huggingface_transformers_version = json_obj.get("huggingface_transformers_version")
         if huggingface_transformers_version is not None:
             self.huggingface_transformers_version = huggingface_transformers_version
@@ -757,8 +759,8 @@ class JumpStartBenchmarkStat(JumpStartDataHolderType):
             json_obj (Dict[str, Any]): Dictionary representation of benchmark stats.
         """
         self.name: str = json_obj["name"]
-        self.instance_type: str = json_obj["instance_type"]
-        self.latency_ms: int = json_obj["latency_ms"]
+        self.value: str = json_obj["value"]
+        self.unit: Union[int, str] = json_obj["unit"]
 
     def to_json(self) -> Dict[str, Any]:
         """Returns json representation of JumpStartBenchmarkStat object."""
@@ -867,12 +869,12 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
         Args:
             json_obj (Dict[str, Any]): Dictionary representation of spec.
         """
-        self.model_id: str = json_obj["model_id"]
-        self.url: str = json_obj.get("url", "")
-        self.version: str = json_obj["version"]
-        self.min_sdk_version: str = json_obj["min_sdk_version"]
+        self.model_id: str = json_obj.get("model_id")
+        self.url: str = json_obj.get("url")
+        self.version: str = json_obj.get("version")
+        self.min_sdk_version: str = json_obj.get("min_sdk_version")
         self.incremental_training_supported: bool = bool(
-            json_obj.get("incremental_training_supported", False)
+            json_obj.get("incremental_training_supported")
         )
         self.hosting_ecr_specs: Optional[JumpStartECRSpecs] = (
             JumpStartECRSpecs(json_obj["hosting_ecr_specs"])
@@ -985,7 +987,7 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
         self.model_subscription_link = json_obj.get("model_subscription_link")
 
     def to_json(self) -> Dict[str, Any]:
-        """Returns json representation of JumpStartModelSpecs object."""
+        """Returns json representation of JumpStartMetadataBaseFields object."""
         json_obj = {}
         for att in self.__slots__:
             if hasattr(self, att):
@@ -1007,15 +1009,32 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
 class JumpStartPresetComponent(JumpStartMetadataBaseFields):
     """Data class of JumpStart config component."""
 
-    slots = ["component_name", "component_override_fields"]
+    slots = ["component_name", "component_specific_fields"]
 
     # List of fields that is not allowed to override to JumpStartMetadataBaseFields
     # TODO: finalize the fields that can be overrided
-    OVERRIDING_DENY_LIST = []
+    OVERRIDING_DENY_LIST = [
+        "model_id",
+        "url",
+        "version",
+        "min_sdk_version",
+        "deprecated",
+        "deprecated_message",
+        "deprecate_warn_message",
+        "resource_name_base",
+        "gated_bucket",
+        "training_supported",
+        "incremental_training_supported",
+    ]
 
     __slots__ = slots + JumpStartMetadataBaseFields.__slots__
 
-    def __init__(self, component: Optional[Dict[str, Any]], spec: Optional[Dict[str, Any]]):
+    def __init__(
+        self,
+        component_name: str,
+        component: Optional[Dict[str, Any]],
+        spec: Optional[Dict[str, Any]],
+    ):
         """Initializes a JumpStartInferenceComponent object from its json representation.
 
         Args:
@@ -1025,41 +1044,15 @@ class JumpStartPresetComponent(JumpStartMetadataBaseFields):
                 Dictionary representation of the original metadata base fields.
         """
         super().from_json(spec)
-        self.component_name: str = component["component_name"]
-        self.component_overrides: JumpStartMetadataBaseFields = JumpStartMetadataBaseFields(
+        self.component_name: str = component_name
+        self.component_specific_fields: JumpStartMetadataBaseFields = JumpStartMetadataBaseFields(
             component
         )
 
-    def to_json(self) -> Dict[str, Any]:
-        """Returns json representation of JumpStartInferenceComponent object."""
-        json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
-        return json_obj
-
-    @staticmethod
-    def _override_merge(source: Dict[str, Any], override: Dict[str, Any]):
-        """
-        Deep merge two dictionaries recursively, with override overriding source.
-        """
-        for key, value in source.items():
-            if (
-                key not in JumpStartPresetComponent.OVERRIDING_DENY_LIST
-                and key in override
-                and isinstance(value, dict)
-                and isinstance(override[key], dict)
-            ):
-                JumpStartPresetComponent._override_merge(value, override[key])
-            elif key in override:
-                source[key] = override[key]
-        for key in override.keys():
-            if key not in source:
-                source[key] = override[key]
-
-        return source
-
     def resolve(self) -> None:
         """Resolves the JumpStartMetadataBaseFields with the current component, by overriding corresponding fields."""
-        merged_fields = JumpStartPresetComponent._override_merge(
-            self.to_json(), self.component_overrides.to_json()
+        merged_fields = deep_override_dict(
+            self.to_json(), self.component_specific_fields.to_json(), self.OVERRIDING_DENY_LIST
         )
         super().from_json(merged_fields)
 
@@ -1091,14 +1084,14 @@ class JumpStartPresetConfig(JumpStartDataHolderType):
         json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
         return json_obj
 
-    def resolve(self) -> JumpStartPresetComponent:
+    def resolve(self) -> None:
         """Returns the final config that is resolved from the list of components."""
         if self.resolved_preset_config:
             return self.resolved_preset_config
 
         # TODO: return the best preset config and resolve the config object
         # Using the first component as the preset
-        component = self.preset_components.values()[0] if self.preset_components else None
+        component = list(self.preset_components.values())[0] if self.preset_components else None
         component.resolve()
         self.resolved_preset_config = component
         return self.resolved_preset_config
@@ -1137,7 +1130,7 @@ class JumpStartPresetConfigs(JumpStartDataHolderType):
         if json_obj is None:
             return
 
-        self.preset_configs: str = {
+        self.preset_configs: Dict[str, JumpStartPresetConfig] = {
             alias: JumpStartPresetConfig(preset_config)
             for alias, preset_config in json_obj["preset_configs"].items()
         }
@@ -1148,10 +1141,12 @@ class JumpStartPresetConfigs(JumpStartDataHolderType):
         json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
         return json_obj
 
-    def get_resolved_config(self) -> JumpStartPresetConfig:
-        """Resolves the preset config."""
+    def get_top_config_from_ranking(
+        self, instance_type: Optional[str] = None
+    ) -> JumpStartPresetConfig:
+        """Gets the best the preset config based on config ranking."""
         # TODO: return the best preset config based on config rankings
-        return self.preset_configs[0] if self.preset_configs else None
+        return list(self.preset_configs.values())[0] if self.preset_configs else None
 
 
 class JumpStartModelSpecs(JumpStartMetadataBaseFields):
@@ -1185,8 +1180,8 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
         super().from_json(json_obj)
         self.inference_preset_components: Optional[Dict[str, JumpStartPresetComponent]] = (
             {
-                alias: JumpStartPresetComponent(component, json_obj)
-                for alias, component in json_obj["inference_preset_components"].items()
+                component_name: JumpStartPresetComponent(component_name, component, json_obj)
+                for component_name, component in json_obj["inference_preset_components"].items()
             }
             if json_obj.get("inference_preset_components")
             else None
@@ -1199,28 +1194,32 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
             if json_obj.get("inference_preset_rankings")
             else None
         )
-        self.inference_presets: Optional[JumpStartPresetConfig] = (
+        self.inference_presets: Optional[JumpStartPresetConfigs] = (
             JumpStartPresetConfigs(
                 (
                     {
                         alias: JumpStartPresetConfig(
                             {
-                                component_name: self.inference_preset_components[component_name]
+                                component_name: self.inference_preset_components.get(component_name)
                                 for component_name in config.get("component_names")
-                            },
+                            }
+                            if config and config.get("component_names")
+                            else None,
                             {
                                 stat_name: JumpStartBenchmarkStat(stat)
                                 for stat_name, stat in config.get("benchmark_metrics").items()
-                            },
+                            }
+                            if config and config.get("benchmark_metrics")
+                            else None,
                         )
-                        for alias, config in json_obj["inference_configs"].items()
+                        for alias, config in json_obj["inference_presets"].items()
                     }
-                    if json_obj.get("inference_configs")
+                    if json_obj.get("inference_presets")
                     else None
                 ),
                 self.inference_preset_rankings,
             )
-            if "inference_configs" in json_obj
+            if "inference_presets" in json_obj
             else None
         )
 
@@ -1241,34 +1240,40 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
                 if json_obj.get("training_preset_rankings")
                 else None
             )
-            self.training_presets: Optional[JumpStartPresetConfig] = (
+            self.training_presets: Optional[JumpStartPresetConfigs] = (
                 JumpStartPresetConfigs(
                     (
                         {
                             alias: JumpStartPresetConfig(
                                 {
-                                    component_name: self.training_preset_components[component_name]
+                                    component_name: self.training_preset_components.get(
+                                        component_name
+                                    )
                                     for component_name in config.get("component_names")
-                                },
+                                }
+                                if config and config.get("component_names")
+                                else None,
                                 {
                                     stat_name: JumpStartBenchmarkStat(stat)
                                     for stat_name, stat in config.get("benchmark_metrics").items()
-                                },
+                                }
+                                if config and config.get("benchmark_metrics")
+                                else None,
                             )
-                            for alias, config in json_obj["training_configs"].items()
+                            for alias, config in json_obj["training_presets"].items()
                         }
-                        if json_obj.get("training_configs")
+                        if json_obj.get("training_presets")
                         else None
                     ),
                     self.training_preset_rankings,
                 )
-                if "training_configs" in json_obj
+                if "training_presets" in json_obj
                 else None
             )
         self.model_subscription_link = json_obj.get("model_subscription_link")
 
-        if self.inference_presets and self.inference_presets.get_resolved_config():
-            super().from_json(self.inference_presets.get_resolved_config().to_json())
+        if self.inference_presets and self.inference_presets.get_top_config_from_ranking():
+            super().from_json(self.inference_presets.get_top_config_from_ranking().to_json())
 
     def supports_prepacked_inference(self) -> bool:
         """Returns True if the model has a prepacked inference artifact."""

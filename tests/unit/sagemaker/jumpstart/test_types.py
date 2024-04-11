@@ -13,13 +13,15 @@
 from __future__ import absolute_import
 import copy
 from sagemaker.jumpstart.types import (
+    JumpStartBenchmarkStat,
     JumpStartECRSpecs,
     JumpStartHyperparameter,
     JumpStartInstanceTypeVariants,
     JumpStartModelSpecs,
     JumpStartModelHeader,
+    JumpStartPresetComponent,
 )
-from tests.unit.sagemaker.jumpstart.constants import BASE_SPEC
+from tests.unit.sagemaker.jumpstart.constants import BASE_SPEC, INFERENCE_PRESETS
 
 INSTANCE_TYPE_VARIANT = JumpStartInstanceTypeVariants(
     {
@@ -411,7 +413,11 @@ def test_jumpstart_model_specs():
         ),
     ]
 
-    assert specs1.to_json() == BASE_SPEC
+    assert specs1.to_json() == {
+        **BASE_SPEC,
+        "inference_presets": {"preset_config_rankings": None, "preset_configs": None},
+        "training_presets": {"preset_config_rankings": None, "preset_configs": None},
+    }
 
     BASE_SPEC["model_id"] = "diff model ID"
     specs2 = JumpStartModelSpecs(BASE_SPEC)
@@ -902,3 +908,26 @@ def test_jumpstart_resource_requirements_instance_variants():
         )
         == {}
     )
+
+
+def test_inference_presets_parsing():
+    spec = {**BASE_SPEC, **INFERENCE_PRESETS}
+    specs1 = JumpStartModelSpecs(spec)
+
+    assert list(specs1.inference_preset_components.keys()) == [
+        "neuron-base",
+        "neuron-inference",
+        "neuron-budget",
+        "gpu-inference",
+        "gpu-inference-budget",
+    ]
+
+    config = specs1.inference_presets.get_top_config_from_ranking()
+    config.resolve()
+    assert config.benchmark_metrics == {
+        "ml.p3.2xlarge": JumpStartBenchmarkStat(
+            {"name": "Latency", "value": "100", "unit": "Tokens/S"}
+        )
+    }
+
+    assert list(config.preset_components.keys()) == ["neuron-base"]

@@ -36,8 +36,10 @@ from sagemaker.jumpstart.exceptions import (
     get_old_model_version_msg,
 )
 from sagemaker.jumpstart.types import (
+    JumpStartBenchmarkStat,
     JumpStartModelHeader,
     JumpStartModelSpecs,
+    JumpStartPresetConfig,
     JumpStartVersionedModelId,
 )
 from sagemaker.session import Session
@@ -885,3 +887,95 @@ def get_region_fallback(
         return constants.JUMPSTART_DEFAULT_REGION_NAME
 
     return list(combined_regions)[0]
+
+
+def get_preset_names(
+    region: str,
+    model_id: str,
+    model_version: str,
+    sagemaker_session: Optional[Session] = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    scope: enums.JumpStartScriptScope = enums.JumpStartScriptScope.INFERENCE,
+    model_type: enums.JumpStartModelType = enums.JumpStartModelType.OPEN_WEIGHTS,
+) -> List[str]:
+    """Returns a list of preset names for the given model ID and region."""
+    model_specs = verify_model_region_and_return_specs(
+        region=region,
+        model_id=model_id,
+        version=model_version,
+        sagemaker_session=sagemaker_session,
+        scope=scope,
+        model_type=model_type,
+    )
+
+    if scope == enums.JumpStartScriptScope.INFERENCE:
+        return model_specs.inference_presets.preset_configs.keys()
+
+    if scope == enums.JumpStartScriptScope.TRAINING:
+        return model_specs.training_presets.preset_configs.keys()
+
+
+def get_benchmark_stats(
+    region: str,
+    model_id: str,
+    model_version: str,
+    config_names: Optional[List[str]] = None,
+    sagemaker_session: Optional[Session] = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    scope: enums.JumpStartScriptScope = enums.JumpStartScriptScope.INFERENCE,
+    model_type: enums.JumpStartModelType = enums.JumpStartModelType.OPEN_WEIGHTS,
+) -> Dict[str, List[JumpStartBenchmarkStat]]:
+    """Returns benchmark stats for the given model ID and region."""
+    model_specs = verify_model_region_and_return_specs(
+        region=region,
+        model_id=model_id,
+        version=model_version,
+        sagemaker_session=sagemaker_session,
+        scope=scope,
+        model_type=model_type,
+    )
+
+    if scope == enums.JumpStartScriptScope.INFERENCE:
+        presets = model_specs.inference_presets
+    elif scope == enums.JumpStartScriptScope.TRAINING:
+        presets = model_specs.training_presets
+
+    if not config_names:
+        config_names = presets.preset_configs.keys()
+    benchmark_stats = {
+        config_name: presets.preset_configs[config_name].benchmark_metrics
+        for config_name in config_names
+    }
+
+    return benchmark_stats
+
+
+def get_jumpstart_presets(
+    region: str,
+    model_id: str,
+    model_version: str,
+    config_names: Optional[List[str]] = None,
+    sagemaker_session: Optional[Session] = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    scope: enums.JumpStartScriptScope = enums.JumpStartScriptScope.INFERENCE,
+    model_type: enums.JumpStartModelType = enums.JumpStartModelType.OPEN_WEIGHTS,
+) -> Dict[str, List[JumpStartPresetConfig]]:
+    model_specs = verify_model_region_and_return_specs(
+        region=region,
+        model_id=model_id,
+        version=model_version,
+        sagemaker_session=sagemaker_session,
+        scope=scope,
+        model_type=model_type,
+    )
+
+    if scope == enums.JumpStartScriptScope.INFERENCE:
+        presets = model_specs.inference_presets
+    elif scope == enums.JumpStartScriptScope.TRAINING:
+        presets = model_specs.training_presets
+
+    if not config_names:
+        config_names = presets.preset_configs.keys()
+
+    preset_configs = {
+        config_name: presets.preset_configs[config_name] for config_name in config_names
+    }
+
+    return preset_configs

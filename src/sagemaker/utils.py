@@ -31,6 +31,7 @@ import abc
 import uuid
 from datetime import datetime
 from os.path import abspath, realpath, dirname, normpath, join as joinpath
+import pandas as pd
 
 from importlib import import_module
 import botocore
@@ -1599,3 +1600,55 @@ def can_model_package_source_uri_autopopulate(source_uri: str):
     return bool(
         re.match(MODEL_PACKAGE_ARN_PATTERN, source_uri) or re.match(MODEL_ARN_PATTERN, source_uri)
     )
+
+
+def flatten_dict(dict: Dict[str, Any], sep: str = ".") -> Dict[str, Any]:
+    """Flatten a nested dictionary.
+    Args:
+        dict (dict): The dictionary to be flattened.
+        sep (str): The separator to be used in the flattened dictionary.
+    Returns:
+        dict: The flattened dictionary.
+    """
+    flat_dict_list = pd.json_normalize(dict, sep=sep).to_dict(orient="records")
+    if flat_dict_list:
+        return flat_dict_list[0]
+    return {}
+
+
+def unflatten_dict(dict: Dict[str, Any], sep: str = ".") -> Dict[str, Any]:
+    """
+    Unflatten a flattened dictionary back into a nested dictionary.
+
+    Args:
+        d (dict): The input flattened dictionary.
+        sep (str): The separator used in the flattened keys.
+
+    Returns:
+        dict: The reconstructed nested dictionary.
+    """
+    if not dict:
+        return {}
+
+    result = {}
+    for key, value in dict.items():
+        keys = key.split(sep)
+        current = result
+        for k in keys[:-1]:
+            if k not in current:
+                current[k] = {}
+            current = current[k] if current[k] is not None else current
+        current[keys[-1]] = value
+    return result
+
+
+def deep_override_dict(
+    dict1: Dict[str, Any], dict2: Dict[str, Any], skip_keys: Optional[List[str]] = []
+) -> Dict[str, Any]:
+    """Overrides any overlapping contents of dict1 with the contents of dict2."""
+    flattened_dict1 = flatten_dict(dict1)
+    flattened_dict2 = flatten_dict(dict2)
+    for key, value in flattened_dict2.items():
+        if key not in skip_keys:
+            flattened_dict1[key] = value
+    return unflatten_dict(flattened_dict1) if flattened_dict1 else {}
