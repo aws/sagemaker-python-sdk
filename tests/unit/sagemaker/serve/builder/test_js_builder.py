@@ -67,6 +67,19 @@ mock_djl_image_uri = (
     "123456789712.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.24.0-neuronx-sdk2.14.1"
 )
 
+mock_model_data = {
+    "S3DataSource": {
+        "S3Uri": "s3://jumpstart-private-cache-prod-us-west-2/huggingface-llm/huggingface-llm-zephyr-7b-gemma"
+        "/artifacts/inference-prepack/v1.0.0/",
+        "S3DataType": "S3Prefix",
+        "CompressionType": "None",
+    }
+}
+mock_model_data_str = (
+    "s3://jumpstart-private-cache-prod-us-west-2/huggingface-llm/huggingface-llm-zephyr-7b-gemma"
+    "/artifacts/inference-prepack/v1.0.0/"
+)
+
 
 class TestJumpStartBuilder(unittest.TestCase):
     @patch("sagemaker.serve.builder.jumpstart_builder._capture_telemetry", side_effect=None)
@@ -527,3 +540,101 @@ class TestJumpStartBuilder(unittest.TestCase):
 
         tuned_model = model.tune()
         assert tuned_model == model
+
+    @patch("sagemaker.serve.builder.jumpstart_builder._capture_telemetry", side_effect=None)
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_jumpstart_model_id",
+        return_value=True,
+    )
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._create_pre_trained_js_model",
+        return_value=MagicMock(),
+    )
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.prepare_tgi_js_resources",
+        return_value=({"model_type": "t5", "n_head": 71}, True),
+    )
+    @patch("sagemaker.serve.builder.jumpstart_builder._get_ram_usage_mb", return_value=1024)
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder._get_nb_instance", return_value="ml.g5.24xlarge"
+    )
+    def test_js_gated_model_in_endpoint_mode(
+        self,
+        mock_get_nb_instance,
+        mock_get_ram_usage_mb,
+        mock_prepare_for_tgi,
+        mock_pre_trained_model,
+        mock_is_jumpstart_model,
+        mock_telemetry,
+    ):
+        builder = ModelBuilder(
+            model="facebook/galactica-mock-model-id",
+            schema_builder=mock_schema_builder,
+            mode=Mode.SAGEMAKER_ENDPOINT,
+        )
+
+        mock_pre_trained_model.return_value.image_uri = mock_tgi_image_uri
+        mock_pre_trained_model.return_value.model_data = mock_model_data
+
+        model = builder.build()
+
+        assert model is not None
+
+    @patch("sagemaker.serve.builder.jumpstart_builder._capture_telemetry", side_effect=None)
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_jumpstart_model_id",
+        return_value=True,
+    )
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._create_pre_trained_js_model",
+        return_value=MagicMock(),
+    )
+    def test_js_gated_model_in_local_mode(
+        self,
+        mock_pre_trained_model,
+        mock_is_jumpstart_model,
+        mock_telemetry,
+    ):
+        builder = ModelBuilder(
+            model="huggingface-llm-zephyr-7b-gemma",
+            schema_builder=mock_schema_builder,
+            mode=Mode.LOCAL_CONTAINER,
+        )
+
+        mock_pre_trained_model.return_value.image_uri = mock_tgi_image_uri
+        mock_pre_trained_model.return_value.model_data = mock_model_data_str
+
+        self.assertRaisesRegex(
+            ValueError,
+            "JumpStart Gated Models are only supported in SAGEMAKER_ENDPOINT mode.",
+            lambda: builder.build(),
+        )
+
+    @patch("sagemaker.serve.builder.jumpstart_builder._capture_telemetry", side_effect=None)
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_jumpstart_model_id",
+        return_value=True,
+    )
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._create_pre_trained_js_model",
+        return_value=MagicMock(),
+    )
+    def test_js_gated_model_ex(
+        self,
+        mock_pre_trained_model,
+        mock_is_jumpstart_model,
+        mock_telemetry,
+    ):
+        builder = ModelBuilder(
+            model="huggingface-llm-zephyr-7b-gemma",
+            schema_builder=mock_schema_builder,
+            mode=Mode.LOCAL_CONTAINER,
+        )
+
+        mock_pre_trained_model.return_value.image_uri = mock_tgi_image_uri
+        mock_pre_trained_model.return_value.model_data = None
+
+        self.assertRaises(
+            ValueError,
+            lambda: builder.build(),
+        )

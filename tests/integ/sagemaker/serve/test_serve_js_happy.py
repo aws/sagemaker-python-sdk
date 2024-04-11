@@ -31,7 +31,7 @@ SAMPLE_PROMPT = {"inputs": "Hello, I'm a language model,", "parameters": {}}
 SAMPLE_RESPONSE = [
     {"generated_text": "Hello, I'm a language model, and I'm here to help you with your English."}
 ]
-JS_MODEL_ID = "huggingface-textgeneration1-gpt-neo-125m-fp16"
+JS_GATED_MODEL_ID = "meta-textgeneration-llama-2-7b-f"
 ROLE_NAME = "SageMakerRole"
 
 
@@ -39,7 +39,7 @@ ROLE_NAME = "SageMakerRole"
 def happy_model_builder(sagemaker_session):
     iam_client = sagemaker_session.boto_session.client("iam")
     return ModelBuilder(
-        model=JS_MODEL_ID,
+        model=JS_GATED_MODEL_ID,
         schema_builder=SchemaBuilder(SAMPLE_PROMPT, SAMPLE_RESPONSE),
         role_arn=iam_client.get_role(RoleName=ROLE_NAME)["Role"]["Arn"],
         sagemaker_session=sagemaker_session,
@@ -59,7 +59,9 @@ def test_happy_tgi_sagemaker_endpoint(happy_model_builder, gpu_instance_type):
     with timeout(minutes=SERVE_SAGEMAKER_ENDPOINT_TIMEOUT):
         try:
             logger.info("Deploying and predicting in SAGEMAKER_ENDPOINT mode...")
-            predictor = model.deploy(instance_type=gpu_instance_type, endpoint_logging=False)
+            predictor = model.deploy(
+                instance_type=gpu_instance_type, endpoint_logging=False, accept_eula=True
+            )
             logger.info("Endpoint successfully deployed.")
 
             updated_sample_input = happy_model_builder.schema_builder.sample_input
