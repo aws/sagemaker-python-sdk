@@ -18,6 +18,7 @@ from sagemaker.serve.utils import task
 import pytest
 
 from sagemaker.serve.utils.exceptions import TaskNotFoundException
+from sagemaker_schema_inference_artifacts.huggingface import remote_schema_retriever
 from tests.integ.sagemaker.serve.constants import (
     PYTHON_VERSION_IS_NOT_310,
     SERVE_SAGEMAKER_ENDPOINT_TIMEOUT,
@@ -31,35 +32,73 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def test_model_builder_happy_path_with_only_model_id_fill_mask(sagemaker_session):
-    model_builder = ModelBuilder(model="bert-base-uncased")
+def test_model_builder_happy_path_with_only_model_id_text_generation(sagemaker_session):
+    model_builder = ModelBuilder(model="HuggingFaceH4/zephyr-7b-beta")
 
     model = model_builder.build(sagemaker_session=sagemaker_session)
 
     assert model is not None
     assert model_builder.schema_builder is not None
 
-    inputs, outputs = task.retrieve_local_schemas("fill-mask")
-    assert model_builder.schema_builder.sample_input == inputs
+    inputs, outputs = task.retrieve_local_schemas("text-generation")
+    assert model_builder.schema_builder.sample_input["inputs"] == inputs["inputs"]
     assert model_builder.schema_builder.sample_output == outputs
+
+
+def test_model_builder_negative_path(sagemaker_session):
+    # A model-task combo unsupported by both the local and remote schema fallback options. (eg: text-to-video)
+    model_builder = ModelBuilder(model="ByteDance/AnimateDiff-Lightning")
+    with pytest.raises(
+        TaskNotFoundException,
+        match="Error Message: HuggingFace Schema builder samples for text-to-video could not be found locally or "
+        "via remote.",
+    ):
+        model_builder.build(sagemaker_session=sagemaker_session)
 
 
 @pytest.mark.skipif(
     PYTHON_VERSION_IS_NOT_310,
-    reason="Testing Schema Builder Simplification feature",
+    reason="Testing Schema Builder Simplification feature - Local Schema",
 )
-def test_model_builder_happy_path_with_only_model_id_question_answering(
-    sagemaker_session, gpu_instance_type
+@pytest.mark.parametrize(
+    "model_id, task_provided, instance_type_provided, container_startup_timeout",
+    [
+        (
+            "distilbert/distilbert-base-uncased-finetuned-sst-2-english",
+            "text-classification",
+            "ml.m5.xlarge",
+            None,
+        ),
+        (
+            "cardiffnlp/twitter-roberta-base-sentiment-latest",
+            "text-classification",
+            "ml.m5.xlarge",
+            None,
+        ),
+        ("HuggingFaceH4/zephyr-7b-beta", "text-generation", "ml.g5.2xlarge", 900),
+        ("HuggingFaceH4/zephyr-7b-alpha", "text-generation", "ml.g5.2xlarge", 900),
+    ],
+)
+def test_model_builder_happy_path_with_task_provided_local_schema_mode(
+    model_id, task_provided, sagemaker_session, instance_type_provided, container_startup_timeout
 ):
-    model_builder = ModelBuilder(model="bert-large-uncased-whole-word-masking-finetuned-squad")
+    model_builder = ModelBuilder(
+        model=model_id,
+        model_metadata={"HF_TASK": task_provided},
+        instance_type=instance_type_provided,
+    )
 
     model = model_builder.build(sagemaker_session=sagemaker_session)
 
     assert model is not None
     assert model_builder.schema_builder is not None
 
-    inputs, outputs = task.retrieve_local_schemas("question-answering")
-    assert model_builder.schema_builder.sample_input == inputs
+    inputs, outputs = task.retrieve_local_schemas(task_provided)
+    if task_provided == "text-generation":
+        # ignore 'tokens' and other metadata in this case
+        assert model_builder.schema_builder.sample_input["inputs"] == inputs["inputs"]
+    else:
+        assert model_builder.schema_builder.sample_input == inputs
     assert model_builder.schema_builder.sample_output == outputs
 
     with timeout(minutes=SERVE_SAGEMAKER_ENDPOINT_TIMEOUT):
@@ -69,9 +108,17 @@ def test_model_builder_happy_path_with_only_model_id_question_answering(
             role_arn = iam_client.get_role(RoleName="SageMakerRole")["Role"]["Arn"]
 
             logger.info("Deploying and predicting in SAGEMAKER_ENDPOINT mode...")
-            predictor = model.deploy(
-                role=role_arn, instance_count=1, instance_type=gpu_instance_type
-            )
+            if container_startup_timeout:
+                predictor = model.deploy(
+                    role=role_arn,
+                    instance_count=1,
+                    instance_type=instance_type_provided,
+                    container_startup_health_check_timeout=container_startup_timeout,
+                )
+            else:
+                predictor = model.deploy(
+                    role=role_arn, instance_count=1, instance_type=instance_type_provided
+                )
 
             predicted_outputs = predictor.predict(inputs)
             assert predicted_outputs is not None
@@ -91,38 +138,38 @@ def test_model_builder_happy_path_with_only_model_id_question_answering(
                 ), f"{caught_ex} was thrown when running transformers sagemaker endpoint test"
 
 
-def test_model_builder_negative_path(sagemaker_session):
-    model_builder = ModelBuilder(model="CompVis/stable-diffusion-v1-4")
-
-    with pytest.raises(
-        TaskNotFoundException,
-        match="Error Message: Schema builder for text-to-image could not be found.",
-    ):
-        model_builder.build(sagemaker_session=sagemaker_session)
-
-
 @pytest.mark.skipif(
     PYTHON_VERSION_IS_NOT_310,
-    reason="Testing Schema Builder Simplification feature",
+    reason="Testing Schema Builder Simplification feature - Remote Schema",
 )
 @pytest.mark.parametrize(
-    "model_id, task_provided",
+    "model_id, task_provided, instance_type_provided",
     [
-        ("bert-base-uncased", "fill-mask"),
-        ("bert-large-uncased-whole-word-masking-finetuned-squad", "question-answering"),
+        ("google-bert/bert-base-uncased", "fill-mask", "ml.m5.xlarge"),
+        ("google-bert/bert-base-cased", "fill-mask", "ml.m5.xlarge"),
+        (
+            "google-bert/bert-large-uncased-whole-word-masking-finetuned-squad",
+            "question-answering",
+            "ml.m5.xlarge",
+        ),
+        ("deepset/roberta-base-squad2", "question-answering", "ml.m5.xlarge"),
     ],
 )
-def test_model_builder_happy_path_with_task_provided(
-    model_id, task_provided, sagemaker_session, gpu_instance_type
+def test_model_builder_happy_path_with_task_provided_remote_schema_mode(
+    model_id, task_provided, sagemaker_session, instance_type_provided
 ):
-    model_builder = ModelBuilder(model=model_id, model_metadata={"HF_TASK": task_provided})
-
+    model_builder = ModelBuilder(
+        model=model_id,
+        model_metadata={"HF_TASK": task_provided},
+        instance_type=instance_type_provided,
+    )
     model = model_builder.build(sagemaker_session=sagemaker_session)
 
     assert model is not None
     assert model_builder.schema_builder is not None
 
-    inputs, outputs = task.retrieve_local_schemas(task_provided)
+    remote_hf_schema_helper = remote_schema_retriever.RemoteSchemaRetriever()
+    inputs, outputs = remote_hf_schema_helper.get_resolved_hf_schema_for_task(task_provided)
     assert model_builder.schema_builder.sample_input == inputs
     assert model_builder.schema_builder.sample_output == outputs
 
@@ -134,7 +181,7 @@ def test_model_builder_happy_path_with_task_provided(
 
             logger.info("Deploying and predicting in SAGEMAKER_ENDPOINT mode...")
             predictor = model.deploy(
-                role=role_arn, instance_count=1, instance_type=gpu_instance_type
+                role=role_arn, instance_count=1, instance_type=instance_type_provided
             )
 
             predicted_outputs = predictor.predict(inputs)
@@ -162,6 +209,7 @@ def test_model_builder_negative_path_with_invalid_task(sagemaker_session):
 
     with pytest.raises(
         TaskNotFoundException,
-        match="Error Message: Schema builder for invalid-task could not be found.",
+        match="Error Message: HuggingFace Schema builder samples for invalid-task could not be found locally or "
+        "via remote.",
     ):
         model_builder.build(sagemaker_session=sagemaker_session)
