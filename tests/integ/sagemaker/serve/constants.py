@@ -28,6 +28,10 @@ PYTHON_VERSION_IS_NOT_310 = platform.python_version_tuple()[1] != "10"
 
 XGB_RESOURCE_DIR = os.path.join(DATA_DIR, "serve_resources", "xgboost")
 PYTORCH_SQUEEZENET_RESOURCE_DIR = os.path.join(DATA_DIR, "serve_resources", "pytorch")
+PYTORCH_SQUEEZENET_MLFLOW_RESOURCE_DIR = os.path.join(
+    DATA_DIR, "serve_resources", "mlflow", "pytorch"
+)
+XGBOOST_MLFLOW_RESOURCE_DIR = os.path.join(DATA_DIR, "serve_resources", "mlflow", "xgboost")
 TF_EFFICIENT_RESOURCE_DIR = os.path.join(DATA_DIR, "serve_resources", "tensorflow")
 HF_DIR = os.path.join(DATA_DIR, "serve_resources", "hf")
 
