@@ -49,10 +49,13 @@ def happy_model_builder(sagemaker_session):
 
 
 @pytest.fixture
-def happy_model_builder_gated_model():
+def happy_model_builder_gated_model(sagemaker_session):
+    iam_client = sagemaker_session.boto_session.client("iam")
     return ModelBuilder(
         model=JS_GATED_MODEL_ID,
         schema_builder=SchemaBuilder(SAMPLE_PROMPT, SAMPLE_RESPONSE),
+        role_arn=iam_client.get_role(RoleName=ROLE_NAME)["Role"]["Arn"],
+        sagemaker_session=sagemaker_session,
     )
 
 
@@ -91,11 +94,9 @@ def test_happy_tgi_sagemaker_endpoint(happy_model_builder, gpu_instance_type):
     PYTHON_VERSION_IS_NOT_310,
     reason="The goal of these test are to test the serving components of our feature",
 )
-def test_happy_js_gated_model(
-    happy_model_builder_gated_model, sagemaker_session, gpu_instance_type
-):
+def test_happy_js_gated_model(happy_model_builder_gated_model, gpu_instance_type):
     logger.info("Running in SAGEMAKER_ENDPOINT mode...")
-    happy_model_builder_gated_model.build(sagemaker_session=sagemaker_session)
+    happy_model_builder_gated_model.build()
 
 
 @pytest.mark.skipif(
@@ -108,10 +109,11 @@ def test_js_gated_model_throws(sagemaker_session, gpu_instance_type):
         model=JS_GATED_MODEL_ID,
         schema_builder=SchemaBuilder(SAMPLE_PROMPT, SAMPLE_RESPONSE),
         mode=Mode.LOCAL_CONTAINER,
+        sagemaker_session=sagemaker_session,
     )
 
     with pytest.raises(
         ValueError,
         match="JumpStart Gated Models are only supported in SAGEMAKER_ENDPOINT mode.",
     ):
-        model_builder.build(sagemaker_session=sagemaker_session)
+        model_builder.build()
