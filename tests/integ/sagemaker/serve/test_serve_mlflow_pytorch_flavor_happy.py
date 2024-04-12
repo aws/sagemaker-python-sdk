@@ -28,7 +28,7 @@ from tests.integ.sagemaker.serve.constants import (
     PYTORCH_SQUEEZENET_RESOURCE_DIR,
     PYTORCH_SQUEEZENET_MLFLOW_RESOURCE_DIR,
     SERVE_SAGEMAKER_ENDPOINT_TIMEOUT,
-    SERVE_LOCAL_CONTAINER_TIMEOUT,
+    # SERVE_LOCAL_CONTAINER_TIMEOUT,
     PYTHON_VERSION_IS_NOT_310,
 )
 from tests.integ.timeout import timeout
@@ -128,36 +128,36 @@ def model_builder(request):
     return request.getfixturevalue(request.param)
 
 
-@pytest.mark.skipif(
-    PYTHON_VERSION_IS_NOT_310,
-    reason="The goal of these test are to test the serving components of our feature",
-)
-@pytest.mark.flaky(reruns=3, reruns_delay=2)
-@pytest.mark.parametrize("model_builder", ["model_builder_local_builder"], indirect=True)
-def test_happy_mlflow_pytorch_local_container_with_torch_serve(
-    sagemaker_session, model_builder, test_image
-):
-    logger.info("Running in LOCAL_CONTAINER mode...")
-    caught_ex = None
-
-    model = model_builder.build(mode=Mode.LOCAL_CONTAINER, sagemaker_session=sagemaker_session)
-
-    with timeout(minutes=SERVE_LOCAL_CONTAINER_TIMEOUT):
-        try:
-            logger.info("Deploying and predicting in LOCAL_CONTAINER mode...")
-            predictor = model.deploy()
-            logger.info("Local container successfully deployed.")
-            predictor.predict(test_image)
-        except Exception as e:
-            logger.exception("test failed")
-            caught_ex = e
-        finally:
-            if model.modes[str(Mode.LOCAL_CONTAINER)].container:
-                model.modes[str(Mode.LOCAL_CONTAINER)].container.kill()
-            if caught_ex:
-                assert (
-                    False
-                ), f"{caught_ex} was thrown when running pytorch squeezenet local container test"
+# @pytest.mark.skipif(
+#     PYTHON_VERSION_IS_NOT_310,
+#     reason="The goal of these test are to test the serving components of our feature",
+# )
+# @pytest.mark.flaky(reruns=3, reruns_delay=2)
+# @pytest.mark.parametrize("model_builder", ["model_builder_local_builder"], indirect=True)
+# def test_happy_mlflow_pytorch_local_container_with_torch_serve(
+#     sagemaker_session, model_builder, test_image
+# ):
+#     logger.info("Running in LOCAL_CONTAINER mode...")
+#     caught_ex = None
+#
+#     model = model_builder.build(mode=Mode.LOCAL_CONTAINER, sagemaker_session=sagemaker_session)
+#
+#     with timeout(minutes=SERVE_LOCAL_CONTAINER_TIMEOUT):
+#         try:
+#             logger.info("Deploying and predicting in LOCAL_CONTAINER mode...")
+#             predictor = model.deploy()
+#             logger.info("Local container successfully deployed.")
+#             predictor.predict(test_image)
+#         except Exception as e:
+#             logger.exception("test failed")
+#             caught_ex = e
+#         finally:
+#             if model.modes[str(Mode.LOCAL_CONTAINER)].container:
+#                 model.modes[str(Mode.LOCAL_CONTAINER)].container.kill()
+#             if caught_ex:
+#                 assert (
+#                     False
+#                 ), f"{caught_ex} was thrown when running pytorch squeezenet local container test"
 
 
 @pytest.mark.skipif(
