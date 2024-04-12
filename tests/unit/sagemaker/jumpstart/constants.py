@@ -7676,7 +7676,9 @@ INFERENCE_PRESETS = {
         },
     },
     "inference_preset_components": {
-        "neuron-base": {"tags": ["tgi"]},
+        "neuron-base": {
+            "supported_inference_instance_types": ["ml.inf2.xlarge", "ml.inf2.2xlarge"]
+        },
         "neuron-inference": {
             "supported_inference_instance_types": ["ml.inf2.xlarge", "ml.inf2.2xlarge"],
             "hosting_artifact_key": "artifacts/meta-textgeneration-llama-2-7b/neuron-inference/model/",
@@ -7690,9 +7692,8 @@ INFERENCE_PRESETS = {
                 "variants": {"inf2": {"regional_properties": {"image_uri": "$neuron-ecr-uri"}}},
             },
         },
-        "neuron-budget": {"environment_variables": {"BUDGET": "1234"}},
+        "neuron-budget": {"inference_environment_variables": {"BUDGET": "1234"}},
         "gpu-inference": {
-            "tags": ["tgi"],
             "supported_inference_instance_types": ["ml.p2.xlarge", "ml.p3.2xlarge"],
             "hosting_artifact_key": "artifacts/meta-textgeneration-llama-2-7b/gpu-inference/model/",
             "hosting_instance_type_variants": {
@@ -7709,7 +7710,6 @@ INFERENCE_PRESETS = {
             },
         },
         "gpu-inference-budget": {
-            "tags": ["tgi"],
             "supported_inference_instance_types": ["ml.p2.xlarge", "ml.p3.2xlarge"],
             "hosting_artifact_key": "artifacts/meta-textgeneration-llama-2-7b/gpu-inference-budget/model/",
             "hosting_instance_type_variants": {
@@ -7757,7 +7757,6 @@ TRAINING_PRESETS = {
     },
     "training_preset_components": {
         "neuron-training": {
-            "tags": ["LoRa"],
             "supported_training_instance_types": ["ml.trn1.xlarge", "ml.trn1.2xlarge"],
             "training_artifact_key": "artifacts/meta-textgeneration-llama-2-7b/neuron-training/model/",
             "training_instance_type_variants": {
@@ -7773,7 +7772,6 @@ TRAINING_PRESETS = {
             "supported_inference_configs": ["neuron-inference", "neuron-inference-budget"],
         },
         "gpu-training": {
-            "tags": ["LoRa"],
             "supported_training_instance_types": ["ml.p2.xlarge", "ml.p3.2xlarge"],
             "training_artifact_key": "artifacts/meta-textgeneration-llama-2-7b/gpu-training/model/",
             "training_instance_type_variants": {
@@ -7792,7 +7790,6 @@ TRAINING_PRESETS = {
             "supported_inference_configs": ["gpu-inference", "gpu-inference-budget"],
         },
         "neuron-training-budget": {
-            "tags": ["LoRa"],
             "supported_training_instance_types": ["ml.trn1.xlarge", "ml.trn1.2xlarge"],
             "training_artifact_key": "artifacts/meta-textgeneration-llama-2-7b/neuron-training-budget/model/",
             "training_instance_type_variants": {
@@ -7808,7 +7805,6 @@ TRAINING_PRESETS = {
             "supported_inference_configs": ["neuron-inference", "neuron-inference-budget"],
         },
         "gpu-training-budget": {
-            "tags": ["LoRa"],
             "supported_training_instance_types": ["ml.p2.xlarge", "ml.p3.2xlarge"],
             "training_artifact_key": "artifacts/meta-textgeneration-llama-2-7b/gpu-training-budget/model/",
             "training_instance_type_variants": {
@@ -7826,5 +7822,74 @@ TRAINING_PRESETS = {
             "supported_incremental_training_configs": ["gpu-training", "gpu-training-budget"],
             "supported_inference_configs": ["gpu-inference", "gpu-inference-budget"],
         },
+    },
+}
+
+
+INFERENCE_PRESET_RANKINGS = {
+    "overall": {
+        "description": "Overall rankings of configs",
+        "ranking": [
+            "neuron-inference",
+            "neuron-inference-budget",
+            "gpu-inference",
+            "gpu-inference-budget",
+        ],
+    },
+    "performance": {
+        "description": "Configs ranked based on performance",
+        "rankings": [
+            "neuron-inference",
+            "gpu-inference",
+            "neuron-inference-budget",
+            "gpu-inference-budget",
+        ],
+    },
+    "cost": {
+        "description": "Configs ranked based on cost",
+        "rankings": [
+            "neuron-inference-budget",
+            "gpu-inference-budget",
+            "neuron-inference",
+            "gpu-inference",
+        ],
+    },
+}
+
+TRAINING_PRESET_RANKINGS = {
+    "overall": {
+        "description": "Overall rankings of configs",
+        "rankings": [
+            "neuron-training",
+            "neuron-training-budget",
+            "gpu-training",
+            "gpu-training-budget",
+        ],
+    },
+    "performance_training": {
+        "description": "Configs ranked based on performance",
+        "rankings": [
+            "neuron-training",
+            "gpu-training",
+            "neuron-training-budget",
+            "gpu-training-budget",
+        ],
+        "instance_type_overrides": {
+            "ml.p2.xlarge": [
+                "neuron-training",
+                "neuron-training-budget",
+                "gpu-training",
+                "gpu-training-budget",
+            ]
+        },
+    },
+    "cost_training": {
+        "description": "Configs ranked based on cost",
+        "rankings": [
+            "neuron-training-budget",
+            "gpu-training-budget",
+            "neuron-training",
+            "gpu-training",
+        ],
     },
 }
