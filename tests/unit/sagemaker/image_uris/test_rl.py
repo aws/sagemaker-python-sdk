@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 import pytest
+from unittest.mock import patch
 
 from sagemaker import image_uris
 from tests.unit.sagemaker.image_uris import expected_uris
@@ -45,17 +46,25 @@ def test_rl_image_uris(load_config_and_file_name):
             instance_type = INSTANCE_TYPES[processor]
             for py_version in py_versions:
                 for region in ACCOUNTS.keys():
-                    uri = image_uris.retrieve(
-                        framework, region, version=version, instance_type=instance_type
-                    )
+                    with patch("logging.Logger.warning") as mocked_warning_log:
+                        uri = image_uris.retrieve(
+                            framework, region, version=version, instance_type=instance_type
+                        )
 
-                    expected = expected_uris.framework_uri(
-                        repo,
-                        tag_prefix,
-                        ACCOUNTS[region],
-                        py_version=py_version,
-                        processor=processor,
-                        region=region,
-                    )
+                        expected = expected_uris.framework_uri(
+                            repo,
+                            tag_prefix,
+                            ACCOUNTS[region],
+                            py_version=py_version,
+                            processor=processor,
+                            region=region,
+                        )
 
-                    assert uri == expected
+                        mocked_warning_log.assert_called_once_with(
+                            "SageMaker-hosted RL images no longer accept new pull requests and will be "
+                            "deprecated on April 2024."
+                            " Please pass in `image_uri` to use RLEstimator in sagemaker>=2.\n"
+                            "See: https://sagemaker.readthedocs.io/en/stable/v2.html for details."
+                        )
+                        mocked_warning_log.reset_mock()
+                        assert uri == expected
