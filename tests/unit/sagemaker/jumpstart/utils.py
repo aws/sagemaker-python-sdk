@@ -31,6 +31,8 @@ from sagemaker.jumpstart.types import (
 from sagemaker.jumpstart.enums import JumpStartModelType
 from sagemaker.jumpstart.utils import get_formatted_manifest
 from tests.unit.sagemaker.jumpstart.constants import (
+    INFERENCE_PRESET_RANKINGS,
+    INFERENCE_PRESETS,
     PROTOTYPICAL_MODEL_SPECS_DICT,
     BASE_MANIFEST,
     BASE_SPEC,
@@ -39,6 +41,8 @@ from tests.unit.sagemaker.jumpstart.constants import (
     BASE_HEADER,
     BASE_PROPRIETARY_HEADER,
     SPECIAL_MODEL_SPECS_DICT,
+    TRAINING_PRESET_RANKINGS,
+    TRAINING_PRESETS,
 )
 
 
@@ -197,6 +201,23 @@ def get_spec_from_base_spec(
 
     spec["version"] = version or version_str
     spec["model_id"] = model_id
+
+    return JumpStartModelSpecs(spec)
+
+
+def get_base_spec_with_prototype_preset_configs(
+    region: str = None,
+    model_id: str = None,
+    version: str = None,
+    s3_client: boto3.client = None,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
+) -> JumpStartModelSpecs:
+    spec = copy.deepcopy(BASE_SPEC)
+    inference_presets = {**INFERENCE_PRESETS, **INFERENCE_PRESET_RANKINGS}
+    training_presets = {**TRAINING_PRESETS, **TRAINING_PRESET_RANKINGS}
+
+    spec.update(inference_presets)
+    spec.update(training_presets)
 
     return JumpStartModelSpecs(spec)
 

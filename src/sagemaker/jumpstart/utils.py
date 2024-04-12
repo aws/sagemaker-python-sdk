@@ -908,10 +908,12 @@ def get_preset_names(
     )
 
     if scope == enums.JumpStartScriptScope.INFERENCE:
-        return model_specs.inference_presets.preset_configs.keys()
+        presets = model_specs.inference_presets
 
     if scope == enums.JumpStartScriptScope.TRAINING:
-        return model_specs.training_presets.preset_configs.keys()
+        presets = model_specs.training_presets
+
+    return list(presets.preset_configs.keys()) if presets else []
 
 
 def get_benchmark_stats(
@@ -939,11 +941,13 @@ def get_benchmark_stats(
         presets = model_specs.training_presets
 
     if not config_names:
-        config_names = presets.preset_configs.keys()
-    benchmark_stats = {
-        config_name: presets.preset_configs[config_name].benchmark_metrics
-        for config_name in config_names
-    }
+        config_names = presets.preset_configs.keys() if presets else []
+
+    benchmark_stats = {}
+    for config_name in config_names:
+        if config_name not in presets.preset_configs:
+            raise ValueError(f"Unknown preset config name: '{config_name}'")
+        benchmark_stats[config_name] = presets.preset_configs.get(config_name).benchmark_metrics
 
     return benchmark_stats
 

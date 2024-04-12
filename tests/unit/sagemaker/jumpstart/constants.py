@@ -7732,19 +7732,21 @@ TRAINING_PRESETS = {
     "training_presets": {
         "neuron-training": {
             "benchmark_metrics": {
-                "ml.p3.2xlarge": {"name": "Latency", "value": "100", "unit": "Tokens/S"}
+                "ml.tr1n1.2xlarge": {"name": "Latency", "value": "100", "unit": "Tokens/S"},
+                "ml.tr1n1.4xlarge": {"name": "Latency", "value": "50", "unit": "Tokens/S"},
             },
             "component_names": ["neuron-training"],
         },
         "neuron-training-budget": {
             "benchmark_metrics": {
-                "ml.p3.2xlarge": {"name": "Latency", "value": "100", "unit": "Tokens/S"}
+                "ml.tr1n1.2xlarge": {"name": "Latency", "value": "100", "unit": "Tokens/S"},
+                "ml.tr1n1.4xlarge": {"name": "Latency", "value": "50", "unit": "Tokens/S"},
             },
             "component_names": ["neuron-training-budget"],
         },
         "gpu-training": {
             "benchmark_metrics": {
-                "ml.p3.2xlarge": {"name": "Latency", "value": "100", "unit": "Tokens/S"}
+                "ml.p3.2xlarge": {"name": "Latency", "value": "200", "unit": "Tokens/S"},
             },
             "component_names": ["gpu-training"],
         },
@@ -7768,8 +7770,6 @@ TRAINING_PRESETS = {
                 },
                 "variants": {"trn1": {"regional_properties": {"image_uri": "$neuron-ecr-uri"}}},
             },
-            "supported_incremental_training_configs": ["neuron-training", "neuron-training-budget"],
-            "supported_inference_configs": ["neuron-inference", "neuron-inference-budget"],
         },
         "gpu-training": {
             "supported_training_instance_types": ["ml.p2.xlarge", "ml.p3.2xlarge"],
@@ -7786,8 +7786,6 @@ TRAINING_PRESETS = {
                     "p3": {"regional_properties": {"image_uri": "$gpu-ecr-uri"}},
                 },
             },
-            "supported_incremental_training_configs": ["gpu-training", "gpu-training-budget"],
-            "supported_inference_configs": ["gpu-inference", "gpu-inference-budget"],
         },
         "neuron-training-budget": {
             "supported_training_instance_types": ["ml.trn1.xlarge", "ml.trn1.2xlarge"],
@@ -7801,8 +7799,6 @@ TRAINING_PRESETS = {
                 },
                 "variants": {"trn1": {"regional_properties": {"image_uri": "$neuron-ecr-uri"}}},
             },
-            "supported_incremental_training_configs": ["neuron-training", "neuron-training-budget"],
-            "supported_inference_configs": ["neuron-inference", "neuron-inference-budget"],
         },
         "gpu-training-budget": {
             "supported_training_instance_types": ["ml.p2.xlarge", "ml.p3.2xlarge"],
@@ -7819,8 +7815,6 @@ TRAINING_PRESETS = {
                     "p3": {"regional_properties": {"image_uri": "$gpu-ecr-uri"}},
                 },
             },
-            "supported_incremental_training_configs": ["gpu-training", "gpu-training-budget"],
-            "supported_inference_configs": ["gpu-inference", "gpu-inference-budget"],
         },
     },
 }

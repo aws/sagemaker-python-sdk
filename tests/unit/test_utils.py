@@ -1856,3 +1856,13 @@ class TestDeepMergeDict(TestCase):
         dict2 = {"a": [5], "b": {"c": [6, 7], "d": [8]}}
         expected_merged = {"a": [5], "b": {"c": [6, 7], "d": [8]}}
         self.assertDictEqual(deep_override_dict(dict1, dict2), expected_merged)
+
+    def test_deep_override_skip_keys(self):
+        dict1 = {"a": 1, "b": {"x": 2, "y": 3}, "c": [4, 5]}
+        dict2 = {
+            "b": {"x": 20, "z": 30},
+            "d": {"w": 40},
+        }
+        expected_result = {"a": 1, "b": {"x": 20, "y": 3, "z": 30}, "c": [4, 5]}
+
+        self.assertEqual(deep_override_dict(dict1, dict2, skip_keys=["c", "d"]), expected_result)

@@ -798,7 +798,7 @@ class JumpStartPresetRanking(JumpStartDataHolderType):
 
 
 class JumpStartMetadataBaseFields(JumpStartDataHolderType):
-    """Data class JumpStart metadata base fields that can be overridden with configuration changes."""
+    """Data class JumpStart metadata base fields that can be overridden."""
 
     __slots__ = [
         "model_id",
@@ -1037,7 +1037,7 @@ class JumpStartPresetComponent(JumpStartMetadataBaseFields):
 
         Args:
             component (Dict[str, Any]):
-                Dictionary representation of the config component that can override to the metadata base fields.
+                Dictionary representation of the config component.
         """
         self.component_name = component_name
         self.from_json(component)
@@ -1047,7 +1047,7 @@ class JumpStartPresetComponent(JumpStartMetadataBaseFields):
 
         Args:
             json_obj (Dict[str, Any]):
-                Dictionary representation of the config component that can override to the metadata base fields.
+                Dictionary representation of the config component.
         """
         for field in json_obj.keys():
             if field not in self.__slots__:
@@ -1161,18 +1161,23 @@ class JumpStartPresetConfigs(JumpStartDataHolderType):
         instance_type: Optional[str] = None,
     ) -> JumpStartPresetConfig:
         """Gets the best the preset config based on config ranking."""
-        if (
-            not self.preset_config_rankings
-            or not self.preset_config_rankings.get(ranking_name)
-            or not instance_type
-        ):
+        if not self.preset_config_rankings or not self.preset_config_rankings.get(ranking_name):
             return list(self.preset_configs.values())[0] if self.preset_configs else None
 
+        instance_type_attribute = (
+            "supported_inference_instance_types"
+            if self.scope == JumpStartScriptScope.INFERENCE
+            else "supported_training_instance_types"
+        )
         rankings = self.preset_config_rankings.get(ranking_name)
         for config_name in rankings.rankings:
             resolved_config = self.preset_configs[config_name].resolved_config
-            if instance_type not in resolved_config.supported_inference_instance_types:
+            if instance_type and instance_type not in getattr(
+                resolved_config, instance_type_attribute
+            ):
                 continue
+            return self.preset_configs[config_name]
+
         return None
 
 
@@ -1192,7 +1197,7 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
 
     def __init__(self, spec: Dict[str, Any]):
         """Initializes a JumpStartModelSpecs object from its json representation.
-        By default apply the inference preset config.
+        By default only apply the inference preset config.
 
         Args:
             spec (Dict[str, Any]): Dictionary representation of spec.
@@ -1307,11 +1312,29 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
                 JumpStartPresetConfigs(
                     training_preset_configs_dict,
                     self.training_preset_rankings,
+                    JumpStartScriptScope.TRAINING,
                 )
                 if json_obj.get("training_presets")
                 else None
             )
         self.model_subscription_link = json_obj.get("model_subscription_link")
+
+    def set_preset_config(
+        self, config_name: str, scope: JumpStartScriptScope = JumpStartScriptScope.INFERENCE
+    ) -> None:
+        """Apply the seleted config and resolve to the current model spec.
+
+        Args:
+            config_name (str): Name of the config.
+            scope (JumpStartScriptScope, optional):
+                Scope of the config. Defaults to JumpStartScriptScope.INFERENCE.
+        """
+        if scope == JumpStartScriptScope.INFERENCE:
+            super().from_json(self.inference_presets.preset_configs[config_name].resolved_config)
+        elif scope == JumpStartScriptScope.TRAINING and self.training_supported:
+            super().from_json(self.training_presets.preset_configs[config_name].resolved_config)
+        else:
+            raise ValueError(f"Unknown Jumpstart Script scope {scope}.")
 
     def supports_prepacked_inference(self) -> bool:
         """Returns True if the model has a prepacked inference artifact."""

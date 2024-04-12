@@ -31,12 +31,12 @@ import abc
 import uuid
 from datetime import datetime
 from os.path import abspath, realpath, dirname, normpath, join as joinpath
-import pandas as pd
 
 from importlib import import_module
 import botocore
 from botocore.utils import merge_dicts
 from six.moves.urllib import parse
+import pandas as pd
 
 from sagemaker import deprecations
 from sagemaker.config import validate_sagemaker_config
@@ -1643,12 +1643,12 @@ def unflatten_dict(dict: Dict[str, Any], sep: str = ".") -> Dict[str, Any]:
 
 
 def deep_override_dict(
-    dict1: Dict[str, Any], dict2: Dict[str, Any], skip_keys: Optional[List[str]] = []
+    dict1: Dict[str, Any], dict2: Dict[str, Any], skip_keys: Optional[List[str]] = None
 ) -> Dict[str, Any]:
     """Overrides any overlapping contents of dict1 with the contents of dict2."""
     flattened_dict1 = flatten_dict(dict1)
-    flattened_dict2 = flatten_dict(dict2)
-    for key, value in flattened_dict2.items():
-        if key not in skip_keys:
-            flattened_dict1[key] = value
+    flattened_dict2 = flatten_dict(
+        {key: value for key, value in dict2.items() if key not in skip_keys}
+    )
+    flattened_dict1.update(flattened_dict2)
     return unflatten_dict(flattened_dict1) if flattened_dict1 else {}
