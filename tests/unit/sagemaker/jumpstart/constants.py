@@ -7505,12 +7505,12 @@ BASE_SPEC = {
     "resource_name_base": "dfsdfsds",
     "hosting_resource_requirements": {"num_accelerators": 1, "min_memory_mb": 34360},
     "dynamic_container_deployment_supported": True,
-    "inference_presets": None,
-    "inference_preset_components": None,
-    "training_presets": None,
-    "training_preset_components": None,
-    "inference_preset_rankings": None,
-    "training_preset_rankings": None,
+    "inference_configs": None,
+    "inference_config_components": None,
+    "training_configs": None,
+    "training_config_components": None,
+    "inference_config_rankings": None,
+    "training_config_rankings": None,
 }
 
 BASE_HEADER = {
@@ -7654,8 +7654,8 @@ BASE_PROPRIETARY_SPEC = {
 }
 
 
-INFERENCE_PRESETS = {
-    "inference_presets": {
+INFERENCE_CONFIGS = {
+    "inference_configs": {
         "neuron-inference": {
             "benchmark_metrics": {
                 "ml.inf2.2xlarge": {"name": "Latency", "value": "100", "unit": "Tokens/S"}
@@ -7681,7 +7681,7 @@ INFERENCE_PRESETS = {
             "component_names": ["gpu-inference"],
         },
     },
-    "inference_preset_components": {
+    "inference_config_components": {
         "neuron-base": {
             "supported_inference_instance_types": ["ml.inf2.xlarge", "ml.inf2.2xlarge"]
         },
@@ -7734,8 +7734,8 @@ INFERENCE_PRESETS = {
     },
 }
 
-TRAINING_PRESETS = {
-    "training_presets": {
+TRAINING_CONFIGS = {
+    "training_configs": {
         "neuron-training": {
             "benchmark_metrics": {
                 "ml.tr1n1.2xlarge": {"name": "Latency", "value": "100", "unit": "Tokens/S"},
@@ -7763,7 +7763,7 @@ TRAINING_PRESETS = {
             "component_names": ["gpu-training-budget"],
         },
     },
-    "training_preset_components": {
+    "training_config_components": {
         "neuron-training": {
             "supported_training_instance_types": ["ml.trn1.xlarge", "ml.trn1.2xlarge"],
             "training_artifact_key": "artifacts/meta-textgeneration-llama-2-7b/neuron-training/model/",
@@ -7826,70 +7826,74 @@ TRAINING_PRESETS = {
 }
 
 
-INFERENCE_PRESET_RANKINGS = {
-    "overall": {
-        "description": "Overall rankings of configs",
-        "ranking": [
-            "neuron-inference",
-            "neuron-inference-budget",
-            "gpu-inference",
-            "gpu-inference-budget",
-        ],
-    },
-    "performance": {
-        "description": "Configs ranked based on performance",
-        "rankings": [
-            "neuron-inference",
-            "gpu-inference",
-            "neuron-inference-budget",
-            "gpu-inference-budget",
-        ],
-    },
-    "cost": {
-        "description": "Configs ranked based on cost",
-        "rankings": [
-            "neuron-inference-budget",
-            "gpu-inference-budget",
-            "neuron-inference",
-            "gpu-inference",
-        ],
-    },
+INFERENCE_CONFIG_RANKINGS = {
+    "inference_config_rankings": {
+        "overall": {
+            "description": "Overall rankings of configs",
+            "rankings": [
+                "neuron-inference",
+                "neuron-inference-budget",
+                "gpu-inference",
+                "gpu-inference-budget",
+            ],
+        },
+        "performance": {
+            "description": "Configs ranked based on performance",
+            "rankings": [
+                "neuron-inference",
+                "gpu-inference",
+                "neuron-inference-budget",
+                "gpu-inference-budget",
+            ],
+        },
+        "cost": {
+            "description": "Configs ranked based on cost",
+            "rankings": [
+                "neuron-inference-budget",
+                "gpu-inference-budget",
+                "neuron-inference",
+                "gpu-inference",
+            ],
+        },
+    }
 }
 
-TRAINING_PRESET_RANKINGS = {
-    "overall": {
-        "description": "Overall rankings of configs",
-        "rankings": [
-            "neuron-training",
-            "neuron-training-budget",
-            "gpu-training",
-            "gpu-training-budget",
-        ],
-    },
-    "performance_training": {
-        "description": "Configs ranked based on performance",
-        "rankings": [
-            "neuron-training",
-            "gpu-training",
-            "neuron-training-budget",
-            "gpu-training-budget",
-        ],
-        "instance_type_overrides": {
-            "ml.p2.xlarge": [
+TRAINING_CONFIG_RANKINGS = {
+    "training_config_rankings": {
+        "overall": {
+            "description": "Overall rankings of configs",
+            "rankings": [
                 "neuron-training",
                 "neuron-training-budget",
                 "gpu-training",
                 "gpu-training-budget",
-            ]
+            ],
         },
-    },
-    "cost_training": {
-        "description": "Configs ranked based on cost",
-        "rankings": [
-            "neuron-training-budget",
-            "gpu-training-budget",
-            "neuron-training",
-            "gpu-training",
-        ],
-    },
+        "performance_training": {
+            "description": "Configs ranked based on performance",
+            "rankings": [
+                "neuron-training",
+                "gpu-training",
+                "neuron-training-budget",
+                "gpu-training-budget",
+            ],
+            "instance_type_overrides": {
+                "ml.p2.xlarge": [
+                    "neuron-training",
+                    "neuron-training-budget",
+                    "gpu-training",
+                    "gpu-training-budget",
+                ]
+            },
+        },
+        "cost_training": {
+            "description": "Configs ranked based on cost",
+            "rankings": [
+                "neuron-training-budget",
+                "gpu-training-budget",
+                "neuron-training",
+                "gpu-training",
+            ],
+        },
+    }
 }

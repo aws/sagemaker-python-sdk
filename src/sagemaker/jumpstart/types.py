@@ -19,7 +19,11 @@ from sagemaker.utils import get_instance_type_family, format_tags, Tags, deep_ov
 from sagemaker.model_metrics import ModelMetrics
 from sagemaker.metadata_properties import MetadataProperties
 from sagemaker.drift_check_baselines import DriftCheckBaselines
-from sagemaker.jumpstart.enums import JumpStartModelType, JumpStartScriptScope
+from sagemaker.jumpstart.enums import (
+    JumpStartModelType,
+    JumpStartScriptScope,
+    JumpStartConfigRankingName,
+)
 
 from sagemaker.session import Session
 from sagemaker.workflow.entities import PipelineVariable
@@ -768,16 +772,16 @@ class JumpStartBenchmarkStat(JumpStartDataHolderType):
         return json_obj
 
 
-class JumpStartPresetRanking(JumpStartDataHolderType):
-    """Data class JumpStart preset ranking."""
+class JumpStartConfigRanking(JumpStartDataHolderType):
+    """Data class JumpStart config ranking."""
 
-    __slots__ = ["name", "description", "ranking"]
+    __slots__ = ["description", "rankings"]
 
     def __init__(self, spec: Optional[Dict[str, Any]]):
-        """Initializes a JumpStartPresetRanking object.
+        """Initializes a JumpStartConfigRanking object.
 
         Args:
-            spec (Dict[str, Any]): Dictionary representation of training preset ranking.
+            spec (Dict[str, Any]): Dictionary representation of training config ranking.
         """
         self.from_json(spec)
 
@@ -785,14 +789,13 @@ class JumpStartPresetRanking(JumpStartDataHolderType):
         """Sets fields in object based on json.
 
         Args:
-            json_obj (Dict[str, Any]): Dictionary representation of preset ranking.
+            json_obj (Dict[str, Any]): Dictionary representation of config ranking.
         """
-        self.name: str = json_obj["name"]
         self.description: str = json_obj["description"]
-        self.ranking: List[str] = json_obj["ranking"]
+        self.rankings: List[str] = json_obj["rankings"]
 
     def to_json(self) -> Dict[str, Any]:
-        """Returns json representation of JumpStartPresetRanking object."""
+        """Returns json representation of JumpStartConfigRanking object."""
         json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
         return json_obj
 
@@ -1006,7 +1009,7 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
         return json_obj
 
 
-class JumpStartPresetComponent(JumpStartMetadataBaseFields):
+class JumpStartConfigComponent(JumpStartMetadataBaseFields):
     """Data class of JumpStart config component."""
 
     slots = ["component_name"]
@@ -1033,9 +1036,10 @@ class JumpStartPresetComponent(JumpStartMetadataBaseFields):
         component_name: str,
         component: Optional[Dict[str, Any]],
     ):
-        """Initializes a JumpStartInferenceComponent object from its json representation.
+        """Initializes a JumpStartConfigComponent object from its json representation.
 
         Args:
+            component_name (str): Name of the component.
             component (Dict[str, Any]):
                 Dictionary representation of the config component.
         """
@@ -1043,7 +1047,7 @@ class JumpStartPresetComponent(JumpStartMetadataBaseFields):
         self.from_json(component)
 
     def from_json(self, json_obj: Dict[str, Any]) -> None:
-        """Initializes a JumpStartInferenceComponent object from its json representation.
+        """Initializes a JumpStartConfigComponent object from its json representation.
 
         Args:
             json_obj (Dict[str, Any]):
@@ -1055,34 +1059,39 @@ class JumpStartPresetComponent(JumpStartMetadataBaseFields):
             setattr(self, field, json_obj[field])
 
 
-class JumpStartPresetConfig(JumpStartDataHolderType):
-    """Data class of JumpStart Inference config."""
+class JumpStartMetadataConfig(JumpStartDataHolderType):
+    """Data class of JumpStart metadata config."""
 
-    __slots__ = ["base_fields", "benchmark_metrics", "preset_components", "resolved_preset_config"]
+    __slots__ = [
+        "base_fields",
+        "benchmark_metrics",
+        "config_components",
+        "resolved_metadata_config",
+    ]
 
     def __init__(
         self,
         base_fields: Dict[str, Any],
-        preset_components: Dict[str, JumpStartPresetComponent],
+        config_components: Dict[str, JumpStartConfigComponent],
         benchmark_metrics: Dict[str, JumpStartBenchmarkStat],
     ):
-        """Initializes a JumpStartInferencePresetConfig object from its json representation.
+        """Initializes a JumpStartMetadataConfig object from its json representation.
 
         Args:
             base_fields (Dict[str, Any]):
                 The default base fields that are used to construct the final resolved config.
-            preset_components (Dict[str, JumpStartPresetComponent]):
+            config_components (Dict[str, JumpStartConfigComponent]):
                 The list of components that are used to construct the resolved config.
             benchmark_metrics (Dict[str, JumpStartBenchmarkStat]):
                 The dictionary of benchmark metrics with name being the key.
         """
         self.base_fields = base_fields
-        self.preset_components: Dict[str, JumpStartPresetComponent] = preset_components
+        self.config_components: Dict[str, JumpStartConfigComponent] = config_components
         self.benchmark_metrics: Dict[str, JumpStartBenchmarkStat] = benchmark_metrics
-        self.resolved_preset_config: Optional[JumpStartPresetConfig] = None
+        self.resolved_metadata_config: Optional[Dict[str, Any]] = None
 
     def to_json(self) -> Dict[str, Any]:
-        """Returns json representation of JumpStartInferencePresetConfig object."""
+        """Returns json representation of JumpStartMetadataConfig object."""
         json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
         return json_obj
 
@@ -1093,44 +1102,44 @@ class JumpStartPresetConfig(JumpStartDataHolderType):
         Construct the final config by applying the list of configs from list index,
         and apply to the base default fields in the current model specs.
         """
-        if self.resolved_preset_config:
-            return self.resolved_preset_config
+        if self.resolved_metadata_config:
+            return self.resolved_metadata_config
 
         resolved_config = JumpStartMetadataBaseFields(self.base_fields)
-        for component in self.preset_components.values():
+        for component in self.config_components.values():
             resolved_config = deep_override_dict(
                 deepcopy(resolved_config.to_json()),
                 deepcopy(component.to_json()),
                 component.OVERRIDING_DENY_LIST,
             )
-        self.resolved_preset_config = resolved_config
+        self.resolved_metadata_config = resolved_config
 
         return resolved_config
 
 
-class JumpStartPresetConfigs(JumpStartDataHolderType):
-    """Data class to hold the set of JumpStart Preset configs."""
+class JumpStartMetadataConfigs(JumpStartDataHolderType):
+    """Data class to hold the set of JumpStart Metadata configs."""
 
-    __slots__ = ["preset_configs", "preset_config_rankings", "scope"]
+    __slots__ = ["configs", "config_rankings", "scope"]
 
     def __init__(
         self,
-        preset_configs: Optional[Dict[str, JumpStartPresetConfig]],
-        preset_config_rankings: Optional[Dict[str, JumpStartPresetRanking]],
+        configs: Optional[Dict[str, JumpStartMetadataConfig]],
+        config_rankings: Optional[Dict[str, JumpStartConfigRanking]],
         scope: JumpStartScriptScope = JumpStartScriptScope.INFERENCE,
     ):
-        """Initializes a JumpStartInferencePresetConfig object from its json representation.
+        """Initializes a JumpStartMetadataConfigs object.
 
         Args:
-            preset_configs (Dict[str, JumpStartPresetConfig]):
-                List of preset configs that the current model has.
-            preset_config_rankings (JumpStartPresetRanking):
-                Preset ranking class represents the ranking of the presets in the model.
+            configs (Dict[str, JumpStartMetadataConfig]):
+                List of configs that the current model has.
+            config_rankings (JumpStartConfigRanking):
+                Config ranking class represents the ranking of the configs in the model.
             scope (JumpStartScriptScope):
-                The scope of the current preset config (inference or training)
+                The scope of the current config (inference or training)
         """
-        self.preset_configs = preset_configs
-        self.preset_config_rankings = preset_config_rankings
+        self.configs = configs
+        self.config_rankings = config_rankings
         self.scope = scope
 
     def from_json(self, json_obj: Dict[str, Any]) -> None:
@@ -1142,41 +1151,44 @@ class JumpStartPresetConfigs(JumpStartDataHolderType):
         if json_obj is None:
             return
 
-        self.preset_configs: Dict[str, JumpStartPresetConfig] = {
-            alias: JumpStartPresetConfig(preset_config)
-            for alias, preset_config in json_obj["preset_configs"].items()
+        self.configs: Dict[str, JumpStartMetadataConfig] = {
+            alias: JumpStartMetadataConfig(config) for alias, config in json_obj["configs"].items()
         }
-        self.preset_config_rankings: Optional[Dict[str, JumpStartPresetRanking]] = json_obj[
-            "preset_config_rankings"
+        self.config_rankings: Optional[Dict[str, JumpStartMetadataConfig]] = json_obj[
+            "config_rankings"
         ]
 
     def to_json(self) -> Dict[str, Any]:
-        """Returns json representation of JumpStartInferencePresetConfig object."""
+        """Returns json representation of JumpStartMetadataConfigs object."""
         json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
         return json_obj
 
     def get_top_config_from_ranking(
         self,
-        ranking_name: str = "overall",
+        ranking_name: str = JumpStartConfigRankingName.DEFAULT,
         instance_type: Optional[str] = None,
-    ) -> JumpStartPresetConfig:
-        """Gets the best the preset config based on config ranking."""
-        if not self.preset_config_rankings or not self.preset_config_rankings.get(ranking_name):
-            return list(self.preset_configs.values())[0] if self.preset_configs else None
+    ) -> JumpStartMetadataConfig:
+        """Gets the best the config based on config ranking."""
+        if self.configs and (
+            not self.config_rankings or not self.config_rankings.get(ranking_name)
+        ):
+            raise ValueError("Config exists but missing config ranking.")
 
-        instance_type_attribute = (
-            "supported_inference_instance_types"
-            if self.scope == JumpStartScriptScope.INFERENCE
-            else "supported_training_instance_types"
-        )
-        rankings = self.preset_config_rankings.get(ranking_name)
+        if self.scope == JumpStartScriptScope.INFERENCE:
+            instance_type_attribute = "supported_inference_instance_types"
+        elif self.scope == JumpStartScriptScope.TRAINING:
+            instance_type_attribute = "supported_training_instance_types"
+        else:
+            raise ValueError(f"Unknown script scope {self.scope}")
+
+        rankings = self.config_rankings.get(ranking_name)
         for config_name in rankings.rankings:
-            resolved_config = self.preset_configs[config_name].resolved_config
+            resolved_config = self.configs[config_name].resolved_config
             if instance_type and instance_type not in getattr(
                 resolved_config, instance_type_attribute
             ):
                 continue
-            return self.preset_configs[config_name]
+            return self.configs[config_name]
 
         return None
 
@@ -1185,26 +1197,26 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
     """Data class JumpStart model specs."""
 
     slots = [
-        "inference_presets",
-        "inference_preset_components",
-        "inference_preset_rankings",
-        "training_presets",
-        "training_preset_components",
-        "training_preset_rankings",
+        "inference_configs",
+        "inference_config_components",
+        "inference_config_rankings",
+        "training_configs",
+        "training_config_components",
+        "training_config_rankings",
     ]
 
     __slots__ = JumpStartMetadataBaseFields.__slots__ + slots
 
     def __init__(self, spec: Dict[str, Any]):
         """Initializes a JumpStartModelSpecs object from its json representation.
-        By default only apply the inference preset config.
+        By default only apply the inference config.
 
         Args:
             spec (Dict[str, Any]): Dictionary representation of spec.
         """
         self.from_json(spec)
-        if self.inference_presets and self.inference_presets.get_top_config_from_ranking():
-            super().from_json(self.inference_presets.get_top_config_from_ranking().resolved_config)
+        if self.inference_configs and self.inference_configs.get_top_config_from_ranking():
+            super().from_json(self.inference_configs.get_top_config_from_ranking().resolved_config)
 
     def from_json(self, json_obj: Dict[str, Any]) -> None:
         """Sets fields in object based on json of header.
@@ -1213,29 +1225,29 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
             json_obj (Dict[str, Any]): Dictionary representation of spec.
         """
         super().from_json(json_obj)
-        self.inference_preset_components: Optional[Dict[str, JumpStartPresetComponent]] = (
+        self.inference_config_components: Optional[Dict[str, JumpStartConfigComponent]] = (
             {
-                component_name: JumpStartPresetComponent(component_name, component)
-                for component_name, component in json_obj["inference_preset_components"].items()
+                component_name: JumpStartConfigComponent(component_name, component)
+                for component_name, component in json_obj["inference_config_components"].items()
             }
-            if json_obj.get("inference_preset_components")
+            if json_obj.get("inference_config_components")
             else None
         )
-        self.inference_preset_rankings: Optional[Dict[str, JumpStartPresetRanking]] = (
+        self.inference_config_rankings: Optional[Dict[str, JumpStartConfigRanking]] = (
             {
-                alias: JumpStartPresetRanking(ranking)
-                for alias, ranking in json_obj["inference_preset_rankings"].items()
+                alias: JumpStartConfigRanking(ranking)
+                for alias, ranking in json_obj["inference_config_rankings"].items()
             }
-            if json_obj.get("inference_preset_rankings")
+            if json_obj.get("inference_config_rankings")
             else None
         )
-        inference_preset_configs_dict: Optional[Dict[str, JumpStartPresetConfig]] = (
+        inference_configs_dict: Optional[Dict[str, JumpStartMetadataConfig]] = (
             {
-                alias: JumpStartPresetConfig(
+                alias: JumpStartMetadataConfig(
                     json_obj,
                     (
                         {
-                            component_name: self.inference_preset_components.get(component_name)
+                            component_name: self.inference_config_components.get(component_name)
                             for component_name in config.get("component_names")
                         }
                         if config and config.get("component_names")
@@ -1250,44 +1262,44 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
                         else None
                     ),
                 )
-                for alias, config in json_obj["inference_presets"].items()
+                for alias, config in json_obj["inference_configs"].items()
             }
-            if json_obj.get("inference_presets")
+            if json_obj.get("inference_configs")
             else None
         )
-        self.inference_presets: Optional[JumpStartPresetConfigs] = (
-            JumpStartPresetConfigs(
-                inference_preset_configs_dict,
-                self.inference_preset_rankings,
+        self.inference_configs: Optional[JumpStartMetadataConfigs] = (
+            JumpStartMetadataConfigs(
+                inference_configs_dict,
+                self.inference_config_rankings,
             )
-            if json_obj.get("inference_presets")
+            if json_obj.get("inference_configs")
             else None
         )
 
         if self.training_supported:
-            self.training_preset_components: Optional[Dict[str, JumpStartPresetComponent]] = (
+            self.training_config_components: Optional[Dict[str, JumpStartConfigComponent]] = (
                 {
-                    alias: JumpStartPresetComponent(alias, component)
-                    for alias, component in json_obj["training_preset_components"].items()
+                    alias: JumpStartConfigComponent(alias, component)
+                    for alias, component in json_obj["training_config_components"].items()
                 }
-                if json_obj.get("training_preset_components")
+                if json_obj.get("training_config_components")
                 else None
             )
-            self.training_preset_rankings: Optional[Dict[str, JumpStartPresetRanking]] = (
+            self.training_config_rankings: Optional[Dict[str, JumpStartConfigRanking]] = (
                 {
-                    alias: JumpStartPresetRanking(ranking)
-                    for alias, ranking in json_obj["training_preset_rankings"].items()
+                    alias: JumpStartConfigRanking(ranking)
+                    for alias, ranking in json_obj["training_config_rankings"].items()
                 }
-                if json_obj.get("training_preset_rankings")
+                if json_obj.get("training_config_rankings")
                 else None
             )
-            training_preset_configs_dict: Optional[Dict[str, JumpStartPresetConfig]] = (
+            training_configs_dict: Optional[Dict[str, JumpStartMetadataConfig]] = (
                 {
-                    alias: JumpStartPresetConfig(
+                    alias: JumpStartMetadataConfig(
                         json_obj,
                         (
                             {
-                                component_name: self.training_preset_components.get(component_name)
+                                component_name: self.training_config_components.get(component_name)
                                 for component_name in config.get("component_names")
                             }
                             if config and config.get("component_names")
@@ -1302,24 +1314,24 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
                             else None
                         ),
                     )
-                    for alias, config in json_obj["training_presets"].items()
+                    for alias, config in json_obj["training_configs"].items()
                 }
-                if json_obj.get("training_presets")
+                if json_obj.get("training_configs")
                 else None
             )
 
-            self.training_presets: Optional[JumpStartPresetConfigs] = (
-                JumpStartPresetConfigs(
-                    training_preset_configs_dict,
-                    self.training_preset_rankings,
+            self.training_configs: Optional[JumpStartMetadataConfigs] = (
+                JumpStartMetadataConfigs(
+                    training_configs_dict,
+                    self.training_config_rankings,
                     JumpStartScriptScope.TRAINING,
                 )
-                if json_obj.get("training_presets")
+                if json_obj.get("training_configs")
                 else None
             )
         self.model_subscription_link = json_obj.get("model_subscription_link")
 
-    def set_preset_config(
+    def set_config(
         self, config_name: str, scope: JumpStartScriptScope = JumpStartScriptScope.INFERENCE
     ) -> None:
         """Apply the seleted config and resolve to the current model spec.
@@ -1330,9 +1342,9 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
                 Scope of the config. Defaults to JumpStartScriptScope.INFERENCE.
         """
         if scope == JumpStartScriptScope.INFERENCE:
-            super().from_json(self.inference_presets.preset_configs[config_name].resolved_config)
+            super().from_json(self.inference_configs.configs[config_name].resolved_config)
         elif scope == JumpStartScriptScope.TRAINING and self.training_supported:
-            super().from_json(self.training_presets.preset_configs[config_name].resolved_config)
+            super().from_json(self.training_configs.configs[config_name].resolved_config)
         else:
             raise ValueError(f"Unknown Jumpstart Script scope {scope}.")
 

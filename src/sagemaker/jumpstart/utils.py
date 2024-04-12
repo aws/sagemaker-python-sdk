@@ -37,9 +37,9 @@ from sagemaker.jumpstart.exceptions import (
 )
 from sagemaker.jumpstart.types import (
     JumpStartBenchmarkStat,
+    JumpStartMetadataConfig,
     JumpStartModelHeader,
     JumpStartModelSpecs,
-    JumpStartPresetConfig,
     JumpStartVersionedModelId,
 )
 from sagemaker.session import Session
@@ -882,7 +882,7 @@ def get_region_fallback(
     return list(combined_regions)[0]
 
 
-def get_preset_names(
+def get_config_names(
     region: str,
     model_id: str,
     model_version: str,
@@ -890,7 +890,7 @@ def get_preset_names(
     scope: enums.JumpStartScriptScope = enums.JumpStartScriptScope.INFERENCE,
     model_type: enums.JumpStartModelType = enums.JumpStartModelType.OPEN_WEIGHTS,
 ) -> List[str]:
-    """Returns a list of preset names for the given model ID and region."""
+    """Returns a list of config names for the given model ID and region."""
     model_specs = verify_model_region_and_return_specs(
         region=region,
         model_id=model_id,
@@ -901,12 +901,13 @@ def get_preset_names(
     )
 
     if scope == enums.JumpStartScriptScope.INFERENCE:
-        presets = model_specs.inference_presets
+        metadata_configs = model_specs.inference_configs
+    elif scope == enums.JumpStartScriptScope.TRAINING:
+        metadata_configs = model_specs.training_configs
+    else:
+        raise ValueError(f"Unknown script scope {scope}.")
 
-    if scope == enums.JumpStartScriptScope.TRAINING:
-        presets = model_specs.training_presets
-
-    return list(presets.preset_configs.keys()) if presets else []
+    return list(metadata_configs.configs.keys()) if metadata_configs else []
 
 
 def get_benchmark_stats(
@@ -929,23 +930,25 @@ def get_benchmark_stats(
     )
 
     if scope == enums.JumpStartScriptScope.INFERENCE:
-        presets = model_specs.inference_presets
+        metadata_configs = model_specs.inference_configs
     elif scope == enums.JumpStartScriptScope.TRAINING:
-        presets = model_specs.training_presets
+        metadata_configs = model_specs.training_configs
+    else:
+        raise ValueError(f"Unknown script scope {scope}.")
 
     if not config_names:
-        config_names = presets.preset_configs.keys() if presets else []
+        config_names = metadata_configs.configs.keys() if metadata_configs else []
 
     benchmark_stats = {}
     for config_name in config_names:
-        if config_name not in presets.preset_configs:
-            raise ValueError(f"Unknown preset config name: '{config_name}'")
-        benchmark_stats[config_name] = presets.preset_configs.get(config_name).benchmark_metrics
+        if config_name not in metadata_configs.configs:
+            raise ValueError(f"Unknown config name: '{config_name}'")
+        benchmark_stats[config_name] = metadata_configs.configs.get(config_name).benchmark_metrics
 
     return benchmark_stats
 
 
-def get_jumpstart_presets(
+def get_jumpstart_configs(
     region: str,
     model_id: str,
     model_version: str,
@@ -953,7 +956,7 @@ def get_jumpstart_presets(
     sagemaker_session: Optional[Session] = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     scope: enums.JumpStartScriptScope = enums.JumpStartScriptScope.INFERENCE,
     model_type: enums.JumpStartModelType = enums.JumpStartModelType.OPEN_WEIGHTS,
-) -> Dict[str, List[JumpStartPresetConfig]]:
+) -> Dict[str, List[JumpStartMetadataConfig]]:
     model_specs = verify_model_region_and_return_specs(
         region=region,
         model_id=model_id,
@@ -964,15 +967,17 @@ def get_jumpstart_presets(
     )
 
     if scope == enums.JumpStartScriptScope.INFERENCE:
-        presets = model_specs.inference_presets
+        metadata_configs = model_specs.inference_configs
     elif scope == enums.JumpStartScriptScope.TRAINING:
-        presets = model_specs.training_presets
+        metadata_configs = model_specs.training_configs
+    else:
+        raise ValueError(f"Unknown script scope {scope}.")
 
     if not config_names:
-        config_names = presets.preset_configs.keys() if presets else []
+        config_names = metadata_configs.configs.keys() if metadata_configs else []
 
-    preset_configs = {
-        config_name: presets.preset_configs[config_name] for config_name in config_names
-    } if presets else {}
-
-    return preset_configs
+    return (
+        {config_name: metadata_configs.configs[config_name] for config_name in config_names}
+        if metadata_configs
+        else {}
+    )

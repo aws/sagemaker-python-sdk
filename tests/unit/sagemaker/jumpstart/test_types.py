@@ -20,14 +20,14 @@ from sagemaker.jumpstart.types import (
     JumpStartInstanceTypeVariants,
     JumpStartModelSpecs,
     JumpStartModelHeader,
-    JumpStartPresetComponent,
+    JumpStartConfigComponent,
 )
 from tests.unit.sagemaker.jumpstart.constants import (
     BASE_SPEC,
-    INFERENCE_PRESET_RANKINGS,
-    INFERENCE_PRESETS,
-    TRAINING_PRESET_RANKINGS,
-    TRAINING_PRESETS,
+    INFERENCE_CONFIG_RANKINGS,
+    INFERENCE_CONFIGS,
+    TRAINING_CONFIG_RANKINGS,
+    TRAINING_CONFIGS,
 )
 
 INSTANCE_TYPE_VARIANT = JumpStartInstanceTypeVariants(
@@ -914,11 +914,11 @@ def test_jumpstart_resource_requirements_instance_variants():
     )
 
 
-def test_inference_presets_parsing():
-    spec = {**BASE_SPEC, **INFERENCE_PRESETS, **INFERENCE_PRESET_RANKINGS}
+def test_inference_configs_parsing():
+    spec = {**BASE_SPEC, **INFERENCE_CONFIGS, **INFERENCE_CONFIG_RANKINGS}
     specs1 = JumpStartModelSpecs(spec)
 
-    assert list(specs1.inference_preset_components.keys()) == [
+    assert list(specs1.inference_config_components.keys()) == [
         "neuron-base",
         "neuron-inference",
         "neuron-budget",
@@ -1016,26 +1016,26 @@ def test_inference_presets_parsing():
     # Overrided fields in top config
     assert specs1.supported_inference_instance_types == ["ml.inf2.xlarge", "ml.inf2.2xlarge"]
 
-    config = specs1.inference_presets.get_top_config_from_ranking()
+    config = specs1.inference_configs.get_top_config_from_ranking()
 
     assert config.benchmark_metrics == {
         "ml.inf2.2xlarge": JumpStartBenchmarkStat(
             {"name": "Latency", "value": "100", "unit": "Tokens/S"}
         )
     }
-    assert len(config.preset_components) == 1
-    assert config.preset_components["neuron-base"] == JumpStartPresetComponent(
+    assert len(config.config_components) == 1
+    assert config.config_components["neuron-base"] == JumpStartConfigComponent(
         "neuron-base",
         {"supported_inference_instance_types": ["ml.inf2.xlarge", "ml.inf2.2xlarge"]},
     )
-    assert list(config.preset_components.keys()) == ["neuron-base"]
+    assert list(config.config_components.keys()) == ["neuron-base"]
 
 
-def test_training_presets_parsing():
-    spec = {**BASE_SPEC, **TRAINING_PRESETS, **TRAINING_PRESET_RANKINGS}
+def test_training_configs_parsing():
+    spec = {**BASE_SPEC, **TRAINING_CONFIGS, **TRAINING_CONFIG_RANKINGS}
     specs1 = JumpStartModelSpecs(spec)
 
-    assert list(specs1.training_preset_components.keys()) == [
+    assert list(specs1.training_config_components.keys()) == [
         "neuron-training",
         "gpu-training",
         "neuron-training-budget",
@@ -1043,7 +1043,7 @@ def test_training_presets_parsing():
     ]
 
     # Non-overrided fields in top config
-    # By default training preset config is not applied to model spec
+    # By default training config is not applied to model spec
     assert specs1.model_id == "pytorch-ic-mobilenet-v2"
     assert specs1.version == "1.0.0"
     assert specs1.min_sdk_version == "2.49.0"
@@ -1130,7 +1130,7 @@ def test_training_presets_parsing():
         ),
     ]
 
-    config = specs1.training_presets.get_top_config_from_ranking()
+    config = specs1.training_configs.get_top_config_from_ranking()
 
     assert config.benchmark_metrics == {
         "ml.tr1n1.2xlarge": JumpStartBenchmarkStat(
@@ -1140,8 +1140,8 @@ def test_training_presets_parsing():
             {"name": "Latency", "value": "50", "unit": "Tokens/S"}
         ),
     }
-    assert len(config.preset_components) == 1
-    assert config.preset_components["neuron-training"] == JumpStartPresetComponent(
+    assert len(config.config_components) == 1
+    assert config.config_components["neuron-training"] == JumpStartConfigComponent(
         "neuron-training",
         {
             "supported_training_instance_types": ["ml.trn1.xlarge", "ml.trn1.2xlarge"],
@@ -1157,15 +1157,15 @@ def test_training_presets_parsing():
             },
         },
     )
-    assert list(config.preset_components.keys()) == ["neuron-training"]
+    assert list(config.config_components.keys()) == ["neuron-training"]
 
 
-def test_set_inference_preset_config():
-    spec = {**BASE_SPEC, **INFERENCE_PRESETS, **INFERENCE_PRESET_RANKINGS}
+def test_set_inference_config():
+    spec = {**BASE_SPEC, **INFERENCE_CONFIGS, **INFERENCE_CONFIG_RANKINGS}
     specs1 = JumpStartModelSpecs(spec)
 
     assert specs1.supported_inference_instance_types == ["ml.inf2.xlarge", "ml.inf2.2xlarge"]
-    specs1.set_preset_config("gpu-inference-budget")
+    specs1.set_config("gpu-inference-budget")
 
     assert specs1.supported_inference_instance_types == ["ml.p2.xlarge", "ml.p3.2xlarge"]
     assert (
@@ -1174,8 +1174,8 @@ def test_set_inference_preset_config():
     )
 
 
-def test_set_training_preset_config():
-    spec = {**BASE_SPEC, **TRAINING_PRESETS, **TRAINING_PRESET_RANKINGS}
+def test_set_training_config():
+    spec = {**BASE_SPEC, **TRAINING_CONFIGS, **TRAINING_CONFIG_RANKINGS}
     specs1 = JumpStartModelSpecs(spec)
 
     assert specs1.supported_training_instance_types == [
@@ -1185,7 +1185,7 @@ def test_set_training_preset_config():
         "ml.m5.xlarge",
         "ml.c5.2xlarge",
     ]
-    specs1.set_preset_config("gpu-training-budget", scope=JumpStartScriptScope.TRAINING)
+    specs1.set_config("gpu-training-budget", scope=JumpStartScriptScope.TRAINING)
 
     assert specs1.supported_training_instance_types == ["ml.p2.xlarge", "ml.p3.2xlarge"]
     assert (
