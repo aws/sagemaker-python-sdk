@@ -175,7 +175,7 @@
                     "us-west-2": "763104351884",
                     "ca-west-1": "204538143572"
                 },
-                "tag_prefix": "1.13.1-optimum0.0.20",
+                "tag_prefix": "1.13.1-optimum0.0.21",
                 "repository": "huggingface-pytorch-tgi-inference",
                 "container_version": {
                     "inf2": "ubuntu22.04"
