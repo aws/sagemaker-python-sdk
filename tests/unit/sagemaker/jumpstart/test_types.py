@@ -1019,7 +1019,7 @@ def test_inference_presets_parsing():
     config = specs1.inference_presets.get_top_config_from_ranking()
 
     assert config.benchmark_metrics == {
-        "ml.p3.2xlarge": JumpStartBenchmarkStat(
+        "ml.inf2.2xlarge": JumpStartBenchmarkStat(
             {"name": "Latency", "value": "100", "unit": "Tokens/S"}
         )
     }

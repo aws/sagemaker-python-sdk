@@ -969,10 +969,10 @@ def get_jumpstart_presets(
         presets = model_specs.training_presets
 
     if not config_names:
-        config_names = presets.preset_configs.keys()
+        config_names = presets.preset_configs.keys() if presets else []
 
     preset_configs = {
         config_name: presets.preset_configs[config_name] for config_name in config_names
-    }
+    } if presets else {}
 
     return preset_configs

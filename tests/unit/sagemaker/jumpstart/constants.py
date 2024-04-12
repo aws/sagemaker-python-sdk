@@ -7658,13 +7658,13 @@ INFERENCE_PRESETS = {
     "inference_presets": {
         "neuron-inference": {
             "benchmark_metrics": {
-                "ml.p3.2xlarge": {"name": "Latency", "value": "100", "unit": "Tokens/S"}
+                "ml.inf2.2xlarge": {"name": "Latency", "value": "100", "unit": "Tokens/S"}
             },
             "component_names": ["neuron-base"],
         },
         "neuron-inference-budget": {
             "benchmark_metrics": {
-                "ml.p3.2xlarge": {"name": "Latency", "value": "100", "unit": "Tokens/S"}
+                "ml.inf2.2xlarge": {"name": "Latency", "value": "100", "unit": "Tokens/S"}
             },
             "component_names": ["neuron-base"],
         },

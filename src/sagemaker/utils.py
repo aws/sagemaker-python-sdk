@@ -1643,7 +1643,7 @@ def unflatten_dict(dict: Dict[str, Any], sep: str = ".") -> Dict[str, Any]:
 
 
 def deep_override_dict(
-    dict1: Dict[str, Any], dict2: Dict[str, Any], skip_keys: Optional[List[str]] = None
+    dict1: Dict[str, Any], dict2: Dict[str, Any], skip_keys: Optional[List[str]] = []
 ) -> Dict[str, Any]:
     """Overrides any overlapping contents of dict1 with the contents of dict2."""
     flattened_dict1 = flatten_dict(dict1)
