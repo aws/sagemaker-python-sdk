@@ -1,5 +1,24 @@
 # Changelog
 
+## v2.215.0 (2024-04-12)
+
+### Features
+
+ * JumpStart Gated Model Support in ModelBuilder Local Modes
+ * Changes to support remote schema retrieval for task types (question-answering, fill-mask) and added e2e tests for both local and remote hf schema logic.
+ * Upgrade smp to version 2.3.0
+
+### Bug Fixes and Other Changes
+
+ * disable modelbuilder mlflow local integ tests
+ * add integ-tests to codebuild-ci.yml
+ * [Feat] Support MLflow Model Format Through ModelBuilder
+ * Test SM PySDK Variations
+ * typo in jumpstart manifest and refine tests
+ * add kix to launched regions
+ * Remove space specific business logic from Python SDK function to fetch execution role
+ * Remove notebook tests from CI health check and the script
+
 ## v2.214.3 (2024-04-04)
 
 ### Bug Fixes and Other Changes
