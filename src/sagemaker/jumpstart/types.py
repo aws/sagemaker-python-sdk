@@ -105,7 +105,7 @@ class JumpStartS3FileType(str, Enum):
 
     OPEN_WEIGHT_MANIFEST = "manifest"
     OPEN_WEIGHT_SPECS = "specs"
-    PROPRIETARY_MANIFEST = "proptietary_manifest"
+    PROPRIETARY_MANIFEST = "proprietary_manifest"
     PROPRIETARY_SPECS = "proprietary_specs"
 
 

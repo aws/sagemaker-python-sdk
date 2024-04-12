@@ -6350,6 +6350,12 @@ PROTOTYPICAL_MODEL_SPECS_DICT = {
             "py_version": "py3",
         },
         "training_artifact_key": "pytorch-training/train-pytorch-eqa-bert-base-cased.tar.gz",
+        "predictor_specs": {
+            "supported_content_types": ["application/x-image"],
+            "supported_accept_types": ["application/json;verbose", "application/json"],
+            "default_content_type": "application/x-image",
+            "default_accept_type": "application/json",
+        },
         "inference_environment_variables": [
             {
                 "name": "SAGEMAKER_PROGRAM",

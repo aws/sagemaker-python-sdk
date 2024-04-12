@@ -5,6 +5,7 @@ import io
 import cloudpickle
 import shutil
 import platform
+import importlib
 from pathlib import Path
 from functools import partial
 from sagemaker.serve.validations.check_integrity import perform_integrity_check
@@ -29,10 +30,16 @@ def model_fn(model_dir):
         shutil.copytree(shared_libs_path, "/lib", dirs_exist_ok=True)
 
     serve_path = Path(__file__).parent.joinpath("serve.pkl")
+    mlflow_flavor = _get_mlflow_flavor()
     with open(str(serve_path), mode="rb") as file:
         global inference_spec, native_model, schema_builder
         obj = cloudpickle.load(file)
-        if isinstance(obj[0], InferenceSpec):
+        if mlflow_flavor is not None:
+            # TODO: Add warning if it's pyfunc flavor since it will need to enforce schema
+            schema_builder = obj
+            loaded_model = _load_mlflow_model(deployment_flavor=mlflow_flavor, model_dir=model_dir)
+            return loaded_model if callable(loaded_model) else loaded_model.predict
+        elif isinstance(obj[0], InferenceSpec):
             inference_spec, schema_builder = obj
         elif isinstance(obj[0], str) and obj[0] == "xgboost":
             model_class_name = os.getenv("MODEL_CLASS_NAME")
@@ -108,6 +115,31 @@ def _pickle_file_integrity_check():
 
     metadeata_path = Path("/opt/ml/model/code/metadata.json")
     perform_integrity_check(buffer=buffer, metadata_path=metadeata_path)
+
+
+def _get_mlflow_flavor():
+    return os.getenv("MLFLOW_MODEL_FLAVOR")
+
+
+def _load_mlflow_model(deployment_flavor, model_dir):
+    # TODO: move this to constants section
+    flavor_loader_map = {
+        "keras": ("mlflow.keras", "load_model"),
+        "python_function": ("mlflow.pyfunc", "load_model"),
+        "pytorch": ("mlflow.pytorch", "load_model"),
+        "sklearn": ("mlflow.sklearn", "load_model"),
+        "tensorflow": ("mlflow.tensorflow", "load_model"),
+        "xgboost": ("mlflow.xgboost", "load_model"),
+        "langchain": ("mlflow.pyfunc", "load_model"),
+    }
+
+    flavor_module_name, load_function_name = flavor_loader_map.get(
+        deployment_flavor, ("mlflow.pyfunc", "load_model")
+    )
+    logger.info(f"Using {flavor_module_name}.{load_function_name} loading the model.")
+    flavor_module = importlib.import_module(flavor_module_name)
+    load_model_function = getattr(flavor_module, load_function_name)
+    return load_model_function(model_dir)
 
 
 # on import, execute
