@@ -1193,7 +1193,6 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
 
     def __init__(self, spec: Dict[str, Any]):  # pylint: disable=super-init-not-called
         """Initializes a JumpStartModelSpecs object from its json representation.
-        By default only apply the inference config.
 
         Args:
             spec (Dict[str, Any]): Dictionary representation of spec.
