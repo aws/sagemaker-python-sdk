@@ -957,6 +957,7 @@ def get_jumpstart_configs(
     scope: enums.JumpStartScriptScope = enums.JumpStartScriptScope.INFERENCE,
     model_type: enums.JumpStartModelType = enums.JumpStartModelType.OPEN_WEIGHTS,
 ) -> Dict[str, List[JumpStartMetadataConfig]]:
+    """Returns metadata configs for the given model ID and region."""
     model_specs = verify_model_region_and_return_specs(
         region=region,
         model_id=model_id,

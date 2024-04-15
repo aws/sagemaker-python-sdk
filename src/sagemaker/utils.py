@@ -1602,36 +1602,36 @@ def can_model_package_source_uri_autopopulate(source_uri: str):
     )
 
 
-def flatten_dict(dict: Dict[str, Any], sep: str = ".") -> Dict[str, Any]:
+def flatten_dict(source_dict: Dict[str, Any], sep: str = ".") -> Dict[str, Any]:
     """Flatten a nested dictionary.
     Args:
-        dict (dict): The dictionary to be flattened.
+        source_dict (dict): The dictionary to be flattened.
         sep (str): The separator to be used in the flattened dictionary.
     Returns:
-        dict: The flattened dictionary.
+        transformed_dict: The flattened dictionary.
     """
-    flat_dict_list = pd.json_normalize(dict, sep=sep).to_dict(orient="records")
+    flat_dict_list = pd.json_normalize(source_dict, sep=sep).to_dict(orient="records")
     if flat_dict_list:
         return flat_dict_list[0]
     return {}
 
 
-def unflatten_dict(dict: Dict[str, Any], sep: str = ".") -> Dict[str, Any]:
+def unflatten_dict(source_dict: Dict[str, Any], sep: str = ".") -> Dict[str, Any]:
     """
     Unflatten a flattened dictionary back into a nested dictionary.
 
     Args:
-        d (dict): The input flattened dictionary.
+        source_dict (dict): The input flattened dictionary.
         sep (str): The separator used in the flattened keys.
 
     Returns:
-        dict: The reconstructed nested dictionary.
+        transformed_dict: The reconstructed nested dictionary.
     """
-    if not dict:
+    if not source_dict:
         return {}
 
     result = {}
-    for key, value in dict.items():
+    for key, value in source_dict.items():
         keys = key.split(sep)
         current = result
         for k in keys[:-1]:
@@ -1643,9 +1643,12 @@ def unflatten_dict(dict: Dict[str, Any], sep: str = ".") -> Dict[str, Any]:
 
 
 def deep_override_dict(
-    dict1: Dict[str, Any], dict2: Dict[str, Any], skip_keys: Optional[List[str]] = []
+    dict1: Dict[str, Any], dict2: Dict[str, Any], skip_keys: Optional[List[str]] = None
 ) -> Dict[str, Any]:
     """Overrides any overlapping contents of dict1 with the contents of dict2."""
+    if skip_keys is None:
+        skip_keys = []
+
     flattened_dict1 = flatten_dict(dict1)
     flattened_dict2 = flatten_dict(
         {key: value for key, value in dict2.items() if key not in skip_keys}

@@ -1031,7 +1031,7 @@ class JumpStartConfigComponent(JumpStartMetadataBaseFields):
 
     __slots__ = slots + JumpStartMetadataBaseFields.__slots__
 
-    def __init__(
+    def __init__(  # pylint: disable=super-init-not-called
         self,
         component_name: str,
         component: Optional[Dict[str, Any]],
