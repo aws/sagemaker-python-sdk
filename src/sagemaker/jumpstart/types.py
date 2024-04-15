@@ -1142,22 +1142,6 @@ class JumpStartMetadataConfigs(JumpStartDataHolderType):
         self.config_rankings = config_rankings
         self.scope = scope
 
-    def from_json(self, json_obj: Dict[str, Any]) -> None:
-        """Sets fields in object based on json.
-
-        Args:
-            json_obj (Dict[str, Any]): Dictionary representation of inference config.
-        """
-        if json_obj is None:
-            return
-
-        self.configs: Dict[str, JumpStartMetadataConfig] = {
-            alias: JumpStartMetadataConfig(config) for alias, config in json_obj["configs"].items()
-        }
-        self.config_rankings: Optional[Dict[str, JumpStartMetadataConfig]] = json_obj[
-            "config_rankings"
-        ]
-
     def to_json(self) -> Dict[str, Any]:
         """Returns json representation of JumpStartMetadataConfigs object."""
         json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
@@ -1207,7 +1191,7 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
 
     __slots__ = JumpStartMetadataBaseFields.__slots__ + slots
 
-    def __init__(self, spec: Dict[str, Any]):
+    def __init__(self, spec: Dict[str, Any]):  # pylint: disable=super-init-not-called
         """Initializes a JumpStartModelSpecs object from its json representation.
         By default only apply the inference config.
 
