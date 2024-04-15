@@ -113,17 +113,20 @@ class RLEstimator(Framework):
                 must point to a file located at the root of ``source_dir``.
             toolkit (sagemaker.rl.RLToolkit): RL toolkit you want to use for
                 executing your model training code.
+
                 .. warning::
                     This ``toolkit`` argument discontinued support for new RL users on April 2024. To use
                     RLEstimator, please pass in ``image_uri``.
-            toolkit_version (str): RL toolkit version you want to be use for
-                executing your model training code.
+            toolkit_version (str): RL toolkit version you want to be use for executing your
+                model training code.
+
                 .. warning::
                     This ``toolkit_version`` argument discontinued support for new RL users on April 2024.
                     To use RLEstimator, please pass in ``image_uri``.
             framework (sagemaker.rl.RLFramework): Framework (MXNet or
                 TensorFlow) you want to be used as a toolkit backed for
                 reinforcement learning training.
+
                 .. warning::
                     This ``framework`` argument discontinued support for new RL users on April 2024. To
                     use RLEstimator, please pass in ``image_uri``.
