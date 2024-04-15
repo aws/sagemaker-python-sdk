@@ -1103,7 +1103,7 @@ class JumpStartMetadataConfig(JumpStartDataHolderType):
         return json_obj
 
     @property
-    def resolved_config(self) -> None:
+    def resolved_config(self) -> Dict[str, Any]:
         """Returns the final config that is resolved from the list of components.
 
         Construct the final config by applying the list of configs from list index,
