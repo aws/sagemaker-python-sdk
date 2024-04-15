@@ -1004,6 +1004,13 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
                             json_obj[att].append(obj.to_json())
                         else:
                             json_obj[att].append(obj)
+                elif isinstance(cur_val, dict):
+                    json_obj[att] = {}
+                    for key, val in cur_val.items():
+                        if issubclass(type(val), JumpStartDataHolderType):
+                            json_obj[att][key] = val.to_json()
+                        else:
+                            json_obj[att][key] = val
                 else:
                     json_obj[att] = cur_val
         return json_obj
