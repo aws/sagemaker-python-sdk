@@ -153,6 +153,7 @@ def test_model_builder_happy_path_with_task_provided_local_schema_mode(
             "ml.m5.xlarge",
         ),
         ("deepset/roberta-base-squad2", "question-answering", "ml.m5.xlarge"),
+        ("openai/whisper-large-v3", "automatic-speech-recognition", "ml.m5.xlarge")
     ],
 )
 def test_model_builder_happy_path_with_task_provided_remote_schema_mode(
