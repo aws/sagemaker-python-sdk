@@ -36,8 +36,9 @@ from sagemaker.jumpstart.factory.model import (
     get_init_kwargs,
     get_register_kwargs,
 )
-from sagemaker.jumpstart.types import JumpStartSerializablePayload
+from sagemaker.jumpstart.types import JumpStartMetadataConfig, JumpStartSerializablePayload
 from sagemaker.jumpstart.utils import (
+    get_jumpstart_configs,
     validate_model_id_and_get_type,
     verify_model_region_and_return_specs,
 )
@@ -92,6 +93,8 @@ class JumpStartModel(Model):
         git_config: Optional[Dict[str, str]] = None,
         model_package_arn: Optional[str] = None,
         resources: Optional[ResourceRequirements] = None,
+        config_name: Optional[str] = None,
+        **kwargs,
     ):
         """Initializes a ``JumpStartModel``.
 
@@ -277,6 +280,8 @@ class JumpStartModel(Model):
                 for a model to be deployed to an endpoint.
                 Only EndpointType.INFERENCE_COMPONENT_BASED supports this feature.
                 (Default: None).
+            config_name (Optional[str]): The name of the JumpStartConfig that can be
+                optionally applied to the model and override corresponding fields.
         Raises:
             ValueError: If the model ID is not recognized by JumpStart.
         """
@@ -326,6 +331,7 @@ class JumpStartModel(Model):
             git_config=git_config,
             model_package_arn=model_package_arn,
             resources=resources,
+            config_name=config_name,
         )
 
         self.orig_predictor_cls = predictor_cls
@@ -338,6 +344,7 @@ class JumpStartModel(Model):
         self.tolerate_deprecated_model = model_init_kwargs.tolerate_deprecated_model
         self.region = model_init_kwargs.region
         self.sagemaker_session = model_init_kwargs.sagemaker_session
+        self.config_name = config_name
 
         if self.model_type == JumpStartModelType.PROPRIETARY:
             self.log_subscription_warning()
@@ -345,6 +352,7 @@ class JumpStartModel(Model):
         super(JumpStartModel, self).__init__(**model_init_kwargs.to_kwargs_dict())
 
         self.model_package_arn = model_init_kwargs.model_package_arn
+        self.init_kwargs = model_init_kwargs.to_kwargs_dict(False)
 
     def log_subscription_warning(self) -> None:
         """Log message prompting the customer to subscribe to the proprietary model."""
@@ -401,6 +409,32 @@ class JumpStartModel(Model):
             tolerate_vulnerable_model=self.tolerate_vulnerable_model,
             sagemaker_session=self.sagemaker_session,
         )
+
+    def list_deployment_configs(self) -> List[JumpStartMetadataConfig]:
+        """Returns a list of deployment configs associated with the model.
+
+        Raises:
+            ValueError: If the combination of arguments specified is not supported.
+            VulnerableJumpStartModelError: If any of the dependencies required by the script have
+                known security vulnerabilities.
+            DeprecatedJumpStartModelError: If the version of the model is deprecated.
+        """
+        configs_dict = get_jumpstart_configs(
+            model_id=self.model_id,
+            model_version=self.model_version,
+            model_type=self.model_type,
+            region=self.region,
+            sagemaker_session=self.sagemaker_session,
+        )
+        return list(configs_dict.values())
+
+    def set_deployment_config(self, config_name: str) -> None:
+        """Sets the deployment config to apply to the model.
+
+        Args:
+            config_name (str): The name of the deployment config.
+        """
+        self.__init__(**self.init_kwargs, config_name=config_name)
 
     def _create_sagemaker_model(
         self,
@@ -625,6 +659,7 @@ class JumpStartModel(Model):
             managed_instance_scaling=managed_instance_scaling,
             endpoint_type=endpoint_type,
             model_type=self.model_type,
+            config_name=self.config_name,
         )
         if (
             self.model_type == JumpStartModelType.PROPRIETARY
@@ -644,6 +679,7 @@ class JumpStartModel(Model):
                 model_type=self.model_type,
                 scope=JumpStartScriptScope.INFERENCE,
                 sagemaker_session=self.sagemaker_session,
+                config_name=self.config_name,
             ).model_subscription_link
             get_proprietary_model_subscription_error(e, subscription_link)
             raise
@@ -659,6 +695,7 @@ class JumpStartModel(Model):
                 tolerate_vulnerable_model=self.tolerate_vulnerable_model,
                 sagemaker_session=self.sagemaker_session,
                 model_type=self.model_type,
+                config_name=self.config_name,
             )
 
         # If a predictor class was passed, do not mutate predictor
@@ -769,6 +806,7 @@ class JumpStartModel(Model):
             data_input_configuration=data_input_configuration,
             skip_model_validation=skip_model_validation,
             source_uri=source_uri,
+            config_name=self.config_name,
         )
 
         model_package = super(JumpStartModel, self).register(**register_kwargs.to_kwargs_dict())

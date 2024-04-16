@@ -37,6 +37,7 @@ def retrieve_default(
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     instance_type: Optional[str] = None,
+    config_name: Optional[str] = None,
 ) -> ResourceRequirements:
     """Retrieves the default resource requirements for the model matching the given arguments.
 
@@ -62,6 +63,7 @@ def retrieve_default(
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
         instance_type (str): An instance type to optionally supply in order to get
             host requirements specific for the instance type.
+        config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
     Returns:
         str: The default resource requirements to use for the model.
 
@@ -87,4 +89,5 @@ def retrieve_default(
         model_type=model_type,
         sagemaker_session=sagemaker_session,
         instance_type=instance_type,
+        config_name=config_name,
     )

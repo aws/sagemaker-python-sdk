@@ -1110,6 +1110,7 @@ class EstimatorTest(unittest.TestCase):
             "region",
             "tolerate_vulnerable_model",
             "tolerate_deprecated_model",
+            "config_name",
         }
         assert parent_class_init_args - js_class_init_args == init_args_to_skip
 
@@ -1367,6 +1368,7 @@ class EstimatorTest(unittest.TestCase):
             tolerate_deprecated_model=False,
             tolerate_vulnerable_model=False,
             sagemaker_session=sagemaker_session,
+            config_name=None,
         )
 
     @mock.patch("sagemaker.jumpstart.estimator.validate_model_id_and_get_type")
@@ -1418,6 +1420,7 @@ class EstimatorTest(unittest.TestCase):
             tolerate_deprecated_model=False,
             tolerate_vulnerable_model=False,
             sagemaker_session=sagemaker_session,
+            config_name=None,
         )
 
     @mock.patch("sagemaker.utils.sagemaker_timestamp")

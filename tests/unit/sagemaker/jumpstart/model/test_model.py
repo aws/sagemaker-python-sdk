@@ -715,6 +715,8 @@ class ModelTest(unittest.TestCase):
             "tolerate_deprecated_model",
             "instance_type",
             "model_package_arn",
+            "config_name",
+            "kwargs",
         }
         assert parent_class_init_args - js_class_init_args == init_args_to_skip
 
@@ -786,6 +788,7 @@ class ModelTest(unittest.TestCase):
             tolerate_vulnerable_model=False,
             sagemaker_session=model.sagemaker_session,
             model_type=JumpStartModelType.OPEN_WEIGHTS,
+            config_name=None,
         )
         self.assertEqual(type(predictor), Predictor)
         self.assertEqual(predictor, default_predictor_with_presets)

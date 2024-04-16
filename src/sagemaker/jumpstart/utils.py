@@ -547,6 +547,7 @@ def verify_model_region_and_return_specs(
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     model_type: enums.JumpStartModelType = enums.JumpStartModelType.OPEN_WEIGHTS,
+    config_name: Optional[str] = None,
 ) -> JumpStartModelSpecs:
     """Verifies that an acceptable model_id, version, scope, and region combination is provided.
 
@@ -569,6 +570,7 @@ def verify_model_region_and_return_specs(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
 
     Raises:
         NotImplementedError: If the scope is not supported.
@@ -633,6 +635,9 @@ def verify_model_region_and_return_specs(
                 vulnerabilities=model_specs.training_vulnerabilities,
                 scope=constants.JumpStartScriptScope.TRAINING,
             )
+
+    if model_specs and config_name:
+        model_specs.set_config(config_name, scope)
 
     return model_specs
 
@@ -956,7 +961,7 @@ def get_jumpstart_configs(
     sagemaker_session: Optional[Session] = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     scope: enums.JumpStartScriptScope = enums.JumpStartScriptScope.INFERENCE,
     model_type: enums.JumpStartModelType = enums.JumpStartModelType.OPEN_WEIGHTS,
-) -> Dict[str, List[JumpStartMetadataConfig]]:
+) -> Dict[str, JumpStartMetadataConfig]:
     """Returns metadata configs for the given model ID and region."""
     model_specs = verify_model_region_and_return_specs(
         region=region,
