@@ -2434,6 +2434,7 @@ class _TrainingJob(_Job):
         """
         train_args = cls._get_train_args(estimator, inputs, experiment_config)
 
+        logger.debug("Train args after processing defaults: %s", train_args)
         estimator.sagemaker_session.train(**train_args)
 
         return cls(estimator.sagemaker_session, estimator._current_job_name)
@@ -2499,7 +2500,13 @@ class _TrainingJob(_Job):
 
         # enable_network_isolation may be a pipeline variable place holder object
         # which is parsed in execution time
-        if estimator.enable_network_isolation():
+
+        # Should be defaulted to False
+        train_args["enable_network_isolation"] = False
+
+        # Only change it if it's explicitly passed so the sagemaker config
+        # doesn't override the kwarg.
+        if estimator.enable_network_isolation() is not None:
             train_args["enable_network_isolation"] = estimator.enable_network_isolation()
 
         if estimator.max_retry_attempts is not None:

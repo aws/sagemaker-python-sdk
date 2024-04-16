@@ -124,3 +124,9 @@ class MIMEType(str, Enum):
         """Removes suffix from type and instantiates enum."""
         base_type, _, _ = mime_type_with_suffix.partition(";")
         return MIMEType(base_type)
+
+
+class JumpStartConfigRankingName(str, Enum):
+    """Enum class for ranking of JumpStart config."""
+
+    DEFAULT = "overall"

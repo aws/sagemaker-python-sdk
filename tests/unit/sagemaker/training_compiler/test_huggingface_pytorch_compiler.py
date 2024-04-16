@@ -143,6 +143,7 @@ def _create_train_job(
         "stop_condition": {"MaxRuntimeInSeconds": 24 * 60 * 60},
         "tags": None,
         "vpc_config": None,
+        "enable_network_isolation": False,
         "metric_definitions": None,
         "environment": None,
         "retry_strategy": None,

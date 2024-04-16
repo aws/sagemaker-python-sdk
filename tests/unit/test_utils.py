@@ -33,6 +33,8 @@ import sagemaker
 from sagemaker.experiments._run_context import _RunContext
 from sagemaker.session_settings import SessionSettings
 from sagemaker.utils import (
+    deep_override_dict,
+    flatten_dict,
     get_instance_type_family,
     retry_with_backoff,
     check_and_get_run_experiment_config,
@@ -40,6 +42,7 @@ from sagemaker.utils import (
     resolve_value_from_config,
     resolve_class_attribute_from_config,
     resolve_nested_dict_value_from_config,
+    unflatten_dict,
     update_list_of_dicts_with_values_from_config,
     volume_size_supported,
     _get_resolved_path,
@@ -1809,3 +1812,57 @@ def test_can_model_package_source_uri_autopopulate():
     ]
     for source_uri, expected in test_data:
         assert can_model_package_source_uri_autopopulate(source_uri) == expected
+
+
+class TestDeepMergeDict(TestCase):
+    def test_flatten_dict_basic(self):
+        nested_dict = {"a": 1, "b": {"x": 2, "y": {"p": 3, "q": 4}}, "c": 5}
+        flattened_dict = {"a": 1, "b.x": 2, "b.y.p": 3, "b.y.q": 4, "c": 5}
+        self.assertDictEqual(flatten_dict(nested_dict), flattened_dict)
+        self.assertDictEqual(unflatten_dict(flattened_dict), nested_dict)
+
+    def test_flatten_dict_empty(self):
+        nested_dict = {}
+        flattened_dict = {}
+        self.assertDictEqual(flatten_dict(nested_dict), flattened_dict)
+        self.assertDictEqual(unflatten_dict(flattened_dict), nested_dict)
+
+    def test_flatten_dict_no_nested(self):
+        nested_dict = {"a": 1, "b": 2, "c": 3}
+        flattened_dict = {"a": 1, "b": 2, "c": 3}
+        self.assertDictEqual(flatten_dict(nested_dict), flattened_dict)
+        self.assertDictEqual(unflatten_dict(flattened_dict), nested_dict)
+
+    def test_flatten_dict_with_various_types(self):
+        nested_dict = {"a": [1, 2, 3], "b": {"x": None, "y": {"p": [], "q": ""}}, "c": 9}
+        flattened_dict = {"a": [1, 2, 3], "b.x": None, "b.y.p": [], "b.y.q": "", "c": 9}
+        self.assertDictEqual(flatten_dict(nested_dict), flattened_dict)
+        self.assertDictEqual(unflatten_dict(flattened_dict), nested_dict)
+
+    def test_deep_override_dict(self):
+        dict1 = {"a": 1, "b": {"x": 2, "y": 3}}
+        dict2 = {"b": {"y": 4, "z": 5}, "c": 6}
+        expected_merged = {"a": 1, "b": {"x": 2, "y": 4, "z": 5}, "c": 6}
+        self.assertDictEqual(deep_override_dict(dict1, dict2), expected_merged)
+
+    def test_deep_override_empty(self):
+        dict1 = {}
+        dict2 = {"a": 1, "b": {"c": 2}}
+        expected_merged = {"a": 1, "b": {"c": 2}}
+        self.assertDictEqual(deep_override_dict(dict1, dict2), expected_merged)
+
+    def test_deep_override_nested_lists(self):
+        dict1 = {"a": [1, 2], "b": {"c": [3, 4]}}
+        dict2 = {"a": [5], "b": {"c": [6, 7], "d": [8]}}
+        expected_merged = {"a": [5], "b": {"c": [6, 7], "d": [8]}}
+        self.assertDictEqual(deep_override_dict(dict1, dict2), expected_merged)
+
+    def test_deep_override_skip_keys(self):
+        dict1 = {"a": 1, "b": {"x": 2, "y": 3}, "c": [4, 5]}
+        dict2 = {
+            "b": {"x": 20, "z": 30},
+            "d": {"w": 40},
+        }
+        expected_result = {"a": 1, "b": {"x": 20, "y": 3, "z": 30}, "c": [4, 5]}
+
+        self.assertEqual(deep_override_dict(dict1, dict2, skip_keys=["c", "d"]), expected_result)
