@@ -7505,6 +7505,12 @@ BASE_SPEC = {
     "resource_name_base": "dfsdfsds",
     "hosting_resource_requirements": {"num_accelerators": 1, "min_memory_mb": 34360},
     "dynamic_container_deployment_supported": True,
+    "inference_configs": None,
+    "inference_config_components": None,
+    "training_configs": None,
+    "training_config_components": None,
+    "inference_config_rankings": None,
+    "training_config_rankings": None,
 }
 
 BASE_HEADER = {
@@ -7645,4 +7651,249 @@ BASE_PROPRIETARY_SPEC = {
         "ap-south-1": "arn:aws:sagemaker:ap-south-1:077584701553:model-package/j2-light-v2-0-004",
         "sa-east-1": "arn:aws:sagemaker:sa-east-1:270155090741:model-package/j2-light-v2-0-004",
     },
+}
+
+
+INFERENCE_CONFIGS = {
+    "inference_configs": {
+        "neuron-inference": {
+            "benchmark_metrics": {
+                "ml.inf2.2xlarge": {"name": "Latency", "value": "100", "unit": "Tokens/S"}
+            },
+            "component_names": ["neuron-base"],
+        },
+        "neuron-inference-budget": {
+            "benchmark_metrics": {
+                "ml.inf2.2xlarge": {"name": "Latency", "value": "100", "unit": "Tokens/S"}
+            },
+            "component_names": ["neuron-base"],
+        },
+        "gpu-inference-budget": {
+            "benchmark_metrics": {
+                "ml.p3.2xlarge": {"name": "Latency", "value": "100", "unit": "Tokens/S"}
+            },
+            "component_names": ["gpu-inference-budget"],
+        },
+        "gpu-inference": {
+            "benchmark_metrics": {
+                "ml.p3.2xlarge": {"name": "Latency", "value": "100", "unit": "Tokens/S"}
+            },
+            "component_names": ["gpu-inference"],
+        },
+    },
+    "inference_config_components": {
+        "neuron-base": {
+            "supported_inference_instance_types": ["ml.inf2.xlarge", "ml.inf2.2xlarge"]
+        },
+        "neuron-inference": {
+            "supported_inference_instance_types": ["ml.inf2.xlarge", "ml.inf2.2xlarge"],
+            "hosting_artifact_key": "artifacts/meta-textgeneration-llama-2-7b/neuron-inference/model/",
+            "hosting_instance_type_variants": {
+                "regional_aliases": {
+                    "us-west-2": {
+                        "neuron-ecr-uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
+                        "huggingface-pytorch-hosting:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    }
+                },
+                "variants": {"inf2": {"regional_properties": {"image_uri": "$neuron-ecr-uri"}}},
+            },
+        },
+        "neuron-budget": {"inference_environment_variables": {"BUDGET": "1234"}},
+        "gpu-inference": {
+            "supported_inference_instance_types": ["ml.p2.xlarge", "ml.p3.2xlarge"],
+            "hosting_artifact_key": "artifacts/meta-textgeneration-llama-2-7b/gpu-inference/model/",
+            "hosting_instance_type_variants": {
+                "regional_aliases": {
+                    "us-west-2": {
+                        "gpu-ecr-uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
+                        "pytorch-hosting-neuronx:1.13.1-neuronx-py310-sdk2.14.1-ubuntu20.04"
+                    }
+                },
+                "variants": {
+                    "p3": {"regional_properties": {"image_uri": "$gpu-ecr-uri"}},
+                    "p2": {"regional_properties": {"image_uri": "$gpu-ecr-uri"}},
+                },
+            },
+        },
+        "gpu-inference-budget": {
+            "supported_inference_instance_types": ["ml.p2.xlarge", "ml.p3.2xlarge"],
+            "hosting_artifact_key": "artifacts/meta-textgeneration-llama-2-7b/gpu-inference-budget/model/",
+            "hosting_instance_type_variants": {
+                "regional_aliases": {
+                    "us-west-2": {
+                        "gpu-ecr-uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
+                        "pytorch-hosting-neuronx:1.13.1-neuronx-py310-sdk2.14.1-ubuntu20.04"
+                    }
+                },
+                "variants": {
+                    "p2": {"regional_properties": {"image_uri": "$gpu-ecr-uri"}},
+                    "p3": {"regional_properties": {"image_uri": "$gpu-ecr-uri"}},
+                },
+            },
+        },
+    },
+}
+
+TRAINING_CONFIGS = {
+    "training_configs": {
+        "neuron-training": {
+            "benchmark_metrics": {
+                "ml.tr1n1.2xlarge": {"name": "Latency", "value": "100", "unit": "Tokens/S"},
+                "ml.tr1n1.4xlarge": {"name": "Latency", "value": "50", "unit": "Tokens/S"},
+            },
+            "component_names": ["neuron-training"],
+        },
+        "neuron-training-budget": {
+            "benchmark_metrics": {
+                "ml.tr1n1.2xlarge": {"name": "Latency", "value": "100", "unit": "Tokens/S"},
+                "ml.tr1n1.4xlarge": {"name": "Latency", "value": "50", "unit": "Tokens/S"},
+            },
+            "component_names": ["neuron-training-budget"],
+        },
+        "gpu-training": {
+            "benchmark_metrics": {
+                "ml.p3.2xlarge": {"name": "Latency", "value": "200", "unit": "Tokens/S"},
+            },
+            "component_names": ["gpu-training"],
+        },
+        "gpu-training-budget": {
+            "benchmark_metrics": {
+                "ml.p3.2xlarge": {"name": "Latency", "value": "100", "unit": "Tokens/S"}
+            },
+            "component_names": ["gpu-training-budget"],
+        },
+    },
+    "training_config_components": {
+        "neuron-training": {
+            "supported_training_instance_types": ["ml.trn1.xlarge", "ml.trn1.2xlarge"],
+            "training_artifact_key": "artifacts/meta-textgeneration-llama-2-7b/neuron-training/model/",
+            "training_instance_type_variants": {
+                "regional_aliases": {
+                    "us-west-2": {
+                        "neuron-ecr-uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
+                        "pytorch-training-neuronx:1.13.1-neuronx-py310-sdk2.14.1-ubuntu20.04"
+                    }
+                },
+                "variants": {"trn1": {"regional_properties": {"image_uri": "$neuron-ecr-uri"}}},
+            },
+        },
+        "gpu-training": {
+            "supported_training_instance_types": ["ml.p2.xlarge", "ml.p3.2xlarge"],
+            "training_artifact_key": "artifacts/meta-textgeneration-llama-2-7b/gpu-training/model/",
+            "training_instance_type_variants": {
+                "regional_aliases": {
+                    "us-west-2": {
+                        "gpu-ecr-uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
+                        "pytorch-hosting-neuronx:1.13.1-neuronx-py310-sdk2.14.1-ubuntu20.04"
+                    }
+                },
+                "variants": {
+                    "p2": {"regional_properties": {"image_uri": "$gpu-ecr-uri"}},
+                    "p3": {"regional_properties": {"image_uri": "$gpu-ecr-uri"}},
+                },
+            },
+        },
+        "neuron-training-budget": {
+            "supported_training_instance_types": ["ml.trn1.xlarge", "ml.trn1.2xlarge"],
+            "training_artifact_key": "artifacts/meta-textgeneration-llama-2-7b/neuron-training-budget/model/",
+            "training_instance_type_variants": {
+                "regional_aliases": {
+                    "us-west-2": {
+                        "neuron-ecr-uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
+                        "pytorch-training-neuronx:1.13.1-neuronx-py310-sdk2.14.1-ubuntu20.04"
+                    }
+                },
+                "variants": {"trn1": {"regional_properties": {"image_uri": "$neuron-ecr-uri"}}},
+            },
+        },
+        "gpu-training-budget": {
+            "supported_training_instance_types": ["ml.p2.xlarge", "ml.p3.2xlarge"],
+            "training_artifact_key": "artifacts/meta-textgeneration-llama-2-7b/gpu-training-budget/model/",
+            "training_instance_type_variants": {
+                "regional_aliases": {
+                    "us-west-2": {
+                        "gpu-ecr-uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
+                        "pytorch-hosting-neuronx:1.13.1-neuronx-py310-sdk2.14.1-ubuntu20.04"
+                    }
+                },
+                "variants": {
+                    "p2": {"regional_properties": {"image_uri": "$gpu-ecr-uri"}},
+                    "p3": {"regional_properties": {"image_uri": "$gpu-ecr-uri"}},
+                },
+            },
+        },
+    },
+}
+
+
+INFERENCE_CONFIG_RANKINGS = {
+    "inference_config_rankings": {
+        "overall": {
+            "description": "Overall rankings of configs",
+            "rankings": [
+                "neuron-inference",
+                "neuron-inference-budget",
+                "gpu-inference",
+                "gpu-inference-budget",
+            ],
+        },
+        "performance": {
+            "description": "Configs ranked based on performance",
+            "rankings": [
+                "neuron-inference",
+                "gpu-inference",
+                "neuron-inference-budget",
+                "gpu-inference-budget",
+            ],
+        },
+        "cost": {
+            "description": "Configs ranked based on cost",
+            "rankings": [
+                "neuron-inference-budget",
+                "gpu-inference-budget",
+                "neuron-inference",
+                "gpu-inference",
+            ],
+        },
+    }
+}
+
+TRAINING_CONFIG_RANKINGS = {
+    "training_config_rankings": {
+        "overall": {
+            "description": "Overall rankings of configs",
+            "rankings": [
+                "neuron-training",
+                "neuron-training-budget",
+                "gpu-training",
+                "gpu-training-budget",
+            ],
+        },
+        "performance_training": {
+            "description": "Configs ranked based on performance",
+            "rankings": [
+                "neuron-training",
+                "gpu-training",
+                "neuron-training-budget",
+                "gpu-training-budget",
+            ],
+            "instance_type_overrides": {
+                "ml.p2.xlarge": [
+                    "neuron-training",
+                    "neuron-training-budget",
+                    "gpu-training",
+                    "gpu-training-budget",
+                ]
+            },
+        },
+        "cost_training": {
+            "description": "Configs ranked based on cost",
+            "rankings": [
+                "neuron-training-budget",
+                "gpu-training-budget",
+                "neuron-training",
+                "gpu-training",
+            ],
+        },
+    }
 }

@@ -36,6 +36,8 @@ from sagemaker.jumpstart.exceptions import (
     get_old_model_version_msg,
 )
 from sagemaker.jumpstart.types import (
+    JumpStartBenchmarkStat,
+    JumpStartMetadataConfig,
     JumpStartModelHeader,
     JumpStartModelSpecs,
     JumpStartVersionedModelId,
@@ -878,3 +880,105 @@ def get_region_fallback(
         return constants.JUMPSTART_DEFAULT_REGION_NAME
 
     return list(combined_regions)[0]
+
+
+def get_config_names(
+    region: str,
+    model_id: str,
+    model_version: str,
+    sagemaker_session: Optional[Session] = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    scope: enums.JumpStartScriptScope = enums.JumpStartScriptScope.INFERENCE,
+    model_type: enums.JumpStartModelType = enums.JumpStartModelType.OPEN_WEIGHTS,
+) -> List[str]:
+    """Returns a list of config names for the given model ID and region."""
+    model_specs = verify_model_region_and_return_specs(
+        region=region,
+        model_id=model_id,
+        version=model_version,
+        sagemaker_session=sagemaker_session,
+        scope=scope,
+        model_type=model_type,
+    )
+
+    if scope == enums.JumpStartScriptScope.INFERENCE:
+        metadata_configs = model_specs.inference_configs
+    elif scope == enums.JumpStartScriptScope.TRAINING:
+        metadata_configs = model_specs.training_configs
+    else:
+        raise ValueError(f"Unknown script scope {scope}.")
+
+    return list(metadata_configs.configs.keys()) if metadata_configs else []
+
+
+def get_benchmark_stats(
+    region: str,
+    model_id: str,
+    model_version: str,
+    config_names: Optional[List[str]] = None,
+    sagemaker_session: Optional[Session] = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    scope: enums.JumpStartScriptScope = enums.JumpStartScriptScope.INFERENCE,
+    model_type: enums.JumpStartModelType = enums.JumpStartModelType.OPEN_WEIGHTS,
+) -> Dict[str, List[JumpStartBenchmarkStat]]:
+    """Returns benchmark stats for the given model ID and region."""
+    model_specs = verify_model_region_and_return_specs(
+        region=region,
+        model_id=model_id,
+        version=model_version,
+        sagemaker_session=sagemaker_session,
+        scope=scope,
+        model_type=model_type,
+    )
+
+    if scope == enums.JumpStartScriptScope.INFERENCE:
+        metadata_configs = model_specs.inference_configs
+    elif scope == enums.JumpStartScriptScope.TRAINING:
+        metadata_configs = model_specs.training_configs
+    else:
+        raise ValueError(f"Unknown script scope {scope}.")
+
+    if not config_names:
+        config_names = metadata_configs.configs.keys() if metadata_configs else []
+
+    benchmark_stats = {}
+    for config_name in config_names:
+        if config_name not in metadata_configs.configs:
+            raise ValueError(f"Unknown config name: '{config_name}'")
+        benchmark_stats[config_name] = metadata_configs.configs.get(config_name).benchmark_metrics
+
+    return benchmark_stats
+
+
+def get_jumpstart_configs(
+    region: str,
+    model_id: str,
+    model_version: str,
+    config_names: Optional[List[str]] = None,
+    sagemaker_session: Optional[Session] = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    scope: enums.JumpStartScriptScope = enums.JumpStartScriptScope.INFERENCE,
+    model_type: enums.JumpStartModelType = enums.JumpStartModelType.OPEN_WEIGHTS,
+) -> Dict[str, List[JumpStartMetadataConfig]]:
+    """Returns metadata configs for the given model ID and region."""
+    model_specs = verify_model_region_and_return_specs(
+        region=region,
+        model_id=model_id,
+        version=model_version,
+        sagemaker_session=sagemaker_session,
+        scope=scope,
+        model_type=model_type,
+    )
+
+    if scope == enums.JumpStartScriptScope.INFERENCE:
+        metadata_configs = model_specs.inference_configs
+    elif scope == enums.JumpStartScriptScope.TRAINING:
+        metadata_configs = model_specs.training_configs
+    else:
+        raise ValueError(f"Unknown script scope {scope}.")
+
+    if not config_names:
+        config_names = metadata_configs.configs.keys() if metadata_configs else []
+
+    return (
+        {config_name: metadata_configs.configs[config_name] for config_name in config_names}
+        if metadata_configs
+        else {}
+    )
