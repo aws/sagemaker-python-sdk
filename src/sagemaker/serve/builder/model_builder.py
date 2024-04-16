@@ -143,7 +143,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
             automatically with the specified input and output.
             The schema builder can be omitted for HuggingFace models with task types TextGeneration,
             TextClassification, and QuestionAnswering. Omitting SchemaBuilder is in
-            beta for FillMask, and  AutomaticSpeechRecognition use-cases.
+            beta for FillMask, and AutomaticSpeechRecognition use-cases.
         model (Optional[Union[object, str]): Model object (with ``predict`` method to perform
             inference) or a HuggingFace/JumpStart Model ID. Either ``model`` or ``inference_spec``
             is required for the model builder to build the artifact.
