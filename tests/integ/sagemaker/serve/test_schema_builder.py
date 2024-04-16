@@ -152,7 +152,7 @@ def test_model_builder_happy_path_with_task_provided_local_schema_mode(
             "question-answering",
             "ml.m5.xlarge",
         ),
-        ("deepset/roberta-base-squad2", "question-answering", "ml.m5.xlarge")
+        ("deepset/roberta-base-squad2", "question-answering", "ml.m5.xlarge"),
     ],
 )
 def test_model_builder_happy_path_with_task_provided_remote_schema_mode(
@@ -208,12 +208,10 @@ def test_model_builder_happy_path_with_task_provided_remote_schema_mode(
 )
 @pytest.mark.parametrize(
     "model_id, task_provided, instance_type_provided",
-    [
-        ("openai/whisper-large-v3", "automatic-speech-recognition", "ml.m5.xlarge")
-    ],
+    [("openai/whisper-large-v3", "automatic-speech-recognition", "ml.m5.xlarge")],
 )
 def test_model_builder_happy_path_with_task_provided_remote_schema_mode_asr(
-        model_id, task_provided, sagemaker_session, instance_type_provided
+    model_id, task_provided, sagemaker_session, instance_type_provided
 ):
     model_builder = ModelBuilder(
         model=model_id,
