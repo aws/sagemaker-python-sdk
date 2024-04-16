@@ -273,7 +273,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
         metadata={
             "help": "Define the model metadata to override, currently supports `HF_TASK`, "
             "`MLFLOW_MODEL_PATH`. HF_TASK should be set for new models without task metadata in "
-                    "the Hub, Adding unsupported task types will throw an exception"
+            "the Hub, Adding unsupported task types will throw an exception"
         },
     )
 
