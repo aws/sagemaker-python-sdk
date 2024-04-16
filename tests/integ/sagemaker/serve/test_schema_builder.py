@@ -152,12 +152,68 @@ def test_model_builder_happy_path_with_task_provided_local_schema_mode(
             "question-answering",
             "ml.m5.xlarge",
         ),
-        ("deepset/roberta-base-squad2", "question-answering", "ml.m5.xlarge"),
-        ("openai/whisper-large-v3", "automatic-speech-recognition", "ml.m5.xlarge")
+        ("deepset/roberta-base-squad2", "question-answering", "ml.m5.xlarge")
     ],
 )
 def test_model_builder_happy_path_with_task_provided_remote_schema_mode(
     model_id, task_provided, sagemaker_session, instance_type_provided
+):
+    model_builder = ModelBuilder(
+        model=model_id,
+        model_metadata={"HF_TASK": task_provided},
+        instance_type=instance_type_provided,
+    )
+    model = model_builder.build(sagemaker_session=sagemaker_session)
+
+    assert model is not None
+    assert model_builder.schema_builder is not None
+
+    remote_hf_schema_helper = remote_schema_retriever.RemoteSchemaRetriever()
+    inputs, outputs = remote_hf_schema_helper.get_resolved_hf_schema_for_task(task_provided)
+    assert model_builder.schema_builder.sample_input == inputs
+    assert model_builder.schema_builder.sample_output == outputs
+
+    with timeout(minutes=SERVE_SAGEMAKER_ENDPOINT_TIMEOUT):
+        caught_ex = None
+        try:
+            iam_client = sagemaker_session.boto_session.client("iam")
+            role_arn = iam_client.get_role(RoleName="SageMakerRole")["Role"]["Arn"]
+
+            logger.info("Deploying and predicting in SAGEMAKER_ENDPOINT mode...")
+            predictor = model.deploy(
+                role=role_arn, instance_count=1, instance_type=instance_type_provided
+            )
+
+            predicted_outputs = predictor.predict(inputs)
+            assert predicted_outputs is not None
+
+        except Exception as e:
+            caught_ex = e
+        finally:
+            cleanup_model_resources(
+                sagemaker_session=model_builder.sagemaker_session,
+                model_name=model.name,
+                endpoint_name=model.endpoint_name,
+            )
+            if caught_ex:
+                logger.exception(caught_ex)
+                assert (
+                    False
+                ), f"{caught_ex} was thrown when running transformers sagemaker endpoint test"
+
+
+@pytest.mark.skipif(
+    PYTHON_VERSION_IS_NOT_310,
+    reason="Testing Schema Builder Simplification feature - Remote Schema",
+)
+@pytest.mark.parametrize(
+    "model_id, task_provided, instance_type_provided",
+    [
+        ("openai/whisper-large-v3", "automatic-speech-recognition", "ml.m5.xlarge")
+    ],
+)
+def test_model_builder_happy_path_with_task_provided_remote_schema_mode_asr(
+        model_id, task_provided, sagemaker_session, instance_type_provided
 ):
     model_builder = ModelBuilder(
         model=model_id,
