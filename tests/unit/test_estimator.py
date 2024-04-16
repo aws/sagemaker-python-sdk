@@ -1895,6 +1895,7 @@ def test_framework_with_spot_and_checkpoints(sagemaker_session):
         "encrypt_inter_container_traffic": True,
         "use_spot_instances": True,
         "checkpoint_s3_uri": "s3://mybucket/checkpoints/",
+        "enable_network_isolation": False,
         "checkpoint_local_path": "/tmp/checkpoints",
         "environment": None,
         "experiment_config": None,
@@ -3441,6 +3442,7 @@ NO_INPUT_TRAIN_CALL = {
     "vpc_config": None,
     "metric_definitions": None,
     "environment": None,
+    "enable_network_isolation": False,
     "experiment_config": None,
 }
 
@@ -3831,7 +3833,7 @@ def test_generic_to_fit_with_network_isolation(sagemaker_session):
 
     sagemaker_session.train.assert_called_once()
     args = sagemaker_session.train.call_args[1]
-    assert args["enable_network_isolation"]
+    assert args["enable_network_isolation"] is True
 
 
 def test_generic_to_fit_with_sagemaker_metrics_missing(sagemaker_session):
