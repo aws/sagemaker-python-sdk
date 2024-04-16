@@ -54,6 +54,7 @@ RL_FRAMEWORKS = [
     "vw",
 ]
 
+
 @override_pipeline_parameter_var
 def retrieve(
     framework,
@@ -199,7 +200,7 @@ def retrieve(
         deprecation_warn(
             "SageMaker-hosted RL images no longer accept new pull requests and",
             "April 2024",
-            " Please pass in `image_uri` to use RLEstimator"
+            " Please pass in `image_uri` to use RLEstimator",
         )
 
     py_version = _validate_py_version_and_set_if_needed(py_version, version_config, framework)
