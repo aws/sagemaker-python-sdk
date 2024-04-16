@@ -143,6 +143,7 @@ def _create_train_job(
         "environment": None,
         "retry_strategy": None,
         "experiment_config": EXPERIMENT_CONFIG,
+        "enable_network_isolation": False,
         "debugger_hook_config": {
             "CollectionConfigurations": [],
             "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
